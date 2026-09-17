@@ -178,11 +178,12 @@ dependency source order, then declaration source order. Namespace URI order and
 preferred-prefix selection are first-seen under the same traversal. Preferred
 prefixes are presentation metadata, not global QName bindings.
 
-The frontend validates schema-level `elementFormDefault` values. The setting
-governs local element qualification in XML instances, but this IR models local
-field wire names for language-native UCI JSON types rather than XML instance
-serialization. It is therefore deliberately discarded during normalization.
-Other schema attributes remain unsupported unless handled explicitly.
+The frontend validates schema-level `elementFormDefault` and
+`attributeFormDefault` values. These settings govern local element and attribute
+qualification in XML instances, but this IR models local field wire names for
+language-native UCI JSON/LA-CAL types rather than XML instance serialization.
+They are therefore deliberately discarded during normalization. Other schema
+attributes remain unsupported unless handled explicitly.
 
 This deterministic frontend order is not a declaration schedule. Schema IR does
 not promise that source/discovery order can be emitted directly by a language

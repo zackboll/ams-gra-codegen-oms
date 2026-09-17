@@ -80,8 +80,9 @@ impl std::error::Error for FrontendError {}
 /// with finite occurrence bounds. Imports and includes are explicit errors;
 /// use [`load_schema_set`] when dependencies should be traversed. Anonymous
 /// types and all other XSD constructs are also explicit errors. Schema-level
-/// `elementFormDefault` is validated and discarded because XML instance
-/// namespace qualification is outside the normalized type model.
+/// `elementFormDefault` and `attributeFormDefault` are validated and discarded
+/// because XML instance namespace qualification is outside the normalized type
+/// model.
 ///
 /// # Errors
 ///
@@ -210,9 +211,15 @@ fn parse_schema_document_xml(
     require_xsd_element(schema, "schema")?;
     reject_unexpected_attributes(
         schema,
-        &["targetNamespace", "version", "elementFormDefault"],
+        &[
+            "targetNamespace",
+            "version",
+            "elementFormDefault",
+            "attributeFormDefault",
+        ],
     )?;
-    parse_element_form_default(schema)?;
+    parse_form_default(schema, "elementFormDefault")?;
+    parse_form_default(schema, "attributeFormDefault")?;
 
     let target_namespace = required_attribute(schema, "targetNamespace")?.to_owned();
     let source_document = path.display().to_string();
@@ -571,12 +578,16 @@ fn reject_unexpected_attributes(node: Node<'_, '_>, allowed: &[&str]) -> Result<
     Ok(())
 }
 
-fn parse_element_form_default(node: Node<'_, '_>) -> Result<(), FrontendError> {
-    match node.attribute("elementFormDefault") {
+fn parse_form_default(node: Node<'_, '_>, attribute_name: &str) -> Result<(), FrontendError> {
+    match node.attribute(attribute_name) {
         None | Some("qualified" | "unqualified") => Ok(()),
-        Some(value) => Err(FrontendError::InvalidInput(format!(
-            "xs:schema @elementFormDefault must be qualified or unqualified, got {value}"
-        ))),
+        Some(value) => {
+            let position = text_position(node);
+            Err(FrontendError::InvalidInput(format!(
+                "xs:schema @{attribute_name} must be qualified or unqualified, got {value} at {}:{}",
+                position.line, position.column
+            )))
+        }
     }
 }
 

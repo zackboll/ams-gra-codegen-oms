@@ -1,5 +1,6 @@
 use ams_gra_oms_ir::{Cardinality, PrimitiveKind, QualifiedName, TypeKind, TypeRefTarget};
 use ams_gra_oms_xsd_frontend::{FrontendError, load_schema_document, load_schema_set};
+use std::fs;
 use std::path::{Path, PathBuf};
 
 const OMS_NS: &str = "urn:example:oms:track";
@@ -131,7 +132,7 @@ fn accepts_and_normalizes_element_form_default_deterministically() {
             .document
             .ends_with("element-form-default/root.xsd")
     );
-    assert_eq!(ir.types[0].source.line, Some(8));
+    assert_eq!(ir.types[0].source.line, Some(9));
     assert!(
         ir.types[1]
             .source
@@ -142,23 +143,63 @@ fn accepts_and_normalizes_element_form_default_deterministically() {
 }
 
 #[test]
+fn accepts_attribute_form_defaults_and_discards_them_during_normalization() {
+    let qualified_source = fs::read_to_string(fixture("attribute-form-default/qualified.xsd"))
+        .expect("qualified fixture should be readable");
+    let unqualified_source = fs::read_to_string(fixture("attribute-form-default/unqualified.xsd"))
+        .expect("unqualified fixture should be readable");
+    let temporary_path = std::env::temp_dir().join(format!(
+        "ams-gra-attribute-form-default-{}.xsd",
+        std::process::id()
+    ));
+
+    fs::write(&temporary_path, qualified_source).expect("temporary schema should be writable");
+    let qualified =
+        load_schema_document(&temporary_path).expect("qualified attribute form should parse");
+    fs::write(&temporary_path, unqualified_source).expect("temporary schema should be replaceable");
+    let unqualified =
+        load_schema_document(&temporary_path).expect("unqualified attribute form should parse");
+    fs::remove_file(&temporary_path).expect("temporary schema should be removable");
+
+    assert_eq!(qualified, unqualified);
+    assert_eq!(qualified.types.len(), 1);
+    assert_eq!(qualified.types[0].name.local_name, "Value_Type");
+}
+
+#[test]
 fn rejects_invalid_element_form_default_value() {
     let error = load_schema_document(&fixture("errors/invalid-element-form-default.xsd"))
         .expect_err("invalid form default must fail");
     assert!(matches!(error, FrontendError::InvalidInput(_)));
     let message = error.to_string();
     assert!(message.contains("invalid-element-form-default.xsd"));
-    assert!(message.contains("must be qualified or unqualified, got sometimes"));
+    assert!(message.contains(
+        "xs:schema @elementFormDefault must be qualified or unqualified, got sometimes at 2:1"
+    ));
 }
 
 #[test]
-fn element_form_support_does_not_allow_other_schema_attributes() {
-    let error = load_schema_document(&fixture("errors/unsupported-attribute-form-default.xsd"))
-        .expect_err("attributeFormDefault remains outside this feature");
+fn rejects_invalid_attribute_form_default_value_with_source_position() {
+    let error = load_schema_document(&fixture("errors/invalid-attribute-form-default.xsd"))
+        .expect_err("invalid attribute form default must fail");
+    assert!(matches!(error, FrontendError::InvalidInput(_)));
+    assert_eq!(
+        error.to_string(),
+        format!(
+            "invalid schema input: {}: xs:schema @attributeFormDefault must be qualified or unqualified, got invalid at 2:1",
+            fixture("errors/invalid-attribute-form-default.xsd").display()
+        )
+    );
+}
+
+#[test]
+fn form_default_support_does_not_allow_other_schema_attributes() {
+    let error = load_schema_document(&fixture("errors/unsupported-schema-attribute.xsd"))
+        .expect_err("unrelated schema attributes must remain unsupported");
     assert!(matches!(error, FrontendError::UnsupportedConstruct(_)));
     let message = error.to_string();
-    assert!(message.contains("xs:schema @attributeFormDefault"));
-    assert!(message.contains("unsupported-attribute-form-default.xsd:2:1"));
+    assert!(message.contains("xs:schema @id"));
+    assert!(message.contains("unsupported-schema-attribute.xsd:2:1"));
 }
 
 #[test]

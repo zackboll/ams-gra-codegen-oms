@@ -20,25 +20,42 @@ The separate `UCI_Versioning_v2_*_0.xsd` documents import the corresponding
 message-definition schema. The compatibility probe used the message-definition
 file as the root because it is the UCI message model consumed by this project.
 
-## 2026-09-17 probe
+## 2026-09-17 probes
 
-Before this task, both roots stopped at line 2 on
-`xs:schema @elementFormDefault="qualified"`. The frontend now validates the XSD
-enumeration values `qualified` and `unqualified`. This setting controls the
-namespace qualification of locally declared elements in XML instances. The
-normalized IR models local field wire names and targets language-native UCI JSON
-types rather than XML instance serialization, so the validated setting is
-deliberately discarded and produces no backend-visible IR change.
+The first probe added support for schema-level
+`elementFormDefault="qualified"`. The frontend recognizes and lexically validates
+the XSD enumeration values `qualified` and `unqualified`, then deliberately
+discards the value during normalization because it controls local element
+qualification in XML instances rather than the language-native UCI JSON model.
 
 Unsupported-construct diagnostics now identify the source file and deterministic
-`roxmltree` line and column. Re-running both roots advances to the next distinct
-blocker:
+`roxmltree` line and column. Both roots then stopped at line 2 on:
 
 ```text
 unsupported XSD construct: xs:schema @attributeFormDefault at <root>:2:1
 ```
 
-In both releases the value is `unqualified`. That feature remains unsupported
-and is intentionally left for the next compatibility task. No version-specific
-difference was observed through this point; UCI 2.5 remains the Sleet
-interoperability baseline, while UCI 2.6 is the forward-compatibility target.
+In both releases the value is `unqualified`. The frontend now recognizes
+schema-level `attributeFormDefault`, validates its value as either `qualified` or
+`unqualified`, and deliberately discards it during normalization.
+`attributeFormDefault` affects XML instance namespace qualification, while the
+current backend-visible model targets language-native JSON/LA-CAL semantics.
+Preserving this XML-representation-only setting in `SchemaIr` would therefore
+violate the normalization boundary and provide no current backend value.
+
+Re-running both roots advances beyond `attributeFormDefault` to the same next
+blocker:
+
+```text
+UCI 2.5: FrontendError::UnsupportedConstruct
+unsupported XSD construct: xs:annotation at UCI_MessageDefinitions_v2_5_0.xsd:3:2
+
+UCI 2.6: FrontendError::UnsupportedConstruct
+unsupported XSD construct: xs:annotation at UCI_MessageDefinitions_v2_6_0.xsd:3:2
+```
+
+No version-specific difference has been observed through this point. Support
+for `xs:annotation` remains intentionally unimplemented for the next
+evidence-driven compatibility task. UCI 2.5 remains the Sleet interoperability
+baseline, while UCI 2.6 is the forward-compatibility target; neither schema
+currently normalizes completely.
