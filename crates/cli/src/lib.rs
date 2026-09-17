@@ -329,21 +329,7 @@ fn generate<W: Write>(
         ))
     })?;
     for file in &files {
-        let destination = output_dir.join(&file.relative_path);
-        if let Some(parent) = destination.parent() {
-            fs::create_dir_all(parent).map_err(|error| {
-                CliError::execution(format!(
-                    "unable to create generated file directory {}: {error}",
-                    parent.display()
-                ))
-            })?;
-        }
-        fs::write(&destination, &file.contents).map_err(|error| {
-            CliError::execution(format!(
-                "unable to write generated file {}: {error}",
-                destination.display()
-            ))
-        })?;
+        write_generated_file(output_dir, file)?;
     }
     write_output(
         stdout,
@@ -382,6 +368,92 @@ fn validate_relative_path(path: &Path) -> Result<(), CliError> {
         )));
     }
     Ok(())
+}
+
+fn write_generated_file(output_root: &Path, file: &GeneratedFile) -> Result<(), CliError> {
+    let mut destination = output_root.to_path_buf();
+    let mut components = file.relative_path.components().peekable();
+    while let Some(component) = components.next() {
+        let Component::Normal(component) = component else {
+            return Err(CliError::execution(format!(
+                "backend produced unsafe generated path {}",
+                file.relative_path.display()
+            )));
+        };
+        destination.push(component);
+        if components.peek().is_some() {
+            ensure_safe_parent(&destination)?;
+        } else {
+            ensure_safe_final_destination(&destination)?;
+        }
+    }
+
+    fs::write(&destination, &file.contents).map_err(|error| {
+        CliError::execution(format!(
+            "unable to write generated file {}: {error}",
+            destination.display()
+        ))
+    })
+}
+
+fn ensure_safe_parent(path: &Path) -> Result<(), CliError> {
+    match fs::symlink_metadata(path) {
+        Ok(metadata) => validate_parent_metadata(path, &metadata),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            fs::create_dir(path).map_err(|error| {
+                CliError::execution(format!(
+                    "unable to create generated file directory {}: {error}",
+                    path.display()
+                ))
+            })?;
+            let metadata = fs::symlink_metadata(path).map_err(|error| {
+                CliError::execution(format!(
+                    "unable to inspect generated file directory {}: {error}",
+                    path.display()
+                ))
+            })?;
+            validate_parent_metadata(path, &metadata)
+        }
+        Err(error) => Err(CliError::execution(format!(
+            "unable to inspect generated file directory {}: {error}",
+            path.display()
+        ))),
+    }
+}
+
+fn validate_parent_metadata(path: &Path, metadata: &fs::Metadata) -> Result<(), CliError> {
+    if metadata.file_type().is_symlink() {
+        return Err(CliError::execution(format!(
+            "unsafe generated destination: parent component {} is a symbolic link",
+            path.display()
+        )));
+    }
+    if !metadata.is_dir() {
+        return Err(CliError::execution(format!(
+            "unsafe generated destination: parent component {} is not a directory",
+            path.display()
+        )));
+    }
+    Ok(())
+}
+
+fn ensure_safe_final_destination(path: &Path) -> Result<(), CliError> {
+    match fs::symlink_metadata(path) {
+        Ok(metadata) if metadata.file_type().is_symlink() => Err(CliError::execution(format!(
+            "unsafe generated destination: {} is a symbolic link",
+            path.display()
+        ))),
+        Ok(metadata) if metadata.is_file() => Ok(()),
+        Ok(_) => Err(CliError::execution(format!(
+            "unsafe generated destination: {} is not a regular file",
+            path.display()
+        ))),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(CliError::execution(format!(
+            "unable to inspect generated file destination {}: {error}",
+            path.display()
+        ))),
+    }
 }
 
 fn write_output<W: Write>(writer: &mut W, output: &str) -> Result<(), CliError> {
@@ -425,6 +497,13 @@ mod tests {
         Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../..")
             .join(relative)
+    }
+
+    fn generated_file(relative_path: &str, contents: &str) -> GeneratedFile {
+        GeneratedFile {
+            relative_path: relative_path.into(),
+            contents: contents.into(),
+        }
     }
 
     fn parse(values: &[&str]) -> Result<Command, CliError> {
@@ -587,6 +666,106 @@ mod tests {
         ];
         validate_generated_files(&equivalent_files)
             .expect_err("equivalent destination paths should fail");
+    }
+
+    #[test]
+    fn overwrites_existing_regular_file() {
+        let output = TempDir::new();
+        let destination = output.0.join("generated.rs");
+        fs::write(&destination, "old contents").unwrap();
+
+        write_generated_file(&output.0, &generated_file("generated.rs", "new contents")).unwrap();
+
+        assert_eq!(fs::read_to_string(destination).unwrap(), "new contents");
+    }
+
+    #[test]
+    fn writes_through_existing_ordinary_parent_directory() {
+        let output = TempDir::new();
+        fs::create_dir(output.0.join("subdir")).unwrap();
+
+        write_generated_file(
+            &output.0,
+            &generated_file("subdir/generated.rs", "generated contents"),
+        )
+        .unwrap();
+
+        assert_eq!(
+            fs::read_to_string(output.0.join("subdir/generated.rs")).unwrap(),
+            "generated contents"
+        );
+    }
+
+    #[test]
+    fn rejects_non_directory_parent_component() {
+        let output = TempDir::new();
+        fs::write(output.0.join("subdir"), "ordinary file").unwrap();
+
+        let error = write_generated_file(
+            &output.0,
+            &generated_file("subdir/generated.rs", "generated contents"),
+        )
+        .expect_err("non-directory parent should be rejected");
+
+        assert!(error.to_string().contains("not a directory"));
+    }
+
+    #[test]
+    fn rejects_directory_as_final_destination() {
+        let output = TempDir::new();
+        fs::create_dir(output.0.join("generated.rs")).unwrap();
+
+        let error = write_generated_file(
+            &output.0,
+            &generated_file("generated.rs", "generated contents"),
+        )
+        .expect_err("final directory should be rejected");
+
+        assert!(error.to_string().contains("not a regular file"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn rejects_final_file_symlink_without_modifying_target() {
+        use std::os::unix::fs::symlink;
+
+        let workspace = TempDir::new();
+        let output = workspace.0.join("output");
+        fs::create_dir(&output).unwrap();
+        let outside = workspace.0.join("outside.rs");
+        fs::write(&outside, "outside contents").unwrap();
+        symlink(&outside, output.join("generated.rs")).unwrap();
+
+        let error = write_generated_file(
+            &output,
+            &generated_file("generated.rs", "generated contents"),
+        )
+        .expect_err("final symlink should be rejected");
+
+        assert!(error.to_string().contains("symbolic link"));
+        assert_eq!(fs::read_to_string(outside).unwrap(), "outside contents");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn rejects_intermediate_directory_symlink_without_writing_outside() {
+        use std::os::unix::fs::symlink;
+
+        let workspace = TempDir::new();
+        let output = workspace.0.join("output");
+        let outside = workspace.0.join("outside");
+        fs::create_dir(&output).unwrap();
+        fs::create_dir(&outside).unwrap();
+        symlink(&outside, output.join("subdir")).unwrap();
+
+        let error = write_generated_file(
+            &output,
+            &generated_file("subdir/generated.rs", "generated contents"),
+        )
+        .expect_err("intermediate symlink should be rejected");
+
+        assert!(error.to_string().contains("symbolic link"));
+        assert!(!outside.join("generated.rs").exists());
     }
 
     #[test]

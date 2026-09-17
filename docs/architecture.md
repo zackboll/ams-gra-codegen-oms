@@ -203,9 +203,12 @@ frontend, IR, and code-generation crates.
 Generated output paths must consist entirely of normal relative components;
 absolute paths, platform prefixes, root components, and parent traversal are
 rejected. This structural check does not rely on canonicalizing children that
-do not yet exist. Filesystem writes are intentionally not transactional: no
-write occurs before all in-memory pipeline and file-set checks succeed, but a
-later I/O failure can leave earlier files from that write phase in place.
+do not yet exist. During writing, existing symbolic links beneath the selected
+output root are rejected rather than traversed. The portable check is not
+race-free against a malicious process concurrently replacing filesystem
+entries. Filesystem writes are intentionally not transactional: no write occurs
+before all in-memory pipeline and file-set checks succeed, but a later I/O
+failure can leave earlier files from that write phase in place.
 
 The XSD frontend exposes two loading modes. `load_schema_document` intentionally
 loads exactly one standalone document and rejects `xs:include` or `xs:import`.
