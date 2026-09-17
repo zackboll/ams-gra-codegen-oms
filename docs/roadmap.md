@@ -24,7 +24,7 @@ Target only a controlled schema fixture containing:
 Deliver:
 
 - XSD -> IR;
-- IR validator;
+- [x] IR validator;
 - Ada output;
 - Rust output;
 - C++ output;

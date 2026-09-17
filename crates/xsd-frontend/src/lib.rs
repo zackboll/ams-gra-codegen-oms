@@ -239,7 +239,6 @@ fn documents_into_ir(documents: Vec<ParsedSchemaDocument>) -> Result<SchemaIr, F
         .and_then(|document| document.schema_version.clone());
     let mut namespace_uris = BTreeSet::new();
     let mut namespaces = Vec::new();
-    let mut declared_names = BTreeSet::new();
     let mut types = Vec::new();
 
     for document in documents {
@@ -250,28 +249,20 @@ fn documents_into_ir(documents: Vec<ParsedSchemaDocument>) -> Result<SchemaIr, F
             });
         }
         for declaration in document.declarations {
-            if !declared_names.insert(declaration.name.clone()) {
-                return Err(FrontendError::InvalidInput(format!(
-                    "duplicate type declaration {{{}}}{} at {}",
-                    declaration.name.namespace_uri,
-                    declaration.name.local_name,
-                    declaration.source.document
-                )));
-            }
             types.push(declaration);
         }
     }
 
-    for declaration in &types {
-        validate_declaration_references(declaration, &declared_names)?;
-    }
-
-    Ok(SchemaIr {
+    let schema = SchemaIr {
         schema_version,
         namespaces,
         types,
         messages: Vec::new(),
-    })
+    };
+    schema
+        .validate()
+        .map_err(|error| FrontendError::InvalidInput(error.to_string()))?;
+    Ok(schema)
 }
 
 fn parse_simple_type(
@@ -425,26 +416,6 @@ fn reject_remote_location(location: &str, source: &Path) -> Result<(), FrontendE
             "remote schema location {location} in {} is unsupported; only local filesystem paths are allowed",
             source.display()
         )));
-    }
-    Ok(())
-}
-
-fn validate_declaration_references(
-    declaration: &TypeDecl,
-    declared_names: &BTreeSet<QualifiedName>,
-) -> Result<(), FrontendError> {
-    let TypeKind::Record { fields } = &declaration.kind else {
-        return Ok(());
-    };
-    for field in fields {
-        if let TypeRefTarget::Named(named) = &field.type_ref.target {
-            if !declared_names.contains(named) {
-                return Err(FrontendError::InvalidInput(format!(
-                    "unresolved type reference {{{}}}{} in {}",
-                    named.namespace_uri, named.local_name, field.source.document
-                )));
-            }
-        }
     }
     Ok(())
 }

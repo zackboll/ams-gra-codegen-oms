@@ -1,6 +1,6 @@
 //! Minimal C++17 type generation from normalized schema IR.
 
-use ams_gra_oms_codegen_core::{Backend, CodegenError, GeneratedFile};
+use ams_gra_oms_codegen_core::{Backend, CodegenError, GeneratedFile, plan_type_declarations};
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef, TypeRefTarget,
 };
@@ -16,6 +16,7 @@ impl Backend for CppBackend {
     }
 
     fn generate(&self, schema: &SchemaIr) -> Result<Vec<GeneratedFile>, CodegenError> {
+        let contents = generate(schema)?;
         let namespace = schema
             .namespaces
             .first()
@@ -27,7 +28,7 @@ impl Backend for CppBackend {
             .ok_or_else(|| error("C++ generation requires a named namespace"))?;
         Ok(vec![GeneratedFile {
             relative_path: PathBuf::from(format!("{}.hpp", snake_case(stem)?)),
-            contents: generate(schema)?,
+            contents,
         }])
     }
 }
@@ -39,6 +40,7 @@ impl Backend for CppBackend {
 /// Returns an error when the IR contains a construct this initial backend
 /// cannot represent without losing semantics.
 pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
+    let declarations = plan_type_declarations(schema)?;
     validate_schema(schema)?;
     let namespace = namespace_name(schema)?;
     let mut output = String::from(
@@ -67,7 +69,7 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
         "    std::vector<T> values_;\n",
         "};\n\n",
     ));
-    for declaration in &schema.types {
+    for declaration in declarations {
         render_declaration(&mut output, declaration)?;
     }
     writeln!(output, "}}  // namespace {namespace}").expect("writing to String cannot fail");
@@ -272,7 +274,7 @@ fn error(message: impl Into<String>) -> CodegenError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ams_gra_oms_xsd_frontend::load_schema_document;
+    use ams_gra_oms_xsd_frontend::{load_schema_document, load_schema_set};
     use std::path::Path;
 
     fn track_schema() -> SchemaIr {
@@ -282,12 +284,34 @@ mod tests {
         .expect("track fixture should parse")
     }
 
+    fn codegen_order_schema() -> SchemaIr {
+        load_schema_set(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../tests/fixtures/codegen-order/root.xsd"),
+        )
+        .expect("codegen order fixture should parse")
+    }
+
     #[test]
     fn track_matches_golden_and_is_deterministic() {
         let schema = track_schema();
         let first = generate(&schema).expect("C++ generation should succeed");
         assert_eq!(first, generate(&schema).expect("generation should repeat"));
         assert_eq!(first, include_str!("../tests/expected/track.hpp"));
+    }
+
+    #[test]
+    fn schema_set_matches_dependency_order_golden() {
+        let source = generate(&codegen_order_schema()).expect("C++ generation should succeed");
+        assert_eq!(source, include_str!("../tests/expected/codegen_order.hpp"));
+        assert!(
+            source.find("class IncludedId").unwrap()
+                < source.find("struct RecordFirstInSource").unwrap()
+        );
+        assert!(
+            source.find("enum class IncludedQuality").unwrap()
+                < source.find("struct RecordFirstInSource").unwrap()
+        );
     }
 
     #[test]

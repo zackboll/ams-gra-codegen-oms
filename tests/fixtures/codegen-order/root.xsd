@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:order="urn:example:order"
+           targetNamespace="urn:example:order"
+           version="1">
+  <xs:include schemaLocation="types.xsd"/>
+
+  <xs:complexType name="Record_First_In_Source">
+    <xs:sequence>
+      <xs:element name="Id" type="order:Included_Id"/>
+      <xs:element name="Quality" type="order:Included_Quality"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

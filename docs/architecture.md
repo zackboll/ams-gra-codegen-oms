@@ -49,9 +49,11 @@ The public Starter Kit documentation does not currently present a common multi-l
 flowchart TD
     XSD[Authoritative UCI / OMS XSD] --> FE[XSD frontend]
     FE --> IR[Language-neutral schema IR]
-    IR --> ADA[Ada/SPARK backend]
-    IR --> RUST[Rust backend]
-    IR --> CPP[C++ backend]
+    IR --> VALIDATE[Semantic IR validation]
+    VALIDATE --> PLAN[Stable dependency-aware declaration plan]
+    PLAN --> ADA[Ada/SPARK backend]
+    PLAN --> RUST[Rust backend]
+    PLAN --> CPP[C++ backend]
     IR -. planned .-> PY[Python backend]
 
     ADA --> AG[Generated Ada/SPARK schema bindings]
@@ -151,6 +153,20 @@ No server-side Sleet change is required for the initial architecture.
        v                 v         v
       Ada               Rust      C++
 ```
+
+The frontend owns deterministic schema discovery and preserves declarations in
+pre-order document discovery and source order. That IR order is reproducible,
+but it is not promised to be directly compilable: a declaration may refer by
+value to a declaration discovered later.
+
+After complete IR assembly, the language-neutral validator checks namespace and
+qualified-name coherence, references, cardinalities, constraints, and structural
+invariants. `codegen-core` then computes one stable dependency-safe type plan.
+Among currently dependency-satisfied declarations, it emits the declaration
+with the lowest original Schema IR index next.
+Ada, Rust, and C++ all consume that shared plan before applying their separate
+backend capability policies. The planner has no XSD or language-specific
+knowledge.
 
 The crucial dependency direction is:
 
