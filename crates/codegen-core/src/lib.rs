@@ -1,7 +1,7 @@
 //! Shared backend contract for OMS/UCI source generation.
 
 use ams_gra_oms_ir::{QualifiedName, SchemaIr, TypeDecl, TypeKind, TypeRef, TypeRefTarget};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::path::PathBuf;
 
@@ -26,10 +26,8 @@ impl std::error::Error for CodegenError {}
 
 /// Produce a dependency-first declaration order from normalized schema IR.
 ///
-/// Declarations and each declaration's references are visited in IR order.
-/// A declaration is appended after recursively visiting its dependencies, so
-/// unrelated declarations retain IR order unless dependency constraints force
-/// movement.
+/// Among declarations whose dependencies have all been satisfied, the
+/// declaration with the lowest original Schema IR index is emitted next.
 ///
 /// # Errors
 ///
@@ -46,11 +44,59 @@ pub fn plan_type_declarations(schema: &SchemaIr) -> Result<Vec<&TypeDecl>, Codeg
         .enumerate()
         .map(|(index, declaration)| (declaration.name.clone(), index))
         .collect::<BTreeMap<_, _>>();
-    let mut states = vec![VisitState::Unvisited; schema.types.len()];
-    let mut stack = Vec::new();
+    let declaration_count = schema.types.len();
+    let dependency_indices = schema
+        .types
+        .iter()
+        .map(|declaration| {
+            dependencies(declaration)
+                .into_iter()
+                .map(|dependency| indices[dependency])
+                .collect::<BTreeSet<_>>()
+        })
+        .collect::<Vec<_>>();
+    let mut dependents = vec![Vec::new(); declaration_count];
+    let mut dependency_counts = Vec::with_capacity(declaration_count);
+    for (dependent, dependencies) in dependency_indices.iter().enumerate() {
+        dependency_counts.push(dependencies.len());
+        for &dependency in dependencies {
+            dependents[dependency].push(dependent);
+        }
+    }
+
+    let mut ready = dependency_counts
+        .iter()
+        .enumerate()
+        .filter_map(|(index, &count)| (count == 0).then_some(index))
+        .collect::<BTreeSet<_>>();
     let mut plan = Vec::with_capacity(schema.types.len());
-    for index in 0..schema.types.len() {
-        visit(index, schema, &indices, &mut states, &mut stack, &mut plan)?;
+    while let Some(index) = ready.pop_first() {
+        plan.push(&schema.types[index]);
+        for &dependent in &dependents[index] {
+            dependency_counts[dependent] -= 1;
+            if dependency_counts[dependent] == 0 {
+                ready.insert(dependent);
+            }
+        }
+    }
+
+    if plan.len() != declaration_count {
+        let unresolved = dependency_counts
+            .iter()
+            .map(|&count| count != 0)
+            .collect::<Vec<_>>();
+        let cycle = recover_cycle(&dependency_indices, &unresolved)
+            .expect("an unresolved finite dependency graph must contain a cycle");
+        let names = cycle
+            .into_iter()
+            .map(|index| format_name(&schema.types[index].name))
+            .collect::<Vec<_>>();
+        return Err(CodegenError {
+            message: format!(
+                "cyclic type declaration dependencies are unsupported: {}",
+                names.join(" -> ")
+            ),
+        });
     }
     Ok(plan)
 }
@@ -62,47 +108,60 @@ enum VisitState {
     Visited,
 }
 
-fn visit<'a>(
+fn recover_cycle(dependencies: &[BTreeSet<usize>], unresolved: &[bool]) -> Option<Vec<usize>> {
+    let mut states = vec![VisitState::Unvisited; dependencies.len()];
+    let mut stack = Vec::new();
+    for index in 0..dependencies.len() {
+        if unresolved[index] && states[index] == VisitState::Unvisited {
+            if let Some(cycle) =
+                find_cycle(index, dependencies, unresolved, &mut states, &mut stack)
+            {
+                return Some(cycle);
+            }
+        }
+    }
+    None
+}
+
+fn find_cycle(
     index: usize,
-    schema: &'a SchemaIr,
-    indices: &BTreeMap<QualifiedName, usize>,
+    dependencies: &[BTreeSet<usize>],
+    unresolved: &[bool],
     states: &mut [VisitState],
     stack: &mut Vec<usize>,
-    plan: &mut Vec<&'a TypeDecl>,
-) -> Result<(), CodegenError> {
-    match states[index] {
-        VisitState::Visited => return Ok(()),
-        VisitState::Visiting => {
-            let cycle_start = stack
-                .iter()
-                .position(|candidate| *candidate == index)
-                .expect("visiting declaration must be on the DFS stack");
-            let names = stack[cycle_start..]
-                .iter()
-                .copied()
-                .chain(std::iter::once(index))
-                .map(|cycle_index| format_name(&schema.types[cycle_index].name))
-                .collect::<Vec<_>>();
-            return Err(CodegenError {
-                message: format!(
-                    "cyclic type declaration dependencies are unsupported: {}",
-                    names.join(" -> ")
-                ),
-            });
-        }
-        VisitState::Unvisited => {}
-    }
-
+) -> Option<Vec<usize>> {
     states[index] = VisitState::Visiting;
     stack.push(index);
-    for dependency in dependencies(&schema.types[index]) {
-        let dependency_index = indices[dependency];
-        visit(dependency_index, schema, indices, states, stack, plan)?;
+    for &dependency in &dependencies[index] {
+        if !unresolved[dependency] {
+            continue;
+        }
+        match states[dependency] {
+            VisitState::Unvisited => {
+                if let Some(cycle) = find_cycle(dependency, dependencies, unresolved, states, stack)
+                {
+                    return Some(cycle);
+                }
+            }
+            VisitState::Visiting => {
+                let cycle_start = stack
+                    .iter()
+                    .position(|candidate| *candidate == dependency)
+                    .expect("visiting declaration must be on the DFS stack");
+                return Some(
+                    stack[cycle_start..]
+                        .iter()
+                        .copied()
+                        .chain(std::iter::once(dependency))
+                        .collect(),
+                );
+            }
+            VisitState::Visited => {}
+        }
     }
     stack.pop();
     states[index] = VisitState::Visited;
-    plan.push(&schema.types[index]);
-    Ok(())
+    None
 }
 
 fn dependencies(declaration: &TypeDecl) -> Vec<&QualifiedName> {
@@ -259,6 +318,49 @@ mod tests {
             names(&schema).unwrap(),
             ["First", "Dependency", "Consumer", "Last"]
         );
+    }
+
+    #[test]
+    fn unrelated_declaration_before_later_dependency_remains_before_it() {
+        let schema = schema(vec![record("A", &["C"]), scalar("B"), scalar("C")]);
+        assert_eq!(names(&schema).unwrap(), ["B", "C", "A"]);
+    }
+
+    #[test]
+    fn repeated_reference_creates_one_dependency_edge() {
+        let schema = schema(vec![record("A", &["B", "B"]), scalar("B")]);
+        assert_eq!(names(&schema).unwrap(), ["B", "A"]);
+    }
+
+    #[test]
+    fn newly_ready_declarations_use_original_index_priority() {
+        let schema = schema(vec![
+            record("A", &["C"]),
+            record("B", &["C"]),
+            scalar("C"),
+            scalar("D"),
+        ]);
+        assert_eq!(names(&schema).unwrap(), ["C", "A", "B", "D"]);
+    }
+
+    #[test]
+    fn repeated_planning_produces_identical_qualified_name_sequences() {
+        let schema = schema(vec![record("A", &["C"]), scalar("B"), scalar("C")]);
+        let expected = plan_type_declarations(&schema)
+            .unwrap()
+            .into_iter()
+            .map(|declaration| declaration.name.clone())
+            .collect::<Vec<_>>();
+        for _ in 0..10 {
+            assert_eq!(
+                plan_type_declarations(&schema)
+                    .unwrap()
+                    .into_iter()
+                    .map(|declaration| declaration.name.clone())
+                    .collect::<Vec<_>>(),
+                expected
+            );
+        }
     }
 
     #[test]

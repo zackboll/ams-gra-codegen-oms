@@ -181,10 +181,9 @@ prefixes are presentation metadata, not global QName bindings.
 This deterministic frontend order is not a declaration schedule. Schema IR does
 not promise that source/discovery order can be emitted directly by a language
 backend. The common `codegen-core` planner visits declarations in IR order,
-recursively visits each named dependency in modeled reference order, and emits a
-declaration after its dependencies. This gives a deterministic dependency-first
-order while retaining unrelated IR order unless dependencies force movement.
-Cycles are explicit planning errors.
+builds unique named-dependency edges, and performs a stable topological sort.
+Among currently dependency-satisfied declarations, the declaration with the
+lowest original IR index is emitted next. Cycles are explicit planning errors.
 
 ### Extension/inheritance
 

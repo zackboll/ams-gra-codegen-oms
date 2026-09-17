@@ -162,6 +162,8 @@ value to a declaration discovered later.
 After complete IR assembly, the language-neutral validator checks namespace and
 qualified-name coherence, references, cardinalities, constraints, and structural
 invariants. `codegen-core` then computes one stable dependency-safe type plan.
+Among currently dependency-satisfied declarations, it emits the declaration
+with the lowest original Schema IR index next.
 Ada, Rust, and C++ all consume that shared plan before applying their separate
 backend capability policies. The planner has no XSD or language-specific
 knowledge.
