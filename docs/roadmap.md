@@ -25,6 +25,7 @@ Deliver:
 
 - XSD -> IR;
 - [x] IR validator;
+- [x] validation and Ada/Rust/C++ generation CLI;
 - Ada output;
 - Rust output;
 - C++ output;
