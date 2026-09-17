@@ -9,5 +9,8 @@ rust-version.workspace = true
 ams-gra-oms-ir = { path = "../ir" }
 ams-gra-oms-codegen-core = { path = "../codegen-core" }
 
+[dev-dependencies]
+ams-gra-oms-xsd-frontend = { path = "../xsd-frontend" }
+
 [lints]
 workspace = true

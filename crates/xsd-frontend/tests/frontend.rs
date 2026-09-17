@@ -1,5 +1,5 @@
 use ams_gra_oms_ir::{Cardinality, PrimitiveKind, QualifiedName, TypeKind, TypeRefTarget};
-use ams_gra_oms_xsd_frontend::{FrontendError, load_schema_set};
+use ams_gra_oms_xsd_frontend::{FrontendError, load_schema_document};
 use std::path::{Path, PathBuf};
 
 const OMS_NS: &str = "urn:example:oms:track";
@@ -12,7 +12,7 @@ fn fixture(name: &str) -> PathBuf {
 
 #[test]
 fn normalizes_the_track_schema_into_language_neutral_ir() {
-    let ir = load_schema_set(&fixture("track.xsd")).expect("fixture should parse");
+    let ir = load_schema_document(&fixture("track.xsd")).expect("fixture should parse");
 
     assert_eq!(ir.namespaces.len(), 1);
     assert_eq!(ir.namespaces[0].uri, OMS_NS);
@@ -100,14 +100,14 @@ fn normalizes_the_track_schema_into_language_neutral_ir() {
 fn parsing_is_deterministic() {
     let path = fixture("track.xsd");
     assert_eq!(
-        load_schema_set(&path).expect("first parse should succeed"),
-        load_schema_set(&path).expect("second parse should succeed")
+        load_schema_document(&path).expect("first parse should succeed"),
+        load_schema_document(&path).expect("second parse should succeed")
     );
 }
 
 #[test]
 fn unsupported_choice_fails_closed() {
-    let error = load_schema_set(&fixture("unsupported-choice.xsd"))
+    let error = load_schema_document(&fixture("unsupported-choice.xsd"))
         .expect_err("choice must not be silently approximated");
     assert_eq!(
         error,

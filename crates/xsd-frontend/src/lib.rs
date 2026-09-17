@@ -1,6 +1,6 @@
 //! Deliberately narrow XSD frontend for OMS/UCI schemas.
 //!
-//! The supported subset is documented by [`load_schema_set`]. Anything outside
+//! The supported subset is documented by [`load_schema_document`]. Anything outside
 //! that subset is rejected rather than approximated.
 
 use ams_gra_oms_ir::{
@@ -48,7 +48,7 @@ impl std::error::Error for FrontendError {}
 ///
 /// Returns an I/O or XML/schema validation error for malformed input, or
 /// [`FrontendError::UnsupportedConstruct`] for syntax outside the subset.
-pub fn load_schema_set(path: &Path) -> Result<SchemaIr, FrontendError> {
+pub fn load_schema_document(path: &Path) -> Result<SchemaIr, FrontendError> {
     if !path.is_file() {
         return Err(FrontendError::InvalidInput(format!(
             "expected one XSD file, got {}",

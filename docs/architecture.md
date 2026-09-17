@@ -166,6 +166,21 @@ backend -> raw XML/XSD DOM
 
 If a backend needs to understand `xs:extension`, `xs:choice`, namespace prefixes, import paths, or anonymous XSD naming rules, the frontend/IR boundary is too weak.
 
+The initial Ada, Rust, and C++ type backends enforce this boundary directly:
+
+- backend crates depend only on the normalized IR and shared code-generation contract;
+- language-specific identifier conversion is backend-local and never stored in the IR;
+- generated representations may differ (constrained Ada types, checked Rust
+  newtypes, and checked C++ wrappers) while preserving equivalent constraints;
+- declaration and variant order follows the IR, making generated source
+  byte-for-byte deterministic for the same input.
+
+For the initial Ada slice, bounded repetition uses fixed-capacity storage plus
+an explicitly constrained length. The optional string uses a discriminated
+record containing `Ada.Strings.Unbounded.Unbounded_String` when present because
+the fixture supplies no finite string length; this may allocate and is a known
+boundary to revisit when the IR carries an applicable string bound.
+
 ## 6. Why normalize before generation
 
 XSD is a serialization/schema language, not an ideal code-generation IR. The same semantic type can be expressed in multiple XSD forms. Language backends should not each re-interpret those forms.
