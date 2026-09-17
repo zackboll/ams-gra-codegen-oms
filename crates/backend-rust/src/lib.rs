@@ -1,6 +1,6 @@
 //! Minimal Rust type generation from normalized schema IR.
 
-use ams_gra_oms_codegen_core::{Backend, CodegenError, GeneratedFile};
+use ams_gra_oms_codegen_core::{Backend, CodegenError, GeneratedFile, plan_type_declarations};
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef, TypeRefTarget,
 };
@@ -16,6 +16,7 @@ impl Backend for RustBackend {
     }
 
     fn generate(&self, schema: &SchemaIr) -> Result<Vec<GeneratedFile>, CodegenError> {
+        let contents = generate(schema)?;
         let namespace = schema
             .namespaces
             .first()
@@ -27,7 +28,7 @@ impl Backend for RustBackend {
             .ok_or_else(|| error("Rust generation requires a named namespace"))?;
         Ok(vec![GeneratedFile {
             relative_path: PathBuf::from(format!("{}.rs", snake_case(stem)?)),
-            contents: generate(schema)?,
+            contents,
         }])
     }
 }
@@ -39,6 +40,7 @@ impl Backend for RustBackend {
 /// Returns an error when the IR contains a construct this initial backend
 /// cannot represent without losing semantics.
 pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
+    let declarations = plan_type_declarations(schema)?;
     validate_schema(schema)?;
     let mut output = String::from(concat!(
         "#[derive(Debug, Clone, PartialEq, Eq)]\n",
@@ -52,7 +54,7 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
         "    }\n",
         "}\n\n",
     ));
-    for declaration in &schema.types {
+    for declaration in declarations {
         render_declaration(&mut output, declaration)?;
     }
     Ok(output)
@@ -245,7 +247,7 @@ fn error(message: impl Into<String>) -> CodegenError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ams_gra_oms_xsd_frontend::load_schema_document;
+    use ams_gra_oms_xsd_frontend::{load_schema_document, load_schema_set};
     use std::path::Path;
 
     fn track_schema() -> SchemaIr {
@@ -255,12 +257,34 @@ mod tests {
         .expect("track fixture should parse")
     }
 
+    fn codegen_order_schema() -> SchemaIr {
+        load_schema_set(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../tests/fixtures/codegen-order/root.xsd"),
+        )
+        .expect("codegen order fixture should parse")
+    }
+
     #[test]
     fn track_matches_golden_and_is_deterministic() {
         let schema = track_schema();
         let first = generate(&schema).expect("Rust generation should succeed");
         assert_eq!(first, generate(&schema).expect("generation should repeat"));
         assert_eq!(first, include_str!("../tests/expected/track.rs"));
+    }
+
+    #[test]
+    fn schema_set_matches_dependency_order_golden() {
+        let source = generate(&codegen_order_schema()).expect("Rust generation should succeed");
+        assert_eq!(source, include_str!("../tests/expected/codegen_order.rs"));
+        assert!(
+            source.find("pub struct IncludedId").unwrap()
+                < source.find("pub struct RecordFirstInSource").unwrap()
+        );
+        assert!(
+            source.find("pub enum IncludedQuality").unwrap()
+                < source.find("pub struct RecordFirstInSource").unwrap()
+        );
     }
 
     #[test]

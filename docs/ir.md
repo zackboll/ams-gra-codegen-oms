@@ -178,6 +178,14 @@ dependency source order, then declaration source order. Namespace URI order and
 preferred-prefix selection are first-seen under the same traversal. Preferred
 prefixes are presentation metadata, not global QName bindings.
 
+This deterministic frontend order is not a declaration schedule. Schema IR does
+not promise that source/discovery order can be emitted directly by a language
+backend. The common `codegen-core` planner visits declarations in IR order,
+recursively visits each named dependency in modeled reference order, and emits a
+declaration after its dependencies. This gives a deterministic dependency-first
+order while retaining unrelated IR order unless dependencies force movement.
+Cycles are explicit planning errors.
+
 ### Extension/inheritance
 
 The frontend resolves XSD extension chains once. The IR may preserve both `base_type` and effective fields so backends can choose composition, inheritance, traits/interfaces, or flattening without repeating schema resolution.
@@ -196,6 +204,14 @@ Before code generation begins:
 8. unsupported XSD constructs produce explicit diagnostics rather than silent degradation;
 9. declaration ordering is deterministic;
 10. provenance exists for every generated declaration.
+
+`SchemaIr::validate` enforces the currently representable language-neutral
+invariants after a frontend has assembled the complete schema. It validates
+declared namespace membership and uniqueness, qualified type identity,
+resolution of every modeled named-reference location, finite cardinality,
+numeric and length consistency, and nonempty enumerations. Primitive references
+need no declaration. Unbounded cardinality and unconstrained integers remain
+valid IR even where an initial backend cannot yet represent them.
 
 ## Why this matters for SPARK
 

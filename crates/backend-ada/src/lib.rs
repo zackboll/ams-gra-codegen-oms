@@ -1,6 +1,6 @@
 //! Minimal Ada type generation from normalized schema IR.
 
-use ams_gra_oms_codegen_core::{Backend, CodegenError, GeneratedFile};
+use ams_gra_oms_codegen_core::{Backend, CodegenError, GeneratedFile, plan_type_declarations};
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef, TypeRefTarget,
 };
@@ -16,6 +16,7 @@ impl Backend for AdaBackend {
     }
 
     fn generate(&self, schema: &SchemaIr) -> Result<Vec<GeneratedFile>, CodegenError> {
+        let contents = generate(schema)?;
         let package = package_name(schema)?;
         let file_stem = package.to_ascii_lowercase().replace('.', "-");
         let mut files = Vec::new();
@@ -27,7 +28,7 @@ impl Backend for AdaBackend {
         }
         files.push(GeneratedFile {
             relative_path: PathBuf::from(format!("{file_stem}.ads")),
-            contents: generate(schema)?,
+            contents,
         });
         Ok(files)
     }
@@ -40,6 +41,7 @@ impl Backend for AdaBackend {
 /// Returns an error when the IR contains a construct this initial backend
 /// cannot represent without losing semantics.
 pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
+    let declarations = plan_type_declarations(schema)?;
     validate_schema(schema)?;
     let package = package_name(schema)?;
     let mut output = String::from("with Ada.Strings.Unbounded;\n\n");
@@ -52,7 +54,7 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
         "      end case;\n",
         "   end record;\n\n",
     ));
-    for declaration in &schema.types {
+    for declaration in declarations {
         render_declaration(&mut output, declaration)?;
     }
     writeln!(output, "end {package};").expect("writing to String cannot fail");
@@ -288,7 +290,7 @@ fn error(message: impl Into<String>) -> CodegenError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ams_gra_oms_xsd_frontend::load_schema_document;
+    use ams_gra_oms_xsd_frontend::{load_schema_document, load_schema_set};
     use std::path::Path;
 
     fn track_schema() -> SchemaIr {
@@ -298,6 +300,14 @@ mod tests {
         .expect("track fixture should parse")
     }
 
+    fn codegen_order_schema() -> SchemaIr {
+        load_schema_set(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../tests/fixtures/codegen-order/root.xsd"),
+        )
+        .expect("codegen order fixture should parse")
+    }
+
     #[test]
     fn track_matches_golden_and_is_deterministic() {
         let schema = track_schema();
@@ -305,6 +315,19 @@ mod tests {
         let second = generate(&schema).expect("Ada generation should be repeatable");
         assert_eq!(first, second);
         assert_eq!(first, include_str!("../tests/expected/track.ads"));
+    }
+
+    #[test]
+    fn schema_set_matches_dependency_order_golden() {
+        let source = generate(&codegen_order_schema()).expect("Ada generation should succeed");
+        assert_eq!(source, include_str!("../tests/expected/codegen_order.ads"));
+        assert!(
+            source.find("type Included_Id").unwrap() < source.find("type Record_First").unwrap()
+        );
+        assert!(
+            source.find("type Included_Quality").unwrap()
+                < source.find("type Record_First").unwrap()
+        );
     }
 
     #[test]

@@ -182,6 +182,21 @@ fn recursively_loads_a_deduplicated_deterministic_schema_set() {
 }
 
 #[test]
+fn codegen_order_fixture_retains_schema_discovery_order() {
+    let ir = load_schema_set(&fixture(
+        "../../../../tests/fixtures/codegen-order/root.xsd",
+    ))
+    .expect("codegen order schema set should load");
+    assert_eq!(
+        ir.types
+            .iter()
+            .map(|declaration| declaration.name.local_name.as_str())
+            .collect::<Vec<_>>(),
+        ["Record_First_In_Source", "Included_Id", "Included_Quality"]
+    );
+}
+
+#[test]
 fn dependency_cycle_terminates_and_loads_each_document_once() {
     let ir = load_schema_set(&fixture("cycle/a.xsd")).expect("cycle should be benign");
     assert_eq!(
