@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema
+    xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    xmlns:oms="urn:example:oms:track"
+    targetNamespace="urn:example:oms:track">
+
+  <xs:simpleType name="Track_Id">
+    <xs:restriction base="xs:integer">
+      <xs:minInclusive value="1"/>
+      <xs:maxInclusive value="65535"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Track_Quality">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Unknown"/>
+      <xs:enumeration value="Tentative"/>
+      <xs:enumeration value="Confirmed"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="Track">
+    <xs:sequence>
+      <xs:element name="Id" type="oms:Track_Id"/>
+      <xs:element name="Quality" type="oms:Track_Quality"/>
+      <xs:element name="Callsign" type="xs:string" minOccurs="0"/>
+      <xs:element name="Sensor_Ids" type="xs:integer" minOccurs="0" maxOccurs="8"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

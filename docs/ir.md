@@ -76,7 +76,7 @@ TypeKind
 
 FieldDecl
   name
-  type_ref
+  type_ref: Primitive(kind) | Named(QualifiedName)
   cardinality
   nillable
   constraints
@@ -105,6 +105,11 @@ MessageDecl
 ```
 
 The actual implementation will evolve as real UCI schemas expose requirements, but backends should depend on versioned IR invariants rather than frontend implementation details.
+
+The primitive/named distinction is explicit after QName resolution. This keeps
+backends from inferring whether a reference denotes an XSD primitive or a
+schema declaration by inspecting namespace strings. Integer bounds are stored
+as numeric values rather than lexical XML strings.
 
 ## Normalization examples
 
@@ -145,6 +150,24 @@ Backends then choose language-native representations:
 - Ada: bounded container + contract/subtype strategy;
 - Rust: bounded wrapper or `Vec<T>` plus generated validation;
 - C++: container plus validation/helper type.
+
+### First frontend slice
+
+```text
+xs:simpleType restriction of xs:integer, minInclusive=1, maxInclusive=65535
+    ↓
+Primitive(SignedInteger), constraints = 1..65535
+
+xs:element type="oms:Track_Id", minOccurs="0", maxOccurs="8"
+    ↓
+field.type = Named({urn:example:oms:track}Track_Id)
+field.cardinality = 0..8
+```
+
+The first implemented slice accepts one schema document containing named
+integer restrictions, string enumerations, and sequence-based records. Other
+XSD syntax remains unsupported and produces an explicit diagnostic; it is not
+silently discarded.
 
 ### Extension/inheritance
 

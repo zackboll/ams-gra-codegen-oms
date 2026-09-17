@@ -60,9 +60,15 @@ pub struct TypeDecl {
 pub enum TypeKind {
     Primitive(PrimitiveKind),
     Alias(TypeRef),
-    Enumeration { variants: Vec<EnumVariant> },
-    Record { fields: Vec<FieldDecl> },
-    Choice { alternatives: Vec<FieldDecl> },
+    Enumeration {
+        variants: Vec<EnumVariant>,
+    },
+    Record {
+        fields: Vec<FieldDecl>,
+    },
+    Choice {
+        alternatives: Vec<FieldDecl>,
+    },
     List {
         item_type: TypeRef,
         cardinality: Cardinality,
@@ -99,7 +105,29 @@ pub struct FieldDecl {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeRef {
-    pub name: QualifiedName,
+    pub target: TypeRefTarget,
+}
+
+impl TypeRef {
+    #[must_use]
+    pub const fn primitive(kind: PrimitiveKind) -> Self {
+        Self {
+            target: TypeRefTarget::Primitive(kind),
+        }
+    }
+
+    #[must_use]
+    pub fn named(name: QualifiedName) -> Self {
+        Self {
+            target: TypeRefTarget::Named(name),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TypeRefTarget {
+    Primitive(PrimitiveKind),
+    Named(QualifiedName),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -131,10 +159,10 @@ impl Cardinality {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ConstraintSet {
-    pub min_inclusive: Option<String>,
-    pub max_inclusive: Option<String>,
-    pub min_exclusive: Option<String>,
-    pub max_exclusive: Option<String>,
+    pub min_inclusive: Option<i128>,
+    pub max_inclusive: Option<i128>,
+    pub min_exclusive: Option<i128>,
+    pub max_exclusive: Option<i128>,
     pub length: Option<u64>,
     pub min_length: Option<u64>,
     pub max_length: Option<u64>,
@@ -160,19 +188,23 @@ mod tests {
 
     #[test]
     fn cardinality_rejects_inverted_bounds() {
-        assert!(!Cardinality {
-            min_occurs: 2,
-            max_occurs: Some(1),
-        }
-        .is_valid());
+        assert!(
+            !Cardinality {
+                min_occurs: 2,
+                max_occurs: Some(1),
+            }
+            .is_valid()
+        );
     }
 
     #[test]
     fn unbounded_cardinality_is_valid() {
-        assert!(Cardinality {
-            min_occurs: 1,
-            max_occurs: None,
-        }
-        .is_valid());
+        assert!(
+            Cardinality {
+                min_occurs: 1,
+                max_occurs: None,
+            }
+            .is_valid()
+        );
     }
 }
