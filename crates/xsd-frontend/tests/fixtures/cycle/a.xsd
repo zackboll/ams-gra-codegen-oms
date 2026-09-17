@@ -1,0 +1,4 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:c="urn:cycle" targetNamespace="urn:cycle">
+  <xs:include schemaLocation="b.xsd"/>
+  <xs:simpleType name="A"><xs:restriction base="xs:integer"/></xs:simpleType>
+</xs:schema>

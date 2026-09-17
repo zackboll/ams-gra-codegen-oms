@@ -1,0 +1,7 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:model="urn:prefix:other"
+           targetNamespace="urn:prefix:other">
+  <xs:simpleType name="Other_Id"><xs:restriction base="xs:integer"/></xs:simpleType>
+  <xs:complexType name="Other_Record"><xs:sequence>
+    <xs:element name="Id" type="model:Other_Id"/>
+  </xs:sequence></xs:complexType>
+</xs:schema>

@@ -13,7 +13,7 @@
 
 Target only a controlled schema fixture containing:
 
-- namespace/import resolution;
+- [x] namespace/import resolution for controlled local schema sets;
 - scalar aliases;
 - enumerations;
 - simple restrictions;

@@ -175,6 +175,22 @@ The initial Ada, Rust, and C++ type backends enforce this boundary directly:
 - declaration and variant order follows the IR, making generated source
   byte-for-byte deterministic for the same input.
 
+The XSD frontend exposes two loading modes. `load_schema_document` intentionally
+loads exactly one standalone document and rejects `xs:include` or `xs:import`.
+`load_schema_set` recursively resolves the supported include/import closure
+before constructing the IR. Its private document parser retains each source's
+namespace bindings and unresolved dependency edges; prefixes are resolved in
+the document where each QName occurs and disappear at the IR boundary.
+
+Schema-set dependencies are restricted to local filesystem `schemaLocation`
+values resolved relative to the referring document. Canonical physical paths
+provide private graph identity for deduplication and cycle detection; HTTP(S),
+catalog lookup, and chameleon includes are unsupported. Observable declaration
+order is deterministic pre-order depth-first document discovery in dependency
+source order, followed by declaration source order within each document.
+Namespace declarations use first-seen URI order under that traversal, with the
+first-seen source prefix retained only as presentation metadata.
+
 For the initial Ada slice, bounded repetition uses fixed-capacity storage plus
 an explicitly constrained length. The optional string uses a discriminated
 record containing `Ada.Strings.Unbounded.Unbounded_String` when present because

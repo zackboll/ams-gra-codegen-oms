@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:track="urn:example:oms:track"
+           xmlns:sensor="urn:example:oms:sensor"
+           targetNamespace="urn:example:oms:track" version="3">
+  <xs:include schemaLocation="common.xsd"/>
+  <xs:import namespace="urn:example:oms:sensor" schemaLocation="sensor.xsd"/>
+  <xs:complexType name="Track">
+    <xs:sequence>
+      <xs:element name="Quality" type="track:Track_Quality"/>
+      <xs:element name="Sensor" type="sensor:Sensor_Id"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

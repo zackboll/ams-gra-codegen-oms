@@ -164,10 +164,19 @@ field.type = Named({urn:example:oms:track}Track_Id)
 field.cardinality = 0..8
 ```
 
-The first implemented slice accepts one schema document containing named
-integer restrictions, string enumerations, and sequence-based records. Other
-XSD syntax remains unsupported and produces an explicit diagnostic; it is not
-silently discarded.
+The frontend accepts either one standalone schema document or a recursively
+loaded schema set containing local `xs:include` and `xs:import` dependencies.
+Each QName is resolved with the namespace bindings of the document in which it
+appears, so prefixes remain document-local aliases. Includes, imports,
+`schemaLocation` values, and lexical prefixes are discarded before the IR
+boundary. The semantic subset remains named integer restrictions, string
+enumerations, and sequence-based records; other XSD syntax produces an explicit
+diagnostic rather than being silently discarded.
+
+Schema-set declaration order is pre-order depth-first document discovery in
+dependency source order, then declaration source order. Namespace URI order and
+preferred-prefix selection are first-seen under the same traversal. Preferred
+prefixes are presentation metadata, not global QName bindings.
 
 ### Extension/inheritance
 
