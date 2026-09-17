@@ -1,0 +1,4 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:other="urn:other" targetNamespace="urn:error">
+  <xs:import namespace="urn:other" schemaLocation="other.xsd"/>
+  <xs:complexType name="Broken"><xs:sequence><xs:element name="Missing" type="other:Absent"/></xs:sequence></xs:complexType>
+</xs:schema>

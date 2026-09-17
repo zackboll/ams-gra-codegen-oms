@@ -1,5 +1,5 @@
 use ams_gra_oms_ir::{Cardinality, PrimitiveKind, QualifiedName, TypeKind, TypeRefTarget};
-use ams_gra_oms_xsd_frontend::{FrontendError, load_schema_document};
+use ams_gra_oms_xsd_frontend::{FrontendError, load_schema_document, load_schema_set};
 use std::path::{Path, PathBuf};
 
 const OMS_NS: &str = "urn:example:oms:track";
@@ -103,6 +103,166 @@ fn parsing_is_deterministic() {
         load_schema_document(&path).expect("first parse should succeed"),
         load_schema_document(&path).expect("second parse should succeed")
     );
+}
+
+#[test]
+fn standalone_loading_rejects_dependencies() {
+    for (name, construct) in [
+        ("schema-set/root.xsd", "xs:include"),
+        ("errors/import-mismatch-root.xsd", "xs:import"),
+    ] {
+        let error = load_schema_document(&fixture(name))
+            .expect_err("standalone loading must not traverse dependencies");
+        assert!(error.to_string().contains(construct));
+    }
+}
+
+#[test]
+fn recursively_loads_a_deduplicated_deterministic_schema_set() {
+    let path = fixture("schema-set/root.xsd");
+    let ir = load_schema_set(&path).expect("schema set should load");
+    assert_eq!(ir, load_schema_set(&path).expect("repeat should match"));
+    assert_eq!(ir.schema_version.as_deref(), Some("3"));
+    assert_eq!(
+        ir.namespaces
+            .iter()
+            .map(|namespace| (
+                namespace.uri.as_str(),
+                namespace.preferred_prefix.as_deref()
+            ))
+            .collect::<Vec<_>>(),
+        [
+            ("urn:example:oms:track", Some("track")),
+            ("urn:example:oms:sensor", Some("sensor")),
+        ]
+    );
+    assert_eq!(
+        ir.types
+            .iter()
+            .map(|declaration| declaration.name.local_name.as_str())
+            .collect::<Vec<_>>(),
+        ["Track", "Track_Quality", "Sensor_Id"]
+    );
+    assert_eq!(
+        ir.types
+            .iter()
+            .filter(|declaration| declaration.name.local_name == "Sensor_Id")
+            .count(),
+        1,
+        "the shared dependency must be represented once"
+    );
+
+    let track = &ir.types[0];
+    let TypeKind::Record { fields } = &track.kind else {
+        panic!("Track should be a record");
+    };
+    assert_eq!(
+        fields[0].type_ref.target,
+        TypeRefTarget::Named(QualifiedName::new("urn:example:oms:track", "Track_Quality"))
+    );
+    assert_eq!(
+        fields[1].type_ref.target,
+        TypeRefTarget::Named(QualifiedName::new("urn:example:oms:sensor", "Sensor_Id"))
+    );
+    assert!(ir.types[0].source.document.ends_with("schema-set/root.xsd"));
+    assert!(fields[0].source.document.ends_with("schema-set/root.xsd"));
+    assert!(fields[1].source.document.ends_with("schema-set/root.xsd"));
+    assert!(
+        ir.types[1]
+            .source
+            .document
+            .ends_with("schema-set/common.xsd")
+    );
+    assert!(
+        ir.types[2]
+            .source
+            .document
+            .ends_with("schema-set/sensor.xsd")
+    );
+}
+
+#[test]
+fn dependency_cycle_terminates_and_loads_each_document_once() {
+    let ir = load_schema_set(&fixture("cycle/a.xsd")).expect("cycle should be benign");
+    assert_eq!(
+        ir.types
+            .iter()
+            .map(|declaration| declaration.name.local_name.as_str())
+            .collect::<Vec<_>>(),
+        ["A", "B"]
+    );
+}
+
+#[test]
+fn qname_prefixes_are_resolved_in_their_source_documents() {
+    let ir = load_schema_set(&fixture("local-prefix/root.xsd")).expect("set should load");
+    for (record_name, namespace, type_name) in [
+        ("Root_Record", "urn:prefix:root", "Root_Id"),
+        ("Other_Record", "urn:prefix:other", "Other_Id"),
+    ] {
+        let record = ir
+            .types
+            .iter()
+            .find(|declaration| declaration.name.local_name == record_name)
+            .expect("record should exist");
+        let TypeKind::Record { fields } = &record.kind else {
+            panic!("expected record");
+        };
+        assert_eq!(
+            fields[0].type_ref.target,
+            TypeRefTarget::Named(QualifiedName::new(namespace, type_name))
+        );
+    }
+}
+
+#[test]
+fn schema_set_failures_are_explicit_and_contextual() {
+    for (name, expected) in [
+        (
+            "include-missing-location.xsd",
+            "xs:include is missing required attribute schemaLocation",
+        ),
+        (
+            "include-mismatch-root.xsd",
+            "xs:include target namespace mismatch",
+        ),
+        (
+            "import-missing-namespace.xsd",
+            "xs:import is missing required attribute namespace",
+        ),
+        (
+            "import-missing-location.xsd",
+            "xs:import is missing required attribute schemaLocation",
+        ),
+        (
+            "import-mismatch-root.xsd",
+            "xs:import target namespace mismatch",
+        ),
+        ("missing-file.xsd", "absent.xsd"),
+        ("remote.xsd", "only local filesystem paths are allowed"),
+        ("remote-http.xsd", "only local filesystem paths are allowed"),
+        (
+            "unresolved-root.xsd",
+            "unresolved type reference {urn:other}Absent",
+        ),
+        (
+            "duplicate-root.xsd",
+            "duplicate type declaration {urn:duplicate}Repeated",
+        ),
+        ("chameleon-root.xsd", "targetNamespace"),
+    ] {
+        let path = fixture(&format!("errors/{name}"));
+        let error = load_schema_set(&path).expect_err(name);
+        let message = error.to_string();
+        assert!(message.contains(expected), "{name}: {message}");
+        assert!(
+            message.contains(name)
+                || message.contains("no-namespace.xsd")
+                || message.contains("other.xsd")
+                || message.contains("duplicate-child.xsd"),
+            "missing source context: {message}"
+        );
+    }
 }
 
 #[test]

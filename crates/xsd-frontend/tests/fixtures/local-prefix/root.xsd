@@ -1,0 +1,8 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:model="urn:prefix:root"
+           targetNamespace="urn:prefix:root">
+  <xs:import namespace="urn:prefix:other" schemaLocation="other.xsd"/>
+  <xs:simpleType name="Root_Id"><xs:restriction base="xs:integer"/></xs:simpleType>
+  <xs:complexType name="Root_Record"><xs:sequence>
+    <xs:element name="Id" type="model:Root_Id"/>
+  </xs:sequence></xs:complexType>
+</xs:schema>
