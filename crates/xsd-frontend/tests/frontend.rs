@@ -106,14 +106,73 @@ fn parsing_is_deterministic() {
 }
 
 #[test]
+fn accepts_and_normalizes_element_form_default_deterministically() {
+    let path = fixture("element-form-default/root.xsd");
+    let ir = load_schema_set(&path).expect("qualified and unqualified forms should parse");
+    assert_eq!(ir, load_schema_set(&path).expect("repeat should match"));
+    assert_eq!(
+        ir.types
+            .iter()
+            .map(|declaration| declaration.name.local_name.as_str())
+            .collect::<Vec<_>>(),
+        ["Envelope", "Value_Type"]
+    );
+
+    let TypeKind::Record { fields } = &ir.types[0].kind else {
+        panic!("Envelope should be a record");
+    };
+    assert_eq!(
+        fields[0].type_ref.target,
+        TypeRefTarget::Named(QualifiedName::new("urn:example:element-form", "Value_Type"))
+    );
+    assert!(
+        ir.types[0]
+            .source
+            .document
+            .ends_with("element-form-default/root.xsd")
+    );
+    assert_eq!(ir.types[0].source.line, Some(8));
+    assert!(
+        ir.types[1]
+            .source
+            .document
+            .ends_with("element-form-default/types.xsd")
+    );
+    assert_eq!(ir.types[1].source.line, Some(7));
+}
+
+#[test]
+fn rejects_invalid_element_form_default_value() {
+    let error = load_schema_document(&fixture("errors/invalid-element-form-default.xsd"))
+        .expect_err("invalid form default must fail");
+    assert!(matches!(error, FrontendError::InvalidInput(_)));
+    let message = error.to_string();
+    assert!(message.contains("invalid-element-form-default.xsd"));
+    assert!(message.contains("must be qualified or unqualified, got sometimes"));
+}
+
+#[test]
+fn element_form_support_does_not_allow_other_schema_attributes() {
+    let error = load_schema_document(&fixture("errors/unsupported-attribute-form-default.xsd"))
+        .expect_err("attributeFormDefault remains outside this feature");
+    assert!(matches!(error, FrontendError::UnsupportedConstruct(_)));
+    let message = error.to_string();
+    assert!(message.contains("xs:schema @attributeFormDefault"));
+    assert!(message.contains("unsupported-attribute-form-default.xsd:2:1"));
+}
+
+#[test]
 fn standalone_loading_rejects_dependencies() {
-    for (name, construct) in [
-        ("schema-set/root.xsd", "xs:include"),
-        ("errors/import-mismatch-root.xsd", "xs:import"),
+    for (name, construct, position) in [
+        ("schema-set/root.xsd", "xs:include", ":6:3"),
+        ("errors/import-mismatch-root.xsd", "xs:import", ":1:84"),
     ] {
         let error = load_schema_document(&fixture(name))
             .expect_err("standalone loading must not traverse dependencies");
-        assert!(error.to_string().contains(construct));
+        let message = error.to_string();
+        assert!(message.contains(construct));
+        assert!(message.contains(name));
+        assert!(message.contains(position));
     }
 }
 
@@ -284,11 +343,14 @@ fn schema_set_failures_are_explicit_and_contextual() {
 fn unsupported_choice_fails_closed() {
     let error = load_schema_document(&fixture("unsupported-choice.xsd"))
         .expect_err("choice must not be silently approximated");
+    assert!(matches!(error, FrontendError::UnsupportedConstruct(_)));
     assert_eq!(
-        error,
-        FrontendError::UnsupportedConstruct("xs:choice".to_owned())
+        error.to_string(),
+        format!(
+            "unsupported XSD construct: xs:choice at {}:7:5",
+            fixture("unsupported-choice.xsd").display()
+        )
     );
-    assert_eq!(error.to_string(), "unsupported XSD construct: xs:choice");
 }
 
 fn assert_named_type(actual: &TypeRefTarget, local_name: &str) {
