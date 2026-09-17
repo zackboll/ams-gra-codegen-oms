@@ -3,7 +3,8 @@
     xmlns:xs="http://www.w3.org/2001/XMLSchema"
     xmlns:model="urn:example:element-form"
     targetNamespace="urn:example:element-form"
-    elementFormDefault="qualified">
+    elementFormDefault="qualified"
+    attributeFormDefault="unqualified">
   <xs:include schemaLocation="types.xsd"/>
   <xs:complexType name="Envelope">
     <xs:sequence>
