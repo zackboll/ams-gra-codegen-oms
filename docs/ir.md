@@ -1,0 +1,179 @@
+# Language-Neutral Schema IR
+
+## Purpose
+
+The schema IR is the architectural center of `ams-gra-codegen-oms`. It is a normalized semantic model that sits between UCI/OMS XSD and every language backend.
+
+It exists to ensure that Ada, Rust, C++, and future generators all consume the **same interpretation** of the authoritative schema.
+
+## What the IR is not
+
+The IR is not:
+
+- a replacement for UCI XSD;
+- a new OMS wire format;
+- DDS IDL;
+- a language-specific AST;
+- a raw XML DOM;
+- a 1:1 transcription of XSD syntax.
+
+## Design principles
+
+### 1. Semantic, not syntactic
+
+By the time a backend sees a record field, its namespace and type reference should already be resolved. A backend should not need to know whether the XSD used a local prefix, imported schema, anonymous type, group reference, or extension to express it.
+
+### 2. Preserve constraints
+
+Schema restrictions are part of the API contract. The IR must preserve enough information to generate equivalent validators and, where practical, native constrained types/contracts.
+
+### 3. Preserve provenance
+
+Every declaration should be traceable to its authoritative source document and schema version. Diagnostics and generated comments should be able to point back to the input.
+
+### 4. Stable identity
+
+A type's identity must be based on its resolved qualified name and schema context, not a filesystem-specific relative path or transient namespace prefix.
+
+### 5. Explicit cardinality
+
+Optionality and repetition must not be inferred later by language backends.
+
+### 6. Separate shape from message role
+
+A UCI publishable message and a nested complex type may have similar structural shapes but different semantic roles. The IR should represent message classification explicitly.
+
+## Initial conceptual model
+
+```text
+SchemaIr
+  schema_version
+  namespaces[]
+  types[]
+  messages[]
+  provenance
+
+Namespace
+  uri
+  preferred_prefix?
+
+TypeDecl
+  name: QualifiedName
+  abstract: bool
+  base_type?
+  kind: TypeKind
+  constraints
+  documentation
+  source
+
+TypeKind
+  Primitive
+  Alias(TypeRef)
+  Enum(variants[])
+  Record(fields[])
+  Choice(alternatives[])
+  List(item_type, bounds)
+
+FieldDecl
+  name
+  type_ref
+  cardinality
+  nillable
+  constraints
+  documentation
+
+Cardinality
+  min_occurs
+  max_occurs?   # None means unbounded
+
+ConstraintSet
+  min_inclusive?
+  max_inclusive?
+  min_exclusive?
+  max_exclusive?
+  length?
+  min_length?
+  max_length?
+  pattern[]
+  enumeration[]
+
+MessageDecl
+  name
+  payload_type
+  role metadata
+  source
+```
+
+The actual implementation will evolve as real UCI schemas expose requirements, but backends should depend on versioned IR invariants rather than frontend implementation details.
+
+## Normalization examples
+
+### Namespace prefixes
+
+Input documents may refer to the same namespace with different prefixes:
+
+```xml
+<xs:schema xmlns:u="urn:uci:example">...</xs:schema>
+```
+
+or:
+
+```xml
+<xs:schema xmlns:uci="urn:uci:example">...</xs:schema>
+```
+
+The IR stores the resolved namespace URI, not the arbitrary source prefix.
+
+### Occurrence bounds
+
+XSD:
+
+```xml
+<xs:element name="Track" type="uci:TrackType" minOccurs="0" maxOccurs="16"/>
+```
+
+IR:
+
+```text
+field.name = Track
+field.type = {urn:...}TrackType
+field.cardinality = 0..16
+```
+
+Backends then choose language-native representations:
+
+- Ada: bounded container + contract/subtype strategy;
+- Rust: bounded wrapper or `Vec<T>` plus generated validation;
+- C++: container plus validation/helper type.
+
+### Extension/inheritance
+
+The frontend resolves XSD extension chains once. The IR may preserve both `base_type` and effective fields so backends can choose composition, inheritance, traits/interfaces, or flattening without repeating schema resolution.
+
+## IR invariants
+
+Before code generation begins:
+
+1. all non-external type references are resolved;
+2. namespace URIs are canonicalized;
+3. type identities are unique;
+4. occurrence bounds are valid;
+5. inherited restrictions are compatible;
+6. anonymous types have deterministic synthetic identities;
+7. message classification references concrete payload types;
+8. unsupported XSD constructs produce explicit diagnostics rather than silent degradation;
+9. declaration ordering is deterministic;
+10. provenance exists for every generated declaration.
+
+## Why this matters for SPARK
+
+A normalized constraint model allows the Ada backend to make principled decisions about which XSD restrictions can become:
+
+- Ada subtypes;
+- discriminants;
+- bounded container types;
+- `Pre`/`Post` aspects;
+- `Type_Invariant`/predicate aspects;
+- generated validation functions.
+
+Without a semantic IR, these decisions become tangled with XML parsing and namespace mechanics, making formal reasoning much harder.

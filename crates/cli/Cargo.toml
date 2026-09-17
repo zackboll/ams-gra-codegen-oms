@@ -1,0 +1,16 @@
+[package]
+name = "ams-gra-codegen-oms"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+ams-gra-oms-xsd-frontend = { path = "../xsd-frontend" }
+ams-gra-oms-codegen-core = { path = "../codegen-core" }
+ams-gra-oms-backend-ada = { path = "../backend-ada" }
+ams-gra-oms-backend-rust = { path = "../backend-rust" }
+ams-gra-oms-backend-cpp = { path = "../backend-cpp" }
+
+[lints]
+workspace = true
