@@ -185,6 +185,23 @@ language-native UCI JSON/LA-CAL types rather than XML instance serialization.
 They are therefore deliberately discarded during normalization. Other schema
 attributes remain unsupported unless handled explicitly.
 
+Leading XSD annotations are metadata rather than content-model children. The
+frontend accepts annotations containing one or more plain-text
+`xs:documentation` children and normalizes documentation owned by named simple
+or complex types, sequence fields, and enumeration variants into their existing
+IR `documentation` fields. XML whitespace runs are collapsed to one space,
+empty documentation nodes are omitted, and multiple nonempty documentation
+nodes are joined with one blank line. This makes the value independent of XSD
+indentation and line wrapping while retaining document boundaries.
+
+Schema-level documentation and documentation attached to supported
+restrictions have no corresponding semantic IR owner and are deliberately
+discarded. An annotation on an otherwise unsupported owner, such as the
+observed pattern facet, does not make that owner supported. The IR does not
+preserve raw annotation XML. `xs:appinfo`, embedded markup, unknown annotation
+children, and annotations outside the leading position remain explicit frontend
+errors rather than silently discarded metadata.
+
 This deterministic frontend order is not a declaration schedule. Schema IR does
 not promise that source/discovery order can be emitted directly by a language
 backend. The common `codegen-core` planner visits declarations in IR order,

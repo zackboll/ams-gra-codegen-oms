@@ -83,6 +83,11 @@ impl std::error::Error for FrontendError {}
 /// `elementFormDefault` and `attributeFormDefault` are validated and discarded
 /// because XML instance namespace qualification is outside the normalized type
 /// model.
+/// Leading annotations containing plain-text `xs:documentation` are accepted.
+/// Documentation for types, sequence fields, and enumeration variants is
+/// normalized into the corresponding IR field; schema and restriction
+/// documentation has no semantic IR owner and is discarded. Other annotation
+/// content remains unsupported.
 ///
 /// # Errors
 ///
@@ -225,7 +230,8 @@ fn parse_schema_document_xml(
     let source_document = path.display().to_string();
     let mut dependencies = Vec::new();
     let mut declarations = Vec::new();
-    for child in element_children(schema) {
+    let (_, children) = children_after_optional_annotation(schema)?;
+    for child in children {
         require_xsd_namespace(child)?;
         match child.tag_name().name() {
             "include" => {
@@ -309,15 +315,16 @@ fn parse_simple_type(
 ) -> Result<TypeDecl, FrontendError> {
     reject_unexpected_attributes(node, &["name"])?;
     let name = qualified_declaration_name(node, target_namespace)?;
-    let restriction = exactly_one_child(node)?;
+    let (documentation, restriction) = exactly_one_content_child(node)?;
     require_xsd_element(restriction, "restriction")?;
     reject_unexpected_attributes(restriction, &["base"])?;
     let base = resolve_type_ref(restriction, required_attribute(restriction, "base")?)?;
+    let (_, restriction_children) = children_after_optional_annotation(restriction)?;
 
     let (kind, constraints) = match &base.target {
         TypeRefTarget::Primitive(PrimitiveKind::SignedInteger) => {
             let mut constraints = ConstraintSet::default();
-            for facet in element_children(restriction) {
+            for facet in restriction_children {
                 require_xsd_namespace(facet)?;
                 reject_unexpected_attributes(facet, &["value"])?;
                 let value = required_attribute(facet, "value")?;
@@ -346,15 +353,16 @@ fn parse_simple_type(
         }
         TypeRefTarget::Primitive(PrimitiveKind::String) => {
             let mut variants = Vec::new();
-            for facet in element_children(restriction) {
+            for facet in restriction_children {
                 require_xsd_element(facet, "enumeration")?;
                 reject_unexpected_attributes(facet, &["value"])?;
-                if element_children(facet).next().is_some() {
-                    return Err(unsupported(facet, "xs:enumeration child"));
+                let (documentation, children) = children_after_optional_annotation(facet)?;
+                if !children.is_empty() {
+                    return Err(unsupported(facet, "enumeration child"));
                 }
                 variants.push(EnumVariant {
                     wire_value: required_attribute(facet, "value")?.to_owned(),
-                    documentation: None,
+                    documentation,
                 });
             }
             if variants.is_empty() {
@@ -374,7 +382,7 @@ fn parse_simple_type(
         base_type: Some(base),
         kind,
         constraints,
-        documentation: None,
+        documentation,
         source: source_ref(node, document, source_document),
     })
 }
@@ -387,7 +395,7 @@ fn parse_complex_type(
 ) -> Result<TypeDecl, FrontendError> {
     reject_unexpected_attributes(node, &["name"])?;
     let name = qualified_declaration_name(node, target_namespace)?;
-    let sequence = exactly_one_child(node)?;
+    let (documentation, sequence) = exactly_one_content_child(node)?;
     require_xsd_element(sequence, "sequence")?;
     reject_unexpected_attributes(sequence, &[])?;
 
@@ -398,7 +406,8 @@ fn parse_complex_type(
             element,
             &["name", "type", "minOccurs", "maxOccurs", "nillable"],
         )?;
-        if element_children(element).next().is_some() {
+        let (documentation, children) = children_after_optional_annotation(element)?;
+        if !children.is_empty() {
             return Err(unsupported(element, "anonymous element type"));
         }
         let type_ref = resolve_type_ref(element, required_attribute(element, "type")?)?;
@@ -409,7 +418,7 @@ fn parse_complex_type(
             cardinality: parse_cardinality(element)?,
             nillable: parse_boolean_attribute(element, "nillable", false)?,
             constraints: ConstraintSet::default(),
-            documentation: None,
+            documentation,
             source: source_ref(element, document, source_document),
         });
     }
@@ -420,7 +429,7 @@ fn parse_complex_type(
         base_type: None,
         kind: TypeKind::Record { fields },
         constraints: ConstraintSet::default(),
-        documentation: None,
+        documentation,
         source: source_ref(node, document, source_document),
     })
 }
@@ -525,17 +534,72 @@ fn qualified_declaration_name(
     ))
 }
 
-fn exactly_one_child<'a, 'input>(
+fn exactly_one_content_child<'a, 'input>(
     node: Node<'a, 'input>,
-) -> Result<Node<'a, 'input>, FrontendError> {
-    let mut children = element_children(node);
+) -> Result<(Option<String>, Node<'a, 'input>), FrontendError> {
+    let (documentation, children) = children_after_optional_annotation(node)?;
+    let mut children = children.into_iter();
     let child = children.next().ok_or_else(|| {
         FrontendError::InvalidInput(format!("xs:{} requires a child", node.tag_name().name()))
     })?;
     if children.next().is_some() {
         return Err(unsupported(node, "multiple content-model children"));
     }
-    Ok(child)
+    Ok((documentation, child))
+}
+
+fn children_after_optional_annotation<'a, 'input>(
+    node: Node<'a, 'input>,
+) -> Result<(Option<String>, Vec<Node<'a, 'input>>), FrontendError> {
+    let mut children = element_children(node).peekable();
+    let documentation = children
+        .next_if(|child| {
+            child.tag_name().namespace() == Some(XSD_NS) && child.tag_name().name() == "annotation"
+        })
+        .map(parse_annotation)
+        .transpose()?
+        .flatten();
+    let children = children.collect::<Vec<_>>();
+    if let Some(annotation) = children.iter().find(|child| {
+        child.tag_name().namespace() == Some(XSD_NS) && child.tag_name().name() == "annotation"
+    }) {
+        return Err(unsupported(
+            *annotation,
+            "annotation outside leading position",
+        ));
+    }
+    Ok((documentation, children))
+}
+
+fn parse_annotation(node: Node<'_, '_>) -> Result<Option<String>, FrontendError> {
+    require_xsd_element(node, "annotation")?;
+    reject_unexpected_attributes(node, &[])?;
+    let mut documentation = Vec::new();
+    for child in element_children(node) {
+        require_xsd_namespace(child)?;
+        match child.tag_name().name() {
+            "documentation" => {
+                reject_unexpected_attributes(child, &[])?;
+                if let Some(nested) = element_children(child).next() {
+                    return Err(unsupported(nested, nested.tag_name().name()));
+                }
+                let normalized = normalize_documentation(child.text().unwrap_or_default());
+                if !normalized.is_empty() {
+                    documentation.push(normalized);
+                }
+            }
+            other => return Err(unsupported(child, other)),
+        }
+    }
+    if documentation.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(documentation.join("\n\n")))
+    }
+}
+
+fn normalize_documentation(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 fn element_children<'a, 'input>(node: Node<'a, 'input>) -> impl Iterator<Item = Node<'a, 'input>> {

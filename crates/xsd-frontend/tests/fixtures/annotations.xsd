@@ -1,0 +1,44 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:a="urn:annotations"
+           targetNamespace="urn:annotations">
+  <xs:annotation>
+    <xs:documentation>Schema documentation</xs:documentation>
+  </xs:annotation>
+  <xs:simpleType name="Count">
+    <xs:annotation>
+      <xs:documentation>
+        A formatted
+        count type.
+      </xs:documentation>
+      <xs:documentation>   </xs:documentation>
+      <xs:documentation>Second paragraph.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:integer">
+      <xs:annotation>
+        <xs:documentation>Restriction syntax documentation.</xs:documentation>
+      </xs:annotation>
+      <xs:minInclusive value="1"/>
+      <xs:maxInclusive value="4"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="State">
+    <xs:annotation><xs:documentation>State type.</xs:documentation></xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Ready">
+        <xs:annotation><xs:documentation> Ready   to go. </xs:documentation></xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:complexType name="Example">
+    <xs:annotation>
+      <xs:documentation>Example description</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Count" type="a:Count">
+        <xs:annotation>
+          <xs:documentation>Field description.</xs:documentation>
+          <xs:documentation>More field detail.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>
