@@ -191,6 +191,22 @@ The initial Ada, Rust, and C++ type backends enforce this boundary directly:
 - declaration and variant order follows the IR, making generated source
   byte-for-byte deterministic for the same input.
 
+The executable is an orchestration shell around these components, not another
+semantic layer. Its `validate` command loads a schema set and reports stable IR
+counts. Its `generate` command loads and validates the schema, selects an
+existing backend through the shared `Backend` trait, asks that backend for the
+complete `Vec<GeneratedFile>`, validates every relative output path and checks
+for duplicates, and only then creates directories and writes files. Parsing,
+normalization, semantic validation, and dependency planning remain owned by the
+frontend, IR, and code-generation crates.
+
+Generated output paths must consist entirely of normal relative components;
+absolute paths, platform prefixes, root components, and parent traversal are
+rejected. This structural check does not rely on canonicalizing children that
+do not yet exist. Filesystem writes are intentionally not transactional: no
+write occurs before all in-memory pipeline and file-set checks succeed, but a
+later I/O failure can leave earlier files from that write phase in place.
+
 The XSD frontend exposes two loading modes. `load_schema_document` intentionally
 loads exactly one standalone document and rejects `xs:include` or `xs:import`.
 `load_schema_set` recursively resolves the supported include/import closure

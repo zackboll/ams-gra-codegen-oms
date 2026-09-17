@@ -2,7 +2,32 @@
 
 Schema-driven, multi-language code generation for OMS/UCI services that preserves the existing AMS GRA / OMS Language-Agnostic CAL (LA-CAL) runtime architecture.
 
-> **Status:** architecture/bootstrap phase. The repository intentionally starts with the schema IR, generator boundaries, and backend contracts before implementing the complete UCI XSD frontend.
+> **Status:** the controlled vertical slice provides recursive local schema-set loading, semantic IR validation, dependency-aware planning, and Ada, Rust, and C++ type generation. XSD coverage remains deliberately narrow and expands only from real schema evidence.
+
+## Quick start
+
+Validate a standalone XSD or the root of a local include/import graph:
+
+```bash
+cargo run -p ams-gra-codegen-oms -- \
+  validate \
+  --schema tests/fixtures/codegen-order/root.xsd
+```
+
+Generate Ada, Rust, or C++ source under an output directory:
+
+```bash
+cargo run -p ams-gra-codegen-oms -- \
+  generate \
+  --schema tests/fixtures/codegen-order/root.xsd \
+  --language ada \
+  --output generated/ada
+```
+
+The accepted language values are `ada`, `rust`, and `cpp`. Run
+`ams-gra-codegen-oms --help` or a command followed by `--help` for complete
+usage. Exit status `0` means success, `2` means invalid command-line usage, and
+`1` means schema, code-generation, or filesystem execution failed.
 
 ## Why this repository exists
 
@@ -310,29 +335,29 @@ mission algorithm
 
 The goal is not to pretend the network stack is formally verified. The goal is to make the mission-domain data model, constraints, and application logic easier to reason about while keeping the unavoidable runtime boundary explicit.
 
-## Initial command-line direction
+## Command-line interface
 
-The CLI is scaffolded but intentionally not feature-complete. The intended interface is:
+The CLI exposes schema-set validation and source generation:
 
 ```text
-ams-gra-codegen-oms parse \
-  --schema-root /path/to/uci/xsd \
-  --emit-ir build/uci-ir.json
+ams-gra-codegen-oms validate \
+  --schema /path/to/root.xsd
 
 ams-gra-codegen-oms generate \
-  --schema-root /path/to/uci/xsd \
+  --schema /path/to/root.xsd \
   --language ada \
-  --out generated/ada
+  --output generated/ada
 
 ams-gra-codegen-oms generate \
-  --schema-root /path/to/uci/xsd \
+  --schema /path/to/root.xsd \
   --language rust \
-  --out generated/rust
-
-ams-gra-codegen-oms diff \
-  --old-schema /path/to/uci-2.5 \
-  --new-schema /path/to/uci-next
+  --output generated/rust
 ```
+
+Generation completes schema loading, validation, backend generation, and
+generated-path validation before writing any file. Existing generated files may
+be overwritten; unrelated files are retained. Files written before a later I/O
+failure are not rolled back.
 
 ## First implementation milestone
 
