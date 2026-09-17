@@ -1,6 +1,6 @@
 # Public References Used for the Initial Architecture
 
-Checked: **2026-09-16**.
+Checked: **2026-09-17**.
 
 ## AMS GRA Hello World Starter Kit
 
@@ -46,6 +46,14 @@ https://gitlab.com/open-arsenal/uci/standard
 The UCI standard repository is the authoritative upstream source for the UCI schema and related specification material consumed conceptually by this project.
 
 This project should not silently fork or redefine that model.
+
+The repository's `v2.6` tag is the current public UCI release. Its `v2.5` tag
+remains relevant to this project's interoperability baseline because the public
+AMS GRA Hello World tutorial initializes Sleet with schema identifier
+`002.5.0`. “Latest public UCI” and “Sleet interoperability baseline” are
+therefore tracked as distinct compatibility targets; adopting 2.6 does not
+silently replace the 2.5 baseline. See [UCI Schema
+Compatibility](uci-schema-compatibility.md) for dated frontend probe results.
 
 ## OMS Standard
 

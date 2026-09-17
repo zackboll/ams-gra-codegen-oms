@@ -30,11 +30,19 @@ struct ParsedSchemaDocument {
 enum SchemaDependency {
     Include {
         schema_location: String,
+        position: TextPosition,
     },
     Import {
         namespace: String,
         schema_location: String,
+        position: TextPosition,
     },
+}
+
+#[derive(Debug, Clone, Copy)]
+struct TextPosition {
+    line: u32,
+    column: u32,
 }
 
 #[derive(Debug)]
@@ -71,7 +79,9 @@ impl std::error::Error for FrontendError {}
 /// and named complex types containing a sequence of explicitly typed elements
 /// with finite occurrence bounds. Imports and includes are explicit errors;
 /// use [`load_schema_set`] when dependencies should be traversed. Anonymous
-/// types and all other XSD constructs are also explicit errors.
+/// types and all other XSD constructs are also explicit errors. Schema-level
+/// `elementFormDefault` is validated and discarded because XML instance
+/// namespace qualification is outside the normalized type model.
 ///
 /// # Errors
 ///
@@ -80,12 +90,15 @@ impl std::error::Error for FrontendError {}
 pub fn load_schema_document(path: &Path) -> Result<SchemaIr, FrontendError> {
     let document = parse_schema_document(path)?;
     if let Some(dependency) = document.dependencies.first() {
-        let construct = match dependency {
-            SchemaDependency::Include { .. } => "xs:include",
-            SchemaDependency::Import { .. } => "xs:import",
+        let (construct, position) = match dependency {
+            SchemaDependency::Include { position, .. } => ("xs:include", position),
+            SchemaDependency::Import { position, .. } => ("xs:import", position),
         };
         return Err(FrontendError::UnsupportedConstruct(format!(
-            "{construct} in standalone schema document"
+            "{construct} in standalone schema document at {}:{}:{}",
+            document.source.display(),
+            position.line,
+            position.column
         )));
     }
     documents_into_ir(vec![document])
@@ -135,7 +148,7 @@ impl SchemaSetLoader {
             return Ok(());
         }
 
-        let document = parse_schema_document(path).map_err(|error| contextualize(error, path))?;
+        let document = parse_schema_document(path)?;
         validate_dependency_namespace(&document, expectation)?;
 
         let index = self.documents.len();
@@ -148,7 +161,9 @@ impl SchemaSetLoader {
 
         for dependency in dependencies {
             let location = match &dependency {
-                SchemaDependency::Include { schema_location }
+                SchemaDependency::Include {
+                    schema_location, ..
+                }
                 | SchemaDependency::Import {
                     schema_location, ..
                 } => schema_location,
@@ -180,12 +195,24 @@ fn parse_schema_document(path: &Path) -> Result<ParsedSchemaDocument, FrontendEr
         )));
     }
 
-    let xml = fs::read_to_string(path).map_err(|error| FrontendError::Io(error.to_string()))?;
-    let document =
-        Document::parse(&xml).map_err(|error| FrontendError::InvalidInput(error.to_string()))?;
+    let xml = fs::read_to_string(path)
+        .map_err(|error| contextualize(FrontendError::Io(error.to_string()), path))?;
+    let document = Document::parse(&xml)
+        .map_err(|error| contextualize(FrontendError::InvalidInput(error.to_string()), path))?;
+    parse_schema_document_xml(path, &document).map_err(|error| contextualize(error, path))
+}
+
+fn parse_schema_document_xml(
+    path: &Path,
+    document: &Document<'_>,
+) -> Result<ParsedSchemaDocument, FrontendError> {
     let schema = document.root_element();
     require_xsd_element(schema, "schema")?;
-    reject_unexpected_attributes(schema, &["targetNamespace", "version"])?;
+    reject_unexpected_attributes(
+        schema,
+        &["targetNamespace", "version", "elementFormDefault"],
+    )?;
+    parse_element_form_default(schema)?;
 
     let target_namespace = required_attribute(schema, "targetNamespace")?.to_owned();
     let source_document = path.display().to_string();
@@ -198,6 +225,7 @@ fn parse_schema_document(path: &Path) -> Result<ParsedSchemaDocument, FrontendEr
                 reject_unexpected_attributes(child, &["schemaLocation"])?;
                 dependencies.push(SchemaDependency::Include {
                     schema_location: required_attribute(child, "schemaLocation")?.to_owned(),
+                    position: text_position(child),
                 });
             }
             "import" => {
@@ -205,17 +233,18 @@ fn parse_schema_document(path: &Path) -> Result<ParsedSchemaDocument, FrontendEr
                 dependencies.push(SchemaDependency::Import {
                     namespace: required_attribute(child, "namespace")?.to_owned(),
                     schema_location: required_attribute(child, "schemaLocation")?.to_owned(),
+                    position: text_position(child),
                 });
             }
             "simpleType" => declarations.push(parse_simple_type(
                 child,
-                &document,
+                document,
                 &source_document,
                 &target_namespace,
             )?),
             "complexType" => declarations.push(parse_complex_type(
                 child,
-                &document,
+                document,
                 &source_document,
                 &target_namespace,
             )?),
@@ -427,7 +456,11 @@ fn contextualize(error: FrontendError, path: &Path) -> FrontendError {
             FrontendError::InvalidInput(format!("{}: {message}", path.display()))
         }
         FrontendError::UnsupportedConstruct(message) => {
-            FrontendError::UnsupportedConstruct(format!("{message} in {}", path.display()))
+            let message = message.rsplit_once(" at ").map_or_else(
+                || format!("{message} at {}", path.display()),
+                |(construct, position)| format!("{construct} at {}:{position}", path.display()),
+            );
+            FrontendError::UnsupportedConstruct(message)
         }
     }
 }
@@ -444,7 +477,7 @@ fn resolve_type_ref(node: Node<'_, '_>, lexical: &str) -> Result<TypeRef, Fronte
         let primitive = match local_name {
             "integer" => PrimitiveKind::SignedInteger,
             "string" => PrimitiveKind::String,
-            other => return Err(FrontendError::UnsupportedConstruct(format!("xs:{other}"))),
+            other => return Err(unsupported(node, other)),
         };
         Ok(TypeRef::primitive(primitive))
     } else {
@@ -531,11 +564,20 @@ fn reject_unexpected_attributes(node: Node<'_, '_>, allowed: &[&str]) -> Result<
         if attribute.namespace().is_some() || !allowed.contains(&attribute.name()) {
             return Err(unsupported(
                 node,
-                &format!("xs:{} @{}", node.tag_name().name(), attribute.name()),
+                &format!("{} @{}", node.tag_name().name(), attribute.name()),
             ));
         }
     }
     Ok(())
+}
+
+fn parse_element_form_default(node: Node<'_, '_>) -> Result<(), FrontendError> {
+    match node.attribute("elementFormDefault") {
+        None | Some("qualified" | "unqualified") => Ok(()),
+        Some(value) => Err(FrontendError::InvalidInput(format!(
+            "xs:schema @elementFormDefault must be qualified or unqualified, got {value}"
+        ))),
+    }
 }
 
 fn parse_u64_attribute(node: Node<'_, '_>, name: &str, default: u64) -> Result<u64, FrontendError> {
@@ -600,5 +642,17 @@ fn unsupported(node: Node<'_, '_>, name: &str) -> FrontendError {
     } else {
         ""
     };
-    FrontendError::UnsupportedConstruct(format!("{prefix}{name}"))
+    let position = text_position(node);
+    FrontendError::UnsupportedConstruct(format!(
+        "{prefix}{name} at {}:{}",
+        position.line, position.column
+    ))
+}
+
+fn text_position(node: Node<'_, '_>) -> TextPosition {
+    let position = node.document().text_pos_at(node.range().start);
+    TextPosition {
+        line: position.row,
+        column: position.col,
+    }
 }

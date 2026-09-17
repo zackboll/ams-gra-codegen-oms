@@ -7,7 +7,7 @@
 - [x] Define frontend/backend crate boundaries.
 - [x] Add Ada, Rust, and C++ backend stubs.
 - [x] Add CI scaffolding.
-- [ ] Select/validate XSD parsing strategy against the real UCI schema set.
+- [x] Select/validate XSD parsing strategy against the real UCI schema set.
 
 ## Phase 1 — Minimal vertical slice
 
