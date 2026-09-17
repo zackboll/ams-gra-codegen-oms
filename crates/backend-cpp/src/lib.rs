@@ -23,8 +23,7 @@ impl Backend for CppBackend {
         let stem = namespace
             .uri
             .split(|character: char| !character.is_ascii_alphanumeric())
-            .filter(|part| !part.is_empty())
-            .next_back()
+            .rfind(|part| !part.is_empty())
             .ok_or_else(|| error("C++ generation requires a named namespace"))?;
         Ok(vec![GeneratedFile {
             relative_path: PathBuf::from(format!("{}.hpp", snake_case(stem)?)),
