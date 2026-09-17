@@ -107,6 +107,101 @@ fn parsing_is_deterministic() {
 }
 
 #[test]
+fn annotations_normalize_into_existing_ir_documentation_fields() {
+    let ir = load_schema_document(&fixture("annotations.xsd")).expect("annotations should parse");
+    assert_eq!(
+        ir.types.len(),
+        3,
+        "schema annotation must not add declarations"
+    );
+    assert_eq!(ir.types[0].name.local_name, "Count");
+    assert_eq!(
+        ir.types[0].documentation.as_deref(),
+        Some("A formatted count type.\n\nSecond paragraph.")
+    );
+    assert_eq!(ir.types[0].constraints.min_inclusive, Some(1));
+    assert_eq!(ir.types[0].constraints.max_inclusive, Some(4));
+
+    let TypeKind::Enumeration { variants } = &ir.types[1].kind else {
+        panic!("State should be an enumeration");
+    };
+    assert_eq!(ir.types[1].documentation.as_deref(), Some("State type."));
+    assert_eq!(variants[0].wire_value, "Ready");
+    assert_eq!(variants[0].documentation.as_deref(), Some("Ready to go."));
+
+    let TypeKind::Record { fields } = &ir.types[2].kind else {
+        panic!("Example should be a record");
+    };
+    assert_eq!(
+        ir.types[2].documentation.as_deref(),
+        Some("Example description")
+    );
+    assert_eq!(
+        fields[0].documentation.as_deref(),
+        Some("Field description.\n\nMore field detail.")
+    );
+    assert_eq!(fields[0].cardinality, Cardinality::REQUIRED_ONE);
+    assert!(!fields[0].nillable);
+    assert_named_annotation_type(&fields[0].type_ref.target, "Count");
+    assert!(ir.types[2].source.document.ends_with("annotations.xsd"));
+    assert!(fields[0].source.document.ends_with("annotations.xsd"));
+}
+
+#[test]
+fn documentation_whitespace_normalization_is_formatting_independent() {
+    let compact = write_temporary_schema(
+        "compact",
+        "<xs:schema xmlns:xs=\"http://www.w3.org/2001/XMLSchema\" targetNamespace=\"urn:whitespace\"><xs:simpleType name=\"Value\"><xs:annotation><xs:documentation>Same logical text.</xs:documentation></xs:annotation><xs:restriction base=\"xs:integer\"/></xs:simpleType></xs:schema>\n",
+    );
+    let formatted = write_temporary_schema(
+        "formatted",
+        "<xs:schema xmlns:xs=\"http://www.w3.org/2001/XMLSchema\" targetNamespace=\"urn:whitespace\">\n  <xs:simpleType name=\"Value\">\n    <xs:annotation><xs:documentation>\n      Same   logical\n      text.\n    </xs:documentation></xs:annotation>\n    <xs:restriction base=\"xs:integer\"/>\n  </xs:simpleType>\n</xs:schema>\n",
+    );
+    let compact_ir = load_schema_document(&compact).expect("compact schema should parse");
+    let formatted_ir = load_schema_document(&formatted).expect("formatted schema should parse");
+    fs::remove_file(compact).expect("compact temporary schema should be removable");
+    fs::remove_file(formatted).expect("formatted temporary schema should be removable");
+    assert_eq!(
+        compact_ir.types[0].documentation,
+        formatted_ir.types[0].documentation
+    );
+    assert_eq!(
+        compact_ir.types[0].documentation.as_deref(),
+        Some("Same logical text.")
+    );
+}
+
+#[test]
+fn unsupported_annotation_content_and_position_fail_closed() {
+    for (name, construct, position) in [
+        ("annotation-appinfo.xsd", "xs:appinfo", ":3:5"),
+        ("annotation-unknown-child.xsd", "xs:other", ":3:5"),
+        (
+            "misplaced-annotation.xsd",
+            "xs:annotation outside leading position",
+            ":4:5",
+        ),
+    ] {
+        let error = load_schema_document(&fixture(&format!("errors/{name}")))
+            .expect_err("unsupported annotation syntax must fail");
+        assert!(matches!(error, FrontendError::UnsupportedConstruct(_)));
+        let message = error.to_string();
+        assert!(message.contains(construct), "{name}: {message}");
+        assert!(message.contains(position), "{name}: {message}");
+    }
+}
+
+#[test]
+fn enumeration_child_diagnostic_has_one_xsd_prefix() {
+    let error = load_schema_document(&fixture("errors/enumeration-child.xsd"))
+        .expect_err("unexpected enumeration child must fail");
+    assert!(matches!(error, FrontendError::UnsupportedConstruct(_)));
+    let message = error.to_string();
+    assert!(message.contains("xs:enumeration child"));
+    assert!(!message.contains("xs:xs:"), "{message}");
+}
+
+#[test]
 fn accepts_and_normalizes_element_form_default_deterministically() {
     let path = fixture("element-form-default/root.xsd");
     let ir = load_schema_set(&path).expect("qualified and unqualified forms should parse");
@@ -399,4 +494,20 @@ fn assert_named_type(actual: &TypeRefTarget, local_name: &str) {
         actual,
         &TypeRefTarget::Named(QualifiedName::new(OMS_NS, local_name))
     );
+}
+
+fn assert_named_annotation_type(actual: &TypeRefTarget, local_name: &str) {
+    assert_eq!(
+        actual,
+        &TypeRefTarget::Named(QualifiedName::new("urn:annotations", local_name))
+    );
+}
+
+fn write_temporary_schema(label: &str, contents: &str) -> PathBuf {
+    let path = std::env::temp_dir().join(format!(
+        "ams-gra-annotation-{label}-{}.xsd",
+        std::process::id()
+    ));
+    fs::write(&path, contents).expect("temporary schema should be writable");
+    path
 }

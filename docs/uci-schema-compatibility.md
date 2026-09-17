@@ -59,3 +59,60 @@ for `xs:annotation` remains intentionally unimplemented for the next
 evidence-driven compatibility task. UCI 2.5 remains the Sleet interoperability
 baseline, while UCI 2.6 is the forward-compatibility target; neither schema
 currently normalizes completely.
+
+## Annotation inventory and policy
+
+The annotation probe recursively inventoried each root and its security-marking
+include (two files per release). UCI 2.5 contains 27,214 annotations and 27,943
+documentation nodes; UCI 2.6 contains 27,263 annotations and 27,997
+documentation nodes. Neither release contains `xs:appinfo`, documentation
+attributes, or embedded XML markup. All annotations are the first element child
+of their owner.
+
+| Annotation owner | UCI 2.5 | UCI 2.6 |
+|---|---:|---:|
+| schema | 2 | 2 |
+| element | 13,882 | 13,923 |
+| complex type | 4,612 | 4,636 |
+| simple type | 945 | 934 |
+| enumeration facet | 7,766 | 7,767 |
+| restriction | 6 | 0 |
+| pattern facet | 1 | 1 |
+
+Most annotations have one documentation child. UCI 2.5 has 727 annotations
+with two and one annotation with three; UCI 2.6 has 730 with two and two with
+three. Both releases contain plain single-line text, multiline text, and one
+empty documentation node. The material shape difference is the six
+restriction annotations found only in 2.5; 2.6 also puts a second multiline
+disclaimer in its root schema annotation.
+
+The frontend now parses an optional leading annotation separately from its
+owner's semantic children. Plain documentation is normalized by trimming outer
+whitespace and collapsing every XML whitespace run to one space. Empty nodes
+are omitted, and multiple nonempty nodes are joined by one blank line. Type,
+sequence-field, and enumeration-facet documentation reaches the existing IR
+documentation fields. Validated schema and supported-restriction documentation
+is deliberately discarded because those XSD syntax owners have no semantic IR
+documentation field. The observed pattern facet remains unsupported in its own
+right; Task 008 does not bypass that owner to consume its annotation. No raw XML
+metadata is exposed to backends.
+
+Because real UCI provides no evidence that `xs:appinfo` is safe to ignore, it
+remains unsupported. Embedded markup, unknown annotation children, unexpected
+annotation attributes, and annotations outside the leading position also fail
+closed with source context.
+
+After this annotation slice, both roots pass their original schema-level
+annotation and stop at the next unsupported declaration:
+
+```text
+UCI 2.5: FrontendError::UnsupportedConstruct
+unsupported XSD construct: xs:element at UCI_MessageDefinitions_v2_5_0.xsd:14:2
+
+UCI 2.6: FrontendError::UnsupportedConstruct
+unsupported XSD construct: xs:element at UCI_MessageDefinitions_v2_6_0.xsd:19:2
+```
+
+The construct is the same in both releases. The line differs because the 2.6
+root annotation contains the additional disclaimer documentation. Global
+`xs:element` support remains intentionally unimplemented.
