@@ -1,5 +1,17 @@
 //! Shared backend contract for OMS/UCI source generation.
 
+mod coverage;
+mod structure;
+
+pub use coverage::{
+    BackendCoverage, BackendLanguage, CoverageAnalysis, CoverageError, FeatureFamily,
+    SchemaInventory,
+};
+pub use structure::{
+    EffectiveStructuralType, StructuralKind, StructuralLevel, StructuralProjectionError,
+    StructuralSegment, StructuralSegmentContent, project_structural_type,
+};
+
 use ams_gra_oms_ir::{QualifiedName, SchemaIr, TypeDecl, TypeKind, TypeRef, TypeRefTarget};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;

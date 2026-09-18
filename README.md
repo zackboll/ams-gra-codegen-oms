@@ -2,7 +2,11 @@
 
 Schema-driven, multi-language code generation for OMS/UCI services that preserves the existing AMS GRA / OMS Language-Agnostic CAL (LA-CAL) runtime architecture.
 
-> **Status:** the controlled vertical slice provides recursive local schema-set loading, semantic IR validation, dependency-aware planning, and Ada, Rust, and C++ type generation. XSD coverage remains deliberately narrow and expands only from real schema evidence.
+> **Status:** the XSD frontend fully normalizes the authoritative UCI 2.5 and
+> UCI 2.6 schema sets into semantic IR. This is not a claim of general-purpose
+> complete XML Schema support. Ada, Rust, and C++ generation remains partial;
+> see [backend compatibility](docs/backend-compatibility.md) for measured
+> coverage and current limitations.
 
 ## Quick start
 
@@ -60,6 +64,12 @@ We keep the OMS runtime architecture intact and add a build-time generation laye
                     +-------------------+
                     | language-neutral  |
                     |    schema IR      |
+                    +---------+---------+
+                              |
+                              v
+                    +-------------------+
+                    | shared structural |
+                    | projection/analysis|
                     +---------+---------+
                               |
           +-------------------+-------------------+

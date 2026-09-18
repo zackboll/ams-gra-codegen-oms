@@ -13,12 +13,18 @@ repository](https://gitlab.com/open-arsenal/uci/standard):
 
 | Target | Tag | Commit | Root schema | Required dependency | Fully normalizes? |
 |---|---|---|---|---|---|
-| UCI 2.5 / Sleet baseline | `v2.5` | `093610b7753944059360d3236770ab446d039556` | `UCI_MessageDefinitions_v2_5_0.xsd` | `UCI_SecurityMarkings_v2_5_0.xsd` via `xs:include` | No |
-| UCI 2.6 / current public release | `v2.6` | `78eb61b6112c8bffa40820c33124b57787fc5bd9` | `UCI_MessageDefinitions_v2_6_0.xsd` | `UCI_SecurityMarkings_v2_6_0.xsd` via `xs:include` | No |
+| UCI 2.5 / Sleet baseline | `v2.5` | `093610b7753944059360d3236770ab446d039556` | `UCI_MessageDefinitions_v2_5_0.xsd` | `UCI_SecurityMarkings_v2_5_0.xsd` via `xs:include` | Yes: 5,557 types, 722 messages |
+| UCI 2.6 / current public release | `v2.6` | `78eb61b6112c8bffa40820c33124b57787fc5bd9` | `UCI_MessageDefinitions_v2_6_0.xsd` | `UCI_SecurityMarkings_v2_6_0.xsd` via `xs:include` | Yes: 5,570 types, 725 messages |
 
 The separate `UCI_Versioning_v2_*_0.xsd` documents import the corresponding
 message-definition schema. The compatibility probe used the message-definition
 file as the root because it is the UCI message model consumed by this project.
+
+The current frontend milestone is complete for these two authoritative roots.
+The dated sections below retain the sequence of earlier evidence-driven
+frontiers; they are historical probe results, not the current status. This does
+not claim general-purpose support for every XML Schema construct, and backend
+generation remains partial.
 
 ## 2026-09-17 probes
 
