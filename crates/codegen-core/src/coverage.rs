@@ -310,51 +310,6 @@ impl<'a> CoverageAnalysis<'a> {
                 ));
             }
         }
-        for name in ["AirRecordMDT", "QueryType"] {
-            if let Some(declaration) = self
-                .schema
-                .types
-                .iter()
-                .find(|declaration| declaration.name.local_name == name)
-            {
-                let projection = self.structural_projection(&declaration.name)?;
-                output.push_str(&format!("projection {name}\n"));
-                output.push_str(&format!(
-                    "  ancestry: {}\n",
-                    projection
-                        .ancestry
-                        .iter()
-                        .map(|level| level.declaration.name.local_name.as_str())
-                        .collect::<Vec<_>>()
-                        .join(" -> ")
-                ));
-                for level in &projection.ancestry {
-                    let (kind, count) = match &level.declaration.kind {
-                        TypeKind::Record { fields } => ("Record", fields.len()),
-                        TypeKind::Choice { alternatives } => ("Choice", alternatives.len()),
-                        _ => unreachable!("projection ancestry is structural"),
-                    };
-                    output.push_str(&format!(
-                        "  {kind} {}: {count}\n",
-                        level.declaration.name.local_name
-                    ));
-                }
-                let effective_members = projection
-                    .segments
-                    .iter()
-                    .map(|segment| match segment.content {
-                        StructuralSegmentContent::RecordFields(fields) => fields.len(),
-                        StructuralSegmentContent::ChoiceAlternatives(alternatives) => {
-                            alternatives.len()
-                        }
-                    })
-                    .sum::<usize>();
-                output.push_str(&format!(
-                    "  effective: {} segment(s), {effective_members} member(s)\n",
-                    projection.segments.len()
-                ));
-            }
-        }
         Ok(output)
     }
 
@@ -1107,7 +1062,7 @@ fn primitive_name(kind: PrimitiveKind) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ams_gra_oms_ir::{NamespaceDecl, SourceRef};
+    use ams_gra_oms_ir::{MessageDecl, NamespaceDecl, SourceRef};
 
     const NS: &str = "urn:test";
     fn source() -> SourceRef {
@@ -1131,9 +1086,12 @@ mod tests {
         }
     }
     fn field(name: &str, target: &str) -> FieldDecl {
+        field_ref(name, named(target))
+    }
+    fn field_ref(name: &str, type_ref: TypeRef) -> FieldDecl {
         FieldDecl {
             name: name.to_owned(),
-            type_ref: named(target),
+            type_ref,
             cardinality: Cardinality::REQUIRED_ONE,
             nillable: false,
             constraints: ConstraintSet::default(),
@@ -1156,6 +1114,34 @@ mod tests {
             }],
             types,
             messages: Vec::new(),
+        }
+    }
+    fn message_schema(types: Vec<TypeDecl>, payload: &str) -> SchemaIr {
+        let mut schema = schema(types);
+        schema.messages.push(MessageDecl {
+            name: QualifiedName::new(NS, "TestMessage"),
+            payload_type: named(payload),
+            documentation: None,
+            source: source(),
+        });
+        schema
+    }
+    fn assert_only_family_unblocks(schema: &SchemaIr, family: FeatureFamily) {
+        let analysis = CoverageAnalysis::new(schema).unwrap();
+        for language in BackendLanguage::ALL {
+            assert_eq!(analysis.impact(language, &[]).unwrap(), 0);
+            assert_eq!(analysis.impact(language, &[family]).unwrap(), 1);
+            for other in FeatureFamily::ALL {
+                if other != family {
+                    assert_eq!(
+                        analysis.impact(language, &[other]).unwrap(),
+                        0,
+                        "{} unexpectedly unblocked {}",
+                        other.name(),
+                        family.name()
+                    );
+                }
+            }
         }
     }
 
@@ -1210,6 +1196,204 @@ mod tests {
         let analysis = CoverageAnalysis::new(&schema).unwrap();
         let coverage = analysis.backend_coverage(BackendLanguage::Rust).unwrap();
         assert_eq!(coverage.declarations_fully_renderable, 2);
-        assert_eq!(analysis.report().unwrap(), analysis.report().unwrap());
+        let first = analysis.report().unwrap();
+        assert_eq!(first, analysis.report().unwrap());
+        assert_eq!(
+            first.lines().filter(|line| line.starts_with("  ")).count(),
+            BackendLanguage::ALL.len() * ((1 << FeatureFamily::ALL.len()) - 1)
+        );
+        for family in FeatureFamily::ALL {
+            assert!(first.contains(family.name()));
+        }
+    }
+
+    #[test]
+    fn primitive_expansion_alone_unblocks_boolean_field_closure() {
+        let schema = message_schema(
+            vec![declaration(
+                "Payload",
+                TypeKind::Record {
+                    fields: vec![field_ref(
+                        "enabled",
+                        TypeRef::primitive(PrimitiveKind::Boolean),
+                    )],
+                },
+            )],
+            "Payload",
+        );
+        assert_only_family_unblocks(&schema, FeatureFamily::PrimitiveExpansion);
+    }
+
+    #[test]
+    fn cardinality_alone_unblocks_unbounded_field_closure() {
+        let mut values = field_ref("values", TypeRef::primitive(PrimitiveKind::String));
+        values.cardinality = Cardinality {
+            min_occurs: 0,
+            max_occurs: None,
+        };
+        let schema = message_schema(
+            vec![declaration(
+                "Payload",
+                TypeKind::Record {
+                    fields: vec![values],
+                },
+            )],
+            "Payload",
+        );
+        assert_only_family_unblocks(&schema, FeatureFamily::CardinalityAndNillability);
+    }
+
+    #[test]
+    fn choice_alone_unblocks_choice_payload_closure() {
+        let schema = message_schema(
+            vec![declaration(
+                "Payload",
+                TypeKind::Choice {
+                    alternatives: vec![field_ref(
+                        "text",
+                        TypeRef::primitive(PrimitiveKind::String),
+                    )],
+                },
+            )],
+            "Payload",
+        );
+        assert_only_family_unblocks(&schema, FeatureFamily::Choice);
+    }
+
+    #[test]
+    fn structural_family_alone_unblocks_abstract_inherited_closure() {
+        let mut base = declaration("Base", TypeKind::Record { fields: Vec::new() });
+        base.is_abstract = true;
+        let mut payload = declaration("Payload", TypeKind::Record { fields: Vec::new() });
+        payload.base_type = Some(named("Base"));
+        let schema = message_schema(vec![payload, base], "Payload");
+        assert_only_family_unblocks(&schema, FeatureFamily::StructuralInheritanceAndAbstract);
+    }
+
+    #[test]
+    fn constrained_simple_family_alone_unblocks_field_constraint_closure() {
+        let mut text = field_ref("text", TypeRef::primitive(PrimitiveKind::String));
+        text.constraints.min_length = Some(1);
+        let schema = message_schema(
+            vec![declaration(
+                "Payload",
+                TypeKind::Record { fields: vec![text] },
+            )],
+            "Payload",
+        );
+        assert_only_family_unblocks(&schema, FeatureFamily::ConstrainedSimpleTypes);
+    }
+
+    #[test]
+    fn combined_choice_and_inheritance_are_both_required() {
+        let base = declaration("Base", TypeKind::Record { fields: Vec::new() });
+        let choice = declaration(
+            "Selection",
+            TypeKind::Choice {
+                alternatives: vec![field_ref("text", TypeRef::primitive(PrimitiveKind::String))],
+            },
+        );
+        let mut payload = declaration(
+            "Payload",
+            TypeKind::Record {
+                fields: vec![field("selection", "Selection")],
+            },
+        );
+        payload.base_type = Some(named("Base"));
+        let schema = message_schema(vec![payload, choice, base], "Payload");
+        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        for language in BackendLanguage::ALL {
+            assert_eq!(analysis.impact(language, &[]).unwrap(), 0);
+            assert_eq!(
+                analysis.impact(language, &[FeatureFamily::Choice]).unwrap(),
+                0
+            );
+            assert_eq!(
+                analysis
+                    .impact(language, &[FeatureFamily::StructuralInheritanceAndAbstract])
+                    .unwrap(),
+                0
+            );
+            assert_eq!(
+                analysis
+                    .impact(
+                        language,
+                        &[
+                            FeatureFamily::Choice,
+                            FeatureFamily::StructuralInheritanceAndAbstract,
+                        ]
+                    )
+                    .unwrap(),
+                1
+            );
+        }
+    }
+
+    #[test]
+    fn message_closure_includes_unsupported_transitive_dependency() {
+        let inner = declaration(
+            "Inner",
+            TypeKind::Record {
+                fields: vec![field_ref(
+                    "enabled",
+                    TypeRef::primitive(PrimitiveKind::Boolean),
+                )],
+            },
+        );
+        let outer = declaration(
+            "Outer",
+            TypeKind::Record {
+                fields: vec![field("inner", "Inner")],
+            },
+        );
+        let schema = message_schema(vec![outer, inner], "Outer");
+        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        for language in BackendLanguage::ALL {
+            assert_eq!(analysis.impact(language, &[]).unwrap(), 0);
+            assert_eq!(
+                analysis
+                    .impact(language, &[FeatureFamily::PrimitiveExpansion])
+                    .unwrap(),
+                1
+            );
+        }
+    }
+
+    #[test]
+    fn optional_named_field_preserves_language_specific_occurrence_support() {
+        let mut value = field("value", "Value");
+        value.cardinality = Cardinality::OPTIONAL_ONE;
+        let schema = message_schema(
+            vec![
+                declaration(
+                    "Payload",
+                    TypeKind::Record {
+                        fields: vec![value],
+                    },
+                ),
+                scalar("Value"),
+            ],
+            "Payload",
+        );
+        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        assert_eq!(analysis.impact(BackendLanguage::Ada, &[]).unwrap(), 0);
+        assert_eq!(analysis.impact(BackendLanguage::Rust, &[]).unwrap(), 1);
+        assert_eq!(analysis.impact(BackendLanguage::Cpp, &[]).unwrap(), 1);
+        assert_eq!(
+            analysis
+                .backend_coverage(BackendLanguage::Ada)
+                .unwrap()
+                .field_occurrences_renderable,
+            0
+        );
+        for language in [BackendLanguage::Rust, BackendLanguage::Cpp] {
+            assert_eq!(
+                analysis
+                    .backend_coverage(language)
+                    .unwrap()
+                    .field_occurrences_renderable,
+                1
+            );
+        }
     }
 }

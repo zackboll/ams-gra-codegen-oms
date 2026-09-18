@@ -159,6 +159,10 @@ immediate base, base-to-derived `StructuralLevel` ancestry, and ordered borrowed
 `ChoiceAlternatives(&[FieldDecl])` and retains its owning declaration. All field
 semantics and source provenance remain in the borrowed `FieldDecl`.
 
+The UCI representatives below were inspected during the authoritative probes by
+explicitly passing their qualified names to the generic structural projection
+API; generic report generation does not select schema-specific declarations.
+
 Empty local segments are omitted from `segments` but retained in `ancestry`.
 Thus an empty derived Record still has its base's effective content and retains
 its own identity, kind, and abstract flag. Missing/non-structural bases, cycles,
