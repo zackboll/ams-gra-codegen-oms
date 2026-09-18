@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           xmlns:t="urn:inheritance"
+           targetNamespace="urn:inheritance">
+  <xs:complexType name="Leaf" uci:version="1.0">
+    <xs:annotation><xs:documentation>Leaf documentation.</xs:documentation></xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="t:Middle">
+        <xs:sequence>
+          <xs:element name="LeafField" type="xs:int">
+            <xs:annotation><xs:documentation>Leaf field documentation.</xs:documentation></xs:annotation>
+          </xs:element>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="Base" abstract="1">
+    <xs:sequence>
+      <xs:element name="BaseField" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Middle">
+    <xs:complexContent>
+      <xs:extension base="t:Base">
+        <xs:sequence>
+          <xs:element name="MiddleField" type="xs:boolean" minOccurs="0" nillable="true"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="ChoiceLeaf">
+    <xs:complexContent>
+      <xs:extension base="t:Base">
+        <xs:choice>
+          <xs:element name="Text" type="xs:string"/>
+          <xs:element name="Number" type="xs:unsignedShort" maxOccurs="unbounded"/>
+        </xs:choice>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="EmptyLeaf" abstract="0">
+    <xs:complexContent>
+      <xs:extension base="t:Base"/>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:element name="LeafMessage" type="t:Leaf" uci:version="1.0"/>
+</xs:schema>

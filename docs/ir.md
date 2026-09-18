@@ -278,7 +278,32 @@ lowest original IR index is emitted next. Cycles are explicit planning errors.
 
 ### Extension/inheritance
 
-The frontend resolves XSD extension chains once. The IR may preserve both `base_type` and effective fields so backends can choose composition, inheritance, traits/interfaces, or flattening without repeating schema resolution.
+For a structural complex type derived through supported XSD extension,
+`base_type` is a named reference to the **immediate** base declaration and
+`kind` contains only the content declared locally by the derived type. A local
+sequence becomes `TypeKind::Record`; a local choice becomes
+`TypeKind::Choice`. An extension with no local compositor becomes an empty
+local record. That means “no locally declared content,” not “no effective
+content.”
+
+Inherited fields and alternatives are **not** duplicated into the derived
+`TypeKind`. Each base remains a separate `TypeDecl`, including through
+multi-level chains. This preserves type identity, immediate source-level
+inheritance, provenance, and documentation ownership. `TypeDecl.is_abstract`
+preserves XSD complex-type abstract metadata independently of backend policy.
+
+This structural use of `base_type = Named(...)` is distinct from primitive
+`base_type` ancestry on a normalized named simple restriction. Structural
+records and choices may only have named structural bases. The IR validator
+rejects non-structural bases and inheritance-only cycles without treating
+ordinary field-reference recursion as an inheritance cycle.
+
+The shared declaration planner includes immediate base references as
+dependencies, so bases precede their derived declarations regardless of source
+order. Current Ada, Rust, and C++ backends do not implement inheritance: each
+rejects a record or choice with a named base before rendering, rather than
+silently generating only its local content. They continue to accept supported
+simple declarations whose `base_type` records primitive restriction ancestry.
 
 ## IR invariants
 

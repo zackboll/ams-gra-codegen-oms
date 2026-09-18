@@ -3,7 +3,7 @@
 //! This crate intentionally contains no XML/XSD parser logic and no
 //! language-specific code-generation policy.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -95,6 +95,15 @@ impl SchemaIr {
             validate_constraints(&declaration.constraints, &owner)?;
             if let Some(base_type) = &declaration.base_type {
                 validate_reference(base_type, &declared_types, "base type", &declaration.source)?;
+                if matches!(
+                    declaration.kind,
+                    TypeKind::Record { .. } | TypeKind::Choice { .. }
+                ) && !matches!(base_type.target, TypeRefTarget::Named(_))
+                {
+                    return Err(ValidationError::InvalidStructuralBase {
+                        name: declaration.name.clone(),
+                    });
+                }
             }
             match &declaration.kind {
                 TypeKind::Primitive(_) => {}
@@ -136,6 +145,8 @@ impl SchemaIr {
                 }
             }
         }
+
+        validate_structural_inheritance(self)?;
 
         for message in &self.messages {
             validate_reference(
@@ -187,6 +198,16 @@ pub enum ValidationError {
     },
     EmptyChoice {
         name: QualifiedName,
+    },
+    InvalidStructuralBase {
+        name: QualifiedName,
+    },
+    NonStructuralBase {
+        name: QualifiedName,
+        base: QualifiedName,
+    },
+    InheritanceCycle {
+        names: Vec<QualifiedName>,
     },
 }
 
@@ -242,11 +263,90 @@ impl fmt::Display for ValidationError {
             Self::EmptyChoice { name } => {
                 write!(f, "choice {} has no alternatives", format_name(name))
             }
+            Self::InvalidStructuralBase { name } => write!(
+                f,
+                "structural type {} must have a named structural base",
+                format_name(name)
+            ),
+            Self::NonStructuralBase { name, base } => write!(
+                f,
+                "structural type {} has non-structural base {}",
+                format_name(name),
+                format_name(base)
+            ),
+            Self::InheritanceCycle { names } => write!(
+                f,
+                "complex-type inheritance cycle: {}",
+                names
+                    .iter()
+                    .map(format_name)
+                    .collect::<Vec<_>>()
+                    .join(" -> ")
+            ),
         }
     }
 }
 
 impl std::error::Error for ValidationError {}
+
+fn validate_structural_inheritance(schema: &SchemaIr) -> Result<(), ValidationError> {
+    let declarations = schema
+        .types
+        .iter()
+        .map(|declaration| (&declaration.name, declaration))
+        .collect::<BTreeMap<_, _>>();
+    let mut bases = BTreeMap::new();
+    for declaration in &schema.types {
+        if !matches!(
+            declaration.kind,
+            TypeKind::Record { .. } | TypeKind::Choice { .. }
+        ) {
+            continue;
+        }
+        let Some(TypeRef {
+            target: TypeRefTarget::Named(base),
+        }) = &declaration.base_type
+        else {
+            continue;
+        };
+        let base_declaration = declarations[base];
+        if !matches!(
+            base_declaration.kind,
+            TypeKind::Record { .. } | TypeKind::Choice { .. }
+        ) {
+            return Err(ValidationError::NonStructuralBase {
+                name: declaration.name.clone(),
+                base: base.clone(),
+            });
+        }
+        bases.insert(declaration.name.clone(), base.clone());
+    }
+
+    let mut completed = BTreeSet::new();
+    for declaration in &schema.types {
+        if completed.contains(&declaration.name) {
+            continue;
+        }
+        let mut positions = BTreeMap::new();
+        let mut path = Vec::new();
+        let mut current = declaration.name.clone();
+        while let Some(base) = bases.get(&current) {
+            if completed.contains(&current) {
+                break;
+            }
+            positions.insert(current.clone(), path.len());
+            path.push(current.clone());
+            if let Some(&start) = positions.get(base) {
+                let mut names = path[start..].to_vec();
+                names.push(base.clone());
+                return Err(ValidationError::InheritanceCycle { names });
+            }
+            current = base.clone();
+        }
+        completed.extend(path);
+    }
+    Ok(())
+}
 
 fn validate_fields(
     fields: &[FieldDecl],
@@ -790,5 +890,60 @@ mod tests {
             .validate(),
             Err(ValidationError::EmptyChoice { .. })
         ));
+    }
+
+    #[test]
+    fn permits_primitive_base_only_for_non_structural_types() {
+        let mut simple = declaration("Simple", TypeKind::Primitive(PrimitiveKind::SignedInteger));
+        simple.base_type = Some(TypeRef::primitive(PrimitiveKind::SignedInteger));
+        schema(vec![simple])
+            .validate()
+            .expect("simple restriction ancestry should remain valid");
+
+        let mut structural = declaration("Structural", TypeKind::Record { fields: Vec::new() });
+        structural.base_type = Some(TypeRef::primitive(PrimitiveKind::String));
+        assert!(matches!(
+            schema(vec![structural]).validate(),
+            Err(ValidationError::InvalidStructuralBase { .. })
+        ));
+    }
+
+    #[test]
+    fn rejects_named_non_structural_base() {
+        let base = declaration("Base", TypeKind::Primitive(PrimitiveKind::String));
+        let mut derived = declaration("Derived", TypeKind::Record { fields: Vec::new() });
+        derived.base_type = Some(named("Base"));
+        assert!(matches!(
+            schema(vec![base, derived]).validate(),
+            Err(ValidationError::NonStructuralBase { .. })
+        ));
+    }
+
+    #[test]
+    fn rejects_self_inheritance_cycle() {
+        let mut declaration = declaration("A", TypeKind::Record { fields: Vec::new() });
+        declaration.base_type = Some(named("A"));
+        let error = schema(vec![declaration]).validate().unwrap_err();
+        assert_eq!(
+            error,
+            ValidationError::InheritanceCycle {
+                names: vec![QualifiedName::new(NS, "A"), QualifiedName::new(NS, "A")]
+            }
+        );
+    }
+
+    #[test]
+    fn rejects_multi_level_inheritance_cycle_deterministically() {
+        let mut a = declaration("A", TypeKind::Record { fields: Vec::new() });
+        let mut b = declaration("B", TypeKind::Record { fields: Vec::new() });
+        let mut c = declaration("C", TypeKind::Record { fields: Vec::new() });
+        a.base_type = Some(named("B"));
+        b.base_type = Some(named("C"));
+        c.base_type = Some(named("A"));
+        let error = schema(vec![a, b, c]).validate().unwrap_err();
+        assert_eq!(
+            error.to_string(),
+            "complex-type inheritance cycle: {urn:test}A -> {urn:test}B -> {urn:test}C -> {urn:test}A"
+        );
     }
 }

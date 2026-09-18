@@ -4,6 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 const OMS_NS: &str = "urn:example:oms:track";
+const INHERITANCE_NS: &str = "urn:inheritance";
 
 fn fixture(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -104,6 +105,171 @@ fn parsing_is_deterministic() {
         load_schema_document(&path).expect("first parse should succeed"),
         load_schema_document(&path).expect("second parse should succeed")
     );
+}
+
+#[test]
+fn normalizes_complex_inheritance_without_flattening() {
+    let ir = load_schema_document(&fixture("complex-inheritance.xsd"))
+        .expect("inheritance fixture should parse");
+    let declaration = |name: &str| {
+        ir.types
+            .iter()
+            .find(|declaration| declaration.name.local_name == name)
+            .unwrap_or_else(|| panic!("{name} should exist"))
+    };
+
+    let base = declaration("Base");
+    assert!(base.is_abstract);
+    assert!(base.base_type.is_none());
+    let TypeKind::Record { fields } = &base.kind else {
+        panic!("Base should be a record");
+    };
+    assert_eq!(
+        fields
+            .iter()
+            .map(|field| field.name.as_str())
+            .collect::<Vec<_>>(),
+        ["BaseField"]
+    );
+
+    let middle = declaration("Middle");
+    assert_named_inheritance_type(&middle.base_type.as_ref().unwrap().target, "Base");
+    let TypeKind::Record { fields } = &middle.kind else {
+        panic!("Middle should be a record");
+    };
+    assert_eq!(
+        fields
+            .iter()
+            .map(|field| field.name.as_str())
+            .collect::<Vec<_>>(),
+        ["MiddleField"]
+    );
+    assert!(!fields.iter().any(|field| field.name == "BaseField"));
+    assert_eq!(fields[0].cardinality, Cardinality::OPTIONAL_ONE);
+    assert!(fields[0].nillable);
+
+    let leaf = declaration("Leaf");
+    assert_eq!(leaf.documentation.as_deref(), Some("Leaf documentation."));
+    assert!(leaf.source.document.ends_with("complex-inheritance.xsd"));
+    assert_named_inheritance_type(&leaf.base_type.as_ref().unwrap().target, "Middle");
+    let TypeKind::Record { fields } = &leaf.kind else {
+        panic!("Leaf should be a record");
+    };
+    assert_eq!(
+        fields
+            .iter()
+            .map(|field| field.name.as_str())
+            .collect::<Vec<_>>(),
+        ["LeafField"]
+    );
+    assert_eq!(
+        fields[0].documentation.as_deref(),
+        Some("Leaf field documentation.")
+    );
+    assert_eq!(fields[0].constraints.min_inclusive, Some(-2_147_483_648));
+    assert_eq!(fields[0].constraints.max_inclusive, Some(2_147_483_647));
+    assert!(
+        !fields
+            .iter()
+            .any(|field| matches!(field.name.as_str(), "BaseField" | "MiddleField"))
+    );
+
+    let choice = declaration("ChoiceLeaf");
+    assert_named_inheritance_type(&choice.base_type.as_ref().unwrap().target, "Base");
+    let TypeKind::Choice { alternatives } = &choice.kind else {
+        panic!("ChoiceLeaf should be a choice");
+    };
+    assert_eq!(
+        alternatives
+            .iter()
+            .map(|field| field.name.as_str())
+            .collect::<Vec<_>>(),
+        ["Text", "Number"]
+    );
+    assert_eq!(alternatives[1].cardinality.max_occurs, None);
+
+    let empty = declaration("EmptyLeaf");
+    assert!(!empty.is_abstract);
+    assert_named_inheritance_type(&empty.base_type.as_ref().unwrap().target, "Base");
+    assert!(matches!(&empty.kind, TypeKind::Record { fields } if fields.is_empty()));
+
+    assert_named_inheritance_type(&ir.messages[0].payload_type.target, "Leaf");
+}
+
+#[test]
+fn complex_inheritance_fails_closed_on_unsupported_shapes() {
+    for (label, body, expected) in [
+        (
+            "primitive-base",
+            r#"<xs:extension base="xs:string"/>"#,
+            "extension primitive base",
+        ),
+        (
+            "restriction",
+            r#"<xs:restriction base="t:Base"/>"#,
+            "xs:restriction",
+        ),
+        (
+            "attribute",
+            r#"<xs:extension base="t:Base"><xs:attribute name="value" type="xs:string"/></xs:extension>"#,
+            "xs:attribute",
+        ),
+        (
+            "content-annotation",
+            r#"<xs:annotation><xs:documentation>lost</xs:documentation></xs:annotation><xs:extension base="t:Base"/>"#,
+            "multiple content-model children",
+        ),
+        (
+            "extension-annotation",
+            r#"<xs:extension base="t:Base"><xs:annotation><xs:documentation>lost</xs:documentation></xs:annotation></xs:extension>"#,
+            "xs:annotation",
+        ),
+    ] {
+        let path = write_temporary_schema(
+            label,
+            &format!(
+                r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:t="urn:test" targetNamespace="urn:test">
+  <xs:complexType name="Base"><xs:sequence/></xs:complexType>
+  <xs:complexType name="Derived"><xs:complexContent>{body}</xs:complexContent></xs:complexType>
+</xs:schema>
+"#
+            ),
+        );
+        let error = load_schema_document(&path).expect_err(label);
+        fs::remove_file(path).expect("temporary schema should be removable");
+        assert!(matches!(error, FrontendError::UnsupportedConstruct(_)));
+        assert!(error.to_string().contains(expected), "{label}: {error}");
+    }
+}
+
+#[test]
+fn complex_inheritance_reports_invalid_bases_and_abstract_values() {
+    for (label, declarations, expected) in [
+        (
+            "unresolved-base",
+            r#"<xs:complexType name="Derived"><xs:complexContent><xs:extension base="t:Absent"/></xs:complexContent></xs:complexType>"#,
+            "unresolved type reference {urn:test}Absent in base type",
+        ),
+        (
+            "invalid-abstract",
+            r#"<xs:complexType name="Derived" abstract="yes"><xs:sequence/></xs:complexType>"#,
+            "abstract is not an XSD boolean: yes",
+        ),
+    ] {
+        let path = write_temporary_schema(
+            label,
+            &format!(
+                r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:t="urn:test" targetNamespace="urn:test">
+  {declarations}
+</xs:schema>
+"#
+            ),
+        );
+        let error = load_schema_document(&path).expect_err(label);
+        fs::remove_file(path).expect("temporary schema should be removable");
+        assert!(matches!(error, FrontendError::InvalidInput(_)));
+        assert!(error.to_string().contains(expected), "{label}: {error}");
+    }
 }
 
 #[test]
@@ -975,6 +1141,13 @@ fn assert_named_annotation_type(actual: &TypeRefTarget, local_name: &str) {
     assert_eq!(
         actual,
         &TypeRefTarget::Named(QualifiedName::new("urn:annotations", local_name))
+    );
+}
+
+fn assert_named_inheritance_type(actual: &TypeRefTarget, local_name: &str) {
+    assert_eq!(
+        actual,
+        &TypeRefTarget::Named(QualifiedName::new(INHERITANCE_NS, local_name))
     );
 }
 

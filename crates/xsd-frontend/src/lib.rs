@@ -404,9 +404,79 @@ fn parse_complex_type(
     source_document: &str,
     target_namespace: &str,
 ) -> Result<TypeDecl, FrontendError> {
-    validate_uci_declaration_version(node, &["name"], false)?;
+    validate_uci_declaration_version(node, &["name", "abstract"], false)?;
     let name = qualified_declaration_name(node, target_namespace)?;
-    let (documentation, compositor) = exactly_one_content_child(node)?;
+    let is_abstract = parse_boolean_attribute(node, "abstract", false)?;
+    let (documentation, children) = children_after_optional_annotation(node)?;
+    let (base_type, kind) = match children.as_slice() {
+        [] if is_abstract => (None, TypeKind::Record { fields: Vec::new() }),
+        [content] if content.tag_name().namespace() == Some(XSD_NS) => {
+            match content.tag_name().name() {
+                "sequence" | "choice" => {
+                    (None, parse_compositor(*content, document, source_document)?)
+                }
+                "complexContent" => parse_complex_content(*content, document, source_document)?,
+                other => return Err(unsupported(*content, other)),
+            }
+        }
+        [] => {
+            return Err(FrontendError::InvalidInput(
+                "xs:complexType requires a child".to_owned(),
+            ));
+        }
+        _ => return Err(unsupported(node, "multiple content-model children")),
+    };
+
+    Ok(TypeDecl {
+        name,
+        is_abstract,
+        base_type,
+        kind,
+        constraints: ConstraintSet::default(),
+        documentation,
+        source: source_ref(node, document, source_document),
+    })
+}
+
+fn parse_complex_content(
+    node: Node<'_, '_>,
+    document: &Document<'_>,
+    source_document: &str,
+) -> Result<(Option<TypeRef>, TypeKind), FrontendError> {
+    reject_unexpected_attributes(node, &[])?;
+    let mut children = element_children(node);
+    let extension = children.next().ok_or_else(|| {
+        FrontendError::InvalidInput("xs:complexContent requires a child".to_owned())
+    })?;
+    if children.next().is_some() {
+        return Err(unsupported(node, "multiple content-model children"));
+    }
+    require_xsd_element(extension, "extension")?;
+    reject_unexpected_attributes(extension, &["base"])?;
+    let base_type = resolve_type_ref(extension, required_attribute(extension, "base")?)?;
+    if !matches!(base_type.target, TypeRefTarget::Named(_)) {
+        return Err(unsupported(extension, "extension primitive base"));
+    }
+
+    let children = element_children(extension).collect::<Vec<_>>();
+    let kind = match children.as_slice() {
+        [] => TypeKind::Record { fields: Vec::new() },
+        [compositor] => parse_compositor(*compositor, document, source_document)?,
+        _ => {
+            return Err(unsupported(
+                extension,
+                "multiple extension content children",
+            ));
+        }
+    };
+    Ok((Some(base_type), kind))
+}
+
+fn parse_compositor(
+    compositor: Node<'_, '_>,
+    document: &Document<'_>,
+    source_document: &str,
+) -> Result<TypeKind, FrontendError> {
     require_xsd_namespace(compositor)?;
     let is_choice = match compositor.tag_name().name() {
         "sequence" => false,
@@ -414,27 +484,17 @@ fn parse_complex_type(
         other => return Err(unsupported(compositor, other)),
     };
     reject_unexpected_attributes(compositor, &[])?;
-
     let mut fields = Vec::new();
     for element in element_children(compositor) {
         require_xsd_element(element, "element")?;
         fields.push(parse_local_element(element, document, source_document)?);
     }
-
-    Ok(TypeDecl {
-        name,
-        is_abstract: false,
-        base_type: None,
-        kind: if is_choice {
-            TypeKind::Choice {
-                alternatives: fields,
-            }
-        } else {
-            TypeKind::Record { fields }
-        },
-        constraints: ConstraintSet::default(),
-        documentation,
-        source: source_ref(node, document, source_document),
+    Ok(if is_choice {
+        TypeKind::Choice {
+            alternatives: fields,
+        }
+    } else {
+        TypeKind::Record { fields }
     })
 }
 
