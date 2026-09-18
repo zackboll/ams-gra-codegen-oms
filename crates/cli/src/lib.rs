@@ -3,7 +3,7 @@
 use ams_gra_oms_backend_ada::AdaBackend;
 use ams_gra_oms_backend_cpp::CppBackend;
 use ams_gra_oms_backend_rust::RustBackend;
-use ams_gra_oms_codegen_core::{Backend, GeneratedFile};
+use ams_gra_oms_codegen_core::{Backend, CoverageAnalysis, GeneratedFile};
 use ams_gra_oms_xsd_frontend::load_schema_set;
 use std::collections::BTreeSet;
 use std::ffi::{OsStr, OsString};
@@ -18,10 +18,12 @@ Schema-driven OMS/UCI multi-language code generator.
 
 USAGE:
     ams-gra-codegen-oms validate --schema PATH
+    ams-gra-codegen-oms coverage --schema PATH
     ams-gra-codegen-oms generate --schema PATH --language LANGUAGE --output DIR
 
 COMMANDS:
     validate    Load and validate an XSD schema set
+    coverage    Report deterministic IR and backend coverage counts
     generate    Generate source files from an XSD schema set
 
 LANGUAGES:
@@ -68,6 +70,18 @@ OPTIONS:
     -l, --language LANGUAGE    Required output language
     -o, --output DIR           Output directory
     -h, --help                 Print help
+"#;
+
+const COVERAGE_HELP: &str = r#"ams-gra-codegen-oms coverage
+
+Report deterministic semantic IR inventory and backend coverage.
+
+USAGE:
+    ams-gra-codegen-oms coverage --schema PATH
+
+OPTIONS:
+    -s, --schema PATH    Root XSD document
+    -h, --help           Print help
 "#;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -154,6 +168,9 @@ enum Command {
     Validate {
         schema: PathBuf,
     },
+    Coverage {
+        schema: PathBuf,
+    },
     Generate {
         schema: PathBuf,
         language: Language,
@@ -174,6 +191,7 @@ where
         Command::Help(help) => write_output(stdout, help),
         Command::Version => write_output(stdout, concat!(env!("CARGO_PKG_VERSION"), "\n")),
         Command::Validate { schema } => validate(&schema, stdout),
+        Command::Coverage { schema } => coverage(&schema, stdout),
         Command::Generate {
             schema,
             language,
@@ -187,16 +205,17 @@ where
     I: IntoIterator<Item = OsString>,
 {
     let mut args = args.into_iter();
-    let command = args
-        .next()
-        .ok_or_else(|| CliError::usage("missing command; expected 'validate' or 'generate'"))?;
+    let command = args.next().ok_or_else(|| {
+        CliError::usage("missing command; expected 'validate', 'coverage', or 'generate'")
+    })?;
     match command.to_str() {
         Some("-h" | "--help") => no_trailing_args(args, Command::Help(HELP)),
         Some("-V" | "--version") => no_trailing_args(args, Command::Version),
         Some("validate") => parse_validate(args.collect()),
+        Some("coverage") => parse_coverage(args.collect()),
         Some("generate") => parse_generate(args.collect()),
         Some(command) => Err(CliError::usage(format!(
-            "unknown command '{command}'; expected 'validate' or 'generate'"
+            "unknown command '{command}'; expected 'validate', 'coverage', or 'generate'"
         ))),
         None => Err(CliError::usage("command must be valid UTF-8")),
     }
@@ -222,6 +241,20 @@ fn parse_validate(args: Vec<OsString>) -> Result<Command, CliError> {
         _ => Err(CliError::usage(format!("unknown option '{option}'"))),
     })?;
     Ok(Command::Validate {
+        schema: required(schema, "--schema")?.into(),
+    })
+}
+
+fn parse_coverage(args: Vec<OsString>) -> Result<Command, CliError> {
+    if is_help_request(&args) {
+        return Ok(Command::Help(COVERAGE_HELP));
+    }
+    let mut schema = None;
+    parse_options(args, |option, value| match option {
+        "-s" | "--schema" => set_once(&mut schema, value, "--schema"),
+        _ => Err(CliError::usage(format!("unknown option '{option}'"))),
+    })?;
+    Ok(Command::Coverage {
         schema: required(schema, "--schema")?.into(),
     })
 }
@@ -303,6 +336,17 @@ fn validate<W: Write>(schema_path: &Path, stdout: &mut W) -> Result<(), CliError
             schema.messages.len()
         ),
     )
+}
+
+fn coverage<W: Write>(schema_path: &Path, stdout: &mut W) -> Result<(), CliError> {
+    let schema =
+        load_schema_set(schema_path).map_err(|error| CliError::execution(error.to_string()))?;
+    let analysis =
+        CoverageAnalysis::new(&schema).map_err(|error| CliError::execution(error.to_string()))?;
+    let report = analysis
+        .report()
+        .map_err(|error| CliError::execution(error.to_string()))?;
+    write_output(stdout, &report)
 }
 
 fn generate<W: Write>(
@@ -527,6 +571,10 @@ mod tests {
             parse(&["validate", "-h"]).unwrap(),
             Command::Help(VALIDATE_HELP)
         );
+        assert_eq!(
+            parse(&["coverage", "--help"]).unwrap(),
+            Command::Help(COVERAGE_HELP)
+        );
     }
 
     #[test]
@@ -539,6 +587,16 @@ mod tests {
         assert_eq!(
             parse(&["validate", "--schema", "root.xsd"]).unwrap(),
             Command::Validate {
+                schema: "root.xsd".into()
+            }
+        );
+    }
+
+    #[test]
+    fn parses_valid_coverage() {
+        assert_eq!(
+            parse(&["coverage", "--schema", "root.xsd"]).unwrap(),
+            Command::Coverage {
                 schema: "root.xsd".into()
             }
         );
@@ -581,6 +639,7 @@ mod tests {
     #[test]
     fn rejects_missing_required_options() {
         assert_usage_error(&["validate"], "--schema");
+        assert_usage_error(&["coverage"], "--schema");
         assert_usage_error(
             &["generate", "--language", "rust", "--output", "out"],
             "--schema",
@@ -804,6 +863,28 @@ mod tests {
             String::from_utf8(stdout).unwrap(),
             "schema valid\nnamespaces: 1\ntypes: 1\nmessages: 2\n"
         );
+    }
+
+    #[test]
+    fn coverage_report_is_deterministic() {
+        let schema = fixture("tests/fixtures/codegen-order/root.xsd");
+        let invoke = || {
+            let mut stdout = Vec::new();
+            run(
+                vec![
+                    OsString::from("coverage"),
+                    OsString::from("--schema"),
+                    schema.clone().into(),
+                ],
+                &mut stdout,
+            )
+            .unwrap();
+            String::from_utf8(stdout).unwrap()
+        };
+        let first = invoke();
+        assert_eq!(first, invoke());
+        assert!(first.contains("declarations.total: 3"));
+        assert!(first.contains("backend coverage\nAda:"));
     }
 
     #[test]
