@@ -221,6 +221,10 @@ pub enum ValidationError {
         name: QualifiedName,
         base: QualifiedName,
     },
+    NamedRestrictionWeakensBase {
+        name: QualifiedName,
+        base: QualifiedName,
+    },
     NamedRestrictionCycle {
         names: Vec<QualifiedName>,
     },
@@ -307,6 +311,12 @@ impl fmt::Display for ValidationError {
             Self::InvalidNamedRestrictionBase { name, base } => write!(
                 f,
                 "named simple restriction {} has invalid base {}",
+                format_name(name),
+                format_name(base)
+            ),
+            Self::NamedRestrictionWeakensBase { name, base } => write!(
+                f,
+                "named simple restriction {} has effective constraints that do not preserve base {}",
                 format_name(name),
                 format_name(base)
             ),
@@ -426,7 +436,121 @@ fn validate_named_simple_restrictions(schema: &SchemaIr) -> Result<(), Validatio
             current = base.clone();
         }
     }
+
+    for declaration in &schema.types {
+        let Some(base) = bases.get(&declaration.name) else {
+            continue;
+        };
+        let base_declaration = declarations[base];
+        if !constraints_imply(&declaration.constraints, &base_declaration.constraints) {
+            return Err(ValidationError::NamedRestrictionWeakensBase {
+                name: declaration.name.clone(),
+                base: base.clone(),
+            });
+        }
+    }
     Ok(())
+}
+
+#[derive(Clone, Copy)]
+struct NumericBound {
+    value: NumericValue,
+    exclusive: bool,
+}
+
+fn constraints_imply(derived: &ConstraintSet, base: &ConstraintSet) -> bool {
+    numeric_lower_implies(derived, base)
+        && numeric_upper_implies(derived, base)
+        && length_constraints_imply(derived, base)
+        && (base.patterns.is_empty() || derived.patterns == base.patterns)
+}
+
+fn numeric_lower_implies(derived: &ConstraintSet, base: &ConstraintSet) -> bool {
+    let derived_bounds = [
+        derived.min_inclusive.map(|value| NumericBound {
+            value,
+            exclusive: false,
+        }),
+        derived.min_exclusive.map(|value| NumericBound {
+            value,
+            exclusive: true,
+        }),
+    ];
+    [
+        base.min_inclusive.map(|value| NumericBound {
+            value,
+            exclusive: false,
+        }),
+        base.min_exclusive.map(|value| NumericBound {
+            value,
+            exclusive: true,
+        }),
+    ]
+    .into_iter()
+    .flatten()
+    .all(|base_bound| {
+        derived_bounds
+            .into_iter()
+            .flatten()
+            .any(|derived_bound| lower_bound_implies(derived_bound, base_bound))
+    })
+}
+
+fn numeric_upper_implies(derived: &ConstraintSet, base: &ConstraintSet) -> bool {
+    let derived_bounds = [
+        derived.max_inclusive.map(|value| NumericBound {
+            value,
+            exclusive: false,
+        }),
+        derived.max_exclusive.map(|value| NumericBound {
+            value,
+            exclusive: true,
+        }),
+    ];
+    [
+        base.max_inclusive.map(|value| NumericBound {
+            value,
+            exclusive: false,
+        }),
+        base.max_exclusive.map(|value| NumericBound {
+            value,
+            exclusive: true,
+        }),
+    ]
+    .into_iter()
+    .flatten()
+    .all(|base_bound| {
+        derived_bounds
+            .into_iter()
+            .flatten()
+            .any(|derived_bound| upper_bound_implies(derived_bound, base_bound))
+    })
+}
+
+fn lower_bound_implies(derived: NumericBound, base: NumericBound) -> bool {
+    match derived.value.semantic_cmp(&base.value) {
+        Some(Ordering::Greater) => true,
+        Some(Ordering::Equal) => derived.exclusive || !base.exclusive,
+        Some(Ordering::Less) | None => false,
+    }
+}
+
+fn upper_bound_implies(derived: NumericBound, base: NumericBound) -> bool {
+    match derived.value.semantic_cmp(&base.value) {
+        Some(Ordering::Less) => true,
+        Some(Ordering::Equal) => derived.exclusive || !base.exclusive,
+        Some(Ordering::Greater) | None => false,
+    }
+}
+
+fn length_constraints_imply(derived: &ConstraintSet, base: &ConstraintSet) -> bool {
+    let derived_min = derived.length.or(derived.min_length);
+    let derived_max = derived.length.or(derived.max_length);
+    let base_min = base.length.or(base.min_length);
+    let base_max = base.length.or(base.max_length);
+
+    base_min.is_none_or(|minimum| derived_min.is_some_and(|value| value >= minimum))
+        && base_max.is_none_or(|maximum| derived_max.is_some_and(|value| value <= maximum))
 }
 
 fn validate_fields(
@@ -1204,6 +1328,442 @@ mod tests {
         assert_eq!(
             error.to_string(),
             "named simple-restriction cycle: {urn:test}A -> {urn:test}B -> {urn:test}A"
+        );
+    }
+
+    fn restricted_primitive(
+        name: &str,
+        kind: PrimitiveKind,
+        base: Option<&str>,
+        constraints: ConstraintSet,
+    ) -> TypeDecl {
+        let mut declaration = declaration(name, TypeKind::Primitive(kind));
+        declaration.base_type = base.map(named);
+        declaration.constraints = constraints;
+        declaration
+    }
+
+    fn integer(value: i128) -> NumericValue {
+        NumericValue::Integer(value)
+    }
+
+    fn assert_named_restriction_weakens_base(types: Vec<TypeDecl>, name: &str, base: &str) {
+        assert_eq!(
+            schema(types).validate(),
+            Err(ValidationError::NamedRestrictionWeakensBase {
+                name: QualifiedName::new(NS, name),
+                base: QualifiedName::new(NS, base),
+            })
+        );
+    }
+
+    #[test]
+    fn named_numeric_restrictions_require_effective_bounds_to_tighten() {
+        let base_constraints = ConstraintSet {
+            min_inclusive: Some(integer(0)),
+            max_inclusive: Some(integer(100)),
+            ..ConstraintSet::default()
+        };
+        let valid = ConstraintSet {
+            min_inclusive: Some(integer(10)),
+            max_inclusive: Some(integer(90)),
+            ..ConstraintSet::default()
+        };
+        schema(vec![
+            restricted_primitive(
+                "Base",
+                PrimitiveKind::SignedInteger,
+                None,
+                base_constraints.clone(),
+            ),
+            restricted_primitive("Derived", PrimitiveKind::SignedInteger, Some("Base"), valid),
+        ])
+        .validate()
+        .expect("tighter integer bounds should preserve the base restriction");
+
+        for constraints in [
+            ConstraintSet {
+                min_inclusive: Some(integer(-1)),
+                max_inclusive: Some(integer(100)),
+                ..ConstraintSet::default()
+            },
+            ConstraintSet {
+                min_inclusive: Some(integer(0)),
+                max_inclusive: Some(integer(101)),
+                ..ConstraintSet::default()
+            },
+            ConstraintSet {
+                max_inclusive: Some(integer(100)),
+                ..ConstraintSet::default()
+            },
+        ] {
+            assert_named_restriction_weakens_base(
+                vec![
+                    restricted_primitive(
+                        "Base",
+                        PrimitiveKind::SignedInteger,
+                        None,
+                        base_constraints.clone(),
+                    ),
+                    restricted_primitive(
+                        "Derived",
+                        PrimitiveKind::SignedInteger,
+                        Some("Base"),
+                        constraints,
+                    ),
+                ],
+                "Derived",
+                "Base",
+            );
+        }
+    }
+
+    #[test]
+    fn named_numeric_restrictions_apply_inclusive_exclusive_tie_strength() {
+        for (base_constraints, derived_constraints, valid) in [
+            (
+                ConstraintSet {
+                    min_exclusive: Some(integer(0)),
+                    ..ConstraintSet::default()
+                },
+                ConstraintSet {
+                    min_inclusive: Some(integer(0)),
+                    ..ConstraintSet::default()
+                },
+                false,
+            ),
+            (
+                ConstraintSet {
+                    min_inclusive: Some(integer(0)),
+                    ..ConstraintSet::default()
+                },
+                ConstraintSet {
+                    min_exclusive: Some(integer(0)),
+                    ..ConstraintSet::default()
+                },
+                true,
+            ),
+            (
+                ConstraintSet {
+                    max_exclusive: Some(integer(100)),
+                    ..ConstraintSet::default()
+                },
+                ConstraintSet {
+                    max_inclusive: Some(integer(100)),
+                    ..ConstraintSet::default()
+                },
+                false,
+            ),
+            (
+                ConstraintSet {
+                    max_inclusive: Some(integer(100)),
+                    ..ConstraintSet::default()
+                },
+                ConstraintSet {
+                    max_exclusive: Some(integer(100)),
+                    ..ConstraintSet::default()
+                },
+                true,
+            ),
+        ] {
+            let result = schema(vec![
+                restricted_primitive("Base", PrimitiveKind::SignedInteger, None, base_constraints),
+                restricted_primitive(
+                    "Derived",
+                    PrimitiveKind::SignedInteger,
+                    Some("Base"),
+                    derived_constraints,
+                ),
+            ])
+            .validate();
+            assert_eq!(result.is_ok(), valid, "unexpected tie-strength result");
+        }
+    }
+
+    #[test]
+    fn named_floating_restrictions_compare_at_their_declared_width() {
+        let f64_value = |value| NumericValue::Float64(Float64Value::from_value(value));
+        schema(vec![
+            restricted_primitive(
+                "Base",
+                PrimitiveKind::Float64,
+                None,
+                ConstraintSet {
+                    min_inclusive: Some(f64_value(0.0)),
+                    max_inclusive: Some(f64_value(100.0)),
+                    ..ConstraintSet::default()
+                },
+            ),
+            restricted_primitive(
+                "Derived",
+                PrimitiveKind::Float64,
+                Some("Base"),
+                ConstraintSet {
+                    min_inclusive: Some(f64_value(10.0)),
+                    max_exclusive: Some(f64_value(100.0)),
+                    ..ConstraintSet::default()
+                },
+            ),
+        ])
+        .validate()
+        .expect("tighter Float64 bounds should preserve the base restriction");
+
+        assert_named_restriction_weakens_base(
+            vec![
+                restricted_primitive(
+                    "Base",
+                    PrimitiveKind::Float64,
+                    None,
+                    ConstraintSet {
+                        min_inclusive: Some(f64_value(0.0)),
+                        ..ConstraintSet::default()
+                    },
+                ),
+                restricted_primitive(
+                    "Derived",
+                    PrimitiveKind::Float64,
+                    Some("Base"),
+                    ConstraintSet {
+                        min_inclusive: Some(f64_value(-1.0)),
+                        ..ConstraintSet::default()
+                    },
+                ),
+            ],
+            "Derived",
+            "Base",
+        );
+
+        let f32_value = |value| NumericValue::Float32(Float32Value::from_value(value));
+        schema(vec![
+            restricted_primitive(
+                "Base",
+                PrimitiveKind::Float32,
+                None,
+                ConstraintSet {
+                    min_inclusive: Some(f32_value(0.0)),
+                    ..ConstraintSet::default()
+                },
+            ),
+            restricted_primitive(
+                "Derived",
+                PrimitiveKind::Float32,
+                Some("Base"),
+                ConstraintSet {
+                    min_exclusive: Some(f32_value(0.0)),
+                    ..ConstraintSet::default()
+                },
+            ),
+        ])
+        .validate()
+        .expect("Float32 exclusive tie should tighten an inclusive base");
+    }
+
+    #[test]
+    fn named_numeric_restrictions_reject_incomparable_domains() {
+        assert_named_restriction_weakens_base(
+            vec![
+                restricted_primitive(
+                    "Base",
+                    PrimitiveKind::Float64,
+                    None,
+                    ConstraintSet {
+                        min_inclusive: Some(NumericValue::Float64(Float64Value::from_value(0.0))),
+                        ..ConstraintSet::default()
+                    },
+                ),
+                restricted_primitive(
+                    "Derived",
+                    PrimitiveKind::Float64,
+                    Some("Base"),
+                    ConstraintSet {
+                        min_inclusive: Some(NumericValue::Float32(Float32Value::from_value(1.0))),
+                        ..ConstraintSet::default()
+                    },
+                ),
+            ],
+            "Derived",
+            "Base",
+        );
+    }
+
+    #[test]
+    fn named_length_restrictions_require_effective_interval_subset() {
+        for (base_constraints, derived_constraints, valid) in [
+            (
+                ConstraintSet {
+                    max_length: Some(32),
+                    ..ConstraintSet::default()
+                },
+                ConstraintSet {
+                    max_length: Some(16),
+                    ..ConstraintSet::default()
+                },
+                true,
+            ),
+            (
+                ConstraintSet {
+                    max_length: Some(32),
+                    ..ConstraintSet::default()
+                },
+                ConstraintSet {
+                    max_length: Some(64),
+                    ..ConstraintSet::default()
+                },
+                false,
+            ),
+            (
+                ConstraintSet {
+                    min_length: Some(4),
+                    ..ConstraintSet::default()
+                },
+                ConstraintSet {
+                    min_length: Some(8),
+                    ..ConstraintSet::default()
+                },
+                true,
+            ),
+            (
+                ConstraintSet {
+                    min_length: Some(4),
+                    ..ConstraintSet::default()
+                },
+                ConstraintSet {
+                    min_length: Some(2),
+                    ..ConstraintSet::default()
+                },
+                false,
+            ),
+            (
+                ConstraintSet {
+                    min_length: Some(4),
+                    max_length: Some(16),
+                    ..ConstraintSet::default()
+                },
+                ConstraintSet {
+                    length: Some(8),
+                    ..ConstraintSet::default()
+                },
+                true,
+            ),
+            (
+                ConstraintSet {
+                    length: Some(8),
+                    ..ConstraintSet::default()
+                },
+                ConstraintSet {
+                    length: Some(7),
+                    ..ConstraintSet::default()
+                },
+                false,
+            ),
+            (
+                ConstraintSet {
+                    length: Some(8),
+                    ..ConstraintSet::default()
+                },
+                ConstraintSet {
+                    min_length: Some(8),
+                    max_length: Some(8),
+                    ..ConstraintSet::default()
+                },
+                true,
+            ),
+        ] {
+            let result = schema(vec![
+                restricted_primitive("Base", PrimitiveKind::String, None, base_constraints),
+                restricted_primitive(
+                    "Derived",
+                    PrimitiveKind::String,
+                    Some("Base"),
+                    derived_constraints,
+                ),
+            ])
+            .validate();
+            assert_eq!(
+                result.is_ok(),
+                valid,
+                "unexpected length implication result"
+            );
+        }
+    }
+
+    #[test]
+    fn named_pattern_restrictions_preserve_inherited_vector() {
+        for (base_patterns, derived_patterns, valid) in [
+            (vec!["A"], vec!["A"], true),
+            (vec!["A"], Vec::new(), false),
+            (vec!["A"], vec!["B"], false),
+            (Vec::new(), vec!["B"], true),
+        ] {
+            let result = schema(vec![
+                restricted_primitive(
+                    "Base",
+                    PrimitiveKind::String,
+                    None,
+                    ConstraintSet {
+                        patterns: base_patterns.into_iter().map(str::to_owned).collect(),
+                        ..ConstraintSet::default()
+                    },
+                ),
+                restricted_primitive(
+                    "Derived",
+                    PrimitiveKind::String,
+                    Some("Base"),
+                    ConstraintSet {
+                        patterns: derived_patterns.into_iter().map(str::to_owned).collect(),
+                        ..ConstraintSet::default()
+                    },
+                ),
+            ])
+            .validate();
+            assert_eq!(
+                result.is_ok(),
+                valid,
+                "unexpected pattern implication result"
+            );
+        }
+    }
+
+    #[test]
+    fn named_multilevel_restrictions_validate_against_immediate_base() {
+        let bounds = |min, max| ConstraintSet {
+            min_inclusive: Some(integer(min)),
+            max_inclusive: Some(integer(max)),
+            ..ConstraintSet::default()
+        };
+        let base = restricted_primitive("Base", PrimitiveKind::SignedInteger, None, bounds(0, 100));
+        let middle = restricted_primitive(
+            "Middle",
+            PrimitiveKind::SignedInteger,
+            Some("Base"),
+            bounds(10, 90),
+        );
+        schema(vec![
+            base.clone(),
+            middle.clone(),
+            restricted_primitive(
+                "Leaf",
+                PrimitiveKind::SignedInteger,
+                Some("Middle"),
+                bounds(20, 80),
+            ),
+        ])
+        .validate()
+        .expect("transitively tighter immediate restrictions should be valid");
+
+        assert_named_restriction_weakens_base(
+            vec![
+                base,
+                middle,
+                restricted_primitive(
+                    "Leaf",
+                    PrimitiveKind::SignedInteger,
+                    Some("Middle"),
+                    bounds(0, 95),
+                ),
+            ],
+            "Leaf",
+            "Middle",
         );
     }
 

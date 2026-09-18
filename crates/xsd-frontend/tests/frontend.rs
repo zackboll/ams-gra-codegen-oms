@@ -1238,6 +1238,8 @@ fn named_restrictions_resolve_forward_multilevel_constraints_without_reordering(
     );
     let ir = load_schema_document(&path).unwrap();
     fs::remove_file(path).unwrap();
+    ir.validate()
+        .expect("frontend-normalized named restrictions should be valid IR");
     assert_eq!(
         ir.types
             .iter()

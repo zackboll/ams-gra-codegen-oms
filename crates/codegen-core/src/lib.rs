@@ -213,7 +213,8 @@ pub trait Backend {
 mod tests {
     use super::*;
     use ams_gra_oms_ir::{
-        Cardinality, ConstraintSet, FieldDecl, NamespaceDecl, PrimitiveKind, SourceRef,
+        Cardinality, ConstraintSet, FieldDecl, NamespaceDecl, NumericValue, PrimitiveKind,
+        SourceRef,
     };
 
     const NS: &str = "urn:test";
@@ -337,6 +338,26 @@ mod tests {
         assert_eq!(
             names(&schema(vec![leaf, middle, scalar("Base")])).unwrap(),
             ["Base", "Middle", "Leaf"]
+        );
+    }
+
+    #[test]
+    fn malformed_named_restriction_is_rejected_before_planning() {
+        let mut base = declaration("Base", TypeKind::Primitive(PrimitiveKind::SignedInteger));
+        base.constraints.min_inclusive = Some(NumericValue::Integer(0));
+        base.constraints.max_inclusive = Some(NumericValue::Integer(100));
+        let mut derived = declaration("Derived", TypeKind::Primitive(PrimitiveKind::SignedInteger));
+        derived.base_type = Some(named("Base"));
+        derived.constraints.min_inclusive = Some(NumericValue::Integer(-50));
+        derived.constraints.max_inclusive = Some(NumericValue::Integer(500));
+
+        let error = plan_type_declarations(&schema(vec![base, derived])).unwrap_err();
+        assert!(
+            error.message.starts_with("invalid schema IR: ")
+                && error.message.contains("effective constraints")
+                && error.message.contains("{urn:test}Derived")
+                && error.message.contains("{urn:test}Base"),
+            "{error}"
         );
     }
 

@@ -137,6 +137,13 @@ inherited, and local typed numeric ranges are intersected, as are exact/minimum/
 maximum lengths. `TypeDecl.source` identifies the derived declaration; facet-
 level provenance is not modeled.
 
+Because constraints are effective, each normalized derived declaration must
+semantically imply the effective constraints of its immediate named base.
+`SchemaIr::validate()` enforces this independently of the frontend: numeric
+bounds preserve domain and inclusive/exclusive strength, effective length
+intervals remain subsets, and an inherited pattern vector cannot be dropped or
+changed. This validates normalization without recomputing it.
+
 Cycles and named bases that are structural, enumeration, or change primitive
 family are invalid. A derived restriction without local patterns inherits the
 base pattern vector. If both levels contain patterns, normalization fails closed
