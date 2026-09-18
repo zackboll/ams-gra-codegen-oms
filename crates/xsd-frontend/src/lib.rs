@@ -108,11 +108,11 @@ impl std::error::Error for FrontendError {}
 
 /// Parse and normalize one XSD document into semantic IR.
 ///
-/// This API supports a target namespace, named simple types that are
-/// either integer restrictions with range bounds or string enumerations, and
-/// named complex types containing a sequence or choice of explicitly typed
-/// elements, and schema-level named and typed message
-/// elements. Imports and includes are explicit errors;
+/// This API supports the documented OMS/UCI subset: resolved scalar primitives,
+/// named scalar restrictions (including numeric, length, pattern, and whitespace
+/// facets), string enumerations, structural sequence/choice types and
+/// inheritance, and schema-level named and typed message elements. Imports and
+/// includes are explicit errors;
 /// use [`load_schema_set`] when dependencies should be traversed. Anonymous
 /// types and all other XSD constructs are also explicit errors. Schema-level
 /// `elementFormDefault` and `attributeFormDefault` are validated and discarded

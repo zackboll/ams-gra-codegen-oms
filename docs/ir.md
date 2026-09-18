@@ -98,7 +98,7 @@ ConstraintSet
 
 LexicalConstraintSet
   pattern_groups[]
-  white_space?: Preserve | Replace | Collapse
+  white_space?: Preserve | Replace | Collapse  # explicit derived facet only
 
 PatternGroup
   alternatives[]: PatternExpression
@@ -172,9 +172,11 @@ decimal arithmetic and is not an umbrella numeric kind. `Float32` and
 `Decimal`. The floating kinds do not carry integer min/max constraints, and the
 IR distinction leaves room for XSD floating values such as `NaN`, `INF`,
 `-INF`, and negative zero without silently normalizing them away.
-Floating-point range facets remain unsupported because the current numeric
-constraint fields are `i128`; the IR neither approximates those bounds nor
-stores their lexical spellings as a substitute semantic model.
+`NumericValue::Integer(i128)` stores integral bounds, while `Float32` and
+`Float64` wrappers store width-specific floating bounds. Range validation uses
+semantic ordering only within the same numeric domain. The backends still fail
+closed for constrained floating declarations because generation support for
+such constraints has not been implemented.
 
 Temporal primitive kinds are similarly distinct: `DateTime`, `Time`, and
 `Duration` model separate XSD value spaces. A temporal pattern remains a lexical
@@ -203,10 +205,25 @@ be interpreted as Rust regex, PCRE, ECMAScript, or POSIX syntax.
 `WhiteSpacePolicy` stores the three XSD operations: `Preserve` leaves text
 unchanged; `Replace` maps tab, line feed, and carriage return to spaces; and
 `Collapse` additionally strips leading/trailing spaces and coalesces runs.
-Whitespace processing precedes length and pattern evaluation. Restriction may
-only tighten in the order `Preserve < Replace < Collapse`; normalized named
-restrictions store the effective policy. Thus whitespace, length, and pattern
-constraints coexist rather than replacing one another.
+Every represented primitive has an intrinsic XSD policy: `String` uses
+restrictable `Preserve`; all other current `PrimitiveKind` variants use fixed
+`Collapse`. `PrimitiveKind::intrinsic_white_space_policy()` and
+`intrinsic_white_space_is_fixed()` expose that baseline.
+
+`LexicalConstraintSet.white_space` stores only an explicit derived
+`xs:whiteSpace` facet. `None` means “no explicit derived facet is stored here,”
+not “no whitespace normalization exists.” `effective_white_space(primitive)`
+selects the explicit policy when present and otherwise the primitive baseline.
+Validation rejects an explicit policy that contradicts a fixed baseline, and
+String restrictions may tighten only in the order
+`Preserve < Replace < Collapse`. Named-restriction implication compares these
+effective policies, including when either explicit field is `None`.
+
+XML Schema applies effective whitespace normalization before length and pattern
+evaluation. Pattern groups do not duplicate the intrinsic policy: a future
+runtime obtains the primitive kind, computes its effective whitespace policy,
+and then interprets the retained XML Schema pattern groups. Thus whitespace,
+length, and pattern constraints coexist rather than replacing one another.
 
 For `Binary`, length bounds count octets, as specified for XSD `hexBinary`;
 they never count hexadecimal lexical characters. Task 016 preserves observed

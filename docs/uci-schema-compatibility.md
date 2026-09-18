@@ -816,6 +816,12 @@ length, and pattern constraints are all retained simultaneously. Task 016 only
 enables whitespace on the observed String family and patterns on observed
 String, SignedInteger, DateTime, and Time families.
 
+A Task 016 corrective pass made the primitive intrinsic policy explicit in the
+IR contract without materializing it into every `ConstraintSet`: String starts
+at restrictable `preserve`, while the other represented primitives use fixed
+`collapse`. An absent explicit facet still inherits that baseline. This did not
+change the normalized UCI 2.5 or 2.6 counts or results below.
+
 Ada, Rust, and C++ have no XML Schema regex or whitespace runtime. Each backend
 rejects any declaration carrying lexical constraints before rendering, including
 String, SignedInteger, DateTime, and Time patterns and String whitespace. No
