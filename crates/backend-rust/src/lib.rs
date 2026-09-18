@@ -2,7 +2,8 @@
 
 use ams_gra_oms_codegen_core::{Backend, CodegenError, GeneratedFile, plan_type_declarations};
 use ams_gra_oms_ir::{
-    Cardinality, ConstraintSet, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef, TypeRefTarget,
+    Cardinality, ConstraintSet, NumericValue, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
+    TypeRefTarget,
 };
 use std::fmt::Write as _;
 use std::path::PathBuf;
@@ -155,6 +156,16 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
         }
         if matches!(
             declaration.kind,
+            TypeKind::Primitive(PrimitiveKind::Float32 | PrimitiveKind::Float64)
+        ) && has_numeric_constraints(&declaration.constraints)
+        {
+            return unsupported(format!(
+                "floating constraints on {}",
+                declaration.name.local_name
+            ));
+        }
+        if matches!(
+            declaration.kind,
             TypeKind::Record { .. } | TypeKind::Choice { .. }
         ) && matches!(
             declaration.base_type.as_ref().map(|base| &base.target),
@@ -180,6 +191,13 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
     Ok(())
 }
 
+fn has_numeric_constraints(constraints: &ConstraintSet) -> bool {
+    constraints.min_inclusive.is_some()
+        || constraints.max_inclusive.is_some()
+        || constraints.min_exclusive.is_some()
+        || constraints.max_exclusive.is_some()
+}
+
 fn rust_type(type_ref: &TypeRef) -> Result<String, CodegenError> {
     match &type_ref.target {
         TypeRefTarget::Primitive(PrimitiveKind::SignedInteger) => Ok("i64".to_owned()),
@@ -191,7 +209,7 @@ fn rust_type(type_ref: &TypeRef) -> Result<String, CodegenError> {
 
 fn inclusive_bounds(constraints: &ConstraintSet, name: &str) -> Result<(i128, i128), CodegenError> {
     match (constraints.min_inclusive, constraints.max_inclusive) {
-        (Some(min), Some(max))
+        (Some(NumericValue::Integer(min)), Some(NumericValue::Integer(max)))
             if min <= max && i64::try_from(min).is_ok() && i64::try_from(max).is_ok() =>
         {
             Ok((min, max))
@@ -358,6 +376,17 @@ mod tests {
                 "unsupported Rust IR construct: type reference Primitive({kind:?})"
             )));
         }
+
+        let mut schema = track_schema();
+        schema.types[0].kind = TypeKind::Primitive(PrimitiveKind::Float64);
+        schema.types[0].constraints = ConstraintSet {
+            min_inclusive: Some(NumericValue::Float64(
+                ams_gra_oms_ir::Float64Value::from_value(0.0),
+            )),
+            ..ConstraintSet::default()
+        };
+        let error = generate(&schema).expect_err("constrained float must remain unsupported");
+        assert!(error.message.contains("unsupported Rust IR construct"));
     }
 
     #[test]

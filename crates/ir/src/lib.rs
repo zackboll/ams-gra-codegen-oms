@@ -3,6 +3,7 @@
 //! This crate intentionally contains no XML/XSD parser logic and no
 //! language-specific code-generation policy.
 
+use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
@@ -147,6 +148,7 @@ impl SchemaIr {
         }
 
         validate_structural_inheritance(self)?;
+        validate_named_simple_restrictions(self)?;
 
         for message in &self.messages {
             validate_reference(
@@ -190,6 +192,12 @@ pub enum ValidationError {
     ContradictoryNumericRange {
         owner: String,
     },
+    IncomparableNumericRange {
+        owner: String,
+    },
+    NonFiniteNumericRange {
+        owner: String,
+    },
     ContradictoryLengthConstraints {
         owner: String,
     },
@@ -207,6 +215,13 @@ pub enum ValidationError {
         base: QualifiedName,
     },
     InheritanceCycle {
+        names: Vec<QualifiedName>,
+    },
+    InvalidNamedRestrictionBase {
+        name: QualifiedName,
+        base: QualifiedName,
+    },
+    NamedRestrictionCycle {
         names: Vec<QualifiedName>,
     },
 }
@@ -254,6 +269,12 @@ impl fmt::Display for ValidationError {
             Self::ContradictoryNumericRange { owner } => {
                 write!(f, "contradictory numeric constraints on {owner}")
             }
+            Self::IncomparableNumericRange { owner } => {
+                write!(f, "incomparable numeric range domains on {owner}")
+            }
+            Self::NonFiniteNumericRange { owner } => {
+                write!(f, "non-finite floating bound on {owner}")
+            }
             Self::ContradictoryLengthConstraints { owner } => {
                 write!(f, "contradictory length constraints on {owner}")
             }
@@ -277,6 +298,21 @@ impl fmt::Display for ValidationError {
             Self::InheritanceCycle { names } => write!(
                 f,
                 "complex-type inheritance cycle: {}",
+                names
+                    .iter()
+                    .map(format_name)
+                    .collect::<Vec<_>>()
+                    .join(" -> ")
+            ),
+            Self::InvalidNamedRestrictionBase { name, base } => write!(
+                f,
+                "named simple restriction {} has invalid base {}",
+                format_name(name),
+                format_name(base)
+            ),
+            Self::NamedRestrictionCycle { names } => write!(
+                f,
+                "named simple-restriction cycle: {}",
                 names
                     .iter()
                     .map(format_name)
@@ -348,6 +384,51 @@ fn validate_structural_inheritance(schema: &SchemaIr) -> Result<(), ValidationEr
     Ok(())
 }
 
+fn validate_named_simple_restrictions(schema: &SchemaIr) -> Result<(), ValidationError> {
+    let declarations = schema
+        .types
+        .iter()
+        .map(|declaration| (&declaration.name, declaration))
+        .collect::<BTreeMap<_, _>>();
+    let mut bases = BTreeMap::new();
+    for declaration in &schema.types {
+        let TypeKind::Primitive(kind) = declaration.kind else {
+            continue;
+        };
+        let Some(TypeRef {
+            target: TypeRefTarget::Named(base),
+        }) = &declaration.base_type
+        else {
+            continue;
+        };
+        let base_declaration = declarations[base];
+        if !matches!(base_declaration.kind, TypeKind::Primitive(base_kind) if base_kind == kind) {
+            return Err(ValidationError::InvalidNamedRestrictionBase {
+                name: declaration.name.clone(),
+                base: base.clone(),
+            });
+        }
+        bases.insert(declaration.name.clone(), base.clone());
+    }
+
+    for declaration in &schema.types {
+        let mut positions = BTreeMap::new();
+        let mut path = Vec::new();
+        let mut current = declaration.name.clone();
+        while let Some(base) = bases.get(&current) {
+            positions.insert(current.clone(), path.len());
+            path.push(current.clone());
+            if let Some(&start) = positions.get(base) {
+                let mut names = path[start..].to_vec();
+                names.push(base.clone());
+                return Err(ValidationError::NamedRestrictionCycle { names });
+            }
+            current = base.clone();
+        }
+    }
+    Ok(())
+}
+
 fn validate_fields(
     fields: &[FieldDecl],
     declared_types: &BTreeSet<QualifiedName>,
@@ -393,6 +474,39 @@ fn validate_cardinality(cardinality: Cardinality, owner: &str) -> Result<(), Val
 }
 
 fn validate_constraints(constraints: &ConstraintSet, owner: &str) -> Result<(), ValidationError> {
+    let numeric_values = [
+        constraints.min_inclusive,
+        constraints.min_exclusive,
+        constraints.max_inclusive,
+        constraints.max_exclusive,
+    ];
+    let mut domain = None;
+    for value in numeric_values.into_iter().flatten() {
+        if matches!(
+            value,
+            NumericValue::Float32(value) if !value.value().is_finite()
+        ) || matches!(
+            value,
+            NumericValue::Float64(value) if !value.value().is_finite()
+        ) {
+            return Err(ValidationError::NonFiniteNumericRange {
+                owner: owner.to_owned(),
+            });
+        }
+        let current = match value {
+            NumericValue::Integer(_) => 0,
+            NumericValue::Float32(_) => 1,
+            NumericValue::Float64(_) => 2,
+        };
+        if domain
+            .replace(current)
+            .is_some_and(|previous| previous != current)
+        {
+            return Err(ValidationError::IncomparableNumericRange {
+                owner: owner.to_owned(),
+            });
+        }
+    }
     let lower_bounds = [
         constraints.min_inclusive.map(|value| (value, false)),
         constraints.min_exclusive.map(|value| (value, true)),
@@ -403,7 +517,14 @@ fn validate_constraints(constraints: &ConstraintSet, owner: &str) -> Result<(), 
     ];
     for (lower, lower_exclusive) in lower_bounds.into_iter().flatten() {
         for (upper, upper_exclusive) in upper_bounds.into_iter().flatten() {
-            if lower > upper || (lower == upper && (lower_exclusive || upper_exclusive)) {
+            let ordering = lower.semantic_cmp(&upper).ok_or_else(|| {
+                ValidationError::IncomparableNumericRange {
+                    owner: owner.to_owned(),
+                }
+            })?;
+            if ordering == Ordering::Greater
+                || (ordering == Ordering::Equal && (lower_exclusive || upper_exclusive))
+            {
                 return Err(ValidationError::ContradictoryNumericRange {
                     owner: owner.to_owned(),
                 });
@@ -493,6 +614,75 @@ pub enum PrimitiveKind {
     Duration,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Float32Value(u32);
+
+impl Float32Value {
+    #[must_use]
+    pub const fn from_bits(bits: u32) -> Self {
+        Self(bits)
+    }
+
+    #[must_use]
+    pub fn from_value(value: f32) -> Self {
+        Self(value.to_bits())
+    }
+
+    #[must_use]
+    pub const fn bits(self) -> u32 {
+        self.0
+    }
+
+    #[must_use]
+    pub fn value(self) -> f32 {
+        f32::from_bits(self.0)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Float64Value(u64);
+
+impl Float64Value {
+    #[must_use]
+    pub const fn from_bits(bits: u64) -> Self {
+        Self(bits)
+    }
+
+    #[must_use]
+    pub fn from_value(value: f64) -> Self {
+        Self(value.to_bits())
+    }
+
+    #[must_use]
+    pub const fn bits(self) -> u64 {
+        self.0
+    }
+
+    #[must_use]
+    pub fn value(self) -> f64 {
+        f64::from_bits(self.0)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum NumericValue {
+    Integer(i128),
+    Float32(Float32Value),
+    Float64(Float64Value),
+}
+
+impl NumericValue {
+    #[must_use]
+    pub fn semantic_cmp(&self, other: &Self) -> Option<Ordering> {
+        match (*self, *other) {
+            (Self::Integer(left), Self::Integer(right)) => Some(left.cmp(&right)),
+            (Self::Float32(left), Self::Float32(right)) => left.value().partial_cmp(&right.value()),
+            (Self::Float64(left), Self::Float64(right)) => left.value().partial_cmp(&right.value()),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumVariant {
     pub wire_value: String,
@@ -566,10 +756,10 @@ impl Cardinality {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ConstraintSet {
-    pub min_inclusive: Option<i128>,
-    pub max_inclusive: Option<i128>,
-    pub min_exclusive: Option<i128>,
-    pub max_exclusive: Option<i128>,
+    pub min_inclusive: Option<NumericValue>,
+    pub max_inclusive: Option<NumericValue>,
+    pub min_exclusive: Option<NumericValue>,
+    pub max_exclusive: Option<NumericValue>,
     pub length: Option<u64>,
     pub min_length: Option<u64>,
     pub max_length: Option<u64>,
@@ -847,11 +1037,67 @@ mod tests {
     #[test]
     fn rejects_contradictory_numeric_range() {
         let mut value = declaration("Value", TypeKind::Primitive(PrimitiveKind::SignedInteger));
-        value.constraints.min_inclusive = Some(10);
-        value.constraints.max_exclusive = Some(10);
+        value.constraints.min_inclusive = Some(NumericValue::Integer(10));
+        value.constraints.max_exclusive = Some(NumericValue::Integer(10));
         assert!(matches!(
             schema(vec![value]).validate(),
             Err(ValidationError::ContradictoryNumericRange { .. })
+        ));
+    }
+
+    #[test]
+    fn floating_numeric_values_are_width_aware_and_deterministic() {
+        let float_a = NumericValue::Float32(Float32Value::from_value(1.5));
+        let float_b = NumericValue::Float32(Float32Value::from_value(1.5));
+        let double = NumericValue::Float64(Float64Value::from_value(1.5));
+        assert_eq!(float_a, float_b);
+        assert_ne!(float_a, double);
+        assert_eq!(
+            NumericValue::Float64(Float64Value::from_value(-1.0))
+                .semantic_cmp(&NumericValue::Float64(Float64Value::from_value(2.0))),
+            Some(Ordering::Less)
+        );
+        assert_eq!(float_a.semantic_cmp(&double), None);
+    }
+
+    #[test]
+    fn rejects_contradictory_floating_ranges_and_mixed_domains() {
+        for (kind, lower, upper) in [
+            (
+                PrimitiveKind::Float64,
+                NumericValue::Float64(Float64Value::from_value(10.0)),
+                NumericValue::Float64(Float64Value::from_value(5.0)),
+            ),
+            (
+                PrimitiveKind::Float32,
+                NumericValue::Float32(Float32Value::from_value(2.0)),
+                NumericValue::Float32(Float32Value::from_value(2.0)),
+            ),
+        ] {
+            let mut value = declaration("Value", TypeKind::Primitive(kind));
+            value.constraints.min_inclusive = Some(lower);
+            value.constraints.max_exclusive = Some(upper);
+            assert!(matches!(
+                schema(vec![value]).validate(),
+                Err(ValidationError::ContradictoryNumericRange { .. })
+            ));
+        }
+
+        let mut mixed = declaration("Mixed", TypeKind::Primitive(PrimitiveKind::Float64));
+        mixed.constraints.min_inclusive = Some(NumericValue::Integer(0));
+        mixed.constraints.max_inclusive =
+            Some(NumericValue::Float64(Float64Value::from_value(1.0)));
+        assert!(matches!(
+            schema(vec![mixed]).validate(),
+            Err(ValidationError::IncomparableNumericRange { .. })
+        ));
+
+        let mut nan = declaration("NaN", TypeKind::Primitive(PrimitiveKind::Float64));
+        nan.constraints.min_inclusive =
+            Some(NumericValue::Float64(Float64Value::from_value(f64::NAN)));
+        assert!(matches!(
+            schema(vec![nan]).validate(),
+            Err(ValidationError::NonFiniteNumericRange { .. })
         ));
     }
 
@@ -935,6 +1181,30 @@ mod tests {
             schema(vec![base, derived]).validate(),
             Err(ValidationError::NonStructuralBase { .. })
         ));
+    }
+
+    #[test]
+    fn rejects_structural_base_for_named_simple_restriction() {
+        let base = declaration("Base", TypeKind::Record { fields: Vec::new() });
+        let mut derived = declaration("Derived", TypeKind::Primitive(PrimitiveKind::String));
+        derived.base_type = Some(named("Base"));
+        assert!(matches!(
+            schema(vec![base, derived]).validate(),
+            Err(ValidationError::InvalidNamedRestrictionBase { .. })
+        ));
+    }
+
+    #[test]
+    fn rejects_named_simple_restriction_cycle_deterministically() {
+        let mut a = declaration("A", TypeKind::Primitive(PrimitiveKind::String));
+        let mut b = declaration("B", TypeKind::Primitive(PrimitiveKind::String));
+        a.base_type = Some(named("B"));
+        b.base_type = Some(named("A"));
+        let error = schema(vec![a, b]).validate().unwrap_err();
+        assert_eq!(
+            error.to_string(),
+            "named simple-restriction cycle: {urn:test}A -> {urn:test}B -> {urn:test}A"
+        );
     }
 
     #[test]

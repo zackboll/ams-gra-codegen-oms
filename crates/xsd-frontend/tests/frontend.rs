@@ -1,4 +1,7 @@
-use ams_gra_oms_ir::{Cardinality, PrimitiveKind, QualifiedName, TypeKind, TypeRefTarget};
+use ams_gra_oms_ir::{
+    Cardinality, Float32Value, Float64Value, NumericValue, PrimitiveKind, QualifiedName, TypeKind,
+    TypeRefTarget,
+};
 use ams_gra_oms_xsd_frontend::{FrontendError, load_schema_document, load_schema_set};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -30,8 +33,14 @@ fn normalizes_the_track_schema_into_language_neutral_ir() {
         track_id.kind,
         TypeKind::Primitive(PrimitiveKind::SignedInteger)
     );
-    assert_eq!(track_id.constraints.min_inclusive, Some(1));
-    assert_eq!(track_id.constraints.max_inclusive, Some(65_535));
+    assert_eq!(
+        track_id.constraints.min_inclusive,
+        Some(NumericValue::Integer(1))
+    );
+    assert_eq!(
+        track_id.constraints.max_inclusive,
+        Some(NumericValue::Integer(65_535))
+    );
     assert!(track_id.source.line.is_some());
 
     let quality = ir
@@ -166,8 +175,14 @@ fn normalizes_complex_inheritance_without_flattening() {
         fields[0].documentation.as_deref(),
         Some("Leaf field documentation.")
     );
-    assert_eq!(fields[0].constraints.min_inclusive, Some(-2_147_483_648));
-    assert_eq!(fields[0].constraints.max_inclusive, Some(2_147_483_647));
+    assert_eq!(
+        fields[0].constraints.min_inclusive,
+        Some(NumericValue::Integer(-2_147_483_648))
+    );
+    assert_eq!(
+        fields[0].constraints.max_inclusive,
+        Some(NumericValue::Integer(2_147_483_647))
+    );
     assert!(
         !fields
             .iter()
@@ -345,7 +360,10 @@ fn uci_type_versions_are_validated_and_discarded() {
     fs::remove_file(path).expect("temporary schema should be removable");
 
     assert_eq!(versioned, unversioned);
-    assert_eq!(versioned.types[0].constraints.min_inclusive, Some(1));
+    assert_eq!(
+        versioned.types[0].constraints.min_inclusive,
+        Some(NumericValue::Integer(1))
+    );
     assert_eq!(
         versioned.types[0].documentation.as_deref(),
         Some("Count documentation.")
@@ -441,8 +459,14 @@ fn annotations_normalize_into_existing_ir_documentation_fields() {
         ir.types[0].documentation.as_deref(),
         Some("A formatted count type.\n\nSecond paragraph.")
     );
-    assert_eq!(ir.types[0].constraints.min_inclusive, Some(1));
-    assert_eq!(ir.types[0].constraints.max_inclusive, Some(4));
+    assert_eq!(
+        ir.types[0].constraints.min_inclusive,
+        Some(NumericValue::Integer(1))
+    );
+    assert_eq!(
+        ir.types[0].constraints.max_inclusive,
+        Some(NumericValue::Integer(4))
+    );
 
     let TypeKind::Enumeration { variants } = &ir.types[1].kind else {
         panic!("State should be an enumeration");
@@ -826,11 +850,11 @@ fn normalizes_choices_scalars_integer_ranges_and_unbounded_cardinality() {
     );
     assert_eq!(
         alternatives[0].constraints.min_inclusive,
-        Some(-2_147_483_648)
+        Some(NumericValue::Integer(-2_147_483_648))
     );
     assert_eq!(
         alternatives[0].constraints.max_inclusive,
-        Some(2_147_483_647)
+        Some(NumericValue::Integer(2_147_483_647))
     );
     assert_eq!(
         alternatives[1].cardinality,
@@ -867,16 +891,36 @@ fn normalizes_choices_scalars_integer_ranges_and_unbounded_cardinality() {
         panic!("expected record")
     };
     let expected = [
-        (PrimitiveKind::SignedInteger, Some(-128), Some(127)),
-        (PrimitiveKind::SignedInteger, Some(-32_768), Some(32_767)),
         (
             PrimitiveKind::SignedInteger,
-            Some(-9_223_372_036_854_775_808),
-            Some(9_223_372_036_854_775_807),
+            Some(NumericValue::Integer(-128)),
+            Some(NumericValue::Integer(127)),
         ),
-        (PrimitiveKind::UnsignedInteger, Some(0), Some(255)),
-        (PrimitiveKind::UnsignedInteger, Some(0), Some(65_535)),
-        (PrimitiveKind::UnsignedInteger, Some(0), Some(4_294_967_295)),
+        (
+            PrimitiveKind::SignedInteger,
+            Some(NumericValue::Integer(-32_768)),
+            Some(NumericValue::Integer(32_767)),
+        ),
+        (
+            PrimitiveKind::SignedInteger,
+            Some(NumericValue::Integer(-9_223_372_036_854_775_808)),
+            Some(NumericValue::Integer(9_223_372_036_854_775_807)),
+        ),
+        (
+            PrimitiveKind::UnsignedInteger,
+            Some(NumericValue::Integer(0)),
+            Some(NumericValue::Integer(255)),
+        ),
+        (
+            PrimitiveKind::UnsignedInteger,
+            Some(NumericValue::Integer(0)),
+            Some(NumericValue::Integer(65_535)),
+        ),
+        (
+            PrimitiveKind::UnsignedInteger,
+            Some(NumericValue::Integer(0)),
+            Some(NumericValue::Integer(4_294_967_295)),
+        ),
         (PrimitiveKind::Boolean, None, None),
         (PrimitiveKind::DateTime, None, None),
         (PrimitiveKind::Binary, None, None),
@@ -905,7 +949,10 @@ fn normalizes_choices_scalars_integer_ranges_and_unbounded_cardinality() {
             port.constraints.min_inclusive,
             port.constraints.max_inclusive
         ),
-        (Some(1), Some(65_535))
+        (
+            Some(NumericValue::Integer(1)),
+            Some(NumericValue::Integer(65_535))
+        )
     );
     let positive = ir
         .types
@@ -917,7 +964,10 @@ fn normalizes_choices_scalars_integer_ranges_and_unbounded_cardinality() {
             positive.constraints.min_exclusive,
             positive.constraints.max_inclusive
         ),
-        (Some(0), Some(1000))
+        (
+            Some(NumericValue::Integer(0)),
+            Some(NumericValue::Integer(1000))
+        )
     );
     assert_eq!(ir, load_schema_document(&path).unwrap());
 }
@@ -1095,6 +1145,216 @@ fn zero_facet_floating_restrictions_normalize_without_new_constraints() {
 }
 
 #[test]
+fn normalizes_floating_ranges_with_width_correct_values() {
+    for (label, base, facets, expected) in [
+        (
+            "double-integer-looking",
+            "xs:double",
+            r#"<xs:minInclusive value="-6378237"/>"#,
+            (
+                Some(NumericValue::Float64(Float64Value::from_value(-6378237.0))),
+                None,
+                None,
+            ),
+        ),
+        (
+            "double-fraction",
+            "xs:double",
+            r#"<xs:minInclusive value="-1.5"/><xs:maxInclusive value="2.25"/>"#,
+            (
+                Some(NumericValue::Float64(Float64Value::from_value(-1.5))),
+                Some(NumericValue::Float64(Float64Value::from_value(2.25))),
+                None,
+            ),
+        ),
+        (
+            "double-exclusive-zero",
+            "xs:double",
+            r#"<xs:minExclusive value="0.0"/>"#,
+            (
+                None,
+                None,
+                Some(NumericValue::Float64(Float64Value::from_value(0.0))),
+            ),
+        ),
+        (
+            "float-unit",
+            "xs:float",
+            r#"<xs:minInclusive value="0"/><xs:maxInclusive value="1"/>"#,
+            (
+                Some(NumericValue::Float32(Float32Value::from_value(0.0))),
+                Some(NumericValue::Float32(Float32Value::from_value(1.0))),
+                None,
+            ),
+        ),
+    ] {
+        let path = write_temporary_schema(
+            label,
+            &format!(
+                r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:floating-range">
+  <xs:simpleType name="Value"><xs:restriction base="{base}">{facets}</xs:restriction></xs:simpleType>
+</xs:schema>
+"#
+            ),
+        );
+        let declaration = load_schema_document(&path).unwrap().types.remove(0);
+        fs::remove_file(path).unwrap();
+        assert_eq!(
+            (
+                declaration.constraints.min_inclusive,
+                declaration.constraints.max_inclusive,
+                declaration.constraints.min_exclusive,
+            ),
+            expected
+        );
+    }
+
+    let path = write_temporary_schema(
+        "equivalent-floating-spellings",
+        r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:floating-spellings">
+  <xs:simpleType name="IntegerSpelling"><xs:restriction base="xs:double"><xs:minInclusive value="0"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="DecimalSpelling"><xs:restriction base="xs:double"><xs:minInclusive value="0.0"/></xs:restriction></xs:simpleType>
+</xs:schema>
+"#,
+    );
+    let ir = load_schema_document(&path).unwrap();
+    fs::remove_file(path).unwrap();
+    assert_eq!(
+        ir.types[0].constraints.min_inclusive,
+        ir.types[1].constraints.min_inclusive
+    );
+}
+
+#[test]
+fn named_restrictions_resolve_forward_multilevel_constraints_without_reordering() {
+    let path = write_temporary_schema(
+        "named-restrictions",
+        r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:t="urn:named" targetNamespace="urn:named">
+  <xs:simpleType name="Leaf"><xs:restriction base="t:Middle"><xs:maxInclusive value="100.0"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Middle"><xs:restriction base="t:Root"/></xs:simpleType>
+  <xs:simpleType name="Root"><xs:restriction base="xs:double"><xs:minInclusive value="0.0"/></xs:restriction></xs:simpleType>
+</xs:schema>
+"#,
+    );
+    let ir = load_schema_document(&path).unwrap();
+    fs::remove_file(path).unwrap();
+    assert_eq!(
+        ir.types
+            .iter()
+            .map(|declaration| declaration.name.local_name.as_str())
+            .collect::<Vec<_>>(),
+        ["Leaf", "Middle", "Root"]
+    );
+    assert_eq!(
+        ir.types[0].kind,
+        TypeKind::Primitive(PrimitiveKind::Float64)
+    );
+    assert_eq!(
+        ir.types[0].base_type.as_ref().unwrap().target,
+        TypeRefTarget::Named(QualifiedName::new("urn:named", "Middle"))
+    );
+    assert_eq!(
+        ir.types[0].constraints.min_inclusive,
+        Some(NumericValue::Float64(Float64Value::from_value(0.0)))
+    );
+    assert_eq!(
+        ir.types[0].constraints.max_inclusive,
+        Some(NumericValue::Float64(Float64Value::from_value(100.0)))
+    );
+}
+
+#[test]
+fn named_restrictions_intersect_lengths_and_reject_cycles_or_structural_bases() {
+    let path = write_temporary_schema(
+        "named-length",
+        r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:t="urn:named-length" targetNamespace="urn:named-length">
+  <xs:simpleType name="Base"><xs:restriction base="xs:string"><xs:minLength value="4"/><xs:maxLength value="32"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Derived"><xs:restriction base="t:Base"><xs:length value="8"/><xs:maxLength value="16"/></xs:restriction></xs:simpleType>
+</xs:schema>
+"#,
+    );
+    let ir = load_schema_document(&path).unwrap();
+    fs::remove_file(path).unwrap();
+    assert_eq!(ir.types[1].constraints.length, Some(8));
+    assert_eq!(ir.types[1].constraints.min_length, Some(4));
+    assert_eq!(ir.types[1].constraints.max_length, Some(16));
+
+    for (label, declarations, expected) in [
+        (
+            "named-self-cycle",
+            r#"<xs:simpleType name="A"><xs:restriction base="t:A"/></xs:simpleType>"#,
+            "named simple-restriction cycle",
+        ),
+        (
+            "named-multi-cycle",
+            r#"<xs:simpleType name="A"><xs:restriction base="t:B"/></xs:simpleType><xs:simpleType name="B"><xs:restriction base="t:A"/></xs:simpleType>"#,
+            "named simple-restriction cycle",
+        ),
+        (
+            "named-structural-base",
+            r#"<xs:simpleType name="A"><xs:restriction base="t:B"/></xs:simpleType><xs:complexType name="B"><xs:sequence/></xs:complexType>"#,
+            "non-simple base",
+        ),
+    ] {
+        let path = write_temporary_schema(
+            label,
+            &format!(
+                r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:t="urn:named-invalid" targetNamespace="urn:named-invalid">{declarations}</xs:schema>"#
+            ),
+        );
+        let error = load_schema_document(&path).expect_err(label);
+        fs::remove_file(path).unwrap();
+        assert!(error.to_string().contains(expected), "{error}");
+    }
+}
+
+#[test]
+fn floating_special_range_values_and_contradictions_fail_closed() {
+    for (label, base, facets, expected) in [
+        (
+            "double-nan",
+            "xs:double",
+            r#"<xs:minInclusive value="NaN"/>"#,
+            "finite",
+        ),
+        (
+            "double-inf",
+            "xs:double",
+            r#"<xs:maxInclusive value="INF"/>"#,
+            "finite",
+        ),
+        (
+            "double-inverted",
+            "xs:double",
+            r#"<xs:minInclusive value="10.0"/><xs:maxInclusive value="5.0"/>"#,
+            "contradictory",
+        ),
+        (
+            "double-exclusive-equal",
+            "xs:double",
+            r#"<xs:minExclusive value="1.0"/><xs:maxInclusive value="1.0"/>"#,
+            "contradictory",
+        ),
+        (
+            "float-exclusive-equal",
+            "xs:float",
+            r#"<xs:minInclusive value="2.0"/><xs:maxExclusive value="2.0"/>"#,
+            "contradictory",
+        ),
+    ] {
+        let path = write_temporary_schema(
+            label,
+            &format!(
+                r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:floating-invalid"><xs:simpleType name="Value"><xs:restriction base="{base}">{facets}</xs:restriction></xs:simpleType></xs:schema>"#
+            ),
+        );
+        let error = load_schema_document(&path).expect_err(label);
+        fs::remove_file(path).unwrap();
+        assert!(error.to_string().contains(expected), "{error}");
+    }
+}
+
+#[test]
 fn normalizes_temporal_and_scalar_restrictions() {
     let ir = load_schema_document(&fixture("scalar-restrictions.xsd"))
         .expect("scalar restriction fixture should parse");
@@ -1228,13 +1488,6 @@ fn scalar_restrictions_reject_invalid_lengths_and_lexical_facets() {
             r#"<xs:pattern value=".+Z"/>"#,
             "unsupported",
             "xs:pattern",
-        ),
-        (
-            "floating-range",
-            "xs:double",
-            r#"<xs:minInclusive value="0.5"/>"#,
-            "unsupported",
-            "xs:minInclusive",
         ),
         (
             "unexpected-length-child",

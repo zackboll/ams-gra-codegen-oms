@@ -685,3 +685,67 @@ floating-point constraint model that preserves XSD floating values and ordering
 without parsing into `i128`, rounding, truncating, mapping to decimal, or hiding
 the bound in an opaque string. That is the recommended next-task semantic
 problem and is intentionally not implemented in Task 014.
+
+## Task 015 floating and named-restriction evidence
+
+The complete reachable two-document sets were inventoried before implementation.
+Each release has the same direct built-in floating range-facet counts:
+
+| Primitive | minInclusive | maxInclusive | minExclusive | maxExclusive |
+|---|---:|---:|---:|---:|
+| `xs:float` / Float32 | 4 | 3 | 0 | 0 |
+| `xs:double` / Float64 | 10 | 7 | 1 | 0 |
+
+The Float32 bound lexicals are `-1.0`, `0.0`, `1.0`, `800`, and `1210`. The
+Float64 lexicals, including local facets on named floating restrictions, are
+`-6378237`, `-3.141592653589793238462`, `-1.570796326794896619232`, `-1`, `0`,
+`0.0`, `1`, `1.0`, `1.570796326794896619232`, `3.141592653589793238462`,
+`6.283185307179586476926`, `9`, and `400`. Neither release uses exponent
+notation, an explicit positive sign, negative zero, `INF`, `-INF`, or `NaN` in
+floating range facets.
+
+Constrained Float32 declarations are `IFF_BarometricPressureType`,
+`SpoilFactorType`, `UnitBallFloatType`, and `UnitIntervalFloatType`. Directly
+constrained Float64 declarations are `AltitudeBarometricType`, `AltitudeType`,
+the five angle range types, `DoubleNonNegativeType`, `DoublePositiveType`,
+`UnitBallDoubleType`, and `UnitIntervalDoubleType`. Named chains add
+`DecibelNonNegativeType(minInclusive=0)`,
+`GeomagneticApIndexType(maxInclusive=400)`, and
+`GeomagneticKpIndexType(maxInclusive=9)`.
+
+UCI 2.5 has 23 named bases: 15 ultimately Float64, seven UnsignedInteger, and
+one String; six are forward references. UCI 2.6 has 25: the same distribution
+plus one SignedInteger (`BytesType -> LongNonNegativeType`) and one Binary
+(`IFF_RegisterType -> HexBinaryType`), with seven forward references. Maximum
+depth including the primitive-root level is two. Other local named-chain shapes
+are integer `maxInclusive`, binary `length`, or zero facets. Neither graph has
+cycles, unresolved bases, named enumeration bases, family changes, inherited
+base patterns, or derived patterns.
+
+Task 015 stores floating bounds as width-specific IEEE semantic values. Pending
+named restrictions resolve after all documents load while preserving immediate
+`base_type`, ultimate primitive `kind`, declaration order, and effective numeric
+and length intersections. Contradictions, mixed domains, cycles, structural
+bases, non-finite ranges, and pattern-on-pattern inheritance fail closed.
+Backends continue to reject constrained floating declarations before rendering.
+
+The independent iterative probe progression was:
+
+```text
+UCI 2.5:
+  AltitudeBarometricType xs:double minInclusive at 111189:4
+  -> passed all floating ranges and named simple-restriction chains
+  -> STOP: DateTimeType xs:dateTime pattern=".+Z" at 117043:4
+
+UCI 2.6:
+  AltitudeBarometricType xs:double minInclusive at 111578:4
+  -> passed all floating ranges and named simple-restriction chains,
+     including HexBinaryType length and LongNonNegativeType inheritance
+  -> STOP: TimeType xs:time pattern=".+Z" at 145408:4
+```
+
+Both final blockers are temporal lexical restrictions with no surrounding
+facets. They require timezone/runtime lexical semantics outside Task 015; the
+frontend intentionally neither preserves them as value-space regexes nor starts
+Task 016. The release divergence is the first temporal owner reached:
+`DateTimeType` in 2.5 versus `TimeType` in 2.6.

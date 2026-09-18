@@ -329,6 +329,18 @@ mod tests {
     }
 
     #[test]
+    fn named_simple_restriction_bases_are_planned_base_first() {
+        let mut leaf = scalar("Leaf");
+        leaf.base_type = Some(named("Middle"));
+        let mut middle = scalar("Middle");
+        middle.base_type = Some(named("Base"));
+        assert_eq!(
+            names(&schema(vec![leaf, middle, scalar("Base")])).unwrap(),
+            ["Base", "Middle", "Leaf"]
+        );
+    }
+
+    #[test]
     fn unrelated_declarations_remain_stable() {
         let schema = schema(vec![
             scalar("First"),
