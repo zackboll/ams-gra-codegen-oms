@@ -1,0 +1,18 @@
+<schema:schema xmlns:schema="http://www.w3.org/2001/XMLSchema" xmlns:m="urn:choice-scalars" targetNamespace="urn:choice-scalars">
+  <schema:simpleType name="Port"><schema:restriction base="schema:unsignedShort"><schema:minInclusive value="1"/></schema:restriction></schema:simpleType>
+  <schema:simpleType name="PositiveInt"><schema:restriction base="schema:int"><schema:minExclusive value="0"/><schema:maxInclusive value="1000"/></schema:restriction></schema:simpleType>
+  <schema:complexType name="Named"><schema:sequence/></schema:complexType>
+  <schema:complexType name="Value">
+    <schema:annotation><schema:documentation>Choice documentation.</schema:documentation></schema:annotation>
+    <schema:choice>
+      <schema:element name="IntegerValue" type="schema:int"><schema:annotation><schema:documentation>Integer alternative.</schema:documentation></schema:annotation></schema:element>
+      <schema:element name="PreciseValue" type="schema:double" minOccurs="0" maxOccurs="unbounded" nillable="true"/>
+      <schema:element name="NamedValue" type="m:Named" maxOccurs="unbounded"/>
+    </schema:choice>
+  </schema:complexType>
+  <schema:complexType name="Scalars"><schema:sequence>
+    <schema:element name="Byte" type="schema:byte"/><schema:element name="Short" type="schema:short"/><schema:element name="Long" type="schema:long"/>
+    <schema:element name="UnsignedByte" type="schema:unsignedByte"/><schema:element name="UnsignedShort" type="schema:unsignedShort"/><schema:element name="UnsignedInt" type="schema:unsignedInt"/>
+    <schema:element name="Enabled" type="schema:boolean"/><schema:element name="Timestamp" type="schema:dateTime"/><schema:element name="Data" type="schema:hexBinary"/>
+  </schema:sequence></schema:complexType>
+</schema:schema>

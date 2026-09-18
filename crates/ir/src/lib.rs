@@ -115,6 +115,11 @@ impl SchemaIr {
                     validate_fields(fields, &declared_types, "record field")?;
                 }
                 TypeKind::Choice { alternatives } => {
+                    if alternatives.is_empty() {
+                        return Err(ValidationError::EmptyChoice {
+                            name: declaration.name.clone(),
+                        });
+                    }
                     validate_fields(alternatives, &declared_types, "choice alternative")?;
                 }
                 TypeKind::List {
@@ -180,6 +185,9 @@ pub enum ValidationError {
     EmptyEnumeration {
         name: QualifiedName,
     },
+    EmptyChoice {
+        name: QualifiedName,
+    },
 }
 
 impl fmt::Display for ValidationError {
@@ -230,6 +238,9 @@ impl fmt::Display for ValidationError {
             }
             Self::EmptyEnumeration { name } => {
                 write!(f, "enumeration {} has no variants", format_name(name))
+            }
+            Self::EmptyChoice { name } => {
+                write!(f, "choice {} has no alternatives", format_name(name))
             }
         }
     }
@@ -764,6 +775,20 @@ mod tests {
             )])
             .validate(),
             Err(ValidationError::EmptyEnumeration { .. })
+        ));
+    }
+
+    #[test]
+    fn rejects_empty_choice() {
+        assert!(matches!(
+            schema(vec![declaration(
+                "Value",
+                TypeKind::Choice {
+                    alternatives: Vec::new()
+                },
+            )])
+            .validate(),
+            Err(ValidationError::EmptyChoice { .. })
         ));
     }
 }

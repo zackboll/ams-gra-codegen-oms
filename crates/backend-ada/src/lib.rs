@@ -351,8 +351,19 @@ mod tests {
     #[test]
     fn unsupported_construct_fails_explicitly() {
         let mut schema = track_schema();
+        let alternative = schema
+            .types
+            .iter()
+            .find_map(|declaration| match &declaration.kind {
+                TypeKind::Record { fields } => fields
+                    .iter()
+                    .find(|field| matches!(field.type_ref.target, TypeRefTarget::Primitive(_)))
+                    .cloned(),
+                _ => None,
+            })
+            .expect("track fixture should contain a field");
         schema.types[0].kind = TypeKind::Choice {
-            alternatives: Vec::new(),
+            alternatives: vec![alternative],
         };
         let error = generate(&schema).expect_err("choice must not be omitted");
         assert!(

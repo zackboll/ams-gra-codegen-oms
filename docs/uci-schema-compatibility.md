@@ -344,3 +344,98 @@ unsupported XSD construct: xs:choice at UCI_MessageDefinitions_v2_6_0.xsd:4763:3
 ```
 
 Task 011 stops at this blocker without adding choice support.
+
+## Task 012: choice, scalar, integer-range, and unbounded tranche
+
+Both complete reachable schema sets (the message-definition root plus its
+security-marking include) were inventoried before implementation. UCI 2.5 has
+420 `xs:choice` nodes: 416 in message definitions and 4 in security markings.
+UCI 2.6 has 424: 420 and 4 respectively. In 2.5, 419 choices are the sole
+semantic child of a named `xs:complexType`; in 2.6, 423 are. The one remaining
+choice in each release is under `xs:extension`/`xs:complexContent` and remains
+outside this tranche. No choices occur inside sequences, other choices, or
+groups.
+
+Every choice has no attributes and therefore default 1..1 group cardinality.
+No choice group is unbounded, and no choice-level annotation occurs. All 1,468
+UCI 2.5 alternatives and all 1,482 UCI 2.6 alternatives are source-ordered local
+`xs:element` children with required `name` and `type`; none uses `ref`, an
+anonymous type, nested sequence/choice, or `xs:any`. Every alternative has one
+documentation annotation. Alternative types split 1,377 named/91 primitive in
+2.5 and 1,393 named/89 primitive in 2.6.
+
+| Alternative attributes | UCI 2.5 | UCI 2.6 |
+|---|---:|---:|
+| `name type` | 1,375 | 1,388 |
+| `name type maxOccurs` | 89 | 90 |
+| `name type minOccurs maxOccurs` | 4 | 4 |
+
+Choice sizes are 2 alternatives (238/237 choices in 2.5/2.6), 3 (68/72), 4
+(40/41), 5 (22/22), 6 (15/15), 7 (7/7), 8 (6/6), 9 (7/7), 10 (3/3), 11
+(3/3), 12 (1/1), 13 (2/2), 15 (1/1), 18 (1/1), 20 (1/1), 21 (1/1), 23
+(3/3), and 24 (1/1).
+
+The frontend maps the 419/423 supported named complex types to
+`TypeKind::Choice` without changing the IR shape or flattening mutual
+exclusivity into records. Non-default synthetic choice-group cardinality remains
+unsupported. Sequence fields and choice alternatives share one local-element
+parser, preserving documentation, resolved QName, occurrence bounds,
+nillability, intrinsic primitive constraints, and source provenance.
+
+Direct scalar mappings added by this tranche are `boolean -> Boolean`;
+`byte`/`short`/`int`/`long -> SignedInteger`;
+`unsignedByte`/`unsignedShort`/`unsignedInt -> UnsignedInteger`;
+`dateTime -> DateTime`; and `hexBinary -> Binary`. Existing mappings for
+`integer`, `string`, `float`, and `double` remain. Prefix spelling is irrelevant;
+the XML Schema namespace URI controls resolution. `duration` and `time` are not
+mapped to `DateTime`.
+
+Fixed-width integer fields and restriction bases retain exact intrinsic ranges
+in `ConstraintSet`: byte -128..127, short -32768..32767, int
+-2147483648..2147483647, long -9223372036854775808..9223372036854775807,
+unsignedByte 0..255, unsignedShort 0..65535, and unsignedInt 0..4294967295.
+Explicit inclusive/exclusive range facets are intersected with intrinsic bounds
+without converting exclusivity through arithmetic; contradictory intersections
+fail semantic validation.
+
+Integer restriction-base counts are 17 `unsignedByte`, 13 `unsignedShort`, 4
+`int`, and 3 `unsignedInt` in 2.5. UCI 2.6 has the same counts plus one `long`.
+
+| Integer restriction facet | UCI 2.5 | UCI 2.6 |
+|---|---:|---:|
+| `minInclusive` | 10 | 11 |
+| `maxInclusive` | 30 | 30 |
+| `minExclusive` | 0 | 0 |
+| `maxExclusive` | 0 | 0 |
+| `pattern` | 1 | 0 |
+| all other facets | 0 | 0 |
+
+Numeric range facets are modeled coherently, including synthetic exclusive
+coverage. The one 2.5 `pattern` on an `int` restriction remains fail-closed
+because pattern-only scalar semantics need a different model. Floating,
+`dateTime`, and `hexBinary` restrictions remain outside this tranche.
+
+`maxOccurs="unbounded"` is material: UCI 2.5 has 1,933 uses (1,927 message
+definitions, 6 security markings), comprising 1,849 sequence fields and 84
+choice alternatives. UCI 2.6 has 1,952 (1,946 and 6), comprising 1,867 sequence
+fields and 85 choice alternatives. Neither has an unbounded choice group.
+Minimum occurrences across those uses are 0/1/2/3: 1,390/531/9/3 in 2.5 and
+1,406/534/9/3 in 2.6. They normalize to `max_occurs = None`; no finite maximum
+is invented.
+
+The larger probe loop passed the previous `xs:choice` blocker and the direct
+scalar and unbounded field uses encountered before the next structural boundary.
+Both releases then stop outside Task 012:
+
+```text
+UCI 2.5: unsupported XSD construct: xs:complexContent at UCI_MessageDefinitions_v2_5_0.xsd:4822:3
+UCI 2.6: unsupported XSD construct: xs:complexContent at UCI_MessageDefinitions_v2_6_0.xsd:4846:3
+```
+
+Task 012 stops there without implementing extension/inheritance. UCI 2.6 has
+four additional choices, 14 additional alternatives, 19 additional unbounded
+fields, and one additional `long` restriction; its integer restrictions omit
+the 2.5 pattern facet. Primitive global message payloads remain invalid because
+`MessageDecl.payload_type` must be named. Frontend semantic recognition also
+does not claim backend support: existing generators explicitly reject choices
+and unsupported scalar/container semantics rather than lowering them lossily.
