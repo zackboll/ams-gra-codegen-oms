@@ -373,6 +373,8 @@ pub enum PrimitiveKind {
     SignedInteger,
     UnsignedInteger,
     Decimal,
+    Float32,
+    Float64,
     String,
     Binary,
     DateTime,

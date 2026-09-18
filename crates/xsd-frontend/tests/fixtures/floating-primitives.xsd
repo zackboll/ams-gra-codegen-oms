@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema:schema
+    xmlns:schema="http://www.w3.org/2001/XMLSchema"
+    xmlns:oms="urn:example:oms:floating"
+    targetNamespace="urn:example:oms:floating">
+
+  <schema:complexType name="Measurements">
+    <schema:sequence>
+      <schema:element name="Estimate" type="schema:float">
+        <schema:annotation>
+          <schema:documentation>Binary32 estimate.</schema:documentation>
+        </schema:annotation>
+      </schema:element>
+      <schema:element
+          name="Precise_Estimate"
+          type="schema:double"
+          minOccurs="0"
+          nillable="true"/>
+    </schema:sequence>
+  </schema:complexType>
+</schema:schema>

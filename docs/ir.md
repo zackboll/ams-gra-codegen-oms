@@ -111,6 +111,20 @@ backends from inferring whether a reference denotes an XSD primitive or a
 schema declaration by inspecting namespace strings. Integer bounds are stored
 as numeric values rather than lexical XML strings.
 
+Primitive kinds preserve numeric value-space distinctions. `Decimal` denotes
+decimal arithmetic and is not an umbrella numeric kind. `Float32` and
+`Float64` denote the binary floating-point value spaces used by XSD `float` and
+`double`, respectively. In particular, `xs:double` is never normalized to
+`Decimal`. The floating kinds do not carry integer min/max constraints, and the
+IR distinction leaves room for XSD floating values such as `NaN`, `INF`,
+`-INF`, and negative zero without silently normalizing them away.
+
+`PrimitiveKind` describes value types usable by semantic fields and general
+type references. It does not broaden UCI message classification: in the
+currently supported authoritative schema model, every `MessageDecl` payload
+must reference a named schema type. A global UCI element whose `type` resolves
+to any XSD primitive is rejected rather than normalized into a message.
+
 ## Normalization examples
 
 ### Namespace prefixes
@@ -169,9 +183,10 @@ loaded schema set containing local `xs:include` and `xs:import` dependencies.
 Each QName is resolved with the namespace bindings of the document in which it
 appears, so prefixes remain document-local aliases. Includes, imports,
 `schemaLocation` values, and lexical prefixes are discarded before the IR
-boundary. The semantic subset remains named integer restrictions, string
-enumerations, and sequence-based records; other XSD syntax produces an explicit
-diagnostic rather than being silently discarded.
+boundary. The semantic subset includes direct `float` and `double` field
+references, named integer restrictions, string enumerations, and sequence-based
+records. Floating restriction facets and other unsupported XSD syntax produce
+an explicit diagnostic rather than being silently discarded.
 
 Schema-set declaration order is pre-order depth-first document discovery in
 dependency source order, then declaration source order. Namespace URI order and
