@@ -53,7 +53,7 @@ impl FeatureFamily {
             Self::PrimitiveExpansion => "primitive refs/declarations",
             Self::CardinalityAndNillability => "cardinality/nillability",
             Self::Choice => "Choice",
-            Self::StructuralInheritanceAndAbstract => "inheritance/abstract",
+            Self::StructuralInheritanceAndAbstract => "remaining structural inheritance/abstract",
             Self::ConstrainedSimpleTypes => "constrained simple types",
         }
     }
@@ -355,11 +355,11 @@ impl<'a> CoverageAnalysis<'a> {
             .schema
             .types
             .iter()
-            .map(|declaration| declaration_renderable(declaration, language, enabled))
+            .map(|declaration| self.declaration_renderable(declaration, language, enabled))
             .collect::<Vec<_>>();
         let mut message_closures_renderable = 0;
         for message in &self.schema.messages {
-            if message_renderable(message, language, enabled)
+            if self.message_renderable(message, language, enabled)
                 && match &message.payload_type.target {
                     TypeRefTarget::Primitive(kind) => primitive_ref_renderable(*kind, enabled),
                     TypeRefTarget::Named(name) => self
@@ -446,6 +446,76 @@ impl<'a> CoverageAnalysis<'a> {
             .counts
             .insert("inheritance.distinct_bases".to_owned(), bases.len());
         Ok(())
+    }
+
+    fn declaration_renderable(
+        &self,
+        declaration: &TypeDecl,
+        language: BackendLanguage,
+        enabled: &BTreeSet<FeatureFamily>,
+    ) -> bool {
+        if !matches!(declaration.kind, TypeKind::Record { .. }) {
+            return declaration_renderable(declaration, language, enabled);
+        }
+        let Ok(projection) = self.structural_projection(&declaration.name) else {
+            return false;
+        };
+        if projection
+            .segments
+            .iter()
+            .any(|segment| !matches!(segment.content, StructuralSegmentContent::RecordFields(_)))
+            && !(enabled.contains(&FeatureFamily::StructuralInheritanceAndAbstract)
+                && enabled.contains(&FeatureFamily::Choice))
+        {
+            return false;
+        }
+        let is_abstract_ancestor = declaration.is_abstract
+            && self
+                .schema
+                .types
+                .iter()
+                .any(|candidate| named_is(candidate.base_type.as_ref(), &declaration.name));
+        if declaration.is_abstract
+            && !is_abstract_ancestor
+            && !enabled.contains(&FeatureFamily::StructuralInheritanceAndAbstract)
+        {
+            return false;
+        }
+        declaration_constraints_renderable(&declaration.constraints, enabled)
+            && projection
+                .segments
+                .iter()
+                .all(|segment| match segment.content {
+                    StructuralSegmentContent::RecordFields(fields) => fields.iter().all(|field| {
+                        field_renderable(field, language, enabled)
+                            && (!matches!(&field.type_ref.target, TypeRefTarget::Named(name)
+                            if self.declarations.get(name).is_some_and(|target| target.is_abstract))
+                                || enabled.contains(&FeatureFamily::StructuralInheritanceAndAbstract))
+                    }),
+                    StructuralSegmentContent::ChoiceAlternatives(fields) => {
+                        enabled.contains(&FeatureFamily::Choice)
+                            && fields.iter().all(|field| {
+                                field_renderable(field, language, enabled)
+                                    && (!matches!(&field.type_ref.target, TypeRefTarget::Named(name)
+                                    if self.declarations.get(name).is_some_and(|target| target.is_abstract))
+                                        || enabled.contains(
+                                            &FeatureFamily::StructuralInheritanceAndAbstract,
+                                        ))
+                            })
+                    }
+                })
+    }
+
+    fn message_renderable(
+        &self,
+        message: &MessageDecl,
+        _language: BackendLanguage,
+        enabled: &BTreeSet<FeatureFamily>,
+    ) -> bool {
+        type_ref_renderable(&message.payload_type, enabled)
+            && (!matches!(&message.payload_type.target, TypeRefTarget::Named(name)
+                if self.declarations.get(name).is_some_and(|target| target.is_abstract))
+                || enabled.contains(&FeatureFamily::StructuralInheritanceAndAbstract))
     }
 
     fn count_abstract_usage(&self, inventory: &mut SchemaInventory) {
@@ -992,13 +1062,6 @@ fn occurrence_renderable(
         _ => false,
     }
 }
-fn message_renderable(
-    message: &MessageDecl,
-    _language: BackendLanguage,
-    enabled: &BTreeSet<FeatureFamily>,
-) -> bool {
-    type_ref_renderable(&message.payload_type, enabled)
-}
 fn is_structural(declaration: &TypeDecl) -> bool {
     matches!(
         declaration.kind,
@@ -1261,13 +1324,106 @@ mod tests {
     }
 
     #[test]
-    fn structural_family_alone_unblocks_abstract_inherited_closure() {
+    fn pure_record_abstract_ancestry_is_currently_renderable() {
         let mut base = declaration("Base", TypeKind::Record { fields: Vec::new() });
         base.is_abstract = true;
         let mut payload = declaration("Payload", TypeKind::Record { fields: Vec::new() });
         payload.base_type = Some(named("Base"));
         let schema = message_schema(vec![payload, base], "Payload");
-        assert_only_family_unblocks(&schema, FeatureFamily::StructuralInheritanceAndAbstract);
+        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        for language in BackendLanguage::ALL {
+            assert_eq!(analysis.impact(language, &[]).unwrap(), 1);
+            assert_eq!(
+                analysis
+                    .impact(language, &[FeatureFamily::StructuralInheritanceAndAbstract])
+                    .unwrap(),
+                1
+            );
+        }
+    }
+
+    #[test]
+    fn unrelated_features_preserve_pure_record_inheritance() {
+        let base = declaration("Base", TypeKind::Record { fields: Vec::new() });
+        let mut derived = declaration(
+            "Derived",
+            TypeKind::Record {
+                fields: vec![field_ref(
+                    "value",
+                    TypeRef::primitive(PrimitiveKind::String),
+                )],
+            },
+        );
+        derived.base_type = Some(named("Base"));
+        let schema = message_schema(vec![derived, base], "Derived");
+        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        for language in BackendLanguage::ALL {
+            assert_eq!(analysis.impact(language, &[]).unwrap(), 1);
+            for family in [
+                FeatureFamily::PrimitiveExpansion,
+                FeatureFamily::CardinalityAndNillability,
+                FeatureFamily::Choice,
+                FeatureFamily::StructuralInheritanceAndAbstract,
+                FeatureFamily::ConstrainedSimpleTypes,
+            ] {
+                assert_eq!(analysis.impact(language, &[family]).unwrap(), 1);
+            }
+        }
+    }
+
+    #[test]
+    fn abstract_values_require_remaining_structural_abstract_support() {
+        let mut base = declaration(
+            "Base",
+            TypeKind::Record {
+                fields: vec![field_ref(
+                    "value",
+                    TypeRef::primitive(PrimitiveKind::String),
+                )],
+            },
+        );
+        base.is_abstract = true;
+        let mut derived = declaration("Derived", TypeKind::Record { fields: Vec::new() });
+        derived.base_type = Some(named("Base"));
+        let holder = declaration(
+            "Holder",
+            TypeKind::Record {
+                fields: vec![field("value", "Base")],
+            },
+        );
+        let abstract_payload = message_schema(vec![base.clone(), derived.clone()], "Base");
+        let concrete_payload = message_schema(vec![base.clone(), derived.clone()], "Derived");
+        let abstract_field = message_schema(vec![base, derived, holder], "Holder");
+        for language in BackendLanguage::ALL {
+            let analysis = CoverageAnalysis::new(&abstract_payload).unwrap();
+            assert_eq!(analysis.impact(language, &[]).unwrap(), 0);
+            for family in [
+                FeatureFamily::PrimitiveExpansion,
+                FeatureFamily::CardinalityAndNillability,
+                FeatureFamily::Choice,
+                FeatureFamily::ConstrainedSimpleTypes,
+            ] {
+                assert_eq!(analysis.impact(language, &[family]).unwrap(), 0);
+            }
+            assert_eq!(
+                analysis
+                    .impact(language, &[FeatureFamily::StructuralInheritanceAndAbstract])
+                    .unwrap(),
+                1
+            );
+
+            let analysis = CoverageAnalysis::new(&concrete_payload).unwrap();
+            assert_eq!(analysis.impact(language, &[]).unwrap(), 1);
+
+            let analysis = CoverageAnalysis::new(&abstract_field).unwrap();
+            assert_eq!(analysis.impact(language, &[]).unwrap(), 0);
+            assert_eq!(
+                analysis
+                    .impact(language, &[FeatureFamily::StructuralInheritanceAndAbstract])
+                    .unwrap(),
+                1
+            );
+        }
     }
 
     #[test]
@@ -1285,7 +1441,7 @@ mod tests {
     }
 
     #[test]
-    fn combined_choice_and_inheritance_are_both_required() {
+    fn choice_extends_pure_record_inheritance_baseline() {
         let base = declaration("Base", TypeKind::Record { fields: Vec::new() });
         let choice = declaration(
             "Selection",
@@ -1306,7 +1462,7 @@ mod tests {
             assert_eq!(analysis.impact(language, &[]).unwrap(), 0);
             assert_eq!(
                 analysis.impact(language, &[FeatureFamily::Choice]).unwrap(),
-                0
+                1
             );
             assert_eq!(
                 analysis

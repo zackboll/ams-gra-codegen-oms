@@ -63,7 +63,38 @@ pub enum StructuralProjectionError {
         first_owner: Box<QualifiedName>,
         second_owner: Box<QualifiedName>,
     },
+    ChoiceSegment {
+        target: QualifiedName,
+        owner: QualifiedName,
+    },
     Cycle(Vec<QualifiedName>),
+}
+
+/// Return effective fields for a structural declaration whose entire ancestry
+/// consists of Records, ordered from the oldest base to the declaration.
+///
+/// Empty Record segments contribute no fields. Choice segments are rejected so
+/// callers cannot accidentally discard compositor exclusivity by flattening.
+pub fn effective_record_fields<'a>(
+    schema: &'a SchemaIr,
+    target: &QualifiedName,
+) -> Result<Vec<&'a FieldDecl>, StructuralProjectionError> {
+    let projection = project_structural_type(schema, target)?;
+    let mut fields = Vec::new();
+    for segment in projection.segments {
+        match segment.content {
+            StructuralSegmentContent::RecordFields(segment_fields) => {
+                fields.extend(segment_fields);
+            }
+            StructuralSegmentContent::ChoiceAlternatives(_) => {
+                return Err(StructuralProjectionError::ChoiceSegment {
+                    target: target.clone(),
+                    owner: segment.owner.name.clone(),
+                });
+            }
+        }
+    }
+    Ok(fields)
 }
 
 impl fmt::Display for StructuralProjectionError {
@@ -101,6 +132,11 @@ impl fmt::Display for StructuralProjectionError {
                 formatter,
                 "structural declaration {} inherits duplicate member {member} from {} and {}",
                 target.local_name, first_owner.local_name, second_owner.local_name
+            ),
+            Self::ChoiceSegment { target, owner } => write!(
+                formatter,
+                "structural declaration {} contains Choice segment {}",
+                target.local_name, owner.local_name
             ),
             Self::Cycle(names) => write!(
                 formatter,
@@ -379,6 +415,31 @@ mod tests {
                 (StructuralKind::Record, vec!["C".into()])
             ]
         );
+    }
+
+    #[test]
+    fn effective_record_fields_are_ordered_and_reject_choice_segments() {
+        let records = schema(vec![
+            declaration("Base", false, &["A"]),
+            derived(declaration("Middle", false, &[]), "Base"),
+            derived(declaration("Leaf", false, &["C"]), "Middle"),
+        ]);
+        assert_eq!(
+            effective_record_fields(&records, &QualifiedName::new(NS, "Leaf"))
+                .unwrap()
+                .iter()
+                .map(|field| field.name.as_str())
+                .collect::<Vec<_>>(),
+            ["A", "C"]
+        );
+        let choice = schema(vec![
+            declaration("Base", false, &["A"]),
+            derived(declaration("Derived", true, &["X"]), "Base"),
+        ]);
+        assert!(matches!(
+            effective_record_fields(&choice, &QualifiedName::new(NS, "Derived")),
+            Err(StructuralProjectionError::ChoiceSegment { .. })
+        ));
     }
 
     #[test]

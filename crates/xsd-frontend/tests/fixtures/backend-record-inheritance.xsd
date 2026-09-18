@@ -1,0 +1,13 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:backend-record-inheritance"
+           targetNamespace="urn:backend-record-inheritance"
+           elementFormDefault="qualified">
+  <xs:simpleType name="Token"><xs:restriction base="xs:integer"><xs:minInclusive value="0"/><xs:maxInclusive value="9"/></xs:restriction></xs:simpleType>
+  <xs:complexType name="Base" abstract="true"><xs:sequence>
+    <xs:element name="Base_Optional" type="xs:string" minOccurs="0"/>
+    <xs:element name="Base_Values" type="t:Token" minOccurs="0" maxOccurs="3"/>
+  </xs:sequence></xs:complexType>
+  <xs:complexType name="Middle"><xs:complexContent><xs:extension base="t:Base"><xs:sequence/></xs:extension></xs:complexContent></xs:complexType>
+  <xs:complexType name="Third"><xs:complexContent><xs:extension base="t:Middle"><xs:sequence><xs:element name="Linked" type="t:Token"/></xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+  <xs:complexType name="Leaf"><xs:complexContent><xs:extension base="t:Third"><xs:sequence><xs:element name="Local" type="xs:string"/></xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+</xs:schema>

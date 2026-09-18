@@ -1,6 +1,8 @@
 //! Minimal C++17 type generation from normalized schema IR.
 
-use ams_gra_oms_codegen_core::{Backend, CodegenError, GeneratedFile, plan_type_declarations};
+use ams_gra_oms_codegen_core::{
+    Backend, CodegenError, GeneratedFile, effective_record_fields, plan_type_declarations,
+};
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, NumericValue, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
     TypeRefTarget,
@@ -71,13 +73,17 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
         "};\n\n",
     ));
     for declaration in declarations {
-        render_declaration(&mut output, declaration)?;
+        render_declaration(&mut output, schema, declaration)?;
     }
     writeln!(output, "}}  // namespace {namespace}").expect("writing to String cannot fail");
     Ok(output)
 }
 
-fn render_declaration(output: &mut String, declaration: &TypeDecl) -> Result<(), CodegenError> {
+fn render_declaration(
+    output: &mut String,
+    schema: &SchemaIr,
+    declaration: &TypeDecl,
+) -> Result<(), CodegenError> {
     let name = upper_camel(&declaration.name.local_name)?;
     match &declaration.kind {
         TypeKind::Primitive(PrimitiveKind::SignedInteger) => {
@@ -118,9 +124,17 @@ fn render_declaration(output: &mut String, declaration: &TypeDecl) -> Result<(),
             }
             output.push_str("};\n\n");
         }
-        TypeKind::Record { fields } => {
+        TypeKind::Record { .. } => {
+            if declaration.is_abstract {
+                return Ok(());
+            }
             writeln!(output, "struct {name} {{").expect("writing to String cannot fail");
-            for field in fields {
+            for field in effective_record_fields(schema, &declaration.name).map_err(|_| {
+                error(format!(
+                    "unsupported C++ IR construct: non-Record inheritance {}",
+                    declaration.name.local_name
+                ))
+            })? {
                 let field_name = snake_case(&field.name)?;
                 let base = cpp_type(&field.type_ref)?;
                 let field_type = match field.cardinality {
@@ -158,7 +172,14 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
         return unsupported("multiple namespaces".to_owned());
     }
     for declaration in &schema.types {
-        if declaration.is_abstract {
+        if declaration.is_abstract
+            && (!matches!(declaration.kind, TypeKind::Record { .. })
+                || !schema.types.iter().any(|candidate| {
+                    candidate.base_type.as_ref().is_some_and(|base| {
+                        matches!(&base.target, TypeRefTarget::Named(name) if name == &declaration.name)
+                    })
+                }))
+        {
             return unsupported(format!("abstract type {}", declaration.name.local_name));
         }
         if matches!(
@@ -171,20 +192,14 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
                 declaration.name.local_name
             ));
         }
-        if matches!(
-            declaration.kind,
-            TypeKind::Record { .. } | TypeKind::Choice { .. }
-        ) && matches!(
-            declaration.base_type.as_ref().map(|base| &base.target),
-            Some(TypeRefTarget::Named(_))
-        ) {
-            return unsupported(format!(
-                "inherited structural type {}",
-                declaration.name.local_name
-            ));
-        }
         reject_extra_constraints(&declaration.constraints, &declaration.name.local_name)?;
-        if let TypeKind::Record { fields } = &declaration.kind {
+        if matches!(declaration.kind, TypeKind::Record { .. }) {
+            let fields = effective_record_fields(schema, &declaration.name).map_err(|_| {
+                error(format!(
+                    "unsupported C++ IR construct: non-Record inheritance {}",
+                    declaration.name.local_name
+                ))
+            })?;
             for field in fields {
                 if field.nillable {
                     return unsupported(format!("nillable field {}", field.name));
@@ -192,6 +207,29 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
                 if field.constraints != ConstraintSet::default() {
                     return unsupported(format!("field constraints on {}", field.name));
                 }
+                if let TypeRefTarget::Named(target) = &field.type_ref.target {
+                    if schema
+                        .types
+                        .iter()
+                        .any(|candidate| candidate.name == *target && candidate.is_abstract)
+                    {
+                        return unsupported(format!(
+                            "abstract structural value reference {}",
+                            target.local_name
+                        ));
+                    }
+                }
+            }
+        }
+    }
+    for message in &schema.messages {
+        if let TypeRefTarget::Named(target) = &message.payload_type.target {
+            if schema
+                .types
+                .iter()
+                .any(|candidate| candidate.name == *target && candidate.is_abstract)
+            {
+                return unsupported(format!("abstract message payload {}", target.local_name));
             }
         }
     }
@@ -328,6 +366,57 @@ mod tests {
                 .join("../xsd-frontend/tests/fixtures/floating-primitives.xsd"),
         )
         .expect("floating fixture should parse")
+    }
+
+    fn inheritance_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-record-inheritance.xsd"),
+        )
+        .expect("inheritance fixture should parse")
+    }
+
+    fn abstract_value_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-abstract-value-reference.xsd"),
+        )
+        .expect("abstract value fixture should parse")
+    }
+
+    fn choice_boundary_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-choice-boundary.xsd"),
+        )
+        .expect("choice boundary fixture should parse")
+    }
+
+    #[test]
+    fn lowers_effective_record_fields_and_omits_abstract_ancestor() {
+        let source = generate(&inheritance_schema()).expect("pure Record inheritance is supported");
+        assert!(!source.contains("struct Base"));
+        let leaf = source.find("struct Leaf").unwrap();
+        let fields = &source[leaf..];
+        assert!(fields.find("base_optional").unwrap() < fields.find("base_values").unwrap());
+        assert!(fields.find("base_values").unwrap() < fields.find("linked").unwrap());
+        assert!(fields.find("linked").unwrap() < fields.find("local").unwrap());
+    }
+
+    #[test]
+    fn rejects_abstract_value_references_and_choice_segments() {
+        assert!(
+            generate(&abstract_value_schema())
+                .unwrap_err()
+                .message
+                .contains("abstract structural value reference Base")
+        );
+        assert!(
+            generate(&choice_boundary_schema())
+                .unwrap_err()
+                .message
+                .contains("type Derived: Choice")
+        );
     }
 
     #[test]
@@ -477,37 +566,6 @@ mod tests {
                 error
                     .message
                     .contains("unsupported C++ IR construct: constraints on")
-            );
-        }
-    }
-
-    #[test]
-    fn inherited_structural_types_fail_explicitly() {
-        for choice in [false, true] {
-            let mut schema = track_schema();
-            let derived_index = schema
-                .types
-                .iter()
-                .position(|declaration| matches!(declaration.kind, TypeKind::Record { .. }))
-                .unwrap();
-            let mut base = schema.types[derived_index].clone();
-            base.name.local_name = "Structural_Base".to_owned();
-            base.kind = TypeKind::Record { fields: Vec::new() };
-            schema.types[derived_index].base_type = Some(TypeRef::named(base.name.clone()));
-            if choice {
-                let TypeKind::Record { fields } = &schema.types[derived_index].kind else {
-                    unreachable!()
-                };
-                schema.types[derived_index].kind = TypeKind::Choice {
-                    alternatives: vec![fields[0].clone()],
-                };
-            }
-            schema.types.push(base);
-            let error = generate(&schema).expect_err("inherited structure must be rejected");
-            assert!(
-                error
-                    .message
-                    .contains("unsupported C++ IR construct: inherited structural type")
             );
         }
     }

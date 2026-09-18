@@ -1,0 +1,7 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:backend-choice-boundary"
+           targetNamespace="urn:backend-choice-boundary"
+           elementFormDefault="qualified">
+  <xs:complexType name="Base"><xs:sequence><xs:element name="Value" type="xs:string"/></xs:sequence></xs:complexType>
+  <xs:complexType name="Derived"><xs:complexContent><xs:extension base="t:Base"><xs:choice><xs:element name="Left" type="xs:string"/><xs:element name="Right" type="xs:string"/></xs:choice></xs:extension></xs:complexContent></xs:complexType>
+</xs:schema>

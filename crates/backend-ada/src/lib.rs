@@ -1,6 +1,8 @@
 //! Minimal Ada type generation from normalized schema IR.
 
-use ams_gra_oms_codegen_core::{Backend, CodegenError, GeneratedFile, plan_type_declarations};
+use ams_gra_oms_codegen_core::{
+    Backend, CodegenError, GeneratedFile, effective_record_fields, plan_type_declarations,
+};
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, NumericValue, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
     TypeRefTarget,
@@ -56,13 +58,17 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
         "   end record;\n\n",
     ));
     for declaration in declarations {
-        render_declaration(&mut output, declaration)?;
+        render_declaration(&mut output, schema, declaration)?;
     }
     writeln!(output, "end {package};").expect("writing to String cannot fail");
     Ok(output)
 }
 
-fn render_declaration(output: &mut String, declaration: &TypeDecl) -> Result<(), CodegenError> {
+fn render_declaration(
+    output: &mut String,
+    schema: &SchemaIr,
+    declaration: &TypeDecl,
+) -> Result<(), CodegenError> {
     let name = ada_identifier(&declaration.name.local_name)?;
     match &declaration.kind {
         TypeKind::Primitive(PrimitiveKind::SignedInteger) => {
@@ -93,17 +99,27 @@ fn render_declaration(output: &mut String, declaration: &TypeDecl) -> Result<(),
             }
             output.push('\n');
         }
-        TypeKind::Record { fields } => {
-            for field in fields {
+        TypeKind::Record { .. } => {
+            if declaration.is_abstract {
+                return Ok(());
+            }
+            let fields = effective_record_fields(schema, &declaration.name).map_err(|_| {
+                error(format!(
+                    "unsupported Ada IR construct: non-Record inheritance {}",
+                    declaration.name.local_name
+                ))
+            })?;
+            for field in &fields {
                 if let Some(max) = repeated_max(field.cardinality) {
                     let field_name = ada_identifier(&field.name)?;
+                    let helper_name = format!("{name}_{field_name}");
                     let item_type = ada_type(&field.type_ref)?;
                     writeln!(
                         output,
-                        "   type {field_name}_Array is array (Positive range 1 .. {max}) of {item_type};\n\
-                         \x20  type {field_name}_Sequence is record\n\
+                        "   type {helper_name}_Array is array (Positive range 1 .. {max}) of {item_type};\n\
+                         \x20  type {helper_name}_Sequence is record\n\
                          \x20     Length : Natural range 0 .. {max} := 0;\n\
-                         \x20     Items  : {field_name}_Array;\n\
+                         \x20     Items  : {helper_name}_Array;\n\
                          \x20  end record;\n"
                     )
                     .expect("writing to String cannot fail");
@@ -121,7 +137,7 @@ fn render_declaration(output: &mut String, declaration: &TypeDecl) -> Result<(),
                         "Optional_String".to_owned()
                     }
                     cardinality if repeated_max(cardinality).is_some() => {
-                        format!("{field_name}_Sequence")
+                        format!("{name}_{field_name}_Sequence")
                     }
                     _ => return unsupported(format!("cardinality on field {field_name}")),
                 };
@@ -149,7 +165,14 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
         return unsupported("multiple namespaces".to_owned());
     }
     for declaration in &schema.types {
-        if declaration.is_abstract {
+        if declaration.is_abstract
+            && (!matches!(declaration.kind, TypeKind::Record { .. })
+                || !schema.types.iter().any(|candidate| {
+                    candidate.base_type.as_ref().is_some_and(|base| {
+                        matches!(&base.target, TypeRefTarget::Named(name) if name == &declaration.name)
+                    })
+                }))
+        {
             return unsupported(format!("abstract type {}", declaration.name.local_name));
         }
         if matches!(
@@ -162,25 +185,42 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
                 declaration.name.local_name
             ));
         }
-        if matches!(
-            declaration.kind,
-            TypeKind::Record { .. } | TypeKind::Choice { .. }
-        ) && matches!(
-            declaration.base_type.as_ref().map(|base| &base.target),
-            Some(TypeRefTarget::Named(_))
-        ) {
-            return unsupported(format!(
-                "inherited structural type {}",
-                declaration.name.local_name
-            ));
-        }
         reject_extra_constraints(&declaration.constraints, &declaration.name.local_name)?;
-        if let TypeKind::Record { fields } = &declaration.kind {
+        if matches!(declaration.kind, TypeKind::Record { .. }) {
+            let fields = effective_record_fields(schema, &declaration.name).map_err(|_| {
+                error(format!(
+                    "unsupported Ada IR construct: non-Record inheritance {}",
+                    declaration.name.local_name
+                ))
+            })?;
             for field in fields {
                 if field.nillable {
                     return unsupported(format!("nillable field {}", field.name));
                 }
                 reject_any_constraints(&field.constraints, &field.name)?;
+                if let TypeRefTarget::Named(target) = &field.type_ref.target {
+                    if schema
+                        .types
+                        .iter()
+                        .any(|candidate| candidate.name == *target && candidate.is_abstract)
+                    {
+                        return unsupported(format!(
+                            "abstract structural value reference {}",
+                            target.local_name
+                        ));
+                    }
+                }
+            }
+        }
+    }
+    for message in &schema.messages {
+        if let TypeRefTarget::Named(target) = &message.payload_type.target {
+            if schema
+                .types
+                .iter()
+                .any(|candidate| candidate.name == *target && candidate.is_abstract)
+            {
+                return unsupported(format!("abstract message payload {}", target.local_name));
             }
         }
     }
@@ -348,6 +388,58 @@ mod tests {
         .expect("floating fixture should parse")
     }
 
+    fn inheritance_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-record-inheritance.xsd"),
+        )
+        .expect("inheritance fixture should parse")
+    }
+
+    fn abstract_value_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-abstract-value-reference.xsd"),
+        )
+        .expect("abstract value fixture should parse")
+    }
+
+    fn choice_boundary_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-choice-boundary.xsd"),
+        )
+        .expect("choice boundary fixture should parse")
+    }
+
+    #[test]
+    fn lowers_effective_record_fields_and_omits_abstract_ancestor() {
+        let source = generate(&inheritance_schema()).expect("pure Record inheritance is supported");
+        assert!(!source.contains("type Base is record"));
+        let leaf = source.find("type Leaf is record").unwrap();
+        let fields = &source[leaf..];
+        assert!(fields.find("Base_Optional").unwrap() < fields.find("Base_Values").unwrap());
+        assert!(fields.find("Base_Values").unwrap() < fields.find("Linked").unwrap());
+        assert!(fields.find("Linked").unwrap() < fields.find("Local").unwrap());
+        assert!(source.contains("type Leaf_Base_Values_Sequence"));
+    }
+
+    #[test]
+    fn rejects_abstract_value_references_and_choice_segments() {
+        assert!(
+            generate(&abstract_value_schema())
+                .unwrap_err()
+                .message
+                .contains("abstract structural value reference Base")
+        );
+        assert!(
+            generate(&choice_boundary_schema())
+                .unwrap_err()
+                .message
+                .contains("type Derived: Choice")
+        );
+    }
+
     #[test]
     fn track_matches_golden_and_is_deterministic() {
         let schema = track_schema();
@@ -490,37 +582,6 @@ mod tests {
                 error
                     .message
                     .contains("unsupported Ada IR construct: constraints on")
-            );
-        }
-    }
-
-    #[test]
-    fn inherited_structural_types_fail_explicitly() {
-        for choice in [false, true] {
-            let mut schema = track_schema();
-            let derived_index = schema
-                .types
-                .iter()
-                .position(|declaration| matches!(declaration.kind, TypeKind::Record { .. }))
-                .unwrap();
-            let mut base = schema.types[derived_index].clone();
-            base.name.local_name = "Structural_Base".to_owned();
-            base.kind = TypeKind::Record { fields: Vec::new() };
-            schema.types[derived_index].base_type = Some(TypeRef::named(base.name.clone()));
-            if choice {
-                let TypeKind::Record { fields } = &schema.types[derived_index].kind else {
-                    unreachable!()
-                };
-                schema.types[derived_index].kind = TypeKind::Choice {
-                    alternatives: vec![fields[0].clone()],
-                };
-            }
-            schema.types.push(base);
-            let error = generate(&schema).expect_err("inherited structure must be rejected");
-            assert!(
-                error
-                    .message
-                    .contains("unsupported Ada IR construct: inherited structural type")
             );
         }
     }
