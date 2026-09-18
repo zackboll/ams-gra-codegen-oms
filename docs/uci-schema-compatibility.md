@@ -1,6 +1,6 @@
 # UCI Schema Compatibility
 
-Tested: **2026-09-17**.
+Tested: **2026-09-18**.
 
 This is an evidence log for frontend development, not a claim of full UCI
 compatibility. UCI schema files are obtained and exercised externally; they are
@@ -749,3 +749,103 @@ facets. They require timezone/runtime lexical semantics outside Task 015; the
 frontend intentionally neither preserves them as value-space regexes nor starts
 Task 016. The release divergence is the first temporal owner reached:
 `DateTimeType` in 2.5 versus `TimeType` in 2.6.
+
+## Task 016 lexical restriction evidence
+
+The complete reachable two-document sets were inventoried again before coding.
+Pattern counts by ultimate primitive are:
+
+| Primitive | UCI 2.5 | UCI 2.6 |
+|---|---:|---:|
+| String | 140 | 140 |
+| SignedInteger | 1 | 0 |
+| DateTime | 1 | 1 |
+| Time | 1 | 1 |
+| UnsignedInteger, Binary, Duration, Float32, Float64, other | 0 | 0 |
+| **Total** | **143** | **142** |
+
+There are 128 patterned owners in 2.5 and 127 in 2.6. In each release the
+restriction-level group sizes are 122/121 owners with one pattern, four with
+two, one with five, and one with eight. All pattern restrictions directly use a
+built-in base (restriction-chain depth one); no authoritative named chain has a
+patterned base. The only pattern-facet annotation is the supported leading
+documentation annotation on `NATO_SpecialWordsType` in each security-marking
+document; it has no appinfo or markup and the exact expression
+`NATO:[a-zA-Z\-_]{1,256}`.
+
+Both temporal declarations use exactly `.+Z` and no neighboring facets.
+`DateTimeType` is at message-definition line 117,043 in 2.5 and security-marking
+line 1,208 in 2.6; `TimeType` is at message-definition line 145,157 in 2.5 and
+145,408 in 2.6. Each owner documentation says the W3C primitive is retained
+with the further restriction that only the “Zulu” timezone be used. The IR
+preserves the XML Schema expression lexically; it does not turn `Z` into an
+instant, offset, parser, or value-space range.
+
+The sole integer case is UCI 2.5
+`USMTF_SerialNumberOfQualifierType` at message-definition line 145,862. It
+restricts `xs:int` with `minInclusive=1`, `maxInclusive=999`, and
+`pattern="[0-9]{1,3}"`; owner documentation identifies a serial number from
+MIL-STD-6040. The pattern constrains spelling independently of the numeric
+interval (for example signs and leading-zero spellings), so both constraints are
+retained. The 2.6 declaration is version `000.001.000.000` and keeps the same
+numeric bounds but removes the pattern.
+
+UCI 2.5 has exactly two `whiteSpace` facets and 2.6 has none. The 2.5 owners are
+`WhitespaceVisibleString1024Type` and `WhitespaceVisibleString4096Type` in the
+security-marking schema at lines 8,572 and 8,583. Both directly restrict
+`xs:string`, use `collapse`, and combine `minLength=0`, the corresponding
+`maxLength`, and `[ -~\n\r]{0,N}`. They have equivalent structure, no facet
+annotation, and no named-base participation. No other primitive family has a
+`whiteSpace` facet. The equivalent 2.6 declarations omit `whiteSpace` and use
+pattern lower bounds of one.
+
+The authoritative W3C XML Schema Datatypes rules were checked before design.
+Multiple pattern elements in one restriction contribute alternatives to one
+pattern facet (a value must match at least one); pattern facets accumulated over
+successive restrictions all apply. The IR therefore stores one source-ordered
+`PatternGroup` per restriction level and appends local groups after inherited
+groups. `PatternExpression` explicitly records the `XmlSchema` dialect. Named
+effective constraints retain the immediate named base, and IR validation
+requires the base groups to be an exact inherited prefix.
+
+W3C whitespace processing defines `preserve`, `replace`, and `collapse`, is
+performed before other facets, and permits derivation only in the tightening
+order `preserve < replace < collapse`. The typed `WhiteSpacePolicy` is effective
+on named restrictions; frontend and IR validation reject weakening. Whitespace,
+length, and pattern constraints are all retained simultaneously. Task 016 only
+enables whitespace on the observed String family and patterns on observed
+String, SignedInteger, DateTime, and Time families.
+
+A Task 016 corrective pass made the primitive intrinsic policy explicit in the
+IR contract without materializing it into every `ConstraintSet`: String starts
+at restrictable `preserve`, while the other represented primitives use fixed
+`collapse`. An absent explicit facet still inherits that baseline. This did not
+change the normalized UCI 2.5 or 2.6 counts or results below.
+
+Ada, Rust, and C++ have no XML Schema regex or whitespace runtime. Each backend
+rejects any declaration carrying lexical constraints before rendering, including
+String, SignedInteger, DateTime, and Time patterns and String whitespace. No
+regex crate, translation, generated validator, temporal parser, serializer, or
+timezone representation was added.
+
+The optimized independent progression was:
+
+```text
+UCI 2.5:
+  DateTimeType pattern=".+Z" at 117043:4
+  -> TimeType pattern=".+Z" at 145157:4
+  -> USMTF_SerialNumberOfQualifierType pattern="[0-9]{1,3}" at 145862:4
+  -> both WhitespaceVisibleString* collapse facets in the included schema
+  -> schema valid: 1 namespace, 5,557 types, 722 messages
+
+UCI 2.6:
+  TimeType pattern=".+Z" at 145408:4
+  -> DateTimeType pattern=".+Z" in the included schema at 1208:4
+  -> schema valid: 1 namespace, 5,570 types, 725 messages
+```
+
+Neither release has a final outside-Task-016 blocker: both complete reachable
+schema sets normalize. Release divergence is limited to encounter order, the
+2.5-only integer pattern and whitespace facets, and declaration locations/counts.
+Full frontend normalization does not imply backend generation support; Task 017
+and runtime lexical enforcement remain intentionally unstarted.

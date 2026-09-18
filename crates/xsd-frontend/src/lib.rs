@@ -6,8 +6,8 @@
 
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, EnumVariant, FieldDecl, Float32Value, Float64Value, MessageDecl,
-    NamespaceDecl, NumericValue, PrimitiveKind, QualifiedName, SchemaIr, SourceRef, TypeDecl,
-    TypeKind, TypeRef, TypeRefTarget,
+    NamespaceDecl, NumericValue, PatternExpression, PatternGroup, PrimitiveKind, QualifiedName,
+    SchemaIr, SourceRef, TypeDecl, TypeKind, TypeRef, TypeRefTarget, WhiteSpacePolicy,
 };
 use roxmltree::{Document, Node};
 use std::collections::{BTreeMap, BTreeSet};
@@ -108,11 +108,11 @@ impl std::error::Error for FrontendError {}
 
 /// Parse and normalize one XSD document into semantic IR.
 ///
-/// This API supports a target namespace, named simple types that are
-/// either integer restrictions with range bounds or string enumerations, and
-/// named complex types containing a sequence or choice of explicitly typed
-/// elements, and schema-level named and typed message
-/// elements. Imports and includes are explicit errors;
+/// This API supports the documented OMS/UCI subset: resolved scalar primitives,
+/// named scalar restrictions (including numeric, length, pattern, and whitespace
+/// facets), string enumerations, structural sequence/choice types and
+/// inheritance, and schema-level named and typed message elements. Imports and
+/// includes are explicit errors;
 /// use [`load_schema_set`] when dependencies should be traversed. Anonymous
 /// types and all other XSD constructs are also explicit errors. Schema-level
 /// `elementFormDefault` and `attributeFormDefault` are validated and discarded
@@ -416,12 +416,6 @@ fn resolve_pending_restriction(
                 )));
             };
             let local = parse_pending_facets(*primitive, &pending.facets)?;
-            if !base.constraints.patterns.is_empty() && !local.patterns.is_empty() {
-                return Err(FrontendError::UnsupportedConstruct(format!(
-                    "pattern inheritance on named simple restriction {}",
-                    pending.name.local_name
-                )));
-            }
             let constraints = intersect_constraints(&base.constraints, &local)?;
             TypeDecl {
                 name: pending.name.clone(),
@@ -463,8 +457,27 @@ fn parse_pending_facets(
                 let value = parse_u64(&facet.value, &format!("{} facet", facet.name))?;
                 set_length_bound(&mut constraints, &facet.name, value, facet.position)?;
             }
-            (PrimitiveKind::String, "pattern") => {
-                constraints.patterns.push(facet.value.clone());
+            (
+                PrimitiveKind::String
+                | PrimitiveKind::SignedInteger
+                | PrimitiveKind::DateTime
+                | PrimitiveKind::Time,
+                "pattern",
+            ) => {
+                add_pattern(&mut constraints, &facet.value);
+            }
+            (PrimitiveKind::String, "whiteSpace") => {
+                if constraints
+                    .lexical
+                    .white_space
+                    .replace(parse_white_space(&facet.value)?)
+                    .is_some()
+                {
+                    return Err(FrontendError::InvalidInput(format!(
+                        "duplicate xs:whiteSpace facet at {}:{}",
+                        facet.position.line, facet.position.column
+                    )));
+                }
             }
             _ => {
                 return Err(FrontendError::UnsupportedConstruct(format!(
@@ -570,6 +583,9 @@ fn parse_simple_type(
                     "minInclusive" | "maxInclusive" | "minExclusive" | "maxExclusive" => {
                         validate_constraint_facet_children(facet)?;
                     }
+                    "pattern" if *primitive == PrimitiveKind::SignedInteger => {
+                        validate_constraint_facet_children(facet)?;
+                    }
                     other => return Err(unsupported(facet, other)),
                 }
                 match name {
@@ -593,13 +609,15 @@ fn parse_simple_type(
                         NumericValue::Integer(parse_integer(required_attribute(facet, "value")?)?),
                         facet,
                     )?,
+                    "pattern" if *primitive == PrimitiveKind::SignedInteger => {
+                        add_pattern(&mut explicit, required_attribute(facet, "value")?)
+                    }
                     _ => unreachable!("supported integer facet was checked above"),
                 }
             }
-            (
-                TypeKind::Primitive(*primitive),
-                intersect_numeric_constraints(&intrinsic, &explicit)?,
-            )
+            let mut constraints = intersect_numeric_constraints(&intrinsic, &explicit)?;
+            constraints.lexical = explicit.lexical;
+            (TypeKind::Primitive(*primitive), constraints)
         }
         TypeRefTarget::Primitive(PrimitiveKind::String)
             if !restriction_children.is_empty()
@@ -686,7 +704,14 @@ fn parse_scalar_restriction_facets(
                 PrimitiveKind::String | PrimitiveKind::Binary,
                 "length" | "minLength" | "maxLength",
             )
-            | (PrimitiveKind::String, "pattern") => {
+            | (
+                PrimitiveKind::String
+                | PrimitiveKind::SignedInteger
+                | PrimitiveKind::DateTime
+                | PrimitiveKind::Time,
+                "pattern",
+            )
+            | (PrimitiveKind::String, "whiteSpace") => {
                 validate_constraint_facet_children(facet)?;
             }
             _ => return Err(unsupported(facet, name)),
@@ -704,13 +729,43 @@ fn parse_scalar_restriction_facets(
                 let value = parse_u64(required_attribute(facet, "value")?, "maxLength facet")?;
                 set_once(&mut constraints.max_length, value, facet)?;
             }
-            (PrimitiveKind::String, "pattern") => constraints
-                .patterns
-                .push(required_attribute(facet, "value")?.to_owned()),
+            (
+                PrimitiveKind::String
+                | PrimitiveKind::SignedInteger
+                | PrimitiveKind::DateTime
+                | PrimitiveKind::Time,
+                "pattern",
+            ) => add_pattern(&mut constraints, required_attribute(facet, "value")?),
+            (PrimitiveKind::String, "whiteSpace") => {
+                let policy = parse_white_space(required_attribute(facet, "value")?)?;
+                set_once(&mut constraints.lexical.white_space, policy, facet)?;
+            }
             _ => unreachable!("supported scalar facet was checked above"),
         }
     }
     Ok(constraints)
+}
+
+fn add_pattern(constraints: &mut ConstraintSet, expression: &str) {
+    if constraints.lexical.pattern_groups.is_empty() {
+        constraints.lexical.pattern_groups.push(PatternGroup {
+            alternatives: Vec::new(),
+        });
+    }
+    constraints.lexical.pattern_groups[0]
+        .alternatives
+        .push(PatternExpression::xml_schema(expression));
+}
+
+fn parse_white_space(value: &str) -> Result<WhiteSpacePolicy, FrontendError> {
+    match value {
+        "preserve" => Ok(WhiteSpacePolicy::Preserve),
+        "replace" => Ok(WhiteSpacePolicy::Replace),
+        "collapse" => Ok(WhiteSpacePolicy::Collapse),
+        _ => Err(FrontendError::InvalidInput(format!(
+            "invalid whiteSpace facet value: {value}"
+        ))),
+    }
 }
 
 fn validate_constraint_facet_children(facet: Node<'_, '_>) -> Result<(), FrontendError> {
@@ -1285,11 +1340,20 @@ fn intersect_constraints(
         (Some(left), Some(right)) => Some(left.min(right)),
         (left, right) => left.or(right),
     };
-    constraints.patterns = if local.patterns.is_empty() {
-        inherited.patterns.clone()
-    } else {
-        local.patterns.clone()
-    };
+    constraints.lexical.pattern_groups = inherited.lexical.pattern_groups.clone();
+    constraints
+        .lexical
+        .pattern_groups
+        .extend(local.lexical.pattern_groups.iter().cloned());
+    constraints.lexical.white_space =
+        match (inherited.lexical.white_space, local.lexical.white_space) {
+            (Some(inherited), Some(local)) if local < inherited => {
+                return Err(FrontendError::InvalidInput(
+                    "derived whiteSpace facet weakens inherited policy".to_owned(),
+                ));
+            }
+            (inherited, local) => local.or(inherited),
+        };
     validate_intersection(&constraints)?;
     Ok(constraints)
 }

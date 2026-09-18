@@ -93,7 +93,11 @@ impl SchemaIr {
 
         for declaration in &self.types {
             let owner = format_name(&declaration.name);
-            validate_constraints(&declaration.constraints, &owner)?;
+            let primitive = match declaration.kind {
+                TypeKind::Primitive(kind) => Some(kind),
+                _ => None,
+            };
+            validate_constraints(&declaration.constraints, &owner, primitive)?;
             if let Some(base_type) = &declaration.base_type {
                 validate_reference(base_type, &declared_types, "base type", &declaration.source)?;
                 if matches!(
@@ -201,6 +205,14 @@ pub enum ValidationError {
     ContradictoryLengthConstraints {
         owner: String,
     },
+    EmptyPatternGroup {
+        owner: String,
+    },
+    InvalidWhiteSpacePolicy {
+        owner: String,
+        primitive: PrimitiveKind,
+        policy: WhiteSpacePolicy,
+    },
     EmptyEnumeration {
         name: QualifiedName,
     },
@@ -282,6 +294,17 @@ impl fmt::Display for ValidationError {
             Self::ContradictoryLengthConstraints { owner } => {
                 write!(f, "contradictory length constraints on {owner}")
             }
+            Self::EmptyPatternGroup { owner } => {
+                write!(f, "empty lexical pattern group on {owner}")
+            }
+            Self::InvalidWhiteSpacePolicy {
+                owner,
+                primitive,
+                policy,
+            } => write!(
+                f,
+                "explicit whiteSpace policy {policy:?} on {owner} is incompatible with the intrinsic XSD semantics of {primitive:?}"
+            ),
             Self::EmptyEnumeration { name } => {
                 write!(f, "enumeration {} has no variants", format_name(name))
             }
@@ -442,7 +465,14 @@ fn validate_named_simple_restrictions(schema: &SchemaIr) -> Result<(), Validatio
             continue;
         };
         let base_declaration = declarations[base];
-        if !constraints_imply(&declaration.constraints, &base_declaration.constraints) {
+        let TypeKind::Primitive(kind) = declaration.kind else {
+            unreachable!("only primitive named restrictions are collected")
+        };
+        if !constraints_imply(
+            &declaration.constraints,
+            &base_declaration.constraints,
+            kind,
+        ) {
             return Err(ValidationError::NamedRestrictionWeakensBase {
                 name: declaration.name.clone(),
                 base: base.clone(),
@@ -458,11 +488,20 @@ struct NumericBound {
     exclusive: bool,
 }
 
-fn constraints_imply(derived: &ConstraintSet, base: &ConstraintSet) -> bool {
+fn constraints_imply(
+    derived: &ConstraintSet,
+    base: &ConstraintSet,
+    primitive: PrimitiveKind,
+) -> bool {
     numeric_lower_implies(derived, base)
         && numeric_upper_implies(derived, base)
         && length_constraints_imply(derived, base)
-        && (base.patterns.is_empty() || derived.patterns == base.patterns)
+        && derived
+            .lexical
+            .pattern_groups
+            .starts_with(&base.lexical.pattern_groups)
+        && derived.lexical.effective_white_space(primitive)
+            >= base.lexical.effective_white_space(primitive)
 }
 
 fn numeric_lower_implies(derived: &ConstraintSet, base: &ConstraintSet) -> bool {
@@ -561,7 +600,15 @@ fn validate_fields(
     for field in fields {
         validate_reference(&field.type_ref, declared_types, location, &field.source)?;
         validate_cardinality(field.cardinality, &format!("field {}", field.name))?;
-        validate_constraints(&field.constraints, &format!("field {}", field.name))?;
+        let primitive = match field.type_ref.target {
+            TypeRefTarget::Primitive(kind) => Some(kind),
+            TypeRefTarget::Named(_) => None,
+        };
+        validate_constraints(
+            &field.constraints,
+            &format!("field {}", field.name),
+            primitive,
+        )?;
     }
     Ok(())
 }
@@ -597,7 +644,32 @@ fn validate_cardinality(cardinality: Cardinality, owner: &str) -> Result<(), Val
     Ok(())
 }
 
-fn validate_constraints(constraints: &ConstraintSet, owner: &str) -> Result<(), ValidationError> {
+fn validate_constraints(
+    constraints: &ConstraintSet,
+    owner: &str,
+    primitive: Option<PrimitiveKind>,
+) -> Result<(), ValidationError> {
+    if constraints
+        .lexical
+        .pattern_groups
+        .iter()
+        .any(|group| group.alternatives.is_empty())
+    {
+        return Err(ValidationError::EmptyPatternGroup {
+            owner: owner.to_owned(),
+        });
+    }
+    if let (Some(primitive), Some(policy)) = (primitive, constraints.lexical.white_space) {
+        let intrinsic = primitive.intrinsic_white_space_policy();
+        if (primitive.intrinsic_white_space_is_fixed() && policy != intrinsic) || policy < intrinsic
+        {
+            return Err(ValidationError::InvalidWhiteSpacePolicy {
+                owner: owner.to_owned(),
+                primitive,
+                policy,
+            });
+        }
+    }
     let numeric_values = [
         constraints.min_inclusive,
         constraints.min_exclusive,
@@ -736,6 +808,32 @@ pub enum PrimitiveKind {
     DateTime,
     Time,
     Duration,
+}
+
+impl PrimitiveKind {
+    /// XML Schema `whiteSpace` policy intrinsic to this primitive value space.
+    #[must_use]
+    pub const fn intrinsic_white_space_policy(self) -> WhiteSpacePolicy {
+        match self {
+            Self::String => WhiteSpacePolicy::Preserve,
+            Self::Boolean
+            | Self::SignedInteger
+            | Self::UnsignedInteger
+            | Self::Decimal
+            | Self::Float32
+            | Self::Float64
+            | Self::Binary
+            | Self::DateTime
+            | Self::Time
+            | Self::Duration => WhiteSpacePolicy::Collapse,
+        }
+    }
+
+    /// Whether XML Schema fixes this primitive's intrinsic `whiteSpace` facet.
+    #[must_use]
+    pub const fn intrinsic_white_space_is_fixed(self) -> bool {
+        !matches!(self, Self::String)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -887,7 +985,59 @@ pub struct ConstraintSet {
     pub length: Option<u64>,
     pub min_length: Option<u64>,
     pub max_length: Option<u64>,
-    pub patterns: Vec<String>,
+    pub lexical: LexicalConstraintSet,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct LexicalConstraintSet {
+    /// One group per restriction level, in base-to-derived order. XML Schema
+    /// evaluates these expressions after effective whitespace normalization.
+    pub pattern_groups: Vec<PatternGroup>,
+    /// Explicit derived `whiteSpace` facet; `None` retains the primitive policy.
+    pub white_space: Option<WhiteSpacePolicy>,
+}
+
+impl LexicalConstraintSet {
+    /// Return the explicit policy or the primitive's intrinsic XSD baseline.
+    #[must_use]
+    pub fn effective_white_space(&self, primitive: PrimitiveKind) -> WhiteSpacePolicy {
+        self.white_space
+            .unwrap_or_else(|| primitive.intrinsic_white_space_policy())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PatternGroup {
+    /// XML Schema patterns declared together at one restriction level are alternatives.
+    pub alternatives: Vec<PatternExpression>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PatternExpression {
+    pub dialect: PatternDialect,
+    pub expression: String,
+}
+
+impl PatternExpression {
+    #[must_use]
+    pub fn xml_schema(expression: impl Into<String>) -> Self {
+        Self {
+            dialect: PatternDialect::XmlSchema,
+            expression: expression.into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PatternDialect {
+    XmlSchema,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum WhiteSpacePolicy {
+    Preserve,
+    Replace,
+    Collapse,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1250,6 +1400,176 @@ mod tests {
             schema(vec![value]).validate(),
             Err(ValidationError::ContradictoryLengthConstraints { .. })
         ));
+    }
+
+    #[test]
+    fn rejects_empty_pattern_groups() {
+        let mut value = declaration("Value", TypeKind::Primitive(PrimitiveKind::String));
+        value.constraints.lexical.pattern_groups.push(PatternGroup {
+            alternatives: Vec::new(),
+        });
+        assert!(matches!(
+            schema(vec![value]).validate(),
+            Err(ValidationError::EmptyPatternGroup { .. })
+        ));
+    }
+
+    #[test]
+    fn primitive_intrinsic_white_space_semantics_cover_every_kind() {
+        for (primitive, policy, fixed) in [
+            (PrimitiveKind::Boolean, WhiteSpacePolicy::Collapse, true),
+            (
+                PrimitiveKind::SignedInteger,
+                WhiteSpacePolicy::Collapse,
+                true,
+            ),
+            (
+                PrimitiveKind::UnsignedInteger,
+                WhiteSpacePolicy::Collapse,
+                true,
+            ),
+            (PrimitiveKind::Decimal, WhiteSpacePolicy::Collapse, true),
+            (PrimitiveKind::Float32, WhiteSpacePolicy::Collapse, true),
+            (PrimitiveKind::Float64, WhiteSpacePolicy::Collapse, true),
+            (PrimitiveKind::String, WhiteSpacePolicy::Preserve, false),
+            (PrimitiveKind::Binary, WhiteSpacePolicy::Collapse, true),
+            (PrimitiveKind::DateTime, WhiteSpacePolicy::Collapse, true),
+            (PrimitiveKind::Time, WhiteSpacePolicy::Collapse, true),
+            (PrimitiveKind::Duration, WhiteSpacePolicy::Collapse, true),
+        ] {
+            assert_eq!(primitive.intrinsic_white_space_policy(), policy);
+            assert_eq!(primitive.intrinsic_white_space_is_fixed(), fixed);
+            assert_eq!(
+                LexicalConstraintSet::default().effective_white_space(primitive),
+                policy
+            );
+        }
+    }
+
+    #[test]
+    fn string_white_space_may_tighten_and_patterns_retain_effective_context() {
+        for policy in [WhiteSpacePolicy::Replace, WhiteSpacePolicy::Collapse] {
+            let mut value = declaration("Value", TypeKind::Primitive(PrimitiveKind::String));
+            value.constraints.lexical.white_space = Some(policy);
+            value.constraints.lexical.pattern_groups.push(PatternGroup {
+                alternatives: vec![PatternExpression::xml_schema("[A-Z]+")],
+            });
+            assert_eq!(
+                value
+                    .constraints
+                    .lexical
+                    .effective_white_space(PrimitiveKind::String),
+                policy
+            );
+            schema(vec![value])
+                .validate()
+                .expect("String whitespace tightening should be valid");
+        }
+    }
+
+    #[test]
+    fn primitive_patterns_are_evaluated_with_effective_white_space() {
+        for primitive in [
+            PrimitiveKind::SignedInteger,
+            PrimitiveKind::DateTime,
+            PrimitiveKind::Time,
+        ] {
+            let mut value = declaration("Value", TypeKind::Primitive(primitive));
+            value.constraints.lexical.pattern_groups.push(PatternGroup {
+                alternatives: vec![PatternExpression::xml_schema(".+Z")],
+            });
+            assert_eq!(
+                value.constraints.lexical.effective_white_space(primitive),
+                WhiteSpacePolicy::Collapse
+            );
+            assert_eq!(
+                value.constraints.lexical.pattern_groups[0].alternatives[0].dialect,
+                PatternDialect::XmlSchema
+            );
+            schema(vec![value])
+                .validate()
+                .expect("pattern retains its primitive whitespace context");
+        }
+    }
+
+    #[test]
+    fn fixed_collapse_primitives_reject_contradictory_explicit_policies() {
+        for (primitive, policy) in [
+            (PrimitiveKind::DateTime, WhiteSpacePolicy::Preserve),
+            (PrimitiveKind::DateTime, WhiteSpacePolicy::Replace),
+            (PrimitiveKind::SignedInteger, WhiteSpacePolicy::Preserve),
+            (PrimitiveKind::Float64, WhiteSpacePolicy::Replace),
+        ] {
+            let mut value = declaration("Value", TypeKind::Primitive(primitive));
+            value.constraints.lexical.white_space = Some(policy);
+            assert!(matches!(
+                schema(vec![value]).validate(),
+                Err(ValidationError::InvalidWhiteSpacePolicy {
+                    primitive: actual_primitive,
+                    policy: actual_policy,
+                    ..
+                }) if actual_primitive == primitive && actual_policy == policy
+            ));
+        }
+    }
+
+    #[test]
+    fn named_white_space_restrictions_compare_effective_policies() {
+        for (base_policy, derived_policy, valid) in [
+            (None, Some(WhiteSpacePolicy::Collapse), true),
+            (Some(WhiteSpacePolicy::Collapse), None, false),
+            (
+                Some(WhiteSpacePolicy::Replace),
+                Some(WhiteSpacePolicy::Collapse),
+                true,
+            ),
+            (
+                Some(WhiteSpacePolicy::Collapse),
+                Some(WhiteSpacePolicy::Replace),
+                false,
+            ),
+        ] {
+            let constraints = |policy| ConstraintSet {
+                lexical: LexicalConstraintSet {
+                    white_space: policy,
+                    ..LexicalConstraintSet::default()
+                },
+                ..ConstraintSet::default()
+            };
+            let result = schema(vec![
+                restricted_primitive(
+                    "Base",
+                    PrimitiveKind::String,
+                    None,
+                    constraints(base_policy),
+                ),
+                restricted_primitive(
+                    "Derived",
+                    PrimitiveKind::String,
+                    Some("Base"),
+                    constraints(derived_policy),
+                ),
+            ])
+            .validate();
+            assert_eq!(result.is_ok(), valid);
+        }
+
+        schema(vec![
+            restricted_primitive(
+                "Base",
+                PrimitiveKind::DateTime,
+                None,
+                ConstraintSet::default(),
+            ),
+            restricted_primitive(
+                "Derived",
+                PrimitiveKind::DateTime,
+                Some("Base"),
+                ConstraintSet::default(),
+            ),
+        ])
+        .validate()
+        .expect("an omitted policy retains fixed intrinsic collapse");
     }
 
     #[test]
@@ -1688,12 +2008,32 @@ mod tests {
     }
 
     #[test]
-    fn named_pattern_restrictions_preserve_inherited_vector() {
+    fn named_pattern_restrictions_preserve_inherited_group_prefix() {
+        fn lexical(groups: Vec<Vec<&str>>) -> LexicalConstraintSet {
+            LexicalConstraintSet {
+                pattern_groups: groups
+                    .into_iter()
+                    .map(|alternatives| PatternGroup {
+                        alternatives: alternatives
+                            .into_iter()
+                            .map(PatternExpression::xml_schema)
+                            .collect(),
+                    })
+                    .collect(),
+                white_space: None,
+            }
+        }
         for (base_patterns, derived_patterns, valid) in [
-            (vec!["A"], vec!["A"], true),
-            (vec!["A"], Vec::new(), false),
-            (vec!["A"], vec!["B"], false),
-            (Vec::new(), vec!["B"], true),
+            (vec![vec!["A", "B"]], vec![vec!["A", "B"]], true),
+            (vec![vec!["A", "B"]], vec![vec!["A", "B"], vec!["C"]], true),
+            (vec![vec!["A", "B"]], Vec::new(), false),
+            (vec![vec!["A", "B"]], vec![vec!["X", "B"]], false),
+            (
+                vec![vec!["A"], vec!["B"]],
+                vec![vec!["B"], vec!["A"]],
+                false,
+            ),
+            (Vec::new(), vec![vec!["B"]], true),
         ] {
             let result = schema(vec![
                 restricted_primitive(
@@ -1701,7 +2041,7 @@ mod tests {
                     PrimitiveKind::String,
                     None,
                     ConstraintSet {
-                        patterns: base_patterns.into_iter().map(str::to_owned).collect(),
+                        lexical: lexical(base_patterns),
                         ..ConstraintSet::default()
                     },
                 ),
@@ -1710,7 +2050,7 @@ mod tests {
                     PrimitiveKind::String,
                     Some("Base"),
                     ConstraintSet {
-                        patterns: derived_patterns.into_iter().map(str::to_owned).collect(),
+                        lexical: lexical(derived_patterns),
                         ..ConstraintSet::default()
                     },
                 ),

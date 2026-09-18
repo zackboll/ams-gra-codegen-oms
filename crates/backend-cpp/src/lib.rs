@@ -251,7 +251,7 @@ fn reject_extra_constraints(constraints: &ConstraintSet, name: &str) -> Result<(
         || constraints.length.is_some()
         || constraints.min_length.is_some()
         || constraints.max_length.is_some()
-        || !constraints.patterns.is_empty()
+        || constraints.lexical != Default::default()
     {
         return unsupported(format!("constraints on {name}"));
     }
@@ -442,6 +442,37 @@ mod tests {
                 ..ConstraintSet::default()
             };
             let error = generate(&schema).expect_err("constraints must not be discarded");
+            assert!(
+                error
+                    .message
+                    .contains("unsupported C++ IR construct: constraints on")
+            );
+        }
+    }
+
+    #[test]
+    fn lexical_constraints_fail_before_rendering() {
+        for (kind, white_space) in [
+            (PrimitiveKind::DateTime, false),
+            (PrimitiveKind::Time, false),
+            (PrimitiveKind::SignedInteger, false),
+            (PrimitiveKind::String, false),
+            (PrimitiveKind::String, true),
+        ] {
+            let mut schema = track_schema();
+            schema.types[0].kind = TypeKind::Primitive(kind);
+            schema.types[0].constraints = ConstraintSet::default();
+            if white_space {
+                schema.types[0].constraints.lexical.white_space =
+                    Some(ams_gra_oms_ir::WhiteSpacePolicy::Collapse);
+            } else {
+                schema.types[0].constraints.lexical.pattern_groups.push(
+                    ams_gra_oms_ir::PatternGroup {
+                        alternatives: vec![ams_gra_oms_ir::PatternExpression::xml_schema(".+Z")],
+                    },
+                );
+            }
+            let error = generate(&schema).expect_err("lexical constraints must be rejected");
             assert!(
                 error
                     .message
