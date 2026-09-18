@@ -307,6 +307,28 @@ mod tests {
     }
 
     #[test]
+    fn structural_base_moves_before_derived() {
+        let mut derived = record("Derived", &[]);
+        derived.base_type = Some(named("Base"));
+        assert_eq!(
+            names(&schema(vec![derived, record("Base", &[])])).unwrap(),
+            ["Base", "Derived"]
+        );
+    }
+
+    #[test]
+    fn multi_level_structural_bases_are_planned_in_chain_order() {
+        let mut leaf = record("Leaf", &[]);
+        leaf.base_type = Some(named("Middle"));
+        let mut middle = record("Middle", &[]);
+        middle.base_type = Some(named("Base"));
+        assert_eq!(
+            names(&schema(vec![leaf, middle, record("Base", &[])])).unwrap(),
+            ["Base", "Middle", "Leaf"]
+        );
+    }
+
+    #[test]
     fn unrelated_declarations_remain_stable() {
         let schema = schema(vec![
             scalar("First"),

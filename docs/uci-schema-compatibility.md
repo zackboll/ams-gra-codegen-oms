@@ -439,3 +439,92 @@ the 2.5 pattern facet. Primitive global message payloads remain invalid because
 `MessageDecl.payload_type` must be named. Frontend semantic recognition also
 does not claim backend support: existing generators explicitly reject choices
 and unsupported scalar/container semantics rather than lowering them lossily.
+
+## Complex-type inheritance inventory and policy
+
+Task 013 recursively inventoried each message-definition root and its reachable
+security-marking include before implementation. All observed `xs:complexContent`
+nodes are in the message-definition document; none occur in the included
+security-marking document.
+
+| Inheritance property | UCI 2.5 | UCI 2.6 |
+|---|---:|---:|
+| `xs:complexContent` | 2,026 | 2,036 |
+| `xs:extension` | 2,026 | 2,036 |
+| `complexContent/xs:restriction` | 0 | 0 |
+| extension-local sequence | 1,619 | 1,630 |
+| extension-local choice | 1 | 1 |
+| extension with no local compositor | 406 | 405 |
+| inheritance edges | 2,026 | 2,036 |
+| distinct referenced base types | 271 | 272 |
+| roots referenced by derived declarations | 197 | 198 |
+| bases declared before/after child | 1,134 / 892 | 1,142 / 894 |
+| bases that are themselves derived | 331 | 334 |
+| maximum inheritance depth (edges) | 5 | 5 |
+| cycles / unresolved bases | 0 / 0 | 0 / 0 |
+| inherited-name redeclarations | 0 | 0 |
+
+The longest representative chain is identical in both releases:
+`AirRecordMDT -> AirRecordDRL -> AirRecordDRLE -> RecordDRLE ->
+DataRecordListBaseType -> DataRecordBaseType`. Multiple independent
+hierarchies are present. Every base resolves to a named `xs:complexType` in the
+UCI namespace. There are no cross-file or cross-namespace inheritance edges.
+
+All complex-content parents have `name` and UCI `version`; the 18 abstract
+derived parents per release additionally have `abstract="true"`. Every
+`complexContent` has no attributes, exactly one extension child, no `mixed`,
+and no annotation. Every extension has only its required `base` attribute and
+has no annotation. No extension has attributes, attribute groups, groups,
+children after its compositor, nested compositors, `xs:any`, or anonymous local
+types. The sole local choice in each release is `QueryType` extending
+`QueryPET`. Consequently the supported grammar deliberately rejects all
+unobserved complex-content attributes and children; complex restriction is not
+treated as extension.
+
+Each release contains 70 abstract complex types, all using lexical value
+`true` (no `false`, `1`, or `0` in real UCI). Eighteen abstract types directly
+extend another type and 18 have direct sequence content; the remaining direct
+content is empty. Fifty-seven abstract types participate in an observed
+inheritance edge and 13 currently have no derived child. Concrete declarations
+extend abstract bases 1,254 times in 2.5 and 1,257 times in 2.6. No global UCI
+message directly references an abstract type. All 722/725 global messages in
+2.5/2.6 reference concrete types that themselves participate in inheritance.
+
+The frontend preserves XSD boolean forms `true`/`1` and `false`/`0` in
+`TypeDecl.is_abstract` and rejects malformed values. It normalizes each
+extension as an immediate named `base_type` plus only its locally declared
+`Record` or `Choice` content. Empty extension content is an empty local record,
+meaning no locally declared content. It never copies inherited fields or
+alternatives into the derived kind. Type and field documentation remain owned
+by their corresponding declarations; the observed intermediate inheritance
+syntax contains no documentation to discard.
+
+Semantic IR validation requires structural bases to be named structural
+declarations and rejects deterministic self or multi-node inheritance cycles.
+This check is limited to base edges and does not conflate field-reference
+recursion with inheritance. Primitive `base_type` ancestry remains valid for
+named simple restrictions. The shared dependency planner already observes base
+references and is tested with forward and multi-level source order. Ada, Rust,
+and C++ explicitly reject inherited records and choices before generation, so
+no backend can silently emit only local content; their supported simple
+restriction ancestry remains unaffected.
+
+The iterative probes passed `xs:complexContent`, `xs:extension`, named complex
+base resolution, abstract metadata, local sequence/choice content, empty local
+extensions, forward bases, and multi-level chains. They then reached different
+outside-tranche blockers:
+
+```text
+UCI 2.5: unsupported XSD construct: xs:duration at
+UCI_MessageDefinitions_v2_5_0.xsd:39334:4
+
+UCI 2.6: unsupported XSD construct: xs:restriction base type at
+UCI_MessageDefinitions_v2_6_0.xsd:110193:3
+```
+
+The 2.5 blocker is the `IntegratorStepSize` field with type `xs:duration`. The
+2.6 blocker is `AA_CodeType`, a simple restriction of `xs:hexBinary` with an
+`xs:length` facet. Both belong to later scalar/restriction work, not complex
+inheritance, and are intentionally not implemented here. The inheritance
+shapes are materially the same between releases; 2.6 adds ten extension edges,
+11 sequence extensions, one distinct base, and removes one empty extension.

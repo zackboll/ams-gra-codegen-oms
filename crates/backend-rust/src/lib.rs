@@ -153,6 +153,18 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
         if declaration.is_abstract {
             return unsupported(format!("abstract type {}", declaration.name.local_name));
         }
+        if matches!(
+            declaration.kind,
+            TypeKind::Record { .. } | TypeKind::Choice { .. }
+        ) && matches!(
+            declaration.base_type.as_ref().map(|base| &base.target),
+            Some(TypeRefTarget::Named(_))
+        ) {
+            return unsupported(format!(
+                "inherited structural type {}",
+                declaration.name.local_name
+            ));
+        }
         reject_extra_constraints(&declaration.constraints, &declaration.name.local_name)?;
         if let TypeKind::Record { fields } = &declaration.kind {
             for field in fields {
@@ -323,6 +335,7 @@ mod tests {
         schema.types[0].kind = TypeKind::Choice {
             alternatives: vec![alternative],
         };
+        schema.types[0].base_type = None;
         let error = generate(&schema).expect_err("choice must not be omitted");
         assert!(
             error
@@ -345,5 +358,48 @@ mod tests {
                 "unsupported Rust IR construct: type reference Primitive({kind:?})"
             )));
         }
+    }
+
+    #[test]
+    fn inherited_structural_types_fail_explicitly() {
+        for choice in [false, true] {
+            let mut schema = track_schema();
+            let derived_index = schema
+                .types
+                .iter()
+                .position(|declaration| matches!(declaration.kind, TypeKind::Record { .. }))
+                .unwrap();
+            let mut base = schema.types[derived_index].clone();
+            base.name.local_name = "Structural_Base".to_owned();
+            base.kind = TypeKind::Record { fields: Vec::new() };
+            schema.types[derived_index].base_type = Some(TypeRef::named(base.name.clone()));
+            if choice {
+                let TypeKind::Record { fields } = &schema.types[derived_index].kind else {
+                    unreachable!()
+                };
+                schema.types[derived_index].kind = TypeKind::Choice {
+                    alternatives: vec![fields[0].clone()],
+                };
+            }
+            schema.types.push(base);
+            let error = generate(&schema).expect_err("inherited structure must be rejected");
+            assert!(
+                error
+                    .message
+                    .contains("unsupported Rust IR construct: inherited structural type")
+            );
+        }
+    }
+
+    #[test]
+    fn abstract_types_fail_explicitly() {
+        let mut schema = track_schema();
+        schema.types[0].is_abstract = true;
+        let error = generate(&schema).expect_err("abstract type must be rejected");
+        assert!(
+            error
+                .message
+                .contains("unsupported Rust IR construct: abstract type")
+        );
     }
 }
