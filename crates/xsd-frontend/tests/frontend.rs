@@ -107,6 +107,42 @@ fn parsing_is_deterministic() {
 }
 
 #[test]
+fn normalizes_binary_floating_primitives_by_namespace_uri() {
+    let ir = load_schema_document(&fixture("floating-primitives.xsd"))
+        .expect("floating primitive fixture should parse");
+    let measurements = ir
+        .types
+        .iter()
+        .find(|declaration| declaration.name.local_name == "Measurements")
+        .expect("Measurements should exist");
+    let TypeKind::Record { fields } = &measurements.kind else {
+        panic!("Measurements should be a record");
+    };
+
+    assert_eq!(fields.len(), 2);
+    assert_eq!(
+        fields[0].type_ref.target,
+        TypeRefTarget::Primitive(PrimitiveKind::Float32)
+    );
+    assert_eq!(fields[0].cardinality, Cardinality::REQUIRED_ONE);
+    assert!(!fields[0].nillable);
+    assert_eq!(
+        fields[0].documentation.as_deref(),
+        Some("Binary32 estimate.")
+    );
+    assert_eq!(
+        fields[1].type_ref.target,
+        TypeRefTarget::Primitive(PrimitiveKind::Float64)
+    );
+    assert_ne!(
+        fields[1].type_ref.target,
+        TypeRefTarget::Primitive(PrimitiveKind::Decimal)
+    );
+    assert_eq!(fields[1].cardinality, Cardinality::OPTIONAL_ONE);
+    assert!(fields[1].nillable);
+}
+
+#[test]
 fn uci_type_versions_are_validated_and_discarded() {
     let path = write_temporary_schema(
         "type-versions",
@@ -686,6 +722,57 @@ fn invalid_global_messages_fail_semantic_validation() {
     ] {
         let error = load_schema_set(&fixture(&format!("errors/{name}"))).expect_err(name);
         assert!(error.to_string().contains(expected), "{name}: {error}");
+    }
+}
+
+#[test]
+fn primitive_global_message_payload_is_rejected() {
+    let path = fixture("errors/primitive-message-payload.xsd");
+    let error = load_schema_document(&path)
+        .expect_err("a primitive payload must not produce a MessageDecl");
+
+    assert!(matches!(error, FrontendError::UnsupportedConstruct(_)));
+    assert_eq!(
+        error.to_string(),
+        format!(
+            "unsupported XSD construct: UCI message payload must reference a named schema type at {}:5:3",
+            path.display()
+        )
+    );
+}
+
+#[test]
+fn unsupported_primitives_and_floating_restrictions_fail_closed() {
+    for (label, declaration, expected) in [
+        (
+            "unsupported-date-field",
+            r#"<xs:complexType name="Value"><xs:sequence><xs:element name="Date" type="xs:date"/></xs:sequence></xs:complexType>"#,
+            "xs:date",
+        ),
+        (
+            "unsupported-float-restriction",
+            r#"<xs:simpleType name="Value"><xs:restriction base="xs:float"/></xs:simpleType>"#,
+            "xs:restriction base type",
+        ),
+        (
+            "unsupported-double-restriction",
+            r#"<xs:simpleType name="Value"><xs:restriction base="xs:double"/></xs:simpleType>"#,
+            "xs:restriction base type",
+        ),
+    ] {
+        let path = write_temporary_schema(
+            label,
+            &format!(
+                r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:unsupported-primitive">
+  {declaration}
+</xs:schema>
+"#
+            ),
+        );
+        let error = load_schema_document(&path).expect_err(label);
+        fs::remove_file(path).expect("temporary schema should be removable");
+        assert!(matches!(error, FrontendError::UnsupportedConstruct(_)));
+        assert!(error.to_string().contains(expected), "{label}: {error}");
     }
 }
 

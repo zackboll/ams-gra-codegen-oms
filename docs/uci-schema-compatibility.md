@@ -257,4 +257,90 @@ unsupported XSD construct: xs:double at UCI_MessageDefinitions_v2_6_0.xsd:4727:4
 Both failures are the `type="xs:double"` primitive of the first local sequence
 element encountered after declaration-version processing. The releases do not
 diverge except in source position. Support for this next primitive blocker is
-intentionally left to Task 011.
+implemented by the floating-primitive slice below.
+
+## Built-in primitive inventory and floating-point policy
+
+The Task 011 probe recursively inspected both reachable schema documents per
+release and resolved every QName-bearing `type`, `base`, `ref`, `itemType`,
+`memberTypes`, and `substitutionGroup` value through the namespace bindings at
+its use site. The table therefore does not assume the lexical prefix `xs`.
+Only QNames resolving to `http://www.w3.org/2001/XMLSchema` are counted.
+
+| Built-in | UCI 2.5 local field | UCI 2.5 restriction base | UCI 2.6 local field | UCI 2.6 restriction base |
+|---|---:|---:|---:|---:|
+| `boolean` | 409 | 0 | 349 | 0 |
+| `byte` | 3 | 0 | 3 | 0 |
+| `dateTime` | 4 | 1 | 0 | 1 |
+| `double` | 280 | 25 | 280 | 25 |
+| `duration` | 9 | 1 | 0 | 1 |
+| `float` | 56 | 4 | 56 | 4 |
+| `hexBinary` | 5 | 3 | 0 | 4 |
+| `int` | 59 | 4 | 61 | 4 |
+| `long` | 14 | 0 | 14 | 1 |
+| `short` | 4 | 0 | 4 | 0 |
+| `string` | 0 | 850 | 0 | 835 |
+| `time` | 0 | 1 | 0 | 1 |
+| `unsignedByte` | 37 | 17 | 37 | 17 |
+| `unsignedInt` | 317 | 3 | 317 | 3 |
+| `unsignedShort` | 32 | 13 | 33 | 13 |
+
+No other XSD built-in names occur in the reachable sets. In particular, neither
+release references `decimal`, `integer`, `unsignedLong`, binary variants other
+than `hexBinary`, `date`, `base64Binary`, `anyURI`, or `QName`. There are no
+built-in references in global `xs:element @type`, so none is directly a message
+payload. No built-in QName occurs in any observed context other than a local
+element `@type` or restriction `@base`.
+
+Task 011 preserves this evidence-backed boundary explicitly. Primitive
+expansion applies to local semantic fields and general type references; it does
+not make primitive payloads legal UCI messages. A global element carrying UCI
+message version metadata must resolve its payload to a named schema type before
+it can become a `MessageDecl`.
+
+All counts above are in `UCI_MessageDefinitions_v2_*_0.xsd` except `boolean`
+local fields (407 message-definition + 2 security-marking in 2.5; 347 + 2 in
+2.6), `dateTime` local fields (2 + 2 in 2.5), and `string` restriction bases
+(832 + 18 in 2.5; 817 + 18 in 2.6). The remaining rows have no
+security-marking references. The releases differ in several non-floating totals,
+but their floating profiles are identical: 60 `float` and 305 `double`
+references each, split identically between direct fields and restriction bases.
+
+The first `double` field in both releases is `AnAn` in
+`AccelerationAccelerationCovarianceType`: required exactly once, non-nillable,
+and documented as a North-North acceleration covariance. It is a direct local
+element `@type` at line 4703 in 2.5 and line 4727 in 2.6. The same covariance
+record immediately repeats the direct `double` pattern for five related
+components, with later components optional. The first direct `float` field is
+the optional, non-nillable `NorthSouthVelocity` in
+`ADS_B_KinematicsContributionType` (line 7939 in 2.5; 7971 in 2.6). Floating
+restriction bases also occur, first on `AccelerationType` for `double` and
+`IFF_BarometricPressureType` for `float`.
+
+This is not an isolated `double` use: both binary floating widths materially
+occur in equivalent structural roles. The IR and direct-field QName resolver
+therefore add the coherent pair:
+
+```text
+xs:float  -> PrimitiveKind::Float32
+xs:double -> PrimitiveKind::Float64
+```
+
+These are binary floating-point value spaces and remain distinct from
+`PrimitiveKind::Decimal`, which denotes decimal arithmetic. No integer range is
+attached to either floating kind, and the model does not erase possible future
+lexical values such as `NaN`, `INF`, `-INF`, or negative zero. Floating
+restriction facets remain fail-closed rather than being approximated.
+
+After direct `float` and `double` support, both authoritative roots advance to
+the same next distinct blocker:
+
+```text
+UCI 2.5: FrontendError::UnsupportedConstruct
+unsupported XSD construct: xs:choice at UCI_MessageDefinitions_v2_5_0.xsd:4739:3
+
+UCI 2.6: FrontendError::UnsupportedConstruct
+unsupported XSD construct: xs:choice at UCI_MessageDefinitions_v2_6_0.xsd:4763:3
+```
+
+Task 011 stops at this blocker without adding choice support.

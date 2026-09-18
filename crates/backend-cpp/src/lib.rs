@@ -292,6 +292,14 @@ mod tests {
         .expect("codegen order fixture should parse")
     }
 
+    fn floating_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/floating-primitives.xsd"),
+        )
+        .expect("floating fixture should parse")
+    }
+
     #[test]
     fn track_matches_golden_and_is_deterministic() {
         let schema = track_schema();
@@ -340,5 +348,21 @@ mod tests {
                 .message
                 .starts_with("unsupported C++ IR construct: type TrackId")
         );
+    }
+
+    #[test]
+    fn floating_fields_fail_explicitly() {
+        for kind in [PrimitiveKind::Float32, PrimitiveKind::Float64] {
+            let mut schema = floating_schema();
+            let TypeKind::Record { fields } = &mut schema.types[0].kind else {
+                panic!("floating fixture should contain a record");
+            };
+            fields.truncate(1);
+            fields[0].type_ref = TypeRef::primitive(kind);
+            let error = generate(&schema).expect_err("floating generation must remain unsupported");
+            assert!(error.message.contains(&format!(
+                "unsupported C++ IR construct: type reference Primitive({kind:?})"
+            )));
+        }
     }
 }

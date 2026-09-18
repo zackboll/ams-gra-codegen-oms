@@ -464,9 +464,18 @@ fn parse_global_element(
         return Err(unsupported(node, "anonymous global element type"));
     }
 
+    let payload_type = resolve_type_ref(node, required_attribute(node, "type")?)?;
+    if !matches!(payload_type.target, TypeRefTarget::Named(_)) {
+        let position = text_position(node);
+        return Err(FrontendError::UnsupportedConstruct(format!(
+            "UCI message payload must reference a named schema type at {}:{}",
+            position.line, position.column
+        )));
+    }
+
     Ok(MessageDecl {
         name: qualified_declaration_name(node, target_namespace)?,
-        payload_type: resolve_type_ref(node, required_attribute(node, "type")?)?,
+        payload_type,
         documentation,
         source: source_ref(node, document, source_document),
     })
@@ -574,6 +583,8 @@ fn resolve_type_ref(node: Node<'_, '_>, lexical: &str) -> Result<TypeRef, Fronte
     if namespace_uri == XSD_NS {
         let primitive = match local_name {
             "integer" => PrimitiveKind::SignedInteger,
+            "float" => PrimitiveKind::Float32,
+            "double" => PrimitiveKind::Float64,
             "string" => PrimitiveKind::String,
             other => return Err(unsupported(node, other)),
         };
