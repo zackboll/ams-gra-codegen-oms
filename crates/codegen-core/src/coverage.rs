@@ -355,7 +355,7 @@ impl<'a> CoverageAnalysis<'a> {
             .schema
             .types
             .iter()
-            .map(|declaration| declaration_renderable(declaration, language, enabled))
+            .map(|declaration| self.declaration_renderable(declaration, language, enabled))
             .collect::<Vec<_>>();
         let mut message_closures_renderable = 0;
         for message in &self.schema.messages {
@@ -446,6 +446,48 @@ impl<'a> CoverageAnalysis<'a> {
             .counts
             .insert("inheritance.distinct_bases".to_owned(), bases.len());
         Ok(())
+    }
+
+    fn declaration_renderable(
+        &self,
+        declaration: &TypeDecl,
+        language: BackendLanguage,
+        enabled: &BTreeSet<FeatureFamily>,
+    ) -> bool {
+        if !enabled.is_empty() || !matches!(declaration.kind, TypeKind::Record { .. }) {
+            return declaration_renderable(declaration, language, enabled);
+        }
+        let Ok(projection) = self.structural_projection(&declaration.name) else {
+            return false;
+        };
+        if projection
+            .segments
+            .iter()
+            .any(|segment| !matches!(segment.content, StructuralSegmentContent::RecordFields(_)))
+        {
+            return false;
+        }
+        let is_abstract_ancestor = declaration.is_abstract
+            && self
+                .schema
+                .types
+                .iter()
+                .any(|candidate| named_is(candidate.base_type.as_ref(), &declaration.name));
+        if declaration.is_abstract && !is_abstract_ancestor {
+            return false;
+        }
+        declaration_constraints_renderable(&declaration.constraints, enabled)
+            && projection
+                .segments
+                .iter()
+                .all(|segment| match segment.content {
+                    StructuralSegmentContent::RecordFields(fields) => fields.iter().all(|field| {
+                        field_renderable(field, language, enabled)
+                            && !matches!(&field.type_ref.target, TypeRefTarget::Named(name)
+                            if self.declarations.get(name).is_some_and(|target| target.is_abstract))
+                    }),
+                    StructuralSegmentContent::ChoiceAlternatives(_) => false,
+                })
     }
 
     fn count_abstract_usage(&self, inventory: &mut SchemaInventory) {
@@ -1261,13 +1303,22 @@ mod tests {
     }
 
     #[test]
-    fn structural_family_alone_unblocks_abstract_inherited_closure() {
+    fn pure_record_abstract_ancestry_is_currently_renderable() {
         let mut base = declaration("Base", TypeKind::Record { fields: Vec::new() });
         base.is_abstract = true;
         let mut payload = declaration("Payload", TypeKind::Record { fields: Vec::new() });
         payload.base_type = Some(named("Base"));
         let schema = message_schema(vec![payload, base], "Payload");
-        assert_only_family_unblocks(&schema, FeatureFamily::StructuralInheritanceAndAbstract);
+        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        for language in BackendLanguage::ALL {
+            assert_eq!(analysis.impact(language, &[]).unwrap(), 1);
+            assert_eq!(
+                analysis
+                    .impact(language, &[FeatureFamily::StructuralInheritanceAndAbstract])
+                    .unwrap(),
+                1
+            );
+        }
     }
 
     #[test]

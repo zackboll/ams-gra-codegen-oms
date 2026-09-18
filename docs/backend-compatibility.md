@@ -1,4 +1,4 @@
-# Backend compatibility and Task 017 baseline
+# Backend compatibility and Task 018 lowering
 
 Tested: **2026-09-18**, baseline `1fa2ab4d380158728d383a5e4fbaebea6a2006b1`.
 
@@ -263,6 +263,53 @@ the next interacting structural tranche. No lowering was added in Task 017.
 
 ## Non-goals retained
 
-Task 017 does not add backend inheritance, abstract, Choice, or scalar lowering;
-does not flatten inherited members; and does not add JSON/serde, OWP, CAL
-runtime, regex execution, temporal parsing, or Task 018 implementation.
+## Task 018: pure Record inheritance lowering
+
+Task 018 consumes the shared `EffectiveStructuralType` projection rather than
+walking `base_type` in individual backends. For a concrete Record whose
+projection contains only Record segments, Ada, Rust, and C++ emit one concrete
+value layout containing the effective fields in oldest-base-to-local order.
+Empty Record extensions contribute no fields. Choice segments are explicitly
+rejected: flattening them would lose exclusivity semantics.
+
+This is a backend lowering only; it does not mutate the schema IR or projection.
+Native Ada tagged extension, C++ public inheritance, and Rust trait-object
+storage were intentionally not selected because they would create divergent
+ownership and polymorphism models without defining polymorphic value semantics.
+
+Abstract Records are accepted only when they are actual inheritance ancestors.
+They are retained in planning and their fields flow into concrete descendants,
+but no standalone instantiable value declaration is emitted. A Record field or
+Choice alternative naming an abstract structural target fails before rendering
+with an `abstract structural value reference` diagnostic; abstract message
+payloads likewise fail closed. Concrete structural base references retain the
+existing exact named-value behavior; Task 018 does not infer substitution or
+polymorphism from descendant existence.
+
+The Ada repeated-field helper names are target-qualified (for example,
+`Leaf_Base_Values_Sequence`) so inherited effective fields cannot collide at
+package scope. The necessary existing Ada golden changed only for this helper
+qualification.
+
+The checked-in four-level synthetic fixture verifies an abstract base, empty
+middle extension, finite repeated inherited field, named inherited reference,
+and base-to-derived layouts for all three backends. It also verifies the
+abstract-value firewall and Choice boundary. Existing standalone Choice remains
+unsupported.
+
+Public Rust CAL/`rcal` documentation remains compatibility evidence only: it
+describes generated UCI types and interface/trait treatment for inherited
+complex types, with dynamic treatment needed for abstract polymorphic values.
+That evidence supports keeping abstract value references outside this simple
+flattened-value tranche; this generator does not claim rcal API or binary
+compatibility and does not copy its implementation.
+
+The authoritative UCI roots are intentionally external and were unavailable in
+this checkout, so Task 017's published UCI 2.5/2.6 inventory and coverage
+tables above remain the recorded baseline. Recompute post-lowering authoritative
+coverage and first-blocker progression only in an environment supplied with the
+versioned UCI schema roots; no counts are inferred from the synthetic fixture.
+
+Task 018 still excludes Choice lowering, polymorphic abstract values, new
+primitive/cardinality/constraint families, JSON/serde, OWP/CAL runtime work,
+regex execution, temporal parsing, and Task 019.

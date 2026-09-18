@@ -16,17 +16,17 @@ package Oms.Track is
       Tentative,
       Confirmed);
 
-   type Sensor_Ids_Array is array (Positive range 1 .. 8) of Long_Long_Integer;
-   type Sensor_Ids_Sequence is record
+   type Track_Sensor_Ids_Array is array (Positive range 1 .. 8) of Long_Long_Integer;
+   type Track_Sensor_Ids_Sequence is record
       Length : Natural range 0 .. 8 := 0;
-      Items  : Sensor_Ids_Array;
+      Items  : Track_Sensor_Ids_Array;
    end record;
 
    type Track is record
       Id : Track_Id;
       Quality : Track_Quality;
       Callsign : Optional_String;
-      Sensor_Ids : Sensor_Ids_Sequence;
+      Sensor_Ids : Track_Sensor_Ids_Sequence;
    end record;
 
 end Oms.Track;
