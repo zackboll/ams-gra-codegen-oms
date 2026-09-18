@@ -119,6 +119,31 @@ decimal arithmetic and is not an umbrella numeric kind. `Float32` and
 IR distinction leaves room for XSD floating values such as `NaN`, `INF`,
 `-INF`, and negative zero without silently normalizing them away.
 
+The frontend maps direct XSD scalar fields by resolved namespace URI:
+`boolean` to `Boolean`; `byte`, `short`, `int`, `long`, and `integer` to
+`SignedInteger`; `unsignedByte`, `unsignedShort`, and `unsignedInt` to
+`UnsignedInteger`; `float`/`double` to `Float32`/`Float64`; `dateTime` to
+`DateTime`; `hexBinary` to `Binary`; and `string` to `String`. The generic
+integer kinds deliberately do not encode machine width. Fixed-width XSD types
+instead carry exact intrinsic minima and maxima in `ConstraintSet`. Restrictions
+intersect explicit inclusive or exclusive bounds with those intrinsic bounds;
+unbounded `xs:integer` remains unconstrained.
+
+A named complex type whose sole content model is a default-cardinality
+`xs:choice` becomes `TypeKind::Choice`. Each local element becomes one
+`FieldDecl` alternative through the same QName, documentation, nillability,
+cardinality, primitive-constraint, and provenance normalization as a sequence
+field. Alternative source order is preserved, and an empty semantic choice is
+invalid. Task 012 evidence contains only default 1..1 choice-group cardinality,
+so group cardinality is not added to the IR; non-default group bounds remain
+explicitly unsupported rather than being smeared across alternatives.
+
+`Cardinality.max_occurs = None` represents `maxOccurs="unbounded"` for record
+fields and choice alternatives. Frontend recognition does not imply backend
+generation support: current backends continue to reject choices, unbounded
+containers, and newly recognized scalar kinds where they cannot preserve the
+semantics.
+
 `PrimitiveKind` describes value types usable by semantic fields and general
 type references. It does not broaden UCI message classification: in the
 currently supported authoritative schema model, every `MessageDecl` payload

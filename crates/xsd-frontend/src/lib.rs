@@ -77,9 +77,9 @@ impl std::error::Error for FrontendError {}
 /// Parse and normalize one XSD document into semantic IR.
 ///
 /// This API supports a target namespace, named simple types that are
-/// either integer restrictions with inclusive bounds or string enumerations,
-/// and named complex types containing a sequence of explicitly typed elements
-/// with finite occurrence bounds, and schema-level named and typed message
+/// either integer restrictions with range bounds or string enumerations, and
+/// named complex types containing a sequence or choice of explicitly typed
+/// elements, and schema-level named and typed message
 /// elements. Imports and includes are explicit errors;
 /// use [`load_schema_set`] when dependencies should be traversed. Anonymous
 /// types and all other XSD constructs are also explicit errors. Schema-level
@@ -335,37 +335,31 @@ fn parse_simple_type(
     let (documentation, restriction) = exactly_one_content_child(node)?;
     require_xsd_element(restriction, "restriction")?;
     reject_unexpected_attributes(restriction, &["base"])?;
-    let base = resolve_type_ref(restriction, required_attribute(restriction, "base")?)?;
+    let lexical_base = required_attribute(restriction, "base")?;
+    let base = resolve_type_ref(restriction, lexical_base)?;
     let (_, restriction_children) = children_after_optional_annotation(restriction)?;
 
     let (kind, constraints) = match &base.target {
-        TypeRefTarget::Primitive(PrimitiveKind::SignedInteger) => {
-            let mut constraints = ConstraintSet::default();
+        TypeRefTarget::Primitive(
+            primitive @ (PrimitiveKind::SignedInteger | PrimitiveKind::UnsignedInteger),
+        ) => {
+            let intrinsic = builtin_primitive_semantics(restriction, lexical_base)?.constraints;
+            let mut explicit = ConstraintSet::default();
             for facet in restriction_children {
                 require_xsd_namespace(facet)?;
                 reject_unexpected_attributes(facet, &["value"])?;
-                let value = required_attribute(facet, "value")?;
+                let value = parse_integer(required_attribute(facet, "value")?)?;
                 match facet.tag_name().name() {
-                    "minInclusive" => {
-                        set_once(&mut constraints.min_inclusive, parse_integer(value)?, facet)?;
-                    }
-                    "maxInclusive" => {
-                        set_once(&mut constraints.max_inclusive, parse_integer(value)?, facet)?;
-                    }
+                    "minInclusive" => set_once(&mut explicit.min_inclusive, value, facet)?,
+                    "maxInclusive" => set_once(&mut explicit.max_inclusive, value, facet)?,
+                    "minExclusive" => set_once(&mut explicit.min_exclusive, value, facet)?,
+                    "maxExclusive" => set_once(&mut explicit.max_exclusive, value, facet)?,
                     other => return Err(unsupported(facet, other)),
                 }
             }
-            if let (Some(min), Some(max)) = (constraints.min_inclusive, constraints.max_inclusive) {
-                if min > max {
-                    return Err(FrontendError::InvalidInput(format!(
-                        "inverted integer range on {}",
-                        name.local_name
-                    )));
-                }
-            }
             (
-                TypeKind::Primitive(PrimitiveKind::SignedInteger),
-                constraints,
+                TypeKind::Primitive(*primitive),
+                intersect_integer_constraints(&intrinsic, &explicit),
             )
         }
         TypeRefTarget::Primitive(PrimitiveKind::String) => {
@@ -412,42 +406,60 @@ fn parse_complex_type(
 ) -> Result<TypeDecl, FrontendError> {
     validate_uci_declaration_version(node, &["name"], false)?;
     let name = qualified_declaration_name(node, target_namespace)?;
-    let (documentation, sequence) = exactly_one_content_child(node)?;
-    require_xsd_element(sequence, "sequence")?;
-    reject_unexpected_attributes(sequence, &[])?;
+    let (documentation, compositor) = exactly_one_content_child(node)?;
+    require_xsd_namespace(compositor)?;
+    let is_choice = match compositor.tag_name().name() {
+        "sequence" => false,
+        "choice" => true,
+        other => return Err(unsupported(compositor, other)),
+    };
+    reject_unexpected_attributes(compositor, &[])?;
 
     let mut fields = Vec::new();
-    for element in element_children(sequence) {
+    for element in element_children(compositor) {
         require_xsd_element(element, "element")?;
-        reject_unexpected_attributes(
-            element,
-            &["name", "type", "minOccurs", "maxOccurs", "nillable"],
-        )?;
-        let (documentation, children) = children_after_optional_annotation(element)?;
-        if !children.is_empty() {
-            return Err(unsupported(element, "anonymous element type"));
-        }
-        let type_ref = resolve_type_ref(element, required_attribute(element, "type")?)?;
-
-        fields.push(FieldDecl {
-            name: required_attribute(element, "name")?.to_owned(),
-            type_ref,
-            cardinality: parse_cardinality(element)?,
-            nillable: parse_boolean_attribute(element, "nillable", false)?,
-            constraints: ConstraintSet::default(),
-            documentation,
-            source: source_ref(element, document, source_document),
-        });
+        fields.push(parse_local_element(element, document, source_document)?);
     }
 
     Ok(TypeDecl {
         name,
         is_abstract: false,
         base_type: None,
-        kind: TypeKind::Record { fields },
+        kind: if is_choice {
+            TypeKind::Choice {
+                alternatives: fields,
+            }
+        } else {
+            TypeKind::Record { fields }
+        },
         constraints: ConstraintSet::default(),
         documentation,
         source: source_ref(node, document, source_document),
+    })
+}
+
+fn parse_local_element(
+    element: Node<'_, '_>,
+    document: &Document<'_>,
+    source_document: &str,
+) -> Result<FieldDecl, FrontendError> {
+    reject_unexpected_attributes(
+        element,
+        &["name", "type", "minOccurs", "maxOccurs", "nillable"],
+    )?;
+    let (documentation, children) = children_after_optional_annotation(element)?;
+    if !children.is_empty() {
+        return Err(unsupported(element, "anonymous element type"));
+    }
+    let semantics = resolve_type_semantics(element, required_attribute(element, "type")?)?;
+    Ok(FieldDecl {
+        name: required_attribute(element, "name")?.to_owned(),
+        type_ref: semantics.type_ref,
+        cardinality: parse_cardinality(element)?,
+        nillable: parse_boolean_attribute(element, "nillable", false)?,
+        constraints: semantics.constraints,
+        documentation,
+        source: source_ref(element, document, source_document),
     })
 }
 
@@ -573,34 +585,89 @@ fn contextualize(error: FrontendError, path: &Path) -> FrontendError {
 }
 
 fn resolve_type_ref(node: Node<'_, '_>, lexical: &str) -> Result<TypeRef, FrontendError> {
+    Ok(resolve_type_semantics(node, lexical)?.type_ref)
+}
+
+#[derive(Debug)]
+struct ResolvedTypeSemantics {
+    type_ref: TypeRef,
+    constraints: ConstraintSet,
+}
+
+#[derive(Debug)]
+struct BuiltinPrimitiveSemantics {
+    kind: PrimitiveKind,
+    constraints: ConstraintSet,
+}
+
+fn resolve_type_semantics(
+    node: Node<'_, '_>,
+    lexical: &str,
+) -> Result<ResolvedTypeSemantics, FrontendError> {
     let (prefix, local_name) = lexical.split_once(':').ok_or_else(|| {
         FrontendError::InvalidInput(format!("type QName must be prefixed: {lexical}"))
     })?;
     let namespace_uri = node
         .lookup_namespace_uri(Some(prefix))
         .ok_or_else(|| FrontendError::InvalidInput(format!("unbound QName prefix {prefix}")))?;
-
     if namespace_uri == XSD_NS {
-        let primitive = match local_name {
-            "integer" => PrimitiveKind::SignedInteger,
-            "float" => PrimitiveKind::Float32,
-            "double" => PrimitiveKind::Float64,
-            "string" => PrimitiveKind::String,
-            other => return Err(unsupported(node, other)),
-        };
-        Ok(TypeRef::primitive(primitive))
+        let semantics = builtin_primitive_semantics(node, lexical)?;
+        Ok(ResolvedTypeSemantics {
+            type_ref: TypeRef::primitive(semantics.kind),
+            constraints: semantics.constraints,
+        })
     } else {
-        Ok(TypeRef::named(QualifiedName::new(
-            namespace_uri,
-            local_name,
-        )))
+        Ok(ResolvedTypeSemantics {
+            type_ref: TypeRef::named(QualifiedName::new(namespace_uri, local_name)),
+            constraints: ConstraintSet::default(),
+        })
     }
+}
+
+fn builtin_primitive_semantics(
+    node: Node<'_, '_>,
+    lexical: &str,
+) -> Result<BuiltinPrimitiveSemantics, FrontendError> {
+    let local_name = lexical.rsplit_once(':').map_or(lexical, |(_, name)| name);
+    let (kind, min_inclusive, max_inclusive) = match local_name {
+        "boolean" => (PrimitiveKind::Boolean, None, None),
+        "byte" => (PrimitiveKind::SignedInteger, Some(-128), Some(127)),
+        "short" => (PrimitiveKind::SignedInteger, Some(-32_768), Some(32_767)),
+        "int" => (
+            PrimitiveKind::SignedInteger,
+            Some(-2_147_483_648),
+            Some(2_147_483_647),
+        ),
+        "long" => (
+            PrimitiveKind::SignedInteger,
+            Some(-9_223_372_036_854_775_808),
+            Some(9_223_372_036_854_775_807),
+        ),
+        "unsignedByte" => (PrimitiveKind::UnsignedInteger, Some(0), Some(255)),
+        "unsignedShort" => (PrimitiveKind::UnsignedInteger, Some(0), Some(65_535)),
+        "unsignedInt" => (PrimitiveKind::UnsignedInteger, Some(0), Some(4_294_967_295)),
+        "float" => (PrimitiveKind::Float32, None, None),
+        "double" => (PrimitiveKind::Float64, None, None),
+        "dateTime" => (PrimitiveKind::DateTime, None, None),
+        "hexBinary" => (PrimitiveKind::Binary, None, None),
+        "string" => (PrimitiveKind::String, None, None),
+        "integer" => (PrimitiveKind::SignedInteger, None, None),
+        other => return Err(unsupported(node, other)),
+    };
+    Ok(BuiltinPrimitiveSemantics {
+        kind,
+        constraints: ConstraintSet {
+            min_inclusive,
+            max_inclusive,
+            ..ConstraintSet::default()
+        },
+    })
 }
 
 fn parse_cardinality(node: Node<'_, '_>) -> Result<Cardinality, FrontendError> {
     let min_occurs = parse_u64_attribute(node, "minOccurs", 1)?;
     let max_occurs = match node.attribute("maxOccurs") {
-        Some("unbounded") => return Err(unsupported(node, "maxOccurs=unbounded")),
+        Some("unbounded") => None,
         Some(value) => Some(parse_u64(value, "maxOccurs")?),
         None => Some(1),
     };
@@ -763,6 +830,45 @@ fn parse_integer(value: &str) -> Result<i128, FrontendError> {
     value.parse().map_err(|_| {
         FrontendError::InvalidInput(format!("integer facet is not an integer: {value}"))
     })
+}
+
+fn intersect_integer_constraints(
+    intrinsic: &ConstraintSet,
+    explicit: &ConstraintSet,
+) -> ConstraintSet {
+    let lower = strongest_lower_bound(intrinsic)
+        .into_iter()
+        .chain(strongest_lower_bound(explicit))
+        .max_by(|left, right| left.0.cmp(&right.0).then(left.1.cmp(&right.1)));
+    let upper = strongest_upper_bound(intrinsic)
+        .into_iter()
+        .chain(strongest_upper_bound(explicit))
+        .min_by(|left, right| left.0.cmp(&right.0).then(right.1.cmp(&left.1)));
+    ConstraintSet {
+        min_inclusive: lower.and_then(|(value, exclusive)| (!exclusive).then_some(value)),
+        min_exclusive: lower.and_then(|(value, exclusive)| exclusive.then_some(value)),
+        max_inclusive: upper.and_then(|(value, exclusive)| (!exclusive).then_some(value)),
+        max_exclusive: upper.and_then(|(value, exclusive)| exclusive.then_some(value)),
+        ..ConstraintSet::default()
+    }
+}
+
+fn strongest_lower_bound(constraints: &ConstraintSet) -> Option<(i128, bool)> {
+    constraints
+        .min_inclusive
+        .map(|value| (value, false))
+        .into_iter()
+        .chain(constraints.min_exclusive.map(|value| (value, true)))
+        .max_by(|left, right| left.0.cmp(&right.0).then(left.1.cmp(&right.1)))
+}
+
+fn strongest_upper_bound(constraints: &ConstraintSet) -> Option<(i128, bool)> {
+    constraints
+        .max_inclusive
+        .map(|value| (value, false))
+        .into_iter()
+        .chain(constraints.max_exclusive.map(|value| (value, true)))
+        .min_by(|left, right| left.0.cmp(&right.0).then(right.1.cmp(&left.1)))
 }
 
 fn parse_boolean_attribute(

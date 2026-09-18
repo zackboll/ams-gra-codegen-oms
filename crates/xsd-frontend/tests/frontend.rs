@@ -632,17 +632,159 @@ fn schema_set_failures_are_explicit_and_contextual() {
 }
 
 #[test]
-fn unsupported_choice_fails_closed() {
-    let error = load_schema_document(&fixture("unsupported-choice.xsd"))
-        .expect_err("choice must not be silently approximated");
-    assert!(matches!(error, FrontendError::UnsupportedConstruct(_)));
+fn normalizes_choices_scalars_integer_ranges_and_unbounded_cardinality() {
+    let path = fixture("choice-scalars.xsd");
+    let ir = load_schema_document(&path).expect("Task 012 fixture should parse");
+    let value = ir
+        .types
+        .iter()
+        .find(|ty| ty.name.local_name == "Value")
+        .unwrap();
     assert_eq!(
-        error.to_string(),
-        format!(
-            "unsupported XSD construct: xs:choice at {}:7:5",
-            fixture("unsupported-choice.xsd").display()
-        )
+        value.documentation.as_deref(),
+        Some("Choice documentation.")
     );
+    let TypeKind::Choice { alternatives } = &value.kind else {
+        panic!("expected choice")
+    };
+    assert_eq!(
+        alternatives
+            .iter()
+            .map(|field| field.name.as_str())
+            .collect::<Vec<_>>(),
+        ["IntegerValue", "PreciseValue", "NamedValue"]
+    );
+    assert_eq!(
+        alternatives[0].documentation.as_deref(),
+        Some("Integer alternative.")
+    );
+    assert_eq!(
+        alternatives[0].constraints.min_inclusive,
+        Some(-2_147_483_648)
+    );
+    assert_eq!(
+        alternatives[0].constraints.max_inclusive,
+        Some(2_147_483_647)
+    );
+    assert_eq!(
+        alternatives[1].cardinality,
+        Cardinality {
+            min_occurs: 0,
+            max_occurs: None
+        }
+    );
+    assert!(alternatives[1].nillable);
+    assert_eq!(
+        alternatives[2].cardinality,
+        Cardinality {
+            min_occurs: 1,
+            max_occurs: None
+        }
+    );
+    assert_eq!(
+        alternatives[2].type_ref.target,
+        TypeRefTarget::Named(QualifiedName::new("urn:choice-scalars", "Named"))
+    );
+    assert!(
+        alternatives
+            .iter()
+            .all(|field| field.source.document == path.display().to_string()
+                && field.source.line.is_some())
+    );
+
+    let scalars = ir
+        .types
+        .iter()
+        .find(|ty| ty.name.local_name == "Scalars")
+        .unwrap();
+    let TypeKind::Record { fields } = &scalars.kind else {
+        panic!("expected record")
+    };
+    let expected = [
+        (PrimitiveKind::SignedInteger, Some(-128), Some(127)),
+        (PrimitiveKind::SignedInteger, Some(-32_768), Some(32_767)),
+        (
+            PrimitiveKind::SignedInteger,
+            Some(-9_223_372_036_854_775_808),
+            Some(9_223_372_036_854_775_807),
+        ),
+        (PrimitiveKind::UnsignedInteger, Some(0), Some(255)),
+        (PrimitiveKind::UnsignedInteger, Some(0), Some(65_535)),
+        (PrimitiveKind::UnsignedInteger, Some(0), Some(4_294_967_295)),
+        (PrimitiveKind::Boolean, None, None),
+        (PrimitiveKind::DateTime, None, None),
+        (PrimitiveKind::Binary, None, None),
+    ];
+    for (field, (kind, min, max)) in fields.iter().zip(expected) {
+        assert_eq!(field.type_ref.target, TypeRefTarget::Primitive(kind));
+        assert_eq!(
+            (
+                field.constraints.min_inclusive,
+                field.constraints.max_inclusive
+            ),
+            (min, max)
+        );
+    }
+    let port = ir
+        .types
+        .iter()
+        .find(|ty| ty.name.local_name == "Port")
+        .unwrap();
+    assert_eq!(
+        port.kind,
+        TypeKind::Primitive(PrimitiveKind::UnsignedInteger)
+    );
+    assert_eq!(
+        (
+            port.constraints.min_inclusive,
+            port.constraints.max_inclusive
+        ),
+        (Some(1), Some(65_535))
+    );
+    let positive = ir
+        .types
+        .iter()
+        .find(|ty| ty.name.local_name == "PositiveInt")
+        .unwrap();
+    assert_eq!(
+        (
+            positive.constraints.min_exclusive,
+            positive.constraints.max_inclusive
+        ),
+        (Some(0), Some(1000))
+    );
+    assert_eq!(ir, load_schema_document(&path).unwrap());
+}
+
+#[test]
+fn task_012_structural_and_range_errors_fail_closed() {
+    for (label, declaration, expected) in [
+        (
+            "choice-bounds",
+            r#"<xs:complexType name="V"><xs:choice minOccurs="0"><xs:element name="A" type="xs:string"/></xs:choice></xs:complexType>"#,
+            "choice @minOccurs",
+        ),
+        (
+            "nested-choice",
+            r#"<xs:complexType name="V"><xs:choice><xs:sequence/></xs:choice></xs:complexType>"#,
+            "xs:sequence",
+        ),
+        (
+            "contradictory-byte",
+            r#"<xs:simpleType name="V"><xs:restriction base="xs:byte"><xs:minInclusive value="1000"/></xs:restriction></xs:simpleType>"#,
+            "contradictory numeric constraints",
+        ),
+    ] {
+        let path = write_temporary_schema(
+            label,
+            &format!(
+                r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:errors">{declaration}</xs:schema>"#
+            ),
+        );
+        let error = load_schema_document(&path).expect_err(label);
+        fs::remove_file(path).unwrap();
+        assert!(error.to_string().contains(expected), "{label}: {error}");
+    }
 }
 
 #[test]
