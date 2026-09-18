@@ -403,6 +403,36 @@ mod tests {
     }
 
     #[test]
+    fn temporal_and_constrained_scalars_fail_explicitly() {
+        for kind in [PrimitiveKind::Time, PrimitiveKind::Duration] {
+            let mut schema = track_schema();
+            let TypeKind::Record { fields } = &mut schema.types[2].kind else {
+                panic!("track fixture should contain a record");
+            };
+            fields[0].type_ref = TypeRef::primitive(kind);
+            let error = generate(&schema).expect_err("temporal generation must remain unsupported");
+            assert!(error.message.contains(&format!(
+                "unsupported Ada IR construct: type reference Primitive({kind:?})"
+            )));
+        }
+
+        for kind in [PrimitiveKind::String, PrimitiveKind::Binary] {
+            let mut schema = track_schema();
+            schema.types[0].kind = TypeKind::Primitive(kind);
+            schema.types[0].constraints = ConstraintSet {
+                length: Some(4),
+                ..ConstraintSet::default()
+            };
+            let error = generate(&schema).expect_err("constraints must not be discarded");
+            assert!(
+                error
+                    .message
+                    .contains("unsupported Ada IR construct: constraints on")
+            );
+        }
+    }
+
+    #[test]
     fn inherited_structural_types_fail_explicitly() {
         for choice in [false, true] {
             let mut schema = track_schema();

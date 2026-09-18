@@ -93,14 +93,29 @@ are omitted, and multiple nonempty nodes are joined by one blank line. Type,
 sequence-field, and enumeration-facet documentation reaches the existing IR
 documentation fields. Validated schema and supported-restriction documentation
 is deliberately discarded because those XSD syntax owners have no semantic IR
-documentation field. The observed pattern facet remains unsupported in its own
-right; Task 008 does not bypass that owner to consume its annotation. No raw XML
-metadata is exposed to backends.
+documentation field. At Task 008, pattern semantics remained unsupported, so
+the frontend did not bypass the pattern owner merely to consume its annotation.
+Task 014 later added semantic String pattern support. A supported String pattern
+facet now validates an optional leading annotation and deliberately discards its
+normalized documentation because `ConstraintSet` has no documentation owner.
+Unsupported pattern families remain fail-closed. No raw XML metadata is exposed
+to backends.
 
 Because real UCI provides no evidence that `xs:appinfo` is safe to ignore, it
 remains unsupported. Embedded markup, unknown annotation children, unexpected
 annotation attributes, and annotations outside the leading position also fail
 closed with source context.
+
+The one pattern-facet annotation in each release is on
+`NATO_SpecialWordsType` in the corresponding security-marking schema. Both
+types restrict `xs:string`; the supported pattern is
+`NATO:[a-zA-Z\-_]{1,256}`. In both releases the pattern has exactly one element
+child: a leading, attribute-free `xs:annotation` containing exactly one
+attribute-free, plain-text `xs:documentation` node with the text “North Atlantic
+Treaty Organization Special Words.” The two occurrences are structurally and
+semantically equivalent. Task 014 validates this evidence-backed shape but does
+not add the documentation to semantic constraints. All accepted scalar facets
+reject residual element children after their optional leading annotation.
 
 After this annotation slice, both roots pass their original schema-level
 annotation and stop at the next unsupported declaration:
@@ -528,3 +543,145 @@ The 2.5 blocker is the `IntegratorStepSize` field with type `xs:duration`. The
 inheritance, and are intentionally not implemented here. The inheritance
 shapes are materially the same between releases; 2.6 adds ten extension edges,
 11 sequence extensions, one distinct base, and removes one empty extension.
+
+## Task 014 scalar restrictions
+
+The complete recursively reachable message-definition sets (message schema plus
+security-marking include) contain 945 named simple restrictions in UCI 2.5 and
+934 in UCI 2.6. Every restriction has a declaration name and owner annotation.
+Six 2.5 restriction nodes and no 2.6 restriction nodes have their own
+annotations. Resolved-base counts are:
+
+| Resolved base | UCI 2.5 | UCI 2.6 |
+|---|---:|---:|
+| `xs:string` | 850 | 835 |
+| `xs:double` / `xs:float` | 25 / 4 | 25 / 4 |
+| `xs:int` / `xs:long` | 4 / 0 | 4 / 1 |
+| `xs:unsignedByte` / `xs:unsignedInt` / `xs:unsignedShort` | 17 / 3 / 13 | 17 / 3 / 13 |
+| `xs:hexBinary` | 3 | 4 |
+| `xs:dateTime` / `xs:time` / `xs:duration` | 1 / 1 / 1 | 1 / 1 / 1 |
+| `uci:BytePositiveType` / `uci:DecibelType` | 4 / 1 | 4 / 1 |
+| `uci:DoubleNonNegativeType` / `uci:DoublePositiveType` | 13 / 1 | 13 / 1 |
+| `uci:HexBinaryType` | 0 | 1 |
+| `uci:IntPositiveType` / `uci:LongNonNegativeType` | 1 / 0 | 1 / 1 |
+| `uci:ShortPositiveType` / `uci:VisibleString32Type` | 2 / 1 | 2 / 1 |
+
+Complete facet totals by owner base are:
+
+| Base / facet | UCI 2.5 | UCI 2.6 |
+|---|---:|---:|
+| string enumeration | 7,766 | 7,767 |
+| string length / minLength / maxLength | 65 / 57 / 60 | 65 / 57 / 60 |
+| string pattern / whiteSpace | 140 / 2 | 140 / 0 |
+| hexBinary length | 3 | 3 |
+| dateTime pattern / time pattern | 1 / 1 | 1 / 1 |
+| int minInclusive / maxInclusive / pattern | 4 / 4 / 1 | 4 / 4 / 0 |
+| long minInclusive | 0 | 1 |
+| unsignedByte minInclusive / maxInclusive | 4 / 16 | 4 / 16 |
+| unsignedInt minInclusive / maxInclusive | 1 / 1 | 1 / 1 |
+| unsignedShort minInclusive / maxInclusive | 1 / 9 | 1 / 9 |
+| float minInclusive / maxInclusive | 4 / 3 | 4 / 3 |
+| double minInclusive / maxInclusive / minExclusive | 10 / 7 / 1 | 10 / 7 / 1 |
+| named-base minInclusive / maxInclusive / length | 1 / 9 / 0 | 1 / 9 / 1 |
+
+No `totalDigits`, `fractionDigits`, or other restriction facets occur. Exact
+built-in facet-set shapes are identical except where noted: temporal is
+`dateTime(pattern)`, `time(pattern)`, and `duration(zero)`; floating is
+`float(minInclusive)` or `float(minInclusive,maxInclusive)`, and `double(zero)`,
+`double(minExclusive)`, `double(minInclusive)`, or
+`double(minInclusive,maxInclusive)`; binary is `hexBinary(length)`, plus one
+`hexBinary(zero)` in 2.6; signed integers use range combinations, with one 2.5
+`int(minInclusive,maxInclusive,pattern)` and one 2.6 `long(minInclusive)`;
+unsigned integers use zero, one-sided, or inclusive-range shapes.
+
+String restrictions comprise enumeration-only declarations and these exact
+non-enumeration ordered shapes: `length+pattern` (59),
+`length+pattern×2` (4), `length+pattern×5` (1),
+`length+pattern×8` (1), `maxLength+minLength+pattern` (7),
+`maxLength+pattern` (3), and `minLength+maxLength+pattern` (48 in 2.5,
+50 in 2.6). UCI 2.5 additionally has two
+`minLength+maxLength+whiteSpace+pattern` declarations, which remain
+unsupported. Enumeration-only multiplicities in 2.5 are
+`1:5, 2:141, 3:136, 4:107, 5:62, 6:59, 7:23, 8:31, 9:14, 10:15, 11:20,
+12:10, 13:7, 14:6, 15:4, 16:8, 17:7, 18:3, 19:7, 20:5, 21:4, 22:4,
+23:1, 24:5, 25:1, 27:1, 28:2, 29:1, 30:1, 31:5, 32:4, 33:1, 35:3,
+36:1, 38:1, 39:1, 41:1, 43:1, 47:1, 48:1, 54:1, 57:1, 61:2, 62:1,
+64:1, 83:1, 92:1, 93:1, 280:1, 340:3, 341:1, 722:1`.
+The 2.6 multiplicities are
+`1:2, 2:139, 3:134, 4:102, 5:61, 6:58, 7:21, 8:31, 9:14, 10:15,
+11:18, 12:10, 13:8, 14:6, 15:4, 16:9, 17:7, 18:3, 19:7, 20:5, 21:4,
+22:4, 23:1, 24:5, 25:1, 27:1, 28:2, 29:1, 30:1, 31:5, 32:4, 33:1,
+35:3, 36:1, 38:1, 39:1, 41:1, 43:1, 47:1, 48:1, 49:1, 54:1, 57:1,
+61:2, 62:1, 64:1, 83:1, 92:1, 93:1, 280:1, 340:3, 341:1, 725:1`.
+
+Named UCI restriction bases are present: 23 declarations in 2.5 and 25 in
+2.6. Their exact shapes are `BytePositiveType(maxInclusive)` (4),
+`DecibelType(minInclusive)` (1), `DoubleNonNegativeType(zero)` (11),
+`DoubleNonNegativeType(maxInclusive)` (2), `DoublePositiveType(zero)` (1),
+`IntPositiveType(maxInclusive)` (1), `ShortPositiveType(maxInclusive)` (2),
+and `VisibleString32Type(zero)` (1). UCI 2.6 additionally has
+`HexBinaryType(length)` (1) and `LongNonNegativeType(zero)` (1). Supporting
+these requires named restriction constraint inheritance/intersection and is
+outside this tranche.
+
+Direct temporal references reconfirm earlier evidence: UCI 2.5 has four
+`xs:dateTime`, nine `xs:duration`, and zero `xs:time` fields; UCI 2.6 has none.
+Each release has one restriction of each temporal base. `DurationType` has zero
+facets and normalizes safely. `DateTimeType` and `TimeType` each use lexical
+pattern `.+Z`; those restrictions remain fail-closed because lexical timezone
+spelling does not survive semantic normalization. Direct fields map to distinct
+`DateTime`, `Time`, and `Duration` primitive kinds without selecting runtime
+representations.
+
+The frontend now parses supported built-in restrictions through one
+base-sensitive restriction path. String enumerations retain source order,
+documentation, and wire values. Semantic string length and same-restriction
+pattern alternatives are preserved in source order; duplicate singular facets
+and malformed non-negative length values fail deterministically. `hexBinary`
+exact/minimum/maximum length
+constraints are represented in octets, not lexical hexadecimal characters.
+Binary, integer, and temporal lexical patterns remain unsupported. Zero-facet
+built-in aliases, including observed floating aliases, normalize without new
+constraints; floating ranges remain unsupported. All named restrictions retain
+their immediate primitive `base_type`.
+
+Ada, Rust, and C++ still reject `Time`, `Duration`, constrained `String`, and
+constrained `Binary` before rendering. This prevents partial output and silent
+constraint loss; backend generation support was intentionally not added.
+
+The iterative progression was:
+
+```text
+UCI 2.5:
+  xs:duration direct field at 39334:4
+  -> passed direct duration and supported scalar restrictions
+  -> STOP: xs:double minInclusive in AltitudeBarometricType at 111189:4
+
+UCI 2.6:
+  xs:hexBinary + xs:length in AA_CodeType at 110193:3
+  -> passed binary length and supported scalar restrictions
+  -> STOP: xs:double minInclusive in AltitudeBarometricType at 111578:4
+```
+
+Both final blockers require floating-point constraint semantics not representable
+by the integer-valued `ConstraintSet` range fields. They are outside Task 014;
+no approximation or Task 015 implementation was added. The releases began this
+tranche at divergent blockers and converged on the same semantic blocker at
+release-specific source locations.
+
+More precisely, both blockers are the semantically equivalent
+`AltitudeBarometricType` declaration. Each restricts the resolved base
+`{http://www.w3.org/2001/XMLSchema}double` with exactly one facet,
+`minInclusive="-6378237"`, after documentation describing barometric altitude
+in meters and the EGM96 geoid-derived minimum. The restriction begins at line
+111,189 in 2.5 and line 111,578 in 2.6 according to the XML parser's source
+position; the unsupported facet diagnostic is at column 4 on those lines. Each
+authoritative schema set contains three declarations
+with the exact `xs:double + minInclusive` shape: `AltitudeBarometricType`,
+`AltitudeType` (also `-6378237`), and `DoubleNonNegativeType` (`0.0`).
+
+Representing these bounds faithfully requires a language-neutral
+floating-point constraint model that preserves XSD floating values and ordering
+without parsing into `i128`, rounding, truncating, mapping to decimal, or hiding
+the bound in an opaque string. That is the recommended next-task semantic
+problem and is intentionally not implemented in Task 014.

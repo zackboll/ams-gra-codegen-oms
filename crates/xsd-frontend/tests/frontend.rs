@@ -1050,36 +1050,236 @@ fn primitive_global_message_payload_is_rejected() {
 }
 
 #[test]
-fn unsupported_primitives_and_floating_restrictions_fail_closed() {
-    for (label, declaration, expected) in [
+fn unsupported_primitives_fail_closed() {
+    let label = "unsupported-date-field";
+    let declaration = r#"<xs:complexType name="Value"><xs:sequence><xs:element name="Date" type="xs:date"/></xs:sequence></xs:complexType>"#;
+    let path = write_temporary_schema(
+        label,
+        &format!(
+            r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:unsupported-primitive">
+  {declaration}
+</xs:schema>
+"#
+        ),
+    );
+    let error = load_schema_document(&path).expect_err(label);
+    fs::remove_file(path).expect("temporary schema should be removable");
+    assert!(matches!(error, FrontendError::UnsupportedConstruct(_)));
+    assert!(error.to_string().contains("xs:date"), "{label}: {error}");
+}
+
+#[test]
+fn zero_facet_floating_restrictions_normalize_without_new_constraints() {
+    for (label, base, kind) in [
+        ("float-alias", "xs:float", PrimitiveKind::Float32),
+        ("double-alias", "xs:double", PrimitiveKind::Float64),
+    ] {
+        let path = write_temporary_schema(
+            label,
+            &format!(
+                r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:floating-alias">
+  <xs:simpleType name="Value"><xs:restriction base="{base}"/></xs:simpleType>
+</xs:schema>
+"#
+            ),
+        );
+        let ir = load_schema_document(&path).expect("zero-facet alias should normalize");
+        fs::remove_file(path).expect("temporary schema should be removable");
+        assert_eq!(ir.types[0].kind, TypeKind::Primitive(kind));
+        assert_eq!(
+            ir.types[0].base_type.as_ref().unwrap().target,
+            TypeRefTarget::Primitive(kind)
+        );
+        assert_eq!(ir.types[0].constraints, Default::default());
+    }
+}
+
+#[test]
+fn normalizes_temporal_and_scalar_restrictions() {
+    let ir = load_schema_document(&fixture("scalar-restrictions.xsd"))
+        .expect("scalar restriction fixture should parse");
+    let declaration = |name: &str| {
+        ir.types
+            .iter()
+            .find(|declaration| declaration.name.local_name == name)
+            .unwrap_or_else(|| panic!("{name} should exist"))
+    };
+
+    let binary = declaration("BinaryExact");
+    assert_eq!(binary.kind, TypeKind::Primitive(PrimitiveKind::Binary));
+    assert_eq!(
+        binary.base_type.as_ref().unwrap().target,
+        TypeRefTarget::Primitive(PrimitiveKind::Binary)
+    );
+    assert_eq!(binary.constraints.length, Some(6));
+
+    let string = declaration("StringRule");
+    assert_eq!(string.kind, TypeKind::Primitive(PrimitiveKind::String));
+    assert_eq!(string.constraints.min_length, Some(2));
+    assert_eq!(string.constraints.max_length, Some(8));
+    assert_eq!(string.constraints.patterns, ["[A-Z]+", ".*Z"]);
+
+    let duration = declaration("DurationAlias");
+    assert_eq!(duration.kind, TypeKind::Primitive(PrimitiveKind::Duration));
+    assert_eq!(
+        duration.base_type.as_ref().unwrap().target,
+        TypeRefTarget::Primitive(PrimitiveKind::Duration)
+    );
+    assert_eq!(duration.constraints, Default::default());
+    assert_eq!(
+        declaration("StringAlias").kind,
+        TypeKind::Primitive(PrimitiveKind::String)
+    );
+
+    let annotated_pattern = declaration("AnnotatedPattern");
+    let plain_pattern = declaration("PlainPattern");
+    assert_eq!(
+        annotated_pattern.kind,
+        TypeKind::Primitive(PrimitiveKind::String)
+    );
+    assert_eq!(
+        annotated_pattern.constraints.patterns,
+        [r"NATO:[a-zA-Z\-_]{1,256}"]
+    );
+    assert_eq!(annotated_pattern.constraints, plain_pattern.constraints);
+
+    let TypeKind::Record { fields } = &declaration("TemporalRecord").kind else {
+        panic!("TemporalRecord should be a record");
+    };
+    assert_eq!(
+        fields[0].type_ref.target,
+        TypeRefTarget::Primitive(PrimitiveKind::Duration)
+    );
+    assert_eq!(fields[0].cardinality, Cardinality::REQUIRED_ONE);
+    assert_eq!(
+        fields[1].type_ref.target,
+        TypeRefTarget::Primitive(PrimitiveKind::Time)
+    );
+    assert_eq!(fields[1].cardinality, Cardinality::OPTIONAL_ONE);
+    assert!(fields[1].nillable);
+    assert_eq!(fields[1].documentation.as_deref(), Some("Time of day."));
+    assert_ne!(PrimitiveKind::Time, PrimitiveKind::DateTime);
+    assert_ne!(PrimitiveKind::Duration, PrimitiveKind::DateTime);
+    assert_ne!(PrimitiveKind::Duration, PrimitiveKind::String);
+}
+
+#[test]
+fn scalar_restrictions_reject_invalid_lengths_and_lexical_facets() {
+    for (label, base, facets, category, expected) in [
         (
-            "unsupported-date-field",
-            r#"<xs:complexType name="Value"><xs:sequence><xs:element name="Date" type="xs:date"/></xs:sequence></xs:complexType>"#,
-            "xs:date",
+            "duplicate-length",
+            "xs:hexBinary",
+            r#"<xs:length value="4"/><xs:length value="8"/>"#,
+            "invalid",
+            "duplicate xs:length facet",
         ),
         (
-            "unsupported-float-restriction",
-            r#"<xs:simpleType name="Value"><xs:restriction base="xs:float"/></xs:simpleType>"#,
-            "xs:restriction base type",
+            "negative-length",
+            "xs:string",
+            r#"<xs:length value="-1"/>"#,
+            "invalid",
+            "length facet is not a non-negative integer: -1",
         ),
         (
-            "unsupported-double-restriction",
-            r#"<xs:simpleType name="Value"><xs:restriction base="xs:double"/></xs:simpleType>"#,
-            "xs:restriction base type",
+            "fractional-min-length",
+            "xs:string",
+            r#"<xs:minLength value="1.5"/>"#,
+            "invalid",
+            "minLength facet is not a non-negative integer: 1.5",
+        ),
+        (
+            "text-max-length",
+            "xs:string",
+            r#"<xs:maxLength value="abc"/>"#,
+            "invalid",
+            "maxLength facet is not a non-negative integer: abc",
+        ),
+        (
+            "contradictory-min",
+            "xs:string",
+            r#"<xs:length value="4"/><xs:minLength value="5"/>"#,
+            "invalid",
+            "contradictory length constraints",
+        ),
+        (
+            "contradictory-max",
+            "xs:hexBinary",
+            r#"<xs:length value="6"/><xs:maxLength value="5"/>"#,
+            "invalid",
+            "contradictory length constraints",
+        ),
+        (
+            "integer-pattern",
+            "xs:int",
+            r#"<xs:minInclusive value="0"/><xs:maxInclusive value="9"/><xs:pattern value="[0-9]"/>"#,
+            "unsupported",
+            "xs:pattern",
+        ),
+        (
+            "binary-pattern",
+            "xs:hexBinary",
+            r#"<xs:pattern value="[0-9A-F]+"/>"#,
+            "unsupported",
+            "xs:pattern",
+        ),
+        (
+            "time-pattern",
+            "xs:time",
+            r#"<xs:pattern value=".+Z"/>"#,
+            "unsupported",
+            "xs:pattern",
+        ),
+        (
+            "floating-range",
+            "xs:double",
+            r#"<xs:minInclusive value="0.5"/>"#,
+            "unsupported",
+            "xs:minInclusive",
+        ),
+        (
+            "unexpected-length-child",
+            "xs:string",
+            r#"<xs:length value="4"><xs:unexpected/></xs:length>"#,
+            "unsupported",
+            "xs:unexpected",
+        ),
+        (
+            "misplaced-pattern-annotation",
+            "xs:string",
+            r#"<xs:pattern value="[A-Z]+"><xs:unexpected/><xs:annotation><xs:documentation>Too late.</xs:documentation></xs:annotation></xs:pattern>"#,
+            "unsupported",
+            "xs:annotation outside leading position",
+        ),
+        (
+            "pattern-appinfo",
+            "xs:string",
+            r#"<xs:pattern value="[A-Z]+"><xs:annotation><xs:appinfo/></xs:annotation></xs:pattern>"#,
+            "unsupported",
+            "xs:appinfo",
         ),
     ] {
         let path = write_temporary_schema(
             label,
             &format!(
-                r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:unsupported-primitive">
-  {declaration}
+                r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:scalar-error">
+  <xs:simpleType name="Value"><xs:restriction base="{base}">{facets}</xs:restriction></xs:simpleType>
 </xs:schema>
 "#
             ),
         );
         let error = load_schema_document(&path).expect_err(label);
         fs::remove_file(path).expect("temporary schema should be removable");
-        assert!(matches!(error, FrontendError::UnsupportedConstruct(_)));
+        match category {
+            "invalid" => assert!(
+                matches!(error, FrontendError::InvalidInput(_)),
+                "{label}: {error}"
+            ),
+            "unsupported" => assert!(
+                matches!(error, FrontendError::UnsupportedConstruct(_)),
+                "{label}: {error}"
+            ),
+            _ => unreachable!(),
+        }
         assert!(error.to_string().contains(expected), "{label}: {error}");
     }
 }
