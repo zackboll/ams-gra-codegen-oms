@@ -228,17 +228,20 @@ releases. First-failure order is not treated as a coverage percentage.
 | Rust | 4,928/5,570 (88.47%) | 1,765/5,570 (31.69%) | 12,126/13,198 (91.88%) | 11,246/13,198 (85.21%) | 0/725 (0.00%) |
 | C++ | 4,928/5,570 (88.47%) | 1,765/5,570 (31.69%) | 12,126/13,198 (91.88%) | 11,246/13,198 (85.21%) | 0/725 (0.00%) |
 
-Current common capabilities are bounded SignedInteger declarations, enums,
-simple Records, named references, SignedInteger/String primitive references,
+These are historical Task 017 baseline measurements. Task 018 changes the
+current backend baseline but does not revise these unavailable-root counts.
+Current common capabilities now include bounded SignedInteger declarations,
+enums, pure Record inheritance lowered to effective fields, named references,
+SignedInteger/String primitive references,
 selected optional/finite repeated cardinalities, and dependency ordering. Ada's
-occurrence subset is narrower than Rust/C++. Unsupported families include
-abstract structure, structural inheritance, Choice, most primitive references,
-general/unbounded cardinality, nillability, and unsupported declaration/member
-constraints. Runtime regex and temporal parsing remain explicitly out of scope.
+occurrence subset is narrower than Rust/C++. Unsupported families include Choice,
+most primitive references, general/unbounded cardinality, nillability, unsupported
+declaration/member constraints, and structural/abstract semantics beyond pure
+Record lowering. Runtime regex and temporal parsing remain explicitly out of scope.
 
 ## Hypothetical feature impact
 
-For each backend and release, enabling any one family alone unblocks **zero**
+For the recorded Task 017 baseline, enabling any one family alone unblocks **zero**
 complete message closures:
 
 | Hypothetical family | UCI 2.5 | UCI 2.6 |
@@ -313,3 +316,14 @@ versioned UCI schema roots; no counts are inferred from the synthetic fixture.
 Task 018 still excludes Choice lowering, polymorphic abstract values, new
 primitive/cardinality/constraint families, JSON/serde, OWP/CAL runtime work,
 regex execution, temporal parsing, and Task 019.
+
+## Post-Task-018 impact semantics
+
+Task 017's impact families were hypothetical against its then-current baseline.
+After Task 018, impact calculations are additive to current backend capability:
+enabling a hypothetical family never removes pure Record inheritance lowering or
+abstract Record ancestry support already present in the backends. In particular,
+`StructuralInheritanceAndAbstract` now means the remaining unsupported
+structural/abstract family beyond the current baseline, including non-pure-Record
+structural shapes and polymorphic abstract values (including abstract field and
+message payload positions). It is not a prerequisite for pure Record inheritance.
