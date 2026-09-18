@@ -5,8 +5,9 @@
 //! approximated.
 
 use ams_gra_oms_ir::{
-    Cardinality, ConstraintSet, EnumVariant, FieldDecl, MessageDecl, NamespaceDecl, PrimitiveKind,
-    QualifiedName, SchemaIr, SourceRef, TypeDecl, TypeKind, TypeRef, TypeRefTarget,
+    Cardinality, ConstraintSet, EnumVariant, FieldDecl, Float32Value, Float64Value, MessageDecl,
+    NamespaceDecl, NumericValue, PrimitiveKind, QualifiedName, SchemaIr, SourceRef, TypeDecl,
+    TypeKind, TypeRef, TypeRefTarget,
 };
 use roxmltree::{Document, Node};
 use std::collections::{BTreeMap, BTreeSet};
@@ -24,8 +25,39 @@ struct ParsedSchemaDocument {
     preferred_prefix: Option<String>,
     schema_version: Option<String>,
     dependencies: Vec<SchemaDependency>,
-    declarations: Vec<TypeDecl>,
+    declarations: Vec<ParsedTypeDecl>,
     messages: Vec<MessageDecl>,
+}
+
+#[derive(Debug, Clone)]
+enum ParsedTypeDecl {
+    Ready(Box<TypeDecl>),
+    PendingRestriction(PendingRestriction),
+}
+
+impl ParsedTypeDecl {
+    fn name(&self) -> &QualifiedName {
+        match self {
+            Self::Ready(declaration) => &declaration.name,
+            Self::PendingRestriction(restriction) => &restriction.name,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct PendingRestriction {
+    name: QualifiedName,
+    base: TypeRef,
+    facets: Vec<PendingFacet>,
+    documentation: Option<String>,
+    source: SourceRef,
+}
+
+#[derive(Debug, Clone)]
+struct PendingFacet {
+    name: String,
+    value: String,
+    position: TextPosition,
 }
 
 #[derive(Debug, Clone)]
@@ -263,12 +295,9 @@ fn parse_schema_document_xml(
                 &source_document,
                 &target_namespace,
             )?),
-            "complexType" => declarations.push(parse_complex_type(
-                child,
-                document,
-                &source_document,
-                &target_namespace,
-            )?),
+            "complexType" => declarations.push(ParsedTypeDecl::Ready(Box::new(
+                parse_complex_type(child, document, &source_document, &target_namespace)?,
+            ))),
             "element" => messages.push(parse_global_element(
                 child,
                 document,
@@ -306,12 +335,11 @@ fn documents_into_ir(documents: Vec<ParsedSchemaDocument>) -> Result<SchemaIr, F
                 preferred_prefix: document.preferred_prefix,
             });
         }
-        for declaration in document.declarations {
-            types.push(declaration);
-        }
+        types.extend(document.declarations);
         messages.extend(document.messages);
     }
 
+    let types = resolve_pending_restrictions(types)?;
     let schema = SchemaIr {
         schema_version,
         namespaces,
@@ -324,12 +352,180 @@ fn documents_into_ir(documents: Vec<ParsedSchemaDocument>) -> Result<SchemaIr, F
     Ok(schema)
 }
 
+fn resolve_pending_restrictions(
+    declarations: Vec<ParsedTypeDecl>,
+) -> Result<Vec<TypeDecl>, FrontendError> {
+    let mut indices = BTreeMap::new();
+    for (index, declaration) in declarations.iter().enumerate() {
+        indices.insert(declaration.name().clone(), index);
+    }
+    let mut resolved = vec![None; declarations.len()];
+    for index in 0..declarations.len() {
+        resolve_pending_restriction(
+            index,
+            &declarations,
+            &indices,
+            &mut resolved,
+            &mut Vec::new(),
+        )?;
+    }
+    Ok(resolved.into_iter().map(Option::unwrap).collect())
+}
+
+fn resolve_pending_restriction(
+    index: usize,
+    declarations: &[ParsedTypeDecl],
+    indices: &BTreeMap<QualifiedName, usize>,
+    resolved: &mut [Option<TypeDecl>],
+    stack: &mut Vec<QualifiedName>,
+) -> Result<TypeDecl, FrontendError> {
+    if let Some(declaration) = &resolved[index] {
+        return Ok(declaration.clone());
+    }
+    let declaration = match &declarations[index] {
+        ParsedTypeDecl::Ready(declaration) => declaration.as_ref().clone(),
+        ParsedTypeDecl::PendingRestriction(pending) => {
+            if let Some(start) = stack.iter().position(|name| name == &pending.name) {
+                let mut cycle = stack[start..]
+                    .iter()
+                    .map(|name| name.local_name.as_str())
+                    .collect::<Vec<_>>();
+                cycle.push(&pending.name.local_name);
+                return Err(FrontendError::InvalidInput(format!(
+                    "named simple-restriction cycle: {}",
+                    cycle.join(" -> ")
+                )));
+            }
+            let TypeRefTarget::Named(base_name) = &pending.base.target else {
+                unreachable!("only named restrictions are pending")
+            };
+            let base_index = indices.get(base_name).copied().ok_or_else(|| {
+                FrontendError::InvalidInput(format!(
+                    "unresolved named simple-restriction base {{{}}}{}",
+                    base_name.namespace_uri, base_name.local_name
+                ))
+            })?;
+            stack.push(pending.name.clone());
+            let base =
+                resolve_pending_restriction(base_index, declarations, indices, resolved, stack)?;
+            stack.pop();
+            let TypeKind::Primitive(primitive) = &base.kind else {
+                return Err(FrontendError::InvalidInput(format!(
+                    "named simple restriction {} has non-simple base {}",
+                    pending.name.local_name, base_name.local_name
+                )));
+            };
+            let local = parse_pending_facets(*primitive, &pending.facets)?;
+            if !base.constraints.patterns.is_empty() && !local.patterns.is_empty() {
+                return Err(FrontendError::UnsupportedConstruct(format!(
+                    "pattern inheritance on named simple restriction {}",
+                    pending.name.local_name
+                )));
+            }
+            let constraints = intersect_constraints(&base.constraints, &local)?;
+            TypeDecl {
+                name: pending.name.clone(),
+                is_abstract: false,
+                base_type: Some(pending.base.clone()),
+                kind: TypeKind::Primitive(*primitive),
+                constraints,
+                documentation: pending.documentation.clone(),
+                source: pending.source.clone(),
+            }
+        }
+    };
+    resolved[index] = Some(declaration.clone());
+    Ok(declaration)
+}
+
+fn parse_pending_facets(
+    primitive: PrimitiveKind,
+    facets: &[PendingFacet],
+) -> Result<ConstraintSet, FrontendError> {
+    let mut constraints = ConstraintSet::default();
+    for facet in facets {
+        match (primitive, facet.name.as_str()) {
+            (
+                PrimitiveKind::SignedInteger | PrimitiveKind::UnsignedInteger,
+                "minInclusive" | "maxInclusive" | "minExclusive" | "maxExclusive",
+            )
+            | (
+                PrimitiveKind::Float32 | PrimitiveKind::Float64,
+                "minInclusive" | "maxInclusive" | "minExclusive" | "maxExclusive",
+            ) => {
+                let value = parse_numeric_value(primitive, &facet.value)?;
+                set_constraint_bound(&mut constraints, &facet.name, value, facet.position)?;
+            }
+            (
+                PrimitiveKind::String | PrimitiveKind::Binary,
+                "length" | "minLength" | "maxLength",
+            ) => {
+                let value = parse_u64(&facet.value, &format!("{} facet", facet.name))?;
+                set_length_bound(&mut constraints, &facet.name, value, facet.position)?;
+            }
+            (PrimitiveKind::String, "pattern") => {
+                constraints.patterns.push(facet.value.clone());
+            }
+            _ => {
+                return Err(FrontendError::UnsupportedConstruct(format!(
+                    "xs:{} at {}:{}",
+                    facet.name, facet.position.line, facet.position.column
+                )));
+            }
+        }
+    }
+    Ok(constraints)
+}
+
+fn set_constraint_bound(
+    constraints: &mut ConstraintSet,
+    name: &str,
+    value: NumericValue,
+    position: TextPosition,
+) -> Result<(), FrontendError> {
+    let slot = match name {
+        "minInclusive" => &mut constraints.min_inclusive,
+        "maxInclusive" => &mut constraints.max_inclusive,
+        "minExclusive" => &mut constraints.min_exclusive,
+        "maxExclusive" => &mut constraints.max_exclusive,
+        _ => unreachable!(),
+    };
+    if slot.replace(value).is_some() {
+        return Err(FrontendError::InvalidInput(format!(
+            "duplicate xs:{name} facet at {}:{}",
+            position.line, position.column
+        )));
+    }
+    Ok(())
+}
+
+fn set_length_bound(
+    constraints: &mut ConstraintSet,
+    name: &str,
+    value: u64,
+    position: TextPosition,
+) -> Result<(), FrontendError> {
+    let slot = match name {
+        "length" => &mut constraints.length,
+        "minLength" => &mut constraints.min_length,
+        "maxLength" => &mut constraints.max_length,
+        _ => unreachable!(),
+    };
+    if slot.replace(value).is_some() {
+        return Err(FrontendError::InvalidInput(format!(
+            "duplicate xs:{name} facet at {}:{}",
+            position.line, position.column
+        )));
+    }
+    Ok(())
+}
+
 fn parse_simple_type(
     node: Node<'_, '_>,
     document: &Document<'_>,
     source_document: &str,
     target_namespace: &str,
-) -> Result<TypeDecl, FrontendError> {
+) -> Result<ParsedTypeDecl, FrontendError> {
     validate_uci_declaration_version(node, &["name"], false)?;
     let name = qualified_declaration_name(node, target_namespace)?;
     let (documentation, restriction) = exactly_one_content_child(node)?;
@@ -338,6 +534,27 @@ fn parse_simple_type(
     let lexical_base = required_attribute(restriction, "base")?;
     let base = resolve_type_ref(restriction, lexical_base)?;
     let (_, restriction_children) = children_after_optional_annotation(restriction)?;
+
+    if matches!(base.target, TypeRefTarget::Named(_)) {
+        let mut facets = Vec::new();
+        for facet in restriction_children {
+            require_xsd_namespace(facet)?;
+            reject_unexpected_attributes(facet, &["value"])?;
+            validate_constraint_facet_children(facet)?;
+            facets.push(PendingFacet {
+                name: facet.tag_name().name().to_owned(),
+                value: required_attribute(facet, "value")?.to_owned(),
+                position: text_position(facet),
+            });
+        }
+        return Ok(ParsedTypeDecl::PendingRestriction(PendingRestriction {
+            name,
+            base,
+            facets,
+            documentation,
+            source: source_ref(node, document, source_document),
+        }));
+    }
 
     let (kind, constraints) = match &base.target {
         TypeRefTarget::Primitive(
@@ -358,22 +575,22 @@ fn parse_simple_type(
                 match name {
                     "minInclusive" => set_once(
                         &mut explicit.min_inclusive,
-                        parse_integer(required_attribute(facet, "value")?)?,
+                        NumericValue::Integer(parse_integer(required_attribute(facet, "value")?)?),
                         facet,
                     )?,
                     "maxInclusive" => set_once(
                         &mut explicit.max_inclusive,
-                        parse_integer(required_attribute(facet, "value")?)?,
+                        NumericValue::Integer(parse_integer(required_attribute(facet, "value")?)?),
                         facet,
                     )?,
                     "minExclusive" => set_once(
                         &mut explicit.min_exclusive,
-                        parse_integer(required_attribute(facet, "value")?)?,
+                        NumericValue::Integer(parse_integer(required_attribute(facet, "value")?)?),
                         facet,
                     )?,
                     "maxExclusive" => set_once(
                         &mut explicit.max_exclusive,
-                        parse_integer(required_attribute(facet, "value")?)?,
+                        NumericValue::Integer(parse_integer(required_attribute(facet, "value")?)?),
                         facet,
                     )?,
                     _ => unreachable!("supported integer facet was checked above"),
@@ -381,7 +598,7 @@ fn parse_simple_type(
             }
             (
                 TypeKind::Primitive(*primitive),
-                intersect_integer_constraints(&intrinsic, &explicit),
+                intersect_numeric_constraints(&intrinsic, &explicit)?,
             )
         }
         TypeRefTarget::Primitive(PrimitiveKind::String)
@@ -413,12 +630,16 @@ fn parse_simple_type(
         }
         TypeRefTarget::Primitive(primitive) => (
             TypeKind::Primitive(*primitive),
-            parse_scalar_restriction_facets(*primitive, &restriction_children)?,
+            if matches!(primitive, PrimitiveKind::Float32 | PrimitiveKind::Float64) {
+                parse_floating_restriction_facets(*primitive, &restriction_children)?
+            } else {
+                parse_scalar_restriction_facets(*primitive, &restriction_children)?
+            },
         ),
         _ => return Err(unsupported(restriction, "restriction base type")),
     };
 
-    Ok(TypeDecl {
+    Ok(ParsedTypeDecl::Ready(Box::new(TypeDecl {
         name,
         is_abstract: false,
         base_type: Some(base),
@@ -426,7 +647,29 @@ fn parse_simple_type(
         constraints,
         documentation,
         source: source_ref(node, document, source_document),
-    })
+    })))
+}
+
+fn parse_floating_restriction_facets(
+    primitive: PrimitiveKind,
+    facets: &[Node<'_, '_>],
+) -> Result<ConstraintSet, FrontendError> {
+    let mut constraints = ConstraintSet::default();
+    for &facet in facets {
+        require_xsd_namespace(facet)?;
+        reject_unexpected_attributes(facet, &["value"])?;
+        let name = facet.tag_name().name();
+        if !matches!(
+            name,
+            "minInclusive" | "maxInclusive" | "minExclusive" | "maxExclusive"
+        ) {
+            return Err(unsupported(facet, name));
+        }
+        validate_constraint_facet_children(facet)?;
+        let value = parse_numeric_value(primitive, required_attribute(facet, "value")?)?;
+        set_constraint_bound(&mut constraints, name, value, text_position(facet))?;
+    }
+    Ok(constraints)
 }
 
 fn parse_scalar_restriction_facets(
@@ -799,8 +1042,8 @@ fn builtin_primitive_semantics(
     Ok(BuiltinPrimitiveSemantics {
         kind,
         constraints: ConstraintSet {
-            min_inclusive,
-            max_inclusive,
+            min_inclusive: min_inclusive.map(NumericValue::Integer),
+            max_inclusive: max_inclusive.map(NumericValue::Integer),
             ..ConstraintSet::default()
         },
     })
@@ -974,43 +1217,199 @@ fn parse_integer(value: &str) -> Result<i128, FrontendError> {
     })
 }
 
-fn intersect_integer_constraints(
-    intrinsic: &ConstraintSet,
-    explicit: &ConstraintSet,
-) -> ConstraintSet {
-    let lower = strongest_lower_bound(intrinsic)
-        .into_iter()
-        .chain(strongest_lower_bound(explicit))
-        .max_by(|left, right| left.0.cmp(&right.0).then(left.1.cmp(&right.1)));
-    let upper = strongest_upper_bound(intrinsic)
-        .into_iter()
-        .chain(strongest_upper_bound(explicit))
-        .min_by(|left, right| left.0.cmp(&right.0).then(right.1.cmp(&left.1)));
-    ConstraintSet {
+fn parse_numeric_value(
+    primitive: PrimitiveKind,
+    value: &str,
+) -> Result<NumericValue, FrontendError> {
+    match primitive {
+        PrimitiveKind::SignedInteger | PrimitiveKind::UnsignedInteger => {
+            parse_integer(value).map(NumericValue::Integer)
+        }
+        PrimitiveKind::Float32 => {
+            let parsed = value.parse::<f32>().map_err(|_| {
+                FrontendError::InvalidInput(format!(
+                    "float facet is not a finite binary32 value: {value}"
+                ))
+            })?;
+            if !parsed.is_finite() {
+                return Err(FrontendError::InvalidInput(format!(
+                    "float range facet must be finite: {value}"
+                )));
+            }
+            if parsed == 0.0 && value.starts_with('-') {
+                return Err(FrontendError::InvalidInput(
+                    "negative zero floating range facets are unsupported".to_owned(),
+                ));
+            }
+            Ok(NumericValue::Float32(Float32Value::from_value(parsed)))
+        }
+        PrimitiveKind::Float64 => {
+            let parsed = value.parse::<f64>().map_err(|_| {
+                FrontendError::InvalidInput(format!(
+                    "double facet is not a finite binary64 value: {value}"
+                ))
+            })?;
+            if !parsed.is_finite() {
+                return Err(FrontendError::InvalidInput(format!(
+                    "double range facet must be finite: {value}"
+                )));
+            }
+            if parsed == 0.0 && value.starts_with('-') {
+                return Err(FrontendError::InvalidInput(
+                    "negative zero floating range facets are unsupported".to_owned(),
+                ));
+            }
+            Ok(NumericValue::Float64(Float64Value::from_value(parsed)))
+        }
+        _ => Err(FrontendError::InvalidInput(format!(
+            "numeric range facet is invalid for {primitive:?}"
+        ))),
+    }
+}
+
+fn intersect_constraints(
+    inherited: &ConstraintSet,
+    local: &ConstraintSet,
+) -> Result<ConstraintSet, FrontendError> {
+    let mut constraints = intersect_numeric_constraints(inherited, local)?;
+    constraints.length = match (inherited.length, local.length) {
+        (Some(left), Some(right)) if left != right => {
+            return Err(FrontendError::InvalidInput(
+                "contradictory inherited exact length constraints".to_owned(),
+            ));
+        }
+        (left, right) => left.or(right),
+    };
+    constraints.min_length = inherited.min_length.max(local.min_length);
+    constraints.max_length = match (inherited.max_length, local.max_length) {
+        (Some(left), Some(right)) => Some(left.min(right)),
+        (left, right) => left.or(right),
+    };
+    constraints.patterns = if local.patterns.is_empty() {
+        inherited.patterns.clone()
+    } else {
+        local.patterns.clone()
+    };
+    validate_intersection(&constraints)?;
+    Ok(constraints)
+}
+
+fn intersect_numeric_constraints(
+    inherited: &ConstraintSet,
+    local: &ConstraintSet,
+) -> Result<ConstraintSet, FrontendError> {
+    let lower = select_strongest_bound(
+        strongest_lower_bound(inherited),
+        strongest_lower_bound(local),
+        true,
+    )?;
+    let upper = select_strongest_bound(
+        strongest_upper_bound(inherited),
+        strongest_upper_bound(local),
+        false,
+    )?;
+    Ok(ConstraintSet {
         min_inclusive: lower.and_then(|(value, exclusive)| (!exclusive).then_some(value)),
         min_exclusive: lower.and_then(|(value, exclusive)| exclusive.then_some(value)),
         max_inclusive: upper.and_then(|(value, exclusive)| (!exclusive).then_some(value)),
         max_exclusive: upper.and_then(|(value, exclusive)| exclusive.then_some(value)),
         ..ConstraintSet::default()
+    })
+}
+
+fn select_strongest_bound(
+    left: Option<(NumericValue, bool)>,
+    right: Option<(NumericValue, bool)>,
+    lower: bool,
+) -> Result<Option<(NumericValue, bool)>, FrontendError> {
+    match (left, right) {
+        (None, value) | (value, None) => Ok(value),
+        (Some(left), Some(right)) => {
+            let ordering = left.0.semantic_cmp(&right.0).ok_or_else(|| {
+                FrontendError::InvalidInput("mixed numeric constraint domains".to_owned())
+            })?;
+            let preferred = if ordering == std::cmp::Ordering::Equal {
+                if lower {
+                    if left.1 { left } else { right }
+                } else if left.1 {
+                    left
+                } else {
+                    right
+                }
+            } else if (lower && ordering == std::cmp::Ordering::Greater)
+                || (!lower && ordering == std::cmp::Ordering::Less)
+            {
+                left
+            } else {
+                right
+            };
+            Ok(Some(preferred))
+        }
     }
 }
 
-fn strongest_lower_bound(constraints: &ConstraintSet) -> Option<(i128, bool)> {
+fn validate_intersection(constraints: &ConstraintSet) -> Result<(), FrontendError> {
+    if constraints
+        .min_length
+        .zip(constraints.max_length)
+        .is_some_and(|(min, max)| min > max)
+        || constraints
+            .length
+            .zip(constraints.min_length)
+            .is_some_and(|(length, min)| length < min)
+        || constraints
+            .length
+            .zip(constraints.max_length)
+            .is_some_and(|(length, max)| length > max)
+    {
+        return Err(FrontendError::InvalidInput(
+            "contradictory inherited length constraints".to_owned(),
+        ));
+    }
+    if let (Some((lower, lower_exclusive)), Some((upper, upper_exclusive))) = (
+        strongest_lower_bound(constraints),
+        strongest_upper_bound(constraints),
+    ) {
+        let ordering = lower.semantic_cmp(&upper).ok_or_else(|| {
+            FrontendError::InvalidInput("mixed numeric constraint domains".to_owned())
+        })?;
+        if ordering == std::cmp::Ordering::Greater
+            || (ordering == std::cmp::Ordering::Equal && (lower_exclusive || upper_exclusive))
+        {
+            return Err(FrontendError::InvalidInput(
+                "contradictory inherited numeric constraints".to_owned(),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn strongest_lower_bound(constraints: &ConstraintSet) -> Option<(NumericValue, bool)> {
     constraints
         .min_inclusive
         .map(|value| (value, false))
         .into_iter()
         .chain(constraints.min_exclusive.map(|value| (value, true)))
-        .max_by(|left, right| left.0.cmp(&right.0).then(left.1.cmp(&right.1)))
+        .max_by(|left, right| {
+            left.0
+                .semantic_cmp(&right.0)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then(left.1.cmp(&right.1))
+        })
 }
 
-fn strongest_upper_bound(constraints: &ConstraintSet) -> Option<(i128, bool)> {
+fn strongest_upper_bound(constraints: &ConstraintSet) -> Option<(NumericValue, bool)> {
     constraints
         .max_inclusive
         .map(|value| (value, false))
         .into_iter()
         .chain(constraints.max_exclusive.map(|value| (value, true)))
-        .min_by(|left, right| left.0.cmp(&right.0).then(right.1.cmp(&left.1)))
+        .min_by(|left, right| {
+            left.0
+                .semantic_cmp(&right.0)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then(right.1.cmp(&left.1))
+        })
 }
 
 fn parse_boolean_attribute(

@@ -87,10 +87,10 @@ Cardinality
   max_occurs?   # None means unbounded
 
 ConstraintSet
-  min_inclusive?
-  max_inclusive?
-  min_exclusive?
-  max_exclusive?
+  min_inclusive?: NumericValue
+  max_inclusive?: NumericValue
+  min_exclusive?: NumericValue
+  max_exclusive?: NumericValue
   length?
   min_length?
   max_length?
@@ -108,8 +108,51 @@ The actual implementation will evolve as real UCI schemas expose requirements, b
 
 The primitive/named distinction is explicit after QName resolution. This keeps
 backends from inferring whether a reference denotes an XSD primitive or a
-schema declaration by inspecting namespace strings. Integer bounds are stored
-as numeric values rather than lexical XML strings.
+schema declaration by inspecting namespace strings. Numeric bounds are stored
+as semantic values rather than lexical XML strings. `NumericValue` distinguishes
+exact `Integer(i128)`, binary32 `Float32`, and binary64 `Float64` domains. The
+floating wrappers store width-correct IEEE bits and provide deterministic
+equality without relying on raw float `Eq`.
+
+Numeric range validation compares only values in the same domain, using exact
+integer ordering or semantic floating ordering rather than bit ordering. A
+lower bound greater than its upper bound is contradictory; equal endpoints are
+contradictory when either is exclusive. Mixed domains are invalid. Range NaN is
+invalid because it is unordered. The frontend accepts finite Rust-parsable
+decimal and exponent floating spellings at the primitive width and rejects
+non-finite values and negative zero; this deliberately does not claim complete
+XSD floating lexical support.
+
+### Named simple restrictions
+
+Named simple restrictions are normalized after every reachable schema document
+has been parsed. A frontend-private pending form retains the immediate resolved
+base, local facets, source, and output position. Recursive graph resolution
+supports forward and multi-level references while final declaration order stays
+document-discovery then source order.
+
+The normalized `kind` is the ultimate primitive kind, while `base_type` remains
+the immediate named relationship. Constraints are effective: intrinsic,
+inherited, and local typed numeric ranges are intersected, as are exact/minimum/
+maximum lengths. `TypeDecl.source` identifies the derived declaration; facet-
+level provenance is not modeled.
+
+Because constraints are effective, each normalized derived declaration must
+semantically imply the effective constraints of its immediate named base.
+`SchemaIr::validate()` enforces this independently of the frontend: numeric
+bounds preserve domain and inclusive/exclusive strength, effective length
+intervals remain subsets, and an inherited pattern vector cannot be dropped or
+changed. This validates normalization without recomputing it.
+
+Cycles and named bases that are structural, enumeration, or change primitive
+family are invalid. A derived restriction without local patterns inherits the
+base pattern vector. If both levels contain patterns, normalization fails closed
+rather than flattening cross-level conjunction into the existing same-level
+alternatives vector. Named enumeration restrictions remain unsupported.
+
+Ada, Rust, and C++ do not generate constrained floating wrappers. Integer-bound
+helpers accept only `NumericValue::Integer`; constrained floating declarations
+produce structured unsupported errors before rendering, never coercion or loss.
 
 Primitive kinds preserve numeric value-space distinctions. `Decimal` denotes
 decimal arithmetic and is not an umbrella numeric kind. `Float32` and
