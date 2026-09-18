@@ -1,6 +1,6 @@
 use ams_gra_oms_ir::{
-    Cardinality, Float32Value, Float64Value, NumericValue, PrimitiveKind, QualifiedName, TypeKind,
-    TypeRefTarget,
+    Cardinality, Float32Value, Float64Value, NumericValue, PatternDialect, PrimitiveKind,
+    QualifiedName, TypeKind, TypeRefTarget, WhiteSpacePolicy,
 };
 use ams_gra_oms_xsd_frontend::{FrontendError, load_schema_document, load_schema_set};
 use std::fs;
@@ -1379,7 +1379,19 @@ fn normalizes_temporal_and_scalar_restrictions() {
     assert_eq!(string.kind, TypeKind::Primitive(PrimitiveKind::String));
     assert_eq!(string.constraints.min_length, Some(2));
     assert_eq!(string.constraints.max_length, Some(8));
-    assert_eq!(string.constraints.patterns, ["[A-Z]+", ".*Z"]);
+    let pattern_groups = &string.constraints.lexical.pattern_groups;
+    assert_eq!(pattern_groups.len(), 1);
+    assert_eq!(
+        pattern_groups[0]
+            .alternatives
+            .iter()
+            .map(|pattern| (pattern.dialect, pattern.expression.as_str()))
+            .collect::<Vec<_>>(),
+        [
+            (PatternDialect::XmlSchema, "[A-Z]+"),
+            (PatternDialect::XmlSchema, ".*Z")
+        ]
+    );
 
     let duration = declaration("DurationAlias");
     assert_eq!(duration.kind, TypeKind::Primitive(PrimitiveKind::Duration));
@@ -1400,8 +1412,8 @@ fn normalizes_temporal_and_scalar_restrictions() {
         TypeKind::Primitive(PrimitiveKind::String)
     );
     assert_eq!(
-        annotated_pattern.constraints.patterns,
-        [r"NATO:[a-zA-Z\-_]{1,256}"]
+        annotated_pattern.constraints.lexical.pattern_groups[0].alternatives[0].expression,
+        r"NATO:[a-zA-Z\-_]{1,256}"
     );
     assert_eq!(annotated_pattern.constraints, plain_pattern.constraints);
 
@@ -1471,23 +1483,9 @@ fn scalar_restrictions_reject_invalid_lengths_and_lexical_facets() {
             "contradictory length constraints",
         ),
         (
-            "integer-pattern",
-            "xs:int",
-            r#"<xs:minInclusive value="0"/><xs:maxInclusive value="9"/><xs:pattern value="[0-9]"/>"#,
-            "unsupported",
-            "xs:pattern",
-        ),
-        (
             "binary-pattern",
             "xs:hexBinary",
             r#"<xs:pattern value="[0-9A-F]+"/>"#,
-            "unsupported",
-            "xs:pattern",
-        ),
-        (
-            "time-pattern",
-            "xs:time",
-            r#"<xs:pattern value=".+Z"/>"#,
             "unsupported",
             "xs:pattern",
         ),
@@ -1582,6 +1580,147 @@ fn unsupported_global_element_variants_fail_closed() {
         let error = load_schema_document(&fixture(&format!("errors/{name}"))).expect_err(name);
         assert!(matches!(error, FrontendError::UnsupportedConstruct(_)));
         assert!(error.to_string().contains(expected), "{name}: {error}");
+    }
+}
+
+#[test]
+fn normalizes_lexical_constraints_by_restriction_level() {
+    let path = write_temporary_schema(
+        "lexical-constraints",
+        r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:t="urn:lexical" targetNamespace="urn:lexical">
+  <xs:simpleType name="Base"><xs:restriction base="xs:string"><xs:pattern value="A"/><xs:pattern value="B"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Derived"><xs:restriction base="t:Base"><xs:pattern value="C"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="DateTimeZulu"><xs:restriction base="xs:dateTime"><xs:pattern value=".+Z"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="TimeZulu"><xs:restriction base="xs:time"><xs:pattern value=".+Z"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Serial"><xs:restriction base="xs:int"><xs:minInclusive value="1"/><xs:maxInclusive value="999"/><xs:pattern value="[0-9]{1,3}"/></xs:restriction></xs:simpleType>
+</xs:schema>
+"#,
+    );
+    let ir = load_schema_document(&path).expect("lexical restrictions should normalize");
+    fs::remove_file(path).expect("temporary schema should be removable");
+    let declaration = |name: &str| {
+        ir.types
+            .iter()
+            .find(|declaration| declaration.name.local_name == name)
+            .unwrap()
+    };
+    let expressions = |name: &str| {
+        declaration(name)
+            .constraints
+            .lexical
+            .pattern_groups
+            .iter()
+            .map(|group| {
+                group
+                    .alternatives
+                    .iter()
+                    .map(|pattern| (pattern.dialect, pattern.expression.as_str()))
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>()
+    };
+
+    assert_eq!(
+        expressions("Base"),
+        [vec![
+            (PatternDialect::XmlSchema, "A"),
+            (PatternDialect::XmlSchema, "B")
+        ]]
+    );
+    assert_eq!(
+        expressions("Derived"),
+        [
+            vec![
+                (PatternDialect::XmlSchema, "A"),
+                (PatternDialect::XmlSchema, "B")
+            ],
+            vec![(PatternDialect::XmlSchema, "C")]
+        ]
+    );
+    assert_eq!(
+        declaration("Derived").base_type.as_ref().unwrap().target,
+        TypeRefTarget::Named(QualifiedName::new("urn:lexical", "Base"))
+    );
+    for (name, kind) in [
+        ("DateTimeZulu", PrimitiveKind::DateTime),
+        ("TimeZulu", PrimitiveKind::Time),
+    ] {
+        assert_eq!(declaration(name).kind, TypeKind::Primitive(kind));
+        assert_eq!(
+            expressions(name),
+            [vec![(PatternDialect::XmlSchema, ".+Z")]]
+        );
+    }
+    let serial = declaration("Serial");
+    assert_eq!(
+        serial.constraints.min_inclusive,
+        Some(NumericValue::Integer(1))
+    );
+    assert_eq!(
+        serial.constraints.max_inclusive,
+        Some(NumericValue::Integer(999))
+    );
+    assert_eq!(
+        expressions("Serial"),
+        [vec![(PatternDialect::XmlSchema, "[0-9]{1,3}")]]
+    );
+}
+
+#[test]
+fn normalizes_and_strictly_parses_string_white_space() {
+    let path = write_temporary_schema(
+        "white-space",
+        r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:t="urn:white-space" targetNamespace="urn:white-space">
+  <xs:simpleType name="Preserved"><xs:restriction base="xs:string"><xs:whiteSpace value="preserve"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Replaced"><xs:restriction base="xs:string"><xs:whiteSpace value="replace"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Combined"><xs:restriction base="xs:string"><xs:minLength value="0"/><xs:maxLength value="1024"/><xs:whiteSpace value="collapse"/><xs:pattern value="[ -~\n\r]{0,1024}"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Derived"><xs:restriction base="t:Replaced"><xs:whiteSpace value="collapse"/></xs:restriction></xs:simpleType>
+</xs:schema>
+"#,
+    );
+    let ir = load_schema_document(&path).expect("whiteSpace restrictions should normalize");
+    fs::remove_file(path).expect("temporary schema should be removable");
+    let declaration = |name: &str| {
+        ir.types
+            .iter()
+            .find(|item| item.name.local_name == name)
+            .unwrap()
+    };
+    assert_eq!(
+        declaration("Preserved").constraints.lexical.white_space,
+        Some(WhiteSpacePolicy::Preserve)
+    );
+    assert_eq!(
+        declaration("Replaced").constraints.lexical.white_space,
+        Some(WhiteSpacePolicy::Replace)
+    );
+    let combined = declaration("Combined");
+    assert_eq!(combined.constraints.min_length, Some(0));
+    assert_eq!(combined.constraints.max_length, Some(1024));
+    assert_eq!(
+        combined.constraints.lexical.white_space,
+        Some(WhiteSpacePolicy::Collapse)
+    );
+    assert_eq!(
+        combined.constraints.lexical.pattern_groups[0].alternatives[0].expression,
+        r"[ -~\n\r]{0,1024}"
+    );
+    assert_eq!(
+        declaration("Derived").constraints.lexical.white_space,
+        Some(WhiteSpacePolicy::Collapse)
+    );
+
+    for invalid in ["Collapse", "trim", "", "unknown"] {
+        let path = write_temporary_schema(
+            "invalid-white-space",
+            &format!(
+                r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:invalid"><xs:simpleType name="Invalid"><xs:restriction base="xs:string"><xs:whiteSpace value="{invalid}"/></xs:restriction></xs:simpleType></xs:schema>
+"#
+            ),
+        );
+        let error = load_schema_document(&path).expect_err("invalid whiteSpace must fail");
+        fs::remove_file(path).expect("temporary schema should be removable");
+        assert!(error.to_string().contains("invalid whiteSpace facet value"));
     }
 }
 

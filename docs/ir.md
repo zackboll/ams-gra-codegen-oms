@@ -94,8 +94,18 @@ ConstraintSet
   length?
   min_length?
   max_length?
-  pattern[]
-  enumeration[]
+  lexical
+
+LexicalConstraintSet
+  pattern_groups[]
+  white_space?: Preserve | Replace | Collapse
+
+PatternGroup
+  alternatives[]: PatternExpression
+
+PatternExpression
+  dialect: XmlSchema
+  expression
 
 MessageDecl
   name
@@ -141,14 +151,15 @@ Because constraints are effective, each normalized derived declaration must
 semantically imply the effective constraints of its immediate named base.
 `SchemaIr::validate()` enforces this independently of the frontend: numeric
 bounds preserve domain and inclusive/exclusive strength, effective length
-intervals remain subsets, and an inherited pattern vector cannot be dropped or
-changed. This validates normalization without recomputing it.
+intervals remain subsets, inherited lexical pattern groups remain an exact
+prefix, and effective whitespace policy cannot weaken. This validates
+normalization without recomputing it or attempting regex-language inclusion.
 
 Cycles and named bases that are structural, enumeration, or change primitive
 family are invalid. A derived restriction without local patterns inherits the
-base pattern vector. If both levels contain patterns, normalization fails closed
-rather than flattening cross-level conjunction into the existing same-level
-alternatives vector. Named enumeration restrictions remain unsupported.
+base groups. A local set of patterns appends one new group while preserving the
+base groups and immediate named `base_type`; groups are never flattened across
+restriction levels. Named enumeration restrictions remain unsupported.
 
 Ada, Rust, and C++ do not generate constrained floating wrappers. Integer-bound
 helpers accept only `NumericValue::Integer`; constrained floating declarations
@@ -166,9 +177,11 @@ constraint fields are `i128`; the IR neither approximates those bounds nor
 stores their lexical spellings as a substitute semantic model.
 
 Temporal primitive kinds are similarly distinct: `DateTime`, `Time`, and
-`Duration` model separate XSD value spaces. The IR does not choose a runtime
-lexical parser, timezone policy, calendar arithmetic, duration unit, or
-precision. In particular, `Duration` is not an integer count of time units.
+`Duration` model separate XSD value spaces. A temporal pattern remains a lexical
+constraint and is not converted into a timezone/value-space policy. The IR does
+not choose a runtime lexical parser, timezone policy, calendar arithmetic,
+duration unit, or precision. In particular, `Duration` is not an integer count
+of time units.
 
 Named simple restrictions over supported built-in scalar primitives normalize
 as `TypeKind::Primitive(kind)` plus a `ConstraintSet`; their immediate
@@ -177,21 +190,36 @@ primitive ancestry remains in `TypeDecl.base_type`. String enumerations remain
 on that `TypeDecl`, while intrinsic constraints of a direct built-in field stay
 on its `FieldDecl`.
 
-For `String`, `length`, `min_length`, and `max_length` count Unicode code points
-(the XSD string length unit). Ordered `patterns` preserve one restriction's
-XSD pattern alternatives: the string value's character sequence must match at
-least one pattern. For `Binary`, length bounds count
-octets, as specified for XSD `hexBinary`; they never count hexadecimal lexical
-characters. Lexical-only patterns on normalized integer, binary, or temporal
-values are not represented because their lexical distinction does not survive
-the semantic boundary. Unsupported facets fail closed rather than being
-discarded.
+Value-space and lexical restrictions are deliberately separate. For `String`,
+`length`, `min_length`, and `max_length` count Unicode code points (the XSD
+string length unit). `LexicalConstraintSet.pattern_groups` stores effective
+pattern facets in base-to-derived order. XML Schema combines patterns declared
+in one restriction step disjunctively, so one `PatternGroup` contains their
+source-ordered alternatives. Pattern facets introduced at different derivation
+levels combine conjunctively, so each level is a separate group. Every
+`PatternExpression` explicitly carries `PatternDialect::XmlSchema`; it must not
+be interpreted as Rust regex, PCRE, ECMAScript, or POSIX syntax.
 
-The current Ada, Rust, and C++ backends do not generate the newly recognized
-temporal primitives or constrained string/binary declarations. Their
-pre-render validation is a constraint firewall: it rejects these constructs
-explicitly, so no backend can emit an unconstrained approximation or partial
-output.
+`WhiteSpacePolicy` stores the three XSD operations: `Preserve` leaves text
+unchanged; `Replace` maps tab, line feed, and carriage return to spaces; and
+`Collapse` additionally strips leading/trailing spaces and coalesces runs.
+Whitespace processing precedes length and pattern evaluation. Restriction may
+only tighten in the order `Preserve < Replace < Collapse`; normalized named
+restrictions store the effective policy. Thus whitespace, length, and pattern
+constraints coexist rather than replacing one another.
+
+For `Binary`, length bounds count octets, as specified for XSD `hexBinary`;
+they never count hexadecimal lexical characters. Task 016 preserves observed
+patterns for String, SignedInteger, DateTime, and Time, and observed whitespace
+facets for String. Unobserved primitive/facet combinations fail closed.
+
+The current Ada, Rust, and C++ backends do not execute XML Schema regexes or
+normalize whitespace, and do not generate the newly recognized temporal
+primitives or constrained string/binary declarations. Their pre-render
+validation is a lexical constraint firewall: any non-default lexical constraint
+is rejected explicitly, so no backend can emit an unconstrained approximation
+or partial output. Regex translation/execution, lexical validators, and temporal
+parsing/serialization remain runtime work outside this model.
 
 The frontend maps direct XSD scalar fields by resolved namespace URI:
 `boolean` to `Boolean`; `byte`, `short`, `int`, `long`, and `integer` to

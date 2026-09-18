@@ -201,6 +201,9 @@ pub enum ValidationError {
     ContradictoryLengthConstraints {
         owner: String,
     },
+    EmptyPatternGroup {
+        owner: String,
+    },
     EmptyEnumeration {
         name: QualifiedName,
     },
@@ -281,6 +284,9 @@ impl fmt::Display for ValidationError {
             }
             Self::ContradictoryLengthConstraints { owner } => {
                 write!(f, "contradictory length constraints on {owner}")
+            }
+            Self::EmptyPatternGroup { owner } => {
+                write!(f, "empty lexical pattern group on {owner}")
             }
             Self::EmptyEnumeration { name } => {
                 write!(f, "enumeration {} has no variants", format_name(name))
@@ -462,7 +468,18 @@ fn constraints_imply(derived: &ConstraintSet, base: &ConstraintSet) -> bool {
     numeric_lower_implies(derived, base)
         && numeric_upper_implies(derived, base)
         && length_constraints_imply(derived, base)
-        && (base.patterns.is_empty() || derived.patterns == base.patterns)
+        && derived
+            .lexical
+            .pattern_groups
+            .starts_with(&base.lexical.pattern_groups)
+        && white_space_implies(derived.lexical.white_space, base.lexical.white_space)
+}
+
+fn white_space_implies(derived: Option<WhiteSpacePolicy>, base: Option<WhiteSpacePolicy>) -> bool {
+    match base {
+        Some(base) => derived.is_some_and(|derived| derived >= base),
+        None => true,
+    }
 }
 
 fn numeric_lower_implies(derived: &ConstraintSet, base: &ConstraintSet) -> bool {
@@ -598,6 +615,16 @@ fn validate_cardinality(cardinality: Cardinality, owner: &str) -> Result<(), Val
 }
 
 fn validate_constraints(constraints: &ConstraintSet, owner: &str) -> Result<(), ValidationError> {
+    if constraints
+        .lexical
+        .pattern_groups
+        .iter()
+        .any(|group| group.alternatives.is_empty())
+    {
+        return Err(ValidationError::EmptyPatternGroup {
+            owner: owner.to_owned(),
+        });
+    }
     let numeric_values = [
         constraints.min_inclusive,
         constraints.min_exclusive,
@@ -887,7 +914,48 @@ pub struct ConstraintSet {
     pub length: Option<u64>,
     pub min_length: Option<u64>,
     pub max_length: Option<u64>,
-    pub patterns: Vec<String>,
+    pub lexical: LexicalConstraintSet,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct LexicalConstraintSet {
+    /// One group per restriction level, in base-to-derived order.
+    pub pattern_groups: Vec<PatternGroup>,
+    pub white_space: Option<WhiteSpacePolicy>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PatternGroup {
+    /// XML Schema patterns declared together at one restriction level are alternatives.
+    pub alternatives: Vec<PatternExpression>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PatternExpression {
+    pub dialect: PatternDialect,
+    pub expression: String,
+}
+
+impl PatternExpression {
+    #[must_use]
+    pub fn xml_schema(expression: impl Into<String>) -> Self {
+        Self {
+            dialect: PatternDialect::XmlSchema,
+            expression: expression.into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PatternDialect {
+    XmlSchema,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum WhiteSpacePolicy {
+    Preserve,
+    Replace,
+    Collapse,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1250,6 +1318,53 @@ mod tests {
             schema(vec![value]).validate(),
             Err(ValidationError::ContradictoryLengthConstraints { .. })
         ));
+    }
+
+    #[test]
+    fn rejects_empty_pattern_groups() {
+        let mut value = declaration("Value", TypeKind::Primitive(PrimitiveKind::String));
+        value.constraints.lexical.pattern_groups.push(PatternGroup {
+            alternatives: Vec::new(),
+        });
+        assert!(matches!(
+            schema(vec![value]).validate(),
+            Err(ValidationError::EmptyPatternGroup { .. })
+        ));
+    }
+
+    #[test]
+    fn named_white_space_restrictions_cannot_weaken_the_base() {
+        for (base_policy, derived_policy, valid) in [
+            (WhiteSpacePolicy::Preserve, WhiteSpacePolicy::Replace, true),
+            (WhiteSpacePolicy::Replace, WhiteSpacePolicy::Collapse, true),
+            (WhiteSpacePolicy::Collapse, WhiteSpacePolicy::Collapse, true),
+            (WhiteSpacePolicy::Collapse, WhiteSpacePolicy::Replace, false),
+            (WhiteSpacePolicy::Replace, WhiteSpacePolicy::Preserve, false),
+        ] {
+            let constraints = |policy| ConstraintSet {
+                lexical: LexicalConstraintSet {
+                    white_space: Some(policy),
+                    ..LexicalConstraintSet::default()
+                },
+                ..ConstraintSet::default()
+            };
+            let result = schema(vec![
+                restricted_primitive(
+                    "Base",
+                    PrimitiveKind::String,
+                    None,
+                    constraints(base_policy),
+                ),
+                restricted_primitive(
+                    "Derived",
+                    PrimitiveKind::String,
+                    Some("Base"),
+                    constraints(derived_policy),
+                ),
+            ])
+            .validate();
+            assert_eq!(result.is_ok(), valid);
+        }
     }
 
     #[test]
@@ -1688,12 +1803,32 @@ mod tests {
     }
 
     #[test]
-    fn named_pattern_restrictions_preserve_inherited_vector() {
+    fn named_pattern_restrictions_preserve_inherited_group_prefix() {
+        fn lexical(groups: Vec<Vec<&str>>) -> LexicalConstraintSet {
+            LexicalConstraintSet {
+                pattern_groups: groups
+                    .into_iter()
+                    .map(|alternatives| PatternGroup {
+                        alternatives: alternatives
+                            .into_iter()
+                            .map(PatternExpression::xml_schema)
+                            .collect(),
+                    })
+                    .collect(),
+                white_space: None,
+            }
+        }
         for (base_patterns, derived_patterns, valid) in [
-            (vec!["A"], vec!["A"], true),
-            (vec!["A"], Vec::new(), false),
-            (vec!["A"], vec!["B"], false),
-            (Vec::new(), vec!["B"], true),
+            (vec![vec!["A", "B"]], vec![vec!["A", "B"]], true),
+            (vec![vec!["A", "B"]], vec![vec!["A", "B"], vec!["C"]], true),
+            (vec![vec!["A", "B"]], Vec::new(), false),
+            (vec![vec!["A", "B"]], vec![vec!["X", "B"]], false),
+            (
+                vec![vec!["A"], vec!["B"]],
+                vec![vec!["B"], vec!["A"]],
+                false,
+            ),
+            (Vec::new(), vec![vec!["B"]], true),
         ] {
             let result = schema(vec![
                 restricted_primitive(
@@ -1701,7 +1836,7 @@ mod tests {
                     PrimitiveKind::String,
                     None,
                     ConstraintSet {
-                        patterns: base_patterns.into_iter().map(str::to_owned).collect(),
+                        lexical: lexical(base_patterns),
                         ..ConstraintSet::default()
                     },
                 ),
@@ -1710,7 +1845,7 @@ mod tests {
                     PrimitiveKind::String,
                     Some("Base"),
                     ConstraintSet {
-                        patterns: derived_patterns.into_iter().map(str::to_owned).collect(),
+                        lexical: lexical(derived_patterns),
                         ..ConstraintSet::default()
                     },
                 ),
