@@ -91,6 +91,10 @@ impl std::error::Error for FrontendError {}
 /// variants is normalized into the corresponding IR field; schema and restriction
 /// documentation has no semantic IR owner and is discarded. Other annotation
 /// content remains unsupported.
+/// UCI/OAM declaration-version attributes on supported messages and named types
+/// are validated as nonempty opaque metadata and discarded. The marker remains
+/// required for global-message classification but optional on generic named
+/// type declarations.
 ///
 /// # Errors
 ///
@@ -326,7 +330,7 @@ fn parse_simple_type(
     source_document: &str,
     target_namespace: &str,
 ) -> Result<TypeDecl, FrontendError> {
-    reject_unexpected_attributes(node, &["name"])?;
+    validate_uci_declaration_version(node, &["name"], false)?;
     let name = qualified_declaration_name(node, target_namespace)?;
     let (documentation, restriction) = exactly_one_content_child(node)?;
     require_xsd_element(restriction, "restriction")?;
@@ -406,7 +410,7 @@ fn parse_complex_type(
     source_document: &str,
     target_namespace: &str,
 ) -> Result<TypeDecl, FrontendError> {
-    reject_unexpected_attributes(node, &["name"])?;
+    validate_uci_declaration_version(node, &["name"], false)?;
     let name = qualified_declaration_name(node, target_namespace)?;
     let (documentation, sequence) = exactly_one_content_child(node)?;
     require_xsd_element(sequence, "sequence")?;
@@ -453,20 +457,7 @@ fn parse_global_element(
     source_document: &str,
     target_namespace: &str,
 ) -> Result<MessageDecl, FrontendError> {
-    for attribute in node.attributes() {
-        let supported = match attribute.namespace() {
-            None => matches!(attribute.name(), "name" | "type"),
-            Some(UCI_VERSION_NS) => attribute.name() == "version",
-            Some(_) => false,
-        };
-        if !supported {
-            return Err(unsupported(
-                node,
-                &format!("{} @{}", node.tag_name().name(), attribute.name()),
-            ));
-        }
-    }
-    required_uci_version_attribute(node)?;
+    validate_uci_declaration_version(node, &["name", "type"], true)?;
 
     let (documentation, children) = children_after_optional_annotation(node)?;
     if !children.is_empty() {
@@ -481,18 +472,45 @@ fn parse_global_element(
     })
 }
 
-fn required_uci_version_attribute(node: Node<'_, '_>) -> Result<(), FrontendError> {
+fn validate_uci_declaration_version(
+    node: Node<'_, '_>,
+    allowed_unqualified: &[&str],
+    required: bool,
+) -> Result<(), FrontendError> {
+    let mut version = None;
+    for attribute in node.attributes() {
+        match attribute.namespace() {
+            None if allowed_unqualified.contains(&attribute.name()) => {}
+            Some(UCI_VERSION_NS) if attribute.name() == "version" => {
+                version = Some(attribute.value());
+            }
+            _ => {
+                return Err(unsupported(
+                    node,
+                    &format!("{} @{}", node.tag_name().name(), attribute.name()),
+                ));
+            }
+        }
+    }
+
     let position = text_position(node);
-    let value = node.attribute((UCI_VERSION_NS, "version")).ok_or_else(|| {
-        FrontendError::InvalidInput(format!(
-            "xs:element is missing required UCI version attribute at {}:{}",
-            position.line, position.column
-        ))
-    })?;
+    let Some(value) = version else {
+        if required {
+            return Err(FrontendError::InvalidInput(format!(
+                "xs:{} is missing required UCI version attribute at {}:{}",
+                node.tag_name().name(),
+                position.line,
+                position.column
+            )));
+        }
+        return Ok(());
+    };
     if value.trim().is_empty() {
         return Err(FrontendError::InvalidInput(format!(
-            "xs:element UCI version attribute must not be empty at {}:{}",
-            position.line, position.column
+            "xs:{} UCI version attribute must not be empty at {}:{}",
+            node.tag_name().name(),
+            position.line,
+            position.column
         )));
     }
     Ok(())

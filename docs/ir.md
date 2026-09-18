@@ -190,10 +190,19 @@ UCI version marker remain outside the supported semantic subset. Local
 deterministic document discovery order followed by source order within each
 document, independent of type declaration order.
 
-The required UCI version value must be nonempty, is otherwise treated as opaque,
-and is discarded because per-declaration version history has no current semantic
-IR consumer. Other global-element attributes and anonymous global types fail
-closed.
+The UCI/OAM declaration version is the same change-history metadata on global
+messages, named complex types, and named simple types. When present, its value
+must be nonempty, is otherwise treated as opaque, and is discarded during
+semantic normalization. It does not participate in type identity, validation
+constraints, JSON/OWP representation, or backend-visible IR. The marker is
+required to classify a schema-level element as a UCI message, but is optional on
+generic named type declarations; authoritative UCI certification separately
+requires it on UCI types. Other declaration attributes and anonymous global
+types fail closed.
+
+This per-declaration change history is distinct from `SchemaIr.schema_version`,
+which records the root `xs:schema @version`. Declaration versions must not be
+folded into that schema-release field.
 
 The frontend validates schema-level `elementFormDefault` and
 `attributeFormDefault` values. These settings govern local element and attribute
