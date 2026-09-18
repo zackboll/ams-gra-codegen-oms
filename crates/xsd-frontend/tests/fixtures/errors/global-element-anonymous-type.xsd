@@ -1,6 +1,7 @@
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
            targetNamespace="urn:anonymous-message">
-  <xs:element name="AnonymousMessage">
+  <xs:element name="AnonymousMessage" uci:version="001.000.000.000">
     <xs:complexType><xs:sequence/></xs:complexType>
   </xs:element>
 </xs:schema>

@@ -1,6 +1,7 @@
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
            xmlns:i="urn:imported-messages"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
            targetNamespace="urn:imported-messages">
-  <xs:element name="ImportedMessage" type="i:ImportedType"/>
+  <xs:element name="ImportedMessage" type="i:ImportedType" uci:version="001.000.000.000"/>
   <xs:complexType name="ImportedType"><xs:sequence/></xs:complexType>
 </xs:schema>

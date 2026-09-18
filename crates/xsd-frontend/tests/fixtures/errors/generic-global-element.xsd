@@ -1,0 +1,6 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:m="urn:generic-global"
+           targetNamespace="urn:generic-global">
+  <xs:element name="GenericElement" type="m:Payload"/>
+  <xs:complexType name="Payload"><xs:sequence/></xs:complexType>
+</xs:schema>

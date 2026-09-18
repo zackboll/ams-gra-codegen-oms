@@ -1,6 +1,7 @@
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
            xmlns:m="urn:message-set"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
            targetNamespace="urn:message-set">
-  <xs:element name="IncludedMessage" type="m:IncludedType"/>
+  <xs:element name="IncludedMessage" type="m:IncludedType" uci:version="001.000.000.000"/>
   <xs:complexType name="IncludedType"><xs:sequence/></xs:complexType>
 </xs:schema>

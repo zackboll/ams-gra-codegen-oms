@@ -466,6 +466,7 @@ fn parse_global_element(
             ));
         }
     }
+    required_uci_version_attribute(node)?;
 
     let (documentation, children) = children_after_optional_annotation(node)?;
     if !children.is_empty() {
@@ -478,6 +479,23 @@ fn parse_global_element(
         documentation,
         source: source_ref(node, document, source_document),
     })
+}
+
+fn required_uci_version_attribute(node: Node<'_, '_>) -> Result<(), FrontendError> {
+    let position = text_position(node);
+    let value = node.attribute((UCI_VERSION_NS, "version")).ok_or_else(|| {
+        FrontendError::InvalidInput(format!(
+            "xs:element is missing required UCI version attribute at {}:{}",
+            position.line, position.column
+        ))
+    })?;
+    if value.trim().is_empty() {
+        return Err(FrontendError::InvalidInput(format!(
+            "xs:element UCI version attribute must not be empty at {}:{}",
+            position.line, position.column
+        )));
+    }
+    Ok(())
 }
 
 fn validate_dependency_namespace(

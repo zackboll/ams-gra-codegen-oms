@@ -11,7 +11,7 @@
       <xs:documentation>Additional message detail.</xs:documentation>
     </xs:annotation>
   </xs:element>
-  <xs:element name="TrackUpdate" type="m:TrackType"/>
+  <xs:element name="TrackUpdate" type="m:TrackType" uci:version="001.000.000.000"/>
   <xs:complexType name="TrackType">
     <xs:annotation><xs:documentation>Payload shape documentation.</xs:documentation></xs:annotation>
     <xs:sequence/>

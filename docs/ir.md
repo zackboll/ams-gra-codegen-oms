@@ -178,19 +178,22 @@ dependency source order, then declaration source order. Namespace URI order and
 preferred-prefix selection are first-seen under the same traversal. Preferred
 prefixes are presentation metadata, not global QName bindings.
 
-For the authoritative UCI message-definition schemas, a supported schema-level
-named and typed `xs:element` is a message entry point and normalizes to a
-`MessageDecl`. Its qualified element name is the message identity and its
-resolved `type` QName is the payload reference. The payload remains one
-`TypeDecl`; the frontend does not synthesize a second type named after the
-element. Local `xs:element` declarations inside sequences remain `FieldDecl`s.
-Message order is deterministic document discovery order followed by source order
-within each document, independent of type declaration order.
+For the authoritative UCI message-definition schemas, the currently supported
+global-message form is a schema-level `xs:element` carrying unqualified `name`
+and `type` attributes and the UCI/OAM namespaced `version` attribute. That
+observed declaration shape normalizes to a `MessageDecl`. Its qualified element
+name is the message identity and its resolved `type` QName is the payload
+reference. The payload remains one `TypeDecl`; the frontend does not synthesize
+a second type named after the element. Generic global XSD elements without the
+UCI version marker remain outside the supported semantic subset. Local
+`xs:element` declarations inside sequences remain `FieldDecl`s. Message order is
+deterministic document discovery order followed by source order within each
+document, independent of type declaration order.
 
-The observed UCI namespaced `version` attribute on a global message is recognized
-as the only supported namespaced attribute and discarded because per-declaration
-version history has no current semantic IR consumer. Other global-element
-attributes and anonymous global types fail closed.
+The required UCI version value must be nonempty, is otherwise treated as opaque,
+and is discarded because per-declaration version history has no current semantic
+IR consumer. Other global-element attributes and anonymous global types fail
+closed.
 
 The frontend validates schema-level `elementFormDefault` and
 `attributeFormDefault` values. These settings govern local element and attribute

@@ -154,14 +154,18 @@ consult the associated global message annotation. `MessageDecl` therefore now
 owns normalized optional documentation under the same whitespace and
 multi-document rules as other semantic declarations.
 
-The frontend supports only this observed global shape. It resolves message and
-payload QNames in the source document, preserves source provenance, and retains
-schema-set discovery order followed by element source order. The observed
-UCI/OAM `version` attribute is accepted and discarded because declaration
-version history has no current semantic IR consumer; any other attribute or an
-anonymous type remains an explicit unsupported construct. Message identities
-must be unique, payload references must resolve after the complete schema set is
-assembled, and type and message symbol spaces remain distinct.
+The frontend supports only this observed global shape. A schema-level element
+must carry unqualified `name` and `type` attributes and the UCI/OAM namespaced
+`version` marker before it is classified as a message; a generic named and typed
+global without that marker is not classified as `MessageDecl`. The version value
+must be nonempty, is otherwise treated as opaque, and is discarded because
+declaration version history has no current semantic IR consumer. The frontend
+resolves message and payload QNames in the source document, preserves source
+provenance, and retains schema-set discovery order followed by element source
+order. Any other attribute or an anonymous type remains an explicit unsupported
+construct. Message identities must be unique, payload references must resolve
+after the complete schema set is assembled, and type and message symbol spaces
+remain distinct.
 
 UCI 2.6 adds exactly three globals relative to 2.5: `SystemSchedule`,
 `SystemScheduleDataRequest`, and `SystemScheduleDataRequestStatus`. There are no

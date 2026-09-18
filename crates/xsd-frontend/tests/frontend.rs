@@ -570,6 +570,34 @@ fn invalid_global_messages_fail_semantic_validation() {
 }
 
 #[test]
+fn generic_global_element_without_uci_version_is_not_a_message() {
+    let path = fixture("errors/generic-global-element.xsd");
+    let error = load_schema_document(&path).expect_err("generic global must not become a message");
+    assert!(matches!(error, FrontendError::InvalidInput(_)));
+    assert_eq!(
+        error.to_string(),
+        format!(
+            "invalid schema input: {}: xs:element is missing required UCI version attribute at 4:3",
+            path.display()
+        )
+    );
+}
+
+#[test]
+fn empty_global_message_version_is_invalid() {
+    let path = fixture("errors/global-element-empty-version.xsd");
+    let error = load_schema_document(&path).expect_err("empty UCI version must be rejected");
+    assert!(matches!(error, FrontendError::InvalidInput(_)));
+    assert_eq!(
+        error.to_string(),
+        format!(
+            "invalid schema input: {}: xs:element UCI version attribute must not be empty at 5:3",
+            path.display()
+        )
+    );
+}
+
+#[test]
 fn unsupported_global_element_variants_fail_closed() {
     for (name, expected) in [
         (
