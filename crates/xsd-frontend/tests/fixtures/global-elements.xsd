@@ -1,0 +1,19 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:m="urn:messages"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:messages">
+  <xs:element name="TrackMessage" type="m:TrackType" uci:version="001.000.000.000">
+    <xs:annotation>
+      <xs:documentation>
+        Track message
+        purpose.
+      </xs:documentation>
+      <xs:documentation>Additional message detail.</xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element name="TrackUpdate" type="m:TrackType"/>
+  <xs:complexType name="TrackType">
+    <xs:annotation><xs:documentation>Payload shape documentation.</xs:documentation></xs:annotation>
+    <xs:sequence/>
+  </xs:complexType>
+</xs:schema>

@@ -116,3 +116,67 @@ unsupported XSD construct: xs:element at UCI_MessageDefinitions_v2_6_0.xsd:19:2
 The construct is the same in both releases. The line differs because the 2.6
 root annotation contains the additional disclaimer documentation. Global
 `xs:element` support remains intentionally unimplemented.
+
+## Global message element inventory and policy
+
+The global-element probe used each message-definition root and its reachable
+security-marking include. Only `xs:element` nodes whose direct parent is
+`xs:schema` were counted.
+
+| Release | Message definitions | Security markings | Total globals |
+|---|---:|---:|---:|
+| UCI 2.5 | 722 | 0 | 722 |
+| UCI 2.6 | 725 | 0 | 725 |
+
+Every global in both releases has the same shape: required unqualified `name`
+and `type` attributes, the namespaced UCI/OAM `version` attribute, and one
+leading annotation containing exactly two nonempty documentation nodes. All
+payload QNames resolve to named types in the reachable schema set. None refers
+directly to an XSD primitive, uses an anonymous simple or complex type, or has
+`ref`, `abstract`, `nillable`, `substitutionGroup`, `default`, `fixed`, `block`,
+or `final`. No payload type is shared by multiple real UCI globals. No element
+anywhere in either reachable set uses `ref` or `substitutionGroup`, so these
+globals provide no evidence of a reusable XML-element role.
+
+The UCI Schema Style and Design Specification supplies the semantic
+classification rule rather than a name heuristic. Its design principles say to
+create distinct messages as top-level elements intended to be sent as a whole;
+CERT SCH-000272 calls every declared global element a “Message” and requires its
+associated MT and MDT declarations; CERT SCH-009994 limits global construction
+to `name`, `type`, and `uci:version`. Therefore every global in these two
+reachable authoritative sets maps to `MessageDecl`, while its referenced named
+type remains a separate `TypeDecl` payload shape.
+
+Global documentation cannot be discarded: all 722 UCI 2.5 and all 725 UCI 2.6
+elements differ from their payload-type documentation. The globals contain the
+message purpose and primitive classification, while each referenced MT says to
+consult the associated global message annotation. `MessageDecl` therefore now
+owns normalized optional documentation under the same whitespace and
+multi-document rules as other semantic declarations.
+
+The frontend supports only this observed global shape. It resolves message and
+payload QNames in the source document, preserves source provenance, and retains
+schema-set discovery order followed by element source order. The observed
+UCI/OAM `version` attribute is accepted and discarded because declaration
+version history has no current semantic IR consumer; any other attribute or an
+anonymous type remains an explicit unsupported construct. Message identities
+must be unique, payload references must resolve after the complete schema set is
+assembled, and type and message symbol spaces remain distinct.
+
+UCI 2.6 adds exactly three globals relative to 2.5: `SystemSchedule`,
+`SystemScheduleDataRequest`, and `SystemScheduleDataRequestStatus`. There are no
+other global-element shape differences.
+
+After normalizing all 722 or 725 global messages, both roots stop at the next
+distinct unsupported construct:
+
+```text
+UCI 2.5: FrontendError::UnsupportedConstruct
+unsupported XSD construct: xs:complexType @version at UCI_MessageDefinitions_v2_5_0.xsd:4639:2
+
+UCI 2.6: FrontendError::UnsupportedConstruct
+unsupported XSD construct: xs:complexType @version at UCI_MessageDefinitions_v2_6_0.xsd:4663:2
+```
+
+The construct is the same in both releases; only its source position differs.
+Support for the next blocker is intentionally outside this slice.

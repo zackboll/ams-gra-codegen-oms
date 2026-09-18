@@ -788,6 +788,25 @@ mod tests {
     }
 
     #[test]
+    fn validation_reports_normalized_message_count() {
+        let schema = fixture("crates/xsd-frontend/tests/fixtures/global-elements.xsd");
+        let mut stdout = Vec::new();
+        run(
+            vec![
+                OsString::from("validate"),
+                OsString::from("--schema"),
+                schema.into(),
+            ],
+            &mut stdout,
+        )
+        .unwrap();
+        assert_eq!(
+            String::from_utf8(stdout).unwrap(),
+            "schema valid\nnamespaces: 1\ntypes: 1\nmessages: 2\n"
+        );
+    }
+
+    #[test]
     fn invalid_schema_returns_execution_error() {
         let schema = fixture("crates/xsd-frontend/tests/fixtures/errors/unresolved-root.xsd");
         let error = run(

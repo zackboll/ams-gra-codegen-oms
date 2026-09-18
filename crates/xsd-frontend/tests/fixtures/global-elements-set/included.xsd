@@ -1,0 +1,6 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:m="urn:message-set"
+           targetNamespace="urn:message-set">
+  <xs:element name="IncludedMessage" type="m:IncludedType"/>
+  <xs:complexType name="IncludedType"><xs:sequence/></xs:complexType>
+</xs:schema>

@@ -1,0 +1,6 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:i="urn:imported-messages"
+           targetNamespace="urn:imported-messages">
+  <xs:element name="ImportedMessage" type="i:ImportedType"/>
+  <xs:complexType name="ImportedType"><xs:sequence/></xs:complexType>
+</xs:schema>

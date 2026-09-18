@@ -1,0 +1,5 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:m="urn:duplicate-message"
+           targetNamespace="urn:duplicate-message">
+  <xs:element name="Repeated" type="m:Payload"/>
+</xs:schema>

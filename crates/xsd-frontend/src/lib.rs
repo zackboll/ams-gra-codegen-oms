@@ -5,7 +5,7 @@
 //! approximated.
 
 use ams_gra_oms_ir::{
-    Cardinality, ConstraintSet, EnumVariant, FieldDecl, NamespaceDecl, PrimitiveKind,
+    Cardinality, ConstraintSet, EnumVariant, FieldDecl, MessageDecl, NamespaceDecl, PrimitiveKind,
     QualifiedName, SchemaIr, SourceRef, TypeDecl, TypeKind, TypeRef, TypeRefTarget,
 };
 use roxmltree::{Document, Node};
@@ -15,6 +15,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 const XSD_NS: &str = "http://www.w3.org/2001/XMLSchema";
+const UCI_VERSION_NS: &str = "https://www.vdl.afrl.af.mil/programs/oam";
 
 #[derive(Debug)]
 struct ParsedSchemaDocument {
@@ -24,6 +25,7 @@ struct ParsedSchemaDocument {
     schema_version: Option<String>,
     dependencies: Vec<SchemaDependency>,
     declarations: Vec<TypeDecl>,
+    messages: Vec<MessageDecl>,
 }
 
 #[derive(Debug, Clone)]
@@ -77,15 +79,16 @@ impl std::error::Error for FrontendError {}
 /// This API supports a target namespace, named simple types that are
 /// either integer restrictions with inclusive bounds or string enumerations,
 /// and named complex types containing a sequence of explicitly typed elements
-/// with finite occurrence bounds. Imports and includes are explicit errors;
+/// with finite occurrence bounds, and schema-level named and typed message
+/// elements. Imports and includes are explicit errors;
 /// use [`load_schema_set`] when dependencies should be traversed. Anonymous
 /// types and all other XSD constructs are also explicit errors. Schema-level
 /// `elementFormDefault` and `attributeFormDefault` are validated and discarded
 /// because XML instance namespace qualification is outside the normalized type
 /// model.
 /// Leading annotations containing plain-text `xs:documentation` are accepted.
-/// Documentation for types, sequence fields, and enumeration variants is
-/// normalized into the corresponding IR field; schema and restriction
+/// Documentation for types, global messages, sequence fields, and enumeration
+/// variants is normalized into the corresponding IR field; schema and restriction
 /// documentation has no semantic IR owner and is discarded. Other annotation
 /// content remains unsupported.
 ///
@@ -230,6 +233,7 @@ fn parse_schema_document_xml(
     let source_document = path.display().to_string();
     let mut dependencies = Vec::new();
     let mut declarations = Vec::new();
+    let mut messages = Vec::new();
     let (_, children) = children_after_optional_annotation(schema)?;
     for child in children {
         require_xsd_namespace(child)?;
@@ -261,6 +265,12 @@ fn parse_schema_document_xml(
                 &source_document,
                 &target_namespace,
             )?),
+            "element" => messages.push(parse_global_element(
+                child,
+                document,
+                &source_document,
+                &target_namespace,
+            )?),
             other => return Err(unsupported(child, other)),
         }
     }
@@ -272,6 +282,7 @@ fn parse_schema_document_xml(
         schema_version: schema.attribute("version").map(str::to_owned),
         dependencies,
         declarations,
+        messages,
     })
 }
 
@@ -282,6 +293,7 @@ fn documents_into_ir(documents: Vec<ParsedSchemaDocument>) -> Result<SchemaIr, F
     let mut namespace_uris = BTreeSet::new();
     let mut namespaces = Vec::new();
     let mut types = Vec::new();
+    let mut messages = Vec::new();
 
     for document in documents {
         if namespace_uris.insert(document.target_namespace.clone()) {
@@ -293,13 +305,14 @@ fn documents_into_ir(documents: Vec<ParsedSchemaDocument>) -> Result<SchemaIr, F
         for declaration in document.declarations {
             types.push(declaration);
         }
+        messages.extend(document.messages);
     }
 
     let schema = SchemaIr {
         schema_version,
         namespaces,
         types,
-        messages: Vec::new(),
+        messages,
     };
     schema
         .validate()
@@ -429,6 +442,39 @@ fn parse_complex_type(
         base_type: None,
         kind: TypeKind::Record { fields },
         constraints: ConstraintSet::default(),
+        documentation,
+        source: source_ref(node, document, source_document),
+    })
+}
+
+fn parse_global_element(
+    node: Node<'_, '_>,
+    document: &Document<'_>,
+    source_document: &str,
+    target_namespace: &str,
+) -> Result<MessageDecl, FrontendError> {
+    for attribute in node.attributes() {
+        let supported = match attribute.namespace() {
+            None => matches!(attribute.name(), "name" | "type"),
+            Some(UCI_VERSION_NS) => attribute.name() == "version",
+            Some(_) => false,
+        };
+        if !supported {
+            return Err(unsupported(
+                node,
+                &format!("{} @{}", node.tag_name().name(), attribute.name()),
+            ));
+        }
+    }
+
+    let (documentation, children) = children_after_optional_annotation(node)?;
+    if !children.is_empty() {
+        return Err(unsupported(node, "anonymous global element type"));
+    }
+
+    Ok(MessageDecl {
+        name: qualified_declaration_name(node, target_namespace)?,
+        payload_type: resolve_type_ref(node, required_attribute(node, "type")?)?,
         documentation,
         source: source_ref(node, document, source_document),
     })

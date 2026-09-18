@@ -1,0 +1,5 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:m="urn:unresolved-message"
+           targetNamespace="urn:unresolved-message">
+  <xs:element name="MissingMessage" type="m:MissingType"/>
+</xs:schema>

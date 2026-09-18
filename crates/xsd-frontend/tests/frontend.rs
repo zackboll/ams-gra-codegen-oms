@@ -489,6 +489,104 @@ fn unsupported_choice_fails_closed() {
     );
 }
 
+#[test]
+fn global_elements_normalize_as_ordered_documented_messages() {
+    let path = fixture("global-elements.xsd");
+    let ir = load_schema_document(&path).expect("global messages should parse");
+
+    assert_eq!(
+        ir.types.len(),
+        1,
+        "message elements are not duplicate types"
+    );
+    assert_eq!(ir.types[0].name.local_name, "TrackType");
+    assert_eq!(
+        ir.messages
+            .iter()
+            .map(|message| message.name.local_name.as_str())
+            .collect::<Vec<_>>(),
+        ["TrackMessage", "TrackUpdate"]
+    );
+    for message in &ir.messages {
+        assert_eq!(message.name.namespace_uri, "urn:messages");
+        assert_eq!(
+            message.payload_type.target,
+            TypeRefTarget::Named(QualifiedName::new("urn:messages", "TrackType"))
+        );
+        assert_eq!(message.source.document, path.display().to_string());
+        assert!(message.source.line.is_some());
+    }
+    assert_eq!(
+        ir.messages[0].documentation.as_deref(),
+        Some("Track message purpose.\n\nAdditional message detail.")
+    );
+    assert_eq!(ir.messages[1].documentation, None);
+    assert_eq!(
+        ir.types[0].documentation.as_deref(),
+        Some("Payload shape documentation.")
+    );
+    assert_eq!(
+        ir,
+        load_schema_document(&path).expect("message parsing should be deterministic")
+    );
+}
+
+#[test]
+fn schema_set_messages_follow_document_discovery_then_source_order() {
+    let path = fixture("global-elements-set/root.xsd");
+    let ir = load_schema_set(&path).expect("schema-set messages should parse");
+    assert_eq!(
+        ir.messages
+            .iter()
+            .map(|message| message.name.local_name.as_str())
+            .collect::<Vec<_>>(),
+        ["RootMessage", "IncludedMessage", "ImportedMessage"]
+    );
+    assert_eq!(
+        ir.messages[1].payload_type.target,
+        TypeRefTarget::Named(QualifiedName::new("urn:message-set", "IncludedType"))
+    );
+    assert_eq!(
+        ir.messages[2].payload_type.target,
+        TypeRefTarget::Named(QualifiedName::new("urn:imported-messages", "ImportedType"))
+    );
+}
+
+#[test]
+fn invalid_global_messages_fail_semantic_validation() {
+    for (name, expected) in [
+        (
+            "duplicate-message-root.xsd",
+            "duplicate message declaration {urn:duplicate-message}Repeated",
+        ),
+        (
+            "unresolved-message.xsd",
+            "unresolved type reference {urn:unresolved-message}MissingType in message payload",
+        ),
+    ] {
+        let error = load_schema_set(&fixture(&format!("errors/{name}"))).expect_err(name);
+        assert!(error.to_string().contains(expected), "{name}: {error}");
+    }
+}
+
+#[test]
+fn unsupported_global_element_variants_fail_closed() {
+    for (name, expected) in [
+        (
+            "global-element-anonymous-type.xsd",
+            "xs:anonymous global element type",
+        ),
+        (
+            "global-element-substitution-group.xsd",
+            "xs:element @substitutionGroup",
+        ),
+    ] {
+        let error = load_schema_document(&fixture(&format!("errors/{name}"))).expect_err(name);
+        assert!(matches!(error, FrontendError::UnsupportedConstruct(_)));
+        assert!(error.to_string().contains(expected), "{name}: {error}");
+    }
+}
+
 fn assert_named_type(actual: &TypeRefTarget, local_name: &str) {
     assert_eq!(
         actual,

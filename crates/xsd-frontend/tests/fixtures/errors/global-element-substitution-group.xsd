@@ -1,0 +1,6 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:m="urn:substitution-message"
+           targetNamespace="urn:substitution-message">
+  <xs:element name="Substitute" type="m:Payload" substitutionGroup="m:Head"/>
+  <xs:complexType name="Payload"><xs:sequence/></xs:complexType>
+</xs:schema>

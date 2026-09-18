@@ -100,7 +100,7 @@ ConstraintSet
 MessageDecl
   name
   payload_type
-  role metadata
+  documentation
   source
 ```
 
@@ -178,6 +178,20 @@ dependency source order, then declaration source order. Namespace URI order and
 preferred-prefix selection are first-seen under the same traversal. Preferred
 prefixes are presentation metadata, not global QName bindings.
 
+For the authoritative UCI message-definition schemas, a supported schema-level
+named and typed `xs:element` is a message entry point and normalizes to a
+`MessageDecl`. Its qualified element name is the message identity and its
+resolved `type` QName is the payload reference. The payload remains one
+`TypeDecl`; the frontend does not synthesize a second type named after the
+element. Local `xs:element` declarations inside sequences remain `FieldDecl`s.
+Message order is deterministic document discovery order followed by source order
+within each document, independent of type declaration order.
+
+The observed UCI namespaced `version` attribute on a global message is recognized
+as the only supported namespaced attribute and discarded because per-declaration
+version history has no current semantic IR consumer. Other global-element
+attributes and anonymous global types fail closed.
+
 The frontend validates schema-level `elementFormDefault` and
 `attributeFormDefault` values. These settings govern local element and attribute
 qualification in XML instances, but this IR models local field wire names for
@@ -186,13 +200,14 @@ They are therefore deliberately discarded during normalization. Other schema
 attributes remain unsupported unless handled explicitly.
 
 Leading XSD annotations are metadata rather than content-model children. The
-frontend accepts annotations containing one or more plain-text
+frontend accepts optional leading annotations containing supported plain-text
 `xs:documentation` children and normalizes documentation owned by named simple
-or complex types, sequence fields, and enumeration variants into their existing
-IR `documentation` fields. XML whitespace runs are collapsed to one space,
-empty documentation nodes are omitted, and multiple nonempty documentation
-nodes are joined with one blank line. This makes the value independent of XSD
-indentation and line wrapping while retaining document boundaries.
+or complex types, global messages, sequence fields, and enumeration variants
+into their existing IR `documentation` fields. XML whitespace runs are
+collapsed to one space, empty documentation nodes are omitted, and multiple
+nonempty documentation nodes are joined with one blank line. This makes the
+value independent of XSD indentation and line wrapping while retaining document
+boundaries.
 
 Schema-level documentation and documentation attached to supported
 restrictions have no corresponding semantic IR owner and are deliberately
@@ -231,10 +246,12 @@ Before code generation begins:
 `SchemaIr::validate` enforces the currently representable language-neutral
 invariants after a frontend has assembled the complete schema. It validates
 declared namespace membership and uniqueness, qualified type identity,
-resolution of every modeled named-reference location, finite cardinality,
-numeric and length consistency, and nonempty enumerations. Primitive references
-need no declaration. Unbounded cardinality and unconstrained integers remain
-valid IR even where an initial backend cannot yet represent them.
+qualified message identity, resolution of every modeled named-reference
+location, finite cardinality, numeric and length consistency, and nonempty
+enumerations. Type and message names occupy separate symbol spaces, so matching
+qualified names across those categories are valid. Primitive references need no
+declaration. Unbounded cardinality and unconstrained integers remain valid IR
+even where an initial backend cannot yet represent them.
 
 ## Why this matters for SPARK
 
