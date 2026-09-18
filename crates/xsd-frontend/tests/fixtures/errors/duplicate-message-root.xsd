@@ -1,0 +1,8 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:m="urn:duplicate-message"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:duplicate-message">
+  <xs:include schemaLocation="duplicate-message-child.xsd"/>
+  <xs:element name="Repeated" type="m:Payload" uci:version="001.000.000.000"/>
+  <xs:complexType name="Payload"><xs:sequence/></xs:complexType>
+</xs:schema>

@@ -1,0 +1,6 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:m="urn:unresolved-message"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:unresolved-message">
+  <xs:element name="MissingMessage" type="m:MissingType" uci:version="001.000.000.000"/>
+</xs:schema>

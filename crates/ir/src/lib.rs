@@ -80,6 +80,16 @@ impl SchemaIr {
             }
         }
 
+        let mut declared_messages = BTreeSet::new();
+        for message in &self.messages {
+            if !declared_messages.insert(message.name.clone()) {
+                return Err(ValidationError::DuplicateMessage {
+                    name: message.name.clone(),
+                    source: message.source.clone(),
+                });
+            }
+        }
+
         for declaration in &self.types {
             let owner = format_name(&declaration.name);
             validate_constraints(&declaration.constraints, &owner)?;
@@ -147,6 +157,10 @@ pub enum ValidationError {
         name: QualifiedName,
         source: SourceRef,
     },
+    DuplicateMessage {
+        name: QualifiedName,
+        source: SourceRef,
+    },
     UnresolvedTypeReference {
         target: QualifiedName,
         location: &'static str,
@@ -181,6 +195,12 @@ impl fmt::Display for ValidationError {
             Self::DuplicateType { name, source } => write!(
                 f,
                 "duplicate type declaration {} at {}",
+                format_name(name),
+                format_source(source)
+            ),
+            Self::DuplicateMessage { name, source } => write!(
+                f,
+                "duplicate message declaration {} at {}",
                 format_name(name),
                 format_source(source)
             ),
@@ -445,6 +465,7 @@ pub struct ConstraintSet {
 pub struct MessageDecl {
     pub name: QualifiedName,
     pub payload_type: TypeRef,
+    pub documentation: Option<String>,
     pub source: SourceRef,
 }
 
@@ -582,6 +603,7 @@ mod tests {
         schema.messages.push(MessageDecl {
             name: QualifiedName::new("urn:absent", "Message"),
             payload_type: TypeRef::primitive(PrimitiveKind::String),
+            documentation: None,
             source: source(),
         });
         assert!(matches!(
@@ -599,6 +621,25 @@ mod tests {
         assert!(matches!(
             schema(vec![value.clone(), value]).validate(),
             Err(ValidationError::DuplicateType { .. })
+        ));
+    }
+
+    #[test]
+    fn rejects_duplicate_qualified_message_but_allows_matching_type_name() {
+        let message = MessageDecl {
+            name: QualifiedName::new(NS, "Value"),
+            payload_type: named("Value"),
+            documentation: None,
+            source: source(),
+        };
+        let mut schema = schema(vec![declaration(
+            "Value",
+            TypeKind::Primitive(PrimitiveKind::String),
+        )]);
+        schema.messages = vec![message.clone(), message];
+        assert!(matches!(
+            schema.validate(),
+            Err(ValidationError::DuplicateMessage { .. })
         ));
     }
 
@@ -663,6 +704,7 @@ mod tests {
         schema.messages.push(MessageDecl {
             name: QualifiedName::new(NS, "Message"),
             payload_type: named("Absent"),
+            documentation: None,
             source: source(),
         });
         assert_unresolved(&schema, "message payload");

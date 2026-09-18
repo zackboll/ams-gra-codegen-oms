@@ -1,0 +1,9 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:m="urn:message-set"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:message-set">
+  <xs:include schemaLocation="included.xsd"/>
+  <xs:import namespace="urn:imported-messages" schemaLocation="imported.xsd"/>
+  <xs:element name="RootMessage" type="m:RootType" uci:version="001.000.000.000"/>
+  <xs:complexType name="RootType"><xs:sequence/></xs:complexType>
+</xs:schema>
