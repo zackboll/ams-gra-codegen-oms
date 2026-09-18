@@ -118,12 +118,44 @@ decimal arithmetic and is not an umbrella numeric kind. `Float32` and
 `Decimal`. The floating kinds do not carry integer min/max constraints, and the
 IR distinction leaves room for XSD floating values such as `NaN`, `INF`,
 `-INF`, and negative zero without silently normalizing them away.
+Floating-point range facets remain unsupported because the current numeric
+constraint fields are `i128`; the IR neither approximates those bounds nor
+stores their lexical spellings as a substitute semantic model.
+
+Temporal primitive kinds are similarly distinct: `DateTime`, `Time`, and
+`Duration` model separate XSD value spaces. The IR does not choose a runtime
+lexical parser, timezone policy, calendar arithmetic, duration unit, or
+precision. In particular, `Duration` is not an integer count of time units.
+
+Named simple restrictions over supported built-in scalar primitives normalize
+as `TypeKind::Primitive(kind)` plus a `ConstraintSet`; their immediate
+primitive ancestry remains in `TypeDecl.base_type`. String enumerations remain
+`TypeKind::Enumeration` in source order. Constraints owned by a named type stay
+on that `TypeDecl`, while intrinsic constraints of a direct built-in field stay
+on its `FieldDecl`.
+
+For `String`, `length`, `min_length`, and `max_length` count Unicode code points
+(the XSD string length unit). Ordered `patterns` preserve one restriction's
+XSD pattern alternatives: the string value's character sequence must match at
+least one pattern. For `Binary`, length bounds count
+octets, as specified for XSD `hexBinary`; they never count hexadecimal lexical
+characters. Lexical-only patterns on normalized integer, binary, or temporal
+values are not represented because their lexical distinction does not survive
+the semantic boundary. Unsupported facets fail closed rather than being
+discarded.
+
+The current Ada, Rust, and C++ backends do not generate the newly recognized
+temporal primitives or constrained string/binary declarations. Their
+pre-render validation is a constraint firewall: it rejects these constructs
+explicitly, so no backend can emit an unconstrained approximation or partial
+output.
 
 The frontend maps direct XSD scalar fields by resolved namespace URI:
 `boolean` to `Boolean`; `byte`, `short`, `int`, `long`, and `integer` to
 `SignedInteger`; `unsignedByte`, `unsignedShort`, and `unsignedInt` to
 `UnsignedInteger`; `float`/`double` to `Float32`/`Float64`; `dateTime` to
-`DateTime`; `hexBinary` to `Binary`; and `string` to `String`. The generic
+`DateTime`; `time` to `Time`; `duration` to `Duration`; `hexBinary` to `Binary`;
+and `string` to `String`. The generic
 integer kinds deliberately do not encode machine width. Fixed-width XSD types
 instead carry exact intrinsic minima and maxima in `ConstraintSet`. Restrictions
 intersect explicit inclusive or exclusive bounds with those intrinsic bounds;

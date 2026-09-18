@@ -1,0 +1,30 @@
+<schema:schema xmlns:schema="http://www.w3.org/2001/XMLSchema"
+    xmlns:s="urn:scalar-restrictions" targetNamespace="urn:scalar-restrictions">
+  <schema:simpleType name="BinaryExact">
+    <schema:restriction base="schema:hexBinary">
+      <schema:length value="6"/>
+    </schema:restriction>
+  </schema:simpleType>
+  <schema:simpleType name="StringRule">
+    <schema:restriction base="schema:string">
+      <schema:minLength value="2"/>
+      <schema:maxLength value="8"/>
+      <schema:pattern value="[A-Z]+"/>
+      <schema:pattern value=".*Z"/>
+    </schema:restriction>
+  </schema:simpleType>
+  <schema:simpleType name="DurationAlias">
+    <schema:restriction base="schema:duration"/>
+  </schema:simpleType>
+  <schema:simpleType name="StringAlias">
+    <schema:restriction base="schema:string"/>
+  </schema:simpleType>
+  <schema:complexType name="TemporalRecord">
+    <schema:sequence>
+      <schema:element name="Step" type="schema:duration"/>
+      <schema:element name="At" type="schema:time" minOccurs="0" nillable="true">
+        <schema:annotation><schema:documentation>Time of day.</schema:documentation></schema:annotation>
+      </schema:element>
+    </schema:sequence>
+  </schema:complexType>
+</schema:schema>

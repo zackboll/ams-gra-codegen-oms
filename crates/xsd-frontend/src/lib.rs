@@ -348,12 +348,27 @@ fn parse_simple_type(
             for facet in restriction_children {
                 require_xsd_namespace(facet)?;
                 reject_unexpected_attributes(facet, &["value"])?;
-                let value = parse_integer(required_attribute(facet, "value")?)?;
                 match facet.tag_name().name() {
-                    "minInclusive" => set_once(&mut explicit.min_inclusive, value, facet)?,
-                    "maxInclusive" => set_once(&mut explicit.max_inclusive, value, facet)?,
-                    "minExclusive" => set_once(&mut explicit.min_exclusive, value, facet)?,
-                    "maxExclusive" => set_once(&mut explicit.max_exclusive, value, facet)?,
+                    "minInclusive" => set_once(
+                        &mut explicit.min_inclusive,
+                        parse_integer(required_attribute(facet, "value")?)?,
+                        facet,
+                    )?,
+                    "maxInclusive" => set_once(
+                        &mut explicit.max_inclusive,
+                        parse_integer(required_attribute(facet, "value")?)?,
+                        facet,
+                    )?,
+                    "minExclusive" => set_once(
+                        &mut explicit.min_exclusive,
+                        parse_integer(required_attribute(facet, "value")?)?,
+                        facet,
+                    )?,
+                    "maxExclusive" => set_once(
+                        &mut explicit.max_exclusive,
+                        parse_integer(required_attribute(facet, "value")?)?,
+                        facet,
+                    )?,
                     other => return Err(unsupported(facet, other)),
                 }
             }
@@ -362,7 +377,12 @@ fn parse_simple_type(
                 intersect_integer_constraints(&intrinsic, &explicit),
             )
         }
-        TypeRefTarget::Primitive(PrimitiveKind::String) => {
+        TypeRefTarget::Primitive(PrimitiveKind::String)
+            if !restriction_children.is_empty()
+                && restriction_children
+                    .iter()
+                    .all(|facet| facet.tag_name().name() == "enumeration") =>
+        {
             let mut variants = Vec::new();
             for facet in restriction_children {
                 require_xsd_element(facet, "enumeration")?;
@@ -384,6 +404,10 @@ fn parse_simple_type(
             }
             (TypeKind::Enumeration { variants }, ConstraintSet::default())
         }
+        TypeRefTarget::Primitive(primitive) => (
+            TypeKind::Primitive(*primitive),
+            parse_scalar_restriction_facets(*primitive, &restriction_children)?,
+        ),
         _ => return Err(unsupported(restriction, "restriction base type")),
     };
 
@@ -396,6 +420,37 @@ fn parse_simple_type(
         documentation,
         source: source_ref(node, document, source_document),
     })
+}
+
+fn parse_scalar_restriction_facets(
+    primitive: PrimitiveKind,
+    facets: &[Node<'_, '_>],
+) -> Result<ConstraintSet, FrontendError> {
+    let mut constraints = ConstraintSet::default();
+    for &facet in facets {
+        require_xsd_namespace(facet)?;
+        reject_unexpected_attributes(facet, &["value"])?;
+        let name = facet.tag_name().name();
+        match (primitive, name) {
+            (PrimitiveKind::String | PrimitiveKind::Binary, "length") => {
+                let value = parse_u64(required_attribute(facet, "value")?, "length facet")?;
+                set_once(&mut constraints.length, value, facet)?;
+            }
+            (PrimitiveKind::String | PrimitiveKind::Binary, "minLength") => {
+                let value = parse_u64(required_attribute(facet, "value")?, "minLength facet")?;
+                set_once(&mut constraints.min_length, value, facet)?;
+            }
+            (PrimitiveKind::String | PrimitiveKind::Binary, "maxLength") => {
+                let value = parse_u64(required_attribute(facet, "value")?, "maxLength facet")?;
+                set_once(&mut constraints.max_length, value, facet)?;
+            }
+            (PrimitiveKind::String, "pattern") => constraints
+                .patterns
+                .push(required_attribute(facet, "value")?.to_owned()),
+            _ => return Err(unsupported(facet, name)),
+        }
+    }
+    Ok(constraints)
 }
 
 fn parse_complex_type(
@@ -709,6 +764,8 @@ fn builtin_primitive_semantics(
         "float" => (PrimitiveKind::Float32, None, None),
         "double" => (PrimitiveKind::Float64, None, None),
         "dateTime" => (PrimitiveKind::DateTime, None, None),
+        "time" => (PrimitiveKind::Time, None, None),
+        "duration" => (PrimitiveKind::Duration, None, None),
         "hexBinary" => (PrimitiveKind::Binary, None, None),
         "string" => (PrimitiveKind::String, None, None),
         "integer" => (PrimitiveKind::SignedInteger, None, None),

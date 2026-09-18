@@ -489,6 +489,8 @@ pub enum PrimitiveKind {
     String,
     Binary,
     DateTime,
+    Time,
+    Duration,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -858,6 +860,22 @@ mod tests {
         let mut value = declaration("Value", TypeKind::Primitive(PrimitiveKind::String));
         value.constraints.length = Some(2);
         value.constraints.min_length = Some(3);
+        assert!(matches!(
+            schema(vec![value]).validate(),
+            Err(ValidationError::ContradictoryLengthConstraints { .. })
+        ));
+
+        let mut value = declaration("Value", TypeKind::Primitive(PrimitiveKind::Binary));
+        value.constraints.length = Some(6);
+        value.constraints.max_length = Some(5);
+        assert!(matches!(
+            schema(vec![value]).validate(),
+            Err(ValidationError::ContradictoryLengthConstraints { .. })
+        ));
+
+        let mut value = declaration("Value", TypeKind::Primitive(PrimitiveKind::String));
+        value.constraints.min_length = Some(8);
+        value.constraints.max_length = Some(7);
         assert!(matches!(
             schema(vec![value]).validate(),
             Err(ValidationError::ContradictoryLengthConstraints { .. })
