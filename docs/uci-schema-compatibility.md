@@ -183,4 +183,78 @@ unsupported XSD construct: xs:complexType @version at UCI_MessageDefinitions_v2_
 ```
 
 The construct is the same in both releases; only its source position differs.
-Support for the next blocker is intentionally outside this slice.
+
+## Declaration-version inventory and policy
+
+The declaration-version probe traversed each message-definition root and its
+reachable security-marking include. It matched attributes by expanded name,
+`{https://www.vdl.afrl.af.mil/programs/oam}version`, rather than by lexical
+prefix.
+
+| Owner | UCI 2.5 message definitions | UCI 2.5 security markings | UCI 2.5 total | UCI 2.6 message definitions | UCI 2.6 security markings | UCI 2.6 total |
+|---|---:|---:|---:|---:|---:|---:|
+| global `xs:element` | 722 | 0 | 722 | 725 | 0 | 725 |
+| `xs:complexType` | 4,607 | 5 | 4,612 | 4,631 | 5 | 4,636 |
+| `xs:simpleType` | 927 | 18 | 945 | 915 | 19 | 934 |
+| `xs:restriction` | 0 | 0 | 0 | 0 | 0 | 0 |
+| `xs:enumeration` | 0 | 0 | 0 | 0 | 0 | 0 |
+| `xs:attribute` | 0 | 0 | 0 | 0 | 0 | 0 |
+| `xs:group` | 0 | 0 | 0 | 0 | 0 | 0 |
+| `xs:attributeGroup` | 0 | 0 | 0 | 0 | 0 | 0 |
+| **Total** | **6,256** | **23** | **6,279** | **6,271** | **24** | **6,295** |
+
+These are the only observed owner kinds. Every named complex and simple type in
+both reachable sets has exactly one OAM declaration version, as does every
+global element; local elements do not. No declaration has multiple
+version-like attributes, and no OAM value is empty or whitespace-only. The only
+unqualified `version` attributes are the two `xs:schema` release versions in
+each reachable set, so they are not declaration metadata.
+
+All 6,279 UCI 2.5 and 6,295 UCI 2.6 declaration values have the observed lexical
+shape `ddd.ddd.ddd.ddd`; representative values include `000.000.000.000`,
+`001.000.000.000`, and `005.003.005.001`. There are 222 distinct values in 2.5
+and 296 in 2.6, with many values inside each release. Among common named
+declarations, 2,096 values differ between releases. The values therefore track
+individual declarations and changes rather than duplicating the `002.5.0` or
+`002.6.0` schema release. The authoritative `uci:VersionType` also permits an
+optional lowercase engineering suffix on each component, although no suffix is
+present in these reachable release schemas.
+
+The UCI Standard Document, section 5.2, says UCI Message Versioning quantizes
+developer impact between schema releases and tracks complex- and simple-type
+changes at the same detail. Its four components represent direct structural,
+indirect structural, direct optional, and indirect optional change history; a
+message version is inherited from its associated MT complex type. The UCI
+Schema Style and Design Specification likewise says `uci:version` identifies
+messages and types, CERT SCH-002406 ties it to `uci:VersionType`, and CERTs
+SCH-009994/SCH-009995 allow it on global elements and complex types. This is
+declaration change-history/provenance metadata. It does not itself alter XSD
+constraints, declaration identity, UCI JSON, CAL/OWP wire behavior, or generated
+runtime behavior.
+
+The frontend consequently applies one namespace-aware declaration-version
+policy to messages, complex types, and simple types: a present OAM version must
+be nonempty, remains lexically opaque, and is discarded at the semantic IR
+boundary. No numeric grammar is duplicated from the certification schema.
+Global-message classification still requires the marker; generic supported
+complex and simple types may omit it. Thus authoritative UCI declarations are
+accepted without narrowing the generic XSD subset, and `SchemaIr.schema_version`
+remains the separate root-schema release value. No IR or backend structure was
+added.
+
+After this shared type-declaration support, both roots pass their original
+`xs:complexType @version` blocker and all `xs:simpleType @version` metadata, then
+stop at the next distinct unsupported construct:
+
+```text
+UCI 2.5: FrontendError::UnsupportedConstruct
+unsupported XSD construct: xs:double at UCI_MessageDefinitions_v2_5_0.xsd:4703:4
+
+UCI 2.6: FrontendError::UnsupportedConstruct
+unsupported XSD construct: xs:double at UCI_MessageDefinitions_v2_6_0.xsd:4727:4
+```
+
+Both failures are the `type="xs:double"` primitive of the first local sequence
+element encountered after declaration-version processing. The releases do not
+diverge except in source position. Support for this next primitive blocker is
+intentionally left to Task 011.

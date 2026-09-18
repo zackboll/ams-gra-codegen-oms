@@ -107,6 +107,126 @@ fn parsing_is_deterministic() {
 }
 
 #[test]
+fn uci_type_versions_are_validated_and_discarded() {
+    let path = write_temporary_schema(
+        "type-versions",
+        r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    xmlns:t="urn:type-versions"
+    xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+    targetNamespace="urn:type-versions">
+  <xs:simpleType name="Count" uci:version="001.000.000.000">
+    <xs:annotation><xs:documentation>Count documentation.</xs:documentation></xs:annotation>
+    <xs:restriction base="xs:integer"><xs:minInclusive value="1"/></xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="State" uci:version="002.000.000.000">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Ready"><xs:annotation><xs:documentation>Ready state.</xs:documentation></xs:annotation></xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:complexType name="VersionedType" uci:version="003.000.000.000">
+    <xs:annotation><xs:documentation>Type documentation.</xs:documentation></xs:annotation>
+    <xs:sequence>
+      <xs:element name="Count" type="t:Count" minOccurs="0" maxOccurs="4" nillable="true"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>
+"#,
+    );
+    let versioned = load_schema_document(&path).expect("versioned types should parse");
+    let without_versions = fs::read_to_string(&path)
+        .expect("temporary schema should be readable")
+        .replace(" uci:version=\"001.000.000.000\"", "")
+        .replace(" uci:version=\"002.000.000.000\"", "")
+        .replace(" uci:version=\"003.000.000.000\"", "");
+    fs::write(&path, without_versions).expect("temporary schema should be replaceable");
+    let unversioned = load_schema_document(&path).expect("generic types should still parse");
+    fs::remove_file(path).expect("temporary schema should be removable");
+
+    assert_eq!(versioned, unversioned);
+    assert_eq!(versioned.types[0].constraints.min_inclusive, Some(1));
+    assert_eq!(
+        versioned.types[0].documentation.as_deref(),
+        Some("Count documentation.")
+    );
+    let TypeKind::Enumeration { variants } = &versioned.types[1].kind else {
+        panic!("State should remain an enumeration");
+    };
+    assert_eq!(variants[0].documentation.as_deref(), Some("Ready state."));
+    let TypeKind::Record { fields } = &versioned.types[2].kind else {
+        panic!("VersionedType should remain a record");
+    };
+    assert_eq!(
+        versioned.types[2].documentation.as_deref(),
+        Some("Type documentation.")
+    );
+    assert_eq!(fields[0].cardinality.min_occurs, 0);
+    assert_eq!(fields[0].cardinality.max_occurs, Some(4));
+    assert!(fields[0].nillable);
+    assert_eq!(
+        fields[0].type_ref.target,
+        TypeRefTarget::Named(QualifiedName::new("urn:type-versions", "Count"))
+    );
+}
+
+#[test]
+fn invalid_uci_type_version_metadata_fails_closed() {
+    for (label, declaration, category, expected) in [
+        (
+            "empty-complex-version",
+            r#"<xs:complexType name="Value" uci:version=""><xs:sequence/></xs:complexType>"#,
+            "invalid",
+            "xs:complexType UCI version attribute must not be empty",
+        ),
+        (
+            "empty-simple-version",
+            r#"<xs:simpleType name="Value" uci:version="   "><xs:restriction base="xs:integer"/></xs:simpleType>"#,
+            "invalid",
+            "xs:simpleType UCI version attribute must not be empty",
+        ),
+        (
+            "wrong-complex-version-namespace",
+            r#"<xs:complexType name="Value" other:version="001.000.000.000"><xs:sequence/></xs:complexType>"#,
+            "unsupported",
+            "xs:complexType @version",
+        ),
+        (
+            "unqualified-simple-version",
+            r#"<xs:simpleType name="Value" version="001.000.000.000"><xs:restriction base="xs:integer"/></xs:simpleType>"#,
+            "unsupported",
+            "xs:simpleType @version",
+        ),
+        (
+            "unexpected-namespaced-type-attribute",
+            r#"<xs:complexType name="Value" other:metadata="value"><xs:sequence/></xs:complexType>"#,
+            "unsupported",
+            "xs:complexType @metadata",
+        ),
+    ] {
+        let path = write_temporary_schema(
+            label,
+            &format!(
+                r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+    xmlns:other="urn:not-uci" targetNamespace="urn:invalid-version">
+  {declaration}
+</xs:schema>
+"#
+            ),
+        );
+        let error = load_schema_document(&path).expect_err(label);
+        fs::remove_file(path).expect("temporary schema should be removable");
+        match category {
+            "invalid" => assert!(matches!(error, FrontendError::InvalidInput(_))),
+            "unsupported" => {
+                assert!(matches!(error, FrontendError::UnsupportedConstruct(_)))
+            }
+            _ => unreachable!(),
+        }
+        assert!(error.to_string().contains(expected), "{label}: {error}");
+    }
+}
+
+#[test]
 fn annotations_normalize_into_existing_ir_documentation_fields() {
     let ir = load_schema_document(&fixture("annotations.xsd")).expect("annotations should parse");
     assert_eq!(
