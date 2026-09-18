@@ -1131,6 +1131,18 @@ fn normalizes_temporal_and_scalar_restrictions() {
         TypeKind::Primitive(PrimitiveKind::String)
     );
 
+    let annotated_pattern = declaration("AnnotatedPattern");
+    let plain_pattern = declaration("PlainPattern");
+    assert_eq!(
+        annotated_pattern.kind,
+        TypeKind::Primitive(PrimitiveKind::String)
+    );
+    assert_eq!(
+        annotated_pattern.constraints.patterns,
+        [r"NATO:[a-zA-Z\-_]{1,256}"]
+    );
+    assert_eq!(annotated_pattern.constraints, plain_pattern.constraints);
+
     let TypeKind::Record { fields } = &declaration("TemporalRecord").kind else {
         panic!("TemporalRecord should be a record");
     };
@@ -1223,6 +1235,27 @@ fn scalar_restrictions_reject_invalid_lengths_and_lexical_facets() {
             r#"<xs:minInclusive value="0.5"/>"#,
             "unsupported",
             "xs:minInclusive",
+        ),
+        (
+            "unexpected-length-child",
+            "xs:string",
+            r#"<xs:length value="4"><xs:unexpected/></xs:length>"#,
+            "unsupported",
+            "xs:unexpected",
+        ),
+        (
+            "misplaced-pattern-annotation",
+            "xs:string",
+            r#"<xs:pattern value="[A-Z]+"><xs:unexpected/><xs:annotation><xs:documentation>Too late.</xs:documentation></xs:annotation></xs:pattern>"#,
+            "unsupported",
+            "xs:annotation outside leading position",
+        ),
+        (
+            "pattern-appinfo",
+            "xs:string",
+            r#"<xs:pattern value="[A-Z]+"><xs:annotation><xs:appinfo/></xs:annotation></xs:pattern>"#,
+            "unsupported",
+            "xs:appinfo",
         ),
     ] {
         let path = write_temporary_schema(

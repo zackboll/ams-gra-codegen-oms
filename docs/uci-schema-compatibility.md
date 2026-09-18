@@ -93,14 +93,29 @@ are omitted, and multiple nonempty nodes are joined by one blank line. Type,
 sequence-field, and enumeration-facet documentation reaches the existing IR
 documentation fields. Validated schema and supported-restriction documentation
 is deliberately discarded because those XSD syntax owners have no semantic IR
-documentation field. The observed pattern facet remains unsupported in its own
-right; Task 008 does not bypass that owner to consume its annotation. No raw XML
-metadata is exposed to backends.
+documentation field. At Task 008, pattern semantics remained unsupported, so
+the frontend did not bypass the pattern owner merely to consume its annotation.
+Task 014 later added semantic String pattern support. A supported String pattern
+facet now validates an optional leading annotation and deliberately discards its
+normalized documentation because `ConstraintSet` has no documentation owner.
+Unsupported pattern families remain fail-closed. No raw XML metadata is exposed
+to backends.
 
 Because real UCI provides no evidence that `xs:appinfo` is safe to ignore, it
 remains unsupported. Embedded markup, unknown annotation children, unexpected
 annotation attributes, and annotations outside the leading position also fail
 closed with source context.
+
+The one pattern-facet annotation in each release is on
+`NATO_SpecialWordsType` in the corresponding security-marking schema. Both
+types restrict `xs:string`; the supported pattern is
+`NATO:[a-zA-Z\-_]{1,256}`. In both releases the pattern has exactly one element
+child: a leading, attribute-free `xs:annotation` containing exactly one
+attribute-free, plain-text `xs:documentation` node with the text “North Atlantic
+Treaty Organization Special Words.” The two occurrences are structurally and
+semantically equivalent. Task 014 validates this evidence-backed shape but does
+not add the documentation to semantic constraints. All accepted scalar facets
+reject residual element children after their optional leading annotation.
 
 After this annotation slice, both roots pass their original schema-level
 annotation and stop at the next unsupported declaration:

@@ -348,7 +348,14 @@ fn parse_simple_type(
             for facet in restriction_children {
                 require_xsd_namespace(facet)?;
                 reject_unexpected_attributes(facet, &["value"])?;
-                match facet.tag_name().name() {
+                let name = facet.tag_name().name();
+                match name {
+                    "minInclusive" | "maxInclusive" | "minExclusive" | "maxExclusive" => {
+                        validate_constraint_facet_children(facet)?;
+                    }
+                    other => return Err(unsupported(facet, other)),
+                }
+                match name {
                     "minInclusive" => set_once(
                         &mut explicit.min_inclusive,
                         parse_integer(required_attribute(facet, "value")?)?,
@@ -369,7 +376,7 @@ fn parse_simple_type(
                         parse_integer(required_attribute(facet, "value")?)?,
                         facet,
                     )?,
-                    other => return Err(unsupported(facet, other)),
+                    _ => unreachable!("supported integer facet was checked above"),
                 }
             }
             (
@@ -432,6 +439,16 @@ fn parse_scalar_restriction_facets(
         reject_unexpected_attributes(facet, &["value"])?;
         let name = facet.tag_name().name();
         match (primitive, name) {
+            (
+                PrimitiveKind::String | PrimitiveKind::Binary,
+                "length" | "minLength" | "maxLength",
+            )
+            | (PrimitiveKind::String, "pattern") => {
+                validate_constraint_facet_children(facet)?;
+            }
+            _ => return Err(unsupported(facet, name)),
+        }
+        match (primitive, name) {
             (PrimitiveKind::String | PrimitiveKind::Binary, "length") => {
                 let value = parse_u64(required_attribute(facet, "value")?, "length facet")?;
                 set_once(&mut constraints.length, value, facet)?;
@@ -447,10 +464,18 @@ fn parse_scalar_restriction_facets(
             (PrimitiveKind::String, "pattern") => constraints
                 .patterns
                 .push(required_attribute(facet, "value")?.to_owned()),
-            _ => return Err(unsupported(facet, name)),
+            _ => unreachable!("supported scalar facet was checked above"),
         }
     }
     Ok(constraints)
+}
+
+fn validate_constraint_facet_children(facet: Node<'_, '_>) -> Result<(), FrontendError> {
+    let (_documentation, children) = children_after_optional_annotation(facet)?;
+    if let Some(child) = children.first() {
+        return Err(unsupported(*child, child.tag_name().name()));
+    }
+    Ok(())
 }
 
 fn parse_complex_type(
