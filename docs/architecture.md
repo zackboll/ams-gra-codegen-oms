@@ -435,3 +435,34 @@ skipping its wrapper; any other use re-raises the original error.
 Coverage analysis applies the same rule unconditionally, not gated behind a
 hypothetical feature family: inhabitance is a property of the schema itself, and
 gating it would let enabling a feature *reduce* measured coverage.
+
+## 14. Schema-set closure is not type-universe closure
+
+Section 13's phrase "the current closed schema set" names *one* of two distinct
+closures, and Task 027 separates them because conflating them is exactly how an
+unsound assumption would enter the generator.
+
+**Schema-set closure** is a property of a generation invocation: the finite,
+deterministic set of XSD files reachable from the supplied root through
+`xs:include`/`xs:import`. This generator always has it, and it is what makes
+generation reproducible.
+
+**Type-universe closure** is a much stronger semantic claim: that no legal value
+of any declared type can ever have a runtime type outside that file set. XSD
+does not grant this. Derivation by extension is open by default, and an instance
+document may select an externally declared derived type via `xsi:type` at any
+element whose declared type is not `final`/`block`-restricted.
+
+Task 027 measured the pinned UCI 2.5/2.6 roots and found schema-set closure
+holds while type-universe closure does not: the zero-descendant abstract types
+are documented as extension points whose concrete forms are deliberately
+supplied outside the open schema, and neither root ever uses `block` or `final`
+to close them. See `docs/task-027-open-extension-points.md`.
+
+The consequence for Section 13 is a scoping statement, not a correction: the
+uninhabitance rule is valid under an assumed **closed type universe**, which the
+generator currently assumes implicitly rather than declares. Making that world
+model explicit — and language-neutral, so no backend can disagree about which
+values exist — is the recommended eventual direction. Nothing is implemented for
+it yet, and occurrence shapes other than the optional one continue to fail
+closed in the meantime.
