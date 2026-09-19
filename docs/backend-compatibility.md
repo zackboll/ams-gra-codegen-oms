@@ -468,3 +468,13 @@ unchanged. Consequently `CardinalityAndNillability` now denotes remaining
 unsupported occurrence semantics (not all unbounded cardinality): nillability,
 Ada's unsupported positive-minimum unbounded forms, and its existing narrower
 optional policy.
+
+### Corrective unbounded-boundary hardening
+
+The full schema `u64` `minOccurs` domain remains supported. C++ emits the
+existing portable unsigned constant expression for an extreme unbounded
+minimum, including `std::numeric_limits<std::uint64_t>::max()` for `u64::MAX`.
+Rust converts the schema minimum into `usize` before comparing it with a
+`Vec` length: conversion failure means the platform cannot represent a large
+enough `Vec`, while no representable length is artificially capped. This does
+not expand Task 021 support or alter analyzer semantics.

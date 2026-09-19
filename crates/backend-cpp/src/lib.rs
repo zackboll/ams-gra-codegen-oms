@@ -218,7 +218,7 @@ fn render_declaration(
                         format!("BoundedVector<{base}, {min}, {max}>")
                     }
                     OccurrenceShape::Unbounded { min } => {
-                        format!("UnboundedVector<{base}, {min}>")
+                        format!("UnboundedVector<{base}, {}>", cpp_unsigned_bound(min))
                     }
                     _ => return unsupported(format!("cardinality on field {field_name}")),
                 };
@@ -380,7 +380,10 @@ fn cpp_field_type(field: &ams_gra_oms_ir::FieldDecl) -> Result<String, CodegenEr
         OccurrenceShape::Bounded { min, max } if max > 1 => {
             Ok(format!("BoundedVector<{base}, {min}, {max}>"))
         }
-        OccurrenceShape::Unbounded { min } => Ok(format!("UnboundedVector<{base}, {min}>")),
+        OccurrenceShape::Unbounded { min } => Ok(format!(
+            "UnboundedVector<{base}, {}>",
+            cpp_unsigned_bound(min)
+        )),
         _ => unsupported(format!("cardinality on Choice alternative {}", field.name)),
     }
 }
@@ -701,6 +704,53 @@ mod tests {
         assert!(source.contains(
             "struct ManyByte { UnboundedVector<BoundedInteger<std::uint64_t, 0, 255>, 1> value; };"
         ));
+    }
+
+    #[test]
+    fn renders_and_strictly_compiles_full_unbounded_minimum() {
+        let mut schema = unbounded_schema();
+        for declaration in &mut schema.types {
+            match &mut declaration.kind {
+                TypeKind::Record { fields } if declaration.name.local_name == "Record" => {
+                    fields[1].cardinality.min_occurs = u64::MAX;
+                }
+                TypeKind::Choice { alternatives } if declaration.name.local_name == "Selection" => {
+                    alternatives[1].cardinality.min_occurs = u64::MAX;
+                }
+                _ => {}
+            }
+        }
+        let source = generate(&schema).expect("full unbounded minimum should generate");
+        assert!(
+            source.contains("UnboundedVector<Item, std::numeric_limits<std::uint64_t>::max()>")
+        );
+        assert!(!source.contains("UnboundedVector<Item, 18446744073709551615>"));
+        assert!(source.contains("#include <limits>"));
+
+        use std::fs;
+        use std::process::Command;
+        let directory = std::env::temp_dir().join("ams-gra-oms-full-unbounded-minimum");
+        let header = directory.join("full_unbounded.hpp");
+        let unit = directory.join("full_unbounded.cpp");
+        fs::create_dir_all(&directory).expect("create C++ probe directory");
+        fs::write(&header, source).expect("write generated C++ header");
+        fs::write(&unit, "#include \"full_unbounded.hpp\"\n").expect("write C++ unit");
+        let status = Command::new("c++")
+            .args([
+                "-std=c++17",
+                "-Wall",
+                "-Wextra",
+                "-pedantic-errors",
+                "-fsyntax-only",
+            ])
+            .arg(&unit)
+            .status()
+            .expect("C++ compiler must be available");
+        fs::remove_dir_all(&directory).expect("remove C++ probe directory");
+        assert!(
+            status.success(),
+            "strict C++17 full-minimum compile must succeed"
+        );
     }
 
     fn full_integral_boundary_schema() -> SchemaIr {

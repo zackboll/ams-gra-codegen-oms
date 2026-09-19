@@ -1168,6 +1168,66 @@ mod tests {
     }
 
     #[test]
+    fn cardinality_shape_preserves_full_occurrence_domain() {
+        assert_eq!(
+            Cardinality::REQUIRED_ONE.shape(),
+            OccurrenceShape::RequiredOne
+        );
+        assert_eq!(
+            Cardinality::OPTIONAL_ONE.shape(),
+            OccurrenceShape::OptionalOne
+        );
+        assert_eq!(
+            Cardinality {
+                min_occurs: 0,
+                max_occurs: Some(3)
+            }
+            .shape(),
+            OccurrenceShape::Bounded { min: 0, max: 3 }
+        );
+        assert_eq!(
+            Cardinality {
+                min_occurs: 1,
+                max_occurs: Some(3)
+            }
+            .shape(),
+            OccurrenceShape::Bounded { min: 1, max: 3 }
+        );
+        assert_eq!(
+            Cardinality {
+                min_occurs: 2,
+                max_occurs: Some(3)
+            }
+            .shape(),
+            OccurrenceShape::Bounded { min: 2, max: 3 }
+        );
+        assert_eq!(
+            Cardinality {
+                min_occurs: 0,
+                max_occurs: None
+            }
+            .shape(),
+            OccurrenceShape::Unbounded { min: 0 }
+        );
+        assert_eq!(
+            Cardinality {
+                min_occurs: 1,
+                max_occurs: None
+            }
+            .shape(),
+            OccurrenceShape::Unbounded { min: 1 }
+        );
+        assert_eq!(
+            Cardinality {
+                min_occurs: u64::MAX,
+                max_occurs: None
+            }
+            .shape(),
+            OccurrenceShape::Unbounded { min: u64::MAX }
+        );
+    }
+
+    #[test]
     fn validates_minimal_schema() {
         schema(vec![declaration(
             "Value",

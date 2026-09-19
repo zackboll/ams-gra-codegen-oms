@@ -64,7 +64,7 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
             "pub struct UnboundedVec<T, const MIN: u64>(Vec<T>);\n\n",
             "impl<T, const MIN: u64> UnboundedVec<T, MIN> {\n",
             "    pub fn new(values: Vec<T>) -> Option<Self> {\n",
-            "        u64::try_from(values.len()).is_ok_and(|length| length >= MIN).then_some(Self(values))\n",
+            "        usize::try_from(MIN).is_ok_and(|min| values.len() >= min).then_some(Self(values))\n",
             "    }\n\n",
             "    pub fn as_slice(&self) -> &[T] { &self.0 }\n",
             "}\n\n",
@@ -569,6 +569,8 @@ mod tests {
     fn lowers_unbounded_records_choices_and_constrained_elements() {
         let source = generate(&unbounded_schema()).expect("unbounded cardinality should generate");
         assert!(source.contains("pub struct UnboundedVec<T, const MIN: u64>(Vec<T>);"));
+        assert!(source.contains("usize::try_from(MIN).is_ok_and(|min| values.len() >= min)"));
+        assert!(!source.contains("u64::try_from(values.len())"));
         assert!(source.contains("UnboundedVec<Item, 0>"));
         assert!(source.contains("UnboundedVec<Item, 1>"));
         assert!(source.contains("UnboundedVec<Item, 2>"));
