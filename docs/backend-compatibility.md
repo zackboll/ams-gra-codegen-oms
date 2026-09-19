@@ -1111,3 +1111,111 @@ classwide access, extension registry, plugin registration, opaque payloads,
 codecs, or `xsi:type` handling were added. `--world open-extensions` is strictly
 *more* restrictive than `--world closed-schema`; it exists so the generator can
 be honest about an assumption it cannot verify.
+
+### Authoritative generation matrix
+
+Binary `36d82a8`, run against the pinned probe roots
+`/tmp/ams-gra-uci-probe-2.5/UCI_MessageDefinitions_v2_5_0.xsd` and
+`/tmp/ams-gra-uci-probe-2.6/UCI_MessageDefinitions_v2_6_0.xsd`. All twelve cells
+exit 1 (execution error, not usage error).
+
+| Release | World | Backend | Exit | First blocker | Diagnostic class |
+| --- | --- | --- | --- | --- | --- |
+| 2.5 | closed-schema | Ada | 1 | `SourceCommandEXT` | zero-descendant (Task 024) |
+| 2.5 | closed-schema | Rust | 1 | `SourceCommandEXT` | zero-descendant (Task 024) |
+| 2.5 | closed-schema | C++ | 1 | `SourceCommandEXT` | zero-descendant (Task 024) |
+| 2.6 | closed-schema | Ada | 1 | `SourceCommandEXT` | zero-descendant (Task 024) |
+| 2.6 | closed-schema | Rust | 1 | `SourceCommandEXT` | zero-descendant (Task 024) |
+| 2.6 | closed-schema | C++ | 1 | `SourceCommandEXT` | zero-descendant (Task 024) |
+| 2.5 | open-extensions | Ada | 1 | `CapabilityCommandBaseType` | open-world (Task 028) |
+| 2.5 | open-extensions | Rust | 1 | `CapabilityCommandBaseType` | open-world (Task 028) |
+| 2.5 | open-extensions | C++ | 1 | `CapabilityCommandBaseType` | open-world (Task 028) |
+| 2.6 | open-extensions | Ada | 1 | `CapabilityCommandBaseType` | open-world (Task 028) |
+| 2.6 | open-extensions | Rust | 1 | `CapabilityCommandBaseType` | open-world (Task 028) |
+| 2.6 | open-extensions | C++ | 1 | `CapabilityCommandBaseType` | open-world (Task 028) |
+
+Closed-schema reproduces the Task 026 blocker byte-for-byte, confirmed against a
+fresh pre-change baseline binary built from `bec71c5`:
+
+```text
+error: unsupported abstract structural value: abstract value target SourceCommandEXT has no concrete structural descendants
+```
+
+Open-extensions blocks *earlier*, at the first abstract **value** reference in
+declaration order — `CapabilityCommandBaseType`, which Task 023 identified as
+the first abstract-value blocker before Task 024 closed-sum support existed.
+Because that target has known concrete descendants, it correctly uses the
+open-world diagnostic rather than the zero-descendant one:
+
+```text
+error: unsupported abstract structural value: abstract value CapabilityCommandBaseType is not closed under open-extensions generation; external derived types cannot be represented
+```
+
+This expectation is evidence, not production logic: nothing in the generator
+hardcodes either target name.
+
+### Authoritative coverage matrix
+
+| Release | World | Backend | Kinds | Full declarations | Field types | Field occurrences | Message closures |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 2.5 | closed | Ada | 5428/5557 | **2770**/5557 | 13147/13160 | 8211/13160 | 0/722 |
+| 2.5 | closed | Rust | 5428/5557 | **5365**/5557 | 13147/13160 | 13160/13160 | 0/722 |
+| 2.5 | closed | C++ | 5428/5557 | **5365**/5557 | 13147/13160 | 13160/13160 | 0/722 |
+| 2.5 | open | Ada | 5428/5557 | 2762/5557 | 13147/13160 | 8211/13160 | 0/722 |
+| 2.5 | open | Rust | 5428/5557 | 5277/5557 | 13147/13160 | 13160/13160 | 0/722 |
+| 2.5 | open | C++ | 5428/5557 | 5277/5557 | 13147/13160 | 13160/13160 | 0/722 |
+| 2.6 | closed | Ada | 5441/5570 | **2771**/5570 | 13198/13198 | 8231/13198 | 0/725 |
+| 2.6 | closed | Rust | 5441/5570 | **5387**/5570 | 13198/13198 | 13198/13198 | 0/725 |
+| 2.6 | closed | C++ | 5441/5570 | **5387**/5570 | 13198/13198 | 13198/13198 | 0/725 |
+| 2.6 | open | Ada | 5441/5570 | 2763/5570 | 13198/13198 | 8231/13198 | 0/725 |
+| 2.6 | open | Rust | 5441/5570 | 5299/5570 | 13198/13198 | 13198/13198 | 0/725 |
+| 2.6 | open | C++ | 5441/5570 | 5299/5570 | 13198/13198 | 13198/13198 | 0/725 |
+
+The bolded closed-schema full-declaration counts are exactly the Task 026
+baseline figures. For UCI 2.5 the entire closed-schema report — inventory
+counts, evidence lines, backend coverage counts, and all hypothetical
+feature-impact counts — is **byte-for-byte identical** to the pre-change
+baseline apart from the single added marker line:
+
+```text
+generation world: closed-schema
+```
+
+Open-world decreases land exactly where expected, on **fully renderable
+declarations** only:
+
+- Ada −8 (2.5) and −8 (2.6);
+- Rust and C++ −88 (2.5) and −88 (2.6).
+
+Kind, field-type, and field-occurrence metrics are unchanged in both worlds.
+Field-type renderability deliberately measures whether a named `TypeRef` can be
+*named*, not whether its target is fully renderable, so it is not reduced merely
+because an abstract target cannot be represented open-world; transitive semantic
+failure is carried by the full-declaration and message-closure metrics. Message
+closures were already 0 in both releases because of the unrelated
+`SourceCommandEXT` blocker, so they cannot drop further.
+
+All 31 non-empty feature combinations complete under both worlds for all three
+backends, with no panic, no recursion failure, and no combination reducing
+capability.
+
+### Performance
+
+Coverage elapsed times, same machine, full authoritative runs:
+
+| Run | Elapsed |
+| --- | --- |
+| pre-change baseline, UCI 2.5 | 253 s |
+| UCI 2.5 closed-schema | 260 s |
+| UCI 2.5 open-extensions | 264 s |
+| UCI 2.6 closed-schema | 264 s |
+| UCI 2.6 open-extensions | 265 s |
+
+No order-of-magnitude regression. The Task 026 fix is preserved: world checks
+are O(1), the declaration map, abstract topology map, and closed-world
+fully-elided-target set are all built once in `CoverageAnalysis::new`, and no
+per-field schema scan or per-field abstract projection occurs during
+measurement.
+
+Normalization is unaffected by the world, as required: UCI 2.5 normalizes to
+5,557 types / 722 messages and UCI 2.6 to 5,570 types / 725 messages, unchanged.
