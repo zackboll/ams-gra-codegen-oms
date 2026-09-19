@@ -1,12 +1,14 @@
 //! Shared backend contract for OMS/UCI source generation.
 
 mod coverage;
+mod integral;
 mod structure;
 
 pub use coverage::{
     BackendCoverage, BackendLanguage, CoverageAnalysis, CoverageError, FeatureFamily,
     SchemaInventory,
 };
+pub use integral::{InclusiveIntegralDomain, inclusive_integral_domain};
 pub use structure::{
     EffectiveStructuralType, StructuralKind, StructuralLevel, StructuralProjectionError,
     StructuralSegment, StructuralSegmentContent, effective_choice_alternatives,

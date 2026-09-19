@@ -1,10 +1,11 @@
+use crate::inclusive_integral_domain;
 use crate::structure::{
     EffectiveStructuralType, StructuralProjectionError, StructuralSegmentContent,
     project_with_index,
 };
 use ams_gra_oms_ir::{
-    Cardinality, ConstraintSet, FieldDecl, MessageDecl, NumericValue, PrimitiveKind, QualifiedName,
-    SchemaIr, TypeDecl, TypeKind, TypeRef, TypeRefTarget,
+    Cardinality, ConstraintSet, FieldDecl, MessageDecl, PrimitiveKind, QualifiedName, SchemaIr,
+    TypeDecl, TypeKind, TypeRef, TypeRefTarget,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
@@ -942,7 +943,9 @@ fn kind_renderable(declaration: &TypeDecl, enabled: &BTreeSet<FeatureFamily>) ->
     match declaration.kind {
         // `FeatureFamily::Choice` models only remaining unsupported Choice
         // composition; ordinary Choice declarations have backend renderers.
-        TypeKind::Primitive(PrimitiveKind::SignedInteger)
+        TypeKind::Primitive(
+            PrimitiveKind::Boolean | PrimitiveKind::SignedInteger | PrimitiveKind::UnsignedInteger,
+        )
         | TypeKind::Enumeration { .. }
         | TypeKind::Record { .. }
         | TypeKind::Choice { .. } => true,
@@ -992,31 +995,22 @@ fn declaration_renderable(
 fn primitive_declaration_renderable(
     kind: PrimitiveKind,
     constraints: &ConstraintSet,
-    language: BackendLanguage,
+    _language: BackendLanguage,
     enabled: &BTreeSet<FeatureFamily>,
 ) -> bool {
-    if kind != PrimitiveKind::SignedInteger {
+    if kind == PrimitiveKind::Boolean {
+        return constraints == &ConstraintSet::default()
+            || enabled.contains(&FeatureFamily::ConstrainedSimpleTypes);
+    }
+    if !matches!(
+        kind,
+        PrimitiveKind::SignedInteger | PrimitiveKind::UnsignedInteger
+    ) {
         return enabled.contains(&FeatureFamily::PrimitiveExpansion)
             && (constraints == &ConstraintSet::default()
                 || enabled.contains(&FeatureFamily::ConstrainedSimpleTypes));
     }
-    let bounds = match (constraints.min_inclusive, constraints.max_inclusive) {
-        (Some(NumericValue::Integer(min)), Some(NumericValue::Integer(max))) if min <= max => {
-            Some((min, max))
-        }
-        _ => None,
-    };
-    let bounds_ok = bounds.is_some_and(|(min, max)| {
-        language == BackendLanguage::Ada
-            || (i64::try_from(min).is_ok() && i64::try_from(max).is_ok())
-    });
-    (bounds_ok
-        && constraints.min_exclusive.is_none()
-        && constraints.max_exclusive.is_none()
-        && constraints.length.is_none()
-        && constraints.min_length.is_none()
-        && constraints.max_length.is_none()
-        && constraints.lexical == Default::default())
+    inclusive_integral_domain(kind, constraints).is_ok_and(|domain| domain.is_some())
         || enabled.contains(&FeatureFamily::ConstrainedSimpleTypes)
 }
 fn declaration_constraints_renderable(
@@ -1034,6 +1028,7 @@ fn field_renderable(
     type_ref_renderable(&field.type_ref, enabled)
         && occurrence_renderable(field, language, enabled)
         && (field.constraints == ConstraintSet::default()
+            || matches!(field.type_ref.target, TypeRefTarget::Primitive(kind) if inclusive_integral_domain(kind, &field.constraints).is_ok_and(|domain| domain.is_some()))
             || enabled.contains(&FeatureFamily::ConstrainedSimpleTypes))
 }
 fn type_ref_renderable(type_ref: &TypeRef, enabled: &BTreeSet<FeatureFamily>) -> bool {
@@ -1043,8 +1038,13 @@ fn type_ref_renderable(type_ref: &TypeRef, enabled: &BTreeSet<FeatureFamily>) ->
     }
 }
 fn primitive_ref_renderable(kind: PrimitiveKind, enabled: &BTreeSet<FeatureFamily>) -> bool {
-    matches!(kind, PrimitiveKind::SignedInteger | PrimitiveKind::String)
-        || enabled.contains(&FeatureFamily::PrimitiveExpansion)
+    matches!(
+        kind,
+        PrimitiveKind::Boolean
+            | PrimitiveKind::SignedInteger
+            | PrimitiveKind::UnsignedInteger
+            | PrimitiveKind::String
+    ) || enabled.contains(&FeatureFamily::PrimitiveExpansion)
 }
 fn occurrence_renderable(
     field: &FieldDecl,
@@ -1143,6 +1143,7 @@ fn primitive_name(kind: PrimitiveKind) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ams_gra_oms_ir::NumericValue;
     use ams_gra_oms_ir::{MessageDecl, NamespaceDecl, SourceRef};
 
     const NS: &str = "urn:test";
@@ -1289,14 +1290,14 @@ mod tests {
     }
 
     #[test]
-    fn primitive_expansion_alone_unblocks_boolean_field_closure() {
+    fn primitive_expansion_alone_unblocks_float_field_closure() {
         let schema = message_schema(
             vec![declaration(
                 "Payload",
                 TypeKind::Record {
                     fields: vec![field_ref(
-                        "enabled",
-                        TypeRef::primitive(PrimitiveKind::Boolean),
+                        "value",
+                        TypeRef::primitive(PrimitiveKind::Float32),
                     )],
                 },
             )],
@@ -1563,8 +1564,8 @@ mod tests {
             "Inner",
             TypeKind::Record {
                 fields: vec![field_ref(
-                    "enabled",
-                    TypeRef::primitive(PrimitiveKind::Boolean),
+                    "value",
+                    TypeRef::primitive(PrimitiveKind::Float32),
                 )],
             },
         );
