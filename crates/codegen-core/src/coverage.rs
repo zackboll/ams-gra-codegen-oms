@@ -1,8 +1,8 @@
-use crate::inclusive_integral_domain;
 use crate::structure::{
     EffectiveStructuralType, StructuralProjectionError, StructuralSegmentContent,
     project_with_index,
 };
+use crate::{ADA_PORTABLE_POSITIVE_INDEX_MAX, inclusive_integral_domain};
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, FieldDecl, MessageDecl, OccurrenceShape, PrimitiveKind,
     QualifiedName, SchemaIr, TypeDecl, TypeKind, TypeRef, TypeRefTarget,
@@ -1073,8 +1073,16 @@ fn occurrence_renderable(
             field.type_ref.target == TypeRefTarget::Primitive(PrimitiveKind::String)
         }
         (BackendLanguage::Rust | BackendLanguage::Cpp, OccurrenceShape::OptionalOne) => true,
-        (BackendLanguage::Ada, OccurrenceShape::Bounded { min: 0, max }) if max > 1 => true,
-        (BackendLanguage::Ada, OccurrenceShape::Unbounded { min: 0 }) => true,
+        (BackendLanguage::Ada, OccurrenceShape::Bounded { max, .. })
+            if max > 1 && max <= ADA_PORTABLE_POSITIVE_INDEX_MAX =>
+        {
+            true
+        }
+        (BackendLanguage::Ada, OccurrenceShape::Unbounded { min })
+            if min <= ADA_PORTABLE_POSITIVE_INDEX_MAX =>
+        {
+            true
+        }
         (BackendLanguage::Rust | BackendLanguage::Cpp, OccurrenceShape::Bounded { max, .. })
             if max > 1 =>
         {
@@ -1327,7 +1335,7 @@ mod tests {
     }
 
     #[test]
-    fn unbounded_occurrences_are_baseline_only_for_implemented_languages() {
+    fn repeated_occurrences_match_ada_portable_boundaries() {
         let mut zero = field_ref("zero", TypeRef::primitive(PrimitiveKind::String));
         zero.cardinality = Cardinality {
             min_occurs: 0,
@@ -1337,22 +1345,48 @@ mod tests {
         one.cardinality.min_occurs = 1;
         let mut two = zero.clone();
         two.cardinality.min_occurs = 2;
-        let schema = schema(vec![declaration(
+        let mut three = zero.clone();
+        three.cardinality.min_occurs = 3;
+        let mut over_limit = zero.clone();
+        over_limit.cardinality.min_occurs = ADA_PORTABLE_POSITIVE_INDEX_MAX + 1;
+        let unbounded_schema = schema(vec![declaration(
             "Payload",
             TypeKind::Record {
-                fields: vec![zero, one, two],
+                fields: vec![zero, one, two, three, over_limit],
             },
         )]);
-        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        let analysis = CoverageAnalysis::new(&unbounded_schema).unwrap();
         for language in [BackendLanguage::Rust, BackendLanguage::Cpp] {
             assert_eq!(
                 analysis
                     .backend_coverage(language)
                     .unwrap()
                     .field_occurrences_renderable,
-                3
+                5
             );
         }
+        assert_eq!(
+            analysis
+                .backend_coverage(BackendLanguage::Ada)
+                .unwrap()
+                .field_occurrences_renderable,
+            4
+        );
+
+        let mut finite = field_ref("finite", TypeRef::primitive(PrimitiveKind::String));
+        finite.cardinality = Cardinality {
+            min_occurs: 2,
+            max_occurs: Some(3),
+        };
+        let mut finite_over_limit = finite.clone();
+        finite_over_limit.cardinality.max_occurs = Some(ADA_PORTABLE_POSITIVE_INDEX_MAX + 1);
+        let finite_schema = schema(vec![declaration(
+            "Finite",
+            TypeKind::Record {
+                fields: vec![finite, finite_over_limit],
+            },
+        )]);
+        let analysis = CoverageAnalysis::new(&finite_schema).unwrap();
         assert_eq!(
             analysis
                 .backend_coverage(BackendLanguage::Ada)

@@ -1,0 +1,17 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:task023:ada"
+           targetNamespace="urn:task023:ada">
+  <xs:complexType name="Item"><xs:sequence/></xs:complexType>
+  <xs:complexType name="Payload"><xs:sequence>
+    <xs:element name="ZeroToThree" type="xs:integer" minOccurs="0" maxOccurs="3"/>
+    <xs:element name="OneToTwo" type="xs:float" minOccurs="1" maxOccurs="2"/>
+    <xs:element name="TwoToThree" type="xs:unsignedInt" minOccurs="2" maxOccurs="3"/>
+    <xs:element name="ThreeToFive" type="xs:string" minOccurs="3" maxOccurs="5"/>
+    <xs:element name="OneOrMore" type="t:Item" minOccurs="1" maxOccurs="unbounded"/>
+    <xs:element name="TwoOrMore" type="xs:unsignedInt" minOccurs="2" maxOccurs="unbounded"/>
+    <xs:element name="ThreeOrMore" type="xs:double" minOccurs="3" maxOccurs="unbounded"/>
+  </xs:sequence></xs:complexType>
+  <xs:complexType name="Selection"><xs:choice>
+    <xs:element name="Repeated" type="t:Item" minOccurs="1" maxOccurs="unbounded"/>
+  </xs:choice></xs:complexType>
+</xs:schema>
