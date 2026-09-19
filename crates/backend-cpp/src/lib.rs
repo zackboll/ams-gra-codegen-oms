@@ -77,6 +77,9 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
     );
     output.push_str(variant_header);
     output.push('\n');
+    if schema_has_floating(schema) {
+        output.push_str("static_assert(std::numeric_limits<float>::digits == 24 && std::numeric_limits<float>::is_iec559, \"OMS Float32 requires IEEE binary32 float\");\nstatic_assert(std::numeric_limits<double>::digits == 53 && std::numeric_limits<double>::is_iec559, \"OMS Float64 requires IEEE binary64 double\");\n\n");
+    }
     writeln!(output, "namespace {namespace} {{\n").expect("writing to String cannot fail");
     output.push_str(concat!(
         "template <typename T, std::size_t Min, std::size_t Max>\n",
@@ -187,6 +190,14 @@ fn render_declaration(
             reject_any_constraints(&declaration.constraints, &name)?;
             writeln!(output, "class {name} {{\npublic:\n    explicit constexpr {name}(bool value) noexcept : value_(value) {{}}\n    constexpr bool value() const noexcept {{ return value_; }}\nprivate:\n    bool value_;\n}};\n").expect("writing to String cannot fail");
         }
+        TypeKind::Primitive(PrimitiveKind::Float32) => {
+            reject_any_constraints(&declaration.constraints, &name)?;
+            writeln!(output, "class {name} {{\npublic:\n    explicit {name}(float value) noexcept : value_(value) {{}}\n    float value() const noexcept {{ return value_; }}\nprivate:\n    float value_;\n}};\n").expect("writing to String cannot fail");
+        }
+        TypeKind::Primitive(PrimitiveKind::Float64) => {
+            reject_any_constraints(&declaration.constraints, &name)?;
+            writeln!(output, "class {name} {{\npublic:\n    explicit {name}(double value) noexcept : value_(value) {{}}\n    double value() const noexcept {{ return value_; }}\nprivate:\n    double value_;\n}};\n").expect("writing to String cannot fail");
+        }
         TypeKind::Enumeration { variants } => {
             if variants.is_empty() {
                 return unsupported(format!("empty enumeration {name}"));
@@ -286,7 +297,7 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
         if matches!(
             declaration.kind,
             TypeKind::Primitive(PrimitiveKind::Float32 | PrimitiveKind::Float64)
-        ) && has_numeric_constraints(&declaration.constraints)
+        ) && declaration.constraints != ConstraintSet::default()
         {
             return unsupported(format!(
                 "floating constraints on {}",
@@ -398,13 +409,6 @@ fn has_unbounded_occurrence(declaration: &TypeDecl) -> bool {
     .any(|field| matches!(field.cardinality.shape(), OccurrenceShape::Unbounded { .. }))
 }
 
-fn has_numeric_constraints(constraints: &ConstraintSet) -> bool {
-    constraints.min_inclusive.is_some()
-        || constraints.max_inclusive.is_some()
-        || constraints.min_exclusive.is_some()
-        || constraints.max_exclusive.is_some()
-}
-
 fn namespace_name(schema: &SchemaIr) -> Result<String, CodegenError> {
     let uri = &schema
         .namespaces
@@ -430,10 +434,35 @@ fn cpp_type(type_ref: &TypeRef) -> Result<String, CodegenError> {
         TypeRefTarget::Primitive(PrimitiveKind::SignedInteger) => Ok("std::int64_t".to_owned()),
         TypeRefTarget::Primitive(PrimitiveKind::UnsignedInteger) => Ok("std::uint64_t".to_owned()),
         TypeRefTarget::Primitive(PrimitiveKind::Boolean) => Ok("bool".to_owned()),
+        TypeRefTarget::Primitive(PrimitiveKind::Float32) => Ok("float".to_owned()),
+        TypeRefTarget::Primitive(PrimitiveKind::Float64) => Ok("double".to_owned()),
         TypeRefTarget::Primitive(PrimitiveKind::String) => Ok("std::string".to_owned()),
         TypeRefTarget::Named(name) => upper_camel(&name.local_name),
         other => unsupported(format!("type reference {other:?}")),
     }
+}
+
+fn schema_has_floating(schema: &SchemaIr) -> bool {
+    schema.types.iter().any(|declaration| {
+        matches!(
+            declaration.kind,
+            TypeKind::Primitive(PrimitiveKind::Float32 | PrimitiveKind::Float64)
+        )
+    }) || schema
+        .types
+        .iter()
+        .any(|declaration| match &declaration.kind {
+            TypeKind::Record { fields }
+            | TypeKind::Choice {
+                alternatives: fields,
+            } => fields.iter().any(|field| {
+                matches!(
+                    field.type_ref.target,
+                    TypeRefTarget::Primitive(PrimitiveKind::Float32 | PrimitiveKind::Float64)
+                )
+            }),
+            _ => false,
+        })
 }
 
 fn integral_domain(
@@ -1073,7 +1102,7 @@ mod tests {
     }
 
     #[test]
-    fn floating_fields_fail_explicitly() {
+    fn lowers_unconstrained_floating_and_rejects_constraints() {
         for kind in [PrimitiveKind::Float32, PrimitiveKind::Float64] {
             let mut schema = floating_schema();
             let TypeKind::Record { fields } = &mut schema.types[0].kind else {
@@ -1081,10 +1110,12 @@ mod tests {
             };
             fields.truncate(1);
             fields[0].type_ref = TypeRef::primitive(kind);
-            let error = generate(&schema).expect_err("floating generation must remain unsupported");
-            assert!(error.message.contains(&format!(
-                "unsupported C++ IR construct: type reference Primitive({kind:?})"
-            )));
+            let source = generate(&schema).expect("unconstrained floating generation must succeed");
+            assert!(source.contains(if kind == PrimitiveKind::Float32 {
+                "float"
+            } else {
+                "double"
+            }));
         }
 
         let mut schema = track_schema();

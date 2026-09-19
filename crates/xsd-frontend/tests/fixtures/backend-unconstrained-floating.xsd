@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema:schema xmlns:schema="http://www.w3.org/2001/XMLSchema" xmlns:oms="urn:example:oms:unconstrained-floating" targetNamespace="urn:example:oms:unconstrained-floating">
+  <schema:simpleType name="Named_Float"><schema:restriction base="schema:float"/></schema:simpleType>
+  <schema:simpleType name="Named_Double"><schema:restriction base="schema:double"/></schema:simpleType>
+  <schema:complexType name="Values"><schema:sequence>
+    <schema:element name="Single" type="schema:float"/>
+    <schema:element name="Precise" type="schema:double"/>
+    <schema:element name="Named_Single" type="oms:Named_Float"/>
+    <schema:element name="Named_Precise" type="oms:Named_Double"/>
+    <schema:element name="Optional_Single" type="schema:float" minOccurs="0"/>
+    <schema:element name="Repeated_Precise" type="schema:double" minOccurs="0" maxOccurs="4"/>
+    <schema:element name="Many_Single" type="schema:float" minOccurs="0" maxOccurs="unbounded"/>
+  </schema:sequence></schema:complexType>
+  <schema:complexType name="Selection"><schema:choice>
+    <schema:element name="Single" type="schema:float"/>
+    <schema:element name="Precise" type="schema:double"/>
+    <schema:element name="Named" type="oms:Named_Float"/>
+  </schema:choice></schema:complexType>
+</schema:schema>

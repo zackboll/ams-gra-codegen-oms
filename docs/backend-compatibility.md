@@ -1,4 +1,4 @@
-# Backend compatibility and Task 020 lowering
+# Backend compatibility
 
 Tested: **2026-09-18**, baseline `1fa2ab4d380158728d383a5e4fbaebea6a2006b1`.
 
@@ -35,7 +35,8 @@ outside Ada's language-enforced range checks. Local constraints on named targets
 remain fail-closed.
 
 `PrimitiveExpansion` consequently means the remaining unsupported primitive
-families (Decimal, Float32/64, Binary, DateTime, Time, Duration), not Boolean or
+families (Decimal, Binary, DateTime, Time, Duration), not Boolean, unsigned, or
+floating values.
 UnsignedInteger. `ConstrainedSimpleTypes` continues to cover unsupported scalar
 facets such as String length/patterns, non-integral constraints, and the excluded
 exclusive/lexical integral facets. These hypothetical families remain additive.
@@ -47,6 +48,40 @@ are 4/40 and 6/40 respectively; local field constraints are 466/469 and use only
 `minInclusive`/`maxInclusive`. External roots were probed through detached release
 coverage processes during Task 020; no completed cross-tab or coverage delta is
 claimed unless a completed probe result is recorded separately.
+
+## Task 022 — unconstrained floating-point scalar lowering
+
+Float32 and Float64 are baseline backend values only when their
+`ConstraintSet` is default. Direct fields and Choice alternatives map exactly
+to Ada `Interfaces.IEEE_Float_32`/`IEEE_Float_64`, Rust `f32`/`f64`, and C++
+`float`/`double`; named declarations preserve identity as an Ada derived type,
+Rust newtype, or C++ wrapper. C++ output containing floating values asserts the
+binary32/binary64 IEC-559 host characteristics at compile time.
+
+The authoritative roots contain 56 direct Float32 and 280 direct Float64
+references in each release. The pre-task Ada blocker was the unconstrained,
+required `AccelerationAccelerationCovarianceType.AnAn` Float64 field (UCI 2.5
+line 4703; UCI 2.6 line 4727). Finite repeated values compose with existing
+containers; Ada also composes `0..*` values through vectors with the explicit
+`Interfaces."="` actual required by the active GNAT toolchain.
+
+Unconstrained values intentionally preserve native NaN, infinities, and
+negative zero. All non-default floating `ConstraintSet` values—including every
+inclusive/exclusive range and lexical facet—remain fail-closed. This task does
+not emit floating bound literals or validation wrappers.
+
+Rust derives `Eq` only for Records and Choices whose effective payload graph is
+Eq-capable. Float32/64 payloads, including through named or nested structural
+references and containers, remove only `Eq`; `Debug`, `Clone`, and `PartialEq`
+remain. Existing non-floating derive output is unchanged.
+
+Using the Task 022 baseline binary
+`7d80bb3d4967495c656132d21f09599ee780682bd40e2025c8ef8580b1f87a1e`,
+field-type coverage was 12,806/13,160 for UCI 2.5 and 12,862/13,198 for UCI
+2.6 in every backend. The post-change binary raised those to 13,142/13,160 and
+13,198/13,198 respectively. Ada advances to the existing unsupported Choice
+cardinality on `AccessAssessmentID`; Rust and C++ remain first-blocked by the
+out-of-scope abstract `CapabilityCommandBaseType` value reference.
 
 Reproduce the deterministic analyzer output with:
 
