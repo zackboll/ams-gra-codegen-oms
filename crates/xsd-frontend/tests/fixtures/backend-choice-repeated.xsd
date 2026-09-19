@@ -1,0 +1,7 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:backend-choice-repeated"
+           targetNamespace="urn:backend-choice-repeated"
+           elementFormDefault="qualified">
+  <xs:complexType name="Token"><xs:sequence><xs:element name="Value" type="xs:string"/></xs:sequence></xs:complexType>
+  <xs:complexType name="Selection"><xs:choice><xs:element name="Items" type="t:Token" minOccurs="0" maxOccurs="3"/></xs:choice></xs:complexType>
+</xs:schema>

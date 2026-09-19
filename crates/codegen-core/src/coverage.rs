@@ -454,16 +454,32 @@ impl<'a> CoverageAnalysis<'a> {
         language: BackendLanguage,
         enabled: &BTreeSet<FeatureFamily>,
     ) -> bool {
-        if !matches!(declaration.kind, TypeKind::Record { .. }) {
+        if !matches!(
+            declaration.kind,
+            TypeKind::Record { .. } | TypeKind::Choice { .. }
+        ) {
             return declaration_renderable(declaration, language, enabled);
         }
         let Ok(projection) = self.structural_projection(&declaration.name) else {
             return false;
         };
-        if projection
-            .segments
-            .iter()
-            .any(|segment| !matches!(segment.content, StructuralSegmentContent::RecordFields(_)))
+        if matches!(declaration.kind, TypeKind::Record { .. })
+            && projection.segments.iter().any(|segment| {
+                !matches!(segment.content, StructuralSegmentContent::RecordFields(_))
+            })
+            && !(enabled.contains(&FeatureFamily::StructuralInheritanceAndAbstract)
+                && enabled.contains(&FeatureFamily::Choice))
+        {
+            return false;
+        }
+        let supported_choice_shape = matches!(declaration.kind, TypeKind::Choice { .. })
+            && projection.segments.len() == 1
+            && matches!(
+                projection.segments[0].content,
+                StructuralSegmentContent::ChoiceAlternatives(_)
+            );
+        if matches!(declaration.kind, TypeKind::Choice { .. })
+            && !supported_choice_shape
             && !(enabled.contains(&FeatureFamily::StructuralInheritanceAndAbstract)
                 && enabled.contains(&FeatureFamily::Choice))
         {
@@ -493,7 +509,7 @@ impl<'a> CoverageAnalysis<'a> {
                                 || enabled.contains(&FeatureFamily::StructuralInheritanceAndAbstract))
                     }),
                     StructuralSegmentContent::ChoiceAlternatives(fields) => {
-                        enabled.contains(&FeatureFamily::Choice)
+                        (supported_choice_shape || enabled.contains(&FeatureFamily::Choice))
                             && fields.iter().all(|field| {
                                 field_renderable(field, language, enabled)
                                     && (!matches!(&field.type_ref.target, TypeRefTarget::Named(name)
@@ -924,11 +940,13 @@ fn all_members(schema: &SchemaIr) -> Vec<&FieldDecl> {
 }
 fn kind_renderable(declaration: &TypeDecl, enabled: &BTreeSet<FeatureFamily>) -> bool {
     match declaration.kind {
+        // `FeatureFamily::Choice` models only remaining unsupported Choice
+        // composition; ordinary Choice declarations have backend renderers.
         TypeKind::Primitive(PrimitiveKind::SignedInteger)
         | TypeKind::Enumeration { .. }
-        | TypeKind::Record { .. } => true,
+        | TypeKind::Record { .. }
+        | TypeKind::Choice { .. } => true,
         TypeKind::Primitive(_) => enabled.contains(&FeatureFamily::PrimitiveExpansion),
-        TypeKind::Choice { .. } => enabled.contains(&FeatureFamily::Choice),
         TypeKind::Alias(_) | TypeKind::List { .. } => false,
     }
 }
@@ -1307,7 +1325,7 @@ mod tests {
     }
 
     #[test]
-    fn choice_alone_unblocks_choice_payload_closure() {
+    fn supported_choice_payload_closure_is_baseline() {
         let schema = message_schema(
             vec![declaration(
                 "Payload",
@@ -1320,7 +1338,61 @@ mod tests {
             )],
             "Payload",
         );
-        assert_only_family_unblocks(&schema, FeatureFamily::Choice);
+        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        for language in BackendLanguage::ALL {
+            assert_eq!(analysis.impact(language, &[]).unwrap(), 1);
+            assert_eq!(
+                analysis.impact(language, &[FeatureFamily::Choice]).unwrap(),
+                1
+            );
+            assert_eq!(
+                analysis
+                    .impact(language, &[FeatureFamily::PrimitiveExpansion])
+                    .unwrap(),
+                1
+            );
+        }
+    }
+
+    #[test]
+    fn supported_choice_metrics_are_baseline_and_hypothetical_features_are_additive() {
+        let schema = message_schema(
+            vec![declaration(
+                "Payload",
+                TypeKind::Choice {
+                    alternatives: vec![field_ref(
+                        "text",
+                        TypeRef::primitive(PrimitiveKind::String),
+                    )],
+                },
+            )],
+            "Payload",
+        );
+        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        for language in BackendLanguage::ALL {
+            let baseline = analysis.backend_coverage(language).unwrap();
+            assert_eq!(baseline.declaration_kinds_renderable, 1);
+            assert_eq!(baseline.declarations_fully_renderable, 1);
+            assert_eq!(baseline.message_closures_renderable, 1);
+            for mask in 1..(1 << FeatureFamily::ALL.len()) {
+                let enabled = FeatureFamily::ALL
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(index, feature)| ((mask & (1 << index)) != 0).then_some(*feature))
+                    .collect::<BTreeSet<_>>();
+                let coverage = analysis.backend_coverage_with(language, &enabled).unwrap();
+                assert!(
+                    coverage.declaration_kinds_renderable >= baseline.declaration_kinds_renderable
+                );
+                assert!(
+                    coverage.declarations_fully_renderable
+                        >= baseline.declarations_fully_renderable
+                );
+                assert!(
+                    coverage.message_closures_renderable >= baseline.message_closures_renderable
+                );
+            }
+        }
     }
 
     #[test]
@@ -1441,7 +1513,7 @@ mod tests {
     }
 
     #[test]
-    fn choice_extends_pure_record_inheritance_baseline() {
+    fn supported_choice_extends_pure_record_inheritance_baseline() {
         let base = declaration("Base", TypeKind::Record { fields: Vec::new() });
         let choice = declaration(
             "Selection",
@@ -1459,7 +1531,7 @@ mod tests {
         let schema = message_schema(vec![payload, choice, base], "Payload");
         let analysis = CoverageAnalysis::new(&schema).unwrap();
         for language in BackendLanguage::ALL {
-            assert_eq!(analysis.impact(language, &[]).unwrap(), 0);
+            assert_eq!(analysis.impact(language, &[]).unwrap(), 1);
             assert_eq!(
                 analysis.impact(language, &[FeatureFamily::Choice]).unwrap(),
                 1
@@ -1468,7 +1540,7 @@ mod tests {
                 analysis
                     .impact(language, &[FeatureFamily::StructuralInheritanceAndAbstract])
                     .unwrap(),
-                0
+                1
             );
             assert_eq!(
                 analysis

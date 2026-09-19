@@ -67,6 +67,18 @@ pub enum StructuralProjectionError {
         target: QualifiedName,
         owner: QualifiedName,
     },
+    RecordSegmentInChoice {
+        target: QualifiedName,
+        owner: QualifiedName,
+    },
+    MultipleChoiceSegments {
+        target: Box<QualifiedName>,
+        first_owner: Box<QualifiedName>,
+        second_owner: Box<QualifiedName>,
+    },
+    NoChoiceSegment {
+        target: QualifiedName,
+    },
     Cycle(Vec<QualifiedName>),
 }
 
@@ -95,6 +107,50 @@ pub fn effective_record_fields<'a>(
         }
     }
     Ok(fields)
+}
+
+/// Return alternatives for a structural declaration whose effective value is
+/// exactly one Choice segment.
+///
+/// Empty Record ancestry is omitted by `project_structural_type` and is therefore
+/// permitted. Non-empty Record segments and multiple Choice segments are rejected
+/// rather than guessed as product/sum composition.
+pub fn effective_choice_alternatives<'a>(
+    schema: &'a SchemaIr,
+    target: &QualifiedName,
+) -> Result<Vec<&'a FieldDecl>, StructuralProjectionError> {
+    let projection = project_structural_type(schema, target)?;
+    let mut choice = None;
+    for segment in projection.segments {
+        match segment.content {
+            StructuralSegmentContent::RecordFields(_) => {
+                return Err(StructuralProjectionError::RecordSegmentInChoice {
+                    target: target.clone(),
+                    owner: segment.owner.name.clone(),
+                });
+            }
+            StructuralSegmentContent::ChoiceAlternatives(alternatives) => {
+                if let Some((first_owner, _)) = choice {
+                    return Err(StructuralProjectionError::MultipleChoiceSegments {
+                        target: Box::new(target.clone()),
+                        first_owner: Box::new(first_owner),
+                        second_owner: Box::new(segment.owner.name.clone()),
+                    });
+                }
+                choice = Some((segment.owner.name.clone(), alternatives));
+                if alternatives.is_empty() {
+                    return Err(StructuralProjectionError::NoChoiceSegment {
+                        target: target.clone(),
+                    });
+                }
+            }
+        }
+    }
+    choice
+        .map(|(_, alternatives)| alternatives.iter().collect())
+        .ok_or_else(|| StructuralProjectionError::NoChoiceSegment {
+            target: target.clone(),
+        })
 }
 
 impl fmt::Display for StructuralProjectionError {
@@ -137,6 +193,25 @@ impl fmt::Display for StructuralProjectionError {
                 formatter,
                 "structural declaration {} contains Choice segment {}",
                 target.local_name, owner.local_name
+            ),
+            Self::RecordSegmentInChoice { target, owner } => write!(
+                formatter,
+                "structural declaration {} contains Record segment {} while lowering Choice",
+                target.local_name, owner.local_name
+            ),
+            Self::MultipleChoiceSegments {
+                target,
+                first_owner,
+                second_owner,
+            } => write!(
+                formatter,
+                "structural declaration {} contains multiple Choice segments {} and {}",
+                target.local_name, first_owner.local_name, second_owner.local_name
+            ),
+            Self::NoChoiceSegment { target } => write!(
+                formatter,
+                "structural declaration {} contains no Choice segment",
+                target.local_name
             ),
             Self::Cycle(names) => write!(
                 formatter,
@@ -389,6 +464,42 @@ mod tests {
             shape(&project(&schema, "C")),
             [(StructuralKind::Choice, vec!["X".into(), "Y".into()])]
         );
+    }
+
+    #[test]
+    fn effective_choice_allows_empty_record_ancestry_and_preserves_order() {
+        let schema = schema(vec![
+            declaration("Base", false, &[]),
+            derived(declaration("Derived", true, &["Left", "Right"]), "Base"),
+        ]);
+        assert_eq!(
+            effective_choice_alternatives(&schema, &QualifiedName::new(NS, "Derived"))
+                .unwrap()
+                .into_iter()
+                .map(|field| field.name.as_str())
+                .collect::<Vec<_>>(),
+            ["Left", "Right"]
+        );
+    }
+
+    #[test]
+    fn effective_choice_rejects_product_and_multiple_sum_shapes() {
+        let record_choice = schema(vec![
+            declaration("Base", false, &["Common"]),
+            derived(declaration("Derived", true, &["Left"]), "Base"),
+        ]);
+        assert!(matches!(
+            effective_choice_alternatives(&record_choice, &QualifiedName::new(NS, "Derived")),
+            Err(StructuralProjectionError::RecordSegmentInChoice { .. })
+        ));
+        let choice_choice = schema(vec![
+            declaration("Base", true, &["Left"]),
+            derived(declaration("Derived", true, &["Right"]), "Base"),
+        ]);
+        assert!(matches!(
+            effective_choice_alternatives(&choice_choice, &QualifiedName::new(NS, "Derived")),
+            Err(StructuralProjectionError::MultipleChoiceSegments { .. })
+        ));
     }
 
     #[test]

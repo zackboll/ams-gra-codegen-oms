@@ -1,4 +1,4 @@
-# Backend compatibility and Task 018 lowering
+# Backend compatibility and Task 019 lowering
 
 Tested: **2026-09-18**, baseline `1fa2ab4d380158728d383a5e4fbaebea6a2006b1`.
 
@@ -313,9 +313,49 @@ tables above remain the recorded baseline. Recompute post-lowering authoritative
 coverage and first-blocker progression only in an environment supplied with the
 versioned UCI schema roots; no counts are inferred from the synthetic fixture.
 
-Task 018 still excludes Choice lowering, polymorphic abstract values, new
-primitive/cardinality/constraint families, JSON/serde, OWP/CAL runtime work,
-regex execution, temporal parsing, and Task 019.
+## Task 019 Choice lowering
+
+Task 019 lowers a Choice as a sum, never as a Record of independent optional
+fields. A shared schema-neutral `effective_choice_alternatives` projection
+accepts exactly one non-empty Choice segment and no non-empty Record segment.
+It preserves source order and borrowed `FieldDecl` identity. Empty Record
+ancestry is omitted by the structural projection, so the observed
+`QueryPET -> QueryType` shape is supported; a non-empty Record plus Choice and
+multiple Choice segments fail closed with distinct structural diagnostics.
+
+- Rust emits `pub enum Choice { Alternative(Payload) }`, retaining the existing
+  `Option<T>` and `BoundedVec<T, MIN, MAX>` payload occurrence lowerings.
+- C++ emits a scoped named wrapper for every alternative and
+  `std::variant<AlternativeA, AlternativeB> value`; wrappers preserve identity
+  when alternatives share the same payload type. `<variant>` is emitted only
+  for schemas containing a Choice.
+- Ada emits a definite discriminated record with a default discriminant and one
+  variant component per named alternative. Repeated helper names are qualified
+  by both Choice and alternative.
+
+Choice alternatives use the same nillability, constraint, abstract structural
+value, type-reference, cardinality, and generated-name validation firewalls as
+Record fields. Normalized alternative identifier collisions fail deterministically.
+The checked-in synthetic fixture covers duplicate `Token` payload alternatives,
+a Record containing a Choice, and empty-Record ancestry. It also retains a
+separate non-empty Record + Choice rejection fixture.
+
+Choice is baseline **kind renderable** because every backend has an ordinary
+Choice renderer. `FeatureFamily::Choice` remains hypothetical only for the
+unsupported composition boundary. Direct backend-generation regressions cover
+normalized-name collisions, nillability, constraints, abstract value targets,
+and finite repeated alternatives; repeated output is compiler-probed for all
+three backends.
+
+Published Task 017 authoritative evidence remains: UCI 2.5 has 420 Choice
+declarations (419 standalone, 1 inherited), UCI 2.6 has 424 (423 standalone,
+1 inherited); duplicate alternative names are zero; 47 Choices in each release
+have duplicate payload types; 113 additional alternatives share a payload type;
+repeated alternatives are 93/94; nillable alternatives are zero; and the sole
+inherited Choice is `QueryType`. The authoritative UCI 2.5/2.6 roots were
+available externally under `/tmp`, but validate/coverage/generation probes did
+not complete within the environment's fixed command timeout. No post-Task-019
+UCI metrics, blocker progression, or generation results are claimed or inferred.
 
 ## Post-Task-018 impact semantics
 
@@ -327,3 +367,7 @@ abstract Record ancestry support already present in the backends. In particular,
 structural/abstract family beyond the current baseline, including non-pure-Record
 structural shapes and polymorphic abstract values (including abstract field and
 message payload positions). It is not a prerequisite for pure Record inheritance.
+Likewise, after Task 019 `Choice` means the remaining unsupported Choice family
+(multiple Choice segments and non-empty Record × Choice composition), not an
+ordinary standalone or empty-Record-ancestry Choice. Hypothetical families are
+additive and do not remove current Record or Choice lowering.

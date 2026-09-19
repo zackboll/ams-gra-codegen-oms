@@ -1,7 +1,8 @@
 //! Minimal Ada type generation from normalized schema IR.
 
 use ams_gra_oms_codegen_core::{
-    Backend, CodegenError, GeneratedFile, effective_record_fields, plan_type_declarations,
+    Backend, CodegenError, GeneratedFile, effective_choice_alternatives, effective_record_fields,
+    plan_type_declarations,
 };
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, NumericValue, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -126,6 +127,9 @@ fn render_declaration(
                 }
             }
             writeln!(output, "   type {name} is record").expect("writing to String cannot fail");
+            if fields.is_empty() {
+                output.push_str("      null;\n");
+            }
             for field in fields {
                 let field_name = ada_identifier(&field.name)?;
                 let field_type = match field.cardinality {
@@ -145,6 +149,62 @@ fn render_declaration(
                     .expect("writing to String cannot fail");
             }
             output.push_str("   end record;\n\n");
+        }
+        TypeKind::Choice { .. } => {
+            let alternatives = effective_choice_alternatives(schema, &declaration.name).map_err(
+                |projection_error| {
+                    error(format!("unsupported Ada IR construct: {projection_error}"))
+                },
+            )?;
+            let kind_name = format!("{name}_Kind");
+            for alternative in &alternatives {
+                if let Some(max) = repeated_max(alternative.cardinality) {
+                    let alternative_name = ada_identifier(&alternative.name)?;
+                    let helper_name = format!("{name}_{alternative_name}");
+                    let item_type = ada_type(&alternative.type_ref)?;
+                    writeln!(
+                        output,
+                        "   type {helper_name}_Array is array (Positive range 1 .. {max}) of {item_type};\n\
+                         \x20  type {helper_name}_Sequence is record\n\
+                         \x20     Length : Natural range 0 .. {max} := 0;\n\
+                         \x20     Items  : {helper_name}_Array;\n\
+                         \x20  end record;\n"
+                    )
+                    .expect("writing to String cannot fail");
+                }
+            }
+            writeln!(output, "   type {kind_name} is").expect("writing to String cannot fail");
+            output.push_str("      (");
+            for (index, alternative) in alternatives.iter().enumerate() {
+                let suffix = if index + 1 == alternatives.len() {
+                    ");"
+                } else {
+                    ","
+                };
+                writeln!(
+                    output,
+                    "{}{}_Kind{suffix}",
+                    if index == 0 { "" } else { "       " },
+                    ada_identifier(&alternative.name)?
+                )
+                .expect("writing to String cannot fail");
+            }
+            writeln!(
+                output,
+                "\n   type {name} (Kind : {kind_name} := {}_Kind) is record\n      case Kind is",
+                ada_identifier(&alternatives[0].name)?
+            )
+            .expect("writing to String cannot fail");
+            for alternative in alternatives {
+                let alternative_name = ada_identifier(&alternative.name)?;
+                writeln!(
+                    output,
+                    "         when {alternative_name}_Kind =>\n            {alternative_name} : {};",
+                    ada_field_type(&name, alternative)?
+                )
+                .expect("writing to String cannot fail");
+            }
+            output.push_str("      end case;\n   end record;\n\n");
         }
         other => return unsupported(format!("type {name}: {other:?}")),
     }
@@ -212,6 +272,14 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
                 }
             }
         }
+        if matches!(declaration.kind, TypeKind::Choice { .. }) {
+            let alternatives = effective_choice_alternatives(schema, &declaration.name).map_err(
+                |projection_error| {
+                    error(format!("unsupported Ada IR construct: {projection_error}"))
+                },
+            )?;
+            validate_choice_alternatives(schema, &declaration.name.local_name, alternatives)?;
+        }
     }
     for message in &schema.messages {
         if let TypeRefTarget::Named(target) = &message.payload_type.target {
@@ -225,6 +293,59 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
         }
     }
     Ok(())
+}
+
+fn validate_choice_alternatives(
+    schema: &SchemaIr,
+    choice_name: &str,
+    alternatives: Vec<&ams_gra_oms_ir::FieldDecl>,
+) -> Result<(), CodegenError> {
+    let mut names = std::collections::BTreeSet::new();
+    for alternative in alternatives {
+        let name = ada_identifier(&alternative.name)?.to_ascii_lowercase();
+        if !names.insert(name.clone()) {
+            return unsupported(format!("duplicate Choice alternative identifier {name}"));
+        }
+        if alternative.nillable {
+            return unsupported(format!("nillable Choice alternative {}", alternative.name));
+        }
+        reject_any_constraints(&alternative.constraints, &alternative.name)?;
+        if let TypeRefTarget::Named(target) = &alternative.type_ref.target {
+            if schema
+                .types
+                .iter()
+                .any(|candidate| candidate.name == *target && candidate.is_abstract)
+            {
+                return unsupported(format!(
+                    "abstract structural value reference {}",
+                    target.local_name
+                ));
+            }
+        }
+        // Keep validation aligned with the Choice-qualified helper emitted below.
+        ada_field_type(choice_name, alternative)?;
+    }
+    Ok(())
+}
+
+fn ada_field_type(
+    choice_name: &str,
+    field: &ams_gra_oms_ir::FieldDecl,
+) -> Result<String, CodegenError> {
+    match field.cardinality {
+        Cardinality::REQUIRED_ONE => ada_type(&field.type_ref),
+        Cardinality::OPTIONAL_ONE
+            if field.type_ref.target == TypeRefTarget::Primitive(PrimitiveKind::String) =>
+        {
+            Ok("Optional_String".to_owned())
+        }
+        cardinality if repeated_max(cardinality).is_some() => Ok(format!(
+            "{}_{}_Sequence",
+            choice_name,
+            ada_identifier(&field.name)?
+        )),
+        _ => unsupported(format!("cardinality on Choice alternative {}", field.name)),
+    }
 }
 
 fn has_numeric_constraints(constraints: &ConstraintSet) -> bool {
@@ -412,6 +533,105 @@ mod tests {
         .expect("choice boundary fixture should parse")
     }
 
+    fn choice_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-choice-lowering.xsd"),
+        )
+        .expect("choice fixture should parse")
+    }
+
+    fn repeated_choice_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-choice-repeated.xsd"),
+        )
+        .expect("repeated Choice fixture should parse")
+    }
+
+    #[test]
+    fn lowers_choice_as_discriminated_record_and_accepts_empty_record_ancestry() {
+        let source = generate(&choice_schema()).expect("supported Choice should generate");
+        assert!(
+            source.contains("type Selection_Kind is\n      (First_Kind,\n       Second_Kind);")
+        );
+        assert!(source.contains("type Selection (Kind : Selection_Kind := First_Kind) is record"));
+        assert!(source.contains("Selected : Selection;"));
+        assert!(source.contains(
+            "type DerivedSelection (Kind : DerivedSelection_Kind := Left_Kind) is record"
+        ));
+    }
+
+    #[test]
+    fn choice_validation_firewalls_and_finite_repetition_are_exercised_by_generation() {
+        let mut collision = choice_schema();
+        let TypeKind::Choice { alternatives } = &mut collision.types[1].kind else {
+            panic!("Selection must be a Choice");
+        };
+        alternatives[0].name = "Foo".to_owned();
+        alternatives[1].name = "foo".to_owned();
+        assert!(
+            generate(&collision)
+                .unwrap_err()
+                .message
+                .contains("duplicate Choice alternative identifier foo")
+        );
+
+        let mut nillable = choice_schema();
+        let TypeKind::Choice { alternatives } = &mut nillable.types[1].kind else {
+            panic!("Selection must be a Choice");
+        };
+        alternatives[0].nillable = true;
+        assert!(
+            generate(&nillable)
+                .unwrap_err()
+                .message
+                .contains("nillable Choice alternative First")
+        );
+
+        let mut constrained = choice_schema();
+        let TypeKind::Choice { alternatives } = &mut constrained.types[1].kind else {
+            panic!("Selection must be a Choice");
+        };
+        alternatives[0].constraints.length = Some(4);
+        assert!(
+            generate(&constrained)
+                .unwrap_err()
+                .message
+                .contains("field constraints on First")
+        );
+
+        let mut abstract_target = abstract_value_schema();
+        let holder = abstract_target
+            .types
+            .iter_mut()
+            .find(|type_decl| type_decl.name.local_name == "Holder")
+            .unwrap();
+        let TypeKind::Record { fields } =
+            std::mem::replace(&mut holder.kind, TypeKind::Record { fields: Vec::new() })
+        else {
+            panic!("Holder must be a Record");
+        };
+        holder.kind = TypeKind::Choice {
+            alternatives: fields,
+        };
+        assert!(
+            generate(&abstract_target)
+                .unwrap_err()
+                .message
+                .contains("abstract structural value reference Base")
+        );
+
+        let source =
+            generate(&repeated_choice_schema()).expect("finite repeated Choice must generate");
+        assert!(
+            source
+                .contains("type Selection_Items_Array is array (Positive range 1 .. 3) of Token;")
+        );
+        assert!(source.contains("type Selection_Items_Sequence is record"));
+        assert!(source.contains("Items : Selection_Items_Sequence;"));
+    }
+
     #[test]
     fn lowers_effective_record_fields_and_omits_abstract_ancestor() {
         let source = generate(&inheritance_schema()).expect("pure Record inheritance is supported");
@@ -436,7 +656,7 @@ mod tests {
             generate(&choice_boundary_schema())
                 .unwrap_err()
                 .message
-                .contains("type Derived: Choice")
+                .contains("contains Record segment Base while lowering Choice")
         );
     }
 
@@ -490,12 +710,8 @@ mod tests {
             alternatives: vec![alternative],
         };
         schema.types[0].base_type = None;
-        let error = generate(&schema).expect_err("choice must not be omitted");
-        assert!(
-            error
-                .message
-                .starts_with("unsupported Ada IR construct: type Track_Id")
-        );
+        let source = generate(&schema).expect("Choice must render");
+        assert!(source.contains("type Track_Id"));
     }
 
     #[test]

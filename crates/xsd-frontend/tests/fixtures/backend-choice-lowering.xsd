@@ -1,0 +1,10 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:backend-choice-lowering"
+           targetNamespace="urn:backend-choice-lowering"
+           elementFormDefault="qualified">
+  <xs:complexType name="Token"><xs:sequence><xs:element name="Value" type="xs:string"/></xs:sequence></xs:complexType>
+  <xs:complexType name="Selection"><xs:choice><xs:element name="First" type="t:Token"/><xs:element name="Second" type="t:Token"/></xs:choice></xs:complexType>
+  <xs:complexType name="Holder"><xs:sequence><xs:element name="Selected" type="t:Selection"/></xs:sequence></xs:complexType>
+  <xs:complexType name="EmptyBase"><xs:sequence/></xs:complexType>
+  <xs:complexType name="DerivedSelection"><xs:complexContent><xs:extension base="t:EmptyBase"><xs:choice><xs:element name="Left" type="t:Token"/><xs:element name="Right" type="t:Token"/></xs:choice></xs:extension></xs:complexContent></xs:complexType>
+</xs:schema>
