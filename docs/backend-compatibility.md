@@ -22,6 +22,10 @@ metadata. The supported storage domain is exactly signed 64-bit (`Long_Long_Inte
 `std::uint64_t`). Out-of-domain ranges, negative unsigned minima, exclusive
 bounds, length facets, and lexical facets fail before rendering.
 
+The full signed-i64 and unsigned-u64 boundaries are part of this Task 020
+domain; C++ extreme-bound emission is compiler-regression-tested with strict
+C++17 flags. This is a boundary-correctness fix, not a semantic expansion.
+
 Rust emits checked `BoundedI64`/`BoundedU64` const-generic wrappers; C++17 emits
 a checked `BoundedInteger<T, Min, Max>` template; Ada uses constrained component
 and array-element subtype indications. Finite repeated payloads and Choice
