@@ -1,7 +1,10 @@
 use crate::structure::{
     effective_choice_alternatives, effective_record_fields, project_structural_type,
 };
-use ams_gra_oms_ir::{QualifiedName, SchemaIr, TypeDecl, TypeKind, TypeRef, TypeRefTarget};
+use ams_gra_oms_ir::{
+    Cardinality, ConstraintSet, FieldDecl, QualifiedName, SchemaIr, TypeDecl, TypeKind, TypeRef,
+    TypeRefTarget,
+};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
@@ -27,6 +30,179 @@ pub enum AbstractValueTopology<'a> {
     Acyclic(AbstractValueProjection<'a>),
     NoConcreteDescendants(QualifiedName),
     RecursiveValueGraph { cycle: Vec<QualifiedName> },
+}
+
+/// Whether an abstract structural value's payload set has any inhabitant in
+/// the current, closed normalized schema set.
+///
+/// This is distinct from schema validity: `Uninhabited` is a legitimate
+/// classification for a well-formed abstract target that simply has zero
+/// concrete structural descendants right now. A different schema set that
+/// adds a concrete descendant reclassifies the same target as `Inhabited`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AbstractValueInhabitance<'a> {
+    Inhabited(AbstractValueProjection<'a>),
+    Uninhabited { declaration: &'a TypeDecl },
+    Recursive { cycle: Vec<QualifiedName> },
+}
+
+/// Classify whether an abstract structural target has any legal by-value
+/// payload in the current schema set, without conflating "no inhabitants"
+/// with "invalid schema".
+///
+/// This intentionally uses the cheap `project_abstract_value` projection
+/// rather than the recursive-cycle-detecting `classify_abstract_value_topology`:
+/// callers that only need to distinguish "uninhabited" from "has candidate
+/// concrete descendants" do not need whole-graph cycle detection, and
+/// avoiding it keeps per-field occurrence checks linear in schema size.
+/// Callers that also need cycle detection should use
+/// `classify_abstract_value_topology` directly.
+pub fn classify_abstract_value_inhabitance<'a>(
+    schema: &'a SchemaIr,
+    target: &QualifiedName,
+) -> Result<AbstractValueInhabitance<'a>, AbstractValueProjectionError> {
+    match project_abstract_value(schema, target) {
+        Ok(projection) => Ok(AbstractValueInhabitance::Inhabited(projection)),
+        Err(AbstractValueProjectionError::NoConcreteDescendants(name)) => {
+            let declaration = schema
+                .types
+                .iter()
+                .find(|declaration| declaration.name == name)
+                .ok_or_else(|| AbstractValueProjectionError::MissingDeclaration(name.clone()))?;
+            Ok(AbstractValueInhabitance::Uninhabited { declaration })
+        }
+        Err(error) => Err(error),
+    }
+}
+
+/// One field/alternative occurrence's storage semantics for a value target
+/// whose abstract structural payload set may be uninhabited.
+///
+/// This is intentionally schema-neutral and syntax-free: no backend naming or
+/// rendering policy appears here. Only a Task 026-supported occurrence shape
+/// of an uninhabited target returns `AbsentOnly`; every other occurrence of an
+/// uninhabited target (positive minimum, repeated minimum, nillable, or with
+/// non-default local constraints) is `Unsupported`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AbstractValueOccurrenceRenderability {
+    /// The target is not a zero-descendant abstract value; ordinary
+    /// closed-sum/by-value lowering applies unchanged.
+    NotApplicable,
+    /// The target is uninhabited and this occurrence's only legal state is
+    /// absence: `minOccurs == 0`, not nillable, and no local constraints.
+    AbsentOnly,
+    /// The target is uninhabited and this occurrence requires at least one
+    /// payload (positive minimum), is nillable, is a repeated occurrence, or
+    /// carries local constraints; no representation exists.
+    Unsupported,
+}
+
+/// Classify whether a single occurrence (Record field, Choice alternative, or
+/// message payload reference) of a possibly-uninhabited abstract value can be
+/// represented without ever constructing an impossible payload.
+///
+/// Task 026 supports only the narrowest shape with authoritative evidence:
+/// an optional (`minOccurs == 0`, `maxOccurs <= 1`), non-nillable occurrence
+/// with default local constraints. Repeated zero-minimum occurrences,
+/// positive-minimum occurrences, nillable occurrences, and occurrences with
+/// non-default local constraints remain `Unsupported` even though the target
+/// is uninhabited, because no evidence justifies inventing a representation
+/// for them yet.
+#[must_use]
+pub fn abstract_value_occurrence_renderable(
+    inhabitance: &AbstractValueInhabitance<'_>,
+    cardinality: Cardinality,
+    nillable: bool,
+    constraints_are_default: bool,
+) -> AbstractValueOccurrenceRenderability {
+    if !matches!(inhabitance, AbstractValueInhabitance::Uninhabited { .. }) {
+        return AbstractValueOccurrenceRenderability::NotApplicable;
+    }
+    let is_optional_single = cardinality.min_occurs == 0 && cardinality.max_occurs == Some(1);
+    if is_optional_single && !nillable && constraints_are_default {
+        AbstractValueOccurrenceRenderability::AbsentOnly
+    } else {
+        AbstractValueOccurrenceRenderability::Unsupported
+    }
+}
+
+/// Classify occurrence renderability for one named-value reference in a
+/// single call, resolving whether the reference even targets an abstract
+/// structural declaration.
+///
+/// Non-abstract and non-structural targets, and primitive references, always
+/// classify as `NotApplicable`: Task 026 only concerns abstract structural
+/// values that may be uninhabited.
+///
+/// # Errors
+///
+/// Returns an error if `type_ref` names a declaration missing from `schema`.
+pub fn abstract_value_reference_renderability(
+    schema: &SchemaIr,
+    type_ref: &TypeRef,
+    cardinality: Cardinality,
+    nillable: bool,
+    constraints_are_default: bool,
+) -> Result<AbstractValueOccurrenceRenderability, AbstractValueProjectionError> {
+    let TypeRefTarget::Named(target) = &type_ref.target else {
+        return Ok(AbstractValueOccurrenceRenderability::NotApplicable);
+    };
+    let declaration = schema
+        .types
+        .iter()
+        .find(|declaration| declaration.name == *target)
+        .ok_or_else(|| AbstractValueProjectionError::MissingDeclaration(target.clone()))?;
+    if !(declaration.is_abstract && is_structural(declaration)) {
+        return Ok(AbstractValueOccurrenceRenderability::NotApplicable);
+    }
+    let inhabitance = classify_abstract_value_inhabitance(schema, target)?;
+    Ok(abstract_value_occurrence_renderable(
+        &inhabitance,
+        cardinality,
+        nillable,
+        constraints_are_default,
+    ))
+}
+
+/// Effective storage semantics for one Record field, Choice alternative, or
+/// message payload reference, once uninhabited-abstract-value semantics are
+/// taken into account.
+///
+/// This is the single shared decision point backends should consult instead
+/// of independently re-deriving zero-descendant absence-only elision.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EffectiveValueMember<'a> {
+    /// Ordinary storage: render the field/alternative exactly as before.
+    Stored(&'a FieldDecl),
+    /// The field's payload set is uninhabited and this occurrence's only
+    /// legal state is absence. No storage should be generated for it.
+    AbsentOnly(&'a FieldDecl),
+}
+
+/// Classify one field's storage semantics against a schema's abstract-value
+/// inhabitance, applying Task 026's absence-only elision rule when — and only
+/// when — the field is a supported optional occurrence of an uninhabited
+/// abstract structural target.
+///
+/// # Errors
+///
+/// Returns an error if the field's named target is missing from `schema`.
+pub fn field_storage_semantics<'a>(
+    schema: &SchemaIr,
+    field: &'a FieldDecl,
+) -> Result<EffectiveValueMember<'a>, AbstractValueProjectionError> {
+    let renderability = abstract_value_reference_renderability(
+        schema,
+        &field.type_ref,
+        field.cardinality,
+        field.nillable,
+        field.constraints == ConstraintSet::default(),
+    )?;
+    Ok(match renderability {
+        AbstractValueOccurrenceRenderability::AbsentOnly => EffectiveValueMember::AbsentOnly(field),
+        AbstractValueOccurrenceRenderability::NotApplicable
+        | AbstractValueOccurrenceRenderability::Unsupported => EffectiveValueMember::Stored(field),
+    })
 }
 
 impl fmt::Display for AbstractValueProjectionError {

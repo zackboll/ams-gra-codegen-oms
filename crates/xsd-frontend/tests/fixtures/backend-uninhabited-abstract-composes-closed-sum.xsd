@@ -1,0 +1,26 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:backend-uninhabited-abstract-composes-closed-sum"
+           targetNamespace="urn:backend-uninhabited-abstract-composes-closed-sum"
+           elementFormDefault="qualified">
+  <!-- Parent is a Task 024 closed-sum abstract target with one concrete
+       descendant (ConcreteChild). ConcreteChild itself contains an optional
+       zero-descendant abstract field (SidecarPoint), proving Task 026
+       composes with Task 024: ConcreteChild remains a valid concrete variant
+       because its impossible optional member is always absent. -->
+  <xs:complexType name="SidecarPoint" abstract="true"><xs:sequence/></xs:complexType>
+  <xs:complexType name="Parent" abstract="true"><xs:sequence/></xs:complexType>
+  <xs:complexType name="ConcreteChild">
+    <xs:complexContent>
+      <xs:extension base="t:Parent">
+        <xs:sequence>
+          <xs:element name="Widget" type="t:SidecarPoint" minOccurs="0"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="Holder">
+    <xs:sequence>
+      <xs:element name="Value" type="t:Parent"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

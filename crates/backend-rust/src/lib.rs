@@ -1,9 +1,10 @@
 //! Minimal Rust type generation from normalized schema IR.
 
 use ams_gra_oms_codegen_core::{
-    AbstractValueProjection, Backend, CodegenError, GeneratedFile, InclusiveIntegralDomain,
-    TypeEmission, abstract_value_projection_for_ref, effective_choice_alternatives,
-    effective_record_fields, inclusive_integral_domain, plan_type_emissions,
+    AbstractValueProjection, Backend, CodegenError, EffectiveValueMember, GeneratedFile,
+    InclusiveIntegralDomain, TypeEmission, abstract_value_projection_for_ref,
+    effective_choice_alternatives, effective_record_fields, field_storage_semantics,
+    inclusive_integral_domain, plan_type_emissions,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -233,6 +234,17 @@ fn render_declaration(
                     declaration.name.local_name
                 ))
             })? {
+                if matches!(
+                    field_storage_semantics(schema, field).map_err(|projection_error| error(
+                        format!("unsupported abstract structural value: {projection_error}")
+                    ))?,
+                    EffectiveValueMember::AbsentOnly(_)
+                ) {
+                    // Task 026: uninhabited abstract structural target with a
+                    // 0..1 occurrence; absence is the only legal state, so no
+                    // field is generated for it in this schema set.
+                    continue;
+                }
                 let field_name = snake_case(&field.name)?;
                 let base = rust_field_base(field)?;
                 let field_type = match field.cardinality.shape() {
@@ -326,6 +338,17 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
                 ))
             })?;
             for field in fields {
+                if matches!(
+                    field_storage_semantics(schema, field).map_err(|projection_error| error(
+                        format!("unsupported abstract structural value: {projection_error}")
+                    ))?,
+                    EffectiveValueMember::AbsentOnly(_)
+                ) {
+                    // Task 026: this field's abstract structural target has zero
+                    // concrete descendants in the current schema set, so absence
+                    // is its only legal state; no storage is generated for it.
+                    continue;
+                }
                 validate_abstract_value_reference(schema, &field.type_ref)?;
                 if field.nillable {
                     return unsupported(format!("nillable field {}", field.name));
@@ -613,6 +636,44 @@ mod tests {
                 .join("../xsd-frontend/tests/fixtures/backend-abstract-value-reference.xsd"),
         )
         .expect("abstract value fixture should parse")
+    }
+
+    fn uninhabited_optional_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-uninhabited-abstract-optional.xsd"),
+        )
+        .expect("uninhabited abstract optional fixture should parse")
+    }
+
+    fn uninhabited_required_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-uninhabited-abstract-required.xsd"),
+        )
+        .expect("uninhabited abstract required fixture should parse")
+    }
+
+    fn uninhabited_future_descendant_schema() -> SchemaIr {
+        load_schema_document(&Path::new(env!("CARGO_MANIFEST_DIR")).join(
+            "../xsd-frontend/tests/fixtures/backend-uninhabited-abstract-future-descendant.xsd",
+        ))
+        .expect("uninhabited abstract future-descendant fixture should parse")
+    }
+
+    fn uninhabited_inherited_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-uninhabited-abstract-inherited.xsd"),
+        )
+        .expect("uninhabited abstract inherited fixture should parse")
+    }
+
+    fn uninhabited_composes_closed_sum_schema() -> SchemaIr {
+        load_schema_document(&Path::new(env!("CARGO_MANIFEST_DIR")).join(
+            "../xsd-frontend/tests/fixtures/backend-uninhabited-abstract-composes-closed-sum.xsd",
+        ))
+        .expect("uninhabited abstract closed-sum composition fixture should parse")
     }
 
     fn choice_boundary_schema() -> SchemaIr {
@@ -1014,5 +1075,52 @@ mod tests {
                 .message
                 .contains("unsupported Rust IR construct: abstract type")
         );
+    }
+
+    #[test]
+    fn uninhabited_abstract_optional_field_is_elided_without_fake_payload() {
+        let source =
+            generate(&uninhabited_optional_schema()).expect("absent-only occurrence should lower");
+        assert!(!source.contains("SidecarPoint"));
+        assert!(!source.contains("widget"));
+        assert!(source.contains("pub struct Holder {\n    pub required: String,\n}"));
+    }
+
+    #[test]
+    fn uninhabited_abstract_required_field_remains_unsupported() {
+        let error = generate(&uninhabited_required_schema())
+            .expect_err("positive-minimum uninhabited value must fail closed");
+        assert!(
+            error
+                .message
+                .contains("SidecarPoint has no concrete structural descendants")
+        );
+    }
+
+    #[test]
+    fn future_descendant_reclassifies_uninhabited_target_as_a_closed_sum() {
+        let source = generate(&uninhabited_future_descendant_schema())
+            .expect("schema set with a concrete descendant should lower as a closed sum");
+        assert!(source.contains("pub enum SidecarPoint {"));
+        assert!(source.contains("ConcreteSidecarPoint(ConcreteSidecarPoint)"));
+        assert!(source.contains("pub widget: Option<SidecarPoint>"));
+    }
+
+    #[test]
+    fn inherited_uninhabited_field_is_elided_on_the_concrete_descendant() {
+        let source = generate(&uninhabited_inherited_schema())
+            .expect("inherited absent-only occurrence should lower");
+        assert!(!source.contains("SidecarPoint"));
+        assert!(source.contains("pub struct ConcreteHolder {\n    pub required: String,\n}"));
+    }
+
+    #[test]
+    fn uninhabited_optional_field_composes_with_task_024_closed_sum() {
+        let source = generate(&uninhabited_composes_closed_sum_schema())
+            .expect("Task 026 composition with Task 024 closed sum should lower");
+        assert!(source.contains("pub enum Parent {"));
+        assert!(source.contains("ConcreteChild(ConcreteChild)"));
+        assert!(source.contains("pub struct ConcreteChild {\n}"));
+        assert!(!source.contains("widget"));
     }
 }

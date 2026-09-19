@@ -1,0 +1,15 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:backend-uninhabited-abstract-optional"
+           targetNamespace="urn:backend-uninhabited-abstract-optional"
+           elementFormDefault="qualified">
+  <!-- Zero concrete descendants: a genuine uninhabited abstract structural value.
+       Intentionally not named with an EXT suffix so production logic cannot key
+       on that naming convention. -->
+  <xs:complexType name="SidecarPoint" abstract="true"><xs:sequence/></xs:complexType>
+  <xs:complexType name="Holder">
+    <xs:sequence>
+      <xs:element name="Required" type="xs:string"/>
+      <xs:element name="Widget" type="t:SidecarPoint" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>
