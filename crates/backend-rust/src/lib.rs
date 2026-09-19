@@ -1,7 +1,8 @@
 //! Minimal Rust type generation from normalized schema IR.
 
 use ams_gra_oms_codegen_core::{
-    Backend, CodegenError, GeneratedFile, effective_record_fields, plan_type_declarations,
+    Backend, CodegenError, GeneratedFile, effective_choice_alternatives, effective_record_fields,
+    plan_type_declarations,
 };
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, NumericValue, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -146,6 +147,27 @@ fn render_declaration(
             }
             output.push_str("}\n");
         }
+        TypeKind::Choice { .. } => {
+            writeln!(
+                output,
+                "#[derive(Debug, Clone, PartialEq, Eq)]\npub enum {name} {{"
+            )
+            .expect("writing to String cannot fail");
+            for alternative in effective_choice_alternatives(schema, &declaration.name).map_err(
+                |projection_error| {
+                    error(format!("unsupported Rust IR construct: {projection_error}"))
+                },
+            )? {
+                let alternative_name = upper_camel(&alternative.name)?;
+                writeln!(
+                    output,
+                    "    {alternative_name}({}),",
+                    rust_field_type(alternative)?
+                )
+                .expect("writing to String cannot fail");
+            }
+            output.push_str("}\n\n");
+        }
         other => return unsupported(format!("type {name}: {other:?}")),
     }
     Ok(())
@@ -214,6 +236,14 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
                 }
             }
         }
+        if matches!(declaration.kind, TypeKind::Choice { .. }) {
+            let alternatives = effective_choice_alternatives(schema, &declaration.name).map_err(
+                |projection_error| {
+                    error(format!("unsupported Rust IR construct: {projection_error}"))
+                },
+            )?;
+            validate_choice_alternatives(schema, alternatives)?;
+        }
     }
     for message in &schema.messages {
         if let TypeRefTarget::Named(target) = &message.payload_type.target {
@@ -227,6 +257,52 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
         }
     }
     Ok(())
+}
+
+fn validate_choice_alternatives(
+    schema: &SchemaIr,
+    alternatives: Vec<&ams_gra_oms_ir::FieldDecl>,
+) -> Result<(), CodegenError> {
+    let mut names = std::collections::BTreeSet::new();
+    for alternative in alternatives {
+        let name = upper_camel(&alternative.name)?;
+        if !names.insert(name.clone()) {
+            return unsupported(format!("duplicate Choice alternative identifier {name}"));
+        }
+        if alternative.nillable {
+            return unsupported(format!("nillable Choice alternative {}", alternative.name));
+        }
+        if alternative.constraints != ConstraintSet::default() {
+            return unsupported(format!("field constraints on {}", alternative.name));
+        }
+        if let TypeRefTarget::Named(target) = &alternative.type_ref.target {
+            if schema
+                .types
+                .iter()
+                .any(|candidate| candidate.name == *target && candidate.is_abstract)
+            {
+                return unsupported(format!(
+                    "abstract structural value reference {}",
+                    target.local_name
+                ));
+            }
+        }
+        rust_field_type(alternative)?;
+    }
+    Ok(())
+}
+
+fn rust_field_type(field: &ams_gra_oms_ir::FieldDecl) -> Result<String, CodegenError> {
+    let base = rust_type(&field.type_ref)?;
+    match field.cardinality {
+        Cardinality::REQUIRED_ONE => Ok(base),
+        Cardinality::OPTIONAL_ONE => Ok(format!("Option<{base}>")),
+        Cardinality {
+            min_occurs,
+            max_occurs: Some(max),
+        } if max > 1 => Ok(format!("BoundedVec<{base}, {min_occurs}, {max}>")),
+        _ => unsupported(format!("cardinality on Choice alternative {}", field.name)),
+    }
 }
 
 fn has_numeric_constraints(constraints: &ConstraintSet) -> bool {
@@ -365,6 +441,24 @@ mod tests {
         .expect("choice boundary fixture should parse")
     }
 
+    fn choice_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-choice-lowering.xsd"),
+        )
+        .expect("choice fixture should parse")
+    }
+
+    #[test]
+    fn lowers_choice_as_named_enum_and_accepts_empty_record_ancestry() {
+        let source = generate(&choice_schema()).expect("supported Choice should generate");
+        assert!(source.contains("pub enum Selection {\n    First(Token),\n    Second(Token),"));
+        assert!(source.contains("pub struct Holder {\n    pub selected: Selection,"));
+        assert!(
+            source.contains("pub enum DerivedSelection {\n    Left(Token),\n    Right(Token),")
+        );
+    }
+
     #[test]
     fn lowers_effective_record_fields_and_omits_abstract_ancestor() {
         let source = generate(&inheritance_schema()).expect("pure Record inheritance is supported");
@@ -388,7 +482,7 @@ mod tests {
             generate(&choice_boundary_schema())
                 .unwrap_err()
                 .message
-                .contains("type Derived: Choice")
+                .contains("contains Record segment Base while lowering Choice")
         );
     }
 
@@ -443,12 +537,8 @@ mod tests {
             alternatives: vec![alternative],
         };
         schema.types[0].base_type = None;
-        let error = generate(&schema).expect_err("choice must not be omitted");
-        assert!(
-            error
-                .message
-                .starts_with("unsupported Rust IR construct: type TrackId")
-        );
+        let source = generate(&schema).expect("Choice must render");
+        assert!(source.contains("pub enum TrackId"));
     }
 
     #[test]

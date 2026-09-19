@@ -9,7 +9,8 @@ pub use coverage::{
 };
 pub use structure::{
     EffectiveStructuralType, StructuralKind, StructuralLevel, StructuralProjectionError,
-    StructuralSegment, StructuralSegmentContent, effective_record_fields, project_structural_type,
+    StructuralSegment, StructuralSegmentContent, effective_choice_alternatives,
+    effective_record_fields, project_structural_type,
 };
 
 use ams_gra_oms_ir::{QualifiedName, SchemaIr, TypeDecl, TypeKind, TypeRef, TypeRefTarget};

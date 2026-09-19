@@ -1,7 +1,8 @@
 //! Minimal C++17 type generation from normalized schema IR.
 
 use ams_gra_oms_codegen_core::{
-    Backend, CodegenError, GeneratedFile, effective_record_fields, plan_type_declarations,
+    Backend, CodegenError, GeneratedFile, effective_choice_alternatives, effective_record_fields,
+    plan_type_declarations,
 };
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, NumericValue, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -46,6 +47,15 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
     let declarations = plan_type_declarations(schema)?;
     validate_schema(schema)?;
     let namespace = namespace_name(schema)?;
+    let variant_header = if schema
+        .types
+        .iter()
+        .any(|declaration| matches!(declaration.kind, TypeKind::Choice { .. }))
+    {
+        "#include <variant>\n"
+    } else {
+        ""
+    };
     let mut output = String::from(
         "#pragma once\n\n\
          #include <cstddef>\n\
@@ -53,8 +63,10 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
          #include <optional>\n\
          #include <string>\n\
          #include <utility>\n\
-         #include <vector>\n\n",
+         #include <vector>\n",
     );
+    output.push_str(variant_header);
+    output.push('\n');
     writeln!(output, "namespace {namespace} {{\n").expect("writing to String cannot fail");
     output.push_str(concat!(
         "template <typename T, std::size_t Min, std::size_t Max>\n",
@@ -153,6 +165,33 @@ fn render_declaration(
             }
             output.push_str("};\n\n");
         }
+        TypeKind::Choice { .. } => {
+            writeln!(output, "struct {name} {{").expect("writing to String cannot fail");
+            let alternatives = effective_choice_alternatives(schema, &declaration.name).map_err(
+                |projection_error| {
+                    error(format!("unsupported C++ IR construct: {projection_error}"))
+                },
+            )?;
+            for alternative in &alternatives {
+                let alternative_name = upper_camel(&alternative.name)?;
+                writeln!(
+                    output,
+                    "    struct {alternative_name} {{ {} value; }};",
+                    cpp_field_type(alternative)?
+                )
+                .expect("writing to String cannot fail");
+            }
+            writeln!(
+                output,
+                "\n    std::variant<{}> value;\n}};\n",
+                alternatives
+                    .iter()
+                    .map(|alternative| upper_camel(&alternative.name))
+                    .collect::<Result<Vec<_>, _>>()?
+                    .join(", ")
+            )
+            .expect("writing to String cannot fail");
+        }
         other => return unsupported(format!("type {name}: {other:?}")),
     }
     Ok(())
@@ -221,6 +260,14 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
                 }
             }
         }
+        if matches!(declaration.kind, TypeKind::Choice { .. }) {
+            let alternatives = effective_choice_alternatives(schema, &declaration.name).map_err(
+                |projection_error| {
+                    error(format!("unsupported C++ IR construct: {projection_error}"))
+                },
+            )?;
+            validate_choice_alternatives(schema, alternatives)?;
+        }
     }
     for message in &schema.messages {
         if let TypeRefTarget::Named(target) = &message.payload_type.target {
@@ -234,6 +281,52 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
         }
     }
     Ok(())
+}
+
+fn validate_choice_alternatives(
+    schema: &SchemaIr,
+    alternatives: Vec<&ams_gra_oms_ir::FieldDecl>,
+) -> Result<(), CodegenError> {
+    let mut names = std::collections::BTreeSet::new();
+    for alternative in alternatives {
+        let name = upper_camel(&alternative.name)?;
+        if !names.insert(name.clone()) {
+            return unsupported(format!("duplicate Choice alternative identifier {name}"));
+        }
+        if alternative.nillable {
+            return unsupported(format!("nillable Choice alternative {}", alternative.name));
+        }
+        if alternative.constraints != ConstraintSet::default() {
+            return unsupported(format!("field constraints on {}", alternative.name));
+        }
+        if let TypeRefTarget::Named(target) = &alternative.type_ref.target {
+            if schema
+                .types
+                .iter()
+                .any(|candidate| candidate.name == *target && candidate.is_abstract)
+            {
+                return unsupported(format!(
+                    "abstract structural value reference {}",
+                    target.local_name
+                ));
+            }
+        }
+        cpp_field_type(alternative)?;
+    }
+    Ok(())
+}
+
+fn cpp_field_type(field: &ams_gra_oms_ir::FieldDecl) -> Result<String, CodegenError> {
+    let base = cpp_type(&field.type_ref)?;
+    match field.cardinality {
+        Cardinality::REQUIRED_ONE => Ok(base),
+        Cardinality::OPTIONAL_ONE => Ok(format!("std::optional<{base}>")),
+        Cardinality {
+            min_occurs,
+            max_occurs: Some(max),
+        } if max > 1 => Ok(format!("BoundedVector<{base}, {min_occurs}, {max}>")),
+        _ => unsupported(format!("cardinality on Choice alternative {}", field.name)),
+    }
 }
 
 fn has_numeric_constraints(constraints: &ConstraintSet) -> bool {
@@ -392,6 +485,23 @@ mod tests {
         .expect("choice boundary fixture should parse")
     }
 
+    fn choice_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-choice-lowering.xsd"),
+        )
+        .expect("choice fixture should parse")
+    }
+
+    #[test]
+    fn lowers_choice_as_named_variant_and_accepts_empty_record_ancestry() {
+        let source = generate(&choice_schema()).expect("supported Choice should generate");
+        assert!(source.contains("#include <variant>"));
+        assert!(source.contains("struct First { Token value; };\n    struct Second { Token value; };\n\n    std::variant<First, Second> value;"));
+        assert!(source.contains("Selection selected;"));
+        assert!(source.contains("std::variant<Left, Right> value;"));
+    }
+
     #[test]
     fn lowers_effective_record_fields_and_omits_abstract_ancestor() {
         let source = generate(&inheritance_schema()).expect("pure Record inheritance is supported");
@@ -415,7 +525,7 @@ mod tests {
             generate(&choice_boundary_schema())
                 .unwrap_err()
                 .message
-                .contains("type Derived: Choice")
+                .contains("contains Record segment Base while lowering Choice")
         );
     }
 
@@ -473,12 +583,8 @@ mod tests {
             alternatives: vec![alternative],
         };
         schema.types[0].base_type = None;
-        let error = generate(&schema).expect_err("choice must not be omitted");
-        assert!(
-            error
-                .message
-                .starts_with("unsupported C++ IR construct: type TrackId")
-        );
+        let source = generate(&schema).expect("Choice must render");
+        assert!(source.contains("struct TrackId"));
     }
 
     #[test]
