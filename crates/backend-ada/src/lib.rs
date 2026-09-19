@@ -52,7 +52,7 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
     if schema.types.iter().any(has_zero_unbounded_occurrence) {
         output.push_str("with Ada.Containers.Vectors;\n");
     }
-    if schema_has_unsigned(schema) {
+    if schema_needs_interfaces(schema) {
         output.push_str("with Interfaces;\n");
     }
     output.push('\n');
@@ -114,6 +114,16 @@ fn render_declaration(
         TypeKind::Primitive(PrimitiveKind::Boolean) => {
             reject_any_constraints(&declaration.constraints, &name)?;
             writeln!(output, "   type {name} is new Boolean;\n")
+                .expect("writing to String cannot fail");
+        }
+        TypeKind::Primitive(PrimitiveKind::Float32) => {
+            reject_any_constraints(&declaration.constraints, &name)?;
+            writeln!(output, "   type {name} is new Interfaces.IEEE_Float_32;\n")
+                .expect("writing to String cannot fail");
+        }
+        TypeKind::Primitive(PrimitiveKind::Float64) => {
+            reject_any_constraints(&declaration.constraints, &name)?;
+            writeln!(output, "   type {name} is new Interfaces.IEEE_Float_64;\n")
                 .expect("writing to String cannot fail");
         }
         TypeKind::Enumeration { variants } => {
@@ -288,7 +298,7 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
         if matches!(
             declaration.kind,
             TypeKind::Primitive(PrimitiveKind::Float32 | PrimitiveKind::Float64)
-        ) && has_numeric_constraints(&declaration.constraints)
+        ) && declaration.constraints != ConstraintSet::default()
         {
             return unsupported(format!(
                 "floating constraints on {}",
@@ -409,7 +419,9 @@ fn render_unbounded_helper(
     let item_type = ada_field_base(field)?;
     let equality = if matches!(
         field.type_ref.target,
-        TypeRefTarget::Primitive(PrimitiveKind::UnsignedInteger)
+        TypeRefTarget::Primitive(
+            PrimitiveKind::UnsignedInteger | PrimitiveKind::Float32 | PrimitiveKind::Float64
+        )
     ) {
         ", \"=\" => Interfaces.\"=\""
     } else {
@@ -441,13 +453,6 @@ fn has_zero_unbounded_occurrence(declaration: &TypeDecl) -> bool {
     })
 }
 
-fn has_numeric_constraints(constraints: &ConstraintSet) -> bool {
-    constraints.min_inclusive.is_some()
-        || constraints.max_inclusive.is_some()
-        || constraints.min_exclusive.is_some()
-        || constraints.max_exclusive.is_some()
-}
-
 fn package_name(schema: &SchemaIr) -> Result<String, CodegenError> {
     let uri = &schema
         .namespaces
@@ -477,6 +482,12 @@ fn ada_type(type_ref: &TypeRef) -> Result<String, CodegenError> {
             Ok("Interfaces.Unsigned_64".to_owned())
         }
         TypeRefTarget::Primitive(PrimitiveKind::Boolean) => Ok("Boolean".to_owned()),
+        TypeRefTarget::Primitive(PrimitiveKind::Float32) => {
+            Ok("Interfaces.IEEE_Float_32".to_owned())
+        }
+        TypeRefTarget::Primitive(PrimitiveKind::Float64) => {
+            Ok("Interfaces.IEEE_Float_64".to_owned())
+        }
         TypeRefTarget::Primitive(PrimitiveKind::String) => {
             Ok("Ada.Strings.Unbounded.Unbounded_String".to_owned())
         }
@@ -526,26 +537,29 @@ fn ada_field_base(field: &ams_gra_oms_ir::FieldDecl) -> Result<String, CodegenEr
     }
 }
 
-fn schema_has_unsigned(schema: &SchemaIr) -> bool {
+fn schema_needs_interfaces(schema: &SchemaIr) -> bool {
     schema.types.iter().any(|declaration| {
         matches!(
             declaration.kind,
-            TypeKind::Primitive(PrimitiveKind::UnsignedInteger)
+            TypeKind::Primitive(
+                PrimitiveKind::UnsignedInteger | PrimitiveKind::Float32 | PrimitiveKind::Float64
+            )
         )
     }) || schema
         .types
         .iter()
         .any(|declaration| match &declaration.kind {
-            TypeKind::Record { fields } => fields.iter().any(|field| {
+            TypeKind::Record { fields }
+            | TypeKind::Choice {
+                alternatives: fields,
+            } => fields.iter().any(|field| {
                 matches!(
                     field.type_ref.target,
-                    TypeRefTarget::Primitive(PrimitiveKind::UnsignedInteger)
-                )
-            }),
-            TypeKind::Choice { alternatives } => alternatives.iter().any(|field| {
-                matches!(
-                    field.type_ref.target,
-                    TypeRefTarget::Primitive(PrimitiveKind::UnsignedInteger)
+                    TypeRefTarget::Primitive(
+                        PrimitiveKind::UnsignedInteger
+                            | PrimitiveKind::Float32
+                            | PrimitiveKind::Float64
+                    )
                 )
             }),
             _ => false,
@@ -905,7 +919,7 @@ mod tests {
     }
 
     #[test]
-    fn floating_fields_fail_explicitly() {
+    fn lowers_unconstrained_floating_and_rejects_constraints() {
         for kind in [PrimitiveKind::Float32, PrimitiveKind::Float64] {
             let mut schema = floating_schema();
             let TypeKind::Record { fields } = &mut schema.types[0].kind else {
@@ -913,10 +927,12 @@ mod tests {
             };
             fields.truncate(1);
             fields[0].type_ref = TypeRef::primitive(kind);
-            let error = generate(&schema).expect_err("floating generation must remain unsupported");
-            assert!(error.message.contains(&format!(
-                "unsupported Ada IR construct: type reference Primitive({kind:?})"
-            )));
+            let source = generate(&schema).expect("unconstrained floating generation must succeed");
+            assert!(source.contains(if kind == PrimitiveKind::Float32 {
+                "Interfaces.IEEE_Float_32"
+            } else {
+                "Interfaces.IEEE_Float_64"
+            }));
         }
 
         let mut schema = track_schema();

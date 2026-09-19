@@ -124,6 +124,10 @@ exact `Integer(i128)`, binary32 `Float32`, and binary64 `Float64` domains. The
 floating wrappers store width-correct IEEE bits and provide deterministic
 equality without relying on raw float `Eq`.
 
+Task 022 backends generate unconstrained Float32/Float64 values at their native
+width. Any non-default floating `ConstraintSet` remains backend fail-closed;
+this does not imply floating range lowering.
+
 Numeric range validation compares only values in the same domain, using exact
 integer ordering or semantic floating ordering rather than bit ordering. A
 lower bound greater than its upper bound is contradictory; equal endpoints are

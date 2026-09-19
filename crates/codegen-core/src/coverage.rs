@@ -944,7 +944,11 @@ fn kind_renderable(declaration: &TypeDecl, enabled: &BTreeSet<FeatureFamily>) ->
         // `FeatureFamily::Choice` models only remaining unsupported Choice
         // composition; ordinary Choice declarations have backend renderers.
         TypeKind::Primitive(
-            PrimitiveKind::Boolean | PrimitiveKind::SignedInteger | PrimitiveKind::UnsignedInteger,
+            PrimitiveKind::Boolean
+            | PrimitiveKind::SignedInteger
+            | PrimitiveKind::UnsignedInteger
+            | PrimitiveKind::Float32
+            | PrimitiveKind::Float64,
         )
         | TypeKind::Enumeration { .. }
         | TypeKind::Record { .. }
@@ -1002,6 +1006,10 @@ fn primitive_declaration_renderable(
         return constraints == &ConstraintSet::default()
             || enabled.contains(&FeatureFamily::ConstrainedSimpleTypes);
     }
+    if matches!(kind, PrimitiveKind::Float32 | PrimitiveKind::Float64) {
+        return constraints == &ConstraintSet::default()
+            || enabled.contains(&FeatureFamily::ConstrainedSimpleTypes);
+    }
     if !matches!(
         kind,
         PrimitiveKind::SignedInteger | PrimitiveKind::UnsignedInteger
@@ -1043,6 +1051,8 @@ fn primitive_ref_renderable(kind: PrimitiveKind, enabled: &BTreeSet<FeatureFamil
         PrimitiveKind::Boolean
             | PrimitiveKind::SignedInteger
             | PrimitiveKind::UnsignedInteger
+            | PrimitiveKind::Float32
+            | PrimitiveKind::Float64
             | PrimitiveKind::String
     ) || enabled.contains(&FeatureFamily::PrimitiveExpansion)
 }
@@ -1284,14 +1294,14 @@ mod tests {
     }
 
     #[test]
-    fn primitive_expansion_alone_unblocks_float_field_closure() {
+    fn primitive_expansion_alone_unblocks_binary_field_closure() {
         let schema = message_schema(
             vec![declaration(
                 "Payload",
                 TypeKind::Record {
                     fields: vec![field_ref(
-                        "value",
-                        TypeRef::primitive(PrimitiveKind::Float32),
+                        "binary",
+                        TypeRef::primitive(PrimitiveKind::Binary),
                     )],
                 },
             )],
@@ -1592,7 +1602,7 @@ mod tests {
             TypeKind::Record {
                 fields: vec![field_ref(
                     "value",
-                    TypeRef::primitive(PrimitiveKind::Float32),
+                    TypeRef::primitive(PrimitiveKind::Binary),
                 )],
             },
         );

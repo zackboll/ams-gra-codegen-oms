@@ -56,12 +56,20 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
     } else {
         ""
     };
-    let limits_header =
-        if schema_needs_limits(schema) || schema.types.iter().any(has_unbounded_occurrence) {
-            "#include <limits>\n"
-        } else {
-            ""
-        };
+    let has_floating = schema_has_floating(schema);
+    let limits_header = if schema_needs_limits(schema)
+        || schema.types.iter().any(has_unbounded_occurrence)
+        || has_floating
+    {
+        "#include <limits>\n"
+    } else {
+        ""
+    };
+    let climits_header = if has_floating {
+        "#include <climits>\n"
+    } else {
+        ""
+    };
     let mut output = String::from(
         "#pragma once\n\n\
          #include <cstddef>\n\
@@ -73,10 +81,16 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
     );
     output.insert_str(
         "#pragma once\n\n".len() + "#include <cstddef>\n#include <cstdint>\n".len(),
-        limits_header,
+        &format!("{limits_header}{climits_header}"),
     );
     output.push_str(variant_header);
     output.push('\n');
+    if has_floating {
+        output.push_str(concat!(
+            "static_assert(sizeof(float) * CHAR_BIT == 32 && std::numeric_limits<float>::radix == 2 && std::numeric_limits<float>::digits == 24 && std::numeric_limits<float>::min_exponent == -125 && std::numeric_limits<float>::max_exponent == 128 && std::numeric_limits<float>::is_iec559, \"OMS Float32 requires IEEE binary32 float\");\n",
+            "static_assert(sizeof(double) * CHAR_BIT == 64 && std::numeric_limits<double>::radix == 2 && std::numeric_limits<double>::digits == 53 && std::numeric_limits<double>::min_exponent == -1021 && std::numeric_limits<double>::max_exponent == 1024 && std::numeric_limits<double>::is_iec559, \"OMS Float64 requires IEEE binary64 double\");\n\n",
+        ));
+    }
     writeln!(output, "namespace {namespace} {{\n").expect("writing to String cannot fail");
     output.push_str(concat!(
         "template <typename T, std::size_t Min, std::size_t Max>\n",
@@ -187,6 +201,14 @@ fn render_declaration(
             reject_any_constraints(&declaration.constraints, &name)?;
             writeln!(output, "class {name} {{\npublic:\n    explicit constexpr {name}(bool value) noexcept : value_(value) {{}}\n    constexpr bool value() const noexcept {{ return value_; }}\nprivate:\n    bool value_;\n}};\n").expect("writing to String cannot fail");
         }
+        TypeKind::Primitive(PrimitiveKind::Float32) => {
+            reject_any_constraints(&declaration.constraints, &name)?;
+            writeln!(output, "class {name} {{\npublic:\n    explicit {name}(float value) noexcept : value_(value) {{}}\n    float value() const noexcept {{ return value_; }}\nprivate:\n    float value_;\n}};\n").expect("writing to String cannot fail");
+        }
+        TypeKind::Primitive(PrimitiveKind::Float64) => {
+            reject_any_constraints(&declaration.constraints, &name)?;
+            writeln!(output, "class {name} {{\npublic:\n    explicit {name}(double value) noexcept : value_(value) {{}}\n    double value() const noexcept {{ return value_; }}\nprivate:\n    double value_;\n}};\n").expect("writing to String cannot fail");
+        }
         TypeKind::Enumeration { variants } => {
             if variants.is_empty() {
                 return unsupported(format!("empty enumeration {name}"));
@@ -286,7 +308,7 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
         if matches!(
             declaration.kind,
             TypeKind::Primitive(PrimitiveKind::Float32 | PrimitiveKind::Float64)
-        ) && has_numeric_constraints(&declaration.constraints)
+        ) && declaration.constraints != ConstraintSet::default()
         {
             return unsupported(format!(
                 "floating constraints on {}",
@@ -398,13 +420,6 @@ fn has_unbounded_occurrence(declaration: &TypeDecl) -> bool {
     .any(|field| matches!(field.cardinality.shape(), OccurrenceShape::Unbounded { .. }))
 }
 
-fn has_numeric_constraints(constraints: &ConstraintSet) -> bool {
-    constraints.min_inclusive.is_some()
-        || constraints.max_inclusive.is_some()
-        || constraints.min_exclusive.is_some()
-        || constraints.max_exclusive.is_some()
-}
-
 fn namespace_name(schema: &SchemaIr) -> Result<String, CodegenError> {
     let uri = &schema
         .namespaces
@@ -430,10 +445,35 @@ fn cpp_type(type_ref: &TypeRef) -> Result<String, CodegenError> {
         TypeRefTarget::Primitive(PrimitiveKind::SignedInteger) => Ok("std::int64_t".to_owned()),
         TypeRefTarget::Primitive(PrimitiveKind::UnsignedInteger) => Ok("std::uint64_t".to_owned()),
         TypeRefTarget::Primitive(PrimitiveKind::Boolean) => Ok("bool".to_owned()),
+        TypeRefTarget::Primitive(PrimitiveKind::Float32) => Ok("float".to_owned()),
+        TypeRefTarget::Primitive(PrimitiveKind::Float64) => Ok("double".to_owned()),
         TypeRefTarget::Primitive(PrimitiveKind::String) => Ok("std::string".to_owned()),
         TypeRefTarget::Named(name) => upper_camel(&name.local_name),
         other => unsupported(format!("type reference {other:?}")),
     }
+}
+
+fn schema_has_floating(schema: &SchemaIr) -> bool {
+    schema.types.iter().any(|declaration| {
+        matches!(
+            declaration.kind,
+            TypeKind::Primitive(PrimitiveKind::Float32 | PrimitiveKind::Float64)
+        )
+    }) || schema
+        .types
+        .iter()
+        .any(|declaration| match &declaration.kind {
+            TypeKind::Record { fields }
+            | TypeKind::Choice {
+                alternatives: fields,
+            } => fields.iter().any(|field| {
+                matches!(
+                    field.type_ref.target,
+                    TypeRefTarget::Primitive(PrimitiveKind::Float32 | PrimitiveKind::Float64)
+                )
+            }),
+            _ => false,
+        })
 }
 
 fn integral_domain(
@@ -635,6 +675,14 @@ mod tests {
                 .join("../xsd-frontend/tests/fixtures/floating-primitives.xsd"),
         )
         .expect("floating fixture should parse")
+    }
+
+    fn float_only_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-float-only.xsd"),
+        )
+        .expect("float-only fixture should parse")
     }
 
     fn inheritance_schema() -> SchemaIr {
@@ -845,6 +893,52 @@ mod tests {
             status.success(),
             "strict C++17 full-bound compile must succeed"
         );
+    }
+
+    #[test]
+    fn float_only_schema_includes_and_compiles_host_guards() {
+        let source = generate(&float_only_schema()).expect("float-only schema should generate");
+        assert!(source.contains("#include <limits>"));
+        assert!(source.contains("#include <climits>"));
+        assert!(source.contains("sizeof(float) * CHAR_BIT == 32"));
+        assert!(source.contains("std::numeric_limits<float>::min_exponent == -125"));
+        assert!(source.contains("sizeof(double) * CHAR_BIT == 64"));
+        assert!(source.contains("std::numeric_limits<double>::max_exponent == 1024"));
+
+        let header_path =
+            std::env::temp_dir().join(format!("ams-gra-oms-float-only-{}.hpp", std::process::id()));
+        let source_path = header_path.with_extension("cpp");
+        fs::write(&header_path, source).expect("write generated C++ header");
+        fs::write(
+            &source_path,
+            format!("#include \"{}\"\n", header_path.display()),
+        )
+        .expect("write C++ translation unit");
+        let status = Command::new("c++")
+            .args([
+                "-std=c++17",
+                "-Wall",
+                "-Wextra",
+                "-pedantic-errors",
+                "-fsyntax-only",
+            ])
+            .arg(&source_path)
+            .status()
+            .expect("C++ compiler must be available");
+        fs::remove_file(&header_path).expect("remove generated C++ header");
+        fs::remove_file(&source_path).expect("remove C++ translation unit");
+        assert!(
+            status.success(),
+            "strict C++17 float-only compile must succeed"
+        );
+    }
+
+    #[test]
+    fn non_floating_schema_does_not_emit_floating_guards() {
+        let source = generate(&track_schema()).expect("track schema should generate");
+        assert!(!source.contains("OMS Float32 requires"));
+        assert!(!source.contains("OMS Float64 requires"));
+        assert!(!source.contains("#include <climits>"));
     }
 
     #[test]
@@ -1073,7 +1167,7 @@ mod tests {
     }
 
     #[test]
-    fn floating_fields_fail_explicitly() {
+    fn lowers_unconstrained_floating_and_rejects_constraints() {
         for kind in [PrimitiveKind::Float32, PrimitiveKind::Float64] {
             let mut schema = floating_schema();
             let TypeKind::Record { fields } = &mut schema.types[0].kind else {
@@ -1081,10 +1175,12 @@ mod tests {
             };
             fields.truncate(1);
             fields[0].type_ref = TypeRef::primitive(kind);
-            let error = generate(&schema).expect_err("floating generation must remain unsupported");
-            assert!(error.message.contains(&format!(
-                "unsupported C++ IR construct: type reference Primitive({kind:?})"
-            )));
+            let source = generate(&schema).expect("unconstrained floating generation must succeed");
+            assert!(source.contains(if kind == PrimitiveKind::Float32 {
+                "float"
+            } else {
+                "double"
+            }));
         }
 
         let mut schema = track_schema();

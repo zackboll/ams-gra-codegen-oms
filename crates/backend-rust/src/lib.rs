@@ -59,6 +59,7 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
         "}\n\n",
     ));
     if schema.types.iter().any(has_unbounded_occurrence) {
+        output.push_str("use std::convert::TryFrom;\n\n");
         output.push_str(concat!(
             "#[derive(Debug, Clone, PartialEq, Eq)]\n",
             "pub struct UnboundedVec<T, const MIN: u64>(Vec<T>);\n\n",
@@ -147,6 +148,14 @@ fn render_declaration(
             reject_any_constraints(&declaration.constraints, &name)?;
             writeln!(output, "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]\npub struct {name}(bool);\n\nimpl {name} {{\n    pub const fn new(value: bool) -> Self {{ Self(value) }}\n    pub const fn get(self) -> bool {{ self.0 }}\n}}\n").expect("writing to String cannot fail");
         }
+        TypeKind::Primitive(PrimitiveKind::Float32) => {
+            reject_any_constraints(&declaration.constraints, &name)?;
+            writeln!(output, "#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]\npub struct {name}(f32);\n\nimpl {name} {{\n    pub const fn new(value: f32) -> Self {{ Self(value) }}\n    pub const fn get(self) -> f32 {{ self.0 }}\n}}\n").expect("writing to String cannot fail");
+        }
+        TypeKind::Primitive(PrimitiveKind::Float64) => {
+            reject_any_constraints(&declaration.constraints, &name)?;
+            writeln!(output, "#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]\npub struct {name}(f64);\n\nimpl {name} {{\n    pub const fn new(value: f64) -> Self {{ Self(value) }}\n    pub const fn get(self) -> f64 {{ self.0 }}\n}}\n").expect("writing to String cannot fail");
+        }
         TypeKind::Enumeration { variants } => {
             if variants.is_empty() {
                 return unsupported(format!("empty enumeration {name}"));
@@ -168,7 +177,12 @@ fn render_declaration(
             }
             writeln!(
                 output,
-                "#[derive(Debug, Clone, PartialEq, Eq)]\npub struct {name} {{"
+                "#[derive(Debug, Clone, PartialEq{})]\npub struct {name} {{",
+                if declaration_supports_eq(schema, declaration, &mut Vec::new()) {
+                    ", Eq"
+                } else {
+                    ""
+                }
             )
             .expect("writing to String cannot fail");
             for field in effective_record_fields(schema, &declaration.name).map_err(|_| {
@@ -196,7 +210,12 @@ fn render_declaration(
         TypeKind::Choice { .. } => {
             writeln!(
                 output,
-                "#[derive(Debug, Clone, PartialEq, Eq)]\npub enum {name} {{"
+                "#[derive(Debug, Clone, PartialEq{})]\npub enum {name} {{",
+                if declaration_supports_eq(schema, declaration, &mut Vec::new()) {
+                    ", Eq"
+                } else {
+                    ""
+                }
             )
             .expect("writing to String cannot fail");
             for alternative in effective_choice_alternatives(schema, &declaration.name).map_err(
@@ -246,7 +265,7 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
         if matches!(
             declaration.kind,
             TypeKind::Primitive(PrimitiveKind::Float32 | PrimitiveKind::Float64)
-        ) && has_numeric_constraints(&declaration.constraints)
+        ) && declaration.constraints != ConstraintSet::default()
         {
             return unsupported(format!(
                 "floating constraints on {}",
@@ -355,21 +374,63 @@ fn has_unbounded_occurrence(declaration: &TypeDecl) -> bool {
     .any(|field| matches!(field.cardinality.shape(), OccurrenceShape::Unbounded { .. }))
 }
 
-fn has_numeric_constraints(constraints: &ConstraintSet) -> bool {
-    constraints.min_inclusive.is_some()
-        || constraints.max_inclusive.is_some()
-        || constraints.min_exclusive.is_some()
-        || constraints.max_exclusive.is_some()
-}
-
 fn rust_type(type_ref: &TypeRef) -> Result<String, CodegenError> {
     match &type_ref.target {
         TypeRefTarget::Primitive(PrimitiveKind::SignedInteger) => Ok("i64".to_owned()),
         TypeRefTarget::Primitive(PrimitiveKind::UnsignedInteger) => Ok("u64".to_owned()),
         TypeRefTarget::Primitive(PrimitiveKind::Boolean) => Ok("bool".to_owned()),
+        TypeRefTarget::Primitive(PrimitiveKind::Float32) => Ok("f32".to_owned()),
+        TypeRefTarget::Primitive(PrimitiveKind::Float64) => Ok("f64".to_owned()),
         TypeRefTarget::Primitive(PrimitiveKind::String) => Ok("String".to_owned()),
         TypeRefTarget::Named(name) => upper_camel(&name.local_name),
         other => unsupported(format!("type reference {other:?}")),
+    }
+}
+
+fn declaration_supports_eq(
+    schema: &SchemaIr,
+    declaration: &TypeDecl,
+    visiting: &mut Vec<ams_gra_oms_ir::QualifiedName>,
+) -> bool {
+    if visiting.contains(&declaration.name) {
+        return false;
+    }
+    visiting.push(declaration.name.clone());
+    let result = match &declaration.kind {
+        TypeKind::Primitive(PrimitiveKind::Float32 | PrimitiveKind::Float64) => false,
+        TypeKind::Primitive(_) | TypeKind::Enumeration { .. } => true,
+        TypeKind::Record { .. } => {
+            effective_record_fields(schema, &declaration.name).is_ok_and(|fields| {
+                fields
+                    .iter()
+                    .all(|field| type_ref_supports_eq(schema, &field.type_ref, visiting))
+            })
+        }
+        TypeKind::Choice { .. } => effective_choice_alternatives(schema, &declaration.name)
+            .is_ok_and(|fields| {
+                fields
+                    .iter()
+                    .all(|field| type_ref_supports_eq(schema, &field.type_ref, visiting))
+            }),
+        TypeKind::Alias(_) | TypeKind::List { .. } => false,
+    };
+    visiting.pop();
+    result
+}
+
+fn type_ref_supports_eq(
+    schema: &SchemaIr,
+    type_ref: &TypeRef,
+    visiting: &mut Vec<ams_gra_oms_ir::QualifiedName>,
+) -> bool {
+    match &type_ref.target {
+        TypeRefTarget::Primitive(PrimitiveKind::Float32 | PrimitiveKind::Float64) => false,
+        TypeRefTarget::Primitive(_) => true,
+        TypeRefTarget::Named(name) => schema
+            .types
+            .iter()
+            .find(|candidate| candidate.name == *name)
+            .is_some_and(|candidate| declaration_supports_eq(schema, candidate, visiting)),
     }
 }
 
@@ -751,7 +812,7 @@ mod tests {
     }
 
     #[test]
-    fn floating_fields_fail_explicitly() {
+    fn lowers_unconstrained_floating_and_rejects_constraints() {
         for kind in [PrimitiveKind::Float32, PrimitiveKind::Float64] {
             let mut schema = floating_schema();
             let TypeKind::Record { fields } = &mut schema.types[0].kind else {
@@ -759,10 +820,12 @@ mod tests {
             };
             fields.truncate(1);
             fields[0].type_ref = TypeRef::primitive(kind);
-            let error = generate(&schema).expect_err("floating generation must remain unsupported");
-            assert!(error.message.contains(&format!(
-                "unsupported Rust IR construct: type reference Primitive({kind:?})"
-            )));
+            let source = generate(&schema).expect("unconstrained floating generation must succeed");
+            assert!(source.contains(if kind == PrimitiveKind::Float32 {
+                "f32"
+            } else {
+                "f64"
+            }));
         }
 
         let mut schema = track_schema();
