@@ -125,6 +125,8 @@ fn render_declaration(
             else {
                 return unsupported(format!("integer bounds on {name}"));
             };
+            let min = cpp_signed_bound(min);
+            let max = cpp_signed_bound(max);
             writeln!(
                 output,
                 concat!(
@@ -159,6 +161,8 @@ fn render_declaration(
             else {
                 return unsupported(format!("integer bounds on {name}"));
             };
+            let min = cpp_unsigned_bound(min);
+            let max = cpp_unsigned_bound(max);
             writeln!(output, "class {name} {{\npublic:\n    static constexpr std::uint64_t min_value = {min};\n    static constexpr std::uint64_t max_value = {max};\n\n    static std::optional<{name}> create(std::uint64_t value) noexcept {{\n        if (value < min_value || value > max_value) return std::nullopt;\n        return {name}(value);\n    }}\n\n    std::uint64_t value() const noexcept {{ return value_; }}\nprivate:\n    explicit {name}(std::uint64_t value) noexcept : value_(value) {{}}\n    std::uint64_t value_;\n}};\n").expect("writing to String cannot fail");
         }
         TypeKind::Primitive(PrimitiveKind::Boolean) => {
@@ -420,9 +424,11 @@ fn cpp_field_base(field: &ams_gra_oms_ir::FieldDecl) -> Result<String, CodegenEr
                 cpp_signed_bound(min),
                 cpp_signed_bound(max)
             )),
-            Some(InclusiveIntegralDomain::Unsigned { min, max }) => {
-                Ok(format!("BoundedInteger<std::uint64_t, {min}, {max}>"))
-            }
+            Some(InclusiveIntegralDomain::Unsigned { min, max }) => Ok(format!(
+                "BoundedInteger<std::uint64_t, {}, {}>",
+                cpp_unsigned_bound(min),
+                cpp_unsigned_bound(max)
+            )),
             None => cpp_type(&field.type_ref),
         },
         _ => {
@@ -454,32 +460,53 @@ fn cpp_signed_bound(value: i64) -> String {
     }
 }
 
+fn cpp_unsigned_bound(value: u64) -> String {
+    if value == u64::MAX {
+        "std::numeric_limits<std::uint64_t>::max()".to_owned()
+    } else {
+        value.to_string()
+    }
+}
+
 fn schema_needs_limits(schema: &SchemaIr) -> bool {
     schema.types.iter().any(|declaration| {
-        match &declaration.kind {
-            TypeKind::Record { fields } => fields,
-            TypeKind::Choice { alternatives } => alternatives,
-            _ => return false,
-        }
-        .iter()
-        .any(|field| {
-            matches!(
-                integral_domain_for_limits(field),
-                Some(InclusiveIntegralDomain::Signed { min: i64::MIN, .. })
-            )
-        })
+        let declaration_needs_limits = match declaration.kind {
+            TypeKind::Primitive(
+                kind @ (PrimitiveKind::SignedInteger | PrimitiveKind::UnsignedInteger),
+            ) => inclusive_integral_domain(kind, &declaration.constraints)
+                .ok()
+                .flatten()
+                .is_some_and(domain_needs_limits),
+            _ => false,
+        };
+        declaration_needs_limits
+            || match &declaration.kind {
+                TypeKind::Record { fields } => fields,
+                TypeKind::Choice { alternatives } => alternatives,
+                _ => return false,
+            }
+            .iter()
+            .any(|field| integral_domain_for_limits(field).is_some_and(domain_needs_limits))
     })
+}
+
+fn domain_needs_limits(domain: InclusiveIntegralDomain) -> bool {
+    matches!(
+        domain,
+        InclusiveIntegralDomain::Signed { min: i64::MIN, .. }
+            | InclusiveIntegralDomain::Unsigned { max: u64::MAX, .. }
+    )
 }
 
 fn integral_domain_for_limits(
     field: &ams_gra_oms_ir::FieldDecl,
 ) -> Option<InclusiveIntegralDomain> {
     match field.type_ref.target {
-        TypeRefTarget::Primitive(kind @ PrimitiveKind::SignedInteger) => {
-            inclusive_integral_domain(kind, &field.constraints)
-                .ok()
-                .flatten()
-        }
+        TypeRefTarget::Primitive(
+            kind @ (PrimitiveKind::SignedInteger | PrimitiveKind::UnsignedInteger),
+        ) => inclusive_integral_domain(kind, &field.constraints)
+            .ok()
+            .flatten(),
         _ => None,
     }
 }
@@ -552,7 +579,9 @@ mod tests {
     use super::*;
     use ams_gra_oms_ir::NumericValue;
     use ams_gra_oms_xsd_frontend::{load_schema_document, load_schema_set};
+    use std::fs;
     use std::path::Path;
+    use std::process::Command;
 
     fn track_schema() -> SchemaIr {
         load_schema_document(
@@ -625,6 +654,39 @@ mod tests {
         .expect("integral fixture should parse")
     }
 
+    fn full_integral_boundary_schema() -> SchemaIr {
+        let mut schema = integral_schema();
+        for declaration in &mut schema.types {
+            if declaration.name.local_name == "Signed_Bounded" {
+                declaration.constraints =
+                    integer_bounds(i128::from(i64::MIN), i128::from(i64::MAX));
+            }
+            if declaration.name.local_name == "Unsigned_Bounded" {
+                declaration.constraints = integer_bounds(0, i128::from(u64::MAX));
+            }
+            if let TypeKind::Record { fields } = &mut declaration.kind {
+                for field in fields {
+                    if field.name == "Byte_Value" {
+                        field.constraints =
+                            integer_bounds(i128::from(i64::MIN), i128::from(i64::MAX));
+                    }
+                    if field.name == "Unsigned_Byte_Value" {
+                        field.constraints = integer_bounds(0, i128::from(u64::MAX));
+                    }
+                }
+            }
+        }
+        schema
+    }
+
+    fn integer_bounds(min: i128, max: i128) -> ConstraintSet {
+        ConstraintSet {
+            min_inclusive: Some(NumericValue::Integer(min)),
+            max_inclusive: Some(NumericValue::Integer(max)),
+            ..ConstraintSet::default()
+        }
+    }
+
     #[test]
     fn lowers_integral_scalars_and_preserves_direct_ranges() {
         let source = generate(&integral_schema()).expect("integral scalars should generate");
@@ -636,6 +698,119 @@ mod tests {
         assert!(source.contains("struct TrueCase { bool value; };"));
         assert!(source.contains("class UnsignedBounded"));
         assert!(source.contains("class NamedBoolean"));
+    }
+
+    #[test]
+    fn renders_and_strictly_compiles_full_integral_boundaries() {
+        let source = generate(&full_integral_boundary_schema())
+            .expect("full i64/u64 domains should generate");
+        assert!(source.contains("#include <limits>"));
+        assert!(source.contains(
+            "static constexpr std::int64_t min_value = std::numeric_limits<std::int64_t>::min();"
+        ));
+        assert!(source.contains("static constexpr std::int64_t max_value = 9223372036854775807;"));
+        assert!(source.contains("static constexpr std::uint64_t min_value = 0;"));
+        assert!(source.contains(
+            "static constexpr std::uint64_t max_value = std::numeric_limits<std::uint64_t>::max();"
+        ));
+        assert!(source.contains("BoundedInteger<std::int64_t, std::numeric_limits<std::int64_t>::min(), 9223372036854775807> byte_value;"));
+        assert!(source.contains("BoundedInteger<std::uint64_t, 0, std::numeric_limits<std::uint64_t>::max()> unsigned_byte_value;"));
+        assert!(!source.contains("-9223372036854775808"));
+        assert!(!source.contains("18446744073709551615"));
+
+        let header_path = std::env::temp_dir().join(format!(
+            "ams-gra-oms-full-integral-boundaries-{}.hpp",
+            std::process::id()
+        ));
+        let source_path = header_path.with_extension("cpp");
+        fs::write(&header_path, source).expect("write generated C++ header");
+        fs::write(
+            &source_path,
+            format!("#include \"{}\"\n", header_path.display()),
+        )
+        .expect("write C++ translation unit");
+        let status = Command::new("c++")
+            .args([
+                "-std=c++17",
+                "-Wall",
+                "-Wextra",
+                "-pedantic-errors",
+                "-fsyntax-only",
+            ])
+            .arg(&source_path)
+            .status()
+            .expect("C++ compiler must be available");
+        fs::remove_file(&header_path).expect("remove generated C++ header");
+        fs::remove_file(&source_path).expect("remove C++ translation unit");
+        assert!(
+            status.success(),
+            "strict C++17 full-bound compile must succeed"
+        );
+    }
+
+    #[test]
+    fn rejects_unsupported_integral_semantics() {
+        let cases = [
+            (
+                "exclusive",
+                ConstraintSet {
+                    min_exclusive: Some(NumericValue::Integer(0)),
+                    ..ConstraintSet::default()
+                },
+                "exclusive, length, or lexical constraints",
+            ),
+            (
+                "lexical",
+                ConstraintSet {
+                    lexical: ams_gra_oms_ir::LexicalConstraintSet {
+                        pattern_groups: vec![ams_gra_oms_ir::PatternGroup {
+                            alternatives: vec![ams_gra_oms_ir::PatternExpression::xml_schema(
+                                "[0-9]+",
+                            )],
+                        }],
+                        white_space: None,
+                    },
+                    ..ConstraintSet::default()
+                },
+                "exclusive, length, or lexical constraints",
+            ),
+            (
+                "negative unsigned",
+                integer_bounds(-1, 1),
+                "negative or oversized unsigned range",
+            ),
+            (
+                "signed overflow",
+                integer_bounds(0, i128::from(i64::MAX) + 1),
+                "signed range outside i64",
+            ),
+        ];
+        for (label, constraints, diagnostic) in cases {
+            let mut schema = integral_schema();
+            let TypeKind::Record { fields } = &mut schema
+                .types
+                .iter_mut()
+                .find(|declaration| declaration.name.local_name == "Scalars")
+                .expect("integral fixture must contain Scalars")
+                .kind
+            else {
+                panic!("Scalars must remain a Record");
+            };
+            let field = fields
+                .iter_mut()
+                .find(|field| field.name == "Byte_Value")
+                .expect("integral fixture must contain Byte_Value");
+            field.constraints = constraints;
+            if label == "negative unsigned" {
+                field.type_ref = TypeRef::primitive(PrimitiveKind::UnsignedInteger);
+            }
+            let error = generate(&schema).expect_err("unsupported integral semantics must fail");
+            assert!(
+                error.message.contains(diagnostic),
+                "{label}: {}",
+                error.message
+            );
+        }
     }
 
     #[test]
