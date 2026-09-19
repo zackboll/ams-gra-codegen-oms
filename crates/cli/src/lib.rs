@@ -3,7 +3,7 @@
 use ams_gra_oms_backend_ada::AdaBackend;
 use ams_gra_oms_backend_cpp::CppBackend;
 use ams_gra_oms_backend_rust::RustBackend;
-use ams_gra_oms_codegen_core::{Backend, CoverageAnalysis, GeneratedFile};
+use ams_gra_oms_codegen_core::{Backend, CoverageAnalysis, GeneratedFile, GenerationWorld};
 use ams_gra_oms_xsd_frontend::load_schema_set;
 use std::collections::BTreeSet;
 use std::ffi::{OsStr, OsString};
@@ -18,8 +18,8 @@ Schema-driven OMS/UCI multi-language code generator.
 
 USAGE:
     ams-gra-codegen-oms validate --schema PATH
-    ams-gra-codegen-oms coverage --schema PATH
-    ams-gra-codegen-oms generate --schema PATH --language LANGUAGE --output DIR
+    ams-gra-codegen-oms coverage --schema PATH --world WORLD
+    ams-gra-codegen-oms generate --schema PATH --language LANGUAGE --output DIR --world WORLD
 
 COMMANDS:
     validate    Load and validate an XSD schema set
@@ -30,6 +30,28 @@ LANGUAGES:
     ada
     rust
     cpp
+
+GENERATION WORLDS:
+    'generate' and 'coverage' require --world. There is no default: the
+    semantic assumption about which types may legally exist must be stated by
+    you, because a complete schema *file* set does not prove a complete
+    *type* universe.
+
+    closed-schema       You assert the supplied schema set is the complete
+                        value-type universe. Known concrete descendants of an
+                        abstract value are exhaustive, so abstract values
+                        lower to closed sums, and an abstract value with zero
+                        known descendants is genuinely uninhabited.
+
+    open-extensions     External or private derived types may exist outside
+                        the supplied schema set. Known descendants are never
+                        assumed exhaustive, so every abstract structural
+                        value fails closed; no placeholder is invented.
+                        Abstract types used only as inheritance ancestry are
+                        unaffected.
+
+    'validate' takes no --world: schema validity is independent of generation
+    policy.
 
 OPTIONS:
     -h, --help       Print help
@@ -58,17 +80,29 @@ const GENERATE_HELP: &str = r#"ams-gra-codegen-oms generate
 Generate source files from an XSD schema set.
 
 USAGE:
-    ams-gra-codegen-oms generate --schema PATH --language LANGUAGE --output DIR
+    ams-gra-codegen-oms generate --schema PATH --language LANGUAGE --output DIR --world WORLD
 
 LANGUAGES:
     ada
     rust
     cpp
 
+WORLDS:
+    closed-schema       You assert the supplied schema set is the complete
+                        value-type universe: known concrete descendants of an
+                        abstract value are exhaustive (closed-sum lowering),
+                        and zero known descendants means uninhabited.
+
+    open-extensions     External derived abstract-value types may exist
+                        outside the supplied schema set; unsupported abstract
+                        values fail closed rather than being represented by a
+                        non-exhaustive closed sum.
+
 OPTIONS:
     -s, --schema PATH          Root XSD document
     -l, --language LANGUAGE    Required output language
     -o, --output DIR           Output directory
+    -w, --world WORLD          Required generation world policy
     -h, --help                 Print help
 "#;
 
@@ -77,10 +111,22 @@ const COVERAGE_HELP: &str = r#"ams-gra-codegen-oms coverage
 Report deterministic semantic IR inventory and backend coverage.
 
 USAGE:
-    ams-gra-codegen-oms coverage --schema PATH
+    ams-gra-codegen-oms coverage --schema PATH --world WORLD
+
+WORLDS:
+    closed-schema       Measure capability assuming the supplied schema set is
+                        the complete value-type universe.
+
+    open-extensions     Measure capability assuming external derived
+                        abstract-value types may exist; abstract structural
+                        values are not baseline-renderable.
+
+    The report states which world produced it, so saved evidence stays
+    unambiguous.
 
 OPTIONS:
     -s, --schema PATH    Root XSD document
+    -w, --world WORLD    Required generation world policy
     -h, --help           Print help
 "#;
 
@@ -161,6 +207,25 @@ impl Language {
     }
 }
 
+/// Parse the required `--world` value into the shared codegen-core policy.
+///
+/// The CLI owns the surface strings; the backends share one language-neutral
+/// [`GenerationWorld`]. Abbreviations such as `closed` or `open` are rejected
+/// deliberately: an ambiguous world assertion is exactly the failure mode this
+/// option exists to prevent.
+fn parse_world(value: &OsStr) -> Result<GenerationWorld, CliError> {
+    match value.to_str() {
+        Some("closed-schema") => Ok(GenerationWorld::ClosedSchemaSet),
+        Some("open-extensions") => Ok(GenerationWorld::OpenExtensions),
+        Some(value) => Err(CliError::usage(format!(
+            "unsupported generation world '{value}'; expected one of: closed-schema, open-extensions"
+        ))),
+        None => Err(CliError::usage(
+            "generation world must be valid UTF-8; expected one of: closed-schema, open-extensions",
+        )),
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Command {
     Help(&'static str),
@@ -170,11 +235,13 @@ enum Command {
     },
     Coverage {
         schema: PathBuf,
+        world: GenerationWorld,
     },
     Generate {
         schema: PathBuf,
         language: Language,
         output: PathBuf,
+        world: GenerationWorld,
     },
 }
 
@@ -191,12 +258,13 @@ where
         Command::Help(help) => write_output(stdout, help),
         Command::Version => write_output(stdout, concat!(env!("CARGO_PKG_VERSION"), "\n")),
         Command::Validate { schema } => validate(&schema, stdout),
-        Command::Coverage { schema } => coverage(&schema, stdout),
+        Command::Coverage { schema, world } => coverage(&schema, world, stdout),
         Command::Generate {
             schema,
             language,
             output,
-        } => generate(&schema, language, &output, stdout),
+            world,
+        } => generate(&schema, language, &output, world, stdout),
     }
 }
 
@@ -250,12 +318,17 @@ fn parse_coverage(args: Vec<OsString>) -> Result<Command, CliError> {
         return Ok(Command::Help(COVERAGE_HELP));
     }
     let mut schema = None;
+    let mut world = None;
     parse_options(args, |option, value| match option {
         "-s" | "--schema" => set_once(&mut schema, value, "--schema"),
+        "-w" | "--world" => set_once(&mut world, value, "--world"),
         _ => Err(CliError::usage(format!("unknown option '{option}'"))),
     })?;
     Ok(Command::Coverage {
         schema: required(schema, "--schema")?.into(),
+        // Required, with no fallback: coverage numbers are meaningless
+        // without knowing which type universe they measured.
+        world: parse_world(&required(world, "--world")?)?,
     })
 }
 
@@ -266,16 +339,21 @@ fn parse_generate(args: Vec<OsString>) -> Result<Command, CliError> {
     let mut schema = None;
     let mut language = None;
     let mut output = None;
+    let mut world = None;
     parse_options(args, |option, value| match option {
         "-s" | "--schema" => set_once(&mut schema, value, "--schema"),
         "-l" | "--language" => set_once(&mut language, value, "--language"),
         "-o" | "--output" => set_once(&mut output, value, "--output"),
+        "-w" | "--world" => set_once(&mut world, value, "--world"),
         _ => Err(CliError::usage(format!("unknown option '{option}'"))),
     })?;
     Ok(Command::Generate {
         schema: required(schema, "--schema")?.into(),
         language: Language::parse(&required(language, "--language")?)?,
         output: required(output, "--output")?.into(),
+        // Required, with no fallback: the caller must state the semantic
+        // assumption rather than inherit a silent closed-schema default.
+        world: parse_world(&required(world, "--world")?)?,
     })
 }
 
@@ -338,11 +416,15 @@ fn validate<W: Write>(schema_path: &Path, stdout: &mut W) -> Result<(), CliError
     )
 }
 
-fn coverage<W: Write>(schema_path: &Path, stdout: &mut W) -> Result<(), CliError> {
+fn coverage<W: Write>(
+    schema_path: &Path,
+    world: GenerationWorld,
+    stdout: &mut W,
+) -> Result<(), CliError> {
     let schema =
         load_schema_set(schema_path).map_err(|error| CliError::execution(error.to_string()))?;
-    let analysis =
-        CoverageAnalysis::new(&schema).map_err(|error| CliError::execution(error.to_string()))?;
+    let analysis = CoverageAnalysis::new(&schema, world)
+        .map_err(|error| CliError::execution(error.to_string()))?;
     let report = analysis
         .report()
         .map_err(|error| CliError::execution(error.to_string()))?;
@@ -353,6 +435,7 @@ fn generate<W: Write>(
     schema_path: &Path,
     language: Language,
     output_dir: &Path,
+    world: GenerationWorld,
     stdout: &mut W,
 ) -> Result<(), CliError> {
     let schema =
@@ -362,7 +445,7 @@ fn generate<W: Write>(
         .map_err(|error| CliError::execution(format!("invalid schema IR: {error}")))?;
     let files = language
         .backend()
-        .generate(&schema)
+        .generate(&schema, world)
         .map_err(|error| CliError::execution(error.to_string()))?;
     validate_generated_files(&files)?;
 
@@ -594,12 +677,18 @@ mod tests {
 
     #[test]
     fn parses_valid_coverage() {
-        assert_eq!(
-            parse(&["coverage", "--schema", "root.xsd"]).unwrap(),
-            Command::Coverage {
-                schema: "root.xsd".into()
-            }
-        );
+        for (text, world) in [
+            ("closed-schema", GenerationWorld::ClosedSchemaSet),
+            ("open-extensions", GenerationWorld::OpenExtensions),
+        ] {
+            assert_eq!(
+                parse(&["coverage", "--schema", "root.xsd", "--world", text]).unwrap(),
+                Command::Coverage {
+                    schema: "root.xsd".into(),
+                    world,
+                }
+            );
+        }
     }
 
     #[test]
@@ -609,24 +698,124 @@ mod tests {
             ("rust", Language::Rust),
             ("cpp", Language::Cpp),
         ] {
-            assert_eq!(
-                parse(&[
-                    "generate",
-                    "--schema",
-                    "root.xsd",
-                    "--language",
-                    name,
-                    "--output",
-                    "out",
-                ])
-                .unwrap(),
-                Command::Generate {
-                    schema: "root.xsd".into(),
-                    language,
-                    output: "out".into(),
-                }
+            for (text, world) in [
+                ("closed-schema", GenerationWorld::ClosedSchemaSet),
+                ("open-extensions", GenerationWorld::OpenExtensions),
+            ] {
+                assert_eq!(
+                    parse(&[
+                        "generate",
+                        "--schema",
+                        "root.xsd",
+                        "--language",
+                        name,
+                        "--output",
+                        "out",
+                        "--world",
+                        text,
+                    ])
+                    .unwrap(),
+                    Command::Generate {
+                        schema: "root.xsd".into(),
+                        language,
+                        output: "out".into(),
+                        world,
+                    }
+                );
+            }
+        }
+    }
+
+    /// Task 028 section 34: after this task there is no implicit world, so
+    /// omitting `--world` is a usage error (exit 2), not a silent
+    /// closed-schema run.
+    #[test]
+    fn requires_explicit_world_for_generate_and_coverage() {
+        assert_usage_error(&["coverage", "--schema", "root.xsd"], "--world");
+        assert_usage_error(
+            &[
+                "generate",
+                "--schema",
+                "root.xsd",
+                "--language",
+                "rust",
+                "--output",
+                "out",
+            ],
+            "--world",
+        );
+    }
+
+    /// Section 35: an abbreviated or unknown world must name the accepted
+    /// values rather than guessing which one the caller meant.
+    #[test]
+    fn rejects_invalid_world_values() {
+        for text in ["closed", "open", "foo", "ClosedSchemaSet", ""] {
+            let error = parse(&["coverage", "--schema", "root.xsd", "--world", text])
+                .expect_err("invalid world must be a usage error");
+            assert_eq!(error.exit_code(), 2, "world '{text}' must be usage error");
+            assert!(
+                error.to_string().contains("closed-schema")
+                    && error.to_string().contains("open-extensions"),
+                "world '{text}' error must list accepted values: {error}"
             );
         }
+    }
+
+    /// Section 36: duplicate `--world` flows through the existing
+    /// duplicate-option semantics rather than silently taking the last value.
+    #[test]
+    fn rejects_duplicate_world() {
+        assert_usage_error(
+            &[
+                "coverage",
+                "--schema",
+                "root.xsd",
+                "--world",
+                "closed-schema",
+                "--world",
+                "closed-schema",
+            ],
+            "duplicate option '--world'",
+        );
+        assert_usage_error(
+            &[
+                "generate",
+                "--schema",
+                "root.xsd",
+                "--language",
+                "rust",
+                "--output",
+                "out",
+                "--world",
+                "closed-schema",
+                "--world",
+                "open-extensions",
+            ],
+            "duplicate option '--world'",
+        );
+    }
+
+    /// Section 38: schema validity is independent of generation policy, so
+    /// `validate` neither requires nor accepts `--world`.
+    #[test]
+    fn validate_is_world_independent() {
+        assert_eq!(
+            parse(&["validate", "--schema", "root.xsd"]).unwrap(),
+            Command::Validate {
+                schema: "root.xsd".into()
+            }
+        );
+        assert_usage_error(
+            &[
+                "validate",
+                "--schema",
+                "root.xsd",
+                "--world",
+                "closed-schema",
+            ],
+            "unknown option '--world'",
+        );
     }
 
     #[test]
@@ -875,6 +1064,8 @@ mod tests {
                     OsString::from("coverage"),
                     OsString::from("--schema"),
                     schema.clone().into(),
+                    OsString::from("--world"),
+                    OsString::from("closed-schema"),
                 ],
                 &mut stdout,
             )
@@ -885,6 +1076,33 @@ mod tests {
         assert_eq!(first, invoke());
         assert!(first.contains("declarations.total: 3"));
         assert!(first.contains("backend coverage\nAda:"));
+        // Section 59: the report names the world that produced it.
+        assert!(first.starts_with("generation world: closed-schema\n"));
+    }
+
+    /// Section 59, open variant: the same schema reported under the other
+    /// world must be self-describing too, so saved evidence files can never be
+    /// confused with each other.
+    #[test]
+    fn coverage_report_states_open_world() {
+        let schema = fixture("tests/fixtures/codegen-order/root.xsd");
+        let mut stdout = Vec::new();
+        run(
+            vec![
+                OsString::from("coverage"),
+                OsString::from("--schema"),
+                schema.into(),
+                OsString::from("--world"),
+                OsString::from("open-extensions"),
+            ],
+            &mut stdout,
+        )
+        .unwrap();
+        assert!(
+            String::from_utf8(stdout)
+                .unwrap()
+                .starts_with("generation world: open-extensions\n")
+        );
     }
 
     #[test]
@@ -921,6 +1139,8 @@ mod tests {
                 OsString::from("rust"),
                 OsString::from("--output"),
                 output.clone().into(),
+                OsString::from("--world"),
+                OsString::from("closed-schema"),
             ],
             &mut Vec::new(),
         )
@@ -960,6 +1180,8 @@ mod tests {
                     OsString::from(language),
                     OsString::from("--output"),
                     output.0.clone().into(),
+                    OsString::from("--world"),
+                    OsString::from("closed-schema"),
                 ],
                 &mut stdout,
             )
@@ -968,6 +1190,45 @@ mod tests {
             assert_eq!(
                 fs::read_to_string(output.0.join(generated_path)).unwrap(),
                 fs::read_to_string(fixture(golden_path)).unwrap()
+            );
+        }
+    }
+
+    /// Task 028 section 44: the world policy must not churn unrelated
+    /// generated code. This fixture has no abstract value reference, so both
+    /// worlds must produce byte-identical output for every backend.
+    #[test]
+    fn concrete_only_schema_output_is_world_independent() {
+        let schema = fixture("tests/fixtures/codegen-order/root.xsd");
+        for (language, generated_path) in [
+            ("ada", "example-order.ads"),
+            ("rust", "order.rs"),
+            ("cpp", "order.hpp"),
+        ] {
+            let rendered = ["closed-schema", "open-extensions"].map(|world| {
+                let output = TempDir::new();
+                run(
+                    vec![
+                        OsString::from("generate"),
+                        OsString::from("--schema"),
+                        schema.clone().into(),
+                        OsString::from("--language"),
+                        OsString::from(language),
+                        OsString::from("--output"),
+                        output.0.clone().into(),
+                        OsString::from("--world"),
+                        OsString::from(world),
+                    ],
+                    &mut Vec::new(),
+                )
+                .unwrap_or_else(|error| {
+                    panic!("{language} generation under {world} must succeed: {error}")
+                });
+                fs::read_to_string(output.0.join(generated_path)).unwrap()
+            });
+            assert_eq!(
+                rendered[0], rendered[1],
+                "{language} output must be byte-identical across worlds"
             );
         }
     }

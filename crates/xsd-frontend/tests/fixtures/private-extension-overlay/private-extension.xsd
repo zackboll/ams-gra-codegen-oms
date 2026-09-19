@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:private-extension-overlay"
+           targetNamespace="urn:private-extension-overlay"
+           elementFormDefault="qualified">
+  <!-- The private half: a derived type an adopting program would supply from
+       its own, non-public schema. Including it in the generation schema set is
+       what lets closed-schema lowering produce a usable closed sum. -->
+  <xs:complexType name="PrivateExtension">
+    <xs:complexContent>
+      <xs:extension base="t:ExtensionBase">
+        <xs:sequence>
+          <xs:element name="PrivateCode" type="xs:string"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+</xs:schema>

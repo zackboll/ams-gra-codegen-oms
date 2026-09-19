@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:public-only-repeated-extension"
+           targetNamespace="urn:public-only-repeated-extension"
+           elementFormDefault="qualified">
+  <!-- Task 028 section 48: the same public base WITHOUT the private overlay.
+       The 0..unbounded abstract value has zero known descendants.
+
+       closed-schema: still unsupported. Task 026 supported only the optional
+       0..1 absent-only shape, and Task 028 deliberately does NOT extend that
+       to an always-empty repeated collection.
+
+       open-extensions: also unsupported, but for the open abstract-value
+       reason rather than the zero-descendant reason. -->
+  <xs:complexType name="ExtensionBase" abstract="true">
+    <xs:sequence>
+      <xs:element name="Label" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Container">
+    <xs:sequence>
+      <xs:element name="Name" type="xs:string"/>
+      <xs:element name="ExtensionCommand" type="t:ExtensionBase"
+                  minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

@@ -1,7 +1,8 @@
 # ADR-0004: Treat UCI Zero-Descendant Abstract Types as Open Extension Points
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-09-19
+- Accepted: 2026-09-20 (Task 028)
 
 ## Context
 
@@ -113,7 +114,41 @@ as the preferred route to real open-extension support. Defer option 3 until
 Phase 3 runtime and codec work exists. Revisit if a pinned UCI specification
 document or a pinned CAL 2.5/2.6 interface becomes available.
 
-This ADR is **Proposed**, not Accepted: it records an evidence-backed direction,
-and no representation has been implemented. Per repository convention (see
-ADR-0003, "Accepted for bootstrap"), a status is only raised once the
-corresponding decision is actually in force in the codebase.
+## Status: Accepted (Task 028)
+
+Task 028 puts this decision into force, so the status moves from **Proposed** to
+**Accepted** under the repository convention that a status is only raised once
+the decision is actually in effect in the codebase.
+
+What "Accepted" means here:
+
+- open extensions are recognised as a **semantic possibility**, not a
+  hypothesis: the generator now carries a language-neutral
+  `GenerationWorld` policy with `ClosedSchemaSet` and `OpenExtensions`
+  variants (recommended option 2);
+- closed-schema assumptions are **explicit**: `generate` and `coverage` require
+  `--world`, with no implicit default, so Task 024 closed sums and Task 026
+  optional elision now only apply where a caller has actually asserted
+  type-universe completeness;
+- open mode **fails closed**: every abstract structural value position is
+  rejected with a diagnostic that names the target and the policy, and no
+  placeholder value is invented;
+- option 4 is **validated**: a same-target-namespace private-extension overlay
+  fixture shows that supplying the private derived-type schema in the
+  generation schema set makes ordinary Task 024 lowering apply with no new code.
+
+What "Accepted" does **not** mean:
+
+- no runtime open-extension representation exists. Option 3
+  (runtime-polymorphic extension interface) remains deferred to Phase 3 runtime
+  and codec work;
+- `SourceCommandEXT`'s repeated occurrence is still fail-closed under both
+  worlds; no always-empty collection lowering was added;
+- there is still no extension registry runtime, no `xsi:type` handling, no
+  codec, and no multi-namespace private-extension support.
+
+Selecting `--world open-extensions` therefore does not make more schemas
+generate; it makes the generator *stop pretending* that the supplied descendant
+set is exhaustive. It is the honest mode, and it is deliberately more
+restrictive than `--world closed-schema` until a real runtime representation
+exists.

@@ -398,12 +398,25 @@ generated value model only carries semantic bytes.
 ## 13. Uninhabited values generate no storage
 
 An abstract structural declaration with zero concrete structural descendants in
-the current closed schema set is *uninhabited*: no legal payload for it can be
-constructed. Task 026 makes this a first-class classification
-(`AbstractValueInhabitance::Uninhabited`) distinct from schema invalidity — a
-well-formed schema may legitimately declare an abstract extension point that
-nothing extends yet, and a later schema set that adds one concrete descendant
-reclassifies the same declaration as `Inhabited` with no code change.
+the supplied schema set has no *known* payload. Task 026 makes this a
+first-class classification distinct from schema invalidity — a well-formed
+schema may legitimately declare an abstract extension point that nothing extends
+yet, and a later schema set that adds one concrete descendant reclassifies the
+same declaration with no code change.
+
+Task 028 splits this into two deliberately separate layers so that an objective
+fact is never confused with a policy interpretation:
+
+- `AbstractValueInhabitance::NoKnownConcreteDescendants` is the **objective**
+  topology of the supplied schema set. It states only what was loaded, and makes
+  no claim about what may legally exist. (It was previously named
+  `Uninhabited`, which silently embedded a closed-world reading.)
+- `AbstractValueSemantics::NoLegalPayload` is the **world-interpreted**
+  conclusion, reached only when the caller has asserted
+  `GenerationWorld::ClosedSchemaSet`. Under `OpenExtensions` the same topology
+  yields `OpenUnrepresentable` instead.
+
+The rest of this section describes `ClosedSchemaSet` behaviour; see Section 15.
 
 The consequence for lowering is that an *optional* occurrence of an uninhabited
 value has exactly one legal state: absence. Storage for it would be a field that
@@ -460,9 +473,83 @@ supplied outside the open schema, and neither root ever uses `block` or `final`
 to close them. See `docs/task-027-open-extension-points.md`.
 
 The consequence for Section 13 is a scoping statement, not a correction: the
-uninhabitance rule is valid under an assumed **closed type universe**, which the
-generator currently assumes implicitly rather than declares. Making that world
-model explicit — and language-neutral, so no backend can disagree about which
-values exist — is the recommended eventual direction. Nothing is implemented for
-it yet, and occurrence shapes other than the optional one continue to fail
-closed in the meantime.
+uninhabitance rule is valid under an assumed **closed type universe**. Task 028
+turns that assumption into a declared, language-neutral policy; see Section 15.
+
+## 15. Generation world
+
+Because schema-set closure does not imply type-universe closure (Section 14),
+and because the schema carries no machine-readable discriminator that would let
+the generator tell an open extension point from an ordinary abstract type, the
+generator does not decide the question at all. The **caller** states it, through
+one language-neutral policy in `codegen-core`:
+
+```text
+GenerationWorld::ClosedSchemaSet
+GenerationWorld::OpenExtensions
+```
+
+`ClosedSchemaSet` means: the caller asserts that the supplied `SchemaIr`
+contains every concrete type that may legally inhabit an abstract value.
+`OpenExtensions` means: additional concrete derived types may exist outside it.
+
+This is a **generator policy, not source-schema semantics**. It is never stored
+in `SchemaIr`, and it is never inferred — not from the absence of imports, not
+from namespace count, not from `uci:version`, not from type names, and not from
+documentation text. Task 027 demonstrated that none of those is a reliable
+discriminator. Loading a complete, self-consistent schema set does not prove
+`ClosedSchemaSet`; only the caller can assert it.
+
+The policy is language-neutral by construction. Ada, Rust, and C++ share the one
+enum and must not define their own; a per-backend world would let the three
+languages disagree about which values exist, which is a semantic question, not a
+rendering question.
+
+### How the world affects each stage
+
+- **Abstract-value projection.** `abstract_value_projection_for_ref` takes the
+  world. Closed-world behaviour is exactly Task 024. Open-world, *every*
+  abstract structural value reference is rejected with
+  `NotClosedUnderOpenExtensions`, regardless of whether the target has zero,
+  one, or many known descendants — a known descendant set is never assumed
+  exhaustive.
+- **Task 024 closed sums.** Emitted only under `ClosedSchemaSet`. Descendant
+  ordering, concrete non-leaf inclusion, abstract intermediate exclusion,
+  emission order, and the recursive fail-closed boundary are unchanged.
+- **Task 026 optional elision.** Applies only under `ClosedSchemaSet`. Under
+  `OpenExtensions`, `field_storage_semantics` never returns `AbsentOnly` merely
+  because a target has zero known descendants: an external derived type may
+  legally make the field present, so eliding its storage would silently lose
+  data. Task 028 did **not** extend elision to repeated always-empty
+  collections in either world.
+- **Emission planning.** `plan_type_emissions(schema, world)` is defensive: if
+  an abstract value target is actually demanded under `OpenExtensions` it fails
+  rather than constructing a closed wrapper, even though backend validation
+  normally rejects first.
+- **Coverage.** `CoverageAnalysis::new(schema, world)` stores the world once and
+  computes every policy-dependent index once, so measurement stays linear.
+  Under `OpenExtensions` no target is fully elided and no closed sum is baseline
+  capability, so fully-renderable declarations and message closures drop; the
+  `StructuralInheritanceAndAbstract` family still models the *hypothetical*
+  future capability, which in the open world explicitly means runtime
+  polymorphism that no backend implements. Coverage reports name the world that
+  produced them.
+- **Diagnostics.** The open-world rejection names the target and the policy,
+  does not claim the schema is invalid, and suggests no placeholder. It is
+  deterministic and identical across all three backends.
+
+### What the world does *not* affect
+
+Abstract declarations used only as inheritance ancestry are untouched: a
+concrete type extending an abstract base still has a known effective field
+layout, so Task 018 record flattening applies identically in both worlds. Only
+abstract **value** positions are policy-sensitive. A schema with no abstract
+value reference generates byte-identical output under either world.
+
+Selecting `OpenExtensions` therefore never unlocks more generation than
+`ClosedSchemaSet`; it is strictly more conservative. It exists so the generator
+can be honest about an assumption it cannot verify, and so that a future
+runtime-polymorphic representation has an explicit place to attach. Today, the
+supported route to generating a real extension point is to supply the private
+derived-type schema in the generation schema set (same target namespace) and
+assert `ClosedSchemaSet`.

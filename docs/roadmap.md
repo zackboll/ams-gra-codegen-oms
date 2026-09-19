@@ -52,28 +52,42 @@ Every newly supported feature receives an IR fixture and equivalent backend test
 
 ### Open extension-point representation / externally supplied derived types
 
-Not started. Task 027 established from the pinned UCI 2.5/2.6 schemas that the
+Partially complete. Task 027 established from the pinned UCI 2.5/2.6 schemas that the
 13 zero-known-descendant abstract types (`SourceCommandEXT`, `ConstraintEXT`,
 `OpNotificationEXT`, and the ten `CommSupport*EXT` types) are documented **open
 extension points**, not uninhabited values: their concrete descendants are
 supplied by schemas outside the open, unclassified UCI schema set. See
 `docs/task-027-open-extension-points.md`.
 
-Scope of the eventual work:
+**Complete (Task 028):**
 
-- make the generator's world model explicit (closed schema set versus open
-  extensions) as a language-neutral `codegen-core` policy, so Task 026's
-  optional-value elision is attributable to a declared assumption;
-- support externally supplied derived extension types, preferentially by
-  accepting private extension schemas into the schema set so existing closed-sum
-  lowering applies unchanged;
-- decide the representation for extension values whose derived types are *not*
-  known at generation time; this depends on Phase 3 runtime/codec work and must
-  not be decided before it.
+- the generator's world model is explicit: a language-neutral
+  `codegen-core::GenerationWorld` policy with `ClosedSchemaSet` and
+  `OpenExtensions`, surfaced as a **required** `--world` option on `generate`
+  and `coverage` with no implicit default. Task 024 closed sums and Task 026
+  optional elision are now attributable to a declared caller assumption rather
+  than a hidden one, and open mode fails closed on every abstract structural
+  value. ADR-0004 moved Proposed → Accepted;
+- supplying private derived-type schemas in the generation schema set is
+  validated end to end for the **same target namespace**: a private-extension
+  overlay fixture closes the extension point and lowers through ordinary
+  Task 024 closed sums with no new code.
 
-Until then `SourceCommandEXT`'s `0..unbounded` occurrence stays fail-closed. No
-name-based (`EXT` suffix) heuristic may be used; the schema contains no reliable
-machine-readable discriminator for extension points.
+**Still open:**
+
+- representation for extension values whose derived types are *not* known at
+  generation time (arbitrary external derived types); this depends on Phase 3
+  runtime/codec work and must not be decided before it;
+- an extension registry / runtime, including `xsi:type` handling;
+- multi-namespace private-extension support, if a private derived type must
+  live in a different target namespace than its base — current backends still
+  require a single namespace;
+- CAL codec and runtime polymorphism.
+
+`SourceCommandEXT`'s `0..unbounded` occurrence stays fail-closed in **both**
+worlds: Task 028 deliberately did not adopt an always-empty repeated-value rule.
+No name-based (`EXT` suffix) heuristic may be used; the schema contains no
+reliable machine-readable discriminator for extension points.
 
 ## Phase 3 — Typed LA-CAL integration
 

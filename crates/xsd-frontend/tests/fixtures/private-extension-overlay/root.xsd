@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:private-extension-overlay"
+           targetNamespace="urn:private-extension-overlay"
+           elementFormDefault="qualified">
+  <!-- Task 028 sections 45-47: a same-target-namespace private extension
+       overlay, validating ADR-0004 option 3 ("prefer supplying private
+       derived-type schemas as part of the generation schema set").
+
+       The public base document declares an open-ended extension point; the
+       private document supplies one derived type. Both are xs:include'd into
+       the same target namespace, so this needs no new frontend capability and
+       no multi-namespace backend support.
+
+       Deliberately generic names: no UCI identifier and no EXT suffix appears,
+       so no production logic can key on naming. -->
+  <xs:include schemaLocation="public-base.xsd"/>
+  <xs:include schemaLocation="private-extension.xsd"/>
+</xs:schema>
