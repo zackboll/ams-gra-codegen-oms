@@ -407,11 +407,19 @@ fn render_unbounded_helper(
     let field_name = ada_identifier(&field.name)?;
     let helper_name = format!("{owner}_{field_name}");
     let item_type = ada_field_base(field)?;
+    let equality = if matches!(
+        field.type_ref.target,
+        TypeRefTarget::Primitive(PrimitiveKind::UnsignedInteger)
+    ) {
+        ", \"=\" => Interfaces.\"=\""
+    } else {
+        ""
+    };
     writeln!(
         output,
         "   subtype {helper_name}_Item is {item_type};\n\
          \x20  package {helper_name}_Vectors is new Ada.Containers.Vectors\n\
-         \x20     (Index_Type => Natural, Element_Type => {helper_name}_Item);\n\
+         \x20     (Index_Type => Natural, Element_Type => {helper_name}_Item{equality});\n\
          \x20  subtype {helper_name}_Sequence is {helper_name}_Vectors.Vector;\n"
     )
     .expect("writing to String cannot fail");
