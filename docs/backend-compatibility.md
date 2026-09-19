@@ -539,6 +539,112 @@ Unbounded positive minima are only 1, 2, and 3. The former Ada blocker,
 non-nillable, default constraints), now lowers successfully. All three
 backends next stop at abstract structural value reference `CapabilityCommandBaseType`.
 
+
+## Task 024 — closed abstract structural values
+
+Task 024 adds a schema-neutral closed-value projection for an abstract
+structural declaration used in a value position. Only Record fields, Choice
+alternatives, message payloads, and naturally represented Alias/List targets
+are value uses; `base_type` ancestry alone never creates a wrapper. Every
+concrete transitive structural descendant becomes a variant in deterministic
+Schema IR order. Concrete non-leaf descendants are included and abstract
+intermediates are excluded.
+
+Rust emits an enum whose payloads are concrete values; C++ emits a struct
+containing `std::variant`; Ada emits a discriminated record. These are closed,
+schema-known sums: no trait objects, vtables, classwide access values, owning
+pointers, or heap fallback are introduced. Existing optional and repeated
+cardinality lowerings compose with the wrapper value unchanged. Rust derives
+`Eq` only when every concrete payload is Eq-capable.
+
+The shared generated-entity plan orders concrete descendants before their
+wrapper and wrappers before by-value consumers. Flattened structural inheritance
+is deliberately not a generated containment edge. Backends validate semantic
+uses before planning all generated entities, preserving deterministic first
+diagnostics when a later target is unsupported.
+
+`CapabilityCommandBaseType` is first used by
+`ActivityChoiceType.CapabilityCommand` as a required, non-nillable Choice
+alternative in both roots (2.5 line 6752; 2.6 line 6763). Its closed projection
+contains 24 concrete descendants in 2.5 and 23 in 2.6; the
+`RF_SharedApertureCapabilityCommandBaseType` abstract intermediate is not a
+variant. All three post-change UCI 2.5 generators move past it and next reject
+the unrelated Binary primitive. All three UCI 2.6 generators move past it and
+next reject `CommSupportPointingActivityEXT`, a genuine abstract value target
+with no concrete descendants. Empty projections and recursive by-value graphs
+remain fail-closed; no empty sum is generated.
+
+`CommSupportCapabilityEXT` is also a genuine later value target, not base-only:
+it is the optional `CommSupportCapabilityType.ExtensionData` Record field
+(2.5 line 20531; 2.6 line 20540), has no descendants, and therefore remains a
+valid fail-closed boundary when reached. `StructuralInheritanceAndAbstract` now
+denotes remaining unsupported structural/abstract cases such as empty or
+recursive closed sums, rather than ordinary acyclic abstract values.
+
+Both authoritative roots contain 70 abstract declarations and 52 distinct
+abstract value targets (15 Choice alternatives and 43 Record fields; no message
+payload or List uses). Each has 29 acyclic targets, 13 zero-descendant targets,
+and 10 targets whose generated-value closure reaches recursion. The zero-target
+names are `CommSupportCapabilityEXT`, `CommSupportCapabilityStatusEXT`,
+`CommSupportCommandEXT`, `CommSupportCommandStatusEXT`,
+`CommSupportPlanningStatusEXT`, `CommSupportPointingActivityEXT`,
+`CommSupportPointingEXT`, `CommSupportStatusEXT`, `CommSupportTaskEXT`,
+`CommSupportWindowEXT`, `ConstraintEXT`, `OpNotificationEXT`, and
+`SourceCommandEXT`. Concrete-descendant counts have maximum depth five; the
+largest families contain 722 (2.5) / 725 (2.6) descendants. The complete count
+distribution is `0:13, 1:12, 2:5, 3:7, 5:2, 6:2, 7:3, 8:1, 13:1, 22:1,
+24/23:1, 32:1, 33:1, 74:1, 722/725:1`.
+
+Fresh coverage completed without a fatal cycle. Relative to the Task 024
+baseline, declaration kinds, field types, occurrences, and message closures
+are unchanged. Fully renderable declarations are Ada `2761 -> 2754`, Rust/C++
+`5273 -> 5332` for UCI 2.5, and Ada `2762 -> 2755`, Rust/C++ `5298 -> 5357`
+for UCI 2.6; message closures remain `0/722` and `0/725` because unrelated
+transitive capabilities remain unsupported. Recursive descendant requirements
+can make a wrapper non-baseline-renderable in coverage even when ordered backend
+validation progresses past an earlier use before global planning is reached.
+
+The Ada net change is gross membership churn, not seven lost capabilities, and
+is identical in 2.5 and 2.6. Fifteen formerly counted abstract wrappers are now
+excluded: `CapabilityBaseType`, `CommWaveformActivityCommandPET`,
+`CommWaveformActivityPET`, `CommWaveformCapabilityCommandPET`,
+`ComponentExtendedStatusPET`, `DataLinkIdentifierPET`,
+`DataLinkNativeFilterPET`, `DataLinkNativeInfoPET`,
+`GatewayConfigurationPET`, `GatewayNativeStatisticsPET`,
+`NITF_PackingPlanPET`, `ProcessingParametersPET`,
+`STANAG_4607_PackingPlanPET`, `SubsystemExtendedStatusPET`, and
+`SupportCapabilityCommandBaseType`. Each is abstract, has a non-empty direct
+concrete-descendant projection, and is now correctly non-renderable because at
+least one concrete descendant has an unsupported abstract-value closure. These
+are unsupported-descendant topology corrections (not empty or directly
+recursive wrappers). The previous Ada backend already rejected effective
+abstract Record/Choice value references, so the former coverage count was an
+overcount rather than generated Ada capability.
+
+Eight concrete consumers are newly renderable in both releases:
+`AssessmentRequestType` (`AchievabilityAssessmentRequestPET`, 3 variants),
+`AssessmentType` (`AchievabilityAssessmentPET`, 3), `DataUpdateRequestType`
+(`QuerySpecificDataPET`, 5), `EntityMetadataMDT` (`EntityMetadataPET`, 1),
+`OpPointReferenceType` (`DataLinkIdentifierPET`, 8), `OpZoneCategoryType`
+(`OpZoneFilterAreaPET`, 3), `OrderOfBattleML` (`RecordDRLE`, 22), and
+`SystemMetadataMDT` (`SystemMetadataPET`, 1). These are actual acyclic
+closed-sum gains: their required occurrence forms and concrete descendant
+closures are renderable. Thus Ada is `15 removed - 8 added = net -7`; Rust and
+C++ gain 59 declarations because their existing cardinality support lets the
+same 29 acyclic wrappers and a larger set of downstream consumers become
+renderable. Neither analysis treats every abstract declaration as supported.
+
+The normalized Schema IR remains valid for recursive polymorphic families. For
+example, the generated closed-value graph contains
+`SubsystemMaintenanceTestCommandPET -> SubsystemMaintenanceTestCommandType ->
+SubsystemMaintenanceSubtestCommandChoiceType ->
+SubsystemMaintenanceTestCommandPET`: the first edge is the wrapper's virtual
+concrete-variant edge, while the latter two are effective member references.
+This requires indirection for a finite generated representation, which Task 024
+does not add. The wrapper is baseline unsupported and generation fails closed
+when it is demanded; coverage classifies and inventories this representation
+boundary while continuing the full report. Raw Schema IR dependency-cycle
+diagnostics remain unchanged.
 Measured Ada coverage moved from declarations `2422 -> 2761` and field
 occurrences `7573 -> 8211` in UCI 2.5, and `2421 -> 2762` plus
 `7591 -> 8231` in UCI 2.6. Declaration kinds, field types, and message
