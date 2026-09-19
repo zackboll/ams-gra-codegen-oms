@@ -385,3 +385,12 @@ It may be serialized for:
 - generator reproducibility.
 
 But it is not a wire format and is not an application-level IDL.
+
+## 12. Binary semantic values are owned octet sequences
+
+Task 025 lowers unconstrained `PrimitiveKind::Binary` as an owned sequence of
+octets in each backend (Rust `Vec<u8>`, C++ `std::vector<std::uint8_t>`, Ada
+`Interfaces.Unsigned_8`-element vector), never as a hexadecimal or base64
+lexical string. Lexical encodings — hex, base64, JSON, XML, CAL wire framing —
+belong to future codec layers that this generator does not yet produce; the
+generated value model only carries semantic bytes.

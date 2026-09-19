@@ -241,6 +241,10 @@ fn render_declaration(
             reject_any_constraints(&declaration.constraints, &name)?;
             writeln!(output, "class {name} {{\npublic:\n    explicit {name}(double value) noexcept : value_(value) {{}}\n    double value() const noexcept {{ return value_; }}\nprivate:\n    double value_;\n}};\n").expect("writing to String cannot fail");
         }
+        TypeKind::Primitive(PrimitiveKind::Binary) => {
+            reject_any_constraints(&declaration.constraints, &name)?;
+            writeln!(output, "class {name} {{\npublic:\n    explicit {name}(std::vector<std::uint8_t> value) : value_(std::move(value)) {{}}\n    const std::vector<std::uint8_t>& value() const noexcept {{ return value_; }}\nprivate:\n    std::vector<std::uint8_t> value_;\n}};\n").expect("writing to String cannot fail");
+        }
         TypeKind::Enumeration { variants } => {
             if variants.is_empty() {
                 return unsupported(format!("empty enumeration {name}"));
@@ -344,6 +348,11 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
                 "floating constraints on {}",
                 declaration.name.local_name
             ));
+        }
+        if matches!(declaration.kind, TypeKind::Primitive(PrimitiveKind::Binary))
+            && declaration.constraints != ConstraintSet::default()
+        {
+            return unsupported(format!("constraints on {}", declaration.name.local_name));
         }
         reject_extra_constraints(&declaration.constraints, &declaration.name.local_name)?;
         if matches!(declaration.kind, TypeKind::Record { .. }) {
@@ -461,6 +470,9 @@ fn cpp_type(type_ref: &TypeRef) -> Result<String, CodegenError> {
         TypeRefTarget::Primitive(PrimitiveKind::Float32) => Ok("float".to_owned()),
         TypeRefTarget::Primitive(PrimitiveKind::Float64) => Ok("double".to_owned()),
         TypeRefTarget::Primitive(PrimitiveKind::String) => Ok("std::string".to_owned()),
+        TypeRefTarget::Primitive(PrimitiveKind::Binary) => {
+            Ok("std::vector<std::uint8_t>".to_owned())
+        }
         TypeRefTarget::Named(name) => upper_camel(&name.local_name),
         other => unsupported(format!("type reference {other:?}")),
     }
@@ -696,6 +708,14 @@ mod tests {
                 .join("../xsd-frontend/tests/fixtures/backend-float-only.xsd"),
         )
         .expect("float-only fixture should parse")
+    }
+
+    fn binary_only_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-binary-only.xsd"),
+        )
+        .expect("binary-only fixture should parse")
     }
 
     fn inheritance_schema() -> SchemaIr {
@@ -947,6 +967,44 @@ mod tests {
     }
 
     #[test]
+    fn binary_only_schema_includes_and_strictly_compiles() {
+        let source = generate(&binary_only_schema()).expect("binary-only schema should generate");
+        assert!(source.contains("#include <cstdint>"));
+        assert!(source.contains("#include <vector>"));
+        assert!(source.contains("std::vector<std::uint8_t> payload;"));
+        assert!(!source.contains("#include <climits>"));
+
+        let header_path = std::env::temp_dir().join(format!(
+            "ams-gra-oms-binary-only-{}.hpp",
+            std::process::id()
+        ));
+        let source_path = header_path.with_extension("cpp");
+        fs::write(&header_path, source).expect("write generated C++ header");
+        fs::write(
+            &source_path,
+            format!("#include \"{}\"\n", header_path.display()),
+        )
+        .expect("write C++ translation unit");
+        let status = Command::new("c++")
+            .args([
+                "-std=c++17",
+                "-Wall",
+                "-Wextra",
+                "-pedantic-errors",
+                "-fsyntax-only",
+            ])
+            .arg(&source_path)
+            .status()
+            .expect("C++ compiler must be available");
+        fs::remove_file(&header_path).expect("remove generated C++ header");
+        fs::remove_file(&source_path).expect("remove C++ translation unit");
+        assert!(
+            status.success(),
+            "strict C++17 binary-only compile must succeed"
+        );
+    }
+
+    #[test]
     fn non_floating_schema_does_not_emit_floating_guards() {
         let source = generate(&track_schema()).expect("track schema should generate");
         assert!(!source.contains("OMS Float32 requires"));
@@ -1104,6 +1162,24 @@ mod tests {
     }
 
     #[test]
+    fn binary_composes_with_abstract_closed_sum() {
+        let mut schema = abstract_value_schema();
+        let base = schema
+            .types
+            .iter_mut()
+            .find(|declaration| declaration.name.local_name == "Base")
+            .expect("abstract fixture should contain Base");
+        let TypeKind::Record { fields } = &mut base.kind else {
+            panic!("Base must be a Record");
+        };
+        fields[0].type_ref = TypeRef::primitive(PrimitiveKind::Binary);
+        let source = generate(&schema).expect("abstract closed sum with binary field must lower");
+        assert!(source.contains("struct Base {\n    std::variant<"));
+        assert!(source.contains("struct Derived {"));
+        assert!(source.contains("std::vector<std::uint8_t>"));
+    }
+
+    #[test]
     fn lowers_abstract_value_references_and_retains_choice_boundary() {
         let source =
             generate(&abstract_value_schema()).expect("closed abstract value should lower");
@@ -1205,6 +1281,63 @@ mod tests {
         };
         let error = generate(&schema).expect_err("constrained float must remain unsupported");
         assert!(error.message.contains("unsupported C++ IR construct"));
+    }
+
+    #[test]
+    fn lowers_unconstrained_binary_direct_field_and_named_declaration() {
+        let mut schema = floating_schema();
+        let TypeKind::Record { fields } = &mut schema.types[0].kind else {
+            panic!("floating fixture should contain a record");
+        };
+        fields.truncate(1);
+        fields[0].type_ref = TypeRef::primitive(PrimitiveKind::Binary);
+        let source = generate(&schema).expect("unconstrained binary generation must succeed");
+        assert!(source.contains("std::vector<std::uint8_t>"));
+
+        let mut schema = track_schema();
+        schema.types[0].kind = TypeKind::Primitive(PrimitiveKind::Binary);
+        schema.types[0].constraints = ConstraintSet::default();
+        let source = generate(&schema).expect("unconstrained named binary must generate");
+        assert!(source.contains(
+            "explicit TrackId(std::vector<std::uint8_t> value) : value_(std::move(value)) {}"
+        ));
+        assert!(source.contains("const std::vector<std::uint8_t>& value() const noexcept"));
+    }
+
+    #[test]
+    fn binary_declaration_with_constraints_remains_unsupported() {
+        let mut schema = track_schema();
+        schema.types[0].kind = TypeKind::Primitive(PrimitiveKind::Binary);
+        schema.types[0].constraints = ConstraintSet {
+            length: Some(4),
+            ..ConstraintSet::default()
+        };
+        let error = generate(&schema).expect_err("constrained binary declaration must fail");
+        assert!(
+            error
+                .message
+                .contains("unsupported C++ IR construct: constraints on")
+        );
+    }
+
+    #[test]
+    fn binary_field_with_constraints_remains_unsupported() {
+        let mut schema = floating_schema();
+        let TypeKind::Record { fields } = &mut schema.types[0].kind else {
+            panic!("floating fixture should contain a record");
+        };
+        fields.truncate(1);
+        fields[0].type_ref = TypeRef::primitive(PrimitiveKind::Binary);
+        fields[0].constraints = ConstraintSet {
+            length: Some(4),
+            ..ConstraintSet::default()
+        };
+        let error = generate(&schema).expect_err("constrained binary field must fail");
+        assert!(
+            error
+                .message
+                .contains("unsupported C++ IR construct: field constraints on")
+        );
     }
 
     #[test]

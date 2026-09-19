@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema:schema xmlns:schema="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:example:oms:binary-only">
+  <schema:complexType name="BinaryOnly"><schema:sequence>
+    <schema:element name="Payload" type="schema:hexBinary"/>
+  </schema:sequence></schema:complexType>
+</schema:schema>
