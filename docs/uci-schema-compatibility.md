@@ -655,6 +655,15 @@ Ada, Rust, and C++ still reject `Time`, `Duration`, constrained `String`, and
 constrained `Binary` before rendering. This prevents partial output and silent
 constraint loss; backend generation support was intentionally not added.
 
+**Task 025 update:** unconstrained `Binary` (`ConstraintSet::default()`) is now
+baseline-supported by all three backends as an owned octet sequence — Rust
+`Vec<u8>`, C++ `std::vector<std::uint8_t>`, and Ada
+`Interfaces.Unsigned_8`-element `Ada.Containers.Vectors.Vector`. `Binary`
+length/minLength/maxLength constraints remain unsupported and fail closed
+exactly as documented above; the constraint units reiterated above (octets,
+never hexadecimal lexical characters) remain the authoritative semantics for
+any future constrained-Binary tranche.
+
 The iterative progression was:
 
 ```text

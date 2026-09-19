@@ -51,10 +51,11 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
     let emissions = plan_type_emissions(schema)?;
     let package = package_name(schema)?;
     let mut output = String::from("with Ada.Strings.Unbounded;\n");
-    if schema.types.iter().any(has_ada_unbounded_occurrence) {
+    let needs_binary = schema_needs_binary(schema);
+    if schema.types.iter().any(has_ada_unbounded_occurrence) || needs_binary {
         output.push_str("with Ada.Containers.Vectors;\n");
     }
-    if schema_needs_interfaces(schema) {
+    if schema_needs_interfaces(schema) || needs_binary {
         output.push_str("with Interfaces;\n");
     }
     output.push('\n');
@@ -67,6 +68,14 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
         "      end case;\n",
         "   end record;\n\n",
     ));
+    if needs_binary {
+        output.push_str(concat!(
+            "   package Binary_Vectors is new Standard.Ada.Containers.Vectors\n",
+            "     (Index_Type   => Natural,\n",
+            "      Element_Type => Interfaces.Unsigned_8,\n",
+            "      \"=\"          => Interfaces.\"=\");\n\n",
+        ));
+    }
     for emission in emissions {
         match emission {
             TypeEmission::Declaration(declaration) => {
@@ -174,6 +183,14 @@ fn render_declaration(
             reject_any_constraints(&declaration.constraints, &name)?;
             writeln!(output, "   type {name} is new Interfaces.IEEE_Float_64;\n")
                 .expect("writing to String cannot fail");
+        }
+        TypeKind::Primitive(PrimitiveKind::Binary) => {
+            reject_any_constraints(&declaration.constraints, &name)?;
+            writeln!(
+                output,
+                "   type {name} is record\n      Value : Binary_Vectors.Vector;\n   end record;\n"
+            )
+            .expect("writing to String cannot fail");
         }
         TypeKind::Enumeration { variants } => {
             if variants.is_empty() {
@@ -348,6 +365,11 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
                 declaration.name.local_name
             ));
         }
+        if matches!(declaration.kind, TypeKind::Primitive(PrimitiveKind::Binary))
+            && declaration.constraints != ConstraintSet::default()
+        {
+            return unsupported(format!("constraints on {}", declaration.name.local_name));
+        }
         reject_extra_constraints(&declaration.constraints, &declaration.name.local_name)?;
         if matches!(declaration.kind, TypeKind::Record { .. }) {
             let fields = effective_record_fields(schema, &declaration.name).map_err(|_| {
@@ -468,10 +490,20 @@ fn render_unbounded_helper(
     let equality = if matches!(
         field.type_ref.target,
         TypeRefTarget::Primitive(
-            PrimitiveKind::UnsignedInteger | PrimitiveKind::Float32 | PrimitiveKind::Float64
+            PrimitiveKind::UnsignedInteger
+                | PrimitiveKind::Float32
+                | PrimitiveKind::Float64
+                | PrimitiveKind::Binary
         )
     ) {
-        ", \"=\" => Interfaces.\"=\""
+        if matches!(
+            field.type_ref.target,
+            TypeRefTarget::Primitive(PrimitiveKind::Binary)
+        ) {
+            ", \"=\" => Binary_Vectors.\"=\""
+        } else {
+            ", \"=\" => Interfaces.\"=\""
+        }
     } else {
         ""
     };
@@ -550,6 +582,7 @@ fn ada_type(type_ref: &TypeRef) -> Result<String, CodegenError> {
         TypeRefTarget::Primitive(PrimitiveKind::String) => {
             Ok("Standard.Ada.Strings.Unbounded.Unbounded_String".to_owned())
         }
+        TypeRefTarget::Primitive(PrimitiveKind::Binary) => Ok("Binary_Vectors.Vector".to_owned()),
         TypeRefTarget::Named(name) => ada_identifier(&name.local_name),
         other => unsupported(format!("type reference {other:?}")),
     }
@@ -629,6 +662,28 @@ fn schema_needs_interfaces(schema: &SchemaIr) -> bool {
             }),
             _ => false,
         })
+}
+
+fn schema_needs_binary(schema: &SchemaIr) -> bool {
+    schema
+        .types
+        .iter()
+        .any(|declaration| matches!(declaration.kind, TypeKind::Primitive(PrimitiveKind::Binary)))
+        || schema
+            .types
+            .iter()
+            .any(|declaration| match &declaration.kind {
+                TypeKind::Record { fields }
+                | TypeKind::Choice {
+                    alternatives: fields,
+                } => fields.iter().any(|field| {
+                    matches!(
+                        field.type_ref.target,
+                        TypeRefTarget::Primitive(PrimitiveKind::Binary)
+                    )
+                }),
+                _ => false,
+            })
 }
 
 fn reject_extra_constraints(constraints: &ConstraintSet, name: &str) -> Result<(), CodegenError> {
@@ -971,6 +1026,23 @@ mod tests {
     }
 
     #[test]
+    fn binary_composes_with_abstract_closed_sum() {
+        let mut schema = abstract_value_schema();
+        let base = schema
+            .types
+            .iter_mut()
+            .find(|declaration| declaration.name.local_name == "Base")
+            .expect("abstract fixture should contain Base");
+        let TypeKind::Record { fields } = &mut base.kind else {
+            panic!("Base must be a Record");
+        };
+        fields[0].type_ref = TypeRef::primitive(PrimitiveKind::Binary);
+        let source = generate(&schema).expect("abstract closed sum with binary field must lower");
+        assert!(source.contains("type Base_Kind is"));
+        assert!(source.contains("Binary_Vectors.Vector"));
+    }
+
+    #[test]
     fn lowers_abstract_value_references_and_retains_choice_boundary() {
         let source =
             generate(&abstract_value_schema()).expect("closed abstract value should lower");
@@ -1067,6 +1139,81 @@ mod tests {
         };
         let error = generate(&schema).expect_err("constrained float must remain unsupported");
         assert!(error.message.contains("unsupported Ada IR construct"));
+    }
+
+    #[test]
+    fn lowers_unconstrained_binary_direct_field_and_named_declaration() {
+        let mut schema = floating_schema();
+        let TypeKind::Record { fields } = &mut schema.types[0].kind else {
+            panic!("floating fixture should contain a record");
+        };
+        fields.truncate(1);
+        fields[0].type_ref = TypeRef::primitive(PrimitiveKind::Binary);
+        let source = generate(&schema).expect("unconstrained binary generation must succeed");
+        assert!(source.contains("Binary_Vectors.Vector"));
+        assert!(source.contains("Interfaces.Unsigned_8"));
+        assert!(source.contains("with Ada.Containers.Vectors;"));
+        assert!(source.contains("with Interfaces;"));
+
+        let mut schema = track_schema();
+        schema.types[0].kind = TypeKind::Primitive(PrimitiveKind::Binary);
+        schema.types[0].constraints = ConstraintSet::default();
+        let source = generate(&schema).expect("unconstrained named binary must generate");
+        assert!(source.contains("type Track_Id is record"));
+        assert!(source.contains("Value : Binary_Vectors.Vector;"));
+    }
+
+    #[test]
+    fn binary_declaration_with_constraints_remains_unsupported() {
+        let mut schema = track_schema();
+        schema.types[0].kind = TypeKind::Primitive(PrimitiveKind::Binary);
+        schema.types[0].constraints = ConstraintSet {
+            length: Some(4),
+            ..ConstraintSet::default()
+        };
+        let error = generate(&schema).expect_err("constrained binary declaration must fail");
+        assert!(
+            error
+                .message
+                .contains("unsupported Ada IR construct: constraints on")
+        );
+    }
+
+    #[test]
+    fn binary_field_with_constraints_remains_unsupported() {
+        let mut schema = floating_schema();
+        let TypeKind::Record { fields } = &mut schema.types[0].kind else {
+            panic!("floating fixture should contain a record");
+        };
+        fields.truncate(1);
+        fields[0].type_ref = TypeRef::primitive(PrimitiveKind::Binary);
+        fields[0].constraints = ConstraintSet {
+            length: Some(4),
+            ..ConstraintSet::default()
+        };
+        let error = generate(&schema).expect_err("constrained binary field must fail");
+        assert!(
+            error
+                .message
+                .contains("unsupported Ada IR construct: field constraints on")
+        );
+    }
+
+    #[test]
+    fn optional_binary_field_remains_unsupported() {
+        let mut schema = floating_schema();
+        let TypeKind::Record { fields } = &mut schema.types[0].kind else {
+            panic!("floating fixture should contain a record");
+        };
+        fields.truncate(1);
+        fields[0].type_ref = TypeRef::primitive(PrimitiveKind::Binary);
+        fields[0].cardinality = Cardinality::OPTIONAL_ONE;
+        let error = generate(&schema).expect_err("optional binary field must remain unsupported");
+        assert!(
+            error
+                .message
+                .contains("unsupported Ada IR construct: cardinality on field")
+        );
     }
 
     #[test]

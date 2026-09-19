@@ -194,6 +194,10 @@ fn render_declaration(
             reject_any_constraints(&declaration.constraints, &name)?;
             writeln!(output, "#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]\npub struct {name}(f64);\n\nimpl {name} {{\n    pub const fn new(value: f64) -> Self {{ Self(value) }}\n    pub const fn get(self) -> f64 {{ self.0 }}\n}}\n").expect("writing to String cannot fail");
         }
+        TypeKind::Primitive(PrimitiveKind::Binary) => {
+            reject_any_constraints(&declaration.constraints, &name)?;
+            writeln!(output, "#[derive(Debug, Clone, PartialEq, Eq)]\npub struct {name}(Vec<u8>);\n\nimpl {name} {{\n    pub fn new(value: Vec<u8>) -> Self {{ Self(value) }}\n    pub fn as_slice(&self) -> &[u8] {{ &self.0 }}\n    pub fn into_vec(self) -> Vec<u8> {{ self.0 }}\n}}\n").expect("writing to String cannot fail");
+        }
         TypeKind::Enumeration { variants } => {
             if variants.is_empty() {
                 return unsupported(format!("empty enumeration {name}"));
@@ -308,6 +312,11 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
                 declaration.name.local_name
             ));
         }
+        if matches!(declaration.kind, TypeKind::Primitive(PrimitiveKind::Binary))
+            && declaration.constraints != ConstraintSet::default()
+        {
+            return unsupported(format!("constraints on {}", declaration.name.local_name));
+        }
         reject_extra_constraints(&declaration.constraints, &declaration.name.local_name)?;
         if matches!(declaration.kind, TypeKind::Record { .. }) {
             let fields = effective_record_fields(schema, &declaration.name).map_err(|_| {
@@ -401,6 +410,7 @@ fn rust_type(type_ref: &TypeRef) -> Result<String, CodegenError> {
         TypeRefTarget::Primitive(PrimitiveKind::Float32) => Ok("f32".to_owned()),
         TypeRefTarget::Primitive(PrimitiveKind::Float64) => Ok("f64".to_owned()),
         TypeRefTarget::Primitive(PrimitiveKind::String) => Ok("String".to_owned()),
+        TypeRefTarget::Primitive(PrimitiveKind::Binary) => Ok("Vec<u8>".to_owned()),
         TypeRefTarget::Named(name) => upper_camel(&name.local_name),
         other => unsupported(format!("type reference {other:?}")),
     }
@@ -775,6 +785,25 @@ mod tests {
     }
 
     #[test]
+    fn binary_composes_with_abstract_closed_sum() {
+        let mut schema = abstract_value_schema();
+        let base = schema
+            .types
+            .iter_mut()
+            .find(|declaration| declaration.name.local_name == "Base")
+            .expect("abstract fixture should contain Base");
+        let TypeKind::Record { fields } = &mut base.kind else {
+            panic!("Base must be a Record");
+        };
+        fields[0].type_ref = TypeRef::primitive(PrimitiveKind::Binary);
+        let source = generate(&schema).expect("abstract closed sum with binary field must lower");
+        assert!(source.contains("pub enum Base {"));
+        assert!(source.contains("pub struct Derived {"));
+        assert!(source.contains("Vec<u8>"));
+        assert!(source.contains("#[derive(Debug, Clone, PartialEq, Eq)]\npub struct Derived {"));
+    }
+
+    #[test]
     fn track_matches_golden_and_is_deterministic() {
         let schema = track_schema();
         let first = generate(&schema).expect("Rust generation should succeed");
@@ -856,6 +885,61 @@ mod tests {
         };
         let error = generate(&schema).expect_err("constrained float must remain unsupported");
         assert!(error.message.contains("unsupported Rust IR construct"));
+    }
+
+    #[test]
+    fn lowers_unconstrained_binary_direct_field_and_named_declaration() {
+        let mut schema = floating_schema();
+        let TypeKind::Record { fields } = &mut schema.types[0].kind else {
+            panic!("floating fixture should contain a record");
+        };
+        fields.truncate(1);
+        fields[0].type_ref = TypeRef::primitive(PrimitiveKind::Binary);
+        let source = generate(&schema).expect("unconstrained binary generation must succeed");
+        assert!(source.contains("Vec<u8>"));
+
+        let mut schema = track_schema();
+        schema.types[0].kind = TypeKind::Primitive(PrimitiveKind::Binary);
+        schema.types[0].constraints = ConstraintSet::default();
+        let source = generate(&schema).expect("unconstrained named binary must generate");
+        assert!(source.contains("pub struct TrackId(Vec<u8>);"));
+        assert!(source.contains("pub fn as_slice(&self) -> &[u8] { &self.0 }"));
+    }
+
+    #[test]
+    fn binary_declaration_with_constraints_remains_unsupported() {
+        let mut schema = track_schema();
+        schema.types[0].kind = TypeKind::Primitive(PrimitiveKind::Binary);
+        schema.types[0].constraints = ConstraintSet {
+            length: Some(4),
+            ..ConstraintSet::default()
+        };
+        let error = generate(&schema).expect_err("constrained binary declaration must fail");
+        assert!(
+            error
+                .message
+                .contains("unsupported Rust IR construct: constraints on")
+        );
+    }
+
+    #[test]
+    fn binary_field_with_constraints_remains_unsupported() {
+        let mut schema = floating_schema();
+        let TypeKind::Record { fields } = &mut schema.types[0].kind else {
+            panic!("floating fixture should contain a record");
+        };
+        fields.truncate(1);
+        fields[0].type_ref = TypeRef::primitive(PrimitiveKind::Binary);
+        fields[0].constraints = ConstraintSet {
+            length: Some(4),
+            ..ConstraintSet::default()
+        };
+        let error = generate(&schema).expect_err("constrained binary field must fail");
+        assert!(
+            error
+                .message
+                .contains("unsupported Rust IR construct: field constraints on")
+        );
     }
 
     #[test]

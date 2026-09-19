@@ -649,3 +649,158 @@ Measured Ada coverage moved from declarations `2422 -> 2761` and field
 occurrences `7573 -> 8211` in UCI 2.5, and `2421 -> 2762` plus
 `7591 -> 8231` in UCI 2.6. Declaration kinds, field types, and message
 closures were unchanged.
+
+## Task 025 — unconstrained binary octet-sequence lowering
+
+`PrimitiveKind::Binary` is now a baseline backend value in Ada, Rust, and C++,
+but only when its `ConstraintSet` is exactly `ConstraintSet::default()`. Binary
+denotes an owned sequence of octets, never a hexadecimal or base64 lexical
+string, a borrowed pointer/span, a null-terminated byte string, or a wider
+integer array. `Binary` continues to originate exclusively from `xs:hexBinary`;
+the authoritative UCI 2.5 and UCI 2.6 roots contain no `xs:base64Binary`, and
+Task 025 does not broaden the frontend's `xs:hexBinary -> PrimitiveKind::Binary`
+mapping or add a second Binary IR kind. Existing frontend/IR tests already
+established that Binary `length`, `minLength`, and `maxLength` are measured in
+octets, not hexadecimal lexical characters; Task 025 does not implement any of
+those three constraints, but it does give unconstrained Binary an actual 8-bit
+element type so a later length-constraint tranche has a semantically natural
+base to constrain.
+
+Authoritative raw `xs:hexBinary` inventory (fresh Task 025 probes): UCI 2.5 has
+5 direct local-field uses and 3 restriction bases; UCI 2.6 has 0 direct
+local-field uses and 4 restriction bases. Normalized-IR inventory reconciles
+these: UCI 2.5 shows `kind.Primitive.Binary: 3` named declarations and
+`members.primitive_references.Binary: 5` direct field references (matching the
+5 raw local-field uses exactly, with 3 Binary restriction bases normalizing to
+3 named Binary declarations). UCI 2.6 shows `kind.Primitive.Binary: 5` named
+declarations (its 4 restriction bases plus the zero-facet `HexBinaryType`
+alias) and `members.primitive_references.Binary: 0` direct field references,
+matching the observed absence of direct local-field `xs:hexBinary` elements in
+that release.
+
+The exact UCI 2.5 first Binary blocker (identical across Ada, Rust, and C++)
+is the `HexBinaryValue` alternative of the `AtomicValueType` Choice declaration
+(`UCI_MessageDefinitions_v2_5_0.xsd:12893`, contained in the `AtomicValueType`
+Choice starting at line 12808): a direct `Primitive(Binary)` Choice
+alternative, required (Choice-alternative occurrence), not nillable, with
+`ConstraintSet::default()`. All three backends previously reported
+`unsupported {Ada,Rust,C++} IR construct: type reference Primitive(Binary)`
+for this value; after Task 025 all three progress past it.
+
+Rust maps a direct unconstrained Binary reference to an owned `Vec<u8>`.
+Required, optional, finite-repeated, and unbounded Binary fields reuse the
+existing `Option<T>`/`BoundedVec<T, MIN, MAX>`/`UnboundedVec<T, MIN>` occurrence
+wrappers with `T = Vec<u8>`; the outer wrapper counts Binary *values*, and each
+`Vec<u8>` independently counts *octets* inside one value — these are
+orthogonal dimensions, and Task 025 verifies a repeated-Binary fixture keeps
+`[[0x01, 0x02], [0x03, 0x04, 0x05]]` as two distinct byte sequences rather than
+one flattened sequence. A named unconstrained Binary declaration renders as
+`pub struct Name(Vec<u8>)` with `new`, `as_slice`, and `into_vec`, deriving
+`Debug, Clone, PartialEq, Eq`; `PrimitiveKind::Binary` was already Eq-capable
+under the Task 022/024 transitive-Eq analysis catch-all, so a Record/Choice/
+abstract wrapper containing only Eq-capable data including Binary retains Eq
+without further change.
+
+C++ maps a direct unconstrained Binary reference to
+`std::vector<std::uint8_t>`. The C++ backend already emits `#include
+<cstdint>` and `#include <vector>` unconditionally, so a Binary-only schema
+(one namespace, one Record, one required direct Binary field, no Choice, no
+repeated cardinality, no abstract values) needs no new include-detection logic
+and is verified to strictly compile with `c++ -std=c++17 -Wall -Wextra
+-pedantic-errors`. A named unconstrained Binary declaration renders as a class
+owning a `std::vector<std::uint8_t> value_` with an explicit constructor and a
+`const&` accessor; no raw owning pointer, span/view storage, or
+null-termination semantics are introduced, and this remains valid C++17.
+
+Ada uses `Interfaces.Unsigned_8` as the octet element type (never `Character`,
+`String`, `Interfaces.Unsigned_16`, or `Integer`). Task 025 emits exactly one
+shared `Binary_Vectors` package instantiation
+(`Standard.Ada.Containers.Vectors (Index_Type => Natural, Element_Type =>
+Interfaces.Unsigned_8, "=" => Interfaces."=")`) per generated unit, only when
+Binary is actually used, following the project's established root-Ada-safe
+`Standard.Ada.Containers.Vectors` qualification because generated namespaces
+may end in `Ada`. A direct unconstrained Binary field's type is
+`Binary_Vectors.Vector`; a named unconstrained Binary declaration is a simple
+record wrapper `type Name is record Value : Binary_Vectors.Vector; end
+record;` rather than a direct derivation from the private `Vector` type. GNAT
+proved that a nested vector element type built from `Binary_Vectors.Vector`
+(finite-repeated and unbounded-repeated Binary fields) requires an explicit
+`"=" => Binary_Vectors."="` actual, mirroring the existing `Interfaces."="`
+pattern already used for `UnsignedInteger`/`Float32`/`Float64` element types;
+this was added only after a real GNAT compilation failure, not speculatively.
+Unconstrained Binary itself is dynamically sized and does not acquire the
+Task 023 32,767 portable-array-bound limit; that bound applies only to the
+chosen fixed-array representation for finite repeated *cardinality*, which is
+an orthogonal dimension from the byte length inside one Binary value.
+
+Ada optional Binary remains unsupported: Task 025 does not broaden Ada's
+existing narrower optional-value policy, and an `OccurrenceShape::OptionalOne`
+Binary field fails closed with `unsupported Ada IR construct: cardinality on
+field ...`, exactly as any other Ada-unsupported optional non-String primitive
+already did. Rust and C++ retain their existing, broader optional support for
+Binary. Nillable Binary remains unsupported in all three backends, unchanged
+from prior primitives.
+
+Any non-default Binary `ConstraintSet` — `length`, `minLength`, `maxLength`,
+lexical constraints, or a malformed numeric constraint from a hypothetical
+external IR construction — remains fail-closed for both named Binary
+declarations and direct Binary fields, in all three backends. No backend
+silently degrades a constrained Binary value to an unconstrained
+`Vec<u8>`/`std::vector<std::uint8_t>`/`Binary_Vectors.Vector`; each backend's
+existing declaration- and field-level constraint firewalls
+(`reject_any_constraints`, `reject_extra_constraints`) already covered this,
+and Task 025 adds an explicit whole-`ConstraintSet` check ahead of them for
+Binary declarations to make the firewall self-documenting. Direct regressions
+exist per backend for both constrained named Binary declarations and
+constrained direct Binary fields.
+
+`PrimitiveExpansion` no longer means Binary. After Task 025, baseline analyzer
+support already includes Boolean, SignedInteger, UnsignedInteger, Float32,
+Float64, and Binary; `PrimitiveExpansion` now represents the remaining
+unsupported primitive families — Decimal, DateTime, Time, and Duration — plus
+any equivalent still-unimplemented primitive kind. `ConstrainedSimpleTypes`
+retains constrained-Binary length/minLength/maxLength as a hypothetical
+unblocking family: unconstrained Binary is baseline, while `Binary(length=N)`
+remains non-baseline until `ConstrainedSimpleTypes` is hypothetically enabled.
+Tests that previously used Binary as the canonical PrimitiveExpansion-only
+example now use Duration instead; coverage regressions confirm unconstrained
+Binary is baseline-renderable in every one of the 31 non-empty feature-family
+combinations and that constrained Binary alone is unblocked only by
+`ConstrainedSimpleTypes`.
+
+Fresh post-Task-025 authoritative probes: UCI 2.5 Ada, Rust, and C++ all move
+past `Primitive(Binary)` and reach the same Task 024 boundary — `unsupported
+abstract structural value: abstract value target
+CommSupportPointingActivityEXT has no concrete structural descendants` — for
+all three languages. UCI 2.6 Ada, Rust, and C++ report the identical
+`CommSupportPointingActivityEXT` blocker unchanged from the Task 024 baseline,
+confirming Task 025 does not alter Task 024's fail-closed boundary. Solving
+that zero-descendant abstract-value boundary remains explicitly out of Task
+025's scope.
+
+Normalized frontend counts are unchanged by Task 025: UCI 2.5 remains 5,557
+types / 722 messages, and UCI 2.6 remains 5,570 types / 725 messages, because
+no frontend or IR semantic changed.
+
+Measured coverage before/after (declaration kinds / fully renderable
+declarations / field-type references / field occurrences / message closures,
+all `renderable/total`): UCI 2.5 Ada moved `5425/5557 -> 5428/5557` kinds,
+`2754/5557 -> 2755/5557` declarations, `13142/13160 -> 13147/13160` field
+types, and field occurrences/message closures were unchanged at
+`8211/13160`/`0/722`; UCI 2.5 Rust and C++ moved `5425/5557 -> 5428/5557`
+kinds, `5332/5557 -> 5336/5557` declarations, `13142/13160 -> 13147/13160`
+field types, with field occurrences/message closures unchanged at
+`13160/13160`/`0/722`. UCI 2.6 Ada moved `5436/5570 -> 5441/5570` kinds,
+`2755/5570 -> 2756/5570` declarations, field types were already
+`13198/13198 -> 13198/13198` (no direct local `xs:hexBinary` fields in 2.6),
+occurrences/closures unchanged at `8231/13198`/`0/725`; UCI 2.6 Rust and C++
+moved `5436/5570 -> 5441/5570` kinds, `5357/5570 -> 5358/5570` declarations,
+field types unchanged at `13198/13198`, occurrences/closures unchanged at
+`13198/13198`/`0/725`. As predicted, UCI 2.5 direct Binary field-type coverage
+improves (5 newly renderable references, matching
+`members.primitive_references.Binary: 5`), and UCI 2.6 — which has no direct
+local `xs:hexBinary` fields — instead gains declaration-kind and
+fully-renderable-declaration coverage from its unconstrained named Binary
+declarations. Message closures remain `0/722` and `0/725` in both releases
+because the unrelated `CommSupportPointingActivityEXT` zero-descendant
+abstract-value boundary is unaffected by Task 025.

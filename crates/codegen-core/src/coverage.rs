@@ -1040,7 +1040,8 @@ fn kind_renderable(declaration: &TypeDecl, enabled: &BTreeSet<FeatureFamily>) ->
             | PrimitiveKind::SignedInteger
             | PrimitiveKind::UnsignedInteger
             | PrimitiveKind::Float32
-            | PrimitiveKind::Float64,
+            | PrimitiveKind::Float64
+            | PrimitiveKind::Binary,
         )
         | TypeKind::Enumeration { .. }
         | TypeKind::Record { .. }
@@ -1098,7 +1099,10 @@ fn primitive_declaration_renderable(
         return constraints == &ConstraintSet::default()
             || enabled.contains(&FeatureFamily::ConstrainedSimpleTypes);
     }
-    if matches!(kind, PrimitiveKind::Float32 | PrimitiveKind::Float64) {
+    if matches!(
+        kind,
+        PrimitiveKind::Float32 | PrimitiveKind::Float64 | PrimitiveKind::Binary
+    ) {
         return constraints == &ConstraintSet::default()
             || enabled.contains(&FeatureFamily::ConstrainedSimpleTypes);
     }
@@ -1146,6 +1150,7 @@ fn primitive_ref_renderable(kind: PrimitiveKind, enabled: &BTreeSet<FeatureFamil
             | PrimitiveKind::Float32
             | PrimitiveKind::Float64
             | PrimitiveKind::String
+            | PrimitiveKind::Binary
     ) || enabled.contains(&FeatureFamily::PrimitiveExpansion)
 }
 fn occurrence_renderable(
@@ -1473,7 +1478,24 @@ mod tests {
     }
 
     #[test]
-    fn primitive_expansion_alone_unblocks_binary_field_closure() {
+    fn primitive_expansion_alone_unblocks_duration_field_closure() {
+        let schema = message_schema(
+            vec![declaration(
+                "Payload",
+                TypeKind::Record {
+                    fields: vec![field_ref(
+                        "duration",
+                        TypeRef::primitive(PrimitiveKind::Duration),
+                    )],
+                },
+            )],
+            "Payload",
+        );
+        assert_only_family_unblocks(&schema, FeatureFamily::PrimitiveExpansion);
+    }
+
+    #[test]
+    fn unconstrained_binary_field_is_baseline_renderable() {
         let schema = message_schema(
             vec![declaration(
                 "Payload",
@@ -1486,7 +1508,26 @@ mod tests {
             )],
             "Payload",
         );
-        assert_only_family_unblocks(&schema, FeatureFamily::PrimitiveExpansion);
+        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        for language in BackendLanguage::ALL {
+            assert_eq!(analysis.impact(language, &[]).unwrap(), 1);
+        }
+    }
+
+    #[test]
+    fn constrained_binary_field_requires_constrained_simple_types() {
+        let mut binary = field_ref("binary", TypeRef::primitive(PrimitiveKind::Binary));
+        binary.constraints.length = Some(4);
+        let schema = message_schema(
+            vec![declaration(
+                "Payload",
+                TypeKind::Record {
+                    fields: vec![binary],
+                },
+            )],
+            "Payload",
+        );
+        assert_only_family_unblocks(&schema, FeatureFamily::ConstrainedSimpleTypes);
     }
 
     #[test]
@@ -1830,7 +1871,7 @@ mod tests {
             TypeKind::Record {
                 fields: vec![field_ref(
                     "value",
-                    TypeRef::primitive(PrimitiveKind::Binary),
+                    TypeRef::primitive(PrimitiveKind::Duration),
                 )],
             },
         );
