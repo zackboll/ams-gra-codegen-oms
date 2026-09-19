@@ -1,0 +1,15 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:t="urn:task021:test" targetNamespace="urn:task021:test">
+  <xs:complexType name="Item"><xs:sequence/></xs:complexType>
+  <xs:complexType name="Record"><xs:sequence>
+    <xs:element name="ZeroOrMoreNamed" type="t:Item" minOccurs="0" maxOccurs="unbounded"/>
+    <xs:element name="OneOrMoreNamed" type="t:Item" minOccurs="1" maxOccurs="unbounded"/>
+    <xs:element name="TwoOrMoreNamed" type="t:Item" minOccurs="2" maxOccurs="unbounded"/>
+    <xs:element name="ZeroOrMoreByte" type="xs:unsignedByte" minOccurs="0" maxOccurs="unbounded"/>
+    <xs:element name="FiniteControl" type="t:Item" minOccurs="0" maxOccurs="3"/>
+  </xs:sequence></xs:complexType>
+  <xs:complexType name="Selection"><xs:choice>
+    <xs:element name="ZeroNamed" type="t:Item" minOccurs="0" maxOccurs="unbounded"/>
+    <xs:element name="OneNamed" type="t:Item" minOccurs="1" maxOccurs="unbounded"/>
+    <xs:element name="ManyByte" type="xs:unsignedByte" minOccurs="1" maxOccurs="unbounded"/>
+  </xs:choice></xs:complexType>
+</xs:schema>

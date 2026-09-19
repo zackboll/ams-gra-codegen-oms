@@ -5,7 +5,8 @@ use ams_gra_oms_codegen_core::{
     effective_record_fields, inclusive_integral_domain, plan_type_declarations,
 };
 use ams_gra_oms_ir::{
-    Cardinality, ConstraintSet, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef, TypeRefTarget,
+    ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
+    TypeRefTarget,
 };
 use std::fmt::Write as _;
 use std::path::PathBuf;
@@ -57,6 +58,18 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
         "    }\n",
         "}\n\n",
     ));
+    if schema.types.iter().any(has_unbounded_occurrence) {
+        output.push_str(concat!(
+            "#[derive(Debug, Clone, PartialEq, Eq)]\n",
+            "pub struct UnboundedVec<T, const MIN: u64>(Vec<T>);\n\n",
+            "impl<T, const MIN: u64> UnboundedVec<T, MIN> {\n",
+            "    pub fn new(values: Vec<T>) -> Option<Self> {\n",
+            "        usize::try_from(MIN).is_ok_and(|min| values.len() >= min).then_some(Self(values))\n",
+            "    }\n\n",
+            "    pub fn as_slice(&self) -> &[T] { &self.0 }\n",
+            "}\n\n",
+        ));
+    }
     if schema.types.iter().any(has_direct_integral_range) {
         output.push_str(concat!(
             "#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]\n",
@@ -166,15 +179,13 @@ fn render_declaration(
             })? {
                 let field_name = snake_case(&field.name)?;
                 let base = rust_field_base(field)?;
-                let field_type = match field.cardinality {
-                    Cardinality::REQUIRED_ONE => base,
-                    Cardinality::OPTIONAL_ONE => format!("Option<{base}>"),
-                    Cardinality {
-                        min_occurs,
-                        max_occurs: Some(max),
-                    } if max > 1 => {
-                        format!("BoundedVec<{base}, {min_occurs}, {max}>")
+                let field_type = match field.cardinality.shape() {
+                    OccurrenceShape::RequiredOne => base,
+                    OccurrenceShape::OptionalOne => format!("Option<{base}>"),
+                    OccurrenceShape::Bounded { min, max } if max > 1 => {
+                        format!("BoundedVec<{base}, {min}, {max}>")
                     }
+                    OccurrenceShape::Unbounded { min } => format!("UnboundedVec<{base}, {min}>"),
                     _ => return unsupported(format!("cardinality on field {field_name}")),
                 };
                 writeln!(output, "    pub {field_name}: {field_type},")
@@ -323,15 +334,25 @@ fn validate_choice_alternatives(
 
 fn rust_field_type(field: &ams_gra_oms_ir::FieldDecl) -> Result<String, CodegenError> {
     let base = rust_field_base(field)?;
-    match field.cardinality {
-        Cardinality::REQUIRED_ONE => Ok(base),
-        Cardinality::OPTIONAL_ONE => Ok(format!("Option<{base}>")),
-        Cardinality {
-            min_occurs,
-            max_occurs: Some(max),
-        } if max > 1 => Ok(format!("BoundedVec<{base}, {min_occurs}, {max}>")),
+    match field.cardinality.shape() {
+        OccurrenceShape::RequiredOne => Ok(base),
+        OccurrenceShape::OptionalOne => Ok(format!("Option<{base}>")),
+        OccurrenceShape::Bounded { min, max } if max > 1 => {
+            Ok(format!("BoundedVec<{base}, {min}, {max}>"))
+        }
+        OccurrenceShape::Unbounded { min } => Ok(format!("UnboundedVec<{base}, {min}>")),
         _ => unsupported(format!("cardinality on Choice alternative {}", field.name)),
     }
+}
+
+fn has_unbounded_occurrence(declaration: &TypeDecl) -> bool {
+    match &declaration.kind {
+        TypeKind::Record { fields } => fields,
+        TypeKind::Choice { alternatives } => alternatives,
+        _ => return false,
+    }
+    .iter()
+    .any(|field| matches!(field.cardinality.shape(), OccurrenceShape::Unbounded { .. }))
 }
 
 fn has_numeric_constraints(constraints: &ConstraintSet) -> bool {
@@ -534,6 +555,27 @@ mod tests {
                 .join("../xsd-frontend/tests/fixtures/backend-integral-scalars.xsd"),
         )
         .expect("integral fixture should parse")
+    }
+
+    fn unbounded_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-unbounded-cardinality.xsd"),
+        )
+        .expect("unbounded fixture should parse")
+    }
+
+    #[test]
+    fn lowers_unbounded_records_choices_and_constrained_elements() {
+        let source = generate(&unbounded_schema()).expect("unbounded cardinality should generate");
+        assert!(source.contains("pub struct UnboundedVec<T, const MIN: u64>(Vec<T>);"));
+        assert!(source.contains("usize::try_from(MIN).is_ok_and(|min| values.len() >= min)"));
+        assert!(!source.contains("u64::try_from(values.len())"));
+        assert!(source.contains("UnboundedVec<Item, 0>"));
+        assert!(source.contains("UnboundedVec<Item, 1>"));
+        assert!(source.contains("UnboundedVec<Item, 2>"));
+        assert!(source.contains("UnboundedVec<BoundedU64<0, 255>, 0>"));
+        assert!(source.contains("ManyByte(UnboundedVec<BoundedU64<0, 255>, 1>)"));
     }
 
     #[test]

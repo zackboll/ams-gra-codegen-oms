@@ -956,6 +956,15 @@ pub struct Cardinality {
     pub max_occurs: Option<u64>,
 }
 
+/// Lossless schema-level occurrence classification.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OccurrenceShape {
+    RequiredOne,
+    OptionalOne,
+    Bounded { min: u64, max: u64 },
+    Unbounded { min: u64 },
+}
+
 impl Cardinality {
     pub const REQUIRED_ONE: Self = Self {
         min_occurs: 1,
@@ -972,6 +981,25 @@ impl Cardinality {
         match self.max_occurs {
             Some(max) => self.min_occurs <= max,
             None => true,
+        }
+    }
+
+    #[must_use]
+    pub const fn shape(self) -> OccurrenceShape {
+        match self {
+            Self::REQUIRED_ONE => OccurrenceShape::RequiredOne,
+            Self::OPTIONAL_ONE => OccurrenceShape::OptionalOne,
+            Self {
+                min_occurs,
+                max_occurs: Some(max),
+            } => OccurrenceShape::Bounded {
+                min: min_occurs,
+                max,
+            },
+            Self {
+                min_occurs,
+                max_occurs: None,
+            } => OccurrenceShape::Unbounded { min: min_occurs },
         }
     }
 }
@@ -1136,6 +1164,66 @@ mod tests {
                 max_occurs: None,
             }
             .is_valid()
+        );
+    }
+
+    #[test]
+    fn cardinality_shape_preserves_full_occurrence_domain() {
+        assert_eq!(
+            Cardinality::REQUIRED_ONE.shape(),
+            OccurrenceShape::RequiredOne
+        );
+        assert_eq!(
+            Cardinality::OPTIONAL_ONE.shape(),
+            OccurrenceShape::OptionalOne
+        );
+        assert_eq!(
+            Cardinality {
+                min_occurs: 0,
+                max_occurs: Some(3)
+            }
+            .shape(),
+            OccurrenceShape::Bounded { min: 0, max: 3 }
+        );
+        assert_eq!(
+            Cardinality {
+                min_occurs: 1,
+                max_occurs: Some(3)
+            }
+            .shape(),
+            OccurrenceShape::Bounded { min: 1, max: 3 }
+        );
+        assert_eq!(
+            Cardinality {
+                min_occurs: 2,
+                max_occurs: Some(3)
+            }
+            .shape(),
+            OccurrenceShape::Bounded { min: 2, max: 3 }
+        );
+        assert_eq!(
+            Cardinality {
+                min_occurs: 0,
+                max_occurs: None
+            }
+            .shape(),
+            OccurrenceShape::Unbounded { min: 0 }
+        );
+        assert_eq!(
+            Cardinality {
+                min_occurs: 1,
+                max_occurs: None
+            }
+            .shape(),
+            OccurrenceShape::Unbounded { min: 1 }
+        );
+        assert_eq!(
+            Cardinality {
+                min_occurs: u64::MAX,
+                max_occurs: None
+            }
+            .shape(),
+            OccurrenceShape::Unbounded { min: u64::MAX }
         );
     }
 

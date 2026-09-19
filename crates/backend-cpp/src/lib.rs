@@ -5,7 +5,8 @@ use ams_gra_oms_codegen_core::{
     effective_record_fields, inclusive_integral_domain, plan_type_declarations,
 };
 use ams_gra_oms_ir::{
-    Cardinality, ConstraintSet, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef, TypeRefTarget,
+    ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
+    TypeRefTarget,
 };
 use std::fmt::Write as _;
 use std::path::PathBuf;
@@ -55,11 +56,12 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
     } else {
         ""
     };
-    let limits_header = if schema_needs_limits(schema) {
-        "#include <limits>\n"
-    } else {
-        ""
-    };
+    let limits_header =
+        if schema_needs_limits(schema) || schema.types.iter().any(has_unbounded_occurrence) {
+            "#include <limits>\n"
+        } else {
+            ""
+        };
     let mut output = String::from(
         "#pragma once\n\n\
          #include <cstddef>\n\
@@ -92,6 +94,22 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
         "    std::vector<T> values_;\n",
         "};\n\n",
     ));
+    if schema.types.iter().any(has_unbounded_occurrence) {
+        output.push_str(concat!(
+            "template <typename T, std::uint64_t Min>\n",
+            "class UnboundedVector {\n",
+            "public:\n",
+            "    static std::optional<UnboundedVector> create(std::vector<T> values) {\n",
+            "        if (values.size() > std::numeric_limits<std::uint64_t>::max() || static_cast<std::uint64_t>(values.size()) < Min) return std::nullopt;\n",
+            "        return UnboundedVector(std::move(values));\n",
+            "    }\n\n",
+            "    const std::vector<T>& values() const noexcept { return values_; }\n\n",
+            "private:\n",
+            "    explicit UnboundedVector(std::vector<T> values) : values_(std::move(values)) {}\n",
+            "    std::vector<T> values_;\n",
+            "};\n\n",
+        ));
+    }
     if schema.types.iter().any(has_direct_integral_range) {
         output.push_str(concat!(
             "template <typename T, T Min, T Max>\nclass BoundedInteger {\npublic:\n",
@@ -193,14 +211,14 @@ fn render_declaration(
             })? {
                 let field_name = snake_case(&field.name)?;
                 let base = cpp_field_base(field)?;
-                let field_type = match field.cardinality {
-                    Cardinality::REQUIRED_ONE => base,
-                    Cardinality::OPTIONAL_ONE => format!("std::optional<{base}>"),
-                    Cardinality {
-                        min_occurs,
-                        max_occurs: Some(max),
-                    } if max > 1 => {
-                        format!("BoundedVector<{base}, {min_occurs}, {max}>")
+                let field_type = match field.cardinality.shape() {
+                    OccurrenceShape::RequiredOne => base,
+                    OccurrenceShape::OptionalOne => format!("std::optional<{base}>"),
+                    OccurrenceShape::Bounded { min, max } if max > 1 => {
+                        format!("BoundedVector<{base}, {min}, {max}>")
+                    }
+                    OccurrenceShape::Unbounded { min } => {
+                        format!("UnboundedVector<{base}, {}>", cpp_unsigned_bound(min))
                     }
                     _ => return unsupported(format!("cardinality on field {field_name}")),
                 };
@@ -356,15 +374,28 @@ fn validate_choice_alternatives(
 
 fn cpp_field_type(field: &ams_gra_oms_ir::FieldDecl) -> Result<String, CodegenError> {
     let base = cpp_field_base(field)?;
-    match field.cardinality {
-        Cardinality::REQUIRED_ONE => Ok(base),
-        Cardinality::OPTIONAL_ONE => Ok(format!("std::optional<{base}>")),
-        Cardinality {
-            min_occurs,
-            max_occurs: Some(max),
-        } if max > 1 => Ok(format!("BoundedVector<{base}, {min_occurs}, {max}>")),
+    match field.cardinality.shape() {
+        OccurrenceShape::RequiredOne => Ok(base),
+        OccurrenceShape::OptionalOne => Ok(format!("std::optional<{base}>")),
+        OccurrenceShape::Bounded { min, max } if max > 1 => {
+            Ok(format!("BoundedVector<{base}, {min}, {max}>"))
+        }
+        OccurrenceShape::Unbounded { min } => Ok(format!(
+            "UnboundedVector<{base}, {}>",
+            cpp_unsigned_bound(min)
+        )),
         _ => unsupported(format!("cardinality on Choice alternative {}", field.name)),
     }
+}
+
+fn has_unbounded_occurrence(declaration: &TypeDecl) -> bool {
+    match &declaration.kind {
+        TypeKind::Record { fields } => fields,
+        TypeKind::Choice { alternatives } => alternatives,
+        _ => return false,
+    }
+    .iter()
+    .any(|field| matches!(field.cardinality.shape(), OccurrenceShape::Unbounded { .. }))
 }
 
 fn has_numeric_constraints(constraints: &ConstraintSet) -> bool {
@@ -652,6 +683,74 @@ mod tests {
                 .join("../xsd-frontend/tests/fixtures/backend-integral-scalars.xsd"),
         )
         .expect("integral fixture should parse")
+    }
+
+    fn unbounded_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-unbounded-cardinality.xsd"),
+        )
+        .expect("unbounded fixture should parse")
+    }
+
+    #[test]
+    fn lowers_unbounded_records_choices_and_constrained_elements() {
+        let source = generate(&unbounded_schema()).expect("unbounded cardinality should generate");
+        assert!(source.contains("class UnboundedVector"));
+        assert!(source.contains("UnboundedVector<Item, 0>"));
+        assert!(source.contains("UnboundedVector<Item, 1>"));
+        assert!(source.contains("UnboundedVector<Item, 2>"));
+        assert!(source.contains("UnboundedVector<BoundedInteger<std::uint64_t, 0, 255>, 0>"));
+        assert!(source.contains(
+            "struct ManyByte { UnboundedVector<BoundedInteger<std::uint64_t, 0, 255>, 1> value; };"
+        ));
+    }
+
+    #[test]
+    fn renders_and_strictly_compiles_full_unbounded_minimum() {
+        let mut schema = unbounded_schema();
+        for declaration in &mut schema.types {
+            match &mut declaration.kind {
+                TypeKind::Record { fields } if declaration.name.local_name == "Record" => {
+                    fields[1].cardinality.min_occurs = u64::MAX;
+                }
+                TypeKind::Choice { alternatives } if declaration.name.local_name == "Selection" => {
+                    alternatives[1].cardinality.min_occurs = u64::MAX;
+                }
+                _ => {}
+            }
+        }
+        let source = generate(&schema).expect("full unbounded minimum should generate");
+        assert!(
+            source.contains("UnboundedVector<Item, std::numeric_limits<std::uint64_t>::max()>")
+        );
+        assert!(!source.contains("UnboundedVector<Item, 18446744073709551615>"));
+        assert!(source.contains("#include <limits>"));
+
+        use std::fs;
+        use std::process::Command;
+        let directory = std::env::temp_dir().join("ams-gra-oms-full-unbounded-minimum");
+        let header = directory.join("full_unbounded.hpp");
+        let unit = directory.join("full_unbounded.cpp");
+        fs::create_dir_all(&directory).expect("create C++ probe directory");
+        fs::write(&header, source).expect("write generated C++ header");
+        fs::write(&unit, "#include \"full_unbounded.hpp\"\n").expect("write C++ unit");
+        let status = Command::new("c++")
+            .args([
+                "-std=c++17",
+                "-Wall",
+                "-Wextra",
+                "-pedantic-errors",
+                "-fsyntax-only",
+            ])
+            .arg(&unit)
+            .status()
+            .expect("C++ compiler must be available");
+        fs::remove_dir_all(&directory).expect("remove C++ probe directory");
+        assert!(
+            status.success(),
+            "strict C++17 full-minimum compile must succeed"
+        );
     }
 
     fn full_integral_boundary_schema() -> SchemaIr {

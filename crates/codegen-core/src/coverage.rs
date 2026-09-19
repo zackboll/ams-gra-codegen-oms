@@ -4,8 +4,8 @@ use crate::structure::{
     project_with_index,
 };
 use ams_gra_oms_ir::{
-    Cardinality, ConstraintSet, FieldDecl, MessageDecl, PrimitiveKind, QualifiedName, SchemaIr,
-    TypeDecl, TypeKind, TypeRef, TypeRefTarget,
+    Cardinality, ConstraintSet, FieldDecl, MessageDecl, OccurrenceShape, PrimitiveKind,
+    QualifiedName, SchemaIr, TypeDecl, TypeKind, TypeRef, TypeRefTarget,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
@@ -1057,26 +1057,20 @@ fn occurrence_renderable(
     if field.nillable {
         return false;
     }
-    match (language, field.cardinality) {
-        (_, Cardinality::REQUIRED_ONE) => true,
-        (BackendLanguage::Ada, Cardinality::OPTIONAL_ONE) => {
+    match (language, field.cardinality.shape()) {
+        (_, OccurrenceShape::RequiredOne) => true,
+        (BackendLanguage::Ada, OccurrenceShape::OptionalOne) => {
             field.type_ref.target == TypeRefTarget::Primitive(PrimitiveKind::String)
         }
-        (BackendLanguage::Rust | BackendLanguage::Cpp, Cardinality::OPTIONAL_ONE) => true,
-        (
-            BackendLanguage::Ada,
-            Cardinality {
-                min_occurs: 0,
-                max_occurs: Some(max),
-            },
-        ) if max > 1 => true,
-        (
-            BackendLanguage::Rust | BackendLanguage::Cpp,
-            Cardinality {
-                max_occurs: Some(max),
-                ..
-            },
-        ) if max > 1 => true,
+        (BackendLanguage::Rust | BackendLanguage::Cpp, OccurrenceShape::OptionalOne) => true,
+        (BackendLanguage::Ada, OccurrenceShape::Bounded { min: 0, max }) if max > 1 => true,
+        (BackendLanguage::Ada, OccurrenceShape::Unbounded { min: 0 }) => true,
+        (BackendLanguage::Rust | BackendLanguage::Cpp, OccurrenceShape::Bounded { max, .. })
+            if max > 1 =>
+        {
+            true
+        }
+        (BackendLanguage::Rust | BackendLanguage::Cpp, OccurrenceShape::Unbounded { .. }) => true,
         _ => false,
     }
 }
@@ -1307,22 +1301,55 @@ mod tests {
     }
 
     #[test]
-    fn cardinality_alone_unblocks_unbounded_field_closure() {
-        let mut values = field_ref("values", TypeRef::primitive(PrimitiveKind::String));
-        values.cardinality = Cardinality {
-            min_occurs: 0,
-            max_occurs: None,
-        };
+    fn cardinality_and_nillability_alone_unblocks_nillable_field_closure() {
+        let mut value = field_ref("value", TypeRef::primitive(PrimitiveKind::String));
+        value.nillable = true;
         let schema = message_schema(
             vec![declaration(
                 "Payload",
                 TypeKind::Record {
-                    fields: vec![values],
+                    fields: vec![value],
                 },
             )],
             "Payload",
         );
         assert_only_family_unblocks(&schema, FeatureFamily::CardinalityAndNillability);
+    }
+
+    #[test]
+    fn unbounded_occurrences_are_baseline_only_for_implemented_languages() {
+        let mut zero = field_ref("zero", TypeRef::primitive(PrimitiveKind::String));
+        zero.cardinality = Cardinality {
+            min_occurs: 0,
+            max_occurs: None,
+        };
+        let mut one = zero.clone();
+        one.cardinality.min_occurs = 1;
+        let mut two = zero.clone();
+        two.cardinality.min_occurs = 2;
+        let schema = schema(vec![declaration(
+            "Payload",
+            TypeKind::Record {
+                fields: vec![zero, one, two],
+            },
+        )]);
+        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        for language in [BackendLanguage::Rust, BackendLanguage::Cpp] {
+            assert_eq!(
+                analysis
+                    .backend_coverage(language)
+                    .unwrap()
+                    .field_occurrences_renderable,
+                3
+            );
+        }
+        assert_eq!(
+            analysis
+                .backend_coverage(BackendLanguage::Ada)
+                .unwrap()
+                .field_occurrences_renderable,
+            1
+        );
     }
 
     #[test]
