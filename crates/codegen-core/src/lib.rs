@@ -6,8 +6,11 @@ mod integral;
 mod structure;
 
 pub use abstract_value::{
-    AbstractValueProjection, AbstractValueProjectionError, AbstractValueTopology,
-    abstract_value_projection_for_ref, abstract_value_targets, classify_abstract_value_topology,
+    AbstractValueInhabitance, AbstractValueOccurrenceRenderability, AbstractValueProjection,
+    AbstractValueProjectionError, AbstractValueTopology, EffectiveValueMember,
+    abstract_value_occurrence_renderable, abstract_value_projection_for_ref,
+    abstract_value_reference_renderability, abstract_value_targets,
+    classify_abstract_value_inhabitance, classify_abstract_value_topology, field_storage_semantics,
     project_abstract_value,
 };
 pub use coverage::{
@@ -166,14 +169,36 @@ pub fn plan_type_emissions(schema: &SchemaIr) -> Result<Vec<TypeEmission<'_>>, C
         message: format!("invalid schema IR: {error}"),
     })?;
 
-    let projections = targets
-        .iter()
-        .map(|target| {
-            project_abstract_value(schema, &target.name).map_err(|error| CodegenError {
-                message: format!("unsupported abstract structural value: {error}"),
-            })
-        })
-        .collect::<Result<Vec<_>, _>>()?;
+    // A zero-descendant abstract value target has no wrapper to emit: Task 026
+    // requires callers to have already validated that every occurrence of
+    // such a target is a supported absent-only occurrence (or the schema
+    // failed validation earlier). Skipping wrapper construction here is safe
+    // because `emission_dependencies` below never creates an edge to an
+    // absent-only field's target.
+    let mut projections = Vec::new();
+    for target in &targets {
+        match project_abstract_value(schema, &target.name) {
+            Ok(projection) => projections.push(projection),
+            Err(error @ AbstractValueProjectionError::NoConcreteDescendants(_)) => {
+                // Task 026: a zero-descendant target has no wrapper to emit,
+                // but only when every occurrence of it is a supported
+                // absent-only occurrence. Any occurrence outside that shape
+                // (positive minimum, repeated minimum, nillable, or
+                // constrained) fails closed exactly as it did before Task
+                // 026, because no evidence justifies inventing a payload for
+                // it.
+                ensure_zero_descendant_target_only_used_as_absent_only(schema, &target.name)
+                    .map_err(|_| CodegenError {
+                        message: format!("unsupported abstract structural value: {error}"),
+                    })?;
+            }
+            Err(error) => {
+                return Err(CodegenError {
+                    message: format!("unsupported abstract structural value: {error}"),
+                });
+            }
+        }
+    }
     let mut emissions = Vec::new();
     for declaration in &schema.types {
         if !declaration.is_abstract
@@ -219,6 +244,7 @@ fn emission_dependencies(
                     message: format!("unsupported structural value: {error:?}"),
                 })?
                 .into_iter()
+                .filter(|field| !is_absent_only_field(schema, field))
                 .filter_map(|field| named_target(&field.type_ref))
                 .collect(),
             TypeKind::Choice { .. } => effective_choice_alternatives(schema, &declaration.name)
@@ -249,6 +275,68 @@ fn named_target(type_ref: &TypeRef) -> Option<QualifiedName> {
         TypeRefTarget::Named(name) => Some(name.clone()),
         TypeRefTarget::Primitive(_) => None,
     }
+}
+
+/// True when `field` is a Task 026 supported absent-only occurrence of a
+/// zero-descendant abstract structural value, and therefore contributes no
+/// generated storage or dependency edge.
+fn is_absent_only_field(schema: &SchemaIr, field: &ams_gra_oms_ir::FieldDecl) -> bool {
+    matches!(
+        field_storage_semantics(schema, field),
+        Ok(EffectiveValueMember::AbsentOnly(_))
+    )
+}
+
+/// Verify that every direct reference to a zero-descendant abstract value
+/// `target` in `schema` is a Task 026 supported absent-only Record field
+/// occurrence.
+///
+/// Choice alternatives, message payloads, and any occurrence outside the
+/// supported optional-single shape (positive minimum, repeated minimum,
+/// nillable, or non-default local constraints) fail this check, preserving
+/// the pre-Task-026 fail-closed boundary for every use this task does not
+/// support.
+fn ensure_zero_descendant_target_only_used_as_absent_only(
+    schema: &SchemaIr,
+    target: &QualifiedName,
+) -> Result<(), ()> {
+    for declaration in &schema.types {
+        match &declaration.kind {
+            TypeKind::Record { fields } => {
+                for field in fields {
+                    if named_target(&field.type_ref).as_ref() != Some(target) {
+                        continue;
+                    }
+                    if !matches!(
+                        field_storage_semantics(schema, field),
+                        Ok(EffectiveValueMember::AbsentOnly(_))
+                    ) {
+                        return Err(());
+                    }
+                }
+            }
+            TypeKind::Choice { alternatives } => {
+                if alternatives
+                    .iter()
+                    .any(|alternative| named_target(&alternative.type_ref).as_ref() == Some(target))
+                {
+                    return Err(());
+                }
+            }
+            TypeKind::Alias(_)
+            | TypeKind::List { .. }
+            | TypeKind::Primitive(_)
+            | TypeKind::Enumeration { .. } => {}
+        }
+    }
+    if schema
+        .messages
+        .iter()
+        .any(|message| named_target(&message.payload_type).as_ref() == Some(target))
+    {
+        return Err(());
+    }
+    Ok(())
 }
 
 fn topological_emissions<'a>(
@@ -555,6 +643,133 @@ mod tests {
         let mut base = record("EmptyBase", &[]);
         base.is_abstract = true;
         let schema = schema(vec![record("Holder", &["EmptyBase"]), base]);
+        let error = plan_type_emissions(&schema).unwrap_err();
+        assert!(
+            error
+                .message
+                .contains("EmptyBase has no concrete structural descendants")
+        );
+    }
+
+    #[test]
+    fn optional_uninhabited_abstract_value_is_elided_from_emissions_and_dependencies() {
+        let mut base = record("EmptyBase", &[]);
+        base.is_abstract = true;
+        let mut holder = record("Holder", &[]);
+        let mut optional_field = field(named("EmptyBase"));
+        optional_field.cardinality = Cardinality::OPTIONAL_ONE;
+        let TypeKind::Record { fields } = &mut holder.kind else {
+            unreachable!();
+        };
+        fields.push(optional_field);
+        let schema = schema(vec![holder, base]);
+        let emissions = plan_type_emissions(&schema).unwrap();
+        // Neither a wrapper for the uninhabited target nor a dangling
+        // dependency edge is produced; only Holder is emitted.
+        assert_eq!(
+            emissions
+                .iter()
+                .map(|entity| entity.name().local_name.as_str())
+                .collect::<Vec<_>>(),
+            ["Holder"]
+        );
+    }
+
+    #[test]
+    fn repeated_uninhabited_abstract_value_remains_unsupported() {
+        let mut base = record("EmptyBase", &[]);
+        base.is_abstract = true;
+        let mut holder = record("Holder", &[]);
+        let mut repeated_field = field(named("EmptyBase"));
+        repeated_field.cardinality = Cardinality {
+            min_occurs: 0,
+            max_occurs: None,
+        };
+        let TypeKind::Record { fields } = &mut holder.kind else {
+            unreachable!();
+        };
+        fields.push(repeated_field);
+        let schema = schema(vec![holder, base]);
+        let error = plan_type_emissions(&schema).unwrap_err();
+        assert!(
+            error
+                .message
+                .contains("EmptyBase has no concrete structural descendants")
+        );
+    }
+
+    #[test]
+    fn uninhabited_abstract_value_as_choice_alternative_remains_unsupported() {
+        let mut base = record("EmptyBase", &[]);
+        base.is_abstract = true;
+        let choice = declaration(
+            "Selector",
+            TypeKind::Choice {
+                alternatives: vec![field(named("EmptyBase"))],
+            },
+        );
+        let schema = schema(vec![choice, base]);
+        let error = plan_type_emissions(&schema).unwrap_err();
+        assert!(
+            error
+                .message
+                .contains("EmptyBase has no concrete structural descendants")
+        );
+    }
+
+    #[test]
+    fn uninhabited_abstract_value_as_message_payload_remains_unsupported() {
+        let mut base = record("EmptyBase", &[]);
+        base.is_abstract = true;
+        let mut schema = schema(vec![base]);
+        schema.messages.push(ams_gra_oms_ir::MessageDecl {
+            name: QualifiedName::new(NS, "Notify"),
+            payload_type: named("EmptyBase"),
+            documentation: None,
+            source: source(),
+        });
+        let error = plan_type_emissions(&schema).unwrap_err();
+        assert!(
+            error
+                .message
+                .contains("EmptyBase has no concrete structural descendants")
+        );
+    }
+
+    #[test]
+    fn nillable_uninhabited_abstract_optional_field_remains_unsupported() {
+        let mut base = record("EmptyBase", &[]);
+        base.is_abstract = true;
+        let mut holder = record("Holder", &[]);
+        let mut optional_field = field(named("EmptyBase"));
+        optional_field.cardinality = Cardinality::OPTIONAL_ONE;
+        optional_field.nillable = true;
+        let TypeKind::Record { fields } = &mut holder.kind else {
+            unreachable!();
+        };
+        fields.push(optional_field);
+        let schema = schema(vec![holder, base]);
+        let error = plan_type_emissions(&schema).unwrap_err();
+        assert!(
+            error
+                .message
+                .contains("EmptyBase has no concrete structural descendants")
+        );
+    }
+
+    #[test]
+    fn constrained_uninhabited_abstract_optional_field_remains_unsupported() {
+        let mut base = record("EmptyBase", &[]);
+        base.is_abstract = true;
+        let mut holder = record("Holder", &[]);
+        let mut optional_field = field(named("EmptyBase"));
+        optional_field.cardinality = Cardinality::OPTIONAL_ONE;
+        optional_field.constraints.length = Some(4);
+        let TypeKind::Record { fields } = &mut holder.kind else {
+            unreachable!();
+        };
+        fields.push(optional_field);
+        let schema = schema(vec![holder, base]);
         let error = plan_type_emissions(&schema).unwrap_err();
         assert!(
             error

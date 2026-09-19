@@ -1,0 +1,14 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:backend-uninhabited-abstract-required"
+           targetNamespace="urn:backend-uninhabited-abstract-required"
+           elementFormDefault="qualified">
+  <!-- Same uninhabited abstract shape as backend-uninhabited-abstract-optional.xsd,
+       but the occurrence has a positive minimum, so absence is not a legal
+       representation and Task 026 must still fail closed. -->
+  <xs:complexType name="SidecarPoint" abstract="true"><xs:sequence/></xs:complexType>
+  <xs:complexType name="Holder">
+    <xs:sequence>
+      <xs:element name="Widget" type="t:SidecarPoint"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

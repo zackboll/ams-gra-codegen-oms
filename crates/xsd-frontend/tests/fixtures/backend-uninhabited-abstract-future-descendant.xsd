@@ -1,0 +1,22 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:backend-uninhabited-abstract-future-descendant"
+           targetNamespace="urn:backend-uninhabited-abstract-future-descendant"
+           elementFormDefault="qualified">
+  <!-- Same shape as backend-uninhabited-abstract-optional.xsd, but this
+       schema set additionally supplies a concrete descendant, proving Task
+       026's absence-only rule is schema-set-relative: with a descendant
+       present the target is inhabited again and Task 024's closed-sum
+       lowering applies unchanged. -->
+  <xs:complexType name="SidecarPoint" abstract="true"><xs:sequence/></xs:complexType>
+  <xs:complexType name="ConcreteSidecarPoint">
+    <xs:complexContent>
+      <xs:extension base="t:SidecarPoint"><xs:sequence/></xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="Holder">
+    <xs:sequence>
+      <xs:element name="Required" type="xs:string"/>
+      <xs:element name="Widget" type="t:SidecarPoint" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

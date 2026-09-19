@@ -1,0 +1,24 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:backend-uninhabited-abstract-inherited"
+           targetNamespace="urn:backend-uninhabited-abstract-inherited"
+           elementFormDefault="qualified">
+  <!-- BaseHolder declares the absent-only optional field; ConcreteHolder
+       inherits it through pure Record structural inheritance (Task 018),
+       verifying Task 026 storage elision composes with effective-field
+       flattening rather than requiring re-declaration. -->
+  <xs:complexType name="SidecarPoint" abstract="true"><xs:sequence/></xs:complexType>
+  <xs:complexType name="BaseHolder" abstract="true">
+    <xs:sequence>
+      <xs:element name="Widget" type="t:SidecarPoint" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="ConcreteHolder">
+    <xs:complexContent>
+      <xs:extension base="t:BaseHolder">
+        <xs:sequence>
+          <xs:element name="Required" type="xs:string"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+</xs:schema>

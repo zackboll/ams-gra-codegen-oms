@@ -1,10 +1,10 @@
 //! Minimal Ada type generation from normalized schema IR.
 
 use ams_gra_oms_codegen_core::{
-    ADA_PORTABLE_POSITIVE_INDEX_MAX, AbstractValueProjection, Backend, CodegenError, GeneratedFile,
-    InclusiveIntegralDomain, TypeEmission, abstract_value_projection_for_ref,
-    effective_choice_alternatives, effective_record_fields, inclusive_integral_domain,
-    plan_type_emissions,
+    ADA_PORTABLE_POSITIVE_INDEX_MAX, AbstractValueProjection, Backend, CodegenError,
+    EffectiveValueMember, GeneratedFile, InclusiveIntegralDomain, TypeEmission,
+    abstract_value_projection_for_ref, effective_choice_alternatives, effective_record_fields,
+    field_storage_semantics, inclusive_integral_domain, plan_type_emissions,
 };
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind,
@@ -214,12 +214,31 @@ fn render_declaration(
             if declaration.is_abstract {
                 return Ok(());
             }
-            let fields = effective_record_fields(schema, &declaration.name).map_err(|_| {
-                error(format!(
-                    "unsupported Ada IR construct: non-Record inheritance {}",
-                    declaration.name.local_name
-                ))
-            })?;
+            let fields = effective_record_fields(schema, &declaration.name)
+                .map_err(|_| {
+                    error(format!(
+                        "unsupported Ada IR construct: non-Record inheritance {}",
+                        declaration.name.local_name
+                    ))
+                })?
+                .into_iter()
+                .map(|field| {
+                    field_storage_semantics(schema, field).map_err(|projection_error| {
+                        error(format!(
+                            "unsupported abstract structural value: {projection_error}"
+                        ))
+                    })
+                })
+                .collect::<Result<Vec<_>, _>>()?
+                .into_iter()
+                .filter_map(|member| match member {
+                    // Task 026: this field's abstract structural target has zero
+                    // concrete descendants in the current schema set, so absence
+                    // is its only legal state; no record component is generated.
+                    EffectiveValueMember::AbsentOnly(_) => None,
+                    EffectiveValueMember::Stored(field) => Some(field),
+                })
+                .collect::<Vec<_>>();
             for field in &fields {
                 if let Some((min, max)) = bounded_repeated(field.cardinality) {
                     ensure_portable_finite_max(max)?;
@@ -379,6 +398,17 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
                 ))
             })?;
             for field in fields {
+                if matches!(
+                    field_storage_semantics(schema, field).map_err(|projection_error| error(
+                        format!("unsupported abstract structural value: {projection_error}")
+                    ))?,
+                    EffectiveValueMember::AbsentOnly(_)
+                ) {
+                    // Task 026: this field's abstract structural target has zero
+                    // concrete descendants in the current schema set, so absence
+                    // is its only legal state; no record component is generated.
+                    continue;
+                }
                 validate_abstract_value_reference(schema, &field.type_ref)?;
                 ada_field_base(field)?;
                 validate_repeated_cardinality(field)?;
@@ -803,6 +833,44 @@ mod tests {
                 .join("../xsd-frontend/tests/fixtures/backend-abstract-value-reference.xsd"),
         )
         .expect("abstract value fixture should parse")
+    }
+
+    fn uninhabited_optional_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-uninhabited-abstract-optional.xsd"),
+        )
+        .expect("uninhabited abstract optional fixture should parse")
+    }
+
+    fn uninhabited_required_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-uninhabited-abstract-required.xsd"),
+        )
+        .expect("uninhabited abstract required fixture should parse")
+    }
+
+    fn uninhabited_future_descendant_schema() -> SchemaIr {
+        load_schema_document(&Path::new(env!("CARGO_MANIFEST_DIR")).join(
+            "../xsd-frontend/tests/fixtures/backend-uninhabited-abstract-future-descendant.xsd",
+        ))
+        .expect("uninhabited abstract future-descendant fixture should parse")
+    }
+
+    fn uninhabited_inherited_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-uninhabited-abstract-inherited.xsd"),
+        )
+        .expect("uninhabited abstract inherited fixture should parse")
+    }
+
+    fn uninhabited_composes_closed_sum_schema() -> SchemaIr {
+        load_schema_document(&Path::new(env!("CARGO_MANIFEST_DIR")).join(
+            "../xsd-frontend/tests/fixtures/backend-uninhabited-abstract-composes-closed-sum.xsd",
+        ))
+        .expect("uninhabited abstract closed-sum composition fixture should parse")
     }
 
     fn choice_boundary_schema() -> SchemaIr {
@@ -1287,5 +1355,60 @@ mod tests {
                 .message
                 .contains("unsupported Ada IR construct: abstract type")
         );
+    }
+
+    #[test]
+    fn uninhabited_abstract_optional_field_is_elided_without_fake_payload() {
+        let source =
+            generate(&uninhabited_optional_schema()).expect("absent-only occurrence should lower");
+        assert!(!source.contains("SidecarPoint"));
+        assert!(!source.contains("Widget"));
+        assert!(source.contains("type Holder is record\n      Required : Standard.Ada.Strings.Unbounded.Unbounded_String;\n   end record;"));
+    }
+
+    #[test]
+    fn uninhabited_abstract_required_field_remains_unsupported() {
+        let error = generate(&uninhabited_required_schema())
+            .expect_err("positive-minimum uninhabited value must fail closed");
+        assert!(
+            error
+                .message
+                .contains("SidecarPoint has no concrete structural descendants")
+        );
+    }
+
+    #[test]
+    fn future_descendant_reclassifies_uninhabited_target_and_hits_ada_optional_boundary() {
+        // Once a concrete descendant exists the target is inhabited again and
+        // Task 024's ordinary closed-sum lowering applies; Ada's existing
+        // general-optional-named-value gap then applies unchanged. Task 026
+        // must not weaken that boundary, so this fails at the pre-existing
+        // Ada optional cardinality firewall rather than at the abstract-value
+        // firewall.
+        let error = generate(&uninhabited_future_descendant_schema())
+            .expect_err("Ada optional named-value boundary should still apply");
+        assert!(
+            error
+                .message
+                .contains("unsupported Ada IR construct: cardinality on field Widget")
+        );
+    }
+
+    #[test]
+    fn inherited_uninhabited_field_is_elided_on_the_concrete_descendant() {
+        let source = generate(&uninhabited_inherited_schema())
+            .expect("inherited absent-only occurrence should lower");
+        assert!(!source.contains("SidecarPoint"));
+        assert!(source.contains("type ConcreteHolder is record\n      Required : Standard.Ada.Strings.Unbounded.Unbounded_String;\n   end record;"));
+    }
+
+    #[test]
+    fn uninhabited_optional_field_composes_with_task_024_closed_sum() {
+        let source = generate(&uninhabited_composes_closed_sum_schema())
+            .expect("Task 026 composition with Task 024 closed sum should lower");
+        assert!(source.contains("type Parent_Kind is"));
+        assert!(source.contains("ConcreteChild_Kind"));
+        assert!(source.contains("type ConcreteChild is record\n      null;\n   end record;"));
+        assert!(!source.contains("Widget"));
     }
 }

@@ -394,3 +394,44 @@ octets in each backend (Rust `Vec<u8>`, C++ `std::vector<std::uint8_t>`, Ada
 lexical string. Lexical encodings — hex, base64, JSON, XML, CAL wire framing —
 belong to future codec layers that this generator does not yet produce; the
 generated value model only carries semantic bytes.
+
+## 13. Uninhabited values generate no storage
+
+An abstract structural declaration with zero concrete structural descendants in
+the current closed schema set is *uninhabited*: no legal payload for it can be
+constructed. Task 026 makes this a first-class classification
+(`AbstractValueInhabitance::Uninhabited`) distinct from schema invalidity — a
+well-formed schema may legitimately declare an abstract extension point that
+nothing extends yet, and a later schema set that adds one concrete descendant
+reclassifies the same declaration as `Inhabited` with no code change.
+
+The consequence for lowering is that an *optional* occurrence of an uninhabited
+value has exactly one legal state: absence. Storage for it would be a field that
+can only ever hold "nothing", so the generator elides it entirely — no struct
+member, no component, no wrapper type, and no dependency edge. The Schema IR is
+never mutated; elision is purely a projection applied at the codegen boundary,
+so the IR remains a faithful record of the source schema.
+
+This is deliberately the *narrowest* rule supported by evidence. Every other
+occurrence of an uninhabited value still fails closed with a clear diagnostic,
+because each would require inventing a representation for an impossible value:
+
+- a positive-minimum occurrence *requires* an inhabitant that cannot exist;
+- a repeated (`0..*`) occurrence would need a collection type whose element type
+  is uninhabited, and no authoritative evidence yet says an always-empty
+  collection is the intended meaning;
+- a nillable occurrence demands an explicit nil-versus-absent distinction;
+- an occurrence carrying local constraints cannot have them silently discarded;
+- a Choice alternative or message payload is an effectively required position.
+
+The single shared decision point is `field_storage_semantics`, returning
+`EffectiveValueMember::Stored` or `::AbsentOnly`. All three backends and the
+emission planner consult it rather than re-deriving elision independently, so
+they cannot drift. The planner additionally verifies via
+`ensure_zero_descendant_target_only_used_as_absent_only` that *every* reference
+to a zero-descendant target across the whole schema is absent-only before
+skipping its wrapper; any other use re-raises the original error.
+
+Coverage analysis applies the same rule unconditionally, not gated behind a
+hypothetical feature family: inhabitance is a property of the schema itself, and
+gating it would let enabling a feature *reduce* measured coverage.

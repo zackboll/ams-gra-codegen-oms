@@ -3,8 +3,10 @@ use crate::structure::{
     project_with_index,
 };
 use crate::{
-    ADA_PORTABLE_POSITIVE_INDEX_MAX, AbstractValueProjectionError, AbstractValueTopology,
-    abstract_value_targets, classify_abstract_value_topology, inclusive_integral_domain,
+    ADA_PORTABLE_POSITIVE_INDEX_MAX, AbstractValueInhabitance,
+    AbstractValueOccurrenceRenderability, AbstractValueProjectionError, AbstractValueTopology,
+    abstract_value_occurrence_renderable, abstract_value_targets, classify_abstract_value_topology,
+    inclusive_integral_domain,
 };
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, FieldDecl, MessageDecl, OccurrenceShape, PrimitiveKind,
@@ -161,6 +163,10 @@ pub struct CoverageAnalysis<'a> {
     declarations: BTreeMap<&'a QualifiedName, &'a TypeDecl>,
     indices: BTreeMap<&'a QualifiedName, usize>,
     abstract_value_topologies: BTreeMap<&'a QualifiedName, AbstractValueTopology<'a>>,
+    /// Zero-descendant abstract targets whose every reference is a supported
+    /// absent-only occurrence. Computed once because coverage re-evaluates
+    /// every declaration for every feature combination and language.
+    fully_elided_targets: BTreeSet<&'a QualifiedName>,
 }
 
 impl<'a> CoverageAnalysis<'a> {
@@ -193,7 +199,7 @@ impl<'a> CoverageAnalysis<'a> {
                     .map_err(|error| CoverageError::InvalidSchema(error.to_string()))
             })
             .collect::<Result<BTreeMap<_, _>, _>>()?;
-        Ok(Self {
+        let mut analysis = Self {
             schema,
             declarations: schema
                 .types
@@ -202,7 +208,10 @@ impl<'a> CoverageAnalysis<'a> {
                 .collect(),
             indices,
             abstract_value_topologies,
-        })
+            fully_elided_targets: BTreeSet::new(),
+        };
+        analysis.fully_elided_targets = analysis.compute_fully_elided_targets();
+        Ok(analysis)
     }
 
     /// Return a compositor-preserving projection using the shared declaration index.
@@ -392,6 +401,14 @@ impl<'a> CoverageAnalysis<'a> {
                     .all(|descendant| full[self.indices[&descendant.name]]);
             }
         }
+        // A target whose every occurrence is absent-only is never emitted, so
+        // it is vacuously renderable and must not block closures that merely
+        // mention it. This is a property of the schema itself, not of any
+        // hypothetical feature, so it applies under every feature set --
+        // gating it would make coverage non-monotonic.
+        for name in &self.fully_elided_targets {
+            full[self.indices[name]] = true;
+        }
         let mut message_closures_renderable = 0;
         for message in &self.schema.messages {
             if self.message_renderable(message, language, enabled)
@@ -544,25 +561,135 @@ impl<'a> CoverageAnalysis<'a> {
                 .iter()
                 .all(|segment| match segment.content {
                     StructuralSegmentContent::RecordFields(fields) => fields.iter().all(|field| {
-                        field_renderable(field, language, enabled)
-                            && self.abstract_reference_renderable(&field.type_ref, enabled)
+                        self.absent_only_occurrence(field)
+                            || (field_renderable(field, language, enabled)
+                                && self.abstract_reference_renderable(field, enabled))
                     }),
                     StructuralSegmentContent::ChoiceAlternatives(fields) => {
                         (supported_choice_shape || enabled.contains(&FeatureFamily::Choice))
                             && fields.iter().all(|field| {
                                 field_renderable(field, language, enabled)
-                                    && self.abstract_reference_renderable(&field.type_ref, enabled)
+                                    && self.abstract_reference_renderable(field, enabled)
                             })
                     }
                 })
     }
 
+    /// True when `field` is a Task 026 supported absent-only occurrence of an
+    /// uninhabited (zero-descendant) abstract structural value: the field
+    /// contributes no storage, so its own type/occurrence renderability is
+    /// moot and it should not block the owning declaration.
+    /// This deliberately consults the pre-indexed `abstract_value_topologies`
+    /// map built once in `new` instead of re-deriving inhabitance per field:
+    /// coverage evaluates every declaration under every feature combination, so
+    /// a per-field schema walk would make the analysis quadratic.
+    /// Absent-only elision is unconditional: it reflects the schema's own
+    /// inhabitance, so it must not be gated on a hypothetical feature family
+    /// (gating it would let enabling a family *reduce* measured coverage).
+    fn absent_only_occurrence(&self, field: &FieldDecl) -> bool {
+        self.absent_only_field(field)
+    }
+
+    /// Zero-descendant abstract targets that are *entirely* elided: every
+    /// reference to them anywhere in the schema (record field, choice
+    /// alternative, message payload, base, alias, list item) is a supported
+    /// absent-only record-field occurrence. Such a declaration generates no
+    /// code at all, so it cannot block any declaration that mentions it.
+    ///
+    /// This mirrors `ensure_zero_descendant_target_only_used_as_absent_only`
+    /// in the emission planner so coverage and generation agree.
+    fn compute_fully_elided_targets(&self) -> BTreeSet<&'a QualifiedName> {
+        let mut elided = BTreeSet::new();
+        for (name, topology) in &self.abstract_value_topologies {
+            if !matches!(topology, AbstractValueTopology::NoConcreteDescendants(_)) {
+                continue;
+            }
+            if self.every_reference_is_absent_only(name) {
+                elided.insert(*name);
+            }
+        }
+        elided
+    }
+
+    fn every_reference_is_absent_only(&self, target: &QualifiedName) -> bool {
+        if self
+            .schema
+            .messages
+            .iter()
+            .any(|message| named_is(Some(&message.payload_type), target))
+        {
+            return false;
+        }
+        for declaration in &self.schema.types {
+            if named_is(declaration.base_type.as_ref(), target) {
+                return false;
+            }
+            match &declaration.kind {
+                TypeKind::Alias(reference) => {
+                    if named_is(Some(reference), target) {
+                        return false;
+                    }
+                }
+                TypeKind::List { item_type, .. } => {
+                    if named_is(Some(item_type), target) {
+                        return false;
+                    }
+                }
+                TypeKind::Choice { alternatives } => {
+                    if alternatives
+                        .iter()
+                        .any(|alternative| named_is(Some(&alternative.type_ref), target))
+                    {
+                        return false;
+                    }
+                }
+                TypeKind::Record { fields } => {
+                    if fields.iter().any(|field| {
+                        named_is(Some(&field.type_ref), target) && !self.absent_only_field(field)
+                    }) {
+                        return false;
+                    }
+                }
+                TypeKind::Primitive(_) | TypeKind::Enumeration { .. } => {}
+            }
+        }
+        true
+    }
+
+    /// Feature-independent absent-only classification, used both by
+    /// `absent_only_occurrence` and by whole-target elision: an elided field
+    /// generates no storage, so it creates no demand on its target.
+    fn absent_only_field(&self, field: &FieldDecl) -> bool {
+        let TypeRefTarget::Named(name) = &field.type_ref.target else {
+            return false;
+        };
+        let Some(AbstractValueTopology::NoConcreteDescendants(_)) =
+            self.abstract_value_topologies.get(name)
+        else {
+            return false;
+        };
+        let Some(declaration) = self.declarations.get(name) else {
+            return false;
+        };
+        // Reuse the shared occurrence rule so coverage cannot drift from the
+        // backends' storage decision.
+        matches!(
+            abstract_value_occurrence_renderable(
+                &AbstractValueInhabitance::Uninhabited { declaration },
+                field.cardinality,
+                field.nillable,
+                field.constraints == ConstraintSet::default(),
+            ),
+            AbstractValueOccurrenceRenderability::AbsentOnly
+        )
+    }
+
     fn abstract_reference_renderable(
         &self,
-        type_ref: &TypeRef,
+        field: &FieldDecl,
         enabled: &BTreeSet<FeatureFamily>,
     ) -> bool {
-        let TypeRefTarget::Named(name) = &type_ref.target else {
+        let TypeRefTarget::Named(name) = &field.type_ref.target else {
             return true;
         };
         if !self
@@ -584,8 +711,20 @@ impl<'a> CoverageAnalysis<'a> {
         _language: BackendLanguage,
         enabled: &BTreeSet<FeatureFamily>,
     ) -> bool {
+        // Message payloads are always effectively required/non-nillable
+        // occurrences of their named type, so a zero-descendant payload is
+        // never a supported absent-only occurrence (Task 026 section 31).
+        let payload_field = FieldDecl {
+            name: message.name.local_name.clone(),
+            type_ref: message.payload_type.clone(),
+            cardinality: Cardinality::REQUIRED_ONE,
+            nillable: false,
+            constraints: ConstraintSet::default(),
+            documentation: None,
+            source: message.source.clone(),
+        };
         type_ref_renderable(&message.payload_type, enabled)
-            && self.abstract_reference_renderable(&message.payload_type, enabled)
+            && self.abstract_reference_renderable(&payload_field, enabled)
     }
 
     fn count_abstract_usage(&self, inventory: &mut SchemaInventory) {
@@ -1801,6 +1940,147 @@ mod tests {
                     .impact(language, &[FeatureFamily::StructuralInheritanceAndAbstract])
                     .unwrap(),
                 1
+            );
+        }
+    }
+
+    #[test]
+    fn optional_uninhabited_abstract_field_is_baseline_renderable_in_coverage() {
+        let mut empty = declaration("Empty", TypeKind::Record { fields: Vec::new() });
+        empty.is_abstract = true;
+        let mut optional = field("value", "Empty");
+        optional.cardinality = Cardinality {
+            min_occurs: 0,
+            max_occurs: Some(1),
+        };
+        let holder = declaration(
+            "Holder",
+            TypeKind::Record {
+                fields: vec![optional],
+            },
+        );
+        let schema = message_schema(vec![empty, holder], "Holder");
+        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        for language in BackendLanguage::ALL {
+            // The only legal state of the field is absence, so no storage is
+            // generated and the owning record is renderable with no features.
+            assert_eq!(analysis.impact(language, &[]).unwrap(), 1);
+            let baseline = analysis.backend_coverage(language).unwrap();
+            assert_eq!(baseline.message_closures_renderable, 1);
+            // Enabling the hypothetical family must never reduce coverage.
+            for mask in 1..(1 << FeatureFamily::ALL.len()) {
+                let enabled = FeatureFamily::ALL
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(index, feature)| ((mask & (1 << index)) != 0).then_some(*feature))
+                    .collect::<BTreeSet<_>>();
+                let coverage = analysis.backend_coverage_with(language, &enabled).unwrap();
+                assert!(
+                    coverage.declarations_fully_renderable
+                        >= baseline.declarations_fully_renderable,
+                    "{enabled:?} regressed declarations for {language:?}"
+                );
+                assert!(
+                    coverage.message_closures_renderable >= baseline.message_closures_renderable,
+                    "{enabled:?} regressed message closures for {language:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn unsupported_uninhabited_abstract_occurrences_stay_blocked_in_coverage() {
+        let mut empty = declaration("Empty", TypeKind::Record { fields: Vec::new() });
+        empty.is_abstract = true;
+        let repeated = Cardinality {
+            min_occurs: 0,
+            max_occurs: None,
+        };
+        let optional = Cardinality {
+            min_occurs: 0,
+            max_occurs: Some(1),
+        };
+        let mut cases: Vec<FieldDecl> = Vec::new();
+        // Positive minimum: an inhabitant would be required but none exists.
+        cases.push(field("required", "Empty"));
+        // Repeated zero-minimum remains out of scope for absent-only elision.
+        let mut repeated_field = field("repeated", "Empty");
+        repeated_field.cardinality = repeated;
+        cases.push(repeated_field);
+        // Nillable optional still demands an explicit nil representation.
+        let mut nillable_field = field("nillable", "Empty");
+        nillable_field.cardinality = optional;
+        nillable_field.nillable = true;
+        cases.push(nillable_field);
+        // Local constraints on the occurrence are not discardable.
+        let mut constrained_field = field("constrained", "Empty");
+        constrained_field.cardinality = optional;
+        constrained_field.constraints.min_length = Some(1);
+        cases.push(constrained_field);
+
+        for case in cases {
+            let name = case.name.clone();
+            let holder = declaration("Holder", TypeKind::Record { fields: vec![case] });
+            let schema = message_schema(vec![empty.clone(), holder], "Holder");
+            let analysis = CoverageAnalysis::new(&schema).unwrap();
+            for language in BackendLanguage::ALL {
+                // Baseline must stay closed: none of these occurrences can be
+                // represented without inventing an impossible payload.
+                assert_eq!(
+                    analysis.impact(language, &[]).unwrap(),
+                    0,
+                    "{name} unexpectedly renderable for {language:?}"
+                );
+                // The hypothetical abstract family is necessary to unblock them.
+                // Some cases additionally need their own family (nillability,
+                // constrained simple types), so only require that the abstract
+                // family is part of any unblocking set: without it, no feature
+                // combination may unblock the case.
+                for mask in 1..(1 << FeatureFamily::ALL.len()) {
+                    let enabled = FeatureFamily::ALL
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(index, feature)| {
+                            ((mask & (1 << index)) != 0).then_some(*feature)
+                        })
+                        .collect::<BTreeSet<_>>();
+                    if enabled.contains(&FeatureFamily::StructuralInheritanceAndAbstract) {
+                        continue;
+                    }
+                    assert_eq!(
+                        analysis
+                            .backend_coverage_with(language, &enabled)
+                            .unwrap()
+                            .message_closures_renderable,
+                        0,
+                        "{name} unblocked by {enabled:?} without the abstract family for {language:?}"
+                    );
+                }
+                // With every family enabled the case is attributable.
+                let all = FeatureFamily::ALL.iter().copied().collect::<BTreeSet<_>>();
+                assert_eq!(
+                    analysis
+                        .backend_coverage_with(language, &all)
+                        .unwrap()
+                        .message_closures_renderable,
+                    1,
+                    "{name} should be attributable to hypothetical families for {language:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn uninhabited_abstract_message_payload_stays_blocked_in_coverage() {
+        let mut empty = declaration("Empty", TypeKind::Record { fields: Vec::new() });
+        empty.is_abstract = true;
+        let schema = message_schema(vec![empty], "Empty");
+        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        for language in BackendLanguage::ALL {
+            let baseline = analysis.backend_coverage(language).unwrap();
+            assert_eq!(
+                baseline.message_closures_renderable, 0,
+                "an uninhabited payload can never be constructed for {language:?}"
             );
         }
     }

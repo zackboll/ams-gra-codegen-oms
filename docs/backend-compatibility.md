@@ -804,3 +804,97 @@ fully-renderable-declaration coverage from its unconstrained named Binary
 declarations. Message closures remain `0/722` and `0/725` in both releases
 because the unrelated `CommSupportPointingActivityEXT` zero-descendant
 abstract-value boundary is unaffected by Task 025.
+
+## Task 026 — uninhabited abstract structural values
+
+Task 026 classifies an abstract structural declaration with zero concrete
+structural descendants as *uninhabited*: its payload set is empty, so no legal
+value can ever be constructed for it. This is a classification, not a schema
+error — a well-formed schema may declare an abstract extension point that
+nothing extends in the current closed set.
+
+### Supported shape and its lowering
+
+Exactly one occurrence shape becomes supported: a Record field whose target is
+uninhabited and whose occurrence is
+
+- `minOccurs == 0` and `maxOccurs <= 1` (optional, single),
+- not nillable, and
+- carrying default (empty) local constraints.
+
+Such a field's only legal state is absence, so all three backends elide it:
+Rust emits no struct field, C++ emits no data member, Ada emits no record
+component, and the planner emits no wrapper type and no dependency edge for the
+uninhabited target. The Schema IR is not mutated; this is a codegen-boundary
+projection only.
+
+The shared decision point is `field_storage_semantics` in
+`codegen-core::abstract_value`, returning `EffectiveValueMember::Stored` or
+`EffectiveValueMember::AbsentOnly`. Every backend and the emission planner
+consult it, so no backend re-derives elision independently.
+
+### Deliberately still unsupported (fail-closed)
+
+| Occurrence of an uninhabited target | Status | Reason |
+|---|---|---|
+| positive minimum (`1..1`, `2..5`, …) | unsupported | requires an inhabitant that cannot exist |
+| repeated `0..*` / `0..n` | unsupported | would need an element type that is uninhabited; no evidence that "always empty collection" is intended |
+| nillable optional | unsupported | needs an explicit nil-versus-absent distinction |
+| optional with local constraints | unsupported | constraints cannot be silently discarded |
+| Choice alternative | unsupported | effectively required position |
+| message payload | unsupported | effectively required position |
+
+The emission planner only skips a zero-descendant wrapper after
+`ensure_zero_descendant_target_only_used_as_absent_only` confirms every
+reference to that target in the whole schema (Record fields, Choice
+alternatives, message payloads, bases, aliases, list items) is an absent-only
+Record field. Any other use re-raises the original `NoConcreteDescendants`
+diagnostic unchanged, preserving Task 024's error text.
+
+Ada gains no special exception: once a concrete descendant exists, the field is
+an ordinary optional named value again and Ada's pre-existing
+"cardinality on field" general-optional boundary applies, exactly as before.
+
+### Authoritative evidence
+
+Zero-descendant target inventory is unchanged by this task —
+`abstract_value.zero_descendant_targets: 13` in both UCI 2.5 and UCI 2.6 —
+confirming the abstract-value topology itself was not altered. Normalized
+frontend counts are likewise unchanged: UCI 2.5 remains 5,557 types / 722
+messages and UCI 2.6 remains 5,570 types / 725 messages.
+
+Measured coverage before/after (declaration kinds / fully renderable
+declarations / field-type references / field occurrences / message closures):
+
+| Release / backend | Before | After |
+|---|---|---|
+| 2.5 Ada | `2755/5557` declarations | `2770/5557` declarations |
+| 2.5 Rust | `5336/5557` declarations | `5365/5557` declarations |
+| 2.5 C++ | `5336/5557` declarations | `5365/5557` declarations |
+| 2.6 Ada | `2756/5570` declarations | `2771/5570` declarations |
+| 2.6 Rust | `5358/5570` declarations | `5387/5570` declarations |
+| 2.6 C++ | `5358/5570` declarations | `5387/5570` declarations |
+
+Declaration kinds, field-type references, and field occurrences are unchanged in
+both releases (2.5: kinds `5428/5557`, field types `13147/13160`, occurrences
+Ada `8211/13160` and Rust/C++ `13160/13160`; 2.6: kinds `5441/5570`, field types
+`13198/13198`, occurrences Ada `8231/13198` and Rust/C++ `13198/13198`). This is
+expected: the task changes whether an owning declaration is renderable, not the
+classification of individual field types or occurrences. Hypothetical
+feature-combination attributions that include constrained simple types rise from
+`653` to `676` in UCI 2.5, reflecting the newly unblocked declarations.
+
+Message closures remain `0/722` and `0/725` in both releases.
+
+### Next authoritative blocker (not addressed here)
+
+Before this task, all six probes (UCI 2.5 and 2.6 × Ada/Rust/C++) stopped at
+`CommSupportPointingActivityEXT`. After it, all six progress past that value and
+stop at `SourceCommandEXT`, a `0..unbounded` repeated occurrence of a
+zero-descendant abstract target.
+
+That blocker is intentionally **not** implemented by Task 026: a repeated
+occurrence of an uninhabited value would require choosing a representation for a
+collection whose element type has no inhabitants, and no authoritative evidence
+yet establishes that an always-empty collection is the intended meaning. It is
+recorded here as the next decision point for a future task.
