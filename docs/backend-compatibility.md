@@ -352,9 +352,10 @@ declarations (419 standalone, 1 inherited), UCI 2.6 has 424 (423 standalone,
 1 inherited); duplicate alternative names are zero; 47 Choices in each release
 have duplicate payload types; 113 additional alternatives share a payload type;
 repeated alternatives are 93/94; nillable alternatives are zero; and the sole
-inherited Choice is `QueryType`. The authoritative roots were unavailable in
-this checkout, so no post-change UCI generation, cardinality inventory, or
-coverage delta is fabricated.
+inherited Choice is `QueryType`. The authoritative UCI 2.5/2.6 roots were
+available externally under `/tmp`, but validate/coverage/generation probes did
+not complete within the environment's fixed command timeout. No post-Task-019
+UCI metrics, blocker progression, or generation results are claimed or inferred.
 
 ## Post-Task-018 impact semantics
 
