@@ -35,9 +35,9 @@ outside Ada's language-enforced range checks. Local constraints on named targets
 remain fail-closed.
 
 `PrimitiveExpansion` consequently means the remaining unsupported primitive
-families (Decimal, Binary, DateTime, Time, Duration), not Boolean, unsigned, or
-floating values.
-UnsignedInteger. `ConstrainedSimpleTypes` continues to cover unsupported scalar
+families (Decimal, Binary, DateTime, Time, Duration), not Boolean,
+SignedInteger, UnsignedInteger, Float32, or Float64. `ConstrainedSimpleTypes`
+continues to cover unsupported scalar
 facets such as String length/patterns, non-integral constraints, and the excluded
 exclusive/lexical integral facets. These hypothetical families remain additive.
 
@@ -55,8 +55,9 @@ Float32 and Float64 are baseline backend values only when their
 `ConstraintSet` is default. Direct fields and Choice alternatives map exactly
 to Ada `Interfaces.IEEE_Float_32`/`IEEE_Float_64`, Rust `f32`/`f64`, and C++
 `float`/`double`; named declarations preserve identity as an Ada derived type,
-Rust newtype, or C++ wrapper. C++ output containing floating values asserts the
-binary32/binary64 IEC-559 host characteristics at compile time.
+Rust newtype, or C++ wrapper. C++ output containing floating values verifies
+binary32/binary64 storage, radix, precision, exponent, and IEC-559 host
+characteristics at compile time.
 
 The authoritative roots contain 56 direct Float32 and 280 direct Float64
 references in each release. The pre-task Ada blocker was the unconstrained,

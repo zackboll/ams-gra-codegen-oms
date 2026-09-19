@@ -56,12 +56,20 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
     } else {
         ""
     };
-    let limits_header =
-        if schema_needs_limits(schema) || schema.types.iter().any(has_unbounded_occurrence) {
-            "#include <limits>\n"
-        } else {
-            ""
-        };
+    let has_floating = schema_has_floating(schema);
+    let limits_header = if schema_needs_limits(schema)
+        || schema.types.iter().any(has_unbounded_occurrence)
+        || has_floating
+    {
+        "#include <limits>\n"
+    } else {
+        ""
+    };
+    let climits_header = if has_floating {
+        "#include <climits>\n"
+    } else {
+        ""
+    };
     let mut output = String::from(
         "#pragma once\n\n\
          #include <cstddef>\n\
@@ -73,12 +81,15 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
     );
     output.insert_str(
         "#pragma once\n\n".len() + "#include <cstddef>\n#include <cstdint>\n".len(),
-        limits_header,
+        &format!("{limits_header}{climits_header}"),
     );
     output.push_str(variant_header);
     output.push('\n');
-    if schema_has_floating(schema) {
-        output.push_str("static_assert(std::numeric_limits<float>::digits == 24 && std::numeric_limits<float>::is_iec559, \"OMS Float32 requires IEEE binary32 float\");\nstatic_assert(std::numeric_limits<double>::digits == 53 && std::numeric_limits<double>::is_iec559, \"OMS Float64 requires IEEE binary64 double\");\n\n");
+    if has_floating {
+        output.push_str(concat!(
+            "static_assert(sizeof(float) * CHAR_BIT == 32 && std::numeric_limits<float>::radix == 2 && std::numeric_limits<float>::digits == 24 && std::numeric_limits<float>::min_exponent == -125 && std::numeric_limits<float>::max_exponent == 128 && std::numeric_limits<float>::is_iec559, \"OMS Float32 requires IEEE binary32 float\");\n",
+            "static_assert(sizeof(double) * CHAR_BIT == 64 && std::numeric_limits<double>::radix == 2 && std::numeric_limits<double>::digits == 53 && std::numeric_limits<double>::min_exponent == -1021 && std::numeric_limits<double>::max_exponent == 1024 && std::numeric_limits<double>::is_iec559, \"OMS Float64 requires IEEE binary64 double\");\n\n",
+        ));
     }
     writeln!(output, "namespace {namespace} {{\n").expect("writing to String cannot fail");
     output.push_str(concat!(
@@ -666,6 +677,14 @@ mod tests {
         .expect("floating fixture should parse")
     }
 
+    fn float_only_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-float-only.xsd"),
+        )
+        .expect("float-only fixture should parse")
+    }
+
     fn inheritance_schema() -> SchemaIr {
         load_schema_document(
             &Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -874,6 +893,52 @@ mod tests {
             status.success(),
             "strict C++17 full-bound compile must succeed"
         );
+    }
+
+    #[test]
+    fn float_only_schema_includes_and_compiles_host_guards() {
+        let source = generate(&float_only_schema()).expect("float-only schema should generate");
+        assert!(source.contains("#include <limits>"));
+        assert!(source.contains("#include <climits>"));
+        assert!(source.contains("sizeof(float) * CHAR_BIT == 32"));
+        assert!(source.contains("std::numeric_limits<float>::min_exponent == -125"));
+        assert!(source.contains("sizeof(double) * CHAR_BIT == 64"));
+        assert!(source.contains("std::numeric_limits<double>::max_exponent == 1024"));
+
+        let header_path =
+            std::env::temp_dir().join(format!("ams-gra-oms-float-only-{}.hpp", std::process::id()));
+        let source_path = header_path.with_extension("cpp");
+        fs::write(&header_path, source).expect("write generated C++ header");
+        fs::write(
+            &source_path,
+            format!("#include \"{}\"\n", header_path.display()),
+        )
+        .expect("write C++ translation unit");
+        let status = Command::new("c++")
+            .args([
+                "-std=c++17",
+                "-Wall",
+                "-Wextra",
+                "-pedantic-errors",
+                "-fsyntax-only",
+            ])
+            .arg(&source_path)
+            .status()
+            .expect("C++ compiler must be available");
+        fs::remove_file(&header_path).expect("remove generated C++ header");
+        fs::remove_file(&source_path).expect("remove C++ translation unit");
+        assert!(
+            status.success(),
+            "strict C++17 float-only compile must succeed"
+        );
+    }
+
+    #[test]
+    fn non_floating_schema_does_not_emit_floating_guards() {
+        let source = generate(&track_schema()).expect("track schema should generate");
+        assert!(!source.contains("OMS Float32 requires"));
+        assert!(!source.contains("OMS Float64 requires"));
+        assert!(!source.contains("#include <climits>"));
     }
 
     #[test]

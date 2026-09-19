@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema:schema xmlns:schema="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:example:oms:floating-only">
+  <schema:complexType name="FloatOnly"><schema:sequence>
+    <schema:element name="Single" type="schema:float"/>
+    <schema:element name="Precise" type="schema:double"/>
+  </schema:sequence></schema:complexType>
+</schema:schema>
