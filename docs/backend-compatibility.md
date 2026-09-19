@@ -87,7 +87,7 @@ out-of-scope abstract `CapabilityCommandBaseType` value reference.
 Reproduce the deterministic analyzer output with:
 
 ```bash
-ams-gra-codegen-oms coverage --schema /path/to/UCI_MessageDefinitions_v2_N_0.xsd
+ams-gra-codegen-oms coverage --schema /path/to/UCI_MessageDefinitions_v2_N_0.xsd --world closed-schema
 ```
 
 ## Metric definitions
@@ -977,3 +977,245 @@ machine-readable discriminator for extension points. `substitutionGroup`,
 both roots, the only custom attribute anywhere is `uci:version`, and
 `uci:version="000.000.000.000"` is shared with 1,098 ordinary inhabited types in
 2.5 alone, so it cannot serve as one either.
+
+## Task 028 — explicit generation world policy
+
+Task 027 proved that the loaded XSD dependency graph is a closed **file** set
+while the legal **type** universe is not necessarily closed, and that no
+reliable machine-readable per-type discriminator distinguishes an open extension
+point from an ordinary abstract type. Task 024 closed sums and Task 026 optional
+elision are therefore correct only when the caller has actually asserted a
+closed type universe.
+
+Task 028 makes that assertion explicit rather than implicit. It implements
+ADR-0004 recommendations 1 and 2 and validates recommendation 3 synthetically.
+It does **not** implement runtime-polymorphic open extensions.
+
+### The policy
+
+One language-neutral `codegen-core` enum, shared by all three backends:
+
+```text
+GenerationWorld::ClosedSchemaSet
+GenerationWorld::OpenExtensions
+```
+
+`ClosedSchemaSet` means the caller asserts the supplied `SchemaIr` contains
+every concrete type that may legally inhabit an abstract value.
+`OpenExtensions` means additional concrete derived types may exist outside it.
+There is no per-backend world enum and no per-backend default; Ada, Rust, and
+C++ cannot disagree about which values exist.
+
+The policy is never stored in `SchemaIr` and never inferred — not from import
+count, namespace count, `uci:version`, type names, or documentation text.
+
+### CLI syntax
+
+`generate` and `coverage` **require** `--world`; there is no implicit default:
+
+```text
+ams-gra-codegen-oms generate --schema ROOT --language LANG --output DIR --world closed-schema
+ams-gra-codegen-oms coverage --schema ROOT --world open-extensions
+```
+
+`validate` takes no `--world`, because schema validity is independent of
+generation policy. Observed usage behaviour (all exit code 2):
+
+```text
+$ ams-gra-codegen-oms generate --schema ... --language rust --output ...
+error: missing required option '--world'
+
+$ ams-gra-codegen-oms coverage --schema ...
+error: missing required option '--world'
+
+$ ams-gra-codegen-oms generate ... --world closed
+error: unsupported generation world 'closed'; expected one of: closed-schema, open-extensions
+```
+
+`ams-gra-codegen-oms validate --schema ROOT` continues to succeed with exit 0.
+
+### Closed-world preservation
+
+Under `--world closed-schema` nothing about Task 024 or Task 026 changed:
+descendant ordering, concrete non-leaf inclusion, abstract intermediate
+exclusion, emission order, the recursive fail-closed boundary, Rust `Eq` logic,
+the C++ variant, the Ada discriminated record, and absent-only storage elision
+are all byte-for-byte preserved. Coverage under `closed-schema` reproduces the
+Task 026 baseline metrics exactly, apart from the added world marker line.
+
+### Open-world conservative behaviour
+
+Under `--world open-extensions`:
+
+- **any** abstract structural **value** reference fails closed — with zero, one,
+  or many known descendants alike, because a known descendant set is never
+  assumed exhaustive;
+- Task 026 absent-only elision is disabled: a zero-known-descendant optional
+  field is not absent-only, because an external derived type may legally make it
+  present, so eliding its storage would silently lose data;
+- Task 024 closed sums are not emitted, since they would not be exhaustive;
+- abstract declarations used only as inheritance ancestry remain fully
+  supported, and ordinary concrete values are unaffected;
+- a schema with no abstract value reference generates byte-identical output to
+  closed mode.
+
+The shared diagnostic names the target and the policy, does not claim the schema
+is invalid, and proposes no placeholder:
+
+```text
+error: unsupported abstract structural value: abstract value <Name> is not closed under open-extensions generation; external derived types cannot be represented
+```
+
+### No EXT heuristic
+
+Nothing keys on the `EXT` suffix, on a UCI target list, or on documentation
+text. A synthetic `Base` with ordinary descendants fails identically to
+`SourceCommandEXT`, and regressions in all three backends assert this.
+
+### Private same-namespace extension overlay
+
+A generic fixture (`private-extension-overlay/`, no UCI names) validates
+ADR-0004 option 3 using existing `xs:include`/schema-set support:
+
+```text
+root.xsd
+  includes public-base.xsd      -> abstract ExtensionBase
+                                   Container.ExtensionCommand : ExtensionBase 0..unbounded
+  includes private-extension.xsd -> PrivateExtension extends ExtensionBase
+```
+
+- **closed-schema:** `ExtensionBase` now has a known concrete descendant, so
+  ordinary Task 024 closed-sum lowering applies and composes with repeated
+  cardinality. Ada, Rust, and C++ all generate the private descendant as a
+  variant. This is the supported route to real extension support today, with no
+  new generator code.
+- **open-extensions:** still fails closed. Including one private descendant does
+  not prove that no *other* external descendant exists. A caller who believes
+  the public+private set is complete must say so with `--world closed-schema`.
+
+A companion public-only fixture (same base, no private overlay) shows the
+`0..unbounded` zero-descendant abstract value remains unsupported in **both**
+worlds: Task 028 deliberately did not extend Task 026 to repeated always-empty
+collections. Only the diagnostic differs (zero-descendant versus open-world).
+
+### Cross-namespace extensions remain out of scope
+
+Backends still require a single namespace. Supporting a private derived type
+declared in a *different* target namespace would require multi-namespace backend
+generation, which Task 028 deliberately did not broaden into.
+
+### No runtime open polymorphism
+
+No trait objects, `Box`, `Rc`/`Arc`, C++ owning polymorphic pointers, Ada
+classwide access, extension registry, plugin registration, opaque payloads,
+codecs, or `xsi:type` handling were added. `--world open-extensions` is strictly
+*more* restrictive than `--world closed-schema`; it exists so the generator can
+be honest about an assumption it cannot verify.
+
+### Authoritative generation matrix
+
+Binary `36d82a8`, run against the pinned probe roots
+`/tmp/ams-gra-uci-probe-2.5/UCI_MessageDefinitions_v2_5_0.xsd` and
+`/tmp/ams-gra-uci-probe-2.6/UCI_MessageDefinitions_v2_6_0.xsd`. All twelve cells
+exit 1 (execution error, not usage error).
+
+| Release | World | Backend | Exit | First blocker | Diagnostic class |
+| --- | --- | --- | --- | --- | --- |
+| 2.5 | closed-schema | Ada | 1 | `SourceCommandEXT` | zero-descendant (Task 024) |
+| 2.5 | closed-schema | Rust | 1 | `SourceCommandEXT` | zero-descendant (Task 024) |
+| 2.5 | closed-schema | C++ | 1 | `SourceCommandEXT` | zero-descendant (Task 024) |
+| 2.6 | closed-schema | Ada | 1 | `SourceCommandEXT` | zero-descendant (Task 024) |
+| 2.6 | closed-schema | Rust | 1 | `SourceCommandEXT` | zero-descendant (Task 024) |
+| 2.6 | closed-schema | C++ | 1 | `SourceCommandEXT` | zero-descendant (Task 024) |
+| 2.5 | open-extensions | Ada | 1 | `CapabilityCommandBaseType` | open-world (Task 028) |
+| 2.5 | open-extensions | Rust | 1 | `CapabilityCommandBaseType` | open-world (Task 028) |
+| 2.5 | open-extensions | C++ | 1 | `CapabilityCommandBaseType` | open-world (Task 028) |
+| 2.6 | open-extensions | Ada | 1 | `CapabilityCommandBaseType` | open-world (Task 028) |
+| 2.6 | open-extensions | Rust | 1 | `CapabilityCommandBaseType` | open-world (Task 028) |
+| 2.6 | open-extensions | C++ | 1 | `CapabilityCommandBaseType` | open-world (Task 028) |
+
+Closed-schema reproduces the Task 026 blocker byte-for-byte, confirmed against a
+fresh pre-change baseline binary built from `bec71c5`:
+
+```text
+error: unsupported abstract structural value: abstract value target SourceCommandEXT has no concrete structural descendants
+```
+
+Open-extensions blocks *earlier*, at the first abstract **value** reference in
+declaration order — `CapabilityCommandBaseType`, which Task 023 identified as
+the first abstract-value blocker before Task 024 closed-sum support existed.
+Because that target has known concrete descendants, it correctly uses the
+open-world diagnostic rather than the zero-descendant one:
+
+```text
+error: unsupported abstract structural value: abstract value CapabilityCommandBaseType is not closed under open-extensions generation; external derived types cannot be represented
+```
+
+This expectation is evidence, not production logic: nothing in the generator
+hardcodes either target name.
+
+### Authoritative coverage matrix
+
+| Release | World | Backend | Kinds | Full declarations | Field types | Field occurrences | Message closures |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 2.5 | closed | Ada | 5428/5557 | **2770**/5557 | 13147/13160 | 8211/13160 | 0/722 |
+| 2.5 | closed | Rust | 5428/5557 | **5365**/5557 | 13147/13160 | 13160/13160 | 0/722 |
+| 2.5 | closed | C++ | 5428/5557 | **5365**/5557 | 13147/13160 | 13160/13160 | 0/722 |
+| 2.5 | open | Ada | 5428/5557 | 2762/5557 | 13147/13160 | 8211/13160 | 0/722 |
+| 2.5 | open | Rust | 5428/5557 | 5277/5557 | 13147/13160 | 13160/13160 | 0/722 |
+| 2.5 | open | C++ | 5428/5557 | 5277/5557 | 13147/13160 | 13160/13160 | 0/722 |
+| 2.6 | closed | Ada | 5441/5570 | **2771**/5570 | 13198/13198 | 8231/13198 | 0/725 |
+| 2.6 | closed | Rust | 5441/5570 | **5387**/5570 | 13198/13198 | 13198/13198 | 0/725 |
+| 2.6 | closed | C++ | 5441/5570 | **5387**/5570 | 13198/13198 | 13198/13198 | 0/725 |
+| 2.6 | open | Ada | 5441/5570 | 2763/5570 | 13198/13198 | 8231/13198 | 0/725 |
+| 2.6 | open | Rust | 5441/5570 | 5299/5570 | 13198/13198 | 13198/13198 | 0/725 |
+| 2.6 | open | C++ | 5441/5570 | 5299/5570 | 13198/13198 | 13198/13198 | 0/725 |
+
+The bolded closed-schema full-declaration counts are exactly the Task 026
+baseline figures. For UCI 2.5 the entire closed-schema report — inventory
+counts, evidence lines, backend coverage counts, and all hypothetical
+feature-impact counts — is **byte-for-byte identical** to the pre-change
+baseline apart from the single added marker line:
+
+```text
+generation world: closed-schema
+```
+
+Open-world decreases land exactly where expected, on **fully renderable
+declarations** only:
+
+- Ada −8 (2.5) and −8 (2.6);
+- Rust and C++ −88 (2.5) and −88 (2.6).
+
+Kind, field-type, and field-occurrence metrics are unchanged in both worlds.
+Field-type renderability deliberately measures whether a named `TypeRef` can be
+*named*, not whether its target is fully renderable, so it is not reduced merely
+because an abstract target cannot be represented open-world; transitive semantic
+failure is carried by the full-declaration and message-closure metrics. Message
+closures were already 0 in both releases because of the unrelated
+`SourceCommandEXT` blocker, so they cannot drop further.
+
+All 31 non-empty feature combinations complete under both worlds for all three
+backends, with no panic, no recursion failure, and no combination reducing
+capability.
+
+### Performance
+
+Coverage elapsed times, same machine, full authoritative runs:
+
+| Run | Elapsed |
+| --- | --- |
+| pre-change baseline, UCI 2.5 | 253 s |
+| UCI 2.5 closed-schema | 260 s |
+| UCI 2.5 open-extensions | 264 s |
+| UCI 2.6 closed-schema | 264 s |
+| UCI 2.6 open-extensions | 265 s |
+
+No order-of-magnitude regression. The Task 026 fix is preserved: world checks
+are O(1), the declaration map, abstract topology map, and closed-world
+fully-elided-target set are all built once in `CoverageAnalysis::new`, and no
+per-field schema scan or per-field abstract projection occurs during
+measurement.
+
+Normalization is unaffected by the world, as required: UCI 2.5 normalizes to
+5,557 types / 722 messages and UCI 2.6 to 5,570 types / 725 messages, unchanged.

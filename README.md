@@ -356,18 +356,54 @@ ams-gra-codegen-oms validate \
 ams-gra-codegen-oms generate \
   --schema /path/to/root.xsd \
   --language ada \
-  --output generated/ada
+  --output generated/ada \
+  --world closed-schema
 
 ams-gra-codegen-oms generate \
   --schema /path/to/root.xsd \
   --language rust \
-  --output generated/rust
+  --output generated/rust \
+  --world open-extensions
+
+ams-gra-codegen-oms coverage \
+  --schema /path/to/root.xsd \
+  --world closed-schema
 ```
 
 Generation completes schema loading, validation, backend generation, and
 generated-path validation before writing any file. Existing generated files may
 be overwritten; unrelated files are retained. Files written before a later I/O
 failure are not rolled back.
+
+### `--world` is required for `generate` and `coverage`
+
+A complete schema *file* set does not prove a complete *type* universe: XSD
+derivation is open by default, so an instance may select an externally declared
+derived type. The generator cannot decide that from schema content, and it
+refuses to guess — so `generate` and `coverage` require an explicit `--world`,
+with **no default**. Omitting it is a usage error (exit code 2).
+
+- `--world closed-schema` — you **assert** that the supplied schema set contains
+  every concrete type that may legally inhabit an abstract value. This is a
+  claim about your deployment, not something schema loading can verify. Under
+  it, known concrete descendants of an abstract value are treated as exhaustive
+  and lowered to a closed sum, and an abstract value with zero known descendants
+  is treated as genuinely uninhabited.
+- `--world open-extensions` — external or private derived types may exist
+  outside the supplied schema set. Known descendant sets are never assumed
+  exhaustive, so every abstract structural **value** position fails closed with
+  a diagnostic instead of being represented by a sum that might be incomplete.
+  No placeholder value is invented. Abstract types used only as inheritance
+  ancestry are unaffected, and ordinary concrete values generate identically.
+
+If you need open-extension types to actually generate, the supported route today
+is to add the private derived-type schema to the generation schema set (same
+target namespace) and use `--world closed-schema`; see
+`docs/adr/0004-open-extension-points.md`. Runtime-polymorphic open extensions
+are not implemented.
+
+`validate` takes no `--world`: schema validity is independent of generation
+policy.
 
 ## First implementation milestone
 

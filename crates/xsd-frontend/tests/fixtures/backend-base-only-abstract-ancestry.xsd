@@ -1,0 +1,30 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:backend-base-only-abstract-ancestry"
+           targetNamespace="urn:backend-base-only-abstract-ancestry"
+           elementFormDefault="qualified">
+  <!-- Task 028 section 43: an abstract base used ONLY as structural ancestry.
+       No field anywhere is typed as Base, so there is no abstract VALUE
+       position. The world policy governs abstract value positions only, so
+       Concrete must lower identically (Task 018 flattened effective fields)
+       under both closed-schema and open-extensions. -->
+  <xs:complexType name="Base" abstract="true">
+    <xs:sequence>
+      <xs:element name="Inherited" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Concrete">
+    <xs:complexContent>
+      <xs:extension base="t:Base">
+        <xs:sequence>
+          <xs:element name="Local" type="xs:string"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="Holder">
+    <xs:sequence>
+      <!-- Concrete, never Base: this is the whole point of the fixture. -->
+      <xs:element name="Item" type="t:Concrete"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

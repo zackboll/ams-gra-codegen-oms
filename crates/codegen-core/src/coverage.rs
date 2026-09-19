@@ -3,8 +3,8 @@ use crate::structure::{
     project_with_index,
 };
 use crate::{
-    ADA_PORTABLE_POSITIVE_INDEX_MAX, AbstractValueInhabitance,
-    AbstractValueOccurrenceRenderability, AbstractValueProjectionError, AbstractValueTopology,
+    ADA_PORTABLE_POSITIVE_INDEX_MAX, AbstractValueOccurrenceRenderability,
+    AbstractValueProjectionError, AbstractValueSemantics, AbstractValueTopology, GenerationWorld,
     abstract_value_occurrence_renderable, abstract_value_targets, classify_abstract_value_topology,
     inclusive_integral_domain,
 };
@@ -157,21 +157,42 @@ impl From<StructuralProjectionError> for CoverageError {
     }
 }
 
-/// Indexed, reusable semantic analysis over validated Schema IR.
+/// Indexed, reusable semantic analysis over validated Schema IR, measured
+/// under one explicit [`GenerationWorld`] policy.
+///
+/// The world is stored once, at construction, and every policy-dependent
+/// index is computed once in [`CoverageAnalysis::new`]. Coverage re-evaluates
+/// every declaration for every language × feature-combination, so no
+/// per-field schema scan or per-field abstract projection may happen during
+/// measurement; doing so previously caused an accidental quadratic
+/// regression.
 pub struct CoverageAnalysis<'a> {
     schema: &'a SchemaIr,
+    /// The caller's asserted world model. Stored, never inferred.
+    world: GenerationWorld,
     declarations: BTreeMap<&'a QualifiedName, &'a TypeDecl>,
     indices: BTreeMap<&'a QualifiedName, usize>,
     abstract_value_topologies: BTreeMap<&'a QualifiedName, AbstractValueTopology<'a>>,
-    /// Zero-descendant abstract targets whose every reference is a supported
-    /// absent-only occurrence. Computed once because coverage re-evaluates
-    /// every declaration for every feature combination and language.
+    /// Closed-world only: zero-descendant abstract targets whose every
+    /// reference is a supported absent-only occurrence. Always empty under
+    /// `OpenExtensions`, where zero known descendants does not imply
+    /// uninhabited. Computed once, for the same performance reason as above.
     fully_elided_targets: BTreeSet<&'a QualifiedName>,
 }
 
 impl<'a> CoverageAnalysis<'a> {
-    /// Build an index after validating the complete IR.
-    pub fn new(schema: &'a SchemaIr) -> Result<Self, CoverageError> {
+    /// Build an index after validating the complete IR, under an explicit
+    /// world policy.
+    ///
+    /// There is deliberately no closed-world default: saved coverage evidence
+    /// must never be semantically ambiguous about which type universe it
+    /// measured.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the schema IR is invalid or if abstract value
+    /// topology classification fails.
+    pub fn new(schema: &'a SchemaIr, world: GenerationWorld) -> Result<Self, CoverageError> {
         schema
             .validate()
             .map_err(|error| CoverageError::InvalidSchema(error.to_string()))?;
@@ -201,6 +222,7 @@ impl<'a> CoverageAnalysis<'a> {
             .collect::<Result<BTreeMap<_, _>, _>>()?;
         let mut analysis = Self {
             schema,
+            world,
             declarations: schema
                 .types
                 .iter()
@@ -210,8 +232,21 @@ impl<'a> CoverageAnalysis<'a> {
             abstract_value_topologies,
             fully_elided_targets: BTreeSet::new(),
         };
-        analysis.fully_elided_targets = analysis.compute_fully_elided_targets();
+        // Policy-dependent index, computed exactly once. Under
+        // `OpenExtensions` no target is elided, because zero known
+        // descendants does not prove zero legal descendants.
+        analysis.fully_elided_targets = if world.is_closed_schema_set() {
+            analysis.compute_fully_elided_targets()
+        } else {
+            BTreeSet::new()
+        };
         Ok(analysis)
+    }
+
+    /// The world policy this analysis was constructed with.
+    #[must_use]
+    pub const fn world(&self) -> GenerationWorld {
+        self.world
     }
 
     /// Return a compositor-preserving projection using the shared declaration index.
@@ -306,6 +341,10 @@ impl<'a> CoverageAnalysis<'a> {
     pub fn report(&self) -> Result<String, CoverageError> {
         let inventory = self.inventory()?;
         let mut output = String::new();
+        // Task 028 section 59: saved coverage evidence must state which type
+        // universe it measured, or it becomes semantically ambiguous. This is
+        // a report line only; the world is never part of the IR inventory.
+        output.push_str(&format!("generation world: {}\n", self.world.label()));
         output.push_str("inventory\n");
         for (category, count) in inventory.counts {
             output.push_str(&format!("{category}: {count}\n"));
@@ -392,13 +431,18 @@ impl<'a> CoverageAnalysis<'a> {
             .iter()
             .map(|declaration| self.declaration_renderable(declaration, language, enabled))
             .collect::<Vec<_>>();
-        for (name, topology) in &self.abstract_value_topologies {
-            let index = self.indices[name];
-            if let AbstractValueTopology::Acyclic(projection) = topology {
-                full[index] &= projection
-                    .concrete_descendants
-                    .iter()
-                    .all(|descendant| full[self.indices[&descendant.name]]);
+        // Closed world only: a Task 024 wrapper is renderable only if every
+        // variant it embeds is. Under `OpenExtensions` no wrapper is emitted,
+        // so there is no such transitive edge to apply.
+        if self.world.is_closed_schema_set() {
+            for (name, topology) in &self.abstract_value_topologies {
+                let index = self.indices[name];
+                if let AbstractValueTopology::Acyclic(projection) = topology {
+                    full[index] &= projection
+                        .concrete_descendants
+                        .iter()
+                        .all(|descendant| full[self.indices[&descendant.name]]);
+                }
             }
         }
         // A target whose every occurrence is absent-only is never emitted, so
@@ -543,7 +587,10 @@ impl<'a> CoverageAnalysis<'a> {
                 .types
                 .iter()
                 .any(|candidate| named_is(candidate.base_type.as_ref(), &declaration.name));
+        // A closed sum wrapper is only a baseline capability in the closed
+        // world; open-world abstract values have no generated representation.
         let abstract_value_supported = declaration.is_abstract
+            && self.world.is_closed_schema_set()
             && matches!(
                 self.abstract_value_topologies.get(&declaration.name),
                 Some(AbstractValueTopology::Acyclic(_))
@@ -660,6 +707,12 @@ impl<'a> CoverageAnalysis<'a> {
     /// `absent_only_occurrence` and by whole-target elision: an elided field
     /// generates no storage, so it creates no demand on its target.
     fn absent_only_field(&self, field: &FieldDecl) -> bool {
+        // Open world: a zero-known-descendant target may still be inhabited by
+        // an external derived type, so nothing is absent-only. This is the
+        // central Task 026 policy correction, and it is an O(1) world check.
+        if !self.world.is_closed_schema_set() {
+            return false;
+        }
         let TypeRefTarget::Named(name) = &field.type_ref.target else {
             return false;
         };
@@ -672,10 +725,11 @@ impl<'a> CoverageAnalysis<'a> {
             return false;
         };
         // Reuse the shared occurrence rule so coverage cannot drift from the
-        // backends' storage decision.
+        // backends' storage decision. The semantics value is constructed from
+        // the pre-indexed topology rather than re-derived per field.
         matches!(
             abstract_value_occurrence_renderable(
-                &AbstractValueInhabitance::Uninhabited { declaration },
+                &AbstractValueSemantics::NoLegalPayload { declaration },
                 field.cardinality,
                 field.nillable,
                 field.constraints == ConstraintSet::default(),
@@ -699,10 +753,20 @@ impl<'a> CoverageAnalysis<'a> {
         {
             return true;
         }
-        matches!(
-            self.abstract_value_topologies.get(name),
-            Some(AbstractValueTopology::Acyclic(_))
-        ) || enabled.contains(&FeatureFamily::StructuralInheritanceAndAbstract)
+        // Closed world: a Task 024 acyclic closed sum is baseline-renderable.
+        // Open world: it is not, because the known descendant set is not
+        // assumed exhaustive. `StructuralInheritanceAndAbstract` remains the
+        // hypothetical family that models future support; under
+        // `OpenExtensions` that hypothetical explicitly means
+        // runtime-polymorphic open-extension capability, which no backend
+        // implements today. Keeping it available preserves monotonicity:
+        // enabling a family may only ever add capability.
+        (self.world.is_closed_schema_set()
+            && matches!(
+                self.abstract_value_topologies.get(name),
+                Some(AbstractValueTopology::Acyclic(_))
+            ))
+            || enabled.contains(&FeatureFamily::StructuralInheritanceAndAbstract)
     }
 
     fn message_renderable(
@@ -1457,7 +1521,7 @@ mod tests {
         schema
     }
     fn assert_only_family_unblocks(schema: &SchemaIr, family: FeatureFamily) {
-        let analysis = CoverageAnalysis::new(schema).unwrap();
+        let analysis = CoverageAnalysis::new(schema, GenerationWorld::ClosedSchemaSet).unwrap();
         for language in BackendLanguage::ALL {
             assert_eq!(analysis.impact(language, &[]).unwrap(), 0);
             assert_eq!(analysis.impact(language, &[family]).unwrap(), 1);
@@ -1506,7 +1570,7 @@ mod tests {
             ],
             "Holder",
         );
-        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
         let inventory = analysis.inventory().unwrap();
         assert_eq!(inventory.counts["abstract_value.targets"], 2);
         assert_eq!(inventory.counts["abstract_value.acyclic_targets"], 1);
@@ -1551,7 +1615,7 @@ mod tests {
         );
         leaf.base_type = Some(named("Base"));
         let schema = schema(vec![leaf, choice, list, alias, base]);
-        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
         assert_eq!(
             analysis
                 .dependency_closure(&QualifiedName::new(NS, "Leaf"))
@@ -1579,7 +1643,7 @@ mod tests {
                 },
             ),
         ]);
-        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
         assert_eq!(
             analysis
                 .dependency_closure(&QualifiedName::new(NS, "Holder"))
@@ -1602,7 +1666,7 @@ mod tests {
                 },
             ),
         ]);
-        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
         let coverage = analysis.backend_coverage(BackendLanguage::Rust).unwrap();
         assert_eq!(coverage.declarations_fully_renderable, 2);
         let first = analysis.report().unwrap();
@@ -1647,7 +1711,7 @@ mod tests {
             )],
             "Payload",
         );
-        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
         for language in BackendLanguage::ALL {
             assert_eq!(analysis.impact(language, &[]).unwrap(), 1);
         }
@@ -1706,7 +1770,8 @@ mod tests {
                 fields: vec![zero, one, two, three, over_limit],
             },
         )]);
-        let analysis = CoverageAnalysis::new(&unbounded_schema).unwrap();
+        let analysis =
+            CoverageAnalysis::new(&unbounded_schema, GenerationWorld::ClosedSchemaSet).unwrap();
         for language in [BackendLanguage::Rust, BackendLanguage::Cpp] {
             assert_eq!(
                 analysis
@@ -1737,7 +1802,8 @@ mod tests {
                 fields: vec![finite, finite_over_limit],
             },
         )]);
-        let analysis = CoverageAnalysis::new(&finite_schema).unwrap();
+        let analysis =
+            CoverageAnalysis::new(&finite_schema, GenerationWorld::ClosedSchemaSet).unwrap();
         assert_eq!(
             analysis
                 .backend_coverage(BackendLanguage::Ada)
@@ -1761,7 +1827,7 @@ mod tests {
             )],
             "Payload",
         );
-        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
         for language in BackendLanguage::ALL {
             assert_eq!(analysis.impact(language, &[]).unwrap(), 1);
             assert_eq!(
@@ -1791,7 +1857,7 @@ mod tests {
             )],
             "Payload",
         );
-        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
         for language in BackendLanguage::ALL {
             let baseline = analysis.backend_coverage(language).unwrap();
             assert_eq!(baseline.declaration_kinds_renderable, 1);
@@ -1825,7 +1891,7 @@ mod tests {
         let mut payload = declaration("Payload", TypeKind::Record { fields: Vec::new() });
         payload.base_type = Some(named("Base"));
         let schema = message_schema(vec![payload, base], "Payload");
-        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
         for language in BackendLanguage::ALL {
             assert_eq!(analysis.impact(language, &[]).unwrap(), 1);
             assert_eq!(
@@ -1851,7 +1917,7 @@ mod tests {
         );
         derived.base_type = Some(named("Base"));
         let schema = message_schema(vec![derived, base], "Derived");
-        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
         for language in BackendLanguage::ALL {
             assert_eq!(analysis.impact(language, &[]).unwrap(), 1);
             for family in [
@@ -1890,7 +1956,8 @@ mod tests {
         let concrete_payload = message_schema(vec![base.clone(), derived.clone()], "Derived");
         let abstract_field = message_schema(vec![base, derived, holder], "Holder");
         for language in BackendLanguage::ALL {
-            let analysis = CoverageAnalysis::new(&abstract_payload).unwrap();
+            let analysis =
+                CoverageAnalysis::new(&abstract_payload, GenerationWorld::ClosedSchemaSet).unwrap();
             assert_eq!(analysis.impact(language, &[]).unwrap(), 1);
             for family in [
                 FeatureFamily::PrimitiveExpansion,
@@ -1907,10 +1974,12 @@ mod tests {
                 1
             );
 
-            let analysis = CoverageAnalysis::new(&concrete_payload).unwrap();
+            let analysis =
+                CoverageAnalysis::new(&concrete_payload, GenerationWorld::ClosedSchemaSet).unwrap();
             assert_eq!(analysis.impact(language, &[]).unwrap(), 1);
 
-            let analysis = CoverageAnalysis::new(&abstract_field).unwrap();
+            let analysis =
+                CoverageAnalysis::new(&abstract_field, GenerationWorld::ClosedSchemaSet).unwrap();
             assert_eq!(analysis.impact(language, &[]).unwrap(), 1);
             assert_eq!(
                 analysis
@@ -1933,7 +2002,8 @@ mod tests {
                 ],
                 "EmptyHolder",
             );
-            let analysis = CoverageAnalysis::new(&empty_schema).unwrap();
+            let analysis =
+                CoverageAnalysis::new(&empty_schema, GenerationWorld::ClosedSchemaSet).unwrap();
             assert_eq!(analysis.impact(language, &[]).unwrap(), 0);
             assert_eq!(
                 analysis
@@ -1960,7 +2030,7 @@ mod tests {
             },
         );
         let schema = message_schema(vec![empty, holder], "Holder");
-        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
         for language in BackendLanguage::ALL {
             // The only legal state of the field is absence, so no storage is
             // generated and the owning record is renderable with no features.
@@ -2022,7 +2092,8 @@ mod tests {
             let name = case.name.clone();
             let holder = declaration("Holder", TypeKind::Record { fields: vec![case] });
             let schema = message_schema(vec![empty.clone(), holder], "Holder");
-            let analysis = CoverageAnalysis::new(&schema).unwrap();
+            let analysis =
+                CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
             for language in BackendLanguage::ALL {
                 // Baseline must stay closed: none of these occurrences can be
                 // represented without inventing an impossible payload.
@@ -2075,7 +2146,7 @@ mod tests {
         let mut empty = declaration("Empty", TypeKind::Record { fields: Vec::new() });
         empty.is_abstract = true;
         let schema = message_schema(vec![empty], "Empty");
-        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
         for language in BackendLanguage::ALL {
             let baseline = analysis.backend_coverage(language).unwrap();
             assert_eq!(
@@ -2116,7 +2187,7 @@ mod tests {
         );
         payload.base_type = Some(named("Base"));
         let schema = message_schema(vec![payload, choice, base], "Payload");
-        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
         for language in BackendLanguage::ALL {
             assert_eq!(analysis.impact(language, &[]).unwrap(), 1);
             assert_eq!(
@@ -2162,7 +2233,7 @@ mod tests {
             },
         );
         let schema = message_schema(vec![outer, inner], "Outer");
-        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
         for language in BackendLanguage::ALL {
             assert_eq!(analysis.impact(language, &[]).unwrap(), 0);
             assert_eq!(
@@ -2190,7 +2261,7 @@ mod tests {
             ],
             "Payload",
         );
-        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
         assert_eq!(analysis.impact(BackendLanguage::Ada, &[]).unwrap(), 0);
         assert_eq!(analysis.impact(BackendLanguage::Rust, &[]).unwrap(), 1);
         assert_eq!(analysis.impact(BackendLanguage::Cpp, &[]).unwrap(), 1);
@@ -2209,6 +2280,69 @@ mod tests {
                     .field_occurrences_renderable,
                 1
             );
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // Task 028 -- explicit generation world policy
+    // ---------------------------------------------------------------
+
+    /// All 31 non-empty feature combinations must complete and stay monotonic
+    /// under BOTH worlds (sections 31/32). No feature may reduce capability,
+    /// and no combination may panic or hit a recursion failure.
+    #[test]
+    fn task028_all_feature_combinations_are_monotonic_in_both_worlds() {
+        let mut base = declaration("Base", TypeKind::Record { fields: Vec::new() });
+        base.is_abstract = true;
+        let mut derived = declaration("Derived", TypeKind::Record { fields: Vec::new() });
+        derived.base_type = Some(named("Base"));
+        let mut empty = declaration("EmptyBase", TypeKind::Record { fields: Vec::new() });
+        empty.is_abstract = true;
+        let mut holder = declaration(
+            "Holder",
+            TypeKind::Record {
+                fields: vec![field("value", "Base"), field("absent", "EmptyBase")],
+            },
+        );
+        let TypeKind::Record { fields } = &mut holder.kind else {
+            unreachable!();
+        };
+        fields[1].cardinality = Cardinality::OPTIONAL_ONE;
+        let schema = message_schema(vec![holder, base, derived, empty], "Holder");
+
+        for world in [
+            GenerationWorld::ClosedSchemaSet,
+            GenerationWorld::OpenExtensions,
+        ] {
+            let analysis = CoverageAnalysis::new(&schema, world).unwrap();
+            assert_eq!(analysis.world(), world);
+            assert!(analysis.report().is_ok(), "{world} report must complete");
+            for language in BackendLanguage::ALL {
+                let baseline = analysis
+                    .backend_coverage(language)
+                    .unwrap()
+                    .message_closures_renderable;
+                let mut combinations = 0;
+                for mask in 1..(1 << FeatureFamily::ALL.len()) {
+                    let features = FeatureFamily::ALL
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(index, feature)| {
+                            ((mask & (1 << index)) != 0).then_some(*feature)
+                        })
+                        .collect::<Vec<_>>();
+                    let total = analysis
+                        .impact(language, &features)
+                        .unwrap_or_else(|error| panic!("{world}/{language:?}: {error}"));
+                    assert!(
+                        total >= baseline,
+                        "{world}/{language:?}: feature set {features:?} reduced coverage \
+                         from {baseline} to {total}"
+                    );
+                    combinations += 1;
+                }
+                assert_eq!(combinations, 31, "all 31 combinations must run");
+            }
         }
     }
 }

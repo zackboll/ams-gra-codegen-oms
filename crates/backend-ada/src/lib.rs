@@ -2,7 +2,7 @@
 
 use ams_gra_oms_codegen_core::{
     ADA_PORTABLE_POSITIVE_INDEX_MAX, AbstractValueProjection, Backend, CodegenError,
-    EffectiveValueMember, GeneratedFile, InclusiveIntegralDomain, TypeEmission,
+    EffectiveValueMember, GeneratedFile, GenerationWorld, InclusiveIntegralDomain, TypeEmission,
     abstract_value_projection_for_ref, effective_choice_alternatives, effective_record_fields,
     field_storage_semantics, inclusive_integral_domain, plan_type_emissions,
 };
@@ -21,8 +21,12 @@ impl Backend for AdaBackend {
         "ada"
     }
 
-    fn generate(&self, schema: &SchemaIr) -> Result<Vec<GeneratedFile>, CodegenError> {
-        let contents = generate(schema)?;
+    fn generate(
+        &self,
+        schema: &SchemaIr,
+        world: GenerationWorld,
+    ) -> Result<Vec<GeneratedFile>, CodegenError> {
+        let contents = generate(schema, world)?;
         let package = package_name(schema)?;
         let file_stem = package.to_ascii_lowercase().replace('.', "-");
         let mut files = Vec::new();
@@ -42,13 +46,20 @@ impl Backend for AdaBackend {
 
 /// Generate one Ada package specification from normalized schema IR.
 ///
+/// The `world` policy is required: there is no implicit world assumption at
+/// any public generation entry point. Under
+/// [`GenerationWorld::OpenExtensions`] any abstract structural value
+/// reference fails closed, because external derived types have no generated
+/// representation.
+///
 /// # Errors
 ///
-/// Returns an error when the IR contains a construct this initial backend
-/// cannot represent without losing semantics.
-pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
-    validate_schema(schema)?;
-    let emissions = plan_type_emissions(schema)?;
+/// Returns an error when the IR contains a construct this backend cannot
+/// represent without losing semantics, including an abstract structural value
+/// under the open-extensions world.
+pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, CodegenError> {
+    validate_schema(schema, world)?;
+    let emissions = plan_type_emissions(schema, world)?;
     let package = package_name(schema)?;
     let mut output = String::from("with Ada.Strings.Unbounded;\n");
     let needs_binary = schema_needs_binary(schema);
@@ -79,7 +90,7 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
     for emission in emissions {
         match emission {
             TypeEmission::Declaration(declaration) => {
-                render_declaration(&mut output, schema, declaration)?
+                render_declaration(&mut output, schema, declaration, world)?
             }
             TypeEmission::AbstractValue(projection) => {
                 render_abstract_value(&mut output, &projection)?
@@ -134,6 +145,7 @@ fn render_declaration(
     output: &mut String,
     schema: &SchemaIr,
     declaration: &TypeDecl,
+    world: GenerationWorld,
 ) -> Result<(), CodegenError> {
     let name = ada_identifier(&declaration.name.local_name)?;
     match &declaration.kind {
@@ -223,7 +235,7 @@ fn render_declaration(
                 })?
                 .into_iter()
                 .map(|field| {
-                    field_storage_semantics(schema, field).map_err(|projection_error| {
+                    field_storage_semantics(schema, field, world).map_err(|projection_error| {
                         error(format!(
                             "unsupported abstract structural value: {projection_error}"
                         ))
@@ -352,7 +364,7 @@ fn render_declaration(
     Ok(())
 }
 
-fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
+fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), CodegenError> {
     let namespace = schema
         .namespaces
         .first()
@@ -399,9 +411,11 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
             })?;
             for field in fields {
                 if matches!(
-                    field_storage_semantics(schema, field).map_err(|projection_error| error(
-                        format!("unsupported abstract structural value: {projection_error}")
-                    ))?,
+                    field_storage_semantics(schema, field, world).map_err(|projection_error| {
+                        error(format!(
+                            "unsupported abstract structural value: {projection_error}"
+                        ))
+                    })?,
                     EffectiveValueMember::AbsentOnly(_)
                 ) {
                     // Task 026: this field's abstract structural target has zero
@@ -409,7 +423,7 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
                     // is its only legal state; no record component is generated.
                     continue;
                 }
-                validate_abstract_value_reference(schema, &field.type_ref)?;
+                validate_abstract_value_reference(schema, &field.type_ref, world)?;
                 ada_field_base(field)?;
                 validate_repeated_cardinality(field)?;
             }
@@ -420,11 +434,16 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
                     error(format!("unsupported Ada IR construct: {projection_error}"))
                 },
             )?;
-            validate_choice_alternatives(schema, &declaration.name.local_name, alternatives)?;
+            validate_choice_alternatives(
+                schema,
+                &declaration.name.local_name,
+                alternatives,
+                world,
+            )?;
         }
     }
     for message in &schema.messages {
-        validate_abstract_value_reference(schema, &message.payload_type)?;
+        validate_abstract_value_reference(schema, &message.payload_type, world)?;
     }
     Ok(())
 }
@@ -432,8 +451,9 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
 fn validate_abstract_value_reference(
     schema: &SchemaIr,
     type_ref: &TypeRef,
+    world: GenerationWorld,
 ) -> Result<(), CodegenError> {
-    abstract_value_projection_for_ref(schema, type_ref)
+    abstract_value_projection_for_ref(schema, type_ref, world)
         .map(|_| ())
         .map_err(|projection_error| {
             error(format!(
@@ -446,6 +466,7 @@ fn validate_choice_alternatives(
     schema: &SchemaIr,
     choice_name: &str,
     alternatives: Vec<&ams_gra_oms_ir::FieldDecl>,
+    world: GenerationWorld,
 ) -> Result<(), CodegenError> {
     let mut names = std::collections::BTreeSet::new();
     for alternative in alternatives {
@@ -456,7 +477,7 @@ fn validate_choice_alternatives(
         if alternative.nillable {
             return unsupported(format!("nillable Choice alternative {}", alternative.name));
         }
-        validate_abstract_value_reference(schema, &alternative.type_ref)?;
+        validate_abstract_value_reference(schema, &alternative.type_ref, world)?;
         validate_repeated_cardinality(alternative)?;
         // Keep validation aligned with the Choice-qualified helper emitted below.
         ada_field_type(choice_name, alternative)?;
@@ -793,6 +814,13 @@ fn error(message: impl Into<String>) -> CodegenError {
 mod tests {
     use super::*;
     use ams_gra_oms_ir::NumericValue;
+
+    /// Existing pre-Task-028 regressions all asserted closed-world behaviour,
+    /// so they keep asserting exactly that under the now-explicit policy.
+    const CLOSED: GenerationWorld = GenerationWorld::ClosedSchemaSet;
+    /// Task 028 open-world regressions.
+    #[allow(dead_code)]
+    const OPEN: GenerationWorld = GenerationWorld::OpenExtensions;
     use ams_gra_oms_xsd_frontend::{load_schema_document, load_schema_set};
     use std::path::Path;
 
@@ -923,7 +951,8 @@ mod tests {
 
     #[test]
     fn preserves_repeated_minimum_cardinality_and_portable_bounds() {
-        let source = generate(&unbounded_schema()).expect("supported minima should generate");
+        let source =
+            generate(&unbounded_schema(), CLOSED).expect("supported minima should generate");
         assert!(source.contains(
             "subtype Record_ZeroOrMoreNamed_Sequence is Record_ZeroOrMoreNamed_Vectors.Vector;"
         ));
@@ -938,12 +967,13 @@ mod tests {
         } else {
             panic!("fixture Record should be present");
         }
-        assert!(generate(&finite_limit).is_ok());
+        assert!(generate(&finite_limit, CLOSED).is_ok());
         let TypeKind::Record { fields } = &mut finite_limit.types[1].kind else {
             panic!("fixture Record should be present");
         };
         fields[4].cardinality.max_occurs = Some(ADA_PORTABLE_POSITIVE_INDEX_MAX + 1);
-        let error = generate(&finite_limit).expect_err("over-limit finite maximum must fail");
+        let error =
+            generate(&finite_limit, CLOSED).expect_err("over-limit finite maximum must fail");
         assert!(error.message.contains("finite repeated maximum"));
 
         let mut unbounded_limit = unbounded_schema();
@@ -952,19 +982,20 @@ mod tests {
         } else {
             panic!("fixture Record should be present");
         }
-        assert!(generate(&unbounded_limit).is_ok());
+        assert!(generate(&unbounded_limit, CLOSED).is_ok());
         let TypeKind::Record { fields } = &mut unbounded_limit.types[1].kind else {
             panic!("fixture Record should be present");
         };
         fields[1].cardinality.min_occurs = ADA_PORTABLE_POSITIVE_INDEX_MAX + 1;
-        let error = generate(&unbounded_limit).expect_err("over-limit unbounded minimum must fail");
+        let error =
+            generate(&unbounded_limit, CLOSED).expect_err("over-limit unbounded minimum must fail");
         assert!(error.message.contains("unbounded minimum"));
     }
 
     #[test]
     fn lowers_finite_and_unbounded_repeated_value_shapes() {
-        let source =
-            generate(&repeated_cardinality_schema()).expect("repeated values should generate");
+        let source = generate(&repeated_cardinality_schema(), CLOSED)
+            .expect("repeated values should generate");
         // The fixture namespace ends in `ada`, so generated package scope can
         // shadow the root Ada library unit unless references are rooted here.
         assert!(source.contains("Standard.Ada.Strings.Unbounded.Unbounded_String"));
@@ -984,7 +1015,8 @@ mod tests {
 
     #[test]
     fn lowers_integral_scalars_and_preserves_direct_ranges() {
-        let source = generate(&integral_schema()).expect("integral scalars should generate");
+        let source =
+            generate(&integral_schema(), CLOSED).expect("integral scalars should generate");
         assert!(source.contains("with Interfaces;"));
         assert!(source.contains("Enabled : Boolean;"));
         assert!(source.contains("Byte_Value : Long_Long_Integer range -128 .. 127;"));
@@ -1001,7 +1033,7 @@ mod tests {
 
     #[test]
     fn lowers_choice_as_discriminated_record_and_accepts_empty_record_ancestry() {
-        let source = generate(&choice_schema()).expect("supported Choice should generate");
+        let source = generate(&choice_schema(), CLOSED).expect("supported Choice should generate");
         assert!(
             source.contains("type Selection_Kind is\n      (First_Kind,\n       Second_Kind);")
         );
@@ -1021,7 +1053,7 @@ mod tests {
         alternatives[0].name = "Foo".to_owned();
         alternatives[1].name = "foo".to_owned();
         assert!(
-            generate(&collision)
+            generate(&collision, CLOSED)
                 .unwrap_err()
                 .message
                 .contains("duplicate Choice alternative identifier foo")
@@ -1033,7 +1065,7 @@ mod tests {
         };
         alternatives[0].nillable = true;
         assert!(
-            generate(&nillable)
+            generate(&nillable, CLOSED)
                 .unwrap_err()
                 .message
                 .contains("nillable Choice alternative First")
@@ -1045,7 +1077,7 @@ mod tests {
         };
         alternatives[0].constraints.length = Some(4);
         assert!(
-            generate(&constrained)
+            generate(&constrained, CLOSED)
                 .unwrap_err()
                 .message
                 .contains("field constraints on First")
@@ -1066,13 +1098,13 @@ mod tests {
             alternatives: fields,
         };
         assert!(
-            generate(&abstract_target)
+            generate(&abstract_target, CLOSED)
                 .expect("abstract Choice alternative should lower")
                 .contains("Value : Base")
         );
 
-        let source =
-            generate(&repeated_choice_schema()).expect("finite repeated Choice must generate");
+        let source = generate(&repeated_choice_schema(), CLOSED)
+            .expect("finite repeated Choice must generate");
         assert!(
             source
                 .contains("type Selection_Items_Array is array (Positive range 1 .. 3) of Token;")
@@ -1083,7 +1115,8 @@ mod tests {
 
     #[test]
     fn lowers_effective_record_fields_and_omits_abstract_ancestor() {
-        let source = generate(&inheritance_schema()).expect("pure Record inheritance is supported");
+        let source =
+            generate(&inheritance_schema(), CLOSED).expect("pure Record inheritance is supported");
         assert!(!source.contains("type Base is record"));
         let leaf = source.find("type Leaf is record").unwrap();
         let fields = &source[leaf..];
@@ -1105,7 +1138,8 @@ mod tests {
             panic!("Base must be a Record");
         };
         fields[0].type_ref = TypeRef::primitive(PrimitiveKind::Binary);
-        let source = generate(&schema).expect("abstract closed sum with binary field must lower");
+        let source =
+            generate(&schema, CLOSED).expect("abstract closed sum with binary field must lower");
         assert!(source.contains("type Base_Kind is"));
         assert!(source.contains("Binary_Vectors.Vector"));
     }
@@ -1113,13 +1147,13 @@ mod tests {
     #[test]
     fn lowers_abstract_value_references_and_retains_choice_boundary() {
         let source =
-            generate(&abstract_value_schema()).expect("closed abstract value should lower");
+            generate(&abstract_value_schema(), CLOSED).expect("closed abstract value should lower");
         assert!(source.contains("type Base_Kind is"));
         assert!(source.contains("Derived_Kind"));
         assert!(source.find("type Derived").unwrap() < source.find("type Base_Kind").unwrap());
         assert!(source.find("type Base_Kind").unwrap() < source.find("type Holder").unwrap());
         assert!(
-            generate(&choice_boundary_schema())
+            generate(&choice_boundary_schema(), CLOSED)
                 .unwrap_err()
                 .message
                 .contains("contains Record segment Base while lowering Choice")
@@ -1129,15 +1163,16 @@ mod tests {
     #[test]
     fn track_matches_golden_and_is_deterministic() {
         let schema = track_schema();
-        let first = generate(&schema).expect("Ada generation should succeed");
-        let second = generate(&schema).expect("Ada generation should be repeatable");
+        let first = generate(&schema, CLOSED).expect("Ada generation should succeed");
+        let second = generate(&schema, CLOSED).expect("Ada generation should be repeatable");
         assert_eq!(first, second);
         assert_eq!(first, include_str!("../tests/expected/track.ads"));
     }
 
     #[test]
     fn schema_set_matches_dependency_order_golden() {
-        let source = generate(&codegen_order_schema()).expect("Ada generation should succeed");
+        let source =
+            generate(&codegen_order_schema(), CLOSED).expect("Ada generation should succeed");
         assert_eq!(source, include_str!("../tests/expected/codegen_order.ads"));
         assert!(
             source.find("type Included_Id").unwrap() < source.find("type Record_First").unwrap()
@@ -1150,7 +1185,7 @@ mod tests {
 
     #[test]
     fn preserves_order_and_cardinality_semantics() {
-        let source = generate(&track_schema()).expect("Ada generation should succeed");
+        let source = generate(&track_schema(), CLOSED).expect("Ada generation should succeed");
         assert!(source.contains("type Track_Id is range 1 .. 65_535;"));
         assert!(source.contains("(Unknown,\n      Tentative,\n      Confirmed);"));
         assert!(source.contains("Callsign : Optional_String;"));
@@ -1176,7 +1211,7 @@ mod tests {
             alternatives: vec![alternative],
         };
         schema.types[0].base_type = None;
-        let source = generate(&schema).expect("Choice must render");
+        let source = generate(&schema, CLOSED).expect("Choice must render");
         assert!(source.contains("type Track_Id"));
     }
 
@@ -1189,7 +1224,8 @@ mod tests {
             };
             fields.truncate(1);
             fields[0].type_ref = TypeRef::primitive(kind);
-            let source = generate(&schema).expect("unconstrained floating generation must succeed");
+            let source =
+                generate(&schema, CLOSED).expect("unconstrained floating generation must succeed");
             assert!(source.contains(if kind == PrimitiveKind::Float32 {
                 "Interfaces.IEEE_Float_32"
             } else {
@@ -1205,7 +1241,8 @@ mod tests {
             )),
             ..ConstraintSet::default()
         };
-        let error = generate(&schema).expect_err("constrained float must remain unsupported");
+        let error =
+            generate(&schema, CLOSED).expect_err("constrained float must remain unsupported");
         assert!(error.message.contains("unsupported Ada IR construct"));
     }
 
@@ -1217,7 +1254,8 @@ mod tests {
         };
         fields.truncate(1);
         fields[0].type_ref = TypeRef::primitive(PrimitiveKind::Binary);
-        let source = generate(&schema).expect("unconstrained binary generation must succeed");
+        let source =
+            generate(&schema, CLOSED).expect("unconstrained binary generation must succeed");
         assert!(source.contains("Binary_Vectors.Vector"));
         assert!(source.contains("Interfaces.Unsigned_8"));
         assert!(source.contains("with Ada.Containers.Vectors;"));
@@ -1226,7 +1264,7 @@ mod tests {
         let mut schema = track_schema();
         schema.types[0].kind = TypeKind::Primitive(PrimitiveKind::Binary);
         schema.types[0].constraints = ConstraintSet::default();
-        let source = generate(&schema).expect("unconstrained named binary must generate");
+        let source = generate(&schema, CLOSED).expect("unconstrained named binary must generate");
         assert!(source.contains("type Track_Id is record"));
         assert!(source.contains("Value : Binary_Vectors.Vector;"));
     }
@@ -1239,7 +1277,8 @@ mod tests {
             length: Some(4),
             ..ConstraintSet::default()
         };
-        let error = generate(&schema).expect_err("constrained binary declaration must fail");
+        let error =
+            generate(&schema, CLOSED).expect_err("constrained binary declaration must fail");
         assert!(
             error
                 .message
@@ -1259,7 +1298,7 @@ mod tests {
             length: Some(4),
             ..ConstraintSet::default()
         };
-        let error = generate(&schema).expect_err("constrained binary field must fail");
+        let error = generate(&schema, CLOSED).expect_err("constrained binary field must fail");
         assert!(
             error
                 .message
@@ -1276,7 +1315,8 @@ mod tests {
         fields.truncate(1);
         fields[0].type_ref = TypeRef::primitive(PrimitiveKind::Binary);
         fields[0].cardinality = Cardinality::OPTIONAL_ONE;
-        let error = generate(&schema).expect_err("optional binary field must remain unsupported");
+        let error =
+            generate(&schema, CLOSED).expect_err("optional binary field must remain unsupported");
         assert!(
             error
                 .message
@@ -1292,7 +1332,8 @@ mod tests {
                 panic!("track fixture should contain a record");
             };
             fields[0].type_ref = TypeRef::primitive(kind);
-            let error = generate(&schema).expect_err("temporal generation must remain unsupported");
+            let error =
+                generate(&schema, CLOSED).expect_err("temporal generation must remain unsupported");
             assert!(error.message.contains(&format!(
                 "unsupported Ada IR construct: type reference Primitive({kind:?})"
             )));
@@ -1305,7 +1346,7 @@ mod tests {
                 length: Some(4),
                 ..ConstraintSet::default()
             };
-            let error = generate(&schema).expect_err("constraints must not be discarded");
+            let error = generate(&schema, CLOSED).expect_err("constraints must not be discarded");
             assert!(
                 error
                     .message
@@ -1336,7 +1377,8 @@ mod tests {
                     },
                 );
             }
-            let error = generate(&schema).expect_err("lexical constraints must be rejected");
+            let error =
+                generate(&schema, CLOSED).expect_err("lexical constraints must be rejected");
             assert!(
                 error
                     .message
@@ -1349,7 +1391,7 @@ mod tests {
     fn abstract_types_fail_explicitly() {
         let mut schema = track_schema();
         schema.types[0].is_abstract = true;
-        let error = generate(&schema).expect_err("abstract type must be rejected");
+        let error = generate(&schema, CLOSED).expect_err("abstract type must be rejected");
         assert!(
             error
                 .message
@@ -1359,8 +1401,8 @@ mod tests {
 
     #[test]
     fn uninhabited_abstract_optional_field_is_elided_without_fake_payload() {
-        let source =
-            generate(&uninhabited_optional_schema()).expect("absent-only occurrence should lower");
+        let source = generate(&uninhabited_optional_schema(), CLOSED)
+            .expect("absent-only occurrence should lower");
         assert!(!source.contains("SidecarPoint"));
         assert!(!source.contains("Widget"));
         assert!(source.contains("type Holder is record\n      Required : Standard.Ada.Strings.Unbounded.Unbounded_String;\n   end record;"));
@@ -1368,7 +1410,7 @@ mod tests {
 
     #[test]
     fn uninhabited_abstract_required_field_remains_unsupported() {
-        let error = generate(&uninhabited_required_schema())
+        let error = generate(&uninhabited_required_schema(), CLOSED)
             .expect_err("positive-minimum uninhabited value must fail closed");
         assert!(
             error
@@ -1385,7 +1427,7 @@ mod tests {
         // must not weaken that boundary, so this fails at the pre-existing
         // Ada optional cardinality firewall rather than at the abstract-value
         // firewall.
-        let error = generate(&uninhabited_future_descendant_schema())
+        let error = generate(&uninhabited_future_descendant_schema(), CLOSED)
             .expect_err("Ada optional named-value boundary should still apply");
         assert!(
             error
@@ -1396,7 +1438,7 @@ mod tests {
 
     #[test]
     fn inherited_uninhabited_field_is_elided_on_the_concrete_descendant() {
-        let source = generate(&uninhabited_inherited_schema())
+        let source = generate(&uninhabited_inherited_schema(), CLOSED)
             .expect("inherited absent-only occurrence should lower");
         assert!(!source.contains("SidecarPoint"));
         assert!(source.contains("type ConcreteHolder is record\n      Required : Standard.Ada.Strings.Unbounded.Unbounded_String;\n   end record;"));
@@ -1404,11 +1446,159 @@ mod tests {
 
     #[test]
     fn uninhabited_optional_field_composes_with_task_024_closed_sum() {
-        let source = generate(&uninhabited_composes_closed_sum_schema())
+        let source = generate(&uninhabited_composes_closed_sum_schema(), CLOSED)
             .expect("Task 026 composition with Task 024 closed sum should lower");
         assert!(source.contains("type Parent_Kind is"));
         assert!(source.contains("ConcreteChild_Kind"));
         assert!(source.contains("type ConcreteChild is record\n      null;\n   end record;"));
         assert!(!source.contains("Widget"));
+    }
+
+    // ---------------------------------------------------------------
+    // Task 028 -- explicit generation world policy
+    // ---------------------------------------------------------------
+
+    fn base_only_ancestry_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-base-only-abstract-ancestry.xsd"),
+        )
+        .expect("base-only ancestry fixture should parse")
+    }
+
+    fn private_extension_overlay_schema() -> SchemaIr {
+        load_schema_set(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/private-extension-overlay/root.xsd"),
+        )
+        .expect("private extension overlay fixture should parse")
+    }
+
+    fn public_only_repeated_extension_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/public-only-repeated-extension.xsd"),
+        )
+        .expect("public-only repeated extension fixture should parse")
+    }
+
+    /// Sections 13/16/40: the same Task 024 fixture generates a closed sum
+    /// under `closed-schema` and fails closed under `open-extensions`, with a
+    /// diagnostic that names the target and the policy rather than claiming
+    /// the schema is invalid.
+    #[test]
+    fn task028_abstract_value_depends_on_world() {
+        generate(&abstract_value_schema(), CLOSED)
+            .expect("closed world must keep Task 024 closed-sum lowering");
+        let error = generate(&abstract_value_schema(), OPEN)
+            .expect_err("open world must reject an abstract value");
+        let message = error.to_string();
+        assert!(message.contains("Base"), "must name the target: {message}");
+        assert!(
+            message.contains("open-extensions"),
+            "must name the policy: {message}"
+        );
+        assert!(
+            message.contains("external derived types cannot be represented"),
+            "must explain why: {message}"
+        );
+        assert!(
+            !message.contains("invalid"),
+            "must not claim the schema is invalid: {message}"
+        );
+        assert!(
+            !message.contains("no concrete structural descendants"),
+            "one-descendant target must use the open diagnostic, not the \
+             zero-descendant diagnostic: {message}"
+        );
+    }
+
+    /// Sections 41/42: the Task 026 zero-descendant optional field is elided
+    /// under `closed-schema`, but must NOT be elided under `open-extensions`,
+    /// because an external derived type may legally make it present.
+    #[test]
+    fn task028_zero_descendant_optional_depends_on_world() {
+        generate(&uninhabited_optional_schema(), CLOSED)
+            .expect("closed world must keep Task 026 absent-only elision");
+        let message = generate(&uninhabited_optional_schema(), OPEN)
+            .expect_err("open world must not elide a possibly-external payload")
+            .to_string();
+        assert!(
+            message.contains("SidecarPoint") && message.contains("open-extensions"),
+            "open diagnostic must name target and policy: {message}"
+        );
+    }
+
+    /// Sections 12/43: an abstract base used only as ancestry is not a value
+    /// position, so both worlds succeed and produce identical output.
+    #[test]
+    fn task028_base_only_ancestry_is_world_independent() {
+        let closed = generate(&base_only_ancestry_schema(), CLOSED)
+            .expect("base-only ancestry must generate in the closed world");
+        let open = generate(&base_only_ancestry_schema(), OPEN)
+            .expect("base-only ancestry must generate in the open world too");
+        assert_eq!(
+            closed, open,
+            "ancestry-only abstraction must not be affected by world policy"
+        );
+    }
+
+    /// Sections 45-47: supplying the private derived type as part of the
+    /// generation schema set (ADR-0004 option 3) makes closed-schema lowering
+    /// work, composing with repeated cardinality. Open-extensions stays
+    /// conservative: including one private descendant does not prove that no
+    /// OTHER external descendant exists.
+    #[test]
+    fn task028_private_extension_overlay() {
+        let source = generate(&private_extension_overlay_schema(), CLOSED)
+            .expect("supplying the private schema must close the extension point");
+        assert!(
+            source.contains("PrivateExtension") || source.contains("Private_Extension"),
+            "closed sum must include the private descendant: {source}"
+        );
+        let message = generate(&private_extension_overlay_schema(), OPEN)
+            .expect_err("open world stays conservative even with a private descendant")
+            .to_string();
+        assert!(
+            message.contains("ExtensionBase") && message.contains("open-extensions"),
+            "open diagnostic must name target and policy: {message}"
+        );
+    }
+
+    /// Section 48: without the private overlay the repeated zero-descendant
+    /// abstract value is unsupported in BOTH worlds. Task 028 deliberately
+    /// does not extend Task 026 to always-empty repeated collections.
+    #[test]
+    fn task028_public_only_repeated_extension_is_unsupported_in_both_worlds() {
+        let closed = generate(&public_only_repeated_extension_schema(), CLOSED)
+            .expect_err("repeated absent-only elision was never adopted")
+            .to_string();
+        assert!(
+            closed.contains("ExtensionBase"),
+            "closed diagnostic must name the target: {closed}"
+        );
+        assert!(
+            closed.contains("no concrete structural descendants"),
+            "closed world reports the zero-descendant reason: {closed}"
+        );
+        let open = generate(&public_only_repeated_extension_schema(), OPEN)
+            .expect_err("open world rejects the abstract value as well")
+            .to_string();
+        assert!(
+            open.contains("open-extensions"),
+            "open world reports the open-world reason instead: {open}"
+        );
+    }
+
+    /// Section 44: a schema with no abstract value reference must produce
+    /// byte-identical output under both worlds.
+    #[test]
+    fn task028_concrete_only_output_is_byte_identical_across_worlds() {
+        for schema in [track_schema(), codegen_order_schema(), inheritance_schema()] {
+            assert_eq!(
+                generate(&schema, CLOSED).expect("closed generation must succeed"),
+                generate(&schema, OPEN).expect("open generation must succeed"),
+            );
+        }
     }
 }
