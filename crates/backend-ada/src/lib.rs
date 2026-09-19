@@ -278,7 +278,7 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
                     error(format!("unsupported Ada IR construct: {projection_error}"))
                 },
             )?;
-            validate_choice_alternatives(schema, alternatives)?;
+            validate_choice_alternatives(schema, &declaration.name.local_name, alternatives)?;
         }
     }
     for message in &schema.messages {
@@ -297,6 +297,7 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
 
 fn validate_choice_alternatives(
     schema: &SchemaIr,
+    choice_name: &str,
     alternatives: Vec<&ams_gra_oms_ir::FieldDecl>,
 ) -> Result<(), CodegenError> {
     let mut names = std::collections::BTreeSet::new();
@@ -321,7 +322,8 @@ fn validate_choice_alternatives(
                 ));
             }
         }
-        ada_field_type("Choice", alternative)?;
+        // Keep validation aligned with the Choice-qualified helper emitted below.
+        ada_field_type(choice_name, alternative)?;
     }
     Ok(())
 }
@@ -539,6 +541,14 @@ mod tests {
         .expect("choice fixture should parse")
     }
 
+    fn repeated_choice_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-choice-repeated.xsd"),
+        )
+        .expect("repeated Choice fixture should parse")
+    }
+
     #[test]
     fn lowers_choice_as_discriminated_record_and_accepts_empty_record_ancestry() {
         let source = generate(&choice_schema()).expect("supported Choice should generate");
@@ -550,6 +560,76 @@ mod tests {
         assert!(source.contains(
             "type DerivedSelection (Kind : DerivedSelection_Kind := Left_Kind) is record"
         ));
+    }
+
+    #[test]
+    fn choice_validation_firewalls_and_finite_repetition_are_exercised_by_generation() {
+        let mut collision = choice_schema();
+        let TypeKind::Choice { alternatives } = &mut collision.types[1].kind else {
+            panic!("Selection must be a Choice");
+        };
+        alternatives[0].name = "Foo".to_owned();
+        alternatives[1].name = "foo".to_owned();
+        assert!(
+            generate(&collision)
+                .unwrap_err()
+                .message
+                .contains("duplicate Choice alternative identifier foo")
+        );
+
+        let mut nillable = choice_schema();
+        let TypeKind::Choice { alternatives } = &mut nillable.types[1].kind else {
+            panic!("Selection must be a Choice");
+        };
+        alternatives[0].nillable = true;
+        assert!(
+            generate(&nillable)
+                .unwrap_err()
+                .message
+                .contains("nillable Choice alternative First")
+        );
+
+        let mut constrained = choice_schema();
+        let TypeKind::Choice { alternatives } = &mut constrained.types[1].kind else {
+            panic!("Selection must be a Choice");
+        };
+        alternatives[0].constraints.length = Some(4);
+        assert!(
+            generate(&constrained)
+                .unwrap_err()
+                .message
+                .contains("field constraints on First")
+        );
+
+        let mut abstract_target = abstract_value_schema();
+        let holder = abstract_target
+            .types
+            .iter_mut()
+            .find(|type_decl| type_decl.name.local_name == "Holder")
+            .unwrap();
+        let TypeKind::Record { fields } =
+            std::mem::replace(&mut holder.kind, TypeKind::Record { fields: Vec::new() })
+        else {
+            panic!("Holder must be a Record");
+        };
+        holder.kind = TypeKind::Choice {
+            alternatives: fields,
+        };
+        assert!(
+            generate(&abstract_target)
+                .unwrap_err()
+                .message
+                .contains("abstract structural value reference Base")
+        );
+
+        let source =
+            generate(&repeated_choice_schema()).expect("finite repeated Choice must generate");
+        assert!(
+            source
+                .contains("type Selection_Items_Array is array (Positive range 1 .. 3) of Token;")
+        );
+        assert!(source.contains("type Selection_Items_Sequence is record"));
+        assert!(source.contains("Items : Selection_Items_Sequence;"));
     }
 
     #[test]

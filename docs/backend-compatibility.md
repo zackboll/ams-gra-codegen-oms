@@ -340,6 +340,13 @@ The checked-in synthetic fixture covers duplicate `Token` payload alternatives,
 a Record containing a Choice, and empty-Record ancestry. It also retains a
 separate non-empty Record + Choice rejection fixture.
 
+Choice is baseline **kind renderable** because every backend has an ordinary
+Choice renderer. `FeatureFamily::Choice` remains hypothetical only for the
+unsupported composition boundary. Direct backend-generation regressions cover
+normalized-name collisions, nillability, constraints, abstract value targets,
+and finite repeated alternatives; repeated output is compiler-probed for all
+three backends.
+
 Published Task 017 authoritative evidence remains: UCI 2.5 has 420 Choice
 declarations (419 standalone, 1 inherited), UCI 2.6 has 424 (423 standalone,
 1 inherited); duplicate alternative names are zero; 47 Choices in each release

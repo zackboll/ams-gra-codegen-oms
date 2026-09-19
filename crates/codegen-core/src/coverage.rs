@@ -940,11 +940,13 @@ fn all_members(schema: &SchemaIr) -> Vec<&FieldDecl> {
 }
 fn kind_renderable(declaration: &TypeDecl, enabled: &BTreeSet<FeatureFamily>) -> bool {
     match declaration.kind {
+        // `FeatureFamily::Choice` models only remaining unsupported Choice
+        // composition; ordinary Choice declarations have backend renderers.
         TypeKind::Primitive(PrimitiveKind::SignedInteger)
         | TypeKind::Enumeration { .. }
-        | TypeKind::Record { .. } => true,
+        | TypeKind::Record { .. }
+        | TypeKind::Choice { .. } => true,
         TypeKind::Primitive(_) => enabled.contains(&FeatureFamily::PrimitiveExpansion),
-        TypeKind::Choice { .. } => enabled.contains(&FeatureFamily::Choice),
         TypeKind::Alias(_) | TypeKind::List { .. } => false,
     }
 }
@@ -1349,6 +1351,47 @@ mod tests {
                     .unwrap(),
                 1
             );
+        }
+    }
+
+    #[test]
+    fn supported_choice_metrics_are_baseline_and_hypothetical_features_are_additive() {
+        let schema = message_schema(
+            vec![declaration(
+                "Payload",
+                TypeKind::Choice {
+                    alternatives: vec![field_ref(
+                        "text",
+                        TypeRef::primitive(PrimitiveKind::String),
+                    )],
+                },
+            )],
+            "Payload",
+        );
+        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        for language in BackendLanguage::ALL {
+            let baseline = analysis.backend_coverage(language).unwrap();
+            assert_eq!(baseline.declaration_kinds_renderable, 1);
+            assert_eq!(baseline.declarations_fully_renderable, 1);
+            assert_eq!(baseline.message_closures_renderable, 1);
+            for mask in 1..(1 << FeatureFamily::ALL.len()) {
+                let enabled = FeatureFamily::ALL
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(index, feature)| ((mask & (1 << index)) != 0).then_some(*feature))
+                    .collect::<BTreeSet<_>>();
+                let coverage = analysis.backend_coverage_with(language, &enabled).unwrap();
+                assert!(
+                    coverage.declaration_kinds_renderable >= baseline.declaration_kinds_renderable
+                );
+                assert!(
+                    coverage.declarations_fully_renderable
+                        >= baseline.declarations_fully_renderable
+                );
+                assert!(
+                    coverage.message_closures_renderable >= baseline.message_closures_renderable
+                );
+            }
         }
     }
 
