@@ -451,30 +451,6 @@ additive and do not remove current Record or Choice lowering.
 
 ## Task 021 unbounded cardinality
 
-## Task 023 — Ada minimum-preserving repeated cardinality
-
-Ada now preserves repeated minima structurally. Finite `MIN..MAX` values use a
-fixed `Positive range 1 .. MAX` array and `Length : Natural range MIN .. MAX :=
-MIN`. Positive unbounded values use a fixed required prefix of exactly `MIN`
-items plus an `Ada.Containers.Vectors` additional tail; logical order is the
-prefix followed by tail vector order. `0..*` retains the Task 021 vector form.
-
-The shared portable array bound is 32,767: conforming Ada guarantees
-`Standard.Integer` includes `-32_767 .. 32_767`, hence `Positive` includes this
-range. Finite maxima and positive unbounded minima above it fail closed.
-Nillability and Ada optional named/non-String values remain unsupported.
-`CardinalityAndNillability` now covers those remaining occurrence semantics,
-including bounds above this portable limit, rather than ordinary supported
-positive-minimum repetition.
-
-Fresh UCI inventory confirms the Task 021 cross-tabs: 2.5 finite Record/Choice
-`0..N=300/0`, `1..N=82/9`, `min>1..N=4/0`; unbounded `1390/0`, `451/80`,
-`8/4`. 2.6 is `266/0`, `81/9`, `4/0`; and `1406/0`, `453/81`, `8/4`.
-Unbounded positive minima are only 1, 2, and 3. The former Ada blocker,
-`AccessAssessmentResultType.AccessAssessmentID` (`1..*`, named,
-non-nillable, default constraints), now lowers successfully. All three
-backends next stop at abstract structural value reference `CapabilityCommandBaseType`.
-
 Authoritative normalized-IR inventory was run against
 `/tmp/ams-gra-uci-probe-2.5/UCI_MessageDefinitions_v2_5_0.xsd` and
 `/tmp/ams-gra-uci-probe-2.6/UCI_MessageDefinitions_v2_6_0.xsd`. The original
@@ -538,3 +514,32 @@ Rust converts the schema minimum into `usize` before comparing it with a
 `Vec` length: conversion failure means the platform cannot represent a large
 enough `Vec`, while no representable length is artificially capped. This does
 not expand Task 021 support or alter analyzer semantics.
+
+## Task 023 — Ada minimum-preserving repeated cardinality
+
+Ada now preserves repeated minima structurally. Finite `MIN..MAX` values use a
+fixed `Positive range 1 .. MAX` array and `Length : Natural range MIN .. MAX :=
+MIN`. Positive unbounded values use a fixed required prefix of exactly `MIN`
+items plus an `Ada.Containers.Vectors` additional tail; logical order is the
+prefix followed by tail vector order. `0..*` retains the Task 021 vector form.
+
+The shared portable array bound is 32,767: conforming Ada guarantees
+`Standard.Integer` includes `-32_767 .. 32_767`, hence `Positive` includes this
+range. Finite maxima and positive unbounded minima above it fail closed.
+Nillability and Ada optional named/non-String values remain unsupported.
+`CardinalityAndNillability` now covers those remaining occurrence semantics,
+including bounds above this portable limit, rather than ordinary supported
+positive-minimum repetition.
+
+Fresh UCI inventory confirms the Task 021 cross-tabs: 2.5 finite Record/Choice
+`0..N=300/0`, `1..N=82/9`, `min>1..N=4/0`; unbounded `1390/0`, `451/80`,
+`8/4`. 2.6 is `266/0`, `81/9`, `4/0`; and `1406/0`, `453/81`, `8/4`.
+Unbounded positive minima are only 1, 2, and 3. The former Ada blocker,
+`AccessAssessmentResultType.AccessAssessmentID` (`1..*`, named,
+non-nillable, default constraints), now lowers successfully. All three
+backends next stop at abstract structural value reference `CapabilityCommandBaseType`.
+
+Measured Ada coverage moved from declarations `2422 -> 2761` and field
+occurrences `7573 -> 8211` in UCI 2.5, and `2421 -> 2762` plus
+`7591 -> 8231` in UCI 2.6. Declaration kinds, field types, and message
+closures were unchanged.

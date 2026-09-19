@@ -62,7 +62,7 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
         "   type Optional_String (Is_Present : Boolean := False) is record\n",
         "      case Is_Present is\n",
         "         when False => null;\n",
-        "      when True  => Value : Standard.Ada.Strings.Unbounded.Unbounded_String;\n",
+        "         when True  => Value : Standard.Ada.Strings.Unbounded.Unbounded_String;\n",
         "      end case;\n",
         "   end record;\n\n",
     ));
@@ -813,6 +813,10 @@ mod tests {
     fn lowers_finite_and_unbounded_repeated_value_shapes() {
         let source =
             generate(&repeated_cardinality_schema()).expect("repeated values should generate");
+        // The fixture namespace ends in `ada`, so generated package scope can
+        // shadow the root Ada library unit unless references are rooted here.
+        assert!(source.contains("Standard.Ada.Strings.Unbounded.Unbounded_String"));
+        assert!(source.contains("new Standard.Ada.Containers.Vectors"));
         assert!(source.contains("Length : Natural range 0 .. 3 := 0;"));
         assert!(source.contains("Length : Natural range 1 .. 2 := 1;"));
         assert!(source.contains("Length : Natural range 2 .. 3 := 2;"));
