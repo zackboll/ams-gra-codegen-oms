@@ -15,6 +15,13 @@ pub use structure::{
     effective_record_fields, project_structural_type,
 };
 
+/// Largest `Positive` array index guaranteed by the Ada language.
+///
+/// A conforming Ada `Standard.Integer` includes `-32_767 .. 32_767`, so this
+/// is the largest schema cardinality bound that can portably appear in the
+/// generated `Positive range 1 .. bound` arrays.
+pub const ADA_PORTABLE_POSITIVE_INDEX_MAX: u64 = 32_767;
+
 use ams_gra_oms_ir::{QualifiedName, SchemaIr, TypeDecl, TypeKind, TypeRef, TypeRefTarget};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;

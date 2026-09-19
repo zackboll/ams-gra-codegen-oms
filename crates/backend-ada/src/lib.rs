@@ -1,8 +1,9 @@
 //! Minimal Ada type generation from normalized schema IR.
 
 use ams_gra_oms_codegen_core::{
-    Backend, CodegenError, GeneratedFile, InclusiveIntegralDomain, effective_choice_alternatives,
-    effective_record_fields, inclusive_integral_domain, plan_type_declarations,
+    ADA_PORTABLE_POSITIVE_INDEX_MAX, Backend, CodegenError, GeneratedFile, InclusiveIntegralDomain,
+    effective_choice_alternatives, effective_record_fields, inclusive_integral_domain,
+    plan_type_declarations,
 };
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind,
@@ -49,7 +50,7 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
     validate_schema(schema)?;
     let package = package_name(schema)?;
     let mut output = String::from("with Ada.Strings.Unbounded;\n");
-    if schema.types.iter().any(has_zero_unbounded_occurrence) {
+    if schema.types.iter().any(has_ada_unbounded_occurrence) {
         output.push_str("with Ada.Containers.Vectors;\n");
     }
     if schema_needs_interfaces(schema) {
@@ -61,7 +62,7 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
         "   type Optional_String (Is_Present : Boolean := False) is record\n",
         "      case Is_Present is\n",
         "         when False => null;\n",
-        "         when True  => Value : Ada.Strings.Unbounded.Unbounded_String;\n",
+        "         when True  => Value : Standard.Ada.Strings.Unbounded.Unbounded_String;\n",
         "      end case;\n",
         "   end record;\n\n",
     ));
@@ -155,7 +156,8 @@ fn render_declaration(
                 ))
             })?;
             for field in &fields {
-                if let Some(max) = repeated_max(field.cardinality) {
+                if let Some((min, max)) = bounded_repeated(field.cardinality) {
+                    ensure_portable_finite_max(max)?;
                     let field_name = ada_identifier(&field.name)?;
                     let helper_name = format!("{name}_{field_name}");
                     let item_type = ada_field_base(field)?;
@@ -163,15 +165,12 @@ fn render_declaration(
                         output,
                         "   type {helper_name}_Array is array (Positive range 1 .. {max}) of {item_type};\n\
                          \x20  type {helper_name}_Sequence is record\n\
-                         \x20     Length : Natural range 0 .. {max} := 0;\n\
+                         \x20     Length : Natural range {min} .. {max} := {min};\n\
                          \x20     Items  : {helper_name}_Array;\n\
                          \x20  end record;\n"
                     )
                     .expect("writing to String cannot fail");
-                } else if matches!(
-                    field.cardinality.shape(),
-                    OccurrenceShape::Unbounded { min: 0 }
-                ) {
+                } else if matches!(field.cardinality.shape(), OccurrenceShape::Unbounded { .. }) {
                     render_unbounded_helper(output, &name, field)?;
                 }
             }
@@ -190,11 +189,8 @@ fn render_declaration(
                         "Optional_String".to_owned()
                     }
                     cardinality
-                        if repeated_max(cardinality).is_some()
-                            || matches!(
-                                cardinality.shape(),
-                                OccurrenceShape::Unbounded { min: 0 }
-                            ) =>
+                        if bounded_repeated(cardinality).is_some()
+                            || matches!(cardinality.shape(), OccurrenceShape::Unbounded { .. }) =>
                     {
                         format!("{name}_{field_name}_Sequence")
                     }
@@ -213,7 +209,8 @@ fn render_declaration(
             )?;
             let kind_name = format!("{name}_Kind");
             for alternative in &alternatives {
-                if let Some(max) = repeated_max(alternative.cardinality) {
+                if let Some((min, max)) = bounded_repeated(alternative.cardinality) {
+                    ensure_portable_finite_max(max)?;
                     let alternative_name = ada_identifier(&alternative.name)?;
                     let helper_name = format!("{name}_{alternative_name}");
                     let item_type = ada_field_base(alternative)?;
@@ -221,14 +218,14 @@ fn render_declaration(
                         output,
                         "   type {helper_name}_Array is array (Positive range 1 .. {max}) of {item_type};\n\
                          \x20  type {helper_name}_Sequence is record\n\
-                         \x20     Length : Natural range 0 .. {max} := 0;\n\
+                         \x20     Length : Natural range {min} .. {max} := {min};\n\
                          \x20     Items  : {helper_name}_Array;\n\
                          \x20  end record;\n"
                     )
                     .expect("writing to String cannot fail");
                 } else if matches!(
                     alternative.cardinality.shape(),
-                    OccurrenceShape::Unbounded { min: 0 }
+                    OccurrenceShape::Unbounded { .. }
                 ) {
                     render_unbounded_helper(output, &name, alternative)?;
                 }
@@ -315,6 +312,7 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
             })?;
             for field in fields {
                 ada_field_base(field)?;
+                validate_repeated_cardinality(field)?;
                 if let TypeRefTarget::Named(target) = &field.type_ref.target {
                     if schema
                         .types
@@ -366,6 +364,7 @@ fn validate_choice_alternatives(
         if alternative.nillable {
             return unsupported(format!("nillable Choice alternative {}", alternative.name));
         }
+        validate_repeated_cardinality(alternative)?;
         if let TypeRefTarget::Named(target) = &alternative.type_ref.target {
             if schema
                 .types
@@ -396,8 +395,8 @@ fn ada_field_type(
             Ok("Optional_String".to_owned())
         }
         cardinality
-            if repeated_max(cardinality).is_some()
-                || matches!(cardinality.shape(), OccurrenceShape::Unbounded { min: 0 }) =>
+            if bounded_repeated(cardinality).is_some()
+                || matches!(cardinality.shape(), OccurrenceShape::Unbounded { .. }) =>
         {
             Ok(format!(
                 "{}_{}_Sequence",
@@ -409,6 +408,18 @@ fn ada_field_type(
     }
 }
 
+fn validate_repeated_cardinality(field: &ams_gra_oms_ir::FieldDecl) -> Result<(), CodegenError> {
+    match field.cardinality.shape() {
+        OccurrenceShape::Bounded { max, .. } if max > 1 => ensure_portable_finite_max(max),
+        OccurrenceShape::Unbounded { min } if min > ADA_PORTABLE_POSITIVE_INDEX_MAX => {
+            unsupported(format!(
+                "unbounded minimum {min} exceeds portable Positive bound {ADA_PORTABLE_POSITIVE_INDEX_MAX}"
+            ))
+        }
+        _ => Ok(()),
+    }
+}
+
 fn render_unbounded_helper(
     output: &mut String,
     owner: &str,
@@ -417,6 +428,14 @@ fn render_unbounded_helper(
     let field_name = ada_identifier(&field.name)?;
     let helper_name = format!("{owner}_{field_name}");
     let item_type = ada_field_base(field)?;
+    let OccurrenceShape::Unbounded { min } = field.cardinality.shape() else {
+        return unsupported(format!("unbounded cardinality on field {field_name}"));
+    };
+    if min > ADA_PORTABLE_POSITIVE_INDEX_MAX {
+        return unsupported(format!(
+            "unbounded minimum {min} exceeds portable Positive bound {ADA_PORTABLE_POSITIVE_INDEX_MAX}"
+        ));
+    }
     let equality = if matches!(
         field.type_ref.target,
         TypeRefTarget::Primitive(
@@ -427,30 +446,41 @@ fn render_unbounded_helper(
     } else {
         ""
     };
-    writeln!(
-        output,
-        "   subtype {helper_name}_Item is {item_type};\n\
-         \x20  package {helper_name}_Vectors is new Ada.Containers.Vectors\n\
-         \x20     (Index_Type => Natural, Element_Type => {helper_name}_Item{equality});\n\
-         \x20  subtype {helper_name}_Sequence is {helper_name}_Vectors.Vector;\n"
-    )
-    .expect("writing to String cannot fail");
+    if min == 0 {
+        writeln!(
+            output,
+            "   subtype {helper_name}_Item is {item_type};\n\
+             \x20  package {helper_name}_Vectors is new Standard.Ada.Containers.Vectors\n\
+             \x20     (Index_Type => Natural, Element_Type => {helper_name}_Item{equality});\n\
+             \x20  subtype {helper_name}_Sequence is {helper_name}_Vectors.Vector;\n"
+        )
+        .expect("writing to String cannot fail");
+    } else {
+        writeln!(
+            output,
+            "   subtype {helper_name}_Item is {item_type};\n\
+             \x20  type {helper_name}_Required_Array is\n\
+             \x20    array (Positive range 1 .. {min}) of {helper_name}_Item;\n\
+             \x20  package {helper_name}_Additional_Vectors is new Standard.Ada.Containers.Vectors\n\
+             \x20     (Index_Type => Natural, Element_Type => {helper_name}_Item{equality});\n\
+             \x20  type {helper_name}_Sequence is record\n\
+             \x20     Required   : {helper_name}_Required_Array;\n\
+             \x20     Additional : {helper_name}_Additional_Vectors.Vector;\n\
+             \x20  end record;\n"
+        )
+        .expect("writing to String cannot fail");
+    }
     Ok(())
 }
 
-fn has_zero_unbounded_occurrence(declaration: &TypeDecl) -> bool {
+fn has_ada_unbounded_occurrence(declaration: &TypeDecl) -> bool {
     match &declaration.kind {
         TypeKind::Record { fields } => fields,
         TypeKind::Choice { alternatives } => alternatives,
         _ => return false,
     }
     .iter()
-    .any(|field| {
-        matches!(
-            field.cardinality.shape(),
-            OccurrenceShape::Unbounded { min: 0 }
-        )
-    })
+    .any(|field| matches!(field.cardinality.shape(), OccurrenceShape::Unbounded { .. }))
 }
 
 fn package_name(schema: &SchemaIr) -> Result<String, CodegenError> {
@@ -489,21 +519,27 @@ fn ada_type(type_ref: &TypeRef) -> Result<String, CodegenError> {
             Ok("Interfaces.IEEE_Float_64".to_owned())
         }
         TypeRefTarget::Primitive(PrimitiveKind::String) => {
-            Ok("Ada.Strings.Unbounded.Unbounded_String".to_owned())
+            Ok("Standard.Ada.Strings.Unbounded.Unbounded_String".to_owned())
         }
         TypeRefTarget::Named(name) => ada_identifier(&name.local_name),
         other => unsupported(format!("type reference {other:?}")),
     }
 }
 
-fn repeated_max(cardinality: Cardinality) -> Option<u64> {
-    match cardinality {
-        Cardinality {
-            min_occurs: 0,
-            max_occurs: Some(max),
-        } if max > 1 => Some(max),
+fn bounded_repeated(cardinality: Cardinality) -> Option<(u64, u64)> {
+    match cardinality.shape() {
+        OccurrenceShape::Bounded { min, max } if max > 1 => Some((min, max)),
         _ => None,
     }
+}
+
+fn ensure_portable_finite_max(max: u64) -> Result<(), CodegenError> {
+    if max > ADA_PORTABLE_POSITIVE_INDEX_MAX {
+        return unsupported(format!(
+            "finite repeated maximum {max} exceeds portable Positive bound {ADA_PORTABLE_POSITIVE_INDEX_MAX}"
+        ));
+    }
+    Ok(())
 }
 
 fn integral_domain(
@@ -725,15 +761,73 @@ mod tests {
         .expect("unbounded fixture should parse")
     }
 
+    fn repeated_cardinality_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-ada-repeated-cardinality.xsd"),
+        )
+        .expect("repeated cardinality fixture should parse")
+    }
+
     #[test]
-    fn rejects_positive_minimum_unbounded_cardinality() {
-        let generation_error =
-            generate(&unbounded_schema()).expect_err("Ada must preserve positive minimum");
-        assert!(
-            generation_error.message.contains("cardinality on"),
-            "{}",
-            generation_error.message
-        );
+    fn preserves_repeated_minimum_cardinality_and_portable_bounds() {
+        let source = generate(&unbounded_schema()).expect("supported minima should generate");
+        assert!(source.contains(
+            "subtype Record_ZeroOrMoreNamed_Sequence is Record_ZeroOrMoreNamed_Vectors.Vector;"
+        ));
+        assert!(source.contains("array (Positive range 1 .. 1) of Record_OneOrMoreNamed_Item;"));
+        assert!(source.contains("array (Positive range 1 .. 2) of Record_TwoOrMoreNamed_Item;"));
+        assert!(source.contains("Additional : Record_TwoOrMoreNamed_Additional_Vectors.Vector;"));
+        assert!(source.contains("array (Positive range 1 .. 1) of Selection_OneNamed_Item;"));
+
+        let mut finite_limit = unbounded_schema();
+        if let TypeKind::Record { fields } = &mut finite_limit.types[1].kind {
+            fields[4].cardinality.max_occurs = Some(ADA_PORTABLE_POSITIVE_INDEX_MAX);
+        } else {
+            panic!("fixture Record should be present");
+        }
+        assert!(generate(&finite_limit).is_ok());
+        let TypeKind::Record { fields } = &mut finite_limit.types[1].kind else {
+            panic!("fixture Record should be present");
+        };
+        fields[4].cardinality.max_occurs = Some(ADA_PORTABLE_POSITIVE_INDEX_MAX + 1);
+        let error = generate(&finite_limit).expect_err("over-limit finite maximum must fail");
+        assert!(error.message.contains("finite repeated maximum"));
+
+        let mut unbounded_limit = unbounded_schema();
+        if let TypeKind::Record { fields } = &mut unbounded_limit.types[1].kind {
+            fields[1].cardinality.min_occurs = ADA_PORTABLE_POSITIVE_INDEX_MAX;
+        } else {
+            panic!("fixture Record should be present");
+        }
+        assert!(generate(&unbounded_limit).is_ok());
+        let TypeKind::Record { fields } = &mut unbounded_limit.types[1].kind else {
+            panic!("fixture Record should be present");
+        };
+        fields[1].cardinality.min_occurs = ADA_PORTABLE_POSITIVE_INDEX_MAX + 1;
+        let error = generate(&unbounded_limit).expect_err("over-limit unbounded minimum must fail");
+        assert!(error.message.contains("unbounded minimum"));
+    }
+
+    #[test]
+    fn lowers_finite_and_unbounded_repeated_value_shapes() {
+        let source =
+            generate(&repeated_cardinality_schema()).expect("repeated values should generate");
+        // The fixture namespace ends in `ada`, so generated package scope can
+        // shadow the root Ada library unit unless references are rooted here.
+        assert!(source.contains("Standard.Ada.Strings.Unbounded.Unbounded_String"));
+        assert!(source.contains("new Standard.Ada.Containers.Vectors"));
+        assert!(source.contains("Length : Natural range 0 .. 3 := 0;"));
+        assert!(source.contains("Length : Natural range 1 .. 2 := 1;"));
+        assert!(source.contains("Length : Natural range 2 .. 3 := 2;"));
+        assert!(source.contains("Length : Natural range 3 .. 5 := 3;"));
+        assert!(source.contains("array (Positive range 1 .. 2) of Interfaces.IEEE_Float_32;"));
+        assert!(source.contains(
+            "array (Positive range 1 .. 3) of Interfaces.Unsigned_64 range 0 .. 4294967295;"
+        ));
+        assert!(source.contains("array (Positive range 1 .. 3) of Payload_ThreeOrMore_Item;"));
+        assert!(source.contains("Additional : Payload_ThreeOrMore_Additional_Vectors.Vector;"));
+        assert!(source.contains("Selection_Repeated_Required_Array"));
     }
 
     #[test]

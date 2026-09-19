@@ -5,7 +5,7 @@ package Oms.Track is
    type Optional_String (Is_Present : Boolean := False) is record
       case Is_Present is
          when False => null;
-         when True  => Value : Ada.Strings.Unbounded.Unbounded_String;
+         when True  => Value : Standard.Ada.Strings.Unbounded.Unbounded_String;
       end case;
    end record;
 
