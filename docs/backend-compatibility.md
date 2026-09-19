@@ -412,3 +412,59 @@ Likewise, after Task 019 `Choice` means the remaining unsupported Choice family
 (multiple Choice segments and non-empty Record × Choice composition), not an
 ordinary standalone or empty-Record-ancestry Choice. Hypothetical families are
 additive and do not remove current Record or Choice lowering.
+
+## Task 021 unbounded cardinality
+
+Authoritative normalized-IR inventory was run against
+`/tmp/ams-gra-uci-probe-2.5/UCI_MessageDefinitions_v2_5_0.xsd` and
+`/tmp/ams-gra-uci-probe-2.6/UCI_MessageDefinitions_v2_6_0.xsd`. The original
+Rust/C++ blocker is the `AccessAssessmentID` alternative of
+`AccessAssessmentResultType`: it is a named `AccessAssessmentID_Type`,
+non-nillable, unconstrained, `minOccurs=1`, `maxOccurs=unbounded` member. It
+is at line 5013 in 2.5 and line 5037 in 2.6; its normalized semantics are
+identical in both releases.
+
+The complete occurrence cross-tab is:
+
+| Release | shape | Record | Choice | total |
+|---|---:|---:|---:|---:|
+| 2.5 | 1..1 | 4,508 | 1,375 | 5,883 |
+| 2.5 | 0..1 | 4,949 | 0 | 4,949 |
+| 2.5 | 0..N | 300 | 0 | 300 |
+| 2.5 | 1..N | 82 | 9 | 91 |
+| 2.5 | min>1..N | 4 | 0 | 4 |
+| 2.5 | 0..* | 1,390 | 0 | 1,390 |
+| 2.5 | 1..* | 451 | 80 | 531 |
+| 2.5 | min>1..* | 8 | 4 | 12 |
+| 2.6 | 1..1 | 4,531 | 1,388 | 5,919 |
+| 2.6 | 0..1 | 4,967 | 0 | 4,967 |
+| 2.6 | 0..N | 266 | 0 | 266 |
+| 2.6 | 1..N | 81 | 9 | 90 |
+| 2.6 | min>1..N | 4 | 0 | 4 |
+| 2.6 | 0..* | 1,406 | 0 | 1,406 |
+| 2.6 | 1..* | 453 | 81 | 534 |
+| 2.6 | min>1..* | 8 | 4 | 12 |
+
+These reconcile with Task 017's unbounded totals: 1,933 in 2.5 and 1,952 in
+2.6, with 16 members having `minOccurs > 1` in each. Their min distributions
+are 2.5: Record 0/1/2/3 = 1,390/451/6/2 and Choice = 0/80/3/1; 2.6: Record =
+1,406/453/6/2 and Choice = 0/81/3/1. All are non-nillable; 23 unbounded
+members have local constraints in each release. Named/primitive distributions
+are 1,907/26 (2.5) and 1,927/25 (2.6). There are 84/85 unbounded Choice
+alternatives, all named; deterministic order begins with
+`AccessAssessmentResultType.AccessAssessmentID`.
+
+`Cardinality::shape()` is a schema-neutral, lossless classifier with required,
+optional, bounded, and unbounded variants. Rust lowers unbounded values to a
+private `UnboundedVec<T, MIN>` and C++ to a private `UnboundedVector<T, Min>`;
+both expose checked construction and read-only access, retain `minOccurs`, and
+preserve constrained scalar element wrappers. Ada lowers only `0..*` to an
+owner-qualified `Ada.Containers.Vectors` instantiation. Positive-minimum Ada
+unbounded occurrences remain fail-closed because a public Vector alone cannot
+enforce the lower bound.
+
+Nillability remains unsupported. Finite bounded and optional lowerings are
+unchanged. Consequently `CardinalityAndNillability` now denotes remaining
+unsupported occurrence semantics (not all unbounded cardinality): nillability,
+Ada's unsupported positive-minimum unbounded forms, and its existing narrower
+optional policy.

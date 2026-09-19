@@ -5,7 +5,8 @@ use ams_gra_oms_codegen_core::{
     effective_record_fields, inclusive_integral_domain, plan_type_declarations,
 };
 use ams_gra_oms_ir::{
-    Cardinality, ConstraintSet, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef, TypeRefTarget,
+    Cardinality, ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind,
+    TypeRef, TypeRefTarget,
 };
 use std::fmt::Write as _;
 use std::path::PathBuf;
@@ -48,6 +49,9 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
     validate_schema(schema)?;
     let package = package_name(schema)?;
     let mut output = String::from("with Ada.Strings.Unbounded;\n");
+    if schema.types.iter().any(has_zero_unbounded_occurrence) {
+        output.push_str("with Ada.Containers.Vectors;\n");
+    }
     if schema_has_unsigned(schema) {
         output.push_str("with Interfaces;\n");
     }
@@ -154,6 +158,11 @@ fn render_declaration(
                          \x20  end record;\n"
                     )
                     .expect("writing to String cannot fail");
+                } else if matches!(
+                    field.cardinality.shape(),
+                    OccurrenceShape::Unbounded { min: 0 }
+                ) {
+                    render_unbounded_helper(output, &name, field)?;
                 }
             }
             writeln!(output, "   type {name} is record").expect("writing to String cannot fail");
@@ -170,7 +179,13 @@ fn render_declaration(
                     {
                         "Optional_String".to_owned()
                     }
-                    cardinality if repeated_max(cardinality).is_some() => {
+                    cardinality
+                        if repeated_max(cardinality).is_some()
+                            || matches!(
+                                cardinality.shape(),
+                                OccurrenceShape::Unbounded { min: 0 }
+                            ) =>
+                    {
                         format!("{name}_{field_name}_Sequence")
                     }
                     _ => return unsupported(format!("cardinality on field {field_name}")),
@@ -201,6 +216,11 @@ fn render_declaration(
                          \x20  end record;\n"
                     )
                     .expect("writing to String cannot fail");
+                } else if matches!(
+                    alternative.cardinality.shape(),
+                    OccurrenceShape::Unbounded { min: 0 }
+                ) {
+                    render_unbounded_helper(output, &name, alternative)?;
                 }
             }
             writeln!(output, "   type {kind_name} is").expect("writing to String cannot fail");
@@ -365,13 +385,52 @@ fn ada_field_type(
         {
             Ok("Optional_String".to_owned())
         }
-        cardinality if repeated_max(cardinality).is_some() => Ok(format!(
-            "{}_{}_Sequence",
-            choice_name,
-            ada_identifier(&field.name)?
-        )),
+        cardinality
+            if repeated_max(cardinality).is_some()
+                || matches!(cardinality.shape(), OccurrenceShape::Unbounded { min: 0 }) =>
+        {
+            Ok(format!(
+                "{}_{}_Sequence",
+                choice_name,
+                ada_identifier(&field.name)?
+            ))
+        }
         _ => unsupported(format!("cardinality on Choice alternative {}", field.name)),
     }
+}
+
+fn render_unbounded_helper(
+    output: &mut String,
+    owner: &str,
+    field: &ams_gra_oms_ir::FieldDecl,
+) -> Result<(), CodegenError> {
+    let field_name = ada_identifier(&field.name)?;
+    let helper_name = format!("{owner}_{field_name}");
+    let item_type = ada_field_base(field)?;
+    writeln!(
+        output,
+        "   subtype {helper_name}_Item is {item_type};\n\
+         \x20  package {helper_name}_Vectors is new Ada.Containers.Vectors\n\
+         \x20     (Index_Type => Natural, Element_Type => {helper_name}_Item);\n\
+         \x20  subtype {helper_name}_Sequence is {helper_name}_Vectors.Vector;\n"
+    )
+    .expect("writing to String cannot fail");
+    Ok(())
+}
+
+fn has_zero_unbounded_occurrence(declaration: &TypeDecl) -> bool {
+    match &declaration.kind {
+        TypeKind::Record { fields } => fields,
+        TypeKind::Choice { alternatives } => alternatives,
+        _ => return false,
+    }
+    .iter()
+    .any(|field| {
+        matches!(
+            field.cardinality.shape(),
+            OccurrenceShape::Unbounded { min: 0 }
+        )
+    })
 }
 
 fn has_numeric_constraints(constraints: &ConstraintSet) -> bool {
@@ -634,6 +693,25 @@ mod tests {
                 .join("../xsd-frontend/tests/fixtures/backend-integral-scalars.xsd"),
         )
         .expect("integral fixture should parse")
+    }
+
+    fn unbounded_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-unbounded-cardinality.xsd"),
+        )
+        .expect("unbounded fixture should parse")
+    }
+
+    #[test]
+    fn rejects_positive_minimum_unbounded_cardinality() {
+        let generation_error =
+            generate(&unbounded_schema()).expect_err("Ada must preserve positive minimum");
+        assert!(
+            generation_error.message.contains("cardinality on"),
+            "{}",
+            generation_error.message
+        );
     }
 
     #[test]
