@@ -898,3 +898,82 @@ occurrence of an uninhabited value would require choosing a representation for a
 collection whose element type has no inhabitants, and no authoritative evidence
 yet establishes that an always-empty collection is the intended meaning. It is
 recorded here as the next decision point for a future task.
+
+## Task 027 open extension-point semantics
+
+Task 027 is an evidence and architecture task. **No backend behavior, coverage
+behavior, or Task 026 implementation changed**, so every measurement in the
+Task 026 section above remains current. Full evidence is in
+`docs/task-027-open-extension-points.md`.
+
+### Task 026 is confirmed correct under its stated assumption
+
+Task 026 correctly implemented its explicit closed-schema assumption. Given that
+only types declared in the supplied schema set may ever appear in a value, an
+optional occurrence of a zero-descendant abstract target genuinely has exactly
+one legal state, and eliding its storage is right. Task 026 also fails closed on
+every other occurrence shape and verifies whole-schema usage before skipping a
+wrapper. None of that is revised here.
+
+### Task 027 limits that assumption to closed-world generation
+
+Task 027 does **not** confirm the closed-schema assumption as general UCI
+semantics. Measured from the pinned authoritative roots:
+
+- all 13 zero-descendant abstract targets are `abstract="true"`, carry
+  `uci:version="000.000.000.000"`, have no base type and no local fields, and
+  are identical in 2.5 and 2.6 (topology count reconfirmed at 13);
+- 12 of 13 are documented as explicit open extension points; the 13th
+  (`ConstraintEXT`) is an open-ended generic description; **none** is documented
+  as reserved, unused, or uninhabited;
+- `SourceCommandEXT` (2.5 line 95638, 2.6 line 95712) is documented as "a point
+  of abstract extension to create SourceCommands that can't be documented in the
+  open, unclassified UCI schema";
+- the ten `CommSupport*EXT` types instruct *adopting programs* to define their
+  own details here;
+- neither root ever uses `block` or `final`, so XSD derivation and substitution
+  at these types are deliberately left unrestricted.
+
+The conclusion is a **Decision B — open world**: the loaded XSD dependency graph
+is closed as a *file set*, but the UCI *type universe* is not. External, private,
+program-specific schemas may legally supply derived extension types.
+
+Consequently Task 026's optional elision is recorded as **closed-world-only
+behavior**. Under general UCI/CAL interoperability an elided `ExtensionData`
+field could not represent an extension value a conforming peer legitimately
+sent. That risk is currently unexercised — this generator emits no codec and no
+runtime — but it is a real correctness boundary for future runtime work and is
+deliberately not papered over.
+
+### Why SourceCommandEXT remains fail-closed
+
+The `0..unbounded` `DisseminationSubplanType.ExtensionCommand` occurrence
+(2.5 line 30929, 2.6 line 30919; `minOccurs=0`, `maxOccurs=unbounded`,
+non-nillable, unconstrained, Record not Choice) is **not** lowered as an
+always-empty collection, because the evidence says the opposite of "always
+empty":
+
+- the member's own documentation repeats the extension semantics at the use
+  site;
+- secondary public UCI CAL 2.3.2 evidence (`Santiago010/Uci-Cal-api` @
+  `87409b91e163931b6ac0905134367e5fb48729c9`, clearly **secondary** because it
+  is an older release) exposes `ExtensionCommand` as a mutable
+  `BoundedList<SourceCommandEXT>` whose `resize(size, accessorType)` explicitly
+  accepts "a accessor derived from the BoundedList's base type", alongside
+  `push_back` and `setExtensionCommand`, and whose JSON/XML serializers iterate
+  every entry and grow the list on deserialize.
+
+An always-empty lowering would therefore have been wrong, so all six probes
+(UCI 2.5 and 2.6 × Ada/Rust/C++) continue to stop at the unchanged Task 024
+diagnostic:
+
+```text
+error: unsupported abstract structural value: abstract value target SourceCommandEXT has no concrete structural descendants
+```
+
+No behavior keys on the `EXT` name suffix, and none may: the schema contains no
+machine-readable discriminator for extension points. `substitutionGroup`,
+`block`, `final`, `xs:appinfo`, `xs:import`, and `xs:any` are used zero times in
+both roots, the only custom attribute anywhere is `uci:version`, and
+`uci:version="000.000.000.000"` is shared with 1,098 ordinary inhabited types in
+2.5 alone, so it cannot serve as one either.
