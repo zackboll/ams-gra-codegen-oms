@@ -1,8 +1,9 @@
 //! Minimal C++17 type generation from normalized schema IR.
 
 use ams_gra_oms_codegen_core::{
-    Backend, CodegenError, GeneratedFile, InclusiveIntegralDomain, effective_choice_alternatives,
-    effective_record_fields, inclusive_integral_domain, plan_type_declarations,
+    AbstractValueProjection, Backend, CodegenError, GeneratedFile, InclusiveIntegralDomain,
+    TypeEmission, abstract_value_projection_for_ref, effective_choice_alternatives,
+    effective_record_fields, inclusive_integral_domain, plan_type_emissions,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -44,14 +45,19 @@ impl Backend for CppBackend {
 /// Returns an error when the IR contains a construct this initial backend
 /// cannot represent without losing semantics.
 pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
-    let declarations = plan_type_declarations(schema)?;
     validate_schema(schema)?;
+    let emissions = plan_type_emissions(schema)?;
     let namespace = namespace_name(schema)?;
-    let variant_header = if schema
-        .types
-        .iter()
-        .any(|declaration| matches!(declaration.kind, TypeKind::Choice { .. }))
-    {
+    let variant_header = if emissions.iter().any(|emission| {
+        matches!(
+            emission,
+            TypeEmission::AbstractValue(_)
+                | TypeEmission::Declaration(TypeDecl {
+                    kind: TypeKind::Choice { .. },
+                    ..
+                })
+        )
+    }) {
         "#include <variant>\n"
     } else {
         ""
@@ -134,11 +140,37 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
             "    explicit BoundedInteger(T value) noexcept : value_(value) {}\n    T value_;\n};\n\n",
         ));
     }
-    for declaration in declarations {
-        render_declaration(&mut output, schema, declaration)?;
+    for emission in emissions {
+        match emission {
+            TypeEmission::Declaration(declaration) => {
+                render_declaration(&mut output, schema, declaration)?
+            }
+            TypeEmission::AbstractValue(projection) => {
+                render_abstract_value(&mut output, &projection)?
+            }
+        }
     }
     writeln!(output, "}}  // namespace {namespace}").expect("writing to String cannot fail");
     Ok(output)
+}
+
+fn render_abstract_value(
+    output: &mut String,
+    projection: &AbstractValueProjection<'_>,
+) -> Result<(), CodegenError> {
+    let name = upper_camel(&projection.declaration.name.local_name)?;
+    writeln!(output, "struct {name} {{\n    std::variant<").expect("writing to String cannot fail");
+    for (index, descendant) in projection.concrete_descendants.iter().enumerate() {
+        let variant = upper_camel(&descendant.name.local_name)?;
+        let suffix = if index + 1 == projection.concrete_descendants.len() {
+            ""
+        } else {
+            ","
+        };
+        writeln!(output, "        {variant}{suffix}").expect("writing to String cannot fail");
+    }
+    output.push_str("    > value;\n};\n\n");
+    Ok(())
 }
 
 fn render_declaration(
@@ -296,12 +328,10 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
     }
     for declaration in &schema.types {
         if declaration.is_abstract
-            && (!matches!(declaration.kind, TypeKind::Record { .. })
-                || !schema.types.iter().any(|candidate| {
-                    candidate.base_type.as_ref().is_some_and(|base| {
-                        matches!(&base.target, TypeRefTarget::Named(name) if name == &declaration.name)
-                    })
-                }))
+            && !matches!(
+                declaration.kind,
+                TypeKind::Record { .. } | TypeKind::Choice { .. }
+            )
         {
             return unsupported(format!("abstract type {}", declaration.name.local_name));
         }
@@ -324,20 +354,9 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
                 ))
             })?;
             for field in fields {
+                validate_abstract_value_reference(schema, &field.type_ref)?;
                 if field.nillable {
                     return unsupported(format!("nillable field {}", field.name));
-                }
-                if let TypeRefTarget::Named(target) = &field.type_ref.target {
-                    if schema
-                        .types
-                        .iter()
-                        .any(|candidate| candidate.name == *target && candidate.is_abstract)
-                    {
-                        return unsupported(format!(
-                            "abstract structural value reference {}",
-                            target.local_name
-                        ));
-                    }
                 }
             }
         }
@@ -351,17 +370,22 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
         }
     }
     for message in &schema.messages {
-        if let TypeRefTarget::Named(target) = &message.payload_type.target {
-            if schema
-                .types
-                .iter()
-                .any(|candidate| candidate.name == *target && candidate.is_abstract)
-            {
-                return unsupported(format!("abstract message payload {}", target.local_name));
-            }
-        }
+        validate_abstract_value_reference(schema, &message.payload_type)?;
     }
     Ok(())
+}
+
+fn validate_abstract_value_reference(
+    schema: &SchemaIr,
+    type_ref: &TypeRef,
+) -> Result<(), CodegenError> {
+    abstract_value_projection_for_ref(schema, type_ref)
+        .map(|_| ())
+        .map_err(|projection_error| {
+            error(format!(
+                "unsupported abstract structural value: {projection_error}"
+            ))
+        })
 }
 
 fn validate_choice_alternatives(
@@ -377,18 +401,7 @@ fn validate_choice_alternatives(
         if alternative.nillable {
             return unsupported(format!("nillable Choice alternative {}", alternative.name));
         }
-        if let TypeRefTarget::Named(target) = &alternative.type_ref.target {
-            if schema
-                .types
-                .iter()
-                .any(|candidate| candidate.name == *target && candidate.is_abstract)
-            {
-                return unsupported(format!(
-                    "abstract structural value reference {}",
-                    target.local_name
-                ));
-            }
-        }
+        validate_abstract_value_reference(schema, &alternative.type_ref)?;
         cpp_field_type(alternative)?;
     }
     Ok(())
@@ -1070,9 +1083,8 @@ mod tests {
         };
         assert!(
             generate(&abstract_target)
-                .unwrap_err()
-                .message
-                .contains("abstract structural value reference Base")
+                .expect("abstract Choice alternative should lower")
+                .contains("struct Value { Base value; };")
         );
 
         let source =
@@ -1092,13 +1104,13 @@ mod tests {
     }
 
     #[test]
-    fn rejects_abstract_value_references_and_choice_segments() {
-        assert!(
-            generate(&abstract_value_schema())
-                .unwrap_err()
-                .message
-                .contains("abstract structural value reference Base")
-        );
+    fn lowers_abstract_value_references_and_retains_choice_boundary() {
+        let source =
+            generate(&abstract_value_schema()).expect("closed abstract value should lower");
+        assert!(source.contains("#include <variant>"));
+        assert!(source.contains("struct Base {\n    std::variant<"));
+        assert!(source.find("struct Derived").unwrap() < source.find("struct Base").unwrap());
+        assert!(source.find("struct Base").unwrap() < source.find("struct Holder").unwrap());
         assert!(
             generate(&choice_boundary_schema())
                 .unwrap_err()

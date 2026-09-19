@@ -2,7 +2,10 @@ use crate::structure::{
     EffectiveStructuralType, StructuralProjectionError, StructuralSegmentContent,
     project_with_index,
 };
-use crate::{ADA_PORTABLE_POSITIVE_INDEX_MAX, inclusive_integral_domain};
+use crate::{
+    ADA_PORTABLE_POSITIVE_INDEX_MAX, AbstractValueProjectionError, AbstractValueTopology,
+    abstract_value_targets, classify_abstract_value_topology, inclusive_integral_domain,
+};
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, FieldDecl, MessageDecl, OccurrenceShape, PrimitiveKind,
     QualifiedName, SchemaIr, TypeDecl, TypeKind, TypeRef, TypeRefTarget,
@@ -157,6 +160,7 @@ pub struct CoverageAnalysis<'a> {
     schema: &'a SchemaIr,
     declarations: BTreeMap<&'a QualifiedName, &'a TypeDecl>,
     indices: BTreeMap<&'a QualifiedName, usize>,
+    abstract_value_topologies: BTreeMap<&'a QualifiedName, AbstractValueTopology<'a>>,
 }
 
 impl<'a> CoverageAnalysis<'a> {
@@ -165,6 +169,30 @@ impl<'a> CoverageAnalysis<'a> {
         schema
             .validate()
             .map_err(|error| CoverageError::InvalidSchema(error.to_string()))?;
+        let abstract_value_targets = abstract_value_targets(schema)
+            .into_iter()
+            .map(|declaration| &declaration.name)
+            .collect::<BTreeSet<_>>();
+        let indices = schema
+            .types
+            .iter()
+            .enumerate()
+            .map(|(index, declaration)| (&declaration.name, index))
+            .collect::<BTreeMap<_, _>>();
+        let abstract_value_topologies = abstract_value_targets
+            .iter()
+            .map(|name| {
+                classify_abstract_value_topology(schema, name)
+                    .or_else(|error| match error {
+                        AbstractValueProjectionError::NoConcreteDescendants(_) => Ok(
+                            AbstractValueTopology::NoConcreteDescendants((*name).clone()),
+                        ),
+                        error => Err(error),
+                    })
+                    .map(|topology| (*name, topology))
+                    .map_err(|error| CoverageError::InvalidSchema(error.to_string()))
+            })
+            .collect::<Result<BTreeMap<_, _>, _>>()?;
         Ok(Self {
             schema,
             declarations: schema
@@ -172,12 +200,8 @@ impl<'a> CoverageAnalysis<'a> {
                 .iter()
                 .map(|declaration| (&declaration.name, declaration))
                 .collect(),
-            indices: schema
-                .types
-                .iter()
-                .enumerate()
-                .map(|(index, declaration)| (&declaration.name, index))
-                .collect(),
+            indices,
+            abstract_value_topologies,
         })
     }
 
@@ -245,6 +269,7 @@ impl<'a> CoverageAnalysis<'a> {
         }
         self.count_structural(&mut inventory)?;
         self.count_abstract_usage(&mut inventory);
+        self.count_abstract_value_topologies(&mut inventory);
         self.count_collisions(&mut inventory)?;
         inventory.evidence.sort();
         Ok(inventory)
@@ -352,12 +377,21 @@ impl<'a> CoverageAnalysis<'a> {
         enabled: &BTreeSet<FeatureFamily>,
     ) -> Result<BackendCoverage, CoverageError> {
         let fields = all_members(self.schema);
-        let full = self
+        let mut full = self
             .schema
             .types
             .iter()
             .map(|declaration| self.declaration_renderable(declaration, language, enabled))
             .collect::<Vec<_>>();
+        for (name, topology) in &self.abstract_value_topologies {
+            let index = self.indices[name];
+            if let AbstractValueTopology::Acyclic(projection) = topology {
+                full[index] &= projection
+                    .concrete_descendants
+                    .iter()
+                    .all(|descendant| full[self.indices[&descendant.name]]);
+            }
+        }
         let mut message_closures_renderable = 0;
         for message in &self.schema.messages {
             if self.message_renderable(message, language, enabled)
@@ -492,8 +526,14 @@ impl<'a> CoverageAnalysis<'a> {
                 .types
                 .iter()
                 .any(|candidate| named_is(candidate.base_type.as_ref(), &declaration.name));
+        let abstract_value_supported = declaration.is_abstract
+            && matches!(
+                self.abstract_value_topologies.get(&declaration.name),
+                Some(AbstractValueTopology::Acyclic(_))
+            );
         if declaration.is_abstract
             && !is_abstract_ancestor
+            && !abstract_value_supported
             && !enabled.contains(&FeatureFamily::StructuralInheritanceAndAbstract)
         {
             return false;
@@ -505,22 +545,37 @@ impl<'a> CoverageAnalysis<'a> {
                 .all(|segment| match segment.content {
                     StructuralSegmentContent::RecordFields(fields) => fields.iter().all(|field| {
                         field_renderable(field, language, enabled)
-                            && (!matches!(&field.type_ref.target, TypeRefTarget::Named(name)
-                            if self.declarations.get(name).is_some_and(|target| target.is_abstract))
-                                || enabled.contains(&FeatureFamily::StructuralInheritanceAndAbstract))
+                            && self.abstract_reference_renderable(&field.type_ref, enabled)
                     }),
                     StructuralSegmentContent::ChoiceAlternatives(fields) => {
                         (supported_choice_shape || enabled.contains(&FeatureFamily::Choice))
                             && fields.iter().all(|field| {
                                 field_renderable(field, language, enabled)
-                                    && (!matches!(&field.type_ref.target, TypeRefTarget::Named(name)
-                                    if self.declarations.get(name).is_some_and(|target| target.is_abstract))
-                                        || enabled.contains(
-                                            &FeatureFamily::StructuralInheritanceAndAbstract,
-                                        ))
+                                    && self.abstract_reference_renderable(&field.type_ref, enabled)
                             })
                     }
                 })
+    }
+
+    fn abstract_reference_renderable(
+        &self,
+        type_ref: &TypeRef,
+        enabled: &BTreeSet<FeatureFamily>,
+    ) -> bool {
+        let TypeRefTarget::Named(name) = &type_ref.target else {
+            return true;
+        };
+        if !self
+            .declarations
+            .get(name)
+            .is_some_and(|declaration| declaration.is_abstract)
+        {
+            return true;
+        }
+        matches!(
+            self.abstract_value_topologies.get(name),
+            Some(AbstractValueTopology::Acyclic(_))
+        ) || enabled.contains(&FeatureFamily::StructuralInheritanceAndAbstract)
     }
 
     fn message_renderable(
@@ -530,9 +585,7 @@ impl<'a> CoverageAnalysis<'a> {
         enabled: &BTreeSet<FeatureFamily>,
     ) -> bool {
         type_ref_renderable(&message.payload_type, enabled)
-            && (!matches!(&message.payload_type.target, TypeRefTarget::Named(name)
-                if self.declarations.get(name).is_some_and(|target| target.is_abstract))
-                || enabled.contains(&FeatureFamily::StructuralInheritanceAndAbstract))
+            && self.abstract_reference_renderable(&message.payload_type, enabled)
     }
 
     fn count_abstract_usage(&self, inventory: &mut SchemaInventory) {
@@ -592,6 +645,41 @@ impl<'a> CoverageAnalysis<'a> {
                 name.local_name,
                 usages.into_iter().collect::<Vec<_>>().join(", ")
             ));
+        }
+    }
+
+    fn count_abstract_value_topologies(&self, inventory: &mut SchemaInventory) {
+        for (name, topology) in &self.abstract_value_topologies {
+            increment(inventory, "abstract_value.targets");
+            match topology {
+                AbstractValueTopology::Acyclic(projection) => {
+                    increment(inventory, "abstract_value.acyclic_targets");
+                    inventory.evidence.push(format!(
+                        "abstract value {}: acyclic ({} concrete descendants)",
+                        name.local_name,
+                        projection.concrete_descendants.len()
+                    ));
+                }
+                AbstractValueTopology::NoConcreteDescendants(_) => {
+                    increment(inventory, "abstract_value.zero_descendant_targets");
+                    inventory.evidence.push(format!(
+                        "abstract value {}: no concrete descendants",
+                        name.local_name
+                    ));
+                }
+                AbstractValueTopology::RecursiveValueGraph { cycle } => {
+                    increment(inventory, "abstract_value.recursive_targets");
+                    inventory.evidence.push(format!(
+                        "abstract value {}: recursive {}",
+                        name.local_name,
+                        cycle
+                            .iter()
+                            .map(|name| name.local_name.as_str())
+                            .collect::<Vec<_>>()
+                            .join(" -> ")
+                    ));
+                }
+            }
         }
     }
 
@@ -704,6 +792,10 @@ fn initialized_inventory() -> SchemaInventory {
         "abstract_usage.message-payload",
         "abstract_usage.list-item",
         "abstract_usage.other-named-reference",
+        "abstract_value.targets",
+        "abstract_value.acyclic_targets",
+        "abstract_value.zero_descendant_targets",
+        "abstract_value.recursive_targets",
         "collisions.inherited_field_redeclarations",
         "collisions.inherited_choice_redeclarations",
         "collisions.record_choice_names",
@@ -1240,6 +1332,57 @@ mod tests {
     }
 
     #[test]
+    fn recursive_closed_values_are_unsupported_without_aborting_coverage() {
+        let mut base = declaration("Base", TypeKind::Record { fields: Vec::new() });
+        base.is_abstract = true;
+        let mut concrete = declaration(
+            "Concrete",
+            TypeKind::Record {
+                fields: vec![field("again", "Base")],
+            },
+        );
+        concrete.base_type = Some(named("Base"));
+        let valid_base = declaration("ValidBase", TypeKind::Record { fields: Vec::new() });
+        let mut valid_base = valid_base;
+        valid_base.is_abstract = true;
+        let mut valid = declaration("Valid", TypeKind::Record { fields: Vec::new() });
+        valid.base_type = Some(named("ValidBase"));
+        let schema = message_schema(
+            vec![
+                base,
+                concrete,
+                valid_base,
+                valid,
+                declaration(
+                    "Holder",
+                    TypeKind::Record {
+                        fields: vec![field("bad", "Base"), field("good", "ValidBase")],
+                    },
+                ),
+            ],
+            "Holder",
+        );
+        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        let inventory = analysis.inventory().unwrap();
+        assert_eq!(inventory.counts["abstract_value.targets"], 2);
+        assert_eq!(inventory.counts["abstract_value.acyclic_targets"], 1);
+        assert_eq!(inventory.counts["abstract_value.recursive_targets"], 1);
+        for language in BackendLanguage::ALL {
+            let coverage = analysis.backend_coverage(language).unwrap();
+            assert_eq!(coverage.message_closures_renderable, 0);
+            assert!(analysis.report().is_ok());
+            for mask in 1..(1 << FeatureFamily::ALL.len()) {
+                let features = FeatureFamily::ALL
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(index, feature)| ((mask & (1 << index)) != 0).then_some(*feature))
+                    .collect::<Vec<_>>();
+                assert!(analysis.impact(language, &features).is_ok());
+            }
+        }
+    }
+
+    #[test]
     fn dependency_closure_includes_alias_base_list_fields_and_choices_in_ir_order() {
         let base = declaration("Base", TypeKind::Record { fields: Vec::new() });
         let alias = declaration("Alias", TypeKind::Alias(named("Base")));
@@ -1273,6 +1416,34 @@ mod tests {
                 .map(|declaration| declaration.name.local_name.as_str())
                 .collect::<Vec<_>>(),
             ["Leaf", "Choice", "List", "Alias", "Base"]
+        );
+    }
+
+    #[test]
+    fn raw_dependency_closure_excludes_virtual_abstract_variants() {
+        let mut base = declaration("Base", TypeKind::Record { fields: Vec::new() });
+        base.is_abstract = true;
+        let mut concrete = declaration("Concrete", TypeKind::Record { fields: Vec::new() });
+        concrete.base_type = Some(named("Base"));
+        let schema = schema(vec![
+            base,
+            concrete,
+            declaration(
+                "Holder",
+                TypeKind::Record {
+                    fields: vec![field("value", "Base")],
+                },
+            ),
+        ]);
+        let analysis = CoverageAnalysis::new(&schema).unwrap();
+        assert_eq!(
+            analysis
+                .dependency_closure(&QualifiedName::new(NS, "Holder"))
+                .unwrap()
+                .iter()
+                .map(|declaration| declaration.name.local_name.as_str())
+                .collect::<Vec<_>>(),
+            ["Base", "Holder"]
         );
     }
 
@@ -1516,7 +1687,7 @@ mod tests {
     }
 
     #[test]
-    fn abstract_values_require_remaining_structural_abstract_support() {
+    fn closed_abstract_values_are_baseline_and_empty_values_remain_hypothetical() {
         let mut base = declaration(
             "Base",
             TypeKind::Record {
@@ -1540,14 +1711,14 @@ mod tests {
         let abstract_field = message_schema(vec![base, derived, holder], "Holder");
         for language in BackendLanguage::ALL {
             let analysis = CoverageAnalysis::new(&abstract_payload).unwrap();
-            assert_eq!(analysis.impact(language, &[]).unwrap(), 0);
+            assert_eq!(analysis.impact(language, &[]).unwrap(), 1);
             for family in [
                 FeatureFamily::PrimitiveExpansion,
                 FeatureFamily::CardinalityAndNillability,
                 FeatureFamily::Choice,
                 FeatureFamily::ConstrainedSimpleTypes,
             ] {
-                assert_eq!(analysis.impact(language, &[family]).unwrap(), 0);
+                assert_eq!(analysis.impact(language, &[family]).unwrap(), 1);
             }
             assert_eq!(
                 analysis
@@ -1560,6 +1731,29 @@ mod tests {
             assert_eq!(analysis.impact(language, &[]).unwrap(), 1);
 
             let analysis = CoverageAnalysis::new(&abstract_field).unwrap();
+            assert_eq!(analysis.impact(language, &[]).unwrap(), 1);
+            assert_eq!(
+                analysis
+                    .impact(language, &[FeatureFamily::StructuralInheritanceAndAbstract])
+                    .unwrap(),
+                1
+            );
+
+            let mut empty = declaration("Empty", TypeKind::Record { fields: Vec::new() });
+            empty.is_abstract = true;
+            let empty_schema = message_schema(
+                vec![
+                    empty,
+                    declaration(
+                        "EmptyHolder",
+                        TypeKind::Record {
+                            fields: vec![field("value", "Empty")],
+                        },
+                    ),
+                ],
+                "EmptyHolder",
+            );
+            let analysis = CoverageAnalysis::new(&empty_schema).unwrap();
             assert_eq!(analysis.impact(language, &[]).unwrap(), 0);
             assert_eq!(
                 analysis
