@@ -1,4 +1,4 @@
-# Backend compatibility and Task 019 lowering
+# Backend compatibility and Task 020 lowering
 
 Tested: **2026-09-18**, baseline `1fa2ab4d380158728d383a5e4fbaebea6a2006b1`.
 
@@ -6,6 +6,43 @@ This document records backend status separately from frontend compatibility.
 The authoritative schemas remain external and are not vendored. The frontend
 fully normalizes the UCI 2.5 and UCI 2.6 roots; the three language backends do
 not yet generate those complete models.
+
+## Task 020 — integral scalar lowering
+
+Boolean, SignedInteger, and UnsignedInteger are now baseline backend values in
+Ada, Rust, and C++. Direct Boolean fields and Choice alternatives map to
+`Boolean`, `bool`, and `bool`; unconstrained named Boolean declarations retain
+their identity as a derived type/newtype/wrapper.
+
+The frontend's intrinsic XSD integer domains remain on `FieldDecl.constraints`.
+For direct SignedInteger and UnsignedInteger fields or Choice alternatives, an
+inclusive finite integer range is now semantic lowering rather than discarded
+metadata. The supported storage domain is exactly signed 64-bit (`Long_Long_Integer`,
+`i64`, `std::int64_t`) and unsigned 64-bit (`Interfaces.Unsigned_64`, `u64`,
+`std::uint64_t`). Out-of-domain ranges, negative unsigned minima, exclusive
+bounds, length facets, and lexical facets fail before rendering.
+
+Rust emits checked `BoundedI64`/`BoundedU64` const-generic wrappers; C++17 emits
+a checked `BoundedInteger<T, Min, Max>` template; Ada uses constrained component
+and array-element subtype indications. Finite repeated payloads and Choice
+alternatives reuse those constrained representations. Named bounded unsigned
+declarations are preserved as unsigned types/wrappers with checked construction
+outside Ada's language-enforced range checks. Local constraints on named targets
+remain fail-closed.
+
+`PrimitiveExpansion` consequently means the remaining unsupported primitive
+families (Decimal, Float32/64, Binary, DateTime, Time, Duration), not Boolean or
+UnsignedInteger. `ConstrainedSimpleTypes` continues to cover unsupported scalar
+facets such as String length/patterns, non-integral constraints, and the excluded
+exclusive/lexical integral facets. These hypothetical families remain additive.
+
+Published Task 017 authoritative evidence remains: primitive member references
+for Boolean/SignedInteger/UnsignedInteger are 409/80/386 (875) in UCI 2.5 and
+349/82/387 (818) in UCI 2.6; named SignedInteger/UnsignedInteger declarations
+are 4/40 and 6/40 respectively; local field constraints are 466/469 and use only
+`minInclusive`/`maxInclusive`. External roots were probed through detached release
+coverage processes during Task 020; no completed cross-tab or coverage delta is
+claimed unless a completed probe result is recorded separately.
 
 Reproduce the deterministic analyzer output with:
 

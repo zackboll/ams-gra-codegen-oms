@@ -1,12 +1,11 @@
 //! Minimal C++17 type generation from normalized schema IR.
 
 use ams_gra_oms_codegen_core::{
-    Backend, CodegenError, GeneratedFile, effective_choice_alternatives, effective_record_fields,
-    plan_type_declarations,
+    Backend, CodegenError, GeneratedFile, InclusiveIntegralDomain, effective_choice_alternatives,
+    effective_record_fields, inclusive_integral_domain, plan_type_declarations,
 };
 use ams_gra_oms_ir::{
-    Cardinality, ConstraintSet, NumericValue, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
-    TypeRefTarget,
+    Cardinality, ConstraintSet, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef, TypeRefTarget,
 };
 use std::fmt::Write as _;
 use std::path::PathBuf;
@@ -56,6 +55,11 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
     } else {
         ""
     };
+    let limits_header = if schema_needs_limits(schema) {
+        "#include <limits>\n"
+    } else {
+        ""
+    };
     let mut output = String::from(
         "#pragma once\n\n\
          #include <cstddef>\n\
@@ -64,6 +68,10 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
          #include <string>\n\
          #include <utility>\n\
          #include <vector>\n",
+    );
+    output.insert_str(
+        "#pragma once\n\n".len() + "#include <cstddef>\n#include <cstdint>\n".len(),
+        limits_header,
     );
     output.push_str(variant_header);
     output.push('\n');
@@ -84,6 +92,16 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
         "    std::vector<T> values_;\n",
         "};\n\n",
     ));
+    if schema.types.iter().any(has_direct_integral_range) {
+        output.push_str(concat!(
+            "template <typename T, T Min, T Max>\nclass BoundedInteger {\npublic:\n",
+            "    static std::optional<BoundedInteger> create(T value) noexcept {\n",
+            "        if (value < Min || value > Max) return std::nullopt;\n",
+            "        return BoundedInteger(value);\n    }\n",
+            "    T value() const noexcept { return value_; }\nprivate:\n",
+            "    explicit BoundedInteger(T value) noexcept : value_(value) {}\n    T value_;\n};\n\n",
+        ));
+    }
     for declaration in declarations {
         render_declaration(&mut output, schema, declaration)?;
     }
@@ -99,7 +117,14 @@ fn render_declaration(
     let name = upper_camel(&declaration.name.local_name)?;
     match &declaration.kind {
         TypeKind::Primitive(PrimitiveKind::SignedInteger) => {
-            let (min, max) = inclusive_bounds(&declaration.constraints, &name)?;
+            let Some(InclusiveIntegralDomain::Signed { min, max }) = integral_domain(
+                PrimitiveKind::SignedInteger,
+                &declaration.constraints,
+                &name,
+            )?
+            else {
+                return unsupported(format!("integer bounds on {name}"));
+            };
             writeln!(
                 output,
                 concat!(
@@ -125,6 +150,21 @@ fn render_declaration(
             )
             .expect("writing to String cannot fail");
         }
+        TypeKind::Primitive(PrimitiveKind::UnsignedInteger) => {
+            let Some(InclusiveIntegralDomain::Unsigned { min, max }) = integral_domain(
+                PrimitiveKind::UnsignedInteger,
+                &declaration.constraints,
+                &name,
+            )?
+            else {
+                return unsupported(format!("integer bounds on {name}"));
+            };
+            writeln!(output, "class {name} {{\npublic:\n    static constexpr std::uint64_t min_value = {min};\n    static constexpr std::uint64_t max_value = {max};\n\n    static std::optional<{name}> create(std::uint64_t value) noexcept {{\n        if (value < min_value || value > max_value) return std::nullopt;\n        return {name}(value);\n    }}\n\n    std::uint64_t value() const noexcept {{ return value_; }}\nprivate:\n    explicit {name}(std::uint64_t value) noexcept : value_(value) {{}}\n    std::uint64_t value_;\n}};\n").expect("writing to String cannot fail");
+        }
+        TypeKind::Primitive(PrimitiveKind::Boolean) => {
+            reject_any_constraints(&declaration.constraints, &name)?;
+            writeln!(output, "class {name} {{\npublic:\n    explicit constexpr {name}(bool value) noexcept : value_(value) {{}}\n    constexpr bool value() const noexcept {{ return value_; }}\nprivate:\n    bool value_;\n}};\n").expect("writing to String cannot fail");
+        }
         TypeKind::Enumeration { variants } => {
             if variants.is_empty() {
                 return unsupported(format!("empty enumeration {name}"));
@@ -148,7 +188,7 @@ fn render_declaration(
                 ))
             })? {
                 let field_name = snake_case(&field.name)?;
-                let base = cpp_type(&field.type_ref)?;
+                let base = cpp_field_base(field)?;
                 let field_type = match field.cardinality {
                     Cardinality::REQUIRED_ONE => base,
                     Cardinality::OPTIONAL_ONE => format!("std::optional<{base}>"),
@@ -243,9 +283,6 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
                 if field.nillable {
                     return unsupported(format!("nillable field {}", field.name));
                 }
-                if field.constraints != ConstraintSet::default() {
-                    return unsupported(format!("field constraints on {}", field.name));
-                }
                 if let TypeRefTarget::Named(target) = &field.type_ref.target {
                     if schema
                         .types
@@ -296,9 +333,6 @@ fn validate_choice_alternatives(
         if alternative.nillable {
             return unsupported(format!("nillable Choice alternative {}", alternative.name));
         }
-        if alternative.constraints != ConstraintSet::default() {
-            return unsupported(format!("field constraints on {}", alternative.name));
-        }
         if let TypeRefTarget::Named(target) = &alternative.type_ref.target {
             if schema
                 .types
@@ -317,7 +351,7 @@ fn validate_choice_alternatives(
 }
 
 fn cpp_field_type(field: &ams_gra_oms_ir::FieldDecl) -> Result<String, CodegenError> {
-    let base = cpp_type(&field.type_ref)?;
+    let base = cpp_field_base(field)?;
     match field.cardinality {
         Cardinality::REQUIRED_ONE => Ok(base),
         Cardinality::OPTIONAL_ONE => Ok(format!("std::optional<{base}>")),
@@ -359,20 +393,94 @@ fn namespace_name(schema: &SchemaIr) -> Result<String, CodegenError> {
 fn cpp_type(type_ref: &TypeRef) -> Result<String, CodegenError> {
     match &type_ref.target {
         TypeRefTarget::Primitive(PrimitiveKind::SignedInteger) => Ok("std::int64_t".to_owned()),
+        TypeRefTarget::Primitive(PrimitiveKind::UnsignedInteger) => Ok("std::uint64_t".to_owned()),
+        TypeRefTarget::Primitive(PrimitiveKind::Boolean) => Ok("bool".to_owned()),
         TypeRefTarget::Primitive(PrimitiveKind::String) => Ok("std::string".to_owned()),
         TypeRefTarget::Named(name) => upper_camel(&name.local_name),
         other => unsupported(format!("type reference {other:?}")),
     }
 }
 
-fn inclusive_bounds(constraints: &ConstraintSet, name: &str) -> Result<(i128, i128), CodegenError> {
-    match (constraints.min_inclusive, constraints.max_inclusive) {
-        (Some(NumericValue::Integer(min)), Some(NumericValue::Integer(max)))
-            if min <= max && i64::try_from(min).is_ok() && i64::try_from(max).is_ok() =>
-        {
-            Ok((min, max))
+fn integral_domain(
+    kind: PrimitiveKind,
+    constraints: &ConstraintSet,
+    name: &str,
+) -> Result<Option<InclusiveIntegralDomain>, CodegenError> {
+    inclusive_integral_domain(kind, constraints)
+        .map_err(|reason| error(format!("unsupported C++ IR construct: {reason} on {name}")))
+}
+
+fn cpp_field_base(field: &ams_gra_oms_ir::FieldDecl) -> Result<String, CodegenError> {
+    match field.type_ref.target {
+        TypeRefTarget::Primitive(
+            kind @ (PrimitiveKind::SignedInteger | PrimitiveKind::UnsignedInteger),
+        ) => match integral_domain(kind, &field.constraints, &field.name)? {
+            Some(InclusiveIntegralDomain::Signed { min, max }) => Ok(format!(
+                "BoundedInteger<std::int64_t, {}, {}>",
+                cpp_signed_bound(min),
+                cpp_signed_bound(max)
+            )),
+            Some(InclusiveIntegralDomain::Unsigned { min, max }) => {
+                Ok(format!("BoundedInteger<std::uint64_t, {min}, {max}>"))
+            }
+            None => cpp_type(&field.type_ref),
+        },
+        _ => {
+            reject_any_constraints(&field.constraints, &field.name)?;
+            cpp_type(&field.type_ref)
         }
-        _ => unsupported(format!("integer bounds on {name}")),
+    }
+}
+
+fn has_direct_integral_range(declaration: &TypeDecl) -> bool {
+    let fields = match &declaration.kind {
+        TypeKind::Record { fields } => fields,
+        TypeKind::Choice { alternatives } => alternatives,
+        _ => return false,
+    };
+    fields.iter().any(|field| {
+        matches!(
+            field.type_ref.target,
+            TypeRefTarget::Primitive(PrimitiveKind::SignedInteger | PrimitiveKind::UnsignedInteger)
+        ) && field.constraints != ConstraintSet::default()
+    })
+}
+
+fn cpp_signed_bound(value: i64) -> String {
+    if value == i64::MIN {
+        "std::numeric_limits<std::int64_t>::min()".to_owned()
+    } else {
+        value.to_string()
+    }
+}
+
+fn schema_needs_limits(schema: &SchemaIr) -> bool {
+    schema.types.iter().any(|declaration| {
+        match &declaration.kind {
+            TypeKind::Record { fields } => fields,
+            TypeKind::Choice { alternatives } => alternatives,
+            _ => return false,
+        }
+        .iter()
+        .any(|field| {
+            matches!(
+                integral_domain_for_limits(field),
+                Some(InclusiveIntegralDomain::Signed { min: i64::MIN, .. })
+            )
+        })
+    })
+}
+
+fn integral_domain_for_limits(
+    field: &ams_gra_oms_ir::FieldDecl,
+) -> Option<InclusiveIntegralDomain> {
+    match field.type_ref.target {
+        TypeRefTarget::Primitive(kind @ PrimitiveKind::SignedInteger) => {
+            inclusive_integral_domain(kind, &field.constraints)
+                .ok()
+                .flatten()
+        }
+        _ => None,
     }
 }
 
@@ -385,6 +493,13 @@ fn reject_extra_constraints(constraints: &ConstraintSet, name: &str) -> Result<(
         || constraints.lexical != Default::default()
     {
         return unsupported(format!("constraints on {name}"));
+    }
+    Ok(())
+}
+
+fn reject_any_constraints(constraints: &ConstraintSet, name: &str) -> Result<(), CodegenError> {
+    if constraints != &ConstraintSet::default() {
+        return unsupported(format!("field constraints on {name}"));
     }
     Ok(())
 }
@@ -435,6 +550,7 @@ fn error(message: impl Into<String>) -> CodegenError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ams_gra_oms_ir::NumericValue;
     use ams_gra_oms_xsd_frontend::{load_schema_document, load_schema_set};
     use std::path::Path;
 
@@ -499,6 +615,27 @@ mod tests {
                 .join("../xsd-frontend/tests/fixtures/backend-choice-repeated.xsd"),
         )
         .expect("repeated Choice fixture should parse")
+    }
+
+    fn integral_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-integral-scalars.xsd"),
+        )
+        .expect("integral fixture should parse")
+    }
+
+    #[test]
+    fn lowers_integral_scalars_and_preserves_direct_ranges() {
+        let source = generate(&integral_schema()).expect("integral scalars should generate");
+        assert!(source.contains("class BoundedInteger"));
+        assert!(source.contains("bool enabled;"));
+        assert!(source.contains("BoundedInteger<std::int64_t, -128, 127> byte_value;"));
+        assert!(source.contains("BoundedInteger<std::uint64_t, 0, 255> unsigned_byte_value;"));
+        assert!(source.contains("BoundedVector<BoundedInteger<std::int64_t, -128, 127>, 0, 8>"));
+        assert!(source.contains("struct TrueCase { bool value; };"));
+        assert!(source.contains("class UnsignedBounded"));
+        assert!(source.contains("class NamedBoolean"));
     }
 
     #[test]

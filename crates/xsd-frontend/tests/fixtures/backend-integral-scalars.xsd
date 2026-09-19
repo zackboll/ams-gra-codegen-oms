@@ -1,0 +1,27 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:backend-integral-scalars"
+           targetNamespace="urn:backend-integral-scalars"
+           elementFormDefault="qualified">
+  <xs:simpleType name="Signed_Bounded"><xs:restriction base="xs:int"><xs:minInclusive value="0"/><xs:maxInclusive value="100"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Unsigned_Bounded"><xs:restriction base="xs:unsignedInt"><xs:minInclusive value="1"/><xs:maxInclusive value="1000"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Named_Boolean"><xs:restriction base="xs:boolean"/></xs:simpleType>
+  <xs:complexType name="Scalars"><xs:sequence>
+    <xs:element name="Enabled" type="xs:boolean"/>
+    <xs:element name="Byte_Value" type="xs:byte"/>
+    <xs:element name="Short_Value" type="xs:short"/>
+    <xs:element name="Int_Value" type="xs:int"/>
+    <xs:element name="Long_Value" type="xs:long"/>
+    <xs:element name="Unsigned_Byte_Value" type="xs:unsignedByte"/>
+    <xs:element name="Unsigned_Short_Value" type="xs:unsignedShort"/>
+    <xs:element name="Unsigned_Int_Value" type="xs:unsignedInt"/>
+    <xs:element name="Repeated_Bytes" type="xs:byte" minOccurs="0" maxOccurs="8"/>
+    <xs:element name="Signed_Named" type="t:Signed_Bounded"/>
+    <xs:element name="Unsigned_Named" type="t:Unsigned_Bounded"/>
+    <xs:element name="Named_Flag" type="t:Named_Boolean"/>
+  </xs:sequence></xs:complexType>
+  <xs:complexType name="Scalar_Choice"><xs:choice>
+    <xs:element name="True_Case" type="xs:boolean"/>
+    <xs:element name="Signed_Case" type="xs:short"/>
+    <xs:element name="Unsigned_Case" type="xs:unsignedByte"/>
+  </xs:choice></xs:complexType>
+</xs:schema>

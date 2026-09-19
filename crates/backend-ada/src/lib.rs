@@ -1,12 +1,11 @@
 //! Minimal Ada type generation from normalized schema IR.
 
 use ams_gra_oms_codegen_core::{
-    Backend, CodegenError, GeneratedFile, effective_choice_alternatives, effective_record_fields,
-    plan_type_declarations,
+    Backend, CodegenError, GeneratedFile, InclusiveIntegralDomain, effective_choice_alternatives,
+    effective_record_fields, inclusive_integral_domain, plan_type_declarations,
 };
 use ams_gra_oms_ir::{
-    Cardinality, ConstraintSet, NumericValue, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
-    TypeRefTarget,
+    Cardinality, ConstraintSet, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef, TypeRefTarget,
 };
 use std::fmt::Write as _;
 use std::path::PathBuf;
@@ -48,7 +47,11 @@ pub fn generate(schema: &SchemaIr) -> Result<String, CodegenError> {
     let declarations = plan_type_declarations(schema)?;
     validate_schema(schema)?;
     let package = package_name(schema)?;
-    let mut output = String::from("with Ada.Strings.Unbounded;\n\n");
+    let mut output = String::from("with Ada.Strings.Unbounded;\n");
+    if schema_has_unsigned(schema) {
+        output.push_str("with Interfaces;\n");
+    }
+    output.push('\n');
     writeln!(output, "package {package} is\n").expect("writing to String cannot fail");
     output.push_str(concat!(
         "   type Optional_String (Is_Present : Boolean := False) is record\n",
@@ -73,14 +76,41 @@ fn render_declaration(
     let name = ada_identifier(&declaration.name.local_name)?;
     match &declaration.kind {
         TypeKind::Primitive(PrimitiveKind::SignedInteger) => {
-            let (min, max) = inclusive_bounds(&declaration.constraints, &name)?;
+            let Some(InclusiveIntegralDomain::Signed { min, max }) = integral_domain(
+                PrimitiveKind::SignedInteger,
+                &declaration.constraints,
+                &name,
+            )?
+            else {
+                return unsupported(format!("integer bounds on {name}"));
+            };
             writeln!(
                 output,
                 "   type {name} is range {} .. {};\n",
-                ada_number(min),
-                ada_number(max)
+                ada_number(i128::from(min)),
+                ada_number(i128::from(max))
             )
             .expect("writing to String cannot fail");
+        }
+        TypeKind::Primitive(PrimitiveKind::UnsignedInteger) => {
+            let Some(InclusiveIntegralDomain::Unsigned { min, max }) = integral_domain(
+                PrimitiveKind::UnsignedInteger,
+                &declaration.constraints,
+                &name,
+            )?
+            else {
+                return unsupported(format!("integer bounds on {name}"));
+            };
+            writeln!(
+                output,
+                "   subtype {name} is Interfaces.Unsigned_64 range {min} .. {max};\n"
+            )
+            .expect("writing to String cannot fail");
+        }
+        TypeKind::Primitive(PrimitiveKind::Boolean) => {
+            reject_any_constraints(&declaration.constraints, &name)?;
+            writeln!(output, "   type {name} is new Boolean;\n")
+                .expect("writing to String cannot fail");
         }
         TypeKind::Enumeration { variants } => {
             if variants.is_empty() {
@@ -114,7 +144,7 @@ fn render_declaration(
                 if let Some(max) = repeated_max(field.cardinality) {
                     let field_name = ada_identifier(&field.name)?;
                     let helper_name = format!("{name}_{field_name}");
-                    let item_type = ada_type(&field.type_ref)?;
+                    let item_type = ada_field_base(field)?;
                     writeln!(
                         output,
                         "   type {helper_name}_Array is array (Positive range 1 .. {max}) of {item_type};\n\
@@ -133,7 +163,7 @@ fn render_declaration(
             for field in fields {
                 let field_name = ada_identifier(&field.name)?;
                 let field_type = match field.cardinality {
-                    Cardinality::REQUIRED_ONE => ada_type(&field.type_ref)?,
+                    Cardinality::REQUIRED_ONE => ada_field_base(field)?,
                     Cardinality::OPTIONAL_ONE
                         if field.type_ref.target
                             == TypeRefTarget::Primitive(PrimitiveKind::String) =>
@@ -161,7 +191,7 @@ fn render_declaration(
                 if let Some(max) = repeated_max(alternative.cardinality) {
                     let alternative_name = ada_identifier(&alternative.name)?;
                     let helper_name = format!("{name}_{alternative_name}");
-                    let item_type = ada_type(&alternative.type_ref)?;
+                    let item_type = ada_field_base(alternative)?;
                     writeln!(
                         output,
                         "   type {helper_name}_Array is array (Positive range 1 .. {max}) of {item_type};\n\
@@ -254,10 +284,7 @@ fn validate_schema(schema: &SchemaIr) -> Result<(), CodegenError> {
                 ))
             })?;
             for field in fields {
-                if field.nillable {
-                    return unsupported(format!("nillable field {}", field.name));
-                }
-                reject_any_constraints(&field.constraints, &field.name)?;
+                ada_field_base(field)?;
                 if let TypeRefTarget::Named(target) = &field.type_ref.target {
                     if schema
                         .types
@@ -309,7 +336,6 @@ fn validate_choice_alternatives(
         if alternative.nillable {
             return unsupported(format!("nillable Choice alternative {}", alternative.name));
         }
-        reject_any_constraints(&alternative.constraints, &alternative.name)?;
         if let TypeRefTarget::Named(target) = &alternative.type_ref.target {
             if schema
                 .types
@@ -333,7 +359,7 @@ fn ada_field_type(
     field: &ams_gra_oms_ir::FieldDecl,
 ) -> Result<String, CodegenError> {
     match field.cardinality {
-        Cardinality::REQUIRED_ONE => ada_type(&field.type_ref),
+        Cardinality::REQUIRED_ONE => ada_field_base(field),
         Cardinality::OPTIONAL_ONE
             if field.type_ref.target == TypeRefTarget::Primitive(PrimitiveKind::String) =>
         {
@@ -380,6 +406,10 @@ fn ada_type(type_ref: &TypeRef) -> Result<String, CodegenError> {
         TypeRefTarget::Primitive(PrimitiveKind::SignedInteger) => {
             Ok("Long_Long_Integer".to_owned())
         }
+        TypeRefTarget::Primitive(PrimitiveKind::UnsignedInteger) => {
+            Ok("Interfaces.Unsigned_64".to_owned())
+        }
+        TypeRefTarget::Primitive(PrimitiveKind::Boolean) => Ok("Boolean".to_owned()),
         TypeRefTarget::Primitive(PrimitiveKind::String) => {
             Ok("Ada.Strings.Unbounded.Unbounded_String".to_owned())
         }
@@ -398,13 +428,61 @@ fn repeated_max(cardinality: Cardinality) -> Option<u64> {
     }
 }
 
-fn inclusive_bounds(constraints: &ConstraintSet, name: &str) -> Result<(i128, i128), CodegenError> {
-    match (constraints.min_inclusive, constraints.max_inclusive) {
-        (Some(NumericValue::Integer(min)), Some(NumericValue::Integer(max))) if min <= max => {
-            Ok((min, max))
+fn integral_domain(
+    kind: PrimitiveKind,
+    constraints: &ConstraintSet,
+    name: &str,
+) -> Result<Option<InclusiveIntegralDomain>, CodegenError> {
+    inclusive_integral_domain(kind, constraints)
+        .map_err(|reason| error(format!("unsupported Ada IR construct: {reason} on {name}")))
+}
+
+fn ada_field_base(field: &ams_gra_oms_ir::FieldDecl) -> Result<String, CodegenError> {
+    match field.type_ref.target {
+        TypeRefTarget::Primitive(
+            kind @ (PrimitiveKind::SignedInteger | PrimitiveKind::UnsignedInteger),
+        ) => match integral_domain(kind, &field.constraints, &field.name)? {
+            Some(InclusiveIntegralDomain::Signed { min, max }) => Ok(format!(
+                "Long_Long_Integer range {} .. {}",
+                ada_number(i128::from(min)),
+                ada_number(i128::from(max))
+            )),
+            Some(InclusiveIntegralDomain::Unsigned { min, max }) => {
+                Ok(format!("Interfaces.Unsigned_64 range {min} .. {max}"))
+            }
+            None => ada_type(&field.type_ref),
+        },
+        _ => {
+            reject_any_constraints(&field.constraints, &field.name)?;
+            ada_type(&field.type_ref)
         }
-        _ => unsupported(format!("integer bounds on {name}")),
     }
+}
+
+fn schema_has_unsigned(schema: &SchemaIr) -> bool {
+    schema.types.iter().any(|declaration| {
+        matches!(
+            declaration.kind,
+            TypeKind::Primitive(PrimitiveKind::UnsignedInteger)
+        )
+    }) || schema
+        .types
+        .iter()
+        .any(|declaration| match &declaration.kind {
+            TypeKind::Record { fields } => fields.iter().any(|field| {
+                matches!(
+                    field.type_ref.target,
+                    TypeRefTarget::Primitive(PrimitiveKind::UnsignedInteger)
+                )
+            }),
+            TypeKind::Choice { alternatives } => alternatives.iter().any(|field| {
+                matches!(
+                    field.type_ref.target,
+                    TypeRefTarget::Primitive(PrimitiveKind::UnsignedInteger)
+                )
+            }),
+            _ => false,
+        })
 }
 
 fn reject_extra_constraints(constraints: &ConstraintSet, name: &str) -> Result<(), CodegenError> {
@@ -483,6 +561,7 @@ fn error(message: impl Into<String>) -> CodegenError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ams_gra_oms_ir::NumericValue;
     use ams_gra_oms_xsd_frontend::{load_schema_document, load_schema_set};
     use std::path::Path;
 
@@ -547,6 +626,31 @@ mod tests {
                 .join("../xsd-frontend/tests/fixtures/backend-choice-repeated.xsd"),
         )
         .expect("repeated Choice fixture should parse")
+    }
+
+    fn integral_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-integral-scalars.xsd"),
+        )
+        .expect("integral fixture should parse")
+    }
+
+    #[test]
+    fn lowers_integral_scalars_and_preserves_direct_ranges() {
+        let source = generate(&integral_schema()).expect("integral scalars should generate");
+        assert!(source.contains("with Interfaces;"));
+        assert!(source.contains("Enabled : Boolean;"));
+        assert!(source.contains("Byte_Value : Long_Long_Integer range -128 .. 127;"));
+        assert!(source.contains("Unsigned_Byte_Value : Interfaces.Unsigned_64 range 0 .. 255;"));
+        assert!(
+            source.contains("array (Positive range 1 .. 8) of Long_Long_Integer range -128 .. 127")
+        );
+        assert!(source.contains("when True_Case_Kind =>\n            True_Case : Boolean;"));
+        assert!(
+            source.contains("subtype Unsigned_Bounded is Interfaces.Unsigned_64 range 1 .. 1000;")
+        );
+        assert!(source.contains("type Named_Boolean is new Boolean;"));
     }
 
     #[test]
