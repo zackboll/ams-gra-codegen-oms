@@ -2443,10 +2443,9 @@ the generated source and rejected schemas for collisions that cannot occur.
 **Corrected behaviour.** Preflight now registers only the schema-owned names
 that the requested world actually emits, derived from the same
 `plan_type_emissions()` the backends consume. There is no second emission
-model and no isolated `if abstract { skip }`: the emitted set is computed once
-per schema/world by `emitted_top_level_declaration_names()` and then consulted
-as a membership test, so the per-declaration loop stays a lookup rather than a
-whole-schema scan.
+model and no isolated `if abstract { skip }`: the plan is formed once per
+schema/world and walked directly, so the loop iterates emitted entities rather
+than rescanning the schema per declaration.
 
 The rule is exactly:
 
@@ -2472,19 +2471,121 @@ rule would have stopped reserving a name that genuinely appears in the output,
 converting a false rejection into a false *acceptance*. Verified by direct
 probe against all three renderers before the change was written.
 
-**Semantic failures are not absorbed.** When no emission plan can be formed at
-all — an open-world abstract value, a recursive closed sum, a cyclic
-dependency, invalid IR — that is a structural diagnosis owned by the backend,
-not a naming verdict. Preflight falls back to the previous whole-schema
-registration rather than suppressing reservations on the strength of an error
-it does not own, so the fail-closed semantic path is preserved.
-
 Attribution (`unsafe_named_declarations`) uses the identical registration, so
 capability analysis cannot condemn a declaration for a name the backend never
-emits while validation accepts it. Inherited members are unaffected: a
-non-emitted base's fields are still projected into its emitted descendants and
-still validated in the descendant's scope, so an inherited reserved member
-continues to condemn the descendant.
+emits while validation accepts it.
+
+### Member and helper surfaces come from `TypeEmission` too
+
+Top-level emission awareness was necessary but **insufficient**. Member-region
+and Ada helper analysis still walked raw Schema IR declarations, so a
+declaration that produces no host-language output could still manufacture
+member-name failures and Ada helper reservations. The invariant is now
+stronger, and unconditional:
+
+> Generated-name analysis operates on actual `TypeEmission` surfaces, not raw
+> Schema IR declarations — for top-level names, member regions, and Ada helper
+> types alike.
+
+`register_emission_names()` switches on the emitted shape:
+
+| `TypeEmission` arm | Registers |
+| --- | --- |
+| `Declaration(D)`, emitted | `D`'s top-level name, `D`'s effective member region, Ada helpers stemmed on **`D`** |
+| `Declaration(D)`, not rendered | nothing at all |
+| `AbstractValue(P)` | the wrapper's top-level name, Ada `Kind` + `{Descendant}_Value`, `{Base}_Kind`, `{Descendant}_Kind` literals |
+
+**Non-emitted abstract Records have no member or helper scope.** A base that no
+renderer writes has no generated record, therefore no component region and no
+helper types. It is neither diagnosed for its own members nor allowed to
+reserve `{Base}_{Member}_Array`, `_Sequence`, `_Item`, `_Vectors`,
+`_Required_Array`, or `_Additional_Vectors`.
+
+**Inherited members are validated under the emitted descendant.** The base's
+fields still reach the output through `effective_record_fields()` on each
+concrete descendant, and they are checked there — in the scope that really
+exists, under the owner `backend-ada` really uses. For
+
+```text
+abstract Base { Items : Item [0..4] }
+Derived extends Base
+```
+
+Ada emits `Derived_Items_Array` / `Derived_Items_Sequence` and never
+`Base_Items_*`. Preflight now matches exactly: a user type named
+`Base_Items_Array` is accepted (and compiles under GNAT), while
+`Derived_Items_Array` is still rejected. A reserved-word member reached only
+through inheritance still condemns `Derived`, and no longer condemns `Base`.
+
+**Abstract wrappers use wrapper-specific naming.** A Task 024
+`AbstractValue` does not render the original abstract Record's fields, so it is
+not fed through Record member validation. Only Ada places user-derived
+identifiers in the wrapper's region (`Kind`, `{Descendant}_Value`); Rust's
+`Variant(Variant)` enum arms are the descendants' own already-validated
+declaration names and C++ emits a single fixed `value` member, so neither
+contributes a second collision domain. Because every base field necessarily
+reappears in a concrete descendant, member *spelling* cannot distinguish the
+wrapper's scope from the original Record's — the helper **owner** can, and is
+what the regression asserts.
+
+**Task 026 elided targets contribute nothing.** A fully elided zero-descendant
+target produces no `TypeEmission`, hence no top-level, member, helper, or
+wrapper names.
+
+### Semantic emission-plan failure is not converted into a naming failure
+
+**Historical behaviour.** When `plan_type_emissions()` failed, preflight fell
+back to registering all raw schema declarations. That was intended as
+conservatism, but it fabricated names for output that can never exist and could
+report a phantom collision *before* the real semantic diagnostic.
+
+**Corrected behaviour.** Name preflight defers instead:
+
+```rust
+enum NamePreflightPlan<'a> {
+    Planned(Vec<TypeEmission<'a>>),
+    UnavailableBecauseSemanticFailure(Vec<TypeEmission<'a>>),
+}
+```
+
+An entity with no emitted surface contributes no names, so no naming verdict is
+invented for it. Ownership stays where it belongs:
+
+> Name preflight diagnoses names of output that *can* exist; semantic emission
+> failure remains the authoritative error when no emission surface exists.
+
+Worked example. An `OpenExtensions` schema whose abstract value target is named
+`BoundedVec` — the Rust support type's spelling — previously reported a
+`BoundedVec` generated-name collision, masking the real cause. It now reports
+the semantic diagnostic:
+
+```text
+abstract value BoundedVec is not closed under open-extensions generation;
+external derived types cannot be represented
+```
+
+The same schema under the closed world still fails on the genuine collision,
+because there the wrapper really is emitted and really does take the
+identifier. Coverage attribution follows the same rule.
+
+**Deferral is scoped to the entity, not to the schema.** This is load-bearing
+and was caught by measurement. `plan_type_emissions()` fails **closed and
+globally**: a single unrepresentable target aborts the whole plan. Authoritative
+UCI contains exactly such a target (`SourceCommandEXT`, zero concrete
+structural descendants), so an early version of this corrective that treated a
+planner failure as "no surface exists anywhere" silently stopped checking every
+other declaration's names and restored the previously **rejected** overclaims
+`2800/5395/5417`.
+
+The surfaces are therefore rebuilt from renderer policy per declaration when
+the planner aborts — the same entity-selection rule, without the global error
+propagation and without the topological ordering, neither of which affects
+which names are emitted. Only the entity that genuinely has no emitted shape
+loses its names; every other emitted surface is still checked. A dedicated
+regression (`a_global_planning_abort_still_checks_unrelated_emitted_names`)
+pins this, asserting that an unrelated `foo_bar`/`fooBar` convergence is still
+rejected and still attributed to both declarations while whole-schema planning
+fails.
 
 ### False rejections removed
 
@@ -2528,6 +2629,15 @@ name-attribution-truth fix, validated by synthetic fixtures and by all three
 compilers rather than by a coverage movement. The pre-cleanup
 `2800/5395/5417` figures remain **rejected as overclaims**.
 
+**Re-measured again after the member/helper correction**, from scratch on both
+pinned roots, in all four release/world combinations. Every one of the twelve
+cells is byte-identical to the table above. Authoritative UCI does not exercise
+this final emitted-surface defect either: its abstract Records with repeated
+fields are all either real wrappers or have descendant helper names that
+collide with nothing, so no phantom helper was ever the sole reason for an
+exclusion. The evidence for this pass is the synthetic fixtures plus GNAT,
+`rustc`, and strict C++17 — not a coverage movement.
+
 ### Final selected readiness and cost
 
 Selected `PositionReport`, UCI 2.5, closed world, re-measured: **Rust 51/60**
@@ -2539,3 +2649,12 @@ Service-check cost measured **~5.8 s per language**, matching the ~5.9 s
 projection-scoped figure. Consulting the planner adds one emission plan per
 schema/world, not one per declaration, so there is no order-of-magnitude
 regression.
+
+Re-measured after the member/helper correction: readiness is **unchanged** —
+Rust `51/60` first blocking `DateTimeType`, Ada `32/60` first blocking
+`Acceleration3D_Type`, both still NOT READY on the same declarations. Nothing
+in the selection depended on a phantom member or helper surface. Service-check
+cost re-measured at **5.82 s (Rust) / 5.82 s (Ada)** per language. The emission
+plan is still formed exactly once per schema/world and then walked, so member
+and helper analysis reuses the same plan rather than re-planning per
+declaration.

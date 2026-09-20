@@ -32,7 +32,7 @@ use crate::coverage::BackendLanguage;
 use crate::floating::floating_domain;
 use crate::structure::{effective_choice_alternatives, effective_record_fields};
 use crate::world::GenerationWorld;
-use crate::{AbstractValueProjection, NamePreflightPlan, TypeEmission, name_preflight_plan};
+use crate::{AbstractValueProjection, TypeEmission, name_preflight_plan};
 use ams_gra_oms_ir::{
     Cardinality, OccurrenceShape, PrimitiveKind, QualifiedName, SchemaIr, TypeDecl, TypeKind,
     TypeRefTarget,
@@ -1300,25 +1300,25 @@ pub fn validate_backend_names(
     // namespace URI alone -- so it is checked even when no plan exists.
     validate_namespace_unit(schema, language)?;
     // One plan per schema/world, shared by every name surface below.
-    let NamePreflightPlan::Planned(emissions) = name_preflight_plan(schema, world) else {
-        // No emission plan means no emitted surface, so there are no
-        // schema-owned generated names to judge. The planner's semantic
-        // failure is the authoritative diagnostic and the backend reports it
-        // on its own terms; fabricating a naming verdict from raw Schema IR
-        // here would describe output that can never exist and would mask the
-        // real cause.
-        return Ok(());
-    };
+    //
+    // A declaration whose own emitted shape cannot be formed contributes no
+    // surface and therefore no names: its semantic failure is the
+    // authoritative diagnostic, owned by the backend, and fabricating a naming
+    // verdict from raw Schema IR would describe output that can never exist.
+    // Surfaces that *are* well-formed are still checked, because a global
+    // planning abort says nothing about them.
+    let plan = name_preflight_plan(schema, world);
+    let emissions = plan.surfaces();
     let mut top_level = Region::new(language, NameRegion::TopLevel);
     // Generated support types occupy the top-level scope before any user
     // declaration is placed in it, so a user declaration colliding with one is
     // attributed to the user declaration as the second, conflicting source.
     register_support_names(&mut top_level, schema, language)?;
-    register_emitted_declaration_names(&mut top_level, &emissions, language)?;
+    register_emitted_declaration_names(&mut top_level, emissions, language)?;
     if language == BackendLanguage::Ada {
-        register_ada_kind_companions(&mut top_level, &emissions)?;
+        register_ada_kind_companions(&mut top_level, emissions)?;
     }
-    for emission in &emissions {
+    for emission in emissions {
         let mut members = Region::new(language, NameRegion::Members(emission.name().clone()));
         register_emission_names(schema, emission, language, &mut members, &mut top_level)?;
     }
@@ -1326,7 +1326,7 @@ pub fn validate_backend_names(
         // Literals and generated callables are validated last, against the
         // completed set of top-level type names: either conflicts with a type
         // name regardless of which was declared first.
-        validate_ada_enumeration_literals(&top_level, schema, &emissions)?;
+        validate_ada_enumeration_literals(&top_level, schema, emissions)?;
         let mut callables = Vec::new();
         collect_ada_float_callable_conflicts(&top_level, schema, &mut callables);
         if let Some(conflict) = callables.into_iter().next() {
@@ -1617,22 +1617,20 @@ pub fn unsafe_named_declarations(
 
     // Same single shared plan as validation, so capability attribution cannot
     // condemn a declaration for a name the backend never emits while
-    // validation accepts it -- nor manufacture a naming failure when the plan
-    // itself could not be formed. A semantic planner failure has no emitted
-    // surface to attribute and is handled by the existing semantic coverage
-    // rules, not converted into a naming verdict here.
-    let NamePreflightPlan::Planned(emissions) = name_preflight_plan(schema, world) else {
-        return unsafe_names;
-    };
+    // validation accepts it -- nor manufacture a naming failure for an entity
+    // with no emitted surface at all, which the existing semantic coverage
+    // rules already handle on their own terms.
+    let plan = name_preflight_plan(schema, world);
+    let emissions = plan.surfaces();
     let mut top_level = Region::collecting(language, NameRegion::TopLevel);
     // Ignoring the `Result` is correct for a collecting region: it only ever
     // returns `Ok`, accumulating into `errors` instead.
     let _ = register_support_names(&mut top_level, schema, language);
-    let _ = register_emitted_declaration_names(&mut top_level, &emissions, language);
+    let _ = register_emitted_declaration_names(&mut top_level, emissions, language);
     if language == BackendLanguage::Ada {
-        let _ = register_ada_kind_companions(&mut top_level, &emissions);
+        let _ = register_ada_kind_companions(&mut top_level, emissions);
     }
-    for emission in &emissions {
+    for emission in emissions {
         let owner = emission.name().clone();
         let mut members = Region::collecting(language, NameRegion::Members(owner.clone()));
         let _ = register_emission_names(schema, emission, language, &mut members, &mut top_level);
@@ -1645,7 +1643,7 @@ pub fn unsafe_named_declarations(
     }
     if language == BackendLanguage::Ada {
         let mut literals = Vec::new();
-        collect_ada_literal_conflicts(&top_level, schema, &emissions, &mut literals);
+        collect_ada_literal_conflicts(&top_level, schema, emissions, &mut literals);
         collect_ada_float_callable_conflicts(&top_level, schema, &mut literals);
         for conflict in literals {
             unsafe_names.extend(conflict.owners);
@@ -2533,6 +2531,57 @@ mod tests {
         // The very same schema under the closed world does plan, and there the
         // wrapper genuinely takes `BoundedVec`, so the collision is real.
         assert_collides(&schema, BackendLanguage::Rust, "BoundedVec");
+    }
+
+    /// Deferral must be **scoped to the entity that cannot be emitted**, not
+    /// applied to the whole schema.
+    ///
+    /// `plan_type_emissions` fails closed globally: one unrepresentable target
+    /// aborts the entire plan. Treating that as "no surface exists" silently
+    /// stopped checking every other declaration's names, which restored the
+    /// previously rejected coverage overclaims on authoritative UCI. The
+    /// unrelated collision here must still be caught even though a different
+    /// declaration makes whole-schema planning fail.
+    #[test]
+    fn a_global_planning_abort_still_checks_unrelated_emitted_names() {
+        // A zero-descendant abstract value target demanded by value: the
+        // planner cannot represent it, so the whole plan fails.
+        let mut uninhabited = record("Uninhabited", Vec::new());
+        uninhabited.is_abstract = true;
+        let schema = schema_with(vec![
+            uninhabited,
+            record(
+                "Demand",
+                vec![field(
+                    "Value",
+                    TypeRefTarget::Named(QualifiedName::new(NS, "Uninhabited")),
+                    Cardinality::REQUIRED_ONE,
+                )],
+            ),
+            // Entirely unrelated to the failing target, and genuinely emitted.
+            primitive("foo_bar"),
+            primitive("fooBar"),
+        ]);
+        assert!(
+            crate::plan_type_emissions(&schema, GenerationWorld::ClosedSchemaSet).is_err(),
+            "the fixture must actually make whole-schema planning fail"
+        );
+        assert_collides(&schema, BackendLanguage::Rust, "FooBar");
+        let unsafe_names = unsafe_named_declarations(
+            &schema,
+            BackendLanguage::Rust,
+            GenerationWorld::ClosedSchemaSet,
+        );
+        assert!(
+            unsafe_names.contains(&QualifiedName::new(NS, "foo_bar"))
+                && unsafe_names.contains(&QualifiedName::new(NS, "fooBar")),
+            "both converging emitted declarations must still be attributed"
+        );
+        // The unrepresentable target still contributes no surface of its own.
+        assert!(
+            !unsafe_names.contains(&QualifiedName::new(NS, "Uninhabited")),
+            "an entity with no emitted surface must not gain a naming verdict"
+        );
     }
 
     /// The predicates preflight uses are the renderers' own predicates, so
