@@ -4,9 +4,10 @@ use crate::structure::{
 };
 use crate::{
     ADA_PORTABLE_POSITIVE_INDEX_MAX, AbstractValueOccurrenceRenderability,
-    AbstractValueProjectionError, AbstractValueSemantics, AbstractValueTopology, GenerationWorld,
-    abstract_value_occurrence_renderable, abstract_value_targets, classify_abstract_value_topology,
-    floating_domain, inclusive_integral_domain,
+    AbstractValueProjectionError, AbstractValueSemantics, AbstractValueTopology,
+    BackendPreflightError, GenerationWorld, abstract_value_occurrence_renderable,
+    abstract_value_targets, backend_preflight, classify_abstract_value_topology, floating_domain,
+    inclusive_integral_domain, unsafe_named_declarations,
 };
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, FieldDecl, MessageDecl, OccurrenceShape, PrimitiveKind,
@@ -196,6 +197,39 @@ pub struct CoverageAnalysis<'a> {
     /// `OpenExtensions`, where zero known descendants does not imply
     /// uninhabited. Computed once, for the same performance reason as above.
     fully_elided_targets: BTreeSet<&'a QualifiedName>,
+    /// Per-language global backend preflight outcome for this whole schema.
+    ///
+    /// # Why coverage consults preflight at all
+    ///
+    /// Most capability questions are per declaration, but a few are not: a
+    /// generated-name collision, a reserved generated identifier, or a
+    /// multi-namespace schema makes the backend reject the schema *globally*,
+    /// however renderable each declaration is in isolation. Without this,
+    /// coverage could report declarations fully renderable and message
+    /// closures generable for a schema that generation refuses outright --
+    /// exactly the coverage/generation disagreement this cleanup exists to
+    /// remove.
+    ///
+    /// # Why it is stored
+    ///
+    /// The outcome depends only on the schema and the language, never on the
+    /// hypothetical feature set. Coverage evaluates every language against
+    /// every feature combination, so computing it once per language here
+    /// keeps a whole-schema scan out of that loop. Three scans at
+    /// construction replace dozens during analysis.
+    ///
+    /// Policy is **not** duplicated: this stores the result of the shared
+    /// [`backend_preflight`] call that backend generation itself makes.
+    backend_preflight: BTreeMap<BackendLanguage, Option<BackendPreflightError>>,
+    /// Per-language set of declarations whose generated names are unsafe.
+    ///
+    /// Attributed, not global: one reserved member name makes exactly its
+    /// owning declaration unrenderable, leaving the rest of the schema's
+    /// metrics honest. Computed once per language for the same reason as
+    /// `backend_preflight` above -- it is feature-set independent, and
+    /// recomputing it inside the feature loop would rescan the whole schema
+    /// repeatedly.
+    unsafe_named_declarations: BTreeMap<BackendLanguage, BTreeSet<QualifiedName>>,
 }
 
 impl<'a> CoverageAnalysis<'a> {
@@ -249,6 +283,15 @@ impl<'a> CoverageAnalysis<'a> {
             indices,
             abstract_value_topologies,
             fully_elided_targets: BTreeSet::new(),
+            // Computed once per language, before any per-declaration work.
+            backend_preflight: BackendLanguage::ALL
+                .into_iter()
+                .map(|language| (language, backend_preflight(schema, language).err()))
+                .collect(),
+            unsafe_named_declarations: BackendLanguage::ALL
+                .into_iter()
+                .map(|language| (language, unsafe_named_declarations(schema, language)))
+                .collect(),
         };
         // Policy-dependent index, computed exactly once. Under
         // `OpenExtensions` no target is elided, because zero known
@@ -335,6 +378,39 @@ impl<'a> CoverageAnalysis<'a> {
         self.count_collisions(&mut inventory)?;
         inventory.evidence.sort();
         Ok(inventory)
+    }
+
+    /// The global backend precondition this schema violates for `language`,
+    /// if any.
+    ///
+    /// Exposed so a caller can explain a zeroed declaration/message figure
+    /// rather than having to guess why it is zero. The authoritative rule set
+    /// is [`backend_preflight`]; this only surfaces its stored result.
+    #[must_use]
+    pub fn backend_preflight_error(
+        &self,
+        language: BackendLanguage,
+    ) -> Option<&BackendPreflightError> {
+        self.backend_preflight
+            .get(&language)
+            .and_then(Option::as_ref)
+    }
+
+    /// Whether the generated module/namespace/package itself cannot be
+    /// produced for `language`.
+    ///
+    /// True for a multi-namespace schema, and for a namespace URI whose
+    /// derived unit identifier is illegal or reserved. Both make the backend
+    /// emit nothing at all, which is why they zero the whole-schema figures
+    /// rather than being attributed to some declaration.
+    fn namespace_unit_is_unusable(&self, language: BackendLanguage) -> bool {
+        match self.backend_preflight_error(language) {
+            None => false,
+            Some(BackendPreflightError::MultipleNamespaces { .. }) => true,
+            Some(BackendPreflightError::Name(error)) => {
+                matches!(error.region(), crate::NameRegion::NamespaceUnit)
+            }
+        }
     }
 
     /// Measure current backend representability without invoking first-failure generation.
@@ -483,6 +559,20 @@ impl<'a> CoverageAnalysis<'a> {
         for name in &self.fully_elided_targets {
             full[self.indices[name]] = true;
         }
+        // Corrective cleanup: a declaration the backend cannot *name* safely
+        // is not renderable, however well its structure is modelled. This is
+        // applied last, so it overrides even the elision above: an elided
+        // target still occupies its generated identifier.
+        //
+        // Attribution is per declaration rather than whole-schema, because a
+        // reserved member name condemns that declaration and nothing else.
+        // The rules come from the shared backend-name model; coverage only
+        // consumes the attributed result.
+        for name in &self.unsafe_named_declarations[&language] {
+            if let Some(index) = self.indices.get(name) {
+                full[*index] = false;
+            }
+        }
         DeclarationRenderability { full }
     }
 
@@ -555,6 +645,36 @@ impl<'a> CoverageAnalysis<'a> {
                 message_closures_renderable += 1;
             }
         }
+        // A *namespace-level* precondition failure is not attributable to any
+        // declaration: the generated module/namespace/package itself cannot be
+        // named, so the backend emits nothing at all. Claiming declarations
+        // are fully renderable, or message closures generable, would be a
+        // straightforward overclaim.
+        //
+        // Generated-name failures are handled differently, and earlier, in
+        // `declaration_renderability`: those *are* attributable, so the
+        // responsible declarations are marked unrenderable individually and
+        // the rest of the schema keeps its honest metrics. Condemning a whole
+        // schema for one reserved member name would destroy far more evidence
+        // than it corrects.
+        //
+        // `declaration_kinds_renderable`, `field_type_references_renderable`,
+        // and `field_occurrences_renderable` are left intact even here: they
+        // answer narrower questions ("does this backend model this kind, this
+        // type reference, this occurrence?") that an unusable package name
+        // does not change, and feature-impact analysis reads them.
+        //
+        // Both branches consume the authoritative shared preflight result; no
+        // naming or namespace rule is reimplemented in coverage.
+        let (declarations_fully_renderable, message_closures_renderable) =
+            if self.namespace_unit_is_unusable(language) {
+                (0, 0)
+            } else {
+                (
+                    full.iter().filter(|renderable| **renderable).count(),
+                    message_closures_renderable,
+                )
+            };
         Ok(BackendCoverage {
             language,
             declarations_total: self.schema.types.len(),
@@ -564,7 +684,7 @@ impl<'a> CoverageAnalysis<'a> {
                 .iter()
                 .filter(|declaration| kind_renderable(declaration, enabled))
                 .count(),
-            declarations_fully_renderable: full.iter().filter(|renderable| **renderable).count(),
+            declarations_fully_renderable,
             fields_total: fields.len(),
             field_type_references_renderable: fields
                 .iter()
@@ -1616,6 +1736,226 @@ mod tests {
                 }
             }
         }
+    }
+
+    // ---- Corrective cleanup: coverage must respect global preflight ----
+
+    /// A record whose members are all renderable, so any zeroing observed
+    /// below comes from the global precondition rather than from ordinary
+    /// per-declaration capability.
+    fn renderable_record(name: &str) -> TypeDecl {
+        declaration(
+            name,
+            TypeKind::Record {
+                fields: vec![field_ref(
+                    "Value",
+                    TypeRef::primitive(PrimitiveKind::Float64),
+                )],
+            },
+        )
+    }
+
+    fn coverage_of(schema: &SchemaIr, language: BackendLanguage) -> BackendCoverage {
+        CoverageAnalysis::new(schema, GenerationWorld::ClosedSchemaSet)
+            .expect("analysis should build")
+            .backend_coverage(language)
+            .expect("coverage should compute")
+    }
+
+    /// The control every other case below is measured against: a schema that
+    /// passes preflight reports its ordinary per-declaration metrics, which
+    /// this integration must leave completely untouched.
+    #[test]
+    fn single_namespace_control_metrics_are_unchanged() {
+        let schema = schema(vec![renderable_record("Alpha"), renderable_record("Beta")]);
+        for language in BackendLanguage::ALL {
+            let coverage = coverage_of(&schema, language);
+            assert_eq!(
+                coverage.declarations_fully_renderable, 2,
+                "{language:?} must report both declarations renderable"
+            );
+            assert_eq!(coverage.declarations_total, 2);
+        }
+    }
+
+    /// A declaration whose generated name is a reserved word makes the whole
+    /// schema ungenerable, so coverage must not go on reporting it as an
+    /// ordinarily fully renderable declaration.
+    #[test]
+    fn a_reserved_generated_name_is_not_reported_as_fully_renderable() {
+        // `Range` is an Ada reserved word (case-insensitively).
+        let schema = schema(vec![renderable_record("Range"), renderable_record("Beta")]);
+        let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet)
+            .expect("analysis should build");
+        assert!(
+            matches!(
+                analysis.backend_preflight_error(BackendLanguage::Ada),
+                Some(BackendPreflightError::Name(_))
+            ),
+            "the fixture must really fail Ada preflight"
+        );
+        // Exactly the offending declaration stops being renderable. The
+        // unaffected one keeps its honest metric: a single reserved name is
+        // not a reason to disown the rest of the schema.
+        assert_eq!(
+            analysis
+                .backend_coverage(BackendLanguage::Ada)
+                .expect("coverage should compute")
+                .declarations_fully_renderable,
+            1,
+            "only the reserved-word declaration is unrenderable"
+        );
+        // The other backends are unaffected: `Range` is reserved in Ada only.
+        for language in [BackendLanguage::Rust, BackendLanguage::Cpp] {
+            assert_eq!(
+                coverage_of(&schema, language).declarations_fully_renderable,
+                2,
+                "{language:?} has no reserved word `Range`"
+            );
+        }
+    }
+
+    /// A user declaration colliding with a generated support type is a global
+    /// failure for the same reason, and must be reflected honestly.
+    #[test]
+    fn a_generated_support_name_collision_is_reflected_in_coverage() {
+        let schema = schema(vec![
+            renderable_record("BoundedVec"),
+            renderable_record("Beta"),
+        ]);
+        let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet)
+            .expect("analysis should build");
+        assert!(
+            analysis
+                .backend_preflight_error(BackendLanguage::Rust)
+                .is_some(),
+            "colliding with Rust's BoundedVec must fail preflight"
+        );
+        // The colliding declaration is attributed and excluded; the unrelated
+        // one remains renderable.
+        assert_eq!(
+            analysis
+                .backend_coverage(BackendLanguage::Rust)
+                .expect("coverage should compute")
+                .declarations_fully_renderable,
+            1,
+            "only the declaration shadowing BoundedVec is unrenderable"
+        );
+    }
+
+    /// A top-level collision involves two declarations, and neither may be
+    /// counted as an ordinary renderable declaration.
+    #[test]
+    fn a_top_level_normalized_name_collision_is_reflected_in_coverage() {
+        let schema = schema(vec![
+            renderable_record("foo_bar"),
+            renderable_record("fooBar"),
+        ]);
+        for language in [BackendLanguage::Rust, BackendLanguage::Cpp] {
+            let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet)
+                .expect("analysis should build");
+            assert!(
+                analysis.backend_preflight_error(language).is_some(),
+                "{language:?} must see the converging names"
+            );
+            assert_eq!(
+                analysis
+                    .backend_coverage(language)
+                    .expect("coverage should compute")
+                    .declarations_fully_renderable,
+                0,
+                "{language:?} must not count colliding declarations as renderable"
+            );
+        }
+    }
+
+    /// The multi-namespace case: every declaration may be individually
+    /// renderable while the backend cannot emit the schema at all, so
+    /// full-schema coverage must not overclaim.
+    #[test]
+    fn multi_namespace_coverage_does_not_overclaim_backend_capability() {
+        let mut schema = schema(vec![renderable_record("Alpha")]);
+        // Both namespaces are declared, so this is valid IR that the frontend
+        // deliberately supports -- the backends simply remain
+        // single-namespace, which is a capability boundary rather than a
+        // schema defect.
+        schema.namespaces.push(NamespaceDecl {
+            uri: "urn:other".to_owned(),
+            preferred_prefix: None,
+        });
+        let mut foreign = renderable_record("Beta");
+        foreign.name = QualifiedName::new("urn:other", "Beta");
+        schema.types.push(foreign);
+
+        for language in BackendLanguage::ALL {
+            let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet)
+                .expect("analysis should build");
+            assert!(
+                matches!(
+                    analysis.backend_preflight_error(language),
+                    Some(BackendPreflightError::MultipleNamespaces { .. })
+                ),
+                "{language:?} must report the namespace boundary"
+            );
+            let coverage = analysis
+                .backend_coverage(language)
+                .expect("coverage should compute");
+            assert_eq!(
+                coverage.declarations_fully_renderable, 0,
+                "{language:?} cannot generate any declaration of a two-namespace schema"
+            );
+            assert_eq!(coverage.message_closures_renderable, 0);
+        }
+    }
+
+    /// A namespace URI whose derived package identifier is reserved makes the
+    /// whole unit unnameable, so -- unlike an unsafe declaration name -- it is
+    /// not attributable and does zero the whole-schema figures.
+    #[test]
+    fn an_unusable_namespace_unit_zeroes_whole_schema_capability() {
+        let mut schema = schema(vec![renderable_record("Alpha"), renderable_record("Beta")]);
+        // Derives the illegal Ada package `Backend.Record`.
+        schema.namespaces[0].uri = "urn:backend:record".to_owned();
+        for declaration in &mut schema.types {
+            declaration.name =
+                QualifiedName::new("urn:backend:record", &declaration.name.local_name);
+        }
+        let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet)
+            .expect("analysis should build");
+        assert!(
+            analysis
+                .backend_preflight_error(BackendLanguage::Ada)
+                .is_some_and(|error| matches!(
+                    error,
+                    BackendPreflightError::Name(name) if *name.region() == crate::NameRegion::NamespaceUnit
+                )),
+            "the fixture must fail on the package identifier itself"
+        );
+        let coverage = analysis
+            .backend_coverage(BackendLanguage::Ada)
+            .expect("coverage should compute");
+        assert_eq!(
+            coverage.declarations_fully_renderable, 0,
+            "nothing is generable when the package cannot be named"
+        );
+    }
+
+    /// Narrower per-kind and per-member capability evidence is deliberately
+    /// retained when a name is unsafe: those questions remain answerable,
+    /// and feature-impact analysis reads them.
+    #[test]
+    fn an_unsafe_name_preserves_narrower_capability_evidence() {
+        let schema = schema(vec![renderable_record("Range"), renderable_record("Beta")]);
+        let coverage = coverage_of(&schema, BackendLanguage::Ada);
+        assert_eq!(coverage.declarations_fully_renderable, 1);
+        assert_eq!(
+            coverage.declaration_kinds_renderable, 2,
+            "both kinds are still modelled by the backend"
+        );
+        assert_eq!(
+            coverage.field_type_references_renderable, coverage.fields_total,
+            "member type references are still modelled"
+        );
     }
 
     #[test]

@@ -160,9 +160,15 @@ fn mixed_schema() -> SchemaIr {
             // Two unrelated unsupported declarations. Neither is selected by
             // the ready contract, so neither may ever appear in its report.
             unsupported("UnsupportedA"),
-            record("UnrelatedA", vec![field("When", named("UnsupportedA"))]),
+            record(
+                "UnrelatedA",
+                vec![field("Occurred_At", named("UnsupportedA"))],
+            ),
             unsupported("UnsupportedB"),
-            record("UnrelatedB", vec![field("When", named("UnsupportedB"))]),
+            record(
+                "UnrelatedB",
+                vec![field("Occurred_At", named("UnsupportedB"))],
+            ),
         ],
         vec![
             message("GoodReport", named("GoodPayload")),
@@ -819,8 +825,18 @@ fn readiness_agrees_with_full_schema_coverage_when_everything_is_selected() {
             GenerationWorld::OpenExtensions,
         ] {
             let result = readiness(&schema, &contract, language, world);
-            let coverage = CoverageAnalysis::new(&schema, world)
-                .expect("analysis should build")
+            let analysis = CoverageAnalysis::new(&schema, world).expect("analysis should build");
+            // Parity is only meaningful while the schema passes global
+            // preflight: once it does not, coverage reports zero generable
+            // message closures by design and the comparison below would be
+            // measuring the preflight failure rather than the capability
+            // model. Asserting it keeps this test honest about what it
+            // covers.
+            assert!(
+                analysis.backend_preflight_error(language).is_none(),
+                "{language:?} {world:?}: the parity fixture must pass global preflight"
+            );
+            let coverage = analysis
                 .backend_coverage(language)
                 .expect("coverage should compute");
             assert_eq!(result.selected_messages_total, coverage.messages_total);

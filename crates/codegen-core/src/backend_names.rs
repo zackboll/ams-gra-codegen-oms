@@ -35,7 +35,7 @@ use ams_gra_oms_ir::{
     Cardinality, OccurrenceShape, PrimitiveKind, QualifiedName, SchemaIr, TypeDecl, TypeKind,
     TypeRefTarget,
 };
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
 /// The generated declarative region a name occupies.
@@ -98,6 +98,22 @@ pub enum BackendNameError {
         first: String,
         second: String,
     },
+}
+
+impl BackendNameError {
+    /// The declarative region the rejected name belongs to.
+    ///
+    /// Lets a caller distinguish a failure that condemns one declaration from
+    /// one that makes the whole generated unit unusable, without re-deriving
+    /// the classification.
+    #[must_use]
+    pub const fn region(&self) -> &NameRegion {
+        match self {
+            Self::InvalidIdentifier { region, .. }
+            | Self::ReservedWord { region, .. }
+            | Self::Collision { region, .. } => region,
+        }
+    }
 }
 
 impl fmt::Display for BackendNameError {
@@ -417,6 +433,16 @@ struct Region {
     language: BackendLanguage,
     region: NameRegion,
     taken: BTreeMap<String, String>,
+    /// When true, a rejected name is recorded in `errors` and validation
+    /// continues instead of returning early.
+    ///
+    /// Generation wants the first failure and nothing more. Coverage wants
+    /// *every* failure, so it can attribute each one to the declarations
+    /// responsible rather than condemning the whole schema for the first
+    /// unsafe name found. Both behaviours run the same registration logic,
+    /// which is what keeps the two from drifting.
+    collecting: bool,
+    errors: Vec<BackendNameError>,
 }
 
 impl Region {
@@ -425,13 +451,32 @@ impl Region {
             language,
             region,
             taken: BTreeMap::new(),
+            collecting: false,
+            errors: Vec::new(),
+        }
+    }
+
+    fn collecting(language: BackendLanguage, region: NameRegion) -> Self {
+        Self {
+            collecting: true,
+            ..Self::new(language, region)
+        }
+    }
+
+    /// Report one rejected name, honouring the region's failure mode.
+    fn reject(&mut self, error: BackendNameError) -> Result<(), BackendNameError> {
+        if self.collecting {
+            self.errors.push(error);
+            Ok(())
+        } else {
+            Err(error)
         }
     }
 
     /// Record one generated name, rejecting reserved words and collisions.
     fn insert(&mut self, ir_name: &str, generated: String) -> Result<(), BackendNameError> {
         if is_reserved(self.language, &generated) {
-            return Err(BackendNameError::ReservedWord {
+            return self.reject(BackendNameError::ReservedWord {
                 language: self.language,
                 region: self.region.clone(),
                 ir_name: ir_name.to_owned(),
@@ -444,13 +489,16 @@ impl Region {
             // defect diagnosed elsewhere, not a naming defect; only *distinct*
             // sources converging is reported here.
             Some(first) if first == ir_name => Ok(()),
-            Some(first) => Err(BackendNameError::Collision {
-                language: self.language,
-                region: self.region.clone(),
-                generated,
-                first: first.clone(),
-                second: ir_name.to_owned(),
-            }),
+            Some(first) => {
+                let error = BackendNameError::Collision {
+                    language: self.language,
+                    region: self.region.clone(),
+                    generated,
+                    first: first.clone(),
+                    second: ir_name.to_owned(),
+                };
+                self.reject(error)
+            }
             None => {
                 self.taken.insert(key, ir_name.to_owned());
                 Ok(())
@@ -465,12 +513,17 @@ impl Region {
         ir_name: &str,
         generated: Option<String>,
     ) -> Result<(), BackendNameError> {
-        let generated = generated.ok_or_else(|| BackendNameError::InvalidIdentifier {
-            language: self.language,
-            region: self.region.clone(),
-            ir_name: ir_name.to_owned(),
-        })?;
-        self.insert(ir_name, generated)
+        match generated {
+            Some(generated) => self.insert(ir_name, generated),
+            None => {
+                let error = BackendNameError::InvalidIdentifier {
+                    language: self.language,
+                    region: self.region.clone(),
+                    ir_name: ir_name.to_owned(),
+                };
+                self.reject(error)
+            }
+        }
     }
 }
 
@@ -679,17 +732,33 @@ fn validate_ada_enumeration_literals(
     top_level: &Region,
     schema: &SchemaIr,
 ) -> Result<(), BackendNameError> {
-    let check = |ir_name: &str, literal: &str| -> Result<(), BackendNameError> {
+    let mut conflicts = Vec::new();
+    collect_ada_literal_conflicts(top_level, schema, &mut conflicts);
+    match conflicts.into_iter().next() {
+        Some(error) => Err(error),
+        None => Ok(()),
+    }
+}
+
+/// Collect every Ada enumeration-literal/type-name conflict, in schema order.
+///
+/// Shared by first-failure validation, which takes the first, and by
+/// per-declaration attribution, which needs them all.
+fn collect_ada_literal_conflicts(
+    top_level: &Region,
+    schema: &SchemaIr,
+    conflicts: &mut Vec<BackendNameError>,
+) {
+    let check = |ir_name: &str, literal: &str, conflicts: &mut Vec<BackendNameError>| {
         let key = identity_key(BackendLanguage::Ada, literal);
-        match top_level.taken.get(&key) {
-            Some(first) => Err(BackendNameError::Collision {
+        if let Some(first) = top_level.taken.get(&key) {
+            conflicts.push(BackendNameError::Collision {
                 language: BackendLanguage::Ada,
                 region: NameRegion::TopLevel,
                 generated: literal.to_owned(),
                 first: first.clone(),
                 second: ir_name.to_owned(),
-            }),
-            None => Ok(()),
+            });
         }
     };
     for declaration in &schema.types {
@@ -698,7 +767,7 @@ fn validate_ada_enumeration_literals(
             TypeKind::Enumeration { variants } => {
                 for variant in variants {
                     if let Some(literal) = ada_identifier(&variant.wire_value) {
-                        check(&variant.wire_value, &literal)?;
+                        check(&variant.wire_value, &literal, conflicts);
                     }
                 }
             }
@@ -710,7 +779,7 @@ fn validate_ada_enumeration_literals(
                 };
                 for alternative in alternatives {
                     if let Some(name) = ada_identifier(&alternative.name) {
-                        check(&alternative.name, &format!("{name}_Kind"))?;
+                        check(&alternative.name, &format!("{name}_Kind"), conflicts);
                     }
                 }
             }
@@ -725,11 +794,14 @@ fn validate_ada_enumeration_literals(
         };
         for descendant in &projection.concrete_descendants {
             if let Some(name) = ada_identifier(&descendant.name.local_name) {
-                check(&descendant.name.local_name, &format!("{name}_Kind"))?;
+                check(
+                    &descendant.name.local_name,
+                    &format!("{name}_Kind"),
+                    conflicts,
+                );
             }
         }
     }
-    Ok(())
 }
 
 /// Validate the generated module/namespace/package identifier derived from
@@ -887,6 +959,21 @@ fn validate_declaration_members(
     top_level: &mut Region,
 ) -> Result<(), BackendNameError> {
     let mut members = Region::new(language, NameRegion::Members(declaration.name.clone()));
+    register_declaration_members(schema, declaration, language, &mut members, top_level)
+}
+
+/// Register one declaration's member names into `members`, and any Ada
+/// flat-package helper types it derives into `top_level`.
+///
+/// Shared verbatim by first-failure validation and by per-declaration
+/// attribution; the two differ only in how their regions report a rejection.
+fn register_declaration_members(
+    schema: &SchemaIr,
+    declaration: &TypeDecl,
+    language: BackendLanguage,
+    members: &mut Region,
+    top_level: &mut Region,
+) -> Result<(), BackendNameError> {
     match &declaration.kind {
         TypeKind::Enumeration { variants } => {
             for variant in variants {
@@ -984,6 +1071,146 @@ fn validate_ada_helpers(
         )?;
     }
     Ok(())
+}
+
+/// Which declarations a backend cannot name safely, attributed individually.
+///
+/// # Why this exists beside [`validate_backend_names`]
+///
+/// Generation needs one deterministic first failure and stops there.
+/// Capability analysis needs the opposite: the *set* of declarations
+/// responsible, so it can report the rest of the schema honestly instead of
+/// condemning all of it for one unsafe name. Real UCI, for example, contains
+/// a handful of members whose generated identifiers are reserved words in one
+/// backend or another; those declarations are genuinely not renderable, but
+/// the thousands around them are.
+///
+/// Both views run the *same* registration logic over the same regions, so
+/// there is still exactly one naming policy. This one collects rather than
+/// returning early, then maps each failure back to the declaration it belongs
+/// to.
+///
+/// A failure in the top-level region is attributed to whichever declarations
+/// the generated name came from. A collision names two sources, and both are
+/// implicated: neither can be emitted while the other exists.
+///
+/// Namespace/package failures are deliberately **not** included here. They
+/// belong to no declaration and make the whole unit unusable, so they remain
+/// a global precondition reported by [`crate::backend_preflight`].
+#[must_use]
+pub fn unsafe_named_declarations(
+    schema: &SchemaIr,
+    language: BackendLanguage,
+) -> BTreeSet<QualifiedName> {
+    // IR local name -> declaration identity, for attributing a reported
+    // failure back to its declaration in one lookup rather than a scan.
+    let by_local_name = schema
+        .types
+        .iter()
+        .map(|declaration| (declaration.name.local_name.as_str(), &declaration.name))
+        .collect::<BTreeMap<_, _>>();
+    let mut unsafe_names = BTreeSet::new();
+    let attribute = |errors: &[BackendNameError], unsafe_names: &mut BTreeSet<QualifiedName>| {
+        for error in errors {
+            match error {
+                BackendNameError::InvalidIdentifier {
+                    region, ir_name, ..
+                }
+                | BackendNameError::ReservedWord {
+                    region, ir_name, ..
+                } => {
+                    attribute_region(region, [ir_name.as_str()], &by_local_name, unsafe_names);
+                }
+                BackendNameError::Collision {
+                    region,
+                    first,
+                    second,
+                    ..
+                } => {
+                    attribute_region(
+                        region,
+                        [first.as_str(), second.as_str()],
+                        &by_local_name,
+                        unsafe_names,
+                    );
+                }
+            }
+        }
+    };
+
+    let mut top_level = Region::collecting(language, NameRegion::TopLevel);
+    // Ignoring the `Result` is correct for a collecting region: it only ever
+    // returns `Ok`, accumulating into `errors` instead.
+    let _ = register_support_names(&mut top_level, schema, language);
+    for declaration in &schema.types {
+        let _ = top_level.insert_transformed(
+            &declaration.name.local_name,
+            declaration_name(language, &declaration.name.local_name),
+        );
+    }
+    if language == BackendLanguage::Ada {
+        let _ = register_ada_kind_companions(&mut top_level, schema);
+    }
+    for declaration in &schema.types {
+        let mut members =
+            Region::collecting(language, NameRegion::Members(declaration.name.clone()));
+        let _ = register_declaration_members(
+            schema,
+            declaration,
+            language,
+            &mut members,
+            &mut top_level,
+        );
+        // A member failure implicates exactly its owning declaration,
+        // whatever the member was called.
+        if !members.errors.is_empty() {
+            unsafe_names.insert(declaration.name.clone());
+        }
+    }
+    if language == BackendLanguage::Ada {
+        let mut literals = Vec::new();
+        collect_ada_literal_conflicts(&top_level, schema, &mut literals);
+        attribute(&literals, &mut unsafe_names);
+    }
+    let top_level_errors = std::mem::take(&mut top_level.errors);
+    attribute(&top_level_errors, &mut unsafe_names);
+    unsafe_names
+}
+
+/// Map one reported top-level failure back to the declarations responsible.
+///
+/// Member-region failures are attributed by the caller, which already knows
+/// the owning declaration.
+fn attribute_region<'names>(
+    region: &NameRegion,
+    sources: impl IntoIterator<Item = &'names str>,
+    by_local_name: &BTreeMap<&str, &QualifiedName>,
+    unsafe_names: &mut BTreeSet<QualifiedName>,
+) {
+    match region {
+        NameRegion::TopLevel => {
+            for source in sources {
+                // A generated support type or an Ada companion is attributed
+                // through the schema identifier it was derived from; a
+                // synthetic source that matches no declaration contributes
+                // nothing, because no declaration is at fault for it alone.
+                if let Some(name) = by_local_name.get(source) {
+                    unsafe_names.insert((*name).clone());
+                } else if let Some((owner, _)) = source.split_once(' ')
+                    && let Some(name) = by_local_name.get(owner)
+                {
+                    // Ada helper/companion attributions of the form
+                    // "Owner.Member helper" / "Owner companion".
+                    unsafe_names.insert((*name).clone());
+                }
+            }
+        }
+        NameRegion::Members(owner) => {
+            unsafe_names.insert(owner.clone());
+        }
+        // Not declaration-attributable; handled as a global precondition.
+        NameRegion::NamespaceUnit => {}
+    }
 }
 
 /// Whether every generated name one backend would emit for `schema` is safe.

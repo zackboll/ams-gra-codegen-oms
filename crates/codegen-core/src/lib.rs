@@ -23,7 +23,7 @@ pub use abstract_value::{
 pub use backend_names::{
     BackendNameError, NameRegion, backend_names_are_renderable, schema_emits_ada_binary_vectors,
     schema_emits_bounded_integer_support, schema_emits_unbounded_sequence_support,
-    validate_backend_names,
+    unsafe_named_declarations, validate_backend_names,
 };
 pub use backend_preflight::{BackendPreflightError, backend_preflight, backend_preflight_passes};
 pub use coverage::{

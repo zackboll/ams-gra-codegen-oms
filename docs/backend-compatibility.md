@@ -2012,3 +2012,74 @@ backends' existing rejection is not weakened.
 An empty projected schema — what a contract with zero OMS Message exchanges
 produces — is vacuously generable: there is nothing to emit, so there is no
 namespace to require.
+
+### Corrective review: coverage now honours generated-name safety
+
+The shared preflight above was consulted by backend generation and by service
+readiness, but **not** by `CoverageAnalysis`. Coverage could therefore report a
+declaration fully renderable while generation rejected the same schema, which
+is exactly the coverage/generation disagreement the cleanup set out to remove.
+
+`CoverageAnalysis` now consumes the same shared model, with the distinction
+that makes the result honest rather than merely conservative:
+
+* a **declaration-attributable** name failure (a reserved generated
+  identifier, a collision, an unusable identifier) marks exactly the
+  declarations responsible as not renderable, leaving the rest of the schema's
+  metrics intact;
+* a **namespace-unit** failure (multi-namespace input, or a package/namespace
+  identifier that is illegal or reserved) zeroes full-declaration and
+  message-closure capability, because the backend then emits nothing at all
+  and no declaration is individually at fault.
+
+Narrower per-kind, per-type-reference, and per-occurrence figures are retained
+in both cases: those questions remain answerable, and feature-impact analysis
+reads them.
+
+No naming or namespace policy is reimplemented in coverage; it consumes
+`backend_preflight()` and the attributed `unsafe_named_declarations()`, both
+of which run the same registration logic that backend generation runs.
+
+#### Authoritative coverage correction
+
+Integrating the check corrected real overclaiming in the closed-coverage
+numbers. Authoritative UCI contains declarations whose generated member
+identifiers are reserved words, which the backends cannot emit and coverage
+previously counted as fully renderable:
+
+| Release / backend | Before | After | Newly excluded |
+| --- | --- | --- | --- |
+| 2.5 Ada | `2800/5557` | `2732/5557` | 68 |
+| 2.5 Rust | `5395/5557` | `5385/5557` | 10 |
+| 2.5 C++ | `5395/5557` | `5388/5557` | 7 |
+| 2.6 Ada | `2801/5570` | `2732/5570` | 69 |
+| 2.6 Rust | `5417/5570` | `5407/5570` | 10 |
+| 2.6 C++ | `5417/5570` | `5411/5570` | 6 |
+
+The cause is attributed, not assumed. In UCI 2.5 the Ada set is 97
+declarations with an unsafe generated name, of which 68 were previously
+counted renderable; the other 29 were already excluded for unrelated
+capability reasons. The complete Rust set is `ConfigurationParameterType`,
+`DamagedObjectNonEntityType`, `ExpendableType`, `FileNameAndOutputType`,
+`IdentityComparisonType`, `JPEG_WaveletTransformType`, `Link16_HazardType`,
+`OrderOfBattleMDT`, `QueryInstanceOfType`, and `RelationshipEW_Type`. The
+complete C++ set is `ApprovalResponseType`, `COMINT_ChangeDwellType`,
+`ComponentControlsB_Type`, `EntityOrbitalCSO_MDT`,
+`GatewayLink16_ConfigurationIdentityType`, `NotificationSourceType`, and
+`SystemStatusMDT`.
+
+Both compilers confirm these are genuine rather than modelling artefacts.
+`AltitudeRangePairType` carries a member `Range`, and GNAT 14.2 reports
+`reserved word "range" cannot be used as identifier`.
+`ConfigurationParameterType` carries a member `Type`, and rustc reports
+`expected identifier, found keyword type`.
+
+Kind, field-type, field-occurrence, and message-closure figures are unchanged
+in both releases and both worlds; frontend normalization is unchanged at 5,557
+types / 722 messages and 5,570 types / 725 messages. Selected `PositionReport`
+readiness is likewise unchanged -- Rust 52/60 first blocking on `DateTimeType`,
+Ada 37/60 first blocking on `Acceleration3D_Type` -- because none of the
+excluded declarations is in that contract's selected closure.
+
+No identifier mangling, escaping, or renaming is introduced. An unsafe
+generated name remains a rejection.
