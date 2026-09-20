@@ -18,7 +18,10 @@
 //! that selection under a closed or open world is a separate question.
 
 use crate::MismatchRole;
-use ams_gra_oms_ir::{MessageDecl, QualifiedName, SchemaIr, TypeDecl, TypeRef, TypeRefTarget};
+use ams_gra_oms_ir::{
+    Cardinality, ConstraintSet, FieldDecl, MessageDecl, PrimitiveKind, QualifiedName, SchemaIr,
+    TypeDecl, TypeKind, TypeRef, TypeRefTarget,
+};
 use ams_gra_oms_service_contract::{
     Applicability, Capability, Contract, DataTransferExchange, Direction, Exchange,
     FunctionCategory, Mandate, NonOmsMessageExchange, OmsMessageExchange, RequiredGroup,
@@ -286,18 +289,153 @@ pub struct ServicePlan {
 /// Deliberately *not* pointer identity (the caller may legitimately rebuild an
 /// equal schema), not `std::hash` or an ad-hoc integer digest (collisions
 /// would silently accept a mismatch), and not a serialization (unstable, and
-/// this crate has no serializer). Storing the declarations costs the closure's
-/// size once, at resolution, and buys an exact answer with no false accept.
+/// this crate has no serializer). Exact equality of explicit semantic
+/// structures buys an exact answer with no false accept.
+///
+/// # Why not the IR declarations themselves
+///
+/// Storing cloned `MessageDecl`/`TypeDecl` and comparing with `PartialEq`
+/// compared **provenance as well as semantics**: both carry a `SourceRef`
+/// (document path and line) and `documentation`. The same schema semantics
+/// loaded from a different checkout path, or after an annotation edit, then
+/// failed binding as `Changed` even though nothing generation-relevant
+/// differed. The stated requirement is selected *semantic* compatibility, not
+/// object or provenance identity, so the snapshot now captures only the
+/// fields generation and readiness actually consume.
 ///
 /// Scope is the selected service, so a change to an unrelated unselected
 /// declaration does not invalidate the plan.
 #[derive(Debug, Clone, PartialEq)]
 struct SchemaBinding {
-    /// Selected message declarations, in contract first-occurrence order.
-    messages: Vec<MessageDecl>,
-    /// The selected transitive named type closure, in schema declaration
-    /// order.
-    types: Vec<TypeDecl>,
+    /// Selected message semantics, in contract first-occurrence order.
+    messages: Vec<MessageSemantics>,
+    /// The selected transitive named type closure's semantics, in schema
+    /// declaration order.
+    types: Vec<TypeSemantics>,
+}
+
+/// The generation-relevant semantics of one selected OMS message.
+///
+/// A message contributes exactly two things to generation and readiness: its
+/// identity, and the payload type that identity carries. `SourceRef` and
+/// `documentation` are provenance and are deliberately excluded -- no
+/// generated type or readiness verdict depends on either.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct MessageSemantics {
+    name: QualifiedName,
+    payload_type: TypeRef,
+}
+
+impl MessageSemantics {
+    fn of(message: &MessageDecl) -> Self {
+        Self {
+            name: message.name.clone(),
+            payload_type: message.payload_type.clone(),
+        }
+    }
+}
+
+/// The generation-relevant semantics of one selected type declaration.
+///
+/// Everything the backends and capability analysis read is captured:
+/// identity, abstractness, base type, structural body, and constraints.
+/// Member order is preserved because it is the generated field/variant order.
+///
+/// `SourceRef` is excluded as provenance. `documentation` is excluded because
+/// no backend emits it: Ada, Rust, and C++ generation all render types,
+/// members, and constraints only, so an annotation edit cannot change
+/// generated semantics. Were a backend ever to emit documentation, it would
+/// become generation-relevant and belong here.
+#[derive(Debug, Clone, PartialEq)]
+struct TypeSemantics {
+    name: QualifiedName,
+    is_abstract: bool,
+    base_type: Option<TypeRef>,
+    kind: TypeKindSemantics,
+    constraints: ConstraintSet,
+}
+
+/// The generation-relevant body of one type declaration.
+///
+/// Mirrors [`TypeKind`] with provenance-bearing members replaced by
+/// [`MemberSemantics`], so that two declarations differing only in a member's
+/// source line or annotation compare equal.
+#[derive(Debug, Clone, PartialEq)]
+enum TypeKindSemantics {
+    Primitive(PrimitiveKind),
+    Alias(TypeRef),
+    /// Enumeration wire values in declaration order. The wire value is the
+    /// generated variant identifier; the variant's documentation is not.
+    Enumeration(Vec<String>),
+    Record(Vec<MemberSemantics>),
+    Choice(Vec<MemberSemantics>),
+    List {
+        item_type: TypeRef,
+        cardinality: Cardinality,
+    },
+}
+
+impl TypeKindSemantics {
+    fn of(kind: &TypeKind) -> Self {
+        match kind {
+            TypeKind::Primitive(primitive) => Self::Primitive(*primitive),
+            TypeKind::Alias(target) => Self::Alias(target.clone()),
+            TypeKind::Enumeration { variants } => Self::Enumeration(
+                variants
+                    .iter()
+                    .map(|variant| variant.wire_value.clone())
+                    .collect(),
+            ),
+            TypeKind::Record { fields } => {
+                Self::Record(fields.iter().map(MemberSemantics::of).collect())
+            }
+            TypeKind::Choice { alternatives } => {
+                Self::Choice(alternatives.iter().map(MemberSemantics::of).collect())
+            }
+            TypeKind::List {
+                item_type,
+                cardinality,
+            } => Self::List {
+                item_type: item_type.clone(),
+                cardinality: *cardinality,
+            },
+        }
+    }
+}
+
+/// The generation-relevant semantics of one Record field or Choice
+/// alternative: everything that shapes the generated member.
+#[derive(Debug, Clone, PartialEq)]
+struct MemberSemantics {
+    name: String,
+    type_ref: TypeRef,
+    cardinality: Cardinality,
+    nillable: bool,
+    constraints: ConstraintSet,
+}
+
+impl MemberSemantics {
+    fn of(field: &FieldDecl) -> Self {
+        Self {
+            name: field.name.clone(),
+            type_ref: field.type_ref.clone(),
+            cardinality: field.cardinality,
+            nillable: field.nillable,
+            constraints: field.constraints.clone(),
+        }
+    }
+}
+
+impl TypeSemantics {
+    fn of(declaration: &TypeDecl) -> Self {
+        Self {
+            name: declaration.name.clone(),
+            is_abstract: declaration.is_abstract,
+            base_type: declaration.base_type.clone(),
+            kind: TypeKindSemantics::of(&declaration.kind),
+            constraints: declaration.constraints.clone(),
+        }
+    }
 }
 
 /// Which selected identity failed semantic verification, and how.
@@ -407,7 +545,7 @@ impl ServicePlan {
                     name: expected.name.clone(),
                     role: MismatchRole::Message,
                 })?;
-            if actual != expected {
+            if MessageSemantics::of(actual) != *expected {
                 return Err(PlanBindingMismatch::Changed {
                     name: expected.name.clone(),
                     role: MismatchRole::Message,
@@ -423,7 +561,7 @@ impl ServicePlan {
                     name: expected.name.clone(),
                     role: MismatchRole::TypeDeclaration,
                 })?;
-            if actual != expected {
+            if TypeSemantics::of(actual) != *expected {
                 return Err(PlanBindingMismatch::Changed {
                     name: expected.name.clone(),
                     role: MismatchRole::TypeDeclaration,
@@ -665,7 +803,7 @@ pub fn resolve_service_plan(
                     .messages
                     .iter()
                     .find(|message| message.name == selected.name)
-                    .cloned()
+                    .map(MessageSemantics::of)
                     // Every selected identity came from this schema moments
                     // ago, so absence here is impossible rather than a user
                     // error; `UnresolvedPayloadType` names the identity if the
@@ -679,7 +817,7 @@ pub fn resolve_service_plan(
         types: plan
             .selected_type_closure(schema)?
             .into_iter()
-            .cloned()
+            .map(TypeSemantics::of)
             .collect(),
     };
     Ok(plan)

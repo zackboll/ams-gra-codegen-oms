@@ -114,6 +114,131 @@ fn a_separately_rebuilt_equal_schema_is_compatible() {
         .expect("an equal schema built separately must be accepted");
 }
 
+/// Rewrite every `SourceRef` in a schema, leaving all generation-relevant
+/// semantics untouched.
+///
+/// This is what loading the same authoritative schema from a different
+/// checkout, working copy, or extraction directory produces.
+fn with_different_provenance(schema: &SchemaIr) -> SchemaIr {
+    let moved = |index: u32| SourceRef {
+        document: "/somewhere/else/relocated.xsd".to_owned(),
+        line: Some(1000 + index),
+    };
+    let mut other = schema.clone();
+    for (index, declaration) in other.types.iter_mut().enumerate() {
+        declaration.source = moved(index as u32);
+        match &mut declaration.kind {
+            TypeKind::Record { fields }
+            | TypeKind::Choice {
+                alternatives: fields,
+            } => {
+                for (offset, field) in fields.iter_mut().enumerate() {
+                    field.source = moved(index as u32 * 10 + offset as u32);
+                }
+            }
+            _ => {}
+        }
+    }
+    for (index, message) in other.messages.iter_mut().enumerate() {
+        message.source = moved(500 + index as u32);
+    }
+    other
+}
+
+/// Replace every documentation string, leaving all generation-relevant
+/// semantics untouched.
+fn with_different_documentation(schema: &SchemaIr) -> SchemaIr {
+    let mut other = schema.clone();
+    for declaration in &mut other.types {
+        declaration.documentation = Some("rewritten annotation".to_owned());
+        match &mut declaration.kind {
+            TypeKind::Record { fields }
+            | TypeKind::Choice {
+                alternatives: fields,
+            } => {
+                for field in fields {
+                    field.documentation = Some("rewritten member annotation".to_owned());
+                }
+            }
+            _ => {}
+        }
+    }
+    for message in &mut other.messages {
+        message.documentation = Some("rewritten message annotation".to_owned());
+    }
+    other
+}
+
+/// The corrective's central binding case: identical selected semantics whose
+/// declarations came from a different document and different line numbers.
+///
+/// The previous binding stored whole IR declarations and compared them with
+/// `PartialEq`, so `SourceRef` participated in the comparison and this
+/// failed as `Changed` even though nothing generation-relevant differed.
+/// Binding is semantic compatibility, not provenance identity.
+#[test]
+fn identical_semantics_from_different_source_locations_are_compatible() {
+    let plan = plan_for(&schema());
+    let relocated = with_different_provenance(&schema());
+    assert_ne!(
+        relocated.types[0].source,
+        schema().types[0].source,
+        "the fixture must really differ in provenance, or this proves nothing"
+    );
+    plan.verify_schema_binding(&relocated)
+        .expect("the same semantics from a different source location must bind");
+}
+
+/// Documentation is not consumed by any backend -- Ada, Rust, and C++ all
+/// emit types, members, and constraints only -- so an annotation edit cannot
+/// change generated semantics and must not invalidate a plan.
+#[test]
+fn identical_semantics_with_different_documentation_are_compatible() {
+    let plan = plan_for(&schema());
+    let reannotated = with_different_documentation(&schema());
+    assert_ne!(
+        reannotated.types[0].documentation,
+        schema().types[0].documentation,
+        "the fixture must really differ in documentation, or this proves nothing"
+    );
+    plan.verify_schema_binding(&reannotated)
+        .expect("a documentation-only edit must not invalidate a plan");
+}
+
+/// Provenance-independence must not become blanket acceptance: a schema that
+/// differs only in provenance binds, while the *same* schema with one real
+/// semantic change still fails.
+#[test]
+fn provenance_independence_does_not_weaken_semantic_detection() {
+    let plan = plan_for(&schema());
+    let mut relocated = with_different_provenance(&schema());
+    plan.verify_schema_binding(&relocated)
+        .expect("provenance alone must bind");
+
+    // One real semantic change, on top of the relocated provenance.
+    relocated
+        .types
+        .iter_mut()
+        .find(|declaration| declaration.name.local_name == "NestedType")
+        .expect("NestedType must exist")
+        .kind = TypeKind::Record {
+        fields: vec![field("Value", primitive(PrimitiveKind::Float32))],
+    };
+    let mismatch = plan
+        .verify_schema_binding(&relocated)
+        .expect_err("a real semantic change must still be rejected");
+    assert!(
+        matches!(
+            mismatch,
+            PlanBindingMismatch::Changed {
+                role: MismatchRole::TypeDeclaration,
+                ref name
+            } if name.local_name == "NestedType"
+        ),
+        "{mismatch:?}"
+    );
+}
+
 /// Same message QName, different payload TypeRef. Every name matches, so only
 /// a semantic binding can see this.
 #[test]
