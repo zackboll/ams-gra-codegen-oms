@@ -523,6 +523,68 @@ renderability snapshot, and then index lookups. No whole-schema scan happens
 per selected type or per selected message, and the 31 hypothetical feature
 combinations that a full `coverage` report evaluates are **not** run.
 
+### Authoritative UCI 2.5 evidence
+
+Against authoritative UCI 2.5 (`UCI_MessageDefinitions_v2_5_0.xsd`, 5,557 types
+and 722 messages) with the copied upstream portable contract
+`crates/service-contract/tests/fixtures/upstream-minimal.yaml` (provenance
+`zackboll/ams-gra-service-contract` @
+`4ea5be8dd36e9695bd58f2c36c6b3dd8075de249`):
+
+`PositionReport` resolves by exact local-name equality to
+`{https://www.vdl.afrl.af.mil/programs/oam}PositionReport`. It selects **1**
+unique OMS message and a **60**-declaration type closure.
+
+Measured, not predicted:
+
+| language | world | messages renderable | types renderable | status | first blocker | elapsed |
+| --- | --- | --- | --- | --- | --- | --- |
+| ada | closed-schema | 0/1 | 32/60 | NOT READY | `{…}Acceleration3D_Type` | 255.0 s |
+| ada | open-extensions | 0/1 | 32/60 | NOT READY | `{…}Acceleration3D_Type` | 256.4 s |
+| rust | closed-schema | 0/1 | 47/60 | NOT READY | `{…}AltitudeType` | 255.9 s |
+| rust | open-extensions | 0/1 | 47/60 | NOT READY | `{…}AltitudeType` | 257.7 s |
+| cpp | closed-schema | 0/1 | 47/60 | NOT READY | `{…}AltitudeType` | 255.8 s |
+| cpp | open-extensions | 0/1 | 47/60 | NOT READY | `{…}AltitudeType` | 255.8 s |
+
+Ada genuinely differs from Rust and C++ here — fewer renderable selected types
+and an earlier first blocker in schema order — which is exactly the
+per-backend discrimination this analysis exists to provide. Closed and open
+worlds agree on this particular closure because nothing in it is an abstract
+structural value position; the difference between worlds is visible in the
+synthetic regressions above, not here.
+
+Task 031 reports these blockers. It deliberately does **not** implement them:
+`AltitudeType` and `Acceleration3D_Type` support is not in scope.
+
+The contract declares logical `uci_schema_version: "2.5"` while the XSD root
+declares `002.5.0`. Both are retained and never compared; no normalization was
+introduced. This is a UCI 2.5 probe only and supports no UCI 2.6 claim.
+
+### Where the authoritative time goes
+
+The ~255 s is worth attributing precisely, because a readiness query must not
+secretly behave like a full `coverage` report. Phase timings for the same
+authoritative inputs:
+
+| phase | elapsed |
+| --- | --- |
+| `load_schema_set_with_overlays` (XSD parsing) | 5.81 s |
+| `SchemaIr::validate` | 10.3 ms |
+| `resolve_service_plan` | 13 µs |
+| `CoverageAnalysis::new` | **244.4 s** |
+| one full renderability snapshot + all 722 message closures | 46.0 ms |
+
+Essentially all of it is the one-time `CoverageAnalysis::new` construction of
+abstract-value topologies and closed-world elision indexes over the whole
+5,557-type schema — pre-existing shared infrastructure that Task 031 did not
+change. The selected-closure work Task 031 added is ~46 ms at most.
+
+This confirms the intended shape: one `CoverageAnalysis`, one baseline
+snapshot, then indexed lookups. Readiness never calls `CoverageAnalysis::report`
+or `impact`, and evaluates none of the 31 hypothetical feature combinations —
+doing so would multiply the 46 ms figure by 31 per language, not the 244 s one.
+On synthetic fixtures the whole command is effectively instantaneous.
+
 ### World semantics are inherited, not redefined
 
 Under `ClosedSchemaSet`, Task 024 closed sums and Task 026 absent-only elision

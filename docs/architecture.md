@@ -736,6 +736,14 @@ that both consumers share, so a capability rule can never be true for coverage
 and false for service readiness. Readiness enables no hypothetical
 `FeatureFamily`: it measures what a backend can emit today.
 
+Cost is dominated by the shared analysis, not by the selection. Against
+authoritative UCI 2.5 (5,557 types), one readiness query spends ~244 s in
+`CoverageAnalysis::new` building abstract-value topologies and closed-world
+elision indexes, ~5.8 s parsing XSD, and under 50 ms on the renderability
+snapshot and every message closure combined. Readiness never invokes
+`CoverageAnalysis::report` or `impact`, so the 31 hypothetical feature
+combinations a full coverage report evaluates are not part of the query.
+
 ### Relationship to section 16
 
 Contract-declared `uci_extension_schemas` entries are logical **identifiers**,
