@@ -83,12 +83,17 @@ Positive:
 
 Costs and risks:
 
-* the workspace gains `serde`, `serde_yaml`, and `serde_json`. This is
+* the workspace gains `serde`, `yaml_serde`, and `serde_json`. This is
   accepted over shelling out to Python, which would make the generator depend
-  on another project's runtime tooling;
-* `serde_yaml` 0.9 is deprecated upstream. It remains adequate for this
-  read-only, schema-constrained parsing surface, and the parsing boundary is
-  narrow enough to swap later;
+  on another project's runtime tooling. No Python parser or runtime dependency
+  is introduced;
+* YAML parsing uses `yaml_serde` 0.10, the maintained fork published by The
+  YAML Organization, rather than the deprecated and unmaintained original
+  `serde_yaml`. Cargo's package renaming aliases it back to `serde_yaml` in
+  this crate's manifest, so the source surface is unchanged. That surface is
+  deliberately one call, `serde_yaml::from_str`, on read-only,
+  schema-constrained input, which keeps the parsing boundary narrow enough to
+  swap again should the need arise;
 * the contract's logical UCI version and the XSD root's release string are
   both retained but not compared, so a genuine version mismatch is not yet
   caught here. That is deliberate: see the evidence section of

@@ -22,9 +22,10 @@ against; a later Service Contract commit that still publishes
 other version is rejected outright rather than parsed on a best-effort basis.
 
 This repository is the first independent, non-Python consumer of the portable
-format. Parsing is Rust-native (`serde` / `serde_yaml` / `serde_json`). At no
-point does the build or the runtime shell out to Python or invoke the Service
-Contract repository's tooling.
+format. Parsing is Rust-native (`serde` / `yaml_serde` / `serde_json`; the
+YAML dependency is Cargo-aliased as `serde_yaml`). At no point does the build
+or the runtime shell out to Python or invoke the Service Contract repository's
+tooling.
 
 ## Pipeline
 
