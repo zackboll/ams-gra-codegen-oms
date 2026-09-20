@@ -10,6 +10,7 @@ dependencies = [
  "ams-gra-oms-backend-cpp",
  "ams-gra-oms-backend-rust",
  "ams-gra-oms-codegen-core",
+ "ams-gra-oms-ir",
  "ams-gra-oms-service-contract",
  "ams-gra-oms-xsd-frontend",
 ]

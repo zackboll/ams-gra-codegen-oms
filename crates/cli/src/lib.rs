@@ -4,11 +4,12 @@ use ams_gra_oms_backend_ada::AdaBackend;
 use ams_gra_oms_backend_cpp::CppBackend;
 use ams_gra_oms_backend_rust::RustBackend;
 use ams_gra_oms_codegen_core::{
-    Backend, CoverageAnalysis, GeneratedFile, GenerationWorld, ResolvedExchange, ServicePlan,
-    resolve_service_plan,
+    Backend, BackendLanguage, CoverageAnalysis, GeneratedFile, GenerationWorld, ResolvedExchange,
+    ServiceBackendReadiness, ServicePlan, analyze_service_readiness, resolve_service_plan,
 };
 // Only the CLI's own loading path touches contract files; no backend parses
 // YAML, and the resolution itself lives in codegen-core.
+use ams_gra_oms_ir::SchemaIr;
 use ams_gra_oms_service_contract::load_contract;
 use ams_gra_oms_xsd_frontend::load_schema_set_with_overlays;
 use std::collections::BTreeSet;
@@ -27,12 +28,14 @@ USAGE:
     ams-gra-codegen-oms coverage --schema PATH [--overlay PATH]... --world WORLD
     ams-gra-codegen-oms generate --schema PATH [--overlay PATH]... --language LANGUAGE --output DIR --world WORLD
     ams-gra-codegen-oms service-plan --schema PATH --contract PATH [--extension ID=PATH]...
+    ams-gra-codegen-oms service-check --schema PATH --contract PATH [--extension ID=PATH]... --language LANGUAGE --world WORLD
 
 COMMANDS:
     validate        Load and validate an XSD schema set
     coverage        Report deterministic IR and backend coverage counts
     generate        Generate source files from an XSD schema set
     service-plan    Resolve a portable Service Contract against a schema set
+    service-check   Report backend/world readiness for a contract's selection
 
 SERVICE CONTRACT PLANNING:
     'service-plan' joins a portable AMS GRA Service Contract (v0.1 YAML or
@@ -47,6 +50,19 @@ SERVICE CONTRACT PLANNING:
     extension with no mapping, an undeclared extension, and a duplicate
     extension ID all fail. Overlay composition order follows the CONTRACT's
     declaration order, not the order the options appear on the command line.
+
+SERVICE CONTRACT BACKEND READINESS:
+    'service-check' answers a different question than 'service-plan'.
+    'service-plan' answers WHAT a contract selects; 'service-check' answers
+    WHETHER one backend, under one generation world, can render that selected
+    UCI type model TODAY. It therefore requires --language and --world, which
+    'service-plan' deliberately refuses.
+
+    Only the contract-selected OMS Message closures are measured. An
+    unrenderable UCI declaration that the contract does not select does NOT
+    make the service unready, so 'service-check' can report READY for a schema
+    set whose full-schema 'generate' fails. Neither command writes any file:
+    READY does not mean service source has been generated.
 
 SCHEMA OVERLAYS:
     'validate', 'coverage', and 'generate' accept a repeatable --overlay PATH:
@@ -201,6 +217,65 @@ NOTES:
     closed-schema/open-extensions generation policy.
 "#;
 
+const SERVICE_CHECK_HELP: &str = r#"ams-gra-codegen-oms service-check
+
+Report whether one backend can render a Service Contract's selected UCI type
+model under one generation world.
+
+USAGE:
+    ams-gra-codegen-oms service-check --schema PATH --contract PATH [--extension ID=PATH]... --language LANGUAGE --world WORLD
+
+LANGUAGES:
+    ada
+    rust
+    cpp
+
+WORLDS:
+    closed-schema       Measure readiness assuming the supplied schema set is
+                        the complete value-type universe.
+
+    open-extensions     Measure readiness assuming external derived
+                        abstract-value types may exist; abstract structural
+                        VALUE positions fail closed.
+
+OPTIONS:
+    -s, --schema PATH          Root XSD document
+    -c, --contract PATH        Portable Service Contract v0.1 (YAML or JSON)
+        --extension ID=PATH    Repeatable mapping from a contract
+                               standards.uci_extension_schemas IDENTIFIER to a
+                               local schema document
+    -l, --language LANGUAGE    Required backend to measure
+    -w, --world WORLD          Required generation world policy
+    -h, --help                 Print help
+
+NO OUTPUT FILES:
+    'service-check' writes no generated source. There is no --output option;
+    supplying one is a usage error. This command is analysis only, and a READY
+    verdict does not mean any service source has been generated.
+
+EXTENSIONS USE EXACT CONTRACT MAPPING:
+    A contract's standards.uci_extension_schemas entries are logical extension
+    IDENTIFIERS, not paths, so --extension is the ONLY way to supply schema
+    content here; this command accepts no raw path-only overlay option. The
+    supplied --extension set must match the contract exactly: a declared
+    extension with no mapping, an undeclared extension, and a duplicate
+    extension ID all fail, and no filename is ever guessed. Composition order
+    follows the CONTRACT's declaration order.
+
+READINESS IS SELECTED-CLOSURE CAPABILITY ONLY:
+    Only the transitive type closures of contract-selected OMS Messages are
+    measured, using current backend capability with no hypothetical feature
+    enabled. Unselected unrenderable declarations are not reported and do not
+    block readiness. Non-UCI exchanges (data transfer, special signal,
+    security exchange, non-OMS message) require no UCI type model, so a
+    contract with zero OMS Message exchanges is vacuously ready.
+
+EXIT CODES:
+    0    READY
+    1    NOT READY (the full report is still written to stdout)
+    2    Command-line usage error
+"#;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ErrorKind {
     Usage,
@@ -276,6 +351,23 @@ impl Language {
             Self::Cpp => Box::new(CppBackend),
         }
     }
+
+    /// The language-neutral codegen-core identity for this CLI spelling.
+    ///
+    /// There is deliberately one spelling table (`Language::parse`) and one
+    /// mapping into the core enum, shared by `generate` and `service-check`.
+    const fn backend_language(self) -> BackendLanguage {
+        match self {
+            Self::Ada => BackendLanguage::Ada,
+            Self::Rust => BackendLanguage::Rust,
+            Self::Cpp => BackendLanguage::Cpp,
+        }
+    }
+
+    /// The stable public spelling, as accepted by `--language`.
+    const fn label(self) -> &'static str {
+        language_label(self.backend_language())
+    }
 }
 
 /// Parse the required `--world` value into the shared codegen-core policy.
@@ -325,6 +417,15 @@ enum Command {
         /// diagnostics; semantic composition order comes from the contract.
         extensions: Vec<(String, PathBuf)>,
     },
+    ServiceCheck {
+        schema: PathBuf,
+        contract: PathBuf,
+        extensions: Vec<(String, PathBuf)>,
+        /// Required: readiness is a question about one specific backend.
+        language: Language,
+        /// Required: readiness is a question under one specific type universe.
+        world: GenerationWorld,
+    },
 }
 
 /// Parse and execute CLI arguments, excluding the executable name.
@@ -357,6 +458,13 @@ where
             contract,
             extensions,
         } => service_plan(&schema, &contract, &extensions, stdout),
+        Command::ServiceCheck {
+            schema,
+            contract,
+            extensions,
+            language,
+            world,
+        } => service_check(&schema, &contract, &extensions, language, world, stdout),
     }
 }
 
@@ -375,9 +483,10 @@ where
         Some("coverage") => parse_coverage(args.collect()),
         Some("generate") => parse_generate(args.collect()),
         Some("service-plan") => parse_service_plan(args.collect()),
+        Some("service-check") => parse_service_check(args.collect()),
         Some(command) => Err(CliError::usage(format!(
-            "unknown command '{command}'; expected 'validate', 'coverage', 'generate', or \
-             'service-plan'"
+            "unknown command '{command}'; expected 'validate', 'coverage', 'generate', \
+             'service-plan', or 'service-check'"
         ))),
         None => Err(CliError::usage("command must be valid UTF-8")),
     }
@@ -482,6 +591,37 @@ fn parse_service_plan(args: Vec<OsString>) -> Result<Command, CliError> {
         // its extensions logically, and the mapping option is the only way to
         // bind those names to local schema documents.
         extensions,
+    })
+}
+
+fn parse_service_check(args: Vec<OsString>) -> Result<Command, CliError> {
+    if is_help_request(&args) {
+        return Ok(Command::Help(SERVICE_CHECK_HELP));
+    }
+    let mut schema = None;
+    let mut contract = None;
+    let mut extensions = Vec::new();
+    let mut language = None;
+    let mut world = None;
+    parse_options(args, |option, value| match option {
+        "-s" | "--schema" => set_once(&mut schema, value, "--schema"),
+        "-c" | "--contract" => set_once(&mut contract, value, "--contract"),
+        "--extension" => push_extension(&mut extensions, value),
+        "-l" | "--language" => set_once(&mut language, value, "--language"),
+        "-w" | "--world" => set_once(&mut world, value, "--world"),
+        // `--output` and `--overlay` are rejected by this arm on purpose.
+        // `service-check` generates nothing, and a contract's extensions are
+        // logical identifiers whose set must stay exactly matchable.
+        _ => Err(CliError::usage(format!("unknown option '{option}'"))),
+    })?;
+    Ok(Command::ServiceCheck {
+        schema: required(schema, "--schema")?.into(),
+        contract: required(contract, "--contract")?.into(),
+        extensions,
+        // Both required, with no fallback: a readiness verdict that did not
+        // state its backend and type universe would be meaningless evidence.
+        language: Language::parse(&required(language, "--language")?)?,
+        world: parse_world(&required(world, "--world")?)?,
     })
 }
 
@@ -655,6 +795,32 @@ fn service_plan<W: Write>(
     extensions: &[(String, PathBuf)],
     stdout: &mut W,
 ) -> Result<(), CliError> {
+    let inputs = load_service_inputs(schema_path, contract_path, extensions)?;
+    let closure = inputs
+        .plan
+        .selected_type_closure(&inputs.schema)
+        .map_err(|error| CliError::execution(error.to_string()))?;
+    write_output(stdout, &render_service_plan(&inputs.plan, closure.len()))
+}
+
+/// A loaded schema set and the Resolved Service Plan over it.
+struct ServiceInputs {
+    schema: SchemaIr,
+    plan: ServicePlan,
+}
+
+/// Load a portable contract, bind its declared extensions to overlay paths,
+/// compose the schema set, and resolve the plan.
+///
+/// Both `service-plan` and `service-check` go through this one function, so
+/// there is exactly one implementation of exact extension-set matching and
+/// contract-ordered overlay composition. A second copy would be free to drift
+/// into accepting a mapping the other rejects.
+fn load_service_inputs(
+    schema_path: &Path,
+    contract_path: &Path,
+    extensions: &[(String, PathBuf)],
+) -> Result<ServiceInputs, CliError> {
     let contract =
         load_contract(contract_path).map_err(|error| CliError::execution(error.to_string()))?;
     // Contract order is authoritative for overlay composition, so the loader
@@ -668,10 +834,118 @@ fn service_plan<W: Write>(
         .map_err(|error| CliError::execution(format!("invalid schema IR: {error}")))?;
     let plan = resolve_service_plan(&contract, &schema)
         .map_err(|error| CliError::execution(error.to_string()))?;
-    let closure = plan
-        .selected_type_closure(&schema)
-        .map_err(|error| CliError::execution(error.to_string()))?;
-    write_output(stdout, &render_service_plan(&plan, closure.len()))
+    Ok(ServiceInputs { schema, plan })
+}
+
+/// Report whether one backend can render a contract's selected UCI type model
+/// under one asserted generation world.
+///
+/// This writes no generated files. It answers a capability question about the
+/// contract-selected closure only; unselected unrenderable declarations in the
+/// same schema set are deliberately not consulted.
+fn service_check<W: Write>(
+    schema_path: &Path,
+    contract_path: &Path,
+    extensions: &[(String, PathBuf)],
+    language: Language,
+    world: GenerationWorld,
+    stdout: &mut W,
+) -> Result<(), CliError> {
+    let inputs = load_service_inputs(schema_path, contract_path, extensions)?;
+    let readiness = analyze_service_readiness(
+        &inputs.plan,
+        &inputs.schema,
+        language.backend_language(),
+        world,
+    )
+    .map_err(|error| CliError::execution(error.to_string()))?;
+    // The full deterministic report goes to stdout even when the verdict is
+    // NOT READY: a CI failure that hides the blockers is useless.
+    write_output(stdout, &render_service_check(&inputs.plan, &readiness))?;
+    if readiness.is_ready() {
+        return Ok(());
+    }
+    Err(CliError::execution(format!(
+        "service selection is not renderable for {} under {}",
+        language.label(),
+        world.label()
+    )))
+}
+
+/// Render the deterministic readiness report.
+///
+/// Every line derives from plan order or schema order, so repeated runs on
+/// identical inputs are byte-identical.
+fn render_service_check(plan: &ServicePlan, readiness: &ServiceBackendReadiness) -> String {
+    let mut report = String::new();
+    report.push_str("service contract valid\n");
+    report.push_str(&format!("service: {}\n", plan.service.name));
+    // Stable public spellings, never Rust enum Debug text.
+    report.push_str(&format!(
+        "language: {}\n",
+        language_label(readiness.language)
+    ));
+    report.push_str(&format!("generation world: {}\n", readiness.world.label()));
+    report.push('\n');
+    report.push_str(&format!(
+        "selected oms messages: {}\n",
+        readiness.selected_messages_total
+    ));
+    report.push_str(&format!(
+        "renderable selected oms messages: {}\n",
+        readiness.selected_messages_renderable
+    ));
+    report.push_str(&format!(
+        "selected type closure: {}\n",
+        readiness.selected_types_total
+    ));
+    report.push_str(&format!(
+        "renderable selected types: {}\n",
+        readiness.selected_types_renderable
+    ));
+    report.push_str(&format!(
+        "status: {}\n",
+        if readiness.is_ready() {
+            "READY"
+        } else {
+            "NOT READY"
+        }
+    ));
+    if readiness.is_ready() {
+        return report;
+    }
+    if !readiness.unsupported_types.is_empty() {
+        report.push('\n');
+        report.push_str("unsupported selected types:\n");
+        // Schema declaration order, qualified to avoid local-name ambiguity.
+        for name in &readiness.unsupported_types {
+            report.push_str(&format!(
+                "  {{{}}}{}\n",
+                name.namespace_uri, name.local_name
+            ));
+        }
+    }
+    report.push('\n');
+    report.push_str("blocked selected messages:\n");
+    // Contract first-occurrence order, matching the plan's selection order.
+    for blocked in &readiness.blocked_messages {
+        report.push_str(&format!("  {}\n", blocked.contract_message));
+        report.push_str(&format!(
+            "    resolved: {{{}}}{}\n",
+            blocked.message_name.namespace_uri, blocked.message_name.local_name
+        ));
+        report.push_str(&format!("    blocker: {}\n", blocked.blocker));
+    }
+    report
+}
+
+/// The stable CLI spelling of a backend language.
+const fn language_label(language: BackendLanguage) -> &'static str {
+    match language {
+        BackendLanguage::Ada => "ada",
+        BackendLanguage::Rust => "rust",
+        BackendLanguage::Cpp => "cpp",
+    }
 }
 
 /// Map the contract's declared extension IDs onto supplied overlay paths.

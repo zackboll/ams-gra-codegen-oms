@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:test"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- Task 031 controlled backend-readiness fixture.
+
+       This is NOT UCI. It is a deliberately tiny stand-in that makes the
+       Task 031 value proposition observable end to end:
+
+         SelectedReport   -> SelectedPayload        (fully supported)
+         BlockedReportA   -> BlockedPayloadA -> DurationA
+         BlockedReportB   -> BlockedPayloadB -> DurationB
+
+       DurationA/DurationB are xs:duration, which no backend renders today.
+       A contract selecting only SelectedReport is READY even though ordinary
+       full-schema 'generate' on this same document fails on the unselected
+       Duration declarations. That is the point of the fixture, not a defect. -->
+  <xs:complexType name="SelectedPayload">
+    <xs:sequence>
+      <xs:element name="Latitude" type="xs:double"/>
+      <xs:element name="Longitude" type="xs:double"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:simpleType name="DurationA">
+    <xs:restriction base="xs:duration"/>
+  </xs:simpleType>
+  <xs:complexType name="BlockedPayloadA">
+    <xs:sequence>
+      <xs:element name="Elapsed" type="t:DurationA"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:simpleType name="DurationB">
+    <xs:restriction base="xs:duration"/>
+  </xs:simpleType>
+  <xs:complexType name="BlockedPayloadB">
+    <xs:sequence>
+      <xs:element name="Elapsed" type="t:DurationB"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="SelectedReport" type="t:SelectedPayload" uci:version="001.000.000.000"/>
+  <xs:element name="BlockedReportA" type="t:BlockedPayloadA" uci:version="001.000.000.000"/>
+  <xs:element name="BlockedReportB" type="t:BlockedPayloadB" uci:version="001.000.000.000"/>
+</xs:schema>

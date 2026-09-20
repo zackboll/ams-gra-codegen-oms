@@ -20,6 +20,11 @@ fn binary_prints_real_help() {
     assert!(stdout.contains("service-plan --schema PATH --contract PATH"));
     assert!(stdout.contains("SERVICE CONTRACT PLANNING:"));
     assert!(stdout.contains("--extension ID=PATH"));
+    // Task 031: the separate backend-readiness command is documented, and its
+    // required --language/--world are visible in the usage line.
+    assert!(stdout.contains("service-check --schema PATH --contract PATH"));
+    assert!(stdout.contains("SERVICE CONTRACT BACKEND READINESS:"));
+    assert!(stdout.contains("service-check   Report backend/world readiness"));
     assert!(!stdout.contains("BOOTSTRAP STATUS"));
     assert!(output.stderr.is_empty());
 }
@@ -65,4 +70,29 @@ fn existing_commands_remain_unchanged() {
     assert!(!stdout.contains("--world WORLD"));
     assert!(!stdout.contains("--language LANGUAGE"));
     assert!(!stdout.contains("--output DIR"));
+}
+
+/// Task 031 adds `service-check` alongside `service-plan` rather than adding a
+/// world/language surface to planning. Planning must stay world-independent:
+/// these rejections are the compile-free proof that the two questions remain
+/// separate commands.
+#[test]
+fn service_plan_still_rejects_readiness_options() {
+    for option in ["--world", "--language", "--output"] {
+        let output = Command::new(env!("CARGO_BIN_EXE_ams-gra-codegen-oms"))
+            .args([
+                "service-plan",
+                "--schema",
+                "root.xsd",
+                "--contract",
+                "service.yaml",
+                option,
+                "value",
+            ])
+            .output()
+            .expect("CLI should run");
+        assert_eq!(output.status.code(), Some(2), "{option}");
+        let stderr = String::from_utf8(output.stderr).expect("diagnostic should be UTF-8");
+        assert!(stderr.contains("unknown option"), "{option}");
+    }
 }

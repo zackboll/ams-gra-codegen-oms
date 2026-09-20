@@ -157,6 +157,24 @@ impl From<StructuralProjectionError> for CoverageError {
     }
 }
 
+/// Per-declaration renderability, indexed by Schema IR declaration position.
+///
+/// Produced once per language/feature-set request by
+/// [`CoverageAnalysis::declaration_renderability`] and then queried many times.
+/// Deliberately crate-private: it is a coverage implementation detail, and the
+/// public surface Task 031 exposes is the service readiness result, not this
+/// vector.
+pub(crate) struct DeclarationRenderability {
+    full: Vec<bool>,
+}
+
+impl DeclarationRenderability {
+    /// True when the declaration at Schema IR position `index` is renderable.
+    pub(crate) fn is_renderable(&self, index: usize) -> bool {
+        self.full[index]
+    }
+}
+
 /// Indexed, reusable semantic analysis over validated Schema IR, measured
 /// under one explicit [`GenerationWorld`] policy.
 ///
@@ -419,12 +437,24 @@ impl<'a> CoverageAnalysis<'a> {
         Ok(())
     }
 
-    fn backend_coverage_with(
+    /// The per-declaration renderability vector, indexed by Schema IR
+    /// declaration position, for one language under one hypothetical feature
+    /// set.
+    ///
+    /// This is the single semantic definition of "can this backend emit this
+    /// declaration". Full-schema [`BackendCoverage`] and Task 031's
+    /// contract-selected service readiness both consume it, so there is
+    /// exactly one capability model rather than two drifting copies.
+    ///
+    /// It is deliberately computed whole-schema, once per request: closed-world
+    /// Task 024 wrapper propagation and Task 026 elision are global fixpoints
+    /// over the declaration vector, so there is no correct way to answer the
+    /// question for one declaration in isolation.
+    pub(crate) fn declaration_renderability(
         &self,
         language: BackendLanguage,
         enabled: &BTreeSet<FeatureFamily>,
-    ) -> Result<BackendCoverage, CoverageError> {
-        let fields = all_members(self.schema);
+    ) -> DeclarationRenderability {
         let mut full = self
             .schema
             .types
@@ -453,17 +483,75 @@ impl<'a> CoverageAnalysis<'a> {
         for name in &self.fully_elided_targets {
             full[self.indices[name]] = true;
         }
+        DeclarationRenderability { full }
+    }
+
+    /// The renderability vector for what a backend can emit **today**.
+    ///
+    /// No [`FeatureFamily`] is enabled, so this answers the actual-capability
+    /// question rather than "would be renderable if X were implemented".
+    /// Task 031 readiness uses only this entry point.
+    pub(crate) fn baseline_renderability(
+        &self,
+        language: BackendLanguage,
+    ) -> DeclarationRenderability {
+        self.declaration_renderability(language, &BTreeSet::new())
+    }
+
+    /// Schema IR declaration position of `name`, or `None` when the schema set
+    /// does not declare it.
+    pub(crate) fn declaration_index(&self, name: &QualifiedName) -> Option<usize> {
+        self.indices.get(name).copied()
+    }
+
+    /// True when a message and its entire payload closure are renderable.
+    ///
+    /// `renderability` must have been produced by this same analysis under the
+    /// same `enabled` set; passing it in keeps the whole-schema computation out
+    /// of the per-message loop.
+    pub(crate) fn message_closure_renderable(
+        &self,
+        message: &MessageDecl,
+        language: BackendLanguage,
+        enabled: &BTreeSet<FeatureFamily>,
+        renderability: &DeclarationRenderability,
+    ) -> Result<bool, CoverageError> {
+        Ok(self.message_renderable(message, language, enabled)
+            && match &message.payload_type.target {
+                TypeRefTarget::Primitive(kind) => primitive_ref_renderable(*kind, enabled),
+                TypeRefTarget::Named(name) => self
+                    .dependency_closure(name)?
+                    .iter()
+                    .all(|declaration| renderability.full[self.indices[&declaration.name]]),
+            })
+    }
+
+    /// True when the message's own payload reference is renderable, ignoring
+    /// the transitive closure behind it.
+    ///
+    /// Used only to attribute a blocker: a message may have a fully renderable
+    /// closure yet still be unrenderable because the payload *reference* itself
+    /// is an unsupported abstract structural value position.
+    pub(crate) fn message_payload_reference_renderable(
+        &self,
+        message: &MessageDecl,
+        language: BackendLanguage,
+        enabled: &BTreeSet<FeatureFamily>,
+    ) -> bool {
+        self.message_renderable(message, language, enabled)
+    }
+
+    fn backend_coverage_with(
+        &self,
+        language: BackendLanguage,
+        enabled: &BTreeSet<FeatureFamily>,
+    ) -> Result<BackendCoverage, CoverageError> {
+        let fields = all_members(self.schema);
+        let renderability = self.declaration_renderability(language, enabled);
+        let full = &renderability.full;
         let mut message_closures_renderable = 0;
         for message in &self.schema.messages {
-            if self.message_renderable(message, language, enabled)
-                && match &message.payload_type.target {
-                    TypeRefTarget::Primitive(kind) => primitive_ref_renderable(*kind, enabled),
-                    TypeRefTarget::Named(name) => self
-                        .dependency_closure(name)?
-                        .iter()
-                        .all(|declaration| full[self.indices[&declaration.name]]),
-                }
-            {
+            if self.message_closure_renderable(message, language, enabled, &renderability)? {
                 message_closures_renderable += 1;
             }
         }
@@ -2269,6 +2357,70 @@ mod tests {
     // ---------------------------------------------------------------
     // Task 028 -- explicit generation world policy
     // ---------------------------------------------------------------
+
+    // ---------------------------------------------------------------
+    // Task 031 -- shared renderability snapshot
+    // ---------------------------------------------------------------
+
+    /// Task 031 section 17: extracting `declaration_renderability` out of
+    /// `backend_coverage_with` must not change what coverage measures. The
+    /// snapshot is the SAME vector coverage counts, so the count of renderable
+    /// declarations it reports and `declarations_fully_renderable` must agree
+    /// for every language, feature set, and world.
+    #[test]
+    fn task031_snapshot_matches_full_coverage_declaration_counts() {
+        let mut base = declaration("Base", TypeKind::Record { fields: Vec::new() });
+        base.is_abstract = true;
+        let mut derived = declaration("Derived", TypeKind::Record { fields: Vec::new() });
+        derived.base_type = Some(named("Base"));
+        let holder = declaration(
+            "Holder",
+            TypeKind::Record {
+                fields: vec![field("value", "Base")],
+            },
+        );
+        let schema = message_schema(vec![holder, base, derived], "Holder");
+
+        for world in [
+            GenerationWorld::ClosedSchemaSet,
+            GenerationWorld::OpenExtensions,
+        ] {
+            let analysis = CoverageAnalysis::new(&schema, world).unwrap();
+            for language in BackendLanguage::ALL {
+                for mask in 0..(1 << FeatureFamily::ALL.len()) {
+                    let enabled = FeatureFamily::ALL
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(index, feature)| {
+                            ((mask & (1 << index)) != 0).then_some(*feature)
+                        })
+                        .collect::<BTreeSet<_>>();
+                    let snapshot = analysis.declaration_renderability(language, &enabled);
+                    let counted = (0..schema.types.len())
+                        .filter(|index| snapshot.is_renderable(*index))
+                        .count();
+                    let coverage = analysis.backend_coverage_with(language, &enabled).unwrap();
+                    assert_eq!(
+                        counted, coverage.declarations_fully_renderable,
+                        "{world} {language:?} mask {mask} must use one computation"
+                    );
+                }
+            }
+            // `baseline_renderability` is exactly the empty-feature snapshot,
+            // never a separately tuned "actual capability" rule set.
+            for language in BackendLanguage::ALL {
+                let baseline = analysis.baseline_renderability(language);
+                let explicit = analysis.declaration_renderability(language, &BTreeSet::new());
+                for index in 0..schema.types.len() {
+                    assert_eq!(
+                        baseline.is_renderable(index),
+                        explicit.is_renderable(index),
+                        "{world} {language:?} declaration {index}"
+                    );
+                }
+            }
+        }
+    }
 
     /// All 31 non-empty feature combinations must complete and stay monotonic
     /// under BOTH worlds (sections 31/32). No feature may reduce capability,

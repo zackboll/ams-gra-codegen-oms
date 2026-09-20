@@ -660,10 +660,21 @@ AMS GRA Service Contract describing what a particular service *does* use.
                                v
                      Resolved Service Plan
                                |
-                future contract-driven codegen
+                               |  + BackendLanguage
+                               |  + GenerationWorld
+                               v
+                    ServiceBackendReadiness
+                               |
+                future contract-selected codegen
                     /          |          \
                   Ada         Rust         C++
 ```
+
+Task 031 adds the readiness stage. It is **analysis, not generation**: it
+answers whether one backend could render the selected UCI type model under one
+asserted world, and writes nothing. No backend parses the contract at any point
+in this pipeline; the contract is reduced to a plan, and the plan to a
+capability verdict, entirely in language-neutral code.
 
 The two inputs answer different questions and neither can answer the other's.
 The XSD knows a message exists, its qualified name, its payload type, and that
@@ -704,6 +715,34 @@ the contract and the schema; whether a backend can render that selection under
 `ClosedSchemaSet` or `OpenExtensions` is a separate policy question. The
 `service-plan` command therefore takes no `--world`, exactly as `validate`
 does not.
+
+Task 031 does not weaken this. Rather than adding a world to the plan, it adds
+a separate analysis over the plan:
+
+```text
+analyze_service_readiness(&ServicePlan, &SchemaIr, BackendLanguage, GenerationWorld)
+    -> Result<ServiceBackendReadiness, ServiceReadinessError>
+```
+
+`ServicePlan` is unchanged and still carries no language or world. The separate
+`service-check` command therefore *requires* `--language` and `--world`, while
+`service-plan` still refuses them. Two commands, because planning and backend
+readiness are two questions.
+
+Readiness reuses `CoverageAnalysis` rather than defining a second notion of
+renderability. The per-declaration renderability vector that full-schema
+`BackendCoverage` already computed was extracted into one reusable snapshot
+that both consumers share, so a capability rule can never be true for coverage
+and false for service readiness. Readiness enables no hypothetical
+`FeatureFamily`: it measures what a backend can emit today.
+
+Cost is dominated by the shared analysis, not by the selection. Against
+authoritative UCI 2.5 (5,557 types), one readiness query spends ~244 s in
+`CoverageAnalysis::new` building abstract-value topologies and closed-world
+elision indexes, ~5.8 s parsing XSD, and under 50 ms on the renderability
+snapshot and every message closure combined. Readiness never invokes
+`CoverageAnalysis::report` or `impact`, so the 31 hypothetical feature
+combinations a full coverage report evaluates are not part of the query.
 
 ### Relationship to section 16
 

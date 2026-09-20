@@ -100,6 +100,34 @@ Costs and risks:
   `docs/service-contract-integration.md`. Guessing a mapping would be worse
   than deferring one.
 
+## Follow-up: Task 031 backend readiness
+
+This decision is unchanged and remains **Accepted**. Task 031 builds on it
+rather than revising it.
+
+Task 030 deliberately stopped at the join, leaving "can a backend render this
+selection?" open. Task 031 answers that in a separate `service_readiness` layer
+in `codegen-core`, taking `ServicePlan`, `SchemaIr`, `BackendLanguage`, and
+`GenerationWorld` and producing a `ServiceBackendReadiness`.
+
+Two boundaries this ADR established were load-bearing there and were kept:
+
+* **The plan stays world- and language-independent.** No `GenerationWorld` or
+  `BackendLanguage` field was added to `ServicePlan` or to the Contract IR.
+  Readiness is a separate analysis over the plan, and `service-plan` still
+  refuses `--world`, `--language`, and `--output`.
+* **The contract crate stays independent.** `ams-gra-oms-service-contract`
+  acquired no new dependency; readiness lives entirely in `codegen-core`.
+
+Task 031 also declines to introduce a second capability model: it reuses
+`CoverageAnalysis`, whose per-declaration renderability computation was
+extracted into one snapshot shared by full-schema coverage and selected-service
+readiness. Full-schema coverage semantics are unchanged.
+
+The deferred version comparison stays deferred. Task 031 introduces no
+normalization, stripping, or comparison of the contract's logical UCI version
+against the XSD root's release string.
+
 ## Alternatives considered
 
 * **Put contract parsing in `codegen-core`.** Rejected: it would tie the

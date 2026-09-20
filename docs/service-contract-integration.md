@@ -417,6 +417,184 @@ mission-data / observation-output
 The command performs no filesystem writes, and there is no `--language`,
 `--output`, or `--world`.
 
+## Backend readiness
+
+The Resolved Service Plan answers *what does this contract select?*. It does
+not answer *can we render it?*, because that depends on which backend and which
+generation world, and neither belongs in a plan. Task 031 adds a separate
+analysis for the second question:
+
+```text
+ServicePlan + SchemaIr + BackendLanguage + GenerationWorld
+    -> ServiceBackendReadiness
+```
+
+```rust
+pub fn analyze_service_readiness(
+    plan: &ServicePlan,
+    schema: &SchemaIr,
+    language: BackendLanguage,
+    world: GenerationWorld,
+) -> Result<ServiceBackendReadiness, ServiceReadinessError>
+```
+
+`ServicePlan` is unchanged: it still has no `BackendLanguage` and no
+`GenerationWorld` field. The same plan can be measured against Ada and Rust, or
+against a closed and an open world, without being re-resolved, because the
+selection is not a function of who compiles it.
+
+The result is:
+
+```rust
+pub struct ServiceBackendReadiness {
+    pub language: BackendLanguage,
+    pub world: GenerationWorld,
+    pub selected_types_total: usize,
+    pub selected_types_renderable: usize,
+    pub selected_messages_total: usize,
+    pub selected_messages_renderable: usize,
+    pub unsupported_types: Vec<QualifiedName>,
+    pub blocked_messages: Vec<BlockedMessage>,
+}
+```
+
+`is_ready()` is true exactly when every selected OMS Message closure is
+renderable.
+
+### What is measured, and what is not
+
+Only the transitive type closures of contract-selected OMS Messages are
+measured. Three consequences follow, all deliberate:
+
+- **Non-UCI exchanges do not affect UCI type readiness.** Data Transfer,
+  Special Signal, Security Exchange, and non-OMS Message exchanges are real
+  parts of a service interface that simply require no UCI type model. They are
+  preserved in the plan and ignored here. A contract with zero OMS Message
+  exchanges is therefore *vacuously* ready: `selected_messages_total` and
+  `selected_types_total` are both `0` and `is_ready()` is `true`, for every
+  backend and both worlds.
+- **Unselected unsupported UCI declarations do not block readiness.** This is
+  the point of the whole layer; see the evidence below.
+- **READY does not mean service source has been generated.** Nothing is
+  written. Task 031 delivers the capability boundary; Task 032 can consume it
+  to actually emit contract-selected source.
+
+Readiness uses **actual** backend capability: no hypothetical `FeatureFamily`
+is enabled, so there is no "ready if X were implemented" verdict.
+
+### Ordering
+
+The two lists are ordered differently on purpose, because they answer different
+questions:
+
+| List | Order | Why |
+| --- | --- | --- |
+| `unsupported_types` | schema declaration order | matches `selected_type_closure`, which is contract-order-independent |
+| `blocked_messages` | contract first-occurrence order | matches `selected_messages`, which preserves the author's presentation |
+
+Each blocked message carries exactly one deterministic first blocker, typed
+rather than prose:
+
+```rust
+pub enum ServiceMessageBlocker {
+    Declaration(QualifiedName),      // earliest non-renderable member, schema order
+    Primitive(PrimitiveKind),        // unsupported primitive payload
+    PayloadReference(QualifiedName), // unsupported payload *position*
+}
+```
+
+For a named payload, the first blocker is the earliest non-renderable
+declaration in that message's dependency closure in schema order -- never an
+arbitrary map member. A message selected by several exchanges is analyzed once
+and reported once.
+
+### One capability model
+
+Readiness does not re-implement any renderability rule. It delegates entirely
+to `CoverageAnalysis`, which already owns the primitive, cardinality, Choice,
+inheritance, abstract-value, and world rules from Tasks 017-029. The
+per-declaration renderability vector that `backend_coverage` computed
+internally was extracted into one reusable snapshot that both consumers now
+share, so a rule cannot be true for coverage and false for readiness.
+Full-schema coverage results are byte-for-byte unchanged by that refactor.
+
+Per readiness request there is exactly one `CoverageAnalysis`, one baseline
+renderability snapshot, and then index lookups. No whole-schema scan happens
+per selected type or per selected message, and the 31 hypothetical feature
+combinations that a full `coverage` report evaluates are **not** run.
+
+### Authoritative UCI 2.5 evidence
+
+Against authoritative UCI 2.5 (`UCI_MessageDefinitions_v2_5_0.xsd`, 5,557 types
+and 722 messages) with the copied upstream portable contract
+`crates/service-contract/tests/fixtures/upstream-minimal.yaml` (provenance
+`zackboll/ams-gra-service-contract` @
+`4ea5be8dd36e9695bd58f2c36c6b3dd8075de249`):
+
+`PositionReport` resolves by exact local-name equality to
+`{https://www.vdl.afrl.af.mil/programs/oam}PositionReport`. It selects **1**
+unique OMS message and a **60**-declaration type closure.
+
+Measured, not predicted:
+
+| language | world | messages renderable | types renderable | status | first blocker | elapsed |
+| --- | --- | --- | --- | --- | --- | --- |
+| ada | closed-schema | 0/1 | 32/60 | NOT READY | `{…}Acceleration3D_Type` | 255.0 s |
+| ada | open-extensions | 0/1 | 32/60 | NOT READY | `{…}Acceleration3D_Type` | 256.4 s |
+| rust | closed-schema | 0/1 | 47/60 | NOT READY | `{…}AltitudeType` | 255.9 s |
+| rust | open-extensions | 0/1 | 47/60 | NOT READY | `{…}AltitudeType` | 257.7 s |
+| cpp | closed-schema | 0/1 | 47/60 | NOT READY | `{…}AltitudeType` | 255.8 s |
+| cpp | open-extensions | 0/1 | 47/60 | NOT READY | `{…}AltitudeType` | 255.8 s |
+
+Ada genuinely differs from Rust and C++ here — fewer renderable selected types
+and an earlier first blocker in schema order — which is exactly the
+per-backend discrimination this analysis exists to provide. Closed and open
+worlds agree on this particular closure because nothing in it is an abstract
+structural value position; the difference between worlds is visible in the
+synthetic regressions above, not here.
+
+Task 031 reports these blockers. It deliberately does **not** implement them:
+`AltitudeType` and `Acceleration3D_Type` support is not in scope.
+
+The contract declares logical `uci_schema_version: "2.5"` while the XSD root
+declares `002.5.0`. Both are retained and never compared; no normalization was
+introduced. This is a UCI 2.5 probe only and supports no UCI 2.6 claim.
+
+### Where the authoritative time goes
+
+The ~255 s is worth attributing precisely, because a readiness query must not
+secretly behave like a full `coverage` report. Phase timings for the same
+authoritative inputs:
+
+| phase | elapsed |
+| --- | --- |
+| `load_schema_set_with_overlays` (XSD parsing) | 5.81 s |
+| `SchemaIr::validate` | 10.3 ms |
+| `resolve_service_plan` | 13 µs |
+| `CoverageAnalysis::new` | **244.4 s** |
+| one full renderability snapshot + all 722 message closures | 46.0 ms |
+
+Essentially all of it is the one-time `CoverageAnalysis::new` construction of
+abstract-value topologies and closed-world elision indexes over the whole
+5,557-type schema — pre-existing shared infrastructure that Task 031 did not
+change. The selected-closure work Task 031 added is ~46 ms at most.
+
+This confirms the intended shape: one `CoverageAnalysis`, one baseline
+snapshot, then indexed lookups. Readiness never calls `CoverageAnalysis::report`
+or `impact`, and evaluates none of the 31 hypothetical feature combinations —
+doing so would multiply the 46 ms figure by 31 per language, not the 244 s one.
+On synthetic fixtures the whole command is effectively instantaneous.
+
+### World semantics are inherited, not redefined
+
+Under `ClosedSchemaSet`, Task 024 closed sums and Task 026 absent-only elision
+apply, so an abstract structural value with known concrete descendants, and a
+`0..1` field typed as a zero-descendant abstract target, can both be ready.
+Under `OpenExtensions`, abstract structural *value* positions fail closed
+exactly as Task 028 defines, so the same selections are not ready. Abstract
+declarations used only as inheritance ancestry are unaffected by the world in
+either direction. Contract-selected types are not special-cased anywhere.
+
 ## Non-goals for this slice
 
 Not implemented, deliberately: Ada/Rust/C++ service wrappers, contract-selected

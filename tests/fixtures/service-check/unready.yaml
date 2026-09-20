@@ -1,0 +1,58 @@
+# SYNTHETIC Task 031 readiness fixture. Authored for this repository only.
+#
+# Selects two messages whose closures reach different unsupported declarations,
+# plus the supported one. Blocked messages are reported in contract
+# first-occurrence order (B before A here) while unsupported types are reported
+# in schema declaration order (DurationA before DurationB).
+contract_version: "0.1"
+
+service:
+  name: Readiness Unready
+  version: "0.1.0"
+  kind: service
+  description: Synthetic contract whose selected closure is not renderable.
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: mission-data
+    name: Mission Data
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: selected-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: SelectedReport
+        topic: mission.selected-report
+        timing:
+          kind: asynchronous
+      - id: blocked-b-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: BlockedReportB
+        topic: mission.blocked-report-b
+        timing:
+          kind: asynchronous
+      - id: blocked-a-input
+        kind: oms_message
+        direction: input
+        mandate: optional
+        message: BlockedReportA
+        topic: mission.blocked-report-a
+        timing:
+          kind: asynchronous
+      # The same message selected twice: the plan keeps both exchange
+      # occurrences, readiness reports the message once.
+      - id: blocked-a-repeat
+        kind: oms_message
+        direction: output
+        mandate: optional
+        message: BlockedReportA
+        topic: mission.blocked-report-a-repeat
+        timing:
+          kind: asynchronous
