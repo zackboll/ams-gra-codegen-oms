@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:test"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- Task 031 section 55 backend-parity fixture.
+
+       Every declaration here is inside the selected message's closure, and
+       there are no unrelated unsupported declarations. Therefore a READY
+       verdict must be backed by ordinary full-schema generation succeeding
+       for Ada, Rust, and C++ under the same world. -->
+  <xs:complexType name="ParityPayload">
+    <xs:sequence>
+      <xs:element name="Latitude" type="xs:double"/>
+      <xs:element name="Label" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="ParityReport" type="t:ParityPayload" uci:version="001.000.000.000"/>
+</xs:schema>

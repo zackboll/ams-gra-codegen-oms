@@ -132,11 +132,36 @@ distant Phase 6 helper. See `docs/service-contract-integration.md` and
       `--extension ID=PATH` mappings, exact extension-set matching, and
       contract-ordered Task 029 overlay composition.
 
+**Complete (Task 031):**
+
+- [x] backend/world readiness — `analyze_service_readiness` in `codegen-core`
+      takes a `ServicePlan`, its `SchemaIr`, a `BackendLanguage`, and a
+      `GenerationWorld`, and reports how much of the contract-selected UCI type
+      model that backend can render today. The plan itself stays
+      world-independent: readiness is a separate analysis, not a plan field;
+- [x] deterministic blocker reporting — unsupported selected types in schema
+      declaration order, blocked selected messages in contract first-occurrence
+      order, each with one typed first blocker. Repeated message selections are
+      deduplicated, and unselected unrenderable declarations are never reported;
+- [x] one capability model — the per-declaration renderability computation was
+      extracted out of `BackendCoverage` into a single snapshot that both
+      full-schema coverage and selected-service readiness consume. Full-schema
+      coverage results are unchanged, and readiness enables no hypothetical
+      feature family;
+- [x] a read-only `service-check` CLI command requiring `--language` and
+      `--world`, reusing the same exact extension mapping as `service-plan`,
+      writing no files, and exiting 0 READY / 1 NOT READY / 2 usage error.
+
+Readiness is **analysis, not generation**: a READY verdict means a backend
+could render the selected closure, not that any service source exists yet.
+
 **Still open:**
 
-- [ ] selected-closure backend generation;
+- [ ] contract-selected type generation;
+- [ ] service-specific generated wrapper APIs;
 - [ ] generated service publish/subscribe façade;
-- [ ] LA-CAL runtime integration.
+- [ ] typed LA-CAL integration;
+- [ ] codec and runtime integration.
 
 Nothing in this phase copies the OMS profile engine or the completion
 assistant: profile conformance and contract completion remain owned by

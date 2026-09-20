@@ -1,0 +1,31 @@
+# SYNTHETIC Task 031 readiness fixture. Authored for this repository only.
+#
+# Selects ONLY the fully supported message. The same schema set contains two
+# unselected unrenderable declarations, so full-schema 'generate' fails while
+# 'service-check' reports READY. Treat every identifier below as test data.
+contract_version: "0.1"
+
+service:
+  name: Readiness Ready
+  version: "0.1.0"
+  kind: service
+  description: Synthetic contract whose selected closure is fully supported.
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: mission-data
+    name: Mission Data
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: selected-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: SelectedReport
+        topic: mission.selected-report
+        timing:
+          kind: asynchronous

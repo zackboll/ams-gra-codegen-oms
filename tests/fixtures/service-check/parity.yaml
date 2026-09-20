@@ -1,0 +1,30 @@
+# SYNTHETIC Task 031 backend-parity fixture. Authored for this repository only.
+#
+# Used against BOTH parity-ready.xsd and parity-unready.xsd, which declare the
+# same message name over different payloads. The readiness verdict and ordinary
+# backend generation must agree in both directions.
+contract_version: "0.1"
+
+service:
+  name: Readiness Parity
+  version: "0.1.0"
+  kind: service
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: mission-data
+    name: Mission Data
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: parity-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: ParityReport
+        topic: mission.parity-report
+        timing:
+          kind: asynchronous

@@ -396,6 +396,12 @@ ams-gra-codegen-oms service-plan \
   --schema /path/to/root.xsd \
   --contract /path/to/service.yaml
 
+ams-gra-codegen-oms service-check \
+  --schema /path/to/root.xsd \
+  --contract /path/to/service.yaml \
+  --language rust \
+  --world closed-schema
+
 ams-gra-codegen-oms generate \
   --schema /path/to/public-root.xsd \
   --overlay /path/to/private-extension.xsd \
@@ -553,6 +559,56 @@ The supplied set must match the declared set exactly — a missing mapping, an
 undeclared mapping, and a duplicate identifier all fail — and the Task 029
 overlay loader receives the paths in **contract** declaration order, not
 command-line order.
+
+### Service Contract backend readiness
+
+`service-plan` answers **what** a contract selects. `service-check` answers
+**whether** one backend, under one generation world, can render that selected
+UCI type model:
+
+```text
+ams-gra-codegen-oms service-check \
+  --schema root.xsd \
+  --contract service.yaml \
+  --language rust \
+  --world closed-schema
+```
+
+```text
+service contract valid
+service: Readiness Ready
+language: rust
+generation world: closed-schema
+
+selected oms messages: 1
+renderable selected oms messages: 1
+selected type closure: 1
+renderable selected types: 1
+status: READY
+```
+
+- **Requires `--language` and `--world`, with no default.** Readiness is
+  backend- and world-specific, so `service-check` requires both — exactly the
+  options `service-plan` refuses, because planning is neither.
+- **Only the selected closure is measured.** An unrenderable UCI declaration
+  the contract does not select does not make the service unready. A contract
+  can be READY against a schema set whose full-schema `generate` fails; that
+  asymmetry is the reason contract-selected generation is worth building.
+- **Non-UCI exchanges require no UCI type model.** A contract with zero OMS
+  Message exchanges is vacuously ready.
+- **Deterministic blockers.** Unsupported selected types are listed in schema
+  declaration order with qualified names; blocked selected messages are listed
+  in contract first-occurrence order, each with one first blocker. A message
+  selected by several exchanges is reported once.
+- **Current capability only.** No hypothetical feature family is enabled, so
+  there is no "ready if X were implemented" verdict.
+- **Same extension mapping.** `--extension ID=PATH` behaves exactly as in
+  `service-plan`; there is no raw `--overlay`.
+- **Exit status.** `0` READY, `1` NOT READY (the full report is still written
+  to stdout), `2` usage error — usable directly as a CI gate.
+
+Neither command writes generated code. READY means a backend *could* render the
+selection, not that any service source has been generated yet.
 
 Compatibility is defined by `contract_version`, not by repository SHA. The
 baseline is `zackboll/ams-gra-service-contract`

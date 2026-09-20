@@ -4,6 +4,7 @@ mod abstract_value;
 mod coverage;
 mod integral;
 mod service_plan;
+mod service_readiness;
 mod structure;
 mod world;
 
@@ -23,6 +24,10 @@ pub use integral::{InclusiveIntegralDomain, inclusive_integral_domain};
 pub use service_plan::{
     CapabilityPlan, FunctionPlan, ResolvedExchange, ResolvedOmsMessageExchange, SelectedMessage,
     ServiceIdentity, ServicePlan, ServicePlanError, ServiceStandards, resolve_service_plan,
+};
+pub use service_readiness::{
+    BlockedMessage, MismatchRole, ServiceBackendReadiness, ServiceMessageBlocker,
+    ServiceReadinessError, analyze_service_readiness,
 };
 pub use structure::{
     EffectiveStructuralType, StructuralKind, StructuralLevel, StructuralProjectionError,

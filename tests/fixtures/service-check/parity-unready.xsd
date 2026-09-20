@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:test"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- Task 031 section 56 backend-parity fixture.
+
+       The single selected message's closure contains one known unsupported
+       construct and nothing else, so a NOT READY verdict must be backed by
+       ordinary full-schema generation failing for all three backends. -->
+  <xs:simpleType name="ParityDuration">
+    <xs:restriction base="xs:duration"/>
+  </xs:simpleType>
+  <xs:complexType name="ParityPayload">
+    <xs:sequence>
+      <xs:element name="Elapsed" type="t:ParityDuration"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="ParityReport" type="t:ParityPayload" uci:version="001.000.000.000"/>
+</xs:schema>

@@ -6,6 +6,7 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+ams-gra-oms-ir = { path = "../ir" }
 ams-gra-oms-xsd-frontend = { path = "../xsd-frontend" }
 ams-gra-oms-codegen-core = { path = "../codegen-core" }
 ams-gra-oms-service-contract = { path = "../service-contract" }
