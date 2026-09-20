@@ -31,6 +31,7 @@
 use crate::abstract_value::{abstract_value_targets, is_structural, project_abstract_value};
 use crate::coverage::BackendLanguage;
 use crate::structure::{effective_choice_alternatives, effective_record_fields};
+use crate::world::GenerationWorld;
 use ams_gra_oms_ir::{
     Cardinality, OccurrenceShape, PrimitiveKind, QualifiedName, SchemaIr, TypeDecl, TypeKind,
     TypeRefTarget,
@@ -69,6 +70,116 @@ impl fmt::Display for NameRegion {
             Self::NamespaceUnit => {
                 formatter.write_str("generated module/namespace/package identifier")
             }
+        }
+    }
+}
+
+/// What produced one registered generated name.
+///
+/// # Why attribution is structured rather than parsed
+///
+/// Coverage must mark **every** schema declaration responsible for emitting a
+/// side of a collision. Earlier this was recovered by splitting the
+/// human-readable diagnostic label (`"Owner.Member helper"`) back apart, which
+/// silently failed for every generated name whose label was not a declaration
+/// local name: Ada repeated helpers, `_Kind` companions, and enumeration /
+/// Choice literals all attributed to nothing, leaving the generating
+/// declaration counted renderable while generation rejected the schema.
+///
+/// Ownership is therefore carried explicitly from the point of registration.
+/// Diagnostics still render the same human-readable labels via
+/// [`NameSource::label`], but attribution never reads them.
+///
+/// This is deliberately private to the backend-name/preflight infrastructure:
+/// it is generated-name bookkeeping, not Schema IR.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum NameSource {
+    /// A fixed or conditional support type the backend emits itself. Owned by
+    /// no declaration, so it can never make one unsafe on its own.
+    GeneratedSupport(BackendLanguage),
+    /// The generated module/namespace/package identifier, derived from the
+    /// schema namespace URI rather than any declaration.
+    NamespaceUri(String),
+    /// A top-level schema declaration's own identifier.
+    Declaration(QualifiedName),
+    /// One member (Record field, Choice alternative, enumeration variant) of
+    /// `owner`, inside that declaration's member region.
+    Member {
+        owner: QualifiedName,
+        member: String,
+    },
+    /// An Ada flat-package helper type derived from `owner`'s `member`.
+    Helper {
+        owner: QualifiedName,
+        member: String,
+    },
+    /// The Ada `{Owner}_Kind` discriminant enumeration emitted beside a Choice
+    /// or a closed-sum abstract-value wrapper.
+    Companion { owner: QualifiedName },
+    /// An Ada enumeration/Choice/closed-sum literal declared in the enclosing
+    /// package by `owner`.
+    EnumLiteral {
+        owner: QualifiedName,
+        literal: String,
+    },
+}
+
+impl NameSource {
+    /// The human-readable label used in diagnostics.
+    ///
+    /// Kept byte-identical to the strings the previous label-parsing scheme
+    /// produced, so error text stays stable; nothing reads it semantically.
+    fn label(&self) -> String {
+        match self {
+            Self::GeneratedSupport(language) => {
+                format!("<generated {} support type>", language.name())
+            }
+            Self::NamespaceUri(uri) => uri.clone(),
+            Self::Declaration(name) => name.local_name.clone(),
+            Self::Member { member, .. } => member.clone(),
+            Self::Helper { owner, member } => {
+                format!("{}.{member} helper", owner.local_name)
+            }
+            Self::Companion { owner } => format!("{} companion", owner.local_name),
+            Self::EnumLiteral { literal, .. } => literal.clone(),
+        }
+    }
+
+    /// The schema declaration responsible for emitting this name, if any.
+    ///
+    /// Support types and the namespace unit belong to no declaration: a
+    /// collision with one implicates only the *other* side.
+    const fn owner(&self) -> Option<&QualifiedName> {
+        match self {
+            Self::GeneratedSupport(_) | Self::NamespaceUri(_) => None,
+            Self::Declaration(name) => Some(name),
+            Self::Member { owner, .. }
+            | Self::Helper { owner, .. }
+            | Self::Companion { owner }
+            | Self::EnumLiteral { owner, .. } => Some(owner),
+        }
+    }
+}
+
+/// One rejected name together with the declarations responsible for it.
+///
+/// Collected by the attribution pass. Both sides of a collision are recorded,
+/// because neither can be emitted while the other exists.
+#[derive(Debug, Clone)]
+struct CollectedNameError {
+    error: BackendNameError,
+    owners: BTreeSet<QualifiedName>,
+}
+
+impl CollectedNameError {
+    fn new(error: BackendNameError, sources: &[&NameSource]) -> Self {
+        Self {
+            error,
+            owners: sources
+                .iter()
+                .filter_map(|source| source.owner())
+                .cloned()
+                .collect(),
         }
     }
 }
@@ -353,6 +464,29 @@ fn words(value: &str) -> Option<Vec<&str>> {
     }
 }
 
+/// Whether a generated Rust/C++ identifier is syntactically legal.
+///
+/// # Why the start character is checked separately
+///
+/// [`words`] only guarantees the characters are ASCII alphanumeric or `_`,
+/// which is not sufficient: `1Foo` survives upper-camel as `1Foo` and
+/// `field_1` is fine while a member spelled `1` normalizes to `1`. Neither is
+/// a legal Rust or C++ identifier, yet both previously passed preflight and
+/// reached the renderer, producing source no compiler accepts.
+///
+/// The policy is deliberately the narrow ASCII subset the generators already
+/// operate on -- not full Unicode XID -- because that is exactly what the
+/// transformations above can produce. The **generated** identifier is checked,
+/// not the source spelling, since the source is reshaped before emission.
+fn is_ascii_identifier(value: &str) -> bool {
+    let mut bytes = value.bytes();
+    match bytes.next() {
+        Some(first) if first.is_ascii_alphabetic() || first == b'_' => {}
+        _ => return false,
+    }
+    bytes.all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
+}
+
 fn upper_camel(value: &str) -> Option<String> {
     let mut result = String::new();
     for word in words(value)? {
@@ -361,11 +495,12 @@ fn upper_camel(value: &str) -> Option<String> {
         result.push(first.to_ascii_uppercase());
         result.extend(characters);
     }
-    Some(result)
+    is_ascii_identifier(&result).then_some(result)
 }
 
 fn snake_case(value: &str) -> Option<String> {
-    Some(words(value)?.join("_").to_ascii_lowercase())
+    let result = words(value)?.join("_").to_ascii_lowercase();
+    is_ascii_identifier(&result).then_some(result)
 }
 
 /// Ada identifiers are accepted verbatim, exactly as `backend-ada` emits them.
@@ -432,7 +567,8 @@ fn is_reserved(language: BackendLanguage, generated: &str) -> bool {
 struct Region {
     language: BackendLanguage,
     region: NameRegion,
-    taken: BTreeMap<String, String>,
+    /// Generated-identity key -> the structured source that claimed it.
+    taken: BTreeMap<String, NameSource>,
     /// When true, a rejected name is recorded in `errors` and validation
     /// continues instead of returning early.
     ///
@@ -442,7 +578,7 @@ struct Region {
     /// unsafe name found. Both behaviours run the same registration logic,
     /// which is what keeps the two from drifting.
     collecting: bool,
-    errors: Vec<BackendNameError>,
+    errors: Vec<CollectedNameError>,
 }
 
 impl Region {
@@ -464,9 +600,16 @@ impl Region {
     }
 
     /// Report one rejected name, honouring the region's failure mode.
-    fn reject(&mut self, error: BackendNameError) -> Result<(), BackendNameError> {
+    ///
+    /// `sources` are the structured owners implicated by this rejection: one
+    /// for a reserved/invalid name, both sides for a collision.
+    fn reject(
+        &mut self,
+        error: BackendNameError,
+        sources: &[&NameSource],
+    ) -> Result<(), BackendNameError> {
         if self.collecting {
-            self.errors.push(error);
+            self.errors.push(CollectedNameError::new(error, sources));
             Ok(())
         } else {
             Err(error)
@@ -474,33 +617,38 @@ impl Region {
     }
 
     /// Record one generated name, rejecting reserved words and collisions.
-    fn insert(&mut self, ir_name: &str, generated: String) -> Result<(), BackendNameError> {
+    fn insert(&mut self, source: NameSource, generated: String) -> Result<(), BackendNameError> {
+        let ir_name = source.label();
         if is_reserved(self.language, &generated) {
-            return self.reject(BackendNameError::ReservedWord {
+            let error = BackendNameError::ReservedWord {
                 language: self.language,
                 region: self.region.clone(),
-                ir_name: ir_name.to_owned(),
+                ir_name,
                 generated,
-            });
+            };
+            return self.reject(error, &[&source]);
         }
         let key = identity_key(self.language, &generated);
         match self.taken.get(&key) {
-            // An identical IR name reaching the same region twice is a schema
+            // An identical source reaching the same region twice is a schema
             // defect diagnosed elsewhere, not a naming defect; only *distinct*
             // sources converging is reported here.
-            Some(first) if first == ir_name => Ok(()),
+            Some(first) if *first == source => Ok(()),
             Some(first) => {
+                let first = first.clone();
                 let error = BackendNameError::Collision {
                     language: self.language,
                     region: self.region.clone(),
                     generated,
-                    first: first.clone(),
-                    second: ir_name.to_owned(),
+                    first: first.label(),
+                    second: ir_name,
                 };
-                self.reject(error)
+                // Both sides are implicated: neither can be emitted while the
+                // other exists, so coverage must exclude both owners.
+                self.reject(error, &[&first, &source])
             }
             None => {
-                self.taken.insert(key, ir_name.to_owned());
+                self.taken.insert(key, source);
                 Ok(())
             }
         }
@@ -510,18 +658,18 @@ impl Region {
     /// invalid-identifier error rather than skipping the name.
     fn insert_transformed(
         &mut self,
-        ir_name: &str,
+        source: NameSource,
         generated: Option<String>,
     ) -> Result<(), BackendNameError> {
         match generated {
-            Some(generated) => self.insert(ir_name, generated),
+            Some(generated) => self.insert(source, generated),
             None => {
                 let error = BackendNameError::InvalidIdentifier {
                     language: self.language,
                     region: self.region.clone(),
-                    ir_name: ir_name.to_owned(),
+                    ir_name: source.label(),
                 };
-                self.reject(error)
+                self.reject(error, &[&source])
             }
         }
     }
@@ -619,10 +767,11 @@ fn register_support_names(
     language: BackendLanguage,
 ) -> Result<(), BackendNameError> {
     // Attribution names the generator rather than pretending some schema
-    // identifier was responsible for the reservation.
-    let attribution = format!("<generated {} support type>", language.name());
+    // identifier was responsible for the reservation. Because a support type
+    // has no owning declaration, a collision with one implicates only the
+    // user declaration on the other side.
     let reserve = |top_level: &mut Region, generated: &str| -> Result<(), BackendNameError> {
-        top_level.insert(&attribution, generated.to_owned())
+        top_level.insert(NameSource::GeneratedSupport(language), generated.to_owned())
     };
     match language {
         BackendLanguage::Rust => {
@@ -657,23 +806,55 @@ fn register_support_names(
     Ok(())
 }
 
-/// The declarations for which Ada emits a `{Owner}_Kind` companion type.
+/// The declarations for which Ada actually emits a `{Owner}_Kind` companion
+/// type, under the requested [`GenerationWorld`].
 ///
-/// Both sources are collected once, through the same abstract-value target
-/// enumeration the emission planner uses, so preflight and generation agree on
-/// which declarations produce a companion.
-fn ada_kind_companion_owners(schema: &SchemaIr) -> Vec<&TypeDecl> {
-    let abstract_value_names = abstract_value_targets(schema)
-        .into_iter()
-        .filter(|declaration| is_structural(declaration))
-        .map(|declaration| &declaration.name)
-        .collect::<std::collections::BTreeSet<_>>();
+/// # Why this is world-sensitive
+///
+/// Being an abstract *value target* does not prove a closed-sum wrapper is
+/// emitted, and the name model must never invent a name from output the
+/// requested world cannot produce. Two cases make that concrete:
+///
+/// * **Task 026 elision.** A zero-descendant abstract target used only as
+///   supported absent-only optional storage emits no wrapper at all, so there
+///   is no `{Owner}_Kind`. Reserving it anyway falsely rejected otherwise
+///   generable schemas.
+/// * **Open extensions.** A Task 024 wrapper exists only under
+///   [`GenerationWorld::ClosedSchemaSet`]; under `OpenExtensions` the abstract
+///   value fails closed *before* any wrapper exists. The semantic
+///   abstract-value blocker is authoritative there, and manufacturing a
+///   closed-world companion name to produce a name blocker instead would
+///   report a cause that cannot occur.
+///
+/// Ordinary Choice lowering is unconditional: `backend-ada` emits
+/// `{Choice}_Kind` for every Choice in either world, so those owners are
+/// always included.
+///
+/// The predicate is `project_abstract_value` succeeding -- exactly the
+/// condition under which `plan_type_emissions` produces a
+/// `TypeEmission::AbstractValue`, so preflight and generation share one
+/// companion predicate rather than two that can drift.
+fn ada_kind_companion_owners(schema: &SchemaIr, world: GenerationWorld) -> Vec<&TypeDecl> {
+    let mut wrapper_names = BTreeSet::new();
+    if world.is_closed_schema_set() {
+        for declaration in abstract_value_targets(schema) {
+            // A projection failure means no wrapper is emitted for this
+            // target: zero concrete descendants (Task 026 elision) or a
+            // structural defect diagnosed by another capability. Either way
+            // there is no companion to reserve.
+            if is_structural(declaration)
+                && project_abstract_value(schema, &declaration.name).is_ok()
+            {
+                wrapper_names.insert(&declaration.name);
+            }
+        }
+    }
     schema
         .types
         .iter()
         .filter(|declaration| {
             matches!(declaration.kind, TypeKind::Choice { .. })
-                || abstract_value_names.contains(&declaration.name)
+                || wrapper_names.contains(&declaration.name)
         })
         .collect()
 }
@@ -694,8 +875,9 @@ fn ada_kind_companion_owners(schema: &SchemaIr) -> Vec<&TypeDecl> {
 fn register_ada_kind_companions(
     top_level: &mut Region,
     schema: &SchemaIr,
+    world: GenerationWorld,
 ) -> Result<(), BackendNameError> {
-    for declaration in ada_kind_companion_owners(schema) {
+    for declaration in ada_kind_companion_owners(schema, world) {
         // If the declaration's own identifier is unusable, that failure is
         // already reported for the declaration itself; do not re-report it
         // here as a companion problem.
@@ -703,7 +885,9 @@ fn register_ada_kind_companions(
             continue;
         };
         top_level.insert(
-            &format!("{} companion", declaration.name.local_name),
+            NameSource::Companion {
+                owner: declaration.name.clone(),
+            },
             format!("{owner}_Kind"),
         )?;
     }
@@ -731,11 +915,12 @@ fn register_ada_kind_companions(
 fn validate_ada_enumeration_literals(
     top_level: &Region,
     schema: &SchemaIr,
+    world: GenerationWorld,
 ) -> Result<(), BackendNameError> {
     let mut conflicts = Vec::new();
-    collect_ada_literal_conflicts(top_level, schema, &mut conflicts);
+    collect_ada_literal_conflicts(top_level, schema, world, &mut conflicts);
     match conflicts.into_iter().next() {
-        Some(error) => Err(error),
+        Some(conflict) => Err(conflict.error),
         None => Ok(()),
     }
 }
@@ -747,18 +932,25 @@ fn validate_ada_enumeration_literals(
 fn collect_ada_literal_conflicts(
     top_level: &Region,
     schema: &SchemaIr,
-    conflicts: &mut Vec<BackendNameError>,
+    world: GenerationWorld,
+    conflicts: &mut Vec<CollectedNameError>,
 ) {
-    let check = |ir_name: &str, literal: &str, conflicts: &mut Vec<BackendNameError>| {
+    // The literal is owned by the declaration that *declares the enumeration*,
+    // not by whatever declaration happens to share the spelling. Both that
+    // owner and the owner of the conflicting top-level type are implicated:
+    // generation rejects the package because one generated the literal and the
+    // other generated the type, so coverage must exclude both.
+    let check = |source: NameSource, literal: &str, conflicts: &mut Vec<CollectedNameError>| {
         let key = identity_key(BackendLanguage::Ada, literal);
         if let Some(first) = top_level.taken.get(&key) {
-            conflicts.push(BackendNameError::Collision {
+            let error = BackendNameError::Collision {
                 language: BackendLanguage::Ada,
                 region: NameRegion::TopLevel,
                 generated: literal.to_owned(),
-                first: first.clone(),
-                second: ir_name.to_owned(),
-            });
+                first: first.label(),
+                second: source.label(),
+            };
+            conflicts.push(CollectedNameError::new(error, &[first, &source]));
         }
     };
     for declaration in &schema.types {
@@ -767,7 +959,11 @@ fn collect_ada_literal_conflicts(
             TypeKind::Enumeration { variants } => {
                 for variant in variants {
                     if let Some(literal) = ada_identifier(&variant.wire_value) {
-                        check(&variant.wire_value, &literal, conflicts);
+                        let source = NameSource::EnumLiteral {
+                            owner: declaration.name.clone(),
+                            literal: variant.wire_value.clone(),
+                        };
+                        check(source, &literal, conflicts);
                     }
                 }
             }
@@ -779,7 +975,11 @@ fn collect_ada_literal_conflicts(
                 };
                 for alternative in alternatives {
                     if let Some(name) = ada_identifier(&alternative.name) {
-                        check(&alternative.name, &format!("{name}_Kind"), conflicts);
+                        let source = NameSource::EnumLiteral {
+                            owner: declaration.name.clone(),
+                            literal: alternative.name.clone(),
+                        };
+                        check(source, &format!("{name}_Kind"), conflicts);
                     }
                 }
             }
@@ -787,18 +987,19 @@ fn collect_ada_literal_conflicts(
         }
     }
     // A closed-sum wrapper's literals are `{Descendant}_Kind`, taken from the
-    // same projection the Ada renderer walks.
-    for declaration in ada_kind_companion_owners(schema) {
+    // same projection the Ada renderer walks. Only wrappers the requested
+    // world actually emits contribute literals.
+    for declaration in ada_kind_companion_owners(schema, world) {
         let Ok(projection) = project_abstract_value(schema, &declaration.name) else {
             continue;
         };
         for descendant in &projection.concrete_descendants {
             if let Some(name) = ada_identifier(&descendant.name.local_name) {
-                check(
-                    &descendant.name.local_name,
-                    &format!("{name}_Kind"),
-                    conflicts,
-                );
+                let source = NameSource::EnumLiteral {
+                    owner: declaration.name.clone(),
+                    literal: descendant.name.local_name.clone(),
+                };
+                check(source, &format!("{name}_Kind"), conflicts);
             }
         }
     }
@@ -856,7 +1057,10 @@ fn validate_namespace_unit(
             }
             let mut region = Region::new(language, NameRegion::NamespaceUnit);
             for part in &parts[parts.len() - 2..] {
-                region.insert_transformed(part, snake_case(part))?;
+                region.insert_transformed(
+                    NameSource::NamespaceUri((*part).to_owned()),
+                    snake_case(part),
+                )?;
             }
             Ok(())
         }
@@ -869,7 +1073,10 @@ fn validate_namespace_unit(
             }
             let mut region = Region::new(language, NameRegion::NamespaceUnit);
             for part in &parts[parts.len() - 2..] {
-                region.insert_transformed(part, ada_title(part))?;
+                region.insert_transformed(
+                    NameSource::NamespaceUri((*part).to_owned()),
+                    ada_title(part),
+                )?;
             }
             Ok(())
         }
@@ -922,6 +1129,7 @@ fn ada_emits_helper(cardinality: Cardinality) -> bool {
 pub fn validate_backend_names(
     schema: &SchemaIr,
     language: BackendLanguage,
+    world: GenerationWorld,
 ) -> Result<(), BackendNameError> {
     // The enclosing unit's own identifier comes from the namespace URI rather
     // than from any declaration, so it is checked before the scope it encloses.
@@ -933,12 +1141,12 @@ pub fn validate_backend_names(
     register_support_names(&mut top_level, schema, language)?;
     for declaration in &schema.types {
         top_level.insert_transformed(
-            &declaration.name.local_name,
+            NameSource::Declaration(declaration.name.clone()),
             declaration_name(language, &declaration.name.local_name),
         )?;
     }
     if language == BackendLanguage::Ada {
-        register_ada_kind_companions(&mut top_level, schema)?;
+        register_ada_kind_companions(&mut top_level, schema, world)?;
     }
     for declaration in &schema.types {
         validate_declaration_members(schema, declaration, language, &mut top_level)?;
@@ -947,7 +1155,7 @@ pub fn validate_backend_names(
         // Literals are validated last, against the completed set of top-level
         // type names: a literal conflicts with a type name regardless of which
         // was declared first.
-        validate_ada_enumeration_literals(&top_level, schema)?;
+        validate_ada_enumeration_literals(&top_level, schema, world)?;
     }
     Ok(())
 }
@@ -978,7 +1186,10 @@ fn register_declaration_members(
         TypeKind::Enumeration { variants } => {
             for variant in variants {
                 members.insert_transformed(
-                    &variant.wire_value,
+                    NameSource::Member {
+                        owner: declaration.name.clone(),
+                        member: variant.wire_value.clone(),
+                    },
                     variant_name(language, &variant.wire_value),
                 )?;
             }
@@ -992,11 +1203,17 @@ fn register_declaration_members(
                 return Ok(());
             };
             for field in fields {
-                members.insert_transformed(&field.name, member_name(language, &field.name))?;
+                members.insert_transformed(
+                    NameSource::Member {
+                        owner: declaration.name.clone(),
+                        member: field.name.clone(),
+                    },
+                    member_name(language, &field.name),
+                )?;
                 if language == BackendLanguage::Ada && ada_emits_helper(field.cardinality) {
                     validate_ada_helpers(
                         top_level,
-                        &declaration.name.local_name,
+                        &declaration.name,
                         &field.name,
                         field.cardinality,
                     )?;
@@ -1008,23 +1225,23 @@ fn register_declaration_members(
                 return Ok(());
             };
             for alternative in alternatives {
+                let source = NameSource::Member {
+                    owner: declaration.name.clone(),
+                    member: alternative.name.clone(),
+                };
                 match language {
                     // Rust enum variants and C++ nested alternative structs
                     // are upper-camel.
-                    BackendLanguage::Rust | BackendLanguage::Cpp => members.insert_transformed(
-                        &alternative.name,
-                        variant_name(language, &alternative.name),
-                    )?,
+                    BackendLanguage::Rust | BackendLanguage::Cpp => members
+                        .insert_transformed(source, variant_name(language, &alternative.name))?,
                     // Ada renders alternatives as variant-part components.
                     BackendLanguage::Ada => {
-                        members.insert_transformed(
-                            &alternative.name,
-                            member_name(language, &alternative.name),
-                        )?;
+                        members
+                            .insert_transformed(source, member_name(language, &alternative.name))?;
                         if ada_emits_helper(alternative.cardinality) {
                             validate_ada_helpers(
                                 top_level,
-                                &declaration.name.local_name,
+                                &declaration.name,
                                 &alternative.name,
                                 alternative.cardinality,
                             )?;
@@ -1047,7 +1264,7 @@ fn register_declaration_members(
 /// in the owning declaration's member region.
 fn validate_ada_helpers(
     top_level: &mut Region,
-    owner: &str,
+    owner: &QualifiedName,
     member: &str,
     cardinality: Cardinality,
 ) -> Result<(), BackendNameError> {
@@ -1055,18 +1272,34 @@ fn validate_ada_helpers(
         // The member identifier itself already failed in the member region.
         return Ok(());
     };
-    let stem = format!("{owner}_{member_identifier}");
+    let stem = format!("{}_{member_identifier}", owner.local_name);
     // Exactly the suffixes `backend-ada` emits for each repeated shape.
-    let suffixes: &[&str] = if matches!(cardinality.shape(), OccurrenceShape::Unbounded { .. }) {
-        &["_Item", "_Vectors", "_Sequence"]
-    } else {
-        &["_Array", "_Sequence"]
+    //
+    // The unbounded case splits on the minimum: `write_unbounded_helper`
+    // emits a plain vector alias when `min == 0`, but a required-prefix array
+    // plus a separate vector package when `min > 0`. Reserving only the
+    // `min == 0` spelling left `{stem}_Required_Array` and
+    // `{stem}_Additional_Vectors` emitted but unregistered, so a user
+    // declaration could silently collide with one.
+    let suffixes: &[&str] = match cardinality.shape() {
+        OccurrenceShape::Unbounded { min } if min > 0 => &[
+            "_Item",
+            "_Required_Array",
+            "_Additional_Vectors",
+            "_Sequence",
+        ],
+        OccurrenceShape::Unbounded { .. } => &["_Item", "_Vectors", "_Sequence"],
+        _ => &["_Array", "_Sequence"],
     };
     for suffix in suffixes {
-        // Attributed to the owning member so a collision names the schema
-        // identifiers responsible, not an opaque generated string.
+        // Attributed structurally to the owning declaration, so a collision
+        // marks the declaration that actually generated the helper rather than
+        // relying on the diagnostic label's shape.
         top_level.insert(
-            &format!("{owner}.{member} helper"),
+            NameSource::Helper {
+                owner: owner.clone(),
+                member: member.to_owned(),
+            },
             format!("{stem}{suffix}"),
         )?;
     }
@@ -1101,42 +1334,9 @@ fn validate_ada_helpers(
 pub fn unsafe_named_declarations(
     schema: &SchemaIr,
     language: BackendLanguage,
+    world: GenerationWorld,
 ) -> BTreeSet<QualifiedName> {
-    // IR local name -> declaration identity, for attributing a reported
-    // failure back to its declaration in one lookup rather than a scan.
-    let by_local_name = schema
-        .types
-        .iter()
-        .map(|declaration| (declaration.name.local_name.as_str(), &declaration.name))
-        .collect::<BTreeMap<_, _>>();
     let mut unsafe_names = BTreeSet::new();
-    let attribute = |errors: &[BackendNameError], unsafe_names: &mut BTreeSet<QualifiedName>| {
-        for error in errors {
-            match error {
-                BackendNameError::InvalidIdentifier {
-                    region, ir_name, ..
-                }
-                | BackendNameError::ReservedWord {
-                    region, ir_name, ..
-                } => {
-                    attribute_region(region, [ir_name.as_str()], &by_local_name, unsafe_names);
-                }
-                BackendNameError::Collision {
-                    region,
-                    first,
-                    second,
-                    ..
-                } => {
-                    attribute_region(
-                        region,
-                        [first.as_str(), second.as_str()],
-                        &by_local_name,
-                        unsafe_names,
-                    );
-                }
-            }
-        }
-    };
 
     let mut top_level = Region::collecting(language, NameRegion::TopLevel);
     // Ignoring the `Result` is correct for a collecting region: it only ever
@@ -1144,12 +1344,12 @@ pub fn unsafe_named_declarations(
     let _ = register_support_names(&mut top_level, schema, language);
     for declaration in &schema.types {
         let _ = top_level.insert_transformed(
-            &declaration.name.local_name,
+            NameSource::Declaration(declaration.name.clone()),
             declaration_name(language, &declaration.name.local_name),
         );
     }
     if language == BackendLanguage::Ada {
-        let _ = register_ada_kind_companions(&mut top_level, schema);
+        let _ = register_ada_kind_companions(&mut top_level, schema, world);
     }
     for declaration in &schema.types {
         let mut members =
@@ -1169,48 +1369,20 @@ pub fn unsafe_named_declarations(
     }
     if language == BackendLanguage::Ada {
         let mut literals = Vec::new();
-        collect_ada_literal_conflicts(&top_level, schema, &mut literals);
-        attribute(&literals, &mut unsafe_names);
+        collect_ada_literal_conflicts(&top_level, schema, world, &mut literals);
+        for conflict in literals {
+            unsafe_names.extend(conflict.owners);
+        }
     }
-    let top_level_errors = std::mem::take(&mut top_level.errors);
-    attribute(&top_level_errors, &mut unsafe_names);
+    // Every declaration responsible for emitting a side of a top-level failure
+    // is marked, taken from the structured owner recorded at registration
+    // time. Names owned by no declaration -- generated support types, the
+    // namespace unit -- contribute nothing on their own, because no
+    // declaration is at fault for them alone.
+    for conflict in std::mem::take(&mut top_level.errors) {
+        unsafe_names.extend(conflict.owners);
+    }
     unsafe_names
-}
-
-/// Map one reported top-level failure back to the declarations responsible.
-///
-/// Member-region failures are attributed by the caller, which already knows
-/// the owning declaration.
-fn attribute_region<'names>(
-    region: &NameRegion,
-    sources: impl IntoIterator<Item = &'names str>,
-    by_local_name: &BTreeMap<&str, &QualifiedName>,
-    unsafe_names: &mut BTreeSet<QualifiedName>,
-) {
-    match region {
-        NameRegion::TopLevel => {
-            for source in sources {
-                // A generated support type or an Ada companion is attributed
-                // through the schema identifier it was derived from; a
-                // synthetic source that matches no declaration contributes
-                // nothing, because no declaration is at fault for it alone.
-                if let Some(name) = by_local_name.get(source) {
-                    unsafe_names.insert((*name).clone());
-                } else if let Some((owner, _)) = source.split_once(' ')
-                    && let Some(name) = by_local_name.get(owner)
-                {
-                    // Ada helper/companion attributions of the form
-                    // "Owner.Member helper" / "Owner companion".
-                    unsafe_names.insert((*name).clone());
-                }
-            }
-        }
-        NameRegion::Members(owner) => {
-            unsafe_names.insert(owner.clone());
-        }
-        // Not declaration-attributable; handled as a global precondition.
-        NameRegion::NamespaceUnit => {}
-    }
 }
 
 /// Whether every generated name one backend would emit for `schema` is safe.
@@ -1219,8 +1391,12 @@ fn attribute_region<'names>(
 /// consult the same rules, so readiness cannot claim READY for output that
 /// would not compile.
 #[must_use]
-pub fn backend_names_are_renderable(schema: &SchemaIr, language: BackendLanguage) -> bool {
-    validate_backend_names(schema, language).is_ok()
+pub fn backend_names_are_renderable(
+    schema: &SchemaIr,
+    language: BackendLanguage,
+    world: GenerationWorld,
+) -> bool {
+    validate_backend_names(schema, language, world).is_ok()
 }
 
 #[cfg(test)]
@@ -1343,7 +1519,7 @@ mod tests {
     }
 
     fn assert_collides(schema: &SchemaIr, language: BackendLanguage, expected: &str) {
-        let error = validate_backend_names(schema, language)
+        let error = validate_backend_names(schema, language, GenerationWorld::ClosedSchemaSet)
             .expect_err("a generated name must not be silently shadowed");
         let BackendNameError::Collision { generated, .. } = &error else {
             panic!("expected a collision on {expected}, got {error:?}");
@@ -1453,7 +1629,7 @@ mod tests {
         ] {
             let schema = schema_with(vec![primitive(spelling)]);
             assert!(
-                validate_backend_names(&schema, language).is_ok(),
+                validate_backend_names(&schema, language, GenerationWorld::ClosedSchemaSet).is_ok(),
                 "{language:?} must not reserve {spelling} for a schema that never emits it"
             );
         }
@@ -1498,7 +1674,9 @@ mod tests {
             primitive("Selection_Kind"),
         ]);
         for language in [BackendLanguage::Rust, BackendLanguage::Cpp] {
-            assert!(validate_backend_names(&schema, language).is_ok());
+            assert!(
+                validate_backend_names(&schema, language, GenerationWorld::ClosedSchemaSet).is_ok()
+            );
         }
     }
 
@@ -1535,7 +1713,12 @@ mod tests {
             choice("Beta", &["Shared", "OnlyBeta"]),
         ]);
         assert!(
-            validate_backend_names(&schema, BackendLanguage::Ada).is_ok(),
+            validate_backend_names(
+                &schema,
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            )
+            .is_ok(),
             "Ada enumeration literals overload; this must not be a collision"
         );
     }
@@ -1546,8 +1729,12 @@ mod tests {
     /// the whole unit illegal, and Ada reserved words are case-insensitive.
     #[test]
     fn ada_package_component_may_not_be_a_reserved_word() {
-        let error = validate_backend_names(&schema_in("urn:backend-record"), BackendLanguage::Ada)
-            .expect_err("Ada package component `Record` is a reserved word");
+        let error = validate_backend_names(
+            &schema_in("urn:backend-record"),
+            BackendLanguage::Ada,
+            GenerationWorld::ClosedSchemaSet,
+        )
+        .expect_err("Ada package component `Record` is a reserved word");
         assert!(
             matches!(
                 &error,
@@ -1564,8 +1751,12 @@ mod tests {
     /// The C++ equivalent: a component normalizing to `class`.
     #[test]
     fn cpp_namespace_component_may_not_be_a_reserved_word() {
-        let error = validate_backend_names(&schema_in("urn:oms:class"), BackendLanguage::Cpp)
-            .expect_err("C++ namespace component `class` is a reserved word");
+        let error = validate_backend_names(
+            &schema_in("urn:oms:class"),
+            BackendLanguage::Cpp,
+            GenerationWorld::ClosedSchemaSet,
+        )
+        .expect_err("C++ namespace component `class` is a reserved word");
         assert!(
             matches!(
                 &error,
@@ -1586,7 +1777,7 @@ mod tests {
         let schema = schema_in("urn:example:oms:track");
         for language in BackendLanguage::ALL {
             assert!(
-                validate_backend_names(&schema, language).is_ok(),
+                validate_backend_names(&schema, language, GenerationWorld::ClosedSchemaSet).is_ok(),
                 "{language:?} must accept a safe namespace"
             );
         }
@@ -1669,5 +1860,451 @@ mod tests {
             min_occurs: 0,
             max_occurs: None,
         }));
+    }
+
+    // ---- Generated-name ownership attribution --------------------------
+    //
+    // Generation already rejected every schema below. The defect these cover
+    // is the *coverage* side: attribution used to recover the owner by
+    // splitting the human-readable diagnostic label, which matched nothing for
+    // a helper, companion, or literal, so the declaration that generated the
+    // conflicting identifier stayed counted renderable while generation
+    // refused the package. Each asserts **both** responsible declarations,
+    // because neither side can be emitted while the other exists.
+
+    fn unsafe_local_names(schema: &SchemaIr, language: BackendLanguage) -> BTreeSet<String> {
+        unsafe_named_declarations(schema, language, GenerationWorld::ClosedSchemaSet)
+            .into_iter()
+            .map(|name| name.local_name)
+            .collect()
+    }
+
+    fn unsafe_ada(schema: &SchemaIr) -> BTreeSet<String> {
+        unsafe_local_names(schema, BackendLanguage::Ada)
+    }
+
+    /// `Owner.Items` at unbounded cardinality emits `Owner_Items_Sequence`,
+    /// which a user declaration of that name cannot coexist with. Both the
+    /// helper's owner and the colliding declaration are unsafe.
+    #[test]
+    fn ada_helper_collision_marks_the_generating_owner_and_the_declaration() {
+        let schema = schema_with(vec![
+            primitive("Item"),
+            record(
+                "Owner",
+                vec![field(
+                    "Items",
+                    TypeRefTarget::Named(QualifiedName::new(NS, "Item")),
+                    UNBOUNDED,
+                )],
+            ),
+            primitive("Owner_Items_Sequence"),
+        ]);
+        // Generation rejects it, so coverage must not call either side
+        // renderable.
+        assert!(
+            validate_backend_names(
+                &schema,
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            )
+            .is_err()
+        );
+        let unsafe_names = unsafe_ada(&schema);
+        assert!(
+            unsafe_names.contains("Owner"),
+            "the declaration that generated the helper must be unsafe: {unsafe_names:?}"
+        );
+        assert!(
+            unsafe_names.contains("Owner_Items_Sequence"),
+            "the colliding user declaration must be unsafe: {unsafe_names:?}"
+        );
+    }
+
+    /// Two owners whose repeated members derive the same helper stem. Neither
+    /// label is a declaration local name, so label-based attribution marked
+    /// nothing at all; structured ownership marks both owners.
+    #[test]
+    fn ada_helper_versus_helper_marks_both_owners() {
+        // `OwnerA` + member `B_Items` and `OwnerA_B` + member `Items` both
+        // derive the stem `OwnerA_B_Items`.
+        let repeated = |name: &str| {
+            field(
+                name,
+                TypeRefTarget::Named(QualifiedName::new(NS, "Item")),
+                UNBOUNDED,
+            )
+        };
+        let schema = schema_with(vec![
+            primitive("Item"),
+            record("OwnerA", vec![repeated("B_Items")]),
+            record("OwnerA_B", vec![repeated("Items")]),
+        ]);
+        assert!(
+            validate_backend_names(
+                &schema,
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            )
+            .is_err()
+        );
+        let unsafe_names = unsafe_ada(&schema);
+        assert!(
+            unsafe_names.contains("OwnerA") && unsafe_names.contains("OwnerA_B"),
+            "both helper-generating owners must be unsafe: {unsafe_names:?}"
+        );
+    }
+
+    /// `type Color is (Red, Green);` beside `type Red` is rejected by GNAT.
+    /// `Color` generated the literal and `Red` generated the type, so marking
+    /// only `Red` would leave `Color` counted renderable.
+    #[test]
+    fn ada_enumeration_literal_collision_marks_the_enumeration_and_the_type() {
+        let enumeration = TypeDecl {
+            kind: TypeKind::Enumeration {
+                variants: ["Red", "Green"]
+                    .into_iter()
+                    .map(|value| EnumVariant {
+                        wire_value: value.to_owned(),
+                        documentation: None,
+                    })
+                    .collect(),
+            },
+            ..primitive("Color")
+        };
+        let unsafe_names = unsafe_ada(&schema_with(vec![enumeration, primitive("Red")]));
+        assert!(
+            unsafe_names.contains("Color"),
+            "the enumeration that generated the literal must be unsafe: {unsafe_names:?}"
+        );
+        assert!(
+            unsafe_names.contains("Red"),
+            "the colliding type declaration must be unsafe: {unsafe_names:?}"
+        );
+    }
+
+    /// A Choice alternative's literal is `{Alternative}_Kind`, and the owning
+    /// Choice is what generated it.
+    #[test]
+    fn ada_choice_literal_collision_marks_the_choice_and_the_type() {
+        let unsafe_names = unsafe_ada(&schema_with(vec![
+            choice("Selection", &["First", "Second"]),
+            primitive("First_Kind"),
+        ]));
+        assert!(
+            unsafe_names.contains("Selection"),
+            "the Choice that generated the literal must be unsafe: {unsafe_names:?}"
+        );
+        assert!(
+            unsafe_names.contains("First_Kind"),
+            "the colliding type declaration must be unsafe: {unsafe_names:?}"
+        );
+    }
+
+    /// Control: an ordinary declaration-versus-declaration collision keeps its
+    /// existing behaviour, marking exactly the two declarations involved.
+    #[test]
+    fn ordinary_declaration_collision_attribution_is_unchanged() {
+        let schema = schema_with(vec![primitive("foo_bar"), primitive("fooBar")]);
+        let unsafe_names = unsafe_local_names(&schema, BackendLanguage::Rust);
+        assert!(unsafe_names.contains("foo_bar") && unsafe_names.contains("fooBar"));
+        assert_eq!(unsafe_names.len(), 2);
+    }
+
+    /// A user declaration colliding with a generated support type implicates
+    /// only that declaration: the support type belongs to no declaration, so
+    /// there is no second owner to blame.
+    #[test]
+    fn a_support_type_collision_marks_only_the_user_declaration() {
+        let schema = unbounded_schema(vec![primitive("UnboundedVec")]);
+        assert_eq!(
+            unsafe_local_names(&schema, BackendLanguage::Rust),
+            ["UnboundedVec".to_owned()].into_iter().collect()
+        );
+    }
+
+    // ---- World-aware `_Kind` companion registration --------------------
+    //
+    // Being an abstract value target does not prove a wrapper is emitted. The
+    // companion may only be reserved where the requested world really
+    // produces a `TypeEmission::AbstractValue`.
+
+    /// `Base` abstract with a concrete descendant, referenced by value: a real
+    /// closed sum under `ClosedSchemaSet`.
+    fn closed_sum_schema(extra: Vec<TypeDecl>) -> SchemaIr {
+        let mut base = record("Base", Vec::new());
+        base.is_abstract = true;
+        let mut concrete = record("Concrete", Vec::new());
+        concrete.base_type = Some(TypeRef {
+            target: TypeRefTarget::Named(QualifiedName::new(NS, "Base")),
+        });
+        let holder = record(
+            "Holder",
+            vec![field(
+                "Value",
+                TypeRefTarget::Named(QualifiedName::new(NS, "Base")),
+                Cardinality::REQUIRED_ONE,
+            )],
+        );
+        let mut types = vec![base, concrete, holder];
+        types.extend(extra);
+        schema_with(types)
+    }
+
+    #[test]
+    fn a_real_closed_sum_reserves_its_kind_companion() {
+        let schema = closed_sum_schema(vec![primitive("Base_Kind")]);
+        assert_collides(&schema, BackendLanguage::Ada, "Base_Kind");
+        let unsafe_names = unsafe_ada(&schema);
+        assert!(
+            unsafe_names.contains("Base") && unsafe_names.contains("Base_Kind"),
+            "both the wrapper owner and the colliding declaration are unsafe: {unsafe_names:?}"
+        );
+    }
+
+    /// Task 026 elision control. `EmptyBase` is an abstract value target with
+    /// zero concrete descendants, used only as absent-only optional storage,
+    /// so no wrapper and no `EmptyBase_Kind` are emitted. Reserving the
+    /// companion anyway falsely rejected an otherwise generable schema.
+    #[test]
+    fn a_zero_descendant_elided_target_reserves_no_kind_companion() {
+        let mut empty_base = record("EmptyBase", Vec::new());
+        empty_base.is_abstract = true;
+        let holder = record(
+            "Holder",
+            vec![field(
+                "Optional",
+                TypeRefTarget::Named(QualifiedName::new(NS, "EmptyBase")),
+                Cardinality::OPTIONAL_ONE,
+            )],
+        );
+        let schema = schema_with(vec![empty_base, holder, primitive("EmptyBase_Kind")]);
+        assert!(
+            validate_backend_names(
+                &schema,
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            )
+            .is_ok(),
+            "no wrapper is emitted, so `EmptyBase_Kind` must stay available"
+        );
+        assert!(unsafe_ada(&schema).is_empty());
+    }
+
+    /// Open world: the wrapper does not exist there, so no closed-world
+    /// companion name may be invented. The abstract-value capability failure
+    /// remains the authoritative blocker, reported by the semantic rules
+    /// rather than as a manufactured name collision.
+    #[test]
+    fn the_open_world_does_not_reserve_closed_sum_companions() {
+        let schema = closed_sum_schema(vec![primitive("Base_Kind")]);
+        assert!(
+            validate_backend_names(
+                &schema,
+                BackendLanguage::Ada,
+                GenerationWorld::OpenExtensions
+            )
+            .is_ok(),
+            "an unemitted open-world wrapper must not reserve `Base_Kind`"
+        );
+        assert!(
+            unsafe_named_declarations(
+                &schema,
+                BackendLanguage::Ada,
+                GenerationWorld::OpenExtensions
+            )
+            .is_empty()
+        );
+    }
+
+    /// Ordinary Choice lowering emits `{Choice}_Kind` in **either** world, so
+    /// that registration is not gated on abstract-value world policy.
+    #[test]
+    fn choice_kind_companions_are_registered_in_every_world() {
+        let schema = schema_with(vec![
+            choice("Selection", &["First", "Second"]),
+            primitive("Selection_Kind"),
+        ]);
+        for world in [
+            GenerationWorld::ClosedSchemaSet,
+            GenerationWorld::OpenExtensions,
+        ] {
+            assert!(
+                validate_backend_names(&schema, BackendLanguage::Ada, world).is_err(),
+                "a Choice companion is emitted in {world}"
+            );
+        }
+    }
+
+    // ---- Rust/C++ identifier-start syntax ------------------------------
+    //
+    // `words` only guaranteed the characters were ASCII alphanumeric or `_`,
+    // so `1Foo` survived upper-camel unchanged, passed preflight, and reached
+    // the renderer as an identifier no compiler accepts. Ada already required
+    // an alphabetic first character; this is the Rust/C++ equivalent. The
+    // *generated* identifier is what is validated.
+
+    fn assert_invalid_identifier(schema: &SchemaIr, language: BackendLanguage) {
+        let error = validate_backend_names(schema, language, GenerationWorld::ClosedSchemaSet)
+            .expect_err("an identifier starting with a digit is not legal syntax");
+        assert!(
+            matches!(error, BackendNameError::InvalidIdentifier { .. }),
+            "expected InvalidIdentifier, got {error:?}"
+        );
+    }
+
+    #[test]
+    fn a_leading_digit_top_level_declaration_is_rejected() {
+        let schema = schema_with(vec![primitive("1Foo")]);
+        assert_invalid_identifier(&schema, BackendLanguage::Rust);
+        assert_invalid_identifier(&schema, BackendLanguage::Cpp);
+    }
+
+    #[test]
+    fn a_leading_digit_member_is_rejected() {
+        let schema = schema_with(vec![record(
+            "Holder",
+            vec![field(
+                "1Field",
+                TypeRefTarget::Primitive(PrimitiveKind::String),
+                Cardinality::REQUIRED_ONE,
+            )],
+        )]);
+        for language in [BackendLanguage::Rust, BackendLanguage::Cpp] {
+            assert_invalid_identifier(&schema, language);
+            // Attributed to the owning declaration, as any member failure is.
+            assert!(
+                unsafe_named_declarations(&schema, language, GenerationWorld::ClosedSchemaSet)
+                    .contains(&QualifiedName::new(NS, "Holder"))
+            );
+        }
+    }
+
+    #[test]
+    fn a_leading_digit_variant_is_rejected() {
+        let schema = schema_with(vec![choice("Selection", &["1First", "Second"])]);
+        assert_invalid_identifier(&schema, BackendLanguage::Rust);
+        assert_invalid_identifier(&schema, BackendLanguage::Cpp);
+    }
+
+    /// Each emitted C++ namespace component is a real identifier too: a URI
+    /// whose emitted component begins with a digit cannot compile.
+    #[test]
+    fn a_leading_digit_cpp_namespace_component_is_rejected() {
+        let error = validate_backend_names(
+            &schema_in("urn:oms:2example"),
+            BackendLanguage::Cpp,
+            GenerationWorld::ClosedSchemaSet,
+        )
+        .expect_err("a namespace component cannot begin with a digit");
+        assert!(matches!(
+            error,
+            BackendNameError::InvalidIdentifier {
+                region: NameRegion::NamespaceUnit,
+                ..
+            }
+        ));
+    }
+
+    /// A required-minimum unbounded member makes `backend-ada` emit a
+    /// different helper set -- `_Required_Array` and `_Additional_Vectors`
+    /// instead of `_Vectors` -- and those were emitted but never reserved, so
+    /// a user declaration could collide with one undetected.
+    #[test]
+    fn ada_required_minimum_unbounded_helpers_are_reserved() {
+        let required_unbounded = Cardinality {
+            min_occurs: 2,
+            max_occurs: None,
+        };
+        for suffix in [
+            "_Required_Array",
+            "_Additional_Vectors",
+            "_Item",
+            "_Sequence",
+        ] {
+            let schema = schema_with(vec![
+                primitive("Item"),
+                record(
+                    "Owner",
+                    vec![field(
+                        "Items",
+                        TypeRefTarget::Named(QualifiedName::new(NS, "Item")),
+                        required_unbounded,
+                    )],
+                ),
+                primitive(&format!("Owner_Items{suffix}")),
+            ]);
+            assert_collides(
+                &schema,
+                BackendLanguage::Ada,
+                &format!("Owner_Items{suffix}"),
+            );
+            let unsafe_names = unsafe_ada(&schema);
+            assert!(
+                unsafe_names.contains("Owner"),
+                "the helper-generating owner must be unsafe for {suffix}: {unsafe_names:?}"
+            );
+        }
+        // The `min == 0` spelling stays available at a required minimum,
+        // because that shape does not emit it.
+        let schema = schema_with(vec![
+            primitive("Item"),
+            record(
+                "Owner",
+                vec![field(
+                    "Items",
+                    TypeRefTarget::Named(QualifiedName::new(NS, "Item")),
+                    required_unbounded,
+                )],
+            ),
+            primitive("Owner_Items_Vectors"),
+        ]);
+        assert!(
+            validate_backend_names(
+                &schema,
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            )
+            .is_ok()
+        );
+    }
+
+    /// Control: digits elsewhere in an identifier are perfectly legal and must
+    /// keep passing, in every region and every backend.
+    #[test]
+    fn digits_after_the_first_character_remain_accepted() {
+        let schema = schema_with(vec![
+            primitive("Foo1"),
+            record(
+                "X2",
+                vec![field(
+                    "field_1",
+                    TypeRefTarget::Primitive(PrimitiveKind::String),
+                    Cardinality::REQUIRED_ONE,
+                )],
+            ),
+        ]);
+        for language in BackendLanguage::ALL {
+            assert!(
+                validate_backend_names(&schema, language, GenerationWorld::ClosedSchemaSet).is_ok(),
+                "{language:?} must accept Foo1 / X2 / field_1"
+            );
+        }
+    }
+
+    /// The transformation itself, independent of any schema: the generated
+    /// spelling is what decides legality, not the source spelling.
+    #[test]
+    fn identifier_start_policy_is_applied_to_the_generated_spelling() {
+        assert_eq!(upper_camel("foo_bar"), Some("FooBar".to_owned()));
+        assert_eq!(snake_case("fooBar"), Some("foobar".to_owned()));
+        assert_eq!(upper_camel("1foo"), None);
+        assert_eq!(snake_case("1foo"), None);
+        assert_eq!(upper_camel("9"), None);
+        assert!(is_ascii_identifier("Foo1"));
+        assert!(is_ascii_identifier("field_1"));
+        assert!(is_ascii_identifier("_private"));
+        assert!(!is_ascii_identifier("1Foo"));
+        assert!(!is_ascii_identifier(""));
     }
 }

@@ -393,7 +393,7 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
     // the flat-package helper type names derived from member names.
     // Capability/readiness analysis consults the same rules, so a READY verdict
     // cannot disagree with what happens here.
-    if let Err(preflight) = backend_preflight(schema, BackendLanguage::Ada) {
+    if let Err(preflight) = backend_preflight(schema, BackendLanguage::Ada, world) {
         return unsupported(preflight.to_string());
     }
     for declaration in &schema.types {

@@ -344,7 +344,7 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
     // Shared global preflight: the single-namespace boundary and generated
     // host-language name safety. Capability/readiness analysis consults the
     // same rules, so a READY verdict cannot disagree with what happens here.
-    if let Err(preflight) = backend_preflight(schema, BackendLanguage::Cpp) {
+    if let Err(preflight) = backend_preflight(schema, BackendLanguage::Cpp, world) {
         return unsupported(preflight.to_string());
     }
     for declaration in &schema.types {

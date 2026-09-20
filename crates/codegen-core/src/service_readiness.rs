@@ -341,7 +341,10 @@ pub fn analyze_service_readiness(
     // A projection failure is not swallowed: it is a real reason the service
     // cannot be generated, and is surfaced through the normal error path.
     let backend_blocker = match project_service_generation_schema(plan, schema, world) {
-        Ok(projection) => backend_preflight(projection.schema(), language).err(),
+        // Measured in the same world the readiness verdict is stated for, so
+        // a world-sensitive generated name is never reserved here that the
+        // requested world could not emit.
+        Ok(projection) => backend_preflight(projection.schema(), language, world).err(),
         Err(ServiceGenerationError::Plan(error)) => return Err(error.into()),
         Err(ServiceGenerationError::PlanSchemaMismatch { missing, role }) => {
             return Err(ServiceReadinessError::PlanSchemaMismatch { missing, role });

@@ -284,13 +284,17 @@ impl<'a> CoverageAnalysis<'a> {
             abstract_value_topologies,
             fully_elided_targets: BTreeSet::new(),
             // Computed once per language, before any per-declaration work.
+            // Both are computed once per language under this analysis's own
+            // world, never per declaration and never inside the feature loop:
+            // the name model is world-aware, so it must be measured in exactly
+            // the world this coverage run reports.
             backend_preflight: BackendLanguage::ALL
                 .into_iter()
-                .map(|language| (language, backend_preflight(schema, language).err()))
+                .map(|language| (language, backend_preflight(schema, language, world).err()))
                 .collect(),
             unsafe_named_declarations: BackendLanguage::ALL
                 .into_iter()
-                .map(|language| (language, unsafe_named_declarations(schema, language)))
+                .map(|language| (language, unsafe_named_declarations(schema, language, world)))
                 .collect(),
         };
         // Policy-dependent index, computed exactly once. Under

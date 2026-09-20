@@ -27,6 +27,7 @@
 
 use crate::backend_names::{BackendNameError, validate_backend_names};
 use crate::coverage::BackendLanguage;
+use crate::world::GenerationWorld;
 use ams_gra_oms_ir::SchemaIr;
 use std::collections::BTreeSet;
 use std::fmt;
@@ -105,6 +106,22 @@ fn used_namespaces(schema: &SchemaIr) -> Vec<String> {
 /// It deliberately answers only *global* questions. Per-declaration capability
 /// remains `CoverageAnalysis`'s responsibility and is not duplicated here.
 ///
+/// # Why the world is a parameter
+///
+/// Some generated names exist only in some worlds. A Task 024 closed-sum
+/// wrapper -- and therefore its Ada `{Owner}_Kind` companion and its
+/// `{Descendant}_Kind` literals -- is emitted under
+/// [`GenerationWorld::ClosedSchemaSet`] but not under
+/// [`GenerationWorld::OpenExtensions`], where the abstract value fails closed
+/// before any wrapper exists. Reserving a closed-world name in the open world
+/// would reject a schema for a name that cannot be emitted there, and would
+/// report a name blocker in place of the authoritative semantic
+/// abstract-value blocker.
+///
+/// The world is threaded through this one shared entry point rather than
+/// re-decided per backend, so Ada, Rust, and C++ cannot form independent world
+/// models.
+///
 /// # Errors
 ///
 /// Returns the first violated precondition: namespace boundary first, then
@@ -112,6 +129,7 @@ fn used_namespaces(schema: &SchemaIr) -> Vec<String> {
 pub fn backend_preflight(
     schema: &SchemaIr,
     language: BackendLanguage,
+    world: GenerationWorld,
 ) -> Result<(), BackendPreflightError> {
     // An empty schema is vacuously generable: there is nothing to emit, so
     // there is no namespace to need. This is the legitimate shape a Service
@@ -129,14 +147,18 @@ pub fn backend_preflight(
             namespaces,
         });
     }
-    validate_backend_names(schema, language)?;
+    validate_backend_names(schema, language, world)?;
     Ok(())
 }
 
 /// Whether one backend's global preconditions hold for `schema`.
 #[must_use]
-pub fn backend_preflight_passes(schema: &SchemaIr, language: BackendLanguage) -> bool {
-    backend_preflight(schema, language).is_ok()
+pub fn backend_preflight_passes(
+    schema: &SchemaIr,
+    language: BackendLanguage,
+    world: GenerationWorld,
+) -> bool {
+    backend_preflight(schema, language, world).is_ok()
 }
 
 #[cfg(test)]
@@ -180,7 +202,7 @@ mod tests {
     fn a_single_namespace_schema_passes_for_every_backend() {
         let schema = schema(&["urn:a"], vec![declaration("urn:a", "Track")]);
         for language in BackendLanguage::ALL {
-            assert!(backend_preflight(&schema, language).is_ok());
+            assert!(backend_preflight(&schema, language, GenerationWorld::ClosedSchemaSet).is_ok());
         }
     }
 
@@ -191,7 +213,7 @@ mod tests {
             vec![declaration("urn:a", "Track"), declaration("urn:b", "Site")],
         );
         for language in BackendLanguage::ALL {
-            let error = backend_preflight(&schema, language)
+            let error = backend_preflight(&schema, language, GenerationWorld::ClosedSchemaSet)
                 .expect_err("multi-namespace input is a backend boundary");
             let BackendPreflightError::MultipleNamespaces { namespaces, .. } = error else {
                 panic!("expected MultipleNamespaces, got {error:?}");
@@ -209,7 +231,11 @@ mod tests {
             vec![declaration("urn:a", "Track"), declaration("urn:b", "Site")],
         );
         assert!(matches!(
-            backend_preflight(&schema, BackendLanguage::Rust),
+            backend_preflight(
+                &schema,
+                BackendLanguage::Rust,
+                GenerationWorld::ClosedSchemaSet
+            ),
             Err(BackendPreflightError::MultipleNamespaces { .. })
         ));
     }
@@ -220,7 +246,7 @@ mod tests {
     fn an_empty_schema_is_vacuously_generable() {
         let schema = schema(&[], Vec::new());
         for language in BackendLanguage::ALL {
-            assert!(backend_preflight(&schema, language).is_ok());
+            assert!(backend_preflight(&schema, language, GenerationWorld::ClosedSchemaSet).is_ok());
         }
     }
 
@@ -231,7 +257,14 @@ mod tests {
     #[test]
     fn an_undeclared_but_consistent_namespace_is_single_namespace_input() {
         let schema = schema(&[], vec![declaration("urn:a", "Track")]);
-        assert!(backend_preflight(&schema, BackendLanguage::Ada).is_ok());
+        assert!(
+            backend_preflight(
+                &schema,
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            )
+            .is_ok()
+        );
     }
 
     /// Generated-name safety is part of the same preflight, so readiness and
@@ -248,7 +281,7 @@ mod tests {
         for language in [BackendLanguage::Rust, BackendLanguage::Cpp] {
             assert!(
                 matches!(
-                    backend_preflight(&schema, language),
+                    backend_preflight(&schema, language, GenerationWorld::ClosedSchemaSet),
                     Err(BackendPreflightError::Name(error))
                         if matches!(*error, BackendNameError::Collision { .. })
                 ),
