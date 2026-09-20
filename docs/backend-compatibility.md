@@ -1980,8 +1980,16 @@ upper-camel convergence collides in Rust and C++ but not in Ada.
 
 This module **rejects**; it never mangles, escapes, suffixes, or renames.
 Inventing a disambiguation scheme would silently change the generated API
-surface. Existing accepted UCI identifiers keep their exact generated spelling,
-and authoritative UCI coverage is unchanged.
+surface. Existing accepted UCI identifiers keep their exact generated spelling.
+
+> **Superseded claim.** This section originally stated that authoritative UCI
+> coverage was unchanged. That was written before the preflight was integrated
+> into coverage, and it is **false**: the first preflight implementation went
+> on to expose real compiler-invalid identifiers in authoritative UCI, which
+> moved the Rust and C++ declaration counts. The final corrected figures are
+> recorded in "Authoritative coverage correction" and in "Final corrective:
+> projection-scoped readiness and remaining Ada generated names" below, and
+> those are the authoritative numbers.
 
 > Language-specific naming policy lives in shared codegen infrastructure. It is
 > never stored in Schema IR, and no generated name is written back into IR.
@@ -2201,7 +2209,216 @@ figure. The Ada unsupported-selected-type set is byte-identical before and
 after this correction, and the first blocker remains `Acceleration3D_Type`.
 Neither blocker is implemented here.
 
-Service-check cost on full UCI 2.5 is unchanged at ~15 s per language, so the
+Service-check cost on full UCI 2.5 was ~15 s per language at this point, so the
 world-aware, structurally attributed model reintroduces no per-declaration
 whole-schema scan: preflight and the attributed unsafe set are still computed
 once per language, under one world, outside every feature loop.
+
+> **Superseded timing.** The later projection-scoped correction moved readiness
+> onto the projected schema, reducing this to ~5.9 s per language. See "Final
+> selected PositionReport readiness" below.
+
+## Final corrective: projection-scoped readiness and remaining Ada generated names
+
+### Selected readiness must not inherit full-schema naming failures
+
+**Historical behaviour.** Integrating the generated-name preflight into
+`CoverageAnalysis` was correct for *full-schema* coverage, but
+`analyze_service_readiness()` then built its `CoverageAnalysis` and baseline
+renderability snapshot from the **entire original schema** before consulting
+the selected projection. Selected declarations were therefore judged with a
+renderability vector that already carried failures contributed by
+declarations selected generation removes.
+
+Generated-name safety and the global backend preconditions are
+**scope-dependent**. They are relationships between the declarations emitted
+*together*, not properties of a declaration in isolation:
+
+```text
+selected:    foo_bar  -> FooBar
+unselected:  fooBar   -> FooBar
+```
+
+Full-schema analysis marks both unsafe. The projection retains only
+`foo_bar`, so generation emits one legal `FooBar` and succeeds — while
+readiness still reported the selected declaration unsupported. That is a
+readiness/generation disagreement, and the selected-service contract is
+explicit that unselected declarations must not affect selected readiness
+unless they are required generated-support dependencies.
+
+Conditional generated support has the same shape. Rust emits `UnboundedVec`
+only when some member is unbounded, so a *full* schema whose unselected part
+has an unbounded member legitimately collides with a selected type named
+`UnboundedVec` — yet a projection that drops that member emits no support
+type and the spelling is free again.
+
+**Corrected behaviour.** Projection now runs **first**, because it decides
+which schema the capability questions may legitimately be asked about.
+Whenever projection succeeds, the projected schema is authoritative: it is
+exactly the schema `service-generate` hands to the backend.
+
+```text
+verify plan/schema binding
+compute selected closure            (original schema: counts and order)
+project selected generation schema
+    integrity error            -> propagate
+    abstract-value failure     -> analyze original, retain attribution
+    success                    -> analyze the PROJECTION
+                                  CoverageAnalysis::new(projection)
+                                  baseline renderability
+                                  backend_preflight(projection)
+```
+
+The invariant is now:
+
+> A selected-service READY/NOT READY decision is made against the same schema
+> subset and world that `service-generate` hands to the backend.
+
+No naming policy is duplicated: the same `CoverageAnalysis`,
+`validate_backend_names()`, and `backend_preflight()` machinery is applied to
+the appropriate schema. There is no `readiness_name_rules.rs`, and no ad-hoc
+exception for any particular collision.
+
+Counts and ordering still come from the original schema, because the selected
+closure's identity and order are facts about the *contract*. Only capability
+is projection-scoped. Exactly **one** `CoverageAnalysis` is constructed per
+readiness call — the projection when one exists, the original only when
+projection produced none — so the dominant cost is not doubled.
+
+### Ada reserves the fixed `Kind` discriminant
+
+Ada lowers a Choice to a discriminated record whose discriminant is the fixed
+identifier `Kind`:
+
+```ada
+type Selection (Kind : Selection_Kind := First_Kind) is record
+   case Kind is
+      when First_Kind => First : Some_Type;
+   end case;
+end record;
+```
+
+The discriminant occupies the same record declarative region as the
+alternatives, but preflight validated alternatives only against each other.
+An alternative named `Kind` therefore passed preflight and emitted invalid
+Ada. Confirmed against GNAT 14.2:
+
+```text
+p3.ads:6:13: error: "Kind" conflicts with declaration at line 3
+```
+
+A new structured `NameSource::GeneratedMember { owner, generated }` occupies
+the member region **before** the alternatives are registered. Because the
+discriminant is generated *by* the owning Choice, a collision makes that
+Choice unsafe, and `unsafe_named_declarations` attributes it there. This is an
+Ada-only rule: Rust enum variants and C++ `std::variant` alternatives carry no
+generated discriminant component, and a regression asserts they do not
+inherit it.
+
+**Abstract closed-sum wrappers.** These emit the same `Kind` discriminant, but
+their variant components are `{Descendant}_Value`, derived from declaration
+names rather than arbitrary source field names. No descendant spelling can
+produce the bare identifier `Kind`, so no additional rule is registered; the
+determination is recorded by
+`closed_sum_wrapper_components_cannot_collide_with_their_kind_discriminant`
+rather than left implicit.
+
+
+### Ada models overloadable `Create` / `Value`
+
+Every *constrained* named Float32/Float64 declaration emits two package-level
+subprograms:
+
+```ada
+function Create (Value : Interfaces.IEEE_Float_64) return Some_Type;
+function Value  (Item : Some_Type) return Interfaces.IEEE_Float_64;
+```
+
+These were not represented in the name model at all, so a collision with a
+non-overloadable declaration went undetected. Reserving them as ordinary
+unique type names would have been equally wrong: Ada subprograms *overload*,
+and several constrained floats legitimately emit several `Create`/`Value`
+functions. Both halves were verified against GNAT 14.2:
+
+```text
+-- accepted: profiles differ
+function Create (Value : Interfaces.IEEE_Float_64) return Burn_Rate;
+function Create (Value : Interfaces.IEEE_Float_64) return Altitude;
+
+-- rejected
+type Create is new Integer;
+function Create (Value : Interfaces.IEEE_Float_64) return Burn_Rate;
+   p2.ads:5:13: error: "Create" conflicts with declaration at line 3
+```
+
+The model therefore distinguishes **non-overloadable declaration names** from
+**overloadable callable names**. A new
+`NameSource::GeneratedCallable { owner, callable }` is *checked against* the
+accumulated top-level names without being *inserted* into them — the same
+asymmetry already used for Ada enumeration literals, and for the same reason.
+Callable-vs-callable is silent; callable-vs-type fails. Both sides are
+attributed: the float that generates the subprogram and the declaration
+occupying the identifier.
+
+The names are reserved only when the output exists. An unconstrained float
+emits a plain derived type and no subprograms, and a schema with no
+constrained float at all keeps `Create` and `Value` available to user
+declarations.
+
+This deliberately stops short of general Ada overload resolution. Only the
+generated callables the backend emits today are modelled; future generated
+subprogram names extend the same representation.
+
+### Bounded audit of other synthesized Ada identifiers
+
+`Kind` discriminants, `Create`, `Value`, `Optional_String`, `Binary_Vectors`,
+`_Kind` companions, `_Kind` literals, repeated helper names, and
+required-minimum unbounded helper names were each re-checked against the
+renderer branch that emits them. `Kind` and `Create`/`Value` were the two gaps;
+the remainder were already registered, each gated on the renderer's own
+emission predicate. No further missed identifier was found.
+
+### Final authoritative coverage
+
+Re-measured after the `Kind` and `Create`/`Value` rules were added. Closed
+world:
+
+| Release | Ada | Rust | C++ | total |
+| --- | ---: | ---: | ---: | ---: |
+| UCI 2.5 | 2,731 | 5,375 | 5,378 | 5,557 |
+| UCI 2.6 | 2,731 | 5,397 | 5,401 | 5,570 |
+
+Open world:
+
+| Release | Ada | Rust | C++ | total |
+| --- | ---: | ---: | ---: | ---: |
+| UCI 2.5 | 2,724 | 5,287 | 5,290 | 5,557 |
+| UCI 2.6 | 2,724 | 5,309 | 5,313 | 5,570 |
+
+Every figure is **unchanged** from `c07c4518`. The two new rules are real
+compiler-confirmed boundaries, but authoritative UCI does not exercise either:
+UCI declares no type named `Create` or `Value`, and its single `name="Kind"`
+occurrence is a Record element (`WeatherReportType.Kind`, of
+`WeatherKindEnum`), not a Choice alternative. A Record field named `Kind` is
+legal because no discriminant is generated for a Record. The rules are
+therefore validated by synthetic fixtures plus raw GNAT confirmation rather
+than by a coverage movement.
+
+### Final selected PositionReport readiness
+
+Re-measured on authoritative UCI 2.5, closed world, after projection-scoped
+name analysis:
+
+| Backend | Renderable selected | First blocker |
+| --- | ---: | --- |
+| Rust | 51/60 | `DateTimeType` |
+| Ada | 32/60 | `Acceleration3D_Type` |
+
+Both are unchanged. This contract selects a single closure, so no unselected
+declaration was contributing a naming failure to it, and neither new Ada rule
+is exercised by the selection. Neither blocker is implemented here.
+
+Service-check cost on full UCI 2.5 measured **~5.9 s per language**, down from
+~15 s. Readiness now builds its `CoverageAnalysis` over the much smaller
+projected schema instead of the whole of UCI, and still constructs exactly one
+analysis and one renderability snapshot per call.
