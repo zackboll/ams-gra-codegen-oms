@@ -468,6 +468,72 @@ qualified names across those categories are valid. Primitive references need no
 declaration. Unbounded cardinality and unconstrained integers remain valid IR
 even where an initial backend cannot yet represent them.
 
+## Named restriction steps are validated before effective normalization
+
+Corrective cleanup after Task 033.
+
+**Historical behaviour.** The frontend computed effective constraints by
+intersecting the inherited and local restriction sets. That produces the right
+domain, but it is lossy about *legality*: an illegal derived step simply loses
+the intersection and disappears.
+
+```text
+Base:    minInclusive = 10
+Derived: minInclusive = 0     ->  effective >= 10
+```
+
+The generated domain never widened, so nothing downstream misbehaved — but the
+authored derivation is invalid XSD, and normalizing it away destroyed the
+evidence that the source was wrong. The same class existed for length bounds.
+
+**Current corrected behaviour.** Each authored restriction step is validated
+against its **immediate effective base** before the step is folded in. The flow
+is:
+
+```text
+parse local facets
+    ↓
+validate the local restriction step against its immediate base
+    ↓
+intersect into the effective ConstraintSet
+    ↓
+SchemaIr validation
+```
+
+Effective intersection is unchanged and still runs afterwards; the step check
+is additional, not a replacement.
+
+Numeric rules, applied uniformly to signed integers, unsigned integers,
+`Float32`, and `Float64`:
+
+* a derived lower bound may not be weaker than the inherited lower bound;
+* a derived upper bound may not be weaker than the inherited upper bound;
+* inclusive/exclusive strength at an **equal** value is directional —
+  `>= 10` to `> 10` strengthens and is legal, while `> 10` to `>= 10` readmits
+  `10` and is rejected;
+* one step may not declare both `minInclusive` and `minExclusive`, nor both
+  `maxInclusive` and `maxExclusive`.
+
+Length rules, for `String` and `Binary`:
+
+* a derived `minLength` may not weaken the inherited minimum;
+* a derived `maxLength` may not weaken the inherited maximum;
+* a derived exact `length` must satisfy the inherited bounds;
+* an inherited exact length may not be changed to a different exact length
+  (restating the same value is a legal no-op).
+
+Strength comparison reuses the same helpers the intersection uses, so the step
+check and the intersection cannot disagree about which bound is stronger.
+Validation is against the immediate base rather than the original primitive, so
+a multi-level chain is checked at every step.
+
+Pattern group accumulation and the existing `whiteSpace` weakening rejection are
+preserved unchanged. Existing width and domain checks are untouched, and no
+`Decimal` support is added.
+
+Both authoritative roots still normalize unchanged under the stricter rules:
+UCI 2.5 at 5,557 types / 722 messages, UCI 2.6 at 5,570 types / 725 messages.
+
 ## Why this matters for SPARK
 
 A normalized constraint model allows the Ada backend to make principled decisions about which XSD restrictions can become:

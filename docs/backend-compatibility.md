@@ -1879,9 +1879,136 @@ and no floating `whiteSpace` semantics. No arbitrary-precision decimal bounds.
 No CAL wrappers, service wrappers, JSON codecs, or runtime code. No profile
 validation, Capability inference, or UCI version normalization.
 
-No `AltitudeType` or `Acceleration3D_Type` name special-case exists anywhere:
+No `AltitudeType` or `Acceleration3D_Type` name special-case exists anywhere (see
+also the corrective-cleanup section at the end of this document):
 both are ordinary consequences of the generic rules above. No frontend semantic
 change and no `SchemaIr`/`ConstraintSet`/`NumericValue` shape change was made,
 and no `ServicePlan`, readiness, or selected-generation special-case was added —
 Tasks 031 and 032 inherit the new capability through the existing shared
 coverage snapshot and the ordinary backends.
+
+## Corrective cleanup: generated names and the abstract-descendant boundary
+
+This section describes a retrospective correction made after Task 033. Where it
+describes a defect, the **historical behaviour** and the **current corrected
+behaviour** are distinguished explicitly; earlier sections of this document
+remain an accurate record of what each task did at the time.
+
+### Abstract descendant projection is fail-closed
+
+**Historical behaviour.** `project_abstract_value` decided descendancy from a
+successful structural projection, and skipped any candidate whose projection
+failed. A concrete descendant that existed but could not be represented — for
+example because of an inherited member-name collision — was therefore silently
+dropped. Two different facts became indistinguishable:
+
+```text
+a legal concrete payload exists but cannot be represented
+no legal payload exists
+```
+
+If every descendant failed, the target was reported as
+`NoConcreteDescendants`, which is the precondition for Task 026's absent-only
+optional elision. An optional field of such a target could then be elided
+entirely.
+
+**Current corrected behaviour.** Descendancy is decided from the declared
+`base_type` chain, which is available whether or not the candidate is
+representable. A descendant that cannot be projected now fails closed with
+
+```text
+AbstractValueProjectionError::UnrepresentableConcreteDescendant
+```
+
+carrying the abstract target, the concrete descendant, and the underlying
+`StructuralProjectionError`. It is never converted to `NoConcreteDescendants`,
+so Task 026 elision cannot be reached for a target that does have a legal
+payload, and a closed sum can never be emitted with an alternative missing.
+
+A genuinely descendant-free abstract target still reports
+`NoConcreteDescendants`; the correction narrows that classification rather than
+removing it.
+
+Authoritative UCI 2.5 and 2.6 abstract-value topology and coverage counts are
+unchanged, because neither schema contains an unrepresentable concrete
+descendant.
+
+### Generated host-language names are part of backend representability
+
+**Historical behaviour.** IR identifiers are transformed per backend — Rust and
+C++ upper-camel declarations and snake_case members, Ada verbatim
+case-insensitive identifiers. Only Choice alternatives were collision-checked,
+and only inside each renderer; top-level declarations, effective Record
+members, enumeration variants, and Ada's user-derived helper types were not
+checked at all. Coverage modelled none of it. Two consequences followed:
+
+* two distinct XSD names could normalize to one generated identifier
+  (`foo_bar` and `fooBar` both become `FooBar`);
+* a legal XSD name could land on a host-language reserved word.
+
+Either produced source that does not compile, while capability analysis could
+still report the declaration renderable. This was not hypothetical: the
+repository's own `backend-unbounded-cardinality.xsd` fixture declared a type
+named `Record`, and GNAT rejects the Ada spec generated from it with
+`reserved word "record" cannot be used as identifier`.
+
+**Current corrected behaviour.** `codegen-core::backend_names` owns one shared
+model of generated-name validity, consumed by **both** backend generation
+validation and capability/readiness analysis, so the two cannot disagree. Per
+backend it rejects, in schema order:
+
+| Region | Rust / C++ | Ada |
+|---|---|---|
+| top-level declarations | upper-camel collisions, reserved words | case-insensitive collisions, reserved words |
+| Record members (effective, post-inheritance) | snake_case collisions, reserved words | case-insensitive collisions, reserved words |
+| enumeration variants | upper-camel collisions, reserved words | case-insensitive collisions, reserved words |
+| Choice variants | upper-camel collisions | case-insensitive component collisions |
+| generated helper types | not emitted | `{Owner}_{Member}_Array`/`_Sequence`/`_Item`/`_Vectors`, registered in the **flat package** scope beside declared types |
+
+Ada's helper names are user-controlled and share the flat package scope with
+every declared type, so they are checked there rather than in the owning
+declaration's member scope.
+
+The rules are asymmetric by design and the asymmetry is asserted, not smoothed
+over: a case-only difference collides in Ada but not in Rust or C++, and an
+upper-camel convergence collides in Rust and C++ but not in Ada.
+
+This module **rejects**; it never mangles, escapes, suffixes, or renames.
+Inventing a disambiguation scheme would silently change the generated API
+surface. Existing accepted UCI identifiers keep their exact generated spelling,
+and authoritative UCI coverage is unchanged.
+
+> Language-specific naming policy lives in shared codegen infrastructure. It is
+> never stored in Schema IR, and no generated name is written back into IR.
+
+### Single-namespace generation is a readiness-visible boundary
+
+**Historical behaviour.** The frontend represents imported and multiple
+namespaces; the three language backends deliberately remain single-namespace
+and reject multi-namespace input globally. Service readiness, however, operated
+only at declaration and member capability level. A selected service closure
+spanning two namespaces could therefore be reported READY even though
+generation of that same projected schema fails.
+
+**Current corrected behaviour.** `codegen-core::backend_preflight` models the
+global preconditions a backend imposes on a whole schema — the single generable
+namespace, plus generated-name safety — and both backend `validate_schema` and
+`analyze_service_readiness` call it.
+
+Readiness runs the preflight on the **projected selected schema**, exactly the
+input selected-service generation hands to the backend. That is what makes the
+scope right in both directions:
+
+* a selected closure that genuinely spans namespaces is NOT READY, with a typed
+  `BackendPreflightError::MultipleNamespaces` blocker naming every namespace;
+* a selected closure that narrows to one namespace stays READY even when the
+  full schema set contains unrelated declarations in other namespaces.
+
+A violated precondition is reported as a **backend capability** limit, not as
+malformed Schema IR: multi-namespace input is valid IR that the backends simply
+do not generate yet. Nothing here implements multi-namespace generation, and the
+backends' existing rejection is not weakened.
+
+An empty projected schema — what a contract with zero OMS Message exchanges
+produces — is vacuously generable: there is nothing to emit, so there is no
+namespace to require.

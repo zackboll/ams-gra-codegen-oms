@@ -58,4 +58,15 @@ jobs:
           require_one_test task033_selected_ada_float_rejects_public_bypasses \
             cargo test -p ams-gra-codegen-oms --test service_generate \
             task033_selected_ada_float_rejects_public_bypasses
+          # Corrective cleanup: the shared backend name preflight must not just
+          # reject unsafe names, it must still let a safe control schema
+          # produce Ada that GNAT actually accepts.
+          require_one_test tests::preflight_control_renders_and_compiles \
+            cargo test -p ams-gra-oms-backend-ada --lib \
+            tests::preflight_control_renders_and_compiles
+      # `AMS_GRA_REQUIRE_GNAT` turns the Ada probes' developer-machine skip
+      # into a hard failure, so a runner that somehow lost GNAT after the gate
+      # above cannot produce a green run with the Ada checks quietly elided.
       - run: cargo test --workspace
+        env:
+          AMS_GRA_REQUIRE_GNAT: "1"
