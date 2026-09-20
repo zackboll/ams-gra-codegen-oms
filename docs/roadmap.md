@@ -73,15 +73,32 @@ supplied by schemas outside the open, unclassified UCI schema set. See
   overlay fixture closes the extension point and lowers through ordinary
   Task 024 closed sums with no new code.
 
+**Complete (Task 029):**
+
+- **explicit root-plus-private-schema overlay composition.** One frontend API,
+  `load_schema_set_with_overlays(root, overlays)`, composes a primary root and
+  additional top-level same-namespace schema documents into one normalized
+  `SchemaIr`. `load_schema_set` is now its empty-overlay case. Overlays are
+  additive only: the root stays authoritative for schema version, namespace
+  presentation, and initial declaration order; duplicate qualified names remain
+  errors with no precedence; documents are deduplicated by canonical path;
+- **repeatable same-namespace CLI overlay input.** `--overlay PATH` on
+  `validate`, `coverage`, and `generate`, accumulated in command-line order
+  (never sorted) and accepted even when repeated. A private derived type can now
+  be supplied against a *pinned* authoritative root with no edit to that root
+  and no manufactured wrapper document, which makes ADR-0004 option 4
+  operational. Overlays never infer a world.
+
 **Still open:**
 
 - representation for extension values whose derived types are *not* known at
   generation time (arbitrary external derived types); this depends on Phase 3
   runtime/codec work and must not be decided before it;
-- an extension registry / runtime, including `xsi:type` handling;
-- multi-namespace private-extension support, if a private derived type must
-  live in a different target namespace than its base — current backends still
-  require a single namespace;
+- an extension registry / runtime, including `xsi:type` handling and runtime
+  codec dispatch;
+- multi-namespace generation, if a private derived type must live in a different
+  target namespace than its base — top-level overlays are same-target-namespace
+  only, and current backends still require a single namespace;
 - CAL codec and runtime polymorphism.
 
 `SourceCommandEXT`'s `0..unbounded` occurrence stays fail-closed in **both**

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:o="urn:other"
+           targetNamespace="urn:other"
+           elementFormDefault="qualified">
+  <!-- Task 029 section 34: a top-level overlay in a DIFFERENT target namespace.
+       Offering this as an overlay must be rejected by the frontend with an
+       explicit overlay-namespace diagnostic, not deferred to a backend. -->
+  <xs:complexType name="OtherType">
+    <xs:sequence>
+      <xs:element name="Value" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

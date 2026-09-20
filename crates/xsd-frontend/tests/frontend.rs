@@ -1,8 +1,10 @@
 use ams_gra_oms_ir::{
     Cardinality, Float32Value, Float64Value, NumericValue, PatternDialect, PrimitiveKind,
-    QualifiedName, TypeKind, TypeRefTarget, WhiteSpacePolicy,
+    QualifiedName, SchemaIr, TypeKind, TypeRefTarget, WhiteSpacePolicy,
 };
-use ams_gra_oms_xsd_frontend::{FrontendError, load_schema_document, load_schema_set};
+use ams_gra_oms_xsd_frontend::{
+    FrontendError, load_schema_document, load_schema_set, load_schema_set_with_overlays,
+};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -1721,6 +1723,338 @@ fn normalizes_and_strictly_parses_string_white_space() {
         let error = load_schema_document(&path).expect_err("invalid whiteSpace must fail");
         fs::remove_file(path).expect("temporary schema should be removable");
         assert!(error.to_string().contains("invalid whiteSpace facet value"));
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Task 029 -- additive same-namespace schema overlays
+// ---------------------------------------------------------------------------
+
+const OVERLAY_NS: &str = "urn:overlay";
+
+fn overlay_fixture(name: &str) -> PathBuf {
+    fixture("schema-overlay").join(name)
+}
+
+fn type_names(ir: &SchemaIr) -> Vec<&str> {
+    ir.types
+        .iter()
+        .map(|declaration| declaration.name.local_name.as_str())
+        .collect()
+}
+
+fn immediate_base(ir: &SchemaIr, local_name: &str) -> Option<TypeRefTarget> {
+    ir.types
+        .iter()
+        .find(|declaration| declaration.name.local_name == local_name)?
+        .base_type
+        .as_ref()
+        .map(|base| base.target.clone())
+}
+
+/// Section 27: the public root alone declares the extension point and no
+/// descendant at all. The private document is deliberately NOT xs:include'd,
+/// so it can only enter through explicit overlay composition.
+#[test]
+fn overlay_fixture_without_overlay_has_no_private_descendant() {
+    let ir = load_schema_set(&overlay_fixture("public.xsd")).expect("public root should load");
+    assert_eq!(type_names(&ir), ["ExtensionBase", "Container"]);
+    assert_eq!(
+        ir.types
+            .iter()
+            .filter(|declaration| {
+                declaration.base_type.as_ref().is_some_and(|base| {
+                    base.target
+                        == TypeRefTarget::Named(QualifiedName::new(OVERLAY_NS, "ExtensionBase"))
+                })
+            })
+            .count(),
+        0,
+        "the public root alone must have zero known concrete descendants"
+    );
+}
+
+/// Section 28: the same root plus the private overlay yields one namespace and
+/// the private descendant, with primary declarations retaining their order and
+/// overlay declarations appended after them.
+#[test]
+fn overlay_adds_private_descendant_after_primary_declarations() {
+    let ir = load_schema_set_with_overlays(
+        &overlay_fixture("public.xsd"),
+        &[overlay_fixture("private-a.xsd")],
+    )
+    .expect("root plus overlay should load");
+
+    assert_eq!(ir.namespaces.len(), 1);
+    assert_eq!(ir.namespaces[0].uri, OVERLAY_NS);
+    assert_eq!(type_names(&ir), ["ExtensionBase", "Container", "PrivateA"]);
+    assert_eq!(
+        immediate_base(&ir, "PrivateA"),
+        Some(TypeRefTarget::Named(QualifiedName::new(
+            OVERLAY_NS,
+            "ExtensionBase"
+        ))),
+        "section 14: an overlay type may extend a primary-root type"
+    );
+
+    let private = ir
+        .types
+        .iter()
+        .find(|declaration| declaration.name.local_name == "PrivateA")
+        .expect("PrivateA should exist");
+    assert_eq!(private.name.namespace_uri, OVERLAY_NS);
+    assert!(
+        private.source.document.contains("private-a.xsd"),
+        "section 37: provenance stays available through the existing SourceRef"
+    );
+}
+
+/// Section 31: several overlays compose in caller-provided order, and reversing
+/// the CLI order deterministically reverses their declaration order. Overlay
+/// paths are never sorted, because argument order is the reproducible input and
+/// absolute filesystem paths vary by machine.
+#[test]
+fn two_overlays_follow_caller_order_and_are_never_sorted() {
+    let forward = load_schema_set_with_overlays(
+        &overlay_fixture("public.xsd"),
+        &[
+            overlay_fixture("private-a.xsd"),
+            overlay_fixture("private-b.xsd"),
+        ],
+    )
+    .expect("two overlays should compose");
+    assert_eq!(
+        type_names(&forward),
+        ["ExtensionBase", "Container", "PrivateA", "PrivateB"]
+    );
+
+    let reversed = load_schema_set_with_overlays(
+        &overlay_fixture("public.xsd"),
+        &[
+            overlay_fixture("private-b.xsd"),
+            overlay_fixture("private-a.xsd"),
+        ],
+    )
+    .expect("reversed overlays should also compose");
+    assert_eq!(
+        type_names(&reversed),
+        ["ExtensionBase", "Container", "PrivateB", "PrivateA"]
+    );
+}
+
+/// Sections 8/21: one canonical document is loaded once, whether the caller
+/// repeats the overlay path or spells the same file differently.
+#[test]
+fn repeated_overlay_path_loads_the_document_once() {
+    let ir = load_schema_set_with_overlays(
+        &overlay_fixture("public.xsd"),
+        &[
+            overlay_fixture("private-a.xsd"),
+            overlay_fixture("private-a.xsd"),
+            overlay_fixture(".").join("private-a.xsd"),
+        ],
+    )
+    .expect("repeating one overlay must not duplicate declarations");
+    assert_eq!(type_names(&ir), ["ExtensionBase", "Container", "PrivateA"]);
+}
+
+/// Section 32: an overlay the root already reaches through xs:include is still
+/// loaded exactly once; canonical-path identity, not input route, decides.
+#[test]
+fn overlay_already_reachable_from_root_is_not_duplicated() {
+    let ir = load_schema_set_with_overlays(
+        &overlay_fixture("including-root.xsd"),
+        &[overlay_fixture("private-a.xsd")],
+    )
+    .expect("already-included overlay should be accepted");
+    assert_eq!(type_names(&ir), ["ExtensionBase", "Container", "PrivateA"]);
+}
+
+/// Section 12: the primary root remains authoritative for the schema version
+/// even when an overlay declares a different one.
+#[test]
+fn overlay_schema_version_never_replaces_the_root_version() {
+    let ir = load_schema_set_with_overlays(
+        &overlay_fixture("versioned-root.xsd"),
+        &[overlay_fixture("versioned-overlay.xsd")],
+    )
+    .expect("differing versions should still load");
+    assert_eq!(ir.schema_version.as_deref(), Some("1"));
+    assert_eq!(type_names(&ir), ["RootCarrier", "OverlayCarrier"]);
+}
+
+/// Sections 13/33: an overlay binding the shared namespace to a different
+/// lexical prefix resolves normally and does not change the presentation
+/// metadata recorded from the primary root.
+#[test]
+fn overlay_prefix_difference_has_no_semantic_effect() {
+    let ir = load_schema_set_with_overlays(
+        &overlay_fixture("public.xsd"),
+        &[overlay_fixture("private-a.xsd")],
+    )
+    .expect("differently prefixed overlay should load");
+    assert_eq!(ir.namespaces.len(), 1);
+    assert_eq!(
+        ir.namespaces[0].preferred_prefix.as_deref(),
+        Some("pub"),
+        "the primary root's first-seen prefix stays authoritative"
+    );
+}
+
+/// Section 14: a pending named simple restriction declared in an overlay may
+/// restrict a compatible named base loaded from the primary root, because
+/// resolution runs only after all documents are assembled.
+#[test]
+fn overlay_named_restriction_resolves_against_a_root_base() {
+    let ir = load_schema_set_with_overlays(
+        &overlay_fixture("restriction-root.xsd"),
+        &[overlay_fixture("restriction-overlay.xsd")],
+    )
+    .expect("overlay restriction of a root base should resolve");
+    let narrowed = ir
+        .types
+        .iter()
+        .find(|declaration| declaration.name.local_name == "OverlayNarrowedInt")
+        .expect("OverlayNarrowedInt should exist");
+    assert_eq!(
+        narrowed.kind,
+        TypeKind::Primitive(PrimitiveKind::SignedInteger)
+    );
+    assert_eq!(
+        narrowed.constraints.min_inclusive,
+        Some(NumericValue::Integer(10))
+    );
+    assert_eq!(
+        narrowed.constraints.max_inclusive,
+        Some(NumericValue::Integer(20))
+    );
+}
+
+/// Section 15: a root reference that is unresolved on its own may be satisfied
+/// by an explicitly supplied overlay. Resolution never special-cases whether a
+/// declaration arrived from the root or from an overlay.
+#[test]
+fn root_reference_may_be_satisfied_by_an_explicit_overlay() {
+    let error = load_schema_set(&overlay_fixture("root-needing-overlay.xsd"))
+        .expect_err("the root alone leaves the reference unresolved");
+    assert!(
+        error.to_string().contains("SuppliedByOverlayType"),
+        "root-only diagnostic must name the missing type: {error}"
+    );
+
+    let ir = load_schema_set_with_overlays(
+        &overlay_fixture("root-needing-overlay.xsd"),
+        &[overlay_fixture("supplying-overlay.xsd")],
+    )
+    .expect("the explicitly supplied overlay completes the schema set");
+    assert_eq!(type_names(&ir), ["RootReferrer", "SuppliedByOverlayType"]);
+}
+
+/// Sections 16/35: overlays are additive only. A qualified name redeclared by
+/// an overlay fails existing duplicate validation with no precedence and no
+/// shadowing, whether it collides with the root or with an earlier overlay.
+#[test]
+fn overlays_cannot_override_an_existing_declaration() {
+    let root_collision = load_schema_set_with_overlays(
+        &overlay_fixture("public.xsd"),
+        &[overlay_fixture("duplicate-of-public.xsd")],
+    )
+    .expect_err("an overlay must not override a root declaration")
+    .to_string();
+    assert!(
+        root_collision.contains("Container"),
+        "duplicate diagnostic must name the type: {root_collision}"
+    );
+
+    let overlay_collision = load_schema_set_with_overlays(
+        &overlay_fixture("public.xsd"),
+        &[
+            overlay_fixture("private-a.xsd"),
+            overlay_fixture("duplicate-private-a.xsd"),
+        ],
+    )
+    .expect_err("a later overlay must not override an earlier overlay")
+    .to_string();
+    assert!(
+        overlay_collision.contains("PrivateA"),
+        "duplicate diagnostic must name the type: {overlay_collision}"
+    );
+}
+
+/// Section 34: a top-level overlay in a different target namespace is rejected
+/// by the frontend with an explicit overlay diagnostic. It must not be blamed
+/// on an xs:include the caller never wrote, and must not reach a backend.
+#[test]
+fn different_namespace_overlay_is_rejected_with_an_overlay_diagnostic() {
+    let error = load_schema_set_with_overlays(
+        &overlay_fixture("public.xsd"),
+        &[overlay_fixture("other-namespace.xsd")],
+    )
+    .expect_err("a cross-namespace overlay root must be rejected")
+    .to_string();
+    assert!(
+        error.contains("schema overlay target namespace mismatch"),
+        "diagnostic must identify the overlay: {error}"
+    );
+    assert!(
+        error.contains("other-namespace.xsd"),
+        "diagnostic must identify the file: {error}"
+    );
+    assert!(
+        error.contains(OVERLAY_NS) && error.contains("urn:other"),
+        "diagnostic must show expected and actual namespaces: {error}"
+    );
+    assert!(
+        !error.contains("xs:include"),
+        "must not misattribute the overlay to an xs:include: {error}"
+    );
+}
+
+/// Section 17: a missing overlay path fails loudly with the overlay path
+/// visible, and is never silently skipped.
+#[test]
+fn missing_overlay_path_fails_with_the_path_visible() {
+    let error = load_schema_set_with_overlays(
+        &overlay_fixture("public.xsd"),
+        &[overlay_fixture("absent-overlay.xsd")],
+    )
+    .expect_err("a missing overlay must fail the load")
+    .to_string();
+    assert!(
+        error.contains("absent-overlay.xsd"),
+        "diagnostic must name the missing overlay: {error}"
+    );
+}
+
+/// Section 18: a malformed overlay fails the entire schema-set load with
+/// source-path context, leaving no partial IR.
+#[test]
+fn malformed_overlay_fails_the_whole_schema_set() {
+    let error = load_schema_set_with_overlays(
+        &overlay_fixture("public.xsd"),
+        &[overlay_fixture("malformed-overlay.xsd")],
+    )
+    .expect_err("a malformed overlay must fail the load");
+    assert!(matches!(error, FrontendError::InvalidInput(_)));
+    assert!(
+        error.to_string().contains("malformed-overlay.xsd"),
+        "diagnostic must retain source path context: {error}"
+    );
+}
+
+/// Sections 5/57: `load_schema_set` keeps behaving exactly as before, because
+/// it is now just the empty-overlay case of the single loading path.
+#[test]
+fn load_schema_set_matches_the_empty_overlay_case() {
+    for name in ["public.xsd", "including-root.xsd"] {
+        let root_only =
+            load_schema_set(&overlay_fixture(name)).expect("root-only load should succeed");
+        let empty_overlays = load_schema_set_with_overlays(&overlay_fixture(name), &[])
+            .expect("empty overlay list should behave identically");
+        assert_eq!(type_names(&root_only), type_names(&empty_overlays));
+        assert_eq!(root_only.schema_version, empty_overlays.schema_version);
+        assert_eq!(root_only.namespaces, empty_overlays.namespaces);
+        assert_eq!(root_only.messages.len(), empty_overlays.messages.len());
     }
 }
 

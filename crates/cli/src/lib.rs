@@ -4,7 +4,7 @@ use ams_gra_oms_backend_ada::AdaBackend;
 use ams_gra_oms_backend_cpp::CppBackend;
 use ams_gra_oms_backend_rust::RustBackend;
 use ams_gra_oms_codegen_core::{Backend, CoverageAnalysis, GeneratedFile, GenerationWorld};
-use ams_gra_oms_xsd_frontend::load_schema_set;
+use ams_gra_oms_xsd_frontend::load_schema_set_with_overlays;
 use std::collections::BTreeSet;
 use std::ffi::{OsStr, OsString};
 use std::fmt;
@@ -17,14 +17,24 @@ pub const HELP: &str = r#"ams-gra-codegen-oms
 Schema-driven OMS/UCI multi-language code generator.
 
 USAGE:
-    ams-gra-codegen-oms validate --schema PATH
-    ams-gra-codegen-oms coverage --schema PATH --world WORLD
-    ams-gra-codegen-oms generate --schema PATH --language LANGUAGE --output DIR --world WORLD
+    ams-gra-codegen-oms validate --schema PATH [--overlay PATH]...
+    ams-gra-codegen-oms coverage --schema PATH [--overlay PATH]... --world WORLD
+    ams-gra-codegen-oms generate --schema PATH [--overlay PATH]... --language LANGUAGE --output DIR --world WORLD
 
 COMMANDS:
     validate    Load and validate an XSD schema set
     coverage    Report deterministic IR and backend coverage counts
     generate    Generate source files from an XSD schema set
+
+SCHEMA OVERLAYS:
+    'validate', 'coverage', and 'generate' accept a repeatable --overlay PATH:
+    an additional top-level schema document loaded into the same normalized
+    schema set as --schema. Overlays are additive and are applied in the order
+    given; each must declare the same targetNamespace as the root. Overlays
+    never replace, override, or remove a root declaration, so a duplicate
+    qualified name is still an error. Use this to supply known private derived
+    types without editing a pinned authoritative root document. It is
+    build-time schema composition, not a runtime extension registry.
 
 LANGUAGES:
     ada
@@ -68,10 +78,13 @@ const VALIDATE_HELP: &str = r#"ams-gra-codegen-oms validate
 Load an XSD schema set and validate its semantic IR.
 
 USAGE:
-    ams-gra-codegen-oms validate --schema PATH
+    ams-gra-codegen-oms validate --schema PATH [--overlay PATH]...
 
 OPTIONS:
     -s, --schema PATH    Root XSD document
+        --overlay PATH   Repeatable same-target-namespace schema overlay,
+                         additively composed into the validated schema set in
+                         the order given; never overrides root declarations
     -h, --help           Print help
 "#;
 
@@ -80,7 +93,7 @@ const GENERATE_HELP: &str = r#"ams-gra-codegen-oms generate
 Generate source files from an XSD schema set.
 
 USAGE:
-    ams-gra-codegen-oms generate --schema PATH --language LANGUAGE --output DIR --world WORLD
+    ams-gra-codegen-oms generate --schema PATH [--overlay PATH]... --language LANGUAGE --output DIR --world WORLD
 
 LANGUAGES:
     ada
@@ -100,6 +113,10 @@ WORLDS:
 
 OPTIONS:
     -s, --schema PATH          Root XSD document
+        --overlay PATH         Repeatable same-target-namespace schema overlay,
+                               additively composed into the generated schema
+                               set in the order given; never overrides root
+                               declarations and never selects a world
     -l, --language LANGUAGE    Required output language
     -o, --output DIR           Output directory
     -w, --world WORLD          Required generation world policy
@@ -111,7 +128,7 @@ const COVERAGE_HELP: &str = r#"ams-gra-codegen-oms coverage
 Report deterministic semantic IR inventory and backend coverage.
 
 USAGE:
-    ams-gra-codegen-oms coverage --schema PATH --world WORLD
+    ams-gra-codegen-oms coverage --schema PATH [--overlay PATH]... --world WORLD
 
 WORLDS:
     closed-schema       Measure capability assuming the supplied schema set is
@@ -126,6 +143,10 @@ WORLDS:
 
 OPTIONS:
     -s, --schema PATH    Root XSD document
+        --overlay PATH   Repeatable same-target-namespace schema overlay,
+                         additively composed into the analyzed schema set in
+                         the order given; never overrides root declarations
+                         and never implies a world
     -w, --world WORLD    Required generation world policy
     -h, --help           Print help
 "#;
@@ -232,13 +253,16 @@ enum Command {
     Version,
     Validate {
         schema: PathBuf,
+        overlays: Vec<PathBuf>,
     },
     Coverage {
         schema: PathBuf,
+        overlays: Vec<PathBuf>,
         world: GenerationWorld,
     },
     Generate {
         schema: PathBuf,
+        overlays: Vec<PathBuf>,
         language: Language,
         output: PathBuf,
         world: GenerationWorld,
@@ -257,14 +281,19 @@ where
     match parse_args(args)? {
         Command::Help(help) => write_output(stdout, help),
         Command::Version => write_output(stdout, concat!(env!("CARGO_PKG_VERSION"), "\n")),
-        Command::Validate { schema } => validate(&schema, stdout),
-        Command::Coverage { schema, world } => coverage(&schema, world, stdout),
+        Command::Validate { schema, overlays } => validate(&schema, &overlays, stdout),
+        Command::Coverage {
+            schema,
+            overlays,
+            world,
+        } => coverage(&schema, &overlays, world, stdout),
         Command::Generate {
             schema,
+            overlays,
             language,
             output,
             world,
-        } => generate(&schema, language, &output, world, stdout),
+        } => generate(&schema, &overlays, language, &output, world, stdout),
     }
 }
 
@@ -304,12 +333,15 @@ fn parse_validate(args: Vec<OsString>) -> Result<Command, CliError> {
         return Ok(Command::Help(VALIDATE_HELP));
     }
     let mut schema = None;
+    let mut overlays = Vec::new();
     parse_options(args, |option, value| match option {
         "-s" | "--schema" => set_once(&mut schema, value, "--schema"),
+        "--overlay" => push_overlay(&mut overlays, value),
         _ => Err(CliError::usage(format!("unknown option '{option}'"))),
     })?;
     Ok(Command::Validate {
         schema: required(schema, "--schema")?.into(),
+        overlays,
     })
 }
 
@@ -318,14 +350,18 @@ fn parse_coverage(args: Vec<OsString>) -> Result<Command, CliError> {
         return Ok(Command::Help(COVERAGE_HELP));
     }
     let mut schema = None;
+    let mut overlays = Vec::new();
     let mut world = None;
     parse_options(args, |option, value| match option {
         "-s" | "--schema" => set_once(&mut schema, value, "--schema"),
+        "--overlay" => push_overlay(&mut overlays, value),
         "-w" | "--world" => set_once(&mut world, value, "--world"),
         _ => Err(CliError::usage(format!("unknown option '{option}'"))),
     })?;
     Ok(Command::Coverage {
         schema: required(schema, "--schema")?.into(),
+        // Additive only: an overlay never infers or relaxes the world below.
+        overlays,
         // Required, with no fallback: coverage numbers are meaningless
         // without knowing which type universe they measured.
         world: parse_world(&required(world, "--world")?)?,
@@ -337,11 +373,13 @@ fn parse_generate(args: Vec<OsString>) -> Result<Command, CliError> {
         return Ok(Command::Help(GENERATE_HELP));
     }
     let mut schema = None;
+    let mut overlays = Vec::new();
     let mut language = None;
     let mut output = None;
     let mut world = None;
     parse_options(args, |option, value| match option {
         "-s" | "--schema" => set_once(&mut schema, value, "--schema"),
+        "--overlay" => push_overlay(&mut overlays, value),
         "-l" | "--language" => set_once(&mut language, value, "--language"),
         "-o" | "--output" => set_once(&mut output, value, "--output"),
         "-w" | "--world" => set_once(&mut world, value, "--world"),
@@ -349,6 +387,8 @@ fn parse_generate(args: Vec<OsString>) -> Result<Command, CliError> {
     })?;
     Ok(Command::Generate {
         schema: required(schema, "--schema")?.into(),
+        // Additive only: an overlay never infers or relaxes the world below.
+        overlays,
         language: Language::parse(&required(language, "--language")?)?,
         output: required(output, "--output")?.into(),
         // Required, with no fallback: the caller must state the semantic
@@ -388,6 +428,18 @@ fn set_once(slot: &mut Option<OsString>, value: OsString, name: &str) -> Result<
     Ok(())
 }
 
+/// Accumulate one `--overlay` value.
+///
+/// Deliberately not [`set_once`]: unlike the singular options, repeating
+/// `--overlay` is the documented way to compose several overlays, and command
+/// line order is the deterministic ordering source. Repeating the same path is
+/// accepted here too; the frontend's canonical-path identity tracking loads the
+/// physical document once.
+fn push_overlay(overlays: &mut Vec<PathBuf>, value: OsString) -> Result<(), CliError> {
+    overlays.push(value.into());
+    Ok(())
+}
+
 fn required(value: Option<OsString>, name: &str) -> Result<OsString, CliError> {
     value.ok_or_else(|| CliError::usage(format!("missing required option '{name}'")))
 }
@@ -399,9 +451,13 @@ fn unexpected_argument(argument: &OsStr) -> CliError {
     ))
 }
 
-fn validate<W: Write>(schema_path: &Path, stdout: &mut W) -> Result<(), CliError> {
-    let schema =
-        load_schema_set(schema_path).map_err(|error| CliError::execution(error.to_string()))?;
+fn validate<W: Write>(
+    schema_path: &Path,
+    overlays: &[PathBuf],
+    stdout: &mut W,
+) -> Result<(), CliError> {
+    let schema = load_schema_set_with_overlays(schema_path, overlays)
+        .map_err(|error| CliError::execution(error.to_string()))?;
     schema
         .validate()
         .map_err(|error| CliError::execution(format!("invalid schema IR: {error}")))?;
@@ -418,11 +474,12 @@ fn validate<W: Write>(schema_path: &Path, stdout: &mut W) -> Result<(), CliError
 
 fn coverage<W: Write>(
     schema_path: &Path,
+    overlays: &[PathBuf],
     world: GenerationWorld,
     stdout: &mut W,
 ) -> Result<(), CliError> {
-    let schema =
-        load_schema_set(schema_path).map_err(|error| CliError::execution(error.to_string()))?;
+    let schema = load_schema_set_with_overlays(schema_path, overlays)
+        .map_err(|error| CliError::execution(error.to_string()))?;
     let analysis = CoverageAnalysis::new(&schema, world)
         .map_err(|error| CliError::execution(error.to_string()))?;
     let report = analysis
@@ -433,13 +490,14 @@ fn coverage<W: Write>(
 
 fn generate<W: Write>(
     schema_path: &Path,
+    overlays: &[PathBuf],
     language: Language,
     output_dir: &Path,
     world: GenerationWorld,
     stdout: &mut W,
 ) -> Result<(), CliError> {
-    let schema =
-        load_schema_set(schema_path).map_err(|error| CliError::execution(error.to_string()))?;
+    let schema = load_schema_set_with_overlays(schema_path, overlays)
+        .map_err(|error| CliError::execution(error.to_string()))?;
     schema
         .validate()
         .map_err(|error| CliError::execution(format!("invalid schema IR: {error}")))?;
@@ -670,7 +728,8 @@ mod tests {
         assert_eq!(
             parse(&["validate", "--schema", "root.xsd"]).unwrap(),
             Command::Validate {
-                schema: "root.xsd".into()
+                schema: "root.xsd".into(),
+                overlays: Vec::new(),
             }
         );
     }
@@ -685,6 +744,7 @@ mod tests {
                 parse(&["coverage", "--schema", "root.xsd", "--world", text]).unwrap(),
                 Command::Coverage {
                     schema: "root.xsd".into(),
+                    overlays: Vec::new(),
                     world,
                 }
             );
@@ -717,6 +777,7 @@ mod tests {
                     .unwrap(),
                     Command::Generate {
                         schema: "root.xsd".into(),
+                        overlays: Vec::new(),
                         language,
                         output: "out".into(),
                         world,
@@ -724,6 +785,291 @@ mod tests {
                 );
             }
         }
+    }
+
+    // ---------------------------------------------------------------
+    // Task 029 -- additive same-namespace schema overlays
+    // ---------------------------------------------------------------
+
+    fn overlay_fixture(name: &str) -> PathBuf {
+        fixture("crates/xsd-frontend/tests/fixtures/schema-overlay").join(name)
+    }
+
+    /// Task 029 section 20: repeated `--overlay` accumulates in the exact order
+    /// given on the command line, for all three commands. That order is the
+    /// deterministic composition input, so it must never be reordered.
+    #[test]
+    fn parses_repeated_overlays_in_command_line_order() {
+        assert_eq!(
+            parse(&[
+                "validate",
+                "--schema",
+                "root.xsd",
+                "--overlay",
+                "a.xsd",
+                "--overlay",
+                "b.xsd",
+            ])
+            .unwrap(),
+            Command::Validate {
+                schema: "root.xsd".into(),
+                overlays: vec!["a.xsd".into(), "b.xsd".into()],
+            }
+        );
+        assert_eq!(
+            parse(&[
+                "coverage",
+                "--schema",
+                "root.xsd",
+                "--overlay",
+                "a.xsd",
+                "--overlay",
+                "b.xsd",
+                "--world",
+                "closed-schema",
+            ])
+            .unwrap(),
+            Command::Coverage {
+                schema: "root.xsd".into(),
+                overlays: vec!["a.xsd".into(), "b.xsd".into()],
+                world: GenerationWorld::ClosedSchemaSet,
+            }
+        );
+        assert_eq!(
+            parse(&[
+                "generate",
+                "--schema",
+                "root.xsd",
+                "--overlay",
+                "b.xsd",
+                "--overlay",
+                "a.xsd",
+                "--language",
+                "rust",
+                "--output",
+                "out",
+                "--world",
+                "open-extensions",
+            ])
+            .unwrap(),
+            Command::Generate {
+                schema: "root.xsd".into(),
+                overlays: vec!["b.xsd".into(), "a.xsd".into()],
+                language: Language::Rust,
+                output: "out".into(),
+                world: GenerationWorld::OpenExtensions,
+            }
+        );
+    }
+
+    /// Task 029 section 21: unlike the singular options, a repeated
+    /// `--overlay` is intentional, so argument parsing must accept even the
+    /// same path twice. The frontend's canonical dedupe then loads it once, so
+    /// the composed schema set gains exactly one PrivateA.
+    #[test]
+    fn accepts_the_same_overlay_path_twice() {
+        assert_eq!(
+            parse(&[
+                "validate",
+                "--schema",
+                "root.xsd",
+                "--overlay",
+                "a.xsd",
+                "--overlay",
+                "a.xsd",
+            ])
+            .unwrap(),
+            Command::Validate {
+                schema: "root.xsd".into(),
+                overlays: vec!["a.xsd".into(), "a.xsd".into()],
+            }
+        );
+
+        let mut stdout = Vec::new();
+        run(
+            vec![
+                OsString::from("validate"),
+                OsString::from("--schema"),
+                overlay_fixture("public.xsd").into(),
+                OsString::from("--overlay"),
+                overlay_fixture("private-a.xsd").into(),
+                OsString::from("--overlay"),
+                overlay_fixture("private-a.xsd").into(),
+            ],
+            &mut stdout,
+        )
+        .expect("a repeated overlay path must not duplicate declarations");
+        assert_eq!(
+            String::from_utf8(stdout).unwrap(),
+            "schema valid\nnamespaces: 1\ntypes: 3\nmessages: 0\n"
+        );
+    }
+
+    /// Task 029 section 22: `validate` composes overlays without `--world`,
+    /// and its counts reflect the whole composed schema set.
+    #[test]
+    fn validate_with_overlay_counts_the_combined_schema_set() {
+        let mut root_only = Vec::new();
+        run(
+            vec![
+                OsString::from("validate"),
+                OsString::from("--schema"),
+                overlay_fixture("public.xsd").into(),
+            ],
+            &mut root_only,
+        )
+        .expect("root-only validation should succeed");
+        assert_eq!(
+            String::from_utf8(root_only).unwrap(),
+            "schema valid\nnamespaces: 1\ntypes: 2\nmessages: 0\n"
+        );
+
+        let mut combined = Vec::new();
+        run(
+            vec![
+                OsString::from("validate"),
+                OsString::from("--schema"),
+                overlay_fixture("public.xsd").into(),
+                OsString::from("--overlay"),
+                overlay_fixture("private-a.xsd").into(),
+                OsString::from("--overlay"),
+                overlay_fixture("private-b.xsd").into(),
+            ],
+            &mut combined,
+        )
+        .expect("overlay validation should succeed without --world");
+        assert_eq!(
+            String::from_utf8(combined).unwrap(),
+            "schema valid\nnamespaces: 1\ntypes: 4\nmessages: 0\n"
+        );
+    }
+
+    /// Task 029 sections 23/25: `coverage` analyzes the combined IR under both
+    /// worlds, and supplying an overlay never infers a world.
+    #[test]
+    fn coverage_with_overlay_analyzes_the_combined_ir_in_both_worlds() {
+        for world in ["closed-schema", "open-extensions"] {
+            let mut stdout = Vec::new();
+            run(
+                vec![
+                    OsString::from("coverage"),
+                    OsString::from("--schema"),
+                    overlay_fixture("public.xsd").into(),
+                    OsString::from("--overlay"),
+                    overlay_fixture("private-a.xsd").into(),
+                    OsString::from("--world"),
+                    OsString::from(world),
+                ],
+                &mut stdout,
+            )
+            .expect("overlay coverage should succeed");
+            let report = String::from_utf8(stdout).unwrap();
+            assert!(
+                report.contains(world),
+                "report must state which world produced it: {report}"
+            );
+            assert!(
+                report.contains("declarations.total: 3"),
+                "combined IR must be analyzed under {world}: {report}"
+            );
+        }
+
+        assert_usage_error(
+            &[
+                "coverage",
+                "--schema",
+                "root.xsd",
+                "--overlay",
+                "private.xsd",
+            ],
+            "--world",
+        );
+    }
+
+    /// Task 029 sections 24/25: `generate` builds from the combined IR under
+    /// `closed-schema`, still fails closed under `open-extensions`, and never
+    /// modifies either input document.
+    #[test]
+    fn generate_with_overlay_uses_the_combined_ir_without_mutating_inputs() {
+        let before = [
+            fs::read_to_string(overlay_fixture("public.xsd")).unwrap(),
+            fs::read_to_string(overlay_fixture("private-a.xsd")).unwrap(),
+        ];
+
+        let output = TempDir::new();
+        let mut stdout = Vec::new();
+        run(
+            vec![
+                OsString::from("generate"),
+                OsString::from("--schema"),
+                overlay_fixture("public.xsd").into(),
+                OsString::from("--overlay"),
+                overlay_fixture("private-a.xsd").into(),
+                OsString::from("--language"),
+                OsString::from("rust"),
+                OsString::from("--output"),
+                output.0.clone().into(),
+                OsString::from("--world"),
+                OsString::from("closed-schema"),
+            ],
+            &mut stdout,
+        )
+        .expect("closed generation with an overlay should succeed");
+        assert!(String::from_utf8(stdout).unwrap().starts_with("generated "));
+        assert!(
+            fs::read_to_string(output.0.join("overlay.rs"))
+                .unwrap()
+                .contains("PrivateA(PrivateA)")
+        );
+
+        let open_output = TempDir::new();
+        let error = run(
+            vec![
+                OsString::from("generate"),
+                OsString::from("--schema"),
+                overlay_fixture("public.xsd").into(),
+                OsString::from("--overlay"),
+                overlay_fixture("private-a.xsd").into(),
+                OsString::from("--language"),
+                OsString::from("rust"),
+                OsString::from("--output"),
+                open_output.0.clone().into(),
+                OsString::from("--world"),
+                OsString::from("open-extensions"),
+            ],
+            &mut Vec::new(),
+        )
+        .expect_err("an overlay must not relax open-extensions");
+        assert_eq!(error.exit_code(), 1);
+        assert!(error.to_string().contains("open-extensions"), "{error}");
+
+        assert_eq!(
+            before,
+            [
+                fs::read_to_string(overlay_fixture("public.xsd")).unwrap(),
+                fs::read_to_string(overlay_fixture("private-a.xsd")).unwrap(),
+            ],
+            "generation must not mutate either input document"
+        );
+    }
+
+    /// Task 029 section 17: a missing overlay is an execution error naming the
+    /// overlay path, never a silent skip.
+    #[test]
+    fn missing_overlay_is_an_execution_error_naming_the_path() {
+        let error = run(
+            vec![
+                OsString::from("validate"),
+                OsString::from("--schema"),
+                overlay_fixture("public.xsd").into(),
+                OsString::from("--overlay"),
+                overlay_fixture("absent-overlay.xsd").into(),
+            ],
+            &mut Vec::new(),
+        )
+        .expect_err("a missing overlay must fail");
+        assert_eq!(error.exit_code(), 1);
+        assert!(error.to_string().contains("absent-overlay.xsd"), "{error}");
     }
 
     /// Task 028 section 34: after this task there is no implicit world, so
@@ -803,7 +1149,8 @@ mod tests {
         assert_eq!(
             parse(&["validate", "--schema", "root.xsd"]).unwrap(),
             Command::Validate {
-                schema: "root.xsd".into()
+                schema: "root.xsd".into(),
+                overlays: Vec::new(),
             }
         );
         assert_usage_error(

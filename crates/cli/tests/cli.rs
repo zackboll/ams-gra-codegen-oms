@@ -11,7 +11,10 @@ fn binary_prints_real_help() {
     let stdout = String::from_utf8(output.stdout).expect("help should be UTF-8");
     assert!(stdout.contains("validate --schema PATH"));
     assert!(stdout.contains("coverage --schema PATH"));
-    assert!(stdout.contains("generate --schema PATH --language LANGUAGE --output DIR"));
+    assert!(stdout.contains("generate --schema PATH [--overlay PATH]... --language LANGUAGE"));
+    // Task 029: the repeatable overlay option is documented in top-level help.
+    assert!(stdout.contains("SCHEMA OVERLAYS:"));
+    assert!(stdout.contains("--overlay PATH"));
     assert!(!stdout.contains("BOOTSTRAP STATUS"));
     assert!(output.stderr.is_empty());
 }

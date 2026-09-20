@@ -152,3 +152,52 @@ generate; it makes the generator *stop pretending* that the supplied descendant
 set is exhaustive. It is the honest mode, and it is deliberately more
 restrictive than `--world closed-schema` until a real runtime representation
 exists.
+
+## Follow-up: option 4 becomes operational (Task 029)
+
+The status remains **Accepted**; this records how the recommended direction
+advanced.
+
+Task 028 validated option 4 only through a fixture whose root `xs:include`d the
+private document. That is not usable against a *pinned* authoritative root:
+adding the private schema would have required editing the root or manufacturing
+a wrapper document of new `xs:include` directives. Task 029 removes that
+obstacle by making the composition an explicit **input** instead of a schema
+edit — a repeatable additive `--overlay PATH` on `validate`, `coverage`, and
+`generate`, backed by one frontend API,
+`load_schema_set_with_overlays(root, overlays)`.
+
+Option 4 is therefore now operational rather than merely demonstrated:
+
+- a private same-namespace derived type can be supplied against an unmodified
+  pinned root, and existing Task 024 closed-sum lowering then applies with no
+  new code;
+- measured against the pinned UCI roots, a synthetic private descendant of
+  `SourceCommandEXT` moves all six `closed-schema` probes past the long-standing
+  zero-descendant blocker. The next blocker is unrelated to extension points
+  (`Primitive(Duration)` in 2.5, `constraints on AA_CodeType` in 2.6) and was
+  deliberately not implemented;
+- the same overlay removes `SourceCommandEXT` from the zero-known-descendant
+  inventory (13 → 12 in both releases) through ordinary Task 024 topology
+  analysis rather than any special registry path — which is the concrete
+  evidence that option 4 needs no new lowering machinery;
+- open-world behaviour is measurably unchanged: all six `open-extensions` probes
+  still stop at `CapabilityCommandBaseType` with and without the overlay.
+
+Full measurements are in `docs/backend-compatibility.md`, "Task 029 — additive
+schema overlays". The UCI probe overlay is synthetic test data and is not
+committed.
+
+Clarifications and unchanged boundaries:
+
+- **same target namespace only.** A top-level overlay must share the root's
+  `targetNamespace`. The backends remain single-namespace, so a private derived
+  type in a *different* namespace is still unsupported.
+- **additive only.** Overlays never override, shadow, or remove declarations; a
+  duplicate qualified name is still an error.
+- **no world inference.** Supplying an overlay does not select
+  `ClosedSchemaSet`; under `OpenExtensions` known descendants remain
+  non-exhaustive and abstract values still fail closed.
+- **option 3 remains deferred.** There is still no runtime-open polymorphism,
+  extension registry, `xsi:type` dispatch, or codec. Overlays are build-time
+  schema composition and nothing more.

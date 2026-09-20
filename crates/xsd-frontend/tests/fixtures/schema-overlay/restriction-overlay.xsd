@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:overlay"
+           targetNamespace="urn:overlay"
+           elementFormDefault="qualified">
+  <!-- Task 029 section 14: a pending named simple restriction in an overlay
+       whose base was loaded from the primary root. -->
+  <xs:simpleType name="OverlayNarrowedInt">
+    <xs:restriction base="t:RootBoundedInt">
+      <xs:minInclusive value="10"/>
+      <xs:maxInclusive value="20"/>
+    </xs:restriction>
+  </xs:simpleType>
+</xs:schema>
