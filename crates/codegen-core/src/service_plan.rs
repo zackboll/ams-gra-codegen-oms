@@ -17,6 +17,7 @@
 //! about the contract and the schema; whether a given backend can *render*
 //! that selection under a closed or open world is a separate question.
 
+use crate::MismatchRole;
 use ams_gra_oms_ir::{MessageDecl, QualifiedName, SchemaIr, TypeDecl, TypeRef, TypeRefTarget};
 use ams_gra_oms_service_contract::{
     Applicability, Capability, Contract, DataTransferExchange, Direction, Exchange,
@@ -260,7 +261,92 @@ pub struct ServicePlan {
     pub functions: Vec<FunctionPlan>,
     /// Unique selected UCI messages, in first-occurrence order.
     selected_messages: Vec<SelectedMessage>,
+    /// Immutable semantic binding to the schema this plan was resolved
+    /// against. Private: it is an implementation detail of mismatch
+    /// detection, not part of the plan's published shape.
+    binding: SchemaBinding,
 }
+
+/// A semantic snapshot of exactly the declarations a plan depends on.
+///
+/// # Why identities are not enough
+///
+/// The public library API accepts a [`ServicePlan`] and a [`SchemaIr`]
+/// separately and explicitly attempts to diagnose wrong-schema reuse. A check
+/// that compares only qualified names cannot do that: schema A and schema B
+/// can declare the same message and type *names* while the payload a message
+/// carries, a type's field list, or a field's constraints and cardinality all
+/// differ. The plan would be silently applied to the wrong model.
+///
+/// This captures the declarations themselves, so verification is exact
+/// semantic equality of the plan-relevant subset.
+///
+/// # Why this representation
+///
+/// Deliberately *not* pointer identity (the caller may legitimately rebuild an
+/// equal schema), not `std::hash` or an ad-hoc integer digest (collisions
+/// would silently accept a mismatch), and not a serialization (unstable, and
+/// this crate has no serializer). Storing the declarations costs the closure's
+/// size once, at resolution, and buys an exact answer with no false accept.
+///
+/// Scope is the selected service, so a change to an unrelated unselected
+/// declaration does not invalidate the plan.
+#[derive(Debug, Clone, PartialEq)]
+struct SchemaBinding {
+    /// Selected message declarations, in contract first-occurrence order.
+    messages: Vec<MessageDecl>,
+    /// The selected transitive named type closure, in schema declaration
+    /// order.
+    types: Vec<TypeDecl>,
+}
+
+/// Which selected identity failed semantic verification, and how.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PlanBindingMismatch {
+    /// The supplied schema does not declare a selected identity at all.
+    Missing {
+        name: QualifiedName,
+        role: MismatchRole,
+    },
+    /// The supplied schema declares the identity, but its declaration differs
+    /// from the one the plan was resolved against.
+    Changed {
+        name: QualifiedName,
+        role: MismatchRole,
+    },
+    /// The selected type closure itself differs: the supplied schema reaches a
+    /// different set of declarations from the same selected messages.
+    ClosureChanged,
+}
+
+impl fmt::Display for PlanBindingMismatch {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Missing { name, role } => write!(
+                formatter,
+                "{} {{{}}}{} is absent from the supplied schema set; the service plan was \
+                 resolved against a different schema set",
+                role.label(),
+                name.namespace_uri,
+                name.local_name
+            ),
+            Self::Changed { name, role } => write!(
+                formatter,
+                "{} {{{}}}{} is declared differently in the supplied schema set than in the one \
+                 the service plan was resolved against",
+                role.label(),
+                name.namespace_uri,
+                name.local_name
+            ),
+            Self::ClosureChanged => formatter.write_str(
+                "the selected type closure differs from the one the service plan was resolved \
+                 against; the plan was resolved against a different schema set",
+            ),
+        }
+    }
+}
+
+impl std::error::Error for PlanBindingMismatch {}
 
 /// One unique UCI message selected by the contract.
 #[derive(Debug, Clone, PartialEq)]
@@ -284,6 +370,79 @@ impl ServicePlan {
     #[must_use]
     pub fn selected_messages(&self) -> &[SelectedMessage] {
         &self.selected_messages
+    }
+
+    /// Verify that `schema` is semantically compatible with the schema this
+    /// plan was resolved against.
+    ///
+    /// This is the **single** mismatch mechanism. Readiness analysis and
+    /// selected-service generation projection both call it, so the two cannot
+    /// drift into independently disagreeing notions of "wrong schema", and a
+    /// mismatch is a typed error rather than a debug assertion or a panic on a
+    /// failed lookup.
+    ///
+    /// Compatibility is exact semantic equality over the plan-relevant subset
+    /// only: every selected message declaration, and every declaration in the
+    /// selected transitive type closure. Two schema objects built separately
+    /// but equal in that subset are compatible -- object identity is never
+    /// required. Conversely, changing a selected message's payload type, a
+    /// selected type's body, or a transitive dependency's constraints or
+    /// cardinality is detected even though every qualified name is unchanged.
+    ///
+    /// Changes to declarations outside the selected closure do not invalidate
+    /// the plan: a `ServicePlan` is selected-service scoped by construction.
+    ///
+    /// # Errors
+    ///
+    /// Returns the first [`PlanBindingMismatch`] in binding order: messages in
+    /// contract first-occurrence order, then types in schema declaration
+    /// order.
+    pub fn verify_schema_binding(&self, schema: &SchemaIr) -> Result<(), PlanBindingMismatch> {
+        for expected in &self.binding.messages {
+            let actual = schema
+                .messages
+                .iter()
+                .find(|message| message.name == expected.name)
+                .ok_or_else(|| PlanBindingMismatch::Missing {
+                    name: expected.name.clone(),
+                    role: MismatchRole::Message,
+                })?;
+            if actual != expected {
+                return Err(PlanBindingMismatch::Changed {
+                    name: expected.name.clone(),
+                    role: MismatchRole::Message,
+                });
+            }
+        }
+        for expected in &self.binding.types {
+            let actual = schema
+                .types
+                .iter()
+                .find(|declaration| declaration.name == expected.name)
+                .ok_or_else(|| PlanBindingMismatch::Missing {
+                    name: expected.name.clone(),
+                    role: MismatchRole::TypeDeclaration,
+                })?;
+            if actual != expected {
+                return Err(PlanBindingMismatch::Changed {
+                    name: expected.name.clone(),
+                    role: MismatchRole::TypeDeclaration,
+                });
+            }
+        }
+        // Every captured declaration matched, so re-walking the closure in the
+        // supplied schema must reach exactly the captured set. A different
+        // size means the supplied schema reaches declarations the plan never
+        // saw -- possible when a message payload is a primitive in one schema
+        // and named in another, which the per-declaration loop above cannot
+        // observe.
+        let closure = self
+            .selected_type_closure(schema)
+            .map_err(|_| PlanBindingMismatch::ClosureChanged)?;
+        if closure.len() != self.binding.types.len() {
+            return Err(PlanBindingMismatch::ClosureChanged);
+        }
+        Ok(())
     }
 
     /// Total number of exchange occurrences across all functions.
@@ -456,7 +615,10 @@ pub fn resolve_service_plan(
         });
     }
 
-    Ok(ServicePlan {
+    // Capture the semantic binding from the schema resolution actually used,
+    // so later readiness/generation calls can verify they were handed a
+    // compatible schema rather than merely one with the same names.
+    let mut plan = ServicePlan {
         contract_version: contract.contract_version.clone(),
         service: ServiceIdentity {
             name: contract.service.name.clone(),
@@ -486,7 +648,41 @@ pub fn resolve_service_plan(
         }),
         functions,
         selected_messages,
-    })
+        // Filled in immediately below; `selected_type_closure` needs the
+        // assembled selection, so the binding cannot be built inline.
+        binding: SchemaBinding {
+            messages: Vec::new(),
+            types: Vec::new(),
+        },
+    };
+
+    plan.binding = SchemaBinding {
+        messages: plan
+            .selected_messages
+            .iter()
+            .map(|selected| {
+                schema
+                    .messages
+                    .iter()
+                    .find(|message| message.name == selected.name)
+                    .cloned()
+                    // Every selected identity came from this schema moments
+                    // ago, so absence here is impossible rather than a user
+                    // error; `UnresolvedPayloadType` names the identity if the
+                    // schema is somehow inconsistent.
+                    .ok_or_else(|| ServicePlanError::UnresolvedPayloadType {
+                        message: selected.name.clone(),
+                        missing: selected.name.clone(),
+                    })
+            })
+            .collect::<Result<Vec<_>, _>>()?,
+        types: plan
+            .selected_type_closure(schema)?
+            .into_iter()
+            .cloned()
+            .collect(),
+    };
+    Ok(plan)
 }
 
 /// Resolve one contract message name by exact local-name equality.

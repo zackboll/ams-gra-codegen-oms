@@ -37,8 +37,9 @@ pub use service_generation::{
     ServiceGenerationError, ServiceGenerationProjection, project_service_generation_schema,
 };
 pub use service_plan::{
-    CapabilityPlan, FunctionPlan, ResolvedExchange, ResolvedOmsMessageExchange, SelectedMessage,
-    ServiceIdentity, ServicePlan, ServicePlanError, ServiceStandards, resolve_service_plan,
+    CapabilityPlan, FunctionPlan, PlanBindingMismatch, ResolvedExchange,
+    ResolvedOmsMessageExchange, SelectedMessage, ServiceIdentity, ServicePlan, ServicePlanError,
+    ServiceStandards, resolve_service_plan,
 };
 pub use service_readiness::{
     BlockedMessage, MismatchRole, ServiceBackendReadiness, ServiceMessageBlocker,

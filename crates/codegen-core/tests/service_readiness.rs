@@ -5,8 +5,9 @@
 //! deduplication, blocker attribution, and Task 024/026/028 world semantics.
 
 use ams_gra_oms_codegen_core::{
-    BackendLanguage, CoverageAnalysis, GenerationWorld, ServiceBackendReadiness,
-    ServiceMessageBlocker, ServiceReadinessError, analyze_service_readiness, resolve_service_plan,
+    BackendLanguage, CoverageAnalysis, GenerationWorld, MismatchRole, PlanBindingMismatch,
+    ServiceBackendReadiness, ServiceMessageBlocker, ServiceReadinessError,
+    analyze_service_readiness, resolve_service_plan,
 };
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, FieldDecl, MessageDecl, NamespaceDecl, PrimitiveKind,
@@ -610,10 +611,18 @@ fn plan_schema_mismatch_fails_deterministically() {
         GenerationWorld::ClosedSchemaSet,
     )
     .expect_err("a mismatched schema set must fail");
-    assert!(matches!(
-        error,
-        ServiceReadinessError::PlanSchemaMismatch { .. }
-    ));
+    // Now diagnosed by the shared semantic binding, which runs first and
+    // names the absent selected message.
+    assert!(
+        matches!(
+            error,
+            ServiceReadinessError::PlanBinding(PlanBindingMismatch::Missing {
+                role: MismatchRole::Message,
+                ..
+            })
+        ),
+        "{error:?}"
+    );
     assert!(error.to_string().contains("GoodReport"));
 }
 

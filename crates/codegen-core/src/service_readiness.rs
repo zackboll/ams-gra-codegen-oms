@@ -24,7 +24,7 @@
 use crate::coverage::DeclarationRenderability;
 use crate::{
     BackendLanguage, BackendPreflightError, CoverageAnalysis, CoverageError, GenerationWorld,
-    ServiceGenerationError, ServicePlan, ServicePlanError, backend_preflight,
+    PlanBindingMismatch, ServiceGenerationError, ServicePlan, ServicePlanError, backend_preflight,
     project_service_generation_schema,
 };
 use ams_gra_oms_ir::{PrimitiveKind, QualifiedName, SchemaIr, TypeRefTarget};
@@ -50,6 +50,13 @@ pub enum ServiceReadinessError {
         /// What kind of selection referenced it.
         role: MismatchRole,
     },
+    /// The supplied schema declares every selected identity, but not with the
+    /// same semantics the plan was resolved against.
+    ///
+    /// Identity-only checks cannot see this: the message and type names all
+    /// match while a payload type, declaration body, or a dependency's
+    /// constraints differ. Detected by [`ServicePlan::verify_schema_binding`].
+    PlanBinding(PlanBindingMismatch),
 }
 
 /// Which part of the selection referred to an absent schema identity.
@@ -84,11 +91,18 @@ impl fmt::Display for ServiceReadinessError {
                 missing.namespace_uri,
                 missing.local_name
             ),
+            Self::PlanBinding(mismatch) => mismatch.fmt(formatter),
         }
     }
 }
 
 impl std::error::Error for ServiceReadinessError {}
+
+impl From<PlanBindingMismatch> for ServiceReadinessError {
+    fn from(mismatch: PlanBindingMismatch) -> Self {
+        Self::PlanBinding(mismatch)
+    }
+}
 
 impl From<ServicePlanError> for ServiceReadinessError {
     fn from(error: ServicePlanError) -> Self {
@@ -233,6 +247,13 @@ pub fn analyze_service_readiness(
     language: BackendLanguage,
     world: GenerationWorld,
 ) -> Result<ServiceBackendReadiness, ServiceReadinessError> {
+    // Wrong-schema reuse is diagnosed FIRST, once, by the single shared
+    // binding mechanism. Doing it up front means every lookup below is known
+    // to be against the schema the plan was resolved against, so the
+    // identity-only fallbacks that remain are unreachable defence in depth
+    // rather than the primary check.
+    plan.verify_schema_binding(schema)?;
+
     // One analysis, one snapshot, reused below. Task 026 showed what repeated
     // whole-schema scans cost; nothing in this function may rebuild either.
     let analysis = CoverageAnalysis::new(schema, world)?;
