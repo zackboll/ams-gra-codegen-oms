@@ -28,12 +28,11 @@
 //! surface, so an unsafe generated name fails closed and deterministically
 //! instead.
 
-use crate::abstract_value::{abstract_value_targets, is_structural, project_abstract_value};
 use crate::coverage::BackendLanguage;
-use crate::emitted_top_level_declaration_names;
 use crate::floating::floating_domain;
 use crate::structure::{effective_choice_alternatives, effective_record_fields};
 use crate::world::GenerationWorld;
+use crate::{AbstractValueProjection, NamePreflightPlan, TypeEmission, name_preflight_plan};
 use ams_gra_oms_ir::{
     Cardinality, OccurrenceShape, PrimitiveKind, QualifiedName, SchemaIr, TypeDecl, TypeKind,
     TypeRefTarget,
@@ -956,31 +955,22 @@ fn register_support_names(
 /// `{Choice}_Kind` for every Choice in either world, so those owners are
 /// always included.
 ///
-/// The predicate is `project_abstract_value` succeeding -- exactly the
-/// condition under which `plan_type_emissions` produces a
-/// `TypeEmission::AbstractValue`, so preflight and generation share one
-/// companion predicate rather than two that can drift.
-fn ada_kind_companion_owners(schema: &SchemaIr, world: GenerationWorld) -> Vec<&TypeDecl> {
-    let mut wrapper_names = BTreeSet::new();
-    if world.is_closed_schema_set() {
-        for declaration in abstract_value_targets(schema) {
-            // A projection failure means no wrapper is emitted for this
-            // target: zero concrete descendants (Task 026 elision) or a
-            // structural defect diagnosed by another capability. Either way
-            // there is no companion to reserve.
-            if is_structural(declaration)
-                && project_abstract_value(schema, &declaration.name).is_ok()
-            {
-                wrapper_names.insert(&declaration.name);
-            }
-        }
-    }
-    schema
-        .types
+/// The owners are now read straight off the planned emissions rather than
+/// re-derived: a `TypeEmission::AbstractValue` *is* the Task 024 wrapper, and
+/// a `TypeEmission::Declaration` of Choice kind *is* an emitted Choice. There
+/// is no second predicate that can drift from the planner, and nothing that
+/// was never planned can contribute a companion name.
+fn ada_kind_companion_owners<'a>(emissions: &[TypeEmission<'a>]) -> Vec<&'a TypeDecl> {
+    emissions
         .iter()
-        .filter(|declaration| {
-            matches!(declaration.kind, TypeKind::Choice { .. })
-                || wrapper_names.contains(&declaration.name)
+        .filter_map(|emission| match emission {
+            TypeEmission::AbstractValue(projection) => Some(projection.declaration),
+            TypeEmission::Declaration(declaration)
+                if matches!(declaration.kind, TypeKind::Choice { .. }) =>
+            {
+                Some(*declaration)
+            }
+            TypeEmission::Declaration(_) => None,
         })
         .collect()
 }
@@ -1000,10 +990,9 @@ fn ada_kind_companion_owners(schema: &SchemaIr, world: GenerationWorld) -> Vec<&
 /// another companion. It is registered in the real top-level region.
 fn register_ada_kind_companions(
     top_level: &mut Region,
-    schema: &SchemaIr,
-    world: GenerationWorld,
+    emissions: &[TypeEmission<'_>],
 ) -> Result<(), BackendNameError> {
-    for declaration in ada_kind_companion_owners(schema, world) {
+    for declaration in ada_kind_companion_owners(emissions) {
         // If the declaration's own identifier is unusable, that failure is
         // already reported for the declaration itself; do not re-report it
         // here as a companion problem.
@@ -1041,10 +1030,10 @@ fn register_ada_kind_companions(
 fn validate_ada_enumeration_literals(
     top_level: &Region,
     schema: &SchemaIr,
-    world: GenerationWorld,
+    emissions: &[TypeEmission<'_>],
 ) -> Result<(), BackendNameError> {
     let mut conflicts = Vec::new();
-    collect_ada_literal_conflicts(top_level, schema, world, &mut conflicts);
+    collect_ada_literal_conflicts(top_level, schema, emissions, &mut conflicts);
     match conflicts.into_iter().next() {
         Some(conflict) => Err(conflict.error),
         None => Ok(()),
@@ -1058,7 +1047,7 @@ fn validate_ada_enumeration_literals(
 fn collect_ada_literal_conflicts(
     top_level: &Region,
     schema: &SchemaIr,
-    world: GenerationWorld,
+    emissions: &[TypeEmission<'_>],
     conflicts: &mut Vec<CollectedNameError>,
 ) {
     // The literal is owned by the declaration that *declares the enumeration*,
@@ -1079,7 +1068,14 @@ fn collect_ada_literal_conflicts(
             conflicts.push(CollectedNameError::new(error, &[first, &source]));
         }
     };
-    for declaration in &schema.types {
+    // Only *emitted* declarations contribute literals. A non-emitted abstract
+    // Record has no enumeration and no Choice lowering, and a Task 024 wrapper
+    // contributes its descendant literals below rather than the original
+    // declaration's member surface.
+    for declaration in emissions.iter().filter_map(|emission| match emission {
+        TypeEmission::Declaration(declaration) => Some(*declaration),
+        TypeEmission::AbstractValue(_) => None,
+    }) {
         match &declaration.kind {
             // A plain enumeration's literals are the variant identifiers.
             TypeKind::Enumeration { variants } => {
@@ -1113,16 +1109,16 @@ fn collect_ada_literal_conflicts(
         }
     }
     // A closed-sum wrapper's literals are `{Descendant}_Kind`, taken from the
-    // same projection the Ada renderer walks. Only wrappers the requested
-    // world actually emits contribute literals.
-    for declaration in ada_kind_companion_owners(schema, world) {
-        let Ok(projection) = project_abstract_value(schema, &declaration.name) else {
-            continue;
-        };
+    // very projection the Ada renderer walks. Only planned wrappers exist, so
+    // only they contribute literals.
+    for projection in emissions.iter().filter_map(|emission| match emission {
+        TypeEmission::AbstractValue(projection) => Some(projection),
+        TypeEmission::Declaration(_) => None,
+    }) {
         for descendant in &projection.concrete_descendants {
             if let Some(name) = ada_identifier(&descendant.name.local_name) {
                 let source = NameSource::EnumLiteral {
-                    owner: declaration.name.clone(),
+                    owner: projection.declaration.name.clone(),
                     literal: descendant.name.local_name.clone(),
                 };
                 check(source, &format!("{name}_Kind"), conflicts);
@@ -1236,8 +1232,7 @@ fn ada_emits_helper(cardinality: Cardinality) -> bool {
     }
 }
 
-/// Register the top-level name of every declaration the requested world
-/// actually emits.
+/// Register the top-level name of every entity the plan actually emits.
 ///
 /// # Why this is not simply every Schema IR declaration
 ///
@@ -1255,34 +1250,24 @@ fn ada_emits_helper(cardinality: Cardinality) -> bool {
 ///   `_Kind`, so it reserves nothing.
 ///
 /// Names that *are* emitted keep their reservation, including abstract
-/// Choices -- which no backend skips -- and Task 024 closed-sum wrappers.
+/// Choices -- which no backend skips -- and Task 024 closed-sum wrappers,
+/// which own the base's name in the generated scope.
 ///
-/// The emitted set is computed **once per schema/world** from the shared
-/// planner and then consulted per declaration, so this stays a single
-/// membership test inside the loop rather than whole-schema work repeated for
-/// every declaration.
-///
-/// When no plan can be formed the schema has a semantic defect that the
-/// backend reports on its own terms. Name preflight has no opinion there, so
-/// it falls back to the previous whole-schema behaviour rather than
-/// suppressing reservations on the strength of an error it does not own.
+/// The plan is formed **once per schema/world** by the caller and walked here,
+/// so no whole-schema planning work is repeated per declaration.
 fn register_emitted_declaration_names(
     top_level: &mut Region,
-    schema: &SchemaIr,
+    emissions: &[TypeEmission<'_>],
     language: BackendLanguage,
-    world: GenerationWorld,
 ) -> Result<(), BackendNameError> {
-    let emitted = emitted_top_level_declaration_names(schema, world);
-    for declaration in &schema.types {
-        if emitted
-            .as_ref()
-            .is_some_and(|emitted| !emitted.contains(&declaration.name))
-        {
+    for emission in emissions {
+        if !emission.emits_own_top_level_name() {
             continue;
         }
+        let name = emission.name();
         top_level.insert_transformed(
-            NameSource::Declaration(declaration.name.clone()),
-            declaration_name(language, &declaration.name.local_name),
+            NameSource::Declaration(name.clone()),
+            declaration_name(language, &name.local_name),
         )?;
     }
     Ok(())
@@ -1311,24 +1296,37 @@ pub fn validate_backend_names(
 ) -> Result<(), BackendNameError> {
     // The enclosing unit's own identifier comes from the namespace URI rather
     // than from any declaration, so it is checked before the scope it encloses.
+    // It is genuinely independent of the emission plan -- derived from the
+    // namespace URI alone -- so it is checked even when no plan exists.
     validate_namespace_unit(schema, language)?;
+    // One plan per schema/world, shared by every name surface below.
+    let NamePreflightPlan::Planned(emissions) = name_preflight_plan(schema, world) else {
+        // No emission plan means no emitted surface, so there are no
+        // schema-owned generated names to judge. The planner's semantic
+        // failure is the authoritative diagnostic and the backend reports it
+        // on its own terms; fabricating a naming verdict from raw Schema IR
+        // here would describe output that can never exist and would mask the
+        // real cause.
+        return Ok(());
+    };
     let mut top_level = Region::new(language, NameRegion::TopLevel);
     // Generated support types occupy the top-level scope before any user
     // declaration is placed in it, so a user declaration colliding with one is
     // attributed to the user declaration as the second, conflicting source.
     register_support_names(&mut top_level, schema, language)?;
-    register_emitted_declaration_names(&mut top_level, schema, language, world)?;
+    register_emitted_declaration_names(&mut top_level, &emissions, language)?;
     if language == BackendLanguage::Ada {
-        register_ada_kind_companions(&mut top_level, schema, world)?;
+        register_ada_kind_companions(&mut top_level, &emissions)?;
     }
-    for declaration in &schema.types {
-        validate_declaration_members(schema, declaration, language, &mut top_level)?;
+    for emission in &emissions {
+        let mut members = Region::new(language, NameRegion::Members(emission.name().clone()));
+        register_emission_names(schema, emission, language, &mut members, &mut top_level)?;
     }
     if language == BackendLanguage::Ada {
         // Literals and generated callables are validated last, against the
         // completed set of top-level type names: either conflicts with a type
         // name regardless of which was declared first.
-        validate_ada_enumeration_literals(&top_level, schema, world)?;
+        validate_ada_enumeration_literals(&top_level, schema, &emissions)?;
         let mut callables = Vec::new();
         collect_ada_float_callable_conflicts(&top_level, schema, &mut callables);
         if let Some(conflict) = callables.into_iter().next() {
@@ -1338,17 +1336,100 @@ pub fn validate_backend_names(
     Ok(())
 }
 
-fn validate_declaration_members(
+/// Register the member-region and Ada helper names one **planned emission**
+/// generates, switching on the emitted shape rather than on raw Schema IR.
+///
+/// # Why the switch matters
+///
+/// The two `TypeEmission` arms have genuinely different generated member
+/// surfaces, and mixing them fabricates names:
+///
+/// * A `Declaration` renders its own member region -- Record components,
+///   Choice variant parts, enumeration literals -- from its *effective*
+///   members, and Ada derives its repeated helpers under **that**
+///   declaration's identifier. Because only emitted declarations reach here,
+///   an ancestry-only abstract Record contributes nothing: it has no member
+///   region and no helpers. Its inherited fields are still validated, in the
+///   place they are actually emitted -- each concrete descendant's
+///   `effective_record_fields`, under the descendant's helper stem.
+/// * An `AbstractValue` renders the Task 024 closed-sum wrapper, whose member
+///   surface is `Kind` plus one `{Descendant}_Value` component. The original
+///   abstract Record's own fields are *not* rendered there, so feeding it
+///   through Record validation would check an imaginary scope.
+fn register_emission_names(
     schema: &SchemaIr,
-    declaration: &TypeDecl,
+    emission: &TypeEmission<'_>,
     language: BackendLanguage,
+    members: &mut Region,
     top_level: &mut Region,
 ) -> Result<(), BackendNameError> {
-    let mut members = Region::new(language, NameRegion::Members(declaration.name.clone()));
-    register_declaration_members(schema, declaration, language, &mut members, top_level)
+    match emission {
+        // A planned `Declaration` is not automatically a *rendered* one. With
+        // no abstract value target in the schema the planner hands back every
+        // declaration, including ancestry-only abstract Records that every
+        // renderer returns early for. The same predicate that keeps such a
+        // base from reserving its top-level name keeps it from claiming a
+        // member region or an Ada helper stem, so one rule governs both.
+        TypeEmission::Declaration(_) if !emission.emits_own_top_level_name() => Ok(()),
+        TypeEmission::Declaration(declaration) => {
+            register_declaration_members(schema, declaration, language, members, top_level)
+        }
+        TypeEmission::AbstractValue(projection) => {
+            register_abstract_value_members(projection, language, members)
+        }
+    }
 }
 
-/// Register one declaration's member names into `members`, and any Ada
+/// Register the member names a Task 024 closed-sum wrapper actually emits.
+///
+/// Only Ada puts user-derived identifiers in the wrapper's member region:
+/// `backend-ada::render_abstract_value` writes a discriminated record with a
+/// fixed `Kind` discriminant and one `{Descendant}_Value` component per
+/// concrete descendant, all sharing one declarative region.
+///
+/// Rust and C++ derive no colliding member identifiers inside the wrapper:
+/// `backend-rust` emits `Variant(Variant)` enum variants whose identifiers are
+/// the descendants' own declaration names -- already registered and validated
+/// as top-level declarations, with duplicates rejected by the renderer itself
+/// -- and `backend-cpp` emits a single fixed `value` member holding a
+/// `std::variant<...>`. Registering those again here would invent a second,
+/// unrelated collision domain.
+fn register_abstract_value_members(
+    projection: &AbstractValueProjection<'_>,
+    language: BackendLanguage,
+    members: &mut Region,
+) -> Result<(), BackendNameError> {
+    if language != BackendLanguage::Ada {
+        return Ok(());
+    }
+    let owner = &projection.declaration.name;
+    // The discriminant occupies the record's declarative region first, exactly
+    // as it does for an ordinary Ada Choice.
+    members.insert(
+        NameSource::GeneratedMember {
+            owner: owner.clone(),
+            generated: ADA_CHOICE_DISCRIMINANT,
+        },
+        ADA_CHOICE_DISCRIMINANT.to_owned(),
+    )?;
+    for descendant in &projection.concrete_descendants {
+        let Some(name) = ada_identifier(&descendant.name.local_name) else {
+            // The descendant's own identifier is unusable; that failure is
+            // already reported for the descendant declaration itself.
+            continue;
+        };
+        members.insert(
+            NameSource::Member {
+                owner: owner.clone(),
+                member: descendant.name.local_name.clone(),
+            },
+            format!("{name}_Value"),
+        )?;
+    }
+    Ok(())
+}
+
+/// Register one emitted declaration's member names into `members`, and any Ada
 /// flat-package helper types it derives into `top_level`.
 ///
 /// Shared verbatim by first-failure validation and by per-declaration
@@ -1534,36 +1615,37 @@ pub fn unsafe_named_declarations(
 ) -> BTreeSet<QualifiedName> {
     let mut unsafe_names = BTreeSet::new();
 
+    // Same single shared plan as validation, so capability attribution cannot
+    // condemn a declaration for a name the backend never emits while
+    // validation accepts it -- nor manufacture a naming failure when the plan
+    // itself could not be formed. A semantic planner failure has no emitted
+    // surface to attribute and is handled by the existing semantic coverage
+    // rules, not converted into a naming verdict here.
+    let NamePreflightPlan::Planned(emissions) = name_preflight_plan(schema, world) else {
+        return unsafe_names;
+    };
     let mut top_level = Region::collecting(language, NameRegion::TopLevel);
     // Ignoring the `Result` is correct for a collecting region: it only ever
     // returns `Ok`, accumulating into `errors` instead.
     let _ = register_support_names(&mut top_level, schema, language);
-    // Same emission-aware registration as validation, so capability
-    // attribution cannot condemn a declaration for a name the backend never
-    // emits while validation accepts it.
-    let _ = register_emitted_declaration_names(&mut top_level, schema, language, world);
+    let _ = register_emitted_declaration_names(&mut top_level, &emissions, language);
     if language == BackendLanguage::Ada {
-        let _ = register_ada_kind_companions(&mut top_level, schema, world);
+        let _ = register_ada_kind_companions(&mut top_level, &emissions);
     }
-    for declaration in &schema.types {
-        let mut members =
-            Region::collecting(language, NameRegion::Members(declaration.name.clone()));
-        let _ = register_declaration_members(
-            schema,
-            declaration,
-            language,
-            &mut members,
-            &mut top_level,
-        );
-        // A member failure implicates exactly its owning declaration,
-        // whatever the member was called.
+    for emission in &emissions {
+        let owner = emission.name().clone();
+        let mut members = Region::collecting(language, NameRegion::Members(owner.clone()));
+        let _ = register_emission_names(schema, emission, language, &mut members, &mut top_level);
+        // A member failure implicates exactly the emitted entity that owns the
+        // generated member region, which for a Task 024 wrapper is the wrapper
+        // and for an ordinary declaration is that declaration.
         if !members.errors.is_empty() {
-            unsafe_names.insert(declaration.name.clone());
+            unsafe_names.insert(owner);
         }
     }
     if language == BackendLanguage::Ada {
         let mut literals = Vec::new();
-        collect_ada_literal_conflicts(&top_level, schema, world, &mut literals);
+        collect_ada_literal_conflicts(&top_level, schema, &emissions, &mut literals);
         collect_ada_float_callable_conflicts(&top_level, schema, &mut literals);
         for conflict in literals {
             unsafe_names.extend(conflict.owners);
@@ -2225,6 +2307,232 @@ mod tests {
             unsafe_names.contains(&QualifiedName::new(NS, "Derived")),
             "an inherited reserved member must still condemn the emitted descendant"
         );
+    }
+
+    /// A non-emitted abstract Record's repeated field generates **no** Ada
+    /// helper under the base's name. `backend-ada` returns early for an
+    /// abstract Record, so the only helpers it writes for the inherited field
+    /// are `Derived_Items_*`; reserving `Base_Items_Array` would falsely
+    /// reject a user declaration that really can be emitted.
+    #[test]
+    fn a_non_emitted_abstract_record_reserves_no_ada_helper_names() {
+        let schema = abstract_helper_schema("Base_Items_Array");
+        assert!(
+            validate_backend_names(
+                &schema,
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            )
+            .is_ok(),
+            "no helper is emitted under a non-emitted abstract Record owner"
+        );
+        assert!(
+            unsafe_named_declarations(
+                &schema,
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            )
+            .is_empty(),
+            "coverage must not condemn anything for a phantom helper surface"
+        );
+    }
+
+    /// The counterpart, proving the fix is not simply "skip inherited
+    /// members": the helper Ada really emits for the inherited field is named
+    /// after the **emitted** descendant, so colliding with that spelling is a
+    /// genuine failure.
+    #[test]
+    fn an_inherited_helper_under_the_emitted_descendant_still_collides() {
+        let schema = abstract_helper_schema("Derived_Items_Array");
+        assert_collides(&schema, BackendLanguage::Ada, "Derived_Items_Array");
+        assert!(
+            unsafe_named_declarations(
+                &schema,
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            )
+            .contains(&QualifiedName::new(NS, "Derived")),
+            "the emitted helper owner must be condemned"
+        );
+    }
+
+    const BOUNDED_FOUR: Cardinality = Cardinality {
+        min_occurs: 0,
+        max_occurs: Some(4),
+    };
+
+    /// `abstract Base { Items : Item [0..4] }`, `Derived extends Base`, plus a
+    /// user declaration spelled `user_type`. Only the helper stem differs
+    /// between the two tests above, which is exactly the scope distinction.
+    fn abstract_helper_schema(user_type: &str) -> SchemaIr {
+        let mut base = record(
+            "Base",
+            vec![field(
+                "Items",
+                TypeRefTarget::Named(QualifiedName::new(NS, "Item")),
+                BOUNDED_FOUR,
+            )],
+        );
+        base.is_abstract = true;
+        let mut derived = record("Derived", Vec::new());
+        derived.base_type = Some(TypeRef {
+            target: TypeRefTarget::Named(QualifiedName::new(NS, "Base")),
+        });
+        schema_with(vec![
+            primitive("Item"),
+            base,
+            derived,
+            record(
+                "Holder",
+                vec![field(
+                    "Item",
+                    TypeRefTarget::Named(QualifiedName::new(NS, "Derived")),
+                    Cardinality::REQUIRED_ONE,
+                )],
+            ),
+            primitive(user_type),
+        ])
+    }
+
+    /// A reserved-word member on an ancestry-only abstract Record is a member
+    /// of a record that is never written. Ada must not diagnose `Base` for it,
+    /// but must diagnose `Derived`, whose effective emitted record really does
+    /// contain the component.
+    #[test]
+    fn a_reserved_member_on_a_non_emitted_base_is_attributed_to_the_descendant() {
+        let mut base = record(
+            "Base",
+            vec![field(
+                // `Range` is an Ada reserved word.
+                "Range",
+                TypeRefTarget::Primitive(PrimitiveKind::String),
+                Cardinality::REQUIRED_ONE,
+            )],
+        );
+        base.is_abstract = true;
+        let mut derived = record("Derived", Vec::new());
+        derived.base_type = Some(TypeRef {
+            target: TypeRefTarget::Named(QualifiedName::new(NS, "Base")),
+        });
+        let schema = schema_with(vec![base, derived]);
+        let unsafe_names = unsafe_named_declarations(
+            &schema,
+            BackendLanguage::Ada,
+            GenerationWorld::ClosedSchemaSet,
+        );
+        assert!(
+            unsafe_names.contains(&QualifiedName::new(NS, "Derived")),
+            "the emitted descendant's real component must be diagnosed"
+        );
+        assert!(
+            !unsafe_names.contains(&QualifiedName::new(NS, "Base")),
+            "a non-emitted abstract Record has no member region to diagnose"
+        );
+    }
+
+    /// A Task 024 wrapper's generated member surface is `Kind` plus one
+    /// `{Descendant}_Value` component -- never the original abstract Record's
+    /// fields. Every base field necessarily reappears in the concrete
+    /// descendant, so member *spelling* cannot distinguish the two scopes;
+    /// the Ada helper **owner** can, and does: the real helper is
+    /// `Concrete_Items_Array`, never `Base_Items_Array`.
+    #[test]
+    fn a_task_024_wrapper_does_not_validate_the_original_record_surface() {
+        let mut base = record(
+            "Base",
+            vec![field(
+                "Items",
+                TypeRefTarget::Named(QualifiedName::new(NS, "Item")),
+                BOUNDED_FOUR,
+            )],
+        );
+        base.is_abstract = true;
+        let mut concrete = record("Concrete", Vec::new());
+        concrete.base_type = Some(TypeRef {
+            target: TypeRefTarget::Named(QualifiedName::new(NS, "Base")),
+        });
+        let types = vec![
+            primitive("Item"),
+            base,
+            concrete,
+            record(
+                "Holder",
+                vec![field(
+                    "Value",
+                    TypeRefTarget::Named(QualifiedName::new(NS, "Base")),
+                    Cardinality::REQUIRED_ONE,
+                )],
+            ),
+        ];
+        // The wrapper really is emitted here, so `Base` and `Base_Kind` stay
+        // reserved -- but `Base_Items_Array` is not a name anything emits.
+        let mut with_phantom = types.clone();
+        with_phantom.push(primitive("Base_Items_Array"));
+        assert!(
+            validate_backend_names(
+                &schema_with(with_phantom),
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            )
+            .is_ok(),
+            "the wrapper's member surface is not the abstract Record's fields"
+        );
+        let mut with_real = types;
+        with_real.push(primitive("Concrete_Items_Array"));
+        assert_collides(
+            &schema_with(with_real),
+            BackendLanguage::Ada,
+            "Concrete_Items_Array",
+        );
+    }
+
+    /// When the emission plan cannot be formed there is no emitted surface, so
+    /// naming must stay silent and let the semantic failure be authoritative.
+    ///
+    /// `BoundedVec` is deliberately also the Rust support type's spelling: the
+    /// previous raw-schema fallback manufactured exactly that collision, which
+    /// described output the open world can never produce.
+    #[test]
+    fn a_failed_emission_plan_yields_no_name_verdict() {
+        let mut base = record("BoundedVec", Vec::new());
+        base.is_abstract = true;
+        let mut concrete = record("Concrete", Vec::new());
+        concrete.base_type = Some(TypeRef {
+            target: TypeRefTarget::Named(QualifiedName::new(NS, "BoundedVec")),
+        });
+        let schema = schema_with(vec![
+            base,
+            concrete,
+            record(
+                "Holder",
+                vec![field(
+                    "Value",
+                    TypeRefTarget::Named(QualifiedName::new(NS, "BoundedVec")),
+                    Cardinality::REQUIRED_ONE,
+                )],
+            ),
+        ]);
+        assert!(
+            validate_backend_names(
+                &schema,
+                BackendLanguage::Rust,
+                GenerationWorld::OpenExtensions
+            )
+            .is_ok(),
+            "an open-world abstract value is a semantic failure, not a naming one"
+        );
+        assert!(
+            unsafe_named_declarations(
+                &schema,
+                BackendLanguage::Rust,
+                GenerationWorld::OpenExtensions
+            )
+            .is_empty(),
+            "no emitted surface means nothing to attribute"
+        );
+        // The very same schema under the closed world does plan, and there the
+        // wrapper genuinely takes `BoundedVec`, so the collision is real.
+        assert_collides(&schema, BackendLanguage::Rust, "BoundedVec");
     }
 
     /// The predicates preflight uses are the renderers' own predicates, so
