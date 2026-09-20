@@ -676,6 +676,19 @@ fn parse_simple_type(
                     _ => unreachable!("supported integer facet was checked above"),
                 }
             }
+            // Corrective cleanup: a built-in like `xs:unsignedByte` carries
+            // intrinsic bounds, so an authored step against it is a real
+            // restriction step and must be validated as one *before* the
+            // intersection hides a weakening. Without this,
+            // `maxInclusive="300"` on `xs:unsignedByte` silently normalized
+            // back to `0 .. 255` instead of being rejected as invalid XSD.
+            //
+            // The same shared step validator the named-on-named path uses is
+            // called here, so there is exactly one weakening policy and no
+            // built-in-specific rules. It also supplies the same-step
+            // minInclusive+minExclusive / maxInclusive+maxExclusive
+            // ambiguity rejection for direct built-in restrictions.
+            validate_restriction_step(&intrinsic, &explicit)?;
             let mut constraints = intersect_numeric_constraints(&intrinsic, &explicit)?;
             constraints.lexical = explicit.lexical;
             (TypeKind::Primitive(*primitive), constraints)

@@ -1429,6 +1429,181 @@ fn equal_value_inclusive_exclusive_strength_is_directional() {
     );
 }
 
+/// Load a single type that restricts a built-in directly, with no
+/// intermediate named base.
+///
+/// This is the path the corrective fixes: the named-on-named chain above was
+/// already step-validated, while a direct restriction against a built-in
+/// whose semantics carry intrinsic bounds was only intersected.
+fn builtin_restriction_result(
+    label: &str,
+    base: &str,
+    facets: &str,
+) -> Result<SchemaIr, FrontendError> {
+    let path = write_temporary_schema(
+        label,
+        &format!(
+            r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:t="urn:builtin" targetNamespace="urn:builtin">
+  <xs:simpleType name="Bad"><xs:restriction base="{base}">{facets}</xs:restriction></xs:simpleType>
+</xs:schema>
+"#
+        ),
+    );
+    let result = load_schema_document(&path);
+    fs::remove_file(path).unwrap();
+    result
+}
+
+/// The corrective's central case: an authored facet that *weakens* a
+/// built-in's intrinsic domain must be rejected, not silently intersected
+/// back to the built-in's own bounds.
+///
+/// `xs:unsignedByte maxInclusive="300"` previously normalized to `0 .. 255`,
+/// destroying the evidence that the schema was invalid XSD.
+#[test]
+fn direct_builtin_restrictions_reject_weakened_intrinsic_bounds() {
+    for (label, base, facets, expected) in [
+        (
+            "ubyte-max-300",
+            "xs:unsignedByte",
+            r#"<xs:maxInclusive value="300"/>"#,
+            "weakens the inherited upper bound",
+        ),
+        (
+            "ubyte-min-negative",
+            "xs:unsignedByte",
+            r#"<xs:minInclusive value="-1"/>"#,
+            "weakens the inherited lower bound",
+        ),
+        (
+            "byte-max-200",
+            "xs:byte",
+            r#"<xs:maxInclusive value="200"/>"#,
+            "weakens the inherited upper bound",
+        ),
+        (
+            "byte-min-negative-200",
+            "xs:byte",
+            r#"<xs:minInclusive value="-200"/>"#,
+            "weakens the inherited lower bound",
+        ),
+    ] {
+        let error = builtin_restriction_result(label, base, facets)
+            .expect_err("weakening a built-in's intrinsic domain is invalid XSD");
+        assert!(error.to_string().contains(expected), "{label}: {error}");
+    }
+}
+
+/// Every built-in this frontend gives intrinsic numeric bounds must be
+/// covered, so the fix cannot be partial. Nothing is added for built-ins the
+/// frontend does not model.
+#[test]
+fn every_intrinsically_bounded_builtin_is_step_validated() {
+    for (label, base, over_max, under_min) in [
+        ("byte", "xs:byte", "128", "-129"),
+        ("short", "xs:short", "32768", "-32769"),
+        ("int", "xs:int", "2147483648", "-2147483649"),
+        (
+            "long",
+            "xs:long",
+            "9223372036854775808",
+            "-9223372036854775809",
+        ),
+        ("unsignedByte", "xs:unsignedByte", "256", "-1"),
+        ("unsignedShort", "xs:unsignedShort", "65536", "-1"),
+        ("unsignedInt", "xs:unsignedInt", "4294967296", "-1"),
+    ] {
+        assert!(
+            builtin_restriction_result(
+                &format!("{label}-over-max"),
+                base,
+                &format!(r#"<xs:maxInclusive value="{over_max}"/>"#),
+            )
+            .is_err(),
+            "{label}: maxInclusive beyond the intrinsic maximum must be rejected"
+        );
+        assert!(
+            builtin_restriction_result(
+                &format!("{label}-under-min"),
+                base,
+                &format!(r#"<xs:minInclusive value="{under_min}"/>"#),
+            )
+            .is_err(),
+            "{label}: minInclusive below the intrinsic minimum must be rejected"
+        );
+    }
+}
+
+/// The controls that keep the fix from being a blanket rejection: a genuine
+/// narrowing of a built-in stays legal, including at the exact boundary.
+#[test]
+fn direct_builtin_restrictions_accept_genuine_narrowing() {
+    for (label, base, facets) in [
+        (
+            "ubyte-max-200",
+            "xs:unsignedByte",
+            r#"<xs:maxInclusive value="200"/>"#,
+        ),
+        (
+            "ubyte-min-10",
+            "xs:unsignedByte",
+            r#"<xs:minInclusive value="10"/>"#,
+        ),
+        // Equal-to-intrinsic bounds restate the built-in rather than weaken
+        // it, so they remain legal.
+        (
+            "ubyte-max-at-boundary",
+            "xs:unsignedByte",
+            r#"<xs:maxInclusive value="255"/>"#,
+        ),
+        (
+            "byte-min-at-boundary",
+            "xs:byte",
+            r#"<xs:minInclusive value="-128"/>"#,
+        ),
+        // An exclusive bound at the intrinsic inclusive limit is strictly
+        // stronger than that limit: `> -128` excludes -128, and `< 127`
+        // excludes 127, so both narrow rather than weaken.
+        (
+            "byte-min-exclusive-at-boundary",
+            "xs:byte",
+            r#"<xs:minExclusive value="-128"/>"#,
+        ),
+        (
+            "byte-max-exclusive-at-boundary",
+            "xs:byte",
+            r#"<xs:maxExclusive value="127"/>"#,
+        ),
+    ] {
+        assert!(
+            builtin_restriction_result(label, base, facets).is_ok(),
+            "{label}: a genuine narrowing of a built-in must remain legal"
+        );
+    }
+}
+
+/// The same-step ambiguity rule must also apply to a direct built-in
+/// restriction, through the same shared validator.
+#[test]
+fn a_direct_builtin_restriction_cannot_declare_both_bound_spellings() {
+    for (label, facets, expected) in [
+        (
+            "builtin-both-min",
+            r#"<xs:minInclusive value="1"/><xs:minExclusive value="2"/>"#,
+            "both minInclusive and minExclusive",
+        ),
+        (
+            "builtin-both-max",
+            r#"<xs:maxInclusive value="9"/><xs:maxExclusive value="8"/>"#,
+            "both maxInclusive and maxExclusive",
+        ),
+    ] {
+        let error = builtin_restriction_result(label, "xs:unsignedByte", facets)
+            .expect_err("a doubled bound spelling must be rejected against a built-in too");
+        assert!(error.to_string().contains(expected), "{label}: {error}");
+    }
+}
+
 /// One restriction step cannot declare both spellings of the same bound.
 #[test]
 fn a_restriction_step_cannot_declare_both_bound_spellings() {
