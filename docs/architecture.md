@@ -552,4 +552,86 @@ can be honest about an assumption it cannot verify, and so that a future
 runtime-polymorphic representation has an explicit place to attach. Today, the
 supported route to generating a real extension point is to supply the private
 derived-type schema in the generation schema set (same target namespace) and
-assert `ClosedSchemaSet`.
+assert `ClosedSchemaSet`. Section 16 describes how that private schema is
+supplied without editing the authoritative root.
+
+## 16. Schema-set overlays
+
+Section 15's supported route needs a way to add a private same-namespace schema
+to a *pinned* authoritative root. Editing the root is unacceptable — it is the
+reproducibility anchor — and manufacturing a wrapper document full of new
+`xs:include` directives just to reach the private file is ceremony that obscures
+provenance. Task 029 therefore makes the composition an explicit **input**:
+
+```text
+ams-gra-codegen-oms generate \
+  --schema public-root.xsd \
+  --overlay private-a.xsd \
+  --overlay private-b.xsd \
+  --language rust --output generated --world closed-schema
+```
+
+The frontend exposes one loading path,
+`load_schema_set_with_overlays(root, overlays)`; `load_schema_set(root)` is now
+simply its empty-overlay case, so existing callers are unaffected.
+
+### Composition pipeline
+
+```text
+primary root
+  + primary dependency closure
+  + overlay A dependency closure
+  + overlay B dependency closure
+  -> one normalized SchemaIr
+```
+
+- **Primary closure first.** The root and its whole `xs:include`/`xs:import`
+  closure are loaded before any overlay, which is what preserves primary
+  declaration order, message order, namespace presentation, root schema version,
+  and every existing diagnostic.
+- **Overlay CLI order preserved.** Overlays are processed in caller-provided
+  order and are never sorted. Filesystem-path sorting would make declaration and
+  closed-sum variant ordering depend on where the files happen to live; the
+  command line is explicit, portable input, so it is the ordering source.
+  Reversing `--overlay` order deterministically reverses the resulting overlay
+  declaration order, and that is documented behaviour rather than instability.
+- **Canonical file dedupe.** The loader's existing canonical-path identity
+  tracking is reused, so a document is parsed exactly once no matter how many
+  input routes reach it — listed twice, listed while also reachable from the
+  root, or spelled differently. One ordinary parse per unique document.
+- **Top-level overlay namespace must match the root.** This is checked through a
+  dedicated `NamespaceExpectation::Overlay` expectation so the diagnostic names
+  the overlay, rather than blaming an `xs:include` the caller never wrote. Once
+  an overlay root is accepted, its own dependencies use the ordinary loader
+  rules — they are not reinterpreted as overlays, and remote `schemaLocation`
+  stays rejected. An accepted overlay may still import other namespaces exactly
+  as the root could, but the language backends remain single-namespace, so
+  cross-namespace generation is still unsupported.
+- **Root schema version remains authoritative.** `SchemaIr.schema_version` comes
+  from the primary root. Overlay `version` attributes are validated as ordinary
+  document metadata and discarded.
+
+### Semantics
+
+Overlays are **additive**. They may declare new types and messages, and may
+derive from declarations in the root or in an earlier overlay, because named
+references are resolved only after every document has been assembled —
+resolution never special-cases whether a declaration arrived from the root or an
+overlay. They may **not** replace, override, mutate, or remove a declaration:
+a duplicate qualified name fails existing validation, with no precedence and no
+shadowing.
+
+Overlays are **build-time input composition only**. `SchemaIr` gains no overlay,
+root, or private metadata; after loading it is the same normalized semantic
+declaration set, and composition provenance remains visible through each
+declaration's existing `SourceRef`. Overlay declarations participate in ordinary
+Task 024 topology analysis rather than through any special path, which is why
+supplying a private descendant removes its base from the zero-known-descendant
+inventory.
+
+Overlays are also **world-neutral**. Supplying one never selects
+`ClosedSchemaSet` and never relaxes `OpenExtensions`: under `OpenExtensions` a
+schema set containing some private descendants still treats abstract-value
+descendant sets as non-exhaustive. This is emphatically not a runtime extension
+registry; no runtime type registration, unknown-subtype representation, or
+`xsi:type` dispatch exists.

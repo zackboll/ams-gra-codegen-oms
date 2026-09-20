@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:overlay"
+           targetNamespace="urn:overlay"
+           elementFormDefault="qualified">
+  <!-- Task 029 sections 14 and 15: supplies the declaration that
+       root-needing-overlay.xsd refers to, plus a named simple restriction
+       whose base lives in the primary root document. Both directions resolve
+       because named references are resolved only after every document in the
+       composed schema set has been assembled. -->
+  <xs:complexType name="SuppliedByOverlayType">
+    <xs:sequence>
+      <xs:element name="Value" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

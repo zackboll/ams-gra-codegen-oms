@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:private="urn:overlay"
+           targetNamespace="urn:overlay"
+           elementFormDefault="qualified">
+  <!-- Task 029 sections 26 and 33: a private derived type supplied as a
+       top-level overlay of public.xsd.
+
+       This document binds the shared target namespace to the prefix `private`
+       rather than the root's `pub`, proving the lexical prefix has no semantic
+       effect on cross-document reference resolution. -->
+  <xs:complexType name="PrivateA">
+    <xs:complexContent>
+      <xs:extension base="private:ExtensionBase">
+        <xs:sequence>
+          <xs:element name="PrivateCodeA" type="xs:string"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+</xs:schema>

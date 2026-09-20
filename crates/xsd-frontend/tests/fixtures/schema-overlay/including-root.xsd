@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:pub="urn:overlay"
+           targetNamespace="urn:overlay"
+           elementFormDefault="qualified">
+  <!-- Task 029 section 32: a root that ALREADY reaches private-a.xsd through
+       an ordinary xs:include. Passing the same file again as an overlay must
+       not duplicate PrivateA: the loader's canonical-path identity tracking
+       loads each physical document exactly once regardless of how many input
+       routes reach it. -->
+  <xs:include schemaLocation="public.xsd"/>
+  <xs:include schemaLocation="private-a.xsd"/>
+</xs:schema>

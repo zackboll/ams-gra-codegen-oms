@@ -722,7 +722,9 @@ mod tests {
     /// Task 028 open-world regressions.
     #[allow(dead_code)]
     const OPEN: GenerationWorld = GenerationWorld::OpenExtensions;
-    use ams_gra_oms_xsd_frontend::{load_schema_document, load_schema_set};
+    use ams_gra_oms_xsd_frontend::{
+        load_schema_document, load_schema_set, load_schema_set_with_overlays,
+    };
     use std::fs;
     use std::path::Path;
     use std::process::Command;
@@ -1695,6 +1697,113 @@ mod tests {
         assert!(
             open.contains("open-extensions"),
             "open world reports the open-world reason instead: {open}"
+        );
+    }
+
+    // ---------------------------------------------------------------
+    // Task 029 -- additive same-namespace schema overlays
+    // ---------------------------------------------------------------
+
+    fn schema_overlay_fixture(name: &str) -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../xsd-frontend/tests/fixtures/schema-overlay")
+            .join(name)
+    }
+
+    fn overlay_composed_schema(overlays: &[&str]) -> SchemaIr {
+        load_schema_set_with_overlays(
+            &schema_overlay_fixture("public.xsd"),
+            &overlays
+                .iter()
+                .map(|name| schema_overlay_fixture(name))
+                .collect::<Vec<_>>(),
+        )
+        .expect("overlay fixture should compose")
+    }
+
+    /// Task 029 sections 29/30: supplying the private derived type through an
+    /// explicit overlay -- with no edit to the public root -- closes the Task
+    /// 024 sum for the repeated 0..* extension point, and the generated header
+    /// compiles under strict C++17 while constructing a PrivateA value inside
+    /// the repeated collection. The same composed schema still fails closed
+    /// under `open-extensions`.
+    #[test]
+    fn task029_private_overlay_closes_the_sum_but_not_the_world() {
+        let source = generate(&overlay_composed_schema(&["private-a.xsd"]), CLOSED)
+            .expect("an explicit overlay must close the extension point");
+        assert!(source.contains("struct ExtensionBase {"));
+        assert!(source.contains("std::variant<\n        PrivateA\n    > value;"));
+        assert!(
+            source.contains("UnboundedVector<ExtensionBase, 0> extensions;"),
+            "the repeated 0..* field must still be generated: {source}"
+        );
+
+        use std::fs;
+        use std::process::Command;
+        let directory = std::env::temp_dir().join("ams-gra-oms-task029-overlay");
+        fs::create_dir_all(&directory).expect("create C++ probe directory");
+        fs::write(directory.join("overlay.hpp"), &source).expect("write generated C++ header");
+        fs::write(
+            directory.join("overlay.cpp"),
+            r#"#include "overlay.hpp"
+
+int probe() {
+    using namespace urn::overlay;
+    ExtensionBase value{PrivateA{"l", "p"}};
+    auto extensions = UnboundedVector<ExtensionBase, 0>::create({value});
+    Container container{"c", *extensions};
+    return static_cast<int>(container.extensions.values().size());
+}
+"#,
+        )
+        .expect("write C++ probe unit");
+        let status = Command::new("c++")
+            .args([
+                "-std=c++17",
+                "-Wall",
+                "-Wextra",
+                "-pedantic-errors",
+                "-fsyntax-only",
+            ])
+            .arg(directory.join("overlay.cpp"))
+            .status()
+            .expect("C++ compiler must be available");
+        fs::remove_dir_all(&directory).expect("remove C++ probe directory");
+        assert!(
+            status.success(),
+            "overlay-composed closed sum must compile under strict C++17"
+        );
+
+        let message = generate(&overlay_composed_schema(&["private-a.xsd"]), OPEN)
+            .expect_err("section 25: an overlay must not imply a closed world")
+            .to_string();
+        assert!(
+            message.contains("ExtensionBase") && message.contains("open-extensions"),
+            "open diagnostic must name target and policy: {message}"
+        );
+    }
+
+    /// Task 029 section 31: closed-sum alternative order follows the caller's
+    /// overlay order, which is explicit deterministic input. Overlays are
+    /// never sorted by filesystem path.
+    #[test]
+    fn task029_two_overlays_order_variants_by_caller_order() {
+        let forward = generate(
+            &overlay_composed_schema(&["private-a.xsd", "private-b.xsd"]),
+            CLOSED,
+        )
+        .expect("two overlays should compose");
+        assert!(
+            forward.contains("std::variant<\n        PrivateA,\n        PrivateB\n    > value;")
+        );
+
+        let reversed = generate(
+            &overlay_composed_schema(&["private-b.xsd", "private-a.xsd"]),
+            CLOSED,
+        )
+        .expect("reversed overlays should compose");
+        assert!(
+            reversed.contains("std::variant<\n        PrivateB,\n        PrivateA\n    > value;")
         );
     }
 

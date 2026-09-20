@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:overlay"
+           targetNamespace="urn:overlay"
+           elementFormDefault="qualified">
+  <!-- Task 029 section 31: a second independent private overlay, used to show
+       that several overlays compose in caller-provided order. -->
+  <xs:complexType name="PrivateB">
+    <xs:complexContent>
+      <xs:extension base="t:ExtensionBase">
+        <xs:sequence>
+          <xs:element name="PrivateCodeB" type="xs:string"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+</xs:schema>

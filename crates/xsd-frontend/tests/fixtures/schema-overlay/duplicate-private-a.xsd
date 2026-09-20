@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:overlay"
+           targetNamespace="urn:overlay"
+           elementFormDefault="qualified">
+  <!-- Task 029 section 16: a distinct physical document redeclaring PrivateA,
+       used to show that overlay-versus-overlay duplicates fail exactly like
+       root-versus-overlay duplicates. Canonical dedupe cannot hide this,
+       because this is genuinely a different file. -->
+  <xs:complexType name="PrivateA">
+    <xs:complexContent>
+      <xs:extension base="t:ExtensionBase">
+        <xs:sequence>
+          <xs:element name="ConflictingCode" type="xs:string"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+</xs:schema>

@@ -25,8 +25,29 @@ cargo run -p ams-gra-codegen-oms -- \
   generate \
   --schema tests/fixtures/codegen-order/root.xsd \
   --language ada \
-  --output generated/ada
+  --output generated/ada \
+  --world closed-schema
 ```
+
+`--world closed-schema` here is **your assertion** that the supplied schema set
+is the complete value-type universe — it is not an inferred default. `generate`
+and `coverage` have no default world and fail as a usage error without one; see
+[`--world` is required for `generate` and `coverage`](#--world-is-required-for-generate-and-coverage).
+
+Add known private derived types without editing the authoritative root document
+by supplying them as repeatable additive overlays:
+
+```bash
+cargo run -p ams-gra-codegen-oms -- \
+  generate \
+  --schema public.xsd \
+  --overlay private-extension.xsd \
+  --language rust \
+  --output generated \
+  --world closed-schema
+```
+
+See [Additive schema overlays](#additive-schema-overlays).
 
 The accepted language values are `ada`, `rust`, and `cpp`. Run
 `ams-gra-codegen-oms --help` or a command followed by `--help` for complete
@@ -368,6 +389,13 @@ ams-gra-codegen-oms generate \
 ams-gra-codegen-oms coverage \
   --schema /path/to/root.xsd \
   --world closed-schema
+
+ams-gra-codegen-oms generate \
+  --schema /path/to/public-root.xsd \
+  --overlay /path/to/private-extension.xsd \
+  --language cpp \
+  --output generated/cpp \
+  --world closed-schema
 ```
 
 Generation completes schema loading, validation, backend generation, and
@@ -398,12 +426,55 @@ with **no default**. Omitting it is a usage error (exit code 2).
 
 If you need open-extension types to actually generate, the supported route today
 is to add the private derived-type schema to the generation schema set (same
-target namespace) and use `--world closed-schema`; see
+target namespace) and use `--world closed-schema`. Since Task 029 that no longer
+requires editing the root document: see
+[Additive schema overlays](#additive-schema-overlays) and
 `docs/adr/0004-open-extension-points.md`. Runtime-polymorphic open extensions
 are not implemented.
 
 `validate` takes no `--world`: schema validity is independent of generation
 policy.
+
+### Additive schema overlays
+
+`validate`, `coverage`, and `generate` accept a repeatable `--overlay PATH`:
+an additional top-level schema document loaded into the same normalized schema
+set as `--schema`.
+
+```text
+ams-gra-codegen-oms generate \
+  --schema public.xsd \
+  --overlay private-extension.xsd \
+  --language rust \
+  --output generated \
+  --world closed-schema
+```
+
+- **Repeatable.** Pass `--overlay` as many times as needed. Overlays are applied
+  in command-line order, which is the deterministic composition input; they are
+  never sorted by filesystem path, because absolute paths vary by machine.
+- **Additive only.** An overlay may add declarations and may derive from types
+  declared in the root or in an earlier overlay. It may not replace, override,
+  mutate, or remove an existing declaration.
+- **Same target namespace.** Every top-level overlay must declare the same
+  `targetNamespace` as the root, or loading fails with an explicit overlay
+  namespace-mismatch diagnostic. An accepted overlay's own `xs:include` and
+  `xs:import` dependencies then follow the ordinary loader rules.
+- **Duplicates are errors.** A qualified name declared twice — root versus
+  overlay, or overlay versus overlay — fails existing duplicate validation.
+  There is no precedence and no "last overlay wins".
+- **The root stays authoritative** for schema version, namespace presentation
+  metadata, and initial declaration order. Files reachable through more than one
+  route are loaded once, by canonical path.
+- **Overlays never choose a world.** Supplying a private descendant does not
+  select `closed-schema` or relax `open-extensions`; under `open-extensions`,
+  known descendants still are not treated as exhaustive.
+
+This is the current preferred mechanism for supplying known private extension
+types against a pinned public root such as the authoritative UCI schema. It is
+build-time schema composition, **not** a runtime extension registry: no runtime
+type registration, unknown-subtype representation, or `xsi:type` dispatch is
+implemented.
 
 ## First implementation milestone
 

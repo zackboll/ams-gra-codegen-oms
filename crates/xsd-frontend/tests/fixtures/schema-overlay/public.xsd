@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:pub="urn:overlay"
+           targetNamespace="urn:overlay"
+           elementFormDefault="qualified">
+  <!-- Task 029 section 26: the public half of the generic private-extension
+       overlay fixture.
+
+       There is deliberately NO xs:include of any private document here. The
+       whole point of the overlay input is that an adopting program can add a
+       private derived type WITHOUT editing this pinned authoritative root, so
+       the private schema must enter through explicit overlay composition.
+
+       Names are deliberately generic: no UCI identifier and no EXT suffix
+       appears, so no production logic can key on naming. -->
+  <xs:complexType name="ExtensionBase" abstract="true">
+    <xs:sequence>
+      <xs:element name="Label" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Container">
+    <xs:sequence>
+      <xs:element name="Name" type="xs:string"/>
+      <xs:element name="Extensions" type="pub:ExtensionBase"
+                  minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:pub="urn:overlay"
+           targetNamespace="urn:overlay"
+           elementFormDefault="qualified">
+  <!-- Task 029 section 15: this root names a type it does not itself declare.
+       Loaded alone it is an unresolved-reference error; loaded with the
+       overlay that supplies SuppliedByOverlayType it resolves normally,
+       because the caller explicitly declared that overlay to be part of the
+       schema set. Resolution treats root and overlay declarations alike. -->
+  <xs:complexType name="RootReferrer">
+    <xs:sequence>
+      <xs:element name="Supplied" type="pub:SuppliedByOverlayType"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

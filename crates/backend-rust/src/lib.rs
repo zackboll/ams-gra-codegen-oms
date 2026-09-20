@@ -621,7 +621,9 @@ mod tests {
     /// Task 028 open-world regressions.
     #[allow(dead_code)]
     const OPEN: GenerationWorld = GenerationWorld::OpenExtensions;
-    use ams_gra_oms_xsd_frontend::{load_schema_document, load_schema_set};
+    use ams_gra_oms_xsd_frontend::{
+        load_schema_document, load_schema_set, load_schema_set_with_overlays,
+    };
     use std::path::Path;
 
     fn track_schema() -> SchemaIr {
@@ -1297,6 +1299,84 @@ mod tests {
             open.contains("open-extensions"),
             "open world reports the open-world reason instead: {open}"
         );
+    }
+
+    // ---------------------------------------------------------------
+    // Task 029 -- additive same-namespace schema overlays
+    // ---------------------------------------------------------------
+
+    fn schema_overlay_fixture(name: &str) -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../xsd-frontend/tests/fixtures/schema-overlay")
+            .join(name)
+    }
+
+    fn overlay_composed_schema(overlays: &[&str]) -> SchemaIr {
+        load_schema_set_with_overlays(
+            &schema_overlay_fixture("public.xsd"),
+            &overlays
+                .iter()
+                .map(|name| schema_overlay_fixture(name))
+                .collect::<Vec<_>>(),
+        )
+        .expect("overlay fixture should compose")
+    }
+
+    /// Task 029 sections 29/30: supplying the private derived type through an
+    /// explicit overlay -- with no edit to the public root -- closes the Task
+    /// 024 sum for the repeated 0..* extension point. The same composed schema
+    /// still fails closed under `open-extensions`, because knowing one private
+    /// descendant never proves no OTHER external descendant exists.
+    #[test]
+    fn task029_private_overlay_closes_the_sum_but_not_the_world() {
+        let source = generate(&overlay_composed_schema(&["private-a.xsd"]), CLOSED)
+            .expect("an explicit overlay must close the extension point");
+        assert!(source.contains("pub enum ExtensionBase {"));
+        assert!(source.contains("PrivateA(PrivateA)"));
+        assert!(
+            source.contains("pub extensions: UnboundedVec<ExtensionBase, 0>"),
+            "the repeated 0..* field must still be generated: {source}"
+        );
+
+        let message = generate(&overlay_composed_schema(&["private-a.xsd"]), OPEN)
+            .expect_err("section 25: an overlay must not imply a closed world")
+            .to_string();
+        assert!(
+            message.contains("ExtensionBase") && message.contains("open-extensions"),
+            "open diagnostic must name target and policy: {message}"
+        );
+    }
+
+    /// Task 029 section 31: closed-sum variant order follows the caller's
+    /// overlay order, which is explicit deterministic input. Overlays are
+    /// never sorted by filesystem path.
+    #[test]
+    fn task029_two_overlays_order_variants_by_caller_order() {
+        let forward = generate(
+            &overlay_composed_schema(&["private-a.xsd", "private-b.xsd"]),
+            CLOSED,
+        )
+        .expect("two overlays should compose");
+        let forward_a = forward
+            .find("PrivateA(PrivateA)")
+            .expect("PrivateA variant");
+        let forward_b = forward
+            .find("PrivateB(PrivateB)")
+            .expect("PrivateB variant");
+        assert!(forward_a < forward_b);
+
+        let reversed = generate(
+            &overlay_composed_schema(&["private-b.xsd", "private-a.xsd"]),
+            CLOSED,
+        )
+        .expect("reversed overlays should compose");
+        let reversed_a = reversed
+            .find("PrivateA(PrivateA)")
+            .expect("PrivateA variant");
+        let reversed_b = reversed
+            .find("PrivateB(PrivateB)")
+            .expect("PrivateB variant");
+        assert!(reversed_b < reversed_a);
     }
 
     /// Section 44: a schema with no abstract value reference must produce

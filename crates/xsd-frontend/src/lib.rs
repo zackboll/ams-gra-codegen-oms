@@ -83,6 +83,10 @@ struct TextPosition {
 enum NamespaceExpectation<'a> {
     Include(&'a str),
     Import(&'a str),
+    /// A top-level schema overlay, which must share the primary root's target
+    /// namespace. Kept distinct from [`NamespaceExpectation::Include`] so the
+    /// diagnostic never claims the caller wrote an `xs:include`.
+    Overlay(&'a str),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -163,8 +167,65 @@ pub fn load_schema_document(path: &Path) -> Result<SchemaIr, FrontendError> {
 /// invalid dependency namespaces or locations, duplicate declarations, and
 /// unresolved named type references.
 pub fn load_schema_set(path: &Path) -> Result<SchemaIr, FrontendError> {
+    load_schema_set_with_overlays(path, &[])
+}
+
+/// Load a primary root XSD document plus additive top-level schema overlays
+/// into one language-neutral schema IR.
+///
+/// The primary root and its whole include/import closure are loaded first, so
+/// primary declaration order, message order, namespace presentation metadata,
+/// and [`SchemaIr::schema_version`] are unchanged by overlay composition. Each
+/// overlay is then loaded, in caller-provided order, together with its own
+/// ordinary dependency closure; overlays are never sorted, because the caller's
+/// explicit argument order is the reproducible ordering source and filesystem
+/// paths are not.
+///
+/// Overlays are purely ADDITIVE build-time input composition. An overlay may
+/// declare new types and messages, and may derive from declarations in the
+/// primary root or an earlier overlay, because named references are resolved
+/// only after every document has been assembled. An overlay may not replace,
+/// override, or remove an existing declaration: duplicate qualified names keep
+/// failing normal schema validation, with no precedence and no shadowing.
+///
+/// Every top-level overlay must declare the same `targetNamespace` as the
+/// primary root. Once an overlay root is accepted, its own `xs:include` and
+/// `xs:import` dependencies follow the ordinary loader rules and are not
+/// reinterpreted as overlays. An accepted overlay may therefore still pull in
+/// other namespaces exactly as the root could; the language backends continue
+/// to support only their existing single-namespace boundary.
+///
+/// Documents are deduplicated by canonical filesystem path, so passing one
+/// overlay twice, or passing an overlay that the root already includes, loads
+/// that physical document exactly once.
+///
+/// # Errors
+///
+/// Returns an error for unreadable, missing, or malformed documents (including
+/// overlays, whose path stays visible in the diagnostic), for an overlay whose
+/// target namespace differs from the primary root's, and for every existing
+/// schema-set failure such as duplicate declarations and unresolved named type
+/// references.
+pub fn load_schema_set_with_overlays(
+    root: &Path,
+    overlays: &[PathBuf],
+) -> Result<SchemaIr, FrontendError> {
     let mut loader = SchemaSetLoader::default();
-    loader.load(path, None, None)?;
+    loader.load(root, None, None)?;
+    // The root closure fixes the primary namespace; every top-level overlay is
+    // then checked against it before its own dependencies are traversed.
+    let primary_namespace = loader
+        .documents
+        .first()
+        .map(|document| document.target_namespace.clone())
+        .unwrap_or_default();
+    for overlay in overlays {
+        loader.load(
+            overlay,
+            Some(NamespaceExpectation::Overlay(&primary_namespace)),
+            None,
+        )?;
+    }
     documents_into_ir(loader.documents)
 }
 
@@ -985,6 +1046,7 @@ fn validate_dependency_namespace(
     let (kind, expected) = match expectation {
         NamespaceExpectation::Include(namespace) => ("xs:include", namespace),
         NamespaceExpectation::Import(namespace) => ("xs:import", namespace),
+        NamespaceExpectation::Overlay(namespace) => ("schema overlay", namespace),
     };
     if document.target_namespace != expected {
         return Err(FrontendError::InvalidInput(format!(

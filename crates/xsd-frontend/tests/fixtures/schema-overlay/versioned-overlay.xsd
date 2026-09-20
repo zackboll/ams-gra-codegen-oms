@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:pub="urn:overlay"
+           targetNamespace="urn:overlay"
+           version="99"
+           elementFormDefault="qualified">
+  <!-- Task 029 section 12: deliberately a different version from the root. -->
+  <xs:complexType name="OverlayCarrier">
+    <xs:sequence>
+      <xs:element name="Name" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

@@ -1219,3 +1219,281 @@ measurement.
 
 Normalization is unaffected by the world, as required: UCI 2.5 normalizes to
 5,557 types / 722 messages and UCI 2.6 to 5,570 types / 725 messages, unchanged.
+
+## Task 029 — additive schema overlays
+
+Task 028 established that the practical route to a real UCI extension point is
+ADR-0004 option 4: supply the private derived-type schema in the generation
+schema set and assert `--world closed-schema`. It validated that only through a
+fixture whose root `xs:include`d the private document, which is unusable against
+a *pinned* authoritative root — it would require editing the root or fabricating
+a wrapper document of new `xs:include` directives.
+
+Task 029 makes the composition an explicit **input** instead of a schema edit.
+
+### Frontend and CLI semantics
+
+One frontend API performs all schema-set loading:
+
+```text
+load_schema_set_with_overlays(root: &Path, overlays: &[PathBuf]) -> Result<SchemaIr, FrontendError>
+```
+
+`load_schema_set(root)` is now exactly its empty-overlay case, so no existing
+caller changed behaviour. The CLI surfaces it as a repeatable `--overlay PATH`
+on `validate`, `coverage`, and `generate`; zero overlays is the previous
+behaviour.
+
+```text
+ams-gra-codegen-oms generate \
+  --schema public.xsd \
+  --overlay private-a.xsd \
+  --overlay private-b.xsd \
+  --language rust --output generated --world closed-schema
+```
+
+Unlike the singular options, `--overlay` is deliberately **not** `set_once`: it
+accumulates into a `Vec<PathBuf>`, and repeating the same path is accepted.
+
+### Deterministic order
+
+The primary root and its complete `xs:include`/`xs:import` closure load first,
+which preserves primary declaration order, message order, namespace
+presentation, root schema version, and every pre-existing diagnostic. Overlay
+closures follow, in caller-provided order:
+
+```text
+primary root closure -> overlay A closure -> overlay B closure -> one SchemaIr
+```
+
+Overlays are **never sorted**. Sorting by absolute filesystem path would make
+declaration order — and therefore closed-sum variant order — depend on where
+files happen to live on a given machine. Command-line order is explicit,
+portable input, so it is the ordering source. Reversing `--overlay` order
+deterministically reverses overlay declaration and variant order; that is
+documented input ordering, not instability, and is regression-tested in all
+three backends.
+
+### Duplicate behaviour
+
+Overlays are additive only. A qualified name declared twice fails existing
+duplicate validation, with no precedence, no shadowing, and no "last overlay
+wins" — whether the collision is root-versus-overlay or overlay-versus-overlay.
+Messages with duplicate qualified names likewise still fail.
+
+Distinct from that, *canonical file* dedupe means one physical document is
+parsed exactly once no matter how many input routes reach it: listed twice,
+spelled differently, or already reachable from the root through `xs:include`.
+One ordinary parse per unique canonical document; no per-backend reload and no
+new coverage-hot-path scan.
+
+### Namespace boundary
+
+Every **top-level** overlay must declare the same `targetNamespace` as the
+primary root, checked through a dedicated `NamespaceExpectation::Overlay` so the
+diagnostic names the overlay rather than blaming an `xs:include` the caller
+never wrote:
+
+```text
+schema overlay target namespace mismatch for <file>: expected <primary>, found <overlay>
+```
+
+Once an overlay root is accepted, its own `xs:include`/`xs:import` dependencies
+follow the ordinary loader rules — they are not reinterpreted as overlays, and
+remote `schemaLocation` remains rejected. An accepted overlay may therefore
+still import other namespaces exactly as the root could, but **the language
+backends remain single-namespace**: Task 029 adds no cross-namespace generation.
+
+### Private overlay fixture
+
+`crates/xsd-frontend/tests/fixtures/schema-overlay/` holds a deliberately
+generic fixture — no UCI identifier, no `EXT` suffix, so no production logic can
+key on naming:
+
+- `public.xsd` — namespace `urn:overlay`, abstract `ExtensionBase`, `Container`
+  with `Extensions : ExtensionBase` at `0..unbounded`. It contains **no**
+  `xs:include` of any private document, which is the point: the private schema
+  can only enter through explicit overlay composition;
+- `private-a.xsd` / `private-b.xsd` — `PrivateA` / `PrivateB` extending
+  `ExtensionBase`. `private-a.xsd` binds the shared namespace to the prefix
+  `private` rather than the root's `pub`, proving lexical prefix has no semantic
+  effect and does not disturb namespace presentation metadata.
+
+Loaded alone, `public.xsd` yields `ExtensionBase` with zero known concrete
+descendants and no `PrivateA`. Composed with the overlay it yields one
+namespace and `[ExtensionBase, Container, PrivateA]` — primary declarations
+first — with `PrivateA`'s immediate base resolving to `ExtensionBase` across the
+root/overlay boundary.
+
+### Task 024 composition
+
+Closed-schema generation of the composed fixture produces the ordinary Task 024
+closed sum plus the repeated `0..*` field, with **no new backend code**:
+
+| Backend | Closed sum | Repeated field |
+| --- | --- | --- |
+| Rust | `pub enum ExtensionBase { PrivateA(PrivateA) }` | `pub extensions: UnboundedVec<ExtensionBase, 0>` |
+| C++ | `struct ExtensionBase { std::variant<PrivateA> value; }` | `UnboundedVector<ExtensionBase, 0> extensions` |
+| Ada | `type ExtensionBase (Kind : ExtensionBase_Kind := PrivateA_Kind)` | `Extensions : Container_Extensions_Sequence` |
+
+Each backend's generated output is compiler-probed while constructing a
+`PrivateA` value inside the repeated collection: Rust with `rustc`, C++ with
+`c++ -std=c++17 -Wall -Wextra -pedantic-errors`, Ada with
+`gnatmake -gnatwa -gnata`.
+
+### Task 028 world interaction
+
+Supplying an overlay **never** selects a world and never relaxes one. The same
+composed fixture that closes cleanly under `closed-schema` still fails closed
+under `open-extensions`, naming `ExtensionBase` and the policy: knowing one
+private descendant does not prove no *other* external descendant exists.
+
+### Real UCI `SourceCommandEXT` evidence
+
+A **temporary, uncommitted** probe overlay was written for the real UCI
+namespace `https://www.vdl.afrl.af.mil/programs/oam`, declaring one concrete
+`Task029PrivateSourceCommand` extending `uci:SourceCommandEXT`. Because
+`SourceCommandEXT` is itself an empty abstract type, the extension is empty too.
+
+This is **synthetic probe data only**. It is not a real UCI private
+SourceCommand definition and makes no claim to represent one. No authoritative
+UCI schema file is committed to this repository.
+
+Validation counts — exactly one added declaration, no message change:
+
+| Release | Types (no overlay) | Types (overlay) | Messages |
+| --- | ---: | ---: | ---: |
+| 2.5 | 5,557 | **5,558** | 722 (unchanged) |
+| 2.6 | 5,570 | **5,571** | 725 (unchanged) |
+
+### Exact next closed-world blocker after the overlay
+
+All six `closed-schema` probes move **past** the long-standing
+`SourceCommandEXT has no concrete structural descendants` blocker. The blocker
+that replaces it is unrelated to extension points and to Task 029, so no feature
+expansion was attempted:
+
+| Release | Backend | Exit | First blocker with overlay | Class |
+| --- | --- | ---: | --- | --- |
+| 2.5 | Ada | 1 | `unsupported Ada IR construct: type reference Primitive(Duration)` | unsupported primitive |
+| 2.5 | Rust | 1 | `unsupported Rust IR construct: type reference Primitive(Duration)` | unsupported primitive |
+| 2.5 | C++ | 1 | `unsupported C++ IR construct: type reference Primitive(Duration)` | unsupported primitive |
+| 2.6 | Ada | 1 | `unsupported Ada IR construct: constraints on AA_CodeType` | unsupported constraint |
+| 2.6 | Rust | 1 | `unsupported Rust IR construct: constraints on AA_CodeType` | unsupported constraint |
+| 2.6 | C++ | 1 | `unsupported C++ IR construct: constraints on AA_CodeType` | unsupported constraint |
+
+The two releases surface different next blockers because each backend reports
+the first unsupported construct in deterministic declaration order, and the two
+roots differ in declaration content. Neither blocker is implemented here.
+
+Open-world behaviour is unchanged by the overlay: all six `open-extensions`
+probes still stop at the earlier abstract value `CapabilityCommandBaseType`,
+with and without the overlay, confirming overlay support does not weaken
+open-world policy.
+
+| Release | Backends | With overlay | Without overlay |
+| --- | --- | --- | --- |
+| 2.5 | Ada/Rust/C++ | `CapabilityCommandBaseType` | `CapabilityCommandBaseType` |
+| 2.6 | Ada/Rust/C++ | `CapabilityCommandBaseType` | `CapabilityCommandBaseType` |
+
+### Coverage delta
+
+Root-only coverage is unchanged: all twelve no-overlay cells reproduce the
+Task 028 authoritative coverage matrix exactly, so the overlay plumbing does not
+perturb the ordinary case.
+
+With the one-declaration overlay, the inventory changes are exactly what one
+added concrete empty extension implies:
+
+| Metric | 2.5 no overlay | 2.5 overlay | 2.6 no overlay | 2.6 overlay |
+| --- | ---: | ---: | ---: | ---: |
+| `declarations.total` | 5,557 | 5,558 | 5,570 | 5,571 |
+| `declarations.concrete` | 5,487 | 5,488 | 5,500 | 5,501 |
+| `declarations.with_base_type` | 2,971 | 2,972 | 2,970 | 2,971 |
+| `kind.Record` | 4,192 | 4,193 | 4,212 | 4,213 |
+| `abstract_usage.base` | 57 | 58 | 57 | 58 |
+| `base.structural_named` | 2,026 | 2,027 | 2,036 | 2,037 |
+| `base.references_backward` | 1,151 | 1,152 | 1,160 | 1,161 |
+| `inheritance.abstract_bases` | 1,270 | 1,271 | 1,273 | 1,274 |
+| `inheritance.distinct_bases` | 271 | 272 | 272 | 273 |
+| `inheritance.empty_local_extensions` | 406 | 407 | 405 | 406 |
+| `inheritance.record-with-record-base` | 2,025 | 2,026 | 2,035 | 2,036 |
+| `abstract_value.acyclic_targets` | 29 | 30 | 29 | 30 |
+| `abstract_value.zero_descendant_targets` | **13** | **12** | **13** | **12** |
+
+Field types, field occurrences, and message closures are unchanged (2.5
+`13147/13160` and `8211`/`13160`, `0/722`; 2.6 `13198/13198` and
+`8231`/`13198`, `0/725`), because the probe overlay adds an empty extension with
+no new field and no new message. These deltas are identical under both worlds:
+the inventory is an objective measurement of the schema set, not a policy
+measurement.
+
+Backend full-declaration coverage with the overlay:
+
+| Release | World | Backend | Kinds | Full declarations |
+| --- | --- | --- | --- | --- |
+| 2.5 | closed | Ada | 5429/5558 | 2772/5558 (was 2770/5557) |
+| 2.5 | closed | Rust/C++ | 5429/5558 | 5369/5558 (was 5365/5557) |
+| 2.5 | open | Ada | 5429/5558 | 2764/5558 (was 2762/5557) |
+| 2.5 | open | Rust/C++ | 5429/5558 | 5279/5558 (was 5277/5557) |
+| 2.6 | closed | Ada | 5442/5571 | 2773/5571 (was 2771/5570) |
+| 2.6 | closed | Rust/C++ | 5442/5571 | 5391/5571 (was 5387/5570) |
+| 2.6 | open | Ada | 5442/5571 | 2765/5571 (was 2763/5570) |
+| 2.6 | open | Rust/C++ | 5442/5571 | 5301/5571 (was 5299/5570) |
+
+Downstream coverage improvement was measured, not inferred.
+
+### Zero-descendant topology change
+
+The most important proof that overlay declarations take the *ordinary* path
+rather than a special registry path:
+
+```text
+abstract_value.zero_descendant_targets: 13 -> 12
+
+abstract SourceCommandEXT: record-field
+  -> abstract SourceCommandEXT: base, record-field
+
+abstract value SourceCommandEXT: no concrete descendants
+  -> abstract value SourceCommandEXT: acyclic (1 concrete descendants)
+```
+
+measured in **both** releases. The overlay's declaration participates in normal
+Task 024 topology analysis; nothing special-cases it.
+
+This also happens under `open-extensions` coverage, and that is correct. The
+topology inventory objectively measures the supplied schema set, and
+`SourceCommandEXT` genuinely does now have a known descendant there. Generation
+semantics remain open-world fail-closed regardless. Objective topology counts
+were not altered to make policy metrics look simpler.
+
+### Performance
+
+Overlay loading is one ordinary parse per unique canonical document; no repeated
+reload per backend and no additional scan in coverage hot paths. Measured
+coverage runtimes are indistinguishable between no-overlay and overlay runs:
+
+| Case | Seconds |
+| --- | ---: |
+| 2.5 closed, no overlay | 260.9 |
+| 2.5 closed, overlay | 254.7 |
+| 2.6 closed, no overlay | 254.6 |
+| 2.6 closed, overlay | 266.6 |
+| 2.5 open, no overlay | 259.3 |
+| 2.5 open, overlay | 254.2 |
+| 2.6 open, no overlay | 255.1 |
+| 2.6 open, overlay | 263.8 |
+
+Variation is within ordinary noise on a loaded host; there is no
+order-of-magnitude regression.
+
+### What Task 029 does not add
+
+No runtime extension registry, runtime polymorphism, `xsi:type` dispatch, JSON
+or XML codec, or CAL runtime work. No override/patch semantics. No
+cross-namespace backend generation. No `SourceCommandEXT` name special-case and
+no `EXT`-suffix heuristic. No `GenerationWorld` change and no world default. No
+`SchemaIr` shape change: after loading it remains a normalized semantic
+declaration set, with composition provenance available only through each
+declaration's existing `SourceRef`. The newly exposed post-overlay blockers are
+recorded, not implemented.

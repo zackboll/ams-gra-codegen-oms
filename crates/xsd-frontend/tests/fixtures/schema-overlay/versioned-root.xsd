@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:pub="urn:overlay"
+           targetNamespace="urn:overlay"
+           version="1"
+           elementFormDefault="qualified">
+  <!-- Task 029 section 12: the primary root carries the authoritative schema
+       version. The paired overlay declares a different version attribute,
+       which must be parsed as ordinary document metadata and discarded rather
+       than merged into SchemaIr.schema_version. -->
+  <xs:complexType name="RootCarrier">
+    <xs:sequence>
+      <xs:element name="Name" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>
