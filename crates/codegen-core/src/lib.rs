@@ -271,36 +271,122 @@ pub(crate) fn name_preflight_plan(
     }
 }
 
+/// The set of abstract structural declarations actually demanded by value.
+///
+/// Computed once per pass: both [`plan_type_emissions`] and
+/// [`emission_surfaces`] classify against the same set, so neither can drift
+/// into treating a merely *projectable* abstract declaration as a demanded
+/// abstract value.
+fn abstract_target_names(schema: &SchemaIr) -> BTreeSet<QualifiedName> {
+    abstract_value_targets(schema)
+        .into_iter()
+        .map(|declaration| declaration.name.clone())
+        .collect()
+}
+
+/// Classify a single declaration into the entity the backends actually emit.
+///
+/// This is the one shared model of "what carries a generated name", used by
+/// both the whole-schema planner and the naming fallback so the two can never
+/// disagree about which declarations become Task 024 abstract value wrappers.
+///
+/// * a non-abstract (or non-structural) declaration is emitted as itself;
+/// * an abstract structural declaration that is **not** an abstract value
+///   target is ancestry only -- `base_type` ancestry is not a value
+///   occurrence, so nothing is rendered for it and it owns no generated name;
+/// * an abstract structural declaration that **is** a demanded target becomes
+///   a wrapper only in the closed world and only when its projection
+///   succeeds;
+/// * a zero-descendant target used exclusively in supported absent-only
+///   occurrences (Task 026) is elided rather than rejected.
+///
+/// Returning `Ok(None)` means "no emitted entity, no generated name". Errors
+/// are semantic failures of *this* declaration; the planner propagates them,
+/// while naming treats them as "no surface" so an unrepresentable entity never
+/// fabricates names and never masks its own diagnostic.
+///
+/// # Errors
+///
+/// Returns an error if this declaration is a demanded abstract value target
+/// that cannot be represented under the asserted world.
+fn classify_emission_for_declaration<'a>(
+    schema: &'a SchemaIr,
+    declaration: &'a TypeDecl,
+    abstract_targets: &BTreeSet<QualifiedName>,
+    world: GenerationWorld,
+) -> Result<Option<TypeEmission<'a>>, CodegenError> {
+    if !declaration.is_abstract
+        || !matches!(
+            declaration.kind,
+            TypeKind::Record { .. } | TypeKind::Choice { .. }
+        )
+    {
+        return Ok(Some(TypeEmission::Declaration(declaration)));
+    }
+    // Ancestry-only: reachable solely as a `base_type`, never as a value.
+    // Concrete descendants store their own effective members, so this
+    // declaration has no rendered surface at all.
+    if !abstract_targets.contains(&declaration.name) {
+        return Ok(None);
+    }
+    if world == GenerationWorld::OpenExtensions {
+        // Task 028 section 22: a demanded abstract value target has no
+        // representation in the open world, and the planner must never
+        // silently emit a closed sum for it.
+        return Err(CodegenError {
+            message: format!(
+                "unsupported abstract structural value: {}",
+                AbstractValueProjectionError::NotClosedUnderOpenExtensions(
+                    declaration.name.clone()
+                )
+            ),
+        });
+    }
+    match project_abstract_value(schema, &declaration.name) {
+        Ok(projection) => Ok(Some(TypeEmission::AbstractValue(projection))),
+        Err(error @ AbstractValueProjectionError::NoConcreteDescendants(_)) => {
+            // Task 026: a zero-descendant target has no wrapper to emit, but
+            // only when every occurrence of it is a supported absent-only
+            // occurrence. Any occurrence outside that shape (positive
+            // minimum, repeated minimum, nillable, or constrained) fails
+            // closed exactly as it did before Task 026, because no evidence
+            // justifies inventing a payload for it.
+            ensure_zero_descendant_target_only_used_as_absent_only(schema, &declaration.name)
+                .map_err(|_| CodegenError {
+                    message: format!("unsupported abstract structural value: {error}"),
+                })?;
+            Ok(None)
+        }
+        Err(error) => Err(CodegenError {
+            message: format!("unsupported abstract structural value: {error}"),
+        }),
+    }
+}
+
 /// The per-declaration emitted surfaces, derived from renderer policy alone.
 ///
-/// This mirrors the entity-selection half of [`plan_type_emissions`] exactly
-/// -- an abstract structural declaration becomes a wrapper when it projects,
-/// and contributes nothing when it does not -- but omits the planner's
-/// topological ordering and its global error propagation, neither of which
-/// affects which names are emitted.
+/// This applies [`classify_emission_for_declaration`] -- the very same entity
+/// selection [`plan_type_emissions`] uses -- but omits the planner's
+/// topological ordering and its *global* error propagation, neither of which
+/// affects which names are emitted. Failure is scoped to the offending
+/// declaration: it contributes no surface, while every unrelated emitted
+/// declaration is still analysed.
 fn emission_surfaces(schema: &SchemaIr, world: GenerationWorld) -> Vec<TypeEmission<'_>> {
+    let abstract_targets = abstract_target_names(schema);
+    if abstract_targets.is_empty() {
+        // Mirror the planner's no-target shortcut exactly: with nothing
+        // demanded by value it delegates to `plan_type_declarations`, which
+        // emits every declaration as itself. Only the ordering is dropped
+        // here, and ordering does not affect which names are emitted.
+        return schema.types.iter().map(TypeEmission::Declaration).collect();
+    }
     schema
         .types
         .iter()
         .filter_map(|declaration| {
-            if !declaration.is_abstract
-                || !matches!(
-                    declaration.kind,
-                    TypeKind::Record { .. } | TypeKind::Choice { .. }
-                )
-            {
-                return Some(TypeEmission::Declaration(declaration));
-            }
-            // A wrapper exists only in the closed world and only when the
-            // projection succeeds. Otherwise nothing carries this name: under
-            // open extensions the abstract value fails closed before any
-            // wrapper exists, and a zero-descendant target is elided.
-            if !world.is_closed_schema_set() {
-                return None;
-            }
-            project_abstract_value(schema, &declaration.name)
+            classify_emission_for_declaration(schema, declaration, &abstract_targets, world)
                 .ok()
-                .map(TypeEmission::AbstractValue)
+                .flatten()
         })
         .collect()
 }
@@ -356,50 +442,21 @@ pub fn plan_type_emissions(
         });
     }
 
-    // A zero-descendant abstract value target has no wrapper to emit: Task 026
-    // requires callers to have already validated that every occurrence of
-    // such a target is a supported absent-only occurrence (or the schema
-    // failed validation earlier). Skipping wrapper construction here is safe
-    // because `emission_dependencies` below never creates an edge to an
-    // absent-only field's target.
-    let mut projections = Vec::new();
-    for target in &targets {
-        match project_abstract_value(schema, &target.name) {
-            Ok(projection) => projections.push(projection),
-            Err(error @ AbstractValueProjectionError::NoConcreteDescendants(_)) => {
-                // Task 026: a zero-descendant target has no wrapper to emit,
-                // but only when every occurrence of it is a supported
-                // absent-only occurrence. Any occurrence outside that shape
-                // (positive minimum, repeated minimum, nillable, or
-                // constrained) fails closed exactly as it did before Task
-                // 026, because no evidence justifies inventing a payload for
-                // it.
-                ensure_zero_descendant_target_only_used_as_absent_only(schema, &target.name)
-                    .map_err(|_| CodegenError {
-                        message: format!("unsupported abstract structural value: {error}"),
-                    })?;
-            }
-            Err(error) => {
-                return Err(CodegenError {
-                    message: format!("unsupported abstract structural value: {error}"),
-                });
-            }
-        }
-    }
+    // Entity selection is the shared classifier's job, so the planner and the
+    // naming fallback cannot disagree about which declarations become Task
+    // 024 wrappers. The planner differs only in that it *propagates* a
+    // declaration's semantic failure instead of scoping it, and that it
+    // orders the result topologically below.
+    let abstract_targets = targets
+        .iter()
+        .map(|target| target.name.clone())
+        .collect::<BTreeSet<_>>();
     let mut emissions = Vec::new();
     for declaration in &schema.types {
-        if !declaration.is_abstract
-            || !matches!(
-                declaration.kind,
-                TypeKind::Record { .. } | TypeKind::Choice { .. }
-            )
+        if let Some(emission) =
+            classify_emission_for_declaration(schema, declaration, &abstract_targets, world)?
         {
-            emissions.push(TypeEmission::Declaration(declaration));
-        } else if let Some(projection) = projections
-            .iter()
-            .find(|projection| projection.declaration.name == declaration.name)
-        {
-            emissions.push(TypeEmission::AbstractValue(projection.clone()));
+            emissions.push(emission);
         }
     }
     let entity_indices = emissions
@@ -782,6 +839,145 @@ mod tests {
             .into_iter()
             .map(|declaration| declaration.name.local_name.as_str())
             .collect())
+    }
+
+    /// The one shared classifier decides what carries a generated name, for
+    /// both the planner and the naming fallback. These four cases pin its
+    /// contract directly, so the two callers cannot diverge again.
+    #[test]
+    fn the_shared_classifier_selects_exactly_the_emitted_entities() {
+        let mut ancestry_only = record("Ancestry", &[]);
+        ancestry_only.is_abstract = true;
+        let mut derived = record("Derived", &[]);
+        derived.base_type = Some(named("Ancestry"));
+        let mut demanded = record("Demanded", &[]);
+        demanded.is_abstract = true;
+        let mut demanded_concrete = record("DemandedConcrete", &[]);
+        demanded_concrete.base_type = Some(named("Demanded"));
+        let mut abstract_choice = declaration(
+            "Selection",
+            TypeKind::Choice {
+                alternatives: vec![field(named("Value"))],
+            },
+        );
+        abstract_choice.is_abstract = true;
+        // Built before the local `schema` binding shadows the helper.
+        let choice_schema = {
+            let mut demanded_choice = declaration(
+                "Selection",
+                TypeKind::Choice {
+                    alternatives: vec![field(named("Value"))],
+                },
+            );
+            demanded_choice.is_abstract = true;
+            let mut choice_concrete = record("SelectionConcrete", &[]);
+            choice_concrete.base_type = Some(named("Selection"));
+            schema(vec![
+                scalar("Value"),
+                demanded_choice,
+                choice_concrete,
+                record("ChoiceHolder", &["Selection"]),
+            ])
+        };
+        let schema = schema(vec![
+            scalar("Value"),
+            ancestry_only,
+            derived,
+            demanded,
+            demanded_concrete,
+            abstract_choice,
+            record("Holder", &["Derived"]),
+            record("Demander", &["Demanded"]),
+        ]);
+        let abstract_targets = abstract_target_names(&schema);
+        let classify = |local: &str| {
+            let declaration = schema
+                .types
+                .iter()
+                .find(|candidate| candidate.name.local_name == local)
+                .expect("fixture declaration");
+            classify_emission_for_declaration(
+                &schema,
+                declaration,
+                &abstract_targets,
+                GenerationWorld::ClosedSchemaSet,
+            )
+        };
+
+        // A concrete declaration is emitted as itself.
+        assert!(matches!(
+            classify("Derived"),
+            Ok(Some(TypeEmission::Declaration(declaration)))
+                if declaration.name.local_name == "Derived"
+        ));
+        // An ancestry-only abstract Record is never demanded by value, so it
+        // is not an emitted entity -- even though it projects successfully.
+        assert!(
+            project_abstract_value(&schema, &QualifiedName::new(NS, "Ancestry")).is_ok(),
+            "projectability alone must not imply wrapper demand"
+        );
+        assert_eq!(classify("Ancestry"), Ok(None));
+        // A closed-world abstract Record that *is* demanded by value, and has
+        // concrete descendants, becomes the Task 024 wrapper.
+        assert!(matches!(
+            classify("Demanded"),
+            Ok(Some(TypeEmission::AbstractValue(projection)))
+                if projection.declaration.name.local_name == "Demanded"
+        ));
+        // An abstract Choice: this pins the *currently rendered* behaviour
+        // rather than an assumed one. `abstract_value_targets` admits both
+        // structural kinds, so an abstract Choice that is not demanded by
+        // value is classified exactly like an ancestry-only abstract Record
+        // -- which is what the planner already did before this change,
+        // because the wrapper lookup it performed only ever matched a
+        // demanded target. Naming's `emits_own_top_level_name` still keeps a
+        // *planned* abstract Choice reserved in the no-target schemas where
+        // the planner hands one back.
+        assert_eq!(classify("Selection"), Ok(None));
+        // And when the very same abstract Choice is demanded by value it
+        // becomes a wrapper, exactly as an abstract Record does.
+        let choice_targets = abstract_target_names(&choice_schema);
+        let selection = &choice_schema.types[1];
+        assert!(matches!(
+            classify_emission_for_declaration(
+                &choice_schema,
+                selection,
+                &choice_targets,
+                GenerationWorld::ClosedSchemaSet,
+            ),
+            Ok(Some(TypeEmission::AbstractValue(projection)))
+                if projection.declaration.name.local_name == "Selection"
+        ));
+    }
+
+    /// A demanded target whose projection fails contributes no surface to the
+    /// naming fallback, while the planner still propagates the error. This is
+    /// the asymmetry the two callers are allowed to have.
+    #[test]
+    fn a_failed_target_is_scoped_in_the_fallback_but_fatal_to_the_planner() {
+        let mut uninhabited = record("Uninhabited", &[]);
+        uninhabited.is_abstract = true;
+        let schema = schema(vec![
+            uninhabited,
+            record("Demand", &["Uninhabited"]),
+            scalar("Unrelated"),
+        ]);
+        let error = plan_type_emissions(&schema, GenerationWorld::ClosedSchemaSet)
+            .expect_err("a demanded zero-descendant target must abort the plan");
+        assert!(
+            error.message.contains("Uninhabited"),
+            "the semantic diagnostic must name the failing target: {}",
+            error.message
+        );
+        let surfaces = emission_surfaces(&schema, GenerationWorld::ClosedSchemaSet);
+        assert_eq!(
+            surfaces
+                .iter()
+                .map(|emission| emission.name().local_name.as_str())
+                .collect::<Vec<_>>(),
+            ["Demand", "Unrelated"],
+            "the failed entity contributes nothing; unrelated ones remain"
+        );
     }
 
     #[test]

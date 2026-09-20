@@ -2584,6 +2584,97 @@ mod tests {
         );
     }
 
+    /// Fallback must classify abstract declarations with the **same** notion
+    /// of "abstract value target" the normal planner uses.
+    ///
+    /// `project_abstract_value` answers "can this abstract declaration be
+    /// represented as a closed sum?". It does *not* answer "is this
+    /// declaration actually demanded as a generated abstract value?" -- only
+    /// `abstract_value_targets` answers that. Treating a successful
+    /// projection as evidence of demand let the fallback promote an
+    /// ancestry-only abstract Record into a phantom Task 024 wrapper whenever
+    /// an *unrelated* declaration aborted whole-schema planning.
+    ///
+    /// Here `BoundedVec` is reached only through `base_type`, so nothing is
+    /// rendered for it, yet it projects successfully (because `Derived`
+    /// exists) and it is spelled exactly like Rust's own emitted support
+    /// type. The phantom wrapper therefore manufactured a `BoundedVec`
+    /// collision that masked the real `Uninhabited` semantic failure.
+    #[test]
+    fn a_global_planning_abort_does_not_promote_ancestry_only_abstracts_to_wrappers() {
+        // Area A: ancestry only. No value reference to `BoundedVec` exists.
+        let mut bounded_vec = record("BoundedVec", Vec::new());
+        bounded_vec.is_abstract = true;
+        let mut derived = record("Derived", Vec::new());
+        derived.base_type = Some(TypeRef {
+            target: TypeRefTarget::Named(QualifiedName::new(NS, "BoundedVec")),
+        });
+        // Area B: a real semantic failure, entirely unrelated to area A.
+        let mut uninhabited = record("Uninhabited", Vec::new());
+        uninhabited.is_abstract = true;
+        let schema = schema_with(vec![
+            bounded_vec,
+            derived,
+            record(
+                "Holder",
+                vec![field(
+                    "Item",
+                    TypeRefTarget::Named(QualifiedName::new(NS, "Derived")),
+                    Cardinality::REQUIRED_ONE,
+                )],
+            ),
+            uninhabited,
+            record(
+                "Demand",
+                vec![field(
+                    "Value",
+                    TypeRefTarget::Named(QualifiedName::new(NS, "Uninhabited")),
+                    Cardinality::REQUIRED_ONE,
+                )],
+            ),
+        ]);
+        let bounded_vec_name = QualifiedName::new(NS, "BoundedVec");
+
+        // The fixture must actually distinguish the two concepts.
+        assert!(
+            !crate::abstract_value_targets(&schema)
+                .iter()
+                .any(|declaration| declaration.name == bounded_vec_name),
+            "ancestry alone must not make `BoundedVec` an abstract value target"
+        );
+        assert!(
+            crate::project_abstract_value(&schema, &bounded_vec_name).is_ok(),
+            "the projection must succeed, or this test would not separate \
+             `projectable` from `demanded`"
+        );
+        assert!(
+            crate::plan_type_emissions(&schema, GenerationWorld::ClosedSchemaSet).is_err(),
+            "the fixture must actually make whole-schema planning fail"
+        );
+
+        // The phantom wrapper must not appear, so no `BoundedVec` collision
+        // with Rust's generated support type is reported.
+        assert_eq!(
+            validate_backend_names(
+                &schema,
+                BackendLanguage::Rust,
+                GenerationWorld::ClosedSchemaSet
+            ),
+            Ok(()),
+            "an ancestry-only abstract owns no generated name, so it cannot \
+             collide with the `BoundedVec` support type"
+        );
+        assert!(
+            !unsafe_named_declarations(
+                &schema,
+                BackendLanguage::Rust,
+                GenerationWorld::ClosedSchemaSet
+            )
+            .contains(&bounded_vec_name),
+            "an ancestry-only abstract must not be attributed a phantom wrapper"
+        );
+    }
+
     /// The predicates preflight uses are the renderers' own predicates, so
     /// they must track the schema shape rather than be always-true.
     #[test]

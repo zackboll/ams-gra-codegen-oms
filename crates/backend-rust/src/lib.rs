@@ -1474,6 +1474,38 @@ fn main() {
         assert!(source.contains("pub struct Holder {\n    pub required: String,\n}"));
     }
 
+    /// An unrelated semantic failure must not be re-attributed to a phantom
+    /// generated-name collision.
+    ///
+    /// `BoundedVec` here is ancestry only, so nothing is emitted for it even
+    /// though it projects successfully. If preflight promoted it to a Task
+    /// 024 wrapper it would collide with this backend's own `BoundedVec`
+    /// support type, and that invented naming error would be reported
+    /// *instead of* the real `Uninhabited` failure -- pointing the user at a
+    /// declaration that is not the cause.
+    #[test]
+    fn an_ancestry_only_abstract_does_not_mask_an_unrelated_semantic_failure() {
+        let schema = load_schema_document(&Path::new(env!("CARGO_MANIFEST_DIR")).join(
+            "../xsd-frontend/tests/fixtures/\
+             backend-ancestry-only-abstract-with-unrelated-failure.xsd",
+        ))
+        .expect("ancestry-only/unrelated-failure fixture should parse");
+        let error = generate(&schema, CLOSED)
+            .expect_err("the demanded zero-descendant target must fail closed");
+        assert!(
+            error
+                .message
+                .contains("Uninhabited has no concrete structural descendants"),
+            "the semantic failure must stay authoritative: {}",
+            error.message
+        );
+        assert!(
+            !error.message.contains("BoundedVec"),
+            "an ancestry-only abstract must not be blamed for the failure: {}",
+            error.message
+        );
+    }
+
     #[test]
     fn uninhabited_abstract_required_field_remains_unsupported() {
         let error = generate(&uninhabited_required_schema(), CLOSED)
