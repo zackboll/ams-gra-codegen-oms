@@ -298,7 +298,8 @@ ams-gra-codegen-oms/
 ├── crates/
 │   ├── ir/                # Language-neutral semantic schema model
 │   ├── xsd-frontend/      # XSD loading, resolution, normalization into IR
-│   ├── codegen-core/      # Backend contract and generated-file model
+│   ├── codegen-core/      # Backend contract, generated-file model, Service Plan
+│   ├── service-contract/  # Portable Service Contract v0.1 parsing and IR
 │   ├── backend-ada/       # Ada/SPARK generator
 │   ├── backend-rust/      # Rust generator
 │   ├── backend-cpp/       # C++ generator
@@ -307,6 +308,7 @@ ams-gra-codegen-oms/
 │   ├── architecture.md
 │   ├── ir.md
 │   ├── compatibility.md
+│   ├── service-contract-integration.md
 │   ├── roadmap.md
 │   ├── references.md
 │   └── adr/
@@ -389,6 +391,10 @@ ams-gra-codegen-oms generate \
 ams-gra-codegen-oms coverage \
   --schema /path/to/root.xsd \
   --world closed-schema
+
+ams-gra-codegen-oms service-plan \
+  --schema /path/to/root.xsd \
+  --contract /path/to/service.yaml
 
 ams-gra-codegen-oms generate \
   --schema /path/to/public-root.xsd \
@@ -476,6 +482,88 @@ build-time schema composition, **not** a runtime extension registry: no runtime
 type registration, unknown-subtype representation, or `xsi:type` dispatch is
 implemented.
 
+### Service Contract planning
+
+A portable AMS GRA Service Contract is a first-class generator input. The
+read-only `service-plan` command joins one to a normalized schema set:
+
+```text
+ams-gra-codegen-oms service-plan \
+  --schema tests/fixtures/service-plan/root.xsd \
+  --contract tests/fixtures/service-plan/service.yaml
+```
+
+```text
+service contract valid
+contract version: 0.1
+service: Contract Codegen Test
+kind: service
+contract uci schema version: 2.5
+schema root version: 000.1.0
+capabilities: (omitted by contract)
+
+functions: 1
+exchange occurrences: 2
+oms message exchanges: 2
+unique uci messages: 2
+selected type closure: 5
+
+mission-data / position-input
+  input PositionReport
+  topic: mission.position-report
+  resolved: {urn:test}PositionReport
+
+mission-data / observation-output
+  output ObservationMeasurementReport
+  topic: mission.observation-measurement-report
+  resolved: {urn:test}ObservationMeasurementReport
+```
+
+- **The contract owns interface semantics; the XSD owns type identity.** The
+  contract states which functions and exchanges exist, with direction,
+  mandate, topic, and timing. The schema states which messages exist, their
+  qualified names, payload types, and transitive type graphs. The Resolved
+  Service Plan owns only the join.
+- **Exact message resolution.** Contract message names resolve by exact
+  local-name equality. Zero matches fail; more than one fails as ambiguous
+  with the candidate qualified names listed. There is no case folding, affix
+  matching, fuzzy matching, or first-match-wins.
+- **Non-UCI exchanges are preserved.** `data_transfer`, `special_signal`,
+  `security_exchange`, and `non_oms_message` are kept verbatim, never resolved
+  against the schema, and never a cause of failure.
+- **Contract order is preserved.** Functions and exchanges keep author order.
+  `ServicePlan::selected_messages()` separately exposes the deduplicated
+  message selection in first-occurrence order.
+- **Writes nothing, and takes no `--world`.** Contract validity and
+  message/type resolution are independent of the `closed-schema` /
+  `open-extensions` policy.
+
+Contract `standards.uci_extension_schemas` entries are logical **identifiers**,
+not paths, so each is mapped explicitly:
+
+```text
+ams-gra-codegen-oms service-plan \
+  --schema public.xsd \
+  --contract service.yaml \
+  --extension ext-a-1.0=/path/private-a.xsd \
+  --extension ext-b-2.0=/path/private-b.xsd
+```
+
+The supplied set must match the declared set exactly — a missing mapping, an
+undeclared mapping, and a duplicate identifier all fail — and the Task 029
+overlay loader receives the paths in **contract** declaration order, not
+command-line order.
+
+Compatibility is defined by `contract_version`, not by repository SHA. The
+baseline is `zackboll/ams-gra-service-contract`
+`4ea5be8dd36e9695bd58f2c36c6b3dd8075de249`, `contract_version: 0.1`. OMS
+profile conformance and contract completion remain owned by that project: no
+profile engine was ported, and nothing here infers Capabilities, groups
+functions, generates topics, or regenerates Section 3.3 topology.
+
+See `docs/service-contract-integration.md` and
+`docs/adr/0005-service-contract-codegen-plan.md`.
+
 ## First implementation milestone
 
 The first meaningful vertical slice should be deliberately small:
@@ -502,7 +590,10 @@ This project does **not** initially aim to:
 - replace UCI XSD with a new IDL;
 - generate AMS GRA MEL interfaces;
 - make a claim of OMS compliance solely because code was generated;
-- vendor the authoritative UCI/OMS standards into this repository.
+- vendor the authoritative UCI/OMS standards into this repository;
+- reimplement the Service Contract project's OMS profile engine or
+  completion-assistant tooling. A portable contract is consumed here, never
+  authored, completed, or inferred.
 
 ## Source provenance and standards handling
 

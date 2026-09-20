@@ -106,6 +106,55 @@ worlds: Task 028 deliberately did not adopt an always-empty repeated-value rule.
 No name-based (`EXT` suffix) heuristic may be used; the schema contains no
 reliable machine-readable discriminator for extension points.
 
+## Phase 2.5 — Contract-driven generation
+
+A portable AMS GRA Service Contract is now a first-class generator input, not a
+distant Phase 6 helper. See `docs/service-contract-integration.md` and
+`docs/adr/0005-service-contract-codegen-plan.md`.
+
+**Complete (Task 030):**
+
+- [x] portable Contract IR — a dedicated `ams-gra-oms-service-contract` crate
+      parsing v0.1 YAML/JSON into a typed IR, with fail-closed portable
+      validation and `deny_unknown_fields`. It depends on no frontend, backend,
+      CLI, or runtime code;
+- [x] UCI message resolution — exact local-name equality against
+      `SchemaIr.messages`; zero matches fail, more than one fails as ambiguous
+      with candidates listed, and no fuzzy or first-match behavior exists;
+- [x] contract-selected type closure — the transitive named closure of the
+      selected messages' payload types, computed with the single shared
+      dependency model that declaration ordering and coverage analysis also use;
+- [x] Service Plan — a language-neutral `ServicePlan` in `codegen-core`,
+      preserving contract function/exchange order, all four non-UCI exchange
+      kinds, Capability ownership and standard roles, and the distinction
+      between omitted and explicitly empty Capabilities;
+- [x] a read-only `service-plan` CLI command with explicit
+      `--extension ID=PATH` mappings, exact extension-set matching, and
+      contract-ordered Task 029 overlay composition.
+
+**Still open:**
+
+- [ ] selected-closure backend generation;
+- [ ] generated service publish/subscribe façade;
+- [ ] LA-CAL runtime integration.
+
+Nothing in this phase copies the OMS profile engine or the completion
+assistant: profile conformance and contract completion remain owned by
+`zackboll/ams-gra-service-contract`. There is no Capability inference, no
+function grouping, no topic generation, and no Section 3.3 regeneration here.
+
+### Why this precedes full-UCI generation
+
+> Useful contract-driven generation does not require all 722 UCI 2.5 message
+> closures to be renderable.
+
+The code generator may generate only the type/message closure **selected by a
+Service Contract**. A service that uses a handful of messages needs only those
+messages' transitive type closures to render, not the whole 5,557-type UCI
+universe. Full-UCI generation (Phase 5) remains an eventual capability and a
+useful coverage metric, but it is no longer a precondition for delivering
+value to a real service.
+
 ## Phase 3 — Typed LA-CAL integration
 
 Define the stable runtime contract used by generated code.
@@ -152,7 +201,6 @@ Validate each against unmodified Sleet.
 
 - schema diff / compatibility report;
 - generated API documentation;
-- service-contract helper generation;
 - topic/message allow-list helpers;
 - cached IR artifact;
 - editor/IDE schema navigation;

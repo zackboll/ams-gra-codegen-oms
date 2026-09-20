@@ -7,6 +7,7 @@ rust-version.workspace = true
 
 [dependencies]
 ams-gra-oms-ir = { path = "../ir" }
+ams-gra-oms-service-contract = { path = "../service-contract" }
 
 [lints]
 workspace = true

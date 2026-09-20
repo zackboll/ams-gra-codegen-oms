@@ -1,0 +1,18 @@
+[package]
+name = "ams-gra-oms-service-contract"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# The maintained fork of serde_yaml, published by The YAML Organization. The
+# original serde_yaml is deprecated and unmaintained. Cargo's package renaming
+# keeps the dependency key spelled `serde_yaml`, so the narrow existing source
+# surface (`serde_yaml::from_str`) is unchanged.
+serde_yaml = { package = "yaml_serde", version = "0.10" }
+
+[lints]
+workspace = true

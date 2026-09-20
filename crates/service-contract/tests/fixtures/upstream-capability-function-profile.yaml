@@ -1,0 +1,83 @@
+# PROVENANCE: copied verbatim (body unchanged below this header) from
+#   zackboll/ams-gra-service-contract
+#   commit 4ea5be8dd36e9695bd58f2c36c6b3dd8075de249
+#   path: examples/capability-function-profile.yaml
+#
+# This is an authoring EXAMPLE from the portable-contract project, not a
+# completion-tooling artifact: no profile, worksheet, decisions, mapping, or
+# scaffold file is consumed by OMS-codegen. It exists here so this repository
+# can prove it parses a contract authored by the upstream project, as a
+# cross-repository compatibility check on contract_version 0.1.
+# Portable-valid Section 3.3 coverage example only. It intentionally omits the
+# Section 3.1 Service functions, so it is not a complete OMS-profile-valid Service.
+contract_version: "0.1"
+service:
+  name: multi-capability-section-33-example
+  version: "0.1.0"
+  kind: service
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+capabilities:
+  - id: esm
+    name: ESM
+    requires_position_information: true
+  - id: radar
+    name: Radar
+    requires_position_information: false
+functions:
+  - id: position-information
+    name: Local Position Information Processing display text
+    standard_role: position_information_processing
+    category: required
+    required_group: capability
+    applicability: applicable
+    exchanges: []
+  - id: esm-status
+    name: Local ESM status display text
+    standard_role: capability_status
+    capability: esm
+    category: required
+    required_group: capability
+    applicability: applicable
+    exchanges: []
+  - id: esm-enable-disable
+    name: Local ESM enable display text
+    standard_role: capability_enable_disable
+    capability: esm
+    category: required
+    required_group: capability
+    applicability: applicable
+    exchanges: []
+  - id: esm-operations
+    name: Local ESM operations display text
+    standard_role: capability_operations
+    capability: esm
+    category: required
+    required_group: capability
+    applicability: applicable
+    exchanges: []
+  - id: radar-status
+    name: Local radar status display text
+    standard_role: capability_status
+    capability: radar
+    category: required
+    required_group: capability
+    applicability: applicable
+    exchanges: []
+  - id: radar-enable-disable
+    name: Local radar enable display text
+    standard_role: capability_enable_disable
+    capability: radar
+    category: required
+    required_group: capability
+    applicability: applicable
+    exchanges: []
+  - id: radar-operations
+    name: Local radar operations display text
+    standard_role: capability_operations
+    capability: radar
+    category: required
+    required_group: capability
+    applicability: applicable
+    exchanges: []

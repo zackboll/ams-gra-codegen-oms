@@ -1193,35 +1193,18 @@ fn count_choice(
         .sum::<usize>();
 }
 
+/// The canonical (sorted, deduplicated) direct dependency set of a declaration.
+///
+/// The dependency *semantics* are not restated here: this defers to the single
+/// shared [`crate::direct_named_dependencies`] model and only imposes the
+/// canonical ordering that closure analysis wants. Keeping one semantic model
+/// is deliberate, so coverage closures and contract-selected closures cannot
+/// disagree about which types a declaration pulls in.
 fn direct_dependencies(declaration: &TypeDecl) -> Vec<&QualifiedName> {
-    let mut dependencies = Vec::new();
-    if let Some(base) = &declaration.base_type {
-        push_named(&mut dependencies, base);
-    }
-    match &declaration.kind {
-        TypeKind::Primitive(_) | TypeKind::Enumeration { .. } => {}
-        TypeKind::Alias(target) => push_named(&mut dependencies, target),
-        TypeKind::Record { fields } => {
-            for field in fields {
-                push_named(&mut dependencies, &field.type_ref);
-            }
-        }
-        TypeKind::Choice { alternatives } => {
-            for alternative in alternatives {
-                push_named(&mut dependencies, &alternative.type_ref);
-            }
-        }
-        TypeKind::List { item_type, .. } => push_named(&mut dependencies, item_type),
-    }
+    let mut dependencies = crate::direct_named_dependencies(declaration);
     dependencies.sort();
     dependencies.dedup();
     dependencies
-}
-
-fn push_named<'a>(dependencies: &mut Vec<&'a QualifiedName>, type_ref: &'a TypeRef) {
-    if let TypeRefTarget::Named(name) = &type_ref.target {
-        dependencies.push(name);
-    }
 }
 fn all_members(schema: &SchemaIr) -> Vec<&FieldDecl> {
     schema

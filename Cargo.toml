@@ -4,6 +4,7 @@ members = [
     "crates/ir",
     "crates/xsd-frontend",
     "crates/codegen-core",
+    "crates/service-contract",
     "crates/backend-ada",
     "crates/backend-rust",
     "crates/backend-cpp",

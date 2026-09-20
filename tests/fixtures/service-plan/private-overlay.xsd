@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:test"
+           elementFormDefault="qualified">
+  <!-- Task 030 + Task 029: a private message that exists ONLY in an overlay.
+       A contract naming PrivateReport therefore cannot resolve against
+       root.xsd alone, which proves the extension mapping really reaches the
+       Task 029 overlay loader rather than being decorative. -->
+  <xs:complexType name="PrivateReportType">
+    <xs:sequence>
+      <xs:element name="PrivateCode" type="xs:string"/>
+      <xs:element name="Position" type="t:PositionType"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="PrivateReport" type="t:PrivateReportType" uci:version="001.000.000.000"/>
+</xs:schema>
