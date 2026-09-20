@@ -6,6 +6,7 @@ use ams_gra_oms_codegen_core::{
     abstract_value_projection_for_ref, backend_preflight, effective_choice_alternatives,
     effective_record_fields, field_storage_semantics, float32_literal, float64_literal,
     floating_domain, inclusive_integral_domain, plan_type_emissions,
+    schema_emits_bounded_integer_support, schema_emits_unbounded_sequence_support,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -72,7 +73,7 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
         "    }\n",
         "}\n\n",
     ));
-    if schema.types.iter().any(has_unbounded_occurrence) {
+    if schema_emits_unbounded_sequence_support(schema) {
         output.push_str("use std::convert::TryFrom;\n\n");
         output.push_str(concat!(
             "#[derive(Debug, Clone, PartialEq, Eq)]\n",
@@ -85,7 +86,7 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
             "}\n\n",
         ));
     }
-    if schema.types.iter().any(has_direct_integral_range) {
+    if schema_emits_bounded_integer_support(schema) {
         output.push_str(concat!(
             "#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]\n",
             "pub struct BoundedI64<const MIN: i64, const MAX: i64>(i64);\n",
@@ -429,16 +430,6 @@ fn rust_field_type(field: &ams_gra_oms_ir::FieldDecl) -> Result<String, CodegenE
     }
 }
 
-fn has_unbounded_occurrence(declaration: &TypeDecl) -> bool {
-    match &declaration.kind {
-        TypeKind::Record { fields } => fields,
-        TypeKind::Choice { alternatives } => alternatives,
-        _ => return false,
-    }
-    .iter()
-    .any(|field| matches!(field.cardinality.shape(), OccurrenceShape::Unbounded { .. }))
-}
-
 fn rust_type(type_ref: &TypeRef) -> Result<String, CodegenError> {
     match &type_ref.target {
         TypeRefTarget::Primitive(PrimitiveKind::SignedInteger) => Ok("i64".to_owned()),
@@ -633,20 +624,6 @@ fn rust_field_base(field: &ams_gra_oms_ir::FieldDecl) -> Result<String, CodegenE
             rust_type(&field.type_ref)
         }
     }
-}
-
-fn has_direct_integral_range(declaration: &TypeDecl) -> bool {
-    let fields = match &declaration.kind {
-        TypeKind::Record { fields } => fields,
-        TypeKind::Choice { alternatives } => alternatives,
-        _ => return false,
-    };
-    fields.iter().any(|field| {
-        matches!(
-            field.type_ref.target,
-            TypeRefTarget::Primitive(PrimitiveKind::SignedInteger | PrimitiveKind::UnsignedInteger)
-        ) && field.constraints != ConstraintSet::default()
-    })
 }
 
 fn reject_any_constraints(constraints: &ConstraintSet, name: &str) -> Result<(), CodegenError> {

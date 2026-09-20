@@ -28,9 +28,13 @@
 //! surface, so an unsafe generated name fails closed and deterministically
 //! instead.
 
+use crate::abstract_value::{abstract_value_targets, is_structural, project_abstract_value};
 use crate::coverage::BackendLanguage;
 use crate::structure::{effective_choice_alternatives, effective_record_fields};
-use ams_gra_oms_ir::{Cardinality, OccurrenceShape, QualifiedName, SchemaIr, TypeDecl, TypeKind};
+use ams_gra_oms_ir::{
+    Cardinality, OccurrenceShape, PrimitiveKind, QualifiedName, SchemaIr, TypeDecl, TypeKind,
+    TypeRefTarget,
+};
 use std::collections::BTreeMap;
 use std::fmt;
 
@@ -47,6 +51,14 @@ pub enum NameRegion {
     /// The members of one generated declaration: Record fields, Choice
     /// alternatives, or enumeration variants.
     Members(QualifiedName),
+    /// The generated module/namespace/package identifier itself, derived from
+    /// the schema namespace URI rather than from any declaration.
+    ///
+    /// This is not a declarative region the schema populates; it is the
+    /// enclosing unit's own name. A URI component that normalizes onto a
+    /// reserved word makes the whole unit fail to compile, so it must be
+    /// rejected in preflight rather than in the renderer.
+    NamespaceUnit,
 }
 
 impl fmt::Display for NameRegion {
@@ -54,6 +66,9 @@ impl fmt::Display for NameRegion {
         match self {
             Self::TopLevel => formatter.write_str("generated top-level scope"),
             Self::Members(owner) => write!(formatter, "members of {}", owner.local_name),
+            Self::NamespaceUnit => {
+                formatter.write_str("generated module/namespace/package identifier")
+            }
         }
     }
 }
@@ -459,6 +474,349 @@ impl Region {
     }
 }
 
+/// The members of one declaration, for the shape-independent scans the
+/// support-name predicates need.
+///
+/// Record fields and Choice alternatives are both `FieldDecl` lists and every
+/// renderer treats them identically when deciding whether to emit a support
+/// type, so they are folded here rather than at each call site.
+fn declared_members(declaration: &TypeDecl) -> &[ams_gra_oms_ir::FieldDecl] {
+    match &declaration.kind {
+        TypeKind::Record { fields } => fields,
+        TypeKind::Choice { alternatives } => alternatives,
+        _ => &[],
+    }
+}
+
+/// Whether any declaration has an unbounded repeated member.
+///
+/// This is the exact predicate `backend-rust`, `backend-cpp`, and `backend-ada`
+/// each use to decide whether to emit their unbounded-sequence support type
+/// (`UnboundedVec` / `UnboundedVector` / `Ada.Containers.Vectors`). It is
+/// defined once here so preflight and the renderers cannot drift: reserving a
+/// support name the renderer will not emit would block a legal user
+/// declaration, and failing to reserve one it does emit is the defect this
+/// corrective fixes.
+#[must_use]
+pub fn schema_emits_unbounded_sequence_support(schema: &SchemaIr) -> bool {
+    schema.types.iter().any(|declaration| {
+        declared_members(declaration).iter().any(|member| {
+            matches!(
+                member.cardinality.shape(),
+                OccurrenceShape::Unbounded { .. }
+            )
+        })
+    })
+}
+
+/// Whether any declaration has a directly constrained integral member.
+///
+/// The exact predicate behind Rust's `BoundedI64`/`BoundedU64` pair and C++'s
+/// `BoundedInteger` template. Both renderers emit their bounded-integer
+/// support gated on this one condition.
+#[must_use]
+pub fn schema_emits_bounded_integer_support(schema: &SchemaIr) -> bool {
+    schema.types.iter().any(|declaration| {
+        declared_members(declaration).iter().any(|member| {
+            matches!(
+                member.type_ref.target,
+                TypeRefTarget::Primitive(
+                    PrimitiveKind::SignedInteger | PrimitiveKind::UnsignedInteger
+                )
+            ) && member.constraints != ams_gra_oms_ir::ConstraintSet::default()
+        })
+    })
+}
+
+/// Whether Ada instantiates its `Binary_Vectors` octet-vector package.
+///
+/// Mirrors `backend-ada`'s `schema_needs_binary`: a Binary primitive
+/// declaration, or any member whose type is the Binary primitive.
+#[must_use]
+pub fn schema_emits_ada_binary_vectors(schema: &SchemaIr) -> bool {
+    schema.types.iter().any(|declaration| {
+        matches!(declaration.kind, TypeKind::Primitive(PrimitiveKind::Binary))
+            || declared_members(declaration).iter().any(|member| {
+                matches!(
+                    member.type_ref.target,
+                    TypeRefTarget::Primitive(PrimitiveKind::Binary)
+                )
+            })
+    })
+}
+
+/// Register the fixed and conditional support type names one backend emits
+/// into the generated top-level scope.
+///
+/// # Why this is part of preflight
+///
+/// These identifiers are not derived from any schema name, so no
+/// declaration-driven scan can see them -- yet they occupy exactly the same
+/// declarative region as every generated declaration. A schema declaring
+/// `BoundedVec` previously passed preflight and then emitted two items with
+/// that name. Registering them here, in the shared model, means a collision is
+/// reported with the same typed error and attribution as any other.
+///
+/// Conditional support types are registered **only when the renderer's own
+/// predicate says they will be emitted**, so a schema that never triggers one
+/// keeps that spelling available to user declarations.
+fn register_support_names(
+    top_level: &mut Region,
+    schema: &SchemaIr,
+    language: BackendLanguage,
+) -> Result<(), BackendNameError> {
+    // Attribution names the generator rather than pretending some schema
+    // identifier was responsible for the reservation.
+    let attribution = format!("<generated {} support type>", language.name());
+    let reserve = |top_level: &mut Region, generated: &str| -> Result<(), BackendNameError> {
+        top_level.insert(&attribution, generated.to_owned())
+    };
+    match language {
+        BackendLanguage::Rust => {
+            // Emitted unconditionally by `backend-rust::generate`.
+            reserve(top_level, "BoundedVec")?;
+            if schema_emits_unbounded_sequence_support(schema) {
+                reserve(top_level, "UnboundedVec")?;
+            }
+            if schema_emits_bounded_integer_support(schema) {
+                reserve(top_level, "BoundedI64")?;
+                reserve(top_level, "BoundedU64")?;
+            }
+        }
+        BackendLanguage::Cpp => {
+            // Emitted unconditionally inside the generated namespace.
+            reserve(top_level, "BoundedVector")?;
+            if schema_emits_unbounded_sequence_support(schema) {
+                reserve(top_level, "UnboundedVector")?;
+            }
+            if schema_emits_bounded_integer_support(schema) {
+                reserve(top_level, "BoundedInteger")?;
+            }
+        }
+        BackendLanguage::Ada => {
+            // Emitted unconditionally into the generated package spec.
+            reserve(top_level, "Optional_String")?;
+            if schema_emits_ada_binary_vectors(schema) {
+                reserve(top_level, "Binary_Vectors")?;
+            }
+        }
+    }
+    Ok(())
+}
+
+/// The declarations for which Ada emits a `{Owner}_Kind` companion type.
+///
+/// Both sources are collected once, through the same abstract-value target
+/// enumeration the emission planner uses, so preflight and generation agree on
+/// which declarations produce a companion.
+fn ada_kind_companion_owners(schema: &SchemaIr) -> Vec<&TypeDecl> {
+    let abstract_value_names = abstract_value_targets(schema)
+        .into_iter()
+        .filter(|declaration| is_structural(declaration))
+        .map(|declaration| &declaration.name)
+        .collect::<std::collections::BTreeSet<_>>();
+    schema
+        .types
+        .iter()
+        .filter(|declaration| {
+            matches!(declaration.kind, TypeKind::Choice { .. })
+                || abstract_value_names.contains(&declaration.name)
+        })
+        .collect()
+}
+
+/// Register the Ada `_Kind` companion types generated beside Choice and
+/// abstract closed-sum declarations.
+///
+/// # Why only Ada, and why only the type name
+///
+/// Ada renders a Choice (and a Task 024 abstract-value wrapper) as a
+/// discriminated record whose discriminant type is a separate top-level
+/// enumeration named `{Owner}_Kind`. Rust and C++ need no companion: their
+/// variants are nested inside the `enum` / `std::variant` itself.
+///
+/// The companion *type* shares the flat package with every declared type, so
+/// `Foo_Kind` can collide with a user declaration, an Ada repeated helper, or
+/// another companion. It is registered in the real top-level region.
+fn register_ada_kind_companions(
+    top_level: &mut Region,
+    schema: &SchemaIr,
+) -> Result<(), BackendNameError> {
+    for declaration in ada_kind_companion_owners(schema) {
+        // If the declaration's own identifier is unusable, that failure is
+        // already reported for the declaration itself; do not re-report it
+        // here as a companion problem.
+        let Some(owner) = ada_identifier(&declaration.name.local_name) else {
+            continue;
+        };
+        top_level.insert(
+            &format!("{} companion", declaration.name.local_name),
+            format!("{owner}_Kind"),
+        )?;
+    }
+    Ok(())
+}
+
+/// Validate every generated Ada enumeration literal against the top-level
+/// *type* names.
+///
+/// Ada enumeration literals are declared directly in the enclosing package's
+/// declarative region. Verified against GNAT 14.2, a literal may overload
+/// another literal but conflicts with a type name:
+///
+/// ```text
+/// type Color is (Red, Green);
+/// type Red is range 1 .. 5;   -- error: "Red" conflicts with declaration
+///
+/// type X_Kind is (A_Kind, B_Kind);
+/// type Y_Kind is (A_Kind, C_Kind);  -- accepted: literals overload
+/// ```
+///
+/// The check is therefore asymmetric on purpose: literals are tested against
+/// the accumulated type names *without being inserted*, which rejects the real
+/// conflict without inventing a literal-versus-literal collision Ada allows.
+fn validate_ada_enumeration_literals(
+    top_level: &Region,
+    schema: &SchemaIr,
+) -> Result<(), BackendNameError> {
+    let check = |ir_name: &str, literal: &str| -> Result<(), BackendNameError> {
+        let key = identity_key(BackendLanguage::Ada, literal);
+        match top_level.taken.get(&key) {
+            Some(first) => Err(BackendNameError::Collision {
+                language: BackendLanguage::Ada,
+                region: NameRegion::TopLevel,
+                generated: literal.to_owned(),
+                first: first.clone(),
+                second: ir_name.to_owned(),
+            }),
+            None => Ok(()),
+        }
+    };
+    for declaration in &schema.types {
+        match &declaration.kind {
+            // A plain enumeration's literals are the variant identifiers.
+            TypeKind::Enumeration { variants } => {
+                for variant in variants {
+                    if let Some(literal) = ada_identifier(&variant.wire_value) {
+                        check(&variant.wire_value, &literal)?;
+                    }
+                }
+            }
+            // A Choice companion's literals are `{Alternative}_Kind`.
+            TypeKind::Choice { .. } => {
+                let Ok(alternatives) = effective_choice_alternatives(schema, &declaration.name)
+                else {
+                    continue;
+                };
+                for alternative in alternatives {
+                    if let Some(name) = ada_identifier(&alternative.name) {
+                        check(&alternative.name, &format!("{name}_Kind"))?;
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    // A closed-sum wrapper's literals are `{Descendant}_Kind`, taken from the
+    // same projection the Ada renderer walks.
+    for declaration in ada_kind_companion_owners(schema) {
+        let Ok(projection) = project_abstract_value(schema, &declaration.name) else {
+            continue;
+        };
+        for descendant in &projection.concrete_descendants {
+            if let Some(name) = ada_identifier(&descendant.name.local_name) {
+                check(&descendant.name.local_name, &format!("{name}_Kind"))?;
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Validate the generated module/namespace/package identifier derived from
+/// the schema's namespace URI.
+///
+/// # Why preflight owns this
+///
+/// All three backends derive their enclosing unit name from the namespace URI,
+/// not from any declaration, so the declaration scans cannot see it. A URI
+/// whose trailing component normalizes to `class` (C++) or `Record` (Ada)
+/// produces a unit that cannot compile. Rejecting it here makes the failure a
+/// typed preflight error consistent with every other generated name, instead
+/// of a late renderer error or a raw compiler diagnostic.
+///
+/// Namespace *syntax* stays out of Schema IR: this reads the URI the IR
+/// already carries and applies backend naming policy, which is where that
+/// policy belongs.
+///
+/// Only the components the renderers actually emit are checked. `backend-rust`
+/// emits no `mod` identifier -- its single generated file is named from the
+/// URI stem -- so Rust is checked for a usable file stem rather than for
+/// reserved-word safety it never exercises.
+fn validate_namespace_unit(
+    schema: &SchemaIr,
+    language: BackendLanguage,
+) -> Result<(), BackendNameError> {
+    let Some(namespace) = schema.namespaces.first() else {
+        // A schema with no declared namespace is diagnosed by the renderer's
+        // own "generation requires one namespace" path, not renamed here.
+        return Ok(());
+    };
+    let uri = &namespace.uri;
+    let parts = uri
+        .split(|character: char| !character.is_ascii_alphanumeric())
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>();
+    let invalid = || BackendNameError::InvalidIdentifier {
+        language,
+        region: NameRegion::NamespaceUnit,
+        ir_name: uri.clone(),
+    };
+    match language {
+        BackendLanguage::Rust => {
+            let stem = parts.last().ok_or_else(invalid)?;
+            snake_case(stem).ok_or_else(invalid)?;
+            Ok(())
+        }
+        // `namespace_name` emits the last two components as `outer::inner`.
+        BackendLanguage::Cpp => {
+            if parts.len() < 2 {
+                return Err(invalid());
+            }
+            let mut region = Region::new(language, NameRegion::NamespaceUnit);
+            for part in &parts[parts.len() - 2..] {
+                region.insert_transformed(part, snake_case(part))?;
+            }
+            Ok(())
+        }
+        // `package_name` emits `Outer.Inner`; Ada reserved words are
+        // case-insensitive, so a URI component `record` becomes the illegal
+        // package identifier `Record`.
+        BackendLanguage::Ada => {
+            if parts.len() < 2 {
+                return Err(invalid());
+            }
+            let mut region = Region::new(language, NameRegion::NamespaceUnit);
+            for part in &parts[parts.len() - 2..] {
+                region.insert_transformed(part, ada_title(part))?;
+            }
+            Ok(())
+        }
+    }
+}
+
+/// The Ada package-component spelling: leading capital, rest verbatim.
+///
+/// Mirrors `backend-ada::ada_title` exactly.
+fn ada_title(value: &str) -> Option<String> {
+    let mut characters = value.chars();
+    let first = characters.next()?;
+    ada_identifier(&format!(
+        "{}{}",
+        first.to_ascii_uppercase(),
+        characters.as_str()
+    ))
+}
+
 /// Whether the field's cardinality makes Ada emit user-name-derived helper
 /// types beside the owning declaration.
 ///
@@ -493,15 +851,31 @@ pub fn validate_backend_names(
     schema: &SchemaIr,
     language: BackendLanguage,
 ) -> Result<(), BackendNameError> {
+    // The enclosing unit's own identifier comes from the namespace URI rather
+    // than from any declaration, so it is checked before the scope it encloses.
+    validate_namespace_unit(schema, language)?;
     let mut top_level = Region::new(language, NameRegion::TopLevel);
+    // Generated support types occupy the top-level scope before any user
+    // declaration is placed in it, so a user declaration colliding with one is
+    // attributed to the user declaration as the second, conflicting source.
+    register_support_names(&mut top_level, schema, language)?;
     for declaration in &schema.types {
         top_level.insert_transformed(
             &declaration.name.local_name,
             declaration_name(language, &declaration.name.local_name),
         )?;
     }
+    if language == BackendLanguage::Ada {
+        register_ada_kind_companions(&mut top_level, schema)?;
+    }
     for declaration in &schema.types {
         validate_declaration_members(schema, declaration, language, &mut top_level)?;
+    }
+    if language == BackendLanguage::Ada {
+        // Literals are validated last, against the completed set of top-level
+        // type names: a literal conflicts with a type name regardless of which
+        // was declared first.
+        validate_ada_enumeration_literals(&top_level, schema)?;
     }
     Ok(())
 }
@@ -625,6 +999,371 @@ pub fn backend_names_are_renderable(schema: &SchemaIr, language: BackendLanguage
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ams_gra_oms_ir::{
+        ConstraintSet, EnumVariant, FieldDecl, NamespaceDecl, NumericValue, PrimitiveKind,
+        QualifiedName, SourceRef, TypeRef,
+    };
+
+    const NS: &str = "urn:example:oms";
+
+    const UNBOUNDED: Cardinality = Cardinality {
+        min_occurs: 0,
+        max_occurs: None,
+    };
+
+    fn source() -> SourceRef {
+        SourceRef {
+            document: "test.ir".to_owned(),
+            line: Some(1),
+        }
+    }
+
+    fn primitive(name: &str) -> TypeDecl {
+        TypeDecl {
+            name: QualifiedName::new(NS, name),
+            is_abstract: false,
+            base_type: None,
+            kind: TypeKind::Primitive(PrimitiveKind::String),
+            constraints: ConstraintSet::default(),
+            documentation: None,
+            source: source(),
+        }
+    }
+
+    fn field(name: &str, target: TypeRefTarget, cardinality: Cardinality) -> FieldDecl {
+        FieldDecl {
+            name: name.to_owned(),
+            type_ref: TypeRef { target },
+            cardinality,
+            nillable: false,
+            constraints: ConstraintSet::default(),
+            documentation: None,
+            source: source(),
+        }
+    }
+
+    fn record(name: &str, fields: Vec<FieldDecl>) -> TypeDecl {
+        TypeDecl {
+            kind: TypeKind::Record { fields },
+            ..primitive(name)
+        }
+    }
+
+    fn choice(name: &str, alternatives: &[&str]) -> TypeDecl {
+        TypeDecl {
+            kind: TypeKind::Choice {
+                alternatives: alternatives
+                    .iter()
+                    .map(|alternative| {
+                        field(
+                            alternative,
+                            TypeRefTarget::Primitive(PrimitiveKind::String),
+                            Cardinality::REQUIRED_ONE,
+                        )
+                    })
+                    .collect(),
+            },
+            ..primitive(name)
+        }
+    }
+
+    fn schema_with(types: Vec<TypeDecl>) -> SchemaIr {
+        SchemaIr {
+            schema_version: None,
+            namespaces: vec![NamespaceDecl {
+                uri: NS.to_owned(),
+                preferred_prefix: None,
+            }],
+            types,
+            messages: Vec::new(),
+        }
+    }
+
+    /// A schema whose only repeated member is unbounded, so every backend's
+    /// unbounded-sequence support type is emitted.
+    fn unbounded_schema(extra: Vec<TypeDecl>) -> SchemaIr {
+        let mut types = vec![
+            primitive("Item"),
+            record(
+                "Holder",
+                vec![field(
+                    "Items",
+                    TypeRefTarget::Named(QualifiedName::new(NS, "Item")),
+                    UNBOUNDED,
+                )],
+            ),
+        ];
+        types.extend(extra);
+        schema_with(types)
+    }
+
+    /// A schema with a directly constrained integral member, so the
+    /// bounded-integer support types are emitted.
+    fn bounded_integer_schema(extra: Vec<TypeDecl>) -> SchemaIr {
+        let mut constrained = field(
+            "Count",
+            TypeRefTarget::Primitive(PrimitiveKind::UnsignedInteger),
+            Cardinality::REQUIRED_ONE,
+        );
+        constrained.constraints = ConstraintSet {
+            min_inclusive: Some(NumericValue::Integer(0)),
+            max_inclusive: Some(NumericValue::Integer(255)),
+            ..ConstraintSet::default()
+        };
+        let mut types = vec![record("Holder", vec![constrained])];
+        types.extend(extra);
+        schema_with(types)
+    }
+
+    fn assert_collides(schema: &SchemaIr, language: BackendLanguage, expected: &str) {
+        let error = validate_backend_names(schema, language)
+            .expect_err("a generated name must not be silently shadowed");
+        let BackendNameError::Collision { generated, .. } = &error else {
+            panic!("expected a collision on {expected}, got {error:?}");
+        };
+        assert_eq!(generated, expected);
+    }
+
+    fn schema_in(uri: &str) -> SchemaIr {
+        SchemaIr {
+            schema_version: None,
+            namespaces: vec![NamespaceDecl {
+                uri: uri.to_owned(),
+                preferred_prefix: None,
+            }],
+            types: vec![TypeDecl {
+                name: QualifiedName::new(uri, "Track"),
+                ..primitive("Track")
+            }],
+            messages: Vec::new(),
+        }
+    }
+
+    // ---- Unconditional generated support names -------------------------
+
+    /// The defect this corrective fixes: `BoundedVec` is emitted by every
+    /// Rust generation, so a declaration of that name produces two top-level
+    /// items with one identifier.
+    #[test]
+    fn unconditional_support_names_are_reserved() {
+        assert_collides(
+            &schema_with(vec![primitive("BoundedVec")]),
+            BackendLanguage::Rust,
+            "BoundedVec",
+        );
+        assert_collides(
+            &schema_with(vec![primitive("BoundedVector")]),
+            BackendLanguage::Cpp,
+            "BoundedVector",
+        );
+        assert_collides(
+            &schema_with(vec![primitive("Optional_String")]),
+            BackendLanguage::Ada,
+            "Optional_String",
+        );
+    }
+
+    // ---- Conditional support names, actually emitted -------------------
+
+    #[test]
+    fn conditional_support_names_collide_when_the_helper_is_emitted() {
+        assert_collides(
+            &unbounded_schema(vec![primitive("UnboundedVec")]),
+            BackendLanguage::Rust,
+            "UnboundedVec",
+        );
+        assert_collides(
+            &unbounded_schema(vec![primitive("UnboundedVector")]),
+            BackendLanguage::Cpp,
+            "UnboundedVector",
+        );
+        assert_collides(
+            &bounded_integer_schema(vec![primitive("BoundedI64")]),
+            BackendLanguage::Rust,
+            "BoundedI64",
+        );
+        assert_collides(
+            &bounded_integer_schema(vec![primitive("BoundedU64")]),
+            BackendLanguage::Rust,
+            "BoundedU64",
+        );
+        assert_collides(
+            &bounded_integer_schema(vec![primitive("BoundedInteger")]),
+            BackendLanguage::Cpp,
+            "BoundedInteger",
+        );
+    }
+
+    /// Ada's `Binary_Vectors` package is only instantiated for a schema that
+    /// actually uses the Binary primitive.
+    #[test]
+    fn ada_binary_vectors_collides_only_when_instantiated() {
+        let binary = TypeDecl {
+            kind: TypeKind::Primitive(PrimitiveKind::Binary),
+            ..primitive("Payload")
+        };
+        assert_collides(
+            &schema_with(vec![binary, primitive("Binary_Vectors")]),
+            BackendLanguage::Ada,
+            "Binary_Vectors",
+        );
+    }
+
+    // ---- Control: not emitted, so not reserved -------------------------
+
+    /// The control this corrective requires: reserving a conditional support
+    /// name unconditionally would block a legal declaration. When the helper
+    /// is not emitted, the spelling stays available.
+    #[test]
+    fn conditional_support_names_are_free_when_the_helper_is_not_emitted() {
+        for (language, spelling) in [
+            (BackendLanguage::Rust, "UnboundedVec"),
+            (BackendLanguage::Rust, "BoundedI64"),
+            (BackendLanguage::Rust, "BoundedU64"),
+            (BackendLanguage::Cpp, "UnboundedVector"),
+            (BackendLanguage::Cpp, "BoundedInteger"),
+            (BackendLanguage::Ada, "Binary_Vectors"),
+        ] {
+            let schema = schema_with(vec![primitive(spelling)]);
+            assert!(
+                validate_backend_names(&schema, language).is_ok(),
+                "{language:?} must not reserve {spelling} for a schema that never emits it"
+            );
+        }
+    }
+
+    /// The predicates preflight uses are the renderers' own predicates, so
+    /// they must track the schema shape rather than be always-true.
+    #[test]
+    fn support_predicates_track_the_schema_shape() {
+        let plain = schema_with(vec![primitive("Item")]);
+        assert!(!schema_emits_unbounded_sequence_support(&plain));
+        assert!(schema_emits_unbounded_sequence_support(&unbounded_schema(
+            Vec::new()
+        )));
+        assert!(!schema_emits_bounded_integer_support(&plain));
+        assert!(schema_emits_bounded_integer_support(
+            &bounded_integer_schema(Vec::new())
+        ));
+        assert!(!schema_emits_ada_binary_vectors(&plain));
+    }
+
+    // ---- Ada `_Kind` companions ---------------------------------------
+
+    /// `Selection` as a Choice generates the companion `Selection_Kind`,
+    /// which shares Ada's flat package with a user declaration.
+    #[test]
+    fn ada_kind_companion_collides_with_a_user_declaration() {
+        let schema = schema_with(vec![
+            choice("Selection", &["First", "Second"]),
+            primitive("Selection_Kind"),
+        ]);
+        assert_collides(&schema, BackendLanguage::Ada, "Selection_Kind");
+    }
+
+    /// Rust and C++ nest their variants, so the same schema is safe there.
+    /// This keeps the companion rule Ada-specific instead of copied to every
+    /// backend.
+    #[test]
+    fn kind_companion_is_an_ada_only_rule() {
+        let schema = schema_with(vec![
+            choice("Selection", &["First", "Second"]),
+            primitive("Selection_Kind"),
+        ]);
+        for language in [BackendLanguage::Rust, BackendLanguage::Cpp] {
+            assert!(validate_backend_names(&schema, language).is_ok());
+        }
+    }
+
+    /// An Ada enumeration literal conflicts with a *type* name in the same
+    /// package. Verified against GNAT 14.2.
+    #[test]
+    fn ada_enumeration_literal_conflicts_with_a_type_name() {
+        let enumeration = TypeDecl {
+            kind: TypeKind::Enumeration {
+                variants: ["Red", "Green"]
+                    .into_iter()
+                    .map(|value| EnumVariant {
+                        wire_value: value.to_owned(),
+                        documentation: None,
+                    })
+                    .collect(),
+            },
+            ..primitive("Color")
+        };
+        assert_collides(
+            &schema_with(vec![enumeration, primitive("Red")]),
+            BackendLanguage::Ada,
+            "Red",
+        );
+    }
+
+    /// Two Ada enumerations may share a literal spelling: literals overload
+    /// rather than conflict. Verified against GNAT 14.2, so modelling this as
+    /// a collision would reject valid Ada.
+    #[test]
+    fn ada_enumeration_literals_may_overload_each_other() {
+        let schema = schema_with(vec![
+            choice("Alpha", &["Shared", "OnlyAlpha"]),
+            choice("Beta", &["Shared", "OnlyBeta"]),
+        ]);
+        assert!(
+            validate_backend_names(&schema, BackendLanguage::Ada).is_ok(),
+            "Ada enumeration literals overload; this must not be a collision"
+        );
+    }
+
+    // ---- Namespace / package identifiers -------------------------------
+
+    /// A URI component that becomes the Ada package identifier `Record` makes
+    /// the whole unit illegal, and Ada reserved words are case-insensitive.
+    #[test]
+    fn ada_package_component_may_not_be_a_reserved_word() {
+        let error = validate_backend_names(&schema_in("urn:backend-record"), BackendLanguage::Ada)
+            .expect_err("Ada package component `Record` is a reserved word");
+        assert!(
+            matches!(
+                &error,
+                BackendNameError::ReservedWord {
+                    region: NameRegion::NamespaceUnit,
+                    generated,
+                    ..
+                } if generated == "Record"
+            ),
+            "got {error:?}"
+        );
+    }
+
+    /// The C++ equivalent: a component normalizing to `class`.
+    #[test]
+    fn cpp_namespace_component_may_not_be_a_reserved_word() {
+        let error = validate_backend_names(&schema_in("urn:oms:class"), BackendLanguage::Cpp)
+            .expect_err("C++ namespace component `class` is a reserved word");
+        assert!(
+            matches!(
+                &error,
+                BackendNameError::ReservedWord {
+                    region: NameRegion::NamespaceUnit,
+                    generated,
+                    ..
+                } if generated == "class"
+            ),
+            "got {error:?}"
+        );
+    }
+
+    /// A safe namespace must keep generating for every backend: this module
+    /// only rejects, and must not start rejecting ordinary input.
+    #[test]
+    fn a_safe_namespace_passes_every_backend() {
+        let schema = schema_in("urn:example:oms:track");
+        for language in BackendLanguage::ALL {
+            assert!(
+                validate_backend_names(&schema, language).is_ok(),
+                "{language:?} must accept a safe namespace"
+            );
+        }
+    }
 
     /// `binary_search` is only correct on a sorted slice, so the reserved-word
     /// tables must stay sorted. A silently unsorted table would make some

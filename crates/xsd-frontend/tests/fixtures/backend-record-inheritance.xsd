@@ -1,6 +1,6 @@
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-           xmlns:t="urn:backend-record-inheritance"
-           targetNamespace="urn:backend-record-inheritance"
+           xmlns:t="urn:backend-recordtype-inheritance"
+           targetNamespace="urn:backend-recordtype-inheritance"
            elementFormDefault="qualified">
   <xs:simpleType name="Token"><xs:restriction base="xs:integer"><xs:minInclusive value="0"/><xs:maxInclusive value="9"/></xs:restriction></xs:simpleType>
   <xs:complexType name="Base" abstract="true"><xs:sequence>

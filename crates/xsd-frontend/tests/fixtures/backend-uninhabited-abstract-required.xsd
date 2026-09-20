@@ -1,6 +1,6 @@
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-           xmlns:t="urn:backend-uninhabited-abstract-required"
-           targetNamespace="urn:backend-uninhabited-abstract-required"
+           xmlns:t="urn:backend-uninhabited-abstractvalue-required"
+           targetNamespace="urn:backend-uninhabited-abstractvalue-required"
            elementFormDefault="qualified">
   <!-- Same uninhabited abstract shape as backend-uninhabited-abstract-optional.xsd,
        but the occurrence has a positive minimum, so absence is not a legal

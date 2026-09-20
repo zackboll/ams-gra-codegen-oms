@@ -6,6 +6,7 @@ use ams_gra_oms_codegen_core::{
     abstract_value_projection_for_ref, backend_preflight, effective_choice_alternatives,
     effective_record_fields, field_storage_semantics, float32_literal, float64_literal,
     floating_domain, inclusive_integral_domain, plan_type_emissions,
+    schema_emits_bounded_integer_support, schema_emits_unbounded_sequence_support,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -77,7 +78,7 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     };
     let has_floating = schema_has_floating(schema);
     let limits_header = if schema_needs_limits(schema)
-        || schema.types.iter().any(has_unbounded_occurrence)
+        || schema_emits_unbounded_sequence_support(schema)
         || has_floating
     {
         "#include <limits>\n"
@@ -127,7 +128,7 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
         "    std::vector<T> values_;\n",
         "};\n\n",
     ));
-    if schema.types.iter().any(has_unbounded_occurrence) {
+    if schema_emits_unbounded_sequence_support(schema) {
         output.push_str(concat!(
             "template <typename T, std::uint64_t Min>\n",
             "class UnboundedVector {\n",
@@ -143,7 +144,7 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
             "};\n\n",
         ));
     }
-    if schema.types.iter().any(has_direct_integral_range) {
+    if schema_emits_bounded_integer_support(schema) {
         output.push_str(concat!(
             "template <typename T, T Min, T Max>\nclass BoundedInteger {\npublic:\n",
             "    static std::optional<BoundedInteger> create(T value) noexcept {\n",
@@ -468,16 +469,6 @@ fn cpp_field_type(field: &ams_gra_oms_ir::FieldDecl) -> Result<String, CodegenEr
     }
 }
 
-fn has_unbounded_occurrence(declaration: &TypeDecl) -> bool {
-    match &declaration.kind {
-        TypeKind::Record { fields } => fields,
-        TypeKind::Choice { alternatives } => alternatives,
-        _ => return false,
-    }
-    .iter()
-    .any(|field| matches!(field.cardinality.shape(), OccurrenceShape::Unbounded { .. }))
-}
-
 fn namespace_name(schema: &SchemaIr) -> Result<String, CodegenError> {
     let uri = &schema
         .namespaces
@@ -671,20 +662,6 @@ fn cpp_field_base(field: &ams_gra_oms_ir::FieldDecl) -> Result<String, CodegenEr
             cpp_type(&field.type_ref)
         }
     }
-}
-
-fn has_direct_integral_range(declaration: &TypeDecl) -> bool {
-    let fields = match &declaration.kind {
-        TypeKind::Record { fields } => fields,
-        TypeKind::Choice { alternatives } => alternatives,
-        _ => return false,
-    };
-    fields.iter().any(|field| {
-        matches!(
-            field.type_ref.target,
-            TypeRefTarget::Primitive(PrimitiveKind::SignedInteger | PrimitiveKind::UnsignedInteger)
-        ) && field.constraints != ConstraintSet::default()
-    })
 }
 
 fn cpp_signed_bound(value: i64) -> String {

@@ -6,7 +6,7 @@ use ams_gra_oms_codegen_core::{
     InclusiveIntegralDomain, TypeEmission, abstract_value_projection_for_ref, backend_preflight,
     effective_choice_alternatives, effective_record_fields, field_storage_semantics,
     float32_literal, float64_literal, floating_domain, inclusive_integral_domain,
-    plan_type_emissions,
+    plan_type_emissions, schema_emits_ada_binary_vectors, schema_emits_unbounded_sequence_support,
 };
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind,
@@ -74,8 +74,8 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
         output.push_str("pragma Assertion_Policy (Dynamic_Predicate => Check);\n\n");
     }
     output.push_str("with Ada.Strings.Unbounded;\n");
-    let needs_binary = schema_needs_binary(schema);
-    if schema.types.iter().any(has_ada_unbounded_occurrence) || needs_binary {
+    let needs_binary = schema_emits_ada_binary_vectors(schema);
+    if schema_emits_unbounded_sequence_support(schema) || needs_binary {
         output.push_str("with Ada.Containers.Vectors;\n");
     }
     if schema_needs_interfaces(schema) || needs_binary {
@@ -610,16 +610,6 @@ fn render_unbounded_helper(
     Ok(())
 }
 
-fn has_ada_unbounded_occurrence(declaration: &TypeDecl) -> bool {
-    match &declaration.kind {
-        TypeKind::Record { fields } => fields,
-        TypeKind::Choice { alternatives } => alternatives,
-        _ => return false,
-    }
-    .iter()
-    .any(|field| matches!(field.cardinality.shape(), OccurrenceShape::Unbounded { .. }))
-}
-
 fn package_name(schema: &SchemaIr) -> Result<String, CodegenError> {
     let uri = &schema
         .namespaces
@@ -888,28 +878,6 @@ fn schema_needs_interfaces(schema: &SchemaIr) -> bool {
             }),
             _ => false,
         })
-}
-
-fn schema_needs_binary(schema: &SchemaIr) -> bool {
-    schema
-        .types
-        .iter()
-        .any(|declaration| matches!(declaration.kind, TypeKind::Primitive(PrimitiveKind::Binary)))
-        || schema
-            .types
-            .iter()
-            .any(|declaration| match &declaration.kind {
-                TypeKind::Record { fields }
-                | TypeKind::Choice {
-                    alternatives: fields,
-                } => fields.iter().any(|field| {
-                    matches!(
-                        field.type_ref.target,
-                        TypeRefTarget::Primitive(PrimitiveKind::Binary)
-                    )
-                }),
-                _ => false,
-            })
 }
 
 fn reject_extra_constraints(constraints: &ConstraintSet, name: &str) -> Result<(), CodegenError> {
