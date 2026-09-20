@@ -24,7 +24,13 @@ fn binary_prints_real_help() {
     // required --language/--world are visible in the usage line.
     assert!(stdout.contains("service-check --schema PATH --contract PATH"));
     assert!(stdout.contains("SERVICE CONTRACT BACKEND READINESS:"));
-    assert!(stdout.contains("service-check   Report backend/world readiness"));
+    assert!(stdout.contains("service-check      Report backend/world readiness"));
+    // Task 032: selected generation is the only new top-level command.
+    assert!(stdout.contains("service-generate --schema PATH --contract PATH"));
+    assert!(stdout.contains("SERVICE CONTRACT SELECTED GENERATION:"));
+    assert!(
+        stdout.contains("service-generate   Generate only a contract's selected UCI type model")
+    );
     assert!(!stdout.contains("BOOTSTRAP STATUS"));
     assert!(output.stderr.is_empty());
 }
@@ -70,6 +76,18 @@ fn existing_commands_remain_unchanged() {
     assert!(!stdout.contains("--world WORLD"));
     assert!(!stdout.contains("--language LANGUAGE"));
     assert!(!stdout.contains("--output DIR"));
+
+    // Task 032: 'service-check' still analyses only. Gaining a sibling that
+    // writes files must not have given it an output surface.
+    let output = Command::new(env!("CARGO_BIN_EXE_ams-gra-codegen-oms"))
+        .args(["service-check", "--help"])
+        .output()
+        .expect("CLI should run");
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).expect("help should be UTF-8");
+    assert!(stdout.contains("NO OUTPUT FILES:"));
+    assert!(!stdout.contains("--output DIR"));
+    assert!(!stdout.contains("--overlay PATH"));
 }
 
 /// Task 031 adds `service-check` alongside `service-plan` rather than adding a
@@ -86,6 +104,34 @@ fn service_plan_still_rejects_readiness_options() {
                 "root.xsd",
                 "--contract",
                 "service.yaml",
+                option,
+                "value",
+            ])
+            .output()
+            .expect("CLI should run");
+        assert_eq!(output.status.code(), Some(2), "{option}");
+        let stderr = String::from_utf8(output.stderr).expect("diagnostic should be UTF-8");
+        assert!(stderr.contains("unknown option"), "{option}");
+    }
+}
+
+/// Task 032 section 61: ordinary `generate` keeps FULL-schema semantics. It
+/// must never learn to filter by a contract, so the contract options remain
+/// usage errors there.
+#[test]
+fn ordinary_generate_still_rejects_contract_options() {
+    for option in ["--contract", "--extension"] {
+        let output = Command::new(env!("CARGO_BIN_EXE_ams-gra-codegen-oms"))
+            .args([
+                "generate",
+                "--schema",
+                "root.xsd",
+                "--language",
+                "rust",
+                "--world",
+                "closed-schema",
+                "--output",
+                "out",
                 option,
                 "value",
             ])

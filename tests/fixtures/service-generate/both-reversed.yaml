@@ -1,0 +1,41 @@
+# SYNTHETIC Task 032 fixture. Authored for this repository only.
+#
+# The SAME message set as both.yaml, presented in the opposite exchange order.
+# Generated type output must be byte-identical to both.yaml's, because the
+# projected type model follows SchemaIr declaration order rather than contract
+# presentation order. (ServicePlan function/exchange order still differs, and
+# is reported by 'service-plan' unchanged.)
+contract_version: "0.1"
+
+service:
+  name: Selected Generation Both
+  version: "0.1.0"
+  kind: service
+  description: Synthetic contract selecting both supported messages.
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: mission-data
+    name: Mission Data
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: b-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: MessageB
+        topic: mission.b
+        timing:
+          kind: asynchronous
+      - id: a-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: MessageA
+        topic: mission.a
+        timing:
+          kind: asynchronous

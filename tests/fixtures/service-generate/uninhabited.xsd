@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:test"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- Task 032 + Task 026 fixture: the selected payload carries an OPTIONAL,
+       non-nillable, unconstrained reference to an abstract structural value
+       with ZERO known concrete descendants.
+
+       Closed-schema: the target has no legal payload, so ordinary Task 026
+       elision applies and no wrapper is generated. The projection retains the
+       abstract declaration (it is part of the source model) and invents no
+       concrete support type.
+
+       Open-extensions: a future external descendant could make the field
+       present, so the selection is NOT READY and nothing is generated. -->
+  <xs:complexType name="SidecarPoint" abstract="true"><xs:sequence/></xs:complexType>
+  <xs:complexType name="OptionalHolder">
+    <xs:sequence>
+      <xs:element name="Required" type="xs:string"/>
+      <xs:element name="Widget" type="t:SidecarPoint" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="OptionalHolderReport" type="t:OptionalHolder" uci:version="001.000.000.000"/>
+</xs:schema>

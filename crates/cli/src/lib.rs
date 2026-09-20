@@ -5,7 +5,8 @@ use ams_gra_oms_backend_cpp::CppBackend;
 use ams_gra_oms_backend_rust::RustBackend;
 use ams_gra_oms_codegen_core::{
     Backend, BackendLanguage, CoverageAnalysis, GeneratedFile, GenerationWorld, ResolvedExchange,
-    ServiceBackendReadiness, ServicePlan, analyze_service_readiness, resolve_service_plan,
+    ServiceBackendReadiness, ServiceGenerationProjection, ServicePlan, analyze_service_readiness,
+    project_service_generation_schema, resolve_service_plan,
 };
 // Only the CLI's own loading path touches contract files; no backend parses
 // YAML, and the resolution itself lives in codegen-core.
@@ -29,13 +30,15 @@ USAGE:
     ams-gra-codegen-oms generate --schema PATH [--overlay PATH]... --language LANGUAGE --output DIR --world WORLD
     ams-gra-codegen-oms service-plan --schema PATH --contract PATH [--extension ID=PATH]...
     ams-gra-codegen-oms service-check --schema PATH --contract PATH [--extension ID=PATH]... --language LANGUAGE --world WORLD
+    ams-gra-codegen-oms service-generate --schema PATH --contract PATH [--extension ID=PATH]... --language LANGUAGE --world WORLD --output DIR
 
 COMMANDS:
-    validate        Load and validate an XSD schema set
-    coverage        Report deterministic IR and backend coverage counts
-    generate        Generate source files from an XSD schema set
-    service-plan    Resolve a portable Service Contract against a schema set
-    service-check   Report backend/world readiness for a contract's selection
+    validate           Load and validate an XSD schema set
+    coverage           Report deterministic IR and backend coverage counts
+    generate           Generate source files from an XSD schema set
+    service-plan       Resolve a portable Service Contract against a schema set
+    service-check      Report backend/world readiness for a contract's selection
+    service-generate   Generate only a contract's selected UCI type model
 
 SERVICE CONTRACT PLANNING:
     'service-plan' joins a portable AMS GRA Service Contract (v0.1 YAML or
@@ -63,6 +66,15 @@ SERVICE CONTRACT BACKEND READINESS:
     make the service unready, so 'service-check' can report READY for a schema
     set whose full-schema 'generate' fails. Neither command writes any file:
     READY does not mean service source has been generated.
+
+SERVICE CONTRACT SELECTED GENERATION:
+    'service-generate' emits the UCI TYPE MODEL a Service Contract selects,
+    and nothing unrelated. It checks 'service-check' readiness first and
+    writes no file at all unless the selection is READY, the projection
+    succeeds, the backend generates, and every generated path validates.
+
+    It emits selected UCI types only. No CAL facade, publisher/subscriber
+    API, service wrapper, codec, or runtime code is generated yet.
 
 SCHEMA OVERLAYS:
     'validate', 'coverage', and 'generate' accept a repeatable --overlay PATH:
@@ -276,6 +288,73 @@ EXIT CODES:
     2    Command-line usage error
 "#;
 
+const SERVICE_GENERATE_HELP: &str = r#"ams-gra-codegen-oms service-generate
+
+Generate the UCI type model a Service Contract selects, after backend/world
+readiness succeeds.
+
+USAGE:
+    ams-gra-codegen-oms service-generate --schema PATH --contract PATH [--extension ID=PATH]... --language LANGUAGE --world WORLD --output DIR
+
+LANGUAGES:
+    ada
+    rust
+    cpp
+
+WORLDS:
+    closed-schema       You assert the supplied schema set is the complete
+                        value-type universe: a selected abstract structural
+                        value lowers to a closed sum over every concrete
+                        transitive descendant.
+
+    open-extensions     External derived types may exist, so a selected
+                        abstract structural VALUE has no closed representation
+                        and generation fails closed rather than emitting a
+                        partial sum.
+
+OPTIONS:
+    -s, --schema PATH          Root XSD document
+    -c, --contract PATH        Portable Service Contract v0.1 (YAML or JSON)
+        --extension ID=PATH    Repeatable mapping from a contract
+                               standards.uci_extension_schemas IDENTIFIER to a
+                               local schema document
+    -l, --language LANGUAGE    Required output language
+    -w, --world WORLD          Required generation world policy
+    -o, --output DIR           Required output directory
+    -h, --help                 Print help
+
+EXTENSIONS USE EXACT CONTRACT MAPPING:
+    Exactly the rules 'service-plan' and 'service-check' use. A contract's
+    standards.uci_extension_schemas entries are logical extension IDENTIFIERS,
+    not paths, so --extension is the ONLY way to supply schema content; there
+    is no raw --overlay PATH option here, and supplying one is a usage error.
+    The supplied set must match the contract exactly: a declared extension
+    with no mapping, an undeclared extension, and a duplicate extension ID all
+    fail, and no filename is ever guessed. Composition order follows the
+    CONTRACT's declaration order, so reordering --extension on the command
+    line cannot change generated output.
+
+READINESS IS CHECKED FIRST:
+    Task 031 readiness is the authoritative capability gate. If the selected
+    model is NOT READY for the requested language and world, the same
+    readiness report 'service-check' prints is written to stdout, no backend
+    is invoked, no output directory is created, no file is written, and the
+    command exits 1.
+
+SELECTED TYPES ONLY:
+    Only the contract-selected type closure, plus the generated support types
+    its representation requires (Task 024 closed-sum concrete descendants and
+    their dependencies), are emitted. Unrelated schema declarations are
+    absent, so unselected declarations contribute no helper, import, or
+    static assertion. No CAL facade, publisher/subscriber API, service
+    wrapper, codec, or runtime source is generated.
+
+EXIT CODES:
+    0    Selected UCI type source generated
+    1    NOT READY, projection failure, or filesystem error
+    2    Command-line usage error
+"#;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ErrorKind {
     Usage,
@@ -426,6 +505,16 @@ enum Command {
         /// Required: readiness is a question under one specific type universe.
         world: GenerationWorld,
     },
+    ServiceGenerate {
+        schema: PathBuf,
+        contract: PathBuf,
+        extensions: Vec<(String, PathBuf)>,
+        language: Language,
+        world: GenerationWorld,
+        /// Required: unlike `service-plan`/`service-check`, this command does
+        /// write files, so the destination must be stated explicitly.
+        output: PathBuf,
+    },
 }
 
 /// Parse and execute CLI arguments, excluding the executable name.
@@ -465,6 +554,22 @@ where
             language,
             world,
         } => service_check(&schema, &contract, &extensions, language, world, stdout),
+        Command::ServiceGenerate {
+            schema,
+            contract,
+            extensions,
+            language,
+            world,
+            output,
+        } => service_generate(
+            &schema,
+            &contract,
+            &extensions,
+            language,
+            world,
+            &output,
+            stdout,
+        ),
     }
 }
 
@@ -484,9 +589,10 @@ where
         Some("generate") => parse_generate(args.collect()),
         Some("service-plan") => parse_service_plan(args.collect()),
         Some("service-check") => parse_service_check(args.collect()),
+        Some("service-generate") => parse_service_generate(args.collect()),
         Some(command) => Err(CliError::usage(format!(
             "unknown command '{command}'; expected 'validate', 'coverage', 'generate', \
-             'service-plan', or 'service-check'"
+             'service-plan', 'service-check', or 'service-generate'"
         ))),
         None => Err(CliError::usage("command must be valid UTF-8")),
     }
@@ -622,6 +728,40 @@ fn parse_service_check(args: Vec<OsString>) -> Result<Command, CliError> {
         // state its backend and type universe would be meaningless evidence.
         language: Language::parse(&required(language, "--language")?)?,
         world: parse_world(&required(world, "--world")?)?,
+    })
+}
+
+fn parse_service_generate(args: Vec<OsString>) -> Result<Command, CliError> {
+    if is_help_request(&args) {
+        return Ok(Command::Help(SERVICE_GENERATE_HELP));
+    }
+    let mut schema = None;
+    let mut contract = None;
+    let mut extensions = Vec::new();
+    let mut language = None;
+    let mut world = None;
+    let mut output = None;
+    parse_options(args, |option, value| match option {
+        "-s" | "--schema" => set_once(&mut schema, value, "--schema"),
+        "-c" | "--contract" => set_once(&mut contract, value, "--contract"),
+        "--extension" => push_extension(&mut extensions, value),
+        "-l" | "--language" => set_once(&mut language, value, "--language"),
+        "-w" | "--world" => set_once(&mut world, value, "--world"),
+        "-o" | "--output" => set_once(&mut output, value, "--output"),
+        // `--overlay` is rejected here exactly as it is for `service-plan`
+        // and `service-check`: the contract's declared extension identifiers
+        // are the authoritative statement of what composes the schema set.
+        _ => Err(CliError::usage(format!("unknown option '{option}'"))),
+    })?;
+    Ok(Command::ServiceGenerate {
+        schema: required(schema, "--schema")?.into(),
+        contract: required(contract, "--contract")?.into(),
+        extensions,
+        language: Language::parse(&required(language, "--language")?)?,
+        // Required, with no fallback, for the same reason ordinary 'generate'
+        // requires it: the type-universe assumption must be stated.
+        world: parse_world(&required(world, "--world")?)?,
+        output: required(output, "--output")?.into(),
     })
 }
 
@@ -763,17 +903,7 @@ fn generate<W: Write>(
         .backend()
         .generate(&schema, world)
         .map_err(|error| CliError::execution(error.to_string()))?;
-    validate_generated_files(&files)?;
-
-    fs::create_dir_all(output_dir).map_err(|error| {
-        CliError::execution(format!(
-            "unable to create output directory {}: {error}",
-            output_dir.display()
-        ))
-    })?;
-    for file in &files {
-        write_generated_file(output_dir, file)?;
-    }
+    write_generated_files(&files, output_dir)?;
     write_output(
         stdout,
         &format!(
@@ -870,6 +1000,115 @@ fn service_check<W: Write>(
         language.label(),
         world.label()
     )))
+}
+
+/// Generate the UCI type model a contract selects, after readiness succeeds.
+///
+/// Ordering is the whole point of this function. Readiness is consulted
+/// before any projection, projection before any backend call, backend
+/// generation before any path validation, and path validation before the
+/// first byte touches the filesystem. A NOT READY or otherwise failing
+/// selection therefore cannot leave a half-written output tree behind, and
+/// the output directory is not even created.
+fn service_generate<W: Write>(
+    schema_path: &Path,
+    contract_path: &Path,
+    extensions: &[(String, PathBuf)],
+    language: Language,
+    world: GenerationWorld,
+    output_dir: &Path,
+    stdout: &mut W,
+) -> Result<(), CliError> {
+    let inputs = load_service_inputs(schema_path, contract_path, extensions)?;
+    let readiness = analyze_service_readiness(
+        &inputs.plan,
+        &inputs.schema,
+        language.backend_language(),
+        world,
+    )
+    .map_err(|error| CliError::execution(error.to_string()))?;
+    if !readiness.is_ready() {
+        // Exactly the 'service-check' report, from the same helper: an
+        // operator must not have to run a second command, and a second
+        // formatter would be free to disagree about the blockers.
+        write_output(stdout, &render_service_check(&inputs.plan, &readiness))?;
+        return Err(CliError::execution(format!(
+            "service selection is not renderable for {} under {}; no files were generated",
+            language.label(),
+            world.label()
+        )));
+    }
+
+    let projection = project_service_generation_schema(&inputs.plan, &inputs.schema, world)
+        .map_err(|error| CliError::execution(error.to_string()))?;
+    // A contract may legitimately select zero OMS messages (a service whose
+    // exchanges are all data transfer, special signal, security, or non-OMS).
+    // There is no UCI type model to emit in that case, and fabricating a
+    // schema type just to give the backend something to render would invent
+    // meaning the contract never stated. Zero files is the honest answer.
+    let files = if projection.schema().types.is_empty() {
+        Vec::new()
+    } else {
+        // The ordinary backend API, on an ordinary schema. No backend learns
+        // what a Service Contract is.
+        language
+            .backend()
+            .generate(projection.schema(), world)
+            .map_err(|error| CliError::execution(error.to_string()))?
+    };
+    write_generated_files(&files, output_dir)?;
+    write_output(
+        stdout,
+        &render_service_generation(
+            &inputs.plan,
+            &projection,
+            language,
+            world,
+            &files,
+            output_dir,
+        ),
+    )
+}
+
+/// Render the deterministic selected-generation summary.
+///
+/// Contract-selected types and generated support types are reported on
+/// separate lines on purpose: the contract selected the former, while the
+/// latter exist only because generated representation (Task 024 closed sums
+/// and their dependencies) needs them.
+fn render_service_generation(
+    plan: &ServicePlan,
+    projection: &ServiceGenerationProjection,
+    language: Language,
+    world: GenerationWorld,
+    files: &[GeneratedFile],
+    output_dir: &Path,
+) -> String {
+    let mut report = String::new();
+    report.push_str("service contract valid\n");
+    report.push_str(&format!("service: {}\n", plan.service.name));
+    report.push_str(&format!("language: {}\n", language.label()));
+    report.push_str(&format!("generation world: {}\n", world.label()));
+    report.push('\n');
+    report.push_str(&format!(
+        "selected oms messages: {}\n",
+        projection.selected_message_names().len()
+    ));
+    report.push_str(&format!(
+        "contract-selected types: {}\n",
+        projection.selected_type_names().len()
+    ));
+    report.push_str(&format!(
+        "generated support types: {}\n",
+        projection.generated_support_type_names().len()
+    ));
+    report.push_str(&format!(
+        "projected schema types: {}\n",
+        projection.schema().types.len()
+    ));
+    report.push_str(&format!("generated {} file(s)\n", files.len()));
+    report.push_str(&format!("output: {}\n", output_dir.display()));
+    report
 }
 
 /// Render the deterministic readiness report.
@@ -1075,6 +1314,33 @@ fn render_service_plan(plan: &ServicePlan, closure_size: usize) -> String {
         }
     }
     report
+}
+
+/// Validate then write a complete generated file set.
+///
+/// This is the single write orchestration for both `generate` and
+/// `service-generate`, so there is exactly one implementation of relative-path
+/// validation, duplicate-path rejection, and symlink/traversal protection. A
+/// second writer would be free to be the unsafe one.
+///
+/// Every path is validated before the output directory is created, so a
+/// backend that produced an unsafe or duplicated path leaves no directory
+/// behind. An empty file set creates nothing at all.
+fn write_generated_files(files: &[GeneratedFile], output_dir: &Path) -> Result<(), CliError> {
+    validate_generated_files(files)?;
+    if files.is_empty() {
+        return Ok(());
+    }
+    fs::create_dir_all(output_dir).map_err(|error| {
+        CliError::execution(format!(
+            "unable to create output directory {}: {error}",
+            output_dir.display()
+        ))
+    })?;
+    for file in files {
+        write_generated_file(output_dir, file)?;
+    }
+    Ok(())
 }
 
 fn validate_generated_files(files: &[GeneratedFile]) -> Result<(), CliError> {

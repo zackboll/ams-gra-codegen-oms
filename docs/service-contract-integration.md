@@ -595,10 +595,159 @@ exactly as Task 028 defines, so the same selections are not ready. Abstract
 declarations used only as inheritance ancestry are unaffected by the world in
 either direction. Contract-selected types are not special-cased anywhere.
 
+## Contract-selected type generation
+
+Task 032 turns a READY selection into source. The pipeline is:
+
+```text
+Service Contract (portable YAML/JSON)
+  -> Contract IR              (ams-gra-oms-service-contract)
+  -> ServicePlan              (codegen-core: what does the contract select?)
+  -> ServiceBackendReadiness  (codegen-core: can backend X render it in world Y?)
+  -> ServiceGenerationProjection
+                              (codegen-core: narrow SchemaIr to that model)
+  -> existing Ada/Rust/C++ backend, unchanged
+  -> selected UCI type source
+```
+
+The projection step exists so the backends never learn what a Service Contract
+is. `project_service_generation_schema` returns an **owned, projected
+`SchemaIr`**, and the CLI hands that to the ordinary `Backend::generate`. From
+the backend's point of view selected generation is indistinguishable from
+ordinary generation, so validation, emission planning, helper detection, and
+rendering are all reused rather than duplicated. No backend crate changed.
+
+### Semantic closure versus generated support closure
+
+`ServicePlan::selected_type_closure` is a **semantic** closure: base types,
+aliases, Record fields, Choice alternatives, and List item types. It answers
+"which declarations does this contract require?" and Task 032 does **not**
+change it.
+
+Generated code needs slightly more, because Task 024 lowers an abstract
+structural value into a closed sum over its concrete transitive descendants,
+and those descendants are not ordinary named dependencies of anything selected:
+
+```text
+abstract Base
+ConcreteA extends Base
+ConcreteB extends Base
+Holder { Value : Base }
+message HolderReport -> Holder
+
+contract-selected types : Holder, Base
+generated support types : ConcreteA, ConcreteB
+```
+
+Folding `ConcreteA`/`ConcreteB` into `selected_type_closure` would corrupt its
+meaning — the contract selected neither — so Task 032 computes a **separate**
+fixed-point support closure instead. Iteration to a fixed point is required,
+not cosmetic: an admitted descendant may introduce new named dependencies and
+new nested abstract values, each with descendants of their own.
+
+Classification is reported explicitly, and support types are never described as
+contract selections:
+
+* a projected declaration is **selected** if and only if it is in the raw
+  semantic closure;
+* everything else is **support** — concrete closed-sum descendants, their
+  dependencies, and abstract intermediates retained because a descendant's
+  ancestry needs them (an abstract intermediate is *not* a wrapper variant).
+
+Both lists use original `SchemaIr` declaration order, as does
+`projected.types`. Contract presentation order lives in `ServicePlan` and
+nowhere else, so reversing a contract's exchange order while selecting the same
+messages produces byte-identical output.
+
+### Readiness is the gate, and support closure is not an escape hatch
+
+`service-generate` calls `analyze_service_readiness` first. A NOT READY
+selection prints the same report `service-check` prints (from the same shared
+helper), invokes no backend, creates no output directory, writes no file, and
+exits 1. Support expansion only supplies representation dependencies for
+already-ready selected values; it can never make an unsupported selected type
+generate.
+
+Two invariants are then asserted on the projection itself: the projected schema
+must pass `SchemaIr::validate`, and it must pass the shared
+`plan_type_emissions` planner. A subset missing one required named dependency
+is a projection defect, and neither check is relaxed to make a subset "work".
+
+### The demonstration
+
+`tests/fixtures/service-generate/root.xsd` contains a supported selected
+closure alongside unselected declarations that are unrenderable (`xs:duration`)
+or helper-provoking (the set's only unbounded occurrence, binary value, and
+floating value). For a contract selecting only the supported messages:
+
+| command | result |
+| --- | --- |
+| `generate` (full schema) | **fails** on the unselected `xs:duration` |
+| `service-check` | **READY** |
+| `service-generate` | **succeeds**, and the output compiles |
+
+The generated source contains the selected closure and none of the unrelated
+declarations — including none of their helpers, because the backend only ever
+saw the projected schema.
+
+### World behavior
+
+Under `ClosedSchemaSet` a selected abstract structural value generates as a
+Task 024 closed sum over every concrete transitive descendant, and a Task 026
+optional zero-known-descendant target keeps its declaration while its storage
+is elided; no concrete support type is invented for it. Under `OpenExtensions`
+a selected abstract structural *value* has no closed representation, so
+readiness reports NOT READY and the projection independently fails closed —
+it never emits a partial sum or silently behaves as if the world were closed.
+A selection containing no abstract structural value projects and generates
+identically in both worlds.
+
+### Authoritative UCI 2.5 remains out of scope
+
+A representative `service-generate` probe was run against the copied upstream
+contract `crates/service-contract/tests/fixtures/upstream-minimal.yaml` and
+`UCI_MessageDefinitions_v2_5_0.xsd`, for Rust under `closed-schema`. Measured:
+
+| property | measured |
+| --- | --- |
+| selected OMS messages | 1 (`PositionReport`) |
+| selected type closure | 60 |
+| renderable selected types | 47 |
+| status | **NOT READY** |
+| first blocker | `{...oam}AltitudeType` |
+| exit code | 1 |
+| generated files | 0 |
+| output directory | **not created** |
+| elapsed | 254 s |
+
+This reproduces Task 031's committed readiness evidence exactly, which is the
+point: Task 032 changed no readiness semantics. The readiness section of the
+report is byte-equivalent to what `service-check` prints, because both commands
+render it from the same helper.
+
+The no-write result is the important Task 032 property. Because readiness is
+consulted before anything else, the projection and the backend never ran at
+all, so there was no opportunity to leave a partial output tree — the output
+directory does not exist.
+
+Task 032 implements none of those blockers. `AltitudeType` and
+`Acceleration3D_Type` support remains future work, and selected generation
+deliberately does not route around the readiness verdict.
+
+### Where the Task 032 time goes
+
+The 254 s above is the pre-existing Task 031 readiness cost, dominated by
+`CoverageAnalysis::new` (~244 s) over the whole 5,557-type schema. None of it
+is selected projection or backend generation: in a NOT READY probe neither
+executes. On the synthetic `service-generate` fixture — load, readiness,
+projection, backend generation, and writing — the whole command completes in
+about 1 ms, so the projection and generation stages Task 032 adds are not a
+measurable cost at that scale.
+
 ## Non-goals for this slice
 
-Not implemented, deliberately: Ada/Rust/C++ service wrappers, contract-selected
-backend generation, a typed CAL API, OWP, WebSocket, JSON codec generation,
+Not implemented, deliberately: Ada/Rust/C++ service wrappers, generated
+publish/subscribe façades, a typed CAL API, OWP, WebSocket, JSON codec generation,
 OMS profile validation, completion-assistant parsing, contract completion
 logic, automatic Capability inference, automatic function grouping, automatic
 topic generation, contract message-name qualification syntax, full-UCI

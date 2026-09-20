@@ -3,6 +3,7 @@
 mod abstract_value;
 mod coverage;
 mod integral;
+mod service_generation;
 mod service_plan;
 mod service_readiness;
 mod structure;
@@ -21,6 +22,9 @@ pub use coverage::{
     SchemaInventory,
 };
 pub use integral::{InclusiveIntegralDomain, inclusive_integral_domain};
+pub use service_generation::{
+    ServiceGenerationError, ServiceGenerationProjection, project_service_generation_schema,
+};
 pub use service_plan::{
     CapabilityPlan, FunctionPlan, ResolvedExchange, ResolvedOmsMessageExchange, SelectedMessage,
     ServiceIdentity, ServicePlan, ServicePlanError, ServiceStandards, resolve_service_plan,

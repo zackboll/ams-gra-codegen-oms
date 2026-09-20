@@ -402,6 +402,13 @@ ams-gra-codegen-oms service-check \
   --language rust \
   --world closed-schema
 
+ams-gra-codegen-oms service-generate \
+  --schema /path/to/root.xsd \
+  --contract /path/to/service.yaml \
+  --language rust \
+  --world closed-schema \
+  --output generated/service
+
 ams-gra-codegen-oms generate \
   --schema /path/to/public-root.xsd \
   --overlay /path/to/private-extension.xsd \
@@ -609,6 +616,65 @@ status: READY
 
 Neither command writes generated code. READY means a backend *could* render the
 selection, not that any service source has been generated yet.
+
+### Contract-selected type generation
+
+The three contract commands answer three separate questions:
+
+| Command | Question |
+| --- | --- |
+| `service-plan` | **what** the contract selects |
+| `service-check` | **whether** that selection is renderable today |
+| `service-generate` | **emit** the selected UCI type model, after readiness succeeds |
+
+```text
+ams-gra-codegen-oms service-generate \
+  --schema root.xsd \
+  --contract service.yaml \
+  --language rust \
+  --world closed-schema \
+  --output generated/service
+```
+
+```text
+service contract valid
+service: Selected Generation Both
+language: rust
+generation world: closed-schema
+
+selected oms messages: 2
+contract-selected types: 5
+generated support types: 0
+projected schema types: 5
+generated 1 file(s)
+output: generated/service
+```
+
+- **Readiness is the gate.** Task 031 readiness runs first. If the selection is
+  NOT READY the same report `service-check` prints goes to stdout, no backend
+  is invoked, no output directory is created, no file is written, and the
+  command exits 1.
+- **Only the selection is emitted.** Unrelated schema declarations are absent,
+  so a schema set whose full-schema `generate` fails can still generate a
+  contract's selected model. Helper emission follows the projected model too:
+  an unselected unbounded field contributes no unbounded sequence helper.
+- **Contract-selected types and generated support types are reported
+  separately.** The contract selects the former. The latter exist only because
+  generated representation needs them — most importantly the Task 024
+  closed-sum concrete descendants of a selected abstract structural value,
+  which the contract never named. Support types are never presented as
+  contract selections.
+- **Type order follows the schema, not the contract.** Reordering a contract's
+  exchanges while selecting the same messages produces byte-identical output.
+- **Same extension mapping.** `--extension ID=PATH` and contract-ordered
+  overlay composition behave exactly as in `service-plan`; there is no raw
+  `--overlay`.
+- **Exit status.** `0` generated, `1` NOT READY / projection / filesystem
+  error, `2` usage error.
+
+**No CAL or service wrapper is emitted yet.** `service-generate` produces the
+selected UCI *type model* only: no publisher/subscriber façade, typed CAL API,
+codec, or runtime source.
 
 Compatibility is defined by `contract_version`, not by repository SHA. The
 baseline is `zackboll/ams-gra-service-contract`

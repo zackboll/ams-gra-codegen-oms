@@ -1,0 +1,42 @@
+# SYNTHETIC Task 032 fixture. Authored for this repository only.
+#
+# A contract with ZERO OMS Message exchanges. It is Task 031 READY (there is
+# no UCI type model to be unable to render), and Task 032 must succeed without
+# inventing one: zero selected messages, zero selected types, zero support
+# types, and zero generated files.
+contract_version: "0.1"
+
+service:
+  name: Selected Generation Non UCI
+  version: "0.1.0"
+  kind: service
+  description: Synthetic contract with no OMS Message exchange.
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: bulk-data
+    name: Bulk Data
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: dt
+        kind: data_transfer
+        direction: input
+        mandate: mandatory
+        name: Bulk
+        protocol: sftp
+        data_type: imagery
+        data_format: nitf
+        sharing_pattern: push
+        timing:
+          kind: asynchronous
+      - id: ss
+        kind: special_signal
+        direction: input
+        mandate: mandatory
+        name: Pulse
+        timing:
+          kind: asynchronous

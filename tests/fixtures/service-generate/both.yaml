@@ -1,0 +1,47 @@
+# SYNTHETIC Task 032 fixture. Authored for this repository only.
+#
+# Contract A of the narrowing pair: selects MessageA AND MessageB. MessageA is
+# also selected twice, from two exchanges with different topics, to pin that a
+# repeated message selection generates each required type exactly once.
+contract_version: "0.1"
+
+service:
+  name: Selected Generation Both
+  version: "0.1.0"
+  kind: service
+  description: Synthetic contract selecting both supported messages.
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: mission-data
+    name: Mission Data
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: a-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: MessageA
+        topic: mission.a
+        timing:
+          kind: asynchronous
+      - id: b-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: MessageB
+        topic: mission.b
+        timing:
+          kind: asynchronous
+      - id: a-repeat
+        kind: oms_message
+        direction: output
+        mandate: optional
+        message: MessageA
+        topic: mission.a-repeat
+        timing:
+          kind: asynchronous

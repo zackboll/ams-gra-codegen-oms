@@ -128,6 +128,45 @@ The deferred version comparison stays deferred. Task 031 introduces no
 normalization, stripping, or comparison of the contract's logical UCI version
 against the XSD root's release string.
 
+## Task 032 follow-up
+
+The resolved plan now drives **contract-selected UCI type generation**, through
+a language-neutral schema projection:
+
+```text
+project_service_generation_schema(&ServicePlan, &SchemaIr, GenerationWorld)
+    -> Result<ServiceGenerationProjection, ServiceGenerationError>
+```
+
+The projection narrows a full `SchemaIr` to the model one contract selects and
+returns it as an ordinary owned `SchemaIr`, which the existing Ada, Rust, and
+C++ backends generate from unchanged.
+
+The boundaries this ADR established held again, and were kept:
+
+* **Backend crates still do not parse or understand the contract.** They
+  receive a `SchemaIr`, as they always have. No `generate_service()` entry
+  point was added anywhere, and no backend crate changed.
+* **The plan stays world- and language-independent.** No generation
+  information — no `BackendLanguage`, `GenerationWorld`, output path, backend
+  name, or generated file name — was added to `ServicePlan`. `GenerationWorld`
+  is a projection *argument*, and is not stored in the projected `SchemaIr`
+  either.
+* **The contract crate stays independent.** `ams-gra-oms-service-contract`
+  acquired no new dependency.
+
+One new boundary was drawn. `ServicePlan::selected_type_closure` remains a
+*semantic* closure and was deliberately **not** extended to cover generated
+representation support. Task 024's closed-sum concrete descendants are tracked
+in a separate fixed-point support closure and reported separately, because the
+contract selects neither them nor the abstract intermediates retained for their
+ancestry. Presenting them as contract selections would make the plan claim
+something the contract never said.
+
+Readiness remains the authoritative capability gate: `service-generate` refuses
+to invoke a backend, create an output directory, or write a file for a NOT
+READY selection, and support expansion is never a route around that verdict.
+
 ## Alternatives considered
 
 * **Put contract parsing in `codegen-core`.** Rejected: it would tie the
