@@ -1038,3 +1038,122 @@ fn task033_selected_ada_float_rejects_public_bypasses() {
         );
     }
 }
+
+/// Task 034 section: a contract whose selected closure carries non-nillable
+/// `0..1` named-type Record fields becomes READY in all three backends.
+///
+/// The point of this test is *propagation*. No Task 034 change was made to
+/// `service_plan.rs`, `service_readiness.rs`, or `service_generation.rs`; the
+/// new capability has to arrive through the single shared coverage snapshot
+/// and the ordinary backends. Ada is the meaningful case -- it was NOT READY
+/// for this contract before Task 034 -- while Rust and C++ prove nothing
+/// regressed.
+///
+/// The fixture also contains an unselected `xs:duration` that no backend can
+/// render, so a READY result here cannot be a whole-schema accident.
+#[test]
+fn task034_optional_named_service_is_ready_in_every_backend() {
+    for language in ["rust", "cpp", "ada"] {
+        let check = cli()
+            .arg("service-check")
+            .arg("--schema")
+            .arg(fixture("optional-named.xsd"))
+            .arg("--contract")
+            .arg(fixture("optional-named.yaml"))
+            .args(["--language", language, "--world", "closed-schema"])
+            .output()
+            .expect("service-check must run");
+        assert_eq!(
+            check.status.code(),
+            Some(0),
+            "{language} service-check should succeed"
+        );
+        let report = String::from_utf8(check.stdout).expect("UTF-8 report");
+        assert!(
+            report.contains("status: READY"),
+            "{language} must be READY after Task 034: {report}"
+        );
+        assert!(
+            report.contains("selected type closure: 4")
+                && report.contains("renderable selected types: 4"),
+            "{language} must render every selected type: {report}"
+        );
+    }
+}
+
+/// The unselected `xs:duration` really is unrenderable, so ordinary
+/// whole-schema generation still fails for Ada on the very same file that
+/// service-generate handles. Without this, READY above could be explained by
+/// the schema simply being fully supported.
+#[test]
+fn task034_optional_named_whole_schema_generation_still_fails() {
+    let output = cli()
+        .arg("generate")
+        .arg("--schema")
+        .arg(fixture("optional-named.xsd"))
+        .args(["--language", "ada", "--world", "closed-schema"])
+        .arg("--output")
+        .arg(output_dir("task034-ada-whole"))
+        .output()
+        .expect("generate must run");
+    assert_ne!(
+        output.status.code(),
+        Some(0),
+        "an unrenderable unselected declaration must still fail whole-schema generation"
+    );
+    let diagnostics = String::from_utf8(output.stderr).expect("UTF-8 diagnostic");
+    assert!(
+        diagnostics.contains("UnrelatedDuration"),
+        "the unselected declaration must be the stated reason: {diagnostics}"
+    );
+}
+
+/// Task 034: the selected Ada output really compiles under GNAT, with the
+/// per-field wrappers this task generates.
+///
+/// This is a permanent GNAT-backed gate, so it follows the existing policy:
+/// skipped only where GNAT is genuinely absent, and never silently skipped
+/// when `AMS_GRA_REQUIRE_GNAT` says CI installed it.
+#[test]
+fn task034_selected_ada_optional_named_compiles_under_gnat() {
+    let output_root = output_dir("task034-ada");
+    let output = generate(
+        "optional-named.xsd",
+        "optional-named.yaml",
+        "ada",
+        "closed-schema",
+        &output_root,
+    );
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "ada optional-named generation should succeed"
+    );
+
+    let spec = std::fs::read_to_string(output_root.join("urn-test.ads"))
+        .expect("the selected Ada spec must exist");
+    // One wrapper per optional named field, named after the emitted owner.
+    for helper in [
+        "type SensorPayload_Maybe_Mode_Optional (Is_Present : Boolean := False) is record",
+        "type SensorPayload_Maybe_Details_Optional (Is_Present : Boolean := False) is record",
+        "type SensorPayload_Maybe_Samples_Optional (Is_Present : Boolean := False) is record",
+    ] {
+        assert!(spec.contains(helper), "missing {helper}:\n{spec}");
+    }
+    // The required named field is untouched by Task 034.
+    assert!(spec.contains("Required_Mode : Mode;"), "{spec}");
+
+    if Command::new("gnatmake").arg("--version").output().is_err() {
+        assert!(
+            std::env::var_os("AMS_GRA_REQUIRE_GNAT").is_none(),
+            "AMS_GRA_REQUIRE_GNAT is set but GNAT is not runnable"
+        );
+        return;
+    }
+    let status = Command::new("gnatmake")
+        .current_dir(&output_root)
+        .args(["-gnatwa", "-c", "urn-test.ads"])
+        .status()
+        .expect("GNAT reported a version, so it must be runnable");
+    assert!(status.success(), "selected Ada output must compile");
+}

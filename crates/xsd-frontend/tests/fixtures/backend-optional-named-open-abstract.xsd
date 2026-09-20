@@ -1,0 +1,37 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:optional:openabstract"
+           targetNamespace="urn:optional:openabstract"
+           elementFormDefault="qualified">
+  <!-- Open-world masking control.
+
+       `Base` is abstract WITH a concrete descendant, held as an optional named
+       field. Under open-extensions the abstract value itself cannot be
+       represented (an external derived type may exist), so no Task 034
+       wrapper can be generated for `Holder.Maybe` at all.
+
+       The authoritative failure is therefore the semantic diagnostic about
+       open-extensions, not a manufactured `Holder_Maybe_Optional` collision
+       against the user type declared below. Under the closed schema set the
+       field really IS stored, so there the same spelling is a genuine
+       collision. -->
+  <xs:complexType name="Base" abstract="true"><xs:sequence/></xs:complexType>
+  <xs:complexType name="Concrete">
+    <xs:complexContent>
+      <xs:extension base="t:Base">
+        <xs:sequence>
+          <xs:element name="Label" type="xs:string"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="Holder">
+    <xs:sequence>
+      <xs:element name="Maybe" type="t:Base" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Holder_Maybe_Optional">
+    <xs:sequence>
+      <xs:element name="Marker" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

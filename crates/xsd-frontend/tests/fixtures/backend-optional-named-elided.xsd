@@ -1,0 +1,32 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:optional:elided"
+           targetNamespace="urn:optional:elided"
+           elementFormDefault="qualified">
+  <!-- Task 026 x Task 034 composition control.
+
+       `EmptyBase` is abstract with ZERO concrete descendants and appears only
+       in a supported absent-only 0..1 position, so Task 026 classifies
+       `Holder.Maybe` as AbsentOnly. backend-ada therefore emits:
+
+         * no `Maybe` record component;
+         * no `Holder_Maybe_Optional` Task 034 wrapper;
+         * no `EmptyBase` wrapper and no `EmptyBase_Kind`.
+
+       Generated-name preflight must agree with that, so the user type spelled
+       `Holder_Maybe_Optional` below is legal: nothing generated claims the
+       name. Before the corrective the preflight registered the wrapper from
+       the raw effective field and falsely rejected the whole package. -->
+  <xs:complexType name="EmptyBase" abstract="true"><xs:sequence/></xs:complexType>
+  <xs:complexType name="Holder">
+    <xs:sequence>
+      <xs:element name="Required" type="xs:string"/>
+      <xs:element name="Maybe" type="t:EmptyBase" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+  <!-- Declared precisely because nothing emits this spelling. -->
+  <xs:complexType name="Holder_Maybe_Optional">
+    <xs:sequence>
+      <xs:element name="Marker" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

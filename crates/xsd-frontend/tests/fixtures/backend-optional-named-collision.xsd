@@ -1,0 +1,34 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:optional:collision"
+           targetNamespace="urn:optional:collision"
+           elementFormDefault="qualified">
+  <!-- Task 034 generated-name collision control.
+
+       `Owner` is concrete and really emits the Task 034 wrapper
+       `Owner_Maybe_Optional` for its optional named `Maybe` field. The user
+       type below carries that exact spelling, and because the Ada package is
+       flat, the identifier would be declared twice.
+
+       Generated-name preflight must reject this before GNAT ever sees it, and
+       must attribute the failure to both responsible declarations: the owner
+       that generated the helper, and the user declaration it collides with.
+
+       Identical in every respect to backend-optional-named-inherited.xsd
+       except that the owner here is emitted, which is exactly what makes this
+       a genuine collision rather than a phantom one. -->
+  <xs:complexType name="Owner">
+    <xs:sequence>
+      <xs:element name="Maybe" type="t:Item" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Item">
+    <xs:sequence>
+      <xs:element name="Label" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Owner_Maybe_Optional">
+    <xs:sequence>
+      <xs:element name="Marker" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

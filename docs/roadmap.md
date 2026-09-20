@@ -73,6 +73,33 @@ zero length facets on floating types.
 - [ ] constrained String and constrained Binary;
 - [ ] the excluded integral exclusive/lexical shapes.
 
+### Occurrence / cardinality representation
+
+**Complete (Task 034), for the exact subset below:** Ada general optional named
+Record values. A Record field lowers to a generated per-field discriminated
+wrapper `Owner_Field_Optional` iff cardinality is `0..1`, the field is not
+nillable, the target is a **named** type, field-local constraints are default,
+and the target is otherwise renderable by existing Ada rules. Rust and C++ were
+already `Option<T>` / `std::optional<T>` here and are unchanged.
+
+This is an **occurrence** change only. It does not make an unsupported target
+kind supported: an optional `DateTimeType` still fails, attributed to the
+temporal target rather than to optionality. Helper names belong to the emitted
+owner, so an inherited optional field on a non-emitted abstract ancestor
+renders as `Derived_Maybe_Optional`, and the wrapper participates in the shared
+generated-name preflight. See `docs/backend-compatibility.md`.
+
+**Still open:**
+
+- [ ] optional **direct non-String primitive** fields in Ada (this is what now
+      blocks the selected `PositionReport` closure, via
+      `VersionedID_Type.Version`);
+- [ ] nillability in any backend — no optional Record field in either pinned
+      UCI release is nillable, so this stays fail-closed on evidence;
+- [ ] optional values carrying field-local constraints;
+- [ ] optional named **Choice alternatives** — deliberately not enabled by
+      Task 034, whose scope is Record fields only.
+
 ### Open extension-point representation / externally supplied derived types
 
 Partially complete. Task 027 established from the pinned UCI 2.5/2.6 schemas that the
@@ -214,9 +241,24 @@ Those are the Task 033 figures. After generated-name preflight the current
 authoritative readiness is **Rust 51/60** and **Ada 32/60**, with the same
 first blockers; see `docs/backend-compatibility.md`.
 
+**Measured progress (Task 034):**
+
+Task 034 again added no Phase 2.5 code. It removed Ada's optional named-value
+occupancy boundary, and contract-selected readiness improved automatically
+through the same shared capability model. Same authoritative inputs:
+
+| Backend | Before | After | First blocker now |
+| --- | ---: | ---: | --- |
+| Ada | 32/60, `Acceleration3D_Type` | **44/60** | `MissionID_Type` |
+| Rust | 51/60, `DateTimeType` | 51/60 | `DateTimeType` (unchanged) |
+
+`Acceleration3D_Type` is no longer a blocker. Ada's new one, `MissionID_Type`,
+inherits `Version : xs:unsignedInt 0..1` — an optional **direct non-String
+primitive**, which Task 034 deliberately does not cover.
+
 `PositionReport` is **not** ready in any backend: both probes still report NOT
 READY. The remaining selected blockers are temporal primitives, constrained
-String, and Ada optional named fields — all open.
+String, and Ada optional direct non-String primitive fields — all open.
 
 **Still open:**
 
@@ -267,6 +309,12 @@ Implement or integrate small runtimes for:
 Validate each against unmodified Sleet.
 
 ## Phase 4 — SPARK-oriented Ada backend
+
+Task 034's optional representation was chosen to be compatible with this phase
+without anticipating it: the discriminant alone controls whether `Value`
+exists, and there is no access type, no heap allocation from the wrapper
+itself, no unchecked conversion, and no sentinel. No proof annotation and no
+GNATprove CI was added there; that work belongs here.
 
 - SPARK-friendly generated data model where practical;
 - generated schema predicates/validation;

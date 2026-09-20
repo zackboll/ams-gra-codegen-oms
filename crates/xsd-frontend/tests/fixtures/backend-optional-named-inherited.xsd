@@ -1,0 +1,44 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:optional:inherited"
+           targetNamespace="urn:optional:inherited"
+           elementFormDefault="qualified">
+  <!-- Task 034 inherited-owner control.
+
+       `Base` is abstract and used only as structural ancestry, so backend-ada
+       writes no type for it. Its optional named `Maybe` field is folded into
+       the emitted `Derived`, and the Task 034 wrapper Ada actually writes is
+       therefore named after the *emitted* owner:
+
+         Derived_Maybe_Optional
+
+       and never `Base_Maybe_Optional`. This mirrors the rule PR #34
+       established for repeated helpers: a generated helper name belongs to
+       the declaration that really emits it. -->
+  <xs:complexType name="Base" abstract="true">
+    <xs:sequence>
+      <xs:element name="Maybe" type="t:Item" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Derived">
+    <xs:complexContent>
+      <xs:extension base="t:Base">
+        <xs:sequence>
+          <xs:element name="Local" type="xs:string"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="Item">
+    <xs:sequence>
+      <xs:element name="Label" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <!-- Declared precisely because nothing emits this spelling: the wrapper
+       belongs to `Derived`, so preflight must accept this user type and GNAT
+       must compile the result. -->
+  <xs:complexType name="Base_Maybe_Optional">
+    <xs:sequence>
+      <xs:element name="Marker" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

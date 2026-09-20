@@ -833,6 +833,18 @@ The shared decision point is `field_storage_semantics` in
 `EffectiveValueMember::AbsentOnly`. Every backend and the emission planner
 consult it, so no backend re-derives elision independently.
 
+Generated-name preflight consults it too. `backend_names::register_declaration_members`
+classifies each effective Record field through the very same
+`field_storage_semantics` call before registering anything, so a field the
+backends store nowhere reserves no member identifier, no repeated helper, and
+no Task 034 `{Owner}_{Member}_Optional` wrapper. Registering names from the raw
+effective fields described output that cannot exist: it could falsely reject a
+user declaration spelled like a phantom wrapper, and it could report a name
+collision in place of the authoritative semantic diagnostic for a field whose
+storage classification fails (for example an open-extensions abstract value).
+Deferral is field-scoped — every other field and declaration is still fully
+name-checked.
+
 ### Deliberately still unsupported (fail-closed)
 
 | Occurrence of an uninhabited target | Status | Reason |
@@ -2658,3 +2670,211 @@ cost re-measured at **5.82 s (Rust) / 5.82 s (Ada)** per language. The emission
 plan is still formed exactly once per schema/world and then walked, so member
 and helper analysis reuses the same plan rather than re-planning per
 declaration.
+
+## Task 034 — Ada optional named Record values
+
+Ada now represents non-nillable `0..1` **named-type Record fields** with
+deterministic, generated, value-owning optional wrapper types. This removes
+Ada's independent "optional named value" occurrence boundary so the next
+blocker can be measured honestly.
+
+### Authoritative evidence
+
+Measured from a fresh clone of the authoritative public UCI Standard
+repository, at the pinned roots
+`093610b7753944059360d3236770ab446d039556` (2.5) and
+`78eb61b6112c8bffa40820c33124b57787fc5bd9` (2.6).
+
+| Optional `0..1` Record fields | UCI 2.5 | UCI 2.6 |
+| --- | ---: | ---: |
+| Total | 4,949 | 4,967 |
+| Named target | 4,458 | 4,548 |
+| Direct primitive target | 491 | 419 |
+| Nillable | **0** | **0** |
+| With field-local constraints | 213 | 214 |
+| Named + non-nillable + default constraints | **4,458** | **4,548** |
+
+Target declaration kinds for those named optional fields:
+
+| Target kind | UCI 2.5 | UCI 2.6 |
+| --- | ---: | ---: |
+| record | 2,097 | 2,107 |
+| primitive | 1,383 | 1,431 |
+| enumeration | 680 | 705 |
+| choice | 298 | 305 |
+
+Two facts shaped the design. Nillability is **entirely absent** from optional
+Record fields in both releases, so a two-state wrapper loses nothing real, and
+keeping nillability fail-closed costs nothing. Every named optional field with
+default local constraints is in the supported subset, so the rule needs no
+per-target special-casing.
+
+### The recorded blocker
+
+`Acceleration3D_Type.Timestamp`, verified directly rather than inferred from
+the name:
+
+| Property | Value |
+| --- | --- |
+| cardinality | `0..1` |
+| nillable | `false` |
+| target QName | `{https://www.vdl.afrl.af.mil/programs/oam}DateTimeType` |
+| target kind | primitive (`PrimitiveKind::DateTime`) |
+| local constraints | default |
+
+So the occurrence is squarely inside the Task 034 subset, while the *target*
+is a temporal primitive this project does not lower. That separation is the
+whole point: after Task 034 this field no longer fails for being optional and
+named, and `Acceleration3D_Type` is no longer Ada's selected-service blocker.
+
+### Supported subset
+
+An Ada Record field uses the new representation iff **all** hold:
+
+```text
+cardinality = 0..1
+nillable = false
+target = named type
+field-local ConstraintSet = default
+target/value representation is otherwise supported by existing Ada rules
+```
+
+This changes the **occurrence representation only**. It does not make an
+unsupported target kind supported. `Timestamp : DateTimeType 0..1` passes the
+optional-occurrence rule and still fails, attributed to `DateTimeType`.
+
+### Generated representation
+
+For an emitted Record `Owner` with optional named field `Field : Target 0..1`:
+
+```ada
+type Owner_Field_Optional (Is_Present : Boolean := False) is record
+   case Is_Present is
+      when False => null;
+      when True  => Value : Target;
+   end case;
+end record;
+```
+
+stored as `Field : Owner_Field_Optional`. Helper declarations precede the
+record that uses them, in the existing deterministic emission order.
+
+The wrapper is **per emitted field** rather than a shared generic runtime
+Optional. That keeps the task self-contained, allocation-free beyond whatever
+`Target` itself owns, compatible with this backend's `private` and otherwise
+constrained generated target types, naturally tied to the emitted concrete
+owner, and independent of a runtime package that does not exist yet.
+
+The existing `Optional_String` is unchanged and still serves
+`Primitive(String), 0..1`; Task 034 adds a separate named-target path rather
+than redesigning it, so unrelated generated output does not churn.
+
+**SPARK-oriented properties.** The discriminant alone controls whether `Value`
+exists. There is no access type, no heap allocation introduced by the wrapper
+itself, no unchecked conversion, and no in-band sentinel: absence and presence
+are explicit, distinguishable states, and reading `Value` through an absent
+wrapper raises `Constraint_Error` rather than yielding a wrong value. The GNAT
+probe asserts that. No proof annotation and no GNATprove CI is added here; the
+representation is intentionally compatible with future Phase 4 work.
+
+### Inherited-owner semantics
+
+Generated helper names belong to the declaration that actually emits them, the
+rule PR #34 established for repeated helpers. For
+
+```text
+abstract Base
+    Maybe : T 0..1
+
+Derived extends Base
+```
+
+where `Base` is not emitted, the wrapper is `Derived_Maybe_Optional`, never
+`Base_Maybe_Optional`, because `Derived` is the scope where the field is really
+rendered. `effective_record_fields(...)` on emitted declarations drives this,
+exactly as for repeated helpers.
+
+### Generated-name collision handling
+
+The wrapper is a generated Ada top-level identifier in a flat package, so it
+participates in the **shared emitted-surface generated-name model** rather than
+an Ada-renderer-only check. `Owner_Maybe_Optional` is reserved only when that
+helper is really emitted, and structured ownership points back to `Owner`. A
+user declaration spelled `Owner_Maybe_Optional` rejects generation and marks
+both responsible declarations under existing attribution semantics. A
+non-emitted abstract ancestor reserves nothing, and there is a regression for
+exactly that case.
+
+### Coverage delta
+
+Full authoritative re-run from scratch, all four roots, all three backends:
+
+| Root | Backend | Before | After |
+| --- | --- | ---: | ---: |
+| UCI 2.5 closed | Ada | 2731 / 5557 | **4977 / 5557** |
+| UCI 2.5 closed | Rust | 5375 / 5557 | 5375 / 5557 |
+| UCI 2.5 closed | C++ | 5378 / 5557 | 5378 / 5557 |
+| UCI 2.6 closed | Ada | 2731 / 5570 | **5034 / 5570** |
+| UCI 2.6 closed | Rust | 5397 / 5570 | 5397 / 5570 |
+| UCI 2.6 closed | C++ | 5401 / 5570 | 5401 / 5570 |
+| UCI 2.5 open | Ada | 2724 / 5557 | **4907 / 5557** |
+| UCI 2.5 open | Rust | 5287 / 5557 | 5287 / 5557 |
+| UCI 2.5 open | C++ | 5290 / 5557 | 5290 / 5557 |
+| UCI 2.6 open | Ada | 2724 / 5570 | **4963 / 5570** |
+| UCI 2.6 open | Rust | 5309 / 5570 | 5309 / 5570 |
+| UCI 2.6 open | C++ | 5313 / 5570 | 5313 / 5570 |
+
+Rust and C++ are byte-identical in every cell, as required. Ada field
+occurrences rise from 8211/13160 to 12669/13160 (2.5) and 8231/13198 to
+12779/13198 (2.6) — consistent with the 4,458 / 4,548 in-subset named optional
+fields the evidence counted, and nothing more. Ada *kinds* and *field-types*
+are unchanged, which is the check that no unrelated feature was enabled: Task
+034 moved occurrences only.
+
+### Selected PositionReport delta
+
+UCI 2.5, `crates/service-contract/tests/fixtures/upstream-minimal.yaml`, one
+selected message, 60-declaration closure, closed world.
+
+| Backend | Before | After | First blocker before | First blocker after |
+| --- | ---: | ---: | --- | --- |
+| Ada | 32/60 | **44/60** | `{…}Acceleration3D_Type` | `{…}MissionID_Type` |
+| Rust | 51/60 | 51/60 | `{…}DateTimeType` | `{…}DateTimeType` (unchanged) |
+
+`Acceleration3D_Type` is no longer a blocker, which is the direct evidence that
+Task 034 removed the occurrence barrier. Ada's new blocker, `MissionID_Type`,
+is **not** temporal: it inherits `Version : xs:unsignedInt 0..1` from
+`VersionedID_Type`, an optional **direct non-String primitive**, which Task 034
+deliberately leaves unsupported. That is an honest boundary, reported rather
+than engineered around — no readiness or ServicePlan special case exists for
+`Acceleration3D_Type` or for any other declaration name.
+
+Ada remains NOT READY, so no temporal support was implemented to force a
+readiness increase.
+
+### Full-UCI generation boundary
+
+Full UCI generation is **not** supported. The first Ada full-schema blocker is
+unchanged by this task:
+
+```text
+unsupported Ada IR construct: Ada name "Range" generates reserved word "Range"
+in the members of AltitudeRangePairType
+```
+
+Task 034 did not shift it, and no attribution change is claimed.
+
+### What Task 034 does not add
+
+Record fields **only**. Optional named Choice alternatives are deliberately
+left fail-closed: a Choice's exclusivity is already carried by its generated
+`Kind` discriminant, and no authoritative evidence justifies giving one
+alternative a second, nested discriminant. That distinction is enough that it
+should not hitchhike into this task.
+
+Also unchanged and still rejected: optional direct non-String primitive fields;
+nillable values; optional values with field-local constraints; optional
+Alias/List shapes that are otherwise unsupported; unsupported target
+declaration kinds. No temporal primitive lowering, no lexical validation, no
+constrained String/Binary, no runtime codecs, and no generic CAL/runtime
+Optional abstraction. No nillability support of any kind is claimed.

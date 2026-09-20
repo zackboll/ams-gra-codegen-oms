@@ -1572,9 +1572,29 @@ fn occurrence_renderable(
     }
     match (language, field.cardinality.shape()) {
         (_, OccurrenceShape::RequiredOne) => true,
-        (BackendLanguage::Ada, OccurrenceShape::OptionalOne) => {
-            field.type_ref.target == TypeRefTarget::Primitive(PrimitiveKind::String)
-        }
+        // Task 034: Ada represents a non-nillable `0..1` **named**-target field
+        // with a generated per-field discriminated wrapper
+        // (`Owner_Field_Optional`), so the occurrence itself is now baseline.
+        //
+        // This is an *occurrence* judgement only. Whether the named target is
+        // itself renderable is decided separately by `type_ref_renderable` and
+        // by that target declaration's own capability rules, so an optional
+        // reference to an unsupported type (a temporal `DateTimeType`, say)
+        // still fails -- and is attributed to the target, not to optionality.
+        //
+        // Local constraints stay out: a field-local facet on an optional named
+        // value has no lowering here, so it remains `ConstrainedSimpleTypes`.
+        //
+        // Optional *direct primitive* fields other than String are unchanged;
+        // Task 034 deliberately adds only the named-target path beside the
+        // existing `Optional_String`.
+        (BackendLanguage::Ada, OccurrenceShape::OptionalOne) => match &field.type_ref.target {
+            TypeRefTarget::Named(_) => {
+                field.constraints == ConstraintSet::default()
+                    || enabled.contains(&FeatureFamily::ConstrainedSimpleTypes)
+            }
+            TypeRefTarget::Primitive(kind) => *kind == PrimitiveKind::String,
+        },
         (BackendLanguage::Rust | BackendLanguage::Cpp, OccurrenceShape::OptionalOne) => true,
         (BackendLanguage::Ada, OccurrenceShape::Bounded { max, .. })
             if max > 1 && max <= ADA_PORTABLE_POSITIVE_INDEX_MAX =>
@@ -2668,11 +2688,11 @@ mod tests {
         }
     }
 
-    #[test]
-    fn optional_named_field_preserves_language_specific_occurrence_support() {
+    fn optional_named_payload_schema(mutate: impl FnOnce(&mut FieldDecl)) -> SchemaIr {
         let mut value = field("value", "Value");
         value.cardinality = Cardinality::OPTIONAL_ONE;
-        let schema = message_schema(
+        mutate(&mut value);
+        message_schema(
             vec![
                 declaration(
                     "Payload",
@@ -2683,11 +2703,97 @@ mod tests {
                 scalar("Value"),
             ],
             "Payload",
+        )
+    }
+
+    /// Task 034: a non-nillable `0..1` **named** field with default local
+    /// constraints is now baseline occurrence support in every backend, Ada
+    /// included, because Ada emits a per-field discriminated wrapper for it.
+    #[test]
+    fn optional_named_field_is_baseline_occurrence_support_in_every_backend() {
+        let schema = optional_named_payload_schema(|_| {});
+        let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
+        for language in BackendLanguage::ALL {
+            // Nothing is left for a hypothetical feature family to add.
+            assert_eq!(analysis.impact(language, &[]).unwrap(), 1);
+            assert_eq!(
+                analysis
+                    .backend_coverage(language)
+                    .unwrap()
+                    .field_occurrences_renderable,
+                1
+            );
+        }
+    }
+
+    /// Task 034 changes the *occurrence* rule only. Nillability is a separate
+    /// state the wrapper cannot express, so it stays unrenderable everywhere
+    /// and stays attributed to `CardinalityAndNillability`.
+    #[test]
+    fn nillable_optional_named_field_remains_unsupported_in_every_backend() {
+        let schema = optional_named_payload_schema(|value| value.nillable = true);
+        let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
+        for language in BackendLanguage::ALL {
+            assert_eq!(
+                analysis
+                    .backend_coverage(language)
+                    .unwrap()
+                    .field_occurrences_renderable,
+                0
+            );
+            assert_eq!(
+                analysis
+                    .impact(language, &[FeatureFamily::CardinalityAndNillability])
+                    .unwrap(),
+                1
+            );
+        }
+    }
+
+    /// A field-local constraint on an optional named value has no lowering, so
+    /// it stays outside the Task 034 subset and remains hypothetical
+    /// `ConstrainedSimpleTypes` work.
+    #[test]
+    fn locally_constrained_optional_named_field_remains_unsupported_for_ada() {
+        let schema = optional_named_payload_schema(|value| {
+            value.constraints.max_inclusive = Some(NumericValue::Integer(4));
+        });
+        let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
+        assert_eq!(
+            analysis
+                .backend_coverage(BackendLanguage::Ada)
+                .unwrap()
+                .field_occurrences_renderable,
+            0
+        );
+        assert_eq!(
+            analysis
+                .impact(
+                    BackendLanguage::Ada,
+                    &[FeatureFamily::ConstrainedSimpleTypes]
+                )
+                .unwrap(),
+            1
+        );
+    }
+
+    /// Task 034 adds only the **named**-target path. An optional direct
+    /// non-String primitive is untouched in Ada and still unrenderable, while
+    /// Rust/C++ keep supporting it.
+    #[test]
+    fn optional_direct_primitive_field_keeps_its_language_specific_support() {
+        let mut value = field_ref("value", TypeRef::primitive(PrimitiveKind::SignedInteger));
+        value.cardinality = Cardinality::OPTIONAL_ONE;
+        let schema = message_schema(
+            vec![declaration(
+                "Payload",
+                TypeKind::Record {
+                    fields: vec![value],
+                },
+            )],
+            "Payload",
         );
         let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
-        assert_eq!(analysis.impact(BackendLanguage::Ada, &[]).unwrap(), 0);
-        assert_eq!(analysis.impact(BackendLanguage::Rust, &[]).unwrap(), 1);
-        assert_eq!(analysis.impact(BackendLanguage::Cpp, &[]).unwrap(), 1);
         assert_eq!(
             analysis
                 .backend_coverage(BackendLanguage::Ada)
