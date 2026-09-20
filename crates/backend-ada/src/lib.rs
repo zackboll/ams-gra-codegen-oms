@@ -2359,6 +2359,112 @@ end Probe;
         assert!(status.success(), "generated Ada spec must compile");
     }
 
+    /// Generated-name preflight tracks *emitted* entities, not raw Schema IR
+    /// declarations. An ancestry-only abstract Record is folded into its
+    /// descendants and never emitted, so its local name does not occupy the
+    /// generated package -- even when that name is `Optional_String`, which
+    /// backend-ada always emits as a support type.
+    ///
+    /// The generated spec must therefore contain exactly one
+    /// `Optional_String` and compile under GNAT.
+    #[test]
+    fn ancestry_only_abstract_support_name_renders_and_compiles_under_gnat() {
+        let schema = preflight_fixture("backend-ancestry-only-ada-support-name.xsd");
+        assert!(
+            ams_gra_oms_codegen_core::validate_backend_names(&schema, BackendLanguage::Ada, CLOSED)
+                .is_ok(),
+            "an abstract base Ada never emits must not reserve Optional_String"
+        );
+        let source = generate(&schema, CLOSED).expect("ancestry-only base must render");
+        // Exactly one declaration of the support type, and none from the
+        // schema-owned abstract base.
+        assert_eq!(
+            source.matches("type Optional_String").count(),
+            1,
+            "{source}"
+        );
+        // The inherited field really is folded into the emitted descendant.
+        assert!(source.contains("type Derived is record"), "{source}");
+        assert!(source.contains("Inherited"), "{source}");
+
+        use std::fs;
+        use std::process::Command;
+        if Command::new("gnatmake").arg("--version").output().is_err() {
+            assert!(
+                std::env::var_os("AMS_GRA_REQUIRE_GNAT").is_none(),
+                "AMS_GRA_REQUIRE_GNAT is set but GNAT is not runnable"
+            );
+            return;
+        }
+        let directory = std::env::temp_dir().join("ams-gra-oms-ancestry-ada-control");
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(&directory).expect("create Ada probe directory");
+        // Namespace `urn:preflight:ancestryada` yields package
+        // `Preflight.Ancestryada`.
+        fs::write(
+            directory.join("preflight.ads"),
+            "package Preflight is\nend Preflight;\n",
+        )
+        .expect("write Ada parent package");
+        fs::write(directory.join("preflight-ancestryada.ads"), &source)
+            .expect("write generated Ada spec");
+        let status = Command::new("gnatmake")
+            .current_dir(&directory)
+            .args(["-gnatwa", "-c", "preflight-ancestryada.ads"])
+            .status()
+            .expect("GNAT reported a version, so it must be runnable");
+        let _ = fs::remove_dir_all(&directory);
+        assert!(status.success(), "generated Ada spec must compile");
+    }
+
+    /// Task 026 counterpart under Ada: an elided zero-descendant target
+    /// reserves neither its own name nor an `Optional_String_Kind` companion,
+    /// so the generated support type keeps the identifier.
+    #[test]
+    fn task026_elided_target_does_not_reserve_its_own_ada_name() {
+        let schema = preflight_fixture("backend-elided-target-support-name.xsd");
+        assert!(
+            ams_gra_oms_codegen_core::validate_backend_names(&schema, BackendLanguage::Ada, CLOSED)
+                .is_ok(),
+            "a Task 026 elided target must not reserve its own Ada name"
+        );
+        let source = generate(&schema, CLOSED).expect("elided target must render");
+        assert_eq!(
+            source.matches("type Optional_String").count(),
+            1,
+            "{source}"
+        );
+        // No `_Kind` companion is manufactured for an elided target.
+        assert!(!source.contains("Optional_String_Kind"), "{source}");
+
+        use std::fs;
+        use std::process::Command;
+        if Command::new("gnatmake").arg("--version").output().is_err() {
+            assert!(
+                std::env::var_os("AMS_GRA_REQUIRE_GNAT").is_none(),
+                "AMS_GRA_REQUIRE_GNAT is set but GNAT is not runnable"
+            );
+            return;
+        }
+        let directory = std::env::temp_dir().join("ams-gra-oms-elided-ada-control");
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(&directory).expect("create Ada probe directory");
+        fs::write(
+            directory.join("preflight.ads"),
+            "package Preflight is\nend Preflight;\n",
+        )
+        .expect("write Ada parent package");
+        fs::write(directory.join("preflight-elided.ads"), &source)
+            .expect("write generated Ada spec");
+        let status = Command::new("gnatmake")
+            .current_dir(&directory)
+            .args(["-gnatwa", "-c", "preflight-elided.ads"])
+            .status()
+            .expect("GNAT reported a version, so it must be runnable");
+        let _ = fs::remove_dir_all(&directory);
+        assert!(status.success(), "generated Ada spec must compile");
+    }
+
     /// Section 44: a schema with no abstract value reference must produce
     /// byte-identical output under both worlds.
     #[test]

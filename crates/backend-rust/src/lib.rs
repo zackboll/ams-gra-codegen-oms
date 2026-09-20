@@ -1802,6 +1802,77 @@ fn main() {
         assert!(status.success(), "generated Rust module must compile");
     }
 
+    /// Generated-name preflight tracks *emitted* entities, not raw Schema IR
+    /// declarations. An abstract Record used only as ancestry is folded into
+    /// its descendants and never emitted, so its local name does not occupy
+    /// the generated top-level scope -- even when that name is `BoundedVec`,
+    /// which Rust always emits as a support type.
+    ///
+    /// Preflight and actual generation must agree, and the result must
+    /// compile: the module contains exactly one `BoundedVec`, the support
+    /// type.
+    #[test]
+    fn ancestry_only_abstract_support_name_renders_and_compiles() {
+        let schema = preflight_fixture("backend-ancestry-only-support-name.xsd");
+
+        // Preflight verdict and generation verdict must agree.
+        assert!(
+            ams_gra_oms_codegen_core::validate_backend_names(
+                &schema,
+                BackendLanguage::Rust,
+                CLOSED,
+            )
+            .is_ok(),
+            "an abstract base Rust never emits must not reserve BoundedVec"
+        );
+        let source = generate(&schema, CLOSED).expect("ancestry-only base must render");
+
+        // The only `BoundedVec` is the generic support type; no schema-owned
+        // declaration of that name is emitted.
+        assert!(source.contains("pub struct BoundedVec<T"), "{source}");
+        assert!(!source.contains("pub struct BoundedVec {"), "{source}");
+        // The inherited field really is folded into the emitted descendant.
+        assert!(source.contains("pub struct Derived {"), "{source}");
+        assert!(source.contains("pub inherited:"), "{source}");
+
+        use std::fs;
+        use std::process::Command;
+        let directory = std::env::temp_dir().join("ams-gra-oms-ancestry-rust-control");
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(&directory).expect("create Rust probe directory");
+        fs::write(directory.join("generated.rs"), &source).expect("write generated module");
+        let status = Command::new("rustc")
+            .current_dir(&directory)
+            .args(["--edition", "2021", "--crate-type", "lib", "generated.rs"])
+            .status()
+            .expect("rustc should be available in a Rust workspace");
+        let _ = fs::remove_dir_all(&directory);
+        assert!(status.success(), "generated Rust module must compile");
+    }
+
+    /// The Task 026 counterpart: a zero-descendant target used only in a
+    /// supported absent-only slot emits nothing at all, so it reserves no
+    /// name either.
+    #[test]
+    fn task026_elided_target_does_not_reserve_its_own_name() {
+        let schema = preflight_fixture("backend-elided-target-support-name.xsd");
+        assert!(
+            ams_gra_oms_codegen_core::validate_backend_names(
+                &schema,
+                BackendLanguage::Rust,
+                CLOSED,
+            )
+            .is_ok(),
+            "a Task 026 elided target must not reserve its own name"
+        );
+        let source = generate(&schema, CLOSED).expect("elided target must render");
+        // Nothing schema-owned is emitted for the elided target, and the
+        // absent-only member is not stored.
+        assert!(!source.contains("OptionalString"), "{source}");
+        assert!(!source.contains("pub maybe"), "{source}");
+        assert!(source.contains("pub struct Holder {"), "{source}");
+    }
+
     /// Section 44: a schema with no abstract value reference must produce
     /// byte-identical output under both worlds.
     #[test]

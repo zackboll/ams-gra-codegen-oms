@@ -1,0 +1,33 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:preflight:ancestryada"
+           targetNamespace="urn:preflight:ancestryada"
+           elementFormDefault="qualified">
+  <!-- Ada counterpart of backend-ancestry-only-support-name.xsd.
+
+       `Optional_String` is emitted unconditionally by backend-ada as a
+       generated support type. This abstract base carries that exact local
+       name but is used only as structural ancestry: no field is typed as
+       Optional_String, so no wrapper and no declaration is emitted for it.
+       The generated Ada package therefore contains exactly one
+       `Optional_String`, the backend's own support type, and must compile
+       under GNAT. -->
+  <xs:complexType name="Optional_String" abstract="true">
+    <xs:sequence>
+      <xs:element name="Inherited" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Derived">
+    <xs:complexContent>
+      <xs:extension base="t:Optional_String">
+        <xs:sequence>
+          <xs:element name="Local" type="xs:string"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="Holder">
+    <xs:sequence>
+      <xs:element name="Item" type="t:Derived"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

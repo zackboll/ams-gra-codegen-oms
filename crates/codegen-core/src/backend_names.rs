@@ -30,6 +30,7 @@
 
 use crate::abstract_value::{abstract_value_targets, is_structural, project_abstract_value};
 use crate::coverage::BackendLanguage;
+use crate::emitted_top_level_declaration_names;
 use crate::floating::floating_domain;
 use crate::structure::{effective_choice_alternatives, effective_record_fields};
 use crate::world::GenerationWorld;
@@ -1235,6 +1236,58 @@ fn ada_emits_helper(cardinality: Cardinality) -> bool {
     }
 }
 
+/// Register the top-level name of every declaration the requested world
+/// actually emits.
+///
+/// # Why this is not simply every Schema IR declaration
+///
+/// A Schema IR declaration is not the same thing as a generated host-language
+/// declaration. Registering all of them reserved names that never appear in
+/// the output, which falsely rejected schemas whose only "collision" was
+/// against a type the backend does not emit:
+///
+/// * **Ancestry-only abstract Records.** Every backend folds an abstract
+///   Record's fields into its concrete descendants and writes no type for the
+///   base, so an abstract Record named `BoundedVec` must not take that
+///   identifier away from the generated Rust support type.
+/// * **Task 026 elision.** A zero-descendant target used only as supported
+///   absent-only optional storage emits no wrapper, no declaration, and no
+///   `_Kind`, so it reserves nothing.
+///
+/// Names that *are* emitted keep their reservation, including abstract
+/// Choices -- which no backend skips -- and Task 024 closed-sum wrappers.
+///
+/// The emitted set is computed **once per schema/world** from the shared
+/// planner and then consulted per declaration, so this stays a single
+/// membership test inside the loop rather than whole-schema work repeated for
+/// every declaration.
+///
+/// When no plan can be formed the schema has a semantic defect that the
+/// backend reports on its own terms. Name preflight has no opinion there, so
+/// it falls back to the previous whole-schema behaviour rather than
+/// suppressing reservations on the strength of an error it does not own.
+fn register_emitted_declaration_names(
+    top_level: &mut Region,
+    schema: &SchemaIr,
+    language: BackendLanguage,
+    world: GenerationWorld,
+) -> Result<(), BackendNameError> {
+    let emitted = emitted_top_level_declaration_names(schema, world);
+    for declaration in &schema.types {
+        if emitted
+            .as_ref()
+            .is_some_and(|emitted| !emitted.contains(&declaration.name))
+        {
+            continue;
+        }
+        top_level.insert_transformed(
+            NameSource::Declaration(declaration.name.clone()),
+            declaration_name(language, &declaration.name.local_name),
+        )?;
+    }
+    Ok(())
+}
+
 /// Validate every generated host-language name one backend would emit for
 /// `schema`, in deterministic schema declaration order.
 ///
@@ -1264,12 +1317,7 @@ pub fn validate_backend_names(
     // declaration is placed in it, so a user declaration colliding with one is
     // attributed to the user declaration as the second, conflicting source.
     register_support_names(&mut top_level, schema, language)?;
-    for declaration in &schema.types {
-        top_level.insert_transformed(
-            NameSource::Declaration(declaration.name.clone()),
-            declaration_name(language, &declaration.name.local_name),
-        )?;
-    }
+    register_emitted_declaration_names(&mut top_level, schema, language, world)?;
     if language == BackendLanguage::Ada {
         register_ada_kind_companions(&mut top_level, schema, world)?;
     }
@@ -1490,12 +1538,10 @@ pub fn unsafe_named_declarations(
     // Ignoring the `Result` is correct for a collecting region: it only ever
     // returns `Ok`, accumulating into `errors` instead.
     let _ = register_support_names(&mut top_level, schema, language);
-    for declaration in &schema.types {
-        let _ = top_level.insert_transformed(
-            NameSource::Declaration(declaration.name.clone()),
-            declaration_name(language, &declaration.name.local_name),
-        );
-    }
+    // Same emission-aware registration as validation, so capability
+    // attribution cannot condemn a declaration for a name the backend never
+    // emits while validation accepts it.
+    let _ = register_emitted_declaration_names(&mut top_level, schema, language, world);
     if language == BackendLanguage::Ada {
         let _ = register_ada_kind_companions(&mut top_level, schema, world);
     }
@@ -2000,6 +2046,185 @@ mod tests {
                 "{language:?} must not reserve {spelling} for a schema that never emits it"
             );
         }
+    }
+
+    // ---- Emitted entities, not raw IR declarations ---------------------
+
+    /// An abstract Record used only as ancestry, plus a concrete descendant
+    /// and a value position that refers to the *descendant*. No backend emits
+    /// the base, so it is a naming no-op.
+    fn ancestry_only_schema(base_name: &str) -> SchemaIr {
+        let mut base = record(
+            base_name,
+            vec![field(
+                "Tag",
+                TypeRefTarget::Primitive(PrimitiveKind::String),
+                Cardinality::REQUIRED_ONE,
+            )],
+        );
+        base.is_abstract = true;
+        let mut derived = record("Derived", Vec::new());
+        derived.base_type = Some(TypeRef {
+            target: TypeRefTarget::Named(QualifiedName::new(NS, base_name)),
+        });
+        let holder = record(
+            "Holder",
+            vec![field(
+                "Value",
+                TypeRefTarget::Named(QualifiedName::new(NS, "Derived")),
+                Cardinality::REQUIRED_ONE,
+            )],
+        );
+        schema_with(vec![base, derived, holder])
+    }
+
+    /// The defect this corrective fixes. Every backend folds an abstract
+    /// Record into its descendants and emits no type for the base, so the
+    /// base's identifier is not taken in the generated scope. Reserving it
+    /// rejected schemas whose only conflict was against a declaration that is
+    /// never generated.
+    #[test]
+    fn an_ancestry_only_abstract_record_does_not_reserve_a_support_name() {
+        for (language, spelling) in [
+            (BackendLanguage::Rust, "BoundedVec"),
+            (BackendLanguage::Cpp, "BoundedVector"),
+            (BackendLanguage::Ada, "Optional_String"),
+        ] {
+            let schema = ancestry_only_schema(spelling);
+            assert!(
+                validate_backend_names(&schema, language, GenerationWorld::ClosedSchemaSet).is_ok(),
+                "{language:?} must not reserve {spelling} for an abstract base it never emits"
+            );
+            assert!(
+                !unsafe_named_declarations(&schema, language, GenerationWorld::ClosedSchemaSet)
+                    .contains(&QualifiedName::new(NS, spelling)),
+                "{language:?} must not condemn {spelling} for a name it never emits"
+            );
+        }
+    }
+
+    /// The other side of the same rule: a *concrete* declaration really is
+    /// emitted, so it still owns its identifier and still collides.
+    #[test]
+    fn a_concrete_declaration_still_reserves_its_support_name() {
+        assert_collides(
+            &schema_with(vec![record("BoundedVec", Vec::new())]),
+            BackendLanguage::Rust,
+            "BoundedVec",
+        );
+        assert_collides(
+            &schema_with(vec![record("Optional_String", Vec::new())]),
+            BackendLanguage::Ada,
+            "Optional_String",
+        );
+    }
+
+    /// An abstract **Choice** is not skipped by any backend, so unlike an
+    /// abstract Record it genuinely appears in the output and must keep its
+    /// reservation. This guards the fix against over-reaching into a
+    /// blanket "abstract is never emitted" rule.
+    #[test]
+    fn an_ancestry_only_abstract_choice_still_reserves_its_name() {
+        let mut base = choice("BoundedVec", &["Alpha", "Beta"]);
+        base.is_abstract = true;
+        assert_collides(
+            &schema_with(vec![base]),
+            BackendLanguage::Rust,
+            "BoundedVec",
+        );
+    }
+
+    /// A real Task 024 wrapper *is* emitted under the closed world, so the
+    /// abstract base's own name stays reserved.
+    #[test]
+    fn a_real_abstract_value_wrapper_still_reserves_its_name() {
+        let mut base = record("BoundedVec", Vec::new());
+        base.is_abstract = true;
+        let mut concrete = record("Concrete", Vec::new());
+        concrete.base_type = Some(TypeRef {
+            target: TypeRefTarget::Named(QualifiedName::new(NS, "BoundedVec")),
+        });
+        let holder = record(
+            "Holder",
+            vec![field(
+                "Value",
+                TypeRefTarget::Named(QualifiedName::new(NS, "BoundedVec")),
+                Cardinality::REQUIRED_ONE,
+            )],
+        );
+        assert_collides(
+            &schema_with(vec![base, concrete, holder]),
+            BackendLanguage::Rust,
+            "BoundedVec",
+        );
+    }
+
+    /// Task 026: a zero-descendant target used only as supported absent-only
+    /// optional storage emits no wrapper and no declaration, so it reserves
+    /// neither its own name nor an Ada `_Kind` companion.
+    #[test]
+    fn a_task_026_elided_target_reserves_no_declaration_name() {
+        for (language, spelling) in [
+            (BackendLanguage::Rust, "BoundedVec"),
+            (BackendLanguage::Ada, "Optional_String"),
+        ] {
+            let mut target = record(spelling, Vec::new());
+            target.is_abstract = true;
+            let holder = record(
+                "Holder",
+                vec![
+                    field(
+                        "Required",
+                        TypeRefTarget::Primitive(PrimitiveKind::String),
+                        Cardinality::REQUIRED_ONE,
+                    ),
+                    field(
+                        "Maybe",
+                        TypeRefTarget::Named(QualifiedName::new(NS, spelling)),
+                        Cardinality {
+                            min_occurs: 0,
+                            max_occurs: Some(1),
+                        },
+                    ),
+                ],
+            );
+            let schema = schema_with(vec![target, holder]);
+            assert!(
+                validate_backend_names(&schema, language, GenerationWorld::ClosedSchemaSet).is_ok(),
+                "{language:?} must not reserve {spelling} for a Task 026 elided target"
+            );
+        }
+    }
+
+    /// Inherited members still belong to the emitted descendant's scope. The
+    /// base is not emitted, but its fields are folded into `Derived`, so an
+    /// unsafe effective member must still condemn the descendant.
+    #[test]
+    fn inherited_members_of_a_non_emitted_base_still_condemn_the_descendant() {
+        let mut base = record(
+            "BoundedVec",
+            vec![field(
+                // A Rust reserved word, reached only through inheritance.
+                "match",
+                TypeRefTarget::Primitive(PrimitiveKind::String),
+                Cardinality::REQUIRED_ONE,
+            )],
+        );
+        base.is_abstract = true;
+        let mut derived = record("Derived", Vec::new());
+        derived.base_type = Some(TypeRef {
+            target: TypeRefTarget::Named(QualifiedName::new(NS, "BoundedVec")),
+        });
+        let schema = schema_with(vec![base, derived]);
+        let unsafe_names = unsafe_named_declarations(
+            &schema,
+            BackendLanguage::Rust,
+            GenerationWorld::ClosedSchemaSet,
+        );
+        assert!(
+            unsafe_names.contains(&QualifiedName::new(NS, "Derived")),
+            "an inherited reserved member must still condemn the emitted descendant"
+        );
     }
 
     /// The predicates preflight uses are the renderers' own predicates, so

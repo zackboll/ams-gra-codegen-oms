@@ -1267,6 +1267,60 @@ int main() {
         );
     }
 
+    /// Generated-name preflight tracks *emitted* entities, not raw Schema IR
+    /// declarations. An ancestry-only abstract Record is folded into its
+    /// descendants and never emitted, so its local name does not occupy the
+    /// generated scope even when it is `BoundedVector`, which backend-cpp
+    /// always emits as a support type.
+    #[test]
+    fn ancestry_only_abstract_support_name_renders_and_strictly_compiles() {
+        let schema = load_schema_document(
+            &std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-ancestry-only-support-name.xsd"),
+        )
+        .expect("ancestry-only fixture should parse");
+        assert!(
+            ams_gra_oms_codegen_core::validate_backend_names(&schema, BackendLanguage::Cpp, CLOSED)
+                .is_ok(),
+            "an abstract base C++ never emits must not reserve BoundedVector"
+        );
+        let source = generate(&schema, CLOSED).expect("ancestry-only base must render");
+        // The support template is present as a `class`; no schema-owned
+        // `struct` takes the name.
+        assert!(source.contains("class BoundedVector {"), "{source}");
+        assert!(!source.contains("struct BoundedVector"), "{source}");
+        assert!(source.contains("struct Derived {"), "{source}");
+
+        let header_path = std::env::temp_dir().join(format!(
+            "ams-gra-oms-ancestry-cpp-{}.hpp",
+            std::process::id()
+        ));
+        let source_path = header_path.with_extension("cpp");
+        fs::write(&header_path, source).expect("write generated C++ header");
+        fs::write(
+            &source_path,
+            format!("#include \"{}\"\n", header_path.display()),
+        )
+        .expect("write C++ translation unit");
+        let status = Command::new("c++")
+            .args([
+                "-std=c++17",
+                "-Wall",
+                "-Wextra",
+                "-pedantic-errors",
+                "-fsyntax-only",
+            ])
+            .arg(&source_path)
+            .status()
+            .expect("C++ compiler must be available");
+        fs::remove_file(&header_path).expect("remove generated C++ header");
+        fs::remove_file(&source_path).expect("remove C++ translation unit");
+        assert!(
+            status.success(),
+            "strict C++17 ancestry-only compile must succeed"
+        );
+    }
+
     #[test]
     fn binary_only_schema_includes_and_strictly_compiles() {
         let source =
