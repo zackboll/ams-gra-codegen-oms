@@ -1827,6 +1827,11 @@ constrained floating dependency.
 Measured after Task 033 against authoritative UCI 2.5 with
 `crates/service-contract/tests/fixtures/upstream-minimal.yaml`, closed world.
 
+> **Superseded.** These figures predate generated-name preflight. The current
+> authoritative readiness is Rust 51/60 and Ada 32/60; see "Selected
+> PositionReport readiness after the correction" below. The Task 033 delta this
+> table records is still accurate *as a Task 033 result*.
+
 | Backend | Task 031 | Task 033 | First blocker now |
 | --- | --- | --- | --- |
 | Rust | 47/60, `AltitudeType` | **52/60** | `{…}DateTimeType` |
@@ -1879,9 +1884,777 @@ and no floating `whiteSpace` semantics. No arbitrary-precision decimal bounds.
 No CAL wrappers, service wrappers, JSON codecs, or runtime code. No profile
 validation, Capability inference, or UCI version normalization.
 
-No `AltitudeType` or `Acceleration3D_Type` name special-case exists anywhere:
+No `AltitudeType` or `Acceleration3D_Type` name special-case exists anywhere (see
+also the corrective-cleanup section at the end of this document):
 both are ordinary consequences of the generic rules above. No frontend semantic
 change and no `SchemaIr`/`ConstraintSet`/`NumericValue` shape change was made,
 and no `ServicePlan`, readiness, or selected-generation special-case was added —
 Tasks 031 and 032 inherit the new capability through the existing shared
 coverage snapshot and the ordinary backends.
+
+## Corrective cleanup: generated names and the abstract-descendant boundary
+
+This section describes a retrospective correction made after Task 033. Where it
+describes a defect, the **historical behaviour** and the **current corrected
+behaviour** are distinguished explicitly; earlier sections of this document
+remain an accurate record of what each task did at the time.
+
+### Abstract descendant projection is fail-closed
+
+**Historical behaviour.** `project_abstract_value` decided descendancy from a
+successful structural projection, and skipped any candidate whose projection
+failed. A concrete descendant that existed but could not be represented — for
+example because of an inherited member-name collision — was therefore silently
+dropped. Two different facts became indistinguishable:
+
+```text
+a legal concrete payload exists but cannot be represented
+no legal payload exists
+```
+
+If every descendant failed, the target was reported as
+`NoConcreteDescendants`, which is the precondition for Task 026's absent-only
+optional elision. An optional field of such a target could then be elided
+entirely.
+
+**Current corrected behaviour.** Descendancy is decided from the declared
+`base_type` chain, which is available whether or not the candidate is
+representable. A descendant that cannot be projected now fails closed with
+
+```text
+AbstractValueProjectionError::UnrepresentableConcreteDescendant
+```
+
+carrying the abstract target, the concrete descendant, and the underlying
+`StructuralProjectionError`. It is never converted to `NoConcreteDescendants`,
+so Task 026 elision cannot be reached for a target that does have a legal
+payload, and a closed sum can never be emitted with an alternative missing.
+
+A genuinely descendant-free abstract target still reports
+`NoConcreteDescendants`; the correction narrows that classification rather than
+removing it.
+
+Authoritative UCI 2.5 and 2.6 abstract-value topology and coverage counts are
+unchanged, because neither schema contains an unrepresentable concrete
+descendant.
+
+### Generated host-language names are part of backend representability
+
+**Historical behaviour.** IR identifiers are transformed per backend — Rust and
+C++ upper-camel declarations and snake_case members, Ada verbatim
+case-insensitive identifiers. Only Choice alternatives were collision-checked,
+and only inside each renderer; top-level declarations, effective Record
+members, enumeration variants, and Ada's user-derived helper types were not
+checked at all. Coverage modelled none of it. Two consequences followed:
+
+* two distinct XSD names could normalize to one generated identifier
+  (`foo_bar` and `fooBar` both become `FooBar`);
+* a legal XSD name could land on a host-language reserved word.
+
+Either produced source that does not compile, while capability analysis could
+still report the declaration renderable. This was not hypothetical: the
+repository's own `backend-unbounded-cardinality.xsd` fixture declared a type
+named `Record`, and GNAT rejects the Ada spec generated from it with
+`reserved word "record" cannot be used as identifier`.
+
+**Current corrected behaviour.** `codegen-core::backend_names` owns one shared
+model of generated-name validity, consumed by **both** backend generation
+validation and capability/readiness analysis, so the two cannot disagree. Per
+backend it rejects, in schema order:
+
+| Region | Rust / C++ | Ada |
+|---|---|---|
+| top-level declarations | upper-camel collisions, reserved words | case-insensitive collisions, reserved words |
+| Record members (effective, post-inheritance) | snake_case collisions, reserved words | case-insensitive collisions, reserved words |
+| enumeration variants | upper-camel collisions, reserved words | case-insensitive collisions, reserved words |
+| Choice variants | upper-camel collisions | case-insensitive component collisions |
+| generated helper types | not emitted | `{Owner}_{Member}_Array`/`_Sequence`/`_Item`/`_Vectors`, registered in the **flat package** scope beside declared types |
+
+Ada's helper names are user-controlled and share the flat package scope with
+every declared type, so they are checked there rather than in the owning
+declaration's member scope.
+
+The rules are asymmetric by design and the asymmetry is asserted, not smoothed
+over: a case-only difference collides in Ada but not in Rust or C++, and an
+upper-camel convergence collides in Rust and C++ but not in Ada.
+
+This module **rejects**; it never mangles, escapes, suffixes, or renames.
+Inventing a disambiguation scheme would silently change the generated API
+surface. Existing accepted UCI identifiers keep their exact generated spelling.
+
+> **Superseded claim.** This section originally stated that authoritative UCI
+> coverage was unchanged. That was written before the preflight was integrated
+> into coverage, and it is **false**: the first preflight implementation went
+> on to expose real compiler-invalid identifiers in authoritative UCI, which
+> moved the Rust and C++ declaration counts. The final corrected figures are
+> recorded in "Authoritative coverage correction" and in "Final corrective:
+> projection-scoped readiness and remaining Ada generated names" below, and
+> those are the authoritative numbers.
+
+> Language-specific naming policy lives in shared codegen infrastructure. It is
+> never stored in Schema IR, and no generated name is written back into IR.
+
+### Single-namespace generation is a readiness-visible boundary
+
+**Historical behaviour.** The frontend represents imported and multiple
+namespaces; the three language backends deliberately remain single-namespace
+and reject multi-namespace input globally. Service readiness, however, operated
+only at declaration and member capability level. A selected service closure
+spanning two namespaces could therefore be reported READY even though
+generation of that same projected schema fails.
+
+**Current corrected behaviour.** `codegen-core::backend_preflight` models the
+global preconditions a backend imposes on a whole schema — the single generable
+namespace, plus generated-name safety — and both backend `validate_schema` and
+`analyze_service_readiness` call it.
+
+Readiness runs the preflight on the **projected selected schema**, exactly the
+input selected-service generation hands to the backend. That is what makes the
+scope right in both directions:
+
+* a selected closure that genuinely spans namespaces is NOT READY, with a typed
+  `BackendPreflightError::MultipleNamespaces` blocker naming every namespace;
+* a selected closure that narrows to one namespace stays READY even when the
+  full schema set contains unrelated declarations in other namespaces.
+
+A violated precondition is reported as a **backend capability** limit, not as
+malformed Schema IR: multi-namespace input is valid IR that the backends simply
+do not generate yet. Nothing here implements multi-namespace generation, and the
+backends' existing rejection is not weakened.
+
+An empty projected schema — what a contract with zero OMS Message exchanges
+produces — is vacuously generable: there is nothing to emit, so there is no
+namespace to require.
+
+### Corrective review: coverage now honours generated-name safety
+
+The shared preflight above was consulted by backend generation and by service
+readiness, but **not** by `CoverageAnalysis`. Coverage could therefore report a
+declaration fully renderable while generation rejected the same schema, which
+is exactly the coverage/generation disagreement the cleanup set out to remove.
+
+`CoverageAnalysis` now consumes the same shared model, with the distinction
+that makes the result honest rather than merely conservative:
+
+* a **declaration-attributable** name failure (a reserved generated
+  identifier, a collision, an unusable identifier) marks exactly the
+  declarations responsible as not renderable, leaving the rest of the schema's
+  metrics intact;
+* a **namespace-unit** failure (multi-namespace input, or a package/namespace
+  identifier that is illegal or reserved) zeroes full-declaration and
+  message-closure capability, because the backend then emits nothing at all
+  and no declaration is individually at fault.
+
+Narrower per-kind, per-type-reference, and per-occurrence figures are retained
+in both cases: those questions remain answerable, and feature-impact analysis
+reads them.
+
+No naming or namespace policy is reimplemented in coverage; it consumes
+`backend_preflight()` and the attributed `unsafe_named_declarations()`, both
+of which run the same registration logic that backend generation runs.
+
+#### Authoritative coverage correction
+
+Integrating the check corrected real overclaiming in the closed-coverage
+numbers. Authoritative UCI contains declarations whose generated member
+identifiers are reserved words, which the backends cannot emit and coverage
+previously counted as fully renderable:
+
+| Release / backend | Before | After | Newly excluded |
+| --- | --- | --- | --- |
+| 2.5 Ada | `2800/5557` | `2731/5557` | 69 |
+| 2.5 Rust | `5395/5557` | `5375/5557` | 20 |
+| 2.5 C++ | `5395/5557` | `5378/5557` | 17 |
+| 2.6 Ada | `2801/5570` | `2731/5570` | 70 |
+| 2.6 Rust | `5417/5570` | `5397/5570` | 20 |
+| 2.6 C++ | `5417/5570` | `5401/5570` | 16 |
+
+These are the **final authoritative closed-world figures**, measured after the
+generated-name attribution and identifier-syntax corrections below. The
+earlier `2800/5395/5417` figures remain rejected as genuine overclaims.
+
+Open-world declaration figures, measured the same way:
+
+| Release | Ada | Rust | C++ |
+| --- | --- | --- | --- |
+| 2.5 | `2724/5557` | `5287/5557` | `5290/5557` |
+| 2.6 | `2724/5570` | `5309/5570` | `5313/5570` |
+
+The cause is attributed, not assumed. In UCI 2.5 the Ada set is 97
+declarations with an unsafe generated name, of which 68 were previously
+counted renderable; the other 29 were already excluded for unrelated
+capability reasons. The complete Rust set is `ConfigurationParameterType`,
+`DamagedObjectNonEntityType`, `ExpendableType`, `FileNameAndOutputType`,
+`IdentityComparisonType`, `JPEG_WaveletTransformType`, `Link16_HazardType`,
+`OrderOfBattleMDT`, `QueryInstanceOfType`, and `RelationshipEW_Type`. The
+complete C++ set is `ApprovalResponseType`, `COMINT_ChangeDwellType`,
+`ComponentControlsB_Type`, `EntityOrbitalCSO_MDT`,
+`GatewayLink16_ConfigurationIdentityType`, `NotificationSourceType`, and
+`SystemStatusMDT`.
+
+Both compilers confirm these are genuine rather than modelling artefacts.
+`AltitudeRangePairType` carries a member `Range`, and GNAT 14.2 reports
+`reserved word "range" cannot be used as identifier`.
+`ConfigurationParameterType` carries a member `Type`, and rustc reports
+`expected identifier, found keyword type`.
+
+Kind, field-type, field-occurrence, and message-closure figures are unchanged
+in both releases and both worlds; frontend normalization is unchanged at 5,557
+types / 722 messages and 5,570 types / 725 messages.
+
+No identifier mangling, escaping, or renaming is introduced. An unsafe
+generated name remains a rejection.
+
+#### Final corrective: ownership, world-aware companions, identifier syntax
+
+Peer review of the code found three further defects in this boundary. Fixing
+them moved the closed figures above once more, and every moved declaration is
+attributed individually.
+
+**Structured generated-name ownership.** Coverage attribution recovered the
+responsible declaration by splitting the human-readable diagnostic label
+(`"Owner.Member helper"`, `"Owner companion"`). That matched nothing whenever
+the label was not a declaration local name, so Ada repeated helpers, `_Kind`
+companions, and enumeration/Choice literals attributed to no declaration:
+generation rejected the schema while coverage still counted the *generating*
+declaration renderable. Registration now carries an explicit private
+`NameSource` (declaration, member, helper, companion, enum literal, generated
+support, namespace URI), and attribution reads that structure. Diagnostics
+still render the same strings; nothing parses them. Both sides of a collision
+are recorded, so every declaration responsible for emitting one side is
+excluded.
+
+In UCI 2.5 this adds exactly one Ada declaration, `QueryPET`. `QueryType` is a
+Choice *and* a concrete descendant of the abstract value target `QueryPET`, so
+Ada emits `QueryType_Kind` as the Choice companion and also emits
+`QueryType_Kind` as a literal of the `QueryPET_Kind` closed-sum enumeration.
+GNAT 14.2 rejects the pair:
+
+```text
+p.ads:8:27: error: "QueryType_Kind" conflicts with declaration at line 2
+```
+
+`QueryType` was already excluded; `QueryPET`, which generated the conflicting
+literal, was not. Both are now excluded, which is the rule: mark every
+declaration responsible for emitting a side.
+
+**World-aware `_Kind` companions.** `ada_kind_companion_owners` derived
+companions from `abstract_value_targets`, but being an abstract value target
+does not prove a wrapper is emitted. A Task 026 zero-descendant target used
+only as supported absent-only optional storage emits no wrapper and no
+`{Owner}_Kind`, yet the name was reserved anyway, falsely rejecting generable
+schemas. A Task 024 wrapper also exists only under `ClosedSchemaSet`; under
+`OpenExtensions` the abstract value fails closed before any wrapper exists, and
+the semantic abstract-value blocker must stay authoritative rather than being
+displaced by a manufactured name collision.
+
+The predicate is now `project_abstract_value` succeeding under the requested
+world -- exactly the condition producing `TypeEmission::AbstractValue` -- so
+preflight and generation share one companion predicate. Ordinary Choice
+lowering still registers `{Choice}_Kind` in both worlds, because the renderer
+emits it unconditionally. `GenerationWorld` is threaded through the single
+shared `backend_preflight()` / `validate_backend_names()` /
+`unsafe_named_declarations()` entry points rather than re-decided per backend.
+
+**Rust/C++ identifier-start syntax.** The shared word transformation only
+guaranteed ASCII alphanumeric or `_` characters, not a legal identifier
+*start*. `1Foo` survived upper-camel unchanged and passed preflight. Ada
+already required an alphabetic first character; Rust and C++ now enforce the
+equivalent ASCII rule (first character alphabetic or `_`, rest alphanumeric or
+`_`) on the **generated** spelling, before reserved-word checking, and for
+every emitted C++ namespace component.
+
+This is what moves Rust and C++. The 10 newly excluded declarations in each are
+identical and all are enumerations with a leading-digit variant:
+`CapabilityTransmitPowerEnum` (`70W`), `CommCapabilityEnum` (`5G`),
+`DeclassExceptionEnum` (`25X1`), `GCP_OffsetEnum` (`1METER`),
+`IFF_AltitudeResolutionEnum` (`25_FEET`), `LateralAxisOffsetEnum` and
+`LongitudinalAxisOffsetEnum` (`0_TO_2METERS`), `MaxPOR_Enum` (`1_IN_1`),
+`TransponderAntennaOffsetLongitudinalEnum` (`0_TO_1METERS`), and
+`UncertaintyEnum` (`1_SIGMA`). Ada already rejected all ten, which is why the
+Ada count does not move for them. Both compilers confirm the rule:
+
+```text
+rustc: error: expected identifier, found `70W`
+c++:   error: expected identifier before numeric constant
+```
+
+No declaration became renderable again; there are no removals from the unsafe
+set in either release.
+
+**Emitted-but-unregistered helper.** Re-reading the whole PR also found
+`backend-ada`'s `write_unbounded_helper` splitting on the occurrence minimum:
+`min == 0` emits `{stem}_Vectors`, but `min > 0` emits `{stem}_Required_Array`
+plus `{stem}_Additional_Vectors`. Only the `min == 0` spelling was reserved, so
+a user declaration could collide with a required-minimum helper undetected. The
+suffix set now matches the renderer branch for branch.
+
+#### Selected PositionReport readiness after the correction
+
+Re-measured on authoritative UCI 2.5, closed world:
+
+| Backend | Renderable selected | First blocker |
+| --- | ---: | --- |
+| Rust | 51/60 | `DateTimeType` |
+| Ada | 32/60 | `Acceleration3D_Type` |
+
+Rust moves 52 -> 51 for exactly one declaration, `DeclassExceptionEnum`, whose
+`25X1` variant is the leading-digit rule above; the previous 52 was an
+overclaim for that declaration. The first blocker is unchanged.
+
+Ada measures 32/60, and that is **not** a change from this corrective: the same
+32 was already produced at `538b0d1`. The `37/60` recorded in the Task 033
+section above predates the preflight integration and is stale as a *current*
+figure. The Ada unsupported-selected-type set is byte-identical before and
+after this correction, and the first blocker remains `Acceleration3D_Type`.
+Neither blocker is implemented here.
+
+Service-check cost on full UCI 2.5 was ~15 s per language at this point, so the
+world-aware, structurally attributed model reintroduces no per-declaration
+whole-schema scan: preflight and the attributed unsafe set are still computed
+once per language, under one world, outside every feature loop.
+
+> **Superseded timing.** The later projection-scoped correction moved readiness
+> onto the projected schema, reducing this to ~5.9 s per language. See "Final
+> selected PositionReport readiness" below.
+
+## Final corrective: projection-scoped readiness and remaining Ada generated names
+
+### Selected readiness must not inherit full-schema naming failures
+
+**Historical behaviour.** Integrating the generated-name preflight into
+`CoverageAnalysis` was correct for *full-schema* coverage, but
+`analyze_service_readiness()` then built its `CoverageAnalysis` and baseline
+renderability snapshot from the **entire original schema** before consulting
+the selected projection. Selected declarations were therefore judged with a
+renderability vector that already carried failures contributed by
+declarations selected generation removes.
+
+Generated-name safety and the global backend preconditions are
+**scope-dependent**. They are relationships between the declarations emitted
+*together*, not properties of a declaration in isolation:
+
+```text
+selected:    foo_bar  -> FooBar
+unselected:  fooBar   -> FooBar
+```
+
+Full-schema analysis marks both unsafe. The projection retains only
+`foo_bar`, so generation emits one legal `FooBar` and succeeds — while
+readiness still reported the selected declaration unsupported. That is a
+readiness/generation disagreement, and the selected-service contract is
+explicit that unselected declarations must not affect selected readiness
+unless they are required generated-support dependencies.
+
+Conditional generated support has the same shape. Rust emits `UnboundedVec`
+only when some member is unbounded, so a *full* schema whose unselected part
+has an unbounded member legitimately collides with a selected type named
+`UnboundedVec` — yet a projection that drops that member emits no support
+type and the spelling is free again.
+
+**Corrected behaviour.** Projection now runs **first**, because it decides
+which schema the capability questions may legitimately be asked about.
+Whenever projection succeeds, the projected schema is authoritative: it is
+exactly the schema `service-generate` hands to the backend.
+
+```text
+verify plan/schema binding
+compute selected closure            (original schema: counts and order)
+project selected generation schema
+    integrity error            -> propagate
+    abstract-value failure     -> analyze original, retain attribution
+    success                    -> analyze the PROJECTION
+                                  CoverageAnalysis::new(projection)
+                                  baseline renderability
+                                  backend_preflight(projection)
+```
+
+The invariant is now:
+
+> A selected-service READY/NOT READY decision is made against the same schema
+> subset and world that `service-generate` hands to the backend.
+
+No naming policy is duplicated: the same `CoverageAnalysis`,
+`validate_backend_names()`, and `backend_preflight()` machinery is applied to
+the appropriate schema. There is no `readiness_name_rules.rs`, and no ad-hoc
+exception for any particular collision.
+
+Counts and ordering still come from the original schema, because the selected
+closure's identity and order are facts about the *contract*. Only capability
+is projection-scoped. Exactly **one** `CoverageAnalysis` is constructed per
+readiness call — the projection when one exists, the original only when
+projection produced none — so the dominant cost is not doubled.
+
+### Ada reserves the fixed `Kind` discriminant
+
+Ada lowers a Choice to a discriminated record whose discriminant is the fixed
+identifier `Kind`:
+
+```ada
+type Selection (Kind : Selection_Kind := First_Kind) is record
+   case Kind is
+      when First_Kind => First : Some_Type;
+   end case;
+end record;
+```
+
+The discriminant occupies the same record declarative region as the
+alternatives, but preflight validated alternatives only against each other.
+An alternative named `Kind` therefore passed preflight and emitted invalid
+Ada. Confirmed against GNAT 14.2:
+
+```text
+p3.ads:6:13: error: "Kind" conflicts with declaration at line 3
+```
+
+A new structured `NameSource::GeneratedMember { owner, generated }` occupies
+the member region **before** the alternatives are registered. Because the
+discriminant is generated *by* the owning Choice, a collision makes that
+Choice unsafe, and `unsafe_named_declarations` attributes it there. This is an
+Ada-only rule: Rust enum variants and C++ `std::variant` alternatives carry no
+generated discriminant component, and a regression asserts they do not
+inherit it.
+
+**Abstract closed-sum wrappers.** These emit the same `Kind` discriminant, but
+their variant components are `{Descendant}_Value`, derived from declaration
+names rather than arbitrary source field names. No descendant spelling can
+produce the bare identifier `Kind`, so no additional rule is registered; the
+determination is recorded by
+`closed_sum_wrapper_components_cannot_collide_with_their_kind_discriminant`
+rather than left implicit.
+
+
+### Ada models overloadable `Create` / `Value`
+
+Every *constrained* named Float32/Float64 declaration emits two package-level
+subprograms:
+
+```ada
+function Create (Value : Interfaces.IEEE_Float_64) return Some_Type;
+function Value  (Item : Some_Type) return Interfaces.IEEE_Float_64;
+```
+
+These were not represented in the name model at all, so a collision with a
+non-overloadable declaration went undetected. Reserving them as ordinary
+unique type names would have been equally wrong: Ada subprograms *overload*,
+and several constrained floats legitimately emit several `Create`/`Value`
+functions. Both halves were verified against GNAT 14.2:
+
+```text
+-- accepted: profiles differ
+function Create (Value : Interfaces.IEEE_Float_64) return Burn_Rate;
+function Create (Value : Interfaces.IEEE_Float_64) return Altitude;
+
+-- rejected
+type Create is new Integer;
+function Create (Value : Interfaces.IEEE_Float_64) return Burn_Rate;
+   p2.ads:5:13: error: "Create" conflicts with declaration at line 3
+```
+
+The model therefore distinguishes **non-overloadable declaration names** from
+**overloadable callable names**. A new
+`NameSource::GeneratedCallable { owner, callable }` is *checked against* the
+accumulated top-level names without being *inserted* into them — the same
+asymmetry already used for Ada enumeration literals, and for the same reason.
+Callable-vs-callable is silent; callable-vs-type fails. Both sides are
+attributed: the float that generates the subprogram and the declaration
+occupying the identifier.
+
+The names are reserved only when the output exists. An unconstrained float
+emits a plain derived type and no subprograms, and a schema with no
+constrained float at all keeps `Create` and `Value` available to user
+declarations.
+
+This deliberately stops short of general Ada overload resolution. Only the
+generated callables the backend emits today are modelled; future generated
+subprogram names extend the same representation.
+
+### Bounded audit of other synthesized Ada identifiers
+
+`Kind` discriminants, `Create`, `Value`, `Optional_String`, `Binary_Vectors`,
+`_Kind` companions, `_Kind` literals, repeated helper names, and
+required-minimum unbounded helper names were each re-checked against the
+renderer branch that emits them. `Kind` and `Create`/`Value` were the two gaps;
+the remainder were already registered, each gated on the renderer's own
+emission predicate. No further missed identifier was found.
+
+### Final authoritative coverage
+
+Re-measured after the `Kind` and `Create`/`Value` rules were added. Closed
+world:
+
+| Release | Ada | Rust | C++ | total |
+| --- | ---: | ---: | ---: | ---: |
+| UCI 2.5 | 2,731 | 5,375 | 5,378 | 5,557 |
+| UCI 2.6 | 2,731 | 5,397 | 5,401 | 5,570 |
+
+Open world:
+
+| Release | Ada | Rust | C++ | total |
+| --- | ---: | ---: | ---: | ---: |
+| UCI 2.5 | 2,724 | 5,287 | 5,290 | 5,557 |
+| UCI 2.6 | 2,724 | 5,309 | 5,313 | 5,570 |
+
+Every figure is **unchanged** from `c07c4518`. The two new rules are real
+compiler-confirmed boundaries, but authoritative UCI does not exercise either:
+UCI declares no type named `Create` or `Value`, and its single `name="Kind"`
+occurrence is a Record element (`WeatherReportType.Kind`, of
+`WeatherKindEnum`), not a Choice alternative. A Record field named `Kind` is
+legal because no discriminant is generated for a Record. The rules are
+therefore validated by synthetic fixtures plus raw GNAT confirmation rather
+than by a coverage movement.
+
+### Final selected PositionReport readiness
+
+Re-measured on authoritative UCI 2.5, closed world, after projection-scoped
+name analysis:
+
+| Backend | Renderable selected | First blocker |
+| --- | ---: | --- |
+| Rust | 51/60 | `DateTimeType` |
+| Ada | 32/60 | `Acceleration3D_Type` |
+
+Both are unchanged. This contract selects a single closure, so no unselected
+declaration was contributing a naming failure to it, and neither new Ada rule
+is exercised by the selection. Neither blocker is implemented here.
+
+Service-check cost on full UCI 2.5 measured **~5.9 s per language**, down from
+~15 s. Readiness now builds its `CoverageAnalysis` over the much smaller
+projected schema instead of the whole of UCI, and still constructs exactly one
+analysis and one renderability snapshot per call.
+
+## Final corrective: generated names track emitted entities
+
+### A Schema IR declaration is not a generated declaration
+
+**Historical behaviour.** Generated-name preflight registered the top-level
+name of *every* Schema IR declaration:
+
+```text
+for declaration in &schema.types:
+    reserve declaration_name(language, declaration)
+```
+
+That assumed every IR declaration produces one host-language top-level
+declaration. It does not. The emission planner and the backends deliberately
+omit some declarations, so preflight reserved identifiers that never appear in
+the generated source and rejected schemas for collisions that cannot occur.
+
+**Corrected behaviour.** Preflight now registers only the schema-owned names
+that the requested world actually emits, derived from the same
+`plan_type_emissions()` the backends consume. There is no second emission
+model and no isolated `if abstract { skip }`: the plan is formed once per
+schema/world and walked directly, so the loop iterates emitted entities rather
+than rescanning the schema per declaration.
+
+The rule is exactly:
+
+> A schema declaration's top-level host name participates in name preflight if
+> and only if backend generation can emit a top-level entity carrying that
+> name in the requested world.
+
+| Entity | Emitted? | Reserves its name? |
+| --- | --- | --- |
+| Concrete declaration | yes | **yes** |
+| Ancestry-only abstract **Record** | no | **no** |
+| Abstract **Choice** | yes | **yes** |
+| Task 024 abstract-value wrapper | yes | **yes** |
+| Task 026 elided target | no | **no** |
+
+**The Record/Choice asymmetry is deliberate and load-bearing.** All three
+backends return early from their `TypeKind::Record` arm when `is_abstract` is
+set, folding the base's effective fields into each concrete descendant, so an
+abstract Record is pure inheritance metadata and writes no type. No backend
+skips an abstract **Choice**: it renders normally, and Ada additionally emits
+its `_Kind` companion. Collapsing both into one "abstract is never emitted"
+rule would have stopped reserving a name that genuinely appears in the output,
+converting a false rejection into a false *acceptance*. Verified by direct
+probe against all three renderers before the change was written.
+
+Attribution (`unsafe_named_declarations`) uses the identical registration, so
+capability analysis cannot condemn a declaration for a name the backend never
+emits while validation accepts it.
+
+### Member and helper surfaces come from `TypeEmission` too
+
+Top-level emission awareness was necessary but **insufficient**. Member-region
+and Ada helper analysis still walked raw Schema IR declarations, so a
+declaration that produces no host-language output could still manufacture
+member-name failures and Ada helper reservations. The invariant is now
+stronger, and unconditional:
+
+> Generated-name analysis operates on actual `TypeEmission` surfaces, not raw
+> Schema IR declarations — for top-level names, member regions, and Ada helper
+> types alike.
+
+`register_emission_names()` switches on the emitted shape:
+
+| `TypeEmission` arm | Registers |
+| --- | --- |
+| `Declaration(D)`, emitted | `D`'s top-level name, `D`'s effective member region, Ada helpers stemmed on **`D`** |
+| `Declaration(D)`, not rendered | nothing at all |
+| `AbstractValue(P)` | the wrapper's top-level name, Ada `Kind` + `{Descendant}_Value`, `{Base}_Kind`, `{Descendant}_Kind` literals |
+
+**Non-emitted abstract Records have no member or helper scope.** A base that no
+renderer writes has no generated record, therefore no component region and no
+helper types. It is neither diagnosed for its own members nor allowed to
+reserve `{Base}_{Member}_Array`, `_Sequence`, `_Item`, `_Vectors`,
+`_Required_Array`, or `_Additional_Vectors`.
+
+**Inherited members are validated under the emitted descendant.** The base's
+fields still reach the output through `effective_record_fields()` on each
+concrete descendant, and they are checked there — in the scope that really
+exists, under the owner `backend-ada` really uses. For
+
+```text
+abstract Base { Items : Item [0..4] }
+Derived extends Base
+```
+
+Ada emits `Derived_Items_Array` / `Derived_Items_Sequence` and never
+`Base_Items_*`. Preflight now matches exactly: a user type named
+`Base_Items_Array` is accepted (and compiles under GNAT), while
+`Derived_Items_Array` is still rejected. A reserved-word member reached only
+through inheritance still condemns `Derived`, and no longer condemns `Base`.
+
+**Abstract wrappers use wrapper-specific naming.** A Task 024
+`AbstractValue` does not render the original abstract Record's fields, so it is
+not fed through Record member validation. Only Ada places user-derived
+identifiers in the wrapper's region (`Kind`, `{Descendant}_Value`); Rust's
+`Variant(Variant)` enum arms are the descendants' own already-validated
+declaration names and C++ emits a single fixed `value` member, so neither
+contributes a second collision domain. Because every base field necessarily
+reappears in a concrete descendant, member *spelling* cannot distinguish the
+wrapper's scope from the original Record's — the helper **owner** can, and is
+what the regression asserts.
+
+**Task 026 elided targets contribute nothing.** A fully elided zero-descendant
+target produces no `TypeEmission`, hence no top-level, member, helper, or
+wrapper names.
+
+### Semantic emission-plan failure is not converted into a naming failure
+
+**Historical behaviour.** When `plan_type_emissions()` failed, preflight fell
+back to registering all raw schema declarations. That was intended as
+conservatism, but it fabricated names for output that can never exist and could
+report a phantom collision *before* the real semantic diagnostic.
+
+**Corrected behaviour.** Name preflight defers instead:
+
+```rust
+enum NamePreflightPlan<'a> {
+    Planned(Vec<TypeEmission<'a>>),
+    UnavailableBecauseSemanticFailure(Vec<TypeEmission<'a>>),
+}
+```
+
+An entity with no emitted surface contributes no names, so no naming verdict is
+invented for it. Ownership stays where it belongs:
+
+> Name preflight diagnoses names of output that *can* exist; semantic emission
+> failure remains the authoritative error when no emission surface exists.
+
+Worked example. An `OpenExtensions` schema whose abstract value target is named
+`BoundedVec` — the Rust support type's spelling — previously reported a
+`BoundedVec` generated-name collision, masking the real cause. It now reports
+the semantic diagnostic:
+
+```text
+abstract value BoundedVec is not closed under open-extensions generation;
+external derived types cannot be represented
+```
+
+The same schema under the closed world still fails on the genuine collision,
+because there the wrapper really is emitted and really does take the
+identifier. Coverage attribution follows the same rule.
+
+**Deferral is scoped to the entity, not to the schema.** This is load-bearing
+and was caught by measurement. `plan_type_emissions()` fails **closed and
+globally**: a single unrepresentable target aborts the whole plan. Authoritative
+UCI contains exactly such a target (`SourceCommandEXT`, zero concrete
+structural descendants), so an early version of this corrective that treated a
+planner failure as "no surface exists anywhere" silently stopped checking every
+other declaration's names and restored the previously **rejected** overclaims
+`2800/5395/5417`.
+
+The surfaces are therefore rebuilt from renderer policy per declaration when
+the planner aborts — the same entity-selection rule, without the global error
+propagation and without the topological ordering, neither of which affects
+which names are emitted. Only the entity that genuinely has no emitted shape
+loses its names; every other emitted surface is still checked. A dedicated
+regression (`a_global_planning_abort_still_checks_unrelated_emitted_names`)
+pins this, asserting that an unrelated `foo_bar`/`fooBar` convergence is still
+rejected and still attributed to both declarations while whole-schema planning
+fails.
+
+### False rejections removed
+
+Both of these previously failed preflight against a *generated support type*
+whose identifier the abstract base never actually occupied:
+
+* **Rust** — an ancestry-only abstract `BoundedVec` collided with the
+  unconditional `pub struct BoundedVec<T, const MIN, const MAX>` support type.
+* **Ada** — an ancestry-only abstract `Optional_String` collided with the
+  unconditional `Optional_String` support type.
+* **C++** — the same shape against the `BoundedVector` class template.
+
+All three now pass preflight, generate, and compile, with the generated source
+containing exactly one definition of the support name. The Task 026 elided
+target reserves neither its own name nor an `Optional_String_Kind` companion.
+
+Genuine collisions are unchanged: a **concrete** `BoundedVec` /
+`Optional_String` is still rejected, and a real Task 024 wrapper still owns its
+declaration name and is still rejected against the support type.
+
+### Final authoritative coverage
+
+Re-measured from scratch on both pinned roots after the correction. **Every
+cell is unchanged** from the previous final figures:
+
+| Release / backend | Closed | Open |
+| --- | ---: | ---: |
+| 2.5 Ada | `2731/5557` | `2724/5557` |
+| 2.5 Rust | `5375/5557` | `5287/5557` |
+| 2.5 C++ | `5378/5557` | `5290/5557` |
+| 2.6 Ada | `2731/5570` | `2724/5570` |
+| 2.6 Rust | `5397/5570` | `5309/5570` |
+| 2.6 C++ | `5401/5570` | `5313/5570` |
+
+Authoritative UCI therefore **does not exercise this defect**. UCI's 70
+abstract declarations are either referenced as values (real Task 024 wrappers,
+which still reserve their names) or carry names that collide with nothing, so
+no declaration was previously excluded for a non-emitted declaration-name
+issue and none becomes renderable here. The correction is a
+name-attribution-truth fix, validated by synthetic fixtures and by all three
+compilers rather than by a coverage movement. The pre-cleanup
+`2800/5395/5417` figures remain **rejected as overclaims**.
+
+**Re-measured again after the member/helper correction**, from scratch on both
+pinned roots, in all four release/world combinations. Every one of the twelve
+cells is byte-identical to the table above. Authoritative UCI does not exercise
+this final emitted-surface defect either: its abstract Records with repeated
+fields are all either real wrappers or have descendant helper names that
+collide with nothing, so no phantom helper was ever the sole reason for an
+exclusion. The evidence for this pass is the synthetic fixtures plus GNAT,
+`rustc`, and strict C++17 — not a coverage movement.
+
+### Final selected readiness and cost
+
+Selected `PositionReport`, UCI 2.5, closed world, re-measured: **Rust 51/60**
+first blocking `DateTimeType`; **Ada 32/60** first blocking
+`Acceleration3D_Type`. Both unchanged — the selection contains no ancestry-only
+abstract whose name was being phantom-reserved. Neither blocker is implemented.
+
+Service-check cost measured **~5.8 s per language**, matching the ~5.9 s
+projection-scoped figure. Consulting the planner adds one emission plan per
+schema/world, not one per declaration, so there is no order-of-magnitude
+regression.
+
+Re-measured after the member/helper correction: readiness is **unchanged** —
+Rust `51/60` first blocking `DateTimeType`, Ada `32/60` first blocking
+`Acceleration3D_Type`, both still NOT READY on the same declarations. Nothing
+in the selection depended on a phantom member or helper surface. Service-check
+cost re-measured at **5.82 s (Rust) / 5.82 s (Ada)** per language. The emission
+plan is still formed exactly once per schema/world and then walked, so member
+and helper analysis reuses the same plan rather than re-planning per
+declaration.

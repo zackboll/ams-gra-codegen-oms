@@ -210,6 +210,10 @@ capability model. Re-measured against authoritative UCI 2.5, the upstream
 | Rust | 47/60, `AltitudeType` | 52/60 | `DateTimeType` |
 | Ada | 32/60, `Acceleration3D_Type` | 37/60 | `Acceleration3D_Type` |
 
+Those are the Task 033 figures. After generated-name preflight the current
+authoritative readiness is **Rust 51/60** and **Ada 32/60**, with the same
+first blockers; see `docs/backend-compatibility.md`.
+
 `PositionReport` is **not** ready in any backend: both probes still report NOT
 READY. The remaining selected blockers are temporal primitives, constrained
 String, and Ada optional named fields — all open.

@@ -1,0 +1,33 @@
+# SYNTHETIC corrective-cleanup fixture. Authored for this repository only.
+#
+# Selects a message whose type closure spans TWO namespaces. Every selected
+# declaration is individually renderable, so per-declaration capability alone
+# would call this READY -- which is exactly the historical defect. All three
+# backends reject a multi-namespace projected schema globally, so readiness
+# must report NOT READY and generation must fail for the same boundary.
+contract_version: "0.1"
+
+service:
+  name: Multi Namespace Spanning
+  version: "0.1.0"
+  kind: service
+  description: Synthetic contract whose selected closure spans two namespaces.
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: mission-data
+    name: Mission Data
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: spanning-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: SpanningReport
+        topic: mission.spanning-report
+        timing:
+          kind: asynchronous

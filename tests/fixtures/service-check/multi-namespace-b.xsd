@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:b="urn:test:b"
+           targetNamespace="urn:test:b"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- SYNTHETIC corrective-cleanup fixture; the second namespace imported by
+       multi-namespace.xsd. NOT UCI. -->
+  <xs:complexType name="TypeB">
+    <xs:sequence>
+      <xs:element name="Value" type="xs:double"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

@@ -1164,6 +1164,13 @@ fn render_service_check(plan: &ServicePlan, readiness: &ServiceBackendReadiness)
             ));
         }
     }
+    if let Some(blocker) = &readiness.backend_blocker {
+        // A global backend precondition the projected selected schema
+        // violates. Reported separately from per-message blockers because it
+        // is a property of the selection as a whole, not of one message.
+        report.push('\n');
+        report.push_str(&format!("backend boundary: {blocker}\n"));
+    }
     report.push('\n');
     report.push_str("blocked selected messages:\n");
     // Contract first-occurrence order, matching the plan's selection order.

@@ -1,11 +1,12 @@
 //! Minimal Rust type generation from normalized schema IR.
 
 use ams_gra_oms_codegen_core::{
-    AbstractValueProjection, Backend, CodegenError, EffectiveValueMember, FloatingDomain,
-    GeneratedFile, GenerationWorld, InclusiveIntegralDomain, TypeEmission,
-    abstract_value_projection_for_ref, effective_choice_alternatives, effective_record_fields,
-    field_storage_semantics, float32_literal, float64_literal, floating_domain,
-    inclusive_integral_domain, plan_type_emissions,
+    AbstractValueProjection, Backend, BackendLanguage, CodegenError, EffectiveValueMember,
+    FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain, TypeEmission,
+    abstract_value_projection_for_ref, backend_preflight, effective_choice_alternatives,
+    effective_record_fields, field_storage_semantics, float32_literal, float64_literal,
+    floating_domain, inclusive_integral_domain, plan_type_emissions,
+    schema_emits_bounded_integer_support, schema_emits_unbounded_sequence_support,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -72,7 +73,7 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
         "    }\n",
         "}\n\n",
     ));
-    if schema.types.iter().any(has_unbounded_occurrence) {
+    if schema_emits_unbounded_sequence_support(schema) {
         output.push_str("use std::convert::TryFrom;\n\n");
         output.push_str(concat!(
             "#[derive(Debug, Clone, PartialEq, Eq)]\n",
@@ -85,7 +86,7 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
             "}\n\n",
         ));
     }
-    if schema.types.iter().any(has_direct_integral_range) {
+    if schema_emits_bounded_integer_support(schema) {
         output.push_str(concat!(
             "#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]\n",
             "pub struct BoundedI64<const MIN: i64, const MAX: i64>(i64);\n",
@@ -303,17 +304,11 @@ fn render_declaration(
 }
 
 fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), CodegenError> {
-    let namespace = schema
-        .namespaces
-        .first()
-        .ok_or_else(|| error("Rust generation requires one namespace"))?;
-    if schema.namespaces.len() != 1
-        || schema
-            .types
-            .iter()
-            .any(|declaration| declaration.name.namespace_uri != namespace.uri)
-    {
-        return unsupported("multiple namespaces".to_owned());
+    // Shared global preflight: the single-namespace boundary and generated
+    // host-language name safety. Capability/readiness analysis consults the
+    // same rules, so a READY verdict cannot disagree with what happens here.
+    if let Err(preflight) = backend_preflight(schema, BackendLanguage::Rust, world) {
+        return unsupported(preflight.to_string());
     }
     for declaration in &schema.types {
         if declaration.is_abstract
@@ -409,12 +404,10 @@ fn validate_choice_alternatives(
     alternatives: Vec<&ams_gra_oms_ir::FieldDecl>,
     world: GenerationWorld,
 ) -> Result<(), CodegenError> {
-    let mut names = std::collections::BTreeSet::new();
+    // Alternative-name collisions are no longer checked here: the shared
+    // backend name preflight owns that policy for every generated region, so
+    // keeping a second Rust-local copy would let the two drift.
     for alternative in alternatives {
-        let name = upper_camel(&alternative.name)?;
-        if !names.insert(name.clone()) {
-            return unsupported(format!("duplicate Choice alternative identifier {name}"));
-        }
         if alternative.nillable {
             return unsupported(format!("nillable Choice alternative {}", alternative.name));
         }
@@ -435,16 +428,6 @@ fn rust_field_type(field: &ams_gra_oms_ir::FieldDecl) -> Result<String, CodegenE
         OccurrenceShape::Unbounded { min } => Ok(format!("UnboundedVec<{base}, {min}>")),
         _ => unsupported(format!("cardinality on Choice alternative {}", field.name)),
     }
-}
-
-fn has_unbounded_occurrence(declaration: &TypeDecl) -> bool {
-    match &declaration.kind {
-        TypeKind::Record { fields } => fields,
-        TypeKind::Choice { alternatives } => alternatives,
-        _ => return false,
-    }
-    .iter()
-    .any(|field| matches!(field.cardinality.shape(), OccurrenceShape::Unbounded { .. }))
 }
 
 fn rust_type(type_ref: &TypeRef) -> Result<String, CodegenError> {
@@ -641,20 +624,6 @@ fn rust_field_base(field: &ams_gra_oms_ir::FieldDecl) -> Result<String, CodegenE
             rust_type(&field.type_ref)
         }
     }
-}
-
-fn has_direct_integral_range(declaration: &TypeDecl) -> bool {
-    let fields = match &declaration.kind {
-        TypeKind::Record { fields } => fields,
-        TypeKind::Choice { alternatives } => alternatives,
-        _ => return false,
-    };
-    fields.iter().any(|field| {
-        matches!(
-            field.type_ref.target,
-            TypeRefTarget::Primitive(PrimitiveKind::SignedInteger | PrimitiveKind::UnsignedInteger)
-        ) && field.constraints != ConstraintSet::default()
-    })
 }
 
 fn reject_any_constraints(constraints: &ConstraintSet, name: &str) -> Result<(), CodegenError> {
@@ -1142,11 +1111,17 @@ fn main() {
         };
         alternatives[0].name = "Foo".to_owned();
         alternatives[1].name = "foo".to_owned();
+        // `Foo` and `foo` both upper-camel to `Foo`. This is now diagnosed by
+        // the shared backend name preflight rather than by a Rust-local
+        // duplicate check, so the assertion is on the semantic outcome -- the
+        // collision is rejected and both spellings are named -- rather than on
+        // the exact prose of the superseded local diagnostic.
+        let message = generate(&collision, CLOSED)
+            .expect_err("converging Rust variant names must be rejected")
+            .message;
         assert!(
-            generate(&collision, CLOSED)
-                .unwrap_err()
-                .message
-                .contains("duplicate Choice alternative identifier Foo")
+            message.contains("\"Foo\"") && message.contains("\"foo\""),
+            "{message}"
         );
 
         let mut nillable = choice_schema();
@@ -1499,6 +1474,38 @@ fn main() {
         assert!(source.contains("pub struct Holder {\n    pub required: String,\n}"));
     }
 
+    /// An unrelated semantic failure must not be re-attributed to a phantom
+    /// generated-name collision.
+    ///
+    /// `BoundedVec` here is ancestry only, so nothing is emitted for it even
+    /// though it projects successfully. If preflight promoted it to a Task
+    /// 024 wrapper it would collide with this backend's own `BoundedVec`
+    /// support type, and that invented naming error would be reported
+    /// *instead of* the real `Uninhabited` failure -- pointing the user at a
+    /// declaration that is not the cause.
+    #[test]
+    fn an_ancestry_only_abstract_does_not_mask_an_unrelated_semantic_failure() {
+        let schema = load_schema_document(&Path::new(env!("CARGO_MANIFEST_DIR")).join(
+            "../xsd-frontend/tests/fixtures/\
+             backend-ancestry-only-abstract-with-unrelated-failure.xsd",
+        ))
+        .expect("ancestry-only/unrelated-failure fixture should parse");
+        let error = generate(&schema, CLOSED)
+            .expect_err("the demanded zero-descendant target must fail closed");
+        assert!(
+            error
+                .message
+                .contains("Uninhabited has no concrete structural descendants"),
+            "the semantic failure must stay authoritative: {}",
+            error.message
+        );
+        assert!(
+            !error.message.contains("BoundedVec"),
+            "an ancestry-only abstract must not be blamed for the failure: {}",
+            error.message
+        );
+    }
+
     #[test]
     fn uninhabited_abstract_required_field_remains_unsupported() {
         let error = generate(&uninhabited_required_schema(), CLOSED)
@@ -1749,6 +1756,195 @@ fn main() {
             .find("PrivateB(PrivateB)")
             .expect("PrivateB variant");
         assert!(reversed_b < reversed_a);
+    }
+
+    // -----------------------------------------------------------------
+    // Corrective cleanup -- shared backend generated-name preflight
+    // -----------------------------------------------------------------
+
+    fn preflight_fixture(name: &str) -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures")
+                .join(name),
+        )
+        .expect("preflight fixture should parse")
+    }
+
+    /// Two distinct XSD type names that both upper-camel to `TrackReport`
+    /// would declare the same Rust type twice.
+    #[test]
+    fn converging_declaration_names_are_rejected() {
+        let schema = preflight_fixture("backend-name-preflight-declaration-collision.xsd");
+        let message = generate(&schema, CLOSED)
+            .expect_err("converging declaration names must be rejected")
+            .message;
+        assert!(message.contains("TrackReport"), "{message}");
+    }
+
+    /// An inherited field and a locally declared field that snake_case to the
+    /// same member. Effective structural projection accepts them because the
+    /// XSD names differ; only generated-name policy catches this.
+    #[test]
+    fn converging_inherited_field_names_are_rejected() {
+        let schema = preflight_fixture("backend-name-preflight-inherited-collision.xsd");
+        let message = generate(&schema, CLOSED)
+            .expect_err("converging inherited field names must be rejected")
+            .message;
+        assert!(message.contains("track_id"), "{message}");
+    }
+
+    /// A field named `type` snake_cases onto a Rust keyword.
+    #[test]
+    fn reserved_word_field_is_rejected() {
+        let schema = preflight_fixture("backend-name-preflight-reserved.xsd");
+        let message = generate(&schema, CLOSED)
+            .expect_err("a Rust keyword field must be rejected")
+            .message;
+        assert!(message.contains("reserved word"), "{message}");
+    }
+
+    /// The control must still render, and the generated module must actually
+    /// compile: a preflight that rejected everything would pass the negative
+    /// tests above while being useless.
+    #[test]
+    fn preflight_control_renders_and_compiles() {
+        let source = generate(
+            &preflight_fixture("backend-name-preflight-control.xsd"),
+            CLOSED,
+        )
+        .expect("safe generated names must render");
+        assert!(source.contains("pub struct TrackReport"), "{source}");
+        // `TrackId` has no `_` word boundary, so it snake_cases to `trackid`.
+        // Asserting the exact spelling pins that this module never renames.
+        assert!(source.contains("pub trackid:"), "{source}");
+
+        use std::fs;
+        use std::process::Command;
+        let directory = std::env::temp_dir().join("ams-gra-oms-preflight-rust-control");
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(&directory).expect("create Rust probe directory");
+        fs::write(directory.join("generated.rs"), &source).expect("write generated module");
+        let status = Command::new("rustc")
+            .current_dir(&directory)
+            .args(["--edition", "2021", "--crate-type", "lib", "generated.rs"])
+            .status()
+            .expect("rustc should be available in a Rust workspace");
+        let _ = fs::remove_dir_all(&directory);
+        assert!(status.success(), "generated Rust module must compile");
+    }
+
+    /// Generated-name preflight tracks *emitted* entities, not raw Schema IR
+    /// declarations. An abstract Record used only as ancestry is folded into
+    /// its descendants and never emitted, so its local name does not occupy
+    /// the generated top-level scope -- even when that name is `BoundedVec`,
+    /// which Rust always emits as a support type.
+    ///
+    /// Preflight and actual generation must agree, and the result must
+    /// compile: the module contains exactly one `BoundedVec`, the support
+    /// type.
+    #[test]
+    fn ancestry_only_abstract_support_name_renders_and_compiles() {
+        let schema = preflight_fixture("backend-ancestry-only-support-name.xsd");
+
+        // Preflight verdict and generation verdict must agree.
+        assert!(
+            ams_gra_oms_codegen_core::validate_backend_names(
+                &schema,
+                BackendLanguage::Rust,
+                CLOSED,
+            )
+            .is_ok(),
+            "an abstract base Rust never emits must not reserve BoundedVec"
+        );
+        let source = generate(&schema, CLOSED).expect("ancestry-only base must render");
+
+        // The only `BoundedVec` is the generic support type; no schema-owned
+        // declaration of that name is emitted.
+        assert!(source.contains("pub struct BoundedVec<T"), "{source}");
+        assert!(!source.contains("pub struct BoundedVec {"), "{source}");
+        // The inherited field really is folded into the emitted descendant.
+        assert!(source.contains("pub struct Derived {"), "{source}");
+        assert!(source.contains("pub inherited:"), "{source}");
+
+        use std::fs;
+        use std::process::Command;
+        let directory = std::env::temp_dir().join("ams-gra-oms-ancestry-rust-control");
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(&directory).expect("create Rust probe directory");
+        fs::write(directory.join("generated.rs"), &source).expect("write generated module");
+        let status = Command::new("rustc")
+            .current_dir(&directory)
+            .args(["--edition", "2021", "--crate-type", "lib", "generated.rs"])
+            .status()
+            .expect("rustc should be available in a Rust workspace");
+        let _ = fs::remove_dir_all(&directory);
+        assert!(status.success(), "generated Rust module must compile");
+    }
+
+    /// The Task 026 counterpart: a zero-descendant target used only in a
+    /// supported absent-only slot emits nothing at all, so it reserves no
+    /// name either.
+    #[test]
+    fn task026_elided_target_does_not_reserve_its_own_name() {
+        let schema = preflight_fixture("backend-elided-target-support-name.xsd");
+        assert!(
+            ams_gra_oms_codegen_core::validate_backend_names(
+                &schema,
+                BackendLanguage::Rust,
+                CLOSED,
+            )
+            .is_ok(),
+            "a Task 026 elided target must not reserve its own name"
+        );
+        let source = generate(&schema, CLOSED).expect("elided target must render");
+        // Nothing schema-owned is emitted for the elided target, and the
+        // absent-only member is not stored.
+        assert!(!source.contains("OptionalString"), "{source}");
+        assert!(!source.contains("pub maybe"), "{source}");
+        assert!(source.contains("pub struct Holder {"), "{source}");
+    }
+
+    /// Error ownership: when emission planning fails there is no generated
+    /// surface, so name preflight must defer and the semantic diagnostic must
+    /// be the one the backend reports.
+    ///
+    /// The fixture's abstract value target is spelled `BoundedVec`, exactly
+    /// the Rust support type. The previous raw-schema fallback manufactured
+    /// that collision and reported it *instead of* the real open-world
+    /// failure, describing output that can never exist.
+    #[test]
+    fn open_world_abstract_value_failure_is_not_masked_by_a_name_collision() {
+        let schema = preflight_fixture("backend-open-world-abstract-value-support-name.xsd");
+
+        // Name preflight has no opinion: there is no emitted surface.
+        assert!(
+            ams_gra_oms_codegen_core::validate_backend_names(&schema, BackendLanguage::Rust, OPEN)
+                .is_ok(),
+            "a failed emission plan must not produce a name verdict"
+        );
+
+        // Generation reports the semantic abstract-value failure verbatim.
+        let message = generate(&schema, OPEN)
+            .expect_err("an open-world abstract value must fail")
+            .message;
+        assert!(
+            message.contains("open-extensions")
+                && message.contains("external derived types cannot be represented"),
+            "the semantic open-world diagnostic must be authoritative: {message}"
+        );
+        assert!(
+            !message.contains("generated top-level scope"),
+            "a naming diagnostic must not stand in for the semantic failure: {message}"
+        );
+
+        // Under the closed world the wrapper genuinely is emitted and really
+        // does take `BoundedVec`, so the collision there is real. This is what
+        // keeps the deferral from becoming a blanket exemption.
+        let closed = generate(&schema, CLOSED)
+            .expect_err("the emitted wrapper really does collide with the support type")
+            .message;
+        assert!(closed.contains("BoundedVec"), "{closed}");
     }
 
     /// Section 44: a schema with no abstract value reference must produce

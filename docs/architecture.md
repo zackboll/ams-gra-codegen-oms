@@ -606,7 +606,11 @@ primary root
   rules — they are not reinterpreted as overlays, and remote `schemaLocation`
   stays rejected. An accepted overlay may still import other namespaces exactly
   as the root could, but the language backends remain single-namespace, so
-  cross-namespace generation is still unsupported.
+  cross-namespace generation is still unsupported. That boundary is modelled by
+  the shared `codegen-core::backend_preflight`, so it is visible to *service
+  readiness* as a typed backend-capability blocker and not only at generation
+  time — a selected closure spanning namespaces reports NOT READY rather than
+  READY-then-fail. See `docs/backend-compatibility.md`.
 - **Root schema version remains authoritative.** `SchemaIr.schema_version` comes
   from the primary root. Overlay `version` attributes are validated as ordinary
   document metadata and discarded.

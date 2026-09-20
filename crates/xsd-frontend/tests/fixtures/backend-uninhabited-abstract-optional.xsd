@@ -1,6 +1,6 @@
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-           xmlns:t="urn:backend-uninhabited-abstract-optional"
-           targetNamespace="urn:backend-uninhabited-abstract-optional"
+           xmlns:t="urn:backend-uninhabited-abstractvalue-optional"
+           targetNamespace="urn:backend-uninhabited-abstractvalue-optional"
            elementFormDefault="qualified">
   <!-- Zero concrete descendants: a genuine uninhabited abstract structural value.
        Intentionally not named with an EXT suffix so production logic cannot key

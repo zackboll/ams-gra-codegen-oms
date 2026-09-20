@@ -1,6 +1,6 @@
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-           xmlns:t="urn:backend-base-only-abstract-ancestry"
-           targetNamespace="urn:backend-base-only-abstract-ancestry"
+           xmlns:t="urn:backend-base-only-abstractvalue-ancestry"
+           targetNamespace="urn:backend-base-only-abstractvalue-ancestry"
            elementFormDefault="qualified">
   <!-- Task 028 section 43: an abstract base used ONLY as structural ancestry.
        No field anywhere is typed as Base, so there is no abstract VALUE

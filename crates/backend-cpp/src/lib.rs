@@ -1,11 +1,12 @@
 //! Minimal C++17 type generation from normalized schema IR.
 
 use ams_gra_oms_codegen_core::{
-    AbstractValueProjection, Backend, CodegenError, EffectiveValueMember, FloatingDomain,
-    GeneratedFile, GenerationWorld, InclusiveIntegralDomain, TypeEmission,
-    abstract_value_projection_for_ref, effective_choice_alternatives, effective_record_fields,
-    field_storage_semantics, float32_literal, float64_literal, floating_domain,
-    inclusive_integral_domain, plan_type_emissions,
+    AbstractValueProjection, Backend, BackendLanguage, CodegenError, EffectiveValueMember,
+    FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain, TypeEmission,
+    abstract_value_projection_for_ref, backend_preflight, effective_choice_alternatives,
+    effective_record_fields, field_storage_semantics, float32_literal, float64_literal,
+    floating_domain, inclusive_integral_domain, plan_type_emissions,
+    schema_emits_bounded_integer_support, schema_emits_unbounded_sequence_support,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -77,7 +78,7 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     };
     let has_floating = schema_has_floating(schema);
     let limits_header = if schema_needs_limits(schema)
-        || schema.types.iter().any(has_unbounded_occurrence)
+        || schema_emits_unbounded_sequence_support(schema)
         || has_floating
     {
         "#include <limits>\n"
@@ -127,7 +128,7 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
         "    std::vector<T> values_;\n",
         "};\n\n",
     ));
-    if schema.types.iter().any(has_unbounded_occurrence) {
+    if schema_emits_unbounded_sequence_support(schema) {
         output.push_str(concat!(
             "template <typename T, std::uint64_t Min>\n",
             "class UnboundedVector {\n",
@@ -143,7 +144,7 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
             "};\n\n",
         ));
     }
-    if schema.types.iter().any(has_direct_integral_range) {
+    if schema_emits_bounded_integer_support(schema) {
         output.push_str(concat!(
             "template <typename T, T Min, T Max>\nclass BoundedInteger {\npublic:\n",
             "    static std::optional<BoundedInteger> create(T value) noexcept {\n",
@@ -340,17 +341,11 @@ fn render_declaration(
 }
 
 fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), CodegenError> {
-    let namespace = schema
-        .namespaces
-        .first()
-        .ok_or_else(|| error("C++ generation requires one namespace"))?;
-    if schema.namespaces.len() != 1
-        || schema
-            .types
-            .iter()
-            .any(|declaration| declaration.name.namespace_uri != namespace.uri)
-    {
-        return unsupported("multiple namespaces".to_owned());
+    // Shared global preflight: the single-namespace boundary and generated
+    // host-language name safety. Capability/readiness analysis consults the
+    // same rules, so a READY verdict cannot disagree with what happens here.
+    if let Err(preflight) = backend_preflight(schema, BackendLanguage::Cpp, world) {
+        return unsupported(preflight.to_string());
     }
     for declaration in &schema.types {
         if declaration.is_abstract
@@ -445,12 +440,10 @@ fn validate_choice_alternatives(
     alternatives: Vec<&ams_gra_oms_ir::FieldDecl>,
     world: GenerationWorld,
 ) -> Result<(), CodegenError> {
-    let mut names = std::collections::BTreeSet::new();
+    // Alternative-name collisions are no longer checked here: the shared
+    // backend name preflight owns that policy for every generated region, so
+    // keeping a second C++-local copy would let the two drift.
     for alternative in alternatives {
-        let name = upper_camel(&alternative.name)?;
-        if !names.insert(name.clone()) {
-            return unsupported(format!("duplicate Choice alternative identifier {name}"));
-        }
         if alternative.nillable {
             return unsupported(format!("nillable Choice alternative {}", alternative.name));
         }
@@ -474,16 +467,6 @@ fn cpp_field_type(field: &ams_gra_oms_ir::FieldDecl) -> Result<String, CodegenEr
         )),
         _ => unsupported(format!("cardinality on Choice alternative {}", field.name)),
     }
-}
-
-fn has_unbounded_occurrence(declaration: &TypeDecl) -> bool {
-    match &declaration.kind {
-        TypeKind::Record { fields } => fields,
-        TypeKind::Choice { alternatives } => alternatives,
-        _ => return false,
-    }
-    .iter()
-    .any(|field| matches!(field.cardinality.shape(), OccurrenceShape::Unbounded { .. }))
 }
 
 fn namespace_name(schema: &SchemaIr) -> Result<String, CodegenError> {
@@ -679,20 +662,6 @@ fn cpp_field_base(field: &ams_gra_oms_ir::FieldDecl) -> Result<String, CodegenEr
             cpp_type(&field.type_ref)
         }
     }
-}
-
-fn has_direct_integral_range(declaration: &TypeDecl) -> bool {
-    let fields = match &declaration.kind {
-        TypeKind::Record { fields } => fields,
-        TypeKind::Choice { alternatives } => alternatives,
-        _ => return false,
-    };
-    fields.iter().any(|field| {
-        matches!(
-            field.type_ref.target,
-            TypeRefTarget::Primitive(PrimitiveKind::SignedInteger | PrimitiveKind::UnsignedInteger)
-        ) && field.constraints != ConstraintSet::default()
-    })
 }
 
 fn cpp_signed_bound(value: i64) -> String {
@@ -1298,6 +1267,60 @@ int main() {
         );
     }
 
+    /// Generated-name preflight tracks *emitted* entities, not raw Schema IR
+    /// declarations. An ancestry-only abstract Record is folded into its
+    /// descendants and never emitted, so its local name does not occupy the
+    /// generated scope even when it is `BoundedVector`, which backend-cpp
+    /// always emits as a support type.
+    #[test]
+    fn ancestry_only_abstract_support_name_renders_and_strictly_compiles() {
+        let schema = load_schema_document(
+            &std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-ancestry-only-support-name.xsd"),
+        )
+        .expect("ancestry-only fixture should parse");
+        assert!(
+            ams_gra_oms_codegen_core::validate_backend_names(&schema, BackendLanguage::Cpp, CLOSED)
+                .is_ok(),
+            "an abstract base C++ never emits must not reserve BoundedVector"
+        );
+        let source = generate(&schema, CLOSED).expect("ancestry-only base must render");
+        // The support template is present as a `class`; no schema-owned
+        // `struct` takes the name.
+        assert!(source.contains("class BoundedVector {"), "{source}");
+        assert!(!source.contains("struct BoundedVector"), "{source}");
+        assert!(source.contains("struct Derived {"), "{source}");
+
+        let header_path = std::env::temp_dir().join(format!(
+            "ams-gra-oms-ancestry-cpp-{}.hpp",
+            std::process::id()
+        ));
+        let source_path = header_path.with_extension("cpp");
+        fs::write(&header_path, source).expect("write generated C++ header");
+        fs::write(
+            &source_path,
+            format!("#include \"{}\"\n", header_path.display()),
+        )
+        .expect("write C++ translation unit");
+        let status = Command::new("c++")
+            .args([
+                "-std=c++17",
+                "-Wall",
+                "-Wextra",
+                "-pedantic-errors",
+                "-fsyntax-only",
+            ])
+            .arg(&source_path)
+            .status()
+            .expect("C++ compiler must be available");
+        fs::remove_file(&header_path).expect("remove generated C++ header");
+        fs::remove_file(&source_path).expect("remove C++ translation unit");
+        assert!(
+            status.success(),
+            "strict C++17 ancestry-only compile must succeed"
+        );
+    }
+
     #[test]
     fn binary_only_schema_includes_and_strictly_compiles() {
         let source =
@@ -1428,11 +1451,17 @@ int main() {
         };
         alternatives[0].name = "Foo".to_owned();
         alternatives[1].name = "foo".to_owned();
+        // `Foo` and `foo` both upper-camel to `Foo`. This is now diagnosed by
+        // the shared backend name preflight rather than by a C++-local
+        // duplicate check, so the assertion is on the semantic outcome -- the
+        // collision is rejected and both spellings are named -- rather than on
+        // the exact prose of the superseded local diagnostic.
+        let message = generate(&collision, CLOSED)
+            .expect_err("converging C++ alternative names must be rejected")
+            .message;
         assert!(
-            generate(&collision, CLOSED)
-                .unwrap_err()
-                .message
-                .contains("duplicate Choice alternative identifier Foo")
+            message.contains("\"Foo\"") && message.contains("\"foo\""),
+            "{message}"
         );
 
         let mut nillable = choice_schema();
@@ -2067,6 +2096,101 @@ int probe() {
         assert!(
             reversed.contains("std::variant<\n        PrivateB,\n        PrivateA\n    > value;")
         );
+    }
+
+    // -----------------------------------------------------------------
+    // Corrective cleanup -- shared backend generated-name preflight
+    // -----------------------------------------------------------------
+
+    fn preflight_fixture(name: &str) -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures")
+                .join(name),
+        )
+        .expect("preflight fixture should parse")
+    }
+
+    /// Two distinct XSD type names that both upper-camel to `TrackReport`
+    /// would declare the same C++ type twice.
+    #[test]
+    fn converging_declaration_names_are_rejected() {
+        let schema = preflight_fixture("backend-name-preflight-declaration-collision.xsd");
+        let message = generate(&schema, CLOSED)
+            .expect_err("converging declaration names must be rejected")
+            .message;
+        assert!(message.contains("TrackReport"), "{message}");
+    }
+
+    /// An inherited member and a locally declared member that snake_case to
+    /// the same identifier. Effective structural projection accepts them
+    /// because the XSD names differ; only generated-name policy catches this.
+    #[test]
+    fn converging_inherited_member_names_are_rejected() {
+        let schema = preflight_fixture("backend-name-preflight-inherited-collision.xsd");
+        let message = generate(&schema, CLOSED)
+            .expect_err("converging inherited member names must be rejected")
+            .message;
+        assert!(message.contains("track_id"), "{message}");
+    }
+
+    /// A member named `class` snake_cases onto a C++ keyword.
+    #[test]
+    fn reserved_word_member_is_rejected() {
+        let schema = preflight_fixture("backend-name-preflight-reserved.xsd");
+        let message = generate(&schema, CLOSED)
+            .expect_err("a C++ keyword member must be rejected")
+            .message;
+        assert!(message.contains("reserved word"), "{message}");
+    }
+
+    /// C++ is case-sensitive, so a case-only difference is NOT a C++
+    /// collision. Asserting this keeps the shared preflight from silently
+    /// applying Ada's rule everywhere.
+    #[test]
+    fn case_only_difference_is_accepted_by_cpp() {
+        let schema = preflight_fixture("backend-name-preflight-ada-case-collision.xsd");
+        assert!(generate(&schema, CLOSED).is_ok());
+    }
+
+    /// The control must still render, and the generated header must actually
+    /// compile under strict C++17: a preflight that rejected everything would
+    /// pass the negative tests above while being useless.
+    #[test]
+    fn preflight_control_renders_and_compiles() {
+        let source = generate(
+            &preflight_fixture("backend-name-preflight-control.xsd"),
+            CLOSED,
+        )
+        .expect("safe generated names must render");
+        assert!(source.contains("struct TrackReport"), "{source}");
+
+        use std::fs;
+        use std::process::Command;
+        let directory = std::env::temp_dir().join("ams-gra-oms-preflight-cpp-control");
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(&directory).expect("create C++ probe directory");
+        fs::write(directory.join("generated.hpp"), &source).expect("write generated header");
+        fs::write(
+            directory.join("probe.cpp"),
+            "#include \"generated.hpp\"\nint main() { return 0; }\n",
+        )
+        .expect("write C++ probe");
+        let status = Command::new("c++")
+            .current_dir(&directory)
+            .args([
+                "-std=c++17",
+                "-Wall",
+                "-Wextra",
+                "-pedantic-errors",
+                "-o",
+                "probe",
+                "probe.cpp",
+            ])
+            .status()
+            .expect("C++ compiler must be available");
+        let _ = fs::remove_dir_all(&directory);
+        assert!(status.success(), "strict C++17 compile must succeed");
     }
 
     /// Section 44: a schema with no abstract value reference must produce

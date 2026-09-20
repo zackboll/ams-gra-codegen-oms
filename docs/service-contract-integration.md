@@ -769,6 +769,13 @@ message (`PositionReport`), 60-declaration selected closure, closed world.
 | rust | closed-schema | 0/1 | **52/60** (was 47/60) | NOT READY | `{…}DateTimeType` (was `{…}AltitudeType`) | 258 s |
 | ada | closed-schema | 0/1 | **37/60** (was 32/60) | NOT READY | `{…}Acceleration3D_Type` (unchanged) | 260 s |
 
+> **Superseded by generated-name preflight.** Re-measured on the same inputs,
+> the current authoritative figures are **rust 51/60** and **ada 32/60**, with
+> the same first blockers, at **~15 s** per language rather than ~258 s. The
+> Rust delta is one declaration, `DeclassExceptionEnum`, whose `25X1`
+> enumeration variant is not a legal Rust identifier; the Ada figure is
+> unchanged by that correction. See `docs/backend-compatibility.md`.
+
 C++ tracked Rust exactly in Task 031 and shares the identical shared-capability
 model, the identical post-change full-schema coverage numbers, and passes the
 same synthetic strict-C++17 generation and runtime tests. No separate
@@ -798,3 +805,87 @@ floats (`tests/fixtures/service-generate/constrained-float.{xsd,yaml}`, which
 also contains an unselected unrenderable `xs:duration`) now reports READY in all
 three backends and generates output that compiles under `rustc`, strict C++17,
 and GNAT, with the generated bound checks verified at runtime.
+
+## Corrective cleanup: v0.1 parity and plan/schema binding
+
+Retrospective corrections made after Task 033. **Historical behaviour** and
+**current corrected behaviour** are distinguished explicitly below; the sections
+above remain an accurate record of what each task did at the time.
+
+### Portable v0.1 validation parity
+
+The local Rust crate claims to implement portable v0.1 schema semantics, so it
+must not accept a contract the published schema rejects merely because Serde can
+deserialize it. Rules were re-read from the authoritative schema at
+`ams-gra-service-contract` `schema/v0.1/service-contract.schema.json`, revision
+`20a3315`.
+
+| Assertion | Historical | Current |
+|---|---|---|
+| `functions.minItems = 1` | `functions: []` accepted | rejected as `NoFunctions` |
+| `standards.uci_extension_schemas` `uniqueItems` | duplicate reached the CLI `--extension` mapping layer | rejected as `DuplicateExtensionSchema` on the contract itself |
+| optional `minLength: 1` strings | only some enforced | all enforced, enumerated from the schema |
+| timing `type: number` + `exclusiveMinimum: 0` | comparison-only, so `+Infinity` passed | must be finite **and** `> 0` |
+
+Optional `minLength: 1` coverage is systematic rather than a list of examples:
+`service.description`, `standards.ams_gra_version`, optional source
+`document_number`/`revision`/`note`, traceability `locator`/`note`,
+`function.description`, the optional OMS metadata fields
+(`operational_attribute`, `subscription_group`, `appendix_c_mapping`), and the
+`details`/`reference` pair on Special Signal, Security Exchange, and non-OMS
+Message exchanges. Absence stays legal and is never defaulted; a *present* value
+must carry meaningful text, so whitespace-only fails exactly as it already did
+for required strings.
+
+For timing, `NonFiniteTimingValue` is kept distinct from
+`NonPositiveTimingValue` so the two remain attributable. `serde_yaml` accepts
+`.inf` and `.nan`, so these are reachable inputs and are tested as such.
+Rejecting a value is a *validity* statement only: upstream identifies the
+nominal/max timing columns as informative, and this crate still does not turn
+the surviving values into deadlines.
+
+#### Policy on `format: date` and `format: uri`
+
+The authoritative schema annotates `source.date` with `format: date` and
+`source.uri` with `format: uri`. It declares
+`$schema: https://json-schema.org/draft/2020-12/schema` and does **not** opt
+into the format-assertion vocabulary, so under draft 2020-12 those keywords are
+*annotations*, not assertions.
+
+This validator therefore treats them as annotations too — deliberately, not by
+omission. Adding ad-hoc URI or date parsing would make this implementation
+*stricter* than the authority, rejecting contracts the published schema accepts,
+which is the mirror image of the parity defect being corrected. Both fields are
+still checked against the assertions the schema does make. The policy is pinned
+by a test, so changing it cannot pass unnoticed.
+
+### `ServicePlan` is semantically bound to its selected closure
+
+**Historical behaviour.** The public library API accepts a `ServicePlan` and a
+`SchemaIr` separately and explicitly claims to diagnose wrong-schema reuse, but
+the checks compared qualified names only. A plan resolved against schema A could
+be applied to schema B whenever both declared the same message and type *names*,
+even though a payload `TypeRef`, a declaration body, or a dependency's
+constraints or cardinality differed.
+
+**Current corrected behaviour.** `resolve_service_plan` captures a private
+semantic snapshot of exactly the declarations the plan depends on: the selected
+message declarations and the selected transitive type closure.
+`ServicePlan::verify_schema_binding` compares the current schema's declaration of
+each selected identity against the captured one by **exact semantic equality**.
+
+The representation is deliberate:
+
+* not pointer identity — a caller may legitimately rebuild an equal schema and
+  must not be punished for it;
+* not `std::hash` or an ad-hoc digest — a collision would silently *accept* a
+  mismatch;
+* not a serialization — unstable, and this crate has no serializer.
+
+Both `analyze_service_readiness` and `project_service_generation_schema` call
+this one mechanism, first, before any other lookup, so the two cannot drift into
+disagreeing notions of "wrong schema". A mismatch is a typed
+`PlanBindingMismatch` rather than a debug assertion or a panic on a failed index.
+
+Scope is the selected service: changing or removing a declaration **outside** the
+selected closure does not invalidate the plan.

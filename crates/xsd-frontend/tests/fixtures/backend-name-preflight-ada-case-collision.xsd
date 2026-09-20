@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:preflight:test"
+           targetNamespace="urn:preflight:test">
+  <!-- SYNTHETIC corrective-cleanup fixture. Authored for this repository only;
+       NOT UCI.
+
+       `Track` and `TRACK` differ only by case. Ada identifiers are
+       case-insensitive, so these are ONE Ada type name and the generated
+       package would declare it twice. Rust and C++ are case-sensitive and
+       accept this schema; the asymmetry is asserted rather than smoothed
+       over. -->
+  <xs:complexType name="Track">
+    <xs:sequence>
+      <xs:element name="Value" type="xs:long"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="TRACK">
+    <xs:sequence>
+      <xs:element name="Value" type="xs:long"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

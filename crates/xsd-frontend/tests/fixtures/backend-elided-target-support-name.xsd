@@ -1,0 +1,23 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:preflight:elided"
+           targetNamespace="urn:preflight:elided"
+           elementFormDefault="qualified">
+  <!-- Task 026 elision control, keyed on the target's OWN name.
+
+       `Optional_String` (Ada) is a generated support type name. This abstract
+       target has ZERO concrete descendants and appears only in a supported
+       absent-only 0..1 position, so Task 026 emits no wrapper, no top-level
+       declaration, and no `_Kind` companion for it. Nothing schema-owned
+       carries the name, so the backend's own support type keeps it.
+
+       This genuinely exercises Task 026 rather than ancestry-only behaviour:
+       the target IS referenced as a value, but its zero-descendant absent-only
+       use elides it entirely. -->
+  <xs:complexType name="Optional_String" abstract="true"><xs:sequence/></xs:complexType>
+  <xs:complexType name="Holder">
+    <xs:sequence>
+      <xs:element name="Required" type="xs:string"/>
+      <xs:element name="Maybe" type="t:Optional_String" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

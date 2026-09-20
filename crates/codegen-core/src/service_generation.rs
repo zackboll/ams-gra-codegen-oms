@@ -49,8 +49,9 @@
 
 use crate::abstract_value::is_structural;
 use crate::{
-    AbstractValueProjectionError, CodegenError, GenerationWorld, MismatchRole, ServicePlan,
-    ServicePlanError, direct_named_dependencies, plan_type_emissions, project_abstract_value,
+    AbstractValueProjectionError, CodegenError, GenerationWorld, MismatchRole, PlanBindingMismatch,
+    ServicePlan, ServicePlanError, direct_named_dependencies, plan_type_emissions,
+    project_abstract_value,
 };
 use ams_gra_oms_ir::{QualifiedName, SchemaIr, TypeDecl, TypeKind, TypeRef, TypeRefTarget};
 use std::collections::BTreeSet;
@@ -70,6 +71,13 @@ pub enum ServiceGenerationError {
         missing: QualifiedName,
         role: MismatchRole,
     },
+    /// The supplied schema declares every selected identity, but not with the
+    /// same semantics the plan was resolved against.
+    ///
+    /// Detected by [`ServicePlan::verify_schema_binding`], the same mechanism
+    /// readiness uses, so projection and readiness cannot disagree about what
+    /// counts as the wrong schema.
+    PlanBinding(PlanBindingMismatch),
     /// A selected value position targets an abstract structural declaration
     /// that has no generated representation under the asserted world.
     ///
@@ -101,6 +109,7 @@ impl fmt::Display for ServiceGenerationError {
                 missing.namespace_uri,
                 missing.local_name
             ),
+            Self::PlanBinding(mismatch) => mismatch.fmt(formatter),
             Self::AbstractValue(error) => write!(
                 formatter,
                 "selected model cannot be projected for generation: {error}"
@@ -189,6 +198,13 @@ pub fn project_service_generation_schema(
     schema: &SchemaIr,
     world: GenerationWorld,
 ) -> Result<ServiceGenerationProjection, ServiceGenerationError> {
+    // 0. Wrong-schema reuse, via the SAME binding mechanism readiness uses.
+    //    Verifying here rather than relying on the identity-only lookups below
+    //    means a schema with matching names but different semantics cannot
+    //    silently produce a projection of the wrong model.
+    plan.verify_schema_binding(schema)
+        .map_err(ServiceGenerationError::PlanBinding)?;
+
     // 1. The raw contract-selected semantic closure, computed once by Task
     //    030's walker. It is deliberately not recomputed here: a second
     //    dependency walker would be free to drift.

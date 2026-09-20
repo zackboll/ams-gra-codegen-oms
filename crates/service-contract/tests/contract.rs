@@ -541,3 +541,209 @@ fn rejects_unsupported_file_extension() {
         Err(ContractError::Io(_))
     ));
 }
+
+// ---------------------------------------------------------------------
+// Corrective cleanup -- portable v0.1 schema parity
+//
+// Each case below pairs an authoritative-valid input the validator must
+// accept with an authoritative-invalid input it must reject, so a rule
+// cannot be satisfied by rejecting everything. Rules were read from the
+// published schema at ams-gra-service-contract
+// schema/v0.1/service-contract.schema.json, revision 20a3315.
+// ---------------------------------------------------------------------
+
+fn semantic_error(yaml: &str) -> SemanticError {
+    match parse_yaml(yaml) {
+        Err(ContractError::Semantic(error)) => error,
+        other => panic!("expected a semantic error, got {other:?}"),
+    }
+}
+
+/// `functions.minItems = 1`. Serde deserializes `functions: []` happily, so
+/// only semantic validation can enforce it.
+#[test]
+fn empty_function_list_is_rejected_in_yaml_and_json() {
+    assert_eq!(
+        semantic_error(&minimal_yaml("functions: []")),
+        SemanticError::NoFunctions
+    );
+    let json = r#"{"contract_version":"0.1",
+        "service":{"name":"Test","version":"0.1","kind":"service"},
+        "standards":{"oms_version":"2.5","uci_schema_version":"2.5"},
+        "functions":[]}"#;
+    assert!(matches!(
+        parse_json(json),
+        Err(ContractError::Semantic(SemanticError::NoFunctions))
+    ));
+    // The authoritative-valid counterpart still parses.
+    assert!(parse_yaml(&one_function("")).is_ok());
+}
+
+/// `standards.uci_extension_schemas` declares `uniqueItems: true`. The
+/// contract is invalid on its own terms, so this must not wait for the CLI's
+/// `--extension` mapping layer to notice a duplicate later.
+#[test]
+fn duplicate_extension_schema_identifier_is_rejected() {
+    let yaml = one_function("").replace(
+        "  uci_schema_version: \"2.5\"\n",
+        "  uci_schema_version: \"2.5\"\n  uci_extension_schemas:\n    - ext-a\n    - ext-a\n",
+    );
+    assert_eq!(
+        semantic_error(&yaml),
+        SemanticError::DuplicateExtensionSchema {
+            id: "ext-a".to_owned()
+        },
+        "{yaml}"
+    );
+
+    // Two distinct extension identifiers remain valid.
+    let distinct = yaml.replace("    - ext-a\n    - ext-a", "    - ext-a\n    - ext-b");
+    assert!(parse_yaml(&distinct).is_ok(), "{distinct}");
+}
+
+/// Every optional string the schema marks `minLength: 1` must reject a
+/// present-but-empty value while still accepting absence and real text.
+#[test]
+fn optional_min_length_strings_reject_empty_values() {
+    // `service.description`.
+    let yaml = one_function("").replace(
+        "  kind: service\n",
+        "  kind: service\n  description: \"\"\n",
+    );
+    assert!(
+        matches!(semantic_error(&yaml), SemanticError::EmptyText { field, .. } if field == "description"),
+        "{yaml}"
+    );
+
+    // `standards.ams_gra_version`, whitespace-only.
+    let yaml = one_function("").replace(
+        "  uci_schema_version: \"2.5\"\n",
+        "  uci_schema_version: \"2.5\"\n  ams_gra_version: \"   \"\n",
+    );
+    assert!(
+        matches!(semantic_error(&yaml), SemanticError::EmptyText { field, .. } if field == "ams_gra_version"),
+        "whitespace-only must fail exactly as it does for required strings: {yaml}"
+    );
+
+    // `function.description`.
+    let yaml = one_function("").replace(
+        "    exchanges: []\n",
+        "    description: \"\"\n    exchanges: []\n",
+    );
+    assert!(
+        matches!(semantic_error(&yaml), SemanticError::EmptyText { field, .. } if field == "description"),
+        "{yaml}"
+    );
+
+    // Absence and real text both stay valid.
+    let valid = one_function("").replace(
+        "  kind: service\n",
+        "  kind: service\n  description: A real description.\n",
+    );
+    assert!(parse_yaml(&valid).is_ok(), "{valid}");
+    assert!(parse_yaml(&one_function("")).is_ok());
+}
+
+/// Optional OMS metadata and the non-OMS `details`/`reference` pair also carry
+/// `minLength: 1`.
+#[test]
+fn optional_exchange_strings_reject_empty_values() {
+    let oms = |extra: &str| {
+        minimal_yaml(&format!(
+            "functions:\n  - id: f1\n    name: F1\n    category: specific\n    applicability: applicable\n    exchanges:\n      - id: e1\n        kind: oms_message\n        direction: input\n        mandate: mandatory\n        message: PositionReport\n        topic: t\n{extra}        timing:\n          kind: asynchronous\n"
+        ))
+    };
+    for field in [
+        "operational_attribute",
+        "subscription_group",
+        "appendix_c_mapping",
+    ] {
+        let yaml = oms(&format!("        {field}: \"\"\n"));
+        assert!(
+            matches!(semantic_error(&yaml), SemanticError::EmptyText { field: got, .. } if got == field),
+            "{field}: {yaml}"
+        );
+    }
+    // The same contract without the optional fields is valid.
+    assert!(parse_yaml(&oms("")).is_ok());
+
+    let signal = |extra: &str| {
+        minimal_yaml(&format!(
+            "functions:\n  - id: f1\n    name: F1\n    category: specific\n    applicability: applicable\n    exchanges:\n      - id: e1\n        kind: special_signal\n        direction: input\n        mandate: mandatory\n        name: Signal\n{extra}        timing:\n          kind: asynchronous\n"
+        ))
+    };
+    for field in ["details", "reference"] {
+        let yaml = signal(&format!("        {field}: \"  \"\n"));
+        assert!(
+            matches!(semantic_error(&yaml), SemanticError::EmptyText { field: got, .. } if got == field),
+            "{field}: {yaml}"
+        );
+    }
+    assert!(parse_yaml(&signal("")).is_ok());
+}
+
+/// Timing values must be finite AND strictly positive. A comparison-only check
+/// admitted `+Infinity`, because infinity is greater than zero.
+#[test]
+fn non_finite_timing_values_are_rejected() {
+    let periodic = |value: &str| {
+        minimal_yaml(&format!(
+            "functions:\n  - id: f1\n    name: F1\n    category: specific\n    applicability: applicable\n    exchanges:\n      - id: e1\n        kind: oms_message\n        direction: output\n        mandate: mandatory\n        message: PositionReport\n        topic: t\n        timing:\n          kind: periodic\n          nominal_rate_hz: {value}\n"
+        ))
+    };
+    // YAML spells positive infinity `.inf`; `serde_yaml` accepts it as a
+    // float, so the validator is the only thing standing between it and
+    // downstream code generation.
+    for spelling in [".inf", ".Inf", ".INF"] {
+        let error = semantic_error(&periodic(spelling));
+        assert!(
+            matches!(
+                error,
+                SemanticError::NonFiniteTimingValue { field, .. } if field == "nominal_rate_hz"
+            ),
+            "{spelling} must be rejected as non-finite, got {error:?}"
+        );
+    }
+    // NaN is non-finite too and is now attributed the same way.
+    let error = semantic_error(&periodic(".nan"));
+    assert!(
+        matches!(error, SemanticError::NonFiniteTimingValue { .. }),
+        "{error:?}"
+    );
+    // Zero and negatives remain non-positive rather than non-finite, so the
+    // two rules stay distinguishable.
+    for spelling in ["0", "-1.5"] {
+        let error = semantic_error(&periodic(spelling));
+        assert!(
+            matches!(error, SemanticError::NonPositiveTimingValue { .. }),
+            "{spelling}: {error:?}"
+        );
+    }
+    // A finite positive rate is valid.
+    assert!(parse_yaml(&periodic("2.5")).is_ok());
+}
+
+/// `format: date` and `format: uri` are ANNOTATIONS under draft 2020-12
+/// unless the format-assertion vocabulary is opted into, and the authoritative
+/// v0.1 schema does not opt in. This validator therefore does not assert them.
+///
+/// This test pins that as a deliberate decision. If it ever starts failing,
+/// the enforcement policy changed and the module documentation must change
+/// with it.
+#[test]
+fn format_annotations_are_not_asserted() {
+    let yaml = minimal_yaml(
+        "sources:\n  - id: s1\n    title: A Source\n    uri: \"not a uri at all\"\n    date: \"not-a-date\"\nfunctions:\n  - id: f1\n    name: F1\n    category: specific\n    applicability: applicable\n    exchanges: []\n",
+    );
+    assert!(
+        parse_yaml(&yaml).is_ok(),
+        "format is an annotation, not an assertion, in the authoritative schema: {yaml}"
+    );
+
+    // The assertions the schema DOES make on those fields still hold:
+    // `source.uri` is a required `minLength: 1` string.
+    let empty_uri = yaml.replace("uri: \"not a uri at all\"", "uri: \"\"");
+    assert!(
+        matches!(semantic_error(&empty_uri), SemanticError::EmptyText { field, .. } if field == "uri")
+    );
+}

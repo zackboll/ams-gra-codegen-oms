@@ -1,0 +1,33 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:backend-ancestry-only-abstract-unrelated-failure"
+           targetNamespace="urn:backend-ancestry-only-abstract-unrelated-failure"
+           elementFormDefault="qualified">
+  <!-- Two unrelated areas.
+
+       Area A is ancestry only: BoundedVec is reached solely as a base type,
+       never as a value, so no wrapper is generated for it. Its name is
+       deliberately Rust's own generated support type, so any phantom wrapper
+       would manufacture a top-level collision.
+
+       Area B is a real semantic failure: Uninhabited has zero concrete
+       descendants but a required value occurrence, which aborts whole-schema
+       emission planning. The authoritative diagnostic must stay Area B's. -->
+  <xs:complexType name="BoundedVec" abstract="true"><xs:sequence/></xs:complexType>
+  <xs:complexType name="Derived">
+    <xs:complexContent>
+      <xs:extension base="t:BoundedVec"><xs:sequence/></xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="Holder">
+    <xs:sequence>
+      <xs:element name="Item" type="t:Derived"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="Uninhabited" abstract="true"><xs:sequence/></xs:complexType>
+  <xs:complexType name="Demand">
+    <xs:sequence>
+      <xs:element name="Value" type="t:Uninhabited"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

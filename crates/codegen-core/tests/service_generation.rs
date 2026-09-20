@@ -7,8 +7,8 @@
 //! 028 open-world defensiveness.
 
 use ams_gra_oms_codegen_core::{
-    GenerationWorld, ServiceGenerationError, ServicePlan, project_service_generation_schema,
-    resolve_service_plan,
+    GenerationWorld, MismatchRole, PlanBindingMismatch, ServiceGenerationError, ServicePlan,
+    project_service_generation_schema, resolve_service_plan,
 };
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, FieldDecl, MessageDecl, NamespaceDecl, PrimitiveKind,
@@ -526,10 +526,18 @@ fn plan_schema_mismatch_fails_without_panicking() {
     let schema_b = schema(vec![record("Payload", vec![])], vec![]);
     let error = project_service_generation_schema(&plan, &schema_b, CLOSED)
         .expect_err("a mismatched schema must fail");
-    assert!(matches!(
-        error,
-        ServiceGenerationError::PlanSchemaMismatch { .. }
-    ));
+    // Now diagnosed by the shared semantic binding, which runs before the
+    // identity-only lookups and reports the absent selected message.
+    assert!(
+        matches!(
+            error,
+            ServiceGenerationError::PlanBinding(PlanBindingMismatch::Missing {
+                role: MismatchRole::Message,
+                ..
+            })
+        ),
+        "{error:?}"
+    );
     assert!(error.to_string().contains("different schema set"));
 }
 

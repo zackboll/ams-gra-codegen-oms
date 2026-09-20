@@ -5,8 +5,9 @@
 //! deduplication, blocker attribution, and Task 024/026/028 world semantics.
 
 use ams_gra_oms_codegen_core::{
-    BackendLanguage, CoverageAnalysis, GenerationWorld, ServiceBackendReadiness,
-    ServiceMessageBlocker, ServiceReadinessError, analyze_service_readiness, resolve_service_plan,
+    BackendLanguage, CoverageAnalysis, GenerationWorld, MismatchRole, PlanBindingMismatch,
+    ServiceBackendReadiness, ServiceMessageBlocker, ServiceReadinessError,
+    analyze_service_readiness, project_service_generation_schema, resolve_service_plan,
 };
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, FieldDecl, MessageDecl, NamespaceDecl, PrimitiveKind,
@@ -159,9 +160,15 @@ fn mixed_schema() -> SchemaIr {
             // Two unrelated unsupported declarations. Neither is selected by
             // the ready contract, so neither may ever appear in its report.
             unsupported("UnsupportedA"),
-            record("UnrelatedA", vec![field("When", named("UnsupportedA"))]),
+            record(
+                "UnrelatedA",
+                vec![field("Occurred_At", named("UnsupportedA"))],
+            ),
             unsupported("UnsupportedB"),
-            record("UnrelatedB", vec![field("When", named("UnsupportedB"))]),
+            record(
+                "UnrelatedB",
+                vec![field("Occurred_At", named("UnsupportedB"))],
+            ),
         ],
         vec![
             message("GoodReport", named("GoodPayload")),
@@ -401,6 +408,129 @@ fn non_uci_only_contract_is_vacuously_ready() {
 }
 
 // ---------------------------------------------------------------------
+// Corrective cleanup -- readiness must not swallow projection failures
+// ---------------------------------------------------------------------
+
+/// The shared fixture for the projection-error tests: a selected closure
+/// holding an abstract structural VALUE, which projects cleanly in the closed
+/// world and fails closed in the open world.
+fn abstract_value_schema() -> SchemaIr {
+    schema(
+        vec![
+            abstract_record("AbstractBase", vec![]),
+            derived_record(
+                "ConcreteOne",
+                "AbstractBase",
+                vec![field("Value", primitive(PrimitiveKind::Float64))],
+            ),
+            record("ValuePayload", vec![field("Item", named("AbstractBase"))]),
+        ],
+        vec![message("ValueReport", named("ValuePayload"))],
+    )
+}
+
+/// The abstract-value projection failure is the one class readiness is
+/// allowed to treat as already-reported, and this pins the invariant that
+/// permits it: the result is genuinely NOT READY, with the failure attributed
+/// per declaration and per message, before the projection error is ignored.
+///
+/// If that stopped holding, ignoring the projection error would produce a
+/// false READY -- so it is proven rather than assumed.
+#[test]
+fn an_abstract_value_projection_failure_is_already_reported_as_not_ready() {
+    let schema = abstract_value_schema();
+    let contract = contract(&oms_exchange("e1", "ValueReport"));
+    let plan = resolve_service_plan(&contract, &schema).expect("plan should resolve");
+
+    // The projection really does fail in the open world.
+    assert!(
+        project_service_generation_schema(&plan, &schema, GenerationWorld::OpenExtensions).is_err(),
+        "the fixture must really fail projection, or this proves nothing"
+    );
+
+    for language in BackendLanguage::ALL {
+        // Readiness nonetheless computes, and is NOT READY with attribution,
+        // which is exactly what makes ignoring the duplicate error safe.
+        let result =
+            analyze_service_readiness(&plan, &schema, language, GenerationWorld::OpenExtensions)
+                .expect("an already-reported capability failure must not become an error");
+        assert!(!result.is_ready(), "{language:?} must not be READY");
+        assert!(
+            !result.unsupported_types.is_empty() || !result.blocked_messages.is_empty(),
+            "{language:?} must attribute the failure per declaration or message"
+        );
+    }
+}
+
+/// A plan resolved against a different schema set must surface as a typed
+/// binding error from the projection path rather than being swallowed into
+/// "no backend blocker".
+#[test]
+fn a_projection_binding_mismatch_is_propagated_not_swallowed() {
+    let original = schema(
+        vec![record(
+            "Payload",
+            vec![field("Value", primitive(PrimitiveKind::Float64))],
+        )],
+        vec![message("Report", named("Payload"))],
+    );
+    let contract = contract(&oms_exchange("e1", "Report"));
+    let plan = resolve_service_plan(&contract, &original).expect("plan should resolve");
+
+    // Same names, different semantics: only the semantic binding sees this.
+    let changed = schema(
+        vec![record(
+            "Payload",
+            vec![field("Value", primitive(PrimitiveKind::Boolean))],
+        )],
+        vec![message("Report", named("Payload"))],
+    );
+
+    for language in BackendLanguage::ALL {
+        let error =
+            analyze_service_readiness(&plan, &changed, language, GenerationWorld::ClosedSchemaSet)
+                .expect_err("a wrong-schema plan must not silently report readiness");
+        assert!(
+            matches!(
+                error,
+                ServiceReadinessError::PlanBinding(PlanBindingMismatch::Changed { .. })
+            ),
+            "{language:?}: {error:?}"
+        );
+    }
+}
+
+/// Readiness must never report READY for a selection whose projection cannot
+/// be produced, under any world or backend, and must not panic. This is the
+/// property the removed catch-all projection arm put at risk.
+#[test]
+fn readiness_is_never_ready_when_projection_fails() {
+    let schema = abstract_value_schema();
+    let contract = contract(&oms_exchange("e1", "ValueReport"));
+    let plan = resolve_service_plan(&contract, &schema).expect("plan should resolve");
+
+    for language in BackendLanguage::ALL {
+        for world in [
+            GenerationWorld::ClosedSchemaSet,
+            GenerationWorld::OpenExtensions,
+        ] {
+            let projection_failed =
+                project_service_generation_schema(&plan, &schema, world).is_err();
+            match analyze_service_readiness(&plan, &schema, language, world) {
+                Ok(result) => assert!(
+                    !projection_failed || !result.is_ready(),
+                    "{language:?} {world:?} reported READY despite a failed projection"
+                ),
+                Err(error) => assert!(
+                    projection_failed,
+                    "{language:?} {world:?} errored without a projection failure: {error}"
+                ),
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------
 // Sections 32/33/34 -- Task 024/026/028 world semantics, inherited
 // ---------------------------------------------------------------------
 
@@ -610,10 +740,18 @@ fn plan_schema_mismatch_fails_deterministically() {
         GenerationWorld::ClosedSchemaSet,
     )
     .expect_err("a mismatched schema set must fail");
-    assert!(matches!(
-        error,
-        ServiceReadinessError::PlanSchemaMismatch { .. }
-    ));
+    // Now diagnosed by the shared semantic binding, which runs first and
+    // names the absent selected message.
+    assert!(
+        matches!(
+            error,
+            ServiceReadinessError::PlanBinding(PlanBindingMismatch::Missing {
+                role: MismatchRole::Message,
+                ..
+            })
+        ),
+        "{error:?}"
+    );
     assert!(error.to_string().contains("GoodReport"));
 }
 
@@ -687,8 +825,18 @@ fn readiness_agrees_with_full_schema_coverage_when_everything_is_selected() {
             GenerationWorld::OpenExtensions,
         ] {
             let result = readiness(&schema, &contract, language, world);
-            let coverage = CoverageAnalysis::new(&schema, world)
-                .expect("analysis should build")
+            let analysis = CoverageAnalysis::new(&schema, world).expect("analysis should build");
+            // Parity is only meaningful while the schema passes global
+            // preflight: once it does not, coverage reports zero generable
+            // message closures by design and the comparison below would be
+            // measuring the preflight failure rather than the capability
+            // model. Asserting it keeps this test honest about what it
+            // covers.
+            assert!(
+                analysis.backend_preflight_error(language).is_none(),
+                "{language:?} {world:?}: the parity fixture must pass global preflight"
+            );
+            let coverage = analysis
                 .backend_coverage(language)
                 .expect("coverage should compute");
             assert_eq!(result.selected_messages_total, coverage.messages_total);
@@ -698,4 +846,261 @@ fn readiness_agrees_with_full_schema_coverage_when_everything_is_selected() {
             );
         }
     }
+}
+
+// ---------------------------------------------------------------------
+// Projection-scoped generated-name analysis
+// ---------------------------------------------------------------------
+//
+// Generated-name safety and the global backend preconditions are properties
+// of the set of declarations emitted *together*, not of a declaration alone.
+// Readiness must therefore measure them on the projected selected schema --
+// the exact schema `service-generate` hands to the backend -- rather than on
+// the full schema. These tests pin that equivalence from both directions.
+
+/// `foo_bar` and `fooBar` both generate `FooBar`, so the full schema is not
+/// generable. Only `foo_bar` is selected, and the projection drops the other,
+/// so the selected service is genuinely ready.
+fn converging_name_schema() -> SchemaIr {
+    schema(
+        vec![
+            record(
+                "foo_bar",
+                vec![field("Value", primitive(PrimitiveKind::Float64))],
+            ),
+            record(
+                "fooBar",
+                vec![field("Value", primitive(PrimitiveKind::Float64))],
+            ),
+            record("SelectedPayload", vec![field("Inner", named("foo_bar"))]),
+            record("OtherPayload", vec![field("Inner", named("fooBar"))]),
+            record(
+                "BothPayload",
+                vec![
+                    field("Left", named("foo_bar")),
+                    field("Right", named("fooBar")),
+                ],
+            ),
+        ],
+        vec![
+            message("SelectedMessage", named("SelectedPayload")),
+            message("OtherMessage", named("OtherPayload")),
+            message("BothMessage", named("BothPayload")),
+        ],
+    )
+}
+
+/// An unselected declaration whose generated name collides must not make the
+/// selected service unready: selected generation never emits it.
+#[test]
+fn an_unselected_converging_declaration_does_not_block_the_selected_service() {
+    let schema = converging_name_schema();
+    let contract = contract(&oms_exchange("e1", "SelectedMessage"));
+    let plan = resolve_service_plan(&contract, &schema).expect("plan should resolve");
+    for language in [BackendLanguage::Rust, BackendLanguage::Cpp] {
+        let result = readiness(
+            &schema,
+            &contract,
+            language,
+            GenerationWorld::ClosedSchemaSet,
+        );
+        assert!(
+            result.is_ready(),
+            "{language:?}: an unselected collision must not reach the selection, got {:?} / {:?}",
+            result.unsupported_types,
+            result.backend_blocker
+        );
+        assert!(result.unsupported_types.is_empty());
+    }
+    // The decisive evidence: generation agrees with the verdict.
+    let projection =
+        project_service_generation_schema(&plan, &schema, GenerationWorld::ClosedSchemaSet)
+            .expect("selected projection should succeed");
+    assert!(
+        !projection
+            .schema()
+            .types
+            .iter()
+            .any(|declaration| declaration.name == qualified("fooBar")),
+        "the projection must not retain the unselected colliding declaration"
+    );
+}
+
+/// Selecting a closure that contains *both* colliding declarations keeps the
+/// collision, so the same projected boundary must reject it.
+#[test]
+fn selecting_both_converging_declarations_is_not_ready() {
+    let schema = converging_name_schema();
+    let contract = contract(&oms_exchange("e1", "BothMessage"));
+    for language in [BackendLanguage::Rust, BackendLanguage::Cpp] {
+        let result = readiness(
+            &schema,
+            &contract,
+            language,
+            GenerationWorld::ClosedSchemaSet,
+        );
+        assert!(
+            !result.is_ready(),
+            "{language:?}: a collision inside the selection must block it"
+        );
+        assert!(
+            result.backend_blocker.is_some(),
+            "{language:?}: the projected name boundary must be reported"
+        );
+    }
+}
+
+/// An unselected declaration with a reserved generated member is a real
+/// full-schema failure that must stay out of the selected report entirely.
+#[test]
+fn an_unselected_reserved_name_declaration_does_not_enter_the_selected_report() {
+    let schema = schema(
+        vec![
+            record(
+                "GoodPayload",
+                vec![field("Value", primitive(PrimitiveKind::Float64))],
+            ),
+            // `struct` is a Rust and C++ keyword; this declaration is not
+            // generable, but it is also not selected.
+            record(
+                "ReservedHolder",
+                vec![field("struct", primitive(PrimitiveKind::Float64))],
+            ),
+        ],
+        vec![
+            message("GoodReport", named("GoodPayload")),
+            message("ReservedReport", named("ReservedHolder")),
+        ],
+    );
+    let contract = contract(&oms_exchange("e1", "GoodReport"));
+    for language in [BackendLanguage::Rust, BackendLanguage::Cpp] {
+        let result = readiness(
+            &schema,
+            &contract,
+            language,
+            GenerationWorld::ClosedSchemaSet,
+        );
+        assert!(result.is_ready(), "{language:?}: selected closure is safe");
+        assert!(
+            !result
+                .unsupported_types
+                .contains(&qualified("ReservedHolder")),
+            "{language:?}: an unselected declaration must never be reported"
+        );
+    }
+}
+
+/// Rust emits its `UnboundedVec` support type only when some member is
+/// unbounded. A selected type *named* `UnboundedVec` therefore collides in the
+/// full schema but not in a projection that drops the unbounded member.
+fn conditional_support_schema() -> SchemaIr {
+    schema(
+        vec![
+            record(
+                "UnboundedVec",
+                vec![field("Value", primitive(PrimitiveKind::Float64))],
+            ),
+            record(
+                "Item",
+                vec![field("Value", primitive(PrimitiveKind::Float64))],
+            ),
+            // The unbounded occurrence lives only here, in the unselected part.
+            TypeDecl {
+                kind: TypeKind::Record {
+                    fields: vec![FieldDecl {
+                        cardinality: Cardinality {
+                            min_occurs: 0,
+                            max_occurs: None,
+                        },
+                        ..field("Items", named("Item"))
+                    }],
+                },
+                ..record("UnboundedHolder", vec![])
+            },
+            record("SafePayload", vec![field("Inner", named("UnboundedVec"))]),
+            // Selecting this one pulls the unbounded member into the
+            // projection, so the support type really is emitted.
+            record(
+                "RepeatingPayload",
+                vec![
+                    field("Inner", named("UnboundedVec")),
+                    field("Holder", named("UnboundedHolder")),
+                ],
+            ),
+        ],
+        vec![
+            message("SafeReport", named("SafePayload")),
+            message("RepeatingReport", named("RepeatingPayload")),
+        ],
+    )
+}
+
+/// The conditional support name is free in a projection that does not emit it.
+#[test]
+fn an_unselected_conditional_support_collision_does_not_block_the_selection() {
+    let schema = conditional_support_schema();
+    let contract = contract(&oms_exchange("e1", "SafeReport"));
+    let result = readiness(
+        &schema,
+        &contract,
+        BackendLanguage::Rust,
+        GenerationWorld::ClosedSchemaSet,
+    );
+    assert!(
+        result.is_ready(),
+        "UnboundedVec is not emitted by this projection, so the name is free: {:?} / {:?}",
+        result.unsupported_types,
+        result.backend_blocker
+    );
+}
+
+/// Control: when the projection *does* contain an unbounded member, the
+/// support type is emitted and the collision is real.
+#[test]
+fn a_selected_conditional_support_collision_remains_not_ready() {
+    let schema = conditional_support_schema();
+    let contract = contract(&oms_exchange("e1", "RepeatingReport"));
+    let result = readiness(
+        &schema,
+        &contract,
+        BackendLanguage::Rust,
+        GenerationWorld::ClosedSchemaSet,
+    );
+    assert!(
+        !result.is_ready(),
+        "the projection emits UnboundedVec, so the selected type collides with it"
+    );
+    assert!(result.backend_blocker.is_some());
+}
+
+/// An Ada Choice alternative named `Kind` collides with the generated
+/// discriminant, and readiness must see it through the projected schema.
+#[test]
+fn a_selected_ada_choice_kind_alternative_is_not_ready() {
+    let schema = schema(
+        vec![
+            TypeDecl {
+                kind: TypeKind::Choice {
+                    alternatives: vec![
+                        field("Kind", primitive(PrimitiveKind::String)),
+                        field("Other", primitive(PrimitiveKind::String)),
+                    ],
+                },
+                ..record("Selection", vec![])
+            },
+            record("SelectionPayload", vec![field("Body", named("Selection"))]),
+        ],
+        vec![message("SelectionReport", named("SelectionPayload"))],
+    );
+    let contract = contract(&oms_exchange("e1", "SelectionReport"));
+    let result = readiness(
+        &schema,
+        &contract,
+        BackendLanguage::Ada,
+        GenerationWorld::ClosedSchemaSet,
+    );
+    assert!(
+        !result.is_ready(),
+        "Ada cannot emit an alternative named Kind beside the discriminant"
+    );
 }

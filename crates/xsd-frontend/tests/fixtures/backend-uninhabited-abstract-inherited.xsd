@@ -1,6 +1,6 @@
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-           xmlns:t="urn:backend-uninhabited-abstract-inherited"
-           targetNamespace="urn:backend-uninhabited-abstract-inherited"
+           xmlns:t="urn:backend-uninhabited-abstractvalue-inherited"
+           targetNamespace="urn:backend-uninhabited-abstractvalue-inherited"
            elementFormDefault="qualified">
   <!-- BaseHolder declares the absent-only optional field; ConcreteHolder
        inherits it through pure Record structural inheritance (Task 018),

@@ -1,0 +1,40 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:preflight:ancestry"
+           targetNamespace="urn:preflight:ancestry"
+           elementFormDefault="qualified">
+  <!-- Generated-name preflight control: an abstract complex type whose local
+       name is a GENERATED SUPPORT type name in a backend.
+
+       `BoundedVec` is emitted unconditionally by backend-rust, and
+       `BoundedVector` by backend-cpp. This base is used only as structural
+       ancestry: no field anywhere is typed as BoundedVec, so there is no
+       abstract value position and no closed-sum wrapper. Every backend folds
+       an abstract Record's fields into its descendants and emits no type for
+       the base itself, so the identifier `BoundedVec` is never occupied by a
+       schema-owned declaration in the generated output.
+
+       Preflight must therefore accept this schema: the only `BoundedVec` in
+       the generated source is the backend's own support type. Registering the
+       raw Schema IR declaration instead reported a phantom collision against
+       a declaration that is never generated. -->
+  <xs:complexType name="BoundedVec" abstract="true">
+    <xs:sequence>
+      <xs:element name="Inherited" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Derived">
+    <xs:complexContent>
+      <xs:extension base="t:BoundedVec">
+        <xs:sequence>
+          <xs:element name="Local" type="xs:string"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="Holder">
+    <xs:sequence>
+      <!-- Derived, never BoundedVec: keeps the base ancestry-only. -->
+      <xs:element name="Item" type="t:Derived"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

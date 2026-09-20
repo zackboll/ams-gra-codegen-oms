@@ -1,11 +1,12 @@
 //! Minimal Ada type generation from normalized schema IR.
 
 use ams_gra_oms_codegen_core::{
-    ADA_PORTABLE_POSITIVE_INDEX_MAX, AbstractValueProjection, Backend, CodegenError,
-    EffectiveValueMember, FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain,
-    TypeEmission, abstract_value_projection_for_ref, effective_choice_alternatives,
-    effective_record_fields, field_storage_semantics, float32_literal, float64_literal,
-    floating_domain, inclusive_integral_domain, plan_type_emissions,
+    ADA_PORTABLE_POSITIVE_INDEX_MAX, AbstractValueProjection, Backend, BackendLanguage,
+    CodegenError, EffectiveValueMember, FloatingDomain, GeneratedFile, GenerationWorld,
+    InclusiveIntegralDomain, TypeEmission, abstract_value_projection_for_ref, backend_preflight,
+    effective_choice_alternatives, effective_record_fields, field_storage_semantics,
+    float32_literal, float64_literal, floating_domain, inclusive_integral_domain,
+    plan_type_emissions, schema_emits_ada_binary_vectors, schema_emits_unbounded_sequence_support,
 };
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind,
@@ -73,8 +74,8 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
         output.push_str("pragma Assertion_Policy (Dynamic_Predicate => Check);\n\n");
     }
     output.push_str("with Ada.Strings.Unbounded;\n");
-    let needs_binary = schema_needs_binary(schema);
-    if schema.types.iter().any(has_ada_unbounded_occurrence) || needs_binary {
+    let needs_binary = schema_emits_ada_binary_vectors(schema);
+    if schema_emits_unbounded_sequence_support(schema) || needs_binary {
         output.push_str("with Ada.Containers.Vectors;\n");
     }
     if schema_needs_interfaces(schema) || needs_binary {
@@ -387,17 +388,13 @@ fn render_declaration(
 }
 
 fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), CodegenError> {
-    let namespace = schema
-        .namespaces
-        .first()
-        .ok_or_else(|| error("Ada generation requires one namespace"))?;
-    if schema.namespaces.len() != 1
-        || schema
-            .types
-            .iter()
-            .any(|declaration| declaration.name.namespace_uri != namespace.uri)
-    {
-        return unsupported("multiple namespaces".to_owned());
+    // Shared global preflight: the single-namespace boundary and generated
+    // host-language name safety, including Ada's case-insensitive identity and
+    // the flat-package helper type names derived from member names.
+    // Capability/readiness analysis consults the same rules, so a READY verdict
+    // cannot disagree with what happens here.
+    if let Err(preflight) = backend_preflight(schema, BackendLanguage::Ada, world) {
+        return unsupported(preflight.to_string());
     }
     for declaration in &schema.types {
         if declaration.is_abstract
@@ -497,12 +494,11 @@ fn validate_choice_alternatives(
     alternatives: Vec<&ams_gra_oms_ir::FieldDecl>,
     world: GenerationWorld,
 ) -> Result<(), CodegenError> {
-    let mut names = std::collections::BTreeSet::new();
+    // Alternative-name collisions are no longer checked here: the shared
+    // backend name preflight owns that policy for every generated region --
+    // including Ada's case-insensitive identity -- so keeping a second
+    // Ada-local copy would let the two drift.
     for alternative in alternatives {
-        let name = ada_identifier(&alternative.name)?.to_ascii_lowercase();
-        if !names.insert(name.clone()) {
-            return unsupported(format!("duplicate Choice alternative identifier {name}"));
-        }
         if alternative.nillable {
             return unsupported(format!("nillable Choice alternative {}", alternative.name));
         }
@@ -612,16 +608,6 @@ fn render_unbounded_helper(
         .expect("writing to String cannot fail");
     }
     Ok(())
-}
-
-fn has_ada_unbounded_occurrence(declaration: &TypeDecl) -> bool {
-    match &declaration.kind {
-        TypeKind::Record { fields } => fields,
-        TypeKind::Choice { alternatives } => alternatives,
-        _ => return false,
-    }
-    .iter()
-    .any(|field| matches!(field.cardinality.shape(), OccurrenceShape::Unbounded { .. }))
 }
 
 fn package_name(schema: &SchemaIr) -> Result<String, CodegenError> {
@@ -892,28 +878,6 @@ fn schema_needs_interfaces(schema: &SchemaIr) -> bool {
             }),
             _ => false,
         })
-}
-
-fn schema_needs_binary(schema: &SchemaIr) -> bool {
-    schema
-        .types
-        .iter()
-        .any(|declaration| matches!(declaration.kind, TypeKind::Primitive(PrimitiveKind::Binary)))
-        || schema
-            .types
-            .iter()
-            .any(|declaration| match &declaration.kind {
-                TypeKind::Record { fields }
-                | TypeKind::Choice {
-                    alternatives: fields,
-                } => fields.iter().any(|field| {
-                    matches!(
-                        field.type_ref.target,
-                        TypeRefTarget::Primitive(PrimitiveKind::Binary)
-                    )
-                }),
-                _ => false,
-            })
 }
 
 fn reject_extra_constraints(constraints: &ConstraintSet, name: &str) -> Result<(), CodegenError> {
@@ -1471,11 +1435,13 @@ end Probe;
         let source =
             generate(&unbounded_schema(), CLOSED).expect("supported minima should generate");
         assert!(source.contains(
-            "subtype Record_ZeroOrMoreNamed_Sequence is Record_ZeroOrMoreNamed_Vectors.Vector;"
+            "subtype Container_ZeroOrMoreNamed_Sequence is Container_ZeroOrMoreNamed_Vectors.Vector;"
         ));
-        assert!(source.contains("array (Positive range 1 .. 1) of Record_OneOrMoreNamed_Item;"));
-        assert!(source.contains("array (Positive range 1 .. 2) of Record_TwoOrMoreNamed_Item;"));
-        assert!(source.contains("Additional : Record_TwoOrMoreNamed_Additional_Vectors.Vector;"));
+        assert!(source.contains("array (Positive range 1 .. 1) of Container_OneOrMoreNamed_Item;"));
+        assert!(source.contains("array (Positive range 1 .. 2) of Container_TwoOrMoreNamed_Item;"));
+        assert!(
+            source.contains("Additional : Container_TwoOrMoreNamed_Additional_Vectors.Vector;")
+        );
         assert!(source.contains("array (Positive range 1 .. 1) of Selection_OneNamed_Item;"));
 
         let mut finite_limit = unbounded_schema();
@@ -1569,11 +1535,17 @@ end Probe;
         };
         alternatives[0].name = "Foo".to_owned();
         alternatives[1].name = "foo".to_owned();
+        // `Foo` and `foo` are one Ada identifier. This is now diagnosed by the
+        // shared backend name preflight rather than by an Ada-local duplicate
+        // check, so the assertion is on the semantic outcome -- the collision
+        // is rejected and both spellings are named -- rather than on the exact
+        // prose of the superseded local diagnostic.
+        let message = generate(&collision, CLOSED)
+            .expect_err("Ada case-insensitive alternative collision must be rejected")
+            .message;
         assert!(
-            generate(&collision, CLOSED)
-                .unwrap_err()
-                .message
-                .contains("duplicate Choice alternative identifier foo")
+            message.contains("\"Foo\"") && message.contains("\"foo\""),
+            "{message}"
         );
 
         let mut nillable = choice_schema();
@@ -2276,6 +2248,292 @@ end Probe;
         )
         .expect("reversed overlays should compose");
         assert!(reversed.contains("      PrivateB_Kind,\n      PrivateA_Kind);"));
+    }
+
+    // -----------------------------------------------------------------
+    // Corrective cleanup -- shared backend generated-name preflight
+    // -----------------------------------------------------------------
+
+    fn preflight_fixture(name: &str) -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures")
+                .join(name),
+        )
+        .expect("preflight fixture should parse")
+    }
+
+    /// Ada identifiers are case-insensitive, so `Track` and `TRACK` are one
+    /// type name and the generated package would declare it twice.
+    #[test]
+    fn case_only_declaration_collision_is_rejected() {
+        let schema = preflight_fixture("backend-name-preflight-ada-case-collision.xsd");
+        let message = generate(&schema, CLOSED)
+            .expect_err("Ada case-only declaration collision must be rejected")
+            .message;
+        assert!(
+            message.contains("\"Track\"") && message.contains("\"TRACK\""),
+            "{message}"
+        );
+    }
+
+    /// An inherited component and a locally declared component that differ
+    /// only by case are one Ada component. Effective structural projection
+    /// accepts them because the XSD names differ.
+    #[test]
+    fn case_only_inherited_component_collision_is_rejected() {
+        let schema = preflight_fixture("backend-name-preflight-inherited-collision.xsd");
+        let message = generate(&schema, CLOSED)
+            .expect_err("Ada case-only component collision must be rejected")
+            .message;
+        assert!(
+            message.contains("track_id") && message.contains("Track_Id"),
+            "{message}"
+        );
+    }
+
+    /// A type named `Record` lands on an Ada reserved word. GNAT rejects the
+    /// previously generated spec with "reserved word \"record\" cannot be used
+    /// as identifier", so this must fail before any output is produced.
+    #[test]
+    fn reserved_word_declaration_is_rejected() {
+        let schema = preflight_fixture("backend-name-preflight-reserved.xsd");
+        let message = generate(&schema, CLOSED)
+            .expect_err("an Ada reserved word declaration must be rejected")
+            .message;
+        assert!(message.contains("reserved word"), "{message}");
+    }
+
+    /// Ada keeps both spellings verbatim and they differ by more than case, so
+    /// the Rust/C++ upper-camel convergence is NOT an Ada collision. Asserting
+    /// this keeps the shared preflight from applying one backend's rule
+    /// everywhere.
+    #[test]
+    fn upper_camel_convergence_is_not_an_ada_collision() {
+        let schema = preflight_fixture("backend-name-preflight-declaration-collision.xsd");
+        assert!(generate(&schema, CLOSED).is_ok());
+    }
+
+    /// The control must still render, and where GNAT is available the
+    /// generated spec must actually compile: a preflight that rejected
+    /// everything would pass the negative tests above while being useless.
+    #[test]
+    fn preflight_control_renders_and_compiles() {
+        let source = generate(
+            &preflight_fixture("backend-name-preflight-control.xsd"),
+            CLOSED,
+        )
+        .expect("safe generated names must render");
+        assert!(source.contains("type TrackReport is record"), "{source}");
+        assert!(source.contains("TrackId"), "{source}");
+
+        use std::fs;
+        use std::process::Command;
+        if Command::new("gnatmake").arg("--version").output().is_err() {
+            // CI installs GNAT and sets this, so a silent skip there is a CI
+            // defect rather than an acceptable outcome.
+            assert!(
+                std::env::var_os("AMS_GRA_REQUIRE_GNAT").is_none(),
+                "AMS_GRA_REQUIRE_GNAT is set but GNAT is not runnable"
+            );
+            return;
+        }
+
+        let directory = std::env::temp_dir().join("ams-gra-oms-preflight-ada-control");
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(&directory).expect("create Ada probe directory");
+        // The fixture namespace `urn:preflight:test` yields package
+        // `Preflight.Test`, so the child unit's file name must match.
+        fs::write(
+            directory.join("preflight.ads"),
+            "package Preflight is\nend Preflight;\n",
+        )
+        .expect("write Ada parent package");
+        fs::write(directory.join("preflight-test.ads"), &source).expect("write generated Ada spec");
+        let status = Command::new("gnatmake")
+            .current_dir(&directory)
+            .args(["-gnatwa", "-c", "preflight-test.ads"])
+            .status()
+            .expect("GNAT reported a version, so it must be runnable");
+        let _ = fs::remove_dir_all(&directory);
+        assert!(status.success(), "generated Ada spec must compile");
+    }
+
+    /// Generated-name preflight tracks *emitted* entities, not raw Schema IR
+    /// declarations. An ancestry-only abstract Record is folded into its
+    /// descendants and never emitted, so its local name does not occupy the
+    /// generated package -- even when that name is `Optional_String`, which
+    /// backend-ada always emits as a support type.
+    ///
+    /// The generated spec must therefore contain exactly one
+    /// `Optional_String` and compile under GNAT.
+    #[test]
+    fn ancestry_only_abstract_support_name_renders_and_compiles_under_gnat() {
+        let schema = preflight_fixture("backend-ancestry-only-ada-support-name.xsd");
+        assert!(
+            ams_gra_oms_codegen_core::validate_backend_names(&schema, BackendLanguage::Ada, CLOSED)
+                .is_ok(),
+            "an abstract base Ada never emits must not reserve Optional_String"
+        );
+        let source = generate(&schema, CLOSED).expect("ancestry-only base must render");
+        // Exactly one declaration of the support type, and none from the
+        // schema-owned abstract base.
+        assert_eq!(
+            source.matches("type Optional_String").count(),
+            1,
+            "{source}"
+        );
+        // The inherited field really is folded into the emitted descendant.
+        assert!(source.contains("type Derived is record"), "{source}");
+        assert!(source.contains("Inherited"), "{source}");
+
+        use std::fs;
+        use std::process::Command;
+        if Command::new("gnatmake").arg("--version").output().is_err() {
+            assert!(
+                std::env::var_os("AMS_GRA_REQUIRE_GNAT").is_none(),
+                "AMS_GRA_REQUIRE_GNAT is set but GNAT is not runnable"
+            );
+            return;
+        }
+        let directory = std::env::temp_dir().join("ams-gra-oms-ancestry-ada-control");
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(&directory).expect("create Ada probe directory");
+        // Namespace `urn:preflight:ancestryada` yields package
+        // `Preflight.Ancestryada`.
+        fs::write(
+            directory.join("preflight.ads"),
+            "package Preflight is\nend Preflight;\n",
+        )
+        .expect("write Ada parent package");
+        fs::write(directory.join("preflight-ancestryada.ads"), &source)
+            .expect("write generated Ada spec");
+        let status = Command::new("gnatmake")
+            .current_dir(&directory)
+            .args(["-gnatwa", "-c", "preflight-ancestryada.ads"])
+            .status()
+            .expect("GNAT reported a version, so it must be runnable");
+        let _ = fs::remove_dir_all(&directory);
+        assert!(status.success(), "generated Ada spec must compile");
+    }
+
+    /// Ada repeated helpers are named after the **emitted** owner. `Base` is
+    /// abstract ancestry that backend-ada never writes, so it emits no
+    /// `Base_Items_Array`; the inherited field's helpers appear under
+    /// `Derived`. A user type spelled `Base_Items_Array` must therefore be
+    /// accepted, render, and compile under GNAT.
+    #[test]
+    fn a_non_emitted_abstract_owner_emits_no_helper_and_compiles_under_gnat() {
+        let schema = preflight_fixture("backend-abstract-helper-owner.xsd");
+        assert!(
+            ams_gra_oms_codegen_core::validate_backend_names(&schema, BackendLanguage::Ada, CLOSED)
+                .is_ok(),
+            "no helper is emitted under a non-emitted abstract Record owner"
+        );
+        let source = generate(&schema, CLOSED).expect("the control schema must render");
+        // The helper Ada really emits carries the emitted descendant's stem.
+        assert!(source.contains("type Derived_Items_Array"), "{source}");
+        assert!(source.contains("type Derived_Items_Sequence"), "{source}");
+        // `Base_Items_Array` appears exactly once, as the user declaration --
+        // never as a generated helper under the non-emitted abstract base.
+        assert_eq!(
+            source.matches("type Base_Items_Array").count(),
+            1,
+            "{source}"
+        );
+        assert!(!source.contains("Base_Items_Sequence"), "{source}");
+        // The abstract base itself is not written at all.
+        assert!(!source.contains("type Base is"), "{source}");
+
+        use std::fs;
+        use std::process::Command;
+        if Command::new("gnatmake").arg("--version").output().is_err() {
+            assert!(
+                std::env::var_os("AMS_GRA_REQUIRE_GNAT").is_none(),
+                "AMS_GRA_REQUIRE_GNAT is set but GNAT is not runnable"
+            );
+            return;
+        }
+        let directory = std::env::temp_dir().join("ams-gra-oms-helper-owner-ada-control");
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(&directory).expect("create Ada probe directory");
+        // Namespace `urn:preflight:helperowner` yields package
+        // `Preflight.Helperowner`.
+        fs::write(
+            directory.join("preflight.ads"),
+            "package Preflight is\nend Preflight;\n",
+        )
+        .expect("write Ada parent package");
+        fs::write(directory.join("preflight-helperowner.ads"), &source)
+            .expect("write generated Ada spec");
+        let status = Command::new("gnatmake")
+            .current_dir(&directory)
+            .args(["-gnatwa", "-c", "preflight-helperowner.ads"])
+            .status()
+            .expect("GNAT reported a version, so it must be runnable");
+        let _ = fs::remove_dir_all(&directory);
+        assert!(status.success(), "generated Ada spec must compile");
+    }
+
+    /// The counterpart: the inherited field's helper really is emitted under
+    /// the concrete descendant, so colliding with *that* spelling is rejected.
+    /// This proves the corrective did not simply stop validating inherited
+    /// members.
+    #[test]
+    fn an_inherited_helper_under_the_emitted_descendant_is_still_rejected() {
+        let schema = preflight_fixture("backend-abstract-helper-owner-collision.xsd");
+        let message = generate(&schema, CLOSED)
+            .expect_err("the real emitted helper name must still collide")
+            .message;
+        assert!(message.contains("Derived_Items_Array"), "{message}");
+    }
+
+    /// Task 026 counterpart under Ada: an elided zero-descendant target
+    /// reserves neither its own name nor an `Optional_String_Kind` companion,
+    /// so the generated support type keeps the identifier.
+    #[test]
+    fn task026_elided_target_does_not_reserve_its_own_ada_name() {
+        let schema = preflight_fixture("backend-elided-target-support-name.xsd");
+        assert!(
+            ams_gra_oms_codegen_core::validate_backend_names(&schema, BackendLanguage::Ada, CLOSED)
+                .is_ok(),
+            "a Task 026 elided target must not reserve its own Ada name"
+        );
+        let source = generate(&schema, CLOSED).expect("elided target must render");
+        assert_eq!(
+            source.matches("type Optional_String").count(),
+            1,
+            "{source}"
+        );
+        // No `_Kind` companion is manufactured for an elided target.
+        assert!(!source.contains("Optional_String_Kind"), "{source}");
+
+        use std::fs;
+        use std::process::Command;
+        if Command::new("gnatmake").arg("--version").output().is_err() {
+            assert!(
+                std::env::var_os("AMS_GRA_REQUIRE_GNAT").is_none(),
+                "AMS_GRA_REQUIRE_GNAT is set but GNAT is not runnable"
+            );
+            return;
+        }
+        let directory = std::env::temp_dir().join("ams-gra-oms-elided-ada-control");
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(&directory).expect("create Ada probe directory");
+        fs::write(
+            directory.join("preflight.ads"),
+            "package Preflight is\nend Preflight;\n",
+        )
+        .expect("write Ada parent package");
+        fs::write(directory.join("preflight-elided.ads"), &source)
+            .expect("write generated Ada spec");
+        let status = Command::new("gnatmake")
+            .current_dir(&directory)
+            .args(["-gnatwa", "-c", "preflight-elided.ads"])
+            .status()
+            .expect("GNAT reported a version, so it must be runnable");
+        let _ = fs::remove_dir_all(&directory);
+        assert!(status.success(), "generated Ada spec must compile");
     }
 
     /// Section 44: a schema with no abstract value reference must produce

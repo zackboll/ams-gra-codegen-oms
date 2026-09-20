@@ -23,8 +23,9 @@
 
 use crate::coverage::DeclarationRenderability;
 use crate::{
-    BackendLanguage, CoverageAnalysis, CoverageError, GenerationWorld, ServicePlan,
-    ServicePlanError,
+    BackendLanguage, BackendPreflightError, CoverageAnalysis, CoverageError, GenerationWorld,
+    PlanBindingMismatch, ServiceGenerationError, ServicePlan, ServicePlanError, backend_preflight,
+    project_service_generation_schema,
 };
 use ams_gra_oms_ir::{PrimitiveKind, QualifiedName, SchemaIr, TypeRefTarget};
 use std::collections::BTreeSet;
@@ -49,6 +50,26 @@ pub enum ServiceReadinessError {
         /// What kind of selection referenced it.
         role: MismatchRole,
     },
+    /// The supplied schema declares every selected identity, but not with the
+    /// same semantics the plan was resolved against.
+    ///
+    /// Identity-only checks cannot see this: the message and type names all
+    /// match while a payload type, declaration body, or a dependency's
+    /// constraints differ. Detected by [`ServicePlan::verify_schema_binding`].
+    PlanBinding(PlanBindingMismatch),
+    /// Projecting the selected model onto a generable schema failed for a
+    /// reason that is an **integrity defect**, not an ordinary backend
+    /// capability limit.
+    ///
+    /// Readiness previously ended its projection match with `Err(_) => None`,
+    /// reasoning that a projection failure is already visible as a
+    /// per-declaration blocker. That holds for abstract-value capability
+    /// failures, but `ProjectedSchemaInvalid` means the projection dropped a
+    /// required dependency and `ProjectedEmissionPlan` can report a planning
+    /// failure with no per-declaration counterpart. Silently mapping either
+    /// to "no backend blocker" could leave a false READY, so they are
+    /// propagated as typed errors instead.
+    Projection(Box<ServiceGenerationError>),
 }
 
 /// Which part of the selection referred to an absent schema identity.
@@ -83,11 +104,22 @@ impl fmt::Display for ServiceReadinessError {
                 missing.namespace_uri,
                 missing.local_name
             ),
+            Self::PlanBinding(mismatch) => mismatch.fmt(formatter),
+            Self::Projection(error) => write!(
+                formatter,
+                "selected-service projection failed while measuring readiness: {error}"
+            ),
         }
     }
 }
 
 impl std::error::Error for ServiceReadinessError {}
+
+impl From<PlanBindingMismatch> for ServiceReadinessError {
+    fn from(mismatch: PlanBindingMismatch) -> Self {
+        Self::PlanBinding(mismatch)
+    }
+}
 
 impl From<ServicePlanError> for ServiceReadinessError {
     fn from(error: ServicePlanError) -> Self {
@@ -167,6 +199,20 @@ pub struct ServiceBackendReadiness {
     /// Blocked selected messages, in **contract first-occurrence order**,
     /// matching [`ServicePlan::selected_messages`].
     pub blocked_messages: Vec<BlockedMessage>,
+    /// A global backend precondition the **projected** selected schema
+    /// violates, if any.
+    ///
+    /// Per-declaration capability is not the whole story: two individually
+    /// renderable selected declarations can still be ungenerable together,
+    /// because their generated names collide or because the selected closure
+    /// spans more than one namespace. Those are properties of the projected
+    /// schema as a whole, so they are measured on exactly the input that
+    /// selected-service generation would hand to the backend.
+    ///
+    /// This is a backend **capability** blocker, not a claim that the schema
+    /// is malformed; multi-namespace IR is valid input the backends simply do
+    /// not generate yet.
+    pub backend_blocker: Option<BackendPreflightError>,
 }
 
 impl ServiceBackendReadiness {
@@ -177,9 +223,12 @@ impl ServiceBackendReadiness {
     /// exchanges are genuine parts of a service interface that simply require
     /// no UCI type model, so they can neither satisfy nor fail UCI type
     /// readiness.
+    /// A global backend precondition violation makes the service NOT READY
+    /// even when every selected declaration is individually renderable,
+    /// because generation of that same projected schema would fail.
     #[must_use]
     pub fn is_ready(&self) -> bool {
-        self.blocked_messages.is_empty()
+        self.blocked_messages.is_empty() && self.backend_blocker.is_none()
     }
 }
 
@@ -190,19 +239,21 @@ impl ServiceBackendReadiness {
 /// detected and reported rather than panicking.
 ///
 /// Exactly one [`CoverageAnalysis`] and exactly one baseline renderability
-/// snapshot are built per call, and both are then reused for every selected
-/// type and message query. No hypothetical feature combinations are evaluated,
+/// snapshot are built per call -- over the projected selected schema when
+/// projection succeeds, over `schema` only when it does not -- and both are
+/// then reused for every selected type and message query. The projection
+/// itself is likewise computed once, not per declaration or per message.
+/// No hypothetical feature combinations are evaluated,
 /// so this is not a disguised full coverage report: nothing here reaches
 /// `CoverageAnalysis::report` or `CoverageAnalysis::impact`.
 ///
-/// Measured against authoritative UCI 2.5 (5,557 types), the cost of one call
-/// is almost entirely [`CoverageAnalysis::new`] -- roughly 244 s of a ~255 s
-/// total, spent building the abstract-value topology and elision indexes over
-/// the whole schema. The parts Task 031 added are negligible beside it: one
-/// complete baseline renderability snapshot plus every message closure measures
-/// about 46 ms, and plan resolution about 13 us. Readiness is therefore already
-/// at the floor imposed by constructing the shared analysis once; the remaining
-/// cost is pre-existing whole-schema indexing, not per-selected-type work.
+/// The cost of one call is almost entirely [`CoverageAnalysis::new`], spent
+/// building the abstract-value topology and elision indexes. Because that
+/// analysis is now built over the **projected** schema rather than the whole
+/// schema, a selected service pays for its own selection rather than for all
+/// of UCI: full UCI 2.5 service-check measures about 5.9 s per language,
+/// down from ~15 s when the analysis was whole-schema. Plan resolution and the
+/// renderability snapshot remain negligible beside it.
 ///
 /// # Errors
 ///
@@ -215,14 +266,85 @@ pub fn analyze_service_readiness(
     language: BackendLanguage,
     world: GenerationWorld,
 ) -> Result<ServiceBackendReadiness, ServiceReadinessError> {
+    // Wrong-schema reuse is diagnosed FIRST, once, by the single shared
+    // binding mechanism. Doing it up front means every lookup below is known
+    // to be against the schema the plan was resolved against, so the
+    // identity-only fallbacks that remain are unreachable defence in depth
+    // rather than the primary check.
+    plan.verify_schema_binding(schema)?;
+
+    // Task 030's single dependency model, reused rather than re-implemented.
+    // Counts and ordering are a fact about the *contract*, so they come from
+    // the original schema even when capability is measured on the projection.
+    let closure = plan.selected_type_closure(schema)?;
+
+    // Projection runs FIRST, because it decides which schema the capability
+    // questions below are legitimately asked about.
+    //
+    // # Why capability cannot be measured on the full schema
+    //
+    // Generated-name safety and the global backend preconditions are
+    // *scope-dependent*: they are relationships between the declarations that
+    // are actually emitted together, not properties of a declaration alone.
+    // Measuring them over the whole schema imported failures from
+    // declarations selected generation removes. A selected `foo_bar` beside
+    // an unselected `fooBar` both generate `FooBar`, so full-schema analysis
+    // marks both unsafe -- yet the projection contains only one of them and
+    // generates cleanly. Readiness would report NOT READY for a service
+    // `service-generate` then produced successfully, which is precisely the
+    // readiness/generation disagreement this module exists to prevent.
+    //
+    // The same applies to conditional generated support: a schema whose
+    // *unselected* part has an unbounded member makes Rust emit
+    // `UnboundedVec`, but if the projection drops that member the support
+    // type is not emitted and the spelling is free again.
+    //
+    // So whenever projection succeeds, the projected schema is authoritative:
+    // it is byte-for-byte the schema `service-generate` hands to the backend.
+    let projection = match project_service_generation_schema(plan, schema, world) {
+        Ok(projection) => Ok(projection),
+        Err(ServiceGenerationError::Plan(error)) => return Err(error.into()),
+        Err(ServiceGenerationError::PlanSchemaMismatch { missing, role }) => {
+            return Err(ServiceReadinessError::PlanSchemaMismatch { missing, role });
+        }
+        Err(ServiceGenerationError::PlanBinding(mismatch)) => {
+            return Err(ServiceReadinessError::PlanBinding(mismatch));
+        }
+        // An abstract structural value that cannot be represented under the
+        // asserted world is an ordinary *capability* limit, not a naming or
+        // global-precondition failure. No projected schema exists to analyze,
+        // so attribution falls back to the original schema, which still
+        // explains the blocker deterministically. Retained below.
+        Err(error @ ServiceGenerationError::AbstractValue(_)) => Err(error),
+        // The projected subset failed `SchemaIr::validate`, meaning projection
+        // dropped a required named dependency. That is an internal defect, not
+        // a statement about backend capability, so it must never be softened
+        // into an ordinary NOT READY.
+        error @ Err(ServiceGenerationError::ProjectedSchemaInvalid(_))
+        // Emission planning over the projected schema failed. Unlike the
+        // abstract-value case this has no guaranteed per-declaration
+        // counterpart, so it is propagated rather than assumed duplicated.
+        | error @ Err(ServiceGenerationError::ProjectedEmissionPlan(_)) => {
+            return Err(ServiceReadinessError::Projection(Box::new(
+                error.expect_err("matched on an Err arm"),
+            )));
+        }
+    };
+
+    // Exactly one schema is analyzed per call: the projection when it exists,
+    // the original only when projection produced none. Building both would
+    // double the dominant cost (`CoverageAnalysis::new`) for no added signal.
+    let analyzed_schema = match &projection {
+        Ok(projection) => projection.schema(),
+        Err(_) => schema,
+    };
+
     // One analysis, one snapshot, reused below. Task 026 showed what repeated
     // whole-schema scans cost; nothing in this function may rebuild either.
-    let analysis = CoverageAnalysis::new(schema, world)?;
+    let analysis = CoverageAnalysis::new(analyzed_schema, world)?;
     let renderability = analysis.baseline_renderability(language);
     let baseline = BTreeSet::new();
 
-    // Task 030's single dependency model, reused rather than re-implemented.
-    let closure = plan.selected_type_closure(schema)?;
     let mut unsupported_types = Vec::new();
     for declaration in &closure {
         let index = declaration_index(&analysis, &declaration.name, MismatchRole::TypeDeclaration)?;
@@ -238,7 +360,11 @@ pub fn analyze_service_readiness(
     // repeated exchange selections of one message are analyzed once and appear
     // at most once here.
     for selected in plan.selected_messages() {
-        let declaration = schema
+        // Looked up in the analyzed schema so the message declaration and the
+        // renderability snapshot describe the same type universe. Projection
+        // retains every selected message verbatim, so this resolves to the
+        // same declaration the original schema carries.
+        let declaration = analyzed_schema
             .messages
             .iter()
             .find(|message| message.name == selected.name)
@@ -275,6 +401,44 @@ pub fn analyze_service_readiness(
         });
     }
 
+    // Global backend preconditions, measured on exactly the schema that
+    // selected-service generation would hand to the backend. Using the
+    // projection is what makes readiness and generation agree: checking the
+    // *full* schema instead would wrongly block a service whose selected
+    // closure narrows to one namespace or drops a colliding declaration, and
+    // checking nothing at all is the historical defect that let a
+    // multi-namespace selection report READY.
+    let backend_blocker = match projection {
+        // Measured in the same world the readiness verdict is stated for, so
+        // a world-sensitive generated name is never reserved here that the
+        // requested world could not emit.
+        Ok(projection) => backend_preflight(projection.schema(), language, world).err(),
+        // An abstract structural value that cannot be represented under the
+        // asserted world is an ordinary *capability* limit, and it is already
+        // reported above as a per-declaration or per-message blocker: the
+        // same `CoverageAnalysis` rules that reject the declaration here also
+        // reject the projection there. Relabelling it as a global precondition
+        // would double-report one cause.
+        //
+        // That invariant is asserted rather than assumed: if this arm is ever
+        // reached while the readiness result would still be READY, the two
+        // analyses have drifted and the debug build fails loudly instead of
+        // emitting a false READY.
+        Err(error) => {
+            debug_assert!(
+                !unsupported_types.is_empty() || !blocked_messages.is_empty(),
+                "an abstract-value projection failure must already appear as a \
+                 per-declaration or per-message blocker, but readiness found none: {error}"
+            );
+            // Fail closed even in release: if the invariant does not hold,
+            // reporting no blocker would be a false READY.
+            if unsupported_types.is_empty() && blocked_messages.is_empty() {
+                return Err(ServiceReadinessError::Projection(Box::new(error)));
+            }
+            None
+        }
+    };
+
     let selected_types_total = closure.len();
     let selected_messages_total = plan.selected_messages().len();
     Ok(ServiceBackendReadiness {
@@ -286,6 +450,7 @@ pub fn analyze_service_readiness(
         selected_messages_renderable: selected_messages_total - blocked_messages.len(),
         unsupported_types,
         blocked_messages,
+        backend_blocker,
     })
 }
 
