@@ -1873,6 +1873,48 @@ fn main() {
         assert!(source.contains("pub struct Holder {"), "{source}");
     }
 
+    /// Error ownership: when emission planning fails there is no generated
+    /// surface, so name preflight must defer and the semantic diagnostic must
+    /// be the one the backend reports.
+    ///
+    /// The fixture's abstract value target is spelled `BoundedVec`, exactly
+    /// the Rust support type. The previous raw-schema fallback manufactured
+    /// that collision and reported it *instead of* the real open-world
+    /// failure, describing output that can never exist.
+    #[test]
+    fn open_world_abstract_value_failure_is_not_masked_by_a_name_collision() {
+        let schema = preflight_fixture("backend-open-world-abstract-value-support-name.xsd");
+
+        // Name preflight has no opinion: there is no emitted surface.
+        assert!(
+            ams_gra_oms_codegen_core::validate_backend_names(&schema, BackendLanguage::Rust, OPEN)
+                .is_ok(),
+            "a failed emission plan must not produce a name verdict"
+        );
+
+        // Generation reports the semantic abstract-value failure verbatim.
+        let message = generate(&schema, OPEN)
+            .expect_err("an open-world abstract value must fail")
+            .message;
+        assert!(
+            message.contains("open-extensions")
+                && message.contains("external derived types cannot be represented"),
+            "the semantic open-world diagnostic must be authoritative: {message}"
+        );
+        assert!(
+            !message.contains("generated top-level scope"),
+            "a naming diagnostic must not stand in for the semantic failure: {message}"
+        );
+
+        // Under the closed world the wrapper genuinely is emitted and really
+        // does take `BoundedVec`, so the collision there is real. This is what
+        // keeps the deferral from becoming a blanket exemption.
+        let closed = generate(&schema, CLOSED)
+            .expect_err("the emitted wrapper really does collide with the support type")
+            .message;
+        assert!(closed.contains("BoundedVec"), "{closed}");
+    }
+
     /// Section 44: a schema with no abstract value reference must produce
     /// byte-identical output under both worlds.
     #[test]

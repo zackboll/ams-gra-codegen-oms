@@ -1,0 +1,44 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:preflight:helperowner"
+           targetNamespace="urn:preflight:helperowner"
+           elementFormDefault="qualified">
+  <!-- Counterpart of backend-abstract-helper-owner.xsd.
+
+       Identical in every respect except the user type's spelling: here it is
+       `Derived_Items_Array`, which backend-ada really does emit as the helper
+       for the inherited repeated field under its emitted owner. That is a
+       genuine flat-package collision and must be rejected.
+
+       The pair proves the corrective is scope-accurate rather than simply
+       skipping inherited members. -->
+  <xs:complexType name="Base" abstract="true">
+    <xs:sequence>
+      <xs:element name="Items" type="t:Item" minOccurs="0" maxOccurs="4"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Derived">
+    <xs:complexContent>
+      <xs:extension base="t:Base">
+        <xs:sequence>
+          <xs:element name="Local" type="xs:string"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="Item">
+    <xs:sequence>
+      <xs:element name="Label" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <!-- The spelling Ada actually emits for the inherited field's helper. -->
+  <xs:complexType name="Derived_Items_Array">
+    <xs:sequence>
+      <xs:element name="Marker" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Holder">
+    <xs:sequence>
+      <xs:element name="Item" type="t:Derived"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

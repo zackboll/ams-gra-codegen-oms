@@ -1,0 +1,48 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:preflight:helperowner"
+           targetNamespace="urn:preflight:helperowner"
+           elementFormDefault="qualified">
+  <!-- Ada repeated-helper owner control.
+
+       `Base` is abstract and used only as structural ancestry, so backend-ada
+       returns early for it and writes no type. Its repeated `Items` field is
+       folded into the emitted `Derived`, and the helper types Ada actually
+       writes for it are therefore named after the *emitted* owner:
+       `Derived_Items_Array` and `Derived_Items_Sequence`.
+
+       `Base_Items_Array` is declared here as an ordinary user type precisely
+       because nothing emits that spelling. Preflight must accept the schema,
+       generation must succeed, and GNAT must compile the result. The generated
+       spec must contain `Derived_Items_Array` (the real helper) and must
+       contain `Base_Items_Array` only once, as this user declaration. -->
+  <xs:complexType name="Base" abstract="true">
+    <xs:sequence>
+      <xs:element name="Items" type="t:Item" minOccurs="0" maxOccurs="4"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Derived">
+    <xs:complexContent>
+      <xs:extension base="t:Base">
+        <xs:sequence>
+          <xs:element name="Local" type="xs:string"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="Item">
+    <xs:sequence>
+      <xs:element name="Label" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <!-- The user type whose spelling would collide with a phantom helper. -->
+  <xs:complexType name="Base_Items_Array">
+    <xs:sequence>
+      <xs:element name="Marker" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Holder">
+    <xs:sequence>
+      <xs:element name="Item" type="t:Derived"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

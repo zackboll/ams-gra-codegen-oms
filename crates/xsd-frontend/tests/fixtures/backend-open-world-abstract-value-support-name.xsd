@@ -1,0 +1,40 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:preflight:openworldname"
+           targetNamespace="urn:preflight:openworldname"
+           elementFormDefault="qualified">
+  <!-- Error-ownership control for the open world.
+
+       `BoundedVec` is an abstract structural type that is demanded by value
+       through `Holder.Value`, and it deliberately carries the exact local name
+       backend-rust always emits as its generated support type.
+
+       Under OpenExtensions no wrapper can exist: external derived types cannot
+       be represented, so emission planning fails and there is no generated
+       surface at all. The authoritative diagnostic is that semantic
+       abstract-value failure. Name preflight must stay silent rather than
+       manufacture a `BoundedVec` collision against output the open world can
+       never produce.
+
+       Under the closed world the wrapper *is* emitted and really does take the
+       identifier, so the collision there is genuine. The same fixture proves
+       both halves of the boundary. -->
+  <xs:complexType name="BoundedVec" abstract="true">
+    <xs:sequence>
+      <xs:element name="Common" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Concrete">
+    <xs:complexContent>
+      <xs:extension base="t:BoundedVec">
+        <xs:sequence>
+          <xs:element name="Local" type="xs:string"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="Holder">
+    <xs:sequence>
+      <xs:element name="Value" type="t:BoundedVec"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

@@ -2417,6 +2417,77 @@ end Probe;
         assert!(status.success(), "generated Ada spec must compile");
     }
 
+    /// Ada repeated helpers are named after the **emitted** owner. `Base` is
+    /// abstract ancestry that backend-ada never writes, so it emits no
+    /// `Base_Items_Array`; the inherited field's helpers appear under
+    /// `Derived`. A user type spelled `Base_Items_Array` must therefore be
+    /// accepted, render, and compile under GNAT.
+    #[test]
+    fn a_non_emitted_abstract_owner_emits_no_helper_and_compiles_under_gnat() {
+        let schema = preflight_fixture("backend-abstract-helper-owner.xsd");
+        assert!(
+            ams_gra_oms_codegen_core::validate_backend_names(&schema, BackendLanguage::Ada, CLOSED)
+                .is_ok(),
+            "no helper is emitted under a non-emitted abstract Record owner"
+        );
+        let source = generate(&schema, CLOSED).expect("the control schema must render");
+        // The helper Ada really emits carries the emitted descendant's stem.
+        assert!(source.contains("type Derived_Items_Array"), "{source}");
+        assert!(source.contains("type Derived_Items_Sequence"), "{source}");
+        // `Base_Items_Array` appears exactly once, as the user declaration --
+        // never as a generated helper under the non-emitted abstract base.
+        assert_eq!(
+            source.matches("type Base_Items_Array").count(),
+            1,
+            "{source}"
+        );
+        assert!(!source.contains("Base_Items_Sequence"), "{source}");
+        // The abstract base itself is not written at all.
+        assert!(!source.contains("type Base is"), "{source}");
+
+        use std::fs;
+        use std::process::Command;
+        if Command::new("gnatmake").arg("--version").output().is_err() {
+            assert!(
+                std::env::var_os("AMS_GRA_REQUIRE_GNAT").is_none(),
+                "AMS_GRA_REQUIRE_GNAT is set but GNAT is not runnable"
+            );
+            return;
+        }
+        let directory = std::env::temp_dir().join("ams-gra-oms-helper-owner-ada-control");
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(&directory).expect("create Ada probe directory");
+        // Namespace `urn:preflight:helperowner` yields package
+        // `Preflight.Helperowner`.
+        fs::write(
+            directory.join("preflight.ads"),
+            "package Preflight is\nend Preflight;\n",
+        )
+        .expect("write Ada parent package");
+        fs::write(directory.join("preflight-helperowner.ads"), &source)
+            .expect("write generated Ada spec");
+        let status = Command::new("gnatmake")
+            .current_dir(&directory)
+            .args(["-gnatwa", "-c", "preflight-helperowner.ads"])
+            .status()
+            .expect("GNAT reported a version, so it must be runnable");
+        let _ = fs::remove_dir_all(&directory);
+        assert!(status.success(), "generated Ada spec must compile");
+    }
+
+    /// The counterpart: the inherited field's helper really is emitted under
+    /// the concrete descendant, so colliding with *that* spelling is rejected.
+    /// This proves the corrective did not simply stop validating inherited
+    /// members.
+    #[test]
+    fn an_inherited_helper_under_the_emitted_descendant_is_still_rejected() {
+        let schema = preflight_fixture("backend-abstract-helper-owner-collision.xsd");
+        let message = generate(&schema, CLOSED)
+            .expect_err("the real emitted helper name must still collide")
+            .message;
+        assert!(message.contains("Derived_Items_Array"), "{message}");
+    }
+
     /// Task 026 counterpart under Ada: an elided zero-descendant target
     /// reserves neither its own name nor an `Optional_String_Kind` companion,
     /// so the generated support type keeps the identifier.
