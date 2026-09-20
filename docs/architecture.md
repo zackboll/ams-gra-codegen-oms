@@ -635,3 +635,89 @@ schema set containing some private descendants still treats abstract-value
 descendant sets as non-exhaustive. This is emphatically not a runtime extension
 registry; no runtime type registration, unknown-subtype representation, or
 `xsi:type` dispatch exists.
+
+## 17. Service Contract as a first-class input
+
+Sections 1-16 treat the UCI/OMS XSD set as the only authoritative input. That
+set describes everything UCI *can* express; a given mission service uses a
+small fraction of it. Task 030 adds the second authoritative input: a portable
+AMS GRA Service Contract describing what a particular service *does* use.
+
+```text
+                         Service Contract
+                         "what is used"
+                               |
+                               v
+                         Contract IR
+                               |
+                               |
+ UCI baseline XSD ------------+
+ UCI overlay XSDs ------------+
+                               |
+                               v
+                         Schema IR
+                               |
+                               v
+                     Resolved Service Plan
+                               |
+                future contract-driven codegen
+                    /          |          \
+                  Ada         Rust         C++
+```
+
+The two inputs answer different questions and neither can answer the other's.
+The XSD knows a message exists, its qualified name, its payload type, and that
+payload's transitive type graph. The contract knows which functions exist,
+which Capability owns each, and each exchange's direction, mandate, topic, and
+timing. The Resolved Service Plan owns **only the join** between them.
+
+### Crate boundary
+
+```text
+service-contract  ->  (nothing else in this workspace)
+codegen-core      ->  ir, service-contract
+cli               ->  codegen-core, xsd-frontend, service-contract, backends
+```
+
+`ams-gra-oms-service-contract` deliberately depends on no frontend, backend,
+CLI, or runtime code, so the portable contract format cannot acquire a hidden
+XSD dependency. The join lives in `codegen-core` rather than in a backend or
+the CLI, because the plan is language-neutral and all three future service
+backends must consume the same one. No language backend parses YAML or JSON.
+
+### One dependency model
+
+The contract-selected type closure follows the same semantic dependency
+categories as declaration ordering and coverage closure analysis: named base
+types, aliases, record fields, choice alternatives, and list item types. Those
+categories are defined once, in `codegen_core::direct_named_dependencies`, and
+all three consumers call it. Task 030 refactored the previously duplicated
+copy in `coverage.rs` into a thin canonical-ordering wrapper over that single
+model, so the three cannot drift into disagreeing about what a type depends
+on.
+
+### World independence
+
+Contract validity and message/type resolution are independent of
+`GenerationWorld`. Which messages and types a contract selects is a fact about
+the contract and the schema; whether a backend can render that selection under
+`ClosedSchemaSet` or `OpenExtensions` is a separate policy question. The
+`service-plan` command therefore takes no `--world`, exactly as `validate`
+does not.
+
+### Relationship to section 16
+
+Contract-declared `uci_extension_schemas` entries are logical **identifiers**,
+not paths. The CLI requires an explicit `--extension ID=PATH` pair per
+declared identifier and then calls section 16's existing
+`load_schema_set_with_overlays` with the paths ordered by the **contract's**
+declaration order. Section 16's rule that overlay order never implies
+duplicate-declaration precedence is unchanged: overlays remain additive, and
+duplicates still fail.
+
+The key difference from section 16's `--overlay`: there, the command line is
+the explicit ordering source because nothing else is. Here, something else is
+-- the contract -- and it is more reproducible than shell history, so it wins.
+
+Full detail: `docs/service-contract-integration.md` and
+`docs/adr/0005-service-contract-codegen-plan.md`.

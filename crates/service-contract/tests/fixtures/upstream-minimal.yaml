@@ -1,0 +1,36 @@
+# PROVENANCE: copied verbatim (body unchanged below this header) from
+#   zackboll/ams-gra-service-contract
+#   commit 4ea5be8dd36e9695bd58f2c36c6b3dd8075de249
+#   path: examples/minimal.yaml
+#
+# This is an authoring EXAMPLE from the portable-contract project, not a
+# completion-tooling artifact: no profile, worksheet, decisions, mapping, or
+# scaffold file is consumed by OMS-codegen. It exists here so this repository
+# can prove it parses a contract authored by the upstream project, as a
+# cross-repository compatibility check on contract_version 0.1.
+contract_version: "0.1"
+
+service:
+  name: example-service
+  version: "0.1.0"
+  kind: service
+  description: Minimal example used to demonstrate the v0.1 authoring surface.
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: position-input-example
+    name: Position Input Example
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: position-report-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: PositionReport
+        topic: PositionReport
+        timing:
+          kind: asynchronous

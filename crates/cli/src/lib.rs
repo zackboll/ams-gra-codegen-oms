@@ -3,7 +3,13 @@
 use ams_gra_oms_backend_ada::AdaBackend;
 use ams_gra_oms_backend_cpp::CppBackend;
 use ams_gra_oms_backend_rust::RustBackend;
-use ams_gra_oms_codegen_core::{Backend, CoverageAnalysis, GeneratedFile, GenerationWorld};
+use ams_gra_oms_codegen_core::{
+    Backend, CoverageAnalysis, GeneratedFile, GenerationWorld, ResolvedExchange, ServicePlan,
+    resolve_service_plan,
+};
+// Only the CLI's own loading path touches contract files; no backend parses
+// YAML, and the resolution itself lives in codegen-core.
+use ams_gra_oms_service_contract::load_contract;
 use ams_gra_oms_xsd_frontend::load_schema_set_with_overlays;
 use std::collections::BTreeSet;
 use std::ffi::{OsStr, OsString};
@@ -20,11 +26,27 @@ USAGE:
     ams-gra-codegen-oms validate --schema PATH [--overlay PATH]...
     ams-gra-codegen-oms coverage --schema PATH [--overlay PATH]... --world WORLD
     ams-gra-codegen-oms generate --schema PATH [--overlay PATH]... --language LANGUAGE --output DIR --world WORLD
+    ams-gra-codegen-oms service-plan --schema PATH --contract PATH [--extension ID=PATH]...
 
 COMMANDS:
-    validate    Load and validate an XSD schema set
-    coverage    Report deterministic IR and backend coverage counts
-    generate    Generate source files from an XSD schema set
+    validate        Load and validate an XSD schema set
+    coverage        Report deterministic IR and backend coverage counts
+    generate        Generate source files from an XSD schema set
+    service-plan    Resolve a portable Service Contract against a schema set
+
+SERVICE CONTRACT PLANNING:
+    'service-plan' joins a portable AMS GRA Service Contract (v0.1 YAML or
+    JSON) to a normalized UCI schema set and reports the resolved plan. It
+    performs NO filesystem writes and takes no --language, --output, or
+    --world: contract validity and message/type resolution are independent of
+    backend rendering policy.
+
+    A contract's standards.uci_extension_schemas entries are logical extension
+    IDENTIFIERS, not paths. Supply each one explicitly as
+    --extension ID=PATH. The set must match the contract exactly: a declared
+    extension with no mapping, an undeclared extension, and a duplicate
+    extension ID all fail. Overlay composition order follows the CONTRACT's
+    declaration order, not the order the options appear on the command line.
 
 SCHEMA OVERLAYS:
     'validate', 'coverage', and 'generate' accept a repeatable --overlay PATH:
@@ -61,7 +83,9 @@ GENERATION WORLDS:
                         unaffected.
 
     'validate' takes no --world: schema validity is independent of generation
-    policy.
+    policy. 'service-plan' takes no --world either, for the same reason: which
+    UCI messages and types a contract selects is a fact about the contract and
+    the schema, not about a backend's rendering policy.
 
 OPTIONS:
     -h, --help       Print help
@@ -149,6 +173,32 @@ OPTIONS:
                          and never implies a world
     -w, --world WORLD    Required generation world policy
     -h, --help           Print help
+"#;
+
+const SERVICE_PLAN_HELP: &str = r#"ams-gra-codegen-oms service-plan
+
+Resolve a portable AMS GRA Service Contract against an XSD schema set and
+print the resolved Service Plan. Writes no files.
+
+USAGE:
+    ams-gra-codegen-oms service-plan --schema PATH --contract PATH [--extension ID=PATH]...
+
+OPTIONS:
+    -s, --schema PATH           Root XSD document
+    -c, --contract PATH         Portable Service Contract (.yaml, .yml, .json)
+        --extension ID=PATH     Repeatable explicit mapping from a contract
+                                standards.uci_extension_schemas identifier to a
+                                local overlay schema root. The supplied set must
+                                match the contract's declared set exactly;
+                                overlays are composed in CONTRACT declaration
+                                order, not command-line order
+    -h, --help                  Print help
+
+NOTES:
+    Contract extension entries are logical identifiers, not paths, so they are
+    never guessed at as filesystem locations. This command takes no --world:
+    contract validity and UCI message/type resolution do not depend on the
+    closed-schema/open-extensions generation policy.
 "#;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -267,6 +317,14 @@ enum Command {
         output: PathBuf,
         world: GenerationWorld,
     },
+    ServicePlan {
+        schema: PathBuf,
+        contract: PathBuf,
+        /// Explicit contract-extension-identifier to overlay-path mappings, in
+        /// command-line order. Command-line order is retained only for
+        /// diagnostics; semantic composition order comes from the contract.
+        extensions: Vec<(String, PathBuf)>,
+    },
 }
 
 /// Parse and execute CLI arguments, excluding the executable name.
@@ -294,6 +352,11 @@ where
             output,
             world,
         } => generate(&schema, &overlays, language, &output, world, stdout),
+        Command::ServicePlan {
+            schema,
+            contract,
+            extensions,
+        } => service_plan(&schema, &contract, &extensions, stdout),
     }
 }
 
@@ -311,8 +374,10 @@ where
         Some("validate") => parse_validate(args.collect()),
         Some("coverage") => parse_coverage(args.collect()),
         Some("generate") => parse_generate(args.collect()),
+        Some("service-plan") => parse_service_plan(args.collect()),
         Some(command) => Err(CliError::usage(format!(
-            "unknown command '{command}'; expected 'validate', 'coverage', or 'generate'"
+            "unknown command '{command}'; expected 'validate', 'coverage', 'generate', or \
+             'service-plan'"
         ))),
         None => Err(CliError::usage("command must be valid UTF-8")),
     }
@@ -395,6 +460,59 @@ fn parse_generate(args: Vec<OsString>) -> Result<Command, CliError> {
         // assumption rather than inherit a silent closed-schema default.
         world: parse_world(&required(world, "--world")?)?,
     })
+}
+
+fn parse_service_plan(args: Vec<OsString>) -> Result<Command, CliError> {
+    if is_help_request(&args) {
+        return Ok(Command::Help(SERVICE_PLAN_HELP));
+    }
+    let mut schema = None;
+    let mut contract = None;
+    let mut extensions = Vec::new();
+    parse_options(args, |option, value| match option {
+        "-s" | "--schema" => set_once(&mut schema, value, "--schema"),
+        "-c" | "--contract" => set_once(&mut contract, value, "--contract"),
+        "--extension" => push_extension(&mut extensions, value),
+        _ => Err(CliError::usage(format!("unknown option '{option}'"))),
+    })?;
+    Ok(Command::ServicePlan {
+        schema: required(schema, "--schema")?.into(),
+        contract: required(contract, "--contract")?.into(),
+        // Deliberately no --world and no --overlay here: the contract names
+        // its extensions logically, and the mapping option is the only way to
+        // bind those names to local schema documents.
+        extensions,
+    })
+}
+
+/// Accumulate one `--extension ID=PATH` mapping.
+///
+/// The value must be an explicit `identifier=path` pair. There is intentionally
+/// no path-only spelling: a contract's `uci_extension_schemas` entries are
+/// logical identifiers, so inferring an ID from a filename would be a guess.
+/// The pair is split at the FIRST `=` so overlay paths may themselves contain
+/// `=`; identifiers never do.
+fn push_extension(
+    extensions: &mut Vec<(String, PathBuf)>,
+    value: OsString,
+) -> Result<(), CliError> {
+    let text = value.to_str().ok_or_else(|| {
+        CliError::usage("'--extension' value must be valid UTF-8 in the form ID=PATH")
+    })?;
+    let Some((id, path)) = text.split_once('=') else {
+        return Err(CliError::usage(format!(
+            "invalid '--extension' value '{text}'; expected ID=PATH mapping a contract \
+             uci_extension_schemas identifier to a local schema path"
+        )));
+    };
+    if id.is_empty() || path.is_empty() {
+        return Err(CliError::usage(format!(
+            "invalid '--extension' value '{text}'; both the contract extension identifier and \
+             the schema path must be non-empty"
+        )));
+    }
+    extensions.push((id.to_owned(), PathBuf::from(path)));
+    Ok(())
 }
 
 fn is_help_request(args: &[OsString]) -> bool {
@@ -524,6 +642,165 @@ fn generate<W: Write>(
             output_dir.display()
         ),
     )
+}
+
+/// Resolve a portable Service Contract against a schema set and report it.
+///
+/// This command writes nothing to the filesystem: it loads, validates,
+/// resolves, and prints. That is deliberate, because Task 030 delivers the
+/// library-level plan rather than contract-driven backend generation.
+fn service_plan<W: Write>(
+    schema_path: &Path,
+    contract_path: &Path,
+    extensions: &[(String, PathBuf)],
+    stdout: &mut W,
+) -> Result<(), CliError> {
+    let contract =
+        load_contract(contract_path).map_err(|error| CliError::execution(error.to_string()))?;
+    // Contract order is authoritative for overlay composition, so the loader
+    // argument list is built from the contract's declared extension order and
+    // never from the command line's option order.
+    let overlays = contract_overlay_order(&contract.standards.uci_extension_schemas, extensions)?;
+    let schema = load_schema_set_with_overlays(schema_path, &overlays)
+        .map_err(|error| CliError::execution(error.to_string()))?;
+    schema
+        .validate()
+        .map_err(|error| CliError::execution(format!("invalid schema IR: {error}")))?;
+    let plan = resolve_service_plan(&contract, &schema)
+        .map_err(|error| CliError::execution(error.to_string()))?;
+    let closure = plan
+        .selected_type_closure(&schema)
+        .map_err(|error| CliError::execution(error.to_string()))?;
+    write_output(stdout, &render_service_plan(&plan, closure.len()))
+}
+
+/// Map the contract's declared extension IDs onto supplied overlay paths.
+///
+/// The match must be exact in both directions. A declared extension with no
+/// mapping means the operator did not supply schema content the contract says
+/// it needs; an undeclared mapping means the operator supplied content the
+/// contract never asked for. Both silently change the resolved type universe,
+/// so both fail rather than being tolerated. Duplicate IDs fail too, because
+/// the second path would otherwise silently win.
+///
+/// The returned order is CONTRACT order. Task 029 gives overlay caller order
+/// semantic significance, and the contract -- not the shell history that
+/// produced this command line -- is the reproducible authority for how a
+/// service composes its extensions. Task 029's rule that ordering never
+/// implies duplicate-declaration precedence is untouched: duplicates still
+/// fail in the frontend.
+fn contract_overlay_order(
+    declared: &[String],
+    supplied: &[(String, PathBuf)],
+) -> Result<Vec<PathBuf>, CliError> {
+    let mut seen = BTreeSet::new();
+    for (id, _) in supplied {
+        if !seen.insert(id.as_str()) {
+            return Err(CliError::usage(format!(
+                "duplicate '--extension' identifier '{id}'"
+            )));
+        }
+    }
+    let declared_set = declared.iter().map(String::as_str).collect::<BTreeSet<_>>();
+    for (id, _) in supplied {
+        if !declared_set.contains(id.as_str()) {
+            return Err(CliError::usage(format!(
+                "'--extension {id}=...' was supplied, but the service contract does not declare \
+                 extension '{id}' in standards.uci_extension_schemas"
+            )));
+        }
+    }
+    let mut overlays = Vec::with_capacity(declared.len());
+    for id in declared {
+        let path = supplied
+            .iter()
+            .find(|(supplied_id, _)| supplied_id == id)
+            .map(|(_, path)| path.clone())
+            .ok_or_else(|| {
+                CliError::usage(format!(
+                    "the service contract declares extension '{id}', but no \
+                     '--extension {id}=PATH' mapping was supplied"
+                ))
+            })?;
+        overlays.push(path);
+    }
+    Ok(overlays)
+}
+
+/// Render a deterministic human-readable summary of a resolved plan.
+///
+/// The order is the plan's order, which is the contract's order, so repeated
+/// runs on the same inputs produce byte-identical output.
+fn render_service_plan(plan: &ServicePlan, closure_size: usize) -> String {
+    let mut report = String::new();
+    report.push_str("service contract valid\n");
+    report.push_str(&format!("contract version: {}\n", plan.contract_version));
+    report.push_str(&format!("service: {}\n", plan.service.name));
+    report.push_str(&format!("kind: {}\n", plan.service.kind));
+    // Both version strings are reported side by side and never compared: no
+    // documented mapping exists between the contract's logical UCI version
+    // ("2.5") and the XSD root's release string (UCI 2.5 declares "002.5.0").
+    report.push_str(&format!(
+        "contract uci schema version: {}\n",
+        plan.standards.uci_schema_version
+    ));
+    report.push_str(&format!(
+        "schema root version: {}\n",
+        plan.standards
+            .schema_root_version
+            .as_deref()
+            .unwrap_or("(none declared)")
+    ));
+    // Omitted and explicitly-empty are reported differently, because the
+    // contract said different things.
+    match &plan.capabilities {
+        None => report.push_str("capabilities: (omitted by contract)\n"),
+        Some(capabilities) if capabilities.is_empty() => {
+            report.push_str("capabilities: (explicitly empty)\n");
+        }
+        Some(capabilities) => report.push_str(&format!("capabilities: {}\n", capabilities.len())),
+    }
+    report.push('\n');
+    report.push_str(&format!("functions: {}\n", plan.functions.len()));
+    report.push_str(&format!(
+        "exchange occurrences: {}\n",
+        plan.exchange_occurrence_count()
+    ));
+    report.push_str(&format!(
+        "oms message exchanges: {}\n",
+        plan.oms_message_exchange_count()
+    ));
+    report.push_str(&format!(
+        "unique uci messages: {}\n",
+        plan.selected_messages().len()
+    ));
+    report.push_str(&format!("selected type closure: {closure_size}\n"));
+
+    for function in &plan.functions {
+        for exchange in &function.exchanges {
+            report.push('\n');
+            report.push_str(&format!("{} / {}\n", function.id, exchange.id()));
+            match exchange {
+                ResolvedExchange::OmsMessage(oms) => {
+                    report.push_str(&format!("  {} {}\n", oms.direction, oms.contract_message));
+                    report.push_str(&format!("  topic: {}\n", oms.topic));
+                    report.push_str(&format!(
+                        "  resolved: {{{}}}{}\n",
+                        oms.message_name.namespace_uri, oms.message_name.local_name
+                    ));
+                }
+                other => {
+                    // Non-UCI exchanges are reported, never resolved.
+                    report.push_str(&format!(
+                        "  {} {} (not a uci message; preserved unresolved)\n",
+                        other.direction(),
+                        other.kind_str()
+                    ));
+                }
+            }
+        }
+    }
+    report
 }
 
 fn validate_generated_files(files: &[GeneratedFile]) -> Result<(), CliError> {

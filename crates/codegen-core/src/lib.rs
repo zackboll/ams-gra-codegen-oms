@@ -3,6 +3,7 @@
 mod abstract_value;
 mod coverage;
 mod integral;
+mod service_plan;
 mod structure;
 mod world;
 
@@ -19,6 +20,10 @@ pub use coverage::{
     SchemaInventory,
 };
 pub use integral::{InclusiveIntegralDomain, inclusive_integral_domain};
+pub use service_plan::{
+    CapabilityPlan, FunctionPlan, ResolvedExchange, ResolvedOmsMessageExchange, SelectedMessage,
+    ServiceIdentity, ServicePlan, ServicePlanError, ServiceStandards, resolve_service_plan,
+};
 pub use structure::{
     EffectiveStructuralType, StructuralKind, StructuralLevel, StructuralProjectionError,
     StructuralSegment, StructuralSegmentContent, effective_choice_alternatives,
@@ -82,7 +87,7 @@ pub fn plan_type_declarations(schema: &SchemaIr) -> Result<Vec<&TypeDecl>, Codeg
         .types
         .iter()
         .map(|declaration| {
-            dependencies(declaration)
+            direct_named_dependencies(declaration)
                 .into_iter()
                 .map(|dependency| indices[dependency])
                 .collect::<BTreeSet<_>>()
@@ -287,7 +292,10 @@ fn emission_dependencies(
                 .into_iter()
                 .filter_map(|field| named_target(&field.type_ref))
                 .collect(),
-            _ => dependencies(declaration).into_iter().cloned().collect(),
+            _ => direct_named_dependencies(declaration)
+                .into_iter()
+                .cloned()
+                .collect(),
         },
     };
     names
@@ -481,7 +489,16 @@ fn find_cycle(
     None
 }
 
-fn dependencies(declaration: &TypeDecl) -> Vec<&QualifiedName> {
+/// The direct named type dependencies of one declaration, in declaration order.
+///
+/// This is the single semantic dependency model for the whole crate: named
+/// base types, alias targets, record field types, choice alternative types,
+/// and list item types. Declaration ordering, coverage closure analysis, and
+/// the contract-selected type closure all call this one function, so those
+/// three consumers can never drift into disagreeing about what a type
+/// "depends on". Callers that want a canonical set sort and dedup the result
+/// themselves; the raw order here is source order.
+pub(crate) fn direct_named_dependencies(declaration: &TypeDecl) -> Vec<&QualifiedName> {
     let mut dependencies = Vec::new();
     if let Some(base_type) = &declaration.base_type {
         push_named(&mut dependencies, base_type);

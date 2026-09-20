@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test"
+           targetNamespace="urn:test"
+           elementFormDefault="qualified">
+  <!-- Deliberately re-declares PrivateAuxType, which private-overlay-b.xsd
+       also declares. Task 029 overlays are ADDITIVE, never overriding, so
+       composing both must still fail as a duplicate declaration regardless of
+       the order the contract lists the two extensions in. -->
+  <xs:complexType name="PrivateAuxType">
+    <xs:sequence>
+      <xs:element name="Aux" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

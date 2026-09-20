@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test"
+           targetNamespace="urn:test"
+           elementFormDefault="qualified">
+  <!-- Second overlay for the two-extension mapping fixture. It deliberately
+       declares only a type, so the test's assertions stay focused on ordering
+       and exact-set matching rather than on message resolution. -->
+  <xs:complexType name="PrivateAuxType">
+    <xs:sequence>
+      <xs:element name="Aux" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

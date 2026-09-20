@@ -1,13 +1,14 @@
 [package]
-name = "ams-gra-oms-codegen-core"
+name = "ams-gra-oms-service-contract"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-ams-gra-oms-ir = { path = "../ir" }
-ams-gra-oms-service-contract = { path = "../service-contract" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
 
 [lints]
 workspace = true

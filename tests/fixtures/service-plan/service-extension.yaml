@@ -1,0 +1,32 @@
+# SYNTHETIC Task 030 fixture: a contract that declares two logical UCI
+# extension schema identifiers. These are IDENTIFIERS, not paths; the CLI must
+# be given an explicit --extension ID=PATH mapping for each, and must compose
+# overlays in the order declared here rather than in command-line order.
+contract_version: "0.1"
+
+service:
+  name: Contract Codegen Extension Test
+  version: "0.1.0"
+  kind: service
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+  uci_extension_schemas:
+    - ext-a-1.0
+    - ext-b-2.0
+
+functions:
+  - id: private-data
+    name: Private Data
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: private-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: PrivateReport
+        topic: private.report
+        timing:
+          kind: asynchronous

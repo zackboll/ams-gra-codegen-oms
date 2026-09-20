@@ -1,0 +1,47 @@
+# SYNTHETIC Task 030 planning fixture. Authored for this repository only.
+#
+# This grouping is INVENTED to exercise the Contract IR + Schema IR join. It is
+# NOT a transcription of any real OMS Service Contract, and in particular the
+# pairing of a position input with an observation-measurement output in one
+# function does NOT come from IR Search & Track evidence or from any other
+# upstream source. Treat every identifier, topic, mandate, and timing value
+# below as illustrative test data.
+contract_version: "0.1"
+
+service:
+  name: Contract Codegen Test
+  version: "0.1.0"
+  kind: service
+  description: Synthetic contract used to test OMS-codegen service planning.
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: mission-data
+    name: Mission Data
+    category: specific
+    applicability: applicable
+    description: Synthetic specific function with one input and one output.
+    exchanges:
+      - id: position-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: PositionReport
+        topic: mission.position-report
+        timing:
+          kind: periodic
+          nominal_rate_hz: 1.0
+          max_rate_hz: 10.0
+      - id: observation-output
+        kind: oms_message
+        direction: output
+        mandate: optional
+        message: ObservationMeasurementReport
+        topic: mission.observation-measurement-report
+        timing:
+          kind: on_demand
+          nominal_response_seconds: 0.5
+          max_response_seconds: 3.0

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:test"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- Task 030 controlled Service Contract planning fixture.
+
+       This is NOT UCI. It is a deliberately tiny stand-in that exercises the
+       Contract IR + Schema IR = Service Plan join without requiring the
+       external authoritative UCI schema set in ordinary CI. Full UCI fidelity
+       is covered separately by docs/uci-schema-compatibility.md evidence.
+
+       Shape:
+         PositionReport
+             -> PositionReportType
+                -> PositionType
+                -> TimestampType
+         ObservationMeasurementReport
+             -> ObservationMeasurementReportType
+                -> MeasurementType
+
+       UnusedReport/UnusedType exist only to prove the contract-selected type
+       closure is a genuine selection rather than "every declared type". -->
+  <xs:simpleType name="TimestampType">
+    <xs:restriction base="xs:string"/>
+  </xs:simpleType>
+  <xs:complexType name="PositionType">
+    <xs:sequence>
+      <xs:element name="Latitude" type="xs:double"/>
+      <xs:element name="Longitude" type="xs:double"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="PositionReportType">
+    <xs:sequence>
+      <xs:element name="Position" type="t:PositionType"/>
+      <xs:element name="Timestamp" type="t:TimestampType"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="MeasurementType">
+    <xs:sequence>
+      <xs:element name="Value" type="xs:double"/>
+      <xs:element name="Units" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="ObservationMeasurementReportType">
+    <xs:sequence>
+      <xs:element name="Measurement" type="t:MeasurementType" maxOccurs="8"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="UnusedType">
+    <xs:sequence>
+      <xs:element name="Filler" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="PositionReport" type="t:PositionReportType" uci:version="001.000.000.000"/>
+  <xs:element name="ObservationMeasurementReport" type="t:ObservationMeasurementReportType" uci:version="001.000.000.000"/>
+  <xs:element name="UnusedReport" type="t:UnusedType" uci:version="001.000.000.000"/>
+</xs:schema>
