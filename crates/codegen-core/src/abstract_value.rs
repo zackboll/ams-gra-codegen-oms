@@ -1,5 +1,6 @@
 use crate::structure::{
-    effective_choice_alternatives, effective_record_fields, project_structural_type,
+    StructuralProjectionError, effective_choice_alternatives, effective_record_fields,
+    project_with_index,
 };
 use crate::world::GenerationWorld;
 use ams_gra_oms_ir::{
@@ -33,6 +34,23 @@ pub enum AbstractValueProjectionError {
     /// descendants happen to be known, and it never claims the schema is
     /// invalid.
     NotClosedUnderOpenExtensions(QualifiedName),
+    /// A concrete transitive descendant of the abstract target exists in the
+    /// schema set, but its own structural projection cannot be represented
+    /// (for example an inherited member-name collision).
+    ///
+    /// Corrective cleanup after Task 033: this case previously caused the
+    /// candidate to be *skipped silently*, which could either emit a closed
+    /// sum missing a legal alternative, or — when every descendant failed —
+    /// masquerade as [`Self::NoConcreteDescendants`] and wrongly authorize
+    /// Task 026 absent-only elision. "A legal payload exists but we cannot
+    /// represent it" and "no legal payload exists" are different facts and
+    /// must never be conflated, so this now fails closed with the failing
+    /// descendant and its underlying structural error retained.
+    UnrepresentableConcreteDescendant {
+        target: Box<QualifiedName>,
+        descendant: Box<QualifiedName>,
+        source: Box<StructuralProjectionError>,
+    },
 }
 
 /// Closed-value topology of a demanded abstract structural value.
@@ -359,6 +377,16 @@ impl fmt::Display for AbstractValueProjectionError {
                  external derived types cannot be represented",
                 name.local_name
             ),
+            Self::UnrepresentableConcreteDescendant {
+                target,
+                descendant,
+                source,
+            } => write!(
+                f,
+                "abstract value target {} has concrete descendant {} whose structural \
+                 projection cannot be represented: {source:?}",
+                target.local_name, descendant.local_name
+            ),
         }
     }
 }
@@ -388,20 +416,41 @@ pub fn project_abstract_value<'a>(
         ));
     }
 
+    // Built once rather than per candidate: `project_structural_type` would
+    // otherwise rebuild the whole-schema declaration index for every concrete
+    // candidate, which is quadratic on full UCI roots.
+    let declarations = schema
+        .types
+        .iter()
+        .map(|declaration| (&declaration.name, declaration))
+        .collect::<BTreeMap<_, _>>();
+
     let mut descendants = Vec::new();
     for candidate in &schema.types {
         if candidate.is_abstract || !is_structural(candidate) || candidate.name == *target {
             continue;
         }
-        let Ok(projection) = project_structural_type(schema, &candidate.name) else {
+        // Descendancy is decided from the declared base chain, which is
+        // available even when the candidate is not *representable*. Deciding
+        // it from a successful projection instead would make an unrenderable
+        // descendant look like an unrelated declaration.
+        if !inherits_from(&declarations, candidate, target) {
             continue;
-        };
-        if projection
-            .ancestry
-            .iter()
-            .any(|level| level.declaration.name == *target)
-        {
-            descendants.push(candidate);
+        }
+        match project_with_index(&declarations, &candidate.name) {
+            Ok(_) => descendants.push(candidate),
+            // Fail closed. The descendant is a legal concrete payload of the
+            // abstract target, so neither omitting it from the closed sum nor
+            // reporting the target as having no concrete descendants is true.
+            Err(source) => {
+                return Err(
+                    AbstractValueProjectionError::UnrepresentableConcreteDescendant {
+                        target: Box::new(target.clone()),
+                        descendant: Box::new(candidate.name.clone()),
+                        source: Box::new(source),
+                    },
+                );
+            }
         }
     }
     if descendants.is_empty() {
@@ -548,6 +597,39 @@ fn visit_generated_value(
     Ok(None)
 }
 
+/// Whether `candidate` reaches `ancestor` through declared base types.
+///
+/// This walks only `base_type` links and is deliberately independent of
+/// structural representability, so an unrenderable descendant is still
+/// recognized as a descendant. The visited guard bounds a malformed cyclic
+/// base chain; cycles are diagnosed by `project_with_index`, not here.
+fn inherits_from(
+    declarations: &BTreeMap<&QualifiedName, &TypeDecl>,
+    candidate: &TypeDecl,
+    ancestor: &QualifiedName,
+) -> bool {
+    let mut visited = BTreeSet::new();
+    let mut current = candidate;
+    loop {
+        let Some(base_ref) = &current.base_type else {
+            return false;
+        };
+        let TypeRefTarget::Named(base_name) = &base_ref.target else {
+            return false;
+        };
+        if base_name == ancestor {
+            return true;
+        }
+        if !visited.insert(base_name.clone()) {
+            return false;
+        }
+        let Some(base) = declarations.get(base_name) else {
+            return false;
+        };
+        current = base;
+    }
+}
+
 fn named(reference: &TypeRef) -> Option<QualifiedName> {
     match &reference.target {
         TypeRefTarget::Named(name) => Some(name.clone()),
@@ -611,4 +693,227 @@ pub(crate) fn is_structural(declaration: &TypeDecl) -> bool {
         declaration.kind,
         TypeKind::Record { .. } | TypeKind::Choice { .. }
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ams_gra_oms_ir::{
+        Cardinality, ConstraintSet, NamespaceDecl, PrimitiveKind, SourceRef, TypeRef,
+    };
+
+    const NS: &str = "urn:test";
+
+    fn source() -> SourceRef {
+        SourceRef {
+            document: "test.ir".to_owned(),
+            line: Some(1),
+        }
+    }
+
+    fn field(name: &str) -> FieldDecl {
+        FieldDecl {
+            name: name.to_owned(),
+            type_ref: TypeRef::primitive(PrimitiveKind::String),
+            cardinality: Cardinality::REQUIRED_ONE,
+            nillable: false,
+            constraints: ConstraintSet::default(),
+            documentation: None,
+            source: source(),
+        }
+    }
+
+    fn record(name: &str, members: &[&str]) -> TypeDecl {
+        TypeDecl {
+            name: QualifiedName::new(NS, name),
+            is_abstract: false,
+            base_type: None,
+            kind: TypeKind::Record {
+                fields: members.iter().map(|name| field(name)).collect(),
+            },
+            constraints: ConstraintSet::default(),
+            documentation: None,
+            source: source(),
+        }
+    }
+
+    fn derived(mut declaration: TypeDecl, base: &str) -> TypeDecl {
+        declaration.base_type = Some(TypeRef::named(QualifiedName::new(NS, base)));
+        declaration
+    }
+
+    fn schema(types: Vec<TypeDecl>) -> SchemaIr {
+        SchemaIr {
+            schema_version: None,
+            namespaces: vec![NamespaceDecl {
+                uri: NS.to_owned(),
+                preferred_prefix: None,
+            }],
+            types,
+            messages: Vec::new(),
+        }
+    }
+
+    /// Case A: a descendant that cannot be projected must never be silently
+    /// dropped from the closed sum.
+    #[test]
+    fn unrepresentable_concrete_descendant_fails_closed_instead_of_partial_sum() {
+        let mut base = record("AbstractBase", &["shared"]);
+        base.is_abstract = true;
+        let good = derived(record("GoodConcrete", &["good"]), "AbstractBase");
+        // Re-declaring `shared` collides with the inherited member, so
+        // `BadConcrete` cannot be structurally projected.
+        let bad = derived(record("BadConcrete", &["shared"]), "AbstractBase");
+        let schema = schema(vec![base, good, bad]);
+
+        let error = project_abstract_value(&schema, &QualifiedName::new(NS, "AbstractBase"))
+            .expect_err("a descendant that cannot be projected must fail closed");
+        let AbstractValueProjectionError::UnrepresentableConcreteDescendant {
+            target,
+            descendant,
+            source,
+        } = error
+        else {
+            panic!("expected UnrepresentableConcreteDescendant, got {error:?}");
+        };
+        assert_eq!(target.local_name, "AbstractBase");
+        assert_eq!(descendant.local_name, "BadConcrete");
+        assert!(
+            matches!(
+                *source,
+                StructuralProjectionError::InheritedMemberNameCollision { .. }
+            ),
+            "the underlying structural failure must be retained, got {source:?}"
+        );
+    }
+
+    /// Case B: when *every* descendant fails to project, the target must not
+    /// be reclassified as having no concrete descendants, because that would
+    /// authorize Task 026 absent-only elision for a target that does have a
+    /// legal payload.
+    #[test]
+    fn all_descendants_unrepresentable_is_not_no_concrete_descendants() {
+        let mut base = record("AbstractBase", &["shared"]);
+        base.is_abstract = true;
+        let bad = derived(record("BadConcrete", &["shared"]), "AbstractBase");
+        let schema = schema(vec![base, bad]);
+        let target = QualifiedName::new(NS, "AbstractBase");
+
+        let error = project_abstract_value(&schema, &target).expect_err("must fail closed");
+        assert!(
+            !matches!(
+                error,
+                AbstractValueProjectionError::NoConcreteDescendants(_)
+            ),
+            "'cannot represent a legal payload' must never become 'no legal payload', got {error:?}"
+        );
+
+        // Inhabitance classification must propagate the failure rather than
+        // report `NoKnownConcreteDescendants`.
+        let inhabitance = classify_abstract_value_inhabitance(&schema, &target);
+        assert!(
+            inhabitance.is_err(),
+            "inhabitance must not claim zero known descendants"
+        );
+
+        // And therefore no world interpretation may reach `NoLegalPayload`.
+        for world in [
+            GenerationWorld::ClosedSchemaSet,
+            GenerationWorld::OpenExtensions,
+        ] {
+            assert!(
+                classify_abstract_value_semantics(&schema, &target, world).is_err(),
+                "{world:?} must not classify an unrepresentable descendant as a legal payload state"
+            );
+        }
+    }
+
+    /// Case B continued: an optional field of such a target stays unsupported,
+    /// so no backend may elide it as absent-only.
+    #[test]
+    fn optional_field_of_unrepresentable_target_is_not_absent_only_elided() {
+        let mut base = record("AbstractBase", &["shared"]);
+        base.is_abstract = true;
+        let bad = derived(record("BadConcrete", &["shared"]), "AbstractBase");
+        let mut optional = field("payload");
+        optional.type_ref = TypeRef::named(QualifiedName::new(NS, "AbstractBase"));
+        optional.cardinality = Cardinality::OPTIONAL_ONE;
+        let mut holder = record("Holder", &[]);
+        holder.kind = TypeKind::Record {
+            fields: vec![optional.clone()],
+        };
+        let schema = schema(vec![base, bad, holder]);
+
+        let renderability = abstract_value_reference_renderability(
+            &schema,
+            &optional.type_ref,
+            optional.cardinality,
+            false,
+            true,
+            GenerationWorld::ClosedSchemaSet,
+        );
+        assert!(
+            renderability.is_err(),
+            "an optional occurrence must not be classified AbsentOnly, got {renderability:?}"
+        );
+    }
+
+    /// Descendancy is decided from the declared base chain, so a transitive
+    /// descendant behind an abstract intermediate is still detected.
+    #[test]
+    fn transitive_descendancy_uses_declared_base_chain() {
+        let mut base = record("AbstractBase", &["shared"]);
+        base.is_abstract = true;
+        let mut middle = record("AbstractMiddle", &[]);
+        middle.is_abstract = true;
+        middle.base_type = Some(TypeRef::named(QualifiedName::new(NS, "AbstractBase")));
+        let deep = derived(record("DeepConcrete", &["shared"]), "AbstractMiddle");
+        let schema = schema(vec![base, middle, deep]);
+        assert!(matches!(
+            project_abstract_value(&schema, &QualifiedName::new(NS, "AbstractBase")),
+            Err(AbstractValueProjectionError::UnrepresentableConcreteDescendant { .. })
+        ));
+    }
+
+    /// A genuinely descendant-free abstract target still reports
+    /// `NoConcreteDescendants`; the correction narrows that classification
+    /// rather than removing it.
+    #[test]
+    fn genuine_zero_descendant_target_still_reports_no_concrete_descendants() {
+        let mut base = record("AbstractBase", &[]);
+        base.is_abstract = true;
+        let unrelated = record("Unrelated", &["value"]);
+        let schema = schema(vec![base, unrelated]);
+        assert!(matches!(
+            project_abstract_value(&schema, &QualifiedName::new(NS, "AbstractBase")),
+            Err(AbstractValueProjectionError::NoConcreteDescendants(_))
+        ));
+    }
+
+    /// Case C: an ordinary valid closed sum is unaffected by the fail-closed
+    /// correction, including the concrete non-leaf and abstract-intermediate
+    /// topology Task 024 established.
+    #[test]
+    fn valid_closed_sums_are_unchanged() {
+        let mut base = record("AbstractBase", &[]);
+        base.is_abstract = true;
+        let mut middle = record("AbstractMiddle", &["middle"]);
+        middle.is_abstract = true;
+        middle.base_type = Some(TypeRef::named(QualifiedName::new(NS, "AbstractBase")));
+        let first = derived(record("FirstConcrete", &["first"]), "AbstractBase");
+        let second = derived(record("SecondConcrete", &["second"]), "AbstractMiddle");
+        let schema = schema(vec![base, middle, first, second]);
+
+        let projection =
+            project_abstract_value(&schema, &QualifiedName::new(NS, "AbstractBase")).unwrap();
+        assert_eq!(
+            projection
+                .concrete_descendants
+                .iter()
+                .map(|declaration| declaration.name.local_name.as_str())
+                .collect::<Vec<_>>(),
+            ["FirstConcrete", "SecondConcrete"],
+            "schema declaration order is preserved and abstract intermediates are not variants"
+        );
+    }
 }
