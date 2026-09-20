@@ -847,3 +847,260 @@ fn readiness_agrees_with_full_schema_coverage_when_everything_is_selected() {
         }
     }
 }
+
+// ---------------------------------------------------------------------
+// Projection-scoped generated-name analysis
+// ---------------------------------------------------------------------
+//
+// Generated-name safety and the global backend preconditions are properties
+// of the set of declarations emitted *together*, not of a declaration alone.
+// Readiness must therefore measure them on the projected selected schema --
+// the exact schema `service-generate` hands to the backend -- rather than on
+// the full schema. These tests pin that equivalence from both directions.
+
+/// `foo_bar` and `fooBar` both generate `FooBar`, so the full schema is not
+/// generable. Only `foo_bar` is selected, and the projection drops the other,
+/// so the selected service is genuinely ready.
+fn converging_name_schema() -> SchemaIr {
+    schema(
+        vec![
+            record(
+                "foo_bar",
+                vec![field("Value", primitive(PrimitiveKind::Float64))],
+            ),
+            record(
+                "fooBar",
+                vec![field("Value", primitive(PrimitiveKind::Float64))],
+            ),
+            record("SelectedPayload", vec![field("Inner", named("foo_bar"))]),
+            record("OtherPayload", vec![field("Inner", named("fooBar"))]),
+            record(
+                "BothPayload",
+                vec![
+                    field("Left", named("foo_bar")),
+                    field("Right", named("fooBar")),
+                ],
+            ),
+        ],
+        vec![
+            message("SelectedMessage", named("SelectedPayload")),
+            message("OtherMessage", named("OtherPayload")),
+            message("BothMessage", named("BothPayload")),
+        ],
+    )
+}
+
+/// An unselected declaration whose generated name collides must not make the
+/// selected service unready: selected generation never emits it.
+#[test]
+fn an_unselected_converging_declaration_does_not_block_the_selected_service() {
+    let schema = converging_name_schema();
+    let contract = contract(&oms_exchange("e1", "SelectedMessage"));
+    let plan = resolve_service_plan(&contract, &schema).expect("plan should resolve");
+    for language in [BackendLanguage::Rust, BackendLanguage::Cpp] {
+        let result = readiness(
+            &schema,
+            &contract,
+            language,
+            GenerationWorld::ClosedSchemaSet,
+        );
+        assert!(
+            result.is_ready(),
+            "{language:?}: an unselected collision must not reach the selection, got {:?} / {:?}",
+            result.unsupported_types,
+            result.backend_blocker
+        );
+        assert!(result.unsupported_types.is_empty());
+    }
+    // The decisive evidence: generation agrees with the verdict.
+    let projection =
+        project_service_generation_schema(&plan, &schema, GenerationWorld::ClosedSchemaSet)
+            .expect("selected projection should succeed");
+    assert!(
+        !projection
+            .schema()
+            .types
+            .iter()
+            .any(|declaration| declaration.name == qualified("fooBar")),
+        "the projection must not retain the unselected colliding declaration"
+    );
+}
+
+/// Selecting a closure that contains *both* colliding declarations keeps the
+/// collision, so the same projected boundary must reject it.
+#[test]
+fn selecting_both_converging_declarations_is_not_ready() {
+    let schema = converging_name_schema();
+    let contract = contract(&oms_exchange("e1", "BothMessage"));
+    for language in [BackendLanguage::Rust, BackendLanguage::Cpp] {
+        let result = readiness(
+            &schema,
+            &contract,
+            language,
+            GenerationWorld::ClosedSchemaSet,
+        );
+        assert!(
+            !result.is_ready(),
+            "{language:?}: a collision inside the selection must block it"
+        );
+        assert!(
+            result.backend_blocker.is_some(),
+            "{language:?}: the projected name boundary must be reported"
+        );
+    }
+}
+
+/// An unselected declaration with a reserved generated member is a real
+/// full-schema failure that must stay out of the selected report entirely.
+#[test]
+fn an_unselected_reserved_name_declaration_does_not_enter_the_selected_report() {
+    let schema = schema(
+        vec![
+            record(
+                "GoodPayload",
+                vec![field("Value", primitive(PrimitiveKind::Float64))],
+            ),
+            // `struct` is a Rust and C++ keyword; this declaration is not
+            // generable, but it is also not selected.
+            record(
+                "ReservedHolder",
+                vec![field("struct", primitive(PrimitiveKind::Float64))],
+            ),
+        ],
+        vec![
+            message("GoodReport", named("GoodPayload")),
+            message("ReservedReport", named("ReservedHolder")),
+        ],
+    );
+    let contract = contract(&oms_exchange("e1", "GoodReport"));
+    for language in [BackendLanguage::Rust, BackendLanguage::Cpp] {
+        let result = readiness(
+            &schema,
+            &contract,
+            language,
+            GenerationWorld::ClosedSchemaSet,
+        );
+        assert!(result.is_ready(), "{language:?}: selected closure is safe");
+        assert!(
+            !result
+                .unsupported_types
+                .contains(&qualified("ReservedHolder")),
+            "{language:?}: an unselected declaration must never be reported"
+        );
+    }
+}
+
+/// Rust emits its `UnboundedVec` support type only when some member is
+/// unbounded. A selected type *named* `UnboundedVec` therefore collides in the
+/// full schema but not in a projection that drops the unbounded member.
+fn conditional_support_schema() -> SchemaIr {
+    schema(
+        vec![
+            record(
+                "UnboundedVec",
+                vec![field("Value", primitive(PrimitiveKind::Float64))],
+            ),
+            record(
+                "Item",
+                vec![field("Value", primitive(PrimitiveKind::Float64))],
+            ),
+            // The unbounded occurrence lives only here, in the unselected part.
+            TypeDecl {
+                kind: TypeKind::Record {
+                    fields: vec![FieldDecl {
+                        cardinality: Cardinality {
+                            min_occurs: 0,
+                            max_occurs: None,
+                        },
+                        ..field("Items", named("Item"))
+                    }],
+                },
+                ..record("UnboundedHolder", vec![])
+            },
+            record("SafePayload", vec![field("Inner", named("UnboundedVec"))]),
+            // Selecting this one pulls the unbounded member into the
+            // projection, so the support type really is emitted.
+            record(
+                "RepeatingPayload",
+                vec![
+                    field("Inner", named("UnboundedVec")),
+                    field("Holder", named("UnboundedHolder")),
+                ],
+            ),
+        ],
+        vec![
+            message("SafeReport", named("SafePayload")),
+            message("RepeatingReport", named("RepeatingPayload")),
+        ],
+    )
+}
+
+/// The conditional support name is free in a projection that does not emit it.
+#[test]
+fn an_unselected_conditional_support_collision_does_not_block_the_selection() {
+    let schema = conditional_support_schema();
+    let contract = contract(&oms_exchange("e1", "SafeReport"));
+    let result = readiness(
+        &schema,
+        &contract,
+        BackendLanguage::Rust,
+        GenerationWorld::ClosedSchemaSet,
+    );
+    assert!(
+        result.is_ready(),
+        "UnboundedVec is not emitted by this projection, so the name is free: {:?} / {:?}",
+        result.unsupported_types,
+        result.backend_blocker
+    );
+}
+
+/// Control: when the projection *does* contain an unbounded member, the
+/// support type is emitted and the collision is real.
+#[test]
+fn a_selected_conditional_support_collision_remains_not_ready() {
+    let schema = conditional_support_schema();
+    let contract = contract(&oms_exchange("e1", "RepeatingReport"));
+    let result = readiness(
+        &schema,
+        &contract,
+        BackendLanguage::Rust,
+        GenerationWorld::ClosedSchemaSet,
+    );
+    assert!(
+        !result.is_ready(),
+        "the projection emits UnboundedVec, so the selected type collides with it"
+    );
+    assert!(result.backend_blocker.is_some());
+}
+
+/// An Ada Choice alternative named `Kind` collides with the generated
+/// discriminant, and readiness must see it through the projected schema.
+#[test]
+fn a_selected_ada_choice_kind_alternative_is_not_ready() {
+    let schema = schema(
+        vec![
+            TypeDecl {
+                kind: TypeKind::Choice {
+                    alternatives: vec![
+                        field("Kind", primitive(PrimitiveKind::String)),
+                        field("Other", primitive(PrimitiveKind::String)),
+                    ],
+                },
+                ..record("Selection", vec![])
+            },
+            record("SelectionPayload", vec![field("Body", named("Selection"))]),
+        ],
+        vec![message("SelectionReport", named("SelectionPayload"))],
+    );
+    let contract = contract(&oms_exchange("e1", "SelectionReport"));
+    let result = readiness(
+        &schema,
+        &contract,
+        BackendLanguage::Ada,
+        GenerationWorld::ClosedSchemaSet,
+    );
+    assert!(
+        !result.is_ready(),
+        "Ada cannot emit an alternative named Kind beside the discriminant"
+    );
+}
