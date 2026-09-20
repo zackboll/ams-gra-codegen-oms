@@ -48,6 +48,11 @@
 //! * `+0.0` and `-0.0` compare equal, so `minInclusive = 0` admits both signs
 //!   and `minExclusive = 0` rejects both.
 //!
+//! A two-sided domain must also be inhabited. `lower > upper` is rejected, and
+//! so is `lower == upper` when either side is exclusive: that pair's single
+//! candidate value is excluded by the exclusive side, leaving nothing. Only
+//! `[x, x]` survives as a legal one-value domain. See [`is_empty_range`].
+//!
 //! The bounds themselves must be finite. [`ams_gra_oms_ir::SchemaIr::validate`]
 //! already rejects non-finite facets on the end-to-end path, but this module is
 //! also reachable directly with hand-built IR, so it re-checks rather than
@@ -212,7 +217,12 @@ pub fn floating_domain(
             let lower = lower.map(float32_bound).transpose()?;
             let upper = upper.map(float32_bound).transpose()?;
             if let (Some(low), Some(high)) = (lower, upper)
-                && low.value.value() > high.value.value()
+                && is_empty_range(
+                    f64::from(low.value.value()),
+                    low.kind,
+                    f64::from(high.value.value()),
+                    high.kind,
+                )
             {
                 return Err("contradictory floating bounds");
             }
@@ -222,13 +232,43 @@ pub fn floating_domain(
             let lower = lower.map(float64_bound).transpose()?;
             let upper = upper.map(float64_bound).transpose()?;
             if let (Some(low), Some(high)) = (lower, upper)
-                && low.value.value() > high.value.value()
+                && is_empty_range(low.value.value(), low.kind, high.value.value(), high.kind)
             {
                 return Err("contradictory floating bounds");
             }
             Ok(Some(FloatingDomain::Float64 { lower, upper }))
         }
     }
+}
+
+/// Whether a two-sided domain admits no value at all.
+///
+/// `lower > upper` is the obvious case. The subtler one is `lower == upper`:
+/// that pair denotes exactly one candidate value, and it survives only when
+/// *both* bounds admit it. If either side is exclusive, the single candidate is
+/// excluded by that side and the domain is empty.
+///
+/// So `[1.0, 1.0]` is a legal one-value domain, while `(1.0, 1.0]`,
+/// `[1.0, 1.0)`, and `(1.0, 1.0)` are all empty and rejected. Generating a type
+/// no value can inhabit would be a silent trap, so it fails closed here.
+///
+/// Taking `f64` serves both widths: the `f32` bounds are already finite and
+/// widen to `f64` exactly, so the comparison is unchanged. This is a comparison
+/// only -- no bound is ever stored or emitted at the wrong width.
+fn is_empty_range(
+    lower: f64,
+    lower_kind: FloatingBoundKind,
+    upper: f64,
+    upper_kind: FloatingBoundKind,
+) -> bool {
+    if lower > upper {
+        return true;
+    }
+    // `+0.0 == -0.0` under IEEE comparison, so a `-0.0`/`+0.0` pair is an equal
+    // pair and follows exactly the same exclusivity rule.
+    lower == upper
+        && (lower_kind == FloatingBoundKind::Exclusive
+            || upper_kind == FloatingBoundKind::Exclusive)
 }
 
 /// Collapse one side's inclusive/exclusive slots into at most one bound.
@@ -414,10 +454,10 @@ mod tests {
         );
     }
 
-    /// An equal two-sided bound is a legal (single-value) domain, not a
-    /// contradiction.
+    /// Equal inclusive/inclusive bounds denote exactly one legal value, so the
+    /// domain is inhabited and accepted at both widths.
     #[test]
-    fn equal_bounds_are_not_contradictory() {
+    fn equal_inclusive_bounds_are_a_single_value_domain() {
         assert!(
             floating_domain(
                 PrimitiveKind::Float64,
@@ -428,6 +468,125 @@ mod tests {
                 }
             )
             .is_ok()
+        );
+        let float32 = floating_domain(
+            PrimitiveKind::Float32,
+            &ConstraintSet {
+                min_inclusive: Some(f32_value(1.5)),
+                max_inclusive: Some(f32_value(1.5)),
+                ..ConstraintSet::default()
+            },
+        )
+        .expect("equal inclusive Float32 bounds are legal")
+        .expect("a bounded domain");
+        // The single value really is the only accepted one.
+        assert_eq!(float32.accepts_f32(1.5), Some(true));
+        assert_eq!(float32.accepts_f32(1.5_f32.next_up()), Some(false));
+        assert_eq!(float32.accepts_f32(1.5_f32.next_down()), Some(false));
+    }
+
+    /// Task 033 correction: an equal pair with *either* side exclusive excludes
+    /// its only candidate value, so the domain is empty and must fail closed
+    /// rather than generating an uninhabitable type.
+    #[test]
+    fn equal_bounds_with_an_exclusive_side_are_empty() {
+        // (1.0, 1.0] , [1.0, 1.0) , (1.0, 1.0) -- at both widths.
+        let float64_cases = [
+            ConstraintSet {
+                min_exclusive: Some(f64_value(1.0)),
+                max_inclusive: Some(f64_value(1.0)),
+                ..ConstraintSet::default()
+            },
+            ConstraintSet {
+                min_inclusive: Some(f64_value(1.0)),
+                max_exclusive: Some(f64_value(1.0)),
+                ..ConstraintSet::default()
+            },
+            ConstraintSet {
+                min_exclusive: Some(f64_value(1.0)),
+                max_exclusive: Some(f64_value(1.0)),
+                ..ConstraintSet::default()
+            },
+        ];
+        for constraints in float64_cases {
+            assert_eq!(
+                floating_domain(PrimitiveKind::Float64, &constraints),
+                Err("contradictory floating bounds")
+            );
+        }
+
+        let float32_cases = [
+            ConstraintSet {
+                min_exclusive: Some(f32_value(1.0)),
+                max_inclusive: Some(f32_value(1.0)),
+                ..ConstraintSet::default()
+            },
+            ConstraintSet {
+                min_inclusive: Some(f32_value(1.0)),
+                max_exclusive: Some(f32_value(1.0)),
+                ..ConstraintSet::default()
+            },
+            ConstraintSet {
+                min_exclusive: Some(f32_value(1.0)),
+                max_exclusive: Some(f32_value(1.0)),
+                ..ConstraintSet::default()
+            },
+        ];
+        for constraints in float32_cases {
+            assert_eq!(
+                floating_domain(PrimitiveKind::Float32, &constraints),
+                Err("contradictory floating bounds")
+            );
+        }
+    }
+
+    /// `+0.0 == -0.0`, so a signed-zero pair is an *equal* pair and obeys the
+    /// same exclusivity rule -- the sign spelling must not change the verdict.
+    #[test]
+    fn signed_zero_equality_follows_the_same_empty_rule() {
+        // Inclusive/inclusive across signs is still one legal value.
+        assert!(
+            floating_domain(
+                PrimitiveKind::Float64,
+                &ConstraintSet {
+                    min_inclusive: Some(f64_value(-0.0)),
+                    max_inclusive: Some(f64_value(0.0)),
+                    ..ConstraintSet::default()
+                }
+            )
+            .is_ok()
+        );
+        // Either side exclusive makes it empty, in both sign orders.
+        for (min_exclusive, max_inclusive, min_inclusive, max_exclusive) in [
+            (Some(f64_value(-0.0)), Some(f64_value(0.0)), None, None),
+            (Some(f64_value(0.0)), Some(f64_value(-0.0)), None, None),
+            (None, None, Some(f64_value(-0.0)), Some(f64_value(0.0))),
+            (None, None, Some(f64_value(0.0)), Some(f64_value(-0.0))),
+        ] {
+            assert_eq!(
+                floating_domain(
+                    PrimitiveKind::Float64,
+                    &ConstraintSet {
+                        min_exclusive,
+                        max_inclusive,
+                        min_inclusive,
+                        max_exclusive,
+                        ..ConstraintSet::default()
+                    }
+                ),
+                Err("contradictory floating bounds")
+            );
+        }
+        assert_eq!(
+            floating_domain(
+                PrimitiveKind::Float32,
+                &ConstraintSet {
+                    min_exclusive: Some(f32_value(0.0)),
+                    max_inclusive: Some(f32_value(-0.0)),
+                    ..ConstraintSet::default()
+                }
+            ),
+            Err("contradictory floating bounds")
         );
     }
 

@@ -1523,6 +1523,27 @@ The classification lives in one place, `codegen-core/src/floating.rs`
 `CoverageAnalysis`. A single shared answer is what keeps the backends and the
 coverage model from drifting into disagreeing about which declarations render.
 
+### Empty two-sided domains
+
+A two-sided domain must actually be inhabited. `lower > upper` is rejected, and
+so is `lower == upper` when **either** side is exclusive: an equal pair denotes
+exactly one candidate value, and an exclusive side excludes it, leaving nothing.
+
+| Domain | Verdict |
+| --- | --- |
+| `[1.0, 1.0]` | valid — exactly one value |
+| `(1.0, 1.0]` | empty — rejected |
+| `[1.0, 1.0)` | empty — rejected |
+| `(1.0, 1.0)` | empty — rejected |
+
+The equal/exclusive cases were **missed by the original Task 033 classifier**,
+which checked only `lower > upper`, and were corrected during review. Generating
+a type no value can inhabit would be a silent trap, so these fail closed.
+Because `+0.0 == -0.0` under IEEE comparison, a signed-zero pair is an equal
+pair and follows the same rule regardless of how the signs are spelled. The rule
+applies identically to Float32 and Float64, and is tested by calling
+`floating_domain()` directly rather than relying on `SchemaIr::validate()`.
+
 ### Width preservation
 
 `Float32` stays binary32 and `Float64` stays binary64 everywhere. The helper
@@ -1592,45 +1613,100 @@ Nothing beyond C++17 and the already-included `<optional>` is required. The Task
 022 binary32/binary64 host `static_assert`s are unchanged and still emitted for
 constrained-float-only schemas.
 
-**Ada.** A derived IEEE type carrying a `Dynamic_Predicate`, plus a `Create`
-expression function:
+**Ada.** A **private** type whose completion is a derived IEEE type carrying a
+`Dynamic_Predicate`, with `Create` and `Value` as the only public operations:
 
 ```ada
 pragma Assertion_Policy (Dynamic_Predicate => Check);
 ...
+   type AltitudeMeters is private;
+
+   function Create (Value : Interfaces.IEEE_Float_64) return AltitudeMeters;
+
+   function Value (Item : AltitudeMeters) return Interfaces.IEEE_Float_64;
+
+private
+
    type AltitudeMeters is new Interfaces.IEEE_Float_64
      with Dynamic_Predicate =>
        AltitudeMeters >= -6378237.0;
 
-   function Create (Value : AltitudeMeters'Base) return AltitudeMeters
+   function Create (Value : Interfaces.IEEE_Float_64) return AltitudeMeters
    is (AltitudeMeters (Value));
+
+   function Value (Item : AltitudeMeters) return Interfaces.IEEE_Float_64
+   is (Interfaces.IEEE_Float_64 (Item));
 ```
 
 A finite Ada `range` subtype is deliberately **not** used: it would exclude
 `+Infinity` from a lower-only XSD constraint that actually admits it, silently
 narrowing the schema's domain.
 
-### Why Ada needs `Create` and a local `Assertion_Policy`
+### Why constrained Ada floats are private
 
-This was measured, not assumed. Predicate enforcement follows the
-`Assertion_Policy` in force **where the conversion is written**, not where the
-type is declared. A direct `AltitudeMeters (X)` conversion written in a client
-compiled without `-gnata` is therefore *not* checked, even though the generated
-spec declares the predicate — verified against GNAT 14.2.
+**This defect was found during Task 033 review, and the representation was
+corrected in response.** Task 033 first shipped the predicate on a *publicly*
+derived numeric type. That made `Create` checked but left the representation
+itself open, because a public numeric derivation also publishes a conversion and
+a full set of inherited operators.
 
-Declaring `Create` as an expression function inside the generated spec, under
-that spec's own `pragma Assertion_Policy (Dynamic_Predicate => Check)`, moves the
-conversion to the generated side of that boundary, so the check holds regardless
-of client flags. The pragma is a configuration pragma on the generated unit only;
-no repository-wide compiler flag was changed. The regression test compiles its
-probe *without* `-gnata` precisely so an unenforced predicate would fail rather
-than quietly pass, and this was confirmed by temporarily removing the pragma and
-observing the runtime test fail.
+Two ordinary client paths therefore still manufactured invalid values, with no
+diagnostic at all, when the client was compiled without `-gnata` — reproduced
+against GNAT 14.2 before the fix:
 
-The pragma and `Create` are emitted only when some declaration in the unit
-actually carries a floating predicate, so unconstrained Task 022 Ada output
-remains `type Name is new Interfaces.IEEE_Float_32;` with no predicate, no
-pragma, and no `Create`.
+```ada
+Bad : BurnRate := BurnRate (0.0);          --  0.0 in a "> 0.0" type
+
+A : FloatUnitInterval := Create (0.75);
+B : FloatUnitInterval := Create (0.75);
+C : FloatUnitInterval := A + B;            --  1.5 in a "[0.0, 1.0]" type
+```
+
+The lesson is that **a client's assertion policy cannot be trusted to preserve a
+generated type's invariant**, and neither can the client's restraint: an
+invariant that survives only when callers avoid legal operations is not an
+invariant. Rust and C++ already prevented this class of bypass with private
+storage and private constructors; Ada now provides the same guarantee
+structurally.
+
+Hiding the derivation removes both paths from the public surface. Both probes
+above are now **compile errors** — "invalid conversion" and "no applicable
+operator `+` for private type" respectively — and both are asserted as such, by
+their intended diagnostic rather than by mere failure, in the backend and CLI
+regressions. A runtime exception is deliberately not accepted as sufficient
+here: the unchecked surface should not exist publicly at all.
+
+The public contract is therefore:
+
+* `Create` is the single checked construction boundary.
+* `Value` is read-only extraction of the underlying IEEE scalar.
+* No conversion, inherited arithmetic, writable field, unchecked construction,
+  or representation clause is publicly available.
+
+No public arithmetic over constrained wrappers is provided. If it is ever
+wanted, it belongs in a deliberate design as explicit checked operations.
+
+### How the check survives a client without `-gnata`
+
+Predicate enforcement follows the `Assertion_Policy` in force **where the
+conversion is written**, not where the type is declared. Because `Create`'s
+expression-function completion is written inside the generated spec, under that
+spec's own `pragma Assertion_Policy (Dynamic_Predicate => Check)`, the
+conversion sits on the generated side of that boundary and is checked regardless
+of client flags. The pragma is a configuration pragma on the generated unit
+only; no repository-wide compiler flag was changed.
+
+The regression probes compile *without* `-gnata` precisely so an unenforced
+predicate would fail rather than quietly pass, and this was confirmed by
+temporarily removing the pragma and observing the runtime test fail. They drive
+every accepted and rejected case through `Create` and round-trip accepted finite
+values back through `Value`.
+
+The pragma, the private part, `Create`, and `Value` are emitted only when some
+declaration in the unit actually carries a floating predicate, so unconstrained
+Task 022 Ada output remains `type Name is new Interfaces.IEEE_Float_32;` with no
+predicate, no pragma, no private part, and no operations — byte-for-byte
+unchanged.
 
 ### Named restriction chains
 
