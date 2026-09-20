@@ -1,0 +1,32 @@
+# SYNTHETIC Task 032 fixture. Authored for this repository only.
+#
+# Selects the message whose payload reaches an abstract structural VALUE.
+# Under closed-schema the projection must supply every concrete descendant as
+# generated support; under open-extensions the same selection is NOT READY and
+# must generate nothing.
+contract_version: "0.1"
+
+service:
+  name: Selected Generation Abstract
+  version: "0.1.0"
+  kind: service
+  description: Synthetic contract whose selection reaches a closed sum.
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: mission-data
+    name: Mission Data
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: holder-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: HolderReport
+        topic: mission.holder
+        timing:
+          kind: asynchronous

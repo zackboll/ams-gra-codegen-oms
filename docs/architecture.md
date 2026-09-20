@@ -665,16 +665,57 @@ AMS GRA Service Contract describing what a particular service *does* use.
                                v
                     ServiceBackendReadiness
                                |
-                future contract-selected codegen
+                               |  READY gate
+                               v
+                  ServiceGenerationProjection
+                       (projected Schema IR)
+                               |
                     /          |          \
                   Ada         Rust         C++
+                 (existing backends, unchanged)
 ```
 
 Task 031 adds the readiness stage. It is **analysis, not generation**: it
 answers whether one backend could render the selected UCI type model under one
-asserted world, and writes nothing. No backend parses the contract at any point
-in this pipeline; the contract is reduced to a plan, and the plan to a
-capability verdict, entirely in language-neutral code.
+asserted world, and writes nothing.
+
+Task 032 adds the generation-projection stage, and it is deliberately the
+*last* language-neutral step before the ordinary backends. No backend parses
+the contract at any point in this pipeline: the contract is reduced to a plan,
+the plan to a capability verdict, and the verdict-gated selection to a narrowed
+`SchemaIr` — entirely in language-neutral code.
+
+### Why a projected Schema IR
+
+The backends are schema generators. Rather than giving each of them a second
+entry point that understands contracts, Task 032 narrows the schema once:
+
+```text
+project_service_generation_schema(&ServicePlan, &SchemaIr, GenerationWorld)
+    -> Result<ServiceGenerationProjection, ServiceGenerationError>
+```
+
+The result owns a cloned subset `SchemaIr`, which is handed to the existing
+`Backend::generate`. From the backend's point of view selected generation is
+ordinary generation, so schema validation, emission planning, helper detection,
+and rendering are reused rather than reimplemented — and helper decisions
+automatically follow the *selected* model, because the unselected declarations
+are simply not there. Three backend crates were unchanged by Task 032.
+
+The **full** `SchemaIr` remains available to the projection itself, and is
+needed there for three things the subset could not answer: effective structural
+inheritance lookup, Task 024 closed-sum descendant discovery, and source
+provenance. Only the projected `SchemaIr` reaches a backend. Cloned
+declarations keep their original `SourceRef`: a projection is a narrowing of an
+existing schema, not a new schema authority.
+
+Two closures are tracked separately and never conflated. The contract's
+**semantic** closure is `ServicePlan::selected_type_closure`, unchanged by Task
+032. The **generated support** closure additionally admits what generated
+representation requires — most importantly the concrete transitive descendants
+Task 024 stores as closed-sum variants, which no selected declaration names as
+a dependency. Folding those into the semantic closure would make `ServicePlan`
+claim the contract selected types it never mentioned.
 
 The two inputs answer different questions and neither can answer the other's.
 The XSD knows a message exists, its qualified name, its payload type, and that

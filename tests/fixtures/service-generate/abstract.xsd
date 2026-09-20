@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:test"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- Task 032 closed-sum support-expansion fixture.
+
+       Base (abstract) has four descendants exercising every Task 024 shape:
+
+         ConcreteA        concrete leaf
+         ConcreteParent   concrete NON-leaf (still a legal variant)
+         ConcreteLeaf     concrete leaf under a CONCRETE parent
+         AbstractMiddle   abstract intermediate; NOT a variant, but retained
+                          because MiddleLeaf's effective structure needs it
+         MiddleLeaf       concrete leaf under the abstract intermediate
+
+       Holder stores a Base VALUE, so the raw contract-selected semantic
+       closure is Holder + Base only. Every concrete descendant above is a
+       GENERATED SUPPORT type: Task 024 stores each as a closed-sum variant.
+
+       ConcreteA additionally stores a NESTED abstract value (BaseB), whose
+       own descendant ConcreteB is reached only through support expansion.
+       That forces fixed-point iteration: a one-generation expansion would
+       miss ConcreteB and NestedNote. -->
+  <xs:complexType name="NestedNote">
+    <xs:sequence>
+      <xs:element name="Text" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="BaseB" abstract="true">
+    <xs:sequence>
+      <xs:element name="Kind" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="ConcreteB">
+    <xs:complexContent>
+      <xs:extension base="t:BaseB">
+        <xs:sequence>
+          <xs:element name="Note" type="t:NestedNote"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="Base" abstract="true">
+    <xs:sequence>
+      <xs:element name="Id" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="ConcreteA">
+    <xs:complexContent>
+      <xs:extension base="t:Base">
+        <xs:sequence>
+          <xs:element name="Nested" type="t:BaseB"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="ConcreteParent">
+    <xs:complexContent>
+      <xs:extension base="t:Base">
+        <xs:sequence>
+          <xs:element name="ParentField" type="xs:int"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="ConcreteLeaf">
+    <xs:complexContent>
+      <xs:extension base="t:ConcreteParent">
+        <xs:sequence>
+          <xs:element name="LeafField" type="xs:int"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="AbstractMiddle" abstract="true">
+    <xs:complexContent>
+      <xs:extension base="t:Base">
+        <xs:sequence>
+          <xs:element name="MiddleField" type="xs:int"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="MiddleLeaf">
+    <xs:complexContent>
+      <xs:extension base="t:AbstractMiddle">
+        <xs:sequence>
+          <xs:element name="MiddleLeafField" type="xs:int"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="Holder">
+    <xs:sequence>
+      <xs:element name="Value" type="t:Base"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="HolderReport" type="t:Holder" uci:version="001.000.000.000"/>
+</xs:schema>

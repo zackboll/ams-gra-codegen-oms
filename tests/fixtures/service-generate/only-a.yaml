@@ -1,0 +1,31 @@
+# SYNTHETIC Task 032 fixture. Authored for this repository only.
+#
+# Contract B of the narrowing pair: selects ONLY MessageA. Declarations
+# reachable only from MessageB (OnlyBType, PayloadB) must disappear from the
+# generated model, rather than surviving because they exist in the root schema.
+contract_version: "0.1"
+
+service:
+  name: Selected Generation Narrow
+  version: "0.1.0"
+  kind: service
+  description: Synthetic contract selecting one of two supported messages.
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: mission-data
+    name: Mission Data
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: a-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: MessageA
+        topic: mission.a
+        timing:
+          kind: asynchronous

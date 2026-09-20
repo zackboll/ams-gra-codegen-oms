@@ -155,9 +155,28 @@ distant Phase 6 helper. See `docs/service-contract-integration.md` and
 Readiness is **analysis, not generation**: a READY verdict means a backend
 could render the selected closure, not that any service source exists yet.
 
+**Complete (Task 032):**
+
+- [x] contract-selected type generation — `project_service_generation_schema`
+      in `codegen-core` narrows a full `SchemaIr` to the model one contract
+      selects, and the existing Ada/Rust/C++ backends generate from that
+      projected schema unchanged. No backend crate learned what a contract is;
+- [x] semantic closure versus generated support closure — `ServicePlan`'s raw
+      selected closure stays exactly what the contract selects, while a
+      separate fixed-point support closure supplies the Task 024 closed-sum
+      concrete descendants (and their dependencies) that generated
+      representation needs. The two are reported separately and never conflated;
+- [x] a `service-generate` CLI command requiring `--language`, `--world`, and
+      `--output`, gated on Task 031 readiness: a NOT READY selection prints the
+      same report `service-check` prints, invokes no backend, and writes no
+      file — not even the output directory.
+
+Generation is still **types only**. A ready selection produces the UCI type
+model and nothing else: no CAL façade, publisher/subscriber API, service
+wrapper, codec, or runtime source is emitted yet.
+
 **Still open:**
 
-- [ ] contract-selected type generation;
 - [ ] service-specific generated wrapper APIs;
 - [ ] generated service publish/subscribe façade;
 - [ ] typed LA-CAL integration;

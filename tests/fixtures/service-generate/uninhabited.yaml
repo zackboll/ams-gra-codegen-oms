@@ -1,0 +1,30 @@
+# SYNTHETIC Task 032 fixture. Authored for this repository only.
+#
+# Selects the message whose payload carries a Task 026 optional
+# zero-known-descendant abstract field.
+contract_version: "0.1"
+
+service:
+  name: Selected Generation Uninhabited
+  version: "0.1.0"
+  kind: service
+  description: Synthetic contract selecting a Task 026 absent-only occurrence.
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: mission-data
+    name: Mission Data
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: optional-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: OptionalHolderReport
+        topic: mission.optional
+        timing:
+          kind: asynchronous

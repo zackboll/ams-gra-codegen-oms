@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:test"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- Task 032 controlled selected-generation fixture.
+
+       This is NOT UCI. It is a deliberately tiny stand-in that makes the
+       Task 032 value proposition observable end to end:
+
+         MessageA -> PayloadA -> SharedType -> LabelType
+         MessageB -> PayloadB -> SharedType, OnlyBType
+
+       plus four UNRELATED declarations that no contract here selects:
+
+         UnrelatedDuration       xs:duration; no backend renders it, so
+                                 ordinary full-schema 'generate' FAILS while
+                                 'service-check' reports READY and
+                                 'service-generate' succeeds.
+         UnrelatedUnboundedType  the only unbounded occurrence in the set, so
+                                 its absence from selected output proves
+                                 unbounded sequence helpers are selected too.
+         UnrelatedBinaryType     the only binary value in the set.
+         UnrelatedFloatType      the only floating value in the set.
+
+       Declaration ORDER also matters here: SharedType (selected) precedes
+       UnrelatedUnboundedType (unselected) which precedes PayloadA
+       (selected), so projected output that preserved schema order can be
+       told apart from output compacted into traversal-discovery order. -->
+  <xs:simpleType name="LabelType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Primary"/>
+      <xs:enumeration value="Secondary"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:complexType name="SharedType">
+    <xs:sequence>
+      <xs:element name="Label" type="t:LabelType"/>
+      <xs:element name="Count" type="xs:int"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="UnrelatedUnboundedType">
+    <xs:sequence>
+      <xs:element name="Items" type="xs:string" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="PayloadA">
+    <xs:sequence>
+      <xs:element name="Shared" type="t:SharedType"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="OnlyBType">
+    <xs:sequence>
+      <xs:element name="Note" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="PayloadB">
+    <xs:sequence>
+      <xs:element name="Shared" type="t:SharedType"/>
+      <xs:element name="Only" type="t:OnlyBType"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:simpleType name="UnrelatedDuration">
+    <xs:restriction base="xs:duration"/>
+  </xs:simpleType>
+  <xs:complexType name="UnrelatedDurationType">
+    <xs:sequence>
+      <xs:element name="Elapsed" type="t:UnrelatedDuration"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="UnrelatedBinaryType">
+    <xs:sequence>
+      <xs:element name="Blob" type="xs:hexBinary"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="UnrelatedFloatType">
+    <xs:sequence>
+      <xs:element name="Value" type="xs:double"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="MessageA" type="t:PayloadA" uci:version="001.000.000.000"/>
+  <xs:element name="MessageB" type="t:PayloadB" uci:version="001.000.000.000"/>
+  <xs:element name="UnrelatedDurationReport" type="t:UnrelatedDurationType" uci:version="001.000.000.000"/>
+  <xs:element name="UnrelatedUnboundedReport" type="t:UnrelatedUnboundedType" uci:version="001.000.000.000"/>
+  <xs:element name="UnrelatedBinaryReport" type="t:UnrelatedBinaryType" uci:version="001.000.000.000"/>
+  <xs:element name="UnrelatedFloatReport" type="t:UnrelatedFloatType" uci:version="001.000.000.000"/>
+</xs:schema>
