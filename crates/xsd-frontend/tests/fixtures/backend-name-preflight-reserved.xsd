@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:preflight:test"
+           targetNamespace="urn:preflight:test">
+  <!-- SYNTHETIC corrective-cleanup fixture. Authored for this repository only;
+       NOT UCI.
+
+       One reserved-word case per backend, all legal XSD:
+
+         Ada  : the type `Record` (Ada reserved word, case-insensitive)
+         Rust : the field `type` -> snake_case `type` (Rust keyword)
+         C++  : the field `class` -> snake_case `class` (C++ keyword)
+
+       Each generated a token the corresponding compiler rejects outright. -->
+  <xs:complexType name="Record">
+    <xs:sequence>
+      <xs:element name="Value" type="xs:long"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="RustKeywordField">
+    <xs:sequence>
+      <xs:element name="type" type="xs:long"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="CppKeywordField">
+    <xs:sequence>
+      <xs:element name="class" type="xs:long"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

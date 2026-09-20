@@ -1,11 +1,11 @@
 //! Minimal Rust type generation from normalized schema IR.
 
 use ams_gra_oms_codegen_core::{
-    AbstractValueProjection, Backend, CodegenError, EffectiveValueMember, FloatingDomain,
-    GeneratedFile, GenerationWorld, InclusiveIntegralDomain, TypeEmission,
-    abstract_value_projection_for_ref, effective_choice_alternatives, effective_record_fields,
-    field_storage_semantics, float32_literal, float64_literal, floating_domain,
-    inclusive_integral_domain, plan_type_emissions,
+    AbstractValueProjection, Backend, BackendLanguage, CodegenError, EffectiveValueMember,
+    FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain, TypeEmission,
+    abstract_value_projection_for_ref, backend_preflight, effective_choice_alternatives,
+    effective_record_fields, field_storage_semantics, float32_literal, float64_literal,
+    floating_domain, inclusive_integral_domain, plan_type_emissions,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -303,17 +303,11 @@ fn render_declaration(
 }
 
 fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), CodegenError> {
-    let namespace = schema
-        .namespaces
-        .first()
-        .ok_or_else(|| error("Rust generation requires one namespace"))?;
-    if schema.namespaces.len() != 1
-        || schema
-            .types
-            .iter()
-            .any(|declaration| declaration.name.namespace_uri != namespace.uri)
-    {
-        return unsupported("multiple namespaces".to_owned());
+    // Shared global preflight: the single-namespace boundary and generated
+    // host-language name safety. Capability/readiness analysis consults the
+    // same rules, so a READY verdict cannot disagree with what happens here.
+    if let Err(preflight) = backend_preflight(schema, BackendLanguage::Rust) {
+        return unsupported(preflight.to_string());
     }
     for declaration in &schema.types {
         if declaration.is_abstract
@@ -409,12 +403,10 @@ fn validate_choice_alternatives(
     alternatives: Vec<&ams_gra_oms_ir::FieldDecl>,
     world: GenerationWorld,
 ) -> Result<(), CodegenError> {
-    let mut names = std::collections::BTreeSet::new();
+    // Alternative-name collisions are no longer checked here: the shared
+    // backend name preflight owns that policy for every generated region, so
+    // keeping a second Rust-local copy would let the two drift.
     for alternative in alternatives {
-        let name = upper_camel(&alternative.name)?;
-        if !names.insert(name.clone()) {
-            return unsupported(format!("duplicate Choice alternative identifier {name}"));
-        }
         if alternative.nillable {
             return unsupported(format!("nillable Choice alternative {}", alternative.name));
         }
@@ -1142,11 +1134,17 @@ fn main() {
         };
         alternatives[0].name = "Foo".to_owned();
         alternatives[1].name = "foo".to_owned();
+        // `Foo` and `foo` both upper-camel to `Foo`. This is now diagnosed by
+        // the shared backend name preflight rather than by a Rust-local
+        // duplicate check, so the assertion is on the semantic outcome -- the
+        // collision is rejected and both spellings are named -- rather than on
+        // the exact prose of the superseded local diagnostic.
+        let message = generate(&collision, CLOSED)
+            .expect_err("converging Rust variant names must be rejected")
+            .message;
         assert!(
-            generate(&collision, CLOSED)
-                .unwrap_err()
-                .message
-                .contains("duplicate Choice alternative identifier Foo")
+            message.contains("\"Foo\"") && message.contains("\"foo\""),
+            "{message}"
         );
 
         let mut nillable = choice_schema();
@@ -1749,6 +1747,82 @@ fn main() {
             .find("PrivateB(PrivateB)")
             .expect("PrivateB variant");
         assert!(reversed_b < reversed_a);
+    }
+
+    // -----------------------------------------------------------------
+    // Corrective cleanup -- shared backend generated-name preflight
+    // -----------------------------------------------------------------
+
+    fn preflight_fixture(name: &str) -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures")
+                .join(name),
+        )
+        .expect("preflight fixture should parse")
+    }
+
+    /// Two distinct XSD type names that both upper-camel to `TrackReport`
+    /// would declare the same Rust type twice.
+    #[test]
+    fn converging_declaration_names_are_rejected() {
+        let schema = preflight_fixture("backend-name-preflight-declaration-collision.xsd");
+        let message = generate(&schema, CLOSED)
+            .expect_err("converging declaration names must be rejected")
+            .message;
+        assert!(message.contains("TrackReport"), "{message}");
+    }
+
+    /// An inherited field and a locally declared field that snake_case to the
+    /// same member. Effective structural projection accepts them because the
+    /// XSD names differ; only generated-name policy catches this.
+    #[test]
+    fn converging_inherited_field_names_are_rejected() {
+        let schema = preflight_fixture("backend-name-preflight-inherited-collision.xsd");
+        let message = generate(&schema, CLOSED)
+            .expect_err("converging inherited field names must be rejected")
+            .message;
+        assert!(message.contains("track_id"), "{message}");
+    }
+
+    /// A field named `type` snake_cases onto a Rust keyword.
+    #[test]
+    fn reserved_word_field_is_rejected() {
+        let schema = preflight_fixture("backend-name-preflight-reserved.xsd");
+        let message = generate(&schema, CLOSED)
+            .expect_err("a Rust keyword field must be rejected")
+            .message;
+        assert!(message.contains("reserved word"), "{message}");
+    }
+
+    /// The control must still render, and the generated module must actually
+    /// compile: a preflight that rejected everything would pass the negative
+    /// tests above while being useless.
+    #[test]
+    fn preflight_control_renders_and_compiles() {
+        let source = generate(
+            &preflight_fixture("backend-name-preflight-control.xsd"),
+            CLOSED,
+        )
+        .expect("safe generated names must render");
+        assert!(source.contains("pub struct TrackReport"), "{source}");
+        // `TrackId` has no `_` word boundary, so it snake_cases to `trackid`.
+        // Asserting the exact spelling pins that this module never renames.
+        assert!(source.contains("pub trackid:"), "{source}");
+
+        use std::fs;
+        use std::process::Command;
+        let directory = std::env::temp_dir().join("ams-gra-oms-preflight-rust-control");
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(&directory).expect("create Rust probe directory");
+        fs::write(directory.join("generated.rs"), &source).expect("write generated module");
+        let status = Command::new("rustc")
+            .current_dir(&directory)
+            .args(["--edition", "2021", "--crate-type", "lib", "generated.rs"])
+            .status()
+            .expect("rustc should be available in a Rust workspace");
+        let _ = fs::remove_dir_all(&directory);
+        assert!(status.success(), "generated Rust module must compile");
     }
 
     /// Section 44: a schema with no abstract value reference must produce

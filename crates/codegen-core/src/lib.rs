@@ -1,6 +1,8 @@
 //! Shared backend contract for OMS/UCI source generation.
 
 mod abstract_value;
+mod backend_names;
+mod backend_preflight;
 mod coverage;
 mod floating;
 mod integral;
@@ -18,6 +20,10 @@ pub use abstract_value::{
     classify_abstract_value_inhabitance, classify_abstract_value_semantics,
     classify_abstract_value_topology, field_storage_semantics, project_abstract_value,
 };
+pub use backend_names::{
+    BackendNameError, NameRegion, backend_names_are_renderable, validate_backend_names,
+};
+pub use backend_preflight::{BackendPreflightError, backend_preflight, backend_preflight_passes};
 pub use coverage::{
     BackendCoverage, BackendLanguage, CoverageAnalysis, CoverageError, FeatureFamily,
     SchemaInventory,

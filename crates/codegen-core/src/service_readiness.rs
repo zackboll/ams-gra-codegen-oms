@@ -23,8 +23,9 @@
 
 use crate::coverage::DeclarationRenderability;
 use crate::{
-    BackendLanguage, CoverageAnalysis, CoverageError, GenerationWorld, ServicePlan,
-    ServicePlanError,
+    BackendLanguage, BackendPreflightError, CoverageAnalysis, CoverageError, GenerationWorld,
+    ServiceGenerationError, ServicePlan, ServicePlanError, backend_preflight,
+    project_service_generation_schema,
 };
 use ams_gra_oms_ir::{PrimitiveKind, QualifiedName, SchemaIr, TypeRefTarget};
 use std::collections::BTreeSet;
@@ -167,6 +168,20 @@ pub struct ServiceBackendReadiness {
     /// Blocked selected messages, in **contract first-occurrence order**,
     /// matching [`ServicePlan::selected_messages`].
     pub blocked_messages: Vec<BlockedMessage>,
+    /// A global backend precondition the **projected** selected schema
+    /// violates, if any.
+    ///
+    /// Per-declaration capability is not the whole story: two individually
+    /// renderable selected declarations can still be ungenerable together,
+    /// because their generated names collide or because the selected closure
+    /// spans more than one namespace. Those are properties of the projected
+    /// schema as a whole, so they are measured on exactly the input that
+    /// selected-service generation would hand to the backend.
+    ///
+    /// This is a backend **capability** blocker, not a claim that the schema
+    /// is malformed; multi-namespace IR is valid input the backends simply do
+    /// not generate yet.
+    pub backend_blocker: Option<BackendPreflightError>,
 }
 
 impl ServiceBackendReadiness {
@@ -177,9 +192,12 @@ impl ServiceBackendReadiness {
     /// exchanges are genuine parts of a service interface that simply require
     /// no UCI type model, so they can neither satisfy nor fail UCI type
     /// readiness.
+    /// A global backend precondition violation makes the service NOT READY
+    /// even when every selected declaration is individually renderable,
+    /// because generation of that same projected schema would fail.
     #[must_use]
     pub fn is_ready(&self) -> bool {
-        self.blocked_messages.is_empty()
+        self.blocked_messages.is_empty() && self.backend_blocker.is_none()
     }
 }
 
@@ -275,6 +293,27 @@ pub fn analyze_service_readiness(
         });
     }
 
+    // Global backend preconditions, measured on exactly the schema that
+    // selected-service generation would hand to the backend. Projecting here
+    // is what makes readiness and generation agree: checking the *full*
+    // schema instead would wrongly block a service whose selected closure
+    // narrows to one namespace, and checking nothing at all is the historical
+    // defect that let a multi-namespace selection report READY.
+    //
+    // A projection failure is not swallowed: it is a real reason the service
+    // cannot be generated, and is surfaced through the normal error path.
+    let backend_blocker = match project_service_generation_schema(plan, schema, world) {
+        Ok(projection) => backend_preflight(projection.schema(), language).err(),
+        Err(ServiceGenerationError::Plan(error)) => return Err(error.into()),
+        Err(ServiceGenerationError::PlanSchemaMismatch { missing, role }) => {
+            return Err(ServiceReadinessError::PlanSchemaMismatch { missing, role });
+        }
+        // An abstract-value or emission-planning failure is already reported
+        // per message/declaration above; it is not a *global* precondition and
+        // must not be relabelled as one.
+        Err(_) => None,
+    };
+
     let selected_types_total = closure.len();
     let selected_messages_total = plan.selected_messages().len();
     Ok(ServiceBackendReadiness {
@@ -286,6 +325,7 @@ pub fn analyze_service_readiness(
         selected_messages_renderable: selected_messages_total - blocked_messages.len(),
         unsupported_types,
         blocked_messages,
+        backend_blocker,
     })
 }
 

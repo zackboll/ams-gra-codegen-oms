@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:preflight:test"
+           targetNamespace="urn:preflight:test">
+  <!-- SYNTHETIC corrective-cleanup control fixture. Authored for this
+       repository only; NOT UCI.
+
+       Every generated name here is safe in all three backends: no reserved
+       word, no pair of IR names converging on one generated identifier, and
+       no Ada case-only clash. It must keep rendering and compiling, proving
+       the shared backend name preflight rejects only what is genuinely
+       unsafe. -->
+  <xs:complexType name="Position">
+    <xs:sequence>
+      <xs:element name="Latitude" type="xs:double"/>
+      <xs:element name="Longitude" type="xs:double"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="TrackReport">
+    <xs:sequence>
+      <xs:element name="TrackId" type="xs:long"/>
+      <xs:element name="Location" type="t:Position"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

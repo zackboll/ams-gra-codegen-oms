@@ -1,0 +1,32 @@
+# SYNTHETIC corrective-cleanup fixture. Authored for this repository only.
+#
+# The control for the spanning case: the SAME two-namespace schema set, but the
+# selected closure narrows to one namespace. This must stay READY. An
+# unselected declaration in another namespace is not a reason to block a
+# service whose own projected schema is single-namespace.
+contract_version: "0.1"
+
+service:
+  name: Multi Namespace Local
+  version: "0.1.0"
+  kind: service
+  description: Synthetic contract whose selected closure uses one namespace.
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: mission-data
+    name: Mission Data
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: local-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: LocalReport
+        topic: mission.local-report
+        timing:
+          kind: asynchronous

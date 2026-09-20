@@ -539,6 +539,102 @@ fn private_overlay_message_participates_in_readiness_normally() {
     }
 }
 
+// ---------------------------------------------------------------------
+// Corrective cleanup -- backend preflight readiness/generation parity
+// ---------------------------------------------------------------------
+
+/// Run selected-service `service-generate` into a scratch directory.
+fn run_service_generate(schema: &str, contract: &str, language: &str, output: &Path) -> Output {
+    cli()
+        .arg("service-generate")
+        .arg("--schema")
+        .arg(fixture(schema))
+        .arg("--contract")
+        .arg(fixture(contract))
+        .args(["--language", language, "--world", "closed-schema"])
+        .arg("--output")
+        .arg(output)
+        .output()
+        .expect("CLI should run")
+}
+
+/// A selected closure spanning two namespaces violates a global backend
+/// precondition every backend enforces. Readiness previously measured only
+/// per-declaration capability and could therefore report READY for a selection
+/// that generation rejects outright. Both must now agree on NOT READY/failure.
+#[test]
+fn multi_namespace_selected_closure_is_not_ready_and_does_not_generate() {
+    for language in ["ada", "rust", "cpp"] {
+        let check = run(
+            "multi-namespace.xsd",
+            "multi-namespace-spanning.yaml",
+            &args(&["--language", language, "--world", "closed-schema"]),
+        );
+        let stdout = stdout_of(&check);
+        assert_eq!(check.status.code(), Some(1), "{language}: {stdout}");
+        assert!(stdout.contains("status: NOT READY"), "{language}: {stdout}");
+        // The boundary is reported as a backend capability limit, naming both
+        // namespaces, rather than as a generic execution error.
+        assert!(
+            stdout.contains("backend boundary:")
+                && stdout.contains("urn:test:a")
+                && stdout.contains("urn:test:b"),
+            "{language}: {stdout}"
+        );
+
+        let directory = scratch(&format!("multi-ns-{language}"));
+        let generated = run_service_generate(
+            "multi-namespace.xsd",
+            "multi-namespace-spanning.yaml",
+            language,
+            &directory,
+        );
+        assert!(
+            !generated.status.success(),
+            "{language} generation must fail for the same backend boundary"
+        );
+        assert!(
+            !directory.exists(),
+            "{language} must write nothing for an unready selection"
+        );
+    }
+}
+
+/// The control: the SAME two-namespace schema set, selecting a message whose
+/// closure narrows to one namespace. Unselected foreign-namespace declarations
+/// must not block it, and generation must succeed.
+#[test]
+fn single_namespace_selected_closure_stays_ready_and_generates() {
+    for language in ["ada", "rust", "cpp"] {
+        let check = run(
+            "multi-namespace.xsd",
+            "multi-namespace-local.yaml",
+            &args(&["--language", language, "--world", "closed-schema"]),
+        );
+        let stdout = stdout_of(&check);
+        assert_eq!(check.status.code(), Some(0), "{language}: {stdout}");
+        assert!(stdout.contains("status: READY"), "{language}: {stdout}");
+        assert!(
+            !stdout.contains("backend boundary:"),
+            "an unselected foreign namespace is not a blocker: {stdout}"
+        );
+
+        let directory = scratch(&format!("single-ns-{language}"));
+        let generated = run_service_generate(
+            "multi-namespace.xsd",
+            "multi-namespace-local.yaml",
+            language,
+            &directory,
+        );
+        assert!(
+            generated.status.success(),
+            "{language} generation must succeed when readiness says READY: {}",
+            stderr_of(&generated)
+        );
+        let _ = std::fs::remove_dir_all(&directory);
+    }
+}
+
 /// Section 35: omitting a declared extension still fails here, so readiness
 /// can never be measured against a silently smaller type universe.
 #[test]

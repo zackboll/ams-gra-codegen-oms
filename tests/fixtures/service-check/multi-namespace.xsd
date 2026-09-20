@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:a="urn:test:a"
+           xmlns:b="urn:test:b"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:test:a"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- SYNTHETIC corrective-cleanup fixture. Authored for this repository only;
+       this is NOT UCI.
+
+       Two namespaces, exercising the single-namespace backend boundary that
+       service readiness previously did not model:
+
+         namespace urn:test:a
+           SpanningReport -> TypeA -> (named) TypeB
+           LocalReport    -> LocalPayload        (entirely in urn:test:a)
+
+         namespace urn:test:b
+           TypeB
+
+       A contract selecting SpanningReport has a selected closure that spans
+       both namespaces, so all three backends reject the projected schema
+       globally: 'service-check' must report NOT READY and 'service-generate'
+       must fail for the same backend boundary.
+
+       A contract selecting only LocalReport narrows to one namespace and must
+       stay READY: the mere existence of an unselected foreign-namespace
+       declaration is not a reason to block it. -->
+  <xs:import namespace="urn:test:b" schemaLocation="multi-namespace-b.xsd"/>
+
+  <xs:complexType name="TypeA">
+    <xs:sequence>
+      <xs:element name="Nested" type="b:TypeB"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="LocalPayload">
+    <xs:sequence>
+      <xs:element name="Latitude" type="xs:double"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="SpanningReport" type="a:TypeA" uci:version="001.000.000.000"/>
+  <xs:element name="LocalReport" type="a:LocalPayload" uci:version="001.000.000.000"/>
+</xs:schema>

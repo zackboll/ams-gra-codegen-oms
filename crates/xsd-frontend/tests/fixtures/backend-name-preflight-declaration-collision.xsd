@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:preflight:test"
+           targetNamespace="urn:preflight:test">
+  <!-- SYNTHETIC corrective-cleanup fixture. Authored for this repository only;
+       NOT UCI.
+
+       `track_report` and `trackReport` are distinct XSD type names that both
+       upper-camel to `TrackReport` for Rust and C++, so the generated module
+       would declare the same type twice. Ada keeps both spellings verbatim,
+       and they differ by more than case, so Ada accepts this schema : the
+       asymmetry is real and is asserted rather than smoothed over. -->
+  <xs:complexType name="track_report">
+    <xs:sequence>
+      <xs:element name="Value" type="xs:long"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="trackReport">
+    <xs:sequence>
+      <xs:element name="Value" type="xs:long"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

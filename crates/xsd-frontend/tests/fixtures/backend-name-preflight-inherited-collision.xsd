@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:preflight:test"
+           targetNamespace="urn:preflight:test">
+  <!-- SYNTHETIC corrective-cleanup fixture. Authored for this repository only;
+       NOT UCI.
+
+       `track_id` (inherited from Base) and `Track_Id` (declared locally on
+       Derived) are DISTINCT XSD names, so effective structural projection
+       accepts both. They nonetheless normalize to the same generated member
+       identifier in every backend:
+
+         Rust/C++ snake_case   : track_id == track_id
+         Ada case-insensitive  : track_id == Track_Id
+
+       Without the shared preflight this emitted a struct/record declaring the
+       same member twice, which does not compile. -->
+  <xs:complexType name="Base">
+    <xs:sequence>
+      <xs:element name="track_id" type="xs:long"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Derived">
+    <xs:complexContent>
+      <xs:extension base="t:Base">
+        <xs:sequence>
+          <xs:element name="Track_Id" type="xs:long"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+</xs:schema>
