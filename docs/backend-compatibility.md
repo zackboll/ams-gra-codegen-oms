@@ -833,6 +833,18 @@ The shared decision point is `field_storage_semantics` in
 `EffectiveValueMember::AbsentOnly`. Every backend and the emission planner
 consult it, so no backend re-derives elision independently.
 
+Generated-name preflight consults it too. `backend_names::register_declaration_members`
+classifies each effective Record field through the very same
+`field_storage_semantics` call before registering anything, so a field the
+backends store nowhere reserves no member identifier, no repeated helper, and
+no Task 034 `{Owner}_{Member}_Optional` wrapper. Registering names from the raw
+effective fields described output that cannot exist: it could falsely reject a
+user declaration spelled like a phantom wrapper, and it could report a name
+collision in place of the authoritative semantic diagnostic for a field whose
+storage classification fails (for example an open-extensions abstract value).
+Deferral is field-scoped — every other field and declaration is still fully
+name-checked.
+
 ### Deliberately still unsupported (fail-closed)
 
 | Occurrence of an uninhabited target | Status | Reason |

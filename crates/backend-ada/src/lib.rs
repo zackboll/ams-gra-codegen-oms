@@ -2876,6 +2876,104 @@ end Probe;
         assert!(status.success(), "generated Ada spec must compile");
     }
 
+    /// Task 026 x Task 034 composition. `EmptyBase` has zero concrete
+    /// descendants and is held only as an absent-only optional field, so the
+    /// renderer removes `Holder.Maybe` before emitting anything: no record
+    /// component, and no `Holder_Maybe_Optional` wrapper. Generated-name
+    /// preflight must classify the field the same way, otherwise it reserves
+    /// a wrapper nothing writes and falsely rejects the user declaration that
+    /// legitimately carries that spelling.
+    #[test]
+    fn a_task026_elided_optional_field_emits_no_component_or_wrapper_and_compiles_under_gnat() {
+        let schema = preflight_fixture("backend-optional-named-elided.xsd");
+        assert!(
+            ams_gra_oms_codegen_core::validate_backend_names(&schema, BackendLanguage::Ada, CLOSED)
+                .is_ok(),
+            "an elided field reserves neither its component name nor a wrapper"
+        );
+        let source = generate(&schema, CLOSED).expect("the elided composition must render");
+
+        // `Holder_Maybe_Optional` appears exactly once, as the user record --
+        // never as the Task 034 two-state wrapper the renderer would write for
+        // a genuinely stored optional named field.
+        assert!(
+            !source.contains("type Holder_Maybe_Optional (Is_Present : Boolean := False)"),
+            "{source}"
+        );
+        assert_eq!(
+            source.matches("type Holder_Maybe_Optional").count(),
+            1,
+            "{source}"
+        );
+        // No `Maybe` component survives in `Holder`, and the elided target
+        // itself is written nowhere.
+        assert!(!source.contains("Maybe :"), "{source}");
+        assert!(!source.contains("type EmptyBase"), "{source}");
+        // The sibling stored field is untouched, proving the elision is
+        // field-scoped rather than a whole-record bail-out.
+        assert!(
+            source.contains("      Required : Standard.Ada.Strings"),
+            "{source}"
+        );
+
+        use std::fs;
+        use std::process::Command;
+        if Command::new("gnatmake").arg("--version").output().is_err() {
+            assert!(
+                std::env::var_os("AMS_GRA_REQUIRE_GNAT").is_none(),
+                "AMS_GRA_REQUIRE_GNAT is set but GNAT is not runnable"
+            );
+            return;
+        }
+        let directory = std::env::temp_dir().join("ams-gra-oms-task034-ada-elided");
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(&directory).expect("create Ada probe directory");
+        // Namespace `urn:optional:elided` yields `Optional.Elided`.
+        fs::write(
+            directory.join("optional.ads"),
+            "package Optional is\nend Optional;\n",
+        )
+        .expect("write Ada parent package");
+        fs::write(directory.join("optional-elided.ads"), &source)
+            .expect("write generated Ada spec");
+        let status = Command::new("gnatmake")
+            .current_dir(&directory)
+            .args(["-gnatwa", "-c", "optional-elided.ads"])
+            .status()
+            .expect("GNAT reported a version, so it must be runnable");
+        let _ = fs::remove_dir_all(&directory);
+        assert!(status.success(), "generated Ada spec must compile");
+    }
+
+    /// Regression 5 at the generation boundary: under open-extensions the
+    /// abstract value itself is unrepresentable, so the authoritative failure
+    /// is the semantic diagnostic -- never a manufactured wrapper collision.
+    #[test]
+    fn an_open_world_abstract_optional_field_reports_the_semantic_diagnostic() {
+        let schema = preflight_fixture("backend-optional-named-open-abstract.xsd");
+        let error = generate(&schema, GenerationWorld::OpenExtensions)
+            .expect_err("an open-world abstract value must fail closed");
+        assert!(
+            error.message.contains("open-extensions")
+                && error
+                    .message
+                    .contains("external derived types cannot be represented"),
+            "the open-world semantics must be the reported cause: {error:?}"
+        );
+        assert!(
+            !error.message.contains("Holder_Maybe_Optional"),
+            "a phantom wrapper name must not be the reported cause: {error:?}"
+        );
+        // Closed-world control: there the field is genuinely stored, so the
+        // very same user spelling really is a collision.
+        let closed = generate(&schema, CLOSED)
+            .expect_err("a stored optional wrapper name must not be duplicated");
+        assert!(
+            closed.message.contains("Holder_Maybe_Optional"),
+            "{closed:?}"
+        );
+    }
+
     /// When the owner really *is* emitted, the wrapper name is really taken,
     /// so a user declaration spelled the same way is a genuine flat-package
     /// collision. Generation must fail closed on the shared preflight rather

@@ -28,6 +28,9 @@
 //! surface, so an unsafe generated name fails closed and deterministically
 //! instead.
 
+use crate::abstract_value::{
+    EffectiveValueMember, abstract_value_projection_for_ref, field_storage_semantics,
+};
 use crate::coverage::BackendLanguage;
 use crate::floating::floating_domain;
 use crate::structure::{effective_choice_alternatives, effective_record_fields};
@@ -1358,7 +1361,14 @@ pub fn validate_backend_names(
     }
     for emission in emissions {
         let mut members = Region::new(language, NameRegion::Members(emission.name().clone()));
-        register_emission_names(schema, emission, language, &mut members, &mut top_level)?;
+        register_emission_names(
+            schema,
+            emission,
+            language,
+            world,
+            &mut members,
+            &mut top_level,
+        )?;
     }
     if language == BackendLanguage::Ada {
         // Literals and generated callables are validated last, against the
@@ -1394,10 +1404,17 @@ pub fn validate_backend_names(
 ///   surface is `Kind` plus one `{Descendant}_Value` component. The original
 ///   abstract Record's own fields are *not* rendered there, so feeding it
 ///   through Record validation would check an imaginary scope.
+///
+/// `world` is threaded down because an emitted Record's *stored* members are a
+/// world-dependent question: Task 026 elides absent-only fields entirely, so
+/// name analysis must classify each effective field through the same
+/// [`field_storage_semantics`] the renderers use rather than reserving names
+/// from raw Schema IR.
 fn register_emission_names(
     schema: &SchemaIr,
     emission: &TypeEmission<'_>,
     language: BackendLanguage,
+    world: GenerationWorld,
     members: &mut Region,
     top_level: &mut Region,
 ) -> Result<(), BackendNameError> {
@@ -1410,7 +1427,7 @@ fn register_emission_names(
         // member region or an Ada helper stem, so one rule governs both.
         TypeEmission::Declaration(_) if !emission.emits_own_top_level_name() => Ok(()),
         TypeEmission::Declaration(declaration) => {
-            register_declaration_members(schema, declaration, language, members, top_level)
+            register_declaration_members(schema, declaration, language, world, members, top_level)
         }
         TypeEmission::AbstractValue(projection) => {
             register_abstract_value_members(projection, language, members)
@@ -1476,6 +1493,7 @@ fn register_declaration_members(
     schema: &SchemaIr,
     declaration: &TypeDecl,
     language: BackendLanguage,
+    world: GenerationWorld,
     members: &mut Region,
     top_level: &mut Region,
 ) -> Result<(), BackendNameError> {
@@ -1500,6 +1518,35 @@ fn register_declaration_members(
                 return Ok(());
             };
             for field in fields {
+                // Task 026 / Task 034 boundary: classify storage with the very
+                // same shared decision point the renderers use, before any name
+                // is reserved. A field the backend stores nowhere emits no
+                // component, no repeated helper and no `_Optional` wrapper, so
+                // reserving names from the raw effective field would describe
+                // output that cannot exist and could falsely reject a
+                // legitimate user declaration spelled the same way.
+                //
+                // A projection *error* is likewise not a naming problem: the
+                // semantic layer already owns diagnostics such as
+                // "abstract value X is not closed under open-extensions", and
+                // inventing a name for the failing field could mask that cause
+                // behind a phantom collision. Only this field defers; every
+                // other field and declaration is still fully checked.
+                let Ok(EffectiveValueMember::Stored(field)) =
+                    field_storage_semantics(schema, field, world)
+                else {
+                    continue;
+                };
+                // A stored field is still only emitted if its own value
+                // reference can be represented at all. This is the identical
+                // shared call `backend-ada::validate_abstract_value_reference`
+                // makes before rendering the component, so an open-world
+                // abstract value -- whose authoritative diagnostic is
+                // "external derived types cannot be represented" -- cannot be
+                // re-reported here as a phantom `_Optional` collision.
+                if abstract_value_projection_for_ref(schema, &field.type_ref, world).is_err() {
+                    continue;
+                }
                 members.insert_transformed(
                     NameSource::Member {
                         owner: declaration.name.clone(),
@@ -1679,7 +1726,14 @@ pub fn unsafe_named_declarations(
     for emission in emissions {
         let owner = emission.name().clone();
         let mut members = Region::collecting(language, NameRegion::Members(owner.clone()));
-        let _ = register_emission_names(schema, emission, language, &mut members, &mut top_level);
+        let _ = register_emission_names(
+            schema,
+            emission,
+            language,
+            world,
+            &mut members,
+            &mut top_level,
+        );
         // A member failure implicates exactly the emitted entity that owns the
         // generated member region, which for a Task 024 wrapper is the wrapper
         // and for an ordinary declaration is that declaration.
@@ -3274,6 +3328,187 @@ mod tests {
             "no wrapper is emitted, so `EmptyBase_Kind` must stay available"
         );
         assert!(unsafe_ada(&schema).is_empty());
+    }
+
+    // ---- Storage-classified Record member registration -----------------
+    //
+    // Ada rendering removes Task 026 `AbsentOnly` fields *before* emitting any
+    // component, repeated helper or Task 034 `_Optional` wrapper. Name
+    // preflight used to walk the raw effective fields instead, so it could
+    // reserve identifiers for a field the backend emits nowhere. That both
+    // manufactured false collisions and could mask the authoritative semantic
+    // diagnostic for a field whose storage classification *fails*.
+
+    /// `abstract EmptyBase` with zero concrete descendants, held only as an
+    /// absent-only optional field, so Task 026 elides the field entirely.
+    /// `Holder_Maybe_Optional` is therefore a spelling nothing generates, and
+    /// the user declaration of that name is legal.
+    fn elided_optional_schema(field_name: &str, extra: Vec<TypeDecl>) -> SchemaIr {
+        let mut empty_base = record("EmptyBase", Vec::new());
+        empty_base.is_abstract = true;
+        let holder = record(
+            "Holder",
+            vec![field(
+                field_name,
+                TypeRefTarget::Named(QualifiedName::new(NS, "EmptyBase")),
+                Cardinality::OPTIONAL_ONE,
+            )],
+        );
+        let mut types = vec![empty_base, holder];
+        types.extend(extra);
+        schema_with(types)
+    }
+
+    /// `abstract Base` with a concrete descendant, held as an optional named
+    /// field. Closed world stores it, so the Task 034 wrapper is emitted;
+    /// open world cannot represent `Base` at all.
+    fn closed_sum_optional_schema(extra: Vec<TypeDecl>) -> SchemaIr {
+        let mut base = record("Base", Vec::new());
+        base.is_abstract = true;
+        let mut concrete = record("Concrete", Vec::new());
+        concrete.base_type = Some(TypeRef {
+            target: TypeRefTarget::Named(QualifiedName::new(NS, "Base")),
+        });
+        let holder = record(
+            "Holder",
+            vec![field(
+                "Maybe",
+                TypeRefTarget::Named(QualifiedName::new(NS, "Base")),
+                Cardinality::OPTIONAL_ONE,
+            )],
+        );
+        let mut types = vec![base, concrete, holder];
+        types.extend(extra);
+        schema_with(types)
+    }
+
+    /// Regression 1: a Task 026 elided optional field reserves no Task 034
+    /// `_Optional` wrapper name.
+    #[test]
+    fn an_elided_optional_field_reserves_no_ada_optional_wrapper_name() {
+        let schema = elided_optional_schema("Maybe", vec![primitive("Holder_Maybe_Optional")]);
+        assert!(
+            validate_backend_names(
+                &schema,
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            )
+            .is_ok(),
+            "no wrapper is emitted for an absent-only field, so the spelling stays available"
+        );
+        let condemned = unsafe_ada(&schema);
+        assert!(
+            !condemned.contains("Holder") && !condemned.contains("Holder_Maybe_Optional"),
+            "nothing may be condemned for a wrapper that is never generated: {condemned:?}"
+        );
+    }
+
+    /// Regression 3: the correction covers the **member** surface, not merely
+    /// the `_Optional` suffix. An elided field emits no Record component at
+    /// all, so its identifier is never checked -- even when it is a reserved
+    /// word that would otherwise make GNAT reject the component.
+    #[test]
+    fn an_elided_reserved_word_member_is_not_checked() {
+        let schema = elided_optional_schema("Range", Vec::new());
+        assert!(
+            validate_backend_names(
+                &schema,
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            )
+            .is_ok(),
+            "no component named `Range` is emitted, so no reserved word is used"
+        );
+        assert!(unsafe_ada(&schema).is_empty());
+    }
+
+    /// Regression 4 (control): an inhabited optional named field is genuinely
+    /// stored, so it keeps reserving `{Owner}_{Member}_Optional` and a user
+    /// declaration of that spelling is still a real collision implicating both
+    /// declarations.
+    #[test]
+    fn a_stored_optional_named_field_still_reserves_its_optional_wrapper() {
+        let schema = schema_with(vec![
+            record("Item", Vec::new()),
+            record(
+                "Holder",
+                vec![field(
+                    "Maybe",
+                    TypeRefTarget::Named(QualifiedName::new(NS, "Item")),
+                    Cardinality::OPTIONAL_ONE,
+                )],
+            ),
+            primitive("Holder_Maybe_Optional"),
+        ]);
+        assert_collides(&schema, BackendLanguage::Ada, "Holder_Maybe_Optional");
+        let condemned = unsafe_ada(&schema);
+        assert!(
+            condemned.contains("Holder") && condemned.contains("Holder_Maybe_Optional"),
+            "both the emitting owner and the colliding declaration are unsafe: {condemned:?}"
+        );
+    }
+
+    /// Regression 5: under open-extensions the field's storage classification
+    /// *fails* -- an abstract value with possible external descendants cannot
+    /// be represented -- so no `_Optional` wrapper can exist either. Name
+    /// analysis must defer rather than manufacture a collision that would mask
+    /// the authoritative semantic diagnostic.
+    #[test]
+    fn an_open_world_unrepresentable_optional_field_reserves_no_wrapper() {
+        let schema = closed_sum_optional_schema(vec![primitive("Holder_Maybe_Optional")]);
+        assert!(
+            validate_backend_names(
+                &schema,
+                BackendLanguage::Ada,
+                GenerationWorld::OpenExtensions
+            )
+            .is_ok(),
+            "the open-world semantic failure owns this field, not a phantom name collision"
+        );
+        assert!(
+            unsafe_named_declarations(
+                &schema,
+                BackendLanguage::Ada,
+                GenerationWorld::OpenExtensions
+            )
+            .is_empty(),
+            "no declaration may be condemned for a wrapper the failing field never emits"
+        );
+        // Closed world is the control: there the field really is stored, so
+        // the very same spelling collides.
+        assert_collides(&schema, BackendLanguage::Ada, "Holder_Maybe_Optional");
+    }
+
+    /// Regression 6: field-level deferral is scoped. A failing/elided abstract
+    /// field silences only itself; unrelated declarations that genuinely
+    /// collide are still detected.
+    #[test]
+    fn deferral_for_one_field_does_not_disable_name_checking() {
+        let schema = elided_optional_schema(
+            "Maybe",
+            vec![
+                primitive("Holder_Maybe_Optional"),
+                record(
+                    "Other",
+                    vec![field(
+                        "Items",
+                        TypeRefTarget::Primitive(PrimitiveKind::String),
+                        UNBOUNDED,
+                    )],
+                ),
+                primitive("Other_Items_Sequence"),
+            ],
+        );
+        assert_collides(&schema, BackendLanguage::Ada, "Other_Items_Sequence");
+        let condemned = unsafe_ada(&schema);
+        assert!(
+            condemned.contains("Other") && condemned.contains("Other_Items_Sequence"),
+            "the unrelated genuine collision is still attributed: {condemned:?}"
+        );
+        assert!(
+            !condemned.contains("Holder") && !condemned.contains("Holder_Maybe_Optional"),
+            "the elided field still contributes nothing: {condemned:?}"
+        );
     }
 
     /// Open world: the wrapper does not exist there, so no closed-world
