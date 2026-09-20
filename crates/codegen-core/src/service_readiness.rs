@@ -57,6 +57,19 @@ pub enum ServiceReadinessError {
     /// match while a payload type, declaration body, or a dependency's
     /// constraints differ. Detected by [`ServicePlan::verify_schema_binding`].
     PlanBinding(PlanBindingMismatch),
+    /// Projecting the selected model onto a generable schema failed for a
+    /// reason that is an **integrity defect**, not an ordinary backend
+    /// capability limit.
+    ///
+    /// Readiness previously ended its projection match with `Err(_) => None`,
+    /// reasoning that a projection failure is already visible as a
+    /// per-declaration blocker. That holds for abstract-value capability
+    /// failures, but `ProjectedSchemaInvalid` means the projection dropped a
+    /// required dependency and `ProjectedEmissionPlan` can report a planning
+    /// failure with no per-declaration counterpart. Silently mapping either
+    /// to "no backend blocker" could leave a false READY, so they are
+    /// propagated as typed errors instead.
+    Projection(Box<ServiceGenerationError>),
 }
 
 /// Which part of the selection referred to an absent schema identity.
@@ -92,6 +105,10 @@ impl fmt::Display for ServiceReadinessError {
                 missing.local_name
             ),
             Self::PlanBinding(mismatch) => mismatch.fmt(formatter),
+            Self::Projection(error) => write!(
+                formatter,
+                "selected-service projection failed while measuring readiness: {error}"
+            ),
         }
     }
 }
@@ -329,10 +346,47 @@ pub fn analyze_service_readiness(
         Err(ServiceGenerationError::PlanSchemaMismatch { missing, role }) => {
             return Err(ServiceReadinessError::PlanSchemaMismatch { missing, role });
         }
-        // An abstract-value or emission-planning failure is already reported
-        // per message/declaration above; it is not a *global* precondition and
-        // must not be relabelled as one.
-        Err(_) => None,
+        Err(ServiceGenerationError::PlanBinding(mismatch)) => {
+            return Err(ServiceReadinessError::PlanBinding(mismatch));
+        }
+        // An abstract structural value that cannot be represented under the
+        // asserted world is an ordinary *capability* limit, and it is already
+        // reported above as a per-declaration or per-message blocker: the
+        // same `CoverageAnalysis` rules that reject the declaration here also
+        // reject the projection there. Relabelling it as a global precondition
+        // would double-report one cause.
+        //
+        // That invariant is asserted rather than assumed: if this arm is ever
+        // reached while the readiness result would still be READY, the two
+        // analyses have drifted and the debug build fails loudly instead of
+        // emitting a false READY. `readiness_is_already_not_ready` is
+        // evaluated only under `debug_assertions`.
+        Err(error @ ServiceGenerationError::AbstractValue(_)) => {
+            debug_assert!(
+                !unsupported_types.is_empty() || !blocked_messages.is_empty(),
+                "an abstract-value projection failure must already appear as a \
+                 per-declaration or per-message blocker, but readiness found none: {error}"
+            );
+            // Fail closed even in release: if the invariant does not hold,
+            // reporting no blocker would be a false READY.
+            if unsupported_types.is_empty() && blocked_messages.is_empty() {
+                return Err(ServiceReadinessError::Projection(Box::new(error)));
+            }
+            None
+        }
+        // The projected subset failed `SchemaIr::validate`, meaning projection
+        // dropped a required named dependency. That is an internal defect, not
+        // a statement about backend capability, so it must never be softened
+        // into an ordinary NOT READY.
+        error @ Err(ServiceGenerationError::ProjectedSchemaInvalid(_))
+        // Emission planning over the projected schema failed. Unlike the
+        // abstract-value case this has no guaranteed per-declaration
+        // counterpart, so it is propagated rather than assumed duplicated.
+        | error @ Err(ServiceGenerationError::ProjectedEmissionPlan(_)) => {
+            return Err(ServiceReadinessError::Projection(Box::new(
+                error.expect_err("matched on an Err arm"),
+            )));
+        }
     };
 
     let selected_types_total = closure.len();

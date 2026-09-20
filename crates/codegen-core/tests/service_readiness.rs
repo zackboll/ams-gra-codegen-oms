@@ -7,7 +7,7 @@
 use ams_gra_oms_codegen_core::{
     BackendLanguage, CoverageAnalysis, GenerationWorld, MismatchRole, PlanBindingMismatch,
     ServiceBackendReadiness, ServiceMessageBlocker, ServiceReadinessError,
-    analyze_service_readiness, resolve_service_plan,
+    analyze_service_readiness, project_service_generation_schema, resolve_service_plan,
 };
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, FieldDecl, MessageDecl, NamespaceDecl, PrimitiveKind,
@@ -397,6 +397,129 @@ fn non_uci_only_contract_is_vacuously_ready() {
             assert_eq!(result.selected_messages_total, 0);
             assert_eq!(result.selected_types_total, 0);
             assert!(result.is_ready(), "{language:?} {world:?} should be ready");
+        }
+    }
+}
+
+// ---------------------------------------------------------------------
+// Corrective cleanup -- readiness must not swallow projection failures
+// ---------------------------------------------------------------------
+
+/// The shared fixture for the projection-error tests: a selected closure
+/// holding an abstract structural VALUE, which projects cleanly in the closed
+/// world and fails closed in the open world.
+fn abstract_value_schema() -> SchemaIr {
+    schema(
+        vec![
+            abstract_record("AbstractBase", vec![]),
+            derived_record(
+                "ConcreteOne",
+                "AbstractBase",
+                vec![field("Value", primitive(PrimitiveKind::Float64))],
+            ),
+            record("ValuePayload", vec![field("Item", named("AbstractBase"))]),
+        ],
+        vec![message("ValueReport", named("ValuePayload"))],
+    )
+}
+
+/// The abstract-value projection failure is the one class readiness is
+/// allowed to treat as already-reported, and this pins the invariant that
+/// permits it: the result is genuinely NOT READY, with the failure attributed
+/// per declaration and per message, before the projection error is ignored.
+///
+/// If that stopped holding, ignoring the projection error would produce a
+/// false READY -- so it is proven rather than assumed.
+#[test]
+fn an_abstract_value_projection_failure_is_already_reported_as_not_ready() {
+    let schema = abstract_value_schema();
+    let contract = contract(&oms_exchange("e1", "ValueReport"));
+    let plan = resolve_service_plan(&contract, &schema).expect("plan should resolve");
+
+    // The projection really does fail in the open world.
+    assert!(
+        project_service_generation_schema(&plan, &schema, GenerationWorld::OpenExtensions).is_err(),
+        "the fixture must really fail projection, or this proves nothing"
+    );
+
+    for language in BackendLanguage::ALL {
+        // Readiness nonetheless computes, and is NOT READY with attribution,
+        // which is exactly what makes ignoring the duplicate error safe.
+        let result =
+            analyze_service_readiness(&plan, &schema, language, GenerationWorld::OpenExtensions)
+                .expect("an already-reported capability failure must not become an error");
+        assert!(!result.is_ready(), "{language:?} must not be READY");
+        assert!(
+            !result.unsupported_types.is_empty() || !result.blocked_messages.is_empty(),
+            "{language:?} must attribute the failure per declaration or message"
+        );
+    }
+}
+
+/// A plan resolved against a different schema set must surface as a typed
+/// binding error from the projection path rather than being swallowed into
+/// "no backend blocker".
+#[test]
+fn a_projection_binding_mismatch_is_propagated_not_swallowed() {
+    let original = schema(
+        vec![record(
+            "Payload",
+            vec![field("Value", primitive(PrimitiveKind::Float64))],
+        )],
+        vec![message("Report", named("Payload"))],
+    );
+    let contract = contract(&oms_exchange("e1", "Report"));
+    let plan = resolve_service_plan(&contract, &original).expect("plan should resolve");
+
+    // Same names, different semantics: only the semantic binding sees this.
+    let changed = schema(
+        vec![record(
+            "Payload",
+            vec![field("Value", primitive(PrimitiveKind::Boolean))],
+        )],
+        vec![message("Report", named("Payload"))],
+    );
+
+    for language in BackendLanguage::ALL {
+        let error =
+            analyze_service_readiness(&plan, &changed, language, GenerationWorld::ClosedSchemaSet)
+                .expect_err("a wrong-schema plan must not silently report readiness");
+        assert!(
+            matches!(
+                error,
+                ServiceReadinessError::PlanBinding(PlanBindingMismatch::Changed { .. })
+            ),
+            "{language:?}: {error:?}"
+        );
+    }
+}
+
+/// Readiness must never report READY for a selection whose projection cannot
+/// be produced, under any world or backend, and must not panic. This is the
+/// property the removed catch-all projection arm put at risk.
+#[test]
+fn readiness_is_never_ready_when_projection_fails() {
+    let schema = abstract_value_schema();
+    let contract = contract(&oms_exchange("e1", "ValueReport"));
+    let plan = resolve_service_plan(&contract, &schema).expect("plan should resolve");
+
+    for language in BackendLanguage::ALL {
+        for world in [
+            GenerationWorld::ClosedSchemaSet,
+            GenerationWorld::OpenExtensions,
+        ] {
+            let projection_failed =
+                project_service_generation_schema(&plan, &schema, world).is_err();
+            match analyze_service_readiness(&plan, &schema, language, world) {
+                Ok(result) => assert!(
+                    !projection_failed || !result.is_ready(),
+                    "{language:?} {world:?} reported READY despite a failed projection"
+                ),
+                Err(error) => assert!(
+                    projection_failed,
+                    "{language:?} {world:?} errored without a projection failure: {error}"
+                ),
+            }
         }
     }
 }
