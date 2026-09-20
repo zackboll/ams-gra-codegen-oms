@@ -1,0 +1,39 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:optional:named"
+           targetNamespace="urn:optional:named"
+           elementFormDefault="qualified">
+  <!-- Task 034 core control: non-nillable 0..1 named-type Record fields.
+
+       `Container` carries one optional named Enumeration and one optional
+       named Record. Both are inside the Task 034 subset: cardinality 0..1,
+       not nillable, named target, default field-local constraints, and a
+       target that Ada can already render on its own.
+
+       backend-ada must emit a per-field discriminated wrapper for each,
+       named after the emitted owner:
+
+         Container_Maybe_Mode_Optional
+         Container_Maybe_Details_Optional
+
+       `Required_Mode` is present so the control also proves Task 034 changes
+       only the optional occurrence and leaves required named fields alone. -->
+  <xs:simpleType name="Mode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Standby"/>
+      <xs:enumeration value="Active"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:complexType name="Details">
+    <xs:sequence>
+      <xs:element name="Label" type="xs:string"/>
+      <xs:element name="Count" type="xs:int"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Container">
+    <xs:sequence>
+      <xs:element name="Required_Mode" type="t:Mode"/>
+      <xs:element name="Maybe_Mode" type="t:Mode" minOccurs="0"/>
+      <xs:element name="Maybe_Details" type="t:Details" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

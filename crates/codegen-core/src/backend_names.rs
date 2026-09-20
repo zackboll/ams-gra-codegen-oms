@@ -34,8 +34,8 @@ use crate::structure::{effective_choice_alternatives, effective_record_fields};
 use crate::world::GenerationWorld;
 use crate::{AbstractValueProjection, TypeEmission, name_preflight_plan};
 use ams_gra_oms_ir::{
-    Cardinality, OccurrenceShape, PrimitiveKind, QualifiedName, SchemaIr, TypeDecl, TypeKind,
-    TypeRefTarget,
+    Cardinality, ConstraintSet, FieldDecl, OccurrenceShape, PrimitiveKind, QualifiedName, SchemaIr,
+    TypeDecl, TypeKind, TypeRefTarget,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
@@ -1232,6 +1232,44 @@ fn ada_emits_helper(cardinality: Cardinality) -> bool {
     }
 }
 
+/// Whether Ada emits a Task 034 per-field optional wrapper for this member.
+///
+/// Mirrors `backend-ada::ada_emits_optional_wrapper` exactly. The wrapper is a
+/// generated Ada **top-level** identifier in the flat package, so it has to be
+/// registered beside declared types -- and only when it is really emitted,
+/// otherwise a name nothing writes would be reserved and a legitimate user
+/// declaration falsely rejected.
+fn ada_emits_optional_wrapper(field: &FieldDecl) -> bool {
+    field.cardinality == Cardinality::OPTIONAL_ONE
+        && !field.nillable
+        && matches!(field.type_ref.target, TypeRefTarget::Named(_))
+        && field.constraints == ConstraintSet::default()
+}
+
+/// Record the flat-package name of the Task 034 optional wrapper Ada derives
+/// from one emitted member: `{Owner}_{Member}_Optional`.
+///
+/// `owner` is the **emitted** declaration, exactly as for repeated helpers, so
+/// an inherited optional field registers under the concrete descendant that
+/// actually renders it and never under a non-emitted abstract ancestor.
+fn validate_ada_optional_helper(
+    top_level: &mut Region,
+    owner: &QualifiedName,
+    member: &str,
+) -> Result<(), BackendNameError> {
+    let Some(member_identifier) = ada_identifier(member) else {
+        // The member identifier itself already failed in the member region.
+        return Ok(());
+    };
+    top_level.insert(
+        NameSource::Helper {
+            owner: owner.clone(),
+            member: member.to_owned(),
+        },
+        format!("{}_{member_identifier}_Optional", owner.local_name),
+    )
+}
+
 /// Register the top-level name of every entity the plan actually emits.
 ///
 /// # Why this is not simply every Schema IR declaration
@@ -1469,13 +1507,21 @@ fn register_declaration_members(
                     },
                     member_name(language, &field.name),
                 )?;
-                if language == BackendLanguage::Ada && ada_emits_helper(field.cardinality) {
-                    validate_ada_helpers(
-                        top_level,
-                        &declaration.name,
-                        &field.name,
-                        field.cardinality,
-                    )?;
+                if language == BackendLanguage::Ada {
+                    if ada_emits_helper(field.cardinality) {
+                        validate_ada_helpers(
+                            top_level,
+                            &declaration.name,
+                            &field.name,
+                            field.cardinality,
+                        )?;
+                    } else if ada_emits_optional_wrapper(field) {
+                        // Task 034. Record fields only: a Choice alternative's
+                        // exclusivity is already carried by the generated
+                        // discriminant, so no optional wrapper is emitted --
+                        // or reserved -- there.
+                        validate_ada_optional_helper(top_level, &declaration.name, &field.name)?;
+                    }
                 }
             }
         }
@@ -2352,6 +2398,105 @@ mod tests {
             .contains(&QualifiedName::new(NS, "Derived")),
             "the emitted helper owner must be condemned"
         );
+    }
+
+    /// Task 034: the same emitted-owner rule, for the new optional wrapper.
+    ///
+    /// `backend-ada` returns early for an abstract Record, so the only wrapper
+    /// it writes for the inherited optional field is `Derived_Maybe_Optional`.
+    /// Reserving `Base_Maybe_Optional` would falsely reject a user declaration
+    /// that really can be emitted -- exactly the class of defect PR #34 fixed
+    /// for repeated helpers.
+    #[test]
+    fn a_non_emitted_abstract_record_reserves_no_ada_optional_wrapper_name() {
+        let schema = abstract_optional_schema("Base_Maybe_Optional");
+        assert!(
+            validate_backend_names(
+                &schema,
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            )
+            .is_ok(),
+            "no optional wrapper is emitted under a non-emitted abstract Record owner"
+        );
+        assert!(
+            unsafe_named_declarations(
+                &schema,
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            )
+            .is_empty(),
+            "coverage must not condemn anything for a phantom wrapper surface"
+        );
+    }
+
+    /// The counterpart: the wrapper Ada really emits for the inherited
+    /// optional field is named after the **emitted** descendant, so colliding
+    /// with that spelling is a genuine failure that must mark both
+    /// responsible declarations.
+    #[test]
+    fn an_inherited_optional_wrapper_under_the_emitted_descendant_still_collides() {
+        let schema = abstract_optional_schema("Derived_Maybe_Optional");
+        assert_collides(&schema, BackendLanguage::Ada, "Derived_Maybe_Optional");
+        let condemned = unsafe_named_declarations(
+            &schema,
+            BackendLanguage::Ada,
+            GenerationWorld::ClosedSchemaSet,
+        );
+        assert!(
+            condemned.contains(&QualifiedName::new(NS, "Derived")),
+            "the emitted wrapper owner must be condemned"
+        );
+        assert!(
+            condemned.contains(&QualifiedName::new(NS, "Derived_Maybe_Optional")),
+            "the colliding user declaration must be condemned too"
+        );
+    }
+
+    /// Rust and C++ derive no top-level name from an optional field at all, so
+    /// the Task 034 registration must stay Ada-only.
+    #[test]
+    fn an_optional_wrapper_spelling_is_free_in_rust_and_cpp() {
+        let schema = abstract_optional_schema("Derived_Maybe_Optional");
+        for language in [BackendLanguage::Rust, BackendLanguage::Cpp] {
+            assert!(
+                validate_backend_names(&schema, language, GenerationWorld::ClosedSchemaSet).is_ok(),
+                "{language:?} generates no optional wrapper name"
+            );
+        }
+    }
+
+    /// `abstract Base { Maybe : Item [0..1] }`, `Derived extends Base`, plus a
+    /// user declaration spelled `user_type`. Only that spelling differs
+    /// between the two tests above, which is exactly the scope distinction.
+    fn abstract_optional_schema(user_type: &str) -> SchemaIr {
+        let mut base = record(
+            "Base",
+            vec![field(
+                "Maybe",
+                TypeRefTarget::Named(QualifiedName::new(NS, "Item")),
+                Cardinality::OPTIONAL_ONE,
+            )],
+        );
+        base.is_abstract = true;
+        let mut derived = record("Derived", Vec::new());
+        derived.base_type = Some(TypeRef {
+            target: TypeRefTarget::Named(QualifiedName::new(NS, "Base")),
+        });
+        schema_with(vec![
+            primitive("Item"),
+            base,
+            derived,
+            record(
+                "Holder",
+                vec![field(
+                    "Item",
+                    TypeRefTarget::Named(QualifiedName::new(NS, "Derived")),
+                    Cardinality::REQUIRED_ONE,
+                )],
+            ),
+            primitive(user_type),
+        ])
     }
 
     const BOUNDED_FOUR: Cardinality = Cardinality {

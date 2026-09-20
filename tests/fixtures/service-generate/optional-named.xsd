@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:test"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- Task 034 synthetic selected-service fixture.
+
+       The selected closure contains non-nillable 0..1 named-type Record
+       fields at every target kind Task 034 claims:
+
+         SensorReport -> SensorPayload -> Mode          (enumeration, 0..1)
+                                       -> SensorDetails (record,      0..1)
+                                       -> SampleCount   (bounded int, 0..1)
+
+       Before Task 034 the Ada backend could not represent any of these, so
+       this contract was NOT READY for ada. After Task 034 it must be READY
+       and the generated Ada package must compile.
+
+       plus one UNRELATED declaration no contract selects:
+
+         UnrelatedDuration  xs:duration; no backend renders it, so ordinary
+                            full-schema generation still fails while
+                            service-check reports READY. That is what keeps
+                            readiness contract-selected rather than
+                            whole-schema. -->
+
+  <xs:simpleType name="Mode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Standby"/>
+      <xs:enumeration value="Active"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="SampleCount">
+    <xs:restriction base="xs:int">
+      <xs:minInclusive value="0"/>
+      <xs:maxInclusive value="1000"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="SensorDetails">
+    <xs:sequence>
+      <xs:element name="Label" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Unselected, and unrenderable by every backend. -->
+  <xs:simpleType name="UnrelatedDuration">
+    <xs:restriction base="xs:duration"/>
+  </xs:simpleType>
+
+  <xs:complexType name="SensorPayload">
+    <xs:sequence>
+      <xs:element name="Required_Mode" type="t:Mode"/>
+      <xs:element name="Maybe_Mode" type="t:Mode" minOccurs="0"/>
+      <xs:element name="Maybe_Details" type="t:SensorDetails" minOccurs="0"/>
+      <xs:element name="Maybe_Samples" type="t:SampleCount" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="SensorReport" type="t:SensorPayload"
+              uci:version="001.000.000.000"/>
+
+</xs:schema>
