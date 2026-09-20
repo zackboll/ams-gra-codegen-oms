@@ -2422,3 +2422,120 @@ Service-check cost on full UCI 2.5 measured **~5.9 s per language**, down from
 ~15 s. Readiness now builds its `CoverageAnalysis` over the much smaller
 projected schema instead of the whole of UCI, and still constructs exactly one
 analysis and one renderability snapshot per call.
+
+## Final corrective: generated names track emitted entities
+
+### A Schema IR declaration is not a generated declaration
+
+**Historical behaviour.** Generated-name preflight registered the top-level
+name of *every* Schema IR declaration:
+
+```text
+for declaration in &schema.types:
+    reserve declaration_name(language, declaration)
+```
+
+That assumed every IR declaration produces one host-language top-level
+declaration. It does not. The emission planner and the backends deliberately
+omit some declarations, so preflight reserved identifiers that never appear in
+the generated source and rejected schemas for collisions that cannot occur.
+
+**Corrected behaviour.** Preflight now registers only the schema-owned names
+that the requested world actually emits, derived from the same
+`plan_type_emissions()` the backends consume. There is no second emission
+model and no isolated `if abstract { skip }`: the emitted set is computed once
+per schema/world by `emitted_top_level_declaration_names()` and then consulted
+as a membership test, so the per-declaration loop stays a lookup rather than a
+whole-schema scan.
+
+The rule is exactly:
+
+> A schema declaration's top-level host name participates in name preflight if
+> and only if backend generation can emit a top-level entity carrying that
+> name in the requested world.
+
+| Entity | Emitted? | Reserves its name? |
+| --- | --- | --- |
+| Concrete declaration | yes | **yes** |
+| Ancestry-only abstract **Record** | no | **no** |
+| Abstract **Choice** | yes | **yes** |
+| Task 024 abstract-value wrapper | yes | **yes** |
+| Task 026 elided target | no | **no** |
+
+**The Record/Choice asymmetry is deliberate and load-bearing.** All three
+backends return early from their `TypeKind::Record` arm when `is_abstract` is
+set, folding the base's effective fields into each concrete descendant, so an
+abstract Record is pure inheritance metadata and writes no type. No backend
+skips an abstract **Choice**: it renders normally, and Ada additionally emits
+its `_Kind` companion. Collapsing both into one "abstract is never emitted"
+rule would have stopped reserving a name that genuinely appears in the output,
+converting a false rejection into a false *acceptance*. Verified by direct
+probe against all three renderers before the change was written.
+
+**Semantic failures are not absorbed.** When no emission plan can be formed at
+all — an open-world abstract value, a recursive closed sum, a cyclic
+dependency, invalid IR — that is a structural diagnosis owned by the backend,
+not a naming verdict. Preflight falls back to the previous whole-schema
+registration rather than suppressing reservations on the strength of an error
+it does not own, so the fail-closed semantic path is preserved.
+
+Attribution (`unsafe_named_declarations`) uses the identical registration, so
+capability analysis cannot condemn a declaration for a name the backend never
+emits while validation accepts it. Inherited members are unaffected: a
+non-emitted base's fields are still projected into its emitted descendants and
+still validated in the descendant's scope, so an inherited reserved member
+continues to condemn the descendant.
+
+### False rejections removed
+
+Both of these previously failed preflight against a *generated support type*
+whose identifier the abstract base never actually occupied:
+
+* **Rust** — an ancestry-only abstract `BoundedVec` collided with the
+  unconditional `pub struct BoundedVec<T, const MIN, const MAX>` support type.
+* **Ada** — an ancestry-only abstract `Optional_String` collided with the
+  unconditional `Optional_String` support type.
+* **C++** — the same shape against the `BoundedVector` class template.
+
+All three now pass preflight, generate, and compile, with the generated source
+containing exactly one definition of the support name. The Task 026 elided
+target reserves neither its own name nor an `Optional_String_Kind` companion.
+
+Genuine collisions are unchanged: a **concrete** `BoundedVec` /
+`Optional_String` is still rejected, and a real Task 024 wrapper still owns its
+declaration name and is still rejected against the support type.
+
+### Final authoritative coverage
+
+Re-measured from scratch on both pinned roots after the correction. **Every
+cell is unchanged** from the previous final figures:
+
+| Release / backend | Closed | Open |
+| --- | ---: | ---: |
+| 2.5 Ada | `2731/5557` | `2724/5557` |
+| 2.5 Rust | `5375/5557` | `5287/5557` |
+| 2.5 C++ | `5378/5557` | `5290/5557` |
+| 2.6 Ada | `2731/5570` | `2724/5570` |
+| 2.6 Rust | `5397/5570` | `5309/5570` |
+| 2.6 C++ | `5401/5570` | `5313/5570` |
+
+Authoritative UCI therefore **does not exercise this defect**. UCI's 70
+abstract declarations are either referenced as values (real Task 024 wrappers,
+which still reserve their names) or carry names that collide with nothing, so
+no declaration was previously excluded for a non-emitted declaration-name
+issue and none becomes renderable here. The correction is a
+name-attribution-truth fix, validated by synthetic fixtures and by all three
+compilers rather than by a coverage movement. The pre-cleanup
+`2800/5395/5417` figures remain **rejected as overclaims**.
+
+### Final selected readiness and cost
+
+Selected `PositionReport`, UCI 2.5, closed world, re-measured: **Rust 51/60**
+first blocking `DateTimeType`; **Ada 32/60** first blocking
+`Acceleration3D_Type`. Both unchanged — the selection contains no ancestry-only
+abstract whose name was being phantom-reserved. Neither blocker is implemented.
+
+Service-check cost measured **~5.8 s per language**, matching the ~5.9 s
+projection-scoped figure. Consulting the planner adds one emission plan per
+schema/world, not one per declaration, so there is no order-of-magnitude
+regression.
