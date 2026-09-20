@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Task 033 synthetic coverage of the supported bound-only floating subset.
+
+  Every shape the classifier accepts appears exactly once: lower/upper,
+  inclusive/exclusive, one-sided/two-sided/mixed, at both widths, plus one
+  named restriction chain whose derived domain is strictly stricter than its
+  base. Shapes are modelled on the authoritative UCI declarations they stand
+  in for (UnitIntervalFloatType, AltitudeType, DoublePositiveType, AngleType),
+  so this fixture exercises real facet combinations rather than invented ones.
+-->
+<schema:schema xmlns:schema="http://www.w3.org/2001/XMLSchema"
+               xmlns:cf="urn:example:oms:constrained-floating"
+               targetNamespace="urn:example:oms:constrained-floating">
+
+  <!-- Float32: lower-inclusive only. -->
+  <schema:simpleType name="FloatLowerInclusive">
+    <schema:restriction base="schema:float">
+      <schema:minInclusive value="0.0"/>
+    </schema:restriction>
+  </schema:simpleType>
+
+  <!-- Float32: upper-inclusive only. -->
+  <schema:simpleType name="FloatUpperInclusive">
+    <schema:restriction base="schema:float">
+      <schema:maxInclusive value="1.0"/>
+    </schema:restriction>
+  </schema:simpleType>
+
+  <!-- Float32: two-sided inclusive, like UnitIntervalFloatType. -->
+  <schema:simpleType name="FloatUnitInterval">
+    <schema:restriction base="schema:float">
+      <schema:minInclusive value="0.0"/>
+      <schema:maxInclusive value="1.0"/>
+    </schema:restriction>
+  </schema:simpleType>
+
+  <!-- Float64: lower-inclusive only, like AltitudeType. -->
+  <schema:simpleType name="DoubleAltitude">
+    <schema:restriction base="schema:double">
+      <schema:minInclusive value="-6378237"/>
+    </schema:restriction>
+  </schema:simpleType>
+
+  <!-- Float64: lower-exclusive, the one authoritative exclusive shape. -->
+  <schema:simpleType name="DoublePositive">
+    <schema:restriction base="schema:double">
+      <schema:minExclusive value="0.0"/>
+    </schema:restriction>
+  </schema:simpleType>
+
+  <!-- Float64: upper-inclusive only. -->
+  <schema:simpleType name="DoubleUpperInclusive">
+    <schema:restriction base="schema:double">
+      <schema:maxInclusive value="100.5"/>
+    </schema:restriction>
+  </schema:simpleType>
+
+  <!-- Float64: upper-exclusive only (synthetic; UCI has no direct case). -->
+  <schema:simpleType name="DoubleUpperExclusive">
+    <schema:restriction base="schema:double">
+      <schema:maxExclusive value="1.0"/>
+    </schema:restriction>
+  </schema:simpleType>
+
+  <!-- Float64: mixed two-sided, inclusive lower and exclusive upper. -->
+  <schema:simpleType name="DoubleMixedRange">
+    <schema:restriction base="schema:double">
+      <schema:minInclusive value="-3.5"/>
+      <schema:maxExclusive value="3.5"/>
+    </schema:restriction>
+  </schema:simpleType>
+
+  <!-- Named chain: the derived domain is strictly stricter than its base. -->
+  <schema:simpleType name="BaseFloat">
+    <schema:restriction base="schema:double">
+      <schema:minInclusive value="0.0"/>
+    </schema:restriction>
+  </schema:simpleType>
+
+  <schema:simpleType name="DerivedFloat">
+    <schema:restriction base="cf:BaseFloat">
+      <schema:maxInclusive value="10.0"/>
+    </schema:restriction>
+  </schema:simpleType>
+
+  <schema:complexType name="Sample">
+    <schema:sequence>
+      <schema:element name="Ratio" type="cf:FloatUnitInterval"/>
+      <schema:element name="Altitude" type="cf:DoubleAltitude"/>
+      <schema:element name="Positive" type="cf:DoublePositive"/>
+      <schema:element name="Derived" type="cf:DerivedFloat"/>
+    </schema:sequence>
+  </schema:complexType>
+
+</schema:schema>

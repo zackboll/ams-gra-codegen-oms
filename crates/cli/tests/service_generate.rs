@@ -824,3 +824,149 @@ fn selected_ada_output_compiles_under_gnat() {
         .expect("GNAT reported a version, so it must be runnable");
     assert!(status.success(), "selected Ada output must compile");
 }
+
+/// Generate the Task 033 constrained-float service for one language.
+fn generate_constrained_float(language: &str, label: &str) -> PathBuf {
+    let output_root = output_dir(label);
+    let output = generate(
+        "constrained-float.xsd",
+        "constrained-float.yaml",
+        language,
+        "closed-schema",
+        &output_root,
+    );
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "{language} constrained-float generation should succeed"
+    );
+    output_root
+}
+
+/// Task 033 section 45: a contract whose entire selected closure is bound-only
+/// constrained floats becomes READY in all three backends.
+///
+/// The point of this test is *propagation*. No Task 033 change was made to
+/// `service_plan.rs`, `service_readiness.rs`, or `service_generation.rs`; the
+/// new capability has to arrive through the single shared coverage snapshot
+/// and the ordinary backends. The fixture also contains an unselected
+/// `xs:duration` that no backend can render, so a READY result here cannot be
+/// a whole-schema accident.
+#[test]
+fn task033_constrained_float_service_is_ready_in_every_backend() {
+    for language in ["rust", "cpp", "ada"] {
+        let check = cli()
+            .arg("service-check")
+            .arg("--schema")
+            .arg(fixture("constrained-float.xsd"))
+            .arg("--contract")
+            .arg(fixture("constrained-float.yaml"))
+            .args(["--language", language, "--world", "closed-schema"])
+            .output()
+            .expect("service-check must run");
+        assert_eq!(
+            check.status.code(),
+            Some(0),
+            "{language} service-check should succeed"
+        );
+        let report = String::from_utf8(check.stdout).expect("UTF-8 report");
+        assert!(
+            report.contains("status: READY"),
+            "{language} must be READY after Task 033: {report}"
+        );
+        assert!(
+            report.contains("selected type closure: 6")
+                && report.contains("renderable selected types: 6"),
+            "{language} must render every selected type: {report}"
+        );
+    }
+}
+
+/// Task 033: the selected Rust output compiles and its checked constructors
+/// actually reject out-of-domain values.
+#[test]
+fn task033_selected_rust_float_bounds_hold() {
+    let root = generate_constrained_float("rust", "task033-rust");
+    std::fs::write(
+        root.join("probe.rs"),
+        "include!(\"test.rs\");\n\nfn main() {\n    assert!(AltitudeMeters::new(-6378237.0).is_some());\n    assert!(AltitudeMeters::new(-6378238.0).is_none());\n    assert!(BurnRate::new(0.0).is_none());\n    assert!(BurnRate::new(1.0).is_some());\n    assert!(ThrustRatio::new(0.5).is_some());\n    assert!(ThrustRatio::new(1.5).is_none());\n    assert!(DerivedRate::new(10.0).is_some());\n    assert!(DerivedRate::new(10.5).is_none());\n}\n",
+    )
+    .expect("write Rust probe");
+    let status = Command::new("rustc")
+        .current_dir(&root)
+        .args(["--edition", "2021", "-o", "probe", "probe.rs"])
+        .status()
+        .expect("rustc should be available in a Rust workspace");
+    assert!(status.success(), "selected Rust output must compile");
+    assert!(
+        Command::new(root.join("probe"))
+            .status()
+            .expect("probe must run")
+            .success(),
+        "selected Rust bounds must hold"
+    );
+}
+
+/// Task 033: the selected C++ output compiles under strict C++17 and its
+/// checked factories reject out-of-domain values.
+#[test]
+fn task033_selected_cpp_float_bounds_hold() {
+    let root = generate_constrained_float("cpp", "task033-cpp");
+    std::fs::write(
+        root.join("probe.cpp"),
+        "#include \"test.hpp\"\n\nint main() {\n    if (urn::test::BurnRate::create(0.0)) return 1;\n    if (!urn::test::BurnRate::create(1.0)) return 1;\n    if (urn::test::AltitudeMeters::create(-6378238.0)) return 1;\n    if (!urn::test::DerivedRate::create(10.0)) return 1;\n    if (urn::test::DerivedRate::create(10.5)) return 1;\n    return 0;\n}\n",
+    )
+    .expect("write C++ probe");
+    let status = Command::new("c++")
+        .current_dir(&root)
+        .args([
+            "-std=c++17",
+            "-Wall",
+            "-Wextra",
+            "-pedantic-errors",
+            "-o",
+            "probe",
+            "probe.cpp",
+        ])
+        .status()
+        .expect("c++ must be runnable");
+    assert!(status.success(), "selected C++ output must compile");
+    assert!(
+        Command::new(root.join("probe"))
+            .status()
+            .expect("probe must run")
+            .success(),
+        "selected C++ bounds must hold"
+    );
+}
+
+/// Task 033: the selected Ada output compiles and its predicates are enforced
+/// for a client that does *not* pass `-gnata`, which is exactly what the
+/// generated spec's own `Assertion_Policy` exists to guarantee.
+///
+/// Skipped only where GNAT is absent, as elsewhere in this file.
+#[test]
+fn task033_selected_ada_float_predicates_hold_under_gnat() {
+    if Command::new("gnatmake").arg("--version").output().is_err() {
+        return;
+    }
+    let root = generate_constrained_float("ada", "task033-ada");
+    std::fs::write(
+        root.join("probe.adb"),
+        "with Urn.Test; use Urn.Test;\n\nprocedure Probe is\n   function Rejects_Zero_Burn return Boolean is\n      Held : BurnRate;\n   begin\n      Held := Create (0.0);\n      return Held = Held and then False;\n   exception\n      when others => return True;\n   end Rejects_Zero_Burn;\n\n   Good : constant BurnRate := Create (1.0);\nbegin\n   pragma Assert (Good > 0.0);\n   if not Rejects_Zero_Burn then\n      raise Program_Error;\n   end if;\nend Probe;\n",
+    )
+    .expect("write Ada probe");
+    let status = Command::new("gnatmake")
+        .current_dir(&root)
+        .args(["-q", "probe.adb"])
+        .status()
+        .expect("GNAT reported a version, so it must be runnable");
+    assert!(status.success(), "selected Ada output must compile");
+    assert!(
+        Command::new(root.join("probe"))
+            .status()
+            .expect("probe must run")
+            .success(),
+        "selected Ada predicates must be enforced"
+    );
+}

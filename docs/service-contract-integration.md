@@ -753,3 +753,48 @@ logic, automatic Capability inference, automatic function grouping, automatic
 topic generation, contract message-name qualification syntax, full-UCI
 generation, and the schema-source manifest verification port. Task 029
 overlays already provide the XSD bytes/topology path.
+
+## Task 033 follow-up — constrained floating ranges
+
+The Task 031 measurements above are preserved as the historical record of that
+task. This section records the *re-measured* result after Task 033 added backend
+lowering for named `Float32`/`Float64` numeric range restrictions.
+
+Same authoritative inputs: UCI 2.5 root, contract
+`crates/service-contract/tests/fixtures/upstream-minimal.yaml`, one selected
+message (`PositionReport`), 60-declaration selected closure, closed world.
+
+| Backend | World | Messages | Selected types | Status | First blocker | Elapsed |
+| --- | --- | ---: | ---: | --- | --- | ---: |
+| rust | closed-schema | 0/1 | **52/60** (was 47/60) | NOT READY | `{…}DateTimeType` (was `{…}AltitudeType`) | 258 s |
+| ada | closed-schema | 0/1 | **37/60** (was 32/60) | NOT READY | `{…}Acceleration3D_Type` (unchanged) | 260 s |
+
+C++ tracked Rust exactly in Task 031 and shares the identical shared-capability
+model, the identical post-change full-schema coverage numbers, and passes the
+same synthetic strict-C++17 generation and runtime tests. No separate
+authoritative C++ count is asserted here beyond what was actually measured.
+
+`AltitudeType` — the Task 031 Rust/C++ selected-service blocker — is renderable
+in every backend now, and no other constrained floating type replaced it. The
+new Rust first blocker is a temporal primitive, a different feature family that
+Task 033 deliberately does not implement. Ada's first blocker is unchanged
+because it was never a floating problem: `Acceleration3D_Type` carries an
+ordinary optional named field that Ada's current occurrence model cannot
+represent.
+
+### No architectural change
+
+This improvement required **no** change to `service_plan.rs`,
+`service_readiness.rs`, or `service_generation.rs`. Contract selection is
+unchanged, the selected closure is unchanged at 60 declarations, and the
+selected-generation architecture is unchanged. Readiness improved purely because
+the single shared renderability snapshot it already consults now answers
+differently for bound-only floating declarations, and selected generation
+improved because the projected schema already hands named declarations to the
+ordinary backends.
+
+A synthetic contract whose entire selected closure is bound-only constrained
+floats (`tests/fixtures/service-generate/constrained-float.{xsd,yaml}`, which
+also contains an unselected unrenderable `xs:duration`) now reports READY in all
+three backends and generates output that compiles under `rustc`, strict C++17,
+and GNAT, with the generated bound checks verified at runtime.

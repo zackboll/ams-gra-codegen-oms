@@ -6,7 +6,7 @@ use crate::{
     ADA_PORTABLE_POSITIVE_INDEX_MAX, AbstractValueOccurrenceRenderability,
     AbstractValueProjectionError, AbstractValueSemantics, AbstractValueTopology, GenerationWorld,
     abstract_value_occurrence_renderable, abstract_value_targets, classify_abstract_value_topology,
-    inclusive_integral_domain,
+    floating_domain, inclusive_integral_domain,
 };
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, FieldDecl, MessageDecl, OccurrenceShape, PrimitiveKind,
@@ -1373,10 +1373,18 @@ fn primitive_declaration_renderable(
         return constraints == &ConstraintSet::default()
             || enabled.contains(&FeatureFamily::ConstrainedSimpleTypes);
     }
-    if matches!(
-        kind,
-        PrimitiveKind::Float32 | PrimitiveKind::Float64 | PrimitiveKind::Binary
-    ) {
+    // Task 033: a named floating declaration is baseline-renderable when the
+    // shared helper accepts it -- unconstrained, or a bound-only numeric
+    // domain. This asks exactly the question the three backends ask, so
+    // coverage cannot drift from what they will actually emit. A facet shape
+    // the helper rejects (lexical, length, ambiguous same-side bounds, a
+    // wrong-width bound) stays non-baseline and remains attributed to
+    // `ConstrainedSimpleTypes` as future hypothetical support.
+    if matches!(kind, PrimitiveKind::Float32 | PrimitiveKind::Float64) {
+        return floating_domain(kind, constraints).is_ok()
+            || enabled.contains(&FeatureFamily::ConstrainedSimpleTypes);
+    }
+    if kind == PrimitiveKind::Binary {
         return constraints == &ConstraintSet::default()
             || enabled.contains(&FeatureFamily::ConstrainedSimpleTypes);
     }
@@ -2473,6 +2481,239 @@ mod tests {
                         total >= baseline,
                         "{world}/{language:?}: feature set {features:?} reduced coverage \
                          from {baseline} to {total}"
+                    );
+                    combinations += 1;
+                }
+                assert_eq!(combinations, 31, "all 31 combinations must run");
+            }
+        }
+    }
+
+    fn float_bound(value: f64) -> NumericValue {
+        NumericValue::Float64(ams_gra_oms_ir::Float64Value::from_value(value))
+    }
+
+    fn bounded_float(name: &str, constraints: ConstraintSet) -> TypeDecl {
+        let mut value = declaration(name, TypeKind::Primitive(PrimitiveKind::Float64));
+        value.constraints = constraints;
+        value
+    }
+
+    /// Task 033 sections 38/40: a named bound-only floating declaration is
+    /// baseline-renderable, while the same bound applied *field-locally* to a
+    /// direct primitive is not -- there is no checked wrapper for the latter,
+    /// so it stays attributed to `ConstrainedSimpleTypes`.
+    #[test]
+    fn task033_named_float_ranges_are_baseline_but_field_local_ones_are_not() {
+        for constraints in [
+            ConstraintSet {
+                min_inclusive: Some(float_bound(0.0)),
+                ..ConstraintSet::default()
+            },
+            ConstraintSet {
+                min_exclusive: Some(float_bound(0.0)),
+                ..ConstraintSet::default()
+            },
+            ConstraintSet {
+                max_inclusive: Some(float_bound(1.0)),
+                ..ConstraintSet::default()
+            },
+            ConstraintSet {
+                max_exclusive: Some(float_bound(1.0)),
+                ..ConstraintSet::default()
+            },
+            ConstraintSet {
+                min_inclusive: Some(float_bound(0.0)),
+                max_exclusive: Some(float_bound(1.0)),
+                ..ConstraintSet::default()
+            },
+        ] {
+            let holder = declaration(
+                "Holder",
+                TypeKind::Record {
+                    fields: vec![field("value", "Bounded")],
+                },
+            );
+            let schema = message_schema(
+                vec![holder, bounded_float("Bounded", constraints)],
+                "Holder",
+            );
+            let analysis =
+                CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
+            for language in BackendLanguage::ALL {
+                let coverage = analysis.backend_coverage(language).unwrap();
+                assert_eq!(
+                    coverage.declarations_fully_renderable, 2,
+                    "{language:?}: a bound-only named float needs no hypothetical feature"
+                );
+                assert_eq!(coverage.message_closures_renderable, 1);
+                // No feature family can add anything: it is already baseline.
+                assert_eq!(
+                    analysis
+                        .impact(language, &[FeatureFamily::ConstrainedSimpleTypes])
+                        .unwrap(),
+                    1
+                );
+            }
+        }
+
+        // The same numeric bound on a direct primitive *field* is not baseline.
+        let mut holder = declaration(
+            "Holder",
+            TypeKind::Record {
+                fields: vec![field_ref(
+                    "value",
+                    TypeRef::primitive(PrimitiveKind::Float64),
+                )],
+            },
+        );
+        let TypeKind::Record { fields } = &mut holder.kind else {
+            unreachable!();
+        };
+        fields[0].constraints = ConstraintSet {
+            min_inclusive: Some(float_bound(0.0)),
+            ..ConstraintSet::default()
+        };
+        let schema = message_schema(vec![holder], "Holder");
+        let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
+        for language in BackendLanguage::ALL {
+            assert_eq!(
+                analysis
+                    .backend_coverage(language)
+                    .unwrap()
+                    .declarations_fully_renderable,
+                0,
+                "{language:?}: a field-local floating bound must not be baseline"
+            );
+        }
+        assert_only_family_unblocks(&schema, FeatureFamily::ConstrainedSimpleTypes);
+    }
+
+    /// Task 033 section 39: a facet shape the helper rejects stays
+    /// non-baseline and remains modelled as future `ConstrainedSimpleTypes`
+    /// support, exactly as before Task 033.
+    #[test]
+    fn task033_unsupported_float_constraint_shapes_remain_hypothetical() {
+        for constraints in [
+            // Lexical alongside a numeric bound: not partially enforced.
+            ConstraintSet {
+                min_inclusive: Some(float_bound(0.0)),
+                lexical: ams_gra_oms_ir::LexicalConstraintSet {
+                    pattern_groups: vec![ams_gra_oms_ir::PatternGroup {
+                        alternatives: vec![ams_gra_oms_ir::PatternExpression::xml_schema("[0-9]+")],
+                    }],
+                    white_space: None,
+                },
+                ..ConstraintSet::default()
+            },
+            // Length facets, which are meaningless on a float.
+            ConstraintSet {
+                length: Some(4),
+                ..ConstraintSet::default()
+            },
+            // Ambiguous same-side bounds.
+            ConstraintSet {
+                min_inclusive: Some(float_bound(0.0)),
+                min_exclusive: Some(float_bound(0.0)),
+                ..ConstraintSet::default()
+            },
+            // A bound in the wrong width domain.
+            ConstraintSet {
+                min_inclusive: Some(NumericValue::Float32(
+                    ams_gra_oms_ir::Float32Value::from_value(0.0),
+                )),
+                ..ConstraintSet::default()
+            },
+        ] {
+            let holder = declaration(
+                "Holder",
+                TypeKind::Record {
+                    fields: vec![field("value", "Bounded")],
+                },
+            );
+            let schema = message_schema(
+                vec![holder, bounded_float("Bounded", constraints)],
+                "Holder",
+            );
+            let analysis =
+                CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
+            for language in BackendLanguage::ALL {
+                assert_eq!(
+                    analysis
+                        .backend_coverage(language)
+                        .unwrap()
+                        .declarations_fully_renderable,
+                    1,
+                    "{language:?}: only the Holder renders; the bad float does not"
+                );
+            }
+            assert_only_family_unblocks(&schema, FeatureFamily::ConstrainedSimpleTypes);
+        }
+    }
+
+    /// Task 033 section 42: supported named floating ranges stay baseline in
+    /// every one of the 31 feature combinations, under both worlds, and no
+    /// feature ever reduces capability.
+    #[test]
+    fn task033_float_ranges_hold_across_all_feature_combinations_and_worlds() {
+        let holder = declaration(
+            "Holder",
+            TypeKind::Record {
+                fields: vec![field("value", "Bounded"), field("ratio", "Unit")],
+            },
+        );
+        let schema = message_schema(
+            vec![
+                holder,
+                bounded_float(
+                    "Bounded",
+                    ConstraintSet {
+                        min_exclusive: Some(float_bound(0.0)),
+                        ..ConstraintSet::default()
+                    },
+                ),
+                bounded_float(
+                    "Unit",
+                    ConstraintSet {
+                        min_inclusive: Some(float_bound(0.0)),
+                        max_inclusive: Some(float_bound(1.0)),
+                        ..ConstraintSet::default()
+                    },
+                ),
+            ],
+            "Holder",
+        );
+
+        for world in [
+            GenerationWorld::ClosedSchemaSet,
+            GenerationWorld::OpenExtensions,
+        ] {
+            let analysis = CoverageAnalysis::new(&schema, world).unwrap();
+            assert!(analysis.report().is_ok(), "{world} report must complete");
+            for language in BackendLanguage::ALL {
+                let baseline = analysis
+                    .backend_coverage(language)
+                    .unwrap()
+                    .message_closures_renderable;
+                assert_eq!(
+                    baseline, 1,
+                    "{world}/{language:?}: bounded floats are baseline in both worlds"
+                );
+                let mut combinations = 0;
+                for mask in 1..(1 << FeatureFamily::ALL.len()) {
+                    let features = FeatureFamily::ALL
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(index, feature)| {
+                            ((mask & (1 << index)) != 0).then_some(*feature)
+                        })
+                        .collect::<Vec<_>>();
+                    let total = analysis
+                        .impact(language, &features)
+                        .unwrap_or_else(|error| panic!("{world}/{language:?}: {error}"));
+                    assert!(
+                        total >= baseline,
+                        "{world}/{language:?}: {features:?} reduced coverage"
                     );
                     combinations += 1;
                 }

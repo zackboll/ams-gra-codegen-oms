@@ -165,9 +165,16 @@ base groups. A local set of patterns appends one new group while preserving the
 base groups and immediate named `base_type`; groups are never flattened across
 restriction levels. Named enumeration restrictions remain unsupported.
 
-Ada, Rust, and C++ do not generate constrained floating wrappers. Integer-bound
-helpers accept only `NumericValue::Integer`; constrained floating declarations
-produce structured unsupported errors before rendering, never coercion or loss.
+Integer-bound helpers accept only `NumericValue::Integer`. Since Task 033, Ada,
+Rust, and C++ do generate checked wrappers for *named* floating declarations
+whose effective constraints are numeric range facets only
+(`minInclusive`/`maxInclusive`/`minExclusive`/`maxExclusive`, in any one-sided,
+two-sided, or mixed combination). Every other floating constraint shape —
+lexical facets, length facets, ambiguous same-side bounds, a bound whose
+`NumericValue` domain does not match the declared width — still produces a
+structured unsupported error before rendering, never coercion or loss. Field-local
+floating constraints on a direct primitive also remain unsupported, because the
+field stores the primitive directly and no checked wrapper exists for it.
 
 Primitive kinds preserve numeric value-space distinctions. `Decimal` denotes
 decimal arithmetic and is not an umbrella numeric kind. `Float32` and
@@ -178,9 +185,16 @@ IR distinction leaves room for XSD floating values such as `NaN`, `INF`,
 `-INF`, and negative zero without silently normalizing them away.
 `NumericValue::Integer(i128)` stores integral bounds, while `Float32` and
 `Float64` wrappers store width-specific floating bounds. Range validation uses
-semantic ordering only within the same numeric domain. The backends still fail
-closed for constrained floating declarations because generation support for
-such constraints has not been implemented.
+semantic ordering only within the same numeric domain. This IR representation
+was already complete before Task 033; what Task 033 added is *backend lowering*
+over it, for the numeric bound-only named subset described above. No IR shape
+changed, and no second floating bound representation was introduced.
+
+One consequence of the existing representation is worth stating explicitly: the
+frontend stores the semantic *value* of a floating facet, not its original XML
+spelling. Generated code therefore emits the stored binary value formatted so it
+round-trips to the identical binary32/binary64, and never attempts to
+reconstruct the lexical text that appeared in the XSD.
 
 Temporal primitive kinds are similarly distinct: `DateTime`, `Time`, and
 `Duration` model separate XSD value spaces. A temporal pattern remains a lexical

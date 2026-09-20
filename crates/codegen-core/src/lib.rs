@@ -2,6 +2,7 @@
 
 mod abstract_value;
 mod coverage;
+mod floating;
 mod integral;
 mod service_generation;
 mod service_plan;
@@ -20,6 +21,10 @@ pub use abstract_value::{
 pub use coverage::{
     BackendCoverage, BackendLanguage, CoverageAnalysis, CoverageError, FeatureFamily,
     SchemaInventory,
+};
+pub use floating::{
+    Float32Bound, Float64Bound, FloatingBoundKind, FloatingDomain, float32_literal,
+    float64_literal, floating_domain,
 };
 pub use integral::{InclusiveIntegralDomain, inclusive_integral_domain};
 pub use service_generation::{

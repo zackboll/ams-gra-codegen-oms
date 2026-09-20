@@ -742,7 +742,19 @@ named restrictions resolve after all documents load while preserving immediate
 `base_type`, ultimate primitive `kind`, declaration order, and effective numeric
 and length intersections. Contradictions, mixed domains, cycles, structural
 bases, non-finite ranges, and pattern-on-pattern inheritance fail closed.
-Backends continue to reject constrained floating declarations before rendering.
+
+At Task 015 the backends still rejected every constrained floating declaration
+before rendering. That backend limitation was lifted in Task 033: named
+`Float32`/`Float64` declarations whose effective constraints are numeric range
+facets only are now backend-renderable, and the effective bounds Task 015
+resolves here are exactly what the backends consume — they do not re-walk raw
+XSD restriction chains. Because every constrained floating declaration in both
+pinned releases is bound-only (zero lexical and zero length facets on floating
+types), this covers the authoritative floating tranche in full.
+
+Nothing about frontend behaviour changed in Task 033: the parsing, storage,
+inheritance resolution, and fail-closed rules recorded above are Task 015's and
+remain byte-for-byte in force.
 
 The independent iterative probe progression was:
 
