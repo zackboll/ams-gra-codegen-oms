@@ -1384,10 +1384,119 @@ fn parse_numeric_value(
     }
 }
 
+/// Validate one authored restriction step against its immediate effective
+/// base, before the step is folded into the effective `ConstraintSet`.
+///
+/// # Why this is separate from intersection
+///
+/// Intersection computes the effective domain correctly, but it is
+/// *lossy about legality*. A derived step that weakens an inherited bound
+/// simply loses the intersection and vanishes:
+///
+/// ```text
+/// Base:    minInclusive = 10
+/// Derived: minInclusive = 0     -> effective >= 10
+/// ```
+///
+/// The generated domain never widens, so nothing downstream misbehaves --- but
+/// the authored derivation is invalid XSD, and normalizing it away destroys
+/// the evidence that the source was wrong. Validating the step here, against
+/// the base it actually restricts, keeps the frontend fail-closed without
+/// removing the effective intersection that follows.
+///
+/// This checks a *derivation step*, so it is deliberately asymmetric: adding a
+/// bound the base does not have is always legal (that is what restriction is
+/// for); replacing an inherited bound with a weaker one never is.
+fn validate_restriction_step(
+    inherited: &ConstraintSet,
+    local: &ConstraintSet,
+) -> Result<(), FrontendError> {
+    // A single restriction step must not declare both spellings of one bound:
+    // the two cannot both be the minimum, and choosing one would be guessing.
+    if local.min_inclusive.is_some() && local.min_exclusive.is_some() {
+        return Err(FrontendError::InvalidInput(
+            "restriction declares both minInclusive and minExclusive".to_owned(),
+        ));
+    }
+    if local.max_inclusive.is_some() && local.max_exclusive.is_some() {
+        return Err(FrontendError::InvalidInput(
+            "restriction declares both maxInclusive and maxExclusive".to_owned(),
+        ));
+    }
+
+    // Numeric bounds. `strongest_*_bound` already yields (value, exclusive),
+    // and `select_strongest_bound` already knows which of two candidates is
+    // stronger, so "the derived bound must be at least as strong as the
+    // inherited one" is exactly "the stronger of the two is the derived one".
+    if let (Some(base), Some(derived)) = (
+        strongest_lower_bound(inherited),
+        strongest_lower_bound(local),
+    ) && select_strongest_bound(Some(base), Some(derived), true)? != Some(derived)
+    {
+        return Err(FrontendError::InvalidInput(
+            "derived lower bound weakens the inherited lower bound".to_owned(),
+        ));
+    }
+    if let (Some(base), Some(derived)) = (
+        strongest_upper_bound(inherited),
+        strongest_upper_bound(local),
+    ) && select_strongest_bound(Some(base), Some(derived), false)? != Some(derived)
+    {
+        return Err(FrontendError::InvalidInput(
+            "derived upper bound weakens the inherited upper bound".to_owned(),
+        ));
+    }
+
+    validate_length_restriction_step(inherited, local)
+}
+
+/// The String/Binary half of [`validate_restriction_step`].
+fn validate_length_restriction_step(
+    inherited: &ConstraintSet,
+    local: &ConstraintSet,
+) -> Result<(), FrontendError> {
+    if let (Some(base), Some(derived)) = (inherited.min_length, local.min_length)
+        && derived < base
+    {
+        return Err(FrontendError::InvalidInput(
+            "derived minLength weakens the inherited minimum length".to_owned(),
+        ));
+    }
+    if let (Some(base), Some(derived)) = (inherited.max_length, local.max_length)
+        && derived > base
+    {
+        return Err(FrontendError::InvalidInput(
+            "derived maxLength weakens the inherited maximum length".to_owned(),
+        ));
+    }
+    if let Some(derived) = local.length {
+        // An inherited exact length is already a single admissible value, so a
+        // different exact length is a change rather than a restriction.
+        if inherited.length.is_some_and(|base| base != derived) {
+            return Err(FrontendError::InvalidInput(
+                "derived length changes the inherited exact length".to_owned(),
+            ));
+        }
+        // An exact length must fall inside whatever interval it inherits.
+        if inherited.min_length.is_some_and(|min| derived < min)
+            || inherited.max_length.is_some_and(|max| derived > max)
+        {
+            return Err(FrontendError::InvalidInput(
+                "derived length falls outside the inherited length bounds".to_owned(),
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn intersect_constraints(
     inherited: &ConstraintSet,
     local: &ConstraintSet,
 ) -> Result<ConstraintSet, FrontendError> {
+    // Legality of the authored step first, then the effective domain. Doing
+    // this in the other order would let a weaker derived bound disappear into
+    // the intersection before anything could object to it.
+    validate_restriction_step(inherited, local)?;
     let mut constraints = intersect_numeric_constraints(inherited, local)?;
     constraints.length = match (inherited.length, local.length) {
         (Some(left), Some(right)) if left != right => {

@@ -1312,6 +1312,256 @@ fn named_restrictions_intersect_lengths_and_reject_cycles_or_structural_bases() 
     }
 }
 
+/// Build and load a two-level named restriction chain over one primitive.
+fn restriction_step_result(
+    label: &str,
+    base: &str,
+    base_facets: &str,
+    derived_facets: &str,
+) -> Result<SchemaIr, FrontendError> {
+    let path = write_temporary_schema(
+        label,
+        &format!(
+            r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:t="urn:steps" targetNamespace="urn:steps">
+  <xs:simpleType name="Base"><xs:restriction base="{base}">{base_facets}</xs:restriction></xs:simpleType>
+  <xs:simpleType name="Derived"><xs:restriction base="t:Base">{derived_facets}</xs:restriction></xs:simpleType>
+</xs:schema>
+"#
+        ),
+    );
+    let result = load_schema_document(&path);
+    fs::remove_file(path).unwrap();
+    result
+}
+
+/// Corrective cleanup: an illegal authored restriction STEP must be rejected
+/// even though effective intersection would silently normalize it away.
+///
+/// `Base minInclusive = 10` then `Derived minInclusive = 0` intersects back to
+/// `>= 10`, so the generated domain never widens -- but the derivation is
+/// invalid XSD, and normalization must not destroy that evidence.
+#[test]
+fn numeric_restriction_steps_reject_weakened_bounds_across_primitive_families() {
+    for (base, low, high, weak_min, strong_min, weak_max, strong_max) in [
+        ("xs:long", "10", "100", "0", "20", "1000", "50"),
+        // `xs:unsignedInt` carries an intrinsic 0 ..= 4294967295 domain, so
+        // the weak upper bound stays inside it and is rejected for weakening
+        // rather than for exceeding the width.
+        ("xs:unsignedInt", "10", "100", "0", "20", "1000", "50"),
+        ("xs:float", "10.0", "100.0", "0.0", "20.0", "1000.0", "50.0"),
+        (
+            "xs:double",
+            "10.0",
+            "100.0",
+            "0.0",
+            "20.0",
+            "1000.0",
+            "50.0",
+        ),
+    ] {
+        let base_facets =
+            format!(r#"<xs:minInclusive value="{low}"/><xs:maxInclusive value="{high}"/>"#);
+
+        // Strengthening in either direction is legal.
+        for (label, facets) in [
+            (
+                "step-strong-min",
+                format!(r#"<xs:minInclusive value="{strong_min}"/>"#),
+            ),
+            (
+                "step-strong-max",
+                format!(r#"<xs:maxInclusive value="{strong_max}"/>"#),
+            ),
+        ] {
+            assert!(
+                restriction_step_result(label, base, &base_facets, &facets).is_ok(),
+                "{base} {label}: strengthening is a legal restriction"
+            );
+        }
+
+        // Weakening either bound is not, even though intersection hides it.
+        for (label, facets, expected) in [
+            (
+                "step-weak-min",
+                format!(r#"<xs:minInclusive value="{weak_min}"/>"#),
+                "weakens the inherited lower bound",
+            ),
+            (
+                "step-weak-max",
+                format!(r#"<xs:maxInclusive value="{weak_max}"/>"#),
+                "weakens the inherited upper bound",
+            ),
+        ] {
+            let error = restriction_step_result(label, base, &base_facets, &facets)
+                .expect_err("a weakened bound must be rejected");
+            assert!(error.to_string().contains(expected), "{base}: {error}");
+        }
+    }
+}
+
+/// Inclusive/exclusive strength at an EQUAL value. `> 10` is strictly stronger
+/// than `>= 10`, so tightening that way is legal and loosening is not.
+#[test]
+fn equal_value_inclusive_exclusive_strength_is_directional() {
+    assert!(
+        restriction_step_result(
+            "step-incl-to-excl",
+            "xs:long",
+            r#"<xs:minInclusive value="10"/>"#,
+            r#"<xs:minExclusive value="10"/>"#
+        )
+        .is_ok(),
+        "minInclusive 10 -> minExclusive 10 strengthens the domain"
+    );
+
+    let error = restriction_step_result(
+        "step-excl-to-incl",
+        "xs:long",
+        r#"<xs:minExclusive value="10"/>"#,
+        r#"<xs:minInclusive value="10"/>"#,
+    )
+    .expect_err("minExclusive 10 -> minInclusive 10 readmits 10");
+    assert!(
+        error
+            .to_string()
+            .contains("weakens the inherited lower bound"),
+        "{error}"
+    );
+}
+
+/// One restriction step cannot declare both spellings of the same bound.
+#[test]
+fn a_restriction_step_cannot_declare_both_bound_spellings() {
+    for (label, facets, expected) in [
+        (
+            "both-min",
+            r#"<xs:minInclusive value="1"/><xs:minExclusive value="2"/>"#,
+            "both minInclusive and minExclusive",
+        ),
+        (
+            "both-max",
+            r#"<xs:maxInclusive value="9"/><xs:maxExclusive value="8"/>"#,
+            "both maxInclusive and maxExclusive",
+        ),
+    ] {
+        let error = restriction_step_result(label, "xs:long", "", facets)
+            .expect_err("a doubled bound spelling must be rejected");
+        assert!(error.to_string().contains(expected), "{label}: {error}");
+    }
+}
+
+/// The same rule for String/Binary length bounds.
+#[test]
+fn length_restriction_steps_reject_weakened_bounds() {
+    let base = r#"<xs:minLength value="4"/><xs:maxLength value="32"/>"#;
+    for (label, facets, expected) in [
+        (
+            "weak-min-length",
+            r#"<xs:minLength value="2"/>"#,
+            Some("weakens the inherited minimum length"),
+        ),
+        (
+            "weak-max-length",
+            r#"<xs:maxLength value="64"/>"#,
+            Some("weakens the inherited maximum length"),
+        ),
+        (
+            "length-below-interval",
+            r#"<xs:length value="2"/>"#,
+            Some("outside the inherited length bounds"),
+        ),
+        (
+            "length-above-interval",
+            r#"<xs:length value="64"/>"#,
+            Some("outside the inherited length bounds"),
+        ),
+        ("strong-min-length", r#"<xs:minLength value="8"/>"#, None),
+        ("strong-max-length", r#"<xs:maxLength value="16"/>"#, None),
+        ("length-within-interval", r#"<xs:length value="8"/>"#, None),
+    ] {
+        let result = restriction_step_result(label, "xs:string", base, facets);
+        match expected {
+            Some(expected) => {
+                let error = result.expect_err(label);
+                assert!(error.to_string().contains(expected), "{label}: {error}");
+            }
+            None => assert!(result.is_ok(), "{label} must remain legal"),
+        }
+    }
+
+    // An inherited EXACT length cannot be changed to a different exact length.
+    let error = restriction_step_result(
+        "exact-length-change",
+        "xs:hexBinary",
+        r#"<xs:length value="8"/>"#,
+        r#"<xs:length value="4"/>"#,
+    )
+    .expect_err("changing an inherited exact length must be rejected");
+    assert!(
+        error
+            .to_string()
+            .contains("changes the inherited exact length"),
+        "{error}"
+    );
+    // Restating the same exact length is a no-op restriction and stays legal.
+    assert!(
+        restriction_step_result(
+            "exact-length-same",
+            "xs:hexBinary",
+            r#"<xs:length value="8"/>"#,
+            r#"<xs:length value="8"/>"#
+        )
+        .is_ok()
+    );
+}
+
+/// Validation is against the EFFECTIVE IMMEDIATE BASE, not the original
+/// primitive. `Leaf` below weakens a bound `Middle` introduced, which the
+/// root primitive never had.
+#[test]
+fn restriction_steps_are_validated_against_the_effective_immediate_base() {
+    let path = write_temporary_schema(
+        "multilevel-step",
+        r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:t="urn:steps" targetNamespace="urn:steps">
+  <xs:simpleType name="Root"><xs:restriction base="xs:long"><xs:minInclusive value="0"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Middle"><xs:restriction base="t:Root"><xs:minInclusive value="50"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Leaf"><xs:restriction base="t:Middle"><xs:minInclusive value="10"/></xs:restriction></xs:simpleType>
+</xs:schema>
+"#,
+    );
+    let error = load_schema_document(&path).expect_err("Leaf weakens Middle's bound");
+    fs::remove_file(path).unwrap();
+    assert!(
+        error
+            .to_string()
+            .contains("weakens the inherited lower bound"),
+        "10 is legal against Root but not against Middle: {error}"
+    );
+
+    // The same chain strengthening at every step remains valid, and the
+    // effective intersection is preserved rather than replaced.
+    let path = write_temporary_schema(
+        "multilevel-step-valid",
+        r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:t="urn:steps" targetNamespace="urn:steps">
+  <xs:simpleType name="Root"><xs:restriction base="xs:long"><xs:minInclusive value="0"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Middle"><xs:restriction base="t:Root"><xs:minInclusive value="50"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Leaf"><xs:restriction base="t:Middle"><xs:minInclusive value="75"/></xs:restriction></xs:simpleType>
+</xs:schema>
+"#,
+    );
+    let ir = load_schema_document(&path).expect("a monotonically strengthening chain is valid");
+    fs::remove_file(path).unwrap();
+    let leaf = ir
+        .types
+        .iter()
+        .find(|declaration| declaration.name.local_name == "Leaf")
+        .expect("Leaf must be declared");
+    assert_eq!(
+        leaf.constraints.min_inclusive,
+        Some(NumericValue::Integer(75))
+    );
+}
+
 #[test]
 fn floating_special_range_values_and_contradictions_fail_closed() {
     for (label, base, facets, expected) in [
