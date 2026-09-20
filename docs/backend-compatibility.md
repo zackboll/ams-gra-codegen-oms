@@ -1827,6 +1827,11 @@ constrained floating dependency.
 Measured after Task 033 against authoritative UCI 2.5 with
 `crates/service-contract/tests/fixtures/upstream-minimal.yaml`, closed world.
 
+> **Superseded.** These figures predate generated-name preflight. The current
+> authoritative readiness is Rust 51/60 and Ada 32/60; see "Selected
+> PositionReport readiness after the correction" below. The Task 033 delta this
+> table records is still accurate *as a Task 033 result*.
+
 | Backend | Task 031 | Task 033 | First blocker now |
 | --- | --- | --- | --- |
 | Rust | 47/60, `AltitudeType` | **52/60** | `{…}DateTimeType` |
@@ -2049,12 +2054,23 @@ previously counted as fully renderable:
 
 | Release / backend | Before | After | Newly excluded |
 | --- | --- | --- | --- |
-| 2.5 Ada | `2800/5557` | `2732/5557` | 68 |
-| 2.5 Rust | `5395/5557` | `5385/5557` | 10 |
-| 2.5 C++ | `5395/5557` | `5388/5557` | 7 |
-| 2.6 Ada | `2801/5570` | `2732/5570` | 69 |
-| 2.6 Rust | `5417/5570` | `5407/5570` | 10 |
-| 2.6 C++ | `5417/5570` | `5411/5570` | 6 |
+| 2.5 Ada | `2800/5557` | `2731/5557` | 69 |
+| 2.5 Rust | `5395/5557` | `5375/5557` | 20 |
+| 2.5 C++ | `5395/5557` | `5378/5557` | 17 |
+| 2.6 Ada | `2801/5570` | `2731/5570` | 70 |
+| 2.6 Rust | `5417/5570` | `5397/5570` | 20 |
+| 2.6 C++ | `5417/5570` | `5401/5570` | 16 |
+
+These are the **final authoritative closed-world figures**, measured after the
+generated-name attribution and identifier-syntax corrections below. The
+earlier `2800/5395/5417` figures remain rejected as genuine overclaims.
+
+Open-world declaration figures, measured the same way:
+
+| Release | Ada | Rust | C++ |
+| --- | --- | --- | --- |
+| 2.5 | `2724/5557` | `5287/5557` | `5290/5557` |
+| 2.6 | `2724/5570` | `5309/5570` | `5313/5570` |
 
 The cause is attributed, not assumed. In UCI 2.5 the Ada set is 97
 declarations with an unsafe generated name, of which 68 were previously
@@ -2076,10 +2092,116 @@ Both compilers confirm these are genuine rather than modelling artefacts.
 
 Kind, field-type, field-occurrence, and message-closure figures are unchanged
 in both releases and both worlds; frontend normalization is unchanged at 5,557
-types / 722 messages and 5,570 types / 725 messages. Selected `PositionReport`
-readiness is likewise unchanged -- Rust 52/60 first blocking on `DateTimeType`,
-Ada 37/60 first blocking on `Acceleration3D_Type` -- because none of the
-excluded declarations is in that contract's selected closure.
+types / 722 messages and 5,570 types / 725 messages.
 
 No identifier mangling, escaping, or renaming is introduced. An unsafe
 generated name remains a rejection.
+
+#### Final corrective: ownership, world-aware companions, identifier syntax
+
+Peer review of the code found three further defects in this boundary. Fixing
+them moved the closed figures above once more, and every moved declaration is
+attributed individually.
+
+**Structured generated-name ownership.** Coverage attribution recovered the
+responsible declaration by splitting the human-readable diagnostic label
+(`"Owner.Member helper"`, `"Owner companion"`). That matched nothing whenever
+the label was not a declaration local name, so Ada repeated helpers, `_Kind`
+companions, and enumeration/Choice literals attributed to no declaration:
+generation rejected the schema while coverage still counted the *generating*
+declaration renderable. Registration now carries an explicit private
+`NameSource` (declaration, member, helper, companion, enum literal, generated
+support, namespace URI), and attribution reads that structure. Diagnostics
+still render the same strings; nothing parses them. Both sides of a collision
+are recorded, so every declaration responsible for emitting one side is
+excluded.
+
+In UCI 2.5 this adds exactly one Ada declaration, `QueryPET`. `QueryType` is a
+Choice *and* a concrete descendant of the abstract value target `QueryPET`, so
+Ada emits `QueryType_Kind` as the Choice companion and also emits
+`QueryType_Kind` as a literal of the `QueryPET_Kind` closed-sum enumeration.
+GNAT 14.2 rejects the pair:
+
+```text
+p.ads:8:27: error: "QueryType_Kind" conflicts with declaration at line 2
+```
+
+`QueryType` was already excluded; `QueryPET`, which generated the conflicting
+literal, was not. Both are now excluded, which is the rule: mark every
+declaration responsible for emitting a side.
+
+**World-aware `_Kind` companions.** `ada_kind_companion_owners` derived
+companions from `abstract_value_targets`, but being an abstract value target
+does not prove a wrapper is emitted. A Task 026 zero-descendant target used
+only as supported absent-only optional storage emits no wrapper and no
+`{Owner}_Kind`, yet the name was reserved anyway, falsely rejecting generable
+schemas. A Task 024 wrapper also exists only under `ClosedSchemaSet`; under
+`OpenExtensions` the abstract value fails closed before any wrapper exists, and
+the semantic abstract-value blocker must stay authoritative rather than being
+displaced by a manufactured name collision.
+
+The predicate is now `project_abstract_value` succeeding under the requested
+world -- exactly the condition producing `TypeEmission::AbstractValue` -- so
+preflight and generation share one companion predicate. Ordinary Choice
+lowering still registers `{Choice}_Kind` in both worlds, because the renderer
+emits it unconditionally. `GenerationWorld` is threaded through the single
+shared `backend_preflight()` / `validate_backend_names()` /
+`unsafe_named_declarations()` entry points rather than re-decided per backend.
+
+**Rust/C++ identifier-start syntax.** The shared word transformation only
+guaranteed ASCII alphanumeric or `_` characters, not a legal identifier
+*start*. `1Foo` survived upper-camel unchanged and passed preflight. Ada
+already required an alphabetic first character; Rust and C++ now enforce the
+equivalent ASCII rule (first character alphabetic or `_`, rest alphanumeric or
+`_`) on the **generated** spelling, before reserved-word checking, and for
+every emitted C++ namespace component.
+
+This is what moves Rust and C++. The 10 newly excluded declarations in each are
+identical and all are enumerations with a leading-digit variant:
+`CapabilityTransmitPowerEnum` (`70W`), `CommCapabilityEnum` (`5G`),
+`DeclassExceptionEnum` (`25X1`), `GCP_OffsetEnum` (`1METER`),
+`IFF_AltitudeResolutionEnum` (`25_FEET`), `LateralAxisOffsetEnum` and
+`LongitudinalAxisOffsetEnum` (`0_TO_2METERS`), `MaxPOR_Enum` (`1_IN_1`),
+`TransponderAntennaOffsetLongitudinalEnum` (`0_TO_1METERS`), and
+`UncertaintyEnum` (`1_SIGMA`). Ada already rejected all ten, which is why the
+Ada count does not move for them. Both compilers confirm the rule:
+
+```text
+rustc: error: expected identifier, found `70W`
+c++:   error: expected identifier before numeric constant
+```
+
+No declaration became renderable again; there are no removals from the unsafe
+set in either release.
+
+**Emitted-but-unregistered helper.** Re-reading the whole PR also found
+`backend-ada`'s `write_unbounded_helper` splitting on the occurrence minimum:
+`min == 0` emits `{stem}_Vectors`, but `min > 0` emits `{stem}_Required_Array`
+plus `{stem}_Additional_Vectors`. Only the `min == 0` spelling was reserved, so
+a user declaration could collide with a required-minimum helper undetected. The
+suffix set now matches the renderer branch for branch.
+
+#### Selected PositionReport readiness after the correction
+
+Re-measured on authoritative UCI 2.5, closed world:
+
+| Backend | Renderable selected | First blocker |
+| --- | ---: | --- |
+| Rust | 51/60 | `DateTimeType` |
+| Ada | 32/60 | `Acceleration3D_Type` |
+
+Rust moves 52 -> 51 for exactly one declaration, `DeclassExceptionEnum`, whose
+`25X1` variant is the leading-digit rule above; the previous 52 was an
+overclaim for that declaration. The first blocker is unchanged.
+
+Ada measures 32/60, and that is **not** a change from this corrective: the same
+32 was already produced at `538b0d1`. The `37/60` recorded in the Task 033
+section above predates the preflight integration and is stale as a *current*
+figure. The Ada unsupported-selected-type set is byte-identical before and
+after this correction, and the first blocker remains `Acceleration3D_Type`.
+Neither blocker is implemented here.
+
+Service-check cost on full UCI 2.5 is unchanged at ~15 s per language, so the
+world-aware, structurally attributed model reintroduces no per-declaration
+whole-schema scan: preflight and the attributed unsafe set are still computed
+once per language, under one world, outside every feature loop.

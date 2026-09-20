@@ -769,6 +769,13 @@ message (`PositionReport`), 60-declaration selected closure, closed world.
 | rust | closed-schema | 0/1 | **52/60** (was 47/60) | NOT READY | `{…}DateTimeType` (was `{…}AltitudeType`) | 258 s |
 | ada | closed-schema | 0/1 | **37/60** (was 32/60) | NOT READY | `{…}Acceleration3D_Type` (unchanged) | 260 s |
 
+> **Superseded by generated-name preflight.** Re-measured on the same inputs,
+> the current authoritative figures are **rust 51/60** and **ada 32/60**, with
+> the same first blockers, at **~15 s** per language rather than ~258 s. The
+> Rust delta is one declaration, `DeclassExceptionEnum`, whose `25X1`
+> enumeration variant is not a legal Rust identifier; the Ada figure is
+> unchanged by that correction. See `docs/backend-compatibility.md`.
+
 C++ tracked Rust exactly in Task 031 and shares the identical shared-capability
 model, the identical post-change full-schema coverage numbers, and passes the
 same synthetic strict-C++17 generation and runtime tests. No separate
