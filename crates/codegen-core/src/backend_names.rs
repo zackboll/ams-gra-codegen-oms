@@ -30,6 +30,7 @@
 
 use crate::abstract_value::{abstract_value_targets, is_structural, project_abstract_value};
 use crate::coverage::BackendLanguage;
+use crate::floating::floating_domain;
 use crate::structure::{effective_choice_alternatives, effective_record_fields};
 use crate::world::GenerationWorld;
 use ams_gra_oms_ir::{
@@ -122,6 +123,31 @@ enum NameSource {
         owner: QualifiedName,
         literal: String,
     },
+    /// A fixed identifier the backend synthesizes inside `owner`'s member
+    /// region, taken from the lowering shape rather than from any schema
+    /// member name.
+    ///
+    /// The Ada Choice discriminant `Kind` is the motivating case: it occupies
+    /// the same record declarative region as the alternatives, so an
+    /// alternative spelled `Kind` cannot be emitted beside it. Because the
+    /// identifier is generated *by* the owning declaration, a collision makes
+    /// that declaration unsafe.
+    GeneratedMember {
+        owner: QualifiedName,
+        generated: &'static str,
+    },
+    /// An overloadable callable the backend synthesizes in the Ada package's
+    /// top-level region on `owner`'s behalf.
+    ///
+    /// Unlike every other top-level name this one is *overloadable*: Ada
+    /// permits many subprograms to share an identifier when their profiles
+    /// differ, which is exactly what several constrained floats produce. It
+    /// is therefore never inserted into the region; it is only checked
+    /// against the non-overloadable names already there.
+    GeneratedCallable {
+        owner: QualifiedName,
+        callable: &'static str,
+    },
 }
 
 impl NameSource {
@@ -142,6 +168,12 @@ impl NameSource {
             }
             Self::Companion { owner } => format!("{} companion", owner.local_name),
             Self::EnumLiteral { literal, .. } => literal.clone(),
+            Self::GeneratedMember { owner, generated } => {
+                format!("{} generated {generated}", owner.local_name)
+            }
+            Self::GeneratedCallable { owner, callable } => {
+                format!("{} generated {callable} function", owner.local_name)
+            }
         }
     }
 
@@ -156,7 +188,9 @@ impl NameSource {
             Self::Member { owner, .. }
             | Self::Helper { owner, .. }
             | Self::Companion { owner }
-            | Self::EnumLiteral { owner, .. } => Some(owner),
+            | Self::EnumLiteral { owner, .. }
+            | Self::GeneratedMember { owner, .. }
+            | Self::GeneratedCallable { owner, .. } => Some(owner),
         }
     }
 }
@@ -729,6 +763,97 @@ pub fn schema_emits_bounded_integer_support(schema: &SchemaIr) -> bool {
     })
 }
 
+/// The fixed discriminant identifier Ada gives every generated variant record.
+///
+/// Emitted by `backend-ada` for ordinary Choice lowering and for Task 024
+/// closed-sum abstract-value wrappers alike.
+const ADA_CHOICE_DISCRIMINANT: &str = "Kind";
+
+/// The overloadable subprograms Ada emits for each *constrained* named
+/// floating declaration.
+///
+/// `backend-ada::render_floating_declaration` emits, in the package's visible
+/// part, `function Create (Value : <base>) return T` and `function Value
+/// (Item : T) return <base>` -- but only when the declaration has a supported
+/// bound-only domain. An unconstrained float emits a plain derived type with
+/// no subprograms, so these names stay available to user declarations.
+const ADA_FLOAT_CALLABLES: &[&str] = &["Create", "Value"];
+
+/// The declarations for which Ada emits constrained-float `Create` / `Value`
+/// subprograms.
+///
+/// Mirrors `backend-ada`'s `schema_has_constrained_floating` predicate exactly,
+/// but per declaration rather than schema-wide, so attribution can name the
+/// float responsible for a collision.
+fn ada_constrained_float_owners(schema: &SchemaIr) -> Vec<&TypeDecl> {
+    schema
+        .types
+        .iter()
+        .filter(|declaration| {
+            matches!(
+                declaration.kind,
+                TypeKind::Primitive(kind @ (PrimitiveKind::Float32 | PrimitiveKind::Float64))
+                    if floating_domain(kind, &declaration.constraints)
+                        .is_ok_and(|domain| domain.is_some())
+            )
+        })
+        .collect()
+}
+
+/// Collect every conflict between a generated constrained-float subprogram and
+/// a non-overloadable top-level declaration, in schema order.
+///
+/// # Why callables are checked rather than inserted
+///
+/// Ada allows subprograms to overload one another, so several constrained
+/// floats may each emit a `Create` and a `Value` without conflict. Verified
+/// against GNAT 14.2:
+///
+/// ```text
+/// function Create (Value : Interfaces.IEEE_Float_64) return Burn_Rate;
+/// function Create (Value : Interfaces.IEEE_Float_64) return Altitude;
+/// -- accepted: the profiles differ in result type
+///
+/// type Create is new Integer;
+/// function Create (Value : Interfaces.IEEE_Float_64) return Burn_Rate;
+/// -- error: "Create" conflicts with declaration
+/// ```
+///
+/// Inserting `Create` into the top-level region with the ordinary uniqueness
+/// rule would therefore reject the *legal* multi-float case. The callable is
+/// instead tested against the accumulated non-overloadable names without being
+/// inserted -- the same asymmetry [`collect_ada_literal_conflicts`] uses, and
+/// for the same reason.
+///
+/// Both sides are implicated: the float that generates the subprogram and the
+/// declaration that occupies the identifier.
+fn collect_ada_float_callable_conflicts(
+    top_level: &Region,
+    schema: &SchemaIr,
+    conflicts: &mut Vec<CollectedNameError>,
+) {
+    for declaration in ada_constrained_float_owners(schema) {
+        for callable in ADA_FLOAT_CALLABLES {
+            let key = identity_key(BackendLanguage::Ada, callable);
+            let Some(first) = top_level.taken.get(&key) else {
+                continue;
+            };
+            let source = NameSource::GeneratedCallable {
+                owner: declaration.name.clone(),
+                callable,
+            };
+            let error = BackendNameError::Collision {
+                language: BackendLanguage::Ada,
+                region: NameRegion::TopLevel,
+                generated: (*callable).to_owned(),
+                first: first.label(),
+                second: source.label(),
+            };
+            conflicts.push(CollectedNameError::new(error, &[first, &source]));
+        }
+    }
+}
+
 /// Whether Ada instantiates its `Binary_Vectors` octet-vector package.
 ///
 /// Mirrors `backend-ada`'s `schema_needs_binary`: a Binary primitive
@@ -1152,10 +1277,15 @@ pub fn validate_backend_names(
         validate_declaration_members(schema, declaration, language, &mut top_level)?;
     }
     if language == BackendLanguage::Ada {
-        // Literals are validated last, against the completed set of top-level
-        // type names: a literal conflicts with a type name regardless of which
-        // was declared first.
+        // Literals and generated callables are validated last, against the
+        // completed set of top-level type names: either conflicts with a type
+        // name regardless of which was declared first.
         validate_ada_enumeration_literals(&top_level, schema, world)?;
+        let mut callables = Vec::new();
+        collect_ada_float_callable_conflicts(&top_level, schema, &mut callables);
+        if let Some(conflict) = callables.into_iter().next() {
+            return Err(conflict.error);
+        }
     }
     Ok(())
 }
@@ -1224,6 +1354,24 @@ fn register_declaration_members(
             let Ok(alternatives) = effective_choice_alternatives(schema, &declaration.name) else {
                 return Ok(());
             };
+            // Ada lowers a Choice to `type C (Kind : C_Kind := ...) is record
+            // case Kind is ...`. The discriminant `Kind` is a component of
+            // that record's declarative region, so it must occupy the member
+            // region *before* the alternatives: an alternative spelled `Kind`
+            // is rejected by GNAT with `"Kind" conflicts with declaration`.
+            //
+            // Rust and C++ need no equivalent. Their variants carry no
+            // generated discriminant component, so this stays an Ada-only
+            // rule rather than a shared one they would inherit wrongly.
+            if language == BackendLanguage::Ada {
+                members.insert(
+                    NameSource::GeneratedMember {
+                        owner: declaration.name.clone(),
+                        generated: ADA_CHOICE_DISCRIMINANT,
+                    },
+                    ADA_CHOICE_DISCRIMINANT.to_owned(),
+                )?;
+            }
             for alternative in alternatives {
                 let source = NameSource::Member {
                     owner: declaration.name.clone(),
@@ -1370,6 +1518,7 @@ pub fn unsafe_named_declarations(
     if language == BackendLanguage::Ada {
         let mut literals = Vec::new();
         collect_ada_literal_conflicts(&top_level, schema, world, &mut literals);
+        collect_ada_float_callable_conflicts(&top_level, schema, &mut literals);
         for conflict in literals {
             unsafe_names.extend(conflict.owners);
         }
@@ -1403,8 +1552,8 @@ pub fn backend_names_are_renderable(
 mod tests {
     use super::*;
     use ams_gra_oms_ir::{
-        ConstraintSet, EnumVariant, FieldDecl, NamespaceDecl, NumericValue, PrimitiveKind,
-        QualifiedName, SourceRef, TypeRef,
+        ConstraintSet, EnumVariant, FieldDecl, Float64Value, NamespaceDecl, NumericValue,
+        PrimitiveKind, QualifiedName, SourceRef, TypeRef,
     };
 
     const NS: &str = "urn:example:oms";
@@ -1525,6 +1674,224 @@ mod tests {
             panic!("expected a collision on {expected}, got {error:?}");
         };
         assert_eq!(generated, expected);
+    }
+
+    /// A named floating declaration with a supported bound-only domain, so
+    /// Ada emits `Create` / `Value` for it.
+    fn constrained_float(name: &str) -> TypeDecl {
+        TypeDecl {
+            kind: TypeKind::Primitive(PrimitiveKind::Float64),
+            constraints: ConstraintSet {
+                min_inclusive: Some(NumericValue::Float64(Float64Value::from_value(0.0))),
+                max_inclusive: Some(NumericValue::Float64(Float64Value::from_value(1.0))),
+                ..ConstraintSet::default()
+            },
+            ..primitive(name)
+        }
+    }
+
+    /// Ada's Choice discriminant is the fixed identifier `Kind`, declared in
+    /// the same record region as the alternatives. GNAT 14.2 rejects an
+    /// alternative that reuses it with `"Kind" conflicts with declaration`,
+    /// so preflight must too.
+    #[test]
+    fn an_ada_choice_alternative_named_kind_collides_with_the_discriminant() {
+        let schema = schema_with(vec![choice("Selection", &["Kind", "Other"])]);
+        assert_collides(&schema, BackendLanguage::Ada, "Kind");
+    }
+
+    /// The owning Choice generates the discriminant, so the Choice itself is
+    /// what coverage must exclude.
+    #[test]
+    fn an_ada_kind_alternative_marks_the_owning_choice_unsafe() {
+        let schema = schema_with(vec![choice("Selection", &["Kind", "Other"])]);
+        assert_eq!(
+            unsafe_named_declarations(
+                &schema,
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            ),
+            BTreeSet::from([QualifiedName::new(NS, "Selection")])
+        );
+    }
+
+    /// The discriminant rule is Ada's, derived from Ada's lowering. Rust
+    /// enums and C++ `std::variant` alternatives carry no generated
+    /// discriminant component, so they must not inherit it.
+    #[test]
+    fn rust_and_cpp_do_not_inherit_the_ada_kind_discriminant_rule() {
+        let schema = schema_with(vec![choice("Selection", &["Kind", "Other"])]);
+        for language in [BackendLanguage::Rust, BackendLanguage::Cpp] {
+            assert!(
+                validate_backend_names(&schema, language, GenerationWorld::ClosedSchemaSet).is_ok(),
+                "{language:?} has no generated Kind discriminant to collide with"
+            );
+        }
+    }
+
+    /// Only the exact identifier is reserved; a merely similar alternative
+    /// stays legal.
+    #[test]
+    fn an_ada_choice_alternative_named_kind_value_remains_safe() {
+        let schema = schema_with(vec![choice("Selection", &["KindValue", "Other"])]);
+        assert!(
+            validate_backend_names(
+                &schema,
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            )
+            .is_ok()
+        );
+    }
+
+    /// Closed-sum wrappers emit the same `Kind` discriminant, but their
+    /// components are `{Descendant}_Value` -- derived from *declaration*
+    /// names, never from a user-supplied member name. A descendant would have
+    /// to be named `Kin` for `Kin_Value` to approach it, and no descendant
+    /// spelling can produce the bare identifier `Kind`. No rule is therefore
+    /// registered for wrapper members; this test records that determination
+    /// so it is not mistaken for an oversight.
+    #[test]
+    fn closed_sum_wrapper_components_cannot_collide_with_their_kind_discriminant() {
+        let mut base = primitive("Base");
+        base.is_abstract = true;
+        base.kind = TypeKind::Record { fields: vec![] };
+        let mut descendant = record("Kind", vec![]);
+        descendant.base_type = Some(TypeRef {
+            target: TypeRefTarget::Named(QualifiedName::new(NS, "Base")),
+        });
+        let holder = record(
+            "Holder",
+            vec![field(
+                "Payload",
+                TypeRefTarget::Named(QualifiedName::new(NS, "Base")),
+                Cardinality::REQUIRED_ONE,
+            )],
+        );
+        let schema = schema_with(vec![base, descendant, holder]);
+        // The descendant contributes the component `Kind_Value` and the
+        // literal `Kind_Kind`, not `Kind`, so the discriminant is untouched.
+        // Any rejection here must come from another rule, never from the
+        // wrapper's own discriminant.
+        let unsafe_names = unsafe_named_declarations(
+            &schema,
+            BackendLanguage::Ada,
+            GenerationWorld::ClosedSchemaSet,
+        );
+        assert!(
+            !unsafe_names.contains(&QualifiedName::new(NS, "Holder")),
+            "no wrapper component can normalize onto the bare discriminant"
+        );
+    }
+
+    /// A constrained float emits `function Create ...` into the package's
+    /// visible part, where a type of the same name cannot coexist. Confirmed
+    /// against GNAT 14.2.
+    #[test]
+    fn an_ada_type_named_create_collides_with_the_generated_float_constructor() {
+        let schema = schema_with(vec![constrained_float("BurnRate"), primitive("Create")]);
+        assert_collides(&schema, BackendLanguage::Ada, "Create");
+    }
+
+    #[test]
+    fn an_ada_type_named_value_collides_with_the_generated_float_accessor() {
+        let schema = schema_with(vec![constrained_float("BurnRate"), primitive("Value")]);
+        assert_collides(&schema, BackendLanguage::Ada, "Value");
+    }
+
+    /// Both sides are implicated: the float that generates the subprogram and
+    /// the declaration occupying the identifier.
+    #[test]
+    fn a_generated_float_callable_collision_marks_both_declarations() {
+        let schema = schema_with(vec![constrained_float("BurnRate"), primitive("Create")]);
+        assert_eq!(
+            unsafe_named_declarations(
+                &schema,
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            ),
+            BTreeSet::from([
+                QualifiedName::new(NS, "BurnRate"),
+                QualifiedName::new(NS, "Create"),
+            ])
+        );
+    }
+
+    /// Ada subprograms overload. Several constrained floats each emit a
+    /// `Create` and a `Value`, and GNAT 14.2 accepts the result, so sharing
+    /// the identifier must not be reported as a collision.
+    #[test]
+    fn several_constrained_floats_may_share_overloaded_create_and_value() {
+        let schema = schema_with(vec![
+            constrained_float("BurnRate"),
+            constrained_float("AltitudeMeters"),
+            constrained_float("UnitInterval"),
+        ]);
+        assert!(
+            validate_backend_names(
+                &schema,
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            )
+            .is_ok(),
+            "generated float subprograms overload rather than collide"
+        );
+        assert!(
+            unsafe_named_declarations(
+                &schema,
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            )
+            .is_empty()
+        );
+    }
+
+    /// No constrained float means no generated subprogram, so the spelling
+    /// stays available. Reserving an unemitted name would block a legal
+    /// schema.
+    #[test]
+    fn create_and_value_are_free_when_no_constrained_float_is_declared() {
+        let schema = schema_with(vec![primitive("Create"), primitive("Value")]);
+        assert!(
+            validate_backend_names(
+                &schema,
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            )
+            .is_ok()
+        );
+    }
+
+    /// An *unconstrained* float emits a plain derived type and no
+    /// subprograms, so it must not reserve the names either.
+    #[test]
+    fn an_unconstrained_float_reserves_no_callable_names() {
+        let unconstrained = TypeDecl {
+            kind: TypeKind::Primitive(PrimitiveKind::Float64),
+            ..primitive("Bearing")
+        };
+        let schema = schema_with(vec![unconstrained, primitive("Create")]);
+        assert!(
+            validate_backend_names(
+                &schema,
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            )
+            .is_ok()
+        );
+    }
+
+    /// The generated float subprograms are an Ada package-scope concern.
+    /// Rust and C++ emit no such free functions.
+    #[test]
+    fn rust_and_cpp_do_not_reserve_create_or_value() {
+        let schema = schema_with(vec![constrained_float("BurnRate"), primitive("Create")]);
+        for language in [BackendLanguage::Rust, BackendLanguage::Cpp] {
+            assert!(
+                validate_backend_names(&schema, language, GenerationWorld::ClosedSchemaSet).is_ok(),
+                "{language:?} emits no package-level Create"
+            );
+        }
     }
 
     fn schema_in(uri: &str) -> SchemaIr {
