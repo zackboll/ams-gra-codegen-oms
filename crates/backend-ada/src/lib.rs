@@ -1613,29 +1613,27 @@ mod tests {
         .expect("overlay fixture should compose")
     }
 
-    /// Task 029 sections 29/30: supplying the private derived type through an
-    /// explicit overlay -- with no edit to the public root -- closes the Task
-    /// 024 sum for the repeated 0..* extension point, and the generated spec
-    /// compiles while a PrivateA value is appended to the repeated collection.
-    /// The same composed schema still fails closed under `open-extensions`.
-    #[test]
-    fn task029_private_overlay_closes_the_sum_but_not_the_world() {
-        let source = generate(&overlay_composed_schema(&["private-a.xsd"]), CLOSED)
-            .expect("an explicit overlay must close the extension point");
-        assert!(source.contains("type ExtensionBase (Kind : ExtensionBase_Kind"));
-        assert!(source.contains("PrivateA_Value : PrivateA;"));
-        assert!(
-            source.contains("Extensions : Container_Extensions_Sequence;"),
-            "the repeated 0..* field must still be generated: {source}"
-        );
-
+    /// Compile the overlay-composed Ada spec, appending a `PrivateA` value to
+    /// the generated repeated collection, when GNAT is installed.
+    ///
+    /// The caller's generated-text assertions are unconditional; only this
+    /// compile probe is skipped when GNAT is absent. Unlike `c++`, GNAT is not
+    /// present on the stock CI image, and a missing optional toolchain must not
+    /// be reported as a lowering regression. The probe still runs in every
+    /// environment that has GNAT, including local development.
+    fn compile_overlay_probe_if_gnat_available(source: &str) {
         use std::fs;
         use std::process::Command;
+
+        if Command::new("gnatmake").arg("--version").output().is_err() {
+            return;
+        }
+
         let directory = std::env::temp_dir().join("ams-gra-oms-task029-overlay-ada");
         fs::create_dir_all(&directory).expect("create Ada probe directory");
         fs::write(directory.join("urn.ads"), "package Urn is\nend Urn;\n")
             .expect("write Ada parent package");
-        fs::write(directory.join("urn-overlay.ads"), &source).expect("write generated Ada spec");
+        fs::write(directory.join("urn-overlay.ads"), source).expect("write generated Ada spec");
         fs::write(
             directory.join("probe.adb"),
             r#"with Urn.Overlay; use Urn.Overlay;
@@ -1657,16 +1655,37 @@ end Probe;
 "#,
         )
         .expect("write Ada probe unit");
+
         let status = Command::new("gnatmake")
             .current_dir(&directory)
             .args(["-gnatwa", "-gnata", "probe.adb"])
             .status()
-            .expect("GNAT must be available");
+            .expect("GNAT reported a version, so it must be runnable");
         fs::remove_dir_all(&directory).expect("remove Ada probe directory");
         assert!(
             status.success(),
             "overlay-composed closed sum must compile under GNAT"
         );
+    }
+
+    /// Task 029 sections 29/30: supplying the private derived type through an
+    /// explicit overlay -- with no edit to the public root -- closes the Task
+    /// 024 sum for the repeated 0..* extension point, and where GNAT is
+    /// available the generated spec compiles while a PrivateA value is appended
+    /// to the repeated collection. The same composed schema still fails closed
+    /// under `open-extensions`.
+    #[test]
+    fn task029_private_overlay_closes_the_sum_but_not_the_world() {
+        let source = generate(&overlay_composed_schema(&["private-a.xsd"]), CLOSED)
+            .expect("an explicit overlay must close the extension point");
+        assert!(source.contains("type ExtensionBase (Kind : ExtensionBase_Kind"));
+        assert!(source.contains("PrivateA_Value : PrivateA;"));
+        assert!(
+            source.contains("Extensions : Container_Extensions_Sequence;"),
+            "the repeated 0..* field must still be generated: {source}"
+        );
+
+        compile_overlay_probe_if_gnat_available(&source);
 
         let message = generate(&overlay_composed_schema(&["private-a.xsd"]), OPEN)
             .expect_err("section 25: an overlay must not imply a closed world")
