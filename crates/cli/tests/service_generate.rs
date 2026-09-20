@@ -824,3 +824,217 @@ fn selected_ada_output_compiles_under_gnat() {
         .expect("GNAT reported a version, so it must be runnable");
     assert!(status.success(), "selected Ada output must compile");
 }
+
+/// Generate the Task 033 constrained-float service for one language.
+fn generate_constrained_float(language: &str, label: &str) -> PathBuf {
+    let output_root = output_dir(label);
+    let output = generate(
+        "constrained-float.xsd",
+        "constrained-float.yaml",
+        language,
+        "closed-schema",
+        &output_root,
+    );
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "{language} constrained-float generation should succeed"
+    );
+    output_root
+}
+
+/// Task 033 section 45: a contract whose entire selected closure is bound-only
+/// constrained floats becomes READY in all three backends.
+///
+/// The point of this test is *propagation*. No Task 033 change was made to
+/// `service_plan.rs`, `service_readiness.rs`, or `service_generation.rs`; the
+/// new capability has to arrive through the single shared coverage snapshot
+/// and the ordinary backends. The fixture also contains an unselected
+/// `xs:duration` that no backend can render, so a READY result here cannot be
+/// a whole-schema accident.
+#[test]
+fn task033_constrained_float_service_is_ready_in_every_backend() {
+    for language in ["rust", "cpp", "ada"] {
+        let check = cli()
+            .arg("service-check")
+            .arg("--schema")
+            .arg(fixture("constrained-float.xsd"))
+            .arg("--contract")
+            .arg(fixture("constrained-float.yaml"))
+            .args(["--language", language, "--world", "closed-schema"])
+            .output()
+            .expect("service-check must run");
+        assert_eq!(
+            check.status.code(),
+            Some(0),
+            "{language} service-check should succeed"
+        );
+        let report = String::from_utf8(check.stdout).expect("UTF-8 report");
+        assert!(
+            report.contains("status: READY"),
+            "{language} must be READY after Task 033: {report}"
+        );
+        assert!(
+            report.contains("selected type closure: 6")
+                && report.contains("renderable selected types: 6"),
+            "{language} must render every selected type: {report}"
+        );
+    }
+}
+
+/// Task 033: the selected Rust output compiles and its checked constructors
+/// actually reject out-of-domain values.
+#[test]
+fn task033_selected_rust_float_bounds_hold() {
+    let root = generate_constrained_float("rust", "task033-rust");
+    std::fs::write(
+        root.join("probe.rs"),
+        "include!(\"test.rs\");\n\nfn main() {\n    assert!(AltitudeMeters::new(-6378237.0).is_some());\n    assert!(AltitudeMeters::new(-6378238.0).is_none());\n    assert!(BurnRate::new(0.0).is_none());\n    assert!(BurnRate::new(1.0).is_some());\n    assert!(ThrustRatio::new(0.5).is_some());\n    assert!(ThrustRatio::new(1.5).is_none());\n    assert!(DerivedRate::new(10.0).is_some());\n    assert!(DerivedRate::new(10.5).is_none());\n}\n",
+    )
+    .expect("write Rust probe");
+    let status = Command::new("rustc")
+        .current_dir(&root)
+        .args(["--edition", "2021", "-o", "probe", "probe.rs"])
+        .status()
+        .expect("rustc should be available in a Rust workspace");
+    assert!(status.success(), "selected Rust output must compile");
+    assert!(
+        Command::new(root.join("probe"))
+            .status()
+            .expect("probe must run")
+            .success(),
+        "selected Rust bounds must hold"
+    );
+}
+
+/// Task 033: the selected C++ output compiles under strict C++17 and its
+/// checked factories reject out-of-domain values.
+#[test]
+fn task033_selected_cpp_float_bounds_hold() {
+    let root = generate_constrained_float("cpp", "task033-cpp");
+    std::fs::write(
+        root.join("probe.cpp"),
+        "#include \"test.hpp\"\n\nint main() {\n    if (urn::test::BurnRate::create(0.0)) return 1;\n    if (!urn::test::BurnRate::create(1.0)) return 1;\n    if (urn::test::AltitudeMeters::create(-6378238.0)) return 1;\n    if (!urn::test::DerivedRate::create(10.0)) return 1;\n    if (urn::test::DerivedRate::create(10.5)) return 1;\n    return 0;\n}\n",
+    )
+    .expect("write C++ probe");
+    let status = Command::new("c++")
+        .current_dir(&root)
+        .args([
+            "-std=c++17",
+            "-Wall",
+            "-Wextra",
+            "-pedantic-errors",
+            "-o",
+            "probe",
+            "probe.cpp",
+        ])
+        .status()
+        .expect("c++ must be runnable");
+    assert!(status.success(), "selected C++ output must compile");
+    assert!(
+        Command::new(root.join("probe"))
+            .status()
+            .expect("probe must run")
+            .success(),
+        "selected C++ bounds must hold"
+    );
+}
+
+/// Task 033: the selected Ada output compiles and its predicates are enforced
+/// for a client that does *not* pass `-gnata`, which is exactly what the
+/// generated spec's own `Assertion_Policy` exists to guarantee.
+///
+/// The probe drives the private representation through its only public
+/// construction path, `Create`, and reads back through `Value`. Neither a
+/// scalar conversion nor an inherited operator is available to it.
+///
+/// Skipped only where GNAT is absent, as elsewhere in this file.
+#[test]
+fn task033_selected_ada_float_predicates_hold_under_gnat() {
+    if Command::new("gnatmake").arg("--version").output().is_err() {
+        return;
+    }
+    let root = generate_constrained_float("ada", "task033-ada");
+    std::fs::write(
+        root.join("probe.adb"),
+        "with Urn.Test; use Urn.Test;\nwith Interfaces;\nuse type Interfaces.IEEE_Float_64;\n\nprocedure Probe is\n   function Rejects_Zero_Burn return Boolean is\n      Held : BurnRate;\n   begin\n      Held := Create (0.0);\n      return Value (Held) /= 0.0;\n   exception\n      when others => return True;\n   end Rejects_Zero_Burn;\n\n   Good : constant BurnRate := Create (1.0);\nbegin\n   --  Read back through the public accessor; no conversion is available.\n   if Value (Good) /= 1.0 then\n      raise Program_Error;\n   end if;\n   if not Rejects_Zero_Burn then\n      raise Program_Error;\n   end if;\nend Probe;\n",
+    )
+    .expect("write Ada probe");
+    let status = Command::new("gnatmake")
+        .current_dir(&root)
+        .args(["-q", "probe.adb"])
+        .status()
+        .expect("GNAT reported a version, so it must be runnable");
+    assert!(status.success(), "selected Ada output must compile");
+    assert!(
+        Command::new(root.join("probe"))
+            .status()
+            .expect("probe must run")
+            .success(),
+        "selected Ada predicates must be enforced"
+    );
+}
+
+/// Task 033 correction: the selected Ada output must not offer a client any
+/// unchecked way to build a `BurnRate`, so the two historical bypasses are
+/// compile errors rather than runtime failures.
+///
+/// Skipped only where GNAT is absent, as elsewhere in this file.
+#[test]
+fn task033_selected_ada_float_rejects_public_bypasses() {
+    if Command::new("gnatmake").arg("--version").output().is_err() {
+        return;
+    }
+    let root = generate_constrained_float("ada", "task033-ada-bypass");
+    for (unit, body, expected) in [
+        (
+            "direct_conversion",
+            "   Bad : BurnRate := BurnRate (0.0);\n",
+            "invalid conversion",
+        ),
+        (
+            "inherited_arithmetic",
+            "   A : BurnRate := Create (1.0);\n   B : BurnRate := Create (1.0);\n   C : BurnRate := A + B;\n",
+            "no applicable operator",
+        ),
+    ] {
+        let file = format!("{unit}.adb");
+        let procedure = unit
+            .split('_')
+            .map(|word| {
+                let mut characters = word.chars();
+                match characters.next() {
+                    Some(first) => first.to_uppercase().collect::<String>() + characters.as_str(),
+                    None => String::new(),
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("_");
+        std::fs::write(
+            root.join(&file),
+            format!(
+                "with Urn.Test; use Urn.Test;\n\nprocedure {procedure} is\n{body}begin\n   null;\nend {procedure};\n"
+            ),
+        )
+        .expect("write Ada bypass probe");
+        let output = Command::new("gnatmake")
+            .current_dir(&root)
+            .args(["-q", &file])
+            .output()
+            .expect("GNAT reported a version, so it must be runnable");
+        assert!(
+            !output.status.success(),
+            "{unit} bypass must not compile against the selected Ada output"
+        );
+        let diagnostics = format!(
+            "{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            diagnostics.contains(expected),
+            "{unit} must be rejected for representation hiding \
+             (expected a diagnostic mentioning {expected:?}), got:\n{diagnostics}"
+        );
+    }
+}

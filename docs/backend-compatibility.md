@@ -1497,3 +1497,391 @@ no `EXT`-suffix heuristic. No `GenerationWorld` change and no world default. No
 declaration set, with composition provenance available only through each
 declaration's existing `SourceRef`. The newly exposed post-overlay blockers are
 recorded, not implemented.
+
+## Task 033 — named constrained floating ranges
+
+Task 022 recorded that *all* non-default floating `ConstraintSet` values were
+fail-closed. That remains the truthful description of the system at Task 022;
+Task 033 narrows it. A **named** `Float32`/`Float64` declaration is now
+backend-renderable when its effective `ConstraintSet` consists solely of numeric
+range facets.
+
+### Supported subset
+
+`minInclusive`, `maxInclusive`, `minExclusive`, `maxExclusive`, in any
+combination of lower-only, upper-only, two-sided, inclusive, exclusive, or
+mixed inclusive/exclusive. Nothing else. A declaration carrying a lexical facet
+(`pattern`, `whiteSpace`), a length facet (`length`, `minLength`, `maxLength`),
+an ambiguous same-side pair (both `minInclusive` and `minExclusive`, or both
+`maxInclusive` and `maxExclusive`), a non-finite bound, or a bound whose
+`NumericValue` domain does not match the declared width still fails closed with
+a structured error. No constraint is ever silently discarded, and a numeric
+bound sitting beside an unsupported facet is **not** partially enforced.
+
+The classification lives in one place, `codegen-core/src/floating.rs`
+(`floating_domain`), and is consumed by all three backends *and* by
+`CoverageAnalysis`. A single shared answer is what keeps the backends and the
+coverage model from drifting into disagreeing about which declarations render.
+
+### Empty two-sided domains
+
+A two-sided domain must actually be inhabited. `lower > upper` is rejected, and
+so is `lower == upper` when **either** side is exclusive: an equal pair denotes
+exactly one candidate value, and an exclusive side excludes it, leaving nothing.
+
+| Domain | Verdict |
+| --- | --- |
+| `[1.0, 1.0]` | valid — exactly one value |
+| `(1.0, 1.0]` | empty — rejected |
+| `[1.0, 1.0)` | empty — rejected |
+| `(1.0, 1.0)` | empty — rejected |
+
+The equal/exclusive cases were **missed by the original Task 033 classifier**,
+which checked only `lower > upper`, and were corrected during review. Generating
+a type no value can inhabit would be a silent trap, so these fail closed.
+Because `+0.0 == -0.0` under IEEE comparison, a signed-zero pair is an equal
+pair and follows the same rule regardless of how the signs are spelled. The rule
+applies identically to Float32 and Float64, and is tested by calling
+`floating_domain()` directly rather than relying on `SchemaIr::validate()`.
+
+### Width preservation
+
+`Float32` stays binary32 and `Float64` stays binary64 everywhere. The helper
+accepts only `NumericValue::Float32` bounds for a `Float32` declaration and only
+`NumericValue::Float64` for a `Float64` one; a mismatched domain is rejected
+rather than converted, because widening or narrowing a bound would move the
+accepted set of the generated type. Nothing passes through `i128`, decimal, or
+string, and no external numeric crate was added.
+
+### Floating semantics
+
+Bounds lower to ordinary `>=`/`>`/`<=`/`<` comparisons, so IEEE-754 behaviour
+is inherited rather than reimplemented:
+
+| Value | Lower-only finite bound | Upper-only finite bound | Two-sided finite range |
+| --- | --- | --- | --- |
+| `NaN` | rejected | rejected | rejected |
+| `+Infinity` | accepted | rejected | rejected |
+| `-Infinity` | rejected | accepted | rejected |
+
+NaN is not special-cased into acceptance; it simply compares false against every
+bound. Infinities are **not** rejected merely because a type is constrained.
+`+0.0` and `-0.0` compare equal, so `minInclusive = 0` admits both signs and
+`minExclusive = 0` rejects both. Unconstrained Task 022 floats continue to carry
+NaN, infinities, and negative zero unchanged.
+
+Bound literals are emitted from the stored binary value, formatted to round-trip
+to the identical width; the original XSD lexical spelling is not preserved by the
+frontend and is deliberately not reconstructed.
+
+### Representations
+
+**Rust.** A checked newtype preserving named identity:
+
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+pub struct AltitudeMeters(f64);
+
+impl AltitudeMeters {
+    pub const MIN: f64 = -6378237.0;
+    pub const fn new(value: f64) -> Option<Self> { ... }
+    pub const fn get(self) -> f64 { self.0 }
+}
+```
+
+`Eq`, `Ord`, and `Hash` are deliberately not derived: floats have no total order
+and no reflexive equality, so claiming those traits would be unsound.
+Unconstrained named floats keep their Task 022 infallible `new(value) -> Self`
+API byte for byte — only constrained ones return `Option`, because only they can
+fail.
+
+**C++.** An owning value wrapper with no public unchecked construction:
+
+```cpp
+class BurnRate {
+public:
+    static constexpr double min_value = 0.0;
+    static std::optional<BurnRate> create(double value) noexcept { ... }
+    double value() const noexcept { return value_; }
+private:
+    explicit BurnRate(double value) noexcept : value_(value) {}
+    double value_;
+};
+```
+
+Nothing beyond C++17 and the already-included `<optional>` is required. The Task
+022 binary32/binary64 host `static_assert`s are unchanged and still emitted for
+constrained-float-only schemas.
+
+**Ada.** A **private** type whose completion is a derived IEEE type carrying a
+`Dynamic_Predicate`, with `Create` and `Value` as the only public operations:
+
+```ada
+pragma Assertion_Policy (Dynamic_Predicate => Check);
+...
+   type AltitudeMeters is private;
+
+   function Create (Value : Interfaces.IEEE_Float_64) return AltitudeMeters;
+
+   function Value (Item : AltitudeMeters) return Interfaces.IEEE_Float_64;
+
+private
+
+   type AltitudeMeters is new Interfaces.IEEE_Float_64
+     with Dynamic_Predicate =>
+       AltitudeMeters >= -6378237.0;
+
+   function Create (Value : Interfaces.IEEE_Float_64) return AltitudeMeters
+   is (AltitudeMeters (Value));
+
+   function Value (Item : AltitudeMeters) return Interfaces.IEEE_Float_64
+   is (Interfaces.IEEE_Float_64 (Item));
+```
+
+A finite Ada `range` subtype is deliberately **not** used: it would exclude
+`+Infinity` from a lower-only XSD constraint that actually admits it, silently
+narrowing the schema's domain.
+
+### Why constrained Ada floats are private
+
+**This defect was found during Task 033 review, and the representation was
+corrected in response.** Task 033 first shipped the predicate on a *publicly*
+derived numeric type. That made `Create` checked but left the representation
+itself open, because a public numeric derivation also publishes a conversion and
+a full set of inherited operators.
+
+Two ordinary client paths therefore still manufactured invalid values, with no
+diagnostic at all, when the client was compiled without `-gnata` — reproduced
+against GNAT 14.2 before the fix:
+
+```ada
+Bad : BurnRate := BurnRate (0.0);          --  0.0 in a "> 0.0" type
+
+A : FloatUnitInterval := Create (0.75);
+B : FloatUnitInterval := Create (0.75);
+C : FloatUnitInterval := A + B;            --  1.5 in a "[0.0, 1.0]" type
+```
+
+The lesson is that **a client's assertion policy cannot be trusted to preserve a
+generated type's invariant**, and neither can the client's restraint: an
+invariant that survives only when callers avoid legal operations is not an
+invariant. Rust and C++ already prevented this class of bypass with private
+storage and private constructors; Ada now provides the same guarantee
+structurally.
+
+Hiding the derivation removes both paths from the public surface. Both probes
+above are now **compile errors** — "invalid conversion" and "no applicable
+operator `+` for private type" respectively — and both are asserted as such, by
+their intended diagnostic rather than by mere failure, in the backend and CLI
+regressions. A runtime exception is deliberately not accepted as sufficient
+here: the unchecked surface should not exist publicly at all.
+
+The public contract is therefore:
+
+* `Create` is the single checked construction boundary.
+* `Value` is read-only extraction of the underlying IEEE scalar.
+* No conversion, inherited arithmetic, writable field, unchecked construction,
+  or representation clause is publicly available.
+
+No public arithmetic over constrained wrappers is provided. If it is ever
+wanted, it belongs in a deliberate design as explicit checked operations.
+
+### How the check survives a client without `-gnata`
+
+Predicate enforcement follows the `Assertion_Policy` in force **where the
+conversion is written**, not where the type is declared. Because `Create`'s
+expression-function completion is written inside the generated spec, under that
+spec's own `pragma Assertion_Policy (Dynamic_Predicate => Check)`, the
+conversion sits on the generated side of that boundary and is checked regardless
+of client flags. The pragma is a configuration pragma on the generated unit
+only; no repository-wide compiler flag was changed.
+
+The regression probes compile *without* `-gnata` precisely so an unenforced
+predicate would fail rather than quietly pass, and this was confirmed by
+temporarily removing the pragma and observing the runtime test fail. They drive
+every accepted and rejected case through `Create` and round-trip accepted finite
+values back through `Value`.
+
+The pragma, the private part, `Create`, and `Value` are emitted only when some
+declaration in the unit actually carries a floating predicate, so unconstrained
+Task 022 Ada output remains `type Name is new Interfaces.IEEE_Float_32;` with no
+predicate, no pragma, no private part, and no operations — byte-for-byte
+unchanged.
+
+### Named restriction chains
+
+Task 015 already resolves inherited constraints, so `declaration.constraints` is
+already the *effective* domain. Backends consume it directly and never re-walk
+raw XSD restriction chains. A derived declaration therefore enforces its final
+narrowed domain: given `BaseFloat` with `minInclusive = 0` and `DerivedFloat`
+restricting it with `maxInclusive = 10`, the generated `DerivedFloat` enforces
+both bounds. In authoritative UCI this is what makes `DecibelNonNegativeType`,
+`GeomagneticApIndexType`, and `GeomagneticKpIndexType` renderable.
+
+Named identity is preserved without modelling XSD simple-type derivation as host
+inheritance: no C++ class inheritance and no Rust wrapper nesting was introduced
+merely because `base_type` is named. The semantic relation stays in
+IR/provenance/dependency ordering, as before.
+
+### Boundaries that did not move
+
+* **Field-local floating constraints.** A field whose `TypeRef` is a direct
+  `Primitive(Float32/Float64)` and whose *field* `ConstraintSet` carries numeric
+  bounds remains fail-closed in all three backends. The field stores the
+  primitive directly and no field-specific checked wrapper exists, so accepting
+  it would mean silently dropping the constraint. Coverage continues to attribute
+  it to `ConstrainedSimpleTypes`.
+* **Floating lexical constraints.** Still unsupported; a regex is never
+  reinterpreted as numeric range semantics. No authoritative floating lexical
+  constraint exists in either pinned release.
+* **Length facets on floats.** Meaningless, and still rejected.
+
+### Revised meaning of `ConstrainedSimpleTypes`
+
+After Task 033 this hypothetical family no longer means "all constrained
+floating declarations". It now covers the remaining unsupported simple
+constraints: constrained String, constrained Binary, floating lexical/length
+facets, ambiguous or wrong-width floating bounds, field-local floating
+constraints, the excluded integral exclusive/lexical shapes, and future
+constrained-simple cases. Supported named floating ranges are **baseline**, so
+no feature family adds them.
+
+### Authoritative floating inventory
+
+Recomputed from both pinned roots during Task 033; identical in UCI 2.5 and 2.6.
+
+| Metric | Float32 | Float64 |
+| --- | ---: | ---: |
+| Named declarations | 4 | 40 |
+| Direct (`base=xs:float`/`xs:double`) | 4 | 25 |
+| Named restriction chains | 0 | 15 |
+| Unconstrained (default) | 0 | 26 |
+| Range-facet-only constrained | 4 | 14 |
+| Lexical-constrained | 0 | 0 |
+| Length-constrained | 0 | 0 |
+
+Direct range-facet counts, also identical across releases:
+
+| Facet | Float32 | Float64 |
+| --- | ---: | ---: |
+| `minInclusive` | 4 | 10 |
+| `maxInclusive` | 3 | 7 |
+| `minExclusive` | 0 | 1 |
+| `maxExclusive` | 0 | 0 |
+
+Every constrained floating declaration in both authoritative releases is
+therefore inside the Task 033 supported subset: there are zero lexical and zero
+length facets on floating types. The named Float32 declarations are
+`IFF_BarometricPressureType`, `SpoilFactorType`, `UnitBallFloatType`, and
+`UnitIntervalFloatType`. The directly constrained Float64 declarations include
+`AltitudeBarometricType`, `AltitudeType`, the five angle-range declarations,
+`DoubleNonNegativeType`, `DoublePositiveType` (the single `minExclusive`),
+`UnitBallDoubleType`, and `UnitIntervalDoubleType`.
+
+### Measured coverage delta
+
+Fresh post-change `coverage --world closed-schema` runs against both pinned
+roots. Normalized frontend counts are unchanged, as they must be: Task 033
+touched no frontend code.
+
+| Release | Types | Messages |
+| --- | ---: | ---: |
+| 2.5 | 5,557 (unchanged) | 722 (unchanged) |
+| 2.6 | 5,570 (unchanged) | 725 (unchanged) |
+
+UCI 2.5, closed world:
+
+| Backend | Kinds | Full declarations | Field types | Field occurrences | Message closures |
+| --- | --- | --- | --- | --- | --- |
+| Ada | 5428/5557 (unchanged) | **2800/5557** (was 2770) | 13147/13160 (unchanged) | 8211/13160 (unchanged) | 0/722 (unchanged) |
+| Rust | 5428/5557 (unchanged) | **5395/5557** (was 5365) | 13147/13160 (unchanged) | 13160/13160 (unchanged) | 0/722 (unchanged) |
+| C++ | 5428/5557 (unchanged) | **5395/5557** (was 5365) | 13147/13160 (unchanged) | 13160/13160 (unchanged) | 0/722 (unchanged) |
+
+The movement is exactly where the design predicts it: **+30 fully renderable
+declarations** per backend, and nothing else. Declaration *kinds* do not move
+because a constrained float was always a recognized `Primitive` kind; field type
+references do not move because a *reference* to a named float was always
+renderable regardless of the target's constraints; field occurrences are
+untouched because Task 033 changed no cardinality rule. Message closures remain
+`0/722` in both releases, because every UCI message closure still reaches some
+unrelated unsupported construct — principally the temporal primitives.
+
+The delta is identical for all three backends, which is the expected consequence
+of a single shared classifier: the new capability is not language-specific.
+
+UCI 2.6, closed world:
+
+| Backend | Kinds | Full declarations | Field types | Field occurrences | Message closures |
+| --- | --- | --- | --- | --- | --- |
+| Ada | 5441/5570 (unchanged) | **2801/5570** (was 2771) | 13198/13198 (unchanged) | 8231/13198 (unchanged) | 0/725 (unchanged) |
+| Rust | 5441/5570 (unchanged) | **5417/5570** (was 5387) | 13198/13198 (unchanged) | 13198/13198 (unchanged) | 0/725 (unchanged) |
+| C++ | 5441/5570 (unchanged) | **5417/5570** (was 5387) | 13198/13198 (unchanged) | 13198/13198 (unchanged) | 0/725 (unchanged) |
+
+The +30 delta is identical in both releases, which matches the inventory: the
+same 4 Float32 and 14 Float64 range-facet-only declarations exist in each, and
+the remainder of the 30 comes from declarations that were blocked *only* by a
+constrained floating dependency.
+
+### Selected PositionReport readiness delta
+
+Measured after Task 033 against authoritative UCI 2.5 with
+`crates/service-contract/tests/fixtures/upstream-minimal.yaml`, closed world.
+
+| Backend | Task 031 | Task 033 | First blocker now |
+| --- | --- | --- | --- |
+| Rust | 47/60, `AltitudeType` | **52/60** | `{…}DateTimeType` |
+| C++ | 47/60, `AltitudeType` | **52/60** | `{…}DateTimeType` |
+| Ada | 32/60, `Acceleration3D_Type` | **37/60** | `{…}Acceleration3D_Type` (unchanged) |
+
+`AltitudeType` is no longer a blocker for any backend, and no *other* constrained
+floating type took its place — which is the check that the implementation is
+generic rather than shaped around one declaration. The new Rust/C++ first
+blocker, `DateTimeType`, belongs to a different feature family (temporal
+primitives) and is deliberately **not** implemented here.
+
+Ada's first blocker is unchanged, exactly as expected: `Acceleration3D_Type`
+fails for an unrelated reason — it carries an ordinary optional named field
+(`Timestamp : DateTimeType`), and Ada's current occurrence model supports
+optional `String` only, aside from Task 026 absent-only elision. Task 033 still
+raised Ada's renderable selected count from 32 to 37 behind that blocker. Ada
+general `Optional<T>` support remains out of scope.
+
+The remaining Rust/C++ unsupported selected types are all temporal or
+constrained-String: `DateTimeType`, `UCI_SchemaVersionStringType`,
+`UniversallyUniqueIdentifierType`, `VisibleString256Type`,
+`SecurityInformationType`, `NATO_SpecialWordsType`,
+`WhitespaceVisibleString1024Type`, and `WhitespaceVisibleString4096Type`. None
+is a floating type.
+
+### Cost
+
+No topology-construction regression. Authoritative elapsed times are in line
+with Task 031's ~255 s, essentially all of which is `CoverageAnalysis::new` over
+the whole schema:
+
+| Run | Seconds |
+| --- | ---: |
+| 2.5 readiness, Rust, closed | 258 |
+| 2.5 readiness, Ada, closed | 260 |
+| 2.5 coverage, closed | 262 |
+| 2.6 coverage, closed | 255 |
+
+These were measured with two probes running concurrently on a loaded host, so
+they are upper bounds rather than best-case figures.
+
+### What Task 033 does not add
+
+No Ada general `Optional<T>` and no Ada optional named values. No `DateTime`,
+`Time`, `Duration`, or `Decimal` support, and no temporal lexical parsing. No
+constrained String or constrained Binary. No field-local floating constraints
+and no anonymous constrained simple types. No floating pattern/lexical facets
+and no floating `whiteSpace` semantics. No arbitrary-precision decimal bounds.
+No CAL wrappers, service wrappers, JSON codecs, or runtime code. No profile
+validation, Capability inference, or UCI version normalization.
+
+No `AltitudeType` or `Acceleration3D_Type` name special-case exists anywhere:
+both are ordinary consequences of the generic rules above. No frontend semantic
+change and no `SchemaIr`/`ConstraintSet`/`NumericValue` shape change was made,
+and no `ServicePlan`, readiness, or selected-generation special-case was added —
+Tasks 031 and 032 inherit the new capability through the existing shared
+coverage snapshot and the ordinary backends.

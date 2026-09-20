@@ -2,9 +2,10 @@
 
 use ams_gra_oms_codegen_core::{
     ADA_PORTABLE_POSITIVE_INDEX_MAX, AbstractValueProjection, Backend, CodegenError,
-    EffectiveValueMember, GeneratedFile, GenerationWorld, InclusiveIntegralDomain, TypeEmission,
-    abstract_value_projection_for_ref, effective_choice_alternatives, effective_record_fields,
-    field_storage_semantics, inclusive_integral_domain, plan_type_emissions,
+    EffectiveValueMember, FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain,
+    TypeEmission, abstract_value_projection_for_ref, effective_choice_alternatives,
+    effective_record_fields, field_storage_semantics, float32_literal, float64_literal,
+    floating_domain, inclusive_integral_domain, plan_type_emissions,
 };
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind,
@@ -61,7 +62,17 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     validate_schema(schema, world)?;
     let emissions = plan_type_emissions(schema, world)?;
     let package = package_name(schema)?;
-    let mut output = String::from("with Ada.Strings.Unbounded;\n");
+    // Task 033: predicate checks follow the assertion policy in force where a
+    // conversion is written, so the generated spec states its own policy. It is
+    // emitted only when some declaration actually carries a floating predicate,
+    // which keeps Task 022 unconstrained output byte-identical, and it is a
+    // configuration pragma on this unit alone -- no repository-wide compiler
+    // flag is involved.
+    let mut output = String::new();
+    if schema_has_constrained_floating(schema) {
+        output.push_str("pragma Assertion_Policy (Dynamic_Predicate => Check);\n\n");
+    }
+    output.push_str("with Ada.Strings.Unbounded;\n");
     let needs_binary = schema_needs_binary(schema);
     if schema.types.iter().any(has_ada_unbounded_occurrence) || needs_binary {
         output.push_str("with Ada.Containers.Vectors;\n");
@@ -87,15 +98,26 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
             "      \"=\"          => Interfaces.\"=\");\n\n",
         ));
     }
+    // Task 033 correction: a constrained floating type is declared `private`
+    // in the visible part and completed here, so the completion -- the derived
+    // IEEE type, its predicate, and the checked conversions -- is never
+    // nameable by a client. Only constrained floats contribute, so a schema
+    // without them produces no `private` part at all and Task 022 output stays
+    // byte-identical.
+    let mut private_part = String::new();
     for emission in emissions {
         match emission {
             TypeEmission::Declaration(declaration) => {
-                render_declaration(&mut output, schema, declaration, world)?
+                render_declaration(&mut output, &mut private_part, schema, declaration, world)?
             }
             TypeEmission::AbstractValue(projection) => {
                 render_abstract_value(&mut output, &projection)?
             }
         }
+    }
+    if !private_part.is_empty() {
+        output.push_str("private\n\n");
+        output.push_str(&private_part);
     }
     writeln!(output, "end {package};").expect("writing to String cannot fail");
     Ok(output)
@@ -143,6 +165,7 @@ fn render_abstract_value(
 
 fn render_declaration(
     output: &mut String,
+    private_part: &mut String,
     schema: &SchemaIr,
     declaration: &TypeDecl,
     world: GenerationWorld,
@@ -186,15 +209,14 @@ fn render_declaration(
             writeln!(output, "   type {name} is new Boolean;\n")
                 .expect("writing to String cannot fail");
         }
-        TypeKind::Primitive(PrimitiveKind::Float32) => {
-            reject_any_constraints(&declaration.constraints, &name)?;
-            writeln!(output, "   type {name} is new Interfaces.IEEE_Float_32;\n")
-                .expect("writing to String cannot fail");
-        }
-        TypeKind::Primitive(PrimitiveKind::Float64) => {
-            reject_any_constraints(&declaration.constraints, &name)?;
-            writeln!(output, "   type {name} is new Interfaces.IEEE_Float_64;\n")
-                .expect("writing to String cannot fail");
+        TypeKind::Primitive(kind @ (PrimitiveKind::Float32 | PrimitiveKind::Float64)) => {
+            render_floating_declaration(
+                output,
+                private_part,
+                *kind,
+                &declaration.constraints,
+                &name,
+            )?;
         }
         TypeKind::Primitive(PrimitiveKind::Binary) => {
             reject_any_constraints(&declaration.constraints, &name)?;
@@ -386,15 +408,22 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
         {
             return unsupported(format!("abstract type {}", declaration.name.local_name));
         }
-        if matches!(
-            declaration.kind,
-            TypeKind::Primitive(PrimitiveKind::Float32 | PrimitiveKind::Float64)
-        ) && declaration.constraints != ConstraintSet::default()
+        // Task 033: the shared helper classifies a named floating
+        // declaration's effective constraints. The bound-only subset is
+        // lowered; every other facet shape still fails closed here.
+        if let TypeKind::Primitive(kind @ (PrimitiveKind::Float32 | PrimitiveKind::Float64)) =
+            declaration.kind
         {
-            return unsupported(format!(
-                "floating constraints on {}",
-                declaration.name.local_name
-            ));
+            floating_domain(kind, &declaration.constraints).map_err(|reason| {
+                error(format!(
+                    "unsupported Ada IR construct: {reason} on {}",
+                    declaration.name.local_name
+                ))
+            })?;
+            // `reject_extra_constraints` understands only the integral
+            // inclusive subset, so a legitimate exclusive floating bound must
+            // not reach it.
+            continue;
         }
         if matches!(declaration.kind, TypeKind::Primitive(PrimitiveKind::Binary))
             && declaration.constraints != ConstraintSet::default()
@@ -655,6 +684,156 @@ fn ensure_portable_finite_max(max: u64) -> Result<(), CodegenError> {
     Ok(())
 }
 
+/// Render a named Float32/Float64 declaration.
+///
+/// Unconstrained output is exactly Task 022's: a plain derived IEEE type, with
+/// no predicate and no assertion pragma, because nothing needs checking.
+///
+/// A Task 033 bound-only declaration is lowered as a **private** type. The
+/// visible part shows only `type T is private`, `Create`, and `Value`; the
+/// derived IEEE type and its `Dynamic_Predicate` live in the private part.
+///
+/// The private representation is the Task 033 correction. A publicly derived
+/// numeric type left two ordinary client paths that manufactured invalid
+/// values with no diagnostic at all when the client was compiled without
+/// `-gnata`: the direct conversion `T (0.0)`, and inherited arithmetic such as
+/// `A + B` returning `T` after two valid constructions. Hiding the derivation
+/// removes both from the public surface -- they become compile errors, not
+/// runtime surprises -- so the invariant no longer depends on either the
+/// client's assertion policy or the client's restraint.
+///
+/// No public arithmetic is re-exported. Checked operations over constrained
+/// wrappers, if ever wanted, are a deliberate later design.
+///
+/// The predicate is deliberately **not** an Ada `range` subtype. A finite
+/// `range` would exclude `+Infinity` from a lower-only XSD constraint that
+/// actually admits it, silently narrowing the schema's domain; a predicate
+/// expressed as ordinary comparisons keeps IEEE semantics exactly -- NaN fails
+/// every bound, one-sided infinities behave normally, and both zero signs
+/// compare equal.
+///
+/// `Create` is the single checked construction boundary. Predicate
+/// enforcement follows the `Assertion_Policy` in force **where the conversion
+/// is written**, not where the type is declared. Because `Create`'s
+/// expression-function completion is written inside this spec, under the
+/// spec's own `pragma Assertion_Policy (Dynamic_Predicate => Check)`, the
+/// conversion sits on the generated side of that boundary and is checked
+/// regardless of the client's flags. That pragma is emitted once per package
+/// (see `generate`) and affects only generated units -- no repository-wide
+/// compiler flag is changed.
+///
+/// `Value` is read-only extraction of the underlying IEEE scalar; it cannot
+/// construct.
+/// Whether any named declaration will emit a floating `Dynamic_Predicate`.
+///
+/// Only a *supported* bound-only domain counts. An unsupported facet shape is
+/// rejected by `validate_schema` before any output is produced, so it can never
+/// reach rendering, and a declaration whose classification errors here must not
+/// cause a pragma to be emitted for output that will not exist.
+fn schema_has_constrained_floating(schema: &SchemaIr) -> bool {
+    schema.types.iter().any(|declaration| {
+        matches!(
+            declaration.kind,
+            TypeKind::Primitive(kind @ (PrimitiveKind::Float32 | PrimitiveKind::Float64))
+                if floating_domain(kind, &declaration.constraints)
+                    .is_ok_and(|domain| domain.is_some())
+        )
+    })
+}
+
+fn render_floating_declaration(
+    output: &mut String,
+    private_part: &mut String,
+    kind: PrimitiveKind,
+    constraints: &ConstraintSet,
+    name: &str,
+) -> Result<(), CodegenError> {
+    let base = if kind == PrimitiveKind::Float32 {
+        "Interfaces.IEEE_Float_32"
+    } else {
+        "Interfaces.IEEE_Float_64"
+    };
+    let Some(domain) = floating_domain(kind, constraints)
+        .map_err(|reason| error(format!("unsupported Ada IR construct: {reason} on {name}")))?
+    else {
+        // Task 022 output, unchanged byte for byte.
+        writeln!(output, "   type {name} is new {base};\n").expect("writing to String cannot fail");
+        return Ok(());
+    };
+
+    let mut clauses = Vec::new();
+    match domain {
+        FloatingDomain::Float32 { lower, upper } => {
+            if let Some(bound) = lower {
+                clauses.push(format!(
+                    "{name} {} {}",
+                    bound.kind.lower_operator(),
+                    float32_literal(bound.value.value())
+                ));
+            }
+            if let Some(bound) = upper {
+                clauses.push(format!(
+                    "{name} {} {}",
+                    bound.kind.upper_operator(),
+                    float32_literal(bound.value.value())
+                ));
+            }
+        }
+        FloatingDomain::Float64 { lower, upper } => {
+            if let Some(bound) = lower {
+                clauses.push(format!(
+                    "{name} {} {}",
+                    bound.kind.lower_operator(),
+                    float64_literal(bound.value.value())
+                ));
+            }
+            if let Some(bound) = upper {
+                clauses.push(format!(
+                    "{name} {} {}",
+                    bound.kind.upper_operator(),
+                    float64_literal(bound.value.value())
+                ));
+            }
+        }
+    }
+
+    // Visible part: an opaque handle plus the two operations a client may use.
+    // No conversion, no arithmetic, no field is nameable from here.
+    writeln!(
+        output,
+        concat!(
+            "   type {name} is private;\n\n",
+            "   function Create (Value : {base}) return {name};\n\n",
+            "   function Value (Item : {name}) return {base};\n",
+        ),
+        name = name,
+        base = base,
+    )
+    .expect("writing to String cannot fail");
+
+    // Private completion: the derived IEEE type carries the predicate, and the
+    // conversions are written here, inside this unit, under this unit's own
+    // `pragma Assertion_Policy (Dynamic_Predicate => Check)`. That is what
+    // makes the check independent of the client's `-gnata`.
+    writeln!(
+        private_part,
+        concat!(
+            "   type {name} is new {base}\n",
+            "     with Dynamic_Predicate =>\n",
+            "       {predicate};\n\n",
+            "   function Create (Value : {base}) return {name}\n",
+            "   is ({name} (Value));\n\n",
+            "   function Value (Item : {name}) return {base}\n",
+            "   is ({base} (Item));\n",
+        ),
+        name = name,
+        base = base,
+        predicate = clauses.join("\n       and then "),
+    )
+    .expect("writing to String cannot fail");
+    Ok(())
+}
+
 fn integral_domain(
     kind: PrimitiveKind,
     constraints: &ConstraintSet,
@@ -856,6 +1035,342 @@ mod tests {
         )
         .expect("inheritance fixture should parse")
     }
+
+    fn constrained_floating_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-constrained-floating.xsd"),
+        )
+        .expect("constrained floating fixture should parse")
+    }
+
+    /// Task 033 sections 27--29: the generated predicates must be **really**
+    /// enforced, not decorative.
+    ///
+    /// The probe is compiled *without* `-gnata` on purpose. That is the whole
+    /// point: a client that does not enable assertions must still not be able
+    /// to build an out-of-domain value through the generated `Create`, because
+    /// the spec carries its own `Assertion_Policy`. If the pragma or `Create`
+    /// were dropped, this test would fail rather than silently pass with an
+    /// unenforced predicate.
+    ///
+    /// Skipped only where GNAT is absent, matching the Task 029 probe policy;
+    /// the generated-text assertions above it are unconditional.
+    #[test]
+    fn constrained_floats_enforce_predicates_under_gnat() {
+        let source =
+            generate(&constrained_floating_schema(), CLOSED).expect("fixture must generate");
+
+        // Width and representation are structural.
+        assert!(source.starts_with("pragma Assertion_Policy (Dynamic_Predicate => Check);\n"));
+
+        // The visible part is opaque: only the private type and the two
+        // operations. The derived IEEE type must not be nameable from there.
+        let (visible, private_part) = source
+            .split_once("\nprivate\n")
+            .expect("a constrained floating schema must emit a private part");
+        assert!(visible.contains("type FloatUnitInterval is private;"));
+        assert!(visible.contains("type DoubleAltitude is private;"));
+        assert!(visible.contains(
+            "function Create (Value : Interfaces.IEEE_Float_32) return FloatUnitInterval;"
+        ));
+        assert!(visible.contains(
+            "function Value (Item : FloatUnitInterval) return Interfaces.IEEE_Float_32;"
+        ));
+        assert!(
+            visible.contains(
+                "function Create (Value : Interfaces.IEEE_Float_64) return DoubleAltitude;"
+            )
+        );
+        // No public derivation, predicate, or conversion anywhere visible.
+        assert!(!visible.contains("is new Interfaces.IEEE_Float_32"));
+        assert!(!visible.contains("is new Interfaces.IEEE_Float_64"));
+        assert!(!visible.contains("'Base"));
+        // The only `Dynamic_Predicate` mention before `private` is the unit's
+        // own configuration pragma, never a visible predicate aspect.
+        assert!(!visible.contains("with Dynamic_Predicate"));
+
+        // Width and the effective domains live in the private completion.
+        assert!(private_part.contains("type FloatUnitInterval is new Interfaces.IEEE_Float_32"));
+        assert!(private_part.contains("type DoubleAltitude is new Interfaces.IEEE_Float_64"));
+        assert!(private_part.contains("DoubleAltitude >= -6378237.0;"));
+        assert!(private_part.contains("DoublePositive > 0.0;"));
+        // The named chain enforces its effective inherited domain.
+        assert!(
+            private_part.contains("DerivedFloat >= 0.0\n       and then DerivedFloat <= 10.0;")
+        );
+
+        use std::fs;
+        use std::process::Command;
+        if Command::new("gnatmake").arg("--version").output().is_err() {
+            return;
+        }
+        let directory = std::env::temp_dir().join("ams-gra-oms-task033-ada-bounds");
+        fs::create_dir_all(&directory).expect("create Ada probe directory");
+        fs::write(
+            directory.join("constrained.ads"),
+            "package Constrained is\nend Constrained;\n",
+        )
+        .expect("write Ada parent package");
+        fs::write(directory.join("constrained-floating.ads"), source)
+            .expect("write generated Ada spec");
+        fs::write(directory.join("probe.adb"), ADA_BOUNDS_PROBE).expect("write Ada probe");
+
+        let status = Command::new("gnatmake")
+            .current_dir(&directory)
+            .args(["-q", "probe.adb"])
+            .status()
+            .expect("GNAT reported a version, so it must be runnable");
+        assert!(status.success(), "generated Ada spec must compile");
+        let run = Command::new(directory.join("probe"))
+            .status()
+            .expect("compiled probe must run");
+        fs::remove_dir_all(&directory).expect("remove Ada probe directory");
+        assert!(
+            run.success(),
+            "generated predicates must be enforced at runtime"
+        );
+    }
+
+    /// Task 033 correction: the two bypasses that the original publicly derived
+    /// representation permitted must now be *compile* errors.
+    ///
+    /// Before the correction both of these compiled cleanly without `-gnata`
+    /// and produced out-of-domain values: `DoublePositive (0.0)` yielded `0.0`
+    /// in a `> 0.0` type, and `A + B` yielded `1.5` in a `[0.0, 1.0]` type. A
+    /// runtime exception would not be an acceptable outcome here -- the point
+    /// is that the unchecked surface does not exist publicly at all, so the
+    /// probes must be rejected by the compiler.
+    ///
+    /// Each probe is checked for its *intended* diagnostic, not merely for
+    /// failure, so an unrelated syntax error in the fixture cannot make this
+    /// test pass vacuously.
+    #[test]
+    fn constrained_floats_reject_public_bypasses_under_gnat() {
+        let source =
+            generate(&constrained_floating_schema(), CLOSED).expect("fixture must generate");
+
+        use std::fs;
+        use std::process::Command;
+        if Command::new("gnatmake").arg("--version").output().is_err() {
+            return;
+        }
+        let directory = std::env::temp_dir().join("ams-gra-oms-task033-ada-bypass");
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(&directory).expect("create Ada probe directory");
+        fs::write(
+            directory.join("constrained.ads"),
+            "package Constrained is\nend Constrained;\n",
+        )
+        .expect("write Ada parent package");
+        fs::write(directory.join("constrained-floating.ads"), source)
+            .expect("write generated Ada spec");
+
+        // (unit, source, substring the rejection must mention)
+        let probes: [(&str, &str, &str); 2] = [
+            (
+                "direct_conversion",
+                ADA_DIRECT_CONVERSION_BYPASS,
+                "invalid conversion",
+            ),
+            (
+                "inherited_arithmetic",
+                ADA_INHERITED_ARITHMETIC_BYPASS,
+                "no applicable operator",
+            ),
+        ];
+        for (unit, probe_source, expected) in probes {
+            let file = format!("{unit}.adb");
+            fs::write(directory.join(&file), probe_source).expect("write Ada bypass probe");
+            let output = Command::new("gnatmake")
+                .current_dir(&directory)
+                .args(["-q", &file])
+                .output()
+                .expect("GNAT reported a version, so it must be runnable");
+            assert!(
+                !output.status.success(),
+                "{unit} bypass must not compile against the private representation"
+            );
+            let diagnostics = format!(
+                "{}{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+            assert!(
+                diagnostics.contains(expected),
+                "{unit} must be rejected for representation hiding \
+                 (expected a diagnostic mentioning {expected:?}), got:\n{diagnostics}"
+            );
+        }
+        fs::remove_dir_all(&directory).expect("remove Ada probe directory");
+    }
+
+    /// The direct-conversion bypass: there is no public conversion into the
+    /// private type, so the scalar literal has nothing to convert to.
+    const ADA_DIRECT_CONVERSION_BYPASS: &str = r#"with Constrained.Floating; use Constrained.Floating;
+
+procedure Direct_Conversion is
+   Bad : DoublePositive := DoublePositive (0.0);
+begin
+   null;
+end Direct_Conversion;
+"#;
+
+    /// The inherited-arithmetic bypass: a private type inherits no numeric
+    /// operators, so two valid values cannot be combined into an invalid one.
+    const ADA_INHERITED_ARITHMETIC_BYPASS: &str = r#"with Constrained.Floating; use Constrained.Floating;
+
+procedure Inherited_Arithmetic is
+   A : FloatUnitInterval := Create (0.75);
+   B : FloatUnitInterval := Create (0.75);
+   C : FloatUnitInterval := A + B;
+begin
+   null;
+end Inherited_Arithmetic;
+"#;
+
+    /// The runtime assertions compiled against the generated spec above.
+    ///
+    /// Each `Accepts_*` wrapper converts through the generated `Create` and
+    /// reports whether the predicate held, so accept and reject are both
+    /// observed rather than only the failure path.
+    const ADA_BOUNDS_PROBE: &str = r#"with Constrained.Floating; use Constrained.Floating;
+with Interfaces;
+use type Interfaces.IEEE_Float_32;
+use type Interfaces.IEEE_Float_64;
+with Ada.Text_IO; use Ada.Text_IO;
+
+procedure Probe is
+
+   subtype F32 is Interfaces.IEEE_Float_32;
+   subtype F64 is Interfaces.IEEE_Float_64;
+
+   --  Every wrapper goes through the public `Create`, which is the only
+   --  construction path the private representation offers. Each also asserts
+   --  that `Value` returns exactly what was accepted, so the round-trip is
+   --  observed rather than assumed.
+   function Accepts_Unit (Item : F32) return Boolean is
+      Held : FloatUnitInterval;
+   begin
+      Held := Create (Item);
+      return Value (Held) = Item;
+   exception
+      when others => return False;
+   end Accepts_Unit;
+
+   function Accepts_Lower (Item : F32) return Boolean is
+      Held : FloatLowerInclusive;
+   begin
+      Held := Create (Item);
+      return Value (Held) = Item;
+   exception
+      when others => return False;
+   end Accepts_Lower;
+
+   function Accepts_Altitude (Item : F64) return Boolean is
+      Held : DoubleAltitude;
+   begin
+      Held := Create (Item);
+      return Value (Held) = Item or else Item /= Item;
+   exception
+      when others => return False;
+   end Accepts_Altitude;
+
+   function Accepts_Positive (Item : F64) return Boolean is
+      Held : DoublePositive;
+   begin
+      Held := Create (Item);
+      return Value (Held) = Item;
+   exception
+      when others => return False;
+   end Accepts_Positive;
+
+   function Accepts_Upper_Exclusive (Item : F64) return Boolean is
+      Held : DoubleUpperExclusive;
+   begin
+      Held := Create (Item);
+      return Value (Held) = Item;
+   exception
+      when others => return False;
+   end Accepts_Upper_Exclusive;
+
+   function Accepts_Derived (Item : F64) return Boolean is
+      Held : DerivedFloat;
+   begin
+      Held := Create (Item);
+      return Value (Held) = Item;
+   exception
+      when others => return False;
+   end Accepts_Derived;
+
+   procedure Check (Label : String; Actual : Boolean; Expected : Boolean) is
+   begin
+      if Actual /= Expected then
+         Put_Line ("FAIL: " & Label);
+         raise Program_Error;
+      end if;
+   end Check;
+
+   --  Built at run time so the compiler cannot fold the comparison away.
+   Zero : F64 := 0.0;
+   pragma Volatile (Zero);
+   Nan_Value : F64;
+   pragma Volatile (Nan_Value);
+   Big : F64 := F64'Last;
+   pragma Volatile (Big);
+   Pos_Inf : F64;
+   pragma Volatile (Pos_Inf);
+begin
+   Nan_Value := Zero / Zero;
+   Pos_Inf := Big * 2.0;
+
+   --  Float32 two-sided inclusive.
+   Check ("unit 0.5 accepted", Accepts_Unit (0.5), True);
+   Check ("unit 0.0 accepted", Accepts_Unit (0.0), True);
+   Check ("unit 1.0 accepted", Accepts_Unit (1.0), True);
+   Check ("unit 1.5 rejected", Accepts_Unit (1.5), False);
+   Check ("unit -0.5 rejected", Accepts_Unit (-0.5), False);
+
+   --  Float32 lower inclusive, including signed zero.
+   Check ("lower 0.0 accepted", Accepts_Lower (0.0), True);
+   Check ("lower -0.0 accepted", Accepts_Lower (-0.0), True);
+   Check ("lower -1.0 rejected", Accepts_Lower (-1.0), False);
+
+   --  Float64 lower inclusive: the authoritative AltitudeType bound.
+   Check ("altitude bound accepted", Accepts_Altitude (-6378237.0), True);
+   Check ("altitude below rejected", Accepts_Altitude (-6378238.0), False);
+   Check ("altitude 100.5 accepted", Accepts_Altitude (100.5), True);
+
+   --  Float64 lower EXCLUSIVE: section 29's required shape.
+   Check ("positive 0.0 rejected", Accepts_Positive (0.0), False);
+   Check ("positive -0.0 rejected", Accepts_Positive (-0.0), False);
+   Check ("positive 1.0e-300 accepted", Accepts_Positive (1.0e-300), True);
+
+   --  Float64 upper exclusive.
+   Check ("upper 1.0 rejected", Accepts_Upper_Exclusive (1.0), False);
+   Check ("upper 0.999 accepted", Accepts_Upper_Exclusive (0.999), True);
+
+   --  Named chain: the derived effective domain is what is enforced.
+   Check ("derived 0.0 accepted", Accepts_Derived (0.0), True);
+   Check ("derived 10.0 accepted", Accepts_Derived (10.0), True);
+   Check ("derived -0.5 rejected", Accepts_Derived (-0.5), False);
+   Check ("derived 10.5 rejected", Accepts_Derived (10.5), False);
+
+   --  NaN satisfies no bound.
+   Check ("NaN rejected", Accepts_Altitude (Nan_Value), False);
+   Check ("NaN rejected (exclusive)", Accepts_Positive (Nan_Value), False);
+
+   --  One-sided infinity keeps IEEE ordering.
+   Check ("+Inf accepted by lower-only", Accepts_Altitude (Pos_Inf), True);
+   Check ("-Inf rejected by lower-only", Accepts_Altitude (-Pos_Inf), False);
+   Check ("-Inf accepted by upper-only",
+          Accepts_Upper_Exclusive (-Pos_Inf), True);
+   Check ("+Inf rejected by upper-only",
+          Accepts_Upper_Exclusive (Pos_Inf), False);
+
+   Put_Line ("ok");
+end Probe;
+"#;
 
     fn abstract_value_schema() -> SchemaIr {
         load_schema_document(
@@ -1235,6 +1750,21 @@ mod tests {
             }));
         }
 
+        // Task 022 unconstrained output carries no predicate and no assertion
+        // pragma; Task 033 must not churn it.
+        let mut unconstrained_schema = track_schema();
+        unconstrained_schema.types[0].kind = TypeKind::Primitive(PrimitiveKind::Float64);
+        unconstrained_schema.types[0].constraints = ConstraintSet::default();
+        let unconstrained =
+            generate(&unconstrained_schema, CLOSED).expect("unconstrained generation");
+        assert!(unconstrained.contains("type Track_Id is new Interfaces.IEEE_Float_64;"));
+        assert!(!unconstrained.contains("Dynamic_Predicate"));
+        assert!(!unconstrained.contains("Assertion_Policy"));
+        assert!(!unconstrained.contains("function Create"));
+
+        // Task 033 supersedes the Task 022 blanket rejection for the bound-only
+        // subset: a named lower-inclusive Float64 becomes a derived IEEE type
+        // with an enforced predicate.
         let mut schema = track_schema();
         schema.types[0].kind = TypeKind::Primitive(PrimitiveKind::Float64);
         schema.types[0].constraints = ConstraintSet {
@@ -1243,9 +1773,41 @@ mod tests {
             )),
             ..ConstraintSet::default()
         };
+        let source = generate(&schema, CLOSED).expect("Task 033 bounded float must render");
+        assert!(source.starts_with("pragma Assertion_Policy (Dynamic_Predicate => Check);\n"));
+        let (visible, private_part) = source
+            .split_once("\nprivate\n")
+            .expect("a bounded float must emit a private part");
+        // Public surface: opaque type, checked construction, read-only access.
+        assert!(visible.contains("type Track_Id is private;"));
+        assert!(
+            visible.contains("function Create (Value : Interfaces.IEEE_Float_64) return Track_Id;")
+        );
+        assert!(
+            visible.contains("function Value (Item : Track_Id) return Interfaces.IEEE_Float_64;")
+        );
+        assert!(!visible.contains("is new Interfaces.IEEE_Float_64"));
+        assert!(!visible.contains("with Dynamic_Predicate"));
+        // Representation and predicate are hidden in the completion.
+        assert!(private_part.contains("type Track_Id is new Interfaces.IEEE_Float_64"));
+        assert!(private_part.contains("with Dynamic_Predicate =>\n       Track_Id >= 0.0;"));
+        // A finite `range` subtype would wrongly exclude +Infinity from this
+        // lower-only constraint, so the floating declaration must not use one.
+        assert!(!source.contains("type Track_Id is new Interfaces.IEEE_Float_64 range"));
+        assert!(!source.contains("subtype Track_Id"));
+
+        // A lexical facet alongside the numeric bound is not partially
+        // enforced: the whole declaration is still rejected.
+        schema.types[0].constraints.lexical = ams_gra_oms_ir::LexicalConstraintSet {
+            pattern_groups: vec![ams_gra_oms_ir::PatternGroup {
+                alternatives: vec![ams_gra_oms_ir::PatternExpression::xml_schema("[0-9]+")],
+            }],
+            white_space: None,
+        };
         let error =
-            generate(&schema, CLOSED).expect_err("constrained float must remain unsupported");
+            generate(&schema, CLOSED).expect_err("lexical float constraints remain unsupported");
         assert!(error.message.contains("unsupported Ada IR construct"));
+        assert!(error.message.contains("lexical constraints"));
     }
 
     #[test]

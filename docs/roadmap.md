@@ -50,6 +50,29 @@ Add, driven by real schema evidence rather than speculative completeness:
 
 Every newly supported feature receives an IR fixture and equivalent backend tests.
 
+### Scalar range restrictions
+
+**Complete (Task 020):** named integral declarations and direct integral field
+constraints lower to checked ranges in all three backends, for the inclusive
+subset.
+
+**Complete (Task 033):** named `Float32`/`Float64` numeric range restrictions
+lower in all three backends — lower-only, upper-only, two-sided, inclusive,
+exclusive, and mixed, including effective bounds inherited through Task 015
+named restriction chains. Widths are preserved (binary32 stays binary32), and
+IEEE semantics for NaN, one-sided infinities, and signed zero follow from the
+emitted comparisons rather than from special cases. This covers the entire
+authoritative floating tranche: both pinned releases contain zero lexical and
+zero length facets on floating types.
+
+**Still open:**
+
+- [ ] field-local floating constraints on a *direct* primitive field (no
+      checked wrapper exists for that storage, so it stays fail-closed);
+- [ ] floating lexical facets (none exist in the authoritative releases);
+- [ ] constrained String and constrained Binary;
+- [ ] the excluded integral exclusive/lexical shapes.
+
 ### Open extension-point representation / externally supplied derived types
 
 Partially complete. Task 027 established from the pinned UCI 2.5/2.6 schemas that the
@@ -174,6 +197,22 @@ could render the selected closure, not that any service source exists yet.
 Generation is still **types only**. A ready selection produces the UCI type
 model and nothing else: no CAL façade, publisher/subscriber API, service
 wrapper, codec, or runtime source is emitted yet.
+
+**Measured progress (Task 033):**
+
+Task 033 added no Phase 2.5 code. It raised backend capability, and the
+contract-selected readiness improved automatically through the existing shared
+capability model. Re-measured against authoritative UCI 2.5, the upstream
+`PositionReport` contract, closed world:
+
+| Backend | Task 031 | Task 033 | First blocker now |
+| --- | --- | --- | --- |
+| Rust | 47/60, `AltitudeType` | 52/60 | `DateTimeType` |
+| Ada | 32/60, `Acceleration3D_Type` | 37/60 | `Acceleration3D_Type` |
+
+`PositionReport` is **not** ready in any backend: both probes still report NOT
+READY. The remaining selected blockers are temporal primitives, constrained
+String, and Ada optional named fields — all open.
 
 **Still open:**
 

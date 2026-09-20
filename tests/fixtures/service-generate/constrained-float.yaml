@@ -1,0 +1,33 @@
+# SYNTHETIC Task 033 fixture. Authored for this repository only.
+#
+# Selects one message whose closure is entirely bound-only constrained floats.
+# After Task 033 this must report READY and generate compilable output in all
+# three backends, with NO change to ServicePlan, readiness, or selected
+# generation: the new backend capability has to arrive through the existing
+# shared coverage snapshot alone.
+contract_version: "0.1"
+
+service:
+  name: Constrained Float Telemetry
+  version: "0.1.0"
+  kind: service
+  description: Synthetic contract selecting a constrained-floating closure.
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: telemetry
+    name: Telemetry
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: telemetry-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: TelemetryReport
+        topic: telemetry.report
+        timing:
+          kind: asynchronous

@@ -1,9 +1,10 @@
 //! Minimal Rust type generation from normalized schema IR.
 
 use ams_gra_oms_codegen_core::{
-    AbstractValueProjection, Backend, CodegenError, EffectiveValueMember, GeneratedFile,
-    GenerationWorld, InclusiveIntegralDomain, TypeEmission, abstract_value_projection_for_ref,
-    effective_choice_alternatives, effective_record_fields, field_storage_semantics,
+    AbstractValueProjection, Backend, CodegenError, EffectiveValueMember, FloatingDomain,
+    GeneratedFile, GenerationWorld, InclusiveIntegralDomain, TypeEmission,
+    abstract_value_projection_for_ref, effective_choice_alternatives, effective_record_fields,
+    field_storage_semantics, float32_literal, float64_literal, floating_domain,
     inclusive_integral_domain, plan_type_emissions,
 };
 use ams_gra_oms_ir::{
@@ -199,13 +200,8 @@ fn render_declaration(
             reject_any_constraints(&declaration.constraints, &name)?;
             writeln!(output, "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]\npub struct {name}(bool);\n\nimpl {name} {{\n    pub const fn new(value: bool) -> Self {{ Self(value) }}\n    pub const fn get(self) -> bool {{ self.0 }}\n}}\n").expect("writing to String cannot fail");
         }
-        TypeKind::Primitive(PrimitiveKind::Float32) => {
-            reject_any_constraints(&declaration.constraints, &name)?;
-            writeln!(output, "#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]\npub struct {name}(f32);\n\nimpl {name} {{\n    pub const fn new(value: f32) -> Self {{ Self(value) }}\n    pub const fn get(self) -> f32 {{ self.0 }}\n}}\n").expect("writing to String cannot fail");
-        }
-        TypeKind::Primitive(PrimitiveKind::Float64) => {
-            reject_any_constraints(&declaration.constraints, &name)?;
-            writeln!(output, "#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]\npub struct {name}(f64);\n\nimpl {name} {{\n    pub const fn new(value: f64) -> Self {{ Self(value) }}\n    pub const fn get(self) -> f64 {{ self.0 }}\n}}\n").expect("writing to String cannot fail");
+        TypeKind::Primitive(kind @ (PrimitiveKind::Float32 | PrimitiveKind::Float64)) => {
+            render_floating_declaration(output, *kind, &declaration.constraints, &name)?;
         }
         TypeKind::Primitive(PrimitiveKind::Binary) => {
             reject_any_constraints(&declaration.constraints, &name)?;
@@ -328,15 +324,23 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
         {
             return unsupported(format!("abstract type {}", declaration.name.local_name));
         }
-        if matches!(
-            declaration.kind,
-            TypeKind::Primitive(PrimitiveKind::Float32 | PrimitiveKind::Float64)
-        ) && declaration.constraints != ConstraintSet::default()
+        // Task 033: a named floating declaration's effective constraints are
+        // classified by the shared helper rather than rejected wholesale. The
+        // bound-only subset is lowered; every other facet shape still fails
+        // closed, here, before any output is produced.
+        if let TypeKind::Primitive(kind @ (PrimitiveKind::Float32 | PrimitiveKind::Float64)) =
+            declaration.kind
         {
-            return unsupported(format!(
-                "floating constraints on {}",
-                declaration.name.local_name
-            ));
+            floating_domain(kind, &declaration.constraints).map_err(|reason| {
+                error(format!(
+                    "unsupported Rust IR construct: {reason} on {}",
+                    declaration.name.local_name
+                ))
+            })?;
+            // The generic `reject_extra_constraints` below understands only the
+            // integral inclusive subset, so a legitimately exclusive floating
+            // bound must not reach it.
+            continue;
         }
         if matches!(declaration.kind, TypeKind::Primitive(PrimitiveKind::Binary))
             && declaration.constraints != ConstraintSet::default()
@@ -504,6 +508,112 @@ fn type_ref_supports_eq(
     }
 }
 
+/// Render a named Float32/Float64 declaration.
+///
+/// An unconstrained declaration keeps its exact Task 022 form -- an infallible
+/// `new` returning `Self` -- because nothing about it can fail and churning
+/// that API would break callers for no semantic gain. A Task 033 bound-only
+/// declaration instead gets a checked `new` returning `Option<Self>`, since
+/// construction genuinely can fail.
+///
+/// Neither form derives `Eq`, `Ord`, or `Hash`: `f32`/`f64` have no total order
+/// and no reflexive equality, so those traits would be unsound to claim.
+/// `PartialOrd` is derived because the underlying comparison is meaningful.
+fn render_floating_declaration(
+    output: &mut String,
+    kind: PrimitiveKind,
+    constraints: &ConstraintSet,
+    name: &str,
+) -> Result<(), CodegenError> {
+    let scalar = if kind == PrimitiveKind::Float32 {
+        "f32"
+    } else {
+        "f64"
+    };
+    let Some(domain) = floating_domain(kind, constraints)
+        .map_err(|reason| error(format!("unsupported Rust IR construct: {reason} on {name}")))?
+    else {
+        // Task 022 output, unchanged byte for byte.
+        writeln!(output, "#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]\npub struct {name}({scalar});\n\nimpl {name} {{\n    pub const fn new(value: {scalar}) -> Self {{ Self(value) }}\n    pub const fn get(self) -> {scalar} {{ self.0 }}\n}}\n").expect("writing to String cannot fail");
+        return Ok(());
+    };
+
+    // Bound comparisons are emitted verbatim, so NaN fails every clause, a
+    // one-sided infinity keeps IEEE ordering, and both zero signs compare
+    // equal -- all without a special case in the generated code.
+    let mut clauses = Vec::new();
+    let mut constants = String::new();
+    match domain {
+        FloatingDomain::Float32 { lower, upper } => {
+            if let Some(bound) = lower {
+                writeln!(
+                    constants,
+                    "    pub const MIN: f32 = {};",
+                    float32_literal(bound.value.value())
+                )
+                .expect("writing to String cannot fail");
+                clauses.push(format!("value {} Self::MIN", bound.kind.lower_operator()));
+            }
+            if let Some(bound) = upper {
+                writeln!(
+                    constants,
+                    "    pub const MAX: f32 = {};",
+                    float32_literal(bound.value.value())
+                )
+                .expect("writing to String cannot fail");
+                clauses.push(format!("value {} Self::MAX", bound.kind.upper_operator()));
+            }
+        }
+        FloatingDomain::Float64 { lower, upper } => {
+            if let Some(bound) = lower {
+                writeln!(
+                    constants,
+                    "    pub const MIN: f64 = {};",
+                    float64_literal(bound.value.value())
+                )
+                .expect("writing to String cannot fail");
+                clauses.push(format!("value {} Self::MIN", bound.kind.lower_operator()));
+            }
+            if let Some(bound) = upper {
+                writeln!(
+                    constants,
+                    "    pub const MAX: f64 = {};",
+                    float64_literal(bound.value.value())
+                )
+                .expect("writing to String cannot fail");
+                clauses.push(format!("value {} Self::MAX", bound.kind.upper_operator()));
+            }
+        }
+    }
+
+    writeln!(
+        output,
+        concat!(
+            "#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]\n",
+            "pub struct {name}({scalar});\n\n",
+            "impl {name} {{\n",
+            "{constants}\n",
+            "    pub const fn new(value: {scalar}) -> Option<Self> {{\n",
+            "        if {condition} {{\n",
+            "            Some(Self(value))\n",
+            "        }} else {{\n",
+            "            None\n",
+            "        }}\n",
+            "    }}\n\n",
+            "    pub const fn get(self) -> {scalar} {{\n",
+            "        self.0\n",
+            "    }}\n",
+            "}}\n",
+        ),
+        name = name,
+        scalar = scalar,
+        constants = constants.trim_end(),
+        condition = clauses.join(" && "),
+    )
+    .expect("writing to String cannot fail");
+    Ok(())
+}
+
 fn integral_domain(
     kind: PrimitiveKind,
     constraints: &ConstraintSet,
@@ -655,6 +765,247 @@ mod tests {
                 .join("../xsd-frontend/tests/fixtures/backend-record-inheritance.xsd"),
         )
         .expect("inheritance fixture should parse")
+    }
+
+    fn constrained_floating_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-constrained-floating.xsd"),
+        )
+        .expect("constrained floating fixture should parse")
+    }
+
+    /// Task 033 sections 19--22: compile the generated constrained-float module
+    /// and exercise every bound shape at runtime, including the IEEE special
+    /// values. Asserting on generated *text* alone would not prove the emitted
+    /// comparisons actually behave the way the schema requires.
+    #[test]
+    fn constrained_floats_enforce_bounds_at_runtime() {
+        let source =
+            generate(&constrained_floating_schema(), CLOSED).expect("fixture must generate");
+
+        // Width correctness is structural, so assert it before running.
+        assert!(source.contains("pub struct FloatUnitInterval(f32);"));
+        assert!(source.contains("pub struct DoubleAltitude(f64);"));
+        assert!(source.contains("pub const MIN: f64 = -6378237.0;"));
+        // The named chain enforces its *effective* domain, both bounds.
+        let derived = source
+            .split("pub struct DerivedFloat(f64);")
+            .nth(1)
+            .expect("DerivedFloat must be generated");
+        assert!(derived.contains("pub const MIN: f64 = 0.0;"));
+        assert!(derived.contains("pub const MAX: f64 = 10.0;"));
+        assert!(derived.contains("if value >= Self::MIN && value <= Self::MAX {"));
+
+        use std::fs;
+        use std::process::Command;
+        let directory = std::env::temp_dir().join("ams-gra-oms-task033-rust-bounds");
+        fs::create_dir_all(&directory).expect("create Rust probe directory");
+        fs::write(directory.join("generated.rs"), source).expect("write generated Rust module");
+        fs::write(directory.join("probe.rs"), RUST_BOUNDS_PROBE).expect("write Rust probe");
+
+        let status = Command::new("rustc")
+            .current_dir(&directory)
+            .args(["--edition", "2021", "-o", "probe", "probe.rs"])
+            .status()
+            .expect("rustc should be available in a Rust workspace");
+        assert!(status.success(), "generated Rust module must compile");
+        let run = Command::new(directory.join("probe"))
+            .status()
+            .expect("compiled probe must run");
+        fs::remove_dir_all(&directory).expect("remove Rust probe directory");
+        assert!(run.success(), "generated bound checks must hold at runtime");
+    }
+
+    /// The runtime assertions compiled against the generated module above.
+    const RUST_BOUNDS_PROBE: &str = r#"
+include!("generated.rs");
+
+fn main() {
+    // Lower inclusive: the bound itself is admitted, just below is not.
+    assert!(FloatLowerInclusive::new(0.0).is_some());
+    assert!(FloatLowerInclusive::new(1.0).is_some());
+    assert!(FloatLowerInclusive::new(-0.1).is_none());
+
+    // Upper inclusive.
+    assert!(FloatUpperInclusive::new(1.0).is_some());
+    assert!(FloatUpperInclusive::new(1.000001).is_none());
+
+    // Two-sided, and the accessor round-trips the stored value.
+    assert!(FloatUnitInterval::new(0.5).is_some());
+    assert_eq!(FloatUnitInterval::new(0.25).unwrap().get(), 0.25f32);
+    assert!(FloatUnitInterval::new(-0.001).is_none());
+    assert!(FloatUnitInterval::new(1.001).is_none());
+
+    // Lower exclusive: the bound is rejected, anything above it accepted.
+    assert!(DoublePositive::new(0.0).is_none());
+    assert!(DoublePositive::new(f64::MIN_POSITIVE).is_some());
+
+    // Upper exclusive.
+    assert!(DoubleUpperExclusive::new(1.0).is_none());
+    assert!(DoubleUpperExclusive::new(0.999).is_some());
+
+    // Mixed two-sided: inclusive lower, exclusive upper.
+    assert!(DoubleMixedRange::new(-3.5).is_some());
+    assert!(DoubleMixedRange::new(3.5).is_none());
+    assert!(DoubleMixedRange::new(3.4999).is_some());
+
+    // The authoritative AltitudeType bound, at full binary64 precision.
+    assert!(DoubleAltitude::new(-6378237.0).is_some());
+    assert!(DoubleAltitude::new(-6378237.5).is_none());
+    assert_eq!(DoubleAltitude::MIN, -6378237.0f64);
+
+    // Named chain: the derived type enforces the effective inherited domain.
+    assert!(DerivedFloat::new(0.0).is_some());
+    assert!(DerivedFloat::new(10.0).is_some());
+    assert!(DerivedFloat::new(-0.5).is_none());
+    assert!(DerivedFloat::new(10.5).is_none());
+
+    // NaN is an instance of no range-constrained type.
+    assert!(FloatUnitInterval::new(f32::NAN).is_none());
+    assert!(DoubleAltitude::new(f64::NAN).is_none());
+    assert!(DoublePositive::new(f64::NAN).is_none());
+    assert!(DoubleUpperExclusive::new(f64::NAN).is_none());
+
+    // One-sided infinity keeps IEEE ordering rather than being rejected
+    // merely because the type is constrained.
+    assert!(DoubleAltitude::new(f64::INFINITY).is_some());
+    assert!(DoubleAltitude::new(f64::NEG_INFINITY).is_none());
+    assert!(DoubleUpperExclusive::new(f64::NEG_INFINITY).is_some());
+    assert!(DoubleUpperExclusive::new(f64::INFINITY).is_none());
+    // A two-sided finite range excludes both.
+    assert!(DoubleMixedRange::new(f64::INFINITY).is_none());
+    assert!(DoubleMixedRange::new(f64::NEG_INFINITY).is_none());
+
+    // Signed zero compares equal, so inclusive admits both and exclusive
+    // rejects both.
+    assert!(FloatLowerInclusive::new(-0.0).is_some());
+    assert!(FloatLowerInclusive::new(0.0).is_some());
+    assert!(DoublePositive::new(-0.0).is_none());
+    assert!(DoublePositive::new(0.0).is_none());
+}
+"#;
+
+    /// Task 033 sections 21/68: an unconstrained named float keeps its exact
+    /// Task 022 API and text. Adding constrained support must not churn it.
+    #[test]
+    fn unconstrained_float_output_is_unchanged() {
+        for (kind, scalar) in [
+            (PrimitiveKind::Float32, "f32"),
+            (PrimitiveKind::Float64, "f64"),
+        ] {
+            let mut schema = track_schema();
+            schema.types[0].kind = TypeKind::Primitive(kind);
+            schema.types[0].constraints = ConstraintSet::default();
+            let source = generate(&schema, CLOSED).expect("unconstrained float must generate");
+            assert!(source.contains(&format!(
+                "#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]\npub struct TrackId({scalar});\n\nimpl TrackId {{\n    pub const fn new(value: {scalar}) -> Self {{ Self(value) }}\n    pub const fn get(self) -> {scalar} {{ self.0 }}\n}}\n"
+            )));
+            // Infallible construction is retained for *this* declaration: no
+            // Option, no bounds. Other declarations in the fixture legitimately
+            // use checked constructors, so the assertion is scoped.
+            let impl_block = source
+                .split("impl TrackId {")
+                .nth(1)
+                .and_then(|rest| rest.split("\n}\n").next())
+                .expect("TrackId impl must be generated");
+            assert!(!impl_block.contains("-> Option<Self>"));
+            assert!(!impl_block.contains("pub const MIN"));
+            assert!(!impl_block.contains("pub const MAX"));
+        }
+    }
+
+    /// Task 033 sections 33/69: a field whose TypeRef is a *direct* primitive
+    /// float carrying its own numeric constraint has no checked wrapper to
+    /// build, so it must still fail closed rather than drop the constraint.
+    #[test]
+    fn direct_float_field_constraints_remain_unsupported() {
+        for kind in [PrimitiveKind::Float32, PrimitiveKind::Float64] {
+            let mut schema = track_schema();
+            let record = schema
+                .types
+                .iter_mut()
+                .find(|declaration| matches!(declaration.kind, TypeKind::Record { .. }))
+                .expect("track fixture should contain a record");
+            let TypeKind::Record { fields } = &mut record.kind else {
+                unreachable!("just matched a Record");
+            };
+            fields.truncate(1);
+            fields[0].type_ref = TypeRef::primitive(kind);
+            fields[0].constraints = ConstraintSet {
+                min_inclusive: Some(if kind == PrimitiveKind::Float32 {
+                    NumericValue::Float32(ams_gra_oms_ir::Float32Value::from_value(0.0))
+                } else {
+                    NumericValue::Float64(ams_gra_oms_ir::Float64Value::from_value(0.0))
+                }),
+                ..ConstraintSet::default()
+            };
+            let error = generate(&schema, CLOSED)
+                .expect_err("field-local floating constraints remain unsupported");
+            assert!(error.message.contains("field constraints"));
+        }
+    }
+
+    /// Task 033 section 35: length facets are meaningless on a float and must
+    /// not be quietly accepted.
+    #[test]
+    fn length_facets_on_floats_remain_unsupported() {
+        for constraints in [
+            ConstraintSet {
+                length: Some(4),
+                ..ConstraintSet::default()
+            },
+            ConstraintSet {
+                min_length: Some(1),
+                ..ConstraintSet::default()
+            },
+            ConstraintSet {
+                max_length: Some(8),
+                ..ConstraintSet::default()
+            },
+        ] {
+            let mut schema = track_schema();
+            schema.types[0].kind = TypeKind::Primitive(PrimitiveKind::Float64);
+            schema.types[0].constraints = constraints;
+            let error =
+                generate(&schema, CLOSED).expect_err("length facets on a float must fail closed");
+            assert!(error.message.contains("length constraints"));
+        }
+    }
+
+    /// Task 033 section 71: a bound in the wrong width is a defect in
+    /// externally constructed IR and is never converted.
+    #[test]
+    fn wrong_width_float_bounds_remain_unsupported() {
+        let mut schema = track_schema();
+        schema.types[0].kind = TypeKind::Primitive(PrimitiveKind::Float32);
+        schema.types[0].constraints = ConstraintSet {
+            min_inclusive: Some(NumericValue::Float64(
+                ams_gra_oms_ir::Float64Value::from_value(0.0),
+            )),
+            ..ConstraintSet::default()
+        };
+        let error = generate(&schema, CLOSED).expect_err("wrong-width bound must fail closed");
+        assert!(
+            error
+                .message
+                .contains("Float32 declaration requires Float32 bounds")
+        );
+
+        let mut schema = track_schema();
+        schema.types[0].kind = TypeKind::Primitive(PrimitiveKind::Float64);
+        schema.types[0].constraints = ConstraintSet {
+            max_inclusive: Some(NumericValue::Float32(
+                ams_gra_oms_ir::Float32Value::from_value(1.0),
+            )),
+            ..ConstraintSet::default()
+        };
+        let error = generate(&schema, CLOSED).expect_err("wrong-width bound must fail closed");
+        assert!(
+            error
+                .message
+                .contains("Float64 declaration requires Float64 bounds")
+        );
     }
 
     fn abstract_value_schema() -> SchemaIr {
@@ -972,6 +1323,9 @@ mod tests {
             }));
         }
 
+        // Task 033 supersedes the Task 022 blanket rejection for the bound-only
+        // subset: a named lower-inclusive Float64 is now lowered as a checked
+        // newtype. Non-range facet shapes still fail closed, below.
         let mut schema = track_schema();
         schema.types[0].kind = TypeKind::Primitive(PrimitiveKind::Float64);
         schema.types[0].constraints = ConstraintSet {
@@ -980,9 +1334,27 @@ mod tests {
             )),
             ..ConstraintSet::default()
         };
+        let source = generate(&schema, CLOSED).expect("Task 033 bounded float must render");
+        assert!(source.contains("pub struct TrackId(f64);"));
+        assert!(source.contains("pub const MIN: f64 = 0.0;"));
+        assert!(source.contains("pub const fn new(value: f64) -> Option<Self> {"));
+        assert!(source.contains("if value >= Self::MIN {"));
+        // No total-order or hashing traits may be claimed for a float.
+        assert!(!source.contains("PartialOrd, Eq"));
+        assert!(!source.contains("Hash)]\npub struct TrackId(f64)"));
+
+        // A lexical facet alongside the numeric bound is not partially
+        // enforced: the whole declaration is still rejected.
+        schema.types[0].constraints.lexical = ams_gra_oms_ir::LexicalConstraintSet {
+            pattern_groups: vec![ams_gra_oms_ir::PatternGroup {
+                alternatives: vec![ams_gra_oms_ir::PatternExpression::xml_schema("[0-9]+")],
+            }],
+            white_space: None,
+        };
         let error =
-            generate(&schema, CLOSED).expect_err("constrained float must remain unsupported");
+            generate(&schema, CLOSED).expect_err("lexical float constraints remain unsupported");
         assert!(error.message.contains("unsupported Rust IR construct"));
+        assert!(error.message.contains("lexical constraints"));
     }
 
     #[test]

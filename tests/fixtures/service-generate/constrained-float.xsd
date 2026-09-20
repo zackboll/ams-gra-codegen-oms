@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:test"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- Task 033 synthetic selected-service fixture.
+
+       The selected closure contains named bound-only floating declarations at
+       both widths, including the exclusive-lower shape and a named restriction
+       chain. Nothing here is UCI; it is the smallest schema that makes the
+       Task 031/032 propagation claim observable:
+
+         TelemetryReport -> TelemetryPayload -> AltitudeMeters   (Float64, >=)
+                                             -> ThrustRatio      (Float32, 0..1)
+                                             -> BurnRate         (Float64, >0)
+                                             -> DerivedRate      (named chain)
+
+       plus one UNRELATED declaration no contract selects:
+
+         UnrelatedDuration  xs:duration; no backend renders it, so ordinary
+                            full-schema generation still fails while
+                            service-check reports READY. That is what proves
+                            readiness is contract-selected rather than
+                            whole-schema. -->
+
+  <xs:simpleType name="AltitudeMeters">
+    <xs:restriction base="xs:double">
+      <xs:minInclusive value="-6378237"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ThrustRatio">
+    <xs:restriction base="xs:float">
+      <xs:minInclusive value="0.0"/>
+      <xs:maxInclusive value="1.0"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="BurnRate">
+    <xs:restriction base="xs:double">
+      <xs:minExclusive value="0.0"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="BaseRate">
+    <xs:restriction base="xs:double">
+      <xs:minInclusive value="0.0"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="DerivedRate">
+    <xs:restriction base="t:BaseRate">
+      <xs:maxInclusive value="10.0"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Unselected, and unrenderable by every backend. -->
+  <xs:simpleType name="UnrelatedDuration">
+    <xs:restriction base="xs:duration"/>
+  </xs:simpleType>
+
+  <xs:complexType name="TelemetryPayload">
+    <xs:sequence>
+      <xs:element name="Altitude" type="t:AltitudeMeters"/>
+      <xs:element name="Thrust" type="t:ThrustRatio"/>
+      <xs:element name="Burn" type="t:BurnRate"/>
+      <xs:element name="Derived" type="t:DerivedRate"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="TelemetryReport" type="t:TelemetryPayload"
+              uci:version="001.000.000.000"/>
+
+</xs:schema>

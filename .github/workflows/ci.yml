@@ -12,7 +12,50 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+      # Task 033 ships Ada regressions that only have force when a real GNAT
+      # toolchain is present. The Rust tests skip themselves when `gnatmake`
+      # is missing, which is right for developer machines but would let CI go
+      # green without ever checking the generated Ada. Installing GNAT here,
+      # and gating on it below, makes that skip impossible on the runner.
+      - name: Install GNAT
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnat
+      # Hard gate: no `|| true`. If GNAT is absent or broken, CI fails here
+      # rather than silently degrading the Ada regressions into no-ops. The
+      # version is printed so the log records which toolchain ran the tests.
+      - name: Verify GNAT availability
+        run: |
+          command -v gnatmake
+          gnatmake --version
       - run: cargo fmt --all -- --check
       - run: cargo check --workspace --all-targets
       - run: cargo clippy --workspace --all-targets -- -D warnings
+      # The four GNAT-backed Task 033 regressions are named explicitly so the
+      # log proves each one executed. `require_one_test` fails the step if a
+      # filter matches nothing, since a passing run of zero tests is exactly
+      # the false green this workflow change exists to prevent.
+      - name: Ada regressions (GNAT-backed, must execute)
+        run: |
+          set -euo pipefail
+          require_one_test() {
+            name="$1"
+            shift
+            output="$("$@" -- --exact --nocapture 2>&1)"
+            printf '%s\n' "$output"
+            printf '%s\n' "$output" | grep -qE "^test ${name} \.\.\. ok$"
+            printf '%s\n' "$output" | grep -qE '^test result: ok\. 1 passed'
+          }
+          require_one_test tests::constrained_floats_enforce_predicates_under_gnat \
+            cargo test -p ams-gra-oms-backend-ada --lib \
+            tests::constrained_floats_enforce_predicates_under_gnat
+          require_one_test tests::constrained_floats_reject_public_bypasses_under_gnat \
+            cargo test -p ams-gra-oms-backend-ada --lib \
+            tests::constrained_floats_reject_public_bypasses_under_gnat
+          require_one_test task033_selected_ada_float_predicates_hold_under_gnat \
+            cargo test -p ams-gra-codegen-oms --test service_generate \
+            task033_selected_ada_float_predicates_hold_under_gnat
+          require_one_test task033_selected_ada_float_rejects_public_bypasses \
+            cargo test -p ams-gra-codegen-oms --test service_generate \
+            task033_selected_ada_float_rejects_public_bypasses
       - run: cargo test --workspace

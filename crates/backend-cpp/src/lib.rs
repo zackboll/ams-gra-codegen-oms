@@ -1,9 +1,10 @@
 //! Minimal C++17 type generation from normalized schema IR.
 
 use ams_gra_oms_codegen_core::{
-    AbstractValueProjection, Backend, CodegenError, EffectiveValueMember, GeneratedFile,
-    GenerationWorld, InclusiveIntegralDomain, TypeEmission, abstract_value_projection_for_ref,
-    effective_choice_alternatives, effective_record_fields, field_storage_semantics,
+    AbstractValueProjection, Backend, CodegenError, EffectiveValueMember, FloatingDomain,
+    GeneratedFile, GenerationWorld, InclusiveIntegralDomain, TypeEmission,
+    abstract_value_projection_for_ref, effective_choice_alternatives, effective_record_fields,
+    field_storage_semantics, float32_literal, float64_literal, floating_domain,
     inclusive_integral_domain, plan_type_emissions,
 };
 use ams_gra_oms_ir::{
@@ -246,13 +247,8 @@ fn render_declaration(
             reject_any_constraints(&declaration.constraints, &name)?;
             writeln!(output, "class {name} {{\npublic:\n    explicit constexpr {name}(bool value) noexcept : value_(value) {{}}\n    constexpr bool value() const noexcept {{ return value_; }}\nprivate:\n    bool value_;\n}};\n").expect("writing to String cannot fail");
         }
-        TypeKind::Primitive(PrimitiveKind::Float32) => {
-            reject_any_constraints(&declaration.constraints, &name)?;
-            writeln!(output, "class {name} {{\npublic:\n    explicit {name}(float value) noexcept : value_(value) {{}}\n    float value() const noexcept {{ return value_; }}\nprivate:\n    float value_;\n}};\n").expect("writing to String cannot fail");
-        }
-        TypeKind::Primitive(PrimitiveKind::Float64) => {
-            reject_any_constraints(&declaration.constraints, &name)?;
-            writeln!(output, "class {name} {{\npublic:\n    explicit {name}(double value) noexcept : value_(value) {{}}\n    double value() const noexcept {{ return value_; }}\nprivate:\n    double value_;\n}};\n").expect("writing to String cannot fail");
+        TypeKind::Primitive(kind @ (PrimitiveKind::Float32 | PrimitiveKind::Float64)) => {
+            render_floating_declaration(output, *kind, &declaration.constraints, &name)?;
         }
         TypeKind::Primitive(PrimitiveKind::Binary) => {
             reject_any_constraints(&declaration.constraints, &name)?;
@@ -365,15 +361,22 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
         {
             return unsupported(format!("abstract type {}", declaration.name.local_name));
         }
-        if matches!(
-            declaration.kind,
-            TypeKind::Primitive(PrimitiveKind::Float32 | PrimitiveKind::Float64)
-        ) && declaration.constraints != ConstraintSet::default()
+        // Task 033: the shared helper classifies a named floating
+        // declaration's effective constraints. The bound-only subset is
+        // lowered; every other facet shape still fails closed here.
+        if let TypeKind::Primitive(kind @ (PrimitiveKind::Float32 | PrimitiveKind::Float64)) =
+            declaration.kind
         {
-            return unsupported(format!(
-                "floating constraints on {}",
-                declaration.name.local_name
-            ));
+            floating_domain(kind, &declaration.constraints).map_err(|reason| {
+                error(format!(
+                    "unsupported C++ IR construct: {reason} on {}",
+                    declaration.name.local_name
+                ))
+            })?;
+            // `reject_extra_constraints` understands only the integral
+            // inclusive subset, so a legitimate exclusive floating bound must
+            // not reach it.
+            continue;
         }
         if matches!(declaration.kind, TypeKind::Primitive(PrimitiveKind::Binary))
             && declaration.constraints != ConstraintSet::default()
@@ -540,6 +543,109 @@ fn schema_has_floating(schema: &SchemaIr) -> bool {
             }),
             _ => false,
         })
+}
+
+/// Render a named Float32/Float64 declaration as an owning value wrapper.
+///
+/// An unconstrained declaration keeps its exact Task 022 form: a public
+/// explicit constructor, because every `float`/`double` is a legal instance and
+/// construction cannot fail. A Task 033 bound-only declaration instead exposes
+/// only a checked `create` returning `std::optional`, with the constructor made
+/// private -- an unchecked public constructor would let a caller build a value
+/// outside the schema's domain, which is exactly what the constraint forbids.
+///
+/// Bound comparisons are emitted verbatim, so NaN fails every clause, a
+/// one-sided infinity keeps IEEE ordering, and both zero signs compare equal.
+/// Nothing beyond `<optional>` is required, which the header already includes.
+fn render_floating_declaration(
+    output: &mut String,
+    kind: PrimitiveKind,
+    constraints: &ConstraintSet,
+    name: &str,
+) -> Result<(), CodegenError> {
+    let scalar = if kind == PrimitiveKind::Float32 {
+        "float"
+    } else {
+        "double"
+    };
+    let Some(domain) = floating_domain(kind, constraints)
+        .map_err(|reason| error(format!("unsupported C++ IR construct: {reason} on {name}")))?
+    else {
+        // Task 022 output, unchanged byte for byte.
+        writeln!(output, "class {name} {{\npublic:\n    explicit {name}({scalar} value) noexcept : value_(value) {{}}\n    {scalar} value() const noexcept {{ return value_; }}\nprivate:\n    {scalar} value_;\n}};\n").expect("writing to String cannot fail");
+        return Ok(());
+    };
+
+    let mut clauses = Vec::new();
+    let mut constants = String::new();
+    match domain {
+        FloatingDomain::Float32 { lower, upper } => {
+            if let Some(bound) = lower {
+                writeln!(
+                    constants,
+                    "    static constexpr float min_value = {}f;",
+                    float32_literal(bound.value.value())
+                )
+                .expect("writing to String cannot fail");
+                clauses.push(format!("value {} min_value", bound.kind.lower_operator()));
+            }
+            if let Some(bound) = upper {
+                writeln!(
+                    constants,
+                    "    static constexpr float max_value = {}f;",
+                    float32_literal(bound.value.value())
+                )
+                .expect("writing to String cannot fail");
+                clauses.push(format!("value {} max_value", bound.kind.upper_operator()));
+            }
+        }
+        FloatingDomain::Float64 { lower, upper } => {
+            if let Some(bound) = lower {
+                writeln!(
+                    constants,
+                    "    static constexpr double min_value = {};",
+                    float64_literal(bound.value.value())
+                )
+                .expect("writing to String cannot fail");
+                clauses.push(format!("value {} min_value", bound.kind.lower_operator()));
+            }
+            if let Some(bound) = upper {
+                writeln!(
+                    constants,
+                    "    static constexpr double max_value = {};",
+                    float64_literal(bound.value.value())
+                )
+                .expect("writing to String cannot fail");
+                clauses.push(format!("value {} max_value", bound.kind.upper_operator()));
+            }
+        }
+    }
+
+    writeln!(
+        output,
+        concat!(
+            "class {name} {{\n",
+            "public:\n",
+            "{constants}\n",
+            "    static std::optional<{name}> create({scalar} value) noexcept {{\n",
+            "        if ({condition}) {{\n",
+            "            return {name}(value);\n",
+            "        }}\n",
+            "        return std::nullopt;\n",
+            "    }}\n\n",
+            "    {scalar} value() const noexcept {{ return value_; }}\n\n",
+            "private:\n",
+            "    explicit {name}({scalar} value) noexcept : value_(value) {{}}\n",
+            "    {scalar} value_;\n",
+            "}};\n",
+        ),
+        name = name,
+        scalar = scalar,
+        constants = constants.trim_end(),
+        condition = clauses.join(" && "),
+    )
+    .expect("writing to String cannot fail");
+    Ok(())
 }
 
 fn integral_domain(
@@ -861,6 +967,141 @@ mod tests {
         )
         .expect("unbounded fixture should parse")
     }
+
+    fn constrained_floating_schema() -> SchemaIr {
+        load_schema_document(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../xsd-frontend/tests/fixtures/backend-constrained-floating.xsd"),
+        )
+        .expect("constrained floating fixture should parse")
+    }
+
+    /// Task 033 sections 23--26: compile the generated header under strict
+    /// C++17 and exercise every bound shape, including the IEEE special
+    /// values, at runtime.
+    #[test]
+    fn constrained_floats_enforce_bounds_under_strict_cpp17() {
+        let source =
+            generate(&constrained_floating_schema(), CLOSED).expect("fixture must generate");
+
+        // Width correctness, and the Task 022 host guards, are structural.
+        assert!(source.contains("static constexpr float min_value = 0.0f;"));
+        assert!(source.contains("static constexpr double min_value = -6378237.0;"));
+        assert!(source.contains("OMS Float32 requires IEEE binary32 float"));
+        assert!(source.contains("OMS Float64 requires IEEE binary64 double"));
+        // The named chain enforces its effective domain.
+        let derived = source
+            .split("class DerivedFloat {")
+            .nth(1)
+            .expect("DerivedFloat must be generated");
+        assert!(derived.contains("static constexpr double min_value = 0.0;"));
+        assert!(derived.contains("static constexpr double max_value = 10.0;"));
+
+        use std::fs;
+        use std::process::Command;
+        let directory = std::env::temp_dir().join("ams-gra-oms-task033-cpp-bounds");
+        fs::create_dir_all(&directory).expect("create C++ probe directory");
+        fs::write(directory.join("generated.hpp"), source).expect("write generated header");
+        fs::write(directory.join("probe.cpp"), CPP_BOUNDS_PROBE).expect("write C++ probe");
+
+        let status = Command::new("c++")
+            .current_dir(&directory)
+            .args([
+                "-std=c++17",
+                "-Wall",
+                "-Wextra",
+                "-pedantic-errors",
+                "-o",
+                "probe",
+                "probe.cpp",
+            ])
+            .status()
+            .expect("C++ compiler must be available");
+        assert!(status.success(), "strict C++17 compile must succeed");
+        let run = Command::new(directory.join("probe"))
+            .status()
+            .expect("compiled probe must run");
+        fs::remove_dir_all(&directory).expect("remove C++ probe directory");
+        assert!(run.success(), "generated bound checks must hold at runtime");
+    }
+
+    /// The runtime assertions compiled against the generated header above.
+    ///
+    /// Infinity and NaN are produced here, in the *test*, via
+    /// `std::numeric_limits`; no such dependency is added to generated code.
+    const CPP_BOUNDS_PROBE: &str = r#"
+#include "generated.hpp"
+
+#include <cassert>
+#include <limits>
+
+using namespace constrained::floating;
+
+int main() {
+    const double inf = std::numeric_limits<double>::infinity();
+    const double nan = std::numeric_limits<double>::quiet_NaN();
+    const float finf = std::numeric_limits<float>::infinity();
+    const float fnan = std::numeric_limits<float>::quiet_NaN();
+
+    // Lower inclusive: the bound itself is admitted.
+    assert(FloatLowerInclusive::create(0.0f).has_value());
+    assert(!FloatLowerInclusive::create(-0.1f).has_value());
+
+    // Upper inclusive.
+    assert(FloatUpperInclusive::create(1.0f).has_value());
+    assert(!FloatUpperInclusive::create(1.000001f).has_value());
+
+    // Two-sided, and the accessor round-trips the stored value.
+    assert(FloatUnitInterval::create(0.5f).has_value());
+    assert(FloatUnitInterval::create(0.25f)->value() == 0.25f);
+    assert(!FloatUnitInterval::create(-0.001f).has_value());
+    assert(!FloatUnitInterval::create(1.001f).has_value());
+
+    // Lower exclusive rejects its own bound.
+    assert(!DoublePositive::create(0.0).has_value());
+    assert(DoublePositive::create(std::numeric_limits<double>::min()).has_value());
+
+    // Upper exclusive.
+    assert(!DoubleUpperExclusive::create(1.0).has_value());
+    assert(DoubleUpperExclusive::create(0.999).has_value());
+
+    // Mixed two-sided: inclusive lower, exclusive upper.
+    assert(DoubleMixedRange::create(-3.5).has_value());
+    assert(!DoubleMixedRange::create(3.5).has_value());
+
+    // The authoritative AltitudeType bound at full binary64 precision.
+    assert(DoubleAltitude::create(-6378237.0).has_value());
+    assert(!DoubleAltitude::create(-6378237.5).has_value());
+
+    // Named chain: the effective inherited domain is enforced.
+    assert(DerivedFloat::create(0.0).has_value());
+    assert(DerivedFloat::create(10.0).has_value());
+    assert(!DerivedFloat::create(-0.5).has_value());
+    assert(!DerivedFloat::create(10.5).has_value());
+
+    // NaN is an instance of no range-constrained type.
+    assert(!FloatUnitInterval::create(fnan).has_value());
+    assert(!DoubleAltitude::create(nan).has_value());
+    assert(!DoublePositive::create(nan).has_value());
+    assert(!DoubleUpperExclusive::create(nan).has_value());
+
+    // One-sided infinity keeps IEEE ordering.
+    assert(DoubleAltitude::create(inf).has_value());
+    assert(!DoubleAltitude::create(-inf).has_value());
+    assert(DoubleUpperExclusive::create(-inf).has_value());
+    assert(!DoubleUpperExclusive::create(inf).has_value());
+    assert(FloatLowerInclusive::create(finf).has_value());
+    // A two-sided finite range excludes both.
+    assert(!DoubleMixedRange::create(inf).has_value());
+    assert(!DoubleMixedRange::create(-inf).has_value());
+
+    // Signed zero compares equal.
+    assert(FloatLowerInclusive::create(-0.0f).has_value());
+    assert(!DoublePositive::create(-0.0).has_value());
+    assert(!DoublePositive::create(0.0).has_value());
+    return 0;
+}
+"#;
 
     #[test]
     fn lowers_unbounded_records_choices_and_constrained_elements() {
@@ -1371,6 +1612,9 @@ mod tests {
             }));
         }
 
+        // Task 033 supersedes the Task 022 blanket rejection for the bound-only
+        // subset: a named lower-inclusive Float64 is now lowered as a checked
+        // wrapper with no public unchecked constructor.
         let mut schema = track_schema();
         schema.types[0].kind = TypeKind::Primitive(PrimitiveKind::Float64);
         schema.types[0].constraints = ConstraintSet {
@@ -1379,9 +1623,27 @@ mod tests {
             )),
             ..ConstraintSet::default()
         };
+        let source = generate(&schema, CLOSED).expect("Task 033 bounded float must render");
+        assert!(source.contains("static constexpr double min_value = 0.0;"));
+        assert!(source.contains("static std::optional<TrackId> create(double value) noexcept {"));
+        assert!(source.contains("if (value >= min_value) {"));
+        // Unchecked construction must not be reachable publicly.
+        assert!(source.contains("private:\n    explicit TrackId(double value) noexcept"));
+        // The binary64 host guard is still required for a constrained schema.
+        assert!(source.contains("OMS Float64 requires IEEE binary64 double"));
+
+        // A lexical facet alongside the numeric bound is not partially
+        // enforced: the whole declaration is still rejected.
+        schema.types[0].constraints.lexical = ams_gra_oms_ir::LexicalConstraintSet {
+            pattern_groups: vec![ams_gra_oms_ir::PatternGroup {
+                alternatives: vec![ams_gra_oms_ir::PatternExpression::xml_schema("[0-9]+")],
+            }],
+            white_space: None,
+        };
         let error =
-            generate(&schema, CLOSED).expect_err("constrained float must remain unsupported");
+            generate(&schema, CLOSED).expect_err("lexical float constraints remain unsupported");
         assert!(error.message.contains("unsupported C++ IR construct"));
+        assert!(error.message.contains("lexical constraints"));
     }
 
     #[test]
