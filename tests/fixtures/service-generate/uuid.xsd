@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:test"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- Task 038 synthetic selected-service fixture.
+
+       The SELECTED closure contains the supported named UUID String profile in
+       both a required and an optional named position:
+
+         TrackReport -> TrackPayload
+                          Identifier  : Uuid          1..1
+                          Correlation : Uuid          0..1  (Task 034 composition)
+                          Peer        : PeerUuid      0..1
+                          Version     : SchemaVersion 1..1  (Task 037 profile)
+                          Label       : xs:string     1..1  (ordinary String)
+
+       Several supported declarations are selected on purpose: in Ada each
+       emits a package-level Create/Value, so this also proves overload
+       resolution across BOTH String profiles.
+
+       UNSELECTED, and deliberately outside the closure, is a constrained
+       String profile that is NOT implemented: the general 8-4-4-4-12
+       hexadecimal shape, which lacks the authoritative `[1-5]` version and
+       `[89abAB]` variant classes and therefore denotes a different (strictly
+       larger) lexical space. It must not be projected into the generated
+       output, and its presence must not block readiness.
+
+       No declaration is named after a UCI type: support must arise from
+       PrimitiveKind::String plus the effective ConstraintSet alone.
+  -->
+
+  <!-- SELECTED: the authoritative UCI UUID profile. Note the SINGLE
+       <xs:pattern> element; the alternation is internal to its text. -->
+  <xs:simpleType name="Uuid">
+    <xs:annotation>
+      <xs:documentation>A UUID is a 128-bit number (32 hexadecimal digits, 16 bytes) that is conformant to any version of variant 1 or nil UUID, as described in IETF RFC 4122.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:length value="36"/>
+      <xs:pattern value="(0{8}(-0{4}){3}-0{12})|([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12})"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- SELECTED: a second supported UUID declaration. -->
+  <xs:simpleType name="PeerUuid">
+    <xs:restriction base="xs:string">
+      <xs:length value="36"/>
+      <xs:pattern value="(0{8}(-0{4}){3}-0{12})|([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12})"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- SELECTED: the Task 037 profile, so both supported String profiles are
+       generated into one unit. -->
+  <xs:simpleType name="SchemaVersion">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="7"/>
+      <xs:maxLength value="57"/>
+      <xs:pattern value="[0-9]{3}\.[0-9]{1,2}(\.[0-9]{1,2})([a-z]{1,2})?(_[a-zA-Z0-9\-]{1,45})?"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- UNSELECTED: the general hexadecimal shape stays unsupported. -->
+  <xs:simpleType name="LooseIdentifier">
+    <xs:restriction base="xs:string">
+      <xs:length value="36"/>
+      <xs:pattern value="[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- UNSELECTED holder, so the unsupported declaration is genuinely reachable
+       in the schema but not in the selected closure. -->
+  <xs:complexType name="UnselectedTrackPayload">
+    <xs:sequence>
+      <xs:element name="Id" type="t:LooseIdentifier"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TrackPayload">
+    <xs:sequence>
+      <xs:element name="Identifier" type="t:Uuid"/>
+      <xs:element name="Correlation" type="t:Uuid" minOccurs="0"/>
+      <xs:element name="Peer" type="t:PeerUuid" minOccurs="0"/>
+      <xs:element name="Version" type="t:SchemaVersion"/>
+      <xs:element name="Label" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="TrackReport" type="t:TrackPayload"
+              uci:version="001.000.000.000"/>
+
+  <xs:element name="UnselectedTrackReport" type="t:UnselectedTrackPayload"
+              uci:version="001.000.000.000"/>
+
+</xs:schema>

@@ -55,8 +55,8 @@ pub use service_readiness::{
 };
 pub use string_profile::{
     StringProfile, StringProfileError, UCI_SCHEMA_VERSION_MAX_LENGTH,
-    UCI_SCHEMA_VERSION_MIN_LENGTH, UCI_SCHEMA_VERSION_PATTERN, constrains_string,
-    schema_emits_string_profile_carrier, string_profile,
+    UCI_SCHEMA_VERSION_MIN_LENGTH, UCI_SCHEMA_VERSION_PATTERN, UCI_UUID_LENGTH, UCI_UUID_NIL,
+    UCI_UUID_PATTERN, constrains_string, schema_emits_string_profile_carrier, string_profile,
 };
 pub use structure::{
     EffectiveStructuralType, StructuralKind, StructuralLevel, StructuralProjectionError,

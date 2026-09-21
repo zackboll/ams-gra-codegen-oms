@@ -387,7 +387,8 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
             && constrains_string(&declaration.constraints)
         {
             match string_profile(kind, &declaration.constraints) {
-                Ok(Some(StringProfile::UciSchemaVersion)) => {}
+                Ok(Some(StringProfile::UciSchemaVersion))
+                | Ok(Some(StringProfile::UniversallyUniqueIdentifier)) => {}
                 Ok(None) => unreachable!("constrains_string gates this branch"),
                 Err(reason) => {
                     return unsupported(format!("{reason} on {}", declaration.name.local_name));
@@ -864,19 +865,129 @@ fn render_string_profile_declaration(
     constraints: &ConstraintSet,
     name: &str,
 ) -> Result<(), CodegenError> {
-    match string_profile(PrimitiveKind::String, constraints) {
-        Ok(Some(StringProfile::UciSchemaVersion)) => {}
+    let template = match string_profile(PrimitiveKind::String, constraints) {
+        Ok(Some(StringProfile::UciSchemaVersion)) => RUST_SCHEMA_VERSION_TEMPLATE,
+        Ok(Some(StringProfile::UniversallyUniqueIdentifier)) => RUST_UUID_TEMPLATE,
         Ok(None) => return unsupported(format!("unconstrained String on {name}")),
         Err(reason) => return unsupported(format!("{reason} on {name}")),
-    }
-    writeln!(
-        output,
-        "{}",
-        RUST_SCHEMA_VERSION_TEMPLATE.replace("{name}", name)
-    )
-    .expect("writing to String cannot fail");
+    };
+    writeln!(output, "{}", template.replace("{name}", name))
+        .expect("writing to String cannot fail");
     Ok(())
 }
+
+/// The generated Rust UUID carrier, with `{name}` substituted.
+///
+/// # Validation order
+///
+/// 1. the `length` facet;
+/// 2. the authoritative pattern, evaluated positionally.
+///
+/// Both are enforced. Both of the pattern's internal branches are 36
+/// characters wide, so the facet is formally redundant, but it is checked
+/// explicitly rather than assumed, so no facet is silently lost.
+///
+/// # No regular-expression engine
+///
+/// The authoritative expression is
+/// `(0{8}(-0{4}){3}-0{12})|([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12})`.
+/// Both branches are fixed-width, so every position's character class is
+/// determined by its index alone and the whole decision is a bounded
+/// positional test with no backtracking. XML Schema patterns are anchored,
+/// which the fixed length requirement enforces directly.
+///
+/// The nil branch is checked first and separately, because it is **not**
+/// redundant: the general branch requires a version nibble in `[1-5]` and a
+/// variant nibble in `[89abAB]`, and the nil UUID has `0` in both.
+///
+/// # Only the schema's rules
+///
+/// The version and variant classes come from the XSD text itself. Nothing
+/// further is imposed: no RFC 9562 policy, no canonical-case rule, no URN or
+/// brace syntax, and no conversion to a 128-bit integer. The stored value is
+/// the accepted spelling, with letter case preserved.
+///
+/// # Byte indexing is sound
+///
+/// The accepted alphabet is `0-9`, `a-f`, `A-F`, and `-`, all ASCII, so byte
+/// offsets and character offsets coincide for every value that can be
+/// accepted, and `len()` is an XSD *character* count. A non-ASCII byte fails
+/// its class test, so no multi-byte value can reach a length comparison.
+///
+/// # Scope of the helpers
+///
+/// Every helper is a **private associated function**, so it lives in this
+/// type's own scope and adds no module-scope name to the generated module.
+const RUST_UUID_TEMPLATE: &str = r##"#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct {name} {
+    value: String,
+}
+
+impl {name} {
+    /// `length` = 36 characters.
+    const LENGTH: usize = 36;
+
+    /// The one value the pattern's nil branch accepts.
+    const NIL: &'static str = "00000000-0000-0000-0000-000000000000";
+
+    /// Validate `value` against the authoritative UCI UUID profile.
+    ///
+    /// Returns `None` if the `length` facet or the pattern rejects. The stored
+    /// text is the input unchanged: this profile inherits
+    /// `whiteSpace = preserve`, so no trimming or collapsing is performed, and
+    /// hexadecimal letter case is preserved exactly as supplied.
+    pub fn new(value: &str) -> Option<Self> {
+        if !Self::is_uuid(value) {
+            return None;
+        }
+        Some(Self {
+            value: value.to_owned(),
+        })
+    }
+
+    /// The stored, validated lexical representation.
+    pub fn as_str(&self) -> &str {
+        &self.value
+    }
+
+    /// The whole gate: the `length` facet AND the pattern.
+    fn is_uuid(text: &str) -> bool {
+        text.len() == Self::LENGTH && Self::matches_pattern(text.as_bytes())
+    }
+
+    /// Decide the authoritative pattern positionally.
+    ///
+    /// `bytes` is already known to be 36 long, so every index below is in
+    /// range.
+    fn matches_pattern(bytes: &[u8]) -> bool {
+        // Branch A: the exact nil literal, which branch B rejects.
+        if bytes == Self::NIL.as_bytes() {
+            return true;
+        }
+        // Branch B: 8-4-4-4-12 with constrained version and variant nibbles.
+        for index in 0..Self::LENGTH {
+            let byte = bytes[index];
+            let accepted = match index {
+                8 | 13 | 18 | 23 => byte == b'-',
+                // The version nibble: [1-5].
+                14 => byte.is_ascii_digit() && byte != b'0' && byte <= b'5',
+                // The variant nibble: [89abAB].
+                19 => matches!(byte, b'8' | b'9' | b'a' | b'b' | b'A' | b'B'),
+                _ => Self::is_hex(byte),
+            };
+            if !accepted {
+                return false;
+            }
+        }
+        true
+    }
+
+    /// The `[a-fA-F0-9]` class.
+    fn is_hex(byte: u8) -> bool {
+        byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte) || (b'A'..=b'F').contains(&byte)
+    }
+}
+"##;
 
 /// The generated Rust schema-version carrier, with `{name}` substituted.
 ///

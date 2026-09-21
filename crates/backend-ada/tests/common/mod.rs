@@ -28,6 +28,12 @@ pub fn string_corpus_path() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/string/schema-version.txt")
 }
 
+/// The repository-root path of the shared Task 038 UUID corpus.
+#[allow(dead_code)]
+pub fn uuid_corpus_path() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/string/uuid.txt")
+}
+
 /// Parse the shared corpus.
 ///
 /// # Panics

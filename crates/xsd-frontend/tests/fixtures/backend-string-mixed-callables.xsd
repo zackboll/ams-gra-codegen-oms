@@ -38,4 +38,14 @@
     </xs:restriction>
   </xs:simpleType>
 
+  <!-- Task 038: a UUID carrier, a THIRD Create (String). Three String-argument
+       Create overloads differing only in result type now coexist, which is the
+       case the shared generated-callable name model must keep legal. -->
+  <xs:simpleType name="Identifier">
+    <xs:restriction base="xs:string">
+      <xs:length value="36"/>
+      <xs:pattern value="(0{8}(-0{4}){3}-0{12})|([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12})"/>
+    </xs:restriction>
+  </xs:simpleType>
+
 </xs:schema>

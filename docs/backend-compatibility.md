@@ -4013,7 +4013,7 @@ listed. Measured from authoritative UCI 2.5 over the same 60-type
 | Declaration | length | minLength | maxLength | whiteSpace | Groups | Alts | Depth | Pattern |
 | --- | ---: | ---: | ---: | --- | ---: | ---: | ---: | --- |
 | `UCI_SchemaVersionStringType` | — | 7 | 57 | — | 1 | 1 | 1 | `[0-9]{3}\.[0-9]{1,2}(\.[0-9]{1,2})([a-z]{1,2})?(_[a-zA-Z0-9\-]{1,45})?` |
-| `UniversallyUniqueIdentifierType` | 36 | — | — | — | 1 | 2 | 1 | `(0{8}(-0{4}){3}-0{12})` OR `([a-fA-F0-9]{8}-…-[a-fA-F0-9]{12})` |
+| `UniversallyUniqueIdentifierType` | 36 | — | — | — | 1 | 1 | 1 | `(0{8}(-0{4}){3}-0{12})\|([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12})` |
 | `VisibleString256Type` | — | 1 | 256 | — | 1 | 1 | 1 | `[ -~]{1,256}` |
 | `NATO_SpecialWordsType` | — | 6 | 261 | — | 1 | 1 | 1 | `NATO:[a-zA-Z\-_]{1,256}` |
 | `WhitespaceVisibleString1024Type` | — | 0 | 1024 | `collapse` | 1 | 1 | 1 | `[&#x20;-&#x7E;\n\r]{0,1024}` |
@@ -4102,9 +4102,19 @@ selected message, 60-declaration closure, closed world.
 | C++ | 52/60 | **53/60** | `UCI_SchemaVersionStringType` | `UniversallyUniqueIdentifierType` |
 
 All three backends advanced by exactly one and now agree on the next measured
-blocker. `UniversallyUniqueIdentifierType` is the `length + pattern` family
-carrying **two pattern alternatives** — correctly still closed. This is the
-measured result; the next profile is deliberately **not** implemented here.
+blocker. `UniversallyUniqueIdentifierType` is the `length + pattern` family —
+correctly still closed as of Task 037. This is the measured result; the next
+profile is deliberately **not** implemented here.
+
+> **Task 038 evidence correction.** The row above originally recorded this
+> declaration as carrying **two** pattern alternatives, and abbreviated its
+> second branch behind an ellipsis. Both readings were wrong, and Task 038's
+> evidence gate corrected them against the pinned bytes. The declaration has
+> **one** `xs:pattern` facet — hence one IR group holding one expression, with
+> the `|` internal to that text — and the general branch constrains the version
+> nibble to `[1-5]` and the variant nibble to `[89abAB]`, which the ellipsis had
+> hidden. The table row is now the verbatim expression. See
+> "Task 038: the UUID String profile" below.
 
 ### A pre-existing Ada hazard observed, not introduced
 
@@ -4160,3 +4170,271 @@ implementation inside the existing conceptual constrained-simple-type family,
 and all existing feature-combination monotonicity tests remain green. Task 036
 DateTime behaviour and Task 035 occurrence behaviour are unchanged. No
 third-party runtime dependency was added in any language.
+
+## Task 038: the UUID String profile
+
+Task 038 adds the **second** supported constrained-`string` profile:
+`UniversallyUniqueIdentifierType`. It extends the Task 037 architecture rather
+than duplicating it — the shared classifier gained a variant, and coverage, the
+three backends, the Ada body predicate, and the Ada callable model all picked
+the new profile up without change.
+
+### Authoritative evidence
+
+Both pinned releases are **byte-identical** for this declaration after
+end-of-line normalization (2.5 uses CRLF, 2.6 LF):
+
+* UCI 2.5 `093610b7753944059360d3236770ab446d039556` —
+  `UCI_MessageDefinitions_v2_5_0.xsd:145719`
+* UCI 2.6 `78eb61b6112c8bffa40820c33124b57787fc5bd9` —
+  `UCI_MessageDefinitions_v2_6_0.xsd:145967`
+
+```xml
+<xs:simpleType name="UniversallyUniqueIdentifierType" uci:version="000.001.000.000">
+  <xs:annotation>
+    <xs:documentation>A UUID is a 128-bit number (32 hexadecimal digits, 16 bytes) that is conformant to any version of variant 1 or nil UUID, as described in IETF RFC 4122.</xs:documentation>
+  </xs:annotation>
+  <xs:restriction base="xs:string">
+    <xs:length value="36"/>
+    <xs:pattern value="(0{8}(-0{4}){3}-0{12})|([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12})"/>
+  </xs:restriction>
+</xs:simpleType>
+```
+
+Normalized IR, read from the frontend for both releases:
+
+| Property | Value |
+| --- | --- |
+| primitive | `String` |
+| immediate + ultimate base | `xs:string` (restriction depth 1) |
+| `length` | `36` |
+| `minLength` / `maxLength` | absent |
+| explicit `whiteSpace` | absent (so intrinsic `preserve`) |
+| numeric facets | absent |
+| `PatternGroup`s | **1** |
+| `PatternExpression`s in that group | **1** |
+| dialect | `XmlSchema` |
+
+### One facet, one expression, internal alternation
+
+The schema contains exactly one `<xs:pattern>` element, so the IR holds one
+group with one expression and the `|` is **internal to that expression's text**.
+
+This distinction is load-bearing. Task 016's IR represents several `xs:pattern`
+facets at one restriction level as several alternatives in one group, and that
+machinery is *not* involved here. A classifier written to require two IR
+alternatives would reject the authoritative declaration outright and support
+nothing. The classifier therefore requires exactly one group holding exactly one
+expression, compared verbatim.
+
+### The two internal branches, and why neither is redundant
+
+```text
+A   0{8}(-0{4}){3}-0{12}
+    the nil UUID 00000000-0000-0000-0000-000000000000, and nothing else
+
+B   [a-fA-F0-9]{8} - [a-fA-F0-9]{4} - [1-5][a-fA-F0-9]{3}
+                   - [89abAB][a-fA-F0-9]{3} - [a-fA-F0-9]{12}
+```
+
+Branch A denotes exactly one string: every atom is the literal `0` under a fixed
+quantifier.
+
+It is tempting to conclude branch A is redundant, since `0` is a hexadecimal
+digit. **It is not.** Branch B constrains two positions beyond plain hexadecimal
+— the version nibble must be `[1-5]` and the variant nibble `[89abAB]` — and the
+nil UUID has `0` in both. Branch B therefore *rejects* the nil UUID, and branch A
+contributes exactly one otherwise-unreachable value. The union is implemented
+explicitly:
+
+* collapsing to branch B alone would reject the nil UUID;
+* collapsing to a general 8-4-4-4-12 hexadecimal shape would accept values the
+  schema forbids, including every all-`f` UUID.
+
+### Version and variant are schema constraints, not imported RFC policy
+
+`[1-5]` and `[89abAB]` are present in the authoritative pattern text, matching
+the declaration's own documentation ("conformant to any version of variant 1 or
+nil UUID"). Enforcing them implements the schema; it does not import RFC rules.
+
+Nothing beyond them is imposed. There is no RFC 9562 v6/v7/v8 policy, no
+canonical-lowercase rule, no URN or brace syntax, no nil prohibition, and no
+conversion to a 128-bit integer. Concretely, these are **invalid** under the
+authoritative profile even though a general hexadecimal reading would accept
+them:
+
+```text
+ffffffff-ffff-ffff-ffff-ffffffffffff    version f, variant f
+FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF    version F, variant F
+123e4567-e89b-12d3-c456-426614174000    variant c is hexadecimal but not [89abAB]
+```
+
+### The runtime validator
+
+No regular-expression engine is introduced in any language. Both branches are
+fixed-width, so every position's character class is determined by its index
+alone and the decision is a bounded positional test with no backtracking:
+
+```text
+length must be 36
+the exact nil literal is accepted outright                     (branch A)
+otherwise:                                                     (branch B)
+  indexes 8, 13, 18, 23 must be '-'
+  every other index must be [0-9a-fA-F]
+  index 14 must be [1-5]        (version nibble)
+  index 19 must be [89abAB]     (variant nibble)
+```
+
+The group widths `8-4-4-4-12` place the third group at indexes 14..17 and the
+fourth at 19..22, which is what fixes the version index at 14 and the variant
+index at 19. XML Schema patterns are anchored (§4.3.4.3), enforced directly by
+the fixed length requirement.
+
+`length` is enforced explicitly even though both branches are 36 characters
+wide, and the classifier requires `length = Some(36)` exactly, so a neighbouring
+declaration carrying the same pattern under a different `length` cannot be
+mistaken for this profile.
+
+### Character counting, case, equality, and whitespace
+
+The accepted alphabet is exactly `0-9`, `a-f`, `A-F`, and `-`, all ASCII.
+Every accepted value is therefore pure ASCII and its UTF-8 byte count equals its
+XSD character count, which licenses the Rust and C++ validators to use byte
+length for a facet XSD defines over characters; Ada's `String'Length` is a
+character count already. The corpus carries non-ASCII negative controls to keep
+this assumption explicit. The proof is profile-specific and is re-derived, not
+inherited, for any future profile.
+
+`[a-fA-F0-9]` admits both letter cases and `[89abAB]` admits `a`/`b` and `A`/`B`,
+so accepted values are stored **exactly as supplied**. This remains an
+`xs:string` carrier, whose value equality is equality of the stored text, so two
+otherwise-valid UUIDs differing only in letter case are *distinct* values. No
+case-insensitive comparison is introduced anywhere, and no ordering is claimed.
+
+There is no explicit `whiteSpace` facet, so `xs:string`'s intrinsic `preserve`
+applies and normalization is the identity. No whitespace character appears in
+either branch, so a value carrying leading, trailing, or interior whitespace is
+rejected rather than repaired.
+
+### Generated APIs
+
+Identical in shape to Task 037's carriers.
+
+```rust
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Uuid { value: String }
+impl Uuid {
+    pub fn new(value: &str) -> Option<Self>;
+    pub fn as_str(&self) -> &str;
+}
+```
+
+```cpp
+class Uuid {
+public:
+    static std::optional<Uuid> create(std::string_view value);
+    const std::string& value() const noexcept;
+private:
+    explicit Uuid(std::string validated);
+    std::string value_;
+};
+```
+
+```ada
+type Uuid is private;
+function Create (Value : String) return Uuid;   --  Constraint_Error if invalid
+function Value (Item : Uuid) return String;
+```
+
+Storage is private in all three, with no unchecked construction; compile-fail
+bypass probes assert this rather than arguing it. Rust derives `PartialEq`/`Eq`
+(correct for `xs:string`) but not `Ord`; C++ keeps the existing convention of
+inventing no comparison operator; Ada's predefined `"="` compares the stored
+text, which *is* XML Schema value equality here.
+
+Composition is automatic: a required `Uuid` field, an optional `Uuid 0..1`
+occurrence, and a record mixing both String profiles all use the existing Task
+034 machinery with no UUID-specific path. A record holding only
+equality-capable members retains its Rust derives.
+
+### Conformance corpus
+
+`tests/fixtures/string/uuid.txt`, 78 cases (12 valid, 66 invalid), consumed by
+all three backends through the shared Task 036/037 loader, so the languages are
+proven to agree rather than each passing a curated subset. Valid cases cover the
+nil UUID, versions 1-5, variants `8`/`9`/`a`/`b`/`A`/`B`, lower/upper/mixed case,
+and `f`/`F` saturation of the unconstrained positions. Invalid cases cover every
+illegal version and variant nibble, both all-`f` controls, nil-lookalikes,
+shape and width failures, braces, a `urn:uuid` prefix, non-hexadecimal
+characters, all five whitespace positions, and non-ASCII lookalikes.
+
+As secondary evidence, the structural validator was compared against an
+independent implementation of the two exact internal branches over **800,000
+randomized inputs with 0 mismatches**. That comparison is evidence only — the
+pinned XSD remains authoritative, and no regex semantics are part of runtime
+behaviour.
+
+### Coverage delta
+
+Exactly **one** newly renderable declaration per cell, in all twelve cells:
+
+| Cell | Before | After |
+| --- | ---: | ---: |
+| 2.5 closed, Ada / Rust / C++ | 5300 / 5377 / 5380 | **5301 / 5378 / 5381** |
+| 2.5 open, Ada / Rust / C++ | 5215 / 5289 / 5292 | **5216 / 5290 / 5293** |
+| 2.6 closed, Ada / Rust / C++ | 5321 / 5399 / 5403 | **5322 / 5400 / 5404** |
+| 2.6 open, Ada / Rust / C++ | 5236 / 5311 / 5315 | **5237 / 5312 / 5316** |
+
+| QName | Reason | Direct/transitive | Closed/open difference |
+| --- | --- | --- | --- |
+| `{https://www.vdl.afrl.af.mil/programs/oam}UniversallyUniqueIdentifierType` | the Task 038 facet profile | direct | none |
+
+There are **no transitive gains**: every consumer of this type also reaches at
+least one still-unsupported declaration, so no record becomes newly renderable.
+The closed/open difference is nil, as this is a primitive value declaration.
+That nothing outside the exact profile became renderable was verified, not
+assumed. No new `FeatureFamily` was introduced, and coverage itself was not
+modified — it already consults `string_profile`.
+
+### Selected PositionReport delta
+
+UCI 2.5, one selected message, 60-declaration closure, closed world.
+
+| Backend | Before | After | First blocker before | First blocker after |
+| --- | ---: | ---: | --- | --- |
+| Ada | 49/60 | **50/60** | `UniversallyUniqueIdentifierType` | `VisibleString256Type` |
+| Rust | 53/60 | **54/60** | `UniversallyUniqueIdentifierType` | `VisibleString256Type` |
+| C++ | 53/60 | **54/60** | `UniversallyUniqueIdentifierType` | `VisibleString256Type` |
+
+All three advanced by exactly one and agree on the next measured blocker.
+`VisibleString256Type` is a `minLength`/`maxLength` + printable-range pattern
+profile — a third, different constrained-String family. It is the measured
+result, and is deliberately **not** implemented here. `PositionReport` remains
+NOT READY in every backend.
+
+### Full-schema boundary
+
+Unchanged and unrelated to this task: Ada `AltitudeRangePairType / Range`, Rust
+`ConfigurationParameterType / Type`, C++ `ApprovalResponseType / Operator`. No
+full-UCI generation claim is made.
+
+### Scope
+
+| Concern | Status |
+| --- | --- |
+| the exact UUID profile above | **supported (Task 038)** |
+| the schema-version profile | **supported (Task 037), unchanged** |
+| `VisibleString256Type`, `NATO_SpecialWordsType`, `WhitespaceVisibleString*` | unsupported |
+| same pattern with a different or absent `length` | unsupported |
+| same pattern split into two IR alternatives | unsupported |
+| general 8-4-4-4-12 hexadecimal without version/variant classes | unsupported |
+| a second `PatternGroup`, or an explicit `whiteSpace` | unsupported |
+| generic `length + pattern` String support | not implemented, deliberately |
+| generic XML Schema regex translation | not implemented, deliberately |
+| UUID parsing, arithmetic, canonicalization, RFC rules beyond the XSD | not implemented, deliberately |
+| String ordering or collation | not implemented |
+
+Task 036 temporal behaviour, Task 035 occurrence behaviour, and Task 037
+schema-version behaviour are all unchanged. No third-party runtime dependency
+was added in any language, and the pre-existing Ada namespace-ending-in-`String`
+hazard is untouched and still open.

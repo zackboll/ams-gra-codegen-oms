@@ -1777,3 +1777,268 @@ fn task037_selected_ada_output_validates_under_gnat() {
         "selected Ada validation must hold"
     );
 }
+
+/// Generate the Task 038 UUID service for one language.
+fn generate_uuid(language: &str, label: &str) -> PathBuf {
+    let output_root = output_dir(label);
+    let output = generate(
+        "uuid.xsd",
+        "uuid.yaml",
+        language,
+        "closed-schema",
+        &output_root,
+    );
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "{language} UUID generation should succeed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    output_root
+}
+
+/// Task 038: a contract whose selected closure carries the supported named UUID
+/// String profile becomes READY in all three backends.
+///
+/// The point of this test is *propagation*. No Task 038 change was made to
+/// `service_plan.rs`, `service_readiness.rs`, or `service_generation.rs`; the
+/// new capability has to arrive through the single shared coverage snapshot and
+/// the ordinary backends. The fixture also declares an unselected general
+/// hexadecimal String, so a READY result here cannot be a whole-schema accident
+/// and cannot be an accidental widening to every `length + pattern` String.
+#[test]
+fn task038_uuid_service_is_ready_in_every_backend() {
+    for language in ["rust", "cpp", "ada"] {
+        let check = cli()
+            .arg("service-check")
+            .arg("--schema")
+            .arg(fixture("uuid.xsd"))
+            .arg("--contract")
+            .arg(fixture("uuid.yaml"))
+            .args(["--language", language, "--world", "closed-schema"])
+            .output()
+            .expect("service-check must run");
+        assert_eq!(
+            check.status.code(),
+            Some(0),
+            "{language} service-check should succeed"
+        );
+        let report = stdout_of(&check);
+        assert!(
+            report.contains("status: READY"),
+            "{language} must be READY for the UUID contract:\n{report}"
+        );
+        // The unsupported constrained String is outside the selection, so it
+        // must not appear in the projected closure at all.
+        for unselected in ["LooseIdentifier", "UnselectedTrackPayload"] {
+            assert!(
+                !report.contains(unselected),
+                "{language} must not project the unselected {unselected}"
+            );
+        }
+    }
+}
+
+/// Task 038: selected generation emits the Ada package **body** alongside the
+/// spec, and the projected output carries no unselected String declaration.
+#[test]
+fn task038_selected_ada_generation_includes_the_package_body() {
+    let root = generate_uuid("ada", "task038-ada-files");
+    let spec = std::fs::read_to_string(root.join("urn-test.ads")).expect("spec must be generated");
+    let body = std::fs::read_to_string(root.join("urn-test.adb")).expect("body must be generated");
+
+    assert!(spec.contains("type Uuid is private;"));
+    assert!(spec.contains("function Create (Value : String) return Uuid;"));
+    assert!(body.contains("package body Urn.Test is"));
+    assert!(body.contains("function Create (Value : String) return Uuid is"));
+    // Several supported declarations are projected, spanning BOTH String
+    // profiles, which is what makes Ada `Create` / `Value` overload resolution
+    // load-bearing here.
+    assert!(spec.contains("type PeerUuid is private;"));
+    assert!(spec.contains("type SchemaVersion is private;"));
+    assert!(body.contains("function Create (Value : String) return PeerUuid is"));
+    assert!(body.contains("function Create (Value : String) return SchemaVersion is"));
+    // No generic regex engine is pulled in.
+    assert!(!body.contains("Regpat"), "body must not use GNAT.Regpat");
+
+    for unselected in ["LooseIdentifier", "Unselected"] {
+        assert!(!spec.contains(unselected), "spec leaked {unselected}");
+        assert!(!body.contains(unselected), "body leaked {unselected}");
+    }
+}
+
+/// Task 038: the selected Rust output compiles and validates at runtime.
+///
+/// The rejected cases are chosen to prove the *authoritative* profile is in
+/// force: a bad version nibble and a bad variant nibble are both well-formed
+/// 8-4-4-4-12 hexadecimal values, so only the real `[1-5]` / `[89abAB]`
+/// classes reject them. The nil UUID is accepted, via its own branch.
+#[test]
+fn task038_selected_rust_output_validates_at_runtime() {
+    let root = generate_uuid("rust", "task038-rust");
+    std::fs::write(
+        root.join("probe.rs"),
+        "include!(\"test.rs\");\n\nfn main() {\n\
+         \x20   let value = Uuid::new(\"123e4567-e89b-12d3-a456-426614174000\").expect(\"valid\");\n\
+         \x20   assert_eq!(value.as_str(), \"123e4567-e89b-12d3-a456-426614174000\");\n\
+         \x20   // The nil UUID is accepted by its own branch.\n\
+         \x20   assert!(Uuid::new(\"00000000-0000-0000-0000-000000000000\").is_some());\n\
+         \x20   // Version nibble outside [1-5].\n\
+         \x20   assert!(Uuid::new(\"123e4567-e89b-02d3-a456-426614174000\").is_none());\n\
+         \x20   assert!(Uuid::new(\"123e4567-e89b-62d3-a456-426614174000\").is_none());\n\
+         \x20   // Variant nibble outside [89abAB].\n\
+         \x20   assert!(Uuid::new(\"123e4567-e89b-12d3-c456-426614174000\").is_none());\n\
+         \x20   // All-f fails BOTH classes.\n\
+         \x20   assert!(Uuid::new(\"ffffffff-ffff-ffff-ffff-ffffffffffff\").is_none());\n\
+         \x20   assert!(Uuid::new(\" 123e4567-e89b-12d3-a456-42661417400\").is_none());\n\
+         \x20   assert!(Uuid::new(\"123e4567e89b12d3a456426614174000\").is_none());\n\
+         \x20   assert_eq!(value, Uuid::new(\"123e4567-e89b-12d3-a456-426614174000\").unwrap());\n\
+         \x20   // Case is preserved and remains significant.\n\
+         \x20   let upper = Uuid::new(\"123E4567-E89B-12D3-A456-42661417400F\").expect(\"valid\");\n\
+         \x20   assert_eq!(upper.as_str(), \"123E4567-E89B-12D3-A456-42661417400F\");\n\
+         \x20   assert_ne!(upper, Uuid::new(\"123e4567-e89b-12d3-a456-42661417400f\").unwrap());\n\
+         }\n",
+    )
+    .expect("write Rust probe");
+    let status = Command::new("rustc")
+        .current_dir(&root)
+        .args(["--edition", "2021", "-o", "probe", "probe.rs"])
+        .status()
+        .expect("rustc must be available");
+    assert!(status.success(), "selected Rust output must compile");
+    assert!(
+        Command::new(root.join("probe"))
+            .status()
+            .expect("probe must run")
+            .success(),
+        "selected Rust validation must hold"
+    );
+}
+
+/// Task 038: the selected C++ output compiles under strict C++17 and validates
+/// at runtime.
+#[test]
+fn task038_selected_cpp_output_validates_at_runtime() {
+    let root = generate_uuid("cpp", "task038-cpp");
+    std::fs::write(
+        root.join("probe.cpp"),
+        "#include \"test.hpp\"\n#include <cstdio>\n\n\
+         int main() {\n\
+         \x20   auto value = urn::test::Uuid::create(\"123e4567-e89b-12d3-a456-426614174000\");\n\
+         \x20   if (!value || value->value() != \"123e4567-e89b-12d3-a456-426614174000\") return 1;\n\
+         \x20   if (!urn::test::Uuid::create(\"00000000-0000-0000-0000-000000000000\")) return 1;\n\
+         \x20   if (urn::test::Uuid::create(\"123e4567-e89b-02d3-a456-426614174000\")) return 1;\n\
+         \x20   if (urn::test::Uuid::create(\"123e4567-e89b-62d3-a456-426614174000\")) return 1;\n\
+         \x20   if (urn::test::Uuid::create(\"123e4567-e89b-12d3-c456-426614174000\")) return 1;\n\
+         \x20   if (urn::test::Uuid::create(\"ffffffff-ffff-ffff-ffff-ffffffffffff\")) return 1;\n\
+         \x20   if (urn::test::Uuid::create(\" 123e4567-e89b-12d3-a456-42661417400\")) return 1;\n\
+         \x20   if (urn::test::Uuid::create(\"123e4567e89b12d3a456426614174000\")) return 1;\n\
+         \x20   auto upper = urn::test::Uuid::create(\"123E4567-E89B-12D3-A456-42661417400F\");\n\
+         \x20   if (!upper || upper->value() != \"123E4567-E89B-12D3-A456-42661417400F\") return 1;\n\
+         \x20   std::puts(\"ok\");\n\
+         \x20   return 0;\n\
+         }\n",
+    )
+    .expect("write C++ probe");
+    let output = Command::new("c++")
+        .current_dir(&root)
+        .args([
+            "-std=c++17",
+            "-Wall",
+            "-Wextra",
+            "-pedantic-errors",
+            "-o",
+            "probe",
+            "probe.cpp",
+        ])
+        .output()
+        .expect("a C++ compiler must be available");
+    assert!(
+        output.status.success(),
+        "selected C++ output must compile under strict C++17:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        Command::new(root.join("probe"))
+            .status()
+            .expect("probe must run")
+            .success(),
+        "selected C++ validation must hold"
+    );
+}
+
+/// Task 038: the selected Ada output compiles and raises `Constraint_Error` on
+/// an invalid value, while accepting the nil UUID.
+///
+/// Skipped only where GNAT is absent, as elsewhere in this file.
+#[test]
+fn task038_selected_ada_output_validates_under_gnat() {
+    if Command::new("gnatmake").arg("--version").output().is_err() {
+        assert!(
+            std::env::var_os("AMS_GRA_REQUIRE_GNAT").is_none(),
+            "AMS_GRA_REQUIRE_GNAT is set but gnatmake is unavailable"
+        );
+        return;
+    }
+    let root = generate_uuid("ada", "task038-ada-runtime");
+    std::fs::write(
+        root.join("probe.adb"),
+        "with Ada.Text_IO;\nwith Urn.Test;\n\n\
+         procedure Probe is\n\
+         \x20  Good : constant Urn.Test.Uuid :=\n\
+         \x20    Urn.Test.Create (\"123e4567-e89b-12d3-a456-426614174000\");\n\
+         \x20  Nil : constant Urn.Test.Uuid :=\n\
+         \x20    Urn.Test.Create (\"00000000-0000-0000-0000-000000000000\");\n\
+         \x20  Rejected : Natural := 0;\n\
+         \x20  --  Each of these is a well-formed 8-4-4-4-12 hexadecimal value,\n\
+         \x20  --  so only the authoritative version/variant classes reject them.\n\
+         \x20  type Case_Names is (Bad_Version, Bad_Variant, All_F);\n\
+         \x20  function Text (Item : Case_Names) return String is\n\
+         \x20    (case Item is\n\
+         \x20       when Bad_Version => \"123e4567-e89b-02d3-a456-426614174000\",\n\
+         \x20       when Bad_Variant => \"123e4567-e89b-12d3-c456-426614174000\",\n\
+         \x20       when All_F       => \"ffffffff-ffff-ffff-ffff-ffffffffffff\");\n\
+         begin\n\
+         \x20  if Urn.Test.Value (Good) /= \"123e4567-e89b-12d3-a456-426614174000\"\n\
+         \x20    or else Urn.Test.Value (Nil) /= \"00000000-0000-0000-0000-000000000000\"\n\
+         \x20  then\n\
+         \x20     raise Program_Error;\n\
+         \x20  end if;\n\
+         \x20  for Item in Case_Names loop\n\
+         \x20     begin\n\
+         \x20        declare\n\
+         \x20           Bad : constant Urn.Test.Uuid := Urn.Test.Create (Text (Item));\n\
+         \x20        begin\n\
+         \x20           if Urn.Test.Value (Bad)'Length >= 0 then\n\
+         \x20              null;\n\
+         \x20           end if;\n\
+         \x20        end;\n\
+         \x20     exception\n\
+         \x20        when Constraint_Error => Rejected := Rejected + 1;\n\
+         \x20     end;\n\
+         \x20  end loop;\n\
+         \x20  if Rejected /= 3 then\n\
+         \x20     raise Program_Error;\n\
+         \x20  end if;\n\
+         \x20  Ada.Text_IO.Put_Line (\"ok\");\n\
+         end Probe;\n",
+    )
+    .expect("write Ada probe");
+    let output = Command::new("gnatmake")
+        .current_dir(&root)
+        .args(["-q", "probe.adb"])
+        .output()
+        .expect("gnatmake must run");
+    assert!(
+        output.status.success(),
+        "selected Ada output must compile:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        Command::new(root.join("probe"))
+            .status()
+            .expect("probe must run")
+            .success(),
+        "selected Ada validation must hold"
+    );
+}
