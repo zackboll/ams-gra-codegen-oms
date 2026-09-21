@@ -1,0 +1,34 @@
+# SYNTHETIC Task 035 fixture. Authored for this repository only.
+#
+# Selects one message whose closure carries non-nillable 0..1 DIRECT PRIMITIVE
+# Record fields, including one inherited from an ancestor. Before Task 035 this
+# was NOT READY for ada; after it, it must report READY and generate compilable
+# Ada, with NO change to ServicePlan, readiness, or selected generation: the new
+# backend capability has to arrive through the existing shared coverage
+# snapshot alone.
+contract_version: "0.1"
+
+service:
+  name: Optional Primitive Sensor
+  version: "0.1.0"
+  kind: service
+  description: Synthetic contract selecting an optional-direct-primitive closure.
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: sensor
+    name: Sensor
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: sensor-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: PrimitiveReport
+        topic: sensor.report
+        timing:
+          kind: asynchronous

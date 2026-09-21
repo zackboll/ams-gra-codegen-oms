@@ -1,0 +1,28 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:optional:primitive-collision"
+           targetNamespace="urn:optional:primitive-collision"
+           elementFormDefault="qualified">
+  <!-- Task 035 generated-name collision control.
+
+       `Owner` is concrete and really emits the Task 035 wrapper
+
+         Owner_Version_Optional
+
+       for its optional direct `xs:unsignedInt` field. The user complexType
+       below carries that exact spelling, and because the Ada package is flat
+       the identifier would be declared twice.
+
+       validate_backend_names(Ada) must therefore fail, with attribution naming
+       BOTH responsible schema declarations. Rust and C++ are controls: neither
+       emits this helper, so the spelling stays free for them. -->
+  <xs:complexType name="Owner">
+    <xs:sequence>
+      <xs:element name="Version" type="xs:unsignedInt" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Owner_Version_Optional">
+    <xs:sequence>
+      <xs:element name="Marker" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

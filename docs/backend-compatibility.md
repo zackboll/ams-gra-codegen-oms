@@ -2878,3 +2878,243 @@ Alias/List shapes that are otherwise unsupported; unsupported target
 declaration kinds. No temporal primitive lowering, no lexical validation, no
 constrained String/Binary, no runtime codecs, and no generic CAL/runtime
 Optional abstraction. No nillability support of any kind is claimed.
+
+## Task 035 — Ada optional direct primitive values
+
+Ada now represents non-nillable `0..1` **direct primitive** Record fields using
+the *identical* per-field discriminated wrapper Task 034 introduced. This closes
+Ada's last pure occurrence boundary, so the next selected blocker is a genuine
+primitive-support question rather than a storage-shape one.
+
+### Corrected evidence: `constraints != default` is not a user-authored facet
+
+Task 035 was scoped expecting `MissionID_Type.Version` to carry **default**
+field-local constraints. Direct measurement of normalized IR disproved that, and
+the task was re-scoped on the evidence.
+
+The authoritative source text is a bare built-in with no author-written facet:
+
+```xml
+<!-- UCI 2.5, UCI_MessageDefinitions_v2_5_0.xsd:107803, in VersionedID_Type -->
+<xs:element name="Version" type="xs:unsignedInt" minOccurs="0"/>
+```
+
+but the frontend's existing built-in primitive normalization
+(`xsd-frontend/src/lib.rs`, `builtin_primitive_semantics`) deliberately turns a
+built-in integer type's *domain* into semantic IR bounds, so it normalizes to:
+
+```text
+{https://www.vdl.afrl.af.mil/programs/oam}VersionedID_Type   (line 107796)
+  Version  cardinality = 0..1
+           nillable    = false
+           target      = Primitive(UnsignedInteger)
+           constraints = minInclusive 0, maxInclusive 4294967295
+```
+
+and is inherited by `MissionID_Type` (UCI 2.5 line 53847, UCI 2.6 line 53893),
+whose `effective_record_fields()` therefore carries the same field. UCI 2.6 is
+identical apart from line numbers (`VersionedID_Type` at 108239, `Version` at
+108246).
+
+So `ConstraintSet != default()` does **not** imply "unsupported user-authored
+field-local restriction". Using it as the Task 035 gate would have produced zero
+integral wrappers and left `MissionID_Type` blocked. Confirming this is
+normalization rather than authored facets: across both releases **every** one of
+the 213/214 constrained optional integral fields has a constraint set exactly
+equal to some XSD built-in's intrinsic domain, and there are **zero**
+non-intrinsic optional integral facets.
+
+| Optional integral constraint set | UCI 2.5 | UCI 2.6 |
+| --- | ---: | ---: |
+| `xs:unsignedInt` domain `0 .. 4294967295` | 129 | 129 |
+| `xs:int` domain | 29 | 29 |
+| `xs:unsignedByte` domain | 28 | 28 |
+| `xs:unsignedShort` domain | 17 | 18 |
+| `xs:long` domain | 9 | 9 |
+| `xs:short` domain | 1 | 1 |
+| **Genuinely non-intrinsic facets** | **0** | **0** |
+
+No constraint provenance was added to Schema IR. Instead the classifier asks the
+question that actually matters — *can the existing Ada field-value lowering
+represent this exact domain without semantic loss?* — which for integers is
+already answered by Task 020's `inclusive_integral_domain()`, the same function
+`ada_field_base` uses for **required** direct integral fields. That keeps one
+integral-domain policy rather than two.
+
+### Direct primitive optional inventory
+
+Optional `0..1` Record fields with a **direct primitive** target, by kind.
+Reconciles with the Task 034 totals (2.5: 4,949 total / 4,458 named / 491
+direct; 2.6: 4,967 / 4,548 / 419).
+
+| Direct primitive | 2.5 total | 2.5 nillable | 2.5 default | 2.5 constrained | 2.6 total | Task 035 |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| `Boolean` | 83 | 0 | 83 | 0 | 23 | supported |
+| `SignedInteger` | 39 | 0 | 0 | 39 | 39 | supported (Task 020 domain) |
+| `UnsignedInteger` | 174 | 0 | 0 | 174 | 175 | supported (Task 020 domain) |
+| `Float32` | 41 | 0 | 41 | 0 | 41 | supported |
+| `Float64` | 141 | 0 | 141 | 0 | 141 | supported |
+| `Binary` | 3 | 0 | 3 | 0 | 0 | supported |
+| `String` | 0 | — | — | — | 0 | unchanged (`Optional_String`) |
+| `DateTime` | 3 | 0 | 3 | 0 | 0 | **unsupported primitive** |
+| `Duration` | 7 | 0 | 7 | 0 | 0 | **unsupported primitive** |
+| `Time`, `Decimal` | 0 | — | — | — | 0 | **unsupported primitive** |
+
+Every constrained case is `minInclusive+maxInclusive`. **Nillable count is 0 in
+every kind and both releases**, so nillability stays fail-closed on evidence.
+
+In the UCI 2.5 selected `PositionReport` closure the only direct primitive
+optional occurrence is `VersionedID_Type.Version` / `MissionID_Type.Version`
+(`UnsignedInteger`), which is exactly the boundary this task removed.
+
+### Supported subset and representation
+
+A Record field uses the wrapper iff cardinality is exactly `0..1`, it is **not**
+nillable, and either the target is a **named** type with default field-local
+constraints (Task 034) or a direct primitive Ada can already represent:
+
+| Direct primitive | Gate | Wrapped value type |
+| --- | --- | --- |
+| `Boolean` | default constraints | `Boolean` |
+| `SignedInteger` | `inclusive_integral_domain().is_ok()` | `Long_Long_Integer`, with range when bounded |
+| `UnsignedInteger` | `inclusive_integral_domain().is_ok()` | `Interfaces.Unsigned_64`, with range when bounded |
+| `Float32` | default constraints | `Interfaces.IEEE_Float_32` |
+| `Float64` | default constraints | `Interfaces.IEEE_Float_64` |
+| `Binary` | default constraints | `Binary_Vectors.Vector` |
+
+The value type always comes from the backend's existing `ada_field_base()`, so
+no second primitive mapping exists. Generated shape, e.g. for
+`xs:unsignedInt 0..1`:
+
+```ada
+type Owner_Version_Optional (Is_Present : Boolean := False) is record
+   case Is_Present is
+      when False => null;
+      when True  => Value : Interfaces.Unsigned_64 range 0 .. 4294967295;
+   end case;
+end record;
+...
+   Version : Owner_Version_Optional;
+```
+
+`Optional_String` is **unchanged**: direct optional String still uses the shared
+type and gains no per-field wrapper, so no already generated output churns.
+
+### One shared classification
+
+Task 034 kept closely mirrored predicates in generation and in name analysis.
+Task 035 replaces both with a single `codegen-core::ada_optional` module
+(`ada_record_field_uses_optional_wrapper`, plus
+`ada_optional_direct_primitive_representable`), consumed by `backend-ada`, the
+generated-name preflight, and coverage occurrence classification. No third
+occurrence model was introduced.
+
+Name registration still happens **after** `field_storage_semantics(...)`, so the
+Task 026 corrective from PR #35 is preserved: an `AbsentOnly` or semantic-error
+field contributes no member or helper surface. Wrapper names use the **emitted**
+owner, so an inherited optional field on a non-emitted abstract ancestor renders
+as `Derived_Version_Optional` and never `Base_Version_Optional`.
+
+### Occurrence support and primitive support stay separate
+
+The capability model keeps two independent questions. `DateTime`, `Time`,
+`Duration`, and `Decimal` all have a conceivable storage shape inside this
+wrapper, but `primitive_ref_renderable` still reports them unsupported, so
+`field_renderable == false` and the diagnostic still blames the primitive/target
+rather than the cardinality. A future Task 036 that adds temporal primitive
+support is what should flip those — not Task 035's occurrence work.
+
+### Fail-closed boundaries (unchanged by this task)
+
+Nillable optionals; integral shapes Task 020 rejects (exclusive bounds,
+half-open ranges, contradictory ranges, `length`/`minLength`/`maxLength`,
+lexical facets); field-local facets on optional Boolean/float/Binary; temporal
+and Decimal primitives; optional **Choice alternatives**, named or direct
+primitive. No facet is silently dropped into an unconstrained wrapper.
+
+### Authoritative coverage
+
+Re-measured from scratch at the pinned roots. Rust and C++ are **unchanged in
+all eight of their cells**, matching the Task 034 figures exactly.
+
+| Release / world | Ada before | Ada after | Rust | C++ | Total |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| UCI 2.5 closed | 4,977 | **5,298** | 5,375 (=) | 5,378 (=) | 5,557 |
+| UCI 2.6 closed | 5,034 | **5,319** | 5,397 (=) | 5,401 (=) | 5,570 |
+| UCI 2.5 open | 4,907 | **5,213** | 5,287 (=) | 5,290 (=) | 5,557 |
+| UCI 2.6 open | 4,963 | **5,234** | 5,309 (=) | 5,313 (=) | 5,570 |
+
+Ada field-occurrence coverage reaches **13,150/13,160** (2.5) and
+**13,198/13,198** (2.6, i.e. 100%). The 10 remaining 2.5 occurrences are the
+`DateTime`/`Duration` optional fields, which are primitive-support gaps.
+
+Declaration-set diffs are strictly monotone — **no declaration was lost in any
+cell**:
+
+| Cell | Newly renderable | Regressions |
+| --- | ---: | ---: |
+| UCI 2.5 closed | 321 | 0 |
+| UCI 2.6 closed | 285 | 0 |
+| UCI 2.5 open | 306 | 0 |
+| UCI 2.6 open | 271 | 0 |
+
+Attribution of the 321 UCI 2.5 closed gains: **313** directly contain at least
+one optional direct primitive field inside the Task 035 subset. The remaining
+**8** are abstract Task 024 closed-sum bases — `CapabilityBaseType`,
+`CapabilityStatusBaseType`, `ComponentExtendedStatusPET`,
+`DataLinkIdentifierPET`, `DataLinkNativeFilterPET`, `DataLinkNativeInfoPET`,
+`OpZoneFilterAreaPET`, `STANAG_4607_PackingPlanPET` — which became renderable
+transitively because their last blocking concrete descendant did (for example
+`DataLinkIdentifierPET` via `EW_CoordinationDataLinkIdentifierType`, and
+`OpZoneFilterAreaPET` via `MTI_OpZoneFilterAreaType`). Every gain is therefore
+attributable to the declared subset.
+
+Effective field-occurrence delta by primitive kind, UCI 2.5 (occurrences now
+wrapped, counted over effective fields so inherited copies are included):
+
+| Kind | Occurrences |
+| --- | ---: |
+| `UnsignedInteger` | 240 |
+| `Float64` | 154 |
+| `Boolean` | 88 |
+| `Float32` | 42 |
+| `SignedInteger` | 41 |
+| `Binary` | 3 |
+
+### Selected PositionReport delta
+
+UCI 2.5, `crates/service-contract/tests/fixtures/upstream-minimal.yaml`, one
+selected message, 60-declaration closure, closed world.
+
+| Backend | Before | After | First blocker before | First blocker after |
+| --- | ---: | ---: | --- | --- |
+| Ada | 44/60 | **47/60** | `{…}MissionID_Type` | `{…}DateTimeType` |
+| Rust | 51/60 | 51/60 | `{…}DateTimeType` | `{…}DateTimeType` (unchanged) |
+
+`MissionID_Type` and `VersionedID_Type` are both renderable now, which is the
+direct evidence that Task 035 removed the occurrence barrier. Ada's new first
+blocker, `DateTimeType`, is the *same* blocker Rust has had since Task 033 — a
+temporal **primitive** gap, not an occurrence gap. Ada remains NOT READY and no
+temporal support was implemented to force a readiness increase. No readiness,
+`ServicePlan`, or projection special case exists for any of these names.
+
+### Full-UCI generation boundary
+
+Full UCI generation is still **not** supported, and the first Ada full-schema
+blocker is unchanged by this task:
+
+```text
+unsupported Ada IR construct: Ada name "Range" generates reserved word "Range"
+in the members of AltitudeRangePairType
+```
+
+Task 035 did not shift it and does not address it.
+
+### What Task 035 does not add
+
+Record fields only. No IR constraint provenance. No new constraint semantics. No
+temporal or Decimal lowering, no timezone/`Z` handling, no lexical/regex runtime,
+no datetime parser, no JSON codec, no temporal arithmetic. No nillability of any
+kind. No constrained String/Binary. No generic CAL/runtime Optional abstraction.
+No UCI-name special case exists for `MissionID_Type`, `VersionedID_Type`, or
+`Version` — the regressions use synthetic fixtures with ordinary inheritance.
