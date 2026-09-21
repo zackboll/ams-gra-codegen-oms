@@ -3196,9 +3196,18 @@ of every XSD-1.1-only construct checked: `xs:assert`, `xs:alternative`,
 `xs:anyAtomicType`, and `vc:minVersion`. Nothing in either document requires or
 signals 1.1.
 
-The version genuinely matters here: XSD 1.0 **prohibits** the year `0000`,
-while a later revision admits it as 1 BCE. The validator implements the 1.0
-rule, and the conformance corpus pins `0000-01-01T00:00:00Z` as invalid.
+The version genuinely matters here, in **two** places:
+
+* **year `0000`** — XSD 1.0 prohibits it; a later revision admits it as 1 BCE.
+  The validator implements the 1.0 rule and the corpus pins
+  `0000-01-01T00:00:00Z` as invalid.
+* **leap seconds** — XSD 1.0 Appendix D admits second `60`. XSD 1.1 removed
+  leap seconds from the value space entirely (its seconds field is `00..59`).
+  Because the applicable standard here is **1.0**, second `60` is **accepted**,
+  and the corpus pins `1998-12-31T23:59:60Z` as valid.
+
+Both rules are taken from the same selected standard; neither is mixed with
+1.1 behaviour.
 
 ### The XML Schema rules implemented
 
@@ -3219,11 +3228,15 @@ From section 3.2.7.1, the lexical space is
 * **hour** — two digits; `24` **is permitted** when the minutes and seconds
   represented are zero, denoting the first instant of the following day;
 * **minute** — two digits, `00..59`;
-* **second** — "a two-integer-digit numeral"; `00..59`. The XSD 1.0 `dateTime`
-  lexical space admits **no** leap second; Appendix E treats a 60 only as a
-  duration overflow, not as a literal;
+* **second** — "a two-integer-digit numeral"; `00..60`. Appendix D states the
+  two digits of `ss` "can have values from **0 to 60**" and that "[a] value of
+  60 or more is allowed only in the case of leap seconds". Second **60 is
+  therefore valid** in the XSD 1.0 lexical space; **61 is not**, because the
+  two-digit field itself stops at 60 (see *Leap seconds* below);
 * **fractional seconds** — `'.' s+`, so a dot requires at least one digit, to
-  arbitrary precision with no digit limit;
+  arbitrary precision with no digit limit; Appendix D applies this to the whole
+  seconds field without exempting `60`, so a point **inside** a leap second
+  (`23:59:60.5Z`) carries the same arbitrary precision;
 * **timezone** (3.2.7.3) — `(('+' | '-') hh ':' mm) | 'Z'`;
 * **whiteSpace** (4.3.6) — for every atomic datatype other than `string` and
   its restrictions the value is `collapse` and "cannot be changed by a schema
@@ -3236,6 +3249,66 @@ From section 3.2.7.1, the lexical space is
 * **regex** (Appendix F) — `.` is the `WildcardEsc` production [37a],
   equivalent to the character class `[^\n\r]`; a literal is pattern-valid only
   if the pattern matches it **entirely**.
+
+### Leap seconds
+
+The seconds rule is worth stating in full, because the initial Task 036
+validator got it wrong by imposing a `00..59` limit.
+
+**The rule implemented.** The whole-seconds field is accepted for `00..60`.
+`60` is the leap second; `61` and above are rejected. A `60` may carry a
+fractional part to the same arbitrary precision as any other second. No
+calendar-position test and no historical-table lookup is applied. Hour `24`
+independently continues to require zero minutes and zero represented seconds,
+so `24:00:60Z` is rejected by that rule, not by the seconds rule.
+
+**Why `60` is valid.** Appendix D, describing the `s` picture character: "The
+two digits in a `ss` format can have values from **0 to 60**. In the formats
+described in this specification the whole number of seconds *may* be followed
+by decimal seconds to an arbitrary level of precision. … A value of 60 or more
+is allowed only in the case of leap seconds."
+
+**Why `61` is not.** "60 or more" has to be reconciled with the two-digit `ss`
+field and the separate fractional production. The field is bounded at 60 by the
+same sentence; values "more" than 60 are reached through the *fraction* on
+second 60 (`60.5`), never by a two-digit numeral above 60. `61` is therefore
+outside the lexical space, and the corpus pins `12:00:61Z` and `12:00:61.5Z` as
+invalid.
+
+**Why fractional leap seconds are valid.** The arbitrary-precision clause is
+attached to "the whole number of seconds" with no exemption for `60`. A time
+point *within* the leap second is representable, so `23:59:60.1Z`,
+`23:59:60.5Z`, and `23:59:60.999999Z` are all accepted.
+
+**Why no IERS table is required.** Appendix D says a `60` is "[s]trictly
+speaking … not sensible unless the month and day could represent March 31,
+June 30, September 30, or December 31 in UTC" — but it does **not** reject
+other placements. The very next sentence supplies a *value* mapping instead:
+"In cases where the leap second is used with an inappropriate month and day it,
+and any fractional seconds, should [be] considered as added or subtracted from
+the following minute." That is a statement about the value space, not a
+restriction on the lexical space, so the lexical validator must accept second
+`60` on **any** date. This is deliberate breadth, not an oversight: Appendix E
+says outright that "[a] definition that attempted to take leap-seconds into
+account would need to be constantly updated, and could not predict the results
+of future implementation's additions", attributing leap-second decisions to the
+IERS. The generated validators therefore stay self-contained — no leap-second
+table, no network access, no OS calendar or timezone database, no third-party
+date library.
+
+So the answer to "must second `60` be restricted to dates on which the IERS
+actually inserted a leap second?" is **no**. XSD 1.0 permits the broader
+lexical representation, and the corpus pins non-historical placements such as
+`2026-09-20T12:00:60Z` as valid.
+
+**Leap second is not leap year.** The two are independent. The February and
+`maximumDayInMonthFor` logic is unchanged, and the corpus pins
+`2023-12-31T23:59:60Z` — a leap second in a non-leap year — as valid.
+
+**Lexical spelling is preserved.** A valid leap-second literal round-trips as
+written. `1998-12-31T23:59:60Z` is stored and returned unchanged; it is *not*
+normalized to `1999-01-01T00:00:00Z`. Task 036 is a lexical carrier and
+introduces no temporal arithmetic.
 
 ### Why `.+Z` is interpreted, not run through a regex engine
 
@@ -3475,7 +3548,7 @@ numeric type — the corpus pins a 24-digit year as valid.
 ### Shared conformance corpus
 
 `tests/fixtures/temporal/datetime-zulu.txt` is the single canonical corpus:
-**22 valid** and **68 invalid** cases, each commented with the XML Schema rule
+**33 valid** and **74 invalid** cases, each commented with the XML Schema rule
 it exercises. Rust-side tests read it and emit the same cases into a probe
 program for **all three** backends, which are then compiled and run. The three
 languages are proven to agree rather than each passing its own curated subset.
@@ -3490,13 +3563,27 @@ negative-extended years; the smallest legal boundaries
 (`0001-01-01T00:00:00Z`); 30- and 31-day month maxima; second 59; and four
 leading/trailing whitespace shapes that must collapse away.
 
+Valid **leap-second** cases cover: the historical control
+`1998-12-31T23:59:60Z`; three fractional leap seconds (`.1`, `.5`, `.999999`),
+proving arbitrary precision inside the leap second; second 60 on each
+quarter-end date and on an ordinary date (`2026-09-20T12:00:60Z`), proving no
+calendar-position or IERS-table restriction is applied; second 60 at the start
+of a day; a leap second in a **non-leap year** (`2023-12-31T23:59:60Z`),
+proving leap second and leap year are independent; and a
+whitespace-surrounded leap second that must collapse to the bare literal. Each
+round-trips to its own spelling, pinning that no rollover normalization occurs.
+
 Invalid cases cover: missing `Z`; five numeric offsets including `+00:00` and
 `-00:00` (same *value* as Zulu, wrong *spelling*); lowercase `z`; trailing
 characters after `Z`; months 00 and 13; day zero; day beyond a 30- and a
 31-day month; **February 29 in 2023** (non-leap) and **in 1900** (century
 non-leap, which a naive divisible-by-4 rule wrongly accepts); February 30 in a
-leap year; hour 25; `24` with non-zero minute, second, or fraction; minute 60;
-**second 60 and 61**; a bare dot with no digits; non-digit and double-dot
+leap year; hour 25; `24` with non-zero minute, second, or fraction; **hour 24
+combined with second 60** (`24:00:60Z`, `24:00:60.0Z`), which stays invalid
+because `24` requires zero represented seconds; minute 60; minute 60 together
+with second 60, since a leap second lengthens the seconds field and not the
+minutes field; **seconds 61, 61.5, and 99**, the field bound above the leap
+second; a bare dot with no digits; non-digit and double-dot
 fractions; a fraction on minutes; years of one to three digits; `0000` and
 `-0000`; leading-zero five-digit years; a plus-signed year; non-digit years;
 wrong field widths; lowercase `t`; missing separators and components; four

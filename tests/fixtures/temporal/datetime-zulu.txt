@@ -23,6 +23,21 @@
 #   '-'? yyyy '-' mm '-' dd 'T' hh ':' mm ':' ss ('.' s+)? (zzzzzz)?
 # Section 3.2.7.3 timezone:  (('+' | '-') hh ':' mm) | 'Z'
 # Section 4.3.6 whiteSpace:  fixed 'collapse' for every atomic type but string.
+# Appendix D field ranges:   hh 0..24, mm 0..59, ss 0..60.
+#
+# LEAP SECONDS. Appendix D states that the two digits of 'ss' "can have values
+# from 0 to 60" and that "[a] value of 60 or more is allowed only in the case
+# of leap seconds", with the whole seconds optionally followed by "decimal
+# seconds to an arbitrary level of precision". Second 60 is therefore IN the
+# XSD 1.0 lexical space, with arbitrary fractional precision; 61 is not, since
+# the two-digit field stops at 60. Appendix D's remark that a 60 is "not
+# sensible" off March 31 / June 30 / September 30 / December 31 UTC is followed
+# by a VALUE mapping ("considered as added or subtracted from the following
+# minute"), not a rejection, so no calendar-position or IERS-table test is
+# imposed on the lexical space. Appendix E confirms the intent: a definition
+# tracking real leap seconds "would need to be constantly updated". Valid
+# leap-second spellings are stored AS WRITTEN -- Task 036 is a lexical carrier
+# and performs no normalization onto the following day.
 #
 # The UCI profile adds pattern ".+Z", which on this already-lexically-valid
 # domain is exactly "the normalized form ends in literal 'Z'" -- see the proof
@@ -90,8 +105,59 @@ VALID 2026-04-30T00:00:00Z => 2026-04-30T00:00:00Z
 # 31-day month at its maximum.
 VALID 2026-01-31T00:00:00Z => 2026-01-31T00:00:00Z
 
-# Second 60 is NOT admitted -- see the INVALID section. Second 59 is the max.
+# Ordinary maximum whole second.
 VALID 2026-06-15T13:00:59Z => 2026-06-15T13:00:59Z
+
+# --- leap seconds (XML Schema 1.0 Part 2, Appendix D) ---
+#
+# Appendix D, character 's': "The two digits in a ss format can have values
+# from 0 to 60. ... A value of 60 or more is allowed only in the case of leap
+# seconds." So 60 IS in the lexical space. This is the known historical leap
+# second inserted at the end of 1998, and is the control case that must be
+# accepted by all three generated validators.
+VALID 1998-12-31T23:59:60Z => 1998-12-31T23:59:60Z
+
+# The same Appendix D sentence continues: the whole number of seconds "may be
+# followed by decimal seconds to an arbitrary level of precision". Nothing
+# exempts second 60, so a time point WITHIN the leap second is representable to
+# the same arbitrary precision as any other second. This is also how "60 or
+# more" is reconciled with a two-digit ss field: values above 60 are reached by
+# the FRACTION, never by the two digits.
+VALID 1998-12-31T23:59:60.1Z => 1998-12-31T23:59:60.1Z
+VALID 1998-12-31T23:59:60.5Z => 1998-12-31T23:59:60.5Z
+VALID 1998-12-31T23:59:60.999999Z => 1998-12-31T23:59:60.999999Z
+
+# Appendix D says a 60 is "[s]trictly speaking ... not sensible unless the
+# month and day could represent March 31, June 30, September 30, or December 31
+# in UTC", but it does NOT reject other placements: "In cases where the leap
+# second is used with an inappropriate month and day it, and any fractional
+# seconds, should [be] considered as added or subtracted from the following
+# minute." That is a VALUE mapping, not a lexical-space restriction, so the
+# lexical validator must accept second 60 on any date. Accepting these is what
+# keeps the generated code free of an IERS leap-second table -- Appendix E:
+# "A definition that attempted to take leap-seconds into account would need to
+# be constantly updated, and could not predict the results of future
+# implementation's additions."
+VALID 2026-09-20T12:00:60Z => 2026-09-20T12:00:60Z
+VALID 2026-06-30T23:59:60Z => 2026-06-30T23:59:60Z
+VALID 2026-03-31T23:59:60Z => 2026-03-31T23:59:60Z
+VALID 2026-09-30T23:59:60Z => 2026-09-30T23:59:60Z
+
+# Second 60 away from the end of the day is likewise lexically admitted by the
+# "following minute" mapping above; the hour and minute are unrestricted.
+VALID 2026-09-20T00:00:60Z => 2026-09-20T00:00:60Z
+
+# A leap second is NOT tied to Gregorian leap-year status. 2023 is not a leap
+# year, and that has no bearing on the seconds field.
+VALID 2023-12-31T23:59:60Z => 2023-12-31T23:59:60Z
+
+# Whitespace collapse applies to a leap-second literal exactly as to any other;
+# the STORED value is the normalized form.
+VALID \s\t1998-12-31T23:59:60Z\r\n => 1998-12-31T23:59:60Z
+
+# The lexical spelling is PRESERVED, not normalized onto the following day.
+# Task 036 is a lexical carrier and adds no temporal arithmetic, so this must
+# NOT round-trip as 1999-01-01T00:00:00Z. The VALID line above pins that.
 
 # Leading and trailing XML whitespace must collapse away entirely (section
 # 4.3.6 'collapse'), and the STORED value is the normalized form, not the
@@ -161,14 +227,28 @@ INVALID 2026-09-20T24:01:00Z
 INVALID 2026-09-20T24:30:30Z
 # 24:00:00 with a NON-zero fractional part is likewise not zero seconds.
 INVALID 2026-09-20T24:00:00.1Z
+# Admitting second 60 does NOT make hour 24 tolerate it. Section 3.2.7.1
+# permits '24' only "if the minutes and seconds represented are zero", and a
+# leap second is by definition not zero seconds. These two rules compose
+# independently, so hour 24 plus second 60 is rejected.
+INVALID 2026-09-20T24:00:60Z
+INVALID 2026-09-20T24:00:60.0Z
+INVALID 2026-12-31T24:00:60Z
 
 # Minute 60 is out of range; minutes are 00..59.
 INVALID 2026-09-20T12:60:00Z
 
-# Second 60 is out of range. XML Schema 1.0 dateTime does NOT admit a leap
-# second in its lexical space; seconds are 00..59.
-INVALID 2026-09-20T12:00:60Z
+# Second 61 is out of range. Appendix D bounds the two-digit ss field at
+# "0 to 60"; the "60 or more" wording is satisfied by the arbitrary-precision
+# FRACTION on second 60, never by a two-digit value above 60. Second 60 itself
+# is VALID -- see the leap-second block above.
 INVALID 2026-09-20T12:00:61Z
+INVALID 2026-09-20T12:00:99Z
+# A fraction cannot rescue an out-of-range whole-seconds field.
+INVALID 2026-09-20T12:00:61.5Z
+# Minute 60 stays invalid even though second 60 is not: a leap second
+# lengthens the SECONDS field, not the minutes field.
+INVALID 2026-09-20T12:60:60Z
 
 # --- fractional seconds ---
 

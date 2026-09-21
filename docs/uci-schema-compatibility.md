@@ -925,8 +925,18 @@ occurrences of `xs:assert`, `xs:alternative`, `explicitTimezone`,
 `xs:openContent`, `xs:override`, `defaultAttributes`, `xs:anyAtomicType`, or
 `vc:minVersion`.
 
-The choice is load-bearing: XSD 1.0 prohibits the year `0000`, whereas a later
-revision admits it as 1 BCE. The implemented validator follows 1.0.
+The choice is load-bearing in two places, and the validator follows 1.0 in
+both:
+
+* XSD 1.0 prohibits the year `0000`, whereas a later revision admits it as
+  1 BCE;
+* XSD 1.0 Appendix D admits the **leap second**, giving the two-digit `ss`
+  field the range `0..60`, whereas XSD 1.1 removed leap seconds and caps
+  seconds at `59`. `1998-12-31T23:59:60Z` is therefore **valid** here, while
+  `61` is not. No IERS leap-second table is consulted: Appendix D maps an
+  inappropriately placed `60` onto the following minute in the *value* space
+  rather than rejecting the literal, so the lexical rule is intentionally
+  broader than historical occurrence.
 
 ### What Task 036 changed
 

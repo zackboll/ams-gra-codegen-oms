@@ -1348,8 +1348,21 @@ const ADA_DATE_TIME_ZULU_BODY: &str = r##"
             then
                return False;
             end if;
-            --  Seconds are 00 .. 59: XSD 1.0 dateTime admits no leap second.
-            if Hour > 24 or else Minute > 59 or else Second > 59 then
+            --  XML Schema 1.0 Part 2, Appendix D: the two digits of 'ss' "can
+            --  have values from 0 to 60". 60 is the LEAP SECOND and is
+            --  lexically legal; 61 never is, because the field itself stops at
+            --  60. Minutes remain 00 .. 59 -- a leap second lengthens the
+            --  second field, not the minute.
+            --
+            --  Appendix D adds that a 60 is "not sensible" away from March 31,
+            --  June 30, September 30, or December 31 UTC, but prescribes that
+            --  such a value "should [be] considered as added or subtracted
+            --  from the following minute" -- a VALUE mapping, not a lexical
+            --  rejection. So no calendar-position test is applied here, and no
+            --  IERS leap-second table is needed: Appendix E states outright
+            --  that a definition tracking real leap seconds "would need to be
+            --  constantly updated".
+            if Hour > 24 or else Minute > 59 or else Second > 60 then
                return False;
             end if;
             if From + 9 <= Text'Last then

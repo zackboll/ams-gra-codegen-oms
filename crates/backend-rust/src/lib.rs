@@ -962,8 +962,19 @@ impl {name} {
         ) else {
             return false;
         };
-        // Seconds are 00..59: XML Schema 1.0 dateTime admits no leap second.
-        if hour > 24 || minute > 59 || second > 59 {
+        // XML Schema 1.0 Part 2, Appendix D: the two digits of `ss` "can have
+        // values from 0 to 60". 60 is the LEAP SECOND and is lexically legal;
+        // 61 never is, because the field itself stops at 60. Minutes remain
+        // 00..59 -- a leap second lengthens the second field, not the minute.
+        //
+        // Appendix D adds that a 60 is "not sensible" away from March 31, June
+        // 30, September 30, or December 31 UTC, but prescribes that such a
+        // value "should [be] considered as added or subtracted from the
+        // following minute" -- a VALUE mapping, not a lexical rejection. So no
+        // calendar-position test is applied here, and no IERS leap-second
+        // table is needed: Appendix E states outright that a definition
+        // tracking real leap seconds "would need to be constantly updated".
+        if hour > 24 || minute > 59 || second > 60 {
             return false;
         }
         let fraction = &rest[9..];
