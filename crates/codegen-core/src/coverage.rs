@@ -1454,6 +1454,21 @@ fn kind_renderable(declaration: &TypeDecl, enabled: &BTreeSet<FeatureFamily>) ->
             temporal_profile(kind, &declaration.constraints).is_ok_and(|profile| profile.is_some())
                 || enabled.contains(&FeatureFamily::PrimitiveExpansion)
         }
+        // Task 037: a named `String` *kind* is baseline only when the shared
+        // classifier accepts this declaration's effective constraints -- that
+        // is, the authoritative UCI schema-version profile, for which all three
+        // backends emit a validated carrier.
+        //
+        // An *unconstrained* named `String` declaration is deliberately still
+        // gated behind `PrimitiveExpansion`, exactly as before this task: no
+        // backend emits a wrapper for one, so making it baseline here would
+        // claim capability that does not exist. Every other constrained String
+        // shape likewise stays non-baseline. This mirrors the temporal arm
+        // above: support is granted per *profile*, never per primitive kind.
+        TypeKind::Primitive(kind @ PrimitiveKind::String) => {
+            string_profile(kind, &declaration.constraints).is_ok_and(|profile| profile.is_some())
+                || enabled.contains(&FeatureFamily::PrimitiveExpansion)
+        }
         TypeKind::Primitive(_) => enabled.contains(&FeatureFamily::PrimitiveExpansion),
         TypeKind::Alias(_) | TypeKind::List { .. } => false,
     }
