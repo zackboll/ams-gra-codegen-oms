@@ -34,6 +34,7 @@ use crate::abstract_value::{
 use crate::ada_optional::ada_record_field_uses_optional_wrapper;
 use crate::coverage::BackendLanguage;
 use crate::floating::floating_domain;
+use crate::string_profile::string_profile;
 use crate::structure::{effective_choice_alternatives, effective_record_fields};
 use crate::temporal::temporal_profile;
 use crate::world::GenerationWorld;
@@ -815,6 +816,13 @@ fn ada_wrapper_callable_owners(schema: &SchemaIr) -> Vec<&TypeDecl> {
                     floating_domain(kind, &declaration.constraints)
                         .is_ok_and(|domain| domain.is_some())
                 }
+                // Task 037: only the supported constrained-String profile emits
+                // a wrapper. An *unconstrained* String emits none and keeps its
+                // plain representation, and an unsupported constrained String
+                // fails closed in the backend before any output exists, so
+                // neither contributes a name.
+                PrimitiveKind::String => string_profile(kind, &declaration.constraints)
+                    .is_ok_and(|profile| profile.is_some()),
                 // Task 036: only the supported DateTime Zulu profile emits a
                 // wrapper. An unsupported temporal declaration fails closed in
                 // the backend before any output exists, so it contributes no

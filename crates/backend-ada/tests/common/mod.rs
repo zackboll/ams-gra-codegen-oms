@@ -17,6 +17,7 @@ pub struct TemporalCase {
 }
 
 /// The repository-root path of the shared Task 036 temporal corpus.
+#[allow(dead_code)]
 pub fn corpus_path() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/temporal/datetime-zulu.txt")
 }
@@ -33,6 +34,7 @@ pub fn string_corpus_path() -> PathBuf {
 ///
 /// Panics when the corpus is missing or a line is malformed: a silently
 /// skipped case would weaken every backend's evidence at once.
+#[allow(dead_code)]
 pub fn load_cases() -> Vec<TemporalCase> {
     load_corpus(&corpus_path())
 }

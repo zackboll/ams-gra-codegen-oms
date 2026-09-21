@@ -2023,10 +2023,19 @@ fn main() {
                 ..ConstraintSet::default()
             };
             let error = generate(&schema, CLOSED).expect_err("constraints must not be discarded");
+            // A constrained String now reports through the Task 037
+            // classifier, which names the facet profile rather than saying
+            // only "constraints". Either way it fails closed:
+            // is not the one supported profile.
             assert!(
                 error
                     .message
                     .contains("unsupported Rust IR construct: constraints on")
+                    || error.message.contains(
+                        "unsupported constrained String declaration: unsupported facet profile"
+                    ),
+                "unexpected diagnostic for {kind:?}: {}",
+                error.message
             );
         }
     }
@@ -2064,7 +2073,10 @@ fn main() {
             let message = &error.message;
             assert!(
                 message.contains("unsupported Rust IR construct: constraints on")
-                    || message.contains("unsupported temporal declaration: Time"),
+                    || message.contains("unsupported temporal declaration: Time")
+                    || message.contains(
+                        "unsupported constrained String declaration: unsupported facet profile"
+                    ),
                 "unexpected diagnostic for {kind:?}: {message}"
             );
         }

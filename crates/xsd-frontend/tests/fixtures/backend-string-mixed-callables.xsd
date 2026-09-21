@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Task 037 fixture: a constrained float, a DateTime Zulu carrier, and a
+  schema-version String carrier in ONE package.
+
+  All three emit a package-level `Create` and `Value`. Two of them are
+  `Create (String) return _`, differing only in result type. GNAT is the
+  authority on whether that is a legal overload set, so this fixture exists to
+  be compiled rather than argued about.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test:mixed"
+           targetNamespace="urn:test:mixed"
+           elementFormDefault="qualified">
+
+  <!-- Task 033: a constrained float wrapper, Create (IEEE_Float_64). -->
+  <xs:simpleType name="BurnRate">
+    <xs:restriction base="xs:double">
+      <xs:minInclusive value="0.0"/>
+      <xs:maxInclusive value="1000.0"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Task 036: a DateTime Zulu carrier, Create (String). -->
+  <xs:simpleType name="Instant">
+    <xs:restriction base="xs:dateTime">
+      <xs:pattern value=".+Z"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Task 037: a schema-version carrier, also Create (String). This is the
+       pair that must resolve by result type alone. -->
+  <xs:simpleType name="SchemaVersion">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="7"/>
+      <xs:maxLength value="57"/>
+      <xs:pattern value="[0-9]{3}\.[0-9]{1,2}(\.[0-9]{1,2})([a-z]{1,2})?(_[a-zA-Z0-9\-]{1,45})?"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+</xs:schema>

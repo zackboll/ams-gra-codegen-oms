@@ -7,8 +7,9 @@ use crate::{
     ADA_PORTABLE_POSITIVE_INDEX_MAX, AbstractValueOccurrenceRenderability,
     AbstractValueProjectionError, AbstractValueSemantics, AbstractValueTopology,
     BackendPreflightError, GenerationWorld, abstract_value_occurrence_renderable,
-    abstract_value_targets, backend_preflight, classify_abstract_value_topology, floating_domain,
-    inclusive_integral_domain, is_temporal_primitive, temporal_profile, unsafe_named_declarations,
+    abstract_value_targets, backend_preflight, classify_abstract_value_topology, constrains_string,
+    floating_domain, inclusive_integral_domain, is_temporal_primitive, string_profile,
+    temporal_profile, unsafe_named_declarations,
 };
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, FieldDecl, MessageDecl, OccurrenceShape, PrimitiveKind,
@@ -1539,6 +1540,22 @@ fn primitive_declaration_renderable(
             || (enabled.contains(&FeatureFamily::PrimitiveExpansion)
                 && (constraints == &ConstraintSet::default()
                     || enabled.contains(&FeatureFamily::ConstrainedSimpleTypes)));
+    }
+    // Task 037: a named constrained String declaration is baseline-renderable
+    // exactly when the shared classifier accepts it -- that is, the
+    // authoritative UCI schema-version facet profile and nothing else. This
+    // asks precisely the question the three backends ask, so coverage cannot
+    // drift from what they will actually emit.
+    //
+    // Constrained String is deliberately NOT made baseline wholesale. Every
+    // other constrained String shape -- `length + pattern`, a different
+    // pattern, different bounds, an explicit `whiteSpace` -- stays non-baseline
+    // and remains attributed to `ConstrainedSimpleTypes` as hypothetical future
+    // work. An *unconstrained* String keeps its existing treatment unchanged.
+    if kind == PrimitiveKind::String && constrains_string(constraints) {
+        return string_profile(kind, constraints).is_ok_and(|profile| profile.is_some())
+            || (enabled.contains(&FeatureFamily::PrimitiveExpansion)
+                && enabled.contains(&FeatureFamily::ConstrainedSimpleTypes));
     }
     if !matches!(
         kind,

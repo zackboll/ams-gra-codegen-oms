@@ -13,8 +13,8 @@
     UCI 2.6 UCI_MessageDefinitions_v2_6_0.xsd:145708
 -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-           xmlns:t="urn:test:string"
-           targetNamespace="urn:test:string"
+           xmlns:t="urn:test:versioning"
+           targetNamespace="urn:test:versioning"
            elementFormDefault="qualified">
 
   <!-- The authoritative UCI profile, under a non-UCI name. -->
