@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:test"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- Task 035 synthetic selected-service fixture.
+
+       The selected closure contains non-nillable 0..1 DIRECT PRIMITIVE Record
+       fields at every kind Task 035 claims:
+
+         PrimitiveReport -> PrimitivePayload
+                              Maybe_Bool     xs:boolean     0..1
+                              Maybe_Signed   xs:long        0..1
+                              Maybe_Unsigned xs:unsignedInt 0..1
+                              Maybe_F32      xs:float       0..1
+                              Maybe_F64      xs:double      0..1
+                              Maybe_Binary   xs:hexBinary   0..1
+                              Maybe_String   xs:string      0..1  (Optional_String)
+
+       It also carries the inherited shape that Task 035 actually unblocked in
+       UCI, without naming any UCI type:
+
+         VersionedBase:  Version : xs:unsignedInt 0..1
+         PrimitivePayload extends VersionedBase
+
+       Before Task 035 the Ada backend could not represent an optional direct
+       non-String primitive, so this contract was NOT READY for ada. After Task
+       035 it must be READY and the generated Ada package must compile, with NO
+       change to ServicePlan, readiness, or selected generation: the capability
+       has to arrive through the existing shared coverage snapshot alone.
+
+       Plus one UNRELATED declaration no contract selects:
+
+         UnrelatedDuration  xs:duration; no backend renders it, so ordinary
+                            full-schema generation still fails while
+                            service-check reports READY. That is what keeps
+                            readiness contract-selected rather than
+                            whole-schema. -->
+
+  <!-- Unselected, and unrenderable by every backend. -->
+  <xs:simpleType name="UnrelatedDuration">
+    <xs:restriction base="xs:duration"/>
+  </xs:simpleType>
+
+  <xs:complexType name="VersionedBase">
+    <xs:sequence>
+      <xs:element name="Version" type="xs:unsignedInt" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="PrimitivePayload">
+    <xs:complexContent>
+      <xs:extension base="t:VersionedBase">
+        <xs:sequence>
+          <xs:element name="Required_Bool" type="xs:boolean"/>
+          <xs:element name="Maybe_Bool" type="xs:boolean" minOccurs="0"/>
+          <xs:element name="Maybe_Signed" type="xs:long" minOccurs="0"/>
+          <xs:element name="Maybe_Unsigned" type="xs:unsignedInt" minOccurs="0"/>
+          <xs:element name="Maybe_F32" type="xs:float" minOccurs="0"/>
+          <xs:element name="Maybe_F64" type="xs:double" minOccurs="0"/>
+          <xs:element name="Maybe_Binary" type="xs:hexBinary" minOccurs="0"/>
+          <xs:element name="Maybe_String" type="xs:string" minOccurs="0"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:element name="PrimitiveReport" type="t:PrimitivePayload"
+              uci:version="001.000.000.000"/>
+
+</xs:schema>

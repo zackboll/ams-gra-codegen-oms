@@ -1157,3 +1157,136 @@ fn task034_selected_ada_optional_named_compiles_under_gnat() {
         .expect("GNAT reported a version, so it must be runnable");
     assert!(status.success(), "selected Ada output must compile");
 }
+
+/// Task 035 section: a contract whose selected closure carries non-nillable
+/// `0..1` **direct primitive** Record fields becomes READY in all three
+/// backends.
+///
+/// As in Task 034 the point is *propagation*: no Task 035 change was made to
+/// `service_plan.rs`, `service_readiness.rs`, or `service_generation.rs`, so the
+/// new capability has to arrive through the single shared coverage snapshot and
+/// the ordinary backends. Ada is the meaningful case -- it was NOT READY for
+/// this contract before Task 035 -- while Rust and C++ prove nothing regressed.
+///
+/// The fixture also contains an unselected `xs:duration` that no backend can
+/// render, so a READY result here cannot be a whole-schema accident.
+#[test]
+fn task035_optional_primitive_service_is_ready_in_every_backend() {
+    for language in ["rust", "cpp", "ada"] {
+        let check = cli()
+            .arg("service-check")
+            .arg("--schema")
+            .arg(fixture("optional-primitive.xsd"))
+            .arg("--contract")
+            .arg(fixture("optional-primitive.yaml"))
+            .args(["--language", language, "--world", "closed-schema"])
+            .output()
+            .expect("service-check must run");
+        assert_eq!(
+            check.status.code(),
+            Some(0),
+            "{language} service-check should succeed"
+        );
+        let report = String::from_utf8(check.stdout).expect("UTF-8 report");
+        assert!(
+            report.contains("status: READY"),
+            "{language} must be READY after Task 035: {report}"
+        );
+        assert!(
+            report.contains("selected type closure: 2")
+                && report.contains("renderable selected types: 2"),
+            "{language} must render every selected type: {report}"
+        );
+    }
+}
+
+/// The unselected `xs:duration` really is unrenderable, so ordinary whole-schema
+/// generation still fails for Ada on the very same file that service-generate
+/// handles. Without this, READY above could be explained by the schema simply
+/// being fully supported.
+#[test]
+fn task035_optional_primitive_whole_schema_generation_still_fails() {
+    let output = cli()
+        .arg("generate")
+        .arg("--schema")
+        .arg(fixture("optional-primitive.xsd"))
+        .args(["--language", "ada", "--world", "closed-schema"])
+        .arg("--output")
+        .arg(output_dir("task035-ada-whole"))
+        .output()
+        .expect("generate must run");
+    assert_ne!(
+        output.status.code(),
+        Some(0),
+        "an unrenderable unselected declaration must still fail whole-schema generation"
+    );
+    let diagnostics = String::from_utf8(output.stderr).expect("UTF-8 diagnostic");
+    assert!(
+        diagnostics.contains("UnrelatedDuration"),
+        "the unselected declaration must be the stated reason: {diagnostics}"
+    );
+}
+
+/// Task 035: the selected Ada output really compiles under GNAT, with the
+/// per-field direct primitive wrappers this task generates -- including the
+/// inherited `Version` field, whose wrapper is named after the **emitted**
+/// owner. That is the synthetic counterpart of the UCI
+/// `MissionID_Type`/`VersionedID_Type` boundary Task 035 unblocked, expressed
+/// without special-casing any UCI name.
+#[test]
+fn task035_selected_ada_optional_primitive_compiles_under_gnat() {
+    let output_root = output_dir("task035-ada");
+    let output = generate(
+        "optional-primitive.xsd",
+        "optional-primitive.yaml",
+        "ada",
+        "closed-schema",
+        &output_root,
+    );
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "ada optional-primitive generation should succeed"
+    );
+
+    let spec = std::fs::read_to_string(output_root.join("urn-test.ads"))
+        .expect("the selected Ada spec must exist");
+    // One wrapper per optional direct primitive field, named after the emitted
+    // owner -- including the field inherited from `VersionedBase`.
+    for helper in [
+        "type PrimitivePayload_Version_Optional (Is_Present : Boolean := False) is record",
+        "type PrimitivePayload_Maybe_Bool_Optional (Is_Present : Boolean := False) is record",
+        "type PrimitivePayload_Maybe_Signed_Optional (Is_Present : Boolean := False) is record",
+        "type PrimitivePayload_Maybe_Unsigned_Optional (Is_Present : Boolean := False) is record",
+        "type PrimitivePayload_Maybe_F32_Optional (Is_Present : Boolean := False) is record",
+        "type PrimitivePayload_Maybe_F64_Optional (Is_Present : Boolean := False) is record",
+        "type PrimitivePayload_Maybe_Binary_Optional (Is_Present : Boolean := False) is record",
+    ] {
+        assert!(spec.contains(helper), "missing {helper}:\n{spec}");
+    }
+    // Direct optional String keeps the shared `Optional_String`, unchanged.
+    assert!(
+        spec.contains("Maybe_String : Optional_String;"),
+        "direct optional String must keep Optional_String:\n{spec}"
+    );
+    assert!(
+        !spec.contains("Maybe_String_Optional"),
+        "direct optional String must not gain a per-field wrapper:\n{spec}"
+    );
+    // The required direct primitive field is untouched by Task 035.
+    assert!(spec.contains("Required_Bool : Boolean;"), "{spec}");
+
+    if Command::new("gnatmake").arg("--version").output().is_err() {
+        assert!(
+            std::env::var_os("AMS_GRA_REQUIRE_GNAT").is_none(),
+            "AMS_GRA_REQUIRE_GNAT is set but GNAT is not runnable"
+        );
+        return;
+    }
+    let status = Command::new("gnatmake")
+        .current_dir(&output_root)
+        .args(["-gnatwa", "-c", "urn-test.ads"])
+        .status()
+        .expect("GNAT reported a version, so it must be runnable");
+    assert!(status.success(), "selected Ada output must compile");
+}

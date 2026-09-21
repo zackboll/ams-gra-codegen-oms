@@ -89,16 +89,47 @@ owner, so an inherited optional field on a non-emitted abstract ancestor
 renders as `Derived_Maybe_Optional`, and the wrapper participates in the shared
 generated-name preflight. See `docs/backend-compatibility.md`.
 
+**Complete (Task 035), for the exact subset below:** Ada optional **direct
+primitive** Record values, reusing the identical Task 034 wrapper. A `0..1`
+non-nillable direct primitive field lowers to `Owner_Field_Optional` iff the Ada
+backend already implements that primitive's *value* representation:
+
+| Direct primitive | Task 035 | Wrapped value type |
+| --- | --- | --- |
+| `Boolean` | wrapper | `Boolean` |
+| `SignedInteger` | wrapper | `Long_Long_Integer`, with any Task 020 range |
+| `UnsignedInteger` | wrapper | `Interfaces.Unsigned_64`, with any Task 020 range |
+| `Float32` | wrapper | `Interfaces.IEEE_Float_32` |
+| `Float64` | wrapper | `Interfaces.IEEE_Float_64` |
+| `Binary` | wrapper | `Binary_Vectors.Vector` |
+| `String` | **unchanged** | shared `Optional_String`, no per-field wrapper |
+| `DateTime`/`Time`/`Duration`/`Decimal` | unsupported | no Ada value representation |
+
+`ConstraintSet::default()` is deliberately **not** the integral gate. The
+frontend normalizes a built-in integer type's domain into semantic IR bounds, so
+a bare `<xs:element type="xs:unsignedInt" minOccurs="0"/>` — which carries no
+author-written facet — still arrives with `minInclusive = 0`,
+`maxInclusive = 4294967295`. Integral fields are therefore gated on Task 020's
+`inclusive_integral_domain()`, the same lowering required direct integral fields
+already use, keeping one integral-domain policy and no IR constraint provenance.
+Non-integral direct primitives have no field-local facet lowering at all, so
+they do still require default constraints.
+
 **Still open:**
 
-- [ ] optional **direct non-String primitive** fields in Ada (this is what now
-      blocks the selected `PositionReport` closure, via
-      `VersionedID_Type.Version`);
+- [ ] **temporal** primitives (`DateTime`/`Time`/`Duration`) and `Decimal` — now
+      the first blocker in the selected `PositionReport` closure, via
+      `DateTimeType`, for Ada and Rust alike. Deferred to Task 036: these need a
+      value-space/lexical design, UCI's `.+Z` restriction, timezone semantics,
+      generated validation, and codec behavior;
+- [ ] integral shapes Task 020 rejects (exclusive bounds, half-open ranges,
+      length/lexical facets) and field-local facets on optional
+      Boolean/float/Binary — all still fail-closed, with no silent facet loss;
 - [ ] nillability in any backend — no optional Record field in either pinned
       UCI release is nillable, so this stays fail-closed on evidence;
-- [ ] optional values carrying field-local constraints;
-- [ ] optional named **Choice alternatives** — deliberately not enabled by
-      Task 034, whose scope is Record fields only.
+- [ ] optional **Choice alternatives**, named or direct primitive —
+      deliberately not enabled by Task 034 or Task 035, whose scope is Record
+      fields only.
 
 ### Open extension-point representation / externally supplied derived types
 

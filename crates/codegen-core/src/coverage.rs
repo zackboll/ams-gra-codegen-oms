@@ -1,3 +1,4 @@
+use crate::ada_optional::ada_optional_direct_primitive_representable;
 use crate::structure::{
     EffectiveStructuralType, StructuralProjectionError, StructuralSegmentContent,
     project_with_index,
@@ -1585,15 +1586,26 @@ fn occurrence_renderable(
         // Local constraints stay out: a field-local facet on an optional named
         // value has no lowering here, so it remains `ConstrainedSimpleTypes`.
         //
-        // Optional *direct primitive* fields other than String are unchanged;
-        // Task 034 deliberately adds only the named-target path beside the
-        // existing `Optional_String`.
+        // Task 035 broadens the same wrapper to *direct primitive* targets whose
+        // value representation Ada already implements, which the shared
+        // classifier decides. `Primitive(String)` keeps the existing
+        // `Optional_String`, so it is renderable here without a wrapper.
+        //
+        // Crucially this stays an **occurrence** judgement. A direct temporal or
+        // Decimal primitive is not made renderable by having a storage shape:
+        // the classifier returns false for it, and `primitive_ref_renderable`
+        // independently still reports its primitive target unsupported. Those
+        // two questions must remain separate, so a future temporal primitive
+        // fits this wrapper without optionality having silently pre-approved it.
         (BackendLanguage::Ada, OccurrenceShape::OptionalOne) => match &field.type_ref.target {
             TypeRefTarget::Named(_) => {
                 field.constraints == ConstraintSet::default()
                     || enabled.contains(&FeatureFamily::ConstrainedSimpleTypes)
             }
-            TypeRefTarget::Primitive(kind) => *kind == PrimitiveKind::String,
+            TypeRefTarget::Primitive(kind) => {
+                *kind == PrimitiveKind::String
+                    || ada_optional_direct_primitive_representable(*kind, &field.constraints)
+            }
         },
         (BackendLanguage::Rust | BackendLanguage::Cpp, OccurrenceShape::OptionalOne) => true,
         (BackendLanguage::Ada, OccurrenceShape::Bounded { max, .. })
@@ -2777,13 +2789,104 @@ mod tests {
         );
     }
 
-    /// Task 034 adds only the **named**-target path. An optional direct
-    /// non-String primitive is untouched in Ada and still unrenderable, while
-    /// Rust/C++ keep supporting it.
+    /// Task 035 replaces the Task 034 control that said "optional direct
+    /// non-String primitive -> Ada unsupported" with precise per-kind behavior.
+    ///
+    /// Ada's baseline occurrence support now covers exactly the direct primitive
+    /// kinds whose value representation the backend already implements. Rust and
+    /// C++ are unchanged controls: they supported all of these before and after.
     #[test]
-    fn optional_direct_primitive_field_keeps_its_language_specific_support() {
-        let mut value = field_ref("value", TypeRef::primitive(PrimitiveKind::SignedInteger));
+    fn optional_direct_primitive_occurrence_support_is_per_kind() {
+        for kind in [
+            PrimitiveKind::Boolean,
+            PrimitiveKind::SignedInteger,
+            PrimitiveKind::UnsignedInteger,
+            PrimitiveKind::Float32,
+            PrimitiveKind::Float64,
+            PrimitiveKind::Binary,
+            PrimitiveKind::String,
+        ] {
+            let mut value = field_ref("value", TypeRef::primitive(kind));
+            value.cardinality = Cardinality::OPTIONAL_ONE;
+            let schema = message_schema(
+                vec![declaration(
+                    "Payload",
+                    TypeKind::Record {
+                        fields: vec![value],
+                    },
+                )],
+                "Payload",
+            );
+            let analysis =
+                CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
+            for language in [
+                BackendLanguage::Ada,
+                BackendLanguage::Rust,
+                BackendLanguage::Cpp,
+            ] {
+                assert_eq!(
+                    analysis
+                        .backend_coverage(language)
+                        .unwrap()
+                        .field_occurrences_renderable,
+                    1,
+                    "{language:?} must render an optional direct {kind:?} occurrence"
+                );
+            }
+        }
+    }
+
+    /// The capability model must keep **occurrence representation** and
+    /// **primitive target support** as separate questions.
+    ///
+    /// A temporal or Decimal optional field has a conceivable storage shape, but
+    /// its primitive type is still unsupported, so the *field* must not become
+    /// renderable. This is what keeps Task 036 honest: adding temporal primitive
+    /// support later is what should flip these, not Task 035's occurrence work.
+    #[test]
+    fn optional_occurrence_storage_does_not_grant_primitive_support() {
+        for kind in [
+            PrimitiveKind::DateTime,
+            PrimitiveKind::Time,
+            PrimitiveKind::Duration,
+            PrimitiveKind::Decimal,
+        ] {
+            let mut value = field_ref("value", TypeRef::primitive(kind));
+            value.cardinality = Cardinality::OPTIONAL_ONE;
+            let schema = message_schema(
+                vec![declaration(
+                    "Payload",
+                    TypeKind::Record {
+                        fields: vec![value],
+                    },
+                )],
+                "Payload",
+            );
+            let analysis =
+                CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
+            assert_eq!(
+                analysis
+                    .backend_coverage(BackendLanguage::Ada)
+                    .unwrap()
+                    .field_occurrences_renderable,
+                0,
+                "{kind:?} must not gain Ada occurrence support"
+            );
+            // And the field itself stays unrenderable because the primitive is.
+            assert!(
+                !primitive_ref_renderable(kind, &BTreeSet::new()),
+                "{kind:?} primitive support must remain false"
+            );
+        }
+    }
+
+    /// An optional direct integral field whose bounds Ada cannot represent stays
+    /// fail-closed rather than silently losing the facet.
+    #[test]
+    fn optional_direct_integral_with_unlowerable_bounds_stays_unsupported() {
+        let mut value = field_ref("value", TypeRef::primitive(PrimitiveKind::UnsignedInteger));
         value.cardinality = Cardinality::OPTIONAL_ONE;
+        value.constraints.min_exclusive = Some(NumericValue::Integer(0));
         let schema = message_schema(
             vec![declaration(
                 "Payload",
@@ -2801,15 +2904,33 @@ mod tests {
                 .field_occurrences_renderable,
             0
         );
-        for language in [BackendLanguage::Rust, BackendLanguage::Cpp] {
-            assert_eq!(
-                analysis
-                    .backend_coverage(language)
-                    .unwrap()
-                    .field_occurrences_renderable,
-                1
-            );
-        }
+    }
+
+    /// The bounds the frontend synthesizes for a built-in like `xs:unsignedInt`
+    /// are not a user-authored restriction and must not block the occurrence.
+    #[test]
+    fn synthesized_builtin_integer_bounds_do_not_block_ada_occurrence() {
+        let mut value = field_ref("value", TypeRef::primitive(PrimitiveKind::UnsignedInteger));
+        value.cardinality = Cardinality::OPTIONAL_ONE;
+        value.constraints.min_inclusive = Some(NumericValue::Integer(0));
+        value.constraints.max_inclusive = Some(NumericValue::Integer(4_294_967_295));
+        let schema = message_schema(
+            vec![declaration(
+                "Payload",
+                TypeKind::Record {
+                    fields: vec![value],
+                },
+            )],
+            "Payload",
+        );
+        let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
+        assert_eq!(
+            analysis
+                .backend_coverage(BackendLanguage::Ada)
+                .unwrap()
+                .field_occurrences_renderable,
+            1
+        );
     }
 
     // ---------------------------------------------------------------

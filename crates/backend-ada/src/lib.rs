@@ -3,10 +3,11 @@
 use ams_gra_oms_codegen_core::{
     ADA_PORTABLE_POSITIVE_INDEX_MAX, AbstractValueProjection, Backend, BackendLanguage,
     CodegenError, EffectiveValueMember, FloatingDomain, GeneratedFile, GenerationWorld,
-    InclusiveIntegralDomain, TypeEmission, abstract_value_projection_for_ref, backend_preflight,
-    effective_choice_alternatives, effective_record_fields, field_storage_semantics,
-    float32_literal, float64_literal, floating_domain, inclusive_integral_domain,
-    plan_type_emissions, schema_emits_ada_binary_vectors, schema_emits_unbounded_sequence_support,
+    InclusiveIntegralDomain, TypeEmission, abstract_value_projection_for_ref,
+    ada_record_field_uses_optional_wrapper, backend_preflight, effective_choice_alternatives,
+    effective_record_fields, field_storage_semantics, float32_literal, float64_literal,
+    floating_domain, inclusive_integral_domain, plan_type_emissions,
+    schema_emits_ada_binary_vectors, schema_emits_unbounded_sequence_support,
 };
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind,
@@ -291,7 +292,7 @@ fn render_declaration(
                     .expect("writing to String cannot fail");
                 } else if matches!(field.cardinality.shape(), OccurrenceShape::Unbounded { .. }) {
                     render_unbounded_helper(output, &name, field)?;
-                } else if ada_emits_optional_wrapper(field) {
+                } else if ada_record_field_uses_optional_wrapper(field) {
                     render_optional_helper(output, &name, field)?;
                 }
             }
@@ -309,10 +310,12 @@ fn render_declaration(
                     {
                         "Optional_String".to_owned()
                     }
-                    // Task 034: a non-nillable optional *named* value is stored
-                    // in this field's own generated discriminated wrapper,
-                    // emitted just above under the same emitted owner.
-                    Cardinality::OPTIONAL_ONE if ada_emits_optional_wrapper(field) => {
+                    // Task 034/035: a non-nillable optional named value, or a
+                    // direct primitive whose value representation this backend
+                    // already implements, is stored in this field's own
+                    // generated discriminated wrapper, emitted just above under
+                    // the same emitted owner.
+                    Cardinality::OPTIONAL_ONE if ada_record_field_uses_optional_wrapper(field) => {
                         format!("{name}_{field_name}_Optional")
                     }
                     cardinality
@@ -565,33 +568,6 @@ fn validate_repeated_cardinality(field: &ams_gra_oms_ir::FieldDecl) -> Result<()
         }
         _ => Ok(()),
     }
-}
-
-/// Whether Task 034's per-field optional wrapper is emitted for `field`.
-///
-/// This is the single Ada-side predicate for the Task 034 subset, and it is
-/// deliberately narrow:
-///
-/// * `0..1` exactly -- no other cardinality family is implied;
-/// * **not** nillable -- nil is a third state this two-state wrapper cannot
-///   express, so it stays fail-closed;
-/// * **named** target -- direct primitives keep their existing treatment, so
-///   `Primitive(String)` still uses the shared `Optional_String` and every
-///   other direct primitive still fails closed exactly as before;
-/// * **default** field-local constraints -- a local facet on an optional named
-///   value has no lowering here.
-///
-/// It says nothing about whether the *target* is renderable. That remains the
-/// job of `ada_field_base`/`validate_schema`, so an optional reference to an
-/// unsupported declaration still fails, attributed to the target.
-///
-/// Mirrored by `codegen_core::ada_emits_optional_wrapper` so the shared
-/// generated-name preflight reserves exactly the helpers emitted here.
-fn ada_emits_optional_wrapper(field: &ams_gra_oms_ir::FieldDecl) -> bool {
-    field.cardinality == Cardinality::OPTIONAL_ONE
-        && !field.nillable
-        && matches!(field.type_ref.target, TypeRefTarget::Named(_))
-        && field.constraints == ConstraintSet::default()
 }
 
 /// Emit the Task 034 optional wrapper for one field of one emitted owner.
@@ -1941,8 +1917,14 @@ end Probe;
         );
     }
 
+    /// Task 035 supersedes the Task 025 control that asserted optional direct
+    /// Binary was unsupported: an unconstrained optional Binary now renders in
+    /// the shared per-field wrapper over `Binary_Vectors.Vector`.
+    ///
+    /// A *constrained* optional Binary must still fail closed, because the Ada
+    /// backend has no field-local Binary facet lowering and Task 035 adds none.
     #[test]
-    fn optional_binary_field_remains_unsupported() {
+    fn optional_binary_field_uses_a_wrapper_but_constrained_stays_unsupported() {
         let mut schema = floating_schema();
         let TypeKind::Record { fields } = &mut schema.types[0].kind else {
             panic!("floating fixture should contain a record");
@@ -1950,12 +1932,40 @@ end Probe;
         fields.truncate(1);
         fields[0].type_ref = TypeRef::primitive(PrimitiveKind::Binary);
         fields[0].cardinality = Cardinality::OPTIONAL_ONE;
-        let error =
-            generate(&schema, CLOSED).expect_err("optional binary field must remain unsupported");
+        let member = fields[0].name.clone();
+        let owner = schema.types[0].name.local_name.clone();
+        let source = generate(&schema, CLOSED).expect("optional binary field must render");
+        assert!(
+            source.contains(&format!(
+                "type {owner}_{member}_Optional (Is_Present : Boolean := False) is record"
+            )),
+            "{source}"
+        );
+        // The wrapper stores the backend's existing Binary representation.
+        assert!(
+            source.contains("when True  => Value : Binary_Vectors.Vector;"),
+            "{source}"
+        );
+
+        // Same field, plus a field-local length facet: still fail-closed.
+        let TypeKind::Record { fields } = &mut schema.types[0].kind else {
+            panic!("floating fixture should contain a record");
+        };
+        fields[0].constraints = ConstraintSet {
+            length: Some(4),
+            ..ConstraintSet::default()
+        };
+        let error = generate(&schema, CLOSED)
+            .expect_err("a constrained optional binary field must stay unsupported");
+        // The diagnostic names the unlowerable *facet*, not the optionality:
+        // the field-local length is the real reason, and Task 035 preserves that
+        // attribution rather than blaming the occurrence.
         assert!(
             error
                 .message
-                .contains("unsupported Ada IR construct: cardinality on field")
+                .contains("unsupported Ada IR construct: field constraints on"),
+            "{}",
+            error.message
         );
     }
 
@@ -2719,6 +2729,433 @@ begin
    end;
 end Probe;
 "#;
+
+    /// Task 035 runtime probe for optional **direct primitive** wrappers.
+    ///
+    /// Exercises Boolean, UnsignedInteger, and Float64 in both presence states,
+    /// and additionally *uses* the Binary wrapper so the generated type is
+    /// proven to compile against `Binary_Vectors.Vector` rather than merely
+    /// being emitted as text.
+    ///
+    /// As in Task 034, the absent state is written with no aggregate at all --
+    /// that is the point of defaulting `Is_Present` to `False` -- and reading
+    /// `Value` through an absent wrapper must raise `Constraint_Error` rather
+    /// than yield a sentinel.
+    const ADA_PRIMITIVE_OPTIONAL_PROBE: &str = r#"with Interfaces;
+with Optional.Primitive;
+procedure Probe is
+   use Optional.Primitive;
+   --  The float wrappers store `Interfaces.IEEE_Float_*`, whose operators are
+   --  declared in `Interfaces`; the probe compares values, so it needs them.
+   use Interfaces;
+   Absent_Bool      : PrimitiveOptionals_Maybe_Bool_Optional;
+   Present_Bool     : constant PrimitiveOptionals_Maybe_Bool_Optional :=
+     (Is_Present => True, Value => True);
+   Absent_Unsigned  : PrimitiveOptionals_Maybe_Unsigned_Optional;
+   Present_Unsigned : constant PrimitiveOptionals_Maybe_Unsigned_Optional :=
+     (Is_Present => True, Value => 4_294_967_295);
+   Absent_F64       : PrimitiveOptionals_Maybe_F64_Optional;
+   Present_F64      : constant PrimitiveOptionals_Maybe_F64_Optional :=
+     (Is_Present => True, Value => 2.5);
+   Absent_Binary    : PrimitiveOptionals_Maybe_Binary_Optional;
+begin
+   --  Absence is the default for every generated wrapper.
+   if Absent_Bool.Is_Present
+     or else Absent_Unsigned.Is_Present
+     or else Absent_F64.Is_Present
+     or else Absent_Binary.Is_Present
+   then
+      raise Program_Error with "default wrapper must be absent";
+   end if;
+
+   --  Presence retains the supplied value.
+   if not Present_Bool.Is_Present or else Present_Bool.Value /= True then
+      raise Program_Error with "present Boolean wrapper must carry its value";
+   end if;
+   if not Present_Unsigned.Is_Present
+     or else Present_Unsigned.Value /= 4_294_967_295
+   then
+      raise Program_Error with "present Unsigned wrapper must carry its value";
+   end if;
+   if not Present_F64.Is_Present or else Present_F64.Value /= 2.5 then
+      raise Program_Error with "present Float64 wrapper must carry its value";
+   end if;
+
+   --  The Binary wrapper is really usable over Binary_Vectors.Vector.
+   declare
+      Octets : Binary_Vectors.Vector;
+   begin
+      Octets.Append (16#AB#);
+      Octets.Append (16#CD#);
+      declare
+         Present_Binary : constant PrimitiveOptionals_Maybe_Binary_Optional :=
+           (Is_Present => True, Value => Octets);
+      begin
+         if Natural (Present_Binary.Value.Length) /= 2 then
+            raise Program_Error with "present Binary wrapper must carry its value";
+         end if;
+      end;
+   end;
+
+   --  Absence is a real state, not a sentinel: reading through it is an error.
+   declare
+      Ignored : Interfaces.Unsigned_64;
+   begin
+      Ignored := Absent_Unsigned.Value;
+      raise Program_Error with "reading an absent value must be checked";
+   exception
+      when Constraint_Error => null;
+   end;
+end Probe;
+"#;
+
+    /// Task 035 core control: every optional **direct primitive** field inside
+    /// the supported subset lowers to its own generated discriminated wrapper,
+    /// direct optional String keeps the shared `Optional_String`, and the result
+    /// compiles **and runs** under GNAT in both presence states.
+    #[test]
+    fn optional_direct_primitive_values_render_and_execute_under_gnat() {
+        let schema = preflight_fixture("backend-optional-primitive-values.xsd");
+        let source = generate(&schema, CLOSED).expect("optional direct primitives must render");
+
+        // Every supported direct primitive gains a wrapper, storing the exact
+        // representation the backend already uses for that primitive.
+        for (member, value_type) in [
+            ("Maybe_Bool", "Boolean"),
+            (
+                "Maybe_Signed",
+                "Long_Long_Integer range -9_223_372_036_854_775_808 .. 9_223_372_036_854_775_807",
+            ),
+            (
+                "Maybe_Unsigned",
+                "Interfaces.Unsigned_64 range 0 .. 4294967295",
+            ),
+            ("Maybe_F32", "Interfaces.IEEE_Float_32"),
+            ("Maybe_F64", "Interfaces.IEEE_Float_64"),
+            ("Maybe_Binary", "Binary_Vectors.Vector"),
+        ] {
+            assert!(
+                source.contains(&format!(
+                    "type PrimitiveOptionals_{member}_Optional (Is_Present : Boolean := False) is record"
+                )),
+                "{member} must gain a wrapper:\n{source}"
+            );
+            assert!(
+                source.contains(&format!("when True  => Value : {value_type};")),
+                "{member} must store {value_type}:\n{source}"
+            );
+            assert!(
+                source.contains(&format!(
+                    "      {member} : PrimitiveOptionals_{member}_Optional;"
+                )),
+                "{member} must use its wrapper:\n{source}"
+            );
+        }
+
+        // Direct optional String is UNCHANGED: it keeps the shared
+        // `Optional_String` and gains no per-field wrapper, so Task 035 causes
+        // no churn in already generated output.
+        assert!(
+            source.contains("      Maybe_String : Optional_String;"),
+            "{source}"
+        );
+        assert!(
+            !source.contains("PrimitiveOptionals_Maybe_String_Optional"),
+            "direct optional String must not gain a per-field wrapper:\n{source}"
+        );
+
+        // Task 035 changes the optional occurrence only: required direct
+        // primitive fields are still stored directly, with no wrapper.
+        assert!(
+            source.contains("      Required_Bool : Boolean;"),
+            "{source}"
+        );
+        assert!(
+            source.contains(
+                "      Required_Unsigned : Interfaces.Unsigned_64 range 0 .. 4294967295;"
+            ),
+            "{source}"
+        );
+        assert!(
+            source.contains("      Required_F64 : Interfaces.IEEE_Float_64;"),
+            "{source}"
+        );
+        for member in ["Required_Bool", "Required_Unsigned", "Required_F64"] {
+            assert!(
+                !source.contains(&format!("{member}_Optional")),
+                "{member} must not gain a wrapper:\n{source}"
+            );
+        }
+
+        // Each wrapper is declared before the record that uses it, and no
+        // shared generic Optional abstraction was introduced.
+        let record = source
+            .find("type PrimitiveOptionals is record")
+            .expect("PrimitiveOptionals must be emitted");
+        for member in [
+            "Maybe_Bool",
+            "Maybe_Signed",
+            "Maybe_Unsigned",
+            "Maybe_F32",
+            "Maybe_F64",
+            "Maybe_Binary",
+        ] {
+            let helper = format!("type PrimitiveOptionals_{member}_Optional");
+            assert!(
+                source.find(&helper).expect("helper must be emitted") < record,
+                "{helper} must precede the record that uses it:\n{source}"
+            );
+        }
+        assert!(!source.contains("generic"), "{source}");
+
+        use std::fs;
+        use std::process::Command;
+        if Command::new("gnatmake").arg("--version").output().is_err() {
+            assert!(
+                std::env::var_os("AMS_GRA_REQUIRE_GNAT").is_none(),
+                "AMS_GRA_REQUIRE_GNAT is set but GNAT is not runnable"
+            );
+            return;
+        }
+        let directory = std::env::temp_dir().join("ams-gra-oms-task035-ada-primitive");
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(&directory).expect("create Ada probe directory");
+        // Namespace `urn:optional:primitive` yields package `Optional.Primitive`.
+        fs::write(
+            directory.join("optional.ads"),
+            "package Optional is\nend Optional;\n",
+        )
+        .expect("write Ada parent package");
+        fs::write(directory.join("optional-primitive.ads"), &source)
+            .expect("write generated Ada spec");
+        fs::write(directory.join("probe.adb"), ADA_PRIMITIVE_OPTIONAL_PROBE)
+            .expect("write Ada probe");
+        let status = Command::new("gnatmake")
+            .current_dir(&directory)
+            .args(["-q", "probe.adb"])
+            .status()
+            .expect("GNAT reported a version, so it must be runnable");
+        assert!(status.success(), "generated Ada spec must compile");
+        let run = Command::new(directory.join("probe"))
+            .status()
+            .expect("compiled probe must run");
+        let _ = fs::remove_dir_all(&directory);
+        assert!(
+            run.success(),
+            "both wrapper states must behave as generated"
+        );
+    }
+
+    /// Task 035 inherited-owner control, shaped like the UCI `MissionID_Type` /
+    /// `VersionedID_Type` boundary this task unblocked. The wrapper is named
+    /// after the **emitted** owner, so `Base` -- ancestry-only and never written
+    /// -- emits no `Base_Version_Optional`, and a user type carrying that
+    /// spelling must be accepted, render, and compile.
+    #[test]
+    fn an_inherited_direct_primitive_optional_uses_the_emitted_owner_under_gnat() {
+        let schema = preflight_fixture("backend-optional-primitive-inherited.xsd");
+        assert!(
+            ams_gra_oms_codegen_core::validate_backend_names(&schema, BackendLanguage::Ada, CLOSED)
+                .is_ok(),
+            "no optional wrapper is emitted under a non-emitted abstract Record owner"
+        );
+        let source = generate(&schema, CLOSED).expect("the inherited control must render");
+
+        assert!(
+            source.contains(
+                "type Derived_Version_Optional (Is_Present : Boolean := False) is record"
+            ),
+            "{source}"
+        );
+        assert!(
+            source.contains("      Version : Derived_Version_Optional;"),
+            "{source}"
+        );
+        // `Base_Version_Optional` appears exactly once, as the user declaration
+        // -- never as a generated wrapper under the non-emitted abstract base.
+        assert_eq!(
+            source.matches("type Base_Version_Optional").count(),
+            1,
+            "{source}"
+        );
+        assert!(!source.contains("type Base is"), "{source}");
+
+        use std::fs;
+        use std::process::Command;
+        if Command::new("gnatmake").arg("--version").output().is_err() {
+            assert!(
+                std::env::var_os("AMS_GRA_REQUIRE_GNAT").is_none(),
+                "AMS_GRA_REQUIRE_GNAT is set but GNAT is not runnable"
+            );
+            return;
+        }
+        let directory = std::env::temp_dir().join("ams-gra-oms-task035-ada-inherited");
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(&directory).expect("create Ada probe directory");
+        // `urn:optional:primitive-inherited` splits on non-alphanumerics, so the
+        // last two components yield the package `Primitive.Inherited`.
+        let package = package_name(&schema).expect("the fixture namespace must map");
+        let (parent, _) = package
+            .split_once('.')
+            .expect("the generated package is always a child unit");
+        fs::write(
+            directory.join(format!("{}.ads", parent.to_ascii_lowercase())),
+            format!("package {parent} is\nend {parent};\n"),
+        )
+        .expect("write Ada parent package");
+        let stem = package.to_ascii_lowercase().replace('.', "-");
+        fs::write(directory.join(format!("{stem}.ads")), &source)
+            .expect("write generated Ada spec");
+        let status = Command::new("gnatmake")
+            .current_dir(&directory)
+            .args(["-gnatwa", "-c", &format!("{stem}.ads")])
+            .status()
+            .expect("GNAT reported a version, so it must be runnable");
+        let _ = fs::remove_dir_all(&directory);
+        assert!(status.success(), "generated Ada spec must compile");
+    }
+
+    /// Task 035 collision control: the wrapper Ada really emits occupies a real
+    /// top-level name, so a user declaration spelled the same way must be
+    /// rejected -- with attribution naming both responsible declarations.
+    ///
+    /// Rust and C++ are controls: neither emits the Ada helper, so the spelling
+    /// stays a free top-level name for them.
+    #[test]
+    fn a_direct_primitive_optional_wrapper_name_collision_is_rejected() {
+        let schema = preflight_fixture("backend-optional-primitive-collision.xsd");
+        let error =
+            ams_gra_oms_codegen_core::validate_backend_names(&schema, BackendLanguage::Ada, CLOSED)
+                .expect_err("the emitted wrapper genuinely occupies this name");
+        assert!(
+            error.to_string().contains("Owner_Version_Optional"),
+            "{error}"
+        );
+        // Generation fails for the same reason, through the shared preflight.
+        let generated = generate(&schema, CLOSED)
+            .expect_err("Ada generation must not emit a doubly declared name");
+        assert!(
+            generated.message.contains("Owner_Version_Optional"),
+            "{}",
+            generated.message
+        );
+        // Rust and C++ never emit this helper, so the spelling stays free.
+        for language in [BackendLanguage::Rust, BackendLanguage::Cpp] {
+            assert!(
+                ams_gra_oms_codegen_core::validate_backend_names(&schema, language, CLOSED).is_ok(),
+                "{language:?} must not reserve the Ada optional wrapper spelling"
+            );
+        }
+    }
+
+    /// Task 035 negative controls, all applied to the same optional direct
+    /// primitive field so the only difference is the property under test.
+    ///
+    /// Each of these must stay fail-closed: Task 035 adds an occurrence
+    /// representation, not nillability, not field-local constraint lowering, and
+    /// not primitive expansion.
+    #[test]
+    fn direct_primitive_optional_boundaries_remain_unsupported() {
+        // Start from the Task 035 control, which renders, and keep exactly one
+        // optional direct primitive field so each boundary is isolated.
+        let mut schema = preflight_fixture("backend-optional-primitive-values.xsd");
+        let record = schema
+            .types
+            .iter()
+            .position(|declaration| declaration.name.local_name == "PrimitiveOptionals")
+            .expect("the control fixture declares PrimitiveOptionals");
+        let TypeKind::Record { fields } = &mut schema.types[record].kind else {
+            panic!("PrimitiveOptionals is a record");
+        };
+        fields.retain(|field| field.name == "Maybe_Unsigned");
+        assert_eq!(fields.len(), 1, "one isolated optional field");
+        assert!(
+            generate(&schema, CLOSED).is_ok(),
+            "the isolated control must render before each boundary is applied"
+        );
+
+        // Nillable: nil is a third state the two-state wrapper cannot express.
+        let TypeKind::Record { fields } = &mut schema.types[record].kind else {
+            panic!("PrimitiveOptionals is a record");
+        };
+        fields[0].nillable = true;
+        let error =
+            generate(&schema, CLOSED).expect_err("a nillable optional must stay unsupported");
+        // The diagnostic names nillability, which is the actual reason.
+        assert!(
+            error
+                .message
+                .contains("unsupported Ada IR construct: nillable field"),
+            "{}",
+            error.message
+        );
+
+        // A field-local integral shape Task 020 cannot lower: no silent facet
+        // loss into an unconstrained wrapper.
+        let TypeKind::Record { fields } = &mut schema.types[record].kind else {
+            panic!("PrimitiveOptionals is a record");
+        };
+        fields[0].nillable = false;
+        fields[0].constraints = ConstraintSet {
+            min_exclusive: Some(ams_gra_oms_ir::NumericValue::Integer(0)),
+            ..ConstraintSet::default()
+        };
+        let error = generate(&schema, CLOSED)
+            .expect_err("an unlowerable integral facet must stay unsupported");
+        assert!(
+            error.message.contains("unsupported Ada IR construct"),
+            "{}",
+            error.message
+        );
+
+        // Temporal and Decimal: occurrence storage does not grant primitive
+        // support, and the diagnostic keeps blaming the primitive/target rather
+        // than claiming optionality is the root problem.
+        for kind in [
+            PrimitiveKind::DateTime,
+            PrimitiveKind::Time,
+            PrimitiveKind::Duration,
+            PrimitiveKind::Decimal,
+        ] {
+            let TypeKind::Record { fields } = &mut schema.types[record].kind else {
+                panic!("PrimitiveOptionals is a record");
+            };
+            fields[0].type_ref = TypeRef::primitive(kind);
+            fields[0].constraints = ConstraintSet::default();
+            let error = generate(&schema, CLOSED)
+                .expect_err("an unsupported primitive must stay unsupported when optional");
+            assert!(
+                error.message.contains("type reference"),
+                "{kind:?} must still be rejected for its primitive type, not its \
+                 cardinality: {}",
+                error.message
+            );
+        }
+    }
+
+    /// Task 035 is Record fields only. An optional direct primitive **Choice
+    /// alternative** stays fail-closed: a Choice's exclusivity is already
+    /// carried by its generated `Kind` discriminant, and nothing here justifies
+    /// giving one alternative a second nested discriminant.
+    #[test]
+    fn optional_direct_primitive_choice_alternatives_remain_unsupported() {
+        let mut schema = choice_schema();
+        let TypeKind::Choice { alternatives } = &mut schema.types[1].kind else {
+            panic!("choice fixture should contain a choice");
+        };
+        alternatives[0].type_ref = TypeRef::primitive(PrimitiveKind::UnsignedInteger);
+        alternatives[0].constraints = ConstraintSet::default();
+        alternatives[0].cardinality = Cardinality::OPTIONAL_ONE;
+        let error = generate(&schema, CLOSED)
+            .expect_err("an optional direct primitive Choice alternative must stay unsupported");
+        assert!(
+            error
+                .message
+                .contains("unsupported Ada IR construct: cardinality on Choice alternative"),
+            "{}",
+            error.message
+        );
+    }
 
     /// Task 034 core control: a non-nillable `0..1` named Enumeration field and
     /// a non-nillable `0..1` named Record field each lower to their own

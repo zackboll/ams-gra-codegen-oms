@@ -1,0 +1,47 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:optional:primitive"
+           targetNamespace="urn:optional:primitive"
+           elementFormDefault="qualified">
+  <!-- Task 035 core control: non-nillable 0..1 DIRECT PRIMITIVE Record fields.
+
+       Every optional field below is a bare built-in with no author-written
+       facet. backend-ada must emit one per-field discriminated wrapper each,
+       named after the emitted owner:
+
+         PrimitiveOptionals_Maybe_Bool_Optional
+         PrimitiveOptionals_Maybe_Signed_Optional
+         PrimitiveOptionals_Maybe_Unsigned_Optional
+         PrimitiveOptionals_Maybe_F32_Optional
+         PrimitiveOptionals_Maybe_F64_Optional
+         PrimitiveOptionals_Maybe_Binary_Optional
+
+       but emphatically NOT
+
+         PrimitiveOptionals_Maybe_String_Optional
+
+       because direct optional String keeps the pre-existing shared
+       `Optional_String`. Task 035 must not churn already generated output.
+
+       Note `Maybe_Signed`/`Maybe_Unsigned` normalize to inclusive bounds even
+       though nothing here writes a facet: the frontend turns a built-in
+       integer type's domain into semantic IR bounds. That is exactly why Task
+       035 gates integral fields on the Task 020 `inclusive_integral_domain()`
+       lowering rather than on `ConstraintSet::default()`.
+
+       The required controls prove Task 035 changes only the optional
+       occurrence and leaves required direct primitive fields alone. -->
+  <xs:complexType name="PrimitiveOptionals">
+    <xs:sequence>
+      <xs:element name="Required_Bool" type="xs:boolean"/>
+      <xs:element name="Required_Unsigned" type="xs:unsignedInt"/>
+      <xs:element name="Required_F64" type="xs:double"/>
+      <xs:element name="Maybe_Bool" type="xs:boolean" minOccurs="0"/>
+      <xs:element name="Maybe_Signed" type="xs:long" minOccurs="0"/>
+      <xs:element name="Maybe_Unsigned" type="xs:unsignedInt" minOccurs="0"/>
+      <xs:element name="Maybe_F32" type="xs:float" minOccurs="0"/>
+      <xs:element name="Maybe_F64" type="xs:double" minOccurs="0"/>
+      <xs:element name="Maybe_Binary" type="xs:hexBinary" minOccurs="0"/>
+      <xs:element name="Maybe_String" type="xs:string" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

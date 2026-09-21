@@ -1,0 +1,43 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:optional:primitive-inherited"
+           targetNamespace="urn:optional:primitive-inherited"
+           elementFormDefault="qualified">
+  <!-- Task 035 inherited-owner control, shaped like the UCI boundary Task 035
+       actually unblocked:
+
+         VersionedID_Type:  Version : xs:unsignedInt 0..1
+         MissionID_Type  extends VersionedID_Type
+
+       Here `Base` is abstract and used only as structural ancestry, so
+       backend-ada writes no type for it. Its optional direct primitive
+       `Version` field folds into the emitted `Derived`, and the wrapper Ada
+       actually writes is named after the *emitted* owner:
+
+         Derived_Version_Optional
+
+       and never `Base_Version_Optional`. The user type spelled
+       `Base_Version_Optional` is declared precisely because nothing emits that
+       spelling, so preflight must accept it and GNAT must compile the result.
+
+       No UCI type name is special-cased anywhere; this is an ordinary
+       inheritance shape. -->
+  <xs:complexType name="Base" abstract="true">
+    <xs:sequence>
+      <xs:element name="Version" type="xs:unsignedInt" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Derived">
+    <xs:complexContent>
+      <xs:extension base="t:Base">
+        <xs:sequence>
+          <xs:element name="Local" type="xs:string"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="Base_Version_Optional">
+    <xs:sequence>
+      <xs:element name="Marker" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

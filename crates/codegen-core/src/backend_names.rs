@@ -31,14 +31,15 @@
 use crate::abstract_value::{
     EffectiveValueMember, abstract_value_projection_for_ref, field_storage_semantics,
 };
+use crate::ada_optional::ada_record_field_uses_optional_wrapper;
 use crate::coverage::BackendLanguage;
 use crate::floating::floating_domain;
 use crate::structure::{effective_choice_alternatives, effective_record_fields};
 use crate::world::GenerationWorld;
 use crate::{AbstractValueProjection, TypeEmission, name_preflight_plan};
 use ams_gra_oms_ir::{
-    Cardinality, ConstraintSet, FieldDecl, OccurrenceShape, PrimitiveKind, QualifiedName, SchemaIr,
-    TypeDecl, TypeKind, TypeRefTarget,
+    Cardinality, OccurrenceShape, PrimitiveKind, QualifiedName, SchemaIr, TypeDecl, TypeKind,
+    TypeRefTarget,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
@@ -1235,22 +1236,8 @@ fn ada_emits_helper(cardinality: Cardinality) -> bool {
     }
 }
 
-/// Whether Ada emits a Task 034 per-field optional wrapper for this member.
-///
-/// Mirrors `backend-ada::ada_emits_optional_wrapper` exactly. The wrapper is a
-/// generated Ada **top-level** identifier in the flat package, so it has to be
-/// registered beside declared types -- and only when it is really emitted,
-/// otherwise a name nothing writes would be reserved and a legitimate user
-/// declaration falsely rejected.
-fn ada_emits_optional_wrapper(field: &FieldDecl) -> bool {
-    field.cardinality == Cardinality::OPTIONAL_ONE
-        && !field.nillable
-        && matches!(field.type_ref.target, TypeRefTarget::Named(_))
-        && field.constraints == ConstraintSet::default()
-}
-
-/// Record the flat-package name of the Task 034 optional wrapper Ada derives
-/// from one emitted member: `{Owner}_{Member}_Optional`.
+/// Record the flat-package name of the Task 034/035 optional wrapper Ada
+/// derives from one emitted member: `{Owner}_{Member}_Optional`.
 ///
 /// `owner` is the **emitted** declaration, exactly as for repeated helpers, so
 /// an inherited optional field registers under the concrete descendant that
@@ -1562,8 +1549,9 @@ fn register_declaration_members(
                             &field.name,
                             field.cardinality,
                         )?;
-                    } else if ada_emits_optional_wrapper(field) {
-                        // Task 034. Record fields only: a Choice alternative's
+                    } else if ada_record_field_uses_optional_wrapper(field) {
+                        // Task 034/035. Record fields only: a Choice
+                        // alternative's
                         // exclusivity is already carried by the generated
                         // discriminant, so no optional wrapper is emitted --
                         // or reserved -- there.

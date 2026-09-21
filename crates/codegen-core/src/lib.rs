@@ -1,6 +1,7 @@
 //! Shared backend contract for OMS/UCI source generation.
 
 mod abstract_value;
+mod ada_optional;
 mod backend_names;
 mod backend_preflight;
 mod coverage;
@@ -19,6 +20,9 @@ pub use abstract_value::{
     abstract_value_reference_renderability, abstract_value_targets,
     classify_abstract_value_inhabitance, classify_abstract_value_semantics,
     classify_abstract_value_topology, field_storage_semantics, project_abstract_value,
+};
+pub use ada_optional::{
+    ada_optional_direct_primitive_representable, ada_record_field_uses_optional_wrapper,
 };
 pub use backend_names::{
     BackendNameError, NameRegion, backend_names_are_renderable, schema_emits_ada_binary_vectors,
