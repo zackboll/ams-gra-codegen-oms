@@ -3118,3 +3118,606 @@ no datetime parser, no JSON codec, no temporal arithmetic. No nillability of any
 kind. No constrained String/Binary. No generic CAL/runtime Optional abstraction.
 No UCI-name special case exists for `MissionID_Type`, `VersionedID_Type`, or
 `Version` — the regressions use synthetic fixtures with ordinary inheritance.
+
+## Task 036 — validated Zulu DateTime values
+
+Tested: **2026-09-21**. GNAT 14.2.0 (CI 13.3.0), rustc 1.98.1, g++ 14.2.0.
+
+Task 036 implements one temporal vertical slice: a **named**
+`PrimitiveKind::DateTime` declaration whose effective lexical constraint is
+exactly the authoritative UCI Zulu profile `pattern=".+Z"`, in Ada, Rust, and
+C++. It is deliberately narrower than "DateTime + Time + Duration": temporal
+lexical/value semantics need a rigorously tested representation before the
+capability family is broadened.
+
+### Authoritative UCI temporal inventory
+
+Reconfirmed from the pinned release bytes and from the normalized IR, not from
+prior notes. Pinned revisions `093610b7753944059360d3236770ab446d039556` (2.5)
+and `78eb61b6112c8bffa40820c33124b57787fc5bd9` (2.6).
+
+| Release | Declaration | Source | Primitive | Immediate base | Effective `ConstraintSet` |
+| --- | --- | --- | --- | --- | --- |
+| 2.5 | `DateTimeType` | `UCI_MessageDefinitions_v2_5_0.xsd:117038` | `DateTime` | `xs:dateTime` | 1 pattern group, 1 alternative, XML Schema dialect, `".+Z"` |
+| 2.5 | `TimeType` | `UCI_MessageDefinitions_v2_5_0.xsd:145152` | `Time` | `xs:time` | 1 pattern group, 1 alternative, `".+Z"` |
+| 2.5 | `DurationType` | `UCI_MessageDefinitions_v2_5_0.xsd:117745` | `Duration` | `xs:duration` | empty |
+| 2.6 | `DateTimeType` | `UCI_SecurityMarkings_v2_6_0.xsd:1203` | `DateTime` | `xs:dateTime` | 1 pattern group, 1 alternative, `".+Z"` |
+| 2.6 | `TimeType` | `UCI_MessageDefinitions_v2_6_0.xsd:145403` | `Time` | `xs:time` | 1 pattern group, 1 alternative, `".+Z"` |
+| 2.6 | `DurationType` | `UCI_MessageDefinitions_v2_6_0.xsd:118281` | `Duration` | `xs:duration` | empty |
+
+In every case: named restriction-chain depth 1 (a direct restriction of the
+built-in), **no** explicit `whiteSpace` facet, and **no** neighbouring facet of
+any kind. Each carries UCI documentation stating that the W3C definition is
+used verbatim "with a further restriction that only the *Zulu* time zone be
+used" (`DateTimeType`, `TimeType`) or verbatim with no restriction
+(`DurationType`).
+
+The prior evidence is confirmed exactly:
+
+```text
+DateTimeType : DateTime + pattern ".+Z"
+TimeType     : Time     + pattern ".+Z"
+DurationType : Duration + no facets
+```
+
+The only cross-release difference is *where* `DateTimeType` is declared: in 2.5
+it lives in the message-definitions document, in 2.6 it moved to the included
+security-markings document. Its profile is byte-identical, so Task 036 is not a
+2.5-only special case and both releases behave the same.
+
+### Direct temporal reference inventory
+
+Re-counted from the source bytes:
+
+| Release | direct `xs:dateTime` | direct `xs:duration` | direct `xs:time` |
+| --- | ---: | ---: | ---: |
+| UCI 2.5 | 4 | 9 | 0 |
+| UCI 2.6 | 0 | 0 | 0 |
+
+All 2.5 `xs:dateTime` fields are `0..1` except `SystemTimeAtLastReference`
+(`1..1`, line 103605); the others are `CurrentSystemTime` (103610) and, in the
+included security-markings document, `DeclassDate` (210) and
+`CUI_DecontrolDate` (245). The nine `xs:duration` fields are `0..1` except
+`MinimumRangeAnalysisDuration` (62551) and `CollectionTime` (71866). UCI 2.6
+has **no** direct temporal field at all.
+
+**Task 036 does not support any of these.** They are direct primitive
+references, not named declarations, and remain unsupported by deliberate
+choice.
+
+### Applicable XML Schema version
+
+**XML Schema 1.0 Part 2: Datatypes, W3C Recommendation 28 October 2004.**
+
+This was determined rather than assumed. Both pinned schemas declare only
+`xmlns:xs="http://www.w3.org/2001/XMLSchema"` and contain **zero** occurrences
+of every XSD-1.1-only construct checked: `xs:assert`, `xs:alternative`,
+`explicitTimezone`, `xs:openContent`, `xs:override`, `defaultAttributes`,
+`xs:anyAtomicType`, and `vc:minVersion`. Nothing in either document requires or
+signals 1.1.
+
+The version genuinely matters here, in **two** places:
+
+* **year `0000`** — XSD 1.0 prohibits it; a later revision admits it as 1 BCE.
+  The validator implements the 1.0 rule and the corpus pins
+  `0000-01-01T00:00:00Z` as invalid.
+* **leap seconds** — XSD 1.0 Appendix D admits second `60`. XSD 1.1 removed
+  leap seconds from the value space entirely (its seconds field is `00..59`).
+  Because the applicable standard here is **1.0**, second `60` is **accepted**,
+  and the corpus pins `1998-12-31T23:59:60Z` as valid.
+
+Both rules are taken from the same selected standard; neither is mixed with
+1.1 behaviour.
+
+### The XML Schema rules implemented
+
+From section 3.2.7.1, the lexical space is
+
+```text
+'-'? yyyy '-' mm '-' dd 'T' hh ':' mm ':' ss ('.' s+)? (zzzzzz)?
+```
+
+* **year** — "a four-or-more digit optionally negative-signed numeral"; if more
+  than four digits, leading zeros are prohibited; `0000` is prohibited; a plus
+  sign is not permitted;
+* **month/day** — two-digit numerals; section 3.2.7 states the value of each
+  numeric property is limited by the next-higher property, so "the day value
+  can never be 32, and cannot even be 29 for month 02 and year 2002";
+* **leap year** — from `maximumDayInMonthFor` (Appendix E): February has 29
+  days when `modulo(Y,400) = 0 OR (modulo(Y,100) != 0 AND modulo(Y,4) = 0)`;
+* **hour** — two digits; `24` **is permitted** when the minutes and seconds
+  represented are zero, denoting the first instant of the following day;
+* **minute** — two digits, `00..59`;
+* **second** — "a two-integer-digit numeral"; `00..60`. Appendix D states the
+  two digits of `ss` "can have values from **0 to 60**" and that "[a] value of
+  60 or more is allowed only in the case of leap seconds". Second **60 is
+  therefore valid** in the XSD 1.0 lexical space; **61 is not**, because the
+  two-digit field itself stops at 60 (see *Leap seconds* below);
+* **fractional seconds** — `'.' s+`, so a dot requires at least one digit, to
+  arbitrary precision with no digit limit; Appendix D applies this to the whole
+  seconds field without exempting `60`, so a point **inside** a leap second
+  (`23:59:60.5Z`) carries the same arbitrary precision;
+* **timezone** (3.2.7.3) — `(('+' | '-') hh ':' mm) | 'Z'`;
+* **whiteSpace** (4.3.6) — for every atomic datatype other than `string` and
+  its restrictions the value is `collapse` and "cannot be changed by a schema
+  author". `collapse` replaces tab/LF/CR with space, squeezes runs of spaces,
+  and trims the ends;
+* **pattern ordering** — Datatype Valid applies `pattern` to the literal, which
+  has already undergone the type's whitespace normalization;
+* **multiple patterns** (4.3.4.3) — alternatives at one derivation step are
+  OR-ed; patterns at different steps are AND-ed;
+* **regex** (Appendix F) — `.` is the `WildcardEsc` production [37a],
+  equivalent to the character class `[^\n\r]`; a literal is pattern-valid only
+  if the pattern matches it **entirely**.
+
+### Leap seconds
+
+The seconds rule is worth stating in full, because the initial Task 036
+validator got it wrong by imposing a `00..59` limit.
+
+**The rule implemented.** The whole-seconds field is accepted for `00..60`.
+`60` is the leap second; `61` and above are rejected. A `60` may carry a
+fractional part to the same arbitrary precision as any other second. No
+calendar-position test and no historical-table lookup is applied. Hour `24`
+independently continues to require zero minutes and zero represented seconds,
+so `24:00:60Z` is rejected by that rule, not by the seconds rule.
+
+**Why `60` is valid.** Appendix D, describing the `s` picture character: "The
+two digits in a `ss` format can have values from **0 to 60**. In the formats
+described in this specification the whole number of seconds *may* be followed
+by decimal seconds to an arbitrary level of precision. … A value of 60 or more
+is allowed only in the case of leap seconds."
+
+**Why `61` is not.** "60 or more" has to be reconciled with the two-digit `ss`
+field and the separate fractional production. The field is bounded at 60 by the
+same sentence; values "more" than 60 are reached through the *fraction* on
+second 60 (`60.5`), never by a two-digit numeral above 60. `61` is therefore
+outside the lexical space, and the corpus pins `12:00:61Z` and `12:00:61.5Z` as
+invalid.
+
+**Why fractional leap seconds are valid.** The arbitrary-precision clause is
+attached to "the whole number of seconds" with no exemption for `60`. A time
+point *within* the leap second is representable, so `23:59:60.1Z`,
+`23:59:60.5Z`, and `23:59:60.999999Z` are all accepted.
+
+**Why no IERS table is required.** Appendix D says a `60` is "[s]trictly
+speaking … not sensible unless the month and day could represent March 31,
+June 30, September 30, or December 31 in UTC" — but it does **not** reject
+other placements. The very next sentence supplies a *value* mapping instead:
+"In cases where the leap second is used with an inappropriate month and day it,
+and any fractional seconds, should [be] considered as added or subtracted from
+the following minute." That is a statement about the value space, not a
+restriction on the lexical space, so the lexical validator must accept second
+`60` on **any** date. This is deliberate breadth, not an oversight: Appendix E
+says outright that "[a] definition that attempted to take leap-seconds into
+account would need to be constantly updated, and could not predict the results
+of future implementation's additions", attributing leap-second decisions to the
+IERS. The generated validators therefore stay self-contained — no leap-second
+table, no network access, no OS calendar or timezone database, no third-party
+date library.
+
+So the answer to "must second `60` be restricted to dates on which the IERS
+actually inserted a leap second?" is **no**. XSD 1.0 permits the broader
+lexical representation, and the corpus pins non-historical placements such as
+`2026-09-20T12:00:60Z` as valid.
+
+**Leap second is not leap year.** The two are independent. The February and
+`maximumDayInMonthFor` logic is unchanged, and the corpus pins
+`2023-12-31T23:59:60Z` — a leap second in a non-leap year — as valid.
+
+**Lexical spelling is preserved.** A valid leap-second literal round-trips as
+written. `1998-12-31T23:59:60Z` is stored and returned unchanged; it is *not*
+normalized to `1999-01-01T00:00:00Z`. Task 036 is a lexical carrier and
+introduces no temporal arithmetic.
+
+### Why `.+Z` is interpreted, not run through a regex engine
+
+Task 036 introduces no XML Schema regular-expression engine. Instead it proves,
+for this one expression, that pattern matching reduces to a decision the
+generated code can make directly.
+
+For a string `s` that has **already** passed the `dateTime` lexical validator,
+`.+Z` matches `s` exactly when `s` is non-empty, ends in a literal `Z`, and the
+prefix that `.+` consumes contains no `#xA` or `#xD`.
+
+That last condition is free, twice over. The intrinsic `whiteSpace` of
+`dateTime` is a *fixed* `collapse`, and the pattern is applied after
+normalization, so no tab, line feed, or carriage return survives.
+Independently, the `dateTime` grammar admits only digits and `-`, `T`, `:`,
+`.`, `+`, `Z` — no line terminator can be lexically valid anyway.
+
+Therefore, on the post-normalization, lexically-valid `dateTime` domain:
+
+```text
+pattern ".+Z"  ==  the normalized lexical form ends in literal 'Z'
+```
+
+and by section 3.2.7.3 the only `dateTime` timezone spelling ending in `Z`
+**is** `Z`, the Zulu/UTC form. That is the equivalence implemented, and it is
+claimed for this expression alone. Any other pattern text, a second
+alternative, a second group, or a non-XML-Schema dialect fails closed, because
+the proof does not carry over.
+
+### The shared classifier
+
+`crates/codegen-core/src/temporal.rs` holds the single language-neutral
+decision. `backend-ada`, `backend-rust`, `backend-cpp`, and `CoverageAnalysis`
+all consult it; none re-derives `kind == DateTime && pattern == ".+Z"`.
+
+```rust
+pub fn temporal_profile(
+    kind: PrimitiveKind,
+    constraints: &ConstraintSet,
+) -> Result<Option<TemporalProfile>, TemporalProfileError>;
+```
+
+Three outcomes are kept distinct so diagnostics stay precise:
+
+| Result | Meaning |
+| --- | --- |
+| `Ok(Some(DateTimeZulu))` | the implemented profile; backends render it |
+| `Ok(None)` | not a temporal declaration at all; Task 036 has no opinion |
+| `Err(TimeUnsupported)` | a `Time` declaration, whatever it carries |
+| `Err(DurationUnsupported)` | a `Duration` declaration, whatever it carries |
+| `Err(DateTimeUnconstrained)` | a `DateTime` with no lexical restriction |
+| `Err(DateTimeUnsupportedConstraints)` | a `DateTime` with some other facet shape |
+
+Collapsing "not temporal" into "temporal but unsupported" would let a backend
+report a `Duration` as though it were an integer, so the two stay apart.
+
+Recognition reads the **normalized Task 016 IR** structurally — group count,
+alternative count, dialect, expression text — never a rendered debug string
+that a formatting change could silently alter. The supported profile is exactly
+one group, holding exactly one XML-Schema-dialect alternative whose expression
+is the three characters `.+Z`, with no `whiteSpace` facet and no neighbouring
+numeric or length facet.
+
+The `dateTime` type genuinely admits the ordering facets (3.2.7.6), and a
+lexical carrier that performs no value-space comparison cannot enforce them, so
+their presence is a rejection rather than a silent drop.
+
+**No UCI local name appears in any implementation path.** Support arises solely
+from `PrimitiveKind::DateTime` plus the effective `ConstraintSet`, so a
+differently named declaration with the same profile is equally supported, and a
+`DateTimeType` carrying a different profile is equally unsupported. Every
+fixture deliberately uses non-UCI names (`Instant`, `Deadline`).
+
+### The representation: a validated lexical carrier
+
+The generated type stores the **whitespace-normalized, lexically valid XML
+Schema `dateTime` spelling** that satisfied the Zulu profile.
+
+It is deliberately **not** Unix epoch seconds, a fixed-width integer timestamp,
+`std::chrono`, `Ada.Calendar.Time`, a third-party Rust date/time crate, or any
+platform time type. Each of those silently narrows the XML Schema space: the
+year is unbounded in digit count, fractional seconds have arbitrary precision,
+and `24:00:00` is a distinct legal spelling of an instant those types cannot
+represent as written. Converting would also discard the wire-level information
+a future codec needs.
+
+**What the type promises:**
+
+1. the stored string has undergone XML Schema-required whitespace
+   normalization;
+2. it is a valid lexical representation of XML Schema 1.0 `dateTime`;
+3. it satisfies the UCI `".+Z"` lexical restriction;
+4. therefore its timezone spelling is the required Zulu form.
+
+**What it does not promise, and must not be described as providing:** date/time
+arithmetic, ordering, timezone conversion, canonical UTC conversion, duration
+arithmetic, semantic equivalence between two distinct legal lexical spellings,
+or XML/JSON encoding.
+
+### Equality boundaries
+
+XML Schema `dateTime` value equality is **not** string equality.
+`2026-09-20T24:00:00Z` and `2026-09-21T00:00:00Z` denote the same instant with
+different spellings, and trailing fractional zeros are likewise
+value-preserving. The order relation is only *partial* (3.2.7.4).
+
+Accordingly:
+
+* **Rust** — the carrier derives only `Clone, Debug`. No `PartialEq`, `Eq`,
+  `PartialOrd`, or `Ord`. That absence propagates: a record or choice
+  transitively holding a carrier omits `PartialEq` too, which is why
+  `declaration_supports_partial_eq` now exists alongside the older
+  `declaration_supports_eq`.
+* **C++** — no `operator==`, `operator!=`, `operator<`, `operator<=>`, or
+  ordering helper is emitted.
+* **Ada** — the private record type inherits the predefined `"="` as a
+  consequence of the language model. The generated spec documents, in the
+  visible part, that it compares the **stored normalized lexical
+  representation** and is **not** XML Schema value-space equality. It is not
+  used as semantic conformance evidence anywhere. No ordering operator is
+  declared.
+
+### Generated APIs
+
+**Rust** — an opaque carrier with private storage:
+
+```rust
+#[derive(Clone, Debug)]
+pub struct Instant { lexical: String }
+
+impl Instant {
+    pub fn new(value: &str) -> Option<Self>;
+    pub fn as_str(&self) -> &str;
+}
+```
+
+Every parser helper is a private associated function, so Task 036 adds no
+module-scope name. No external temporal crate and no regex crate. Compiles
+under `rustc --edition 2021`.
+
+**C++17** — an opaque class whose only constructor is private:
+
+```cpp
+class Instant {
+public:
+    static std::optional<Instant> create(std::string_view value);
+    const std::string& value() const noexcept;
+private:
+    explicit Instant(std::string normalized);
+    std::string value_;
+};
+```
+
+Every helper is a private static member function, so no namespace-scope name is
+added. Only `<string>`, `<string_view>`, and `<optional>` are used; no external
+temporal or regex library. The `#include <string_view>` line is emitted **only**
+when a supported temporal declaration exists, so other schemas' headers are
+unchanged. Compiles clean under `-std=c++17 -Wall -Wextra -pedantic-errors`.
+
+**Ada** — a private type completed over the package's existing owned-string
+representation:
+
+```ada
+type Instant is private;
+function Create (Value : String) return Instant;
+function Value  (Item  : Instant) return String;
+```
+
+`Create` normalizes XML whitespace, validates the `dateTime` lexical form,
+validates the Zulu profile, and raises `Constraint_Error` on invalid input.
+`Value` returns the stored normalized lexical representation. The private
+completion is a record holding an `Unbounded_String`; the component name is not
+visible, so no client aggregate or type conversion can bypass `Create`.
+
+### The Ada package body
+
+The temporal validator is a real algorithm rather than an expression function,
+so it requires a package body. `generate_body` returns `Some` **only** when
+`schema_emits_temporal_carrier` is true, so:
+
+* a schema with a supported DateTime declaration emits `.ads` **and** `.adb`;
+* every other schema keeps its existing single-`.ads` file set exactly. No
+  empty `.adb` is ever written.
+
+Every parser helper is nested inside the declarative part of `Create`, so Task
+036 introduces **no** new package-scope generated identifier beyond `Create`
+and `Value`, which the shared name model already registers.
+
+### Generalized Ada generated-callable name model
+
+The Task 033 `ADA_FLOAT_CALLABLES` / `ada_constrained_float_owners` were
+generalized to `ADA_WRAPPER_CALLABLES` / `ada_wrapper_callable_owners`, which
+now model **all** currently generated Ada package-level callables: a
+constrained floating wrapper's `Create` / `Value` and a Task 036 DateTime
+wrapper's `Create` / `Value`. A DateTime-only collision check was deliberately
+not added, because it would have to be kept in sync with the float one forever.
+
+Callables are *tested against* the top-level region rather than inserted into
+it, because Ada subprograms overload. Verified against GNAT 14.2.0 by compiling
+real generated output (`backend-temporal-mixed-callables.xsd`, four wrappers in
+one package) and **running** a client that calls both `Create (String)`
+overloads:
+
+```text
+function Create (Value : Interfaces.IEEE_Float_64) return BurnRate;
+function Create (Value : Interfaces.IEEE_Float_64) return AltitudeMeters;
+function Create (Value : String) return Instant;
+function Create (Value : String) return Deadline;
+-- accepted: the profiles differ in result type
+
+type Create is new Integer;
+function Create (Value : String) return Instant;
+-- error: "Create" conflicts with declaration
+```
+
+The last two `Create` declarations differ *only* in result type, which Ada
+resolves by expected type — the strongest case, and the one the model depends
+on. An **unsupported** temporal declaration reserves nothing, because it
+generates no subprogram; registering a name for output that will never exist
+would reject an otherwise generable schema.
+
+### Runtime validation
+
+Each backend enforces real XML Schema lexical validity. A bare
+`ends_with('Z')` is explicitly **not** the validator: it would accept
+`garbageZ` and `2026-99-99T99:99:99Z`. The order is always normalize → base
+grammar and calendar rules → Zulu profile.
+
+**No fixed-width year narrowing.** The year is validated and its leap-year
+properties computed from decimal digits; it is never parsed into `i32`, `i64`,
+`int`, `time_t`, or `Ada.Calendar.Year_Number`. Divisibility by 4 is decided
+from the last two digits (100 is itself a multiple of 4), and the
+divisible-by-400 case by reducing the remaining digits modulo 4 one at a time.
+A valid XML Schema date does not become invalid because its year exceeds a host
+numeric type — the corpus pins a 24-digit year as valid.
+
+### Shared conformance corpus
+
+`tests/fixtures/temporal/datetime-zulu.txt` is the single canonical corpus:
+**33 valid** and **74 invalid** cases, each commented with the XML Schema rule
+it exercises. Rust-side tests read it and emit the same cases into a probe
+program for **all three** backends, which are then compiled and run. The three
+languages are proven to agree rather than each passing its own curated subset.
+
+Valid cases cover: an ordinary date/time; leap day in a leap year (2024);
+**leap day in a century leap year (2000)**, which a naive "not divisible by
+100" rule gets wrong; an ordinary non-leap February date; one and many
+fractional digits; trailing fractional zeros (legal lexically, forbidden only
+in the *canonical* form, so they must round-trip unchanged); `24:00:00` and
+`24:00:00.0`; a five-digit extended year; a **24-digit** year; negative and
+negative-extended years; the smallest legal boundaries
+(`0001-01-01T00:00:00Z`); 30- and 31-day month maxima; second 59; and four
+leading/trailing whitespace shapes that must collapse away.
+
+Valid **leap-second** cases cover: the historical control
+`1998-12-31T23:59:60Z`; three fractional leap seconds (`.1`, `.5`, `.999999`),
+proving arbitrary precision inside the leap second; second 60 on each
+quarter-end date and on an ordinary date (`2026-09-20T12:00:60Z`), proving no
+calendar-position or IERS-table restriction is applied; second 60 at the start
+of a day; a leap second in a **non-leap year** (`2023-12-31T23:59:60Z`),
+proving leap second and leap year are independent; and a
+whitespace-surrounded leap second that must collapse to the bare literal. Each
+round-trips to its own spelling, pinning that no rollover normalization occurs.
+
+Invalid cases cover: missing `Z`; five numeric offsets including `+00:00` and
+`-00:00` (same *value* as Zulu, wrong *spelling*); lowercase `z`; trailing
+characters after `Z`; months 00 and 13; day zero; day beyond a 30- and a
+31-day month; **February 29 in 2023** (non-leap) and **in 1900** (century
+non-leap, which a naive divisible-by-4 rule wrongly accepts); February 30 in a
+leap year; hour 25; `24` with non-zero minute, second, or fraction; **hour 24
+combined with second 60** (`24:00:60Z`, `24:00:60.0Z`), which stays invalid
+because `24` requires zero represented seconds; minute 60; minute 60 together
+with second 60, since a leap second lengthens the seconds field and not the
+minutes field; **seconds 61, 61.5, and 99**, the field bound above the leap
+second; a bare dot with no digits; non-digit and double-dot
+fractions; a fraction on minutes; years of one to three digits; `0000` and
+`-0000`; leading-zero five-digit years; a plus-signed year; non-digit years;
+wrong field widths; lowercase `t`; missing separators and components; four
+internal whitespace positions; the empty and whitespace-only strings; and six
+arbitrary-text-ending-in-`Z` cases including `garbageZ` and
+`2026-99-99T99:99:99Z`.
+
+### No public bypasses
+
+Compiler-enforced, not asserted at runtime:
+
+* **Rust** — a struct literal naming `lexical`, and a field read of `lexical`,
+  both fail to compile with a privacy diagnostic when the generated code is
+  placed in a module;
+* **C++** — direct construction and a read of `value_` both fail to compile
+  with an access-control diagnostic;
+* **Ada** — a client aggregate naming the private component and a type
+  conversion from `String` are both GNAT compile errors.
+
+### Coverage model
+
+Baseline declaration renderability now accepts a named
+`PrimitiveKind::DateTime` declaration with the exact Task 036 profile in all
+three backends, decided by the shared classifier so coverage cannot drift from
+what the backends emit.
+
+`PrimitiveKind::DateTime` is **not** marked supported wholesale. In particular
+`primitive_ref_renderable` still reports a **direct** `xs:dateTime` field
+unsupported — this distinction is the whole point of the task, and is pinned by
+`crates/codegen-core/tests/temporal_coverage.rs`.
+
+No new `FeatureFamily` was added. `PrimitiveExpansion` still represents
+hypothetical general primitive support and `ConstrainedSimpleTypes` generic
+unimplemented lexical-constraint support; Task 036 is a concrete baseline
+exception for one fully implemented semantic profile. Feature monotonicity is
+maintained.
+
+### Authoritative coverage
+
+All twelve cells re-run. Every cell moved by exactly **+1**:
+
+| World | Release | Backend | Before | After |
+| --- | --- | --- | ---: | ---: |
+| closed | 2.5 | Ada | 5298 / 5557 | **5299 / 5557** |
+| closed | 2.5 | Rust | 5375 / 5557 | **5376 / 5557** |
+| closed | 2.5 | C++ | 5378 / 5557 | **5379 / 5557** |
+| closed | 2.6 | Ada | 5319 / 5570 | **5320 / 5570** |
+| closed | 2.6 | Rust | 5397 / 5570 | **5398 / 5570** |
+| closed | 2.6 | C++ | 5401 / 5570 | **5402 / 5570** |
+| open | 2.5 | Ada | 5213 / 5557 | **5214 / 5557** |
+| open | 2.5 | Rust | 5287 / 5557 | **5288 / 5557** |
+| open | 2.5 | C++ | 5290 / 5557 | **5291 / 5557** |
+| open | 2.6 | Ada | 5234 / 5570 | **5235 / 5570** |
+| open | 2.6 | Rust | 5309 / 5570 | **5310 / 5570** |
+| open | 2.6 | C++ | 5313 / 5570 | **5314 / 5570** |
+
+Renderable *kinds* likewise moved 5428 to 5429 (2.5) and 5441 to 5442 (2.6).
+
+**The single newly renderable declaration, in every cell, is
+`{https://www.vdl.afrl.af.mil/programs/oam}DateTimeType`** — the DateTime
+declaration itself. There are **no** transitive consumers in the delta.
+
+That the delta is exactly one is itself evidence. Every UCI type that
+*references* `DateTimeType` does so alongside other still-unsupported types
+(constrained Strings, chiefly), so no consumer became fully renderable from
+this change alone. The delta is identical in the closed and open worlds because
+the supported profile is a simple type with no abstract-value participation:
+the world policy governs abstract structural values, which a `DateTime`
+declaration has none of. `TimeType` and `DurationType` remain non-renderable in
+all twelve cells, which is why the delta is +1 rather than +3.
+
+### PositionReport
+
+Authoritative UCI 2.5,
+`crates/service-contract/tests/fixtures/upstream-minimal.yaml`, closed world.
+C++ was measured too, not inferred:
+
+| Backend | Before | After | First blocker now |
+| --- | ---: | ---: | --- |
+| Ada | 47 / 60, `DateTimeType` | **48 / 60** | `UCI_SchemaVersionStringType` |
+| Rust | 51 / 60, `DateTimeType` | **52 / 60** | `UCI_SchemaVersionStringType` |
+| C++ | 51 / 60, `DateTimeType` | **52 / 60** | `UCI_SchemaVersionStringType` |
+
+`DateTimeType` is gone as a blocker in every backend. The measured next blocker
+is a **constrained String**, which matches the prior expectation — but is
+reported here because it was measured, not assumed. Task 036 does not implement
+it. `PositionReport` remains NOT READY everywhere.
+
+The selected 60-type closure contains exactly one temporal declaration,
+`DateTimeType`, and no direct temporal field.
+
+### Full-schema boundary
+
+Unchanged by Task 036; all three are unrelated reserved-word boundaries:
+
+```text
+Ada:  Ada name "Range" generates reserved word "Range"
+        in the members of AltitudeRangePairType
+Rust: Rust name "Type" generates reserved word "type"
+        in the members of ConfigurationParameterType
+C++:  C++ name "Operator" generates reserved word "operator"
+        in the members of ApprovalResponseType
+```
+
+No full-UCI generation claim is made, and no unrelated blocker was fixed.
+
+### Task 034 composition, and Task 035 unchanged
+
+A `Timestamp : DateTimeZulu 0..1` field composes **automatically**: the
+declaration became renderable, and the existing Task 034
+`Owner_Field_Optional` wrapper handles the optional named occurrence in Ada. No
+optional-DateTime path was added anywhere. Rust uses the ordinary
+`Option<Instant>` and C++ the ordinary `std::optional<Instant>`.
+
+The Task 035 direct-primitive optional classifier was **not** modified. A
+direct `Primitive(DateTime)` field remains unsupported in occurrence *and* in
+value, and those two questions stay separate.
+
+### Explicit non-goals
+
+| Capability | Status |
+| --- | --- |
+| named DateTime Zulu profile | **supported** |
+| direct `xs:dateTime` field | unsupported |
+| named unconstrained `DateTime` | unsupported |
+| `DateTime` with a different pattern | unsupported |
+| `DateTime` with multiple patterns or alternatives | unsupported |
+| `DateTime` with an unsupported neighbouring facet | unsupported |
+| `Time`, including the identical UCI `.+Z` | unsupported |
+| `Duration` | unsupported |
+| `Decimal` | unsupported |
+| generic XML Schema regex translation | not implemented, deliberately |
+| temporal arithmetic / ordering / value equality | not implemented |
+| timezone conversion / canonicalization | not implemented |
+| XML or JSON codecs | not implemented |
+
+No third-party runtime dependency was added in any language.

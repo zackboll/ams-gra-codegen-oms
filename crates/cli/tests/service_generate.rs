@@ -1290,3 +1290,265 @@ fn task035_selected_ada_optional_primitive_compiles_under_gnat() {
         .expect("GNAT reported a version, so it must be runnable");
     assert!(status.success(), "selected Ada output must compile");
 }
+
+/// Generate the Task 036 temporal service for one language.
+fn generate_temporal(language: &str, label: &str) -> PathBuf {
+    let output_root = output_dir(label);
+    let output = generate(
+        "temporal.xsd",
+        "temporal.yaml",
+        language,
+        "closed-schema",
+        &output_root,
+    );
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "{language} temporal generation should succeed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    output_root
+}
+
+/// Task 036: a contract whose selected closure carries the supported named
+/// DateTime Zulu profile becomes READY in all three backends.
+///
+/// The point of this test is *propagation*. No Task 036 change was made to
+/// `service_plan.rs`, `service_readiness.rs`, or `service_generation.rs`; the
+/// new capability has to arrive through the single shared coverage snapshot
+/// and the ordinary backends. The fixture also declares an unselected `Time`
+/// carrying the *same* `.+Z` pattern text, plus an unselected `Duration`, so a
+/// READY result here cannot be a whole-schema accident and cannot be an
+/// accidental widening to every temporal kind.
+#[test]
+fn task036_temporal_service_is_ready_in_every_backend() {
+    for language in ["rust", "cpp", "ada"] {
+        let check = cli()
+            .arg("service-check")
+            .arg("--schema")
+            .arg(fixture("temporal.xsd"))
+            .arg("--contract")
+            .arg(fixture("temporal.yaml"))
+            .args(["--language", language, "--world", "closed-schema"])
+            .output()
+            .expect("service-check must run");
+        assert_eq!(
+            check.status.code(),
+            Some(0),
+            "{language} service-check should succeed"
+        );
+        let report = stdout_of(&check);
+        assert!(
+            report.contains("status: READY"),
+            "{language} must be READY for the temporal contract:\n{report}"
+        );
+        // The unsupported temporal declarations are outside the selection, so
+        // they must not appear in the projected closure at all.
+        for unselected in ["WallClock", "Span", "UnselectedTemporalPayload"] {
+            assert!(
+                !report.contains(unselected),
+                "{language} must not project the unselected {unselected}"
+            );
+        }
+    }
+}
+
+/// Task 036: selected generation emits the Ada package **body** alongside the
+/// spec, and the projected output carries no unselected temporal declaration.
+#[test]
+fn task036_selected_ada_generation_includes_the_package_body() {
+    let root = generate_temporal("ada", "task036-ada-files");
+    let spec = std::fs::read_to_string(root.join("urn-test.ads")).expect("spec must be generated");
+    let body = std::fs::read_to_string(root.join("urn-test.adb")).expect("body must be generated");
+
+    assert!(spec.contains("type Instant is private;"));
+    assert!(spec.contains("function Create (Value : String) return Instant;"));
+    assert!(body.contains("package body Urn.Test is"));
+    assert!(body.contains("function Create (Value : String) return Instant is"));
+    // Both supported declarations are projected, which is what makes Ada
+    // `Create` / `Value` overload resolution load-bearing here.
+    assert!(spec.contains("type Deadline is private;"));
+    assert!(body.contains("function Create (Value : String) return Deadline is"));
+
+    for unselected in ["WallClock", "Span", "Unselected"] {
+        assert!(!spec.contains(unselected), "spec leaked {unselected}");
+        assert!(!body.contains(unselected), "body leaked {unselected}");
+    }
+}
+
+/// Task 036: the selected Rust output compiles and validates at runtime.
+#[test]
+fn task036_selected_rust_output_validates_at_runtime() {
+    let root = generate_temporal("rust", "task036-rust");
+    std::fs::write(
+        root.join("probe.rs"),
+        "include!(\"test.rs\");\n\nfn main() {\n\
+         \x20   let value = Instant::new(\"  2026-09-20T12:34:56Z \").expect(\"valid\");\n\
+         \x20   assert_eq!(value.as_str(), \"2026-09-20T12:34:56Z\");\n\
+         \x20   assert!(Instant::new(\"2026-02-30T00:00:00Z\").is_none());\n\
+         \x20   assert!(Instant::new(\"garbageZ\").is_none());\n\
+         \x20   assert!(Instant::new(\"2026-09-20T12:34:56\").is_none());\n\
+         }\n",
+    )
+    .expect("write Rust probe");
+    let status = Command::new("rustc")
+        .current_dir(&root)
+        .args(["--edition", "2021", "-o", "probe", "probe.rs"])
+        .status()
+        .expect("rustc must be available");
+    assert!(status.success(), "selected Rust output must compile");
+    assert!(
+        Command::new(root.join("probe"))
+            .status()
+            .expect("probe must run")
+            .success(),
+        "selected Rust validation must hold"
+    );
+}
+
+/// Task 036: the selected C++ output compiles under strict C++17 and validates
+/// at runtime.
+#[test]
+fn task036_selected_cpp_output_validates_at_runtime() {
+    let root = generate_temporal("cpp", "task036-cpp");
+    std::fs::write(
+        root.join("probe.cpp"),
+        "#include \"test.hpp\"\n#include <cstdio>\n\n\
+         int main() {\n\
+         \x20   auto value = urn::test::Instant::create(\"  2026-09-20T12:34:56Z \");\n\
+         \x20   if (!value || value->value() != \"2026-09-20T12:34:56Z\") return 1;\n\
+         \x20   if (urn::test::Instant::create(\"2026-02-30T00:00:00Z\")) return 1;\n\
+         \x20   if (urn::test::Instant::create(\"garbageZ\")) return 1;\n\
+         \x20   if (urn::test::Instant::create(\"2026-09-20T12:34:56\")) return 1;\n\
+         \x20   std::puts(\"ok\");\n\
+         \x20   return 0;\n\
+         }\n",
+    )
+    .expect("write C++ probe");
+    let output = Command::new("c++")
+        .current_dir(&root)
+        .args([
+            "-std=c++17",
+            "-Wall",
+            "-Wextra",
+            "-pedantic-errors",
+            "-o",
+            "probe",
+            "probe.cpp",
+        ])
+        .output()
+        .expect("a C++ compiler must be available");
+    assert!(
+        output.status.success(),
+        "selected C++ output must compile under strict C++17:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        Command::new(root.join("probe"))
+            .status()
+            .expect("probe must run")
+            .success(),
+        "selected C++ validation must hold"
+    );
+}
+
+/// Task 036: the selected Ada output compiles and raises `Constraint_Error` on
+/// an invalid value, with no unchecked construction path available.
+///
+/// Skipped only where GNAT is absent, as elsewhere in this file.
+#[test]
+fn task036_selected_ada_output_validates_under_gnat() {
+    if Command::new("gnatmake").arg("--version").output().is_err() {
+        assert!(
+            std::env::var_os("AMS_GRA_REQUIRE_GNAT").is_none(),
+            "AMS_GRA_REQUIRE_GNAT is set but gnatmake is unavailable"
+        );
+        return;
+    }
+    let root = generate_temporal("ada", "task036-ada-runtime");
+    std::fs::write(
+        root.join("probe.adb"),
+        "with Ada.Text_IO;\nwith Urn.Test;\n\n\
+         procedure Probe is\n\
+         \x20  Good : constant Urn.Test.Instant :=\n\
+         \x20    Urn.Test.Create (\"  2026-09-20T12:34:56Z \");\n\
+         begin\n\
+         \x20  if Urn.Test.Value (Good) /= \"2026-09-20T12:34:56Z\" then\n\
+         \x20     Ada.Text_IO.Put_Line (\"bad normalization\");\n\
+         \x20     return;\n\
+         \x20  end if;\n\
+         \x20  declare\n\
+         \x20     Bad : constant Urn.Test.Instant :=\n\
+         \x20       Urn.Test.Create (\"2026-02-30T00:00:00Z\");\n\
+         \x20  begin\n\
+         \x20     Ada.Text_IO.Put_Line (\"must have raised: \" & Urn.Test.Value (Bad));\n\
+         \x20  end;\n\
+         exception\n\
+         \x20  when Constraint_Error => Ada.Text_IO.Put_Line (\"ok\");\n\
+         end Probe;\n",
+    )
+    .expect("write Ada probe");
+    let compile = Command::new("gnatmake")
+        .current_dir(&root)
+        .args(["-q", "probe.adb"])
+        .output()
+        .expect("GNAT reported a version, so it must be runnable");
+    assert!(
+        compile.status.success(),
+        "selected Ada output must compile:\n{}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+    let run = Command::new(root.join("probe"))
+        .output()
+        .expect("probe must run");
+    let stdout = String::from_utf8_lossy(&run.stdout).into_owned();
+    assert!(
+        stdout.trim() == "ok",
+        "selected Ada validation must hold:\n{stdout}"
+    );
+}
+
+/// Task 036: the selected Ada output offers no unchecked way to build an
+/// `Instant`, so the representation bypasses are compile errors.
+///
+/// Skipped only where GNAT is absent, as elsewhere in this file.
+#[test]
+fn task036_selected_ada_temporal_rejects_public_bypasses() {
+    if Command::new("gnatmake").arg("--version").output().is_err() {
+        assert!(
+            std::env::var_os("AMS_GRA_REQUIRE_GNAT").is_none(),
+            "AMS_GRA_REQUIRE_GNAT is set but gnatmake is unavailable"
+        );
+        return;
+    }
+    let root = generate_temporal("ada", "task036-ada-bypass");
+    for (unit, body) in [
+        // The private record's component is not visible, so no aggregate can
+        // name it.
+        ("aggregate", "   Bad : Instant := (Lexical => <>);\n"),
+        // No conversion from String exists; only `Create` can build one.
+        (
+            "conversion",
+            "   Bad : Instant := Instant (\"2026-99-99T99:99:99Z\");\n",
+        ),
+    ] {
+        let file = format!("{unit}_probe.adb");
+        let procedure = format!("{}{}_Probe", unit[..1].to_uppercase(), &unit[1..]);
+        std::fs::write(
+            root.join(&file),
+            format!(
+                "with Urn.Test; use Urn.Test;\n\nprocedure {procedure} is\n{body}begin\n   null;\nend {procedure};\n"
+            ),
+        )
+        .expect("write Ada bypass probe");
+        let output = Command::new("gnatmake")
+            .current_dir(&root)
+            .args(["-q", &file])
+            .output()
+            .expect("GNAT reported a version, so it must be runnable");
+        assert!(
+            !output.status.success(),
+            "{unit} bypass must not compile against the selected Ada output"
+        );
+    }
+}

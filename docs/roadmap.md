@@ -103,7 +103,14 @@ backend already implements that primitive's *value* representation:
 | `Float64` | wrapper | `Interfaces.IEEE_Float_64` |
 | `Binary` | wrapper | `Binary_Vectors.Vector` |
 | `String` | **unchanged** | shared `Optional_String`, no per-field wrapper |
-| `DateTime`/`Time`/`Duration`/`Decimal` | unsupported | no Ada value representation |
+| `DateTime`/`Time`/`Duration`/`Decimal` | unsupported | no *direct* primitive value representation |
+
+Task 036 does **not** change that last row. It adds a **named** `DateTime`
+declaration carrying the UCI Zulu profile, which is a different question: a
+named declaration gets its own generated wrapper type, and an optional field
+referencing it composes through the existing Task 034 named-target path. A
+direct `<xs:element type="xs:dateTime"/>` field still has no representation.
+
 
 `ConstraintSet::default()` is deliberately **not** the integral gate. The
 frontend normalizes a built-in integer type's domain into semantic IR bounds, so
@@ -117,11 +124,25 @@ they do still require default constraints.
 
 **Still open:**
 
-- [ ] **temporal** primitives (`DateTime`/`Time`/`Duration`) and `Decimal` — now
-      the first blocker in the selected `PositionReport` closure, via
-      `DateTimeType`, for Ada and Rust alike. Deferred to Task 036: these need a
-      value-space/lexical design, UCI's `.+Z` restriction, timezone semantics,
-      generated validation, and codec behavior;
+- [x] **named `DateTime` carrying the UCI Zulu profile** — delivered by Task
+      036 as a validated lexical carrier in all three backends. This removed
+      `DateTimeType` as the first selected `PositionReport` blocker. See
+      `docs/backend-compatibility.md` for the exact supported profile;
+- [ ] **direct** temporal primitive fields (`<xs:element type="xs:dateTime"/>`)
+      — deliberately still unsupported. Task 036 is a *named declaration*
+      slice; the reusable direct-primitive temporal representation waits for a
+      later temporal-generalization task, once this validator architecture has
+      proven itself;
+- [ ] `Time` and `Duration`, and any `DateTime` outside the Zulu profile
+      (unconstrained, a different pattern, multiple alternatives or groups, or
+      an unsupported neighbouring facet) — all fail closed. `TimeType` carries
+      the *same* `.+Z` text as the supported DateTime profile and was
+      deliberately not admitted alongside it: `time` has its own lexical
+      grammar and needs its own validator and conformance corpus;
+- [ ] `Decimal` — unchanged, no value representation;
+- [ ] temporal **arithmetic, ordering, value-space equality, timezone
+      conversion, canonicalization, and codecs** — explicit Task 036 non-goals.
+      The generated carriers deliberately expose no comparison;
 - [ ] integral shapes Task 020 rejects (exclusive bounds, half-open ranges,
       length/lexical facets) and field-local facets on optional
       Boolean/float/Binary — all still fail-closed, with no silent facet loss;
@@ -290,6 +311,26 @@ primitive**, which Task 034 deliberately does not cover.
 `PositionReport` is **not** ready in any backend: both probes still report NOT
 READY. The remaining selected blockers are temporal primitives, constrained
 String, and Ada optional direct non-String primitive fields — all open.
+
+**Measured progress (Task 036):**
+
+Task 036 again added no Phase 2.5 code. It made the named UCI Zulu `DateTime`
+profile renderable, and contract-selected readiness improved automatically
+through the same shared capability model. Same authoritative inputs — UCI 2.5,
+the upstream `PositionReport` contract, closed world:
+
+| Backend | Before | After | First blocker now |
+| --- | ---: | ---: | --- |
+| Ada | 47/60, `DateTimeType` | **48/60** | `UCI_SchemaVersionStringType` |
+| Rust | 51/60, `DateTimeType` | **52/60** | `UCI_SchemaVersionStringType` |
+| C++ | 51/60, `DateTimeType` | **52/60** | `UCI_SchemaVersionStringType` |
+
+`DateTimeType` is no longer a blocker in any backend. The measured next blocker
+is `UCI_SchemaVersionStringType`, a **constrained String** — which matches the
+prior expectation, but is reported here because it was measured, not assumed.
+Task 036 deliberately does not implement it.
+
+`PositionReport` remains NOT READY in every backend.
 
 **Still open:**
 

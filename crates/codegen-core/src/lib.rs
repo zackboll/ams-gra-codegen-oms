@@ -11,6 +11,7 @@ mod service_generation;
 mod service_plan;
 mod service_readiness;
 mod structure;
+mod temporal;
 mod world;
 
 pub use abstract_value::{
@@ -55,6 +56,10 @@ pub use structure::{
     EffectiveStructuralType, StructuralKind, StructuralLevel, StructuralProjectionError,
     StructuralSegment, StructuralSegmentContent, effective_choice_alternatives,
     effective_record_fields, project_structural_type,
+};
+pub use temporal::{
+    TemporalProfile, TemporalProfileError, is_temporal_primitive, schema_emits_temporal_carrier,
+    temporal_profile,
 };
 pub use world::GenerationWorld;
 

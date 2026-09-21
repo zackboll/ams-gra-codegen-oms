@@ -35,6 +35,7 @@ use crate::ada_optional::ada_record_field_uses_optional_wrapper;
 use crate::coverage::BackendLanguage;
 use crate::floating::floating_domain;
 use crate::structure::{effective_choice_alternatives, effective_record_fields};
+use crate::temporal::temporal_profile;
 use crate::world::GenerationWorld;
 use crate::{AbstractValueProjection, TypeEmission, name_preflight_plan};
 use ams_gra_oms_ir::{
@@ -773,49 +774,72 @@ pub fn schema_emits_bounded_integer_support(schema: &SchemaIr) -> bool {
 /// closed-sum abstract-value wrappers alike.
 const ADA_CHOICE_DISCRIMINANT: &str = "Kind";
 
-/// The overloadable subprograms Ada emits for each *constrained* named
-/// floating declaration.
+/// The overloadable subprograms Ada emits for each generated *value wrapper*
+/// declaration.
 ///
-/// `backend-ada::render_floating_declaration` emits, in the package's visible
-/// part, `function Create (Value : <base>) return T` and `function Value
-/// (Item : T) return <base>` -- but only when the declaration has a supported
-/// bound-only domain. An unconstrained float emits a plain derived type with
-/// no subprograms, so these names stay available to user declarations.
-const ADA_FLOAT_CALLABLES: &[&str] = &["Create", "Value"];
+/// Two generators emit this pair into the package's visible part:
+///
+/// * Task 033 `render_floating_declaration`, for a **constrained** named
+///   floating declaration -- `function Create (Value : <base>) return T` and
+///   `function Value (Item : T) return <base>`. An unconstrained float emits a
+///   plain derived type with no subprograms.
+/// * Task 036 `render_date_time_declaration`, for a supported named DateTime
+///   Zulu declaration -- `function Create (Value : String) return T` and
+///   `function Value (Item : T) return String`.
+///
+/// The list is shared rather than duplicated per feature: the rule being
+/// modelled is "which package-level callables does Ada generate", and a
+/// DateTime-only collision check would have to be kept in sync with the float
+/// one forever.
+const ADA_WRAPPER_CALLABLES: &[&str] = &["Create", "Value"];
 
-/// The declarations for which Ada emits constrained-float `Create` / `Value`
-/// subprograms.
+/// Every declaration for which Ada emits package-level `Create` / `Value`.
 ///
-/// Mirrors `backend-ada`'s `schema_has_constrained_floating` predicate exactly,
-/// but per declaration rather than schema-wide, so attribution can name the
-/// float responsible for a collision.
-fn ada_constrained_float_owners(schema: &SchemaIr) -> Vec<&TypeDecl> {
+/// Mirrors the two renderers' own predicates exactly, but per declaration
+/// rather than schema-wide, so attribution can name the wrapper responsible
+/// for a collision. Keeping one list means a future wrapper family is added in
+/// a single place instead of three.
+fn ada_wrapper_callable_owners(schema: &SchemaIr) -> Vec<&TypeDecl> {
     schema
         .types
         .iter()
         .filter(|declaration| {
-            matches!(
-                declaration.kind,
-                TypeKind::Primitive(kind @ (PrimitiveKind::Float32 | PrimitiveKind::Float64))
-                    if floating_domain(kind, &declaration.constraints)
+            let TypeKind::Primitive(kind) = declaration.kind else {
+                return false;
+            };
+            match kind {
+                // Task 033: only a *supported bound-only domain* emits the
+                // subprograms; an unconstrained float does not, so those names
+                // stay available to user declarations.
+                PrimitiveKind::Float32 | PrimitiveKind::Float64 => {
+                    floating_domain(kind, &declaration.constraints)
                         .is_ok_and(|domain| domain.is_some())
-            )
+                }
+                // Task 036: only the supported DateTime Zulu profile emits a
+                // wrapper. An unsupported temporal declaration fails closed in
+                // the backend before any output exists, so it contributes no
+                // name.
+                _ => temporal_profile(kind, &declaration.constraints)
+                    .is_ok_and(|profile| profile.is_some()),
+            }
         })
         .collect()
 }
 
-/// Collect every conflict between a generated constrained-float subprogram and
-/// a non-overloadable top-level declaration, in schema order.
+/// Collect every conflict between a generated wrapper subprogram and a
+/// non-overloadable top-level declaration, in schema order.
 ///
 /// # Why callables are checked rather than inserted
 ///
-/// Ada allows subprograms to overload one another, so several constrained
-/// floats may each emit a `Create` and a `Value` without conflict. Verified
-/// against GNAT 14.2:
+/// Ada allows subprograms to overload one another, so several wrappers may
+/// each emit a `Create` and a `Value` without conflict. Verified against GNAT
+/// 14.2, including the Task 036 mixed case:
 ///
 /// ```text
 /// function Create (Value : Interfaces.IEEE_Float_64) return Burn_Rate;
 /// function Create (Value : Interfaces.IEEE_Float_64) return Altitude;
+/// function Create (Value : String) return Stamp;
+/// function Create (Value : String) return Stamp2;
 /// -- accepted: the profiles differ in result type
 ///
 /// type Create is new Integer;
@@ -823,21 +847,25 @@ fn ada_constrained_float_owners(schema: &SchemaIr) -> Vec<&TypeDecl> {
 /// -- error: "Create" conflicts with declaration
 /// ```
 ///
+/// Two `Create`s that differ **only** in result type are legal because Ada
+/// resolves a function call by its expected type; this is why several floating
+/// wrappers and several DateTime wrappers coexist in one package.
+///
 /// Inserting `Create` into the top-level region with the ordinary uniqueness
-/// rule would therefore reject the *legal* multi-float case. The callable is
+/// rule would therefore reject the *legal* multi-wrapper case. The callable is
 /// instead tested against the accumulated non-overloadable names without being
 /// inserted -- the same asymmetry [`collect_ada_literal_conflicts`] uses, and
 /// for the same reason.
 ///
-/// Both sides are implicated: the float that generates the subprogram and the
-/// declaration that occupies the identifier.
-fn collect_ada_float_callable_conflicts(
+/// Both sides are implicated: the wrapper that generates the subprogram and
+/// the declaration that occupies the identifier.
+fn collect_ada_wrapper_callable_conflicts(
     top_level: &Region,
     schema: &SchemaIr,
     conflicts: &mut Vec<CollectedNameError>,
 ) {
-    for declaration in ada_constrained_float_owners(schema) {
-        for callable in ADA_FLOAT_CALLABLES {
+    for declaration in ada_wrapper_callable_owners(schema) {
+        for callable in ADA_WRAPPER_CALLABLES {
             let key = identity_key(BackendLanguage::Ada, callable);
             let Some(first) = top_level.taken.get(&key) else {
                 continue;
@@ -1363,7 +1391,7 @@ pub fn validate_backend_names(
         // name regardless of which was declared first.
         validate_ada_enumeration_literals(&top_level, schema, emissions)?;
         let mut callables = Vec::new();
-        collect_ada_float_callable_conflicts(&top_level, schema, &mut callables);
+        collect_ada_wrapper_callable_conflicts(&top_level, schema, &mut callables);
         if let Some(conflict) = callables.into_iter().next() {
             return Err(conflict.error);
         }
@@ -1732,7 +1760,7 @@ pub fn unsafe_named_declarations(
     if language == BackendLanguage::Ada {
         let mut literals = Vec::new();
         collect_ada_literal_conflicts(&top_level, schema, emissions, &mut literals);
-        collect_ada_float_callable_conflicts(&top_level, schema, &mut literals);
+        collect_ada_wrapper_callable_conflicts(&top_level, schema, &mut literals);
         for conflict in literals {
             unsafe_names.extend(conflict.owners);
         }
@@ -1892,6 +1920,24 @@ mod tests {
 
     /// A named floating declaration with a supported bound-only domain, so
     /// Ada emits `Create` / `Value` for it.
+    /// A Task 036 supported DateTime Zulu declaration, which emits the same
+    /// package-level `Create` / `Value` pair as a constrained float.
+    fn date_time_zulu(name: &str) -> TypeDecl {
+        TypeDecl {
+            kind: TypeKind::Primitive(PrimitiveKind::DateTime),
+            constraints: ConstraintSet {
+                lexical: ams_gra_oms_ir::LexicalConstraintSet {
+                    pattern_groups: vec![ams_gra_oms_ir::PatternGroup {
+                        alternatives: vec![ams_gra_oms_ir::PatternExpression::xml_schema(".+Z")],
+                    }],
+                    white_space: None,
+                },
+                ..ConstraintSet::default()
+            },
+            ..primitive(name)
+        }
+    }
+
     fn constrained_float(name: &str) -> TypeDecl {
         TypeDecl {
             kind: TypeKind::Primitive(PrimitiveKind::Float64),
@@ -2028,6 +2074,108 @@ mod tests {
                 QualifiedName::new(NS, "BurnRate"),
                 QualifiedName::new(NS, "Create"),
             ])
+        );
+    }
+
+    /// Task 036: a supported DateTime declaration emits the same package-level
+    /// `Create`, so a schema type of that name collides exactly as a
+    /// constrained float's does. The shared callable model must cover both.
+    #[test]
+    fn an_ada_type_named_create_collides_with_the_generated_temporal_constructor() {
+        let schema = schema_with(vec![date_time_zulu("Instant"), primitive("Create")]);
+        assert_collides(&schema, BackendLanguage::Ada, "Create");
+    }
+
+    #[test]
+    fn an_ada_type_named_value_collides_with_the_generated_temporal_accessor() {
+        let schema = schema_with(vec![date_time_zulu("Instant"), primitive("Value")]);
+        assert_collides(&schema, BackendLanguage::Ada, "Value");
+    }
+
+    /// Both sides are implicated, naming the temporal wrapper responsible.
+    #[test]
+    fn a_generated_temporal_callable_collision_marks_both_declarations() {
+        let schema = schema_with(vec![date_time_zulu("Instant"), primitive("Create")]);
+        assert_eq!(
+            unsafe_named_declarations(
+                &schema,
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            ),
+            BTreeSet::from([
+                QualifiedName::new(NS, "Instant"),
+                QualifiedName::new(NS, "Create"),
+            ])
+        );
+    }
+
+    /// An UNSUPPORTED temporal declaration generates no subprogram, so it must
+    /// not reserve `Create` / `Value`. Registering a name for output that will
+    /// never exist would reject an otherwise generable schema.
+    #[test]
+    fn unsupported_temporal_declarations_reserve_no_callable() {
+        let unconstrained_date_time = TypeDecl {
+            constraints: ConstraintSet::default(),
+            ..date_time_zulu("Instant")
+        };
+        let wrong_pattern = TypeDecl {
+            constraints: ConstraintSet {
+                lexical: ams_gra_oms_ir::LexicalConstraintSet {
+                    pattern_groups: vec![ams_gra_oms_ir::PatternGroup {
+                        alternatives: vec![ams_gra_oms_ir::PatternExpression::xml_schema(".*Z")],
+                    }],
+                    white_space: None,
+                },
+                ..ConstraintSet::default()
+            },
+            ..date_time_zulu("Instant")
+        };
+        // `TimeType` carries the same `.+Z` text as the supported profile and
+        // is still unsupported, so it must still reserve nothing.
+        let zulu_time = TypeDecl {
+            kind: TypeKind::Primitive(PrimitiveKind::Time),
+            ..date_time_zulu("WallClock")
+        };
+        let duration = TypeDecl {
+            kind: TypeKind::Primitive(PrimitiveKind::Duration),
+            constraints: ConstraintSet::default(),
+            ..date_time_zulu("Span")
+        };
+        for declaration in [unconstrained_date_time, wrong_pattern, zulu_time, duration] {
+            let label = declaration.name.local_name.clone();
+            let schema = schema_with(vec![declaration, primitive("Create")]);
+            assert!(
+                backend_names_are_renderable(
+                    &schema,
+                    BackendLanguage::Ada,
+                    GenerationWorld::ClosedSchemaSet
+                ),
+                "an unsupported temporal declaration ({label}) must not reserve Create"
+            );
+        }
+    }
+
+    /// Ada subprograms overload across wrapper *families*: a constrained float
+    /// emits `Create (Interfaces.IEEE_Float_64) return T` and a Task 036
+    /// DateTime emits `Create (String) return T`. Several of each coexist in
+    /// one package -- two `Create (String) return _` differ only in result
+    /// type, which Ada resolves by expected type. Verified against GNAT 14.2,
+    /// so sharing the identifier must not be reported as a collision.
+    #[test]
+    fn float_and_temporal_wrappers_may_share_overloaded_create_and_value() {
+        let schema = schema_with(vec![
+            constrained_float("BurnRate"),
+            constrained_float("AltitudeMeters"),
+            date_time_zulu("Instant"),
+            date_time_zulu("Deadline"),
+        ]);
+        assert!(
+            backend_names_are_renderable(
+                &schema,
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            ),
+            "overloaded Create/Value across wrapper families is legal Ada"
         );
     }
 

@@ -3,11 +3,12 @@
 use ams_gra_oms_codegen_core::{
     ADA_PORTABLE_POSITIVE_INDEX_MAX, AbstractValueProjection, Backend, BackendLanguage,
     CodegenError, EffectiveValueMember, FloatingDomain, GeneratedFile, GenerationWorld,
-    InclusiveIntegralDomain, TypeEmission, abstract_value_projection_for_ref,
+    InclusiveIntegralDomain, TemporalProfile, TypeEmission, abstract_value_projection_for_ref,
     ada_record_field_uses_optional_wrapper, backend_preflight, effective_choice_alternatives,
     effective_record_fields, field_storage_semantics, float32_literal, float64_literal,
-    floating_domain, inclusive_integral_domain, plan_type_emissions,
-    schema_emits_ada_binary_vectors, schema_emits_unbounded_sequence_support,
+    floating_domain, inclusive_integral_domain, is_temporal_primitive, plan_type_emissions,
+    schema_emits_ada_binary_vectors, schema_emits_temporal_carrier,
+    schema_emits_unbounded_sequence_support, temporal_profile,
 };
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind,
@@ -43,6 +44,15 @@ impl Backend for AdaBackend {
             relative_path: PathBuf::from(format!("{file_stem}.ads")),
             contents,
         });
+        // Task 036: a package body is emitted only when some declaration
+        // actually needs one, so a schema with no body-requiring feature keeps
+        // its existing single-`.ads` file set and no empty `.adb` appears.
+        if let Some(body) = generate_body(schema, world)? {
+            files.push(GeneratedFile {
+                relative_path: PathBuf::from(format!("{file_stem}.adb")),
+                contents: body,
+            });
+        }
         Ok(files)
     }
 }
@@ -107,11 +117,21 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     // without them produces no `private` part at all and Task 022 output stays
     // byte-identical.
     let mut private_part = String::new();
+    // Task 036: the temporal validator is a real algorithm rather than an
+    // expression function, so it needs a package body. The body text is
+    // accumulated here and emitted only if some declaration actually produced
+    // one, which keeps every other schema's single-`.ads` output unchanged.
+    let mut body = String::new();
     for emission in emissions {
         match emission {
-            TypeEmission::Declaration(declaration) => {
-                render_declaration(&mut output, &mut private_part, schema, declaration, world)?
-            }
+            TypeEmission::Declaration(declaration) => render_declaration(
+                &mut output,
+                &mut private_part,
+                &mut body,
+                schema,
+                declaration,
+                world,
+            )?,
             TypeEmission::AbstractValue(projection) => {
                 render_abstract_value(&mut output, &projection)?
             }
@@ -123,6 +143,51 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     }
     writeln!(output, "end {package};").expect("writing to String cannot fail");
     Ok(output)
+}
+
+/// Generate the Ada package **body**, when the schema needs one.
+///
+/// Returns `None` when no declaration requires a body, so a schema without a
+/// Task 036 feature keeps its existing generated file set exactly. An empty
+/// `.adb` is never emitted.
+///
+/// # Errors
+///
+/// Returns an error for the same IR constructs [`generate`] rejects; the two
+/// are always called on the same schema and agree by construction.
+pub fn generate_body(
+    schema: &SchemaIr,
+    world: GenerationWorld,
+) -> Result<Option<String>, CodegenError> {
+    if !schema_emits_temporal_carrier(schema) {
+        return Ok(None);
+    }
+    validate_schema(schema, world)?;
+    let emissions = plan_type_emissions(schema, world)?;
+    let package = package_name(schema)?;
+    let mut discard_spec = String::new();
+    let mut discard_private = String::new();
+    let mut body = String::new();
+    for emission in emissions {
+        if let TypeEmission::Declaration(declaration) = emission {
+            render_declaration(
+                &mut discard_spec,
+                &mut discard_private,
+                &mut body,
+                schema,
+                declaration,
+                world,
+            )?;
+        }
+    }
+    if body.is_empty() {
+        return Ok(None);
+    }
+    let mut output = String::new();
+    writeln!(output, "package body {package} is\n").expect("writing to String cannot fail");
+    output.push_str(&body);
+    writeln!(output, "end {package};").expect("writing to String cannot fail");
+    Ok(Some(output))
 }
 
 fn render_abstract_value(
@@ -168,6 +233,7 @@ fn render_abstract_value(
 fn render_declaration(
     output: &mut String,
     private_part: &mut String,
+    body: &mut String,
     schema: &SchemaIr,
     declaration: &TypeDecl,
     world: GenerationWorld,
@@ -215,6 +281,18 @@ fn render_declaration(
             render_floating_declaration(
                 output,
                 private_part,
+                *kind,
+                &declaration.constraints,
+                &name,
+            )?;
+        }
+        TypeKind::Primitive(
+            kind @ (PrimitiveKind::DateTime | PrimitiveKind::Time | PrimitiveKind::Duration),
+        ) => {
+            render_temporal_declaration(
+                output,
+                private_part,
+                body,
                 *kind,
                 &declaration.constraints,
                 &name,
@@ -431,6 +509,25 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
             // `reject_extra_constraints` understands only the integral
             // inclusive subset, so a legitimate exclusive floating bound must
             // not reach it.
+            continue;
+        }
+        // Task 036: a named temporal declaration is classified by the shared
+        // helper. Only the DateTime Zulu profile is lowered; every other
+        // temporal shape still fails closed here, before any output exists.
+        if let TypeKind::Primitive(kind) = declaration.kind
+            && is_temporal_primitive(kind)
+        {
+            match temporal_profile(kind, &declaration.constraints) {
+                Ok(Some(TemporalProfile::DateTimeZulu)) => {}
+                Ok(None) => unreachable!("is_temporal_primitive gates this branch"),
+                Err(reason) => {
+                    return unsupported(format!("{reason} on {}", declaration.name.local_name));
+                }
+            }
+            // The supported profile's `.+Z` pattern is a real lexical
+            // constraint that `reject_extra_constraints` would reject, so it
+            // must not reach it: the classifier has already proven this exact
+            // facet set is fully enforced by the generated validator.
             continue;
         }
         if matches!(declaration.kind, TypeKind::Primitive(PrimitiveKind::Binary))
@@ -1027,6 +1124,357 @@ fn error(message: impl Into<String>) -> CodegenError {
         message: message.into(),
     }
 }
+
+/// Render a named temporal declaration into the spec, private part, and body.
+///
+/// Only the shared classifier's one supported profile is lowered; `Time`,
+/// `Duration`, an unconstrained `DateTime`, and every other facet shape fail
+/// closed rather than being approximated.
+///
+/// # Representation
+///
+/// A **validated lexical carrier** whose private completion reuses the
+/// package's existing owned-string representation
+/// (`Ada.Strings.Unbounded.Unbounded_String`). Deliberately not
+/// `Ada.Calendar.Time`: that type's year range and sub-second precision are
+/// implementation-bounded and narrower than XML Schema's, so it would silently
+/// reject valid values and discard wire-level information.
+///
+/// # Equality
+///
+/// The private type inherits Ada's predefined equality as a consequence of the
+/// language model. That equality compares the **stored normalized lexical
+/// representation** and is not XML Schema dateTime value-space equality: two
+/// distinct legal spellings can denote one value. The generated comment says
+/// so, and no ordering operator is declared.
+///
+/// # Why a body
+///
+/// The validator is a real algorithm, not an expression function, so `Create`
+/// is completed in a package body. Every parser helper is **nested inside
+/// `Create`**, so no new package-scope identifier is introduced and nothing
+/// new is owed to generated-name preflight.
+fn render_temporal_declaration(
+    output: &mut String,
+    private_part: &mut String,
+    body: &mut String,
+    kind: PrimitiveKind,
+    constraints: &ConstraintSet,
+    name: &str,
+) -> Result<(), CodegenError> {
+    match temporal_profile(kind, constraints) {
+        Ok(Some(TemporalProfile::DateTimeZulu)) => {}
+        Ok(None) => return unsupported(format!("non-temporal primitive on {name}")),
+        Err(reason) => return unsupported(format!("{reason} on {name}")),
+    }
+    // Visible part: an opaque handle plus the two operations a client may use.
+    // The representation is not nameable from here, so no aggregate or
+    // conversion can bypass `Create`.
+    writeln!(
+        output,
+        concat!(
+            "   --  A validated XML Schema dateTime restricted to the Zulu timezone.\n",
+            "   --  Predefined \"=\" compares the stored normalized lexical\n",
+            "   --  representation; it is NOT XML Schema value-space equality.\n",
+            "   type {name} is private;\n\n",
+            "   --  Raises Constraint_Error unless the whitespace-normalized value is\n",
+            "   --  a valid lexical dateTime whose timezone is 'Z'.\n",
+            "   function Create (Value : String) return {name};\n\n",
+            "   --  The stored normalized lexical representation.\n",
+            "   function Value (Item : {name}) return String;\n",
+        ),
+        name = name,
+    )
+    .expect("writing to String cannot fail");
+
+    writeln!(
+        private_part,
+        concat!(
+            "   type {name} is record\n",
+            "      Lexical : Standard.Ada.Strings.Unbounded.Unbounded_String;\n",
+            "   end record;\n",
+        ),
+        name = name,
+    )
+    .expect("writing to String cannot fail");
+
+    body.push_str(&ADA_DATE_TIME_ZULU_BODY.replace("{name}", name));
+    Ok(())
+}
+
+/// The generated Ada body for one DateTime Zulu carrier, `{name}` substituted.
+///
+/// # Validation order
+///
+/// 1. XML Schema `collapse` normalization (section 4.3.6), fixed for
+///    `dateTime`;
+/// 2. the full `dateTime` lexical grammar and calendar rules (3.2.7.1);
+/// 3. the UCI `.+Z` Zulu restriction.
+///
+/// A bare "ends with 'Z'" test would accept `garbageZ`, so the base grammar is
+/// checked first and Zulu is the last gate rather than the only one.
+///
+/// # No fixed-width year
+///
+/// The year is validated and its leap-year properties computed from decimal
+/// digits, never converted to `Integer` or `Ada.Calendar.Year_Number`. XML
+/// Schema admits a four-or-more digit year with no upper bound, so a valid
+/// date must not become invalid because it exceeds a host numeric type.
+///
+/// # Scope
+///
+/// Every helper is declared in `Create`'s own declarative part, so Task 036
+/// introduces no package-scope identifier beyond `Create` and `Value` -- both
+/// of which the shared name model already registers.
+const ADA_DATE_TIME_ZULU_BODY: &str = r##"
+   function Create (Value : String) return {name} is
+
+      function Collapse (Raw : String) return String;
+      function Is_Zulu_Date_Time (Text : String) return Boolean;
+
+      --  XML Schema "collapse": tab/LF/CR become spaces, runs of spaces are
+      --  squeezed to one, and leading/trailing spaces are removed.
+      function Collapse (Raw : String) return String is
+         Result        : String (1 .. Raw'Length);
+         Last          : Natural := 0;
+         Pending_Space : Boolean := False;
+      begin
+         for Index in Raw'Range loop
+            if Raw (Index) = ' '
+              or else Raw (Index) = Character'Val (9)
+              or else Raw (Index) = Character'Val (10)
+              or else Raw (Index) = Character'Val (13)
+            then
+               Pending_Space := Last > 0;
+            else
+               if Pending_Space then
+                  Last := Last + 1;
+                  Result (Last) := ' ';
+                  Pending_Space := False;
+               end if;
+               Last := Last + 1;
+               Result (Last) := Raw (Index);
+            end if;
+         end loop;
+         return Result (1 .. Last);
+      end Collapse;
+
+      function Is_Zulu_Date_Time (Text : String) return Boolean is
+
+         function Is_Digit (Item : Character) return Boolean is
+           (Item in '0' .. '9');
+
+         function Two_Digits
+           (Text : String; From : Positive; Out_Value : out Natural)
+            return Boolean;
+         function Days_In_Month (Month : Natural; Leap : Boolean) return Natural;
+         function Is_Leap_Year (Text : String; From, To : Positive) return Boolean;
+         function Is_Time_Of_Day (Text : String; From : Positive) return Boolean;
+
+         --  Exactly two ASCII digits at Text (From .. From + 1).
+         function Two_Digits
+           (Text : String; From : Positive; Out_Value : out Natural)
+            return Boolean is
+         begin
+            Out_Value := 0;
+            if From + 1 > Text'Last
+              or else not Is_Digit (Text (From))
+              or else not Is_Digit (Text (From + 1))
+            then
+               return False;
+            end if;
+            Out_Value :=
+              (Character'Pos (Text (From)) - Character'Pos ('0')) * 10
+              + (Character'Pos (Text (From + 1)) - Character'Pos ('0'));
+            return True;
+         end Two_Digits;
+
+         --  maximumDayInMonthFor, XML Schema 1.0 Part 2 Appendix E.
+         function Days_In_Month (Month : Natural; Leap : Boolean) return Natural is
+         begin
+            case Month is
+               when 1 | 3 | 5 | 7 | 8 | 10 | 12 => return 31;
+               when 4 | 6 | 9 | 11              => return 30;
+               when 2                           =>
+                  if Leap then
+                     return 29;
+                  else
+                     return 28;
+                  end if;
+               when others                      => return 0;
+            end case;
+         end Days_In_Month;
+
+         --  Leap year from decimal digits: divisible by 400, or by 4 but not
+         --  100. Divisibility by 4 depends only on the last two digits (100 is
+         --  itself a multiple of 4), and the "divisible by 400" case is decided
+         --  by reducing the remaining digits modulo 4 one at a time. Nothing is
+         --  converted to a whole-year integer, so any digit count stays exact.
+         function Is_Leap_Year (Text : String; From, To : Positive) return Boolean is
+            Last_Two         : constant Natural :=
+              (Character'Pos (Text (To - 1)) - Character'Pos ('0')) * 10
+              + (Character'Pos (Text (To)) - Character'Pos ('0'));
+            Divisible_By_4   : constant Boolean := Last_Two mod 4 = 0;
+            Divisible_By_100 : constant Boolean := Last_Two = 0;
+            Remainder        : Natural := 0;
+         begin
+            if Divisible_By_100 then
+               for Index in From .. To - 2 loop
+                  Remainder :=
+                    (Remainder * 10
+                     + (Character'Pos (Text (Index)) - Character'Pos ('0')))
+                    mod 4;
+               end loop;
+               return Remainder = 0;
+            end if;
+            return Divisible_By_4;
+         end Is_Leap_Year;
+
+         --  'T' hh ':' mm ':' ss ('.' s+)?
+         function Is_Time_Of_Day (Text : String; From : Positive) return Boolean is
+            Hour, Minute, Second : Natural;
+            Fraction_Is_Zero     : Boolean := True;
+         begin
+            if Text'Last - From + 1 < 9
+              or else Text (From) /= 'T'
+              or else Text (From + 3) /= ':'
+              or else Text (From + 6) /= ':'
+            then
+               return False;
+            end if;
+            if not Two_Digits (Text, From + 1, Hour)
+              or else not Two_Digits (Text, From + 4, Minute)
+              or else not Two_Digits (Text, From + 7, Second)
+            then
+               return False;
+            end if;
+            --  XML Schema 1.0 Part 2, Appendix D: the two digits of 'ss' "can
+            --  have values from 0 to 60". 60 is the LEAP SECOND and is
+            --  lexically legal; 61 never is, because the field itself stops at
+            --  60. Minutes remain 00 .. 59 -- a leap second lengthens the
+            --  second field, not the minute.
+            --
+            --  Appendix D adds that a 60 is "not sensible" away from March 31,
+            --  June 30, September 30, or December 31 UTC, but prescribes that
+            --  such a value "should [be] considered as added or subtracted
+            --  from the following minute" -- a VALUE mapping, not a lexical
+            --  rejection. So no calendar-position test is applied here, and no
+            --  IERS leap-second table is needed: Appendix E states outright
+            --  that a definition tracking real leap seconds "would need to be
+            --  constantly updated".
+            if Hour > 24 or else Minute > 59 or else Second > 60 then
+               return False;
+            end if;
+            if From + 9 <= Text'Last then
+               --  '.' s+ : the dot requires at least one digit after it.
+               if Text (From + 9) /= '.' or else From + 10 > Text'Last then
+                  return False;
+               end if;
+               for Index in From + 10 .. Text'Last loop
+                  if not Is_Digit (Text (Index)) then
+                     return False;
+                  end if;
+                  if Text (Index) /= '0' then
+                     Fraction_Is_Zero := False;
+                  end if;
+               end loop;
+            end if;
+            --  Hour 24 is legal only as the exact instant 24:00:00(.0*).
+            if Hour = 24
+              and then (Minute /= 0 or else Second /= 0 or else not Fraction_Is_Zero)
+            then
+               return False;
+            end if;
+            return True;
+         end Is_Time_Of_Day;
+
+         Body_Last    : Natural;
+         Year_From    : Positive;
+         Year_To      : Natural;
+         Cursor       : Natural;
+         All_Zero     : Boolean := True;
+         Leap         : Boolean;
+         Month, Day   : Natural;
+      begin
+         --  The Zulu restriction, applied to the normalized form -- exactly
+         --  where XML Schema applies a pattern facet.
+         if Text'Length < 2 or else Text (Text'Last) /= 'Z' then
+            return False;
+         end if;
+         Body_Last := Text'Last - 1;
+
+         --  '-'? yyyy, with an unbounded digit count.
+         if Text (Text'First) = '-' then
+            Year_From := Text'First + 1;
+         else
+            Year_From := Text'First;
+         end if;
+         Cursor := Year_From;
+         while Cursor <= Body_Last and then Is_Digit (Text (Cursor)) loop
+            Cursor := Cursor + 1;
+         end loop;
+         Year_To := Cursor - 1;
+
+         --  Four-or-more digits.
+         if Year_To - Year_From + 1 < 4 then
+            return False;
+         end if;
+         --  If more than four digits, leading zeros are prohibited.
+         if Year_To - Year_From + 1 > 4 and then Text (Year_From) = '0' then
+            return False;
+         end if;
+         --  '0000' is not a valid lexical representation in XML Schema 1.0,
+         --  with or without a sign.
+         for Index in Year_From .. Year_To loop
+            if Text (Index) /= '0' then
+               All_Zero := False;
+            end if;
+         end loop;
+         if All_Zero then
+            return False;
+         end if;
+         Leap := Is_Leap_Year (Text, Year_From, Year_To);
+
+         --  '-' mm '-' dd, all fixed width.
+         if Year_To + 6 > Body_Last
+           or else Text (Year_To + 1) /= '-'
+           or else Text (Year_To + 4) /= '-'
+         then
+            return False;
+         end if;
+         if not Two_Digits (Text, Year_To + 2, Month)
+           or else not Two_Digits (Text, Year_To + 5, Day)
+         then
+            return False;
+         end if;
+         if Month < 1 or else Month > 12
+           or else Day < 1 or else Day > Days_In_Month (Month, Leap)
+         then
+            return False;
+         end if;
+
+         --  The base grammar must hold for everything before the timezone;
+         --  this is what stops "garbageZ" from being accepted.
+         return Is_Time_Of_Day (Text (Text'First .. Body_Last), Year_To + 7);
+      end Is_Zulu_Date_Time;
+
+      --  Declared after the helper bodies so Ada's declare-before-use rule is
+      --  satisfied without a separate elaboration step.
+      Normalized : constant String := Collapse (Value);
+
+   begin
+      if not Is_Zulu_Date_Time (Normalized) then
+         raise Constraint_Error
+           with "not a valid XML Schema dateTime in the Zulu timezone";
+      end if;
+      return {name}'
+        (Lexical =>
+           Standard.Ada.Strings.Unbounded.To_Unbounded_String (Normalized));
+   end Create;
+
+   function Value (Item : {name}) return String is
+     (Standard.Ada.Strings.Unbounded.To_String (Item.Lexical));
+"##;
 
 #[cfg(test)]
 mod tests {
@@ -2000,10 +2448,16 @@ end Probe;
         }
     }
 
+    /// Lexical constraints still fail before rendering everywhere Task 036 has
+    /// not implemented a validator.
+    ///
+    /// `DateTime` + `.+Z` is deliberately absent from this list: that exact
+    /// pair is the one Task 036 profile the generator now fully enforces, and
+    /// the wording below distinguishes it from `Time` carrying the *same*
+    /// pattern text, which remains unsupported.
     #[test]
     fn lexical_constraints_fail_before_rendering() {
         for (kind, white_space) in [
-            (PrimitiveKind::DateTime, false),
             (PrimitiveKind::Time, false),
             (PrimitiveKind::SignedInteger, false),
             (PrimitiveKind::String, false),
@@ -2024,12 +2478,26 @@ end Probe;
             }
             let error =
                 generate(&schema, CLOSED).expect_err("lexical constraints must be rejected");
+            let message = &error.message;
             assert!(
-                error
-                    .message
-                    .contains("unsupported Ada IR construct: constraints on")
+                message.contains("unsupported Ada IR construct: constraints on")
+                    || message.contains("unsupported temporal declaration: Time"),
+                "unexpected diagnostic for {kind:?}: {message}"
             );
         }
+        // The same pattern text on `DateTime` -- and only there -- is now the
+        // supported profile, so it must generate rather than fail.
+        let mut supported = track_schema();
+        supported.types[0].kind = TypeKind::Primitive(PrimitiveKind::DateTime);
+        supported.types[0].constraints = ConstraintSet::default();
+        supported.types[0]
+            .constraints
+            .lexical
+            .pattern_groups
+            .push(ams_gra_oms_ir::PatternGroup {
+                alternatives: vec![ams_gra_oms_ir::PatternExpression::xml_schema(".+Z")],
+            });
+        generate(&supported, CLOSED).expect("the supported DateTime Zulu profile must generate");
     }
 
     #[test]

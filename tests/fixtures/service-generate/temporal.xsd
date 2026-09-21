@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:test"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- Task 036 synthetic selected-service fixture.
+
+       The SELECTED closure contains the supported named DateTime Zulu profile
+       in both a required and an optional named position:
+
+         TemporalReport -> TemporalPayload
+                             Observed  : Instant  1..1
+                             Timestamp : Instant  0..1   (Task 034 composition)
+                             Expires   : Deadline 0..1
+
+       Two supported declarations are selected on purpose: in Ada each emits a
+       package-level Create/Value, so this also proves overload resolution.
+
+       UNSELECTED, and deliberately outside the closure, are the two temporal
+       declarations Task 036 does NOT implement. They must not be projected
+       into the generated output, and their presence must not block readiness.
+
+       No declaration is named after a UCI type: Task 036 support must arise
+       from PrimitiveKind::DateTime plus the effective ConstraintSet alone.
+  -->
+
+  <!-- SELECTED: the authoritative UCI Zulu profile. -->
+  <xs:simpleType name="Instant">
+    <xs:annotation>
+      <xs:documentation>An XML Schema dateTime restricted to the Zulu timezone.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:dateTime">
+      <xs:pattern value=".+Z"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- SELECTED: a second supported declaration. -->
+  <xs:simpleType name="Deadline">
+    <xs:restriction base="xs:dateTime">
+      <xs:pattern value=".+Z"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- UNSELECTED: Time carrying the SAME ".+Z" text remains unsupported. -->
+  <xs:simpleType name="WallClock">
+    <xs:restriction base="xs:time">
+      <xs:pattern value=".+Z"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- UNSELECTED: unconstrained Duration remains unsupported. -->
+  <xs:simpleType name="Span">
+    <xs:restriction base="xs:duration"/>
+  </xs:simpleType>
+
+  <!-- UNSELECTED holder, so the unsupported declarations are genuinely
+       reachable in the schema but not in the selected closure. -->
+  <xs:complexType name="UnselectedTemporalPayload">
+    <xs:sequence>
+      <xs:element name="Clock" type="t:WallClock"/>
+      <xs:element name="Elapsed" type="t:Span"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TemporalPayload">
+    <xs:sequence>
+      <xs:element name="Observed" type="t:Instant"/>
+      <xs:element name="Timestamp" type="t:Instant" minOccurs="0"/>
+      <xs:element name="Expires" type="t:Deadline" minOccurs="0"/>
+      <xs:element name="Label" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="TemporalReport" type="t:TemporalPayload"
+              uci:version="001.000.000.000"/>
+
+  <xs:element name="UnselectedTemporalReport" type="t:UnselectedTemporalPayload"
+              uci:version="001.000.000.000"/>
+
+</xs:schema>

@@ -1,0 +1,36 @@
+# SYNTHETIC Task 036 fixture. Authored for this repository only.
+#
+# Selects one message whose closure carries the supported named DateTime Zulu
+# profile in a required AND an optional named position. Before Task 036 this
+# was NOT READY for every backend; after it, all three must report READY and
+# generate compilable output -- and, for Ada, the selected generation must
+# include the new `.adb` body.
+#
+# The schema also declares unsupported Time and Duration types OUTSIDE this
+# selection, which must therefore neither be projected nor block readiness.
+contract_version: "0.1"
+
+service:
+  name: Temporal Observation
+  version: "0.1.0"
+  kind: service
+  description: Synthetic contract selecting a DateTime Zulu closure.
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: observation
+    name: Observation
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: observation-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: TemporalReport
+        topic: temporal.report
+        timing:
+          kind: asynchronous

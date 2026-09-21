@@ -8,7 +8,7 @@ use crate::{
     AbstractValueProjectionError, AbstractValueSemantics, AbstractValueTopology,
     BackendPreflightError, GenerationWorld, abstract_value_occurrence_renderable,
     abstract_value_targets, backend_preflight, classify_abstract_value_topology, floating_domain,
-    inclusive_integral_domain, unsafe_named_declarations,
+    inclusive_integral_domain, is_temporal_primitive, temporal_profile, unsafe_named_declarations,
 };
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, FieldDecl, MessageDecl, OccurrenceShape, PrimitiveKind,
@@ -1445,6 +1445,14 @@ fn kind_renderable(declaration: &TypeDecl, enabled: &BTreeSet<FeatureFamily>) ->
         | TypeKind::Enumeration { .. }
         | TypeKind::Record { .. }
         | TypeKind::Choice { .. } => true,
+        // Task 036: a temporal *kind* is baseline only when the shared
+        // classifier accepts this declaration's effective constraints. The
+        // remaining temporal declarations stay attributed to
+        // `PrimitiveExpansion` as hypothetical future support.
+        TypeKind::Primitive(kind) if is_temporal_primitive(kind) => {
+            temporal_profile(kind, &declaration.constraints).is_ok_and(|profile| profile.is_some())
+                || enabled.contains(&FeatureFamily::PrimitiveExpansion)
+        }
         TypeKind::Primitive(_) => enabled.contains(&FeatureFamily::PrimitiveExpansion),
         TypeKind::Alias(_) | TypeKind::List { .. } => false,
     }
@@ -1512,6 +1520,25 @@ fn primitive_declaration_renderable(
     if kind == PrimitiveKind::Binary {
         return constraints == &ConstraintSet::default()
             || enabled.contains(&FeatureFamily::ConstrainedSimpleTypes);
+    }
+    // Task 036: a named temporal declaration is baseline-renderable exactly
+    // when the shared classifier accepts it -- that is, `PrimitiveKind::DateTime`
+    // carrying the authoritative UCI Zulu lexical profile and nothing else.
+    // This asks precisely the question the three backends ask, so coverage
+    // cannot drift from what they will actually emit.
+    //
+    // `PrimitiveKind::DateTime` is deliberately NOT marked supported wholesale.
+    // An unconstrained `DateTime`, a different pattern, `Time`, and `Duration`
+    // all stay non-baseline and remain attributed to the existing hypothetical
+    // families as future work. Crucially this is a *declaration* judgement
+    // only: `primitive_ref_renderable` still reports a **direct**
+    // `xs:dateTime` field unsupported, which is the distinction Task 036 rests
+    // on.
+    if is_temporal_primitive(kind) {
+        return temporal_profile(kind, constraints).is_ok_and(|profile| profile.is_some())
+            || (enabled.contains(&FeatureFamily::PrimitiveExpansion)
+                && (constraints == &ConstraintSet::default()
+                    || enabled.contains(&FeatureFamily::ConstrainedSimpleTypes)));
     }
     if !matches!(
         kind,
