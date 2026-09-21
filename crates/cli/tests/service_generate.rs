@@ -1552,3 +1552,228 @@ fn task036_selected_ada_temporal_rejects_public_bypasses() {
         );
     }
 }
+
+/// Generate the Task 037 String-profile service for one language.
+fn generate_string_profile(language: &str, label: &str) -> PathBuf {
+    let output_root = output_dir(label);
+    let output = generate(
+        "string-profile.xsd",
+        "string-profile.yaml",
+        language,
+        "closed-schema",
+        &output_root,
+    );
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "{language} String-profile generation should succeed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    output_root
+}
+
+/// Task 037: a contract whose selected closure carries the supported named
+/// schema-version String profile becomes READY in all three backends.
+///
+/// The point of this test is *propagation*. No Task 037 change was made to
+/// `service_plan.rs`, `service_readiness.rs`, or `service_generation.rs`; the
+/// new capability has to arrive through the single shared coverage snapshot
+/// and the ordinary backends. The fixture also declares an unselected
+/// `length + pattern` String, so a READY result here cannot be a whole-schema
+/// accident and cannot be an accidental widening to every constrained String.
+#[test]
+fn task037_string_profile_service_is_ready_in_every_backend() {
+    for language in ["rust", "cpp", "ada"] {
+        let check = cli()
+            .arg("service-check")
+            .arg("--schema")
+            .arg(fixture("string-profile.xsd"))
+            .arg("--contract")
+            .arg(fixture("string-profile.yaml"))
+            .args(["--language", language, "--world", "closed-schema"])
+            .output()
+            .expect("service-check must run");
+        assert_eq!(
+            check.status.code(),
+            Some(0),
+            "{language} service-check should succeed"
+        );
+        let report = stdout_of(&check);
+        assert!(
+            report.contains("status: READY"),
+            "{language} must be READY for the String-profile contract:\n{report}"
+        );
+        // The unsupported constrained String is outside the selection, so it
+        // must not appear in the projected closure at all.
+        for unselected in ["Identifier", "UnselectedVersionPayload"] {
+            assert!(
+                !report.contains(unselected),
+                "{language} must not project the unselected {unselected}"
+            );
+        }
+    }
+}
+
+/// Task 037: selected generation emits the Ada package **body** alongside the
+/// spec, and the projected output carries no unselected String declaration.
+#[test]
+fn task037_selected_ada_generation_includes_the_package_body() {
+    let root = generate_string_profile("ada", "task037-ada-files");
+    let spec = std::fs::read_to_string(root.join("urn-test.ads")).expect("spec must be generated");
+    let body = std::fs::read_to_string(root.join("urn-test.adb")).expect("body must be generated");
+
+    assert!(spec.contains("type SchemaVersion is private;"));
+    assert!(spec.contains("function Create (Value : String) return SchemaVersion;"));
+    assert!(body.contains("package body Urn.Test is"));
+    assert!(body.contains("function Create (Value : String) return SchemaVersion is"));
+    // Both supported declarations are projected, which is what makes Ada
+    // `Create` / `Value` overload resolution load-bearing here.
+    assert!(spec.contains("type PeerVersion is private;"));
+    assert!(body.contains("function Create (Value : String) return PeerVersion is"));
+    // No generic regex engine is pulled in.
+    assert!(!body.contains("Regpat"), "body must not use GNAT.Regpat");
+
+    for unselected in ["Identifier", "Unselected"] {
+        assert!(!spec.contains(unselected), "spec leaked {unselected}");
+        assert!(!body.contains(unselected), "body leaked {unselected}");
+    }
+}
+
+/// Task 037: the selected Rust output compiles and validates at runtime.
+#[test]
+fn task037_selected_rust_output_validates_at_runtime() {
+    let root = generate_string_profile("rust", "task037-rust");
+    std::fs::write(
+        root.join("probe.rs"),
+        "include!(\"test.rs\");\n\nfn main() {\n\
+         \x20   let value = SchemaVersion::new(\"002.5.0\").expect(\"valid\");\n\
+         \x20   assert_eq!(value.as_str(), \"002.5.0\");\n\
+         \x20   assert!(SchemaVersion::new(\"000.001.000.000\").is_none());\n\
+         \x20   assert!(SchemaVersion::new(\" 002.5.0\").is_none());\n\
+         \x20   assert!(SchemaVersion::new(\"002.5\").is_none());\n\
+         \x20   assert_eq!(value, SchemaVersion::new(\"002.5.0\").unwrap());\n\
+         }\n",
+    )
+    .expect("write Rust probe");
+    let status = Command::new("rustc")
+        .current_dir(&root)
+        .args(["--edition", "2021", "-o", "probe", "probe.rs"])
+        .status()
+        .expect("rustc must be available");
+    assert!(status.success(), "selected Rust output must compile");
+    assert!(
+        Command::new(root.join("probe"))
+            .status()
+            .expect("probe must run")
+            .success(),
+        "selected Rust validation must hold"
+    );
+}
+
+/// Task 037: the selected C++ output compiles under strict C++17 and validates
+/// at runtime.
+#[test]
+fn task037_selected_cpp_output_validates_at_runtime() {
+    let root = generate_string_profile("cpp", "task037-cpp");
+    std::fs::write(
+        root.join("probe.cpp"),
+        "#include \"test.hpp\"\n#include <cstdio>\n\n\
+         int main() {\n\
+         \x20   auto value = urn::test::SchemaVersion::create(\"002.5.0\");\n\
+         \x20   if (!value || value->value() != \"002.5.0\") return 1;\n\
+         \x20   if (urn::test::SchemaVersion::create(\"000.001.000.000\")) return 1;\n\
+         \x20   if (urn::test::SchemaVersion::create(\" 002.5.0\")) return 1;\n\
+         \x20   if (urn::test::SchemaVersion::create(\"002.5\")) return 1;\n\
+         \x20   std::puts(\"ok\");\n\
+         \x20   return 0;\n\
+         }\n",
+    )
+    .expect("write C++ probe");
+    let output = Command::new("c++")
+        .current_dir(&root)
+        .args([
+            "-std=c++17",
+            "-Wall",
+            "-Wextra",
+            "-pedantic-errors",
+            "-o",
+            "probe",
+            "probe.cpp",
+        ])
+        .output()
+        .expect("a C++ compiler must be available");
+    assert!(
+        output.status.success(),
+        "selected C++ output must compile under strict C++17:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        Command::new(root.join("probe"))
+            .status()
+            .expect("probe must run")
+            .success(),
+        "selected C++ validation must hold"
+    );
+}
+
+/// Task 037: the selected Ada output compiles and raises `Constraint_Error` on
+/// an invalid value.
+///
+/// Skipped only where GNAT is absent, as elsewhere in this file.
+#[test]
+fn task037_selected_ada_output_validates_under_gnat() {
+    if Command::new("gnatmake").arg("--version").output().is_err() {
+        assert!(
+            std::env::var_os("AMS_GRA_REQUIRE_GNAT").is_none(),
+            "AMS_GRA_REQUIRE_GNAT is set but gnatmake is unavailable"
+        );
+        return;
+    }
+    let root = generate_string_profile("ada", "task037-ada-runtime");
+    std::fs::write(
+        root.join("probe.adb"),
+        "with Ada.Text_IO;\nwith Urn.Test;\n\n\
+         procedure Probe is\n\
+         \x20  Good : constant Urn.Test.SchemaVersion := Urn.Test.Create (\"002.5.0\");\n\
+         \x20  Rejected : Boolean := False;\n\
+         begin\n\
+         \x20  if Urn.Test.Value (Good) /= \"002.5.0\" then\n\
+         \x20     raise Program_Error;\n\
+         \x20  end if;\n\
+         \x20  begin\n\
+         \x20     declare\n\
+         \x20        Bad : constant Urn.Test.SchemaVersion :=\n\
+         \x20          Urn.Test.Create (\"000.001.000.000\");\n\
+         \x20     begin\n\
+         \x20        if Urn.Test.Value (Bad)'Length >= 0 then\n\
+         \x20           null;\n\
+         \x20        end if;\n\
+         \x20     end;\n\
+         \x20  exception\n\
+         \x20     when Constraint_Error => Rejected := True;\n\
+         \x20  end;\n\
+         \x20  if not Rejected then\n\
+         \x20     raise Program_Error;\n\
+         \x20  end if;\n\
+         \x20  Ada.Text_IO.Put_Line (\"ok\");\n\
+         end Probe;\n",
+    )
+    .expect("write Ada probe");
+    let output = Command::new("gnatmake")
+        .current_dir(&root)
+        .args(["-q", "probe.adb"])
+        .output()
+        .expect("gnatmake must run");
+    assert!(
+        output.status.success(),
+        "selected Ada output must compile:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        Command::new(root.join("probe"))
+            .status()
+            .expect("probe must run")
+            .success(),
+        "selected Ada validation must hold"
+    );
+}

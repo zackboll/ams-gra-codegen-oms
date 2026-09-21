@@ -10,6 +10,7 @@ mod integral;
 mod service_generation;
 mod service_plan;
 mod service_readiness;
+mod string_profile;
 mod structure;
 mod temporal;
 mod world;
@@ -51,6 +52,11 @@ pub use service_plan::{
 pub use service_readiness::{
     BlockedMessage, MismatchRole, ServiceBackendReadiness, ServiceMessageBlocker,
     ServiceReadinessError, analyze_service_readiness,
+};
+pub use string_profile::{
+    StringProfile, StringProfileError, UCI_SCHEMA_VERSION_MAX_LENGTH,
+    UCI_SCHEMA_VERSION_MIN_LENGTH, UCI_SCHEMA_VERSION_PATTERN, constrains_string,
+    schema_emits_string_profile_carrier, string_profile,
 };
 pub use structure::{
     EffectiveStructuralType, StructuralKind, StructuralLevel, StructuralProjectionError,

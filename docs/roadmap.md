@@ -332,6 +332,33 @@ Task 036 deliberately does not implement it.
 
 `PositionReport` remains NOT READY in every backend.
 
+**Measured progress (Task 037):**
+
+Task 037 again added no Phase 2.5 code. It made the named UCI schema-version
+**String** profile renderable, and contract-selected readiness improved
+automatically through the same shared capability model. Same authoritative
+inputs — UCI 2.5, the upstream `PositionReport` contract, closed world:
+
+| Backend | Before | After | First blocker now |
+| --- | ---: | ---: | --- |
+| Ada | 48/60, `UCI_SchemaVersionStringType` | **49/60** | `UniversallyUniqueIdentifierType` |
+| Rust | 52/60, `UCI_SchemaVersionStringType` | **53/60** | `UniversallyUniqueIdentifierType` |
+| C++ | 52/60, `UCI_SchemaVersionStringType` | **53/60** | `UniversallyUniqueIdentifierType` |
+
+`UCI_SchemaVersionStringType` is no longer a blocker in any backend. The
+measured next blocker is `UniversallyUniqueIdentifierType`, a **different**
+constrained-String family (`length` + a pattern with two alternatives). It is
+reported here because it was measured, not assumed, and Task 037 deliberately
+does not implement it.
+
+Task 037's evidence gate also corrected a widely assumed fact: the UCI schema
+version is **not** a four-group `NNN.NNN.NNN.NNN` string. The authoritative
+pattern admits three dot-separated numeric groups plus optional suffixes, and
+rejects the four-group form that appears as the type's own `uci:version`
+attribute. See `docs/backend-compatibility.md`.
+
+`PositionReport` remains NOT READY in every backend.
+
 **Still open:**
 
 - [ ] service-specific generated wrapper APIs;

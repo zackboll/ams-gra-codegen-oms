@@ -3,12 +3,14 @@
 use ams_gra_oms_codegen_core::{
     ADA_PORTABLE_POSITIVE_INDEX_MAX, AbstractValueProjection, Backend, BackendLanguage,
     CodegenError, EffectiveValueMember, FloatingDomain, GeneratedFile, GenerationWorld,
-    InclusiveIntegralDomain, TemporalProfile, TypeEmission, abstract_value_projection_for_ref,
-    ada_record_field_uses_optional_wrapper, backend_preflight, effective_choice_alternatives,
-    effective_record_fields, field_storage_semantics, float32_literal, float64_literal,
-    floating_domain, inclusive_integral_domain, is_temporal_primitive, plan_type_emissions,
-    schema_emits_ada_binary_vectors, schema_emits_temporal_carrier,
-    schema_emits_unbounded_sequence_support, temporal_profile,
+    InclusiveIntegralDomain, StringProfile, TemporalProfile, TypeEmission,
+    abstract_value_projection_for_ref, ada_record_field_uses_optional_wrapper, backend_preflight,
+    constrains_string, effective_choice_alternatives, effective_record_fields,
+    field_storage_semantics, float32_literal, float64_literal, floating_domain,
+    inclusive_integral_domain, is_temporal_primitive, plan_type_emissions,
+    schema_emits_ada_binary_vectors, schema_emits_string_profile_carrier,
+    schema_emits_temporal_carrier, schema_emits_unbounded_sequence_support, string_profile,
+    temporal_profile,
 };
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind,
@@ -159,7 +161,11 @@ pub fn generate_body(
     schema: &SchemaIr,
     world: GenerationWorld,
 ) -> Result<Option<String>, CodegenError> {
-    if !schema_emits_temporal_carrier(schema) {
+    // Task 037 generalizes this predicate rather than adding a second
+    // body-generation mechanism: a schema needs a body when it emits *any*
+    // validator-backed carrier. A schema requiring neither keeps its existing
+    // single-`.ads` output exactly.
+    if !schema_emits_temporal_carrier(schema) && !schema_emits_string_profile_carrier(schema) {
         return Ok(None);
     }
     validate_schema(schema, world)?;
@@ -294,6 +300,21 @@ fn render_declaration(
                 private_part,
                 body,
                 *kind,
+                &declaration.constraints,
+                &name,
+            )?;
+        }
+        // Task 037: a *constrained* named String is routed to the shared
+        // classifier. An unconstrained one is deliberately not handled here and
+        // falls through to the existing generic path, so ordinary
+        // `Unbounded_String` output is byte-for-byte unchanged.
+        TypeKind::Primitive(PrimitiveKind::String)
+            if constrains_string(&declaration.constraints) =>
+        {
+            render_string_profile_declaration(
+                output,
+                private_part,
+                body,
                 &declaration.constraints,
                 &name,
             )?;
@@ -528,6 +549,23 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
             // constraint that `reject_extra_constraints` would reject, so it
             // must not reach it: the classifier has already proven this exact
             // facet set is fully enforced by the generated validator.
+            continue;
+        }
+        // Task 037: a named constrained String declaration is classified by the
+        // shared helper. Only the authoritative UCI schema-version profile is
+        // lowered; every other constrained String shape still fails closed,
+        // here, before any output is produced. An *unconstrained* String is not
+        // a Task 037 declaration and is untouched by this branch.
+        if let TypeKind::Primitive(kind @ PrimitiveKind::String) = declaration.kind
+            && constrains_string(&declaration.constraints)
+        {
+            match string_profile(kind, &declaration.constraints) {
+                Ok(Some(StringProfile::UciSchemaVersion)) => {}
+                Ok(None) => unreachable!("constrains_string gates this branch"),
+                Err(reason) => {
+                    return unsupported(format!("{reason} on {}", declaration.name.local_name));
+                }
+            }
             continue;
         }
         if matches!(declaration.kind, TypeKind::Primitive(PrimitiveKind::Binary))
@@ -1124,6 +1162,236 @@ fn error(message: impl Into<String>) -> CodegenError {
         message: message.into(),
     }
 }
+
+/// Render a named constrained String declaration into spec, private part, body.
+///
+/// Only the shared classifier's one supported profile is lowered; every other
+/// constrained String shape fails closed rather than being approximated.
+///
+/// # Representation
+///
+/// A **validated lexical carrier** whose private completion reuses the
+/// package's existing owned-string representation
+/// (`Ada.Strings.Unbounded.Unbounded_String`), exactly as Task 036's carrier
+/// does. The stored text is the caller's input unchanged: this profile
+/// inherits `whiteSpace = preserve`, so nothing is trimmed or collapsed.
+///
+/// # Equality
+///
+/// The private type inherits Ada's predefined equality, which compares the
+/// stored representation. Unlike the Task 036 DateTime carrier, that *is* the
+/// correct XML Schema semantics here: for `xs:string` the value space is the
+/// set of lexical forms, so stored-text equality is genuine value equality.
+/// The generated comment says so. No ordering operator is declared, because
+/// XML Schema defines no order relation on `string`.
+///
+/// # Why a body
+///
+/// The validator is a real algorithm, not an expression function, so `Create`
+/// is completed in a package body. Every parser helper is **nested inside
+/// `Create`**, so no new package-scope identifier is introduced and nothing
+/// new is owed to generated-name preflight beyond the `Create` / `Value`
+/// overloads the shared name model already registers.
+fn render_string_profile_declaration(
+    output: &mut String,
+    private_part: &mut String,
+    body: &mut String,
+    constraints: &ConstraintSet,
+    name: &str,
+) -> Result<(), CodegenError> {
+    match string_profile(PrimitiveKind::String, constraints) {
+        Ok(Some(StringProfile::UciSchemaVersion)) => {}
+        Ok(None) => return unsupported(format!("unconstrained String on {name}")),
+        Err(reason) => return unsupported(format!("{reason} on {name}")),
+    }
+    // Visible part: an opaque handle plus the two operations a client may use.
+    // The representation is not nameable from here, so no aggregate or
+    // conversion can bypass `Create`.
+    writeln!(
+        output,
+        concat!(
+            "   --  A validated UCI schema-version string.\n",
+            "   --  Predefined \"=\" compares the stored representation, which for\n",
+            "   --  xs:string IS XML Schema value equality.\n",
+            "   type {name} is private;\n\n",
+            "   --  Raises Constraint_Error unless Value matches the authoritative\n",
+            "   --  schema-version pattern and both length facets.\n",
+            "   function Create (Value : String) return {name};\n\n",
+            "   --  The stored representation, exactly as supplied.\n",
+            "   function Value (Item : {name}) return String;\n",
+        ),
+        name = name,
+    )
+    .expect("writing to String cannot fail");
+
+    writeln!(
+        private_part,
+        concat!(
+            "   type {name} is record\n",
+            "      Text : Standard.Ada.Strings.Unbounded.Unbounded_String;\n",
+            "   end record;\n",
+        ),
+        name = name,
+    )
+    .expect("writing to String cannot fail");
+
+    body.push_str(&ADA_SCHEMA_VERSION_BODY.replace("{name}", name));
+    Ok(())
+}
+
+/// The generated Ada body for one schema-version carrier, `{name}` substituted.
+///
+/// # Validation order
+///
+/// 1. the authoritative pattern, evaluated structurally;
+/// 2. the `minLength`/`maxLength` facets.
+///
+/// Both are enforced; the facets are checked explicitly rather than assumed
+/// redundant, so no facet is silently lost.
+///
+/// # No regular-expression engine
+///
+/// `GNAT.Regpat` is deliberately not used: its syntax is Perl-derived, not XML
+/// Schema. The authoritative expression is a concatenation of bounded pieces
+/// whose alphabets are disjoint from the literals that follow them, so it is
+/// decided by one left-to-right scan. Patterns are anchored, implemented by
+/// requiring the scan to end exactly at the string's last index.
+///
+/// # Character counting
+///
+/// Ada's `String` is an array of `Character`, so `'Length` is already a
+/// character count and matches the XSD facet directly. Every character the
+/// pattern admits is ASCII, so this also coincides with the byte count other
+/// backends use.
+///
+/// # Scope
+///
+/// Every helper is declared in `Create`'s own declarative part, so Task 037
+/// introduces no package-scope identifier beyond `Create` and `Value` -- both
+/// of which the shared name model already registers.
+const ADA_SCHEMA_VERSION_BODY: &str = r##"
+   function Create (Value : String) return {name} is
+
+      Min_Length : constant := 7;
+      Max_Length : constant := 57;
+
+      function Matches_Pattern (Text : String) return Boolean;
+
+      --  Decide the authoritative pattern in one pass:
+      --    [0-9]{3}\.[0-9]{1,2}(\.[0-9]{1,2})([a-z]{1,2})?(_[a-zA-Z0-9\-]{1,45})?
+      function Matches_Pattern (Text : String) return Boolean is
+
+         At_Index : Positive := Text'First;
+
+         function Is_Digit (Item : Character) return Boolean is
+           (Item in '0' .. '9');
+
+         function Is_Lower (Item : Character) return Boolean is
+           (Item in 'a' .. 'z');
+
+         --  The [a-zA-Z0-9\-] class of the optional underscore tail.
+         function Is_Tail (Item : Character) return Boolean is
+           (Is_Digit (Item) or else Is_Lower (Item)
+            or else Item in 'A' .. 'Z' or else Item = '-');
+
+         function Run
+           (Min, Max : Natural; Accepts : not null access
+              function (Item : Character) return Boolean)
+            return Natural;
+         function Literal (Expected : Character) return Boolean;
+
+         --  Consume up to Max characters satisfying Accepts, returning the
+         --  count. At_Index advances only by what was consumed, and 0 is
+         --  returned without consuming anything when fewer than Min match, so
+         --  a caller checking against Min is never left mid-piece.
+         function Run
+           (Min, Max : Natural; Accepts : not null access
+              function (Item : Character) return Boolean)
+            return Natural
+         is
+            Taken : Natural := 0;
+         begin
+            while Taken < Max
+              and then At_Index + Taken <= Text'Last
+              and then Accepts (Text (At_Index + Taken))
+            loop
+               Taken := Taken + 1;
+            end loop;
+            if Taken < Min then
+               return 0;
+            end if;
+            At_Index := At_Index + Taken;
+            return Taken;
+         end Run;
+
+         --  Consume one expected literal character, if present.
+         function Literal (Expected : Character) return Boolean is
+         begin
+            if At_Index <= Text'Last and then Text (At_Index) = Expected then
+               At_Index := At_Index + 1;
+               return True;
+            end if;
+            return False;
+         end Literal;
+
+         Digit_Access : constant not null access
+           function (Item : Character) return Boolean := Is_Digit'Access;
+         Lower_Access : constant not null access
+           function (Item : Character) return Boolean := Is_Lower'Access;
+         Tail_Access  : constant not null access
+           function (Item : Character) return Boolean := Is_Tail'Access;
+
+         Ignored : Natural;
+      begin
+         --  [0-9]{3}
+         if Run (3, 3, Digit_Access) /= 3 then
+            return False;
+         end if;
+         --  \.
+         if not Literal ('.') then
+            return False;
+         end if;
+         --  [0-9]{1,2}
+         if Run (1, 2, Digit_Access) = 0 then
+            return False;
+         end if;
+         --  (\.[0-9]{1,2}) -- parenthesized but unquantified, so REQUIRED.
+         if not Literal ('.') then
+            return False;
+         end if;
+         if Run (1, 2, Digit_Access) = 0 then
+            return False;
+         end if;
+         --  ([a-z]{1,2})? -- optional, so a zero-length run is acceptable.
+         Ignored := Run (0, 2, Lower_Access);
+         --  (_[a-zA-Z0-9\-]{1,45})? -- optional as a whole, but once the '_'
+         --  is present at least one tail character is required.
+         if Literal ('_') and then Run (1, 45, Tail_Access) = 0 then
+            return False;
+         end if;
+         --  Patterns are anchored: the whole literal must be consumed.
+         return At_Index = Text'Last + 1;
+      end Matches_Pattern;
+
+   begin
+      --  The pattern AND both length facets. Value is stored exactly as
+      --  supplied: this profile inherits whiteSpace = preserve.
+      if not Matches_Pattern (Value)
+        or else Value'Length < Min_Length
+        or else Value'Length > Max_Length
+      then
+         raise Standard.Constraint_Error
+           with "invalid schema version";
+      end if;
+      return {name}'
+        (Text => Standard.Ada.Strings.Unbounded.To_Unbounded_String (Value));
+   end Create;
+
+   function Value (Item : {name}) return String is
+   begin
+      return Standard.Ada.Strings.Unbounded.To_String (Item.Text);
+   end Value;
+"##;
 
 /// Render a named temporal declaration into the spec, private part, and body.
 ///
@@ -2440,10 +2708,19 @@ end Probe;
                 ..ConstraintSet::default()
             };
             let error = generate(&schema, CLOSED).expect_err("constraints must not be discarded");
+            // A constrained String now reports through the Task 037
+            // classifier, which names the facet profile rather than saying
+            // only "constraints". Either way it fails closed:
+            // is not the one supported profile.
             assert!(
                 error
                     .message
                     .contains("unsupported Ada IR construct: constraints on")
+                    || error.message.contains(
+                        "unsupported constrained String declaration: unsupported facet profile"
+                    ),
+                "unexpected diagnostic for {kind:?}: {}",
+                error.message
             );
         }
     }
@@ -2481,7 +2758,10 @@ end Probe;
             let message = &error.message;
             assert!(
                 message.contains("unsupported Ada IR construct: constraints on")
-                    || message.contains("unsupported temporal declaration: Time"),
+                    || message.contains("unsupported temporal declaration: Time")
+                    || message.contains(
+                        "unsupported constrained String declaration: unsupported facet profile"
+                    ),
                 "unexpected diagnostic for {kind:?}: {message}"
             );
         }

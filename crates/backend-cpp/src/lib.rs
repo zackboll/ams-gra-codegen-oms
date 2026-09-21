@@ -2,12 +2,14 @@
 
 use ams_gra_oms_codegen_core::{
     AbstractValueProjection, Backend, BackendLanguage, CodegenError, EffectiveValueMember,
-    FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain, TemporalProfile,
-    TypeEmission, abstract_value_projection_for_ref, backend_preflight,
-    effective_choice_alternatives, effective_record_fields, field_storage_semantics,
-    float32_literal, float64_literal, floating_domain, inclusive_integral_domain,
-    is_temporal_primitive, plan_type_emissions, schema_emits_bounded_integer_support,
-    schema_emits_temporal_carrier, schema_emits_unbounded_sequence_support, temporal_profile,
+    FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain, StringProfile,
+    TemporalProfile, TypeEmission, abstract_value_projection_for_ref, backend_preflight,
+    constrains_string, effective_choice_alternatives, effective_record_fields,
+    field_storage_semantics, float32_literal, float64_literal, floating_domain,
+    inclusive_integral_domain, is_temporal_primitive, plan_type_emissions,
+    schema_emits_bounded_integer_support, schema_emits_string_profile_carrier,
+    schema_emits_temporal_carrier, schema_emits_unbounded_sequence_support, string_profile,
+    temporal_profile,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -95,11 +97,14 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     // The header is added only when a supported temporal declaration is
     // actually emitted, so every other schema's generated output is unchanged
     // byte for byte.
-    let string_view_header = if schema_emits_temporal_carrier(schema) {
-        "#include <string_view>\n"
-    } else {
-        ""
-    };
+    // Task 037's schema-version carrier takes a `std::string_view` too, so the
+    // header is required whenever either carrier is emitted.
+    let string_view_header =
+        if schema_emits_temporal_carrier(schema) || schema_emits_string_profile_carrier(schema) {
+            "#include <string_view>\n"
+        } else {
+            ""
+        };
     let mut output = String::from(
         "#pragma once\n\n\
          #include <cstddef>\n\
@@ -266,6 +271,15 @@ fn render_declaration(
         ) => {
             render_temporal_declaration(output, *kind, &declaration.constraints, &name)?;
         }
+        // Task 037: a *constrained* named String is routed to the shared
+        // classifier. An unconstrained one is deliberately not handled here and
+        // falls through to the existing generic path, so ordinary
+        // `std::string` output is byte-for-byte unchanged.
+        TypeKind::Primitive(PrimitiveKind::String)
+            if constrains_string(&declaration.constraints) =>
+        {
+            render_string_profile_declaration(output, &declaration.constraints, &name)?;
+        }
         TypeKind::Primitive(PrimitiveKind::Binary) => {
             reject_any_constraints(&declaration.constraints, &name)?;
             writeln!(output, "class {name} {{\npublic:\n    explicit {name}(std::vector<std::uint8_t> value) : value_(std::move(value)) {{}}\n    const std::vector<std::uint8_t>& value() const noexcept {{ return value_; }}\nprivate:\n    std::vector<std::uint8_t> value_;\n}};\n").expect("writing to String cannot fail");
@@ -405,6 +419,23 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
             // constraint that `reject_extra_constraints` would reject, so it
             // must not reach it: the classifier has already proven this exact
             // facet set is fully enforced by the generated validator.
+            continue;
+        }
+        // Task 037: a named constrained String declaration is classified by the
+        // shared helper. Only the authoritative UCI schema-version profile is
+        // lowered; every other constrained String shape still fails closed,
+        // here, before any output is produced. An *unconstrained* String is not
+        // a Task 037 declaration and is untouched by this branch.
+        if let TypeKind::Primitive(kind @ PrimitiveKind::String) = declaration.kind
+            && constrains_string(&declaration.constraints)
+        {
+            match string_profile(kind, &declaration.constraints) {
+                Ok(Some(StringProfile::UciSchemaVersion)) => {}
+                Ok(None) => unreachable!("constrains_string gates this branch"),
+                Err(reason) => {
+                    return unsupported(format!("{reason} on {}", declaration.name.local_name));
+                }
+            }
             continue;
         }
         if matches!(declaration.kind, TypeKind::Primitive(PrimitiveKind::Binary))
@@ -859,6 +890,188 @@ fn render_temporal_declaration(
     .expect("writing to String cannot fail");
     Ok(())
 }
+
+/// Render a named constrained String declaration.
+///
+/// Only the shared classifier's one supported profile is lowered; every other
+/// constrained String shape fails closed rather than being approximated by a
+/// validator that would ignore a facet.
+///
+/// The generated type is a validated lexical carrier storing the accepted
+/// string exactly as supplied: `xs:string` has `whiteSpace = preserve`, which
+/// this declaration does not override, so nothing is trimmed or collapsed.
+///
+/// No comparison operators are invented. The current backend convention is
+/// that generated C++ value types expose construction and observation only, so
+/// Task 037 does not add an `operator==` merely because the underlying XML
+/// Schema semantics would permit one.
+fn render_string_profile_declaration(
+    output: &mut String,
+    constraints: &ConstraintSet,
+    name: &str,
+) -> Result<(), CodegenError> {
+    match string_profile(PrimitiveKind::String, constraints) {
+        Ok(Some(StringProfile::UciSchemaVersion)) => {}
+        Ok(None) => return unsupported(format!("unconstrained String on {name}")),
+        Err(reason) => return unsupported(format!("{reason} on {name}")),
+    }
+    writeln!(
+        output,
+        "{}",
+        CPP_SCHEMA_VERSION_TEMPLATE.replace("{name}", name)
+    )
+    .expect("writing to String cannot fail");
+    Ok(())
+}
+
+/// The generated C++17 schema-version carrier, with `{name}` substituted.
+///
+/// # Validation order
+///
+/// 1. the authoritative pattern, evaluated structurally;
+/// 2. the `minLength`/`maxLength` facets.
+///
+/// Both are enforced; the facets are checked explicitly rather than assumed
+/// redundant, so no facet is silently lost.
+///
+/// # No regular-expression engine
+///
+/// The authoritative expression is a concatenation of bounded pieces whose
+/// alphabets are disjoint from the literals that follow them, so it is decided
+/// by one left-to-right scan. `<regex>` is deliberately not used: its grammars
+/// are ECMAScript/POSIX, not XML Schema. Patterns are anchored, implemented by
+/// requiring the scan to end exactly at end-of-input.
+///
+/// # Byte indexing is sound
+///
+/// Every character the pattern admits is ASCII, so byte offsets equal
+/// character offsets for every value that can be accepted, and `size()` is an
+/// XSD *character* count. Character classes are tested with explicit ASCII
+/// range comparisons rather than `<cctype>`, whose classification is
+/// locale-dependent and would admit non-ASCII bytes under some locales.
+///
+/// # Scope of the helpers
+///
+/// Every parser helper is a **private static member function**, so it lives in
+/// this class's own scope and cannot collide with a schema-generated
+/// namespace-scope identifier. Task 037 adds no new namespace-scope name.
+///
+/// # Strictness
+///
+/// Compiles clean under `-std=c++17 -Wall -Wextra -pedantic-errors` and uses
+/// only `<string>`, `<string_view>`, and `<optional>`, which the generated
+/// header already includes. No external regex library.
+const CPP_SCHEMA_VERSION_TEMPLATE: &str = r##"class {name} {
+public:
+    // Validate `value` against the authoritative UCI schema-version profile.
+    //
+    // Returns std::nullopt if the pattern or either length facet rejects. The
+    // stored text is the input unchanged: this profile inherits
+    // `whiteSpace = preserve`, so no trimming or collapsing is performed.
+    static std::optional<{name}> create(std::string_view value) {
+        if (!is_schema_version(value)) {
+            return std::nullopt;
+        }
+        return {name}(std::string(value));
+    }
+
+    // The stored, validated lexical representation.
+    const std::string& value() const noexcept { return value_; }
+
+private:
+    explicit {name}(std::string validated) : value_(std::move(validated)) {}
+
+    // minLength = 7 characters, maxLength = 57 characters.
+    static constexpr std::size_t kMinLength = 7;
+    static constexpr std::size_t kMaxLength = 57;
+
+    // The whole gate: the pattern AND both length facets.
+    static bool is_schema_version(std::string_view text) {
+        return matches_pattern(text) && text.size() >= kMinLength
+            && text.size() <= kMaxLength;
+    }
+
+    static bool is_digit(char character) noexcept {
+        return character >= '0' && character <= '9';
+    }
+
+    static bool is_lower(char character) noexcept {
+        return character >= 'a' && character <= 'z';
+    }
+
+    // The `[a-zA-Z0-9\-]` class of the optional underscore tail.
+    static bool is_tail(char character) noexcept {
+        return is_digit(character) || is_lower(character)
+            || (character >= 'A' && character <= 'Z') || character == '-';
+    }
+
+    // Consume up to `max` characters satisfying `accept`, returning the count.
+    //
+    // Advances `at` only by what was consumed, and returns 0 without consuming
+    // anything when fewer than `min` match, so a caller checking against `min`
+    // is never left mid-piece.
+    static std::size_t run(std::string_view text, std::size_t& at,
+                           std::size_t min, std::size_t max,
+                           bool (*accept)(char) noexcept) {
+        std::size_t taken = 0;
+        while (taken < max && at + taken < text.size()
+               && accept(text[at + taken])) {
+            ++taken;
+        }
+        if (taken < min) {
+            return 0;
+        }
+        at += taken;
+        return taken;
+    }
+
+    // Consume one expected literal character, if present.
+    static bool literal(std::string_view text, std::size_t& at, char expected) {
+        if (at < text.size() && text[at] == expected) {
+            ++at;
+            return true;
+        }
+        return false;
+    }
+
+    // Decide the authoritative pattern in one pass. Each `run` call is greedy
+    // within its own bound, which is unambiguous here because no piece's
+    // alphabet overlaps the literal that follows it.
+    static bool matches_pattern(std::string_view text) {
+        std::size_t at = 0;
+        // [0-9]{3}
+        if (run(text, at, 3, 3, is_digit) != 3) {
+            return false;
+        }
+        // \.
+        if (!literal(text, at, '.')) {
+            return false;
+        }
+        // [0-9]{1,2}
+        if (run(text, at, 1, 2, is_digit) == 0) {
+            return false;
+        }
+        // (\.[0-9]{1,2}) -- parenthesized but unquantified, so REQUIRED.
+        if (!literal(text, at, '.')) {
+            return false;
+        }
+        if (run(text, at, 1, 2, is_digit) == 0) {
+            return false;
+        }
+        // ([a-z]{1,2})? -- optional, so a zero-length run is acceptable.
+        run(text, at, 0, 2, is_lower);
+        // (_[a-zA-Z0-9\-]{1,45})? -- optional as a whole, but once the '_' is
+        // present at least one tail character is required.
+        if (literal(text, at, '_') && run(text, at, 1, 45, is_tail) == 0) {
+            return false;
+        }
+        // Patterns are anchored: the whole literal must have been consumed.
+        return at == text.size();
+    }
+
+    std::string value_;
+};
+"##;
 
 /// The generated C++17 DateTime Zulu carrier, with `{name}` substituted.
 ///
@@ -2076,10 +2289,19 @@ int main() {
                 ..ConstraintSet::default()
             };
             let error = generate(&schema, CLOSED).expect_err("constraints must not be discarded");
+            // A constrained String now reports through the Task 037
+            // classifier, which names the facet profile rather than saying
+            // only "constraints". Either way it fails closed:
+            // is not the one supported profile.
             assert!(
                 error
                     .message
                     .contains("unsupported C++ IR construct: constraints on")
+                    || error.message.contains(
+                        "unsupported constrained String declaration: unsupported facet profile"
+                    ),
+                "unexpected diagnostic for {kind:?}: {}",
+                error.message
             );
         }
     }
@@ -2117,7 +2339,10 @@ int main() {
             let message = &error.message;
             assert!(
                 message.contains("unsupported C++ IR construct: constraints on")
-                    || message.contains("unsupported temporal declaration: Time"),
+                    || message.contains("unsupported temporal declaration: Time")
+                    || message.contains(
+                        "unsupported constrained String declaration: unsupported facet profile"
+                    ),
                 "unexpected diagnostic for {kind:?}: {message}"
             );
         }
