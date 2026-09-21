@@ -951,3 +951,83 @@ coverage and `PositionReport` deltas.
 `TimeType` (despite the identical pattern text), `DurationType`, every other
 `DateTime` facet shape, and every direct temporal field remain unsupported and
 fail closed.
+
+## Task 037 — the authoritative UCI schema-version String profile
+
+Read from the pinned release bytes on **2026-09-21**. The two tracked releases
+are **byte-identical** for this declaration.
+
+| Release | Pinned revision | Source | Line |
+| --- | --- | --- | ---: |
+| UCI 2.5 | `093610b7753944059360d3236770ab446d039556` | `UCI_MessageDefinitions_v2_5_0.xsd` | 145460 |
+| UCI 2.6 | `78eb61b6112c8bffa40820c33124b57787fc5bd9` | `UCI_MessageDefinitions_v2_6_0.xsd` | 145708 |
+
+```xml
+<xs:simpleType name="UCI_SchemaVersionStringType" uci:version="000.001.000.000">
+  <xs:annotation>
+    <xs:documentation>String representing the UCI version.</xs:documentation>
+  </xs:annotation>
+  <xs:restriction base="xs:string">
+    <xs:minLength value="7"/>
+    <xs:maxLength value="57"/>
+    <xs:pattern value="[0-9]{3}\.[0-9]{1,2}(\.[0-9]{1,2})([a-z]{1,2})?(_[a-zA-Z0-9\-]{1,45})?"/>
+  </xs:restriction>
+</xs:simpleType>
+```
+
+Base `xs:string`, restriction-chain depth 1, no `length`, no `whiteSpace`
+facet, one PatternGroup holding one XML-Schema-dialect expression. It is
+referenced by the `SchemaVersion` element of the UCI message header
+(`UCI_MessageDefinitions_v2_5_0.xsd:44870`), whose documentation gives `002.0`
+and `001.9b` as example values.
+
+### Correction: the version is not a four-group dotted string
+
+A reader would reasonably infer a `NNN.NNN.NNN.NNN` shape from this type's own
+`uci:version="000.001.000.000"` attribute. That inference is **wrong**. The
+pattern admits exactly three dot-separated numeric groups, of widths 3, 1–2,
+and 1–2, followed by two optional suffixes, and the parenthesized third group
+carries no quantifier, so it is required. Consequently:
+
+| Value | Accepted? | Why |
+| --- | --- | --- |
+| `002.5.0` | yes | the Sleet interoperability baseline shape |
+| `001.9.0b` | yes | optional lowercase suffix |
+| `000.001.000.000` | **no** | a fourth group has no production |
+| `002.5` | **no** | the third group is required |
+
+The `uci:version` attribute is a UCI *schema-authoring* version stamp, a
+different convention from the values this type governs.
+
+### Release-level patterned String inventory
+
+`xs:simpleType` declarations restricting `xs:string` with at least one
+`xs:pattern`, counted across each release's message-definitions root and its
+security-markings include:
+
+| Facet shape | UCI 2.5 | UCI 2.6 |
+| --- | ---: | ---: |
+| `length` + `pattern` | 65 | 65 |
+| `minLength` + `maxLength` + `pattern` | 55 | 57 |
+| `maxLength` + `pattern` | 3 | 3 |
+| `minLength` + `maxLength` + `whiteSpace` + `pattern` | 2 | 0 |
+| **total** | **125** | **125** |
+
+### What Task 037 changed
+
+A named `PrimitiveKind::String` declaration carrying exactly the facet profile
+above is now rendered, in Ada, Rust, and C++, as a validated lexical carrier
+storing the value **unchanged** — `xs:string` has `whiteSpace = preserve` and
+this restriction does not override it, so nothing is trimmed or collapsed.
+
+No regex engine was introduced in any language. The expression was instead
+proved to reduce to a bounded, deterministic, single-pass structural decision;
+see `docs/backend-compatibility.md` for that proof, the character-count
+argument, the 41-case shared conformance corpus, and the coverage and
+`PositionReport` deltas.
+
+Every other constrained String shape — `length + pattern` including
+`UniversallyUniqueIdentifierType`, multiple pattern alternatives, explicit
+`whiteSpace` profiles, `NATO_SpecialWordsType`, `VisibleString*` — and every
+direct field-local constrained String remain unsupported and fail closed.
+Ordinary unconstrained `String` is unchanged.

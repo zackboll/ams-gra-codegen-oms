@@ -3721,3 +3721,442 @@ value, and those two questions stay separate.
 | XML or JSON codecs | not implemented |
 
 No third-party runtime dependency was added in any language.
+
+## Task 037 — validated schema-version String values
+
+Tested: **2026-09-21**. GNAT 14.2.0, rustc 1.98.1, g++ 14.2.0.
+
+Task 037 implements one constrained-String vertical slice: a **named**
+`PrimitiveKind::String` declaration whose effective facets are exactly the
+authoritative UCI schema-version profile, in Ada, Rust, and C++. It is
+deliberately narrower than "constrained String": UCI 2.5 carries 125 patterned
+`xs:string` owners across four facet-shape families, and each family needs its
+own evidence and its own validator.
+
+### Authoritative profile
+
+Read from the pinned release bytes, not from prior notes. The two tracked
+releases are **byte-identical** for this declaration.
+
+| Release | Pinned revision | Source | Line |
+| --- | --- | --- | ---: |
+| UCI 2.5 | `093610b7753944059360d3236770ab446d039556` | `UCI_MessageDefinitions_v2_5_0.xsd` | 145460 |
+| UCI 2.6 | `78eb61b6112c8bffa40820c33124b57787fc5bd9` | `UCI_MessageDefinitions_v2_6_0.xsd` | 145708 |
+
+The exact original fragment:
+
+```xml
+<xs:simpleType name="UCI_SchemaVersionStringType" uci:version="000.001.000.000">
+  <xs:annotation>
+    <xs:documentation>String representing the UCI version.</xs:documentation>
+  </xs:annotation>
+  <xs:restriction base="xs:string">
+    <xs:minLength value="7"/>
+    <xs:maxLength value="57"/>
+    <xs:pattern value="[0-9]{3}\.[0-9]{1,2}(\.[0-9]{1,2})([a-z]{1,2})?(_[a-zA-Z0-9\-]{1,45})?"/>
+  </xs:restriction>
+</xs:simpleType>
+```
+
+| Property | Value |
+| --- | --- |
+| base type | `xs:string` |
+| immediate / primitive base | `xs:string` |
+| restriction-chain depth | 1 |
+| `length` | absent |
+| `minLength` | 7 |
+| `maxLength` | 57 |
+| `whiteSpace` | absent, so the intrinsic `preserve` applies |
+| PatternGroups | 1 |
+| PatternExpressions | 1 |
+| pattern dialect | XML Schema |
+| documentation | "String representing the UCI version." |
+
+Normalized IR, confirmed by running this project's frontend over the pinned
+2.5 root rather than by reading the XSD twice:
+
+```text
+kind                     = Primitive(String)
+min_length               = Some(7)
+max_length               = Some(57)
+length                   = None
+lexical.white_space      = None
+lexical.pattern_groups   = [ PatternGroup { alternatives: [
+    PatternExpression { dialect: XmlSchema, expression:
+      "[0-9]{3}\\.[0-9]{1,2}(\\.[0-9]{1,2})([a-z]{1,2})?(_[a-zA-Z0-9\\-]{1,45})?" } ] } ]
+```
+
+### The profile is NOT a four-group dotted version
+
+This is the most important evidence finding of the task, and it contradicts
+the shape a reader would infer from the type's own
+`uci:version="000.001.000.000"` attribute.
+
+The authoritative pattern admits exactly **three** dot-separated numeric
+groups, of widths 3, 1–2, and 1–2, plus two optional suffixes. The four-group
+form `000.001.000.000` is **rejected** by the very type that carries it as an
+attribute. The documentation on the referencing `SchemaVersion` element agrees,
+giving `002.0` and `001.9b` as the intended shape.
+
+Implementing the conventional-looking "3 digits . 3 digits . 3 digits . 3
+digits" structure would have produced a validator that rejects real UCI
+versions such as `002.5.0` while accepting values the schema forbids. The
+shared corpus pins this as an explicit negative case, and a classifier unit
+test pins it again at the IR level.
+
+### Structure actually implemented
+
+```text
+[0-9]{3}                  exactly 3 ASCII digits
+\.                        one literal '.'
+[0-9]{1,2}                1-2 ASCII digits
+(\.[0-9]{1,2})            '.' then 1-2 ASCII digits   -- REQUIRED, unquantified
+([a-z]{1,2})?             optional 1-2 ASCII lowercase letters
+(_[a-zA-Z0-9\-]{1,45})?   optional '_' then 1-45 ASCII alnum or '-'
+```
+
+The third group is parenthesized but carries **no** quantifier, so it is
+required, not optional. Reading it as optional would have wrongly accepted
+`002.5`.
+
+### Applicable XML Schema 1.0 Part 2 semantics
+
+| Question | Answer, and why it matters here |
+| --- | --- |
+| Is whitespace preserved, replaced, or collapsed? | **Preserved.** `xs:string` is the one atomic datatype whose intrinsic `whiteSpace` is `preserve` and is *not* fixed (§4.3.6). This declaration adds no `whiteSpace` facet, so normalization is the identity. |
+| When is `pattern` evaluated? | After whitespace normalization, as part of Datatype Valid (§4.3.4). Since normalization is the identity here, the pattern applies to the literal exactly as written. |
+| What is the unit for String `length`? | **Characters**, never bytes or UTF-16 code units (§4.3.1–4.3.3). |
+| Must a pattern match the whole literal? | **Yes** (§4.3.4.3), so leading and trailing junk are rejected rather than ignored. |
+| Which Unicode/XML semantics matter? | Only that the character classes used here are ASCII; no `\p{...}`, no `\i`/`\c` XML-name escapes, no wildcard. |
+| Is every valid value ASCII? | **Yes**, which is what licenses byte counting. |
+
+Because `whiteSpace` is `preserve`, the generated carriers store the caller's
+input **unchanged**. A value with leading, trailing, or interior whitespace is
+*not* repaired into a valid one; it is rejected, since no whitespace character
+appears in any character class. This is the opposite of Task 036, whose
+`dateTime` carrier must collapse first.
+
+### Character-count reasoning
+
+XML Schema defines `minLength`/`maxLength` over characters, so counting bytes
+is sound only when every accepted character is single-byte. Here it provably
+is. The union of every character class in the pattern is `[0-9]`, `[a-z]`,
+`[a-zA-Z0-9]`, `.`, `_`, and `-`; all are below U+0080. A non-ASCII byte fails
+its character-class test and is rejected *before* any length comparison is
+reached, so for every value that can possibly be accepted:
+
+```text
+UTF-8 byte count == XML Schema character count
+```
+
+Rust and C++ therefore count bytes, and Ada counts `Character` elements of a
+`String`, which is already a character count. All three agree. This argument is
+re-derived per profile and is not assumed for future ones. The corpus includes
+non-ASCII cases, including an Arabic-Indic digit lookalike, to keep it honest.
+
+### Why a dedicated validator instead of a regex engine
+
+Task 037 adds **no** XML Schema regular-expression engine, and deliberately
+does not approximate the expression with `regex`, `std::regex`, POSIX regex, or
+`GNAT.Regpat` — none of those implement XML Schema regex semantics.
+
+Instead the expression is *proved* to reduce to a bounded, deterministic,
+single-pass structural decision. It is a plain concatenation of five bounded
+pieces using only character classes, explicit `{n,m}` bounds, `?`, and the
+escaped literals `\.` and `\-`. It contains no alternation, no backreference,
+no unbounded repetition, and no ambiguity: each piece's alphabet is disjoint
+from the literal that follows it, so a left-to-right scan never backtracks.
+Anchoring is implemented by requiring the scan to finish exactly at
+end-of-input.
+
+That equivalence is asserted of this one expression. Any other pattern text, a
+second alternative, a second group, or a non-XML-Schema dialect fails closed,
+because the proof does not carry over.
+
+The `length` and `pattern` facets are **both** enforced. The pattern's own
+bounds are `3+1+1+2 = 7` and `3+1+2+3+2+46 = 57`, coinciding exactly with the
+declared facets, so they are formally redundant *for this expression*. They are
+still checked explicitly and still required exactly by the classifier: matching
+on the pattern alone would silently accept a neighbouring declaration carrying
+the same pattern with a different `maxLength`, and then generate a carrier that
+ignores that facet. No facet is silently lost.
+
+### Shared String-profile classifier
+
+`crates/codegen-core/src/string_profile.rs` is the String-side analogue of Task
+036's temporal classifier, and exists for the same reason: four independent
+readings of the same facet set is exactly how three backends drift into
+disagreeing about what is renderable while coverage measures a fourth opinion.
+
+```rust
+pub fn string_profile(
+    kind: PrimitiveKind,
+    constraints: &ConstraintSet,
+) -> Result<Option<StringProfile>, StringProfileError>;
+```
+
+* `Ok(None)` — not a constrained `string`; Task 037 has no opinion and the
+  declaration keeps whatever representation it already had.
+* `Ok(Some(UciSchemaVersion))` — the implemented profile.
+* `Err(UnsupportedConstraints)` — a constrained `string` outside the subset.
+
+Distinguishing `Ok(None)` from `Err(_)` is what keeps ordinary unconstrained
+`String` output completely unchanged while every *constrained* neighbour fails
+closed. Recognition is purely structural — primitive kind plus effective
+`ConstraintSet` shape, including facet values, group count, alternative count,
+dialect, and exact expression text. There is no name parameter at all, so no
+`if name == "UCI_SchemaVersionStringType"` is possible, no pattern substring
+heuristic is used, and no debug-string comparison is made. Every backend and
+`CoverageAnalysis` call this one function.
+
+### Generated APIs
+
+Rust — equality **is** derived, unlike the Task 036 carrier:
+
+```rust
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SchemaVersion { value: String }
+
+impl SchemaVersion {
+    pub fn new(value: &str) -> Option<Self>;
+    pub fn as_str(&self) -> &str;
+}
+```
+
+C++ — construction and observation only, per current backend convention:
+
+```cpp
+class SchemaVersion {
+public:
+    static std::optional<SchemaVersion> create(std::string_view value);
+    const std::string& value() const noexcept;
+private:
+    explicit SchemaVersion(std::string validated);
+    std::string value_;
+};
+```
+
+Ada — an opaque private type completed over the existing owned-string type:
+
+```ada
+type SchemaVersion is private;
+function Create (Value : String) return SchemaVersion;  --  Constraint_Error
+function Value (Item : SchemaVersion) return String;
+```
+
+In all three the storage is private and there is no unchecked public
+constructor. Compile-time bypass probes prove it: a Rust struct literal or
+field read, a C++ direct construction or `value_` read, and an Ada attempt to
+name the representation all fail to compile.
+
+### Equality semantics
+
+For `xs:string` the value space *is* the set of lexical forms (§3.2.1 maps each
+literal to itself), so two accepted values are equal exactly when their stored
+text is equal. Stored-text equality is therefore genuine XML Schema value
+equality, and Rust may derive `PartialEq`/`Eq` honestly. This is precisely the
+property `dateTime` lacks — distinct legal spellings can denote one instant —
+which is why Task 036's carrier deliberately derives none.
+
+No ordering is added in any language: XML Schema defines no order relation on
+`string`. C++ invents no comparison operators. Ada's private type inherits
+predefined equality, which compares the stored representation; the generated
+comment states that this *is* value equality here, in contrast to the Task 036
+wording.
+
+Because the carrier supports equality, records containing it **retain** their
+derives. A regression asserts the generated `Payload` is
+`#[derive(Debug, Clone, PartialEq, Eq)]`, so String-profile consumers do not
+lose equality merely because the DateTime carrier has none.
+
+### Ada package body
+
+Task 037 **generalized** the Task 036 body predicate rather than adding a
+second body-generation mechanism: a schema needs a `.adb` when it emits *any*
+validator-backed carrier. Schemas requiring neither keep their existing
+single-`.ads` output exactly, which is asserted for `track.xsd` and
+`backend-constrained-floating.xsd`.
+
+Every parser helper is declared inside `Create`'s own declarative part, so no
+new package-scope identifier is introduced and nothing new is owed to name
+preflight beyond the existing `Create` / `Value` overload model. The single
+shared `ada_wrapper_callable_owners` list gained one arm; GNAT 14.2 confirms
+that constrained-float `Create`, DateTime `Create`, and String-profile `Create`
+coexist, including two `Create (String) return _` overloads that differ *only*
+in result type, exercised by a client that calls both.
+
+### Shared conformance corpus
+
+`tests/fixtures/string/schema-version.txt` — **41 cases, 10 valid and 31
+invalid**, in the same format as the Task 036 corpus and read by the same
+loader, so one escaping bug cannot make the two disagree. All three backends
+consume exactly these cases.
+
+Valid cases cover the 7-character minimum, the Sleet baseline `002.5.0`,
+two-digit groups, maximum digits, one- and two-letter suffixes, the underscore
+tail at minimum and full width, both optional groups together, and the exact
+57-character maximum. Invalid cases cover the empty string, the four-group
+form, wrong group widths, missing/extra/wrong separators, alphabetic where
+numeric is required, an uppercase suffix, an over-long suffix, an empty and an
+over-long underscore tail, leading/trailing/interior whitespace, tab, LF, CR,
+leading and trailing junk, embedded text, and non-ASCII input.
+
+Every VALID case stores its input unchanged, which is the corpus-level
+statement of `whiteSpace = preserve`.
+
+### Selected String blocker inventory
+
+Evidence for **future** tasks. Nothing here is implemented merely because it is
+listed. Measured from authoritative UCI 2.5 over the same 60-type
+`PositionReport` closure and its security-markings include.
+
+| Declaration | length | minLength | maxLength | whiteSpace | Groups | Alts | Depth | Pattern |
+| --- | ---: | ---: | ---: | --- | ---: | ---: | ---: | --- |
+| `UCI_SchemaVersionStringType` | — | 7 | 57 | — | 1 | 1 | 1 | `[0-9]{3}\.[0-9]{1,2}(\.[0-9]{1,2})([a-z]{1,2})?(_[a-zA-Z0-9\-]{1,45})?` |
+| `UniversallyUniqueIdentifierType` | 36 | — | — | — | 1 | 2 | 1 | `(0{8}(-0{4}){3}-0{12})` OR `([a-fA-F0-9]{8}-…-[a-fA-F0-9]{12})` |
+| `VisibleString256Type` | — | 1 | 256 | — | 1 | 1 | 1 | `[ -~]{1,256}` |
+| `NATO_SpecialWordsType` | — | 6 | 261 | — | 1 | 1 | 1 | `NATO:[a-zA-Z\-_]{1,256}` |
+| `WhitespaceVisibleString1024Type` | — | 0 | 1024 | `collapse` | 1 | 1 | 1 | `[&#x20;-&#x7E;\n\r]{0,1024}` |
+| `WhitespaceVisibleString4096Type` | — | 0 | 4096 | `collapse` | 1 | 1 | 1 | `[&#x20;-&#x7E;\n\r]{0,4096}` |
+
+`SecurityInformationType` is listed in the task brief but is an
+`xs:complexType`, not a constrained String, so it is not a String-profile
+candidate at all.
+
+Only the first row is implemented. The UUID type is notable for carrying **two
+alternatives** in one group, which is an OR the Task 037 proof does not cover;
+the `WhitespaceVisibleString*` pair is notable for an explicit `whiteSpace`
+facet, which is a real narrowing for `xs:string`.
+
+### Release-level String evidence, re-measured
+
+Counting `xs:simpleType` declarations that restrict `xs:string` and carry at
+least one `xs:pattern`, across the message-definitions root **and** its
+security-markings include:
+
+| Facet shape | UCI 2.5 | UCI 2.6 |
+| --- | ---: | ---: |
+| `length` + `pattern` | 65 | 65 |
+| `minLength` + `maxLength` + `pattern` | 55 | 57 |
+| `maxLength` + `pattern` | 3 | 3 |
+| `minLength` + `maxLength` + `whiteSpace` + `pattern` | 2 | 0 |
+| **total patterned String owners** | **125** | **125** |
+
+Earlier notes recorded roughly 128 (2.5) and 127 (2.6); the current measured
+figure is **125 in both**, counted as described above. Task 037 implements
+exactly **one** of those 125 owners' facet shapes, with one specific
+expression — which is precisely why this must not become a generic
+constrained-String feature.
+
+### Coverage delta — all twelve cells
+
+Whole-schema declaration coverage, re-run for both releases and both worlds.
+
+| Release / world | Backend | Before | After | Δ |
+| --- | --- | ---: | ---: | ---: |
+| UCI 2.5 closed | Ada | 5299 / 5557 | **5300 / 5557** | +1 |
+| UCI 2.5 closed | Rust | 5376 / 5557 | **5377 / 5557** | +1 |
+| UCI 2.5 closed | C++ | 5379 / 5557 | **5380 / 5557** | +1 |
+| UCI 2.6 closed | Ada | 5320 / 5570 | **5321 / 5570** | +1 |
+| UCI 2.6 closed | Rust | 5398 / 5570 | **5399 / 5570** | +1 |
+| UCI 2.6 closed | C++ | 5402 / 5570 | **5403 / 5570** | +1 |
+| UCI 2.5 open | Ada | 5214 / 5557 | **5215 / 5557** | +1 |
+| UCI 2.5 open | Rust | 5288 / 5557 | **5289 / 5557** | +1 |
+| UCI 2.5 open | C++ | 5291 / 5557 | **5292 / 5557** | +1 |
+| UCI 2.6 open | Ada | 5235 / 5570 | **5236 / 5570** | +1 |
+| UCI 2.6 open | Rust | 5310 / 5570 | **5311 / 5570** | +1 |
+| UCI 2.6 open | C++ | 5314 / 5570 | **5315 / 5570** | +1 |
+
+Exactly **one** newly renderable declaration per cell, in every cell:
+
+| QName | Reason | Direct/transitive | Closed/open difference |
+| --- | --- | --- | --- |
+| `{https://www.vdl.afrl.af.mil/programs/oam}UCI_SchemaVersionStringType` | the one supported facet profile | direct | none |
+
+There are **no transitive gains**. Every consumer of this type in the UCI model
+also reaches at least one still-unsupported declaration — most immediately
+`UniversallyUniqueIdentifierType` — so no record becomes newly renderable. The
+closed/open difference is nil: this is a primitive value declaration, and the
+open-world distinction concerns abstract structural values only. That nothing
+other than the exact supported profile became renderable was verified rather
+than assumed.
+
+A note on how this delta was reached. The first measurement showed **zero**
+change in all twelve cells, which was investigated rather than accepted: the
+shared classifier accepted the real UCI declaration, but coverage's
+`kind_renderable` had never listed `PrimitiveKind::String` as a baseline
+primitive kind at all, so a named String declaration was gated behind
+`PrimitiveExpansion` before the constraint gate was ever consulted. That arm
+now mirrors the temporal one — baseline exactly when the classifier accepts the
+profile — and an *unconstrained* named String remains gated exactly as before.
+
+### Selected PositionReport delta
+
+UCI 2.5, `crates/service-contract/tests/fixtures/upstream-minimal.yaml`, one
+selected message, 60-declaration closure, closed world.
+
+| Backend | Before | After | First blocker before | First blocker after |
+| --- | ---: | ---: | --- | --- |
+| Ada | 48/60 | **49/60** | `UCI_SchemaVersionStringType` | `UniversallyUniqueIdentifierType` |
+| Rust | 52/60 | **53/60** | `UCI_SchemaVersionStringType` | `UniversallyUniqueIdentifierType` |
+| C++ | 52/60 | **53/60** | `UCI_SchemaVersionStringType` | `UniversallyUniqueIdentifierType` |
+
+All three backends advanced by exactly one and now agree on the next measured
+blocker. `UniversallyUniqueIdentifierType` is the `length + pattern` family
+carrying **two pattern alternatives** — correctly still closed. This is the
+measured result; the next profile is deliberately **not** implemented here.
+
+### A pre-existing Ada hazard observed, not introduced
+
+While building the Task 037 Ada fixture, a latent generator hazard surfaced: a
+schema namespace whose final segment is `string` produces a package named
+`Test.String`, and inside it the identifier `String` denotes that package
+rather than `Standard.String`, so the generated
+`function Create (Value : String) return …` fails to compile.
+
+This is **pre-existing and shared with Task 036** — its carrier emits the same
+`Value : String` profile — and is not caused by this task. It was confirmed
+with a minimal hand-written GNAT reproduction independent of this generator.
+Task 037 keeps its scope and simply does not name its fixture namespace
+`string`; fixing the generator would churn Task 036 output and belongs in its
+own task. It is recorded here so it is not later rediscovered as a Task 037
+regression.
+
+### Full-schema generation boundary
+
+Unchanged by this task, and not addressed here:
+
+```text
+Ada:  Ada name "Range" generates reserved word "Range"
+      in the members of AltitudeRangePairType
+Rust: Rust name "Type" generates reserved word "type"
+      in the members of ConfigurationParameterType
+C++:  C++ name "Operator" generates reserved word "operator"
+      in the members of ApprovalResponseType
+```
+
+No full-UCI generation claim is made.
+
+### Explicit non-goals
+
+| Capability | Status |
+| --- | --- |
+| named schema-version String profile | **supported** |
+| direct field-local constrained String | unsupported |
+| named unconstrained `String` | unchanged: plain `String` / `std::string` / `Unbounded_String` |
+| `length` + `pattern`, including UUID | unsupported |
+| a different pattern with the same bounds | unsupported |
+| the same pattern with different bounds | unsupported |
+| multiple PatternGroups | unsupported |
+| multiple alternatives in one group | unsupported |
+| explicit `whiteSpace` profiles | unsupported |
+| `NATO_SpecialWordsType`, `VisibleString*` | unsupported |
+| generic XML Schema regex translation | not implemented, deliberately |
+| String ordering or collation | not implemented |
+| XML or JSON codecs | not implemented |
+
+No new `FeatureFamily` was introduced: Task 037 is a concrete baseline
+implementation inside the existing conceptual constrained-simple-type family,
+and all existing feature-combination monotonicity tests remain green. Task 036
+DateTime behaviour and Task 035 occurrence behaviour are unchanged. No
+third-party runtime dependency was added in any language.
