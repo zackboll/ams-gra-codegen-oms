@@ -1,0 +1,256 @@
+# Task 036 shared XML Schema dateTime Zulu conformance corpus.
+#
+# ONE canonical corpus drives the Rust, C++, and Ada generated validators, so
+# the three backends are proven to agree rather than each passing its own
+# curated subset. Rust-side tests read this file and emit the cases into the
+# probe program for every language.
+#
+# FORMAT
+#   '#' begins a comment line; blank lines are ignored.
+#   VALID   <input> => <expected normalized lexical form>
+#   INVALID <input>
+# <input> is a C-style escaped string so whitespace cases are unambiguous;
+# only \s (space), \t, \n, \r, and \\ are used.
+#
+# AUTHORITY
+# XML Schema 1.0 Part 2 (W3C REC 28 October 2004). The pinned UCI 2.5/2.6
+# schemas use no XSD 1.1-only construct (no xs:assert, xs:alternative,
+# explicitTimezone, xs:openContent, xs:override, or vc:minVersion), so 1.0 is
+# the applicable standard and 1.0's year rules apply -- notably that '0000' is
+# NOT a valid lexical representation (section 3.2.7).
+#
+# Section 3.2.7.1 lexical space:
+#   '-'? yyyy '-' mm '-' dd 'T' hh ':' mm ':' ss ('.' s+)? (zzzzzz)?
+# Section 3.2.7.3 timezone:  (('+' | '-') hh ':' mm) | 'Z'
+# Section 4.3.6 whiteSpace:  fixed 'collapse' for every atomic type but string.
+#
+# The UCI profile adds pattern ".+Z", which on this already-lexically-valid
+# domain is exactly "the normalized form ends in literal 'Z'" -- see the proof
+# in crates/codegen-core/src/temporal.rs.
+
+# ---------------------------------------------------------------- VALID -----
+
+# Ordinary date/time with the required Zulu timezone.
+VALID 2026-09-20T12:34:56Z => 2026-09-20T12:34:56Z
+
+# Leap day in a leap year. 2024 is divisible by 4 and not by 100.
+VALID 2024-02-29T00:00:00Z => 2024-02-29T00:00:00Z
+
+# Leap day in a century leap year: 2000 is divisible by 400, so it IS a leap
+# year. This is the case a naive "divisible by 4" rule gets right by accident
+# and a naive "not divisible by 100" rule gets wrong.
+VALID 2000-02-29T23:59:59Z => 2000-02-29T23:59:59Z
+
+# Ordinary non-leap February date; 28 days is always valid.
+VALID 2023-02-28T01:02:03Z => 2023-02-28T01:02:03Z
+
+# Fractional seconds: a single digit.
+VALID 2026-09-20T12:34:56.5Z => 2026-09-20T12:34:56.5Z
+
+# More than one fractional digit. Section 3.2.7.1 allows '.' s+ to arbitrary
+# precision, so no digit limit may be imposed.
+VALID 2026-09-20T12:34:56.123456789012345678901234567890Z => 2026-09-20T12:34:56.123456789012345678901234567890Z
+
+# Trailing fractional zeros are legal lexically; only the CANONICAL form
+# forbids them (section 3.2.7.2). Task 036 stores the lexical form as given,
+# so this must round-trip unchanged rather than being canonicalized.
+VALID 2026-09-20T12:34:56.000Z => 2026-09-20T12:34:56.000Z
+
+# '24:00:00' IS permitted by section 3.2.7.1 when minutes and seconds are zero;
+# it denotes the first instant of the following day. It must be accepted.
+VALID 2026-09-20T24:00:00Z => 2026-09-20T24:00:00Z
+
+# 24:00:00 with fractional zeros: the seconds represented are still zero.
+VALID 2026-09-20T24:00:00.0Z => 2026-09-20T24:00:00.0Z
+
+# Extended year: more than four digits is required by section 3.2.7.1, which
+# says 'four-or-more digit'. This year exceeds nothing the standard bounds, so
+# it must not be rejected by a host integer limit.
+VALID 20260-09-20T12:34:56Z => 20260-09-20T12:34:56Z
+
+# A year far beyond any fixed-width machine integer. XML Schema places no
+# upper bound on the digit count, so digit-level validation is mandatory.
+VALID 999999999999999999999999-01-01T00:00:00Z => 999999999999999999999999-01-01T00:00:00Z
+
+# Negative year. Section 3.2.7.1 permits a leading '-'; '-0001' is 1 BCE.
+VALID -0001-01-01T00:00:00Z => -0001-01-01T00:00:00Z
+
+# Negative extended year.
+VALID -20260-12-31T23:59:59Z => -20260-12-31T23:59:59Z
+
+# Smallest legal calendar boundaries: year 0001, month 01, day 01, midnight.
+VALID 0001-01-01T00:00:00Z => 0001-01-01T00:00:00Z
+
+# Largest ordinary boundaries: December 31, last representable second.
+VALID 9999-12-31T23:59:59Z => 9999-12-31T23:59:59Z
+
+# 30-day month at its maximum.
+VALID 2026-04-30T00:00:00Z => 2026-04-30T00:00:00Z
+
+# 31-day month at its maximum.
+VALID 2026-01-31T00:00:00Z => 2026-01-31T00:00:00Z
+
+# Second 60 is NOT admitted -- see the INVALID section. Second 59 is the max.
+VALID 2026-06-15T13:00:59Z => 2026-06-15T13:00:59Z
+
+# Leading and trailing XML whitespace must collapse away entirely (section
+# 4.3.6 'collapse'), and the STORED value is the normalized form, not the
+# input. dateTime's whiteSpace is fixed at collapse and cannot be overridden.
+VALID \s\t2026-09-20T12:34:56Z\r\n => 2026-09-20T12:34:56Z
+VALID \n\n2026-09-20T12:34:56Z => 2026-09-20T12:34:56Z
+VALID 2026-09-20T12:34:56Z\t\t => 2026-09-20T12:34:56Z
+VALID \s\s\s2026-09-20T12:34:56Z\s\s\s => 2026-09-20T12:34:56Z
+
+# -------------------------------------------------------------- INVALID -----
+
+# --- the UCI ".+Z" Zulu restriction ---
+
+# Missing timezone entirely. Lexically valid dateTime, but not Zulu, so the
+# UCI profile rejects it. This is the case that proves the pattern is applied
+# and not merely assumed.
+INVALID 2026-09-20T12:34:56
+
+# Numeric timezone offsets are legal dateTime (section 3.2.7.3) but are not
+# the Zulu spelling the profile requires.
+INVALID 2026-09-20T12:34:56+00:00
+INVALID 2026-09-20T12:34:56-00:00
+INVALID 2026-09-20T12:34:56+05:00
+INVALID 2026-09-20T12:34:56-13:30
+INVALID 2026-09-20T12:34:56+14:00
+
+# Lowercase 'z' is not the timezone token; XML Schema spells it 'Z'.
+INVALID 2026-09-20T12:34:56z
+
+# Trailing characters after 'Z'. Patterns are anchored, and the lexical space
+# ends at the timezone, so nothing may follow.
+INVALID 2026-09-20T12:34:56ZZ
+INVALID 2026-09-20T12:34:56Z.
+INVALID 2026-09-20T12:34:56Zx
+
+# --- calendar validity ---
+
+# Month 00 and month 13 are outside 01..12.
+INVALID 2026-00-15T00:00:00Z
+INVALID 2026-13-15T00:00:00Z
+
+# Day zero is never valid in any month.
+INVALID 2026-09-00T00:00:00Z
+
+# Day beyond the month's maximum: September has 30 days.
+INVALID 2026-09-31T00:00:00Z
+# April has 30 days.
+INVALID 2026-04-31T00:00:00Z
+# No month has 32 days.
+INVALID 2026-01-32T00:00:00Z
+
+# February 29 in a non-leap year. 2023 is not divisible by 4.
+INVALID 2023-02-29T00:00:00Z
+# February 29 in a century NON-leap year: 1900 is divisible by 100 but not by
+# 400, so it is not a leap year. A "divisible by 4" rule wrongly accepts this.
+INVALID 1900-02-29T00:00:00Z
+# February never has 30 days, leap year or not.
+INVALID 2024-02-30T00:00:00Z
+
+# --- time-of-day validity ---
+
+# Hour 25 exceeds every legal form.
+INVALID 2026-09-20T25:00:00Z
+# Hour 24 is permitted ONLY with zero minutes and zero seconds (3.2.7.1).
+INVALID 2026-09-20T24:00:01Z
+INVALID 2026-09-20T24:01:00Z
+INVALID 2026-09-20T24:30:30Z
+# 24:00:00 with a NON-zero fractional part is likewise not zero seconds.
+INVALID 2026-09-20T24:00:00.1Z
+
+# Minute 60 is out of range; minutes are 00..59.
+INVALID 2026-09-20T12:60:00Z
+
+# Second 60 is out of range. XML Schema 1.0 dateTime does NOT admit a leap
+# second in its lexical space; seconds are 00..59.
+INVALID 2026-09-20T12:00:60Z
+INVALID 2026-09-20T12:00:61Z
+
+# --- fractional seconds ---
+
+# A '.' must be followed by at least one digit ('.' s+, not s*).
+INVALID 2026-09-20T12:34:56.Z
+# Non-digit in the fractional part.
+INVALID 2026-09-20T12:34:56.5aZ
+# Two decimal points.
+INVALID 2026-09-20T12:34:56.1.2Z
+# A fractional part is only allowed on seconds, never on minutes.
+INVALID 2026-09-20T12:34.5:56Z
+
+# --- year grammar ---
+
+# Fewer than four digits: the year is 'four-or-more' digits.
+INVALID 999-09-20T12:34:56Z
+INVALID 26-09-20T12:34:56Z
+INVALID 1-09-20T12:34:56Z
+
+# '0000' is explicitly prohibited by XML Schema 1.0 section 3.2.7. This is the
+# rule that differs in later revisions, so the applicable version matters.
+INVALID 0000-01-01T00:00:00Z
+INVALID -0000-01-01T00:00:00Z
+
+# If more than four digits, leading zeros are prohibited (3.2.7.1).
+INVALID 02026-09-20T12:34:56Z
+INVALID -02026-09-20T12:34:56Z
+
+# A plus sign is explicitly not permitted on the year.
+INVALID +2026-09-20T12:34:56Z
+
+# Non-digit in the year.
+INVALID 20x6-09-20T12:34:56Z
+
+# --- field width and separators ---
+
+# Month, day, hour, minute, and second are each exactly two digits.
+INVALID 2026-9-20T12:34:56Z
+INVALID 2026-09-2T12:34:56Z
+INVALID 2026-09-20T2:34:56Z
+INVALID 2026-09-20T12:4:56Z
+INVALID 2026-09-20T12:34:6Z
+INVALID 2026-009-20T12:34:56Z
+INVALID 2026-09-20T123:34:56Z
+
+# The date/time separator is an uppercase 'T'.
+INVALID 2026-09-20t12:34:56Z
+INVALID 2026-09-20\s12:34:56Z
+INVALID 2026-09-2012:34:56Z
+
+# Missing separators and missing components.
+INVALID 2026-09-20Z
+INVALID 2026-09-20T12:34Z
+INVALID 2026-09-20T12Z
+INVALID 20260920T123456Z
+INVALID 2026/09/20T12:34:56Z
+
+# --- whitespace ---
+
+# Internal whitespace is NOT removed by 'collapse'; collapse only trims the
+# ends and squeezes runs of spaces. An interior space leaves a literal that is
+# not in the lexical space.
+INVALID 2026-09-20T12:34:56\sZ
+INVALID 2026-09-20\sT12:34:56Z
+INVALID 2026-\s09-20T12:34:56Z
+INVALID 2026-09-20T12:\s34:56Z
+
+# --- degenerate input ---
+
+# The empty string, and strings that are only whitespace (which collapse to
+# empty). '.+Z' alone would already reject these, but the lexical validator
+# must reject them first. An INVALID line with no payload is the empty string.
+INVALID
+INVALID \s
+INVALID \s\t\r\n
+
+# Arbitrary text ending in 'Z'. This is the case a naive ends_with('Z')
+# validator wrongly accepts, and it is why the base lexical grammar must be
+# checked before the Zulu profile.
+INVALID garbageZ
+INVALID Z
+INVALID 2026-99-99T99:99:99Z
+INVALID notadatetimeatallZ
+INVALID ....Z
+INVALID 0Z

@@ -2,11 +2,12 @@
 
 use ams_gra_oms_codegen_core::{
     AbstractValueProjection, Backend, BackendLanguage, CodegenError, EffectiveValueMember,
-    FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain, TypeEmission,
-    abstract_value_projection_for_ref, backend_preflight, effective_choice_alternatives,
-    effective_record_fields, field_storage_semantics, float32_literal, float64_literal,
-    floating_domain, inclusive_integral_domain, plan_type_emissions,
-    schema_emits_bounded_integer_support, schema_emits_unbounded_sequence_support,
+    FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain, TemporalProfile,
+    TypeEmission, abstract_value_projection_for_ref, backend_preflight,
+    effective_choice_alternatives, effective_record_fields, field_storage_semantics,
+    float32_literal, float64_literal, floating_domain, inclusive_integral_domain,
+    is_temporal_primitive, plan_type_emissions, schema_emits_bounded_integer_support,
+    schema_emits_temporal_carrier, schema_emits_unbounded_sequence_support, temporal_profile,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -90,6 +91,15 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     } else {
         ""
     };
+    // Task 036: the DateTime Zulu carrier's factory takes a `std::string_view`.
+    // The header is added only when a supported temporal declaration is
+    // actually emitted, so every other schema's generated output is unchanged
+    // byte for byte.
+    let string_view_header = if schema_emits_temporal_carrier(schema) {
+        "#include <string_view>\n"
+    } else {
+        ""
+    };
     let mut output = String::from(
         "#pragma once\n\n\
          #include <cstddef>\n\
@@ -101,7 +111,7 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     );
     output.insert_str(
         "#pragma once\n\n".len() + "#include <cstddef>\n#include <cstdint>\n".len(),
-        &format!("{limits_header}{climits_header}"),
+        &format!("{limits_header}{climits_header}{string_view_header}"),
     );
     output.push_str(variant_header);
     output.push('\n');
@@ -251,6 +261,11 @@ fn render_declaration(
         TypeKind::Primitive(kind @ (PrimitiveKind::Float32 | PrimitiveKind::Float64)) => {
             render_floating_declaration(output, *kind, &declaration.constraints, &name)?;
         }
+        TypeKind::Primitive(
+            kind @ (PrimitiveKind::DateTime | PrimitiveKind::Time | PrimitiveKind::Duration),
+        ) => {
+            render_temporal_declaration(output, *kind, &declaration.constraints, &name)?;
+        }
         TypeKind::Primitive(PrimitiveKind::Binary) => {
             reject_any_constraints(&declaration.constraints, &name)?;
             writeln!(output, "class {name} {{\npublic:\n    explicit {name}(std::vector<std::uint8_t> value) : value_(std::move(value)) {{}}\n    const std::vector<std::uint8_t>& value() const noexcept {{ return value_; }}\nprivate:\n    std::vector<std::uint8_t> value_;\n}};\n").expect("writing to String cannot fail");
@@ -371,6 +386,25 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
             // `reject_extra_constraints` understands only the integral
             // inclusive subset, so a legitimate exclusive floating bound must
             // not reach it.
+            continue;
+        }
+        // Task 036: a named temporal declaration is classified by the shared
+        // helper. Only the DateTime Zulu profile is lowered; every other
+        // temporal shape still fails closed here, before any output exists.
+        if let TypeKind::Primitive(kind) = declaration.kind
+            && is_temporal_primitive(kind)
+        {
+            match temporal_profile(kind, &declaration.constraints) {
+                Ok(Some(TemporalProfile::DateTimeZulu)) => {}
+                Ok(None) => unreachable!("is_temporal_primitive gates this branch"),
+                Err(reason) => {
+                    return unsupported(format!("{reason} on {}", declaration.name.local_name));
+                }
+            }
+            // The supported profile's `.+Z` pattern is a real lexical
+            // constraint that `reject_extra_constraints` would reject, so it
+            // must not reach it: the classifier has already proven this exact
+            // facet set is fully enforced by the generated validator.
             continue;
         }
         if matches!(declaration.kind, TypeKind::Primitive(PrimitiveKind::Binary))
@@ -785,6 +819,279 @@ fn error(message: impl Into<String>) -> CodegenError {
         message: message.into(),
     }
 }
+
+/// Render a named temporal declaration.
+///
+/// Only the shared classifier's one supported profile is lowered; `Time`,
+/// `Duration`, an unconstrained `DateTime`, and every other facet shape fail
+/// closed rather than being approximated.
+///
+/// # Representation
+///
+/// A **validated lexical carrier** holding the whitespace-normalized XML
+/// Schema `dateTime` spelling. Deliberately not `std::chrono`, `time_t`, or
+/// epoch seconds: each narrows XML Schema's lexical and value space (unbounded
+/// year digits, arbitrary fractional precision, the distinct `24:00:00`
+/// spelling) and discards wire-level information a codec will need.
+///
+/// # No comparison operators
+///
+/// No `operator==`, `operator<`, `operator<=>`, or ordering helper is emitted.
+/// XML Schema `dateTime` equality is value-space equality over spellings, and
+/// its order relation is only partial (section 3.2.7.4). Task 036 implements
+/// neither, so it declares neither.
+fn render_temporal_declaration(
+    output: &mut String,
+    kind: PrimitiveKind,
+    constraints: &ConstraintSet,
+    name: &str,
+) -> Result<(), CodegenError> {
+    match temporal_profile(kind, constraints) {
+        Ok(Some(TemporalProfile::DateTimeZulu)) => {}
+        Ok(None) => return unsupported(format!("non-temporal primitive on {name}")),
+        Err(reason) => return unsupported(format!("{reason} on {name}")),
+    }
+    writeln!(
+        output,
+        "{}",
+        CPP_DATE_TIME_ZULU_TEMPLATE.replace("{name}", name)
+    )
+    .expect("writing to String cannot fail");
+    Ok(())
+}
+
+/// The generated C++17 DateTime Zulu carrier, with `{name}` substituted.
+///
+/// # Validation order
+///
+/// 1. XML Schema `collapse` normalization (section 4.3.6), fixed for
+///    `dateTime`;
+/// 2. the full `dateTime` lexical grammar and calendar rules (3.2.7.1);
+/// 3. the UCI `.+Z` Zulu restriction.
+///
+/// A bare `ends_with('Z')` would accept `garbageZ`, so the base grammar is
+/// checked first and Zulu is the last gate, not the only one.
+///
+/// # No fixed-width year
+///
+/// The year is validated and its leap-year properties computed from decimal
+/// digits, never parsed into `int`/`long`/`time_t`. XML Schema admits a
+/// four-or-more digit year with no upper bound.
+///
+/// # Scope of the helpers
+///
+/// Every parser helper is a **private static member function**, so it lives in
+/// this class's own scope and cannot collide with a schema-generated
+/// namespace-scope identifier. Task 036 adds no new namespace-scope name.
+///
+/// # Strictness
+///
+/// Compiles clean under `-std=c++17 -Wall -Wextra -pedantic-errors` and uses
+/// only `<string>`, `<string_view>`, and `<optional>`, which the generated
+/// header already includes. No external temporal or regex library.
+const CPP_DATE_TIME_ZULU_TEMPLATE: &str = r##"class {name} {
+public:
+    // Validate `value` as an XML Schema dateTime restricted to Zulu.
+    //
+    // The input is normalized under the fixed `collapse` whiteSpace policy,
+    // then checked against the full dateTime lexical grammar and calendar
+    // rules, then against the `.+Z` restriction. Returns std::nullopt if any
+    // step rejects. The stored text is the normalized form.
+    static std::optional<{name}> create(std::string_view value) {
+        std::string lexical = collapse(value);
+        if (!is_zulu_date_time(lexical)) {
+            return std::nullopt;
+        }
+        return {name}(std::move(lexical));
+    }
+
+    // The stored, normalized, validated lexical representation. This is a
+    // dateTime spelling whose timezone is 'Z'; it is not a point in time.
+    const std::string& value() const noexcept { return value_; }
+
+private:
+    explicit {name}(std::string normalized) : value_(std::move(normalized)) {}
+
+    // XML Schema `collapse`: tab/LF/CR become spaces, runs of spaces are
+    // squeezed to one, and leading/trailing spaces are removed.
+    static std::string collapse(std::string_view value) {
+        std::string out;
+        bool pending_space = false;
+        for (char character : value) {
+            if (character == ' ' || character == '\t' || character == '\n' || character == '\r') {
+                pending_space = !out.empty();
+                continue;
+            }
+            if (pending_space) {
+                out.push_back(' ');
+                pending_space = false;
+            }
+            out.push_back(character);
+        }
+        return out;
+    }
+
+    static bool is_digit(char character) noexcept {
+        return character >= '0' && character <= '9';
+    }
+
+    // The whole gate: valid lexical dateTime AND Zulu timezone.
+    static bool is_zulu_date_time(const std::string& text) {
+        // The Zulu restriction, applied to the normalized form -- which is
+        // exactly where XML Schema applies a pattern facet.
+        if (text.size() < 2 || text.back() != 'Z') {
+            return false;
+        }
+        // The base grammar must hold for everything before the timezone; this
+        // is what stops "garbageZ" from being accepted.
+        return is_date_time_body(std::string_view(text).substr(0, text.size() - 1));
+    }
+
+    // '-'? yyyy '-' mm '-' dd 'T' hh ':' mm ':' ss ('.' s+)?
+    static bool is_date_time_body(std::string_view body) {
+        std::size_t year_end = 0;
+        bool leap = false;
+        if (!scan_year(body, year_end, leap)) {
+            return false;
+        }
+        std::string_view rest = body.substr(year_end);
+        if (rest.size() < 6 || rest[0] != '-' || rest[3] != '-') {
+            return false;
+        }
+        unsigned month = 0;
+        unsigned day = 0;
+        if (!two_digits(rest.substr(1, 2), month) || !two_digits(rest.substr(4, 2), day)) {
+            return false;
+        }
+        if (month < 1 || month > 12 || day < 1 || day > days_in_month(month, leap)) {
+            return false;
+        }
+        return is_time_of_day(rest.substr(6));
+    }
+
+    // 'T' hh ':' mm ':' ss ('.' s+)?
+    static bool is_time_of_day(std::string_view rest) {
+        if (rest.size() < 9 || rest[0] != 'T' || rest[3] != ':' || rest[6] != ':') {
+            return false;
+        }
+        unsigned hour = 0;
+        unsigned minute = 0;
+        unsigned second = 0;
+        if (!two_digits(rest.substr(1, 2), hour) || !two_digits(rest.substr(4, 2), minute)
+            || !two_digits(rest.substr(7, 2), second)) {
+            return false;
+        }
+        // Seconds are 00..59: XML Schema 1.0 dateTime admits no leap second.
+        if (hour > 24 || minute > 59 || second > 59) {
+            return false;
+        }
+        std::string_view fraction = rest.substr(9);
+        bool fraction_is_zero = true;
+        if (!fraction.empty()) {
+            // '.' s+ : the dot requires at least one digit after it.
+            if (fraction[0] != '.' || fraction.size() < 2) {
+                return false;
+            }
+            for (std::size_t index = 1; index < fraction.size(); ++index) {
+                if (!is_digit(fraction[index])) {
+                    return false;
+                }
+                if (fraction[index] != '0') {
+                    fraction_is_zero = false;
+                }
+            }
+        }
+        // Hour 24 is legal only as the exact instant 24:00:00(.0*).
+        if (hour == 24 && (minute != 0 || second != 0 || !fraction_is_zero)) {
+            return false;
+        }
+        return true;
+    }
+
+    // Validate '-'? yyyy, reporting where it ends and whether it is a leap
+    // year. The digit count is unbounded, so nothing is parsed into an
+    // integer; divisibility is decided from trailing digits only.
+    static bool scan_year(std::string_view body, std::size_t& year_end, bool& leap) {
+        std::size_t start = (!body.empty() && body[0] == '-') ? 1u : 0u;
+        std::size_t end = start;
+        while (end < body.size() && is_digit(body[end])) {
+            ++end;
+        }
+        std::string_view digits = body.substr(start, end - start);
+        // Four-or-more digits.
+        if (digits.size() < 4) {
+            return false;
+        }
+        // If more than four digits, leading zeros are prohibited.
+        if (digits.size() > 4 && digits[0] == '0') {
+            return false;
+        }
+        // '0000' is not a valid lexical representation in XML Schema 1.0,
+        // with or without a sign.
+        bool all_zero = true;
+        for (char digit : digits) {
+            if (digit != '0') {
+                all_zero = false;
+                break;
+            }
+        }
+        if (all_zero) {
+            return false;
+        }
+        year_end = end;
+        leap = is_leap_year(digits);
+        return true;
+    }
+
+    // Leap year from decimal digits: divisible by 400, or by 4 but not 100.
+    // Divisibility by 4 depends only on the last two digits (100 is itself a
+    // multiple of 4), so this is exact for any digit count.
+    static bool is_leap_year(std::string_view digits) {
+        unsigned last_two = static_cast<unsigned>(digits[digits.size() - 2] - '0') * 10u
+            + static_cast<unsigned>(digits[digits.size() - 1] - '0');
+        bool divisible_by_4 = (last_two % 4u) == 0u;
+        bool divisible_by_100 = last_two == 0u;
+        bool divisible_by_400 = divisible_by_100 && hundreds_multiple_of_four(digits);
+        return divisible_by_400 || (divisible_by_4 && !divisible_by_100);
+    }
+
+    // Whether a year ending in "00" is also divisible by 400: strip the
+    // trailing "00" and test the remainder for divisibility by 4, digit by
+    // digit so an arbitrarily long year stays exact.
+    static bool hundreds_multiple_of_four(std::string_view digits) {
+        unsigned remainder = 0;
+        for (std::size_t index = 0; index + 2 < digits.size(); ++index) {
+            remainder = (remainder * 10u + static_cast<unsigned>(digits[index] - '0')) % 4u;
+        }
+        return remainder == 0u;
+    }
+
+    // Exactly two ASCII digits, as a number.
+    static bool two_digits(std::string_view pair, unsigned& out) {
+        if (pair.size() != 2 || !is_digit(pair[0]) || !is_digit(pair[1])) {
+            return false;
+        }
+        out = static_cast<unsigned>(pair[0] - '0') * 10u + static_cast<unsigned>(pair[1] - '0');
+        return true;
+    }
+
+    // maximumDayInMonthFor, XML Schema 1.0 Part 2 Appendix E.
+    static unsigned days_in_month(unsigned month, bool leap) {
+        switch (month) {
+        case 1: case 3: case 5: case 7: case 8: case 10: case 12:
+            return 31;
+        case 4: case 6: case 9: case 11:
+            return 30;
+        case 2:
+            return leap ? 29u : 28u;
+        default:
+            return 0;
+        }
+    }
+
+    std::string value_;
+};
+"##;
 
 #[cfg(test)]
 mod tests {
@@ -1766,10 +2073,16 @@ int main() {
         }
     }
 
+    /// Lexical constraints still fail before rendering everywhere Task 036 has
+    /// not implemented a validator.
+    ///
+    /// `DateTime` + `.+Z` is deliberately absent from this list: that exact
+    /// pair is the one Task 036 profile the generator now fully enforces, and
+    /// the assertion below distinguishes it from `Time` carrying the *same*
+    /// pattern text, which remains unsupported.
     #[test]
     fn lexical_constraints_fail_before_rendering() {
         for (kind, white_space) in [
-            (PrimitiveKind::DateTime, false),
             (PrimitiveKind::Time, false),
             (PrimitiveKind::SignedInteger, false),
             (PrimitiveKind::String, false),
@@ -1790,12 +2103,26 @@ int main() {
             }
             let error =
                 generate(&schema, CLOSED).expect_err("lexical constraints must be rejected");
+            let message = &error.message;
             assert!(
-                error
-                    .message
-                    .contains("unsupported C++ IR construct: constraints on")
+                message.contains("unsupported C++ IR construct: constraints on")
+                    || message.contains("unsupported temporal declaration: Time"),
+                "unexpected diagnostic for {kind:?}: {message}"
             );
         }
+        // The same pattern text on `DateTime` -- and only there -- is now the
+        // supported profile, so it must generate rather than fail.
+        let mut supported = track_schema();
+        supported.types[0].kind = TypeKind::Primitive(PrimitiveKind::DateTime);
+        supported.types[0].constraints = ConstraintSet::default();
+        supported.types[0]
+            .constraints
+            .lexical
+            .pattern_groups
+            .push(ams_gra_oms_ir::PatternGroup {
+                alternatives: vec![ams_gra_oms_ir::PatternExpression::xml_schema(".+Z")],
+            });
+        generate(&supported, CLOSED).expect("the supported DateTime Zulu profile must generate");
     }
 
     #[test]

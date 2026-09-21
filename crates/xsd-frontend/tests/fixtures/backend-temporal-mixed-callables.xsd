@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Task 036 fixture: constrained floating wrappers and DateTime Zulu wrappers in
+  ONE package.
+
+  Ada emits a package-level `Create` / `Value` for each of the four, so this is
+  the schema that proves the shared generated-callable name model is right to
+  treat those identifiers as overloadable rather than unique. Two
+  `Create (String) return _` declarations differ only in result type, which is
+  the strongest case; GNAT resolves it by expected type.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test:mixed"
+           targetNamespace="urn:test:mixed"
+           elementFormDefault="qualified">
+
+  <xs:simpleType name="BurnRate">
+    <xs:restriction base="xs:double">
+      <xs:minInclusive value="0"/>
+      <xs:maxInclusive value="1"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="AltitudeMeters">
+    <xs:restriction base="xs:double">
+      <xs:minInclusive value="-500"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Instant">
+    <xs:restriction base="xs:dateTime">
+      <xs:pattern value=".+Z"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Deadline">
+    <xs:restriction base="xs:dateTime">
+      <xs:pattern value=".+Z"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="Holder">
+    <xs:sequence>
+      <xs:element name="Observed" type="t:Instant"/>
+      <xs:element name="Rate" type="t:BurnRate"/>
+    </xs:sequence>
+  </xs:complexType>
+
+</xs:schema>

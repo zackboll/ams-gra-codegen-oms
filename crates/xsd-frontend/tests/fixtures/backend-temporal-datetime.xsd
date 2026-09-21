@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Task 036 backend fixture: the supported named DateTime Zulu profile, plus a
+  Task 034 optional-named composition.
+
+  The declaration names here are deliberately NOT UCI's `DateTimeType`: support
+  must arise from PrimitiveKind::DateTime plus the effective ConstraintSet, so
+  a differently spelled declaration with the same profile must be equally
+  renderable.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test:temporal"
+           targetNamespace="urn:test:temporal"
+           elementFormDefault="qualified">
+
+  <!-- The authoritative UCI profile, under a non-UCI name. -->
+  <xs:simpleType name="Instant">
+    <xs:annotation>
+      <xs:documentation>An XML Schema dateTime restricted to the Zulu timezone.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:dateTime">
+      <xs:pattern value=".+Z"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- A second supported declaration: several wrappers must coexist, which in
+       Ada requires Create/Value overload resolution to work. -->
+  <xs:simpleType name="Deadline">
+    <xs:restriction base="xs:dateTime">
+      <xs:pattern value=".+Z"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Task 034 composition: an optional NAMED occurrence of a supported
+       DateTime must compose automatically, with no optional-DateTime special
+       case anywhere. -->
+  <xs:complexType name="Payload">
+    <xs:sequence>
+      <xs:element name="Observed" type="t:Instant"/>
+      <xs:element name="Timestamp" type="t:Instant" minOccurs="0"/>
+      <xs:element name="Expires" type="t:Deadline" minOccurs="0"/>
+      <xs:element name="Label" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+
+</xs:schema>

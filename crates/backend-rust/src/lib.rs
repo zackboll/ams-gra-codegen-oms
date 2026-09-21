@@ -2,11 +2,12 @@
 
 use ams_gra_oms_codegen_core::{
     AbstractValueProjection, Backend, BackendLanguage, CodegenError, EffectiveValueMember,
-    FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain, TypeEmission,
-    abstract_value_projection_for_ref, backend_preflight, effective_choice_alternatives,
-    effective_record_fields, field_storage_semantics, float32_literal, float64_literal,
-    floating_domain, inclusive_integral_domain, plan_type_emissions,
-    schema_emits_bounded_integer_support, schema_emits_unbounded_sequence_support,
+    FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain, TemporalProfile,
+    TypeEmission, abstract_value_projection_for_ref, backend_preflight,
+    effective_choice_alternatives, effective_record_fields, field_storage_semantics,
+    float32_literal, float64_literal, floating_domain, inclusive_integral_domain,
+    is_temporal_primitive, plan_type_emissions, schema_emits_bounded_integer_support,
+    schema_emits_unbounded_sequence_support, temporal_profile,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -119,14 +120,27 @@ fn render_abstract_value(
     projection: &AbstractValueProjection<'_>,
 ) -> Result<(), CodegenError> {
     let name = upper_camel(&projection.declaration.name.local_name)?;
-    let supports_eq = projection
+    // Task 036: `PartialEq` is omitted when any descendant transitively holds
+    // a temporal carrier, which derives no equality of its own.
+    let supports_partial_eq = projection
         .concrete_descendants
         .iter()
-        .all(|descendant| declaration_supports_eq(schema, descendant, &mut Vec::new()));
+        .all(|descendant| declaration_supports_partial_eq(schema, descendant, &mut Vec::new()));
+    let supports_eq = supports_partial_eq
+        && projection
+            .concrete_descendants
+            .iter()
+            .all(|descendant| declaration_supports_eq(schema, descendant, &mut Vec::new()));
     writeln!(
         output,
-        "#[derive(Debug, Clone, PartialEq{})]\npub enum {name} {{",
-        if supports_eq { ", Eq" } else { "" }
+        "#[derive(Debug, Clone{})]\npub enum {name} {{",
+        if supports_eq {
+            ", PartialEq, Eq"
+        } else if supports_partial_eq {
+            ", PartialEq"
+        } else {
+            ""
+        }
     )
     .expect("writing to String cannot fail");
     let mut variants = std::collections::BTreeSet::new();
@@ -204,6 +218,11 @@ fn render_declaration(
         TypeKind::Primitive(kind @ (PrimitiveKind::Float32 | PrimitiveKind::Float64)) => {
             render_floating_declaration(output, *kind, &declaration.constraints, &name)?;
         }
+        TypeKind::Primitive(
+            kind @ (PrimitiveKind::DateTime | PrimitiveKind::Time | PrimitiveKind::Duration),
+        ) => {
+            render_temporal_declaration(output, *kind, &declaration.constraints, &name)?;
+        }
         TypeKind::Primitive(PrimitiveKind::Binary) => {
             reject_any_constraints(&declaration.constraints, &name)?;
             writeln!(output, "#[derive(Debug, Clone, PartialEq, Eq)]\npub struct {name}(Vec<u8>);\n\nimpl {name} {{\n    pub fn new(value: Vec<u8>) -> Self {{ Self(value) }}\n    pub fn as_slice(&self) -> &[u8] {{ &self.0 }}\n    pub fn into_vec(self) -> Vec<u8> {{ self.0 }}\n}}\n").expect("writing to String cannot fail");
@@ -229,12 +248,8 @@ fn render_declaration(
             }
             writeln!(
                 output,
-                "#[derive(Debug, Clone, PartialEq{})]\npub struct {name} {{",
-                if declaration_supports_eq(schema, declaration, &mut Vec::new()) {
-                    ", Eq"
-                } else {
-                    ""
-                }
+                "#[derive(Debug, Clone{})]\npub struct {name} {{",
+                structural_derives(schema, declaration)
             )
             .expect("writing to String cannot fail");
             for field in effective_record_fields(schema, &declaration.name).map_err(|_| {
@@ -275,12 +290,8 @@ fn render_declaration(
         TypeKind::Choice { .. } => {
             writeln!(
                 output,
-                "#[derive(Debug, Clone, PartialEq{})]\npub enum {name} {{",
-                if declaration_supports_eq(schema, declaration, &mut Vec::new()) {
-                    ", Eq"
-                } else {
-                    ""
-                }
+                "#[derive(Debug, Clone{})]\npub enum {name} {{",
+                structural_derives(schema, declaration)
             )
             .expect("writing to String cannot fail");
             for alternative in effective_choice_alternatives(schema, &declaration.name).map_err(
@@ -335,6 +346,26 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
             // The generic `reject_extra_constraints` below understands only the
             // integral inclusive subset, so a legitimately exclusive floating
             // bound must not reach it.
+            continue;
+        }
+        // Task 036: a named temporal declaration is classified by the shared
+        // helper. Only the DateTime Zulu profile is lowered; `Time`,
+        // `Duration`, an unconstrained `DateTime`, and any other facet shape
+        // still fail closed, here, before any output is produced.
+        if let TypeKind::Primitive(kind) = declaration.kind
+            && is_temporal_primitive(kind)
+        {
+            match temporal_profile(kind, &declaration.constraints) {
+                Ok(Some(TemporalProfile::DateTimeZulu)) => {}
+                Ok(None) => unreachable!("is_temporal_primitive gates this branch"),
+                Err(reason) => {
+                    return unsupported(format!("{reason} on {}", declaration.name.local_name));
+                }
+            }
+            // The supported profile's `.+Z` pattern is a genuine lexical
+            // constraint that `reject_extra_constraints` would reject, so it
+            // must not reach it: the classifier has already proven this exact
+            // facet set is fully enforced by the generated validator.
             continue;
         }
         if matches!(declaration.kind, TypeKind::Primitive(PrimitiveKind::Binary))
@@ -455,6 +486,12 @@ fn declaration_supports_eq(
     visiting.push(declaration.name.clone());
     let result = match &declaration.kind {
         TypeKind::Primitive(PrimitiveKind::Float32 | PrimitiveKind::Float64) => false,
+        // Task 036: the DateTime Zulu carrier deliberately derives no
+        // `PartialEq`, because two distinct legal spellings can denote the
+        // same XML Schema value. A record containing one therefore cannot
+        // derive `Eq` either -- and, more importantly, cannot derive
+        // `PartialEq`; see `declaration_supports_partial_eq`.
+        TypeKind::Primitive(kind) if is_temporal_primitive(*kind) => false,
         TypeKind::Primitive(_) | TypeKind::Enumeration { .. } => true,
         TypeKind::Record { .. } => {
             effective_record_fields(schema, &declaration.name).is_ok_and(|fields| {
@@ -488,6 +525,85 @@ fn type_ref_supports_eq(
             .iter()
             .find(|candidate| candidate.name == *name)
             .is_some_and(|candidate| declaration_supports_eq(schema, candidate, visiting)),
+    }
+}
+
+/// Whether a declaration may derive `PartialEq` at all.
+///
+/// Distinct from [`declaration_supports_eq`], which asks the stronger question
+/// of *total* equality. Almost every generated type supports `PartialEq`:
+/// floats do, even though they are not `Eq`.
+///
+/// The Task 036 DateTime Zulu carrier is the exception. It deliberately
+/// derives **no** equality, because XML Schema dateTime value equality is not
+/// string equality -- `2026-09-20T24:00:00Z` and `2026-09-21T00:00:00Z` denote
+/// the same instant with different spellings, and trailing fractional zeros
+/// are likewise value-preserving. Deriving `PartialEq` on the wrapper would
+/// publish "same stored bytes" as though it were value-space equality, which
+/// Task 036 has not implemented.
+///
+/// That absence propagates: a record or choice holding such a value cannot
+/// derive `PartialEq` either, so this predicate exists to keep generated code
+/// compiling rather than emitting a derive the field cannot satisfy.
+fn declaration_supports_partial_eq(
+    schema: &SchemaIr,
+    declaration: &TypeDecl,
+    visiting: &mut Vec<ams_gra_oms_ir::QualifiedName>,
+) -> bool {
+    if visiting.contains(&declaration.name) {
+        return true;
+    }
+    visiting.push(declaration.name.clone());
+    let result = match &declaration.kind {
+        TypeKind::Primitive(kind) if is_temporal_primitive(*kind) => false,
+        TypeKind::Primitive(_) | TypeKind::Enumeration { .. } => true,
+        TypeKind::Record { .. } => {
+            effective_record_fields(schema, &declaration.name).is_ok_and(|fields| {
+                fields
+                    .iter()
+                    .all(|field| type_ref_supports_partial_eq(schema, &field.type_ref, visiting))
+            })
+        }
+        TypeKind::Choice { .. } => effective_choice_alternatives(schema, &declaration.name)
+            .is_ok_and(|fields| {
+                fields
+                    .iter()
+                    .all(|field| type_ref_supports_partial_eq(schema, &field.type_ref, visiting))
+            }),
+        TypeKind::Alias(_) | TypeKind::List { .. } => true,
+    };
+    visiting.pop();
+    result
+}
+
+fn type_ref_supports_partial_eq(
+    schema: &SchemaIr,
+    type_ref: &TypeRef,
+    visiting: &mut Vec<ams_gra_oms_ir::QualifiedName>,
+) -> bool {
+    match &type_ref.target {
+        // A *direct* primitive temporal field is unsupported in Task 036 and
+        // never reaches rendering, so this arm is about named targets only.
+        TypeRefTarget::Primitive(_) => true,
+        TypeRefTarget::Named(name) => schema
+            .types
+            .iter()
+            .find(|candidate| candidate.name == *name)
+            .is_none_or(|candidate| declaration_supports_partial_eq(schema, candidate, visiting)),
+    }
+}
+
+/// The `derive` list for a generated record or choice.
+///
+/// `PartialEq` is omitted entirely when some reachable member is a Task 036
+/// temporal carrier, and `Eq` additionally requires total equality.
+fn structural_derives(schema: &SchemaIr, declaration: &TypeDecl) -> &'static str {
+    if !declaration_supports_partial_eq(schema, declaration, &mut Vec::new()) {
+        ""
+    } else if declaration_supports_eq(schema, declaration, &mut Vec::new()) {
+        ", PartialEq, Eq"
+    } else {
+        ", PartialEq"
     }
 }
 
@@ -688,6 +804,266 @@ fn error(message: impl Into<String>) -> CodegenError {
         message: message.into(),
     }
 }
+
+/// Render a named temporal declaration.
+///
+/// Only the shared classifier's one supported profile is lowered. Task 036
+/// deliberately implements `DateTime` + the UCI Zulu pattern and nothing else,
+/// so `Time`, `Duration`, an unconstrained `DateTime`, and any other facet
+/// shape fail closed here rather than being approximated.
+///
+/// # Representation
+///
+/// The generated type is a **validated lexical carrier**: it stores the
+/// whitespace-normalized XML Schema `dateTime` spelling that passed
+/// validation. It is deliberately not epoch seconds, a fixed-width timestamp,
+/// or a third-party date/time crate -- each of those silently narrows XML
+/// Schema's lexical and value space (unbounded year digits, arbitrary
+/// fractional precision, the distinct `24:00:00` spelling) and would discard
+/// wire-level information a future codec needs.
+///
+/// # Why no `PartialEq`/`Eq`/`Ord`
+///
+/// Two distinct legal spellings can denote the same XML Schema value, and the
+/// `dateTime` order relation is only *partial* (section 3.2.7.4). Deriving
+/// Rust equality here would silently publish "same stored string" as though it
+/// were value-space equality. Task 036 implements no value comparison, so it
+/// claims none.
+fn render_temporal_declaration(
+    output: &mut String,
+    kind: PrimitiveKind,
+    constraints: &ConstraintSet,
+    name: &str,
+) -> Result<(), CodegenError> {
+    match temporal_profile(kind, constraints) {
+        Ok(Some(TemporalProfile::DateTimeZulu)) => {}
+        Ok(None) => return unsupported(format!("non-temporal primitive on {name}")),
+        Err(reason) => return unsupported(format!("{reason} on {name}")),
+    }
+    writeln!(
+        output,
+        "{}",
+        RUST_DATE_TIME_ZULU_TEMPLATE.replace("{name}", name)
+    )
+    .expect("writing to String cannot fail");
+    Ok(())
+}
+
+/// The generated Rust DateTime Zulu carrier, with `{name}` substituted.
+///
+/// # Validation order
+///
+/// 1. XML Schema `collapse` whitespace normalization (section 4.3.6), which is
+///    *fixed* for `dateTime` and cannot be overridden by a schema author;
+/// 2. the full `dateTime` lexical grammar and calendar rules (section 3.2.7.1);
+/// 3. the UCI `.+Z` Zulu restriction.
+///
+/// Step 2 is not optional. A bare `ends_with('Z')` would accept `garbageZ` and
+/// `2026-99-99T99:99:99Z`, so the base grammar is checked first and the Zulu
+/// profile is the last gate rather than the only one.
+///
+/// # No fixed-width year
+///
+/// The year is validated and its leap-year properties computed **from decimal
+/// digits**, never parsed into `i32`/`i64`. XML Schema admits a
+/// "four-or-more digit" year with no upper bound, so a valid date must not
+/// become invalid merely because it exceeds a host numeric type. Divisibility
+/// by 4, 100, and 400 is decided from the last two or three digits, which is
+/// exact for any digit count.
+///
+/// # Scope of the helpers
+///
+/// Every parser helper is a **private associated function**, so it lives in
+/// this type's own scope and cannot collide with any schema-generated
+/// top-level identifier. Task 036 therefore adds no new module-scope name to
+/// the generated Rust module, and nothing new is owed to name preflight.
+const RUST_DATE_TIME_ZULU_TEMPLATE: &str = r##"#[derive(Clone, Debug)]
+pub struct {name} {
+    lexical: String,
+}
+
+impl {name} {
+    /// Validate `value` as an XML Schema dateTime restricted to Zulu.
+    ///
+    /// `value` is first normalized under the fixed `collapse` whiteSpace
+    /// policy, then checked against the full dateTime lexical grammar and
+    /// calendar rules, then against the `.+Z` Zulu restriction. Returns `None`
+    /// if any step rejects. The stored text is the normalized form.
+    pub fn new(value: &str) -> Option<Self> {
+        let lexical = Self::collapse(value);
+        if !Self::is_zulu_date_time(&lexical) {
+            return None;
+        }
+        Some(Self { lexical })
+    }
+
+    /// The stored, normalized, validated lexical representation.
+    ///
+    /// This is an XML Schema dateTime spelling whose timezone is `Z`. It is
+    /// not a point in time: no arithmetic, ordering, or conversion is offered.
+    pub fn as_str(&self) -> &str {
+        &self.lexical
+    }
+
+    /// XML Schema `collapse`: replace tab/LF/CR with space, squeeze runs of
+    /// spaces, then trim leading and trailing spaces.
+    fn collapse(value: &str) -> String {
+        value
+            .split(|c: char| c == ' ' || c == '\t' || c == '\n' || c == '\r')
+            .filter(|part| !part.is_empty())
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+
+    /// The whole gate: valid lexical dateTime AND Zulu timezone.
+    fn is_zulu_date_time(text: &str) -> bool {
+        let bytes = text.as_bytes();
+        // The Zulu restriction. Checked against the normalized form, which is
+        // exactly where XML Schema applies a pattern facet.
+        if bytes.len() < 2 || bytes[bytes.len() - 1] != b'Z' {
+            return false;
+        }
+        // The base grammar must hold for everything before the timezone; this
+        // is what stops `garbageZ` from being accepted.
+        Self::is_date_time_body(&bytes[..bytes.len() - 1])
+    }
+
+    /// `'-'? yyyy '-' mm '-' dd 'T' hh ':' mm ':' ss ('.' s+)?`
+    fn is_date_time_body(body: &[u8]) -> bool {
+        let Some((year_end, leap)) = Self::scan_year(body) else {
+            return false;
+        };
+        let rest = &body[year_end..];
+        // '-' mm '-' dd, all fixed width.
+        if rest.len() < 6 || rest[0] != b'-' || rest[3] != b'-' {
+            return false;
+        }
+        let Some(month) = Self::two_digits(&rest[1..3]) else {
+            return false;
+        };
+        let Some(day) = Self::two_digits(&rest[4..6]) else {
+            return false;
+        };
+        if month < 1 || month > 12 || day < 1 || day > Self::days_in_month(month, leap) {
+            return false;
+        }
+        Self::is_time_of_day(&rest[6..])
+    }
+
+    /// `'T' hh ':' mm ':' ss ('.' s+)?`
+    fn is_time_of_day(rest: &[u8]) -> bool {
+        if rest.len() < 9 || rest[0] != b'T' || rest[3] != b':' || rest[6] != b':' {
+            return false;
+        }
+        let (Some(hour), Some(minute), Some(second)) = (
+            Self::two_digits(&rest[1..3]),
+            Self::two_digits(&rest[4..6]),
+            Self::two_digits(&rest[7..9]),
+        ) else {
+            return false;
+        };
+        // Seconds are 00..59: XML Schema 1.0 dateTime admits no leap second.
+        if hour > 24 || minute > 59 || second > 59 {
+            return false;
+        }
+        let fraction = &rest[9..];
+        // `'.' s+`: the dot requires at least one digit after it.
+        let fraction_is_zero = if fraction.is_empty() {
+            true
+        } else {
+            if fraction[0] != b'.' || fraction.len() < 2 {
+                return false;
+            }
+            let digits = &fraction[1..];
+            if !digits.iter().all(|byte| byte.is_ascii_digit()) {
+                return false;
+            }
+            digits.iter().all(|byte| *byte == b'0')
+        };
+        // Hour 24 is legal only as the exact instant 24:00:00(.0*).
+        if hour == 24 && (minute != 0 || second != 0 || !fraction_is_zero) {
+            return false;
+        }
+        true
+    }
+
+    /// Validate `'-'? yyyy`, returning where it ends and whether it is a leap
+    /// year. The digit count is unbounded, so nothing is parsed into an
+    /// integer; leap-year divisibility is decided from trailing digits only.
+    fn scan_year(body: &[u8]) -> Option<(usize, bool)> {
+        let negative = body.first() == Some(&b'-');
+        let start = usize::from(negative);
+        let mut end = start;
+        while end < body.len() && body[end].is_ascii_digit() {
+            end += 1;
+        }
+        let digits = &body[start..end];
+        // Four-or-more digits.
+        if digits.len() < 4 {
+            return None;
+        }
+        // If more than four digits, leading zeros are prohibited.
+        if digits.len() > 4 && digits[0] == b'0' {
+            return None;
+        }
+        // '0000' is not a valid lexical representation in XML Schema 1.0,
+        // with or without a sign.
+        if digits.iter().all(|byte| *byte == b'0') {
+            return None;
+        }
+        Some((end, Self::is_leap_year(digits)))
+    }
+
+    /// Leap year from decimal digits: divisible by 400, or by 4 but not 100.
+    ///
+    /// Divisibility by 4 depends only on the last two digits and by 100/400
+    /// only on the last three, so this is exact for an unbounded digit count
+    /// and never narrows the year to a machine integer.
+    fn is_leap_year(digits: &[u8]) -> bool {
+        // Divisibility by 4 is decided by the last two digits alone, because
+        // 100 is itself a multiple of 4.
+        let last_two = digits[digits.len() - 2..]
+            .iter()
+            .fold(0_u32, |acc, byte| acc * 10 + u32::from(byte - b'0'));
+        let divisible_by_4 = last_two % 4 == 0;
+        let divisible_by_100 = last_two == 0;
+        let divisible_by_400 = divisible_by_100 && Self::hundreds_multiple_of_four(digits);
+        divisible_by_400 || (divisible_by_4 && !divisible_by_100)
+    }
+
+    /// Whether the year's hundreds-and-above part is a multiple of 4, i.e.
+    /// whether a year ending in "00" is also divisible by 400.
+    fn hundreds_multiple_of_four(digits: &[u8]) -> bool {
+        // Strip the trailing "00" and test the remainder for divisibility by
+        // 4, computed digit by digit so an arbitrarily long year is exact.
+        let head = &digits[..digits.len() - 2];
+        let mut remainder = 0_u32;
+        for byte in head {
+            remainder = (remainder * 10 + u32::from(byte - b'0')) % 4;
+        }
+        remainder == 0
+    }
+
+    /// Exactly two ASCII digits, as a number. Rejects signs and short input.
+    fn two_digits(pair: &[u8]) -> Option<u32> {
+        if pair.len() != 2 || !pair.iter().all(|byte| byte.is_ascii_digit()) {
+            return None;
+        }
+        Some(u32::from(pair[0] - b'0') * 10 + u32::from(pair[1] - b'0'))
+    }
+
+    /// Maximum day for a month, following `maximumDayInMonthFor` in XML Schema
+    /// 1.0 Part 2 Appendix E.
+    fn days_in_month(month: u32, leap: bool) -> u32 {
+        match month {
+            1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+            4 | 6 | 9 | 11 => 30,
+            2 if leap => 29,
+            _ => 28,
+        }
+    }
+}
+"##;
 
 #[cfg(test)]
 mod tests {
@@ -1421,10 +1797,16 @@ fn main() {
         }
     }
 
+    /// Lexical constraints still fail before rendering everywhere Task 036 has
+    /// not implemented a validator.
+    ///
+    /// `DateTime` + `.+Z` is deliberately absent from this list: that exact
+    /// pair is the one Task 036 profile the generator now fully enforces, and
+    /// the assertion below distinguishes it from `Time` carrying the *same*
+    /// pattern text, which remains unsupported.
     #[test]
     fn lexical_constraints_fail_before_rendering() {
         for (kind, white_space) in [
-            (PrimitiveKind::DateTime, false),
             (PrimitiveKind::Time, false),
             (PrimitiveKind::SignedInteger, false),
             (PrimitiveKind::String, false),
@@ -1445,12 +1827,26 @@ fn main() {
             }
             let error =
                 generate(&schema, CLOSED).expect_err("lexical constraints must be rejected");
+            let message = &error.message;
             assert!(
-                error
-                    .message
-                    .contains("unsupported Rust IR construct: constraints on")
+                message.contains("unsupported Rust IR construct: constraints on")
+                    || message.contains("unsupported temporal declaration: Time"),
+                "unexpected diagnostic for {kind:?}: {message}"
             );
         }
+        // The same pattern text on `DateTime` -- and only there -- is now the
+        // supported profile, so it must generate rather than fail.
+        let mut supported = track_schema();
+        supported.types[0].kind = TypeKind::Primitive(PrimitiveKind::DateTime);
+        supported.types[0].constraints = ConstraintSet::default();
+        supported.types[0]
+            .constraints
+            .lexical
+            .pattern_groups
+            .push(ams_gra_oms_ir::PatternGroup {
+                alternatives: vec![ams_gra_oms_ir::PatternExpression::xml_schema(".+Z")],
+            });
+        generate(&supported, CLOSED).expect("the supported DateTime Zulu profile must generate");
     }
 
     #[test]
