@@ -876,3 +876,68 @@ schema sets normalize. Release divergence is limited to encounter order, the
 2.5-only integer pattern and whitespace facets, and declaration locations/counts.
 Full frontend normalization does not imply backend generation support; Task 017
 and runtime lexical enforcement remain intentionally unstarted.
+
+## 2026-09-21 — Task 036 temporal evidence
+
+Re-confirmed from the pinned release bytes and the normalized IR, not from the
+notes above. The Task 016 statement that "each backend rejects any declaration
+carrying lexical constraints before rendering, including ... DateTime and Time
+patterns" is now **partially superseded**: one temporal lexical profile is
+implemented.
+
+### Named temporal declarations
+
+| Release | Declaration | Source | Primitive | Base | Effective constraints |
+| --- | --- | --- | --- | --- | --- |
+| 2.5 | `DateTimeType` | `UCI_MessageDefinitions_v2_5_0.xsd:117038` | `DateTime` | `xs:dateTime` | one pattern group, one XML-Schema alternative `".+Z"` |
+| 2.5 | `TimeType` | `UCI_MessageDefinitions_v2_5_0.xsd:145152` | `Time` | `xs:time` | one pattern group, one alternative `".+Z"` |
+| 2.5 | `DurationType` | `UCI_MessageDefinitions_v2_5_0.xsd:117745` | `Duration` | `xs:duration` | none |
+| 2.6 | `DateTimeType` | `UCI_SecurityMarkings_v2_6_0.xsd:1203` | `DateTime` | `xs:dateTime` | one pattern group, one alternative `".+Z"` |
+| 2.6 | `TimeType` | `UCI_MessageDefinitions_v2_6_0.xsd:145403` | `Time` | `xs:time` | one pattern group, one alternative `".+Z"` |
+| 2.6 | `DurationType` | `UCI_MessageDefinitions_v2_6_0.xsd:118281` | `Duration` | `xs:duration` | none |
+
+Every one is a depth-1 named restriction of the built-in, with no explicit
+`whiteSpace` facet and no neighbouring facet. Each documents that UCI uses the
+W3C definition exactly, with the Zulu-only restriction for `DateTimeType` and
+`TimeType`.
+
+`DateTimeType` moved documents between releases — message definitions in 2.5,
+the included security-markings schema in 2.6 — but its profile is identical, so
+support is not release-specific.
+
+### Direct temporal references
+
+| Release | `xs:dateTime` | `xs:duration` | `xs:time` |
+| --- | ---: | ---: | ---: |
+| 2.5 | 4 | 9 | 0 |
+| 2.6 | 0 | 0 | 0 |
+
+In 2.5, all four `xs:dateTime` fields are `0..1` except
+`SystemTimeAtLastReference` (`1..1`); all nine `xs:duration` fields are `0..1`
+except `MinimumRangeAnalysisDuration` and `CollectionTime`. UCI 2.6 has none.
+None of these are supported: Task 036 is a *named declaration* slice.
+
+### Applicable XML Schema version
+
+**XML Schema 1.0 Part 2 (W3C REC, 28 October 2004).** Determined, not assumed:
+both schemas declare only the 2001 XML Schema namespace and contain zero
+occurrences of `xs:assert`, `xs:alternative`, `explicitTimezone`,
+`xs:openContent`, `xs:override`, `defaultAttributes`, `xs:anyAtomicType`, or
+`vc:minVersion`.
+
+The choice is load-bearing: XSD 1.0 prohibits the year `0000`, whereas a later
+revision admits it as 1 BCE. The implemented validator follows 1.0.
+
+### What Task 036 changed
+
+A named `PrimitiveKind::DateTime` declaration carrying exactly the `".+Z"`
+profile is now rendered, in Ada, Rust, and C++, as a validated lexical carrier
+storing the whitespace-normalized `dateTime` spelling. No regex engine, no
+temporal crate or library, no epoch or calendar-library representation, and no
+timezone arithmetic were introduced. See `docs/backend-compatibility.md` for
+the full design, the `.+Z` equivalence proof, the conformance corpus, and the
+coverage and `PositionReport` deltas.
+
+`TimeType` (despite the identical pattern text), `DurationType`, every other
+`DateTime` facet shape, and every direct temporal field remain unsupported and
+fail closed.
