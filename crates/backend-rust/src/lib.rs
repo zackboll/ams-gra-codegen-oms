@@ -2,12 +2,13 @@
 
 use ams_gra_oms_codegen_core::{
     AbstractValueProjection, Backend, BackendLanguage, CodegenError, EffectiveValueMember,
-    FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain, TemporalProfile,
-    TypeEmission, abstract_value_projection_for_ref, backend_preflight,
-    effective_choice_alternatives, effective_record_fields, field_storage_semantics,
-    float32_literal, float64_literal, floating_domain, inclusive_integral_domain,
-    is_temporal_primitive, plan_type_emissions, schema_emits_bounded_integer_support,
-    schema_emits_unbounded_sequence_support, temporal_profile,
+    FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain, StringProfile,
+    TemporalProfile, TypeEmission, abstract_value_projection_for_ref, backend_preflight,
+    constrains_string, effective_choice_alternatives, effective_record_fields,
+    field_storage_semantics, float32_literal, float64_literal, floating_domain,
+    inclusive_integral_domain, is_temporal_primitive, plan_type_emissions,
+    schema_emits_bounded_integer_support, schema_emits_unbounded_sequence_support, string_profile,
+    temporal_profile,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -223,6 +224,15 @@ fn render_declaration(
         ) => {
             render_temporal_declaration(output, *kind, &declaration.constraints, &name)?;
         }
+        // Task 037: a *constrained* named String is routed to the shared
+        // classifier. An unconstrained one is deliberately not handled here and
+        // falls through to the existing generic path, so ordinary `String`
+        // output is byte-for-byte unchanged.
+        TypeKind::Primitive(PrimitiveKind::String)
+            if constrains_string(&declaration.constraints) =>
+        {
+            render_string_profile_declaration(output, &declaration.constraints, &name)?;
+        }
         TypeKind::Primitive(PrimitiveKind::Binary) => {
             reject_any_constraints(&declaration.constraints, &name)?;
             writeln!(output, "#[derive(Debug, Clone, PartialEq, Eq)]\npub struct {name}(Vec<u8>);\n\nimpl {name} {{\n    pub fn new(value: Vec<u8>) -> Self {{ Self(value) }}\n    pub fn as_slice(&self) -> &[u8] {{ &self.0 }}\n    pub fn into_vec(self) -> Vec<u8> {{ self.0 }}\n}}\n").expect("writing to String cannot fail");
@@ -366,6 +376,27 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
             // constraint that `reject_extra_constraints` would reject, so it
             // must not reach it: the classifier has already proven this exact
             // facet set is fully enforced by the generated validator.
+            continue;
+        }
+        // Task 037: a named constrained String declaration is classified by the
+        // shared helper. Only the authoritative UCI schema-version profile is
+        // lowered; every other constrained String shape still fails closed,
+        // here, before any output is produced. An *unconstrained* String is not
+        // a Task 037 declaration and is untouched by this branch.
+        if let TypeKind::Primitive(kind @ PrimitiveKind::String) = declaration.kind
+            && constrains_string(&declaration.constraints)
+        {
+            match string_profile(kind, &declaration.constraints) {
+                Ok(Some(StringProfile::UciSchemaVersion)) => {}
+                Ok(None) => unreachable!("constrains_string gates this branch"),
+                Err(reason) => {
+                    return unsupported(format!("{reason} on {}", declaration.name.local_name));
+                }
+            }
+            // The supported profile's facets are genuine constraints that
+            // `reject_extra_constraints` would reject, so they must not reach
+            // it: the classifier has already proven this exact facet set is
+            // fully enforced by the generated validator.
             continue;
         }
         if matches!(declaration.kind, TypeKind::Primitive(PrimitiveKind::Binary))
@@ -804,6 +835,198 @@ fn error(message: impl Into<String>) -> CodegenError {
         message: message.into(),
     }
 }
+
+/// Render a named constrained String declaration.
+///
+/// Only the shared classifier's one supported profile is lowered. Task 037
+/// deliberately implements the authoritative UCI schema-version facet set and
+/// nothing else, so every other constrained String shape fails closed here
+/// rather than being approximated by a validator that would ignore a facet.
+///
+/// # Representation
+///
+/// The generated type is a **validated lexical carrier** storing the accepted
+/// string exactly as supplied. `xs:string` has `whiteSpace = preserve`, which
+/// this declaration does not override, so normalization is the identity and
+/// nothing is trimmed or collapsed.
+///
+/// # Why `PartialEq`/`Eq` are derived here, unlike the Task 036 carrier
+///
+/// For `xs:string` the value space *is* the set of lexical forms: §3.2.1 maps
+/// each literal to itself, so two accepted values are equal exactly when their
+/// stored text is equal. Deriving Rust equality therefore publishes genuine
+/// XML Schema value equality, not an accidental byte comparison. This is
+/// precisely the property `dateTime` lacks, which is why Task 036's carrier
+/// derives none. Ordering is still not derived: XML Schema defines no order
+/// relation on `string`.
+fn render_string_profile_declaration(
+    output: &mut String,
+    constraints: &ConstraintSet,
+    name: &str,
+) -> Result<(), CodegenError> {
+    match string_profile(PrimitiveKind::String, constraints) {
+        Ok(Some(StringProfile::UciSchemaVersion)) => {}
+        Ok(None) => return unsupported(format!("unconstrained String on {name}")),
+        Err(reason) => return unsupported(format!("{reason} on {name}")),
+    }
+    writeln!(
+        output,
+        "{}",
+        RUST_SCHEMA_VERSION_TEMPLATE.replace("{name}", name)
+    )
+    .expect("writing to String cannot fail");
+    Ok(())
+}
+
+/// The generated Rust schema-version carrier, with `{name}` substituted.
+///
+/// # Validation order
+///
+/// 1. the authoritative pattern, evaluated structurally;
+/// 2. the `minLength`/`maxLength` facets.
+///
+/// Both are enforced. The pattern's own bounds happen to coincide with the
+/// declared facets, but the facets are checked explicitly rather than assumed
+/// redundant, so no facet is silently lost.
+///
+/// # No regular-expression engine
+///
+/// The authoritative expression is a concatenation of bounded pieces whose
+/// alphabets are disjoint from the literals that follow them, so it is decided
+/// by one left-to-right scan with no backtracking. XML Schema patterns are
+/// anchored, which is implemented by requiring the scan to end exactly at
+/// end-of-input.
+///
+/// # Byte indexing is sound
+///
+/// Every character the pattern admits is ASCII, so byte offsets and character
+/// offsets coincide for every value that can possibly be accepted. A non-ASCII
+/// byte fails its character-class test and is rejected before any length
+/// comparison, so the `len()` check below is an XSD *character* count.
+///
+/// # Scope of the helpers
+///
+/// Every parser helper is a **private associated function**, so it lives in
+/// this type's own scope and cannot collide with any schema-generated
+/// top-level identifier. Task 037 therefore adds no new module-scope name to
+/// the generated Rust module, and nothing new is owed to name preflight.
+const RUST_SCHEMA_VERSION_TEMPLATE: &str = r##"#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct {name} {
+    value: String,
+}
+
+impl {name} {
+    /// `minLength` = 7 characters.
+    const MIN_LENGTH: usize = 7;
+
+    /// `maxLength` = 57 characters.
+    const MAX_LENGTH: usize = 57;
+
+    /// Validate `value` against the authoritative UCI schema-version profile.
+    ///
+    /// Returns `None` if the pattern or either length facet rejects. The
+    /// stored text is the input unchanged: this profile inherits
+    /// `whiteSpace = preserve`, so no trimming or collapsing is performed.
+    pub fn new(value: &str) -> Option<Self> {
+        if !Self::is_schema_version(value) {
+            return None;
+        }
+        Some(Self {
+            value: value.to_owned(),
+        })
+    }
+
+    /// The stored, validated lexical representation.
+    pub fn as_str(&self) -> &str {
+        &self.value
+    }
+
+    /// The whole gate: the pattern AND both length facets.
+    fn is_schema_version(text: &str) -> bool {
+        Self::matches_pattern(text.as_bytes())
+            && text.len() >= Self::MIN_LENGTH
+            && text.len() <= Self::MAX_LENGTH
+    }
+
+    /// Decide the authoritative pattern in one pass.
+    ///
+    /// Each `run` call is greedy within its own bound, which is unambiguous
+    /// here because no piece's alphabet overlaps the literal that follows it.
+    fn matches_pattern(bytes: &[u8]) -> bool {
+        let mut at = 0usize;
+        // [0-9]{3}
+        if Self::run(bytes, &mut at, 3, 3, u8::is_ascii_digit) != 3 {
+            return false;
+        }
+        // \.
+        if !Self::literal(bytes, &mut at, b'.') {
+            return false;
+        }
+        // [0-9]{1,2}
+        if Self::run(bytes, &mut at, 1, 2, u8::is_ascii_digit) == 0 {
+            return false;
+        }
+        // (\.[0-9]{1,2}) -- parenthesized but unquantified, so REQUIRED.
+        if !Self::literal(bytes, &mut at, b'.') {
+            return false;
+        }
+        if Self::run(bytes, &mut at, 1, 2, u8::is_ascii_digit) == 0 {
+            return false;
+        }
+        // ([a-z]{1,2})? -- optional, so a zero-length run is acceptable.
+        Self::run(bytes, &mut at, 0, 2, u8::is_ascii_lowercase);
+        // (_[a-zA-Z0-9\-]{1,45})? -- optional as a whole, but once the '_' is
+        // present at least one tail character is required.
+        if Self::literal(bytes, &mut at, b'_')
+            && Self::run(bytes, &mut at, 1, 45, Self::is_tail_byte) == 0
+        {
+            return false;
+        }
+        // Patterns are anchored: the whole literal must have been consumed.
+        at == bytes.len()
+    }
+
+    /// The `[a-zA-Z0-9\-]` class of the optional underscore tail.
+    fn is_tail_byte(byte: &u8) -> bool {
+        byte.is_ascii_alphanumeric() || *byte == b'-'
+    }
+
+    /// Consume up to `max` bytes satisfying `accept`, returning the count.
+    ///
+    /// Advances `at` only by what was consumed. Returns 0 without consuming
+    /// anything when fewer than `min` bytes match, so a caller checking
+    /// against `min` is never left mid-piece.
+    fn run(
+        bytes: &[u8],
+        at: &mut usize,
+        min: usize,
+        max: usize,
+        accept: fn(&u8) -> bool,
+    ) -> usize {
+        let mut taken = 0usize;
+        while taken < max {
+            match bytes.get(*at + taken) {
+                Some(byte) if accept(byte) => taken += 1,
+                _ => break,
+            }
+        }
+        if taken < min {
+            return 0;
+        }
+        *at += taken;
+        taken
+    }
+
+    /// Consume one expected literal byte, if present.
+    fn literal(bytes: &[u8], at: &mut usize, expected: u8) -> bool {
+        if bytes.get(*at) == Some(&expected) {
+            *at += 1;
+            return true;
+        }
+        false
+    }
+}
+"##;
 
 /// Render a named temporal declaration.
 ///

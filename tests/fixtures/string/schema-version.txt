@@ -1,0 +1,146 @@
+# Task 037 shared UCI schema-version String conformance corpus.
+#
+# ONE canonical corpus drives the Rust, C++, and Ada generated validators, so
+# the three backends are proven to agree rather than each passing its own
+# curated subset. Rust-side tests read this file and emit the cases into the
+# probe program for every language.
+#
+# FORMAT
+#   '#' begins a comment line; blank lines are ignored.
+#   VALID   <input> => <expected stored form>
+#   INVALID <input>
+# <input> is a C-style escaped string so whitespace cases are unambiguous;
+# only \s (space), \t, \n, \r, and \\ are used.
+#
+# AUTHORITY
+# The profile is read verbatim from the pinned UCI release bytes:
+#   UCI 2.5 093610b7753944059360d3236770ab446d039556
+#           UCI_MessageDefinitions_v2_5_0.xsd:145460
+#   UCI 2.6 78eb61b6112c8bffa40820c33124b57787fc5bd9
+#           UCI_MessageDefinitions_v2_6_0.xsd:145708
+# The two releases are byte-identical for this declaration:
+#
+#   <xs:restriction base="xs:string">
+#     <xs:minLength value="7"/>
+#     <xs:maxLength value="57"/>
+#     <xs:pattern value="[0-9]{3}\.[0-9]{1,2}(\.[0-9]{1,2})([a-z]{1,2})?(_[a-zA-Z0-9\-]{1,45})?"/>
+#   </xs:restriction>
+#
+# STRUCTURE, left to right:
+#   [0-9]{3}                  exactly 3 ASCII digits
+#   \.                        one literal '.'
+#   [0-9]{1,2}                1-2 ASCII digits
+#   (\.[0-9]{1,2})            '.' then 1-2 ASCII digits   -- REQUIRED, unquantified
+#   ([a-z]{1,2})?             optional 1-2 ASCII lowercase letters
+#   (_[a-zA-Z0-9\-]{1,45})?   optional '_' then 1-45 ASCII alnum/'-'
+#
+# THIS IS NOT NNN.NNN.NNN.NNN. The four-group spelling that appears as this
+# declaration's own uci:version attribute is REJECTED by the type it annotates.
+# The referencing element's documentation agrees, giving "002.0" and "001.9b".
+#
+# whiteSpace. xs:string's intrinsic whiteSpace is 'preserve' and is NOT fixed
+# (section 4.3.6); this restriction adds no whiteSpace facet. Normalization is
+# therefore the identity: every VALID case stores its input UNCHANGED, and no
+# whitespace is ever trimmed or collapsed into validity.
+#
+# Anchoring. Patterns match the ENTIRE literal (section 4.3.4.3), so leading
+# and trailing junk are rejected rather than ignored.
+#
+# Length. minLength/maxLength count CHARACTERS (sections 4.3.1-4.3.3). Every
+# character the pattern admits is ASCII, so a byte count equals the character
+# count for every accepted value. The pattern's own bounds are 7 and 57, which
+# coincide exactly with the declared facets; both are still enforced.
+
+# ---------------------------------------------------------------- valid cases
+
+# Minimum-length value: 3+1+1+1+1 = 7 characters, exactly minLength.
+VALID 000.0.0 => 000.0.0
+# The Sleet interoperability baseline version, as used by the public tutorial.
+VALID 002.5.0 => 002.5.0
+# An ordinary release with two-digit middle and last groups.
+VALID 002.50.10 => 002.50.10
+# Maximum digits in every numeric group.
+VALID 999.99.99 => 999.99.99
+# Optional one-letter suffix: the "001.9b" shape named in the element docs.
+VALID 001.9.0b => 001.9.0b
+# Optional two-letter suffix, the widest the {1,2} quantifier allows.
+VALID 001.9.0zz => 001.9.0zz
+# Optional underscore tail, minimum width (1 character after '_').
+VALID 002.5.0_a => 002.5.0_a
+# Underscore tail exercising the full alnum + '-' alphabet.
+VALID 002.5.0_Release-2A => 002.5.0_Release-2A
+# Both optional groups present together.
+VALID 002.5.0ab_build-7 => 002.5.0ab_build-7
+# Maximum-length value: 3+1+2+3+2+46 = 57 characters, exactly maxLength.
+VALID 999.99.99zz_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa => 999.99.99zz_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+
+# -------------------------------------------------------------- invalid cases
+
+# Empty string: below minLength and matches no pattern branch.
+INVALID
+# The conventional four-group spelling. This is the single most important
+# negative case: it is what the type's own uci:version attribute looks like,
+# and this very type rejects it. A fourth group has no production.
+INVALID 000.001.000.000
+# Three-group form with 3-digit components: the middle group allows at most 2.
+INVALID 002.500.100
+# The required third group is missing entirely. Length 5 also fails minLength.
+INVALID 002.5
+# First group too short: [0-9]{3} is exact, not a minimum.
+INVALID 02.5.0
+# First group too long.
+INVALID 0002.5.0
+# Middle group too long.
+INVALID 002.500.0
+# Last group too long.
+INVALID 002.5.000
+# Missing separator between first and second group.
+INVALID 0025.0
+# Extra separator producing an empty group.
+INVALID 002..5.0
+# Trailing separator with no following digits.
+INVALID 002.5.0.
+# Wrong separator: ',' is in no character class.
+INVALID 002,5,0
+# Wrong separator: '-' is only legal inside the underscore tail.
+INVALID 002-5-0
+# Alphabetic character where a digit is required.
+INVALID 00a.5.0
+# Uppercase suffix: the suffix class is [a-z], lowercase only.
+INVALID 002.5.0B
+# Three-letter suffix exceeds the {1,2} quantifier.
+INVALID 002.5.0abc
+# Underscore tail present but empty; {1,45} requires at least one character.
+INVALID 002.5.0_
+# Underscore tail one character past its 45-character limit. The whole value is
+# 58 characters, so this also exceeds maxLength.
+INVALID 999.99.99zz_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+# Underscore tail containing a character outside [a-zA-Z0-9-].
+INVALID 002.5.0_bad+tail
+# A second underscore tail; the group is unquantified and occurs at most once.
+INVALID 002.5.0_a_b
+# Leading whitespace. whiteSpace is 'preserve', so this is NOT trimmed into
+# validity -- it is rejected, because ' ' is in no character class.
+INVALID \s002.5.0
+# Trailing whitespace, rejected for the same reason.
+INVALID 002.5.0\s
+# Interior whitespace.
+INVALID 002.5\s.0
+# Tab control character.
+INVALID \t002.5.0
+# Line feed, including the trailing-newline shape a careless reader would strip.
+INVALID 002.5.0\n
+# Carriage return.
+INVALID 002.5.0\r
+# Leading junk. Patterns are anchored, so a valid substring does not suffice.
+INVALID v002.5.0
+# Trailing junk, likewise.
+INVALID 002.5.0-SNAPSHOT
+# A valid value embedded in surrounding text.
+INVALID version=002.5.0
+# Non-ASCII input. No character class admits a character above U+007F, so this
+# is rejected before any length comparison, which is what keeps the byte-count
+# implementation of a character-count facet sound.
+INVALID 002.5.0é
+# Non-ASCII digit lookalike: ARABIC-INDIC DIGIT TWO is not in [0-9].
+INVALID ٢٠٢.5.0

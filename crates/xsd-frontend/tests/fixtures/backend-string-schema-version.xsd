@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Task 037 backend fixture: the supported named schema-version String profile,
+  plus a Task 034 optional-named composition and an ordinary String control.
+
+  The declaration names here are deliberately NOT UCI's
+  `UCI_SchemaVersionStringType`: support must arise from PrimitiveKind::String
+  plus the effective ConstraintSet, so a differently spelled declaration with
+  the same profile must be equally renderable.
+
+  The facets are byte-identical to the authoritative UCI declaration:
+    UCI 2.5 UCI_MessageDefinitions_v2_5_0.xsd:145460
+    UCI 2.6 UCI_MessageDefinitions_v2_6_0.xsd:145708
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test:string"
+           targetNamespace="urn:test:string"
+           elementFormDefault="qualified">
+
+  <!-- The authoritative UCI profile, under a non-UCI name. -->
+  <xs:simpleType name="SchemaVersion">
+    <xs:annotation>
+      <xs:documentation>String representing the UCI version.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:minLength value="7"/>
+      <xs:maxLength value="57"/>
+      <xs:pattern value="[0-9]{3}\.[0-9]{1,2}(\.[0-9]{1,2})([a-z]{1,2})?(_[a-zA-Z0-9\-]{1,45})?"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- A second supported declaration: several carriers must coexist, which in
+       Ada requires Create/Value overload resolution to work. -->
+  <xs:simpleType name="PeerVersion">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="7"/>
+      <xs:maxLength value="57"/>
+      <xs:pattern value="[0-9]{3}\.[0-9]{1,2}(\.[0-9]{1,2})([a-z]{1,2})?(_[a-zA-Z0-9\-]{1,45})?"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Task 034 composition: an optional NAMED occurrence of a supported String
+       profile must compose automatically, with no optional-String special case
+       anywhere. `Label` is an ordinary unconstrained String, which must keep
+       its existing plain representation in every backend. -->
+  <xs:complexType name="Payload">
+    <xs:sequence>
+      <xs:element name="Declared" type="t:SchemaVersion"/>
+      <xs:element name="Negotiated" type="t:SchemaVersion" minOccurs="0"/>
+      <xs:element name="Peer" type="t:PeerVersion" minOccurs="0"/>
+      <xs:element name="Label" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+
+</xs:schema>

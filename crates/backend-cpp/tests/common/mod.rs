@@ -16,9 +16,15 @@ pub struct TemporalCase {
     pub expected: Option<String>,
 }
 
-/// The repository-root path of the shared corpus.
+/// The repository-root path of the shared Task 036 temporal corpus.
 pub fn corpus_path() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/temporal/datetime-zulu.txt")
+}
+
+/// The repository-root path of the shared Task 037 String-profile corpus.
+#[allow(dead_code)]
+pub fn string_corpus_path() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/string/schema-version.txt")
 }
 
 /// Parse the shared corpus.
@@ -28,9 +34,21 @@ pub fn corpus_path() -> PathBuf {
 /// Panics when the corpus is missing or a line is malformed: a silently
 /// skipped case would weaken every backend's evidence at once.
 pub fn load_cases() -> Vec<TemporalCase> {
-    let path = corpus_path();
-    let text = std::fs::read_to_string(&path)
-        .unwrap_or_else(|error| panic!("shared temporal corpus {}: {error}", path.display()));
+    load_corpus(&corpus_path())
+}
+
+/// Parse any corpus file sharing the Task 036 format.
+///
+/// Task 037 reuses the exact same format and loader, so one escaping or
+/// parsing bug cannot make the String corpus disagree with the temporal one.
+///
+/// # Panics
+///
+/// Panics when the corpus is missing or a line is malformed.
+#[allow(dead_code)]
+pub fn load_corpus(path: &Path) -> Vec<TemporalCase> {
+    let text = std::fs::read_to_string(path)
+        .unwrap_or_else(|error| panic!("shared corpus {}: {error}", path.display()));
     let mut cases = Vec::new();
     for line in text.lines() {
         let line = line.trim_end();
