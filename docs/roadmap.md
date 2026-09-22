@@ -392,6 +392,48 @@ not because RFC 4122 does. See `docs/backend-compatibility.md`.
 
 `PositionReport` remains NOT READY in every backend.
 
+**Measured progress (Task 039):**
+
+Task 039 again added no Phase 2.5 code. It made the named UCI **visible-ASCII**
+String family renderable, extending the same shared `StringProfile` classifier
+with a third variant rather than adding a parallel mechanism, and
+contract-selected readiness improved automatically through the same shared
+capability model. Same authoritative inputs — UCI 2.5, the upstream
+`PositionReport` contract, closed world:
+
+| Backend | Before | After | First blocker now |
+| --- | ---: | ---: | --- |
+| Ada | 50/60, `VisibleString256Type` | **51/60** | `SecurityInformationType` |
+| Rust | 54/60, `VisibleString256Type` | **55/60** | `SecurityInformationType` |
+| C++ | 54/60, `VisibleString256Type` | **55/60** | `SecurityInformationType` |
+
+`VisibleString256Type` is no longer a blocker in any backend. The measured next
+blocker is `SecurityInformationType`, a *record* whose own remaining blockers
+are `NATO_SpecialWordsType`, `WhitespaceVisibleString1024Type` /
+`WhitespaceVisibleString4096Type`, and several enumerations. It is reported here
+because it was measured, not assumed, and Task 039 deliberately does not
+implement it.
+
+This is the first task whose coverage gain was **larger than one**, and
+legitimately so. The evidence gate found that the blocker is not a lone profile
+but one member of a family of **thirteen** declarations — identical in both
+pinned releases — differing in nothing but their `minLength`/`maxLength` pair.
+The profile was therefore parameterized rather than fixed, and every cell of the
+coverage matrix gained exactly +13 in all three backends and both releases,
+matching the inventory exactly.
+
+Two findings from that gate are worth recording. First, the pinned XSD spells
+the character class with XML **character references**, `[&#x20;-&#x7E;]`, which
+the parser expands, so the raw bytes and the normalized IR read differently
+while meaning the same thing. Second, and more consequentially, U+0020 SPACE is
+*inside* the class and `xs:string`'s intrinsic `whiteSpace = preserve` is not
+overridden, so leading, trailing, and all-space values are **valid** and must be
+stored untrimmed — the opposite of the Task 037 and 038 profiles, whose
+alphabets excluded whitespace entirely. TAB, LF, CR, DEL, and every non-ASCII
+character remain invalid. See `docs/backend-compatibility.md`.
+
+`PositionReport` remains NOT READY in every backend.
+
 **Still open:**
 
 - [ ] service-specific generated wrapper APIs;

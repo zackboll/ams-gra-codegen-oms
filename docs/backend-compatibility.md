@@ -4438,3 +4438,277 @@ Task 036 temporal behaviour, Task 035 occurrence behaviour, and Task 037
 schema-version behaviour are all unchanged. No third-party runtime dependency
 was added in any language, and the pre-existing Ada namespace-ending-in-`String`
 hazard is untouched and still open.
+
+## Task 039: the visible-ASCII String family
+
+Task 039 adds the **third** supported constrained-`string` profile, and the
+first *parameterized* one: `StringProfile::VisibleAscii { min_length,
+max_length }`.
+
+### Authoritative evidence
+
+The selected blocker, `VisibleString256Type`, read from the pinned release
+bytes. UCI 2.5 `093610b7753944059360d3236770ab446d039556`
+`UCI_MessageDefinitions_v2_5_0.xsd:146232`, and UCI 2.6
+`78eb61b6112c8bffa40820c33124b57787fc5bd9`
+`UCI_MessageDefinitions_v2_6_0.xsd:146583`. The two are **byte-identical after
+end-of-line normalization** (both fragments hash to
+`1b034c43036649d96f87eae5253136c13cd37315935521690462e3fefa541278`):
+
+```xml
+<xs:simpleType name="VisibleString256Type" uci:version="000.001.000.000">
+  <xs:annotation>
+    <xs:documentation>A string representing up to 256 characters in length, restricted to visible characters (0x20-0x7E).</xs:documentation>
+  </xs:annotation>
+  <xs:restriction base="xs:string">
+    <xs:minLength value="1"/>
+    <xs:maxLength value="256"/>
+    <xs:pattern value="[&#x20;-&#x7E;]{1,256}"/>
+  </xs:restriction>
+</xs:simpleType>
+```
+
+The immediate base is `xs:string`, which is also the ultimate primitive, so the
+restriction-chain depth is 1 and the effective constraint set is this single
+step. The normalized IR, read by running the frontend over both pinned roots,
+is:
+
+```text
+PrimitiveKind::String
+length     = None      minLength = Some(1)     maxLength = Some(256)
+whiteSpace = None      (explicit; xs:string's intrinsic `preserve` applies)
+PatternGroups = 1      PatternExpressions = 1  PatternDialect = XmlSchema
+expression = [ -~]{1,256}
+```
+
+#### The source text uses character references
+
+The XSD spells the class `[&#x20;-&#x7E;]`, not `[ -~]`. Those are XML
+character references, expanded by the parser before any schema processing, so
+the IR expression is the five characters `[ -~]` carrying a literal SPACE and a
+literal TILDE. Reading the raw file and reading the IR therefore disagree
+textually while agreeing semantically. The classifier compares against the IR
+form, built by `visible_ascii_pattern`, and this was confirmed against the
+frontend's own output rather than assumed.
+
+### Family inventory
+
+Reading the XSD twice is not independent evidence, so the inventory was taken
+from the pinned bytes *and* from the normalized IR. Both releases agree
+exactly. Thirteen declarations have effective constraints of the family shape —
+`minLength = M`, `maxLength = N`, no `length`, no explicit `whiteSpace`, one
+XML-Schema pattern `[ -~]{M,N}` — and in every one the bounds and the
+quantifier agree:
+
+| QName (both releases) | M | N | Depth | Expression |
+| --- | ---: | ---: | ---: | --- |
+| `AttributedURI_Type` | 1 | 256 | 1 | `[ -~]{1,256}` |
+| `MIME_Type` | 1 | 256 | 1 | `[ -~]{1,256}` |
+| `MissionCategoryType` | 1 | 32 | 2 | `[ -~]{1,32}` |
+| `VisibleString20Type` | 1 | 20 | 1 | `[ -~]{1,20}` |
+| `VisibleString2_4Type` | 2 | 4 | 1 | `[ -~]{2,4}` |
+| `VisibleString32Type` | 1 | 32 | 1 | `[ -~]{1,32}` |
+| `VisibleString64Type` | 1 | 64 | 1 | `[ -~]{1,64}` |
+| `VisibleString81Type` | 1 | 81 | 1 | `[ -~]{1,81}` |
+| `VisibleString128Type` | 1 | 128 | 1 | `[ -~]{1,128}` |
+| `VisibleString256Type` | 1 | 256 | 1 | `[ -~]{1,256}` |
+| `VisibleString480Type` | 1 | 480 | 1 | `[ -~]{1,480}` |
+| `VisibleString512Type` | 1 | 512 | 1 | `[ -~]{1,512}` |
+| `VisibleString1024Type` | 1 | 1024 | 1 | `[ -~]{1,1024}` |
+
+Two observations decided the design:
+
+* `AttributedURI_Type` and `MIME_Type` are members whose names contain no
+  "VisibleString" at all, and `MissionCategoryType` is a depth-2 restriction of
+  `VisibleString32Type` that adds no facets and appears only in the IR.
+  Name-based inference would have been wrong in three different ways;
+* the members differ from one another in *nothing but* the bound pair.
+
+This is the "clear family differing only in bounds" case, so the profile is
+**parameterized** rather than fixed. It is not generic `minLength + maxLength +
+pattern` support: the expected expression is *derived from the facets*, so a
+declaration matches only if its own quantifier agrees with its own bounds. A
+same-pattern declaration under `maxLength = 128`, or these bounds under a
+different pattern, fails closed.
+
+### XSD semantics
+
+**Character range.** `[ -~]` is one inclusive XML Schema character range from
+U+0020 SPACE to U+007E TILDE. It admits SPACE, every ASCII punctuation mark, the
+digits, both letter cases, and `{ | } ~`. It excludes TAB (U+0009), LF
+(U+000A), CR (U+000D), every other C0 control, DEL (U+007F), and every
+non-ASCII character. All three validators test that ordinal interval with
+explicit comparisons. No locale-sensitive classifier is used: `std::isprint` and
+the rest of `<cctype>` vary by locale, Rust's `is_ascii_graphic` would wrongly
+*exclude* SPACE, and `Ada.Characters.Handling` is likewise avoided. The C++
+validator casts to `unsigned char` first, so a non-ASCII byte cannot compare as
+negative under an implementation where plain `char` is signed.
+
+**`whiteSpace`, and why ordinary SPACE is valid.** The base `xs:string` has
+intrinsic `whiteSpace = preserve`, which is not fixed but which this restriction
+does not override, so normalization is the identity. SPACE is itself a member of
+the class. Values such as `" hello"`, `"hello "`, and `"   "` are therefore
+**valid** whenever their lengths fit, and are stored exactly as supplied.
+Nothing is trimmed or collapsed. This is the opposite of Tasks 037 and 038,
+whose alphabets excluded whitespace entirely, so their corpus expectations were
+deliberately not reused. TAB, LF, and CR are different characters and still fail.
+
+**Length units.** XML Schema measures `minLength`/`maxLength` in *characters*.
+Every character this profile accepts is at most U+007E, hence single-byte in
+UTF-8, so for this profile the UTF-8 byte count equals the XSD character count.
+That is what licenses the Rust and C++ validators to use `len()`/`size()`; Ada's
+`String'Length` is a character count already. A multi-byte character contains
+bytes outside the range and fails the class test, so it can never reach a length
+comparison as an accepted value. The argument is re-derived per profile from its
+own alphabet and is **not** generalized.
+
+**Both facets and pattern are enforced.** For every member the quantifier
+repeats the bounds, so they are formally redundant. All three are still required
+by the classifier and checked by the generated validators; no facet is silently
+lost.
+
+### No regular-expression engine
+
+The authoritative expression is one character class under one bounded
+quantifier, so membership is a length test plus an independent per-character
+range test, with no backtracking. XML Schema patterns are anchored, which
+testing *every* character enforces directly. No regex crate, `<regex>`,
+`GNAT.Regpat`, PCRE, or RE2 was added.
+
+### Generated API
+
+| Language | API |
+| --- | --- |
+| Rust | `pub struct {T} { value: String }`, `new(&str) -> Option<Self>`, `as_str(&self) -> &str`, deriving `Clone, Debug, PartialEq, Eq` |
+| C++ | `static std::optional<{T}> create(std::string_view)`, `const std::string& value() const noexcept`, private constructor and storage |
+| Ada | `type {T} is private;`, `Create (Value : String) return {T}` raising `Constraint_Error`, `Value (Item : {T}) return String`, `Unbounded_String` in the private part |
+
+Each carrier emits its **own** bounds as constants, so a 1..32 member cannot be
+widened to 1..256 by a shared constant. Privacy is proven by compiler probes in
+all three languages: a Rust struct literal or field read, a C++ private
+constructor or storage access, and an Ada aggregate or component read must all
+fail to compile.
+
+Equality follows Tasks 037/038: for `xs:string` the value space *is* the set of
+lexical forms, so stored-text equality is genuine XML Schema value equality.
+Rust derives `PartialEq`/`Eq`; Ada's predefined `"="` compares the stored text;
+C++ invents no comparison operators. No ordering is claimed in any language.
+Because nothing is trimmed, `"abc"` and `"abc "` are *distinct* values, and case
+remains significant.
+
+Composition reuses the Task 034 machinery with no visible-string-specific path:
+a required field uses the carrier directly, an optional one becomes
+`Option<T>` / `std::optional<T>` / the existing `_Optional` wrapper. A record
+holding only equality-capable members keeps its Rust `PartialEq`/`Eq`.
+
+In Ada the new carrier participates automatically in `Create` / `Value` overload
+handling through `string_profile`, with no profile-specific naming logic and no
+new package-body predicate. A fixture package carrying six carriers spanning all
+three String profiles compiles under GNAT, and several
+`Create (Value : String) return <different type>` functions coexist because each
+call site supplies a typed expected result.
+
+### Shared corpus
+
+`tests/fixtures/string/visible-ascii.txt` — 29 valid and 31 invalid cases,
+executed by all three backends through the shared loader. It pins single SPACE,
+`!`, `~`, digits, both letter cases, punctuation, interior spaces, leading and
+trailing and all-space values, the 1-character minimum, the 256-character
+maximum, 256 spaces, and all 95 class members in one value; and rejects the
+empty string, 257 characters, TAB/LF/CR alone and embedded and trailing, NUL and
+other controls, and a range of non-ASCII characters including a Unicode digit
+lookalike and an emoji. The four ordinal boundaries are pinned explicitly:
+
+```text
+U+001F -> invalid    U+0020 -> valid
+U+007E -> valid      U+007F -> invalid
+```
+
+which is what distinguishes the exact `[ -~]` interval from an informal
+"printable ASCII" guess. The corpus loader gained a `\u{HEX}` escape for this,
+since those code points cannot appear literally in a text file unambiguously;
+the Task 036--038 corpora and their loader behaviour are untouched.
+
+### Coverage delta
+
+| Cell | Before | After |
+| --- | ---: | ---: |
+| 2.5 closed, Ada / Rust / C++ | 5301 / 5378 / 5381 | **5314 / 5391 / 5394** |
+| 2.5 open, Ada / Rust / C++ | 5216 / 5290 / 5293 | **5229 / 5303 / 5306** |
+| 2.6 closed, Ada / Rust / C++ | 5322 / 5400 / 5404 | **5335 / 5413 / 5417** |
+| 2.6 open, Ada / Rust / C++ | 5237 / 5312 / 5316 | **5250 / 5325 / 5329** |
+
+Every cell gains exactly **+13**, one per family member, in all three backends
+and both releases. The gain is larger than one because the evidence gate proved
+a genuine parameterized family, not because the profile was widened; the totals
+match the inventory exactly, so there is no unexplained movement.
+
+| QName | Effective profile | Direct/transitive | Why renderable |
+| --- | --- | --- | --- |
+| `AttributedURI_Type` | `VisibleAscii { 1, 256 }` | direct | exact family facets |
+| `MIME_Type` | `VisibleAscii { 1, 256 }` | direct | exact family facets |
+| `MissionCategoryType` | `VisibleAscii { 1, 32 }` | transitive (depth 2) | chain resolves to family facets |
+| `VisibleString20Type` | `VisibleAscii { 1, 20 }` | direct | exact family facets |
+| `VisibleString2_4Type` | `VisibleAscii { 2, 4 }` | direct | exact family facets |
+| `VisibleString32Type` | `VisibleAscii { 1, 32 }` | direct | exact family facets |
+| `VisibleString64Type` | `VisibleAscii { 1, 64 }` | direct | exact family facets |
+| `VisibleString81Type` | `VisibleAscii { 1, 81 }` | direct | exact family facets |
+| `VisibleString128Type` | `VisibleAscii { 1, 128 }` | direct | exact family facets |
+| `VisibleString256Type` | `VisibleAscii { 1, 256 }` | direct | the selected blocker |
+| `VisibleString480Type` | `VisibleAscii { 1, 480 }` | direct | exact family facets |
+| `VisibleString512Type` | `VisibleAscii { 1, 512 }` | direct | exact family facets |
+| `VisibleString1024Type` | `VisibleAscii { 1, 1024 }` | direct | exact family facets |
+
+The closed/open difference is nil for all thirteen, as these are primitive value
+declarations. There are **no further transitive gains**: every other consumer
+also reaches at least one still-unsupported declaration, so no record becomes
+newly renderable. No new `FeatureFamily` was introduced, and coverage itself was
+not modified — it already consults `string_profile`.
+
+### Selected PositionReport delta
+
+UCI 2.5, one selected message, 60-declaration closure, closed world.
+
+| Backend | Before | After | First blocker before | First blocker after |
+| --- | ---: | ---: | --- | --- |
+| Ada | 50/60 | **51/60** | `VisibleString256Type` | `SecurityInformationType` |
+| Rust | 54/60 | **55/60** | `VisibleString256Type` | `SecurityInformationType` |
+| C++ | 54/60 | **55/60** | `VisibleString256Type` | `SecurityInformationType` |
+
+All three advanced by exactly one and agree on the next measured blocker.
+`SecurityInformationType` is a *record*, and its own remaining blockers are
+`NATO_SpecialWordsType` and `WhitespaceVisibleString1024Type` /
+`WhitespaceVisibleString4096Type` — precisely the neighbouring String profiles
+Task 039 deliberately leaves closed — plus several enumerations. Ada
+additionally reports its pre-existing identifier boundary on
+`DeclassExceptionEnum` (`"25X1"`). None of these is implemented here.
+`PositionReport` remains NOT READY in every backend.
+
+### Full-schema boundary
+
+Unchanged and unrelated to this task: Ada `AltitudeRangePairType / Range`, Rust
+`ConfigurationParameterType / Type`, C++ `ApprovalResponseType / Operator`. No
+full-UCI generation claim is made.
+
+### Scope
+
+| Concern | Status |
+| --- | --- |
+| the visible-ASCII family above | **supported (Task 039)** |
+| the schema-version profile | **supported (Task 037), unchanged** |
+| the UUID profile | **supported (Task 038), unchanged** |
+| same pattern under different bounds | unsupported |
+| same bounds under a different pattern | unsupported |
+| fixed-`length` `[ -~]{N}` (`VisibleStringLength*`, `NITF_*`) | unsupported |
+| `QueryString4096Type`, whose class also admits LF and CR | unsupported |
+| `WhitespaceVisibleString1024Type` / `WhitespaceVisibleString4096Type` | unsupported: explicit `whiteSpace = collapse` needs its own normalization analysis |
+| `NATO_SpecialWordsType` (`NATO:[a-zA-Z\-_]{1,256}`) | unsupported: a distinct lexical profile, ASCII-only notwithstanding |
+| a second `PatternGroup`, an extra expression, or an explicit `whiteSpace` | unsupported |
+| generic `minLength + maxLength + pattern` String support | not implemented, deliberately |
+| generic XML Schema regex translation | not implemented, deliberately |
+| String ordering or collation | not implemented |
+
+Task 036 temporal behaviour, Task 035 occurrence behaviour, and the Task 037 and
+038 String profiles are all unchanged, and their shared corpora still pass. No
+third-party runtime dependency was added in any language, and the pre-existing
+Ada namespace-ending-in-`String` hazard is untouched and still open.

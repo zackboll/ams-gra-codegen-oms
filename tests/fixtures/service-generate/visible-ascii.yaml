@@ -1,0 +1,37 @@
+# SYNTHETIC Task 039 fixture. Authored for this repository only.
+#
+# Selects one message whose closure carries supported visible-ASCII String
+# declarations in a required AND an optional named position, at three different
+# bound pairs, alongside the Task 037 schema-version profile. Before Task 039
+# this was NOT READY for every backend; after it, all three must report READY
+# and generate compilable output -- and, for Ada, the selected generation must
+# include the `.adb` body.
+#
+# The schema also declares an unsupported constrained String type OUTSIDE this
+# selection, which must therefore neither be projected nor block readiness.
+contract_version: "0.1"
+
+service:
+  name: Track Callsign
+  version: "0.1.0"
+  kind: service
+  description: Synthetic contract selecting a visible-ASCII String closure.
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: callsign
+    name: Callsign
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: track-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: TrackReport
+        topic: track.report
+        timing:
+          kind: asynchronous

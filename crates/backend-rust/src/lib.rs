@@ -378,17 +378,18 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
             // facet set is fully enforced by the generated validator.
             continue;
         }
-        // Task 037: a named constrained String declaration is classified by the
-        // shared helper. Only the authoritative UCI schema-version profile is
-        // lowered; every other constrained String shape still fails closed,
-        // here, before any output is produced. An *unconstrained* String is not
-        // a Task 037 declaration and is untouched by this branch.
+        // A named constrained String declaration is classified by the shared
+        // helper. Only the implemented profiles are lowered; every other
+        // constrained String shape still fails closed here, before any output
+        // is produced. An *unconstrained* String is not a profiled declaration
+        // and is untouched by this branch.
         if let TypeKind::Primitive(kind @ PrimitiveKind::String) = declaration.kind
             && constrains_string(&declaration.constraints)
         {
             match string_profile(kind, &declaration.constraints) {
                 Ok(Some(StringProfile::UciSchemaVersion))
-                | Ok(Some(StringProfile::UniversallyUniqueIdentifier)) => {}
+                | Ok(Some(StringProfile::UniversallyUniqueIdentifier))
+                | Ok(Some(StringProfile::VisibleAscii { .. })) => {}
                 Ok(None) => unreachable!("constrains_string gates this branch"),
                 Err(reason) => {
                     return unsupported(format!("{reason} on {}", declaration.name.local_name));
@@ -865,16 +866,130 @@ fn render_string_profile_declaration(
     constraints: &ConstraintSet,
     name: &str,
 ) -> Result<(), CodegenError> {
-    let template = match string_profile(PrimitiveKind::String, constraints) {
-        Ok(Some(StringProfile::UciSchemaVersion)) => RUST_SCHEMA_VERSION_TEMPLATE,
-        Ok(Some(StringProfile::UniversallyUniqueIdentifier)) => RUST_UUID_TEMPLATE,
+    let rendered = match string_profile(PrimitiveKind::String, constraints) {
+        Ok(Some(StringProfile::UciSchemaVersion)) => {
+            RUST_SCHEMA_VERSION_TEMPLATE.replace("{name}", name)
+        }
+        Ok(Some(StringProfile::UniversallyUniqueIdentifier)) => {
+            RUST_UUID_TEMPLATE.replace("{name}", name)
+        }
+        // The only parameterized profile: the classifier has already proven
+        // that these bounds are exactly the ones the declaration's own pattern
+        // quantifier states, so substituting them cannot widen the type.
+        Ok(Some(StringProfile::VisibleAscii {
+            min_length,
+            max_length,
+        })) => RUST_VISIBLE_ASCII_TEMPLATE
+            .replace("{name}", name)
+            .replace("{min_length}", &min_length.to_string())
+            .replace("{max_length}", &max_length.to_string()),
         Ok(None) => return unsupported(format!("unconstrained String on {name}")),
         Err(reason) => return unsupported(format!("{reason} on {name}")),
     };
-    writeln!(output, "{}", template.replace("{name}", name))
-        .expect("writing to String cannot fail");
+    writeln!(output, "{rendered}").expect("writing to String cannot fail");
     Ok(())
 }
+
+/// The generated Rust visible-ASCII carrier, with `{name}` and the bounds
+/// substituted.
+///
+/// # Validation order
+///
+/// 1. the `minLength`/`maxLength` facets;
+/// 2. the authoritative `[ -~]` character class, tested per character.
+///
+/// Both are enforced. The pattern's quantifier repeats the facets exactly, so
+/// they are formally redundant, but they are checked explicitly rather than
+/// assumed, so no facet is silently lost.
+///
+/// # No regular-expression engine
+///
+/// The authoritative expression is `[ -~]{min,max}`: one character class under
+/// one bounded quantifier. Membership is therefore decided by a length test
+/// plus an independent per-character range test, with no backtracking. XML
+/// Schema patterns are anchored, which testing *every* character enforces
+/// directly.
+///
+/// # The range is ordinal, never locale-sensitive
+///
+/// The class is exactly U+0020 SPACE through U+007E TILDE. `is_ascii_graphic`
+/// is deliberately *not* used: it excludes SPACE, which this class admits.
+/// Nothing locale-dependent is consulted, so DEL and the whole of Latin-1 are
+/// rejected under every environment.
+///
+/// # SPACE is an ordinary member
+///
+/// This profile inherits `whiteSpace = preserve` and its class contains SPACE,
+/// so leading, trailing, interior, and all-space values are valid when their
+/// lengths fit, and are stored unchanged. Nothing is trimmed. TAB, LF, and CR
+/// are outside the class and are rejected.
+///
+/// # Byte length is the XSD character count
+///
+/// Every accepted character is at most U+007E, hence single-byte in UTF-8, so
+/// `len()` is an XSD *character* count for every value that can be accepted. A
+/// multi-byte character contains bytes outside the range and fails the class
+/// test, so no such value can reach a length comparison as an accepted one.
+const RUST_VISIBLE_ASCII_TEMPLATE: &str = r##"#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct {name} {
+    value: String,
+}
+
+impl {name} {
+    /// `minLength`, which is also the pattern quantifier's minimum.
+    const MIN_LENGTH: usize = {min_length};
+
+    /// `maxLength`, which is also the pattern quantifier's maximum.
+    const MAX_LENGTH: usize = {max_length};
+
+    /// The lowest code point the `[ -~]` class admits: U+0020 SPACE.
+    const MIN_CODE_POINT: u8 = 0x20;
+
+    /// The highest code point the `[ -~]` class admits: U+007E TILDE.
+    const MAX_CODE_POINT: u8 = 0x7E;
+
+    /// Validate `value` against the authoritative visible-ASCII profile.
+    ///
+    /// Returns `None` if either length facet or the character class rejects.
+    /// The stored text is the input unchanged: this profile inherits
+    /// `whiteSpace = preserve`, so no trimming or collapsing is performed and
+    /// leading or trailing spaces are preserved exactly as supplied.
+    pub fn new(value: &str) -> Option<Self> {
+        if !Self::is_visible_ascii(value) {
+            return None;
+        }
+        Some(Self {
+            value: value.to_owned(),
+        })
+    }
+
+    /// The stored, validated lexical representation.
+    pub fn as_str(&self) -> &str {
+        &self.value
+    }
+
+    /// The whole gate: both length facets AND the character class.
+    fn is_visible_ascii(text: &str) -> bool {
+        // Sound as an XSD character count: every byte that survives the class
+        // test below is single-byte in UTF-8, and any value containing a
+        // multi-byte character fails that test.
+        let length = text.len();
+        if length < Self::MIN_LENGTH || length > Self::MAX_LENGTH {
+            return false;
+        }
+        // Anchored by construction: every character must be in the class.
+        text.bytes().all(Self::is_visible)
+    }
+
+    /// The `[ -~]` class: the inclusive ordinal interval U+0020 ..= U+007E.
+    ///
+    /// SPACE is *inside* the class; DEL (U+007F), TAB, LF, CR, every other
+    /// control, and every non-ASCII byte are outside it.
+    fn is_visible(byte: u8) -> bool {
+        byte >= Self::MIN_CODE_POINT && byte <= Self::MAX_CODE_POINT
+    }
+}
+"##;
 
 /// The generated Rust UUID carrier, with `{name}` substituted.
 ///

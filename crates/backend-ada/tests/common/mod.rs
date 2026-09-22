@@ -34,6 +34,12 @@ pub fn uuid_corpus_path() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/string/uuid.txt")
 }
 
+/// The repository-root path of the shared Task 039 visible-ASCII corpus.
+#[allow(dead_code)]
+pub fn visible_ascii_corpus_path() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/string/visible-ascii.txt")
+}
+
 /// Parse the shared corpus.
 ///
 /// # Panics
@@ -98,6 +104,11 @@ pub fn load_corpus(path: &Path) -> Vec<TemporalCase> {
 }
 
 /// Expand the corpus's small escape vocabulary.
+///
+/// `\u{HEX}` is the general form, added for Task 039: that profile's corpus
+/// must pin arbitrary code points either side of the `[ -~]` interval --
+/// U+0000, U+001F, U+007F, and a range of non-ASCII characters -- none of
+/// which can appear literally in a text file case without ambiguity.
 fn unescape(text: &str) -> String {
     let mut out = String::new();
     let mut chars = text.chars();
@@ -112,6 +123,23 @@ fn unescape(text: &str) -> String {
             Some('n') => out.push('\n'),
             Some('r') => out.push('\r'),
             Some('\\') => out.push('\\'),
+            Some('u') => {
+                assert_eq!(chars.next(), Some('{'), "\\u escape needs a brace: {text}");
+                let mut digits = String::new();
+                loop {
+                    match chars.next() {
+                        Some('}') => break,
+                        Some(digit) => digits.push(digit),
+                        None => panic!("unterminated \\u escape: {text}"),
+                    }
+                }
+                let code = u32::from_str_radix(&digits, 16)
+                    .unwrap_or_else(|error| panic!("bad \\u{{{digits}}}: {error}"));
+                out.push(
+                    char::from_u32(code)
+                        .unwrap_or_else(|| panic!("\\u{{{digits}}} is not a code point")),
+                );
+            }
             other => panic!("unsupported corpus escape \\{other:?}"),
         }
     }
@@ -137,4 +165,106 @@ pub fn escape_for_source(text: &str) -> String {
         }
     }
     out
+}
+
+/// Render a string as a **Rust** string literal body, controls included.
+///
+/// [`escape_for_source`] covers the vocabulary Tasks 036--038 need and is left
+/// exactly as those tasks proved it. Task 039 additionally pins NUL, U+001F,
+/// and U+007F, none of which that function escapes, so this superset is used
+/// by the Rust visible-ASCII probe. `\u{...}` is a Rust-only spelling.
+#[allow(dead_code)]
+pub fn escape_for_rust_source(text: &str) -> String {
+    let mut out = String::new();
+    for character in text.chars() {
+        match character {
+            '\\' => out.push_str("\\\\"),
+            '"' => out.push_str("\\\""),
+            '\t' => out.push_str("\\t"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            other if is_visible_ascii(other) => out.push(other),
+            other => out.push_str(&format!("\\u{{{:x}}}", other as u32)),
+        }
+    }
+    out
+}
+
+/// Render a string as a **C++** narrow string literal body, controls included.
+///
+/// C++ has no `\u{...}` form, and a `\uXXXX` naming a basic-source character is
+/// ill-formed, so every character outside the printable-ASCII range is emitted
+/// as octal escapes of its individual UTF-8 bytes. Octal escapes consume at
+/// most three digits, so an escape can never absorb a following digit of the
+/// string under test -- the failure mode a hexadecimal spelling would have.
+#[allow(dead_code)]
+pub fn escape_for_cpp_source(text: &str) -> String {
+    let mut out = String::new();
+    for character in text.chars() {
+        match character {
+            '\\' => out.push_str("\\\\"),
+            '"' => out.push_str("\\\""),
+            other if is_visible_ascii(other) => out.push(other),
+            other => {
+                let mut buffer = [0_u8; 4];
+                for byte in other.encode_utf8(&mut buffer).as_bytes() {
+                    out.push_str(&format!("\\{byte:03o}"));
+                }
+            }
+        }
+    }
+    out
+}
+
+/// The `[ -~]` interval, used only to decide what a probe may emit literally.
+///
+/// This is deliberately *not* the validator under test: it decides source
+/// encoding, and every corpus case is still checked against the generated
+/// carrier's own answer.
+#[allow(dead_code)]
+fn is_visible_ascii(character: char) -> bool {
+    matches!(character, ' '..='~')
+}
+
+/// Render a string as an Ada `String` expression.
+///
+/// Ada string literals cannot carry control characters, and the generated
+/// carriers take `String`, whose component is Latin-1 `Character`. Controls and
+/// Latin-1 characters are spliced in as `Character'Val` constants; any code
+/// point above U+00FF is emitted as its individual UTF-8 bytes, which is
+/// exactly the byte sequence the Rust and C++ probes receive.
+#[allow(dead_code)]
+pub fn ada_literal(text: &str) -> String {
+    let mut parts: Vec<String> = Vec::new();
+    let mut literal = String::new();
+    for character in text.chars() {
+        match character {
+            // Printable ASCII, minus the quotation mark Ada doubles.
+            '"' => literal.push_str("\"\""),
+            other if other.is_ascii() && (other as u32) >= 0x20 && (other as u32) != 0x7F => {
+                literal.push(other);
+            }
+            other => {
+                if !literal.is_empty() {
+                    parts.push(format!("\"{literal}\""));
+                    literal.clear();
+                }
+                // `(1 => X)` is a positional String aggregate, so every part
+                // of the concatenation is String-typed. A bare Character'Val
+                // would be a Character and would not match `Create`'s profile.
+                if (other as u32) <= 0xFF {
+                    parts.push(format!("(1 => Character'Val ({}))", other as u32));
+                } else {
+                    let mut buffer = [0_u8; 4];
+                    for byte in other.encode_utf8(&mut buffer).as_bytes() {
+                        parts.push(format!("(1 => Character'Val ({byte}))"));
+                    }
+                }
+            }
+        }
+    }
+    if !literal.is_empty() || parts.is_empty() {
+        parts.push(format!("\"{literal}\""));
+    }
+    parts.join(" & ")
 }

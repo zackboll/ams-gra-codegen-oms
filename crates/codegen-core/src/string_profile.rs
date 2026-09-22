@@ -14,14 +14,16 @@
 //!
 //! # The supported profiles
 //!
-//! Two, each recognized by an exact effective facet shape:
+//! Three, each recognized by an exact effective facet shape:
 //!
 //! * [`StringProfile::UciSchemaVersion`] (Task 037) -- see below;
 //! * [`StringProfile::UniversallyUniqueIdentifier`] (Task 038) -- see the
-//!   dedicated section further down.
+//!   dedicated section further down;
+//! * [`StringProfile::VisibleAscii`] (Task 039) -- the parameterized
+//!   visible-ASCII bounded-string family, see its own section last.
 //!
-//! Neither is recognized by declaration name, and a constrained `string`
-//! matching neither shape fails closed.
+//! None is recognized by declaration name, and a constrained `string` matching
+//! none of the three shapes fails closed.
 //!
 //! # The Task 037 schema-version profile
 //!
@@ -288,13 +290,117 @@
 //! carrying leading, trailing, or interior whitespace is rejected rather than
 //! repaired.
 //!
+//! # The Task 039 visible-ASCII family
+//!
+//! [`StringProfile::VisibleAscii`] is the first *parameterized* profile, and
+//! the parameterization was forced by evidence rather than chosen for
+//! generality. The pinned bytes of both tracked releases contain thirteen
+//! `string` declarations whose effective constraints are
+//! `minLength = M`, `maxLength = N`, no `length`, no explicit `whiteSpace`,
+//! and one XML-Schema pattern `[ -~]{M,N}` with the *same* `M` and `N`:
+//!
+//! ```text
+//! AttributedURI_Type      1..256     VisibleString256Type    1..256
+//! MIME_Type               1..256     VisibleString2_4Type    2..4
+//! MissionCategoryType     1..32      VisibleString32Type     1..32
+//! VisibleString20Type     1..20      VisibleString480Type    1..480
+//! VisibleString64Type     1..64      VisibleString512Type    1..512
+//! VisibleString81Type     1..81      VisibleString1024Type   1..1024
+//! VisibleString128Type    1..128
+//! ```
+//!
+//! Two of those names contain no "VisibleString" at all, and `MissionCategoryType`
+//! reaches the shape only through a depth-2 restriction of `VisibleString32Type`
+//! that adds no facets. Membership is decided from effective facets alone, so
+//! all thirteen are recognized and none of them is recognized by name.
+//!
+//! The selected blocker, `VisibleString256Type`, is byte-identical in both
+//! releases after end-of-line normalization:
+//!
+//! ```xml
+//! <xs:simpleType name="VisibleString256Type" uci:version="000.001.000.000">
+//!   <xs:annotation>
+//!     <xs:documentation>A string representing up to 256 characters in length, restricted to visible characters (0x20-0x7E).</xs:documentation>
+//!   </xs:annotation>
+//!   <xs:restriction base="xs:string">
+//!     <xs:minLength value="1"/>
+//!     <xs:maxLength value="256"/>
+//!     <xs:pattern value="[&#x20;-&#x7E;]{1,256}"/>
+//!   </xs:restriction>
+//! </xs:simpleType>
+//! ```
+//!
+//! * UCI 2.5 `093610b7753944059360d3236770ab446d039556`:
+//!   `UCI_MessageDefinitions_v2_5_0.xsd:146232`
+//! * UCI 2.6 `78eb61b6112c8bffa40820c33124b57787fc5bd9`:
+//!   `UCI_MessageDefinitions_v2_6_0.xsd:146583`
+//!
+//! ## The pattern source text uses character references
+//!
+//! The XSD spells the class `[&#x20;-&#x7E;]`. Those are XML character
+//! references, expanded by the parser before any schema processing, so the
+//! normalized IR expression is the five characters `[ -~]` with a literal
+//! SPACE and a literal TILDE. Reading the raw file and reading the IR
+//! therefore disagree textually while agreeing semantically, which is why the
+//! expected text here is built from [`visible_ascii_pattern`] and confirmed
+//! against the frontend's own output over the real pinned roots.
+//!
+//! ## The character range
+//!
+//! `[ -~]` is a single XML Schema character range from U+0020 SPACE to U+007E
+//! TILDE inclusive. It admits SPACE, every ASCII punctuation mark, the digits,
+//! both letter cases, and `{ | } ~`. It excludes TAB (U+0009), LF (U+000A), CR
+//! (U+000D), every other C0 control, DEL (U+007F), and every non-ASCII
+//! character. The generated validators test that ordinal interval explicitly
+//! and never call a locale-sensitive "printable" classifier, which would
+//! disagree on both DEL and the high half of Latin-1 under some locales.
+//!
+//! ## SPACE is valid, and is never trimmed
+//!
+//! The base is `xs:string`, whose intrinsic `whiteSpace` is `preserve`, and
+//! this restriction adds no `whiteSpace` facet, so normalization is the
+//! identity. SPACE is itself a member of the pattern's class. Leading,
+//! trailing, interior, and all-space values are therefore **valid** whenever
+//! their lengths fit, and are stored exactly as supplied. This is the opposite
+//! of the Task 037 and 038 profiles, whose alphabets excluded whitespace
+//! entirely, so their corpus expectations must not be copied here. TAB, LF, and
+//! CR are different characters and still fail.
+//!
+//! ## Character counting
+//!
+//! Every accepted character has a code point at most U+007E, so every accepted
+//! value is pure ASCII and its UTF-8 byte count equals its XSD character
+//! count. That licenses the generated Rust and C++ validators to use byte
+//! length for a facet XML Schema defines over characters; Ada's `String'Length`
+//! is a character count already. The argument is re-derived per profile from
+//! its own alphabet and is not general.
+//!
+//! ## Both the bounds and the pattern are enforced
+//!
+//! For every member the quantifier and the facets are semantically redundant.
+//! Both are still required by the classifier and checked by the validators. A
+//! declaration carrying this pattern under different bounds, or these bounds
+//! under a different pattern, is a different type and fails closed.
+//!
+//! ## Neighbours that are deliberately not members
+//!
+//! * the `[ -~]{N}` fixed-`length` declarations, such as
+//!   `VisibleStringLength10Type` and the `NITF_*` family: a different facet
+//!   shape and a different quantifier form;
+//! * `QueryString4096Type`, whose class `[ -~\n\r]` additionally admits LF and
+//!   CR;
+//! * the `WhitespaceVisibleString*` family, which carries an explicit
+//!   `whiteSpace = collapse` requiring a separate normalization analysis;
+//! * `NATO_SpecialWordsType`, a distinct `NATO:[a-zA-Z\-_]{1,256}` lexical
+//!   profile that happens to be ASCII-only.
+//!
 //! # What this classifier does not decide
 //!
 //! It says nothing about *direct* `TypeRefTarget::Primitive(String)` fields, or
-//! about field-local anonymous restrictions. Task 037 is a **named
-//! declaration** slice: the carrier is emitted for a named declaration, and an
-//! ordinary unconstrained `string` keeps its existing plain representation in
-//! every backend.
+//! about field-local anonymous restrictions. These are **named declaration**
+//! slices: the carrier is emitted for a named declaration, and an ordinary
+//! unconstrained `string` keeps its existing plain representation in every
+//! backend.
 
 use ams_gra_oms_ir::{ConstraintSet, PatternDialect, PrimitiveKind};
 
@@ -346,11 +452,48 @@ pub const UCI_UUID_LENGTH: u64 = 36;
 /// is therefore load-bearing rather than redundant.
 pub const UCI_UUID_NIL: &str = "00000000-0000-0000-0000-000000000000";
 
-/// A named constrained-`string` shape that Task 037 fully implements.
+/// The visible-ASCII family's character-class source text, verbatim.
 ///
-/// Each future variant must arrive with its own evidence, its own validator,
-/// and its own conformance corpus; this is not a place to accumulate
-/// near-misses.
+/// The pinned XSD spells this with character references, `[&#x20;-&#x7E;]`,
+/// which the XML parser expands before the IR ever sees them; the normalized
+/// `PatternExpression` therefore carries the two literal characters SPACE and
+/// TILDE, as reconfirmed by running the frontend over both pinned roots.
+///
+/// Used only to *build* the expected expression for a given bound pair in
+/// [`visible_ascii_pattern`]. It is never searched for as a substring: a
+/// declaration is a family member because its whole expression equals the
+/// expression its own facets imply, not because it happens to mention `[ -~]`.
+const VISIBLE_ASCII_CLASS: &str = "[ -~]";
+
+/// The lowest code point the visible-ASCII class admits: U+0020 SPACE.
+///
+/// SPACE is an ordinary member of this class, not a delimiter. See the
+/// module-level discussion of `whiteSpace = preserve`.
+pub const VISIBLE_ASCII_MIN_CODE_POINT: u8 = 0x20;
+
+/// The highest code point the visible-ASCII class admits: U+007E TILDE.
+///
+/// U+007F DELETE is excluded, which is what makes this interval exactly
+/// `[ -~]` rather than an informal "printable ASCII" notion.
+pub const VISIBLE_ASCII_MAX_CODE_POINT: u8 = 0x7E;
+
+/// The exact XML Schema expression a visible-ASCII declaration must carry for
+/// the given bounds.
+///
+/// The family's defining property is that the pattern quantifier and the
+/// length facets *agree*. Deriving the expected text from the facets, instead
+/// of comparing them independently, makes disagreement unrepresentable: a
+/// declaration whose `maxLength` is 128 while its pattern says `{1,256}` does
+/// not match the expression this builds for `1,128`, and fails closed.
+#[must_use]
+pub fn visible_ascii_pattern(min_length: u64, max_length: u64) -> String {
+    format!("{VISIBLE_ASCII_CLASS}{{{min_length},{max_length}}}")
+}
+
+/// A named constrained-`string` shape that the generator fully implements.
+///
+/// Each variant arrives with its own evidence, its own validator, and its own
+/// conformance corpus; this is not a place to accumulate near-misses.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StringProfile {
     /// The UCI schema-version profile: `minLength 7`, `maxLength 57`, and the
@@ -369,14 +512,40 @@ pub enum StringProfile {
     /// hexadecimal letter case, once it has been accepted by the pattern and
     /// the `length` facet.
     UniversallyUniqueIdentifier,
+
+    /// The UCI visible-ASCII bounded-string family: `minLength = min_length`,
+    /// `maxLength = max_length`, and the single pattern `[ -~]{min,max}` whose
+    /// quantifier agrees with those facets, over `whiteSpace = preserve`.
+    ///
+    /// Unlike the two profiles above this one is **parameterized**, because
+    /// the pinned bytes of both tracked releases contain thirteen declarations
+    /// that differ from one another *only* in the bound pair. Admitting the
+    /// family costs one pair of integers; refusing it would have meant
+    /// thirteen hand-written near-duplicate variants.
+    ///
+    /// Membership is still exact. The bounds are not free parameters over
+    /// which any pattern is tolerated: the expression must equal
+    /// [`visible_ascii_pattern`] for *these* bounds, so the facets and the
+    /// quantifier can never disagree.
+    ///
+    /// Generated code stores the caller's string unchanged once it has been
+    /// accepted by both the character range and the length facets. Ordinary
+    /// SPACE is inside the class, so leading, trailing, and all-space values
+    /// are valid when their lengths fit.
+    VisibleAscii {
+        /// The `minLength` facet, which is also the quantifier's minimum.
+        min_length: u64,
+        /// The `maxLength` facet, which is also the quantifier's maximum.
+        max_length: u64,
+    },
 }
 
-/// Why a constrained `string` declaration falls outside the Task 037 subset.
+/// Why a constrained `string` declaration falls outside the implemented set.
 ///
 /// Every variant describes a declaration that *is* a constrained `string`. An
 /// unconstrained `string`, or a non-`string` declaration, is reported as
 /// `Ok(None)` instead, never as an error -- those keep their existing
-/// representation and Task 037 has no opinion about them.
+/// representation and this classifier has no opinion about them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StringProfileError {
     /// A constrained `string` whose effective facet shape is not the one
@@ -385,7 +554,7 @@ pub enum StringProfileError {
     /// Covers a different pattern text, multiple alternatives in one group,
     /// multiple restriction-level groups, a non-XML-Schema dialect, a `length`
     /// facet, different `minLength`/`maxLength` values, an explicit
-    /// `whiteSpace` facet, or any numeric facet. Task 037 enforces the
+    /// `whiteSpace` facet, or any numeric facet. The classifier enforces each
     /// authoritative profile exactly, so every neighbouring shape fails closed
     /// rather than being approximated by a validator that would ignore a facet.
     UnsupportedConstraints,
@@ -414,7 +583,7 @@ impl std::fmt::Display for StringProfileError {
 /// Keeps "ordinary unconstrained `string`" and "constrained `string`" apart at
 /// call sites that only need the coarse question. An unconstrained `string`
 /// must keep its existing plain backend representation, so it is never routed
-/// through the Task 037 carrier machinery.
+/// through the validated-carrier machinery.
 #[must_use]
 pub fn constrains_string(constraints: &ConstraintSet) -> bool {
     constraints.length.is_some()
@@ -428,9 +597,9 @@ pub fn constrains_string(constraints: &ConstraintSet) -> bool {
         || constraints.max_exclusive.is_some()
 }
 
-/// Classify a named `string` declaration against the Task 037 subset.
+/// Classify a named `string` declaration against the implemented subset.
 ///
-/// * `Ok(None)` -- not a constrained `string`; Task 037 has no opinion, and the
+/// * `Ok(None)` -- not a constrained `string`; this module has no opinion, and the
 ///   declaration keeps whatever representation it already had.
 /// * `Ok(Some(profile))` -- an implemented profile; backends may render a
 ///   validated carrier for it.
@@ -443,7 +612,7 @@ pub fn constrains_string(constraints: &ConstraintSet) -> bool {
 /// # Errors
 ///
 /// Returns [`StringProfileError`] when the declaration is a constrained
-/// `string` whose effective facet shape is not the one implemented profile. No
+/// `string` whose effective facet shape is not an implemented profile. No
 /// facet is ever silently ignored: a constraint this module cannot enforce is a
 /// rejection, not a warning.
 pub fn string_profile(
@@ -453,7 +622,7 @@ pub fn string_profile(
     if kind != PrimitiveKind::String {
         return Ok(None);
     }
-    // An ordinary `string` is not a Task 037 concern. This is what keeps
+    // An ordinary `string` is not a concern of this module. This is what keeps
     // existing Rust `String` / C++ `std::string` / Ada `Unbounded_String`
     // output completely unchanged.
     if !constrains_string(constraints) {
@@ -469,7 +638,44 @@ pub fn string_profile(
     if matches_uuid_profile(constraints) {
         return Ok(Some(StringProfile::UniversallyUniqueIdentifier));
     }
+    if let Some(profile) = match_visible_ascii_profile(constraints) {
+        return Ok(Some(profile));
+    }
     Err(StringProfileError::UnsupportedConstraints)
+}
+
+/// Whether these effective facets are exactly a visible-ASCII family member.
+///
+/// The bounds are read from the facets *first*, and the expected pattern text
+/// is then derived from them. The declaration matches only if its single
+/// expression equals that derived text, so the quantifier and the facets are
+/// checked against each other rather than independently. This is what keeps a
+/// parameterized profile from degenerating into "any minLength + maxLength +
+/// pattern": the parameters are constrained by the very pattern they explain.
+fn match_visible_ascii_profile(constraints: &ConstraintSet) -> Option<StringProfile> {
+    // `length` is mutually exclusive with min/maxLength in this family. The
+    // `[ -~]{N}` fixed-`length` declarations UCI also defines are a *different*
+    // shape and are deliberately not matched here.
+    if constraints.length.is_some() {
+        return None;
+    }
+    // Both bounds must be present: a half-bounded visible-ASCII restriction is
+    // not a member, and its pattern could not agree with absent facets anyway.
+    let min_length = constraints.min_length?;
+    let max_length = constraints.max_length?;
+    // A member's own quantifier is `{min,max}`, which is unsatisfiable unless
+    // the bounds are ordered. Rejecting here keeps the generated validators
+    // from having to reason about an empty accepted language.
+    if min_length > max_length {
+        return None;
+    }
+    if !has_only_pattern(constraints, &visible_ascii_pattern(min_length, max_length)) {
+        return None;
+    }
+    Some(StringProfile::VisibleAscii {
+        min_length,
+        max_length,
+    })
 }
 
 /// Whether these effective facets are exactly the schema-version profile.
@@ -543,7 +749,7 @@ fn has_only_pattern(constraints: &ConstraintSet, expected: &str) -> bool {
     alternative.dialect == PatternDialect::XmlSchema && alternative.expression == expected
 }
 
-/// Whether a schema emits at least one Task 037 String value carrier.
+/// Whether a schema emits at least one String-profile value carrier.
 ///
 /// Mirrors [`crate::temporal::schema_emits_temporal_carrier`]. Several
 /// generator decisions are conditional on this and must agree exactly; reading
@@ -778,7 +984,7 @@ mod tests {
     }
 
     /// The single supported profile, recognized from kind + effective facets.
-    /// There is no name parameter at all, which is what keeps Task 037 free of
+    /// There is no name parameter at all, which is what keeps the classifier free of
     /// a UCI local-name special case.
     #[test]
     fn uci_schema_version_is_the_supported_profile() {
@@ -788,7 +994,7 @@ mod tests {
         );
     }
 
-    /// An ordinary unconstrained `string` is not a Task 037 declaration at all,
+    /// An ordinary unconstrained `string` is not a profiled declaration at all,
     /// and must be reported distinctly from a *wrongly* constrained one so
     /// backends keep emitting their existing plain string representation.
     #[test]
@@ -838,7 +1044,7 @@ mod tests {
     }
 
     /// Same pattern, different bounds: a neighbouring type whose `maxLength`
-    /// the Task 037 carrier would not enforce. It must fail closed rather than
+    /// the generated carrier would not enforce. It must fail closed rather than
     /// silently losing the facet.
     #[test]
     fn the_same_pattern_with_different_bounds_is_unsupported() {
@@ -958,5 +1164,275 @@ mod tests {
         let pattern_max: u64 = 3 + 1 + 2 + (1 + 2) + 2 + (1 + 45);
         assert_eq!(pattern_min, UCI_SCHEMA_VERSION_MIN_LENGTH);
         assert_eq!(pattern_max, UCI_SCHEMA_VERSION_MAX_LENGTH);
+    }
+
+    // ---------------------------------------------------------------------
+    // Task 039: the visible-ASCII family.
+    // ---------------------------------------------------------------------
+
+    /// A visible-ASCII family member with the given bounds, built from the
+    /// normalized IR shape observed in both pinned releases.
+    fn visible_ascii(min_length: u64, max_length: u64) -> ConstraintSet {
+        ConstraintSet {
+            min_length: Some(min_length),
+            max_length: Some(max_length),
+            lexical: LexicalConstraintSet {
+                pattern_groups: vec![PatternGroup {
+                    alternatives: vec![PatternExpression::xml_schema(visible_ascii_pattern(
+                        min_length, max_length,
+                    ))],
+                }],
+                white_space: None,
+            },
+            ..ConstraintSet::default()
+        }
+    }
+
+    /// The selected blocker's profile is recognized from kind + facets alone.
+    #[test]
+    fn the_visible_ascii_256_profile_is_supported() {
+        assert_eq!(
+            string_profile(PrimitiveKind::String, &visible_ascii(1, 256)),
+            Ok(Some(StringProfile::VisibleAscii {
+                min_length: 1,
+                max_length: 256
+            }))
+        );
+    }
+
+    /// The IR expression contains the EXPANDED characters, not the `&#x20;`
+    /// character references the XSD source spells them with.
+    #[test]
+    fn the_expected_expression_uses_expanded_characters() {
+        let pattern = visible_ascii_pattern(1, 256);
+        assert_eq!(pattern, "[ -~]{1,256}");
+        assert!(!pattern.contains("&#x"));
+        // The two class endpoints really are U+0020 and U+007E.
+        let bytes = pattern.as_bytes();
+        assert_eq!(bytes[1], VISIBLE_ASCII_MIN_CODE_POINT);
+        assert_eq!(bytes[3], VISIBLE_ASCII_MAX_CODE_POINT);
+        assert_eq!(VISIBLE_ASCII_MIN_CODE_POINT, b' ');
+        assert_eq!(VISIBLE_ASCII_MAX_CODE_POINT, b'~');
+    }
+
+    /// Every bound pair the pinned releases actually contain is supported.
+    ///
+    /// This is the family inventory, asserted rather than described. Two of
+    /// those QNames contain no "VisibleString" at all, and one is reached only
+    /// through a restriction chain, which is exactly why membership is decided
+    /// from effective facets.
+    #[test]
+    fn every_authoritative_family_member_is_supported() {
+        for (min_length, max_length) in [
+            (1, 20),
+            (1, 32),
+            (1, 64),
+            (1, 81),
+            (1, 128),
+            (1, 256),
+            (1, 480),
+            (1, 512),
+            (1, 1024),
+            (2, 4),
+        ] {
+            assert_eq!(
+                string_profile(
+                    PrimitiveKind::String,
+                    &visible_ascii(min_length, max_length)
+                ),
+                Ok(Some(StringProfile::VisibleAscii {
+                    min_length,
+                    max_length
+                })),
+                "the {min_length}..{max_length} member must be supported"
+            );
+        }
+    }
+
+    /// The bounds and the quantifier must AGREE. A declaration carrying one
+    /// member's pattern under another member's facets is not a member.
+    #[test]
+    fn bounds_disagreeing_with_the_quantifier_fail_closed() {
+        // Same pattern text, different maxLength facet.
+        let mut constraints = visible_ascii(1, 256);
+        constraints.max_length = Some(128);
+        assert_eq!(
+            string_profile(PrimitiveKind::String, &constraints),
+            Err(StringProfileError::UnsupportedConstraints)
+        );
+
+        // Same facets, a different member's pattern text.
+        let mut constraints = visible_ascii(1, 256);
+        constraints.lexical.pattern_groups = vec![PatternGroup {
+            alternatives: vec![PatternExpression::xml_schema(visible_ascii_pattern(1, 32))],
+        }];
+        assert_eq!(
+            string_profile(PrimitiveKind::String, &constraints),
+            Err(StringProfileError::UnsupportedConstraints)
+        );
+    }
+
+    /// Every near-miss of the visible-ASCII profile fails closed.
+    #[test]
+    fn visible_ascii_near_misses_are_unsupported() {
+        // An explicit whiteSpace facet: the WhitespaceVisibleString* shape,
+        // which needs a separate normalization analysis and is NOT implemented.
+        let mut collapse = visible_ascii(1, 256);
+        collapse.lexical.white_space = Some(WhiteSpacePolicy::Collapse);
+
+        // `length` instead of min/maxLength: the VisibleStringLength*/NITF_*
+        // fixed-width shape, whose quantifier is `{N}` rather than `{M,N}`.
+        let mut fixed_length = ConstraintSet {
+            length: Some(10),
+            ..ConstraintSet::default()
+        };
+        fixed_length.lexical.pattern_groups = vec![PatternGroup {
+            alternatives: vec![PatternExpression::xml_schema("[ -~]{10}")],
+        }];
+
+        // A half-bounded restriction: no maxLength at all.
+        let mut half_bounded = visible_ascii(1, 256);
+        half_bounded.max_length = None;
+
+        // A second pattern GROUP: groups are AND-ed and this is not implemented.
+        let mut two_groups = visible_ascii(1, 256);
+        two_groups.lexical.pattern_groups.push(PatternGroup {
+            alternatives: vec![PatternExpression::xml_schema(visible_ascii_pattern(1, 256))],
+        });
+
+        // A second EXPRESSION in the one group: alternatives are OR-ed.
+        let mut two_alternatives = visible_ascii(1, 256);
+        two_alternatives.lexical.pattern_groups[0]
+            .alternatives
+            .push(PatternExpression::xml_schema(visible_ascii_pattern(1, 256)));
+
+        // A numeric facet, which is not applicable to `string` at all.
+        let mut numeric = visible_ascii(1, 256);
+        numeric.min_inclusive = Some(NumericValue::Integer(0));
+
+        // QueryString4096Type: the class additionally admits LF and CR.
+        let mut with_breaks = visible_ascii(0, 4096);
+        with_breaks.lexical.pattern_groups = vec![PatternGroup {
+            alternatives: vec![PatternExpression::xml_schema(r"[ -~\n\r]{0,4096}")],
+        }];
+
+        // NATO_SpecialWordsType: ASCII-only, but a distinct lexical profile.
+        let mut nato = visible_ascii(1, 256);
+        nato.lexical.pattern_groups = vec![PatternGroup {
+            alternatives: vec![PatternExpression::xml_schema(r"NATO:[a-zA-Z\-_]{1,256}")],
+        }];
+
+        for (label, constraints) in [
+            ("explicit whiteSpace=collapse", collapse),
+            ("length instead of min/max", fixed_length),
+            ("half-bounded", half_bounded),
+            ("a second pattern group", two_groups),
+            ("a second expression", two_alternatives),
+            ("a numeric facet", numeric),
+            ("a class admitting LF and CR", with_breaks),
+            ("the NATO special-words profile", nato),
+            ("inverted bounds", visible_ascii(9, 4)),
+        ] {
+            assert_eq!(
+                string_profile(PrimitiveKind::String, &constraints),
+                Err(StringProfileError::UnsupportedConstraints),
+                "{label} must fail closed"
+            );
+        }
+    }
+
+    /// The dialect is required to be `XmlSchema`, not merely assumed.
+    ///
+    /// `PatternDialect` currently has exactly one variant, so a foreign-dialect
+    /// constraint set is not constructible and cannot be asserted against
+    /// behaviourally. The requirement is still written down in the classifier,
+    /// which is what keeps it correct when a second dialect is added; this test
+    /// pins the assumption that makes the omission safe today.
+    #[test]
+    fn the_only_pattern_dialect_today_is_xml_schema() {
+        let constraints = visible_ascii(1, 256);
+        assert_eq!(
+            constraints.lexical.pattern_groups[0].alternatives[0].dialect,
+            PatternDialect::XmlSchema
+        );
+    }
+
+    /// Recognition is not a substring search for `[ -~]`.
+    ///
+    /// An expression that merely *contains* the class, under facets that would
+    /// otherwise look plausible, is not a family member.
+    #[test]
+    fn merely_containing_the_class_is_not_membership() {
+        let mut constraints = visible_ascii(1, 256);
+        constraints.lexical.pattern_groups = vec![PatternGroup {
+            alternatives: vec![PatternExpression::xml_schema("x[ -~]{1,256}")],
+        }];
+        assert_eq!(
+            string_profile(PrimitiveKind::String, &constraints),
+            Err(StringProfileError::UnsupportedConstraints)
+        );
+    }
+
+    /// The accepted alphabet is entirely ASCII, which is what licenses the
+    /// generated validators to count bytes for a character-defined facet.
+    #[test]
+    fn the_visible_ascii_alphabet_is_entirely_single_byte() {
+        for code_point in VISIBLE_ASCII_MIN_CODE_POINT..=VISIBLE_ASCII_MAX_CODE_POINT {
+            let character = char::from(code_point);
+            assert!(character.is_ascii());
+            assert_eq!(character.len_utf8(), 1);
+        }
+        // The class has exactly 95 members, and DEL is not one of them: the
+        // upper bound is TILDE, one below U+007F.
+        let width = VISIBLE_ASCII_MAX_CODE_POINT - VISIBLE_ASCII_MIN_CODE_POINT + 1;
+        assert_eq!(width, 95);
+        assert_eq!(VISIBLE_ASCII_MAX_CODE_POINT + 1, 0x7F);
+    }
+
+    /// SPACE is INSIDE the class, and the other whitespace characters are not.
+    ///
+    /// This is the trap the profile turns on: `xs:string` carries
+    /// `whiteSpace = preserve` and the class contains U+0020, so a leading or
+    /// trailing space is part of the value rather than noise to be trimmed.
+    #[test]
+    fn space_is_a_member_but_the_other_whitespace_characters_are_not() {
+        let member = |character: char| {
+            (character as u32) >= u32::from(VISIBLE_ASCII_MIN_CODE_POINT)
+                && (character as u32) <= u32::from(VISIBLE_ASCII_MAX_CODE_POINT)
+        };
+        assert!(member(' '), "U+0020 SPACE is inside [ -~]");
+        assert!(member('~'));
+        assert!(member('!'));
+        for outside in ['\t', '\n', '\r', '\u{0}', '\u{1f}', '\u{7f}', 'é', '😀'] {
+            assert!(!member(outside), "{outside:?} is outside [ -~]");
+        }
+        // The profile declares no whiteSpace facet, so `preserve` is inherited
+        // and normalization is the identity.
+        assert!(visible_ascii(1, 256).lexical.white_space.is_none());
+    }
+
+    /// The three implemented profiles stay distinct: none shadows another.
+    #[test]
+    fn the_implemented_profiles_remain_distinct() {
+        assert_eq!(
+            string_profile(PrimitiveKind::String, &schema_version()),
+            Ok(Some(StringProfile::UciSchemaVersion))
+        );
+        assert_eq!(
+            string_profile(PrimitiveKind::String, &uuid()),
+            Ok(Some(StringProfile::UniversallyUniqueIdentifier))
+        );
+        assert_eq!(
+            string_profile(PrimitiveKind::String, &visible_ascii(1, 256)),
+            Ok(Some(StringProfile::VisibleAscii {
+                min_length: 1,
+                max_length: 256
+            }))
+        );
+        // A non-String declaration is still nobody's business.
+        assert_eq!(
+            string_profile(PrimitiveKind::Boolean, &visible_ascii(1, 256)),
+            Ok(None)
+        );
     }
 }

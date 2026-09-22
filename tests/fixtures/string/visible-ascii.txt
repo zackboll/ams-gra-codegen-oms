@@ -1,0 +1,184 @@
+# Task 039 shared visible-ASCII String conformance corpus.
+#
+# ONE canonical corpus drives the Rust, C++, and Ada generated validators, so
+# the three backends are proven to agree rather than each passing its own
+# curated subset. Rust-side tests read this file and emit the cases into the
+# probe program for every language.
+#
+# FORMAT
+#   '#' begins a comment line; blank lines are ignored.
+#   VALID <input> => <expected stored form>
+#   INVALID <input>
+# Exactly one space follows the VALID/INVALID keyword: the shared loader strips
+# that single separator, so extra alignment padding would become part of the
+# case's input.
+# <input> is escaped so whitespace and control cases are unambiguous:
+#   \s space   \t tab   \n line feed   \r carriage return   \\ backslash
+#   \u{HEX} any code point, used for the controls and non-ASCII characters
+#           this profile must pin on either side of its interval.
+#
+# AUTHORITY
+# The profile is read verbatim from the pinned UCI release bytes:
+#   UCI 2.5 093610b7753944059360d3236770ab446d039556
+#           UCI_MessageDefinitions_v2_5_0.xsd:146232
+#   UCI 2.6 78eb61b6112c8bffa40820c33124b57787fc5bd9
+#           UCI_MessageDefinitions_v2_6_0.xsd:146583
+# The two releases are byte-identical for this declaration after end-of-line
+# normalization:
+#
+#   <xs:restriction base="xs:string">
+#     <xs:minLength value="1"/>
+#     <xs:maxLength value="256"/>
+#     <xs:pattern value="[&#x20;-&#x7E;]{1,256}"/>
+#   </xs:restriction>
+#
+# Those are XML character references; the parser expands them, so the
+# normalized IR expression is the five characters [ -~] containing a literal
+# SPACE and a literal TILDE.
+#
+# THE CHARACTER CLASS
+# [ -~] is one inclusive range, U+0020 SPACE through U+007E TILDE. It admits
+# SPACE, all ASCII punctuation, the digits, both letter cases, and { | } ~.
+# It excludes TAB, LF, CR, every other C0 control, DEL (U+007F), and every
+# non-ASCII character. The cases below pin all four ordinal boundaries:
+#
+#   U+001F -> INVALID      U+0020 -> VALID
+#   U+007E -> VALID        U+007F -> INVALID
+#
+# so an informal "printable ASCII" implementation cannot pass this corpus.
+#
+# LEADING AND TRAILING SPACES ARE VALID
+# The base xs:string has whiteSpace = preserve and this restriction does not
+# override it, while SPACE is itself a member of the class. Values such as
+# " hello", "hello ", and "   " are therefore VALID whenever their lengths fit,
+# and must round-trip unchanged. Nothing is trimmed or collapsed. This is the
+# opposite of the Task 037 and Task 038 profiles, whose alphabets excluded
+# whitespace entirely, so their expectations must not be copied here.
+#
+# BOUNDS
+# This corpus is written for the 1..256 member of the family, which is the
+# selected blocker VisibleString256Type. minLength = 1 makes the empty string
+# invalid; maxLength = 256 makes 257 characters invalid. Both bounds and the
+# character class are enforced independently by every backend.
+#
+# LENGTH IS A CHARACTER COUNT
+# Every accepted character is at most U+007E, hence single-byte in UTF-8, so
+# for this profile the UTF-8 byte count equals the XSD character count. That is
+# what lets the Rust and C++ carriers use byte length here; the argument is
+# specific to this alphabet and is not generalized.
+
+# --- VALID: the class boundaries themselves ---
+# U+0020 SPACE: the LOW boundary, and an ordinary class member.
+VALID \s => \s
+# U+007E TILDE: the HIGH boundary.
+VALID ~ => ~
+# U+0021, immediately above SPACE.
+VALID ! => !
+VALID } => }
+
+# --- VALID: one character of each ordinary kind ---
+VALID 0 => 0
+VALID 9 => 9
+VALID A => A
+VALID Z => Z
+VALID a => a
+VALID z => z
+
+# --- VALID: ordinary words and punctuation ---
+VALID hello => hello
+VALID Callsign-7 => Callsign-7
+VALID a,b.c;d:e!f?g => a,b.c;d:e!f?g
+VALID 100%\sof\s$5\s=\s#1 => 100%\sof\s$5\s=\s#1
+VALID {|}~`^_[] => {|}~`^_[]
+VALID <tag/> => <tag/>
+VALID a\\b => a\\b
+
+# --- VALID: whiteSpace = preserve plus a class containing SPACE ---
+# The base is xs:string, whose intrinsic whiteSpace is preserve, and this
+# restriction adds no whiteSpace facet, so normalization is the identity.
+# SPACE is itself inside [ -~]. Leading, trailing, interior and all-space
+# values are therefore VALID and must round-trip with spaces intact.
+# interior space
+VALID two\swords => two\swords
+# LEADING space: valid, and never trimmed
+VALID \sleading => \sleading
+# TRAILING space: valid, and never trimmed
+VALID trailing\s => trailing\s
+VALID \sboth\s => \sboth\s
+# nothing but spaces
+VALID \s\s\s => \s\s\s
+# multiple interior spaces
+VALID a\s\sb => a\s\sb
+VALID \s\swide\s\s => \s\swide\s\s
+
+# --- VALID: the exact length boundaries of the 1..256 member ---
+# exactly minLength = 1
+VALID x => x
+# one below maxLength
+VALID yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy => yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+# exactly maxLength = 256
+VALID zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz => zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+# 256 spaces: the maximum, all of them whitespace, still untrimmed
+VALID \s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s => \s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s
+
+# --- VALID: every character of the class in one value (95 characters) ---
+VALID \s!"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ => \s!"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~
+
+# --- INVALID: minLength = 1 rejects the empty string ---
+INVALID
+
+# --- INVALID: maxLength = 256 rejects 257 characters ---
+INVALID xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# 257 spaces: length alone rejects it
+INVALID \s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s\s
+
+# --- INVALID: the ordinal boundaries, which pin the exact interval ---
+# U+001F: immediately BELOW the low boundary U+0020
+INVALID \u{1f}
+# U+007F DELETE: immediately ABOVE the high boundary U+007E
+INVALID \u{7f}
+INVALID a\u{1f}b
+INVALID a\u{7f}b
+
+# --- INVALID: whitespace controls are NOT in [ -~] ---
+# Only U+0020 is; TAB, LF and CR are different characters.
+INVALID \t
+INVALID \n
+INVALID \r
+INVALID a\tb
+INVALID a\nb
+INVALID a\rb
+# visible ASCII plus a trailing LF
+INVALID ok\n
+# visible ASCII plus a trailing TAB
+INVALID ok\t
+INVALID ok\r
+INVALID \nok
+
+# --- INVALID: other C0 controls ---
+# NUL
+INVALID \u{0}
+INVALID a\u{0}b
+INVALID \u{1}
+# ESC
+INVALID \u{1b}
+
+# --- INVALID: non-ASCII characters ---
+# Latin small letter e with acute
+INVALID \u{e9}
+INVALID caf\u{e9}
+# NO-BREAK SPACE is not U+0020 SPACE
+INVALID \u{a0}
+INVALID \u{ff}
+# Arabic-Indic digit zero: a Unicode digit lookalike
+INVALID \u{660}
+# Fullwidth Latin capital A
+INVALID \u{ff21}
+# EN DASH, not ASCII HYPHEN-MINUS
+INVALID \u{2013}
+# LEFT DOUBLE QUOTATION MARK, not the ASCII quote
+INVALID \u{201c}
+# emoji: a multibyte character
+INVALID \u{1f600}
+# visible ASCII plus a multibyte character
+INVALID ok\u{1f600}

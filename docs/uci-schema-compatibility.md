@@ -1055,8 +1055,51 @@ because RFC 4122 says so; no RFC rule absent from the XSD is imposed. See
 validator, the ASCII character-count argument, the 78-case shared conformance
 corpus, and the coverage and `PositionReport` deltas.
 
+Task 039 adds a **third** supported profile, and the first *parameterized* one:
+the visible-ASCII bounded-string family. A member is an `xs:string` restriction
+carrying exactly `minLength = M`, `maxLength = N`, no `length`, no explicit
+`whiteSpace`, and one `xs:pattern` whose expression is `[ -~]{M,N}` for the
+*same* `M` and `N`.
+
+The selected blocker `VisibleString256Type` is byte-identical in both pinned
+releases (2.5 `...:146232`, 2.6 `...:146583`):
+
+```xml
+<xs:restriction base="xs:string">
+  <xs:minLength value="1"/>
+  <xs:maxLength value="256"/>
+  <xs:pattern value="[&#x20;-&#x7E;]{1,256}"/>
+</xs:restriction>
+```
+
+Two points of that evidence are easy to get wrong:
+
+* the source spells the class with **XML character references**,
+  `[&#x20;-&#x7E;]`. The parser expands them before schema processing, so the
+  normalized IR expression is the five characters `[ -~]` with a literal SPACE
+  and a literal TILDE. Reading the raw bytes and reading the IR therefore
+  disagree textually while agreeing semantically;
+* the class **contains U+0020 SPACE**, and `xs:string`'s intrinsic
+  `whiteSpace = preserve` is not overridden. Leading, trailing, interior, and
+  all-space values are consequently *valid* and are stored unchanged. This is
+  the opposite of the Task 037 and 038 profiles, whose alphabets excluded
+  whitespace entirely.
+
+The family was parameterized rather than fixed because the pinned bytes of both
+releases contain **thirteen** declarations differing only in their bound pair:
+`AttributedURI_Type`, `MIME_Type`, `MissionCategoryType`, and
+`VisibleString{20,32,64,81,128,256,480,512,1024}Type` plus
+`VisibleString2_4Type`. Two of those names contain no "VisibleString" at all and
+`MissionCategoryType` reaches the shape only through a depth-2 restriction that
+adds no facets, which is precisely why membership is decided from effective
+facets rather than names. See `docs/backend-compatibility.md` for the inventory,
+the exact character-range semantics, the ASCII character-count argument, the
+60-case shared conformance corpus, and the coverage and `PositionReport` deltas.
+
 Every other constrained String shape — the remaining `length + pattern`
-declarations, multiple pattern alternatives, explicit `whiteSpace` profiles,
-`NATO_SpecialWordsType`, `VisibleString*` — and every direct field-local
-constrained String remain unsupported and fail closed. Ordinary unconstrained
-`String` is unchanged.
+declarations, the fixed-`length` `[ -~]{N}` declarations such as
+`VisibleStringLength*` and the `NITF_*` family, `QueryString4096Type` whose
+class also admits LF and CR, multiple pattern alternatives, the explicit
+`whiteSpace = collapse` `WhitespaceVisibleString*` profiles, and
+`NATO_SpecialWordsType` — and every direct field-local constrained String remain
+unsupported and fail closed. Ordinary unconstrained `String` is unchanged.

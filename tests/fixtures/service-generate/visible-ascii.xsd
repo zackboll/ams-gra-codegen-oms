@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:test"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- Task 039 synthetic selected-service fixture.
+
+       The SELECTED closure contains supported visible-ASCII String
+       declarations in both a required and an optional named position:
+
+         TrackReport -> TrackPayload
+                          Primary   : Callsign      1..1
+                          Alternate : Callsign      0..1  (Task 034 composition)
+                          Label     : ShortLabel    0..1
+                          Country   : CountryCode   1..1
+                          Version   : SchemaVersion 1..1  (Task 037 profile)
+                          Notes     : xs:string     1..1  (ordinary String)
+
+       Three DIFFERENT bound pairs are selected on purpose, because the profile
+       is parameterized: each carrier must enforce its own bounds. In Ada each
+       also emits a package-level Create/Value, so this proves overload
+       resolution across all the selected carriers.
+
+       UNSELECTED, and deliberately outside the closure, is a constrained
+       String profile that is NOT implemented: the same visible-ASCII class
+       under an explicit whiteSpace=collapse, which is the
+       WhitespaceVisibleString* shape. It must not be projected into the
+       generated output, and its presence must not block readiness.
+
+       No declaration is named after a UCI type: support must arise from
+       PrimitiveKind::String plus the effective ConstraintSet alone.
+  -->
+
+  <!-- SELECTED: the authoritative UCI VisibleString256Type profile, spelled
+       with the SAME character references the pinned XSD uses. -->
+  <xs:simpleType name="Callsign">
+    <xs:annotation>
+      <xs:documentation>A string representing up to 256 characters in length, restricted to visible characters (0x20-0x7E).</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="256"/>
+      <xs:pattern value="[&#x20;-&#x7E;]{1,256}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- SELECTED: a second member with DIFFERENT bounds. -->
+  <xs:simpleType name="ShortLabel">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="32"/>
+      <xs:pattern value="[&#x20;-&#x7E;]{1,32}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- SELECTED: a member whose minLength is not 1. -->
+  <xs:simpleType name="CountryCode">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="2"/>
+      <xs:maxLength value="4"/>
+      <xs:pattern value="[&#x20;-&#x7E;]{2,4}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- SELECTED: the Task 037 profile, so two String profiles are generated
+       into one unit. -->
+  <xs:simpleType name="SchemaVersion">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="7"/>
+      <xs:maxLength value="57"/>
+      <xs:pattern value="[0-9]{3}\.[0-9]{1,2}(\.[0-9]{1,2})([a-z]{1,2})?(_[a-zA-Z0-9\-]{1,45})?"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- UNSELECTED: an explicit whiteSpace=collapse makes this the
+       WhitespaceVisibleString* shape, which stays unsupported. -->
+  <xs:simpleType name="CollapsingText">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="256"/>
+      <xs:whiteSpace value="collapse"/>
+      <xs:pattern value="[&#x20;-&#x7E;]{1,256}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- UNSELECTED holder, so the unsupported declaration is genuinely reachable
+       in the schema but not in the selected closure. -->
+  <xs:complexType name="UnselectedTrackPayload">
+    <xs:sequence>
+      <xs:element name="Text" type="t:CollapsingText"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TrackPayload">
+    <xs:sequence>
+      <xs:element name="Primary" type="t:Callsign"/>
+      <xs:element name="Alternate" type="t:Callsign" minOccurs="0"/>
+      <xs:element name="Label" type="t:ShortLabel" minOccurs="0"/>
+      <xs:element name="Country" type="t:CountryCode"/>
+      <xs:element name="Version" type="t:SchemaVersion"/>
+      <xs:element name="Notes" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="TrackReport" type="t:TrackPayload"
+              uci:version="001.000.000.000"/>
+
+  <xs:element name="UnselectedTrackReport" type="t:UnselectedTrackPayload"
+              uci:version="001.000.000.000"/>
+
+</xs:schema>
