@@ -1,0 +1,183 @@
+# Task 038 shared UCI UUID String conformance corpus.
+#
+# ONE canonical corpus drives the Rust, C++, and Ada generated validators, so
+# the three backends are proven to agree rather than each passing its own
+# curated subset. Rust-side tests read this file and emit the cases into the
+# probe program for every language.
+#
+# FORMAT
+#   '#' begins a comment line; blank lines are ignored.
+#   VALID <input> => <expected stored form>
+#   INVALID <input>
+# Exactly one space follows the VALID/INVALID keyword: the shared loader strips
+# that single separator, so extra alignment padding would become part of the
+# case's input.
+# <input> is a C-style escaped string so whitespace cases are unambiguous;
+# only \s (space), \t, \n, \r, and \\ are used.
+#
+# AUTHORITY
+# The profile is read verbatim from the pinned UCI release bytes:
+#   UCI 2.5 093610b7753944059360d3236770ab446d039556
+#           UCI_MessageDefinitions_v2_5_0.xsd:145719
+#   UCI 2.6 78eb61b6112c8bffa40820c33124b57787fc5bd9
+#           UCI_MessageDefinitions_v2_6_0.xsd:145967
+# The two releases are byte-identical for this declaration after end-of-line
+# normalization:
+#
+#   <xs:restriction base="xs:string">
+#     <xs:length value="36"/>
+#     <xs:pattern value="(0{8}(-0{4}){3}-0{12})|([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12})"/>
+#   </xs:restriction>
+#
+# That is ONE <xs:pattern> element, hence one IR PatternGroup holding one
+# PatternExpression; the '|' is internal to that single expression.
+#
+# THE TWO INTERNAL BRANCHES
+#   A   0{8}(-0{4}){3}-0{12}
+#       the nil UUID 00000000-0000-0000-0000-000000000000, and nothing else
+#
+#   B   [a-fA-F0-9]{8} - [a-fA-F0-9]{4} - [1-5][a-fA-F0-9]{3}
+#                      - [89abAB][a-fA-F0-9]{3} - [a-fA-F0-9]{12}
+#
+# Branch A is NOT redundant. Branch B requires a version nibble in [1-5] and a
+# variant nibble in [89abAB]; the nil UUID has 0 in both, so branch B rejects
+# it and branch A is the only thing that accepts it.
+#
+# The version/variant classes are in the SCHEMA, not imported RFC policy. They
+# are enforced for that reason alone, and nothing beyond them is imposed.
+#
+# POSITIONS (zero-based, over the fixed 36-character width)
+#   8, 13, 18, 23   '-'
+#   14              version  [1-5]
+#   19              variant  [89abAB]
+#   all others      [0-9a-fA-F]
+#
+# WHITESPACE
+# No explicit whiteSpace facet, so xs:string's intrinsic `preserve` applies.
+# Nothing is trimmed or collapsed, and no whitespace character appears in
+# either branch, so whitespace makes a value invalid rather than being
+# repaired. Every VALID case round-trips to its input unchanged, including
+# letter case: this is an xs:string carrier and case is significant.
+#
+# Every case below was verified against an independent implementation of the
+# two exact internal branches before being recorded here.
+
+# ---------------------------------------------------------------- VALID -----
+
+# The nil UUID, accepted only by branch A.
+VALID 00000000-0000-0000-0000-000000000000 => 00000000-0000-0000-0000-000000000000
+
+# Versions 1 through 5, each paired with a different legal variant nibble.
+VALID 123e4567-e89b-12d3-a456-426614174000 => 123e4567-e89b-12d3-a456-426614174000
+VALID 123e4567-e89b-22d3-8456-426614174000 => 123e4567-e89b-22d3-8456-426614174000
+VALID 123e4567-e89b-32d3-9456-426614174000 => 123e4567-e89b-32d3-9456-426614174000
+VALID 123e4567-e89b-42d3-b456-426614174000 => 123e4567-e89b-42d3-b456-426614174000
+VALID 123e4567-e89b-52d3-A456-426614174000 => 123e4567-e89b-52d3-A456-426614174000
+
+# Case preservation: upper, mixed, and lower spellings all round-trip exactly.
+VALID 123E4567-E89B-12D3-B456-426614174000 => 123E4567-E89B-12D3-B456-426614174000
+VALID AbCdEf01-2345-4bcd-89ab-CDEF01234567 => AbCdEf01-2345-4bcd-89ab-CDEF01234567
+
+# f/F saturating every position the schema leaves unconstrained. The version
+# and variant nibbles must still come from their own classes.
+VALID ffffffff-ffff-1fff-8fff-ffffffffffff => ffffffff-ffff-1fff-8fff-ffffffffffff
+VALID FFFFFFFF-FFFF-5FFF-BFFF-FFFFFFFFFFFF => FFFFFFFF-FFFF-5FFF-BFFF-FFFFFFFFFFFF
+
+# Zeros everywhere the schema permits them, via branch B rather than branch A.
+VALID 00000000-0000-1000-8000-000000000000 => 00000000-0000-1000-8000-000000000000
+
+# An arbitrary structurally valid value.
+VALID deadbeef-cafe-3bad-a11e-0123456789ab => deadbeef-cafe-3bad-a11e-0123456789ab
+
+# -------------------------------------------------------------- INVALID -----
+
+# Empty.
+INVALID
+
+# All-f. These are INVALID: the version nibble f is outside [1-5] and the
+# variant nibble f is outside [89abAB]. An abbreviated reading of the pattern
+# that omits those classes would wrongly accept both.
+INVALID ffffffff-ffff-ffff-ffff-ffffffffffff
+INVALID FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF
+
+# Version nibble outside [1-5]. Everything else is a well-formed UUID.
+INVALID 123e4567-e89b-02d3-a456-426614174000
+INVALID 123e4567-e89b-62d3-a456-426614174000
+INVALID 123e4567-e89b-72d3-a456-426614174000
+INVALID 123e4567-e89b-82d3-a456-426614174000
+INVALID 123e4567-e89b-92d3-a456-426614174000
+INVALID 123e4567-e89b-a2d3-a456-426614174000
+INVALID 123e4567-e89b-b2d3-a456-426614174000
+INVALID 123e4567-e89b-c2d3-a456-426614174000
+INVALID 123e4567-e89b-d2d3-a456-426614174000
+INVALID 123e4567-e89b-e2d3-a456-426614174000
+INVALID 123e4567-e89b-f2d3-a456-426614174000
+INVALID 123e4567-e89b-A2d3-a456-426614174000
+INVALID 123e4567-e89b-B2d3-a456-426614174000
+INVALID 123e4567-e89b-C2d3-a456-426614174000
+INVALID 123e4567-e89b-D2d3-a456-426614174000
+INVALID 123e4567-e89b-E2d3-a456-426614174000
+INVALID 123e4567-e89b-F2d3-a456-426614174000
+
+# Variant nibble outside [89abAB]. Note c-f and C-F are hexadecimal yet still
+# rejected, which is exactly what distinguishes this profile from a general
+# 8-4-4-4-12 hexadecimal shape.
+INVALID 123e4567-e89b-12d3-0456-426614174000
+INVALID 123e4567-e89b-12d3-1456-426614174000
+INVALID 123e4567-e89b-12d3-2456-426614174000
+INVALID 123e4567-e89b-12d3-3456-426614174000
+INVALID 123e4567-e89b-12d3-4456-426614174000
+INVALID 123e4567-e89b-12d3-5456-426614174000
+INVALID 123e4567-e89b-12d3-6456-426614174000
+INVALID 123e4567-e89b-12d3-7456-426614174000
+INVALID 123e4567-e89b-12d3-c456-426614174000
+INVALID 123e4567-e89b-12d3-d456-426614174000
+INVALID 123e4567-e89b-12d3-e456-426614174000
+INVALID 123e4567-e89b-12d3-f456-426614174000
+INVALID 123e4567-e89b-12d3-C456-426614174000
+INVALID 123e4567-e89b-12d3-D456-426614174000
+INVALID 123e4567-e89b-12d3-E456-426614174000
+INVALID 123e4567-e89b-12d3-F456-426614174000
+
+# Nil-like values. "Starts like nil" must not imply acceptance: branch A is an
+# exact literal, and these all fail branch B's version/variant classes too.
+INVALID 00000000-0000-0000-0000-000000000001
+INVALID 10000000-0000-0000-0000-000000000000
+INVALID 00000000-0000-0000-0000-00000000000
+INVALID 00000000-0000-1000-0000-000000000000
+INVALID 00000000-0000-0000-8000-000000000000
+
+# Shape failures.
+INVALID 123e4567-e89b-12d3-a456-42661417400
+INVALID 123e4567-e89b-12d3-a456-4266141740000
+INVALID 123e4567e89b-12d3-a456-426614174000
+INVALID 123e4567-e89b-12d3-a456-426614-74000
+INVALID 123e456-7e89b-12d3-a456-426614174000
+INVALID 123e4567-e89b-12d3a-456-426614174000
+INVALID 123e4567e89b12d3a456426614174000
+INVALID {123e4567-e89b-12d3-a456-426614174000}
+INVALID urn:uuid:123e4567-e89b-12d3-a456-42661417
+INVALID X123e4567-e89b-12d3-a456-42661417400
+INVALID 123e4567-e89b-12d3-a456-42661417400X
+
+# Character failures.
+INVALID 123g4567-e89b-12d3-a456-426614174000
+INVALID 123z4567-e89b-12d3-a456-426614174000
+INVALID 123G4567-e89b-12d3-a456-426614174000
+INVALID 123_4567-e89b-12d3-a456-426614174000
+INVALID 123+4567-e89b-12d3-a456-426614174000
+INVALID 123\s4567-e89b-12d3-a456-426614174000
+
+# Whitespace is never trimmed into validity under whiteSpace = preserve.
+INVALID \s123e4567-e89b-12d3-a456-42661417400
+INVALID 123e4567-e89b-12d3-a456-42661417400\s
+INVALID \t123e4567-e89b-12d3-a456-42661417400
+INVALID 123e4567-e89b-12d3-a456-42661417400\n
+INVALID 123e4567-e89b-12d3-a456-42661417400\r
+
+# Non-ASCII, including a Cyrillic lookalike and fullwidth digits. These also
+# keep the ASCII-only character-count proof honest: a byte-length check must
+# not be reachable for a value carrying multi-byte characters.
+INVALID 123e4567-e89b-12d3-a456-42661417400а
+INVALID １２３e4567-e89b-12d3-a456-4266141740
+INVALID 123e4567-e89b-12d3-a456-4266141740––

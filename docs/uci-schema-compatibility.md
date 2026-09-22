@@ -1026,8 +1026,37 @@ see `docs/backend-compatibility.md` for that proof, the character-count
 argument, the 41-case shared conformance corpus, and the coverage and
 `PositionReport` deltas.
 
-Every other constrained String shape — `length + pattern` including
-`UniversallyUniqueIdentifierType`, multiple pattern alternatives, explicit
-`whiteSpace` profiles, `NATO_SpecialWordsType`, `VisibleString*` — and every
-direct field-local constrained String remain unsupported and fail closed.
-Ordinary unconstrained `String` is unchanged.
+Task 038 adds a **second** supported profile:
+`UniversallyUniqueIdentifierType`, a `length = 36` restriction of `xs:string`
+carrying one `xs:pattern` facet. Both pinned releases are byte-identical for it
+(2.5 `...:145719`, 2.6 `...:145967`), and the authoritative expression is:
+
+```text
+(0{8}(-0{4}){3}-0{12})|([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12})
+```
+
+Three points of that evidence corrected earlier notes in this document and in
+`docs/backend-compatibility.md`:
+
+* it is **one** `xs:pattern` element, so the normalized IR holds one
+  `PatternGroup` with one `PatternExpression` and the `|` is internal to that
+  expression — the multiple-alternative IR machinery is not involved;
+* the nil branch is **not** redundant, because the general branch requires a
+  version nibble in `[1-5]` and a variant nibble in `[89abAB]`, both of which
+  the nil UUID fails;
+* the general branch is therefore **not** a plain 8-4-4-4-12 hexadecimal shape.
+  Earlier wording that abbreviated it behind an ellipsis omitted exactly the two
+  classes that make it narrower, and would have wrongly admitted values such as
+  `ffffffff-ffff-ffff-ffff-ffffffffffff`.
+
+Those version/variant classes are enforced because they are *in the schema*, not
+because RFC 4122 says so; no RFC rule absent from the XSD is imposed. See
+`docs/backend-compatibility.md` for the branch analysis, the positional
+validator, the ASCII character-count argument, the 78-case shared conformance
+corpus, and the coverage and `PositionReport` deltas.
+
+Every other constrained String shape — the remaining `length + pattern`
+declarations, multiple pattern alternatives, explicit `whiteSpace` profiles,
+`NATO_SpecialWordsType`, `VisibleString*` — and every direct field-local
+constrained String remain unsupported and fail closed. Ordinary unconstrained
+`String` is unchanged.

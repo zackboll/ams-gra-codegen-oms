@@ -430,7 +430,8 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
             && constrains_string(&declaration.constraints)
         {
             match string_profile(kind, &declaration.constraints) {
-                Ok(Some(StringProfile::UciSchemaVersion)) => {}
+                Ok(Some(StringProfile::UciSchemaVersion))
+                | Ok(Some(StringProfile::UniversallyUniqueIdentifier)) => {}
                 Ok(None) => unreachable!("constrains_string gates this branch"),
                 Err(reason) => {
                     return unsupported(format!("{reason} on {}", declaration.name.local_name));
@@ -910,19 +911,135 @@ fn render_string_profile_declaration(
     constraints: &ConstraintSet,
     name: &str,
 ) -> Result<(), CodegenError> {
-    match string_profile(PrimitiveKind::String, constraints) {
-        Ok(Some(StringProfile::UciSchemaVersion)) => {}
+    let template = match string_profile(PrimitiveKind::String, constraints) {
+        Ok(Some(StringProfile::UciSchemaVersion)) => CPP_SCHEMA_VERSION_TEMPLATE,
+        Ok(Some(StringProfile::UniversallyUniqueIdentifier)) => CPP_UUID_TEMPLATE,
         Ok(None) => return unsupported(format!("unconstrained String on {name}")),
         Err(reason) => return unsupported(format!("{reason} on {name}")),
-    }
-    writeln!(
-        output,
-        "{}",
-        CPP_SCHEMA_VERSION_TEMPLATE.replace("{name}", name)
-    )
-    .expect("writing to String cannot fail");
+    };
+    writeln!(output, "{}", template.replace("{name}", name))
+        .expect("writing to String cannot fail");
     Ok(())
 }
+
+/// The generated C++17 UUID carrier, with `{name}` substituted.
+///
+/// # Validation order
+///
+/// 1. the `length` facet;
+/// 2. the authoritative pattern, evaluated positionally.
+///
+/// Both are enforced; the facet is checked explicitly rather than assumed
+/// redundant, so no facet is silently lost.
+///
+/// # No regular-expression engine
+///
+/// Both branches of the authoritative expression are fixed-width, so every
+/// position's character class is determined by its index alone. `<regex>` is
+/// deliberately not used: its grammars are ECMAScript/POSIX, not XML Schema.
+/// Patterns are anchored, which the fixed length requirement enforces.
+///
+/// The nil branch is checked first and separately, because it is **not**
+/// redundant: the general branch requires a version nibble in `[1-5]` and a
+/// variant nibble in `[89abAB]`, and the nil UUID has `0` in both.
+///
+/// # Only the schema's rules
+///
+/// The version and variant classes come from the XSD text itself; nothing
+/// further is imposed. The stored value is the accepted spelling, with letter
+/// case preserved.
+///
+/// # Byte indexing is sound
+///
+/// The accepted alphabet is entirely ASCII, so byte offsets equal character
+/// offsets for every value that can be accepted and `size()` is an XSD
+/// *character* count. Character classes are tested with explicit ASCII range
+/// comparisons rather than `<cctype>`, whose classification is locale-dependent
+/// and would admit non-ASCII bytes under some locales.
+///
+/// # Strictness
+///
+/// Compiles clean under `-std=c++17 -Wall -Wextra -pedantic-errors` using only
+/// `<string>`, `<string_view>`, and `<optional>`, which the generated header
+/// already includes. No external library.
+const CPP_UUID_TEMPLATE: &str = r##"class {name} {
+public:
+    // Validate `value` against the authoritative UCI UUID profile.
+    //
+    // Returns std::nullopt if the `length` facet or the pattern rejects. The
+    // stored text is the input unchanged: this profile inherits
+    // `whiteSpace = preserve`, so no trimming or collapsing is performed, and
+    // hexadecimal letter case is preserved exactly as supplied.
+    static std::optional<{name}> create(std::string_view value) {
+        if (!is_uuid(value)) {
+            return std::nullopt;
+        }
+        return {name}(std::string(value));
+    }
+
+    // The stored, validated lexical representation.
+    const std::string& value() const noexcept { return value_; }
+
+private:
+    explicit {name}(std::string validated) : value_(std::move(validated)) {}
+
+    // length = 36 characters.
+    static constexpr std::size_t kLength = 36;
+
+    // The whole gate: the `length` facet AND the pattern.
+    static bool is_uuid(std::string_view text) {
+        return text.size() == kLength && matches_pattern(text);
+    }
+
+    // The [a-fA-F0-9] class.
+    static bool is_hex(char character) noexcept {
+        return (character >= '0' && character <= '9')
+            || (character >= 'a' && character <= 'f')
+            || (character >= 'A' && character <= 'F');
+    }
+
+    // Decide the authoritative pattern positionally. `text` is already known
+    // to be 36 characters long, so every index below is in range.
+    static bool matches_pattern(std::string_view text) {
+        // Branch A: the exact nil literal, which branch B rejects.
+        if (text == "00000000-0000-0000-0000-000000000000") {
+            return true;
+        }
+        // Branch B: 8-4-4-4-12 with constrained version and variant nibbles.
+        for (std::size_t index = 0; index < kLength; ++index) {
+            const char character = text[index];
+            bool accepted = false;
+            switch (index) {
+            case 8:
+            case 13:
+            case 18:
+            case 23:
+                accepted = character == '-';
+                break;
+            case 14:
+                // The version nibble: [1-5].
+                accepted = character >= '1' && character <= '5';
+                break;
+            case 19:
+                // The variant nibble: [89abAB].
+                accepted = character == '8' || character == '9'
+                    || character == 'a' || character == 'b'
+                    || character == 'A' || character == 'B';
+                break;
+            default:
+                accepted = is_hex(character);
+                break;
+            }
+            if (!accepted) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    std::string value_;
+};
+"##;
 
 /// The generated C++17 schema-version carrier, with `{name}` substituted.
 ///

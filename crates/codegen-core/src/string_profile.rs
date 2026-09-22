@@ -1,11 +1,10 @@
-//! Task 037 shared semantics for named constrained XML Schema `string`
-//! declarations.
+//! Shared semantics for named constrained XML Schema `string` declarations.
 //!
 //! This module answers exactly one question, once, for `backend-ada`,
 //! `backend-rust`, `backend-cpp`, and `CoverageAnalysis`:
 //!
-//! > Is this named declaration a constrained `string` declaration that Task
-//! > 037 fully implements?
+//! > Is this named declaration a constrained `string` declaration that the
+//! > generator fully implements?
 //!
 //! It is the String-side analogue of Task 036's [`crate::temporal`]
 //! classifier, and exists for the same reason: four independent readings of
@@ -13,7 +12,18 @@
 //! about which declarations are renderable while coverage measures a fourth
 //! opinion. Every consumer calls [`string_profile`].
 //!
-//! # The one supported profile
+//! # The supported profiles
+//!
+//! Two, each recognized by an exact effective facet shape:
+//!
+//! * [`StringProfile::UciSchemaVersion`] (Task 037) -- see below;
+//! * [`StringProfile::UniversallyUniqueIdentifier`] (Task 038) -- see the
+//!   dedicated section further down.
+//!
+//! Neither is recognized by declaration name, and a constrained `string`
+//! matching neither shape fails closed.
+//!
+//! # The Task 037 schema-version profile
 //!
 //! [`StringProfile::UciSchemaVersion`]: a [`PrimitiveKind::String`]
 //! declaration whose *effective* [`ConstraintSet`] carries exactly
@@ -137,6 +147,147 @@
 //! ignores that facet. Task 037 loses no facet silently: the effective
 //! constraint set is matched in full, and every matched facet is enforced.
 //!
+//! # The Task 038 UUID profile
+//!
+//! [`StringProfile::UniversallyUniqueIdentifier`]: a [`PrimitiveKind::String`]
+//! declaration whose *effective* [`ConstraintSet`] carries exactly
+//! `length = 36`, no `minLength`, no `maxLength`, no explicit `whiteSpace`, and
+//! exactly one pattern group holding exactly one XML-Schema-dialect alternative
+//! whose expression is [`UCI_UUID_PATTERN`] verbatim.
+//!
+//! Read from the pinned release bytes, which are byte-identical for this
+//! declaration after end-of-line normalization:
+//!
+//! ```xml
+//! <xs:simpleType name="UniversallyUniqueIdentifierType" uci:version="000.001.000.000">
+//!   <xs:annotation>
+//!     <xs:documentation>A UUID is a 128-bit number (32 hexadecimal digits, 16
+//!     bytes) that is conformant to any version of variant 1 or nil UUID, as
+//!     described in IETF RFC 4122.</xs:documentation>
+//!   </xs:annotation>
+//!   <xs:restriction base="xs:string">
+//!     <xs:length value="36"/>
+//!     <xs:pattern value="(0{8}(-0{4}){3}-0{12})|([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12})"/>
+//!   </xs:restriction>
+//! </xs:simpleType>
+//! ```
+//!
+//! * UCI 2.5 `093610b7753944059360d3236770ab446d039556`:
+//!   `UCI_MessageDefinitions_v2_5_0.xsd:145719`
+//! * UCI 2.6 `78eb61b6112c8bffa40820c33124b57787fc5bd9`:
+//!   `UCI_MessageDefinitions_v2_6_0.xsd:145967`
+//!
+//! Restriction-chain depth is 1: the immediate and only base is the primitive
+//! `xs:string`.
+//!
+//! ## One facet, one expression, internal alternation
+//!
+//! The schema contains **one** `<xs:pattern>` element, so the normalized IR is
+//! one pattern group holding **one** pattern expression. The `|` lives *inside*
+//! that single expression.
+//!
+//! This matters because Task 016's IR represents multiple `xs:pattern` facets
+//! at one restriction level as several alternatives in one group. That
+//! machinery is **not** involved here, and a classifier demanding two
+//! alternatives would reject the authoritative declaration outright. An earlier
+//! inventory abbreviated this profile behind an ellipsis, which suggested a
+//! two-alternative shape; that reading is corrected here against the pinned
+//! bytes.
+//!
+//! ## The two internal branches
+//!
+//! ```text
+//! A   0{8}(-0{4}){3}-0{12}
+//!     the nil UUID, and nothing else
+//!
+//! B   [a-fA-F0-9]{8} - [a-fA-F0-9]{4} - [1-5][a-fA-F0-9]{3}
+//!                    - [89abAB][a-fA-F0-9]{3} - [a-fA-F0-9]{12}
+//! ```
+//!
+//! Branch A denotes exactly one string, `00000000-0000-0000-0000-000000000000`,
+//! because every atom is the literal `0` under a fixed quantifier.
+//!
+//! ## Branch A is *not* redundant
+//!
+//! It would be tempting to drop branch A on the grounds that `0` is a
+//! hexadecimal digit, making the nil UUID an instance of branch B. It is not.
+//! Branch B constrains two positions beyond plain hexadecimal:
+//!
+//! * the version nibble must be `[1-5]`, and nil's is `0`;
+//! * the variant nibble must be `[89abAB]`, and nil's is `0`.
+//!
+//! So branch B *rejects* the nil UUID, and branch A contributes exactly one
+//! value that is otherwise unreachable. The union must be implemented
+//! explicitly; collapsing it to branch B alone would reject the nil UUID, and
+//! collapsing it to a general 8-4-4-4-12 hexadecimal shape would accept values
+//! the schema forbids.
+//!
+//! ## Version and variant are schema constraints, not imported RFC policy
+//!
+//! `[1-5]` and `[89abAB]` are present in the authoritative pattern text, which
+//! matches the declaration's own documentation ("conformant to any version of
+//! variant 1 or nil UUID"). Enforcing them is implementing the schema, not
+//! importing RFC rules. Nothing *beyond* them is imposed: no RFC 9562 v6/v7/v8
+//! policy, no canonical-lowercase rule, no URN or brace syntax, no nil
+//! prohibition, and no conversion to a 128-bit integer.
+//!
+//! ## Why no regular-expression engine
+//!
+//! Both branches are fixed-width concatenations of character classes and
+//! literal hyphens, with no optional piece, no unbounded repetition, and no
+//! backtracking: every position's class is determined by its index alone.
+//! Deciding the expression is therefore a bounded positional test, implemented
+//! by the generated validators as:
+//!
+//! ```text
+//! length must be 36
+//! the exact nil literal is accepted outright                     (branch A)
+//! otherwise:                                                     (branch B)
+//!   indexes 8, 13, 18, 23 must be '-'
+//!   every other index must be [0-9a-fA-F]
+//!   index 14 must be [1-5]
+//!   index 19 must be [89abAB]
+//! ```
+//!
+//! The group widths `8-4-4-4-12` place the third group at indexes 14..17 and
+//! the fourth at 19..22, so index 14 is the version nibble and index 19 the
+//! variant nibble. XML Schema patterns are anchored (§4.3.4.3), which the fixed
+//! length requirement enforces directly.
+//!
+//! ## `length` is enforced independently
+//!
+//! Both branches are exactly 36 characters wide, so the facet is formally
+//! redundant for *this* expression. It is nevertheless required exactly by the
+//! classifier and checked explicitly by the validators, for the same reason the
+//! schema-version bounds are: recognizing a profile by pattern alone would
+//! silently accept a neighbouring declaration carrying the same pattern with a
+//! different `length`, and then generate a carrier that ignores that facet.
+//!
+//! ## Character counting
+//!
+//! The accepted alphabet is exactly `0-9`, `a-f`, `A-F`, and `-`, all ASCII.
+//! Every accepted value is therefore pure ASCII and its UTF-8 byte count equals
+//! its XSD character count, which is what licenses the generated Rust and C++
+//! validators to use byte length for a facet XSD defines over characters. Ada's
+//! `String'Length` is a character count already. This proof is specific to this
+//! profile and is re-derived, not assumed, for any future one.
+//!
+//! ## Case is preserved
+//!
+//! `[a-fA-F0-9]` admits both letter cases, and `[89abAB]` admits `a`/`b` and
+//! `A`/`B`. Accepted values are stored exactly as supplied: this remains an
+//! `xs:string` carrier, whose value equality is equality of the stored text, so
+//! two otherwise-valid UUIDs differing only in letter case are *distinct*
+//! values. No case-insensitive comparison is introduced.
+//!
+//! ## `whiteSpace`
+//!
+//! Like the schema-version profile, this declaration adds no `whiteSpace`
+//! facet, so `xs:string`'s intrinsic `preserve` applies and normalization is
+//! the identity. No whitespace character appears in either branch, so a value
+//! carrying leading, trailing, or interior whitespace is rejected rather than
+//! repaired.
+//!
 //! # What this classifier does not decide
 //!
 //! It says nothing about *direct* `TypeRefTarget::Primitive(String)` fields, or
@@ -166,6 +317,35 @@ pub const UCI_SCHEMA_VERSION_MIN_LENGTH: u64 = 7;
 /// The authoritative `maxLength`, which is also the pattern's own maximum.
 pub const UCI_SCHEMA_VERSION_MAX_LENGTH: u64 = 57;
 
+/// The authoritative UCI UUID lexical restriction, verbatim.
+///
+/// Reconfirmed from the pinned release bytes at
+/// `UCI_MessageDefinitions_v2_5_0.xsd:145719` (UCI 2.5) and
+/// `UCI_MessageDefinitions_v2_6_0.xsd:145967` (UCI 2.6), which are
+/// byte-identical for this declaration after end-of-line normalization.
+///
+/// This is the text of the declaration's **single** `<xs:pattern>` facet, and
+/// therefore of the single `PatternExpression` in the normalized IR. The `|` is
+/// internal to this one expression; it is not two IR alternatives. The string
+/// is compared for exact equality and is never parsed as a regular expression.
+pub const UCI_UUID_PATTERN: &str = "(0{8}(-0{4}){3}-0{12})|([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12})";
+
+/// The authoritative `length` facet: exactly 36 characters.
+///
+/// Both internal branches are 36 characters wide, so this is formally implied
+/// by the pattern. It is required exactly by the classifier and enforced
+/// explicitly by the generated validators regardless, so a neighbouring
+/// declaration carrying the same pattern under a different `length` cannot be
+/// mistaken for this profile.
+pub const UCI_UUID_LENGTH: u64 = 36;
+
+/// The one value accepted by the pattern's nil branch, and by nothing else.
+///
+/// The general branch rejects it, because its version nibble is `0` (outside
+/// `[1-5]`) and its variant nibble is `0` (outside `[89abAB]`). The nil branch
+/// is therefore load-bearing rather than redundant.
+pub const UCI_UUID_NIL: &str = "00000000-0000-0000-0000-000000000000";
+
 /// A named constrained-`string` shape that Task 037 fully implements.
 ///
 /// Each future variant must arrive with its own evidence, its own validator,
@@ -179,6 +359,16 @@ pub enum StringProfile {
     /// Generated code stores the caller's string unchanged once it has been
     /// accepted by both the pattern and the length facets.
     UciSchemaVersion,
+
+    /// The UCI UUID profile: `length 36` plus the single authoritative pattern
+    /// whose internal `|` separates the exact nil UUID from a
+    /// version-`[1-5]` / variant-`[89abAB]` hexadecimal form, over
+    /// `whiteSpace=preserve`.
+    ///
+    /// Generated code stores the caller's string unchanged, preserving
+    /// hexadecimal letter case, once it has been accepted by the pattern and
+    /// the `length` facet.
+    UniversallyUniqueIdentifier,
 }
 
 /// Why a constrained `string` declaration falls outside the Task 037 subset.
@@ -269,65 +459,88 @@ pub fn string_profile(
     if !constrains_string(constraints) {
         return Ok(None);
     }
-    schema_version_profile(constraints).map(Some)
+    // Each implemented profile is offered the constraint set in turn, and each
+    // decides independently. Failing to be the schema-version profile must not
+    // become an error before the UUID profile has had its chance, which is what
+    // the single-profile shape this replaced would have done.
+    if matches_schema_version_profile(constraints) {
+        return Ok(Some(StringProfile::UciSchemaVersion));
+    }
+    if matches_uuid_profile(constraints) {
+        return Ok(Some(StringProfile::UniversallyUniqueIdentifier));
+    }
+    Err(StringProfileError::UnsupportedConstraints)
 }
 
-/// Decide whether a constrained `string`'s effective facets are the supported
-/// profile.
+/// Whether these effective facets are exactly the schema-version profile.
 ///
-/// The shape is checked structurally against the normalized Task 016 IR --
-/// facet values, group count, alternative count, dialect, expression text --
-/// never against a rendered debug string, which would silently accept a
-/// formatting change, and never against the declaration's name.
-fn schema_version_profile(
-    constraints: &ConstraintSet,
-) -> Result<StringProfile, StringProfileError> {
-    // Numeric bounds are not applicable to `string` at all; their presence
-    // means this IR did not come from a well-formed `string` restriction.
-    if constraints.min_inclusive.is_some()
-        || constraints.max_inclusive.is_some()
-        || constraints.min_exclusive.is_some()
-        || constraints.max_exclusive.is_some()
-    {
-        return Err(StringProfileError::UnsupportedConstraints);
-    }
-    // `length` is mutually exclusive with min/maxLength in the authoritative
-    // profile, and the `length + pattern` family (65 UCI declarations,
-    // including the UUID type) is explicitly *not* implemented here.
+/// Matched structurally against the normalized Task 016 IR -- facet values,
+/// group count, alternative count, dialect, expression text -- never against a
+/// rendered debug string, which would silently accept a formatting change, and
+/// never against the declaration's name.
+fn matches_schema_version_profile(constraints: &ConstraintSet) -> bool {
+    // `length` is mutually exclusive with min/maxLength in this profile.
     if constraints.length.is_some() {
-        return Err(StringProfileError::UnsupportedConstraints);
+        return false;
     }
     // The exact authoritative bounds. A same-pattern declaration with
     // different bounds is a different type and fails closed.
     if constraints.min_length != Some(UCI_SCHEMA_VERSION_MIN_LENGTH)
         || constraints.max_length != Some(UCI_SCHEMA_VERSION_MAX_LENGTH)
     {
-        return Err(StringProfileError::UnsupportedConstraints);
+        return false;
     }
-    // `xs:string`'s intrinsic `whiteSpace` is `preserve` and is *not* fixed, so
-    // an explicit facet here would be a real, enforceable narrowing of the
-    // lexical space -- exactly the `WhitespaceVisibleString*` family. Task 037
-    // implements `preserve` only, so an explicit facet fails closed instead of
-    // being assumed harmless.
+    has_only_pattern(constraints, UCI_SCHEMA_VERSION_PATTERN)
+}
+
+/// Whether these effective facets are exactly the UUID profile.
+///
+/// Requires the single `length` facet and, critically, exactly **one** pattern
+/// group holding exactly **one** expression: the authoritative declaration has
+/// one `<xs:pattern>` element whose alternation is internal to its text.
+fn matches_uuid_profile(constraints: &ConstraintSet) -> bool {
+    // `length` exactly, and no bounds facets: a same-pattern declaration using
+    // minLength/maxLength, or a different length, is a different type.
+    if constraints.length != Some(UCI_UUID_LENGTH)
+        || constraints.min_length.is_some()
+        || constraints.max_length.is_some()
+    {
+        return false;
+    }
+    has_only_pattern(constraints, UCI_UUID_PATTERN)
+}
+
+/// The facet requirements both implemented profiles share.
+///
+/// Numeric facets are not applicable to `string` at all; their presence means
+/// this IR did not come from a well-formed `string` restriction. An explicit
+/// `whiteSpace` facet is a real, enforceable narrowing for `xs:string` (whose
+/// intrinsic policy is `preserve` and is *not* fixed) -- exactly the
+/// `WhitespaceVisibleString*` family -- so it fails closed rather than being
+/// assumed harmless.
+///
+/// Exactly one restriction level carrying exactly one expression is required.
+/// Multiple groups are AND-ed and multiple alternatives are OR-ed (§4.3.4.3);
+/// neither combination is implemented, so both fail closed rather than being
+/// approximated by a validator that would ignore part of the constraint.
+fn has_only_pattern(constraints: &ConstraintSet, expected: &str) -> bool {
+    if constraints.min_inclusive.is_some()
+        || constraints.max_inclusive.is_some()
+        || constraints.min_exclusive.is_some()
+        || constraints.max_exclusive.is_some()
+    {
+        return false;
+    }
     if constraints.lexical.white_space.is_some() {
-        return Err(StringProfileError::UnsupportedConstraints);
+        return false;
     }
-    // Exactly one restriction level, carrying exactly one alternative. Two
-    // groups are AND-ed and two alternatives are OR-ed (§4.3.4.3); the
-    // equivalence proof in this module's header covers neither, so both fail
-    // closed rather than being approximated.
     let [group] = constraints.lexical.pattern_groups.as_slice() else {
-        return Err(StringProfileError::UnsupportedConstraints);
+        return false;
     };
     let [alternative] = group.alternatives.as_slice() else {
-        return Err(StringProfileError::UnsupportedConstraints);
+        return false;
     };
-    if alternative.dialect != PatternDialect::XmlSchema
-        || alternative.expression != UCI_SCHEMA_VERSION_PATTERN
-    {
-        return Err(StringProfileError::UnsupportedConstraints);
-    }
-    Ok(StringProfile::UciSchemaVersion)
+    alternative.dialect == PatternDialect::XmlSchema && alternative.expression == expected
 }
 
 /// Whether a schema emits at least one Task 037 String value carrier.
@@ -366,6 +579,202 @@ mod tests {
             },
             ..ConstraintSet::default()
         }
+    }
+
+    /// The authoritative UUID profile, built from the normalized IR shape
+    /// observed in both pinned releases: ONE group holding ONE expression.
+    fn uuid() -> ConstraintSet {
+        ConstraintSet {
+            length: Some(UCI_UUID_LENGTH),
+            lexical: LexicalConstraintSet {
+                pattern_groups: vec![PatternGroup {
+                    alternatives: vec![PatternExpression::xml_schema(UCI_UUID_PATTERN)],
+                }],
+                white_space: None,
+            },
+            ..ConstraintSet::default()
+        }
+    }
+
+    /// The UUID profile is recognized from kind + effective facets alone.
+    #[test]
+    fn uci_uuid_is_a_supported_profile() {
+        assert_eq!(
+            string_profile(PrimitiveKind::String, &uuid()),
+            Ok(Some(StringProfile::UniversallyUniqueIdentifier))
+        );
+    }
+
+    /// The authoritative declaration has exactly ONE `<xs:pattern>` element, so
+    /// the IR carries one group with one expression and the `|` is internal to
+    /// that expression's text.
+    ///
+    /// This is the correction that the pinned bytes forced: an abbreviated
+    /// inventory had suggested two IR alternatives. A classifier demanding two
+    /// would reject the real UCI declaration, so the single-expression shape is
+    /// pinned here explicitly.
+    #[test]
+    fn the_uuid_profile_is_one_group_holding_one_expression() {
+        let constraints = uuid();
+        assert_eq!(constraints.lexical.pattern_groups.len(), 1);
+        assert_eq!(constraints.lexical.pattern_groups[0].alternatives.len(), 1);
+        assert!(
+            UCI_UUID_PATTERN.contains('|'),
+            "the alternation is internal to the single expression"
+        );
+
+        // Splitting the one expression into two IR alternatives is a DIFFERENT
+        // declaration shape and is not this profile.
+        let mut split = uuid();
+        split.lexical.pattern_groups = vec![PatternGroup {
+            alternatives: vec![
+                PatternExpression::xml_schema("(0{8}(-0{4}){3}-0{12})"),
+                PatternExpression::xml_schema(
+                    "([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12})",
+                ),
+            ],
+        }];
+        assert_eq!(
+            string_profile(PrimitiveKind::String, &split),
+            Err(StringProfileError::UnsupportedConstraints)
+        );
+    }
+
+    /// The exact expression text, reproduced from the pinned release bytes.
+    ///
+    /// Pins the two constraints an abbreviating summary loses: the version
+    /// class `[1-5]` and the variant class `[89abAB]`.
+    #[test]
+    fn the_uuid_pattern_is_the_exact_authoritative_text() {
+        assert_eq!(
+            UCI_UUID_PATTERN,
+            "(0{8}(-0{4}){3}-0{12})|([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12})"
+        );
+        assert!(UCI_UUID_PATTERN.contains("[1-5]"), "version class");
+        assert!(UCI_UUID_PATTERN.contains("[89abAB]"), "variant class");
+        assert_eq!(UCI_UUID_NIL.len(), 36);
+        assert_eq!(UCI_UUID_LENGTH, 36);
+    }
+
+    /// Every near-miss of the UUID profile fails closed.
+    #[test]
+    fn uuid_near_misses_are_unsupported() {
+        let mut cases: Vec<(&str, ConstraintSet)> = Vec::new();
+
+        let mut no_length = uuid();
+        no_length.length = None;
+        cases.push(("length absent", no_length));
+
+        let mut wrong_length = uuid();
+        wrong_length.length = Some(37);
+        cases.push(("length 37", wrong_length));
+
+        let mut short_length = uuid();
+        short_length.length = Some(35);
+        cases.push(("length 35", short_length));
+
+        // The same pattern expressed with bounds instead of `length`.
+        let mut bounds = uuid();
+        bounds.length = None;
+        bounds.min_length = Some(36);
+        bounds.max_length = Some(36);
+        cases.push(("minLength/maxLength instead of length", bounds));
+
+        let mut with_bounds = uuid();
+        with_bounds.min_length = Some(36);
+        cases.push(("length plus minLength", with_bounds));
+
+        let mut second_group = uuid();
+        second_group.lexical.pattern_groups.push(PatternGroup {
+            alternatives: vec![PatternExpression::xml_schema(UCI_UUID_PATTERN)],
+        });
+        cases.push(("second pattern group", second_group));
+
+        let mut extra_alternative = uuid();
+        extra_alternative.lexical.pattern_groups[0]
+            .alternatives
+            .push(PatternExpression::xml_schema(UCI_UUID_PATTERN));
+        cases.push(("extra alternative", extra_alternative));
+
+        let mut no_pattern = uuid();
+        no_pattern.lexical.pattern_groups.clear();
+        cases.push(("length only, no pattern", no_pattern));
+
+        // The abbreviated general-hexadecimal shape, WITHOUT the authoritative
+        // version/variant classes. It is a strictly larger lexical space and
+        // must not be mistaken for this profile.
+        let mut unconstrained_hex = uuid();
+        unconstrained_hex.lexical.pattern_groups = vec![PatternGroup {
+            alternatives: vec![PatternExpression::xml_schema(
+                "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}",
+            )],
+        }];
+        cases.push((
+            "general hexadecimal without version/variant",
+            unconstrained_hex,
+        ));
+
+        let mut explicit_ws = uuid();
+        explicit_ws.lexical.white_space = Some(WhiteSpacePolicy::Collapse);
+        cases.push(("explicit whiteSpace", explicit_ws));
+
+        let mut numeric = uuid();
+        numeric.min_inclusive = Some(NumericValue::Integer(0));
+        cases.push(("numeric facet", numeric));
+
+        for (label, constraints) in cases {
+            assert_eq!(
+                string_profile(PrimitiveKind::String, &constraints),
+                Err(StringProfileError::UnsupportedConstraints),
+                "{label} must fail closed"
+            );
+        }
+    }
+
+    /// Adding the UUID profile must not disturb the schema-version profile, and
+    /// the two must not be confusable with each other.
+    ///
+    /// The crossed cases are the regression that matters for the refactor: a
+    /// dispatch that errored as soon as the schema-version shape failed would
+    /// never have reached the UUID matcher at all.
+    #[test]
+    fn the_two_profiles_stay_distinct() {
+        assert_eq!(
+            string_profile(PrimitiveKind::String, &schema_version()),
+            Ok(Some(StringProfile::UciSchemaVersion))
+        );
+        assert_ne!(UCI_SCHEMA_VERSION_PATTERN, UCI_UUID_PATTERN);
+
+        // Each profile's pattern under the other's facets.
+        let mut crossed = uuid();
+        crossed.lexical.pattern_groups[0].alternatives[0] =
+            PatternExpression::xml_schema(UCI_SCHEMA_VERSION_PATTERN);
+        assert_eq!(
+            string_profile(PrimitiveKind::String, &crossed),
+            Err(StringProfileError::UnsupportedConstraints)
+        );
+
+        let mut swapped = schema_version();
+        swapped.lexical.pattern_groups[0].alternatives[0] =
+            PatternExpression::xml_schema(UCI_UUID_PATTERN);
+        assert_eq!(
+            string_profile(PrimitiveKind::String, &swapped),
+            Err(StringProfileError::UnsupportedConstraints)
+        );
+    }
+
+    /// The UUID alphabet is ASCII-only, which is what licenses the generated
+    /// Rust/C++ validators to count bytes for a character-defined facet.
+    #[test]
+    fn the_uuid_alphabet_is_entirely_ascii() {
+        let alphabet: String = ('0'..='9')
+            .chain('a'..='f')
+            .chain('A'..='F')
+            .chain(['-'])
+            .collect();
+        assert!(alphabet.is_ascii());
+        assert_eq!(alphabet.len(), alphabet.chars().count());
+        assert!(UCI_UUID_NIL.is_ascii());
     }
 
     /// The single supported profile, recognized from kind + effective facets.

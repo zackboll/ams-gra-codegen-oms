@@ -1,8 +1,8 @@
-//! Task 037: the generated Ada schema-version carrier, compiled and run.
+//! Task 038: the generated Ada UUID carrier, compiled and run.
 //!
-//! Generated text alone would not prove the validator behaves as XML Schema
-//! requires, so every case in the shared corpus is executed against a real
-//! GNAT-compiled program.
+//! Generated text alone would not prove the validator behaves as the
+//! authoritative XSD requires, so every case in the shared corpus is executed
+//! against a real GNAT-compiled program.
 
 mod common;
 
@@ -15,22 +15,18 @@ use std::process::Command;
 
 const CLOSED: GenerationWorld = GenerationWorld::ClosedSchemaSet;
 
-fn fixture(name: &str) -> ams_gra_oms_ir::SchemaIr {
+fn uuid_schema() -> ams_gra_oms_ir::SchemaIr {
     load_schema_document(
         &Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join(format!("../xsd-frontend/tests/fixtures/{name}")),
+            .join("../xsd-frontend/tests/fixtures/backend-string-uuid.xsd"),
     )
-    .unwrap_or_else(|error| panic!("fixture {name} should parse: {error:?}"))
-}
-
-fn string_schema() -> ams_gra_oms_ir::SchemaIr {
-    fixture("backend-string-schema-version.xsd")
+    .expect("uuid fixture should parse")
 }
 
 /// The generated API shape, asserted before anything is compiled.
 #[test]
-fn generated_schema_version_api_is_an_opaque_validated_carrier() {
-    let spec = generate(&string_schema(), CLOSED).expect("string fixture must generate");
+fn generated_uuid_api_is_an_opaque_validated_carrier() {
+    let spec = generate(&uuid_schema(), CLOSED).expect("uuid fixture must generate");
     let (visible, private_part) = spec
         .split_once("\nprivate\n")
         .expect("a String-profile schema must emit a private part");
@@ -38,21 +34,18 @@ fn generated_schema_version_api_is_an_opaque_validated_carrier() {
     // The visible part is opaque: only the private type and the two
     // operations. No representation is nameable from a client, so no aggregate
     // or conversion can bypass `Create`.
-    assert!(visible.contains("type SchemaVersion is private;"));
-    assert!(visible.contains("function Create (Value : String) return SchemaVersion;"));
-    assert!(visible.contains("function Value (Item : SchemaVersion) return String;"));
-    // The carrier's own component name is not visible, so a client cannot write
-    // an aggregate or a conversion for it.
+    assert!(visible.contains("type Uuid is private;"));
+    assert!(visible.contains("function Create (Value : String) return Uuid;"));
+    assert!(visible.contains("function Value (Item : Uuid) return String;"));
     assert!(!visible.contains("Text :"));
 
     // The representation lives in the private completion, reusing the
     // package's existing owned-string type.
-    assert!(private_part.contains("type SchemaVersion is record"));
+    assert!(private_part.contains("type Uuid is record"));
     assert!(private_part.contains("Text : Standard.Ada.Strings.Unbounded.Unbounded_String;"));
 
-    // Unlike the Task 036 carrier, predefined "=" IS the correct XML Schema
-    // semantics here, and the generated comment says so. Still no ordering:
-    // XML Schema defines no order relation on `string`.
+    // Predefined "=" IS the correct XML Schema semantics for xs:string, and the
+    // generated comment says so. Still no ordering.
     assert!(visible.contains("IS XML Schema value equality"));
     for forbidden in ["function \"<\"", "function \"<=\"", "function Compare"] {
         assert!(!spec.contains(forbidden), "must not declare {forbidden}");
@@ -63,52 +56,32 @@ fn generated_schema_version_api_is_an_opaque_validated_carrier() {
         assert!(!spec.contains(forbidden), "must not reference {forbidden}");
     }
 
-    // Several supported declarations coexist, which requires Ada Create/Value
-    // overload resolution to work; GNAT proves it in the runtime test below.
-    assert!(visible.contains("type PeerVersion is private;"));
-    assert!(visible.contains("function Create (Value : String) return PeerVersion;"));
+    // Several supported declarations coexist, spanning BOTH String profiles,
+    // which requires Ada Create/Value overload resolution to work.
+    assert!(visible.contains("type PeerUuid is private;"));
+    assert!(visible.contains("function Create (Value : String) return PeerUuid;"));
+    assert!(visible.contains("type SchemaVersion is private;"));
+    assert!(visible.contains("function Create (Value : String) return SchemaVersion;"));
 
     // Task 034 composition: the optional named occurrence reuses the existing
-    // per-field wrapper, with no optional-String-profile special case.
-    assert!(spec.contains("type Payload_Negotiated_Optional"));
-    assert!(spec.contains("Value : SchemaVersion;"));
+    // per-field wrapper, with no optional-UUID special case.
+    assert!(spec.contains("type Payload_Correlation_Optional"));
+    assert!(spec.contains("Value : Uuid;"));
 
     // Ordinary unconstrained String keeps its existing plain representation.
     assert!(spec.contains("Label : Standard.Ada.Strings.Unbounded.Unbounded_String;"));
 }
 
-/// A schema with neither validator-backed carrier must not gain a body.
-///
-/// Task 037 generalized the existing body predicate rather than adding a
-/// second mechanism, so this must still hold for unrelated schemas.
-#[test]
-fn schemas_without_a_validated_carrier_emit_no_body() {
-    for name in ["track.xsd", "backend-constrained-floating.xsd"] {
-        let schema = fixture(name);
-        assert_eq!(
-            generate_body(&schema, CLOSED).expect("body generation must not fail"),
-            None,
-            "{name} must not gain an Ada package body"
-        );
-    }
-    // The String-profile fixture does need one.
-    assert!(
-        generate_body(&string_schema(), CLOSED)
-            .expect("body generation must not fail")
-            .is_some()
-    );
-}
-
 /// Every shared-corpus case, executed against the GNAT-compiled generated
 /// package. `Create` must raise `Constraint_Error` on every invalid case.
 #[test]
-fn generated_schema_version_validator_matches_the_shared_corpus_under_gnat() {
-    let schema = string_schema();
-    let spec = generate(&schema, CLOSED).expect("string fixture must generate");
+fn generated_uuid_validator_matches_the_shared_corpus_under_gnat() {
+    let schema = uuid_schema();
+    let spec = generate(&schema, CLOSED).expect("uuid fixture must generate");
     let body = generate_body(&schema, CLOSED)
         .expect("body generation must not fail")
         .expect("a String-profile schema must emit a package body");
-    let cases = common::load_corpus(&common::string_corpus_path());
+    let cases = common::load_corpus(&common::uuid_corpus_path());
 
     if Command::new("gnatmake").arg("--version").output().is_err() {
         assert!(
@@ -119,16 +92,16 @@ fn generated_schema_version_validator_matches_the_shared_corpus_under_gnat() {
     }
 
     let mut probe = String::from(
-        "with Ada.Text_IO;\nwith Test.Versioning;\n\n\
+        "with Ada.Text_IO;\nwith Test.Identity;\n\n\
          procedure Probe is\n\
          \x20  use Ada.Text_IO;\n\
-         \x20  use type Test.Versioning.SchemaVersion;\n\
+         \x20  use type Test.Identity.Uuid;\n\
          \x20  Failures : Natural := 0;\n\n\
          \x20  procedure Expect_Valid (Input, Stored, Label : String) is\n\
-         \x20     Made : constant Test.Versioning.SchemaVersion :=\n\
-         \x20       Test.Versioning.Create (Input);\n\
+         \x20     Made : constant Test.Identity.Uuid :=\n\
+         \x20       Test.Identity.Create (Input);\n\
          \x20  begin\n\
-         \x20     if Test.Versioning.Value (Made) /= Stored then\n\
+         \x20     if Test.Identity.Value (Made) /= Stored then\n\
          \x20        Put_Line (\"bad storage: \" & Label);\n\
          \x20        Failures := Failures + 1;\n\
          \x20     end if;\n\
@@ -140,10 +113,10 @@ fn generated_schema_version_validator_matches_the_shared_corpus_under_gnat() {
          \x20  procedure Expect_Invalid (Input, Label : String) is\n\
          \x20  begin\n\
          \x20     declare\n\
-         \x20        Ignored : constant Test.Versioning.SchemaVersion :=\n\
-         \x20          Test.Versioning.Create (Input);\n\
+         \x20        Ignored : constant Test.Identity.Uuid :=\n\
+         \x20          Test.Identity.Create (Input);\n\
          \x20     begin\n\
-         \x20        if Test.Versioning.Value (Ignored)'Length >= 0 then\n\
+         \x20        if Test.Identity.Value (Ignored)'Length >= 0 then\n\
          \x20           Put_Line (\"must reject: \" & Label);\n\
          \x20           Failures := Failures + 1;\n\
          \x20        end if;\n\
@@ -168,11 +141,14 @@ fn generated_schema_version_validator_matches_the_shared_corpus_under_gnat() {
             }
         }
     }
-    // Predefined equality is a claimed property of the carrier, so it is
-    // exercised rather than merely asserted in the generated text.
+    // Predefined equality is a claimed property of the carrier, and it must
+    // remain CASE-SENSITIVE: two otherwise-valid UUIDs differing only in
+    // letter case are distinct xs:string values.
     probe.push_str(
-        "   if Test.Versioning.Create (\"002.5.0\") /= Test.Versioning.Create (\"002.5.0\")\n\
-         \x20    or else Test.Versioning.Create (\"002.5.0\") = Test.Versioning.Create (\"002.5.1\")\n\
+        "   if Test.Identity.Create (\"123e4567-e89b-12d3-a456-42661417400f\")\n\
+         \x20       /= Test.Identity.Create (\"123e4567-e89b-12d3-a456-42661417400f\")\n\
+         \x20    or else Test.Identity.Create (\"123e4567-e89b-12d3-a456-42661417400f\")\n\
+         \x20          = Test.Identity.Create (\"123E4567-E89B-12D3-A456-42661417400F\")\n\
          \x20  then\n\
          \x20     Put_Line (\"bad equality\");\n\
          \x20     Failures := Failures + 1;\n\
@@ -187,13 +163,13 @@ fn generated_schema_version_validator_matches_the_shared_corpus_under_gnat() {
          end Probe;\n",
     );
 
-    let directory = std::env::temp_dir().join("ams-gra-oms-task037-ada-string");
+    let directory = std::env::temp_dir().join("ams-gra-oms-task038-ada-uuid");
     let _ = std::fs::remove_dir_all(&directory);
     std::fs::create_dir_all(&directory).expect("create Ada probe directory");
     std::fs::write(directory.join("test.ads"), "package Test is\nend Test;\n")
         .expect("write Ada parent package");
-    std::fs::write(directory.join("test-versioning.ads"), &spec).expect("write generated spec");
-    std::fs::write(directory.join("test-versioning.adb"), &body).expect("write generated body");
+    std::fs::write(directory.join("test-identity.ads"), &spec).expect("write generated spec");
+    std::fs::write(directory.join("test-identity.adb"), &body).expect("write generated body");
     std::fs::write(directory.join("probe.adb"), &probe).expect("write Ada probe");
 
     let output = Command::new("gnatmake")
@@ -218,31 +194,16 @@ fn generated_schema_version_validator_matches_the_shared_corpus_under_gnat() {
     std::fs::remove_dir_all(&directory).expect("remove Ada probe directory");
 }
 
-/// Task 037: float, DateTime, and String-profile wrappers in one package.
+/// Task 038: a client cannot name or aggregate the private representation.
 ///
-/// Each of the three declarations emits a package-level `Create` and `Value`.
-/// Two of them are `Create (String) return _`, differing *only* in result
-/// type, which is the case the shared generated-callable name model depends on
-/// being legal. GNAT is the authority, so it is compiled rather than argued
-/// about. This is the Task 037 extension of the Task 036 overload evidence.
-///
-/// Skipped only where GNAT is absent, matching this file's probe policy.
+/// Only the compiler can prove this, so GNAT is asked rather than asserted at.
 #[test]
-fn float_temporal_and_string_create_value_overloads_compile_under_gnat() {
-    let schema = fixture("backend-string-mixed-callables.xsd");
-    let spec = generate(&schema, CLOSED).expect("mixed fixture must generate");
+fn the_private_uuid_representation_is_unreachable_from_a_client_under_gnat() {
+    let schema = uuid_schema();
+    let spec = generate(&schema, CLOSED).expect("uuid fixture must generate");
     let body = generate_body(&schema, CLOSED)
         .expect("body generation must not fail")
-        .expect("the validated carriers require a package body");
-
-    // All four wrappers really do emit the shared callable pair. `Identifier`
-    // is the Task 038 UUID carrier, making a THIRD `Create (String)` overload.
-    assert!(spec.contains("function Create (Value : Interfaces.IEEE_Float_64) return BurnRate;"));
-    for declaration in ["Instant", "SchemaVersion", "Identifier"] {
-        assert!(spec.contains(&format!(
-            "function Create (Value : String) return {declaration};"
-        )));
-    }
+        .expect("a String-profile schema must emit a package body");
 
     if Command::new("gnatmake").arg("--version").output().is_err() {
         assert!(
@@ -251,55 +212,43 @@ fn float_temporal_and_string_create_value_overloads_compile_under_gnat() {
         );
         return;
     }
-    let directory = std::env::temp_dir().join("ams-gra-oms-task037-ada-overloads");
+
+    let directory = std::env::temp_dir().join("ams-gra-oms-task038-ada-bypass");
     let _ = std::fs::remove_dir_all(&directory);
     std::fs::create_dir_all(&directory).expect("create Ada probe directory");
     std::fs::write(directory.join("test.ads"), "package Test is\nend Test;\n")
         .expect("write Ada parent package");
-    std::fs::write(directory.join("test-mixed.ads"), &spec).expect("write generated spec");
-    std::fs::write(directory.join("test-mixed.adb"), &body).expect("write generated body");
-    // A client that actually calls both `Create (String)` overloads, so an
-    // ambiguity would be a hard error rather than merely unexercised.
-    std::fs::write(
-        directory.join("probe.adb"),
-        "with Test.Mixed;\nwith Interfaces;\nuse type Interfaces.IEEE_Float_64;\n\n\
-         procedure Probe is\n\
-         \x20  Started : constant Test.Mixed.Instant :=\n\
-         \x20    Test.Mixed.Create (\"2026-09-20T12:34:56Z\");\n\
-         \x20  Version : constant Test.Mixed.SchemaVersion :=\n\
-         \x20    Test.Mixed.Create (\"002.5.0\");\n\
-         \x20  Ident : constant Test.Mixed.Identifier :=\n\
-         \x20    Test.Mixed.Create (\"123e4567-e89b-12d3-a456-426614174000\");\n\
-         \x20  Rate : constant Test.Mixed.BurnRate := Test.Mixed.Create (0.5);\n\
-         begin\n\
-         \x20  if Test.Mixed.Value (Started) = \"\"\n\
-         \x20    or else Test.Mixed.Value (Version) /= \"002.5.0\"\n\
-         \x20    or else Test.Mixed.Value (Ident)\n\
-         \x20         /= \"123e4567-e89b-12d3-a456-426614174000\"\n\
-         \x20    or else Test.Mixed.Value (Rate) < 0.0\n\
-         \x20  then\n\
-         \x20     raise Program_Error;\n\
-         \x20  end if;\n\
-         end Probe;\n",
-    )
-    .expect("write Ada probe");
+    std::fs::write(directory.join("test-identity.ads"), &spec).expect("write generated spec");
+    std::fs::write(directory.join("test-identity.adb"), &body).expect("write generated body");
 
-    let output = Command::new("gnatmake")
-        .current_dir(&directory)
-        .args(["-q", "probe.adb"])
-        .output()
-        .expect("gnatmake must run");
-    assert!(
-        output.status.success(),
-        "overloaded Create/Value across wrapper families must compile:\n{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert!(
-        Command::new(directory.join("probe"))
-            .status()
-            .expect("probe must run")
-            .success()
-    );
+    for (label, declarations) in [
+        (
+            "aggregate",
+            "   Bad : constant Test.Identity.Uuid :=\n\
+             \x20    (Text => Ada.Strings.Unbounded.To_Unbounded_String (\"nope\"));",
+        ),
+        (
+            "component read",
+            "   Made : constant Test.Identity.Uuid :=\n\
+             \x20    Test.Identity.Create (\"00000000-0000-0000-0000-000000000000\");\n\
+             \x20  Bad : constant Ada.Strings.Unbounded.Unbounded_String := Made.Text;",
+        ),
+    ] {
+        let probe = format!(
+            "with Test.Identity;\nwith Ada.Strings.Unbounded;\n\n\
+             procedure Probe is\n{declarations}\nbegin\n   null;\nend Probe;\n"
+        );
+        std::fs::write(directory.join("probe.adb"), &probe).expect("write Ada probe");
+        let output = Command::new("gnatmake")
+            .current_dir(&directory)
+            .args(["-q", "probe.adb"])
+            .output()
+            .expect("gnatmake must run");
+        assert!(
+            !output.status.success(),
+            "the {label} bypass must not compile"
+        );
+    }
     std::fs::remove_dir_all(&directory).expect("remove Ada probe directory");
 }
 

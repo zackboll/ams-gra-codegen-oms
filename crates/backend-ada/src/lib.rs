@@ -560,7 +560,8 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
             && constrains_string(&declaration.constraints)
         {
             match string_profile(kind, &declaration.constraints) {
-                Ok(Some(StringProfile::UciSchemaVersion)) => {}
+                Ok(Some(StringProfile::UciSchemaVersion))
+                | Ok(Some(StringProfile::UniversallyUniqueIdentifier)) => {}
                 Ok(None) => unreachable!("constrains_string gates this branch"),
                 Err(reason) => {
                     return unsupported(format!("{reason} on {}", declaration.name.local_name));
@@ -1199,27 +1200,38 @@ fn render_string_profile_declaration(
     constraints: &ConstraintSet,
     name: &str,
 ) -> Result<(), CodegenError> {
-    match string_profile(PrimitiveKind::String, constraints) {
-        Ok(Some(StringProfile::UciSchemaVersion)) => {}
+    let (profile, summary, facets) = match string_profile(PrimitiveKind::String, constraints) {
+        Ok(Some(StringProfile::UciSchemaVersion)) => (
+            StringProfile::UciSchemaVersion,
+            "A validated UCI schema-version string.",
+            "schema-version pattern and both length facets",
+        ),
+        Ok(Some(StringProfile::UniversallyUniqueIdentifier)) => (
+            StringProfile::UniversallyUniqueIdentifier,
+            "A validated UCI UUID string.",
+            "UUID pattern and the length facet",
+        ),
         Ok(None) => return unsupported(format!("unconstrained String on {name}")),
         Err(reason) => return unsupported(format!("{reason} on {name}")),
-    }
+    };
     // Visible part: an opaque handle plus the two operations a client may use.
     // The representation is not nameable from here, so no aggregate or
     // conversion can bypass `Create`.
     writeln!(
         output,
         concat!(
-            "   --  A validated UCI schema-version string.\n",
+            "   --  {summary}\n",
             "   --  Predefined \"=\" compares the stored representation, which for\n",
             "   --  xs:string IS XML Schema value equality.\n",
             "   type {name} is private;\n\n",
             "   --  Raises Constraint_Error unless Value matches the authoritative\n",
-            "   --  schema-version pattern and both length facets.\n",
+            "   --  {facets}.\n",
             "   function Create (Value : String) return {name};\n\n",
             "   --  The stored representation, exactly as supplied.\n",
             "   function Value (Item : {name}) return String;\n",
         ),
+        summary = summary,
+        facets = facets,
         name = name,
     )
     .expect("writing to String cannot fail");
@@ -1235,9 +1247,123 @@ fn render_string_profile_declaration(
     )
     .expect("writing to String cannot fail");
 
-    body.push_str(&ADA_SCHEMA_VERSION_BODY.replace("{name}", name));
+    let template = match profile {
+        StringProfile::UciSchemaVersion => ADA_SCHEMA_VERSION_BODY,
+        StringProfile::UniversallyUniqueIdentifier => ADA_UUID_BODY,
+    };
+    body.push_str(&template.replace("{name}", name));
     Ok(())
 }
+
+/// The generated Ada body for one UUID carrier, `{name}` substituted.
+///
+/// # Validation order
+///
+/// 1. the `length` facet;
+/// 2. the authoritative pattern, evaluated positionally.
+///
+/// Both are enforced; the facet is checked explicitly rather than assumed
+/// redundant, so no facet is silently lost.
+///
+/// # No regular-expression engine
+///
+/// `GNAT.Regpat` is deliberately not used: its syntax is Perl-derived, not XML
+/// Schema. Both branches of the authoritative expression are fixed-width, so
+/// every position's character class is determined by its offset alone and the
+/// decision is a bounded positional test. Patterns are anchored, which the
+/// fixed length requirement enforces directly.
+///
+/// The nil branch is checked first and separately, because it is **not**
+/// redundant: the general branch requires a version nibble in `[1-5]` and a
+/// variant nibble in `[89abAB]`, and the nil UUID has `0` in both.
+///
+/// # Character counting
+///
+/// Ada's `String` is an array of `Character`, so `'Length` is already a
+/// character count and matches the XSD facet directly.
+///
+/// # Scope
+///
+/// Every helper is declared in `Create`'s own declarative part, so no
+/// package-scope identifier is introduced beyond the `Create` / `Value`
+/// overloads the shared name model already registers.
+const ADA_UUID_BODY: &str = r##"
+   function Create (Value : String) return {name} is
+
+      Length : constant := 36;
+
+      --  The one value the pattern's nil branch accepts.
+      Nil_Uuid : constant String := "00000000-0000-0000-0000-000000000000";
+
+      function Matches_Pattern (Text : String) return Boolean;
+
+      --  Decide the authoritative pattern positionally:
+      --    (0{8}(-0{4}){3}-0{12})
+      --    |([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}
+      --      -[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12})
+      function Matches_Pattern (Text : String) return Boolean is
+
+         function Is_Hex (Item : Character) return Boolean is
+           (Item in '0' .. '9' or else Item in 'a' .. 'f'
+            or else Item in 'A' .. 'F');
+
+      begin
+         --  Branch A: the exact nil literal, which branch B rejects.
+         if Text = Nil_Uuid then
+            return True;
+         end if;
+
+         --  Branch B: 8-4-4-4-12 with constrained version and variant
+         --  nibbles. Offset is zero-based over the fixed 36-character width.
+         for Offset in 0 .. Length - 1 loop
+            declare
+               Item : constant Character := Text (Text'First + Offset);
+            begin
+               case Offset is
+                  when 8 | 13 | 18 | 23 =>
+                     if Item /= '-' then
+                        return False;
+                     end if;
+
+                  --  The version nibble: [1-5].
+                  when 14 =>
+                     if Item not in '1' .. '5' then
+                        return False;
+                     end if;
+
+                  --  The variant nibble: [89abAB].
+                  when 19 =>
+                     if Item not in '8' | '9' | 'a' | 'b' | 'A' | 'B' then
+                        return False;
+                     end if;
+
+                  when others =>
+                     if not Is_Hex (Item) then
+                        return False;
+                     end if;
+               end case;
+            end;
+         end loop;
+         return True;
+      end Matches_Pattern;
+
+   begin
+      --  The whole gate: the length facet AND the pattern. The stored text is
+      --  the input unchanged -- this profile inherits whiteSpace = preserve,
+      --  so nothing is trimmed and hexadecimal letter case is preserved.
+      if Value'Length /= Length or else not Matches_Pattern (Value) then
+         raise Standard.Constraint_Error
+           with "invalid UUID";
+      end if;
+      return {name}'
+        (Text => Standard.Ada.Strings.Unbounded.To_Unbounded_String (Value));
+   end Create;
+
+   function Value (Item : {name}) return String is
+   begin
+      return Standard.Ada.Strings.Unbounded.To_String (Item.Text);
+   end Value;
+"##;
 
 /// The generated Ada body for one schema-version carrier, `{name}` substituted.
 ///

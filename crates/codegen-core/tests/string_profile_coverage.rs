@@ -8,6 +8,7 @@
 
 use ams_gra_oms_codegen_core::{
     BackendLanguage, CoverageAnalysis, GenerationWorld, UCI_SCHEMA_VERSION_PATTERN,
+    UCI_UUID_LENGTH, UCI_UUID_PATTERN,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, LexicalConstraintSet, NamespaceDecl, PatternExpression, PatternGroup,
@@ -67,6 +68,23 @@ fn schema_version() -> ConstraintSet {
     }
 }
 
+/// The authoritative UUID profile, in normalized IR form.
+///
+/// ONE pattern group holding ONE expression: the authoritative declaration has
+/// a single `<xs:pattern>` element whose alternation is internal to its text.
+fn uuid() -> ConstraintSet {
+    ConstraintSet {
+        length: Some(UCI_UUID_LENGTH),
+        lexical: LexicalConstraintSet {
+            pattern_groups: vec![PatternGroup {
+                alternatives: vec![PatternExpression::xml_schema(UCI_UUID_PATTERN)],
+            }],
+            white_space: None,
+        },
+        ..ConstraintSet::default()
+    }
+}
+
 /// Whether the single declaration in `schema` is baseline-renderable.
 fn is_baseline(schema: &SchemaIr, language: BackendLanguage) -> bool {
     renderable_declarations(schema, language) == schema.types.len()
@@ -99,6 +117,39 @@ fn the_supported_schema_version_profile_is_baseline_renderable() {
     }
 }
 
+/// The supported UUID profile is baseline-renderable in all three backends.
+///
+/// Coverage was not taught about UUIDs: it already asks `string_profile`, so
+/// extending the shared classifier is what makes this true.
+#[test]
+fn the_supported_uuid_profile_is_baseline_renderable() {
+    // The declaration name is deliberately not the UCI local name: support must
+    // arise from the primitive kind plus the effective constraints alone.
+    let schema = schema(vec![primitive("Identifier", PrimitiveKind::String, uuid())]);
+    for language in LANGUAGES {
+        assert!(
+            is_baseline(&schema, language),
+            "{language:?} must render the supported UUID profile"
+        );
+    }
+}
+
+/// Both String profiles coexist as baseline in one schema.
+#[test]
+fn both_string_profiles_are_baseline_together() {
+    let schema = schema(vec![
+        primitive("SchemaVersion", PrimitiveKind::String, schema_version()),
+        primitive("Identifier", PrimitiveKind::String, uuid()),
+    ]);
+    for language in LANGUAGES {
+        assert_eq!(
+            renderable_declarations(&schema, language),
+            2,
+            "{language:?} must render both String profiles"
+        );
+    }
+}
+
 /// Every unsupported constrained-String profile stays fail-closed.
 ///
 /// This is what keeps Task 037 a *profile* slice rather than a blanket
@@ -122,18 +173,47 @@ fn unsupported_constrained_string_profiles_are_not_baseline() {
     narrow.max_length = Some(20);
     cases.push(("same pattern, different maxLength", narrow));
 
-    // The `length + pattern` family, which includes the UUID type. This is the
-    // largest unimplemented String family and the measured next blocker.
-    let mut uuid_like = ConstraintSet {
+    // A `length + pattern` declaration that is NOT the Task 038 UUID profile.
+    // The expression here is the general 8-4-4-4-12 hexadecimal shape, without
+    // the authoritative `[1-5]` version and `[89abAB]` variant classes, so it
+    // denotes a strictly larger lexical space and remains unsupported.
+    let mut hex_like = ConstraintSet {
         length: Some(36),
         ..ConstraintSet::default()
     };
-    uuid_like.lexical.pattern_groups = vec![PatternGroup {
+    hex_like.lexical.pattern_groups = vec![PatternGroup {
         alternatives: vec![PatternExpression::xml_schema(
             r"[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}",
         )],
     }];
-    cases.push(("length + pattern", uuid_like));
+    cases.push(("length + unconstrained hexadecimal pattern", hex_like));
+
+    // The authoritative UUID pattern under a DIFFERENT length.
+    let mut wrong_length = ConstraintSet {
+        length: Some(37),
+        ..ConstraintSet::default()
+    };
+    wrong_length.lexical.pattern_groups = vec![PatternGroup {
+        alternatives: vec![PatternExpression::xml_schema(UCI_UUID_PATTERN)],
+    }];
+    cases.push(("UUID pattern, wrong length", wrong_length));
+
+    // The authoritative UUID pattern split into two IR alternatives. The real
+    // declaration has ONE pattern facet whose alternation is internal, so this
+    // is a different declaration shape.
+    let mut split_uuid = ConstraintSet {
+        length: Some(36),
+        ..ConstraintSet::default()
+    };
+    split_uuid.lexical.pattern_groups = vec![PatternGroup {
+        alternatives: vec![
+            PatternExpression::xml_schema("(0{8}(-0{4}){3}-0{12})"),
+            PatternExpression::xml_schema(
+                "([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12})",
+            ),
+        ],
+    }];
+    cases.push(("UUID pattern split into two alternatives", split_uuid));
 
     // Multiple alternatives in one group are OR-ed; not implemented.
     let mut alternatives = schema_version();

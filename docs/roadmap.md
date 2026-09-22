@@ -347,7 +347,7 @@ inputs — UCI 2.5, the upstream `PositionReport` contract, closed world:
 
 `UCI_SchemaVersionStringType` is no longer a blocker in any backend. The
 measured next blocker is `UniversallyUniqueIdentifierType`, a **different**
-constrained-String family (`length` + a pattern with two alternatives). It is
+constrained-String family (`length` + a pattern). It is
 reported here because it was measured, not assumed, and Task 037 deliberately
 does not implement it.
 
@@ -356,6 +356,39 @@ version is **not** a four-group `NNN.NNN.NNN.NNN` string. The authoritative
 pattern admits three dot-separated numeric groups plus optional suffixes, and
 rejects the four-group form that appears as the type's own `uci:version`
 attribute. See `docs/backend-compatibility.md`.
+
+`PositionReport` remains NOT READY in every backend.
+
+**Measured progress (Task 038):**
+
+Task 038 again added no Phase 2.5 code. It made the named UCI **UUID** String
+profile renderable, extending Task 037's shared `StringProfile` classifier with
+a second variant rather than adding a parallel mechanism, and contract-selected
+readiness improved automatically through the same shared capability model. Same
+authoritative inputs — UCI 2.5, the upstream `PositionReport` contract, closed
+world:
+
+| Backend | Before | After | First blocker now |
+| --- | ---: | ---: | --- |
+| Ada | 49/60, `UniversallyUniqueIdentifierType` | **50/60** | `VisibleString256Type` |
+| Rust | 53/60, `UniversallyUniqueIdentifierType` | **54/60** | `VisibleString256Type` |
+| C++ | 53/60, `UniversallyUniqueIdentifierType` | **54/60** | `VisibleString256Type` |
+
+`UniversallyUniqueIdentifierType` is no longer a blocker in any backend. The
+measured next blocker is `VisibleString256Type`, a **third** constrained-String
+family (`minLength`/`maxLength` plus a printable-range pattern). It is reported
+here because it was measured, not assumed, and Task 038 deliberately does not
+implement it.
+
+Task 038's evidence gate corrected the prior abbreviated record of the UUID
+profile on three counts. The declaration carries **one** `xs:pattern` facet, not
+two alternatives, so the `|` is internal to a single IR expression. The nil
+branch is **not** redundant, because the general branch constrains the version
+nibble to `[1-5]` and the variant nibble to `[89abAB]` and the nil UUID fails
+both. And those two classes — previously hidden behind an ellipsis — mean an
+all-`f` UUID is **invalid**, which a general 8-4-4-4-12 hexadecimal reading
+would have wrongly accepted. They are enforced because the schema contains them,
+not because RFC 4122 does. See `docs/backend-compatibility.md`.
 
 `PositionReport` remains NOT READY in every backend.
 

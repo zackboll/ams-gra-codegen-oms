@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Task 038 backend fixture: the supported named UUID String profile, plus a
+  Task 034 optional-named composition and an ordinary String control.
+
+  The declaration names here are deliberately NOT UCI's
+  `UniversallyUniqueIdentifierType`: support must arise from
+  PrimitiveKind::String plus the effective ConstraintSet, so a differently
+  spelled declaration with the same profile must be equally renderable.
+
+  The facets are byte-identical to the authoritative UCI declaration:
+    UCI 2.5 UCI_MessageDefinitions_v2_5_0.xsd:145719
+    UCI 2.6 UCI_MessageDefinitions_v2_6_0.xsd:145967
+
+  Note the single <xs:pattern> element: the alternation between the nil branch
+  and the version/variant-constrained hexadecimal branch is INTERNAL to that
+  one expression, not two pattern facets.
+
+  The target namespace deliberately does not end in `string`: a generated Ada
+  child package whose final namespace component is `String` can shadow
+  Standard.String, which is a pre-existing generator hazard outside this
+  fixture's scope.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test:identity"
+           targetNamespace="urn:test:identity"
+           elementFormDefault="qualified">
+
+  <!-- The authoritative UCI profile, under a non-UCI name. -->
+  <xs:simpleType name="Uuid">
+    <xs:annotation>
+      <xs:documentation>A UUID is a 128-bit number (32 hexadecimal digits, 16 bytes) that is conformant to any version of variant 1 or nil UUID, as described in IETF RFC 4122.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:length value="36"/>
+      <xs:pattern value="(0{8}(-0{4}){3}-0{12})|([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12})"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- A second supported declaration: several carriers must coexist, which in
+       Ada requires Create/Value overload resolution to work. -->
+  <xs:simpleType name="PeerUuid">
+    <xs:restriction base="xs:string">
+      <xs:length value="36"/>
+      <xs:pattern value="(0{8}(-0{4}){3}-0{12})|([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12})"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- A Task 037 schema-version carrier, so the two String profiles are proven
+       to coexist in one generated unit. In Ada this puts two
+       `Create (Value : String) return <different type>` overloads in the same
+       package. -->
+  <xs:simpleType name="SchemaVersion">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="7"/>
+      <xs:maxLength value="57"/>
+      <xs:pattern value="[0-9]{3}\.[0-9]{1,2}(\.[0-9]{1,2})([a-z]{1,2})?(_[a-zA-Z0-9\-]{1,45})?"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Task 034 composition: an optional NAMED occurrence of a supported String
+       profile must compose automatically, with no optional-String special case
+       anywhere. `Label` is an ordinary unconstrained String, which must keep
+       its existing plain representation in every backend. -->
+  <xs:complexType name="Payload">
+    <xs:sequence>
+      <xs:element name="Identifier" type="t:Uuid"/>
+      <xs:element name="Correlation" type="t:Uuid" minOccurs="0"/>
+      <xs:element name="Peer" type="t:PeerUuid" minOccurs="0"/>
+      <xs:element name="Version" type="t:SchemaVersion"/>
+      <xs:element name="Label" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+
+</xs:schema>
