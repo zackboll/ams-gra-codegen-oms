@@ -2042,3 +2042,289 @@ fn task038_selected_ada_output_validates_under_gnat() {
         "selected Ada validation must hold"
     );
 }
+
+/// Generate the Task 039 visible-ASCII service for one language.
+fn generate_visible_ascii(language: &str, label: &str) -> PathBuf {
+    let output_root = output_dir(label);
+    let output = generate(
+        "visible-ascii.xsd",
+        "visible-ascii.yaml",
+        language,
+        "closed-schema",
+        &output_root,
+    );
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "{language} visible-ASCII generation should succeed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    output_root
+}
+
+/// Task 039: a contract whose selected closure carries supported visible-ASCII
+/// String declarations becomes READY in all three backends.
+///
+/// The point of this test is *propagation*. No Task 039 change was made to
+/// `service_plan.rs`, `service_readiness.rs`, or `service_generation.rs`; the
+/// new capability has to arrive through the single shared coverage snapshot and
+/// the ordinary backends. The fixture also declares an unselected
+/// `whiteSpace=collapse` String, so a READY result here cannot be a
+/// whole-schema accident and cannot be an accidental widening to every
+/// `minLength + maxLength + pattern` String.
+#[test]
+fn task039_visible_ascii_service_is_ready_in_every_backend() {
+    for language in ["rust", "cpp", "ada"] {
+        let check = cli()
+            .arg("service-check")
+            .arg("--schema")
+            .arg(fixture("visible-ascii.xsd"))
+            .arg("--contract")
+            .arg(fixture("visible-ascii.yaml"))
+            .args(["--language", language, "--world", "closed-schema"])
+            .output()
+            .expect("service-check must run");
+        assert_eq!(
+            check.status.code(),
+            Some(0),
+            "{language} service-check should succeed"
+        );
+        let report = stdout_of(&check);
+        assert!(
+            report.contains("status: READY"),
+            "{language} must be READY for the visible-ASCII contract:\n{report}"
+        );
+        // The unsupported constrained String is outside the selection, so it
+        // must not appear in the projected closure.
+        assert!(
+            !report.contains("CollapsingText"),
+            "{language} must not project the unselected String:\n{report}"
+        );
+    }
+}
+
+/// Task 039: the selected Ada generation emits the body alongside the spec, and
+/// the projected output carries no unselected String declaration.
+#[test]
+fn task039_selected_ada_generation_includes_the_package_body() {
+    let root = generate_visible_ascii("ada", "task039-ada-files");
+    let spec = std::fs::read_to_string(root.join("urn-test.ads")).expect("spec must be generated");
+    let body = std::fs::read_to_string(root.join("urn-test.adb")).expect("body must be generated");
+
+    assert!(spec.contains("type Callsign is private;"));
+    assert!(spec.contains("function Create (Value : String) return Callsign;"));
+    assert!(body.contains("package body Urn.Test is"));
+    assert!(body.contains("function Create (Value : String) return Callsign is"));
+    // Several supported declarations are projected at DIFFERENT bounds, which
+    // is what makes Ada `Create` / `Value` overload resolution load-bearing
+    // here, and what proves the profile is genuinely parameterized.
+    assert!(spec.contains("type ShortLabel is private;"));
+    assert!(spec.contains("type CountryCode is private;"));
+    assert!(spec.contains("type SchemaVersion is private;"));
+    assert!(body.contains("Max_Length : constant := 256;"));
+    assert!(body.contains("Max_Length : constant := 32;"));
+    assert!(body.contains("Min_Length : constant := 2;"));
+    assert!(body.contains("Max_Length : constant := 4;"));
+    // No generic regex engine is pulled in.
+    assert!(!body.contains("Regpat"), "body must not use GNAT.Regpat");
+
+    for unselected in ["CollapsingText", "Unselected"] {
+        assert!(!spec.contains(unselected), "spec leaked {unselected}");
+        assert!(!body.contains(unselected), "body leaked {unselected}");
+    }
+}
+
+/// Task 039: the selected Rust output compiles and validates at runtime.
+///
+/// The accepted cases include a value with leading and trailing SPACE, because
+/// `xs:string` carries `whiteSpace = preserve` and U+0020 is inside `[ -~]`:
+/// those spaces are part of the value and must survive unchanged.
+#[test]
+fn task039_selected_rust_output_validates_at_runtime() {
+    let root = generate_visible_ascii("rust", "task039-rust");
+    std::fs::write(
+        root.join("probe.rs"),
+        "include!(\"test.rs\");\n\nfn main() {\n\
+         \x20   let value = Callsign::new(\"Falcon-1 {alpha}\").expect(\"valid\");\n\
+         \x20   assert_eq!(value.as_str(), \"Falcon-1 {alpha}\");\n\
+         \x20   // whiteSpace = preserve: the spaces are part of the value.\n\
+         \x20   let spaced = Callsign::new(\"  padded  \").expect(\"valid\");\n\
+         \x20   assert_eq!(spaced.as_str(), \"  padded  \");\n\
+         \x20   assert!(Callsign::new(\" \").is_some());\n\
+         \x20   // The exact class boundaries.\n\
+         \x20   assert!(Callsign::new(\"\\u{20}\").is_some());\n\
+         \x20   assert!(Callsign::new(\"~\").is_some());\n\
+         \x20   assert!(Callsign::new(\"\\u{1f}\").is_none());\n\
+         \x20   assert!(Callsign::new(\"\\u{7f}\").is_none());\n\
+         \x20   // Controls and non-ASCII are rejected.\n\
+         \x20   assert!(Callsign::new(\"bad\\ttab\").is_none());\n\
+         \x20   assert!(Callsign::new(\"bad\\nline\").is_none());\n\
+         \x20   assert!(Callsign::new(\"caf\\u{e9}\").is_none());\n\
+         \x20   assert!(Callsign::new(\"\\u{1f600}\").is_none());\n\
+         \x20   // Both length facets.\n\
+         \x20   assert!(Callsign::new(\"\").is_none());\n\
+         \x20   assert!(Callsign::new(&\"x\".repeat(256)).is_some());\n\
+         \x20   assert!(Callsign::new(&\"x\".repeat(257)).is_none());\n\
+         \x20   // The bounds really are per-declaration.\n\
+         \x20   assert!(ShortLabel::new(&\"x\".repeat(33)).is_none());\n\
+         \x20   assert!(CountryCode::new(\"x\").is_none());\n\
+         \x20   assert!(CountryCode::new(\"US\").is_some());\n\
+         \x20   // Equality is value equality, and spacing stays significant.\n\
+         \x20   assert_eq!(value, Callsign::new(\"Falcon-1 {alpha}\").unwrap());\n\
+         \x20   assert_ne!(Callsign::new(\"abc\").unwrap(), Callsign::new(\"abc \").unwrap());\n\
+         }\n",
+    )
+    .expect("write Rust probe");
+    let status = Command::new("rustc")
+        .current_dir(&root)
+        .args(["--edition", "2021", "-o", "probe", "probe.rs"])
+        .status()
+        .expect("rustc must be available");
+    assert!(status.success(), "selected Rust output must compile");
+    assert!(
+        Command::new(root.join("probe"))
+            .status()
+            .expect("probe must run")
+            .success(),
+        "selected Rust validation must hold"
+    );
+}
+
+/// Task 039: the selected C++ output compiles under strict C++17 and validates
+/// at runtime.
+#[test]
+fn task039_selected_cpp_output_validates_at_runtime() {
+    let root = generate_visible_ascii("cpp", "task039-cpp");
+    std::fs::write(
+        root.join("probe.cpp"),
+        "#include \"test.hpp\"\n#include <cstdio>\n#include <string>\n\n\
+         int main() {\n\
+         \x20   auto value = urn::test::Callsign::create(\"Falcon-1 {alpha}\");\n\
+         \x20   if (!value || value->value() != \"Falcon-1 {alpha}\") return 1;\n\
+         \x20   // whiteSpace = preserve: the spaces are part of the value.\n\
+         \x20   auto spaced = urn::test::Callsign::create(\"  padded  \");\n\
+         \x20   if (!spaced || spaced->value() != \"  padded  \") return 1;\n\
+         \x20   if (!urn::test::Callsign::create(\" \")) return 1;\n\
+         \x20   // The exact class boundaries.\n\
+         \x20   if (!urn::test::Callsign::create(\"~\")) return 1;\n\
+         \x20   if (urn::test::Callsign::create(std::string(\"\\037\", 1))) return 1;\n\
+         \x20   if (urn::test::Callsign::create(std::string(\"\\177\", 1))) return 1;\n\
+         \x20   // Controls and non-ASCII are rejected.\n\
+         \x20   if (urn::test::Callsign::create(\"bad\\ttab\")) return 1;\n\
+         \x20   if (urn::test::Callsign::create(\"bad\\nline\")) return 1;\n\
+         \x20   if (urn::test::Callsign::create(\"caf\\303\\251\")) return 1;\n\
+         \x20   // Both length facets.\n\
+         \x20   if (urn::test::Callsign::create(\"\")) return 1;\n\
+         \x20   if (!urn::test::Callsign::create(std::string(256, 'x'))) return 1;\n\
+         \x20   if (urn::test::Callsign::create(std::string(257, 'x'))) return 1;\n\
+         \x20   // The bounds really are per-declaration.\n\
+         \x20   if (urn::test::ShortLabel::create(std::string(33, 'x'))) return 1;\n\
+         \x20   if (urn::test::CountryCode::create(\"x\")) return 1;\n\
+         \x20   if (!urn::test::CountryCode::create(\"US\")) return 1;\n\
+         \x20   std::puts(\"ok\");\n\
+         \x20   return 0;\n\
+         }\n",
+    )
+    .expect("write C++ probe");
+    let output = Command::new("c++")
+        .current_dir(&root)
+        .args([
+            "-std=c++17",
+            "-Wall",
+            "-Wextra",
+            "-pedantic-errors",
+            "-o",
+            "probe",
+            "probe.cpp",
+        ])
+        .output()
+        .expect("a C++ compiler must be available");
+    assert!(
+        output.status.success(),
+        "selected C++ output must compile under strict C++17:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        Command::new(root.join("probe"))
+            .status()
+            .expect("probe must run")
+            .success(),
+        "selected C++ validation must hold"
+    );
+}
+
+/// Task 039: the selected Ada output compiles and raises `Constraint_Error` on
+/// an invalid value, while accepting a value whose leading and trailing SPACE
+/// are part of it.
+///
+/// Skipped only where GNAT is absent, as elsewhere in this file.
+#[test]
+fn task039_selected_ada_output_validates_under_gnat() {
+    if Command::new("gnatmake").arg("--version").output().is_err() {
+        assert!(
+            std::env::var_os("AMS_GRA_REQUIRE_GNAT").is_none(),
+            "AMS_GRA_REQUIRE_GNAT is set but gnatmake is unavailable"
+        );
+        return;
+    }
+    let root = generate_visible_ascii("ada", "task039-ada-runtime");
+    std::fs::write(
+        root.join("probe.adb"),
+        "with Ada.Text_IO;\nwith Urn.Test;\n\n\
+         procedure Probe is\n\
+         \x20  Good : constant Urn.Test.Callsign :=\n\
+         \x20    Urn.Test.Create (\"Falcon-1 {alpha}\");\n\
+         \x20  --  whiteSpace = preserve, and SPACE is inside [ -~].\n\
+         \x20  Spaced : constant Urn.Test.Callsign := Urn.Test.Create (\"  padded  \");\n\
+         \x20  Rejected : Natural := 0;\n\
+         \x20  type Case_Names is (Empty, Tabbed, Delete_Char, Too_Long);\n\
+         \x20  function Text (Item : Case_Names) return String is\n\
+         \x20    (case Item is\n\
+         \x20       when Empty       => \"\",\n\
+         \x20       when Tabbed      => \"bad\" & ASCII.HT & \"tab\",\n\
+         \x20       when Delete_Char => (1 => Character'Val (127)),\n\
+         \x20       when Too_Long    => (1 .. 257 => 'x'));\n\
+         begin\n\
+         \x20  if Urn.Test.Value (Good) /= \"Falcon-1 {alpha}\"\n\
+         \x20    or else Urn.Test.Value (Spaced) /= \"  padded  \"\n\
+         \x20  then\n\
+         \x20     raise Program_Error;\n\
+         \x20  end if;\n\
+         \x20  for Item in Case_Names loop\n\
+         \x20     begin\n\
+         \x20        declare\n\
+         \x20           Bad : constant Urn.Test.Callsign := Urn.Test.Create (Text (Item));\n\
+         \x20        begin\n\
+         \x20           if Urn.Test.Value (Bad)'Length >= 0 then\n\
+         \x20              null;\n\
+         \x20           end if;\n\
+         \x20        end;\n\
+         \x20     exception\n\
+         \x20        when Constraint_Error => Rejected := Rejected + 1;\n\
+         \x20     end;\n\
+         \x20  end loop;\n\
+         \x20  if Rejected /= 4 then\n\
+         \x20     raise Program_Error;\n\
+         \x20  end if;\n\
+         \x20  Ada.Text_IO.Put_Line (\"ok\");\n\
+         end Probe;\n",
+    )
+    .expect("write Ada probe");
+    let output = Command::new("gnatmake")
+        .current_dir(&root)
+        .args(["-q", "probe.adb"])
+        .output()
+        .expect("gnatmake must run");
+    assert!(
+        output.status.success(),
+        "selected Ada output must compile:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        Command::new(root.join("probe"))
+            .status()
+            .expect("probe must run")
+            .success(),
+        "selected Ada validation must hold"
+    );
+}

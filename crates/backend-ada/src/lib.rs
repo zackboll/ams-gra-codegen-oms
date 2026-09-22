@@ -561,7 +561,8 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
         {
             match string_profile(kind, &declaration.constraints) {
                 Ok(Some(StringProfile::UciSchemaVersion))
-                | Ok(Some(StringProfile::UniversallyUniqueIdentifier)) => {}
+                | Ok(Some(StringProfile::UniversallyUniqueIdentifier))
+                | Ok(Some(StringProfile::VisibleAscii { .. })) => {}
                 Ok(None) => unreachable!("constrains_string gates this branch"),
                 Err(reason) => {
                     return unsupported(format!("{reason} on {}", declaration.name.local_name));
@@ -1204,12 +1205,17 @@ fn render_string_profile_declaration(
         Ok(Some(StringProfile::UciSchemaVersion)) => (
             StringProfile::UciSchemaVersion,
             "A validated UCI schema-version string.",
-            "schema-version pattern and both length facets",
+            "schema-version pattern and both length facets".to_owned(),
         ),
         Ok(Some(StringProfile::UniversallyUniqueIdentifier)) => (
             StringProfile::UniversallyUniqueIdentifier,
             "A validated UCI UUID string.",
-            "UUID pattern and the length facet",
+            "UUID pattern and the length facet".to_owned(),
+        ),
+        Ok(Some(profile @ StringProfile::VisibleAscii { .. })) => (
+            profile,
+            "A validated visible-ASCII string.",
+            "[ -~] character class and both length facets".to_owned(),
         ),
         Ok(None) => return unsupported(format!("unconstrained String on {name}")),
         Err(reason) => return unsupported(format!("{reason} on {name}")),
@@ -1247,13 +1253,115 @@ fn render_string_profile_declaration(
     )
     .expect("writing to String cannot fail");
 
-    let template = match profile {
-        StringProfile::UciSchemaVersion => ADA_SCHEMA_VERSION_BODY,
-        StringProfile::UniversallyUniqueIdentifier => ADA_UUID_BODY,
+    let rendered = match profile {
+        StringProfile::UciSchemaVersion => ADA_SCHEMA_VERSION_BODY.replace("{name}", name),
+        StringProfile::UniversallyUniqueIdentifier => ADA_UUID_BODY.replace("{name}", name),
+        // The only parameterized profile: the classifier has already proven
+        // that these bounds are exactly the ones the declaration's own pattern
+        // quantifier states, so substituting them cannot widen the type.
+        StringProfile::VisibleAscii {
+            min_length,
+            max_length,
+        } => ADA_VISIBLE_ASCII_BODY
+            .replace("{name}", name)
+            .replace("{min_length}", &min_length.to_string())
+            .replace("{max_length}", &max_length.to_string()),
     };
-    body.push_str(&template.replace("{name}", name));
+    body.push_str(&rendered);
     Ok(())
 }
+
+/// The generated Ada body for one visible-ASCII carrier, with `{name}` and the
+/// bounds substituted.
+///
+/// # Validation order
+///
+/// 1. the `minLength`/`maxLength` facets;
+/// 2. the authoritative `[ -~]` character class, tested per character.
+///
+/// Both are enforced; the facets are checked explicitly rather than assumed
+/// redundant, so no facet is silently lost.
+///
+/// # No regular-expression engine
+///
+/// `GNAT.Regpat` is deliberately not used: its syntax is Perl-derived, not XML
+/// Schema. The authoritative expression is one character class under one
+/// bounded quantifier, so membership is a length test plus an independent
+/// per-character range test. Patterns are anchored, which testing every
+/// character of the slice enforces directly.
+///
+/// # The range is ordinal, never locale-sensitive
+///
+/// Membership is `Item in ' ' .. '~'`, a comparison on `Character`'s position
+/// in Latin-1, whose first 128 positions are ASCII. No
+/// `Ada.Characters.Handling` classification is consulted, so DEL and every
+/// Latin-1 character above U+007E are rejected regardless of environment.
+///
+/// # SPACE is an ordinary member
+///
+/// This profile inherits `whiteSpace = preserve` and its class contains SPACE,
+/// so leading, trailing, interior, and all-space values are valid when their
+/// lengths fit, and are stored unchanged. TAB, LF, and CR are outside the
+/// class and are rejected.
+///
+/// # Character counting
+///
+/// Ada's `String` is an array of `Character`, so `'Length` is already a
+/// character count and matches the XSD facet directly.
+///
+/// # Scope
+///
+/// Every helper is declared in `Create`'s own declarative part, so no
+/// package-scope identifier is introduced beyond the `Create` / `Value`
+/// overloads the shared name model already registers.
+const ADA_VISIBLE_ASCII_BODY: &str = r##"
+   function Create (Value : String) return {name} is
+
+      --  minLength, which is also the pattern quantifier's minimum.
+      Min_Length : constant := {min_length};
+
+      --  maxLength, which is also the pattern quantifier's maximum.
+      Max_Length : constant := {max_length};
+
+      --  The [ -~] class: the inclusive interval U+0020 SPACE .. U+007E TILDE.
+      --
+      --  SPACE is inside the class; DEL, TAB, LF, CR, every other control, and
+      --  every Latin-1 character above '~' are outside it.
+      function Is_Visible (Item : Character) return Boolean is
+        (Item in ' ' .. '~');
+
+      --  The character class over the whole value. Anchored by construction:
+      --  every character must be a member.
+      function Matches_Pattern (Text : String) return Boolean is
+      begin
+         for Item of Text loop
+            if not Is_Visible (Item) then
+               return False;
+            end if;
+         end loop;
+         return True;
+      end Matches_Pattern;
+
+   begin
+      --  The whole gate: both length facets AND the character class. The
+      --  stored text is the input unchanged -- this profile inherits
+      --  whiteSpace = preserve, so nothing is trimmed and leading or trailing
+      --  spaces are preserved exactly as supplied.
+      if Value'Length not in Min_Length .. Max_Length
+        or else not Matches_Pattern (Value)
+      then
+         raise Standard.Constraint_Error
+           with "invalid visible-ASCII string";
+      end if;
+      return {name}'
+        (Text => Standard.Ada.Strings.Unbounded.To_Unbounded_String (Value));
+   end Create;
+
+   function Value (Item : {name}) return String is
+   begin
+      return Standard.Ada.Strings.Unbounded.To_String (Item.Text);
+   end Value;
+"##;
 
 /// The generated Ada body for one UUID carrier, `{name}` substituted.
 ///

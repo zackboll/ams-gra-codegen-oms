@@ -431,7 +431,8 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
         {
             match string_profile(kind, &declaration.constraints) {
                 Ok(Some(StringProfile::UciSchemaVersion))
-                | Ok(Some(StringProfile::UniversallyUniqueIdentifier)) => {}
+                | Ok(Some(StringProfile::UniversallyUniqueIdentifier))
+                | Ok(Some(StringProfile::VisibleAscii { .. })) => {}
                 Ok(None) => unreachable!("constrains_string gates this branch"),
                 Err(reason) => {
                     return unsupported(format!("{reason} on {}", declaration.name.local_name));
@@ -911,16 +912,137 @@ fn render_string_profile_declaration(
     constraints: &ConstraintSet,
     name: &str,
 ) -> Result<(), CodegenError> {
-    let template = match string_profile(PrimitiveKind::String, constraints) {
-        Ok(Some(StringProfile::UciSchemaVersion)) => CPP_SCHEMA_VERSION_TEMPLATE,
-        Ok(Some(StringProfile::UniversallyUniqueIdentifier)) => CPP_UUID_TEMPLATE,
+    let rendered = match string_profile(PrimitiveKind::String, constraints) {
+        Ok(Some(StringProfile::UciSchemaVersion)) => {
+            CPP_SCHEMA_VERSION_TEMPLATE.replace("{name}", name)
+        }
+        Ok(Some(StringProfile::UniversallyUniqueIdentifier)) => {
+            CPP_UUID_TEMPLATE.replace("{name}", name)
+        }
+        // The only parameterized profile: the classifier has already proven
+        // that these bounds are exactly the ones the declaration's own pattern
+        // quantifier states, so substituting them cannot widen the type.
+        Ok(Some(StringProfile::VisibleAscii {
+            min_length,
+            max_length,
+        })) => CPP_VISIBLE_ASCII_TEMPLATE
+            .replace("{name}", name)
+            .replace("{min_length}", &min_length.to_string())
+            .replace("{max_length}", &max_length.to_string()),
         Ok(None) => return unsupported(format!("unconstrained String on {name}")),
         Err(reason) => return unsupported(format!("{reason} on {name}")),
     };
-    writeln!(output, "{}", template.replace("{name}", name))
-        .expect("writing to String cannot fail");
+    writeln!(output, "{rendered}").expect("writing to String cannot fail");
     Ok(())
 }
+
+/// The generated C++17 visible-ASCII carrier, with `{name}` and the bounds
+/// substituted.
+///
+/// # Validation order
+///
+/// 1. the `minLength`/`maxLength` facets;
+/// 2. the authoritative `[ -~]` character class, tested per character.
+///
+/// Both are enforced; the facets are checked explicitly rather than assumed
+/// redundant, so no facet is silently lost.
+///
+/// # No regular-expression engine
+///
+/// The authoritative expression is one character class under one bounded
+/// quantifier, so membership is a length test plus an independent
+/// per-character range test. `<regex>` is deliberately not used: its grammars
+/// are ECMAScript/POSIX, not XML Schema. Patterns are anchored, which testing
+/// every character enforces directly.
+///
+/// # The range is ordinal, never locale-sensitive
+///
+/// Characters are compared as `unsigned char` ordinals against U+0020 and
+/// U+007E. `std::isprint` and the rest of `<cctype>` are deliberately not
+/// used: their classification is locale-dependent and admits additional
+/// characters under some locales. The cast to `unsigned char` also avoids the
+/// implementation-defined sign of plain `char`, under which a non-ASCII byte
+/// could otherwise compare as negative and slip past a naive lower bound.
+///
+/// # SPACE is an ordinary member
+///
+/// This profile inherits `whiteSpace = preserve` and its class contains SPACE,
+/// so leading, trailing, interior, and all-space values are valid when their
+/// lengths fit, and are stored unchanged. TAB, LF, and CR are outside the
+/// class and are rejected.
+///
+/// # Byte length is the XSD character count
+///
+/// Every accepted character is at most U+007E, hence single-byte in UTF-8, so
+/// `size()` is an XSD *character* count for every value that can be accepted.
+///
+/// # Strictness
+///
+/// Compiles clean under `-std=c++17 -Wall -Wextra -pedantic-errors` using only
+/// `<string>`, `<string_view>`, and `<optional>`, which the generated header
+/// already includes. No external library.
+const CPP_VISIBLE_ASCII_TEMPLATE: &str = r##"class {name} {
+public:
+    // Validate `value` against the authoritative visible-ASCII profile.
+    //
+    // Returns std::nullopt if either length facet or the character class
+    // rejects. The stored text is the input unchanged: this profile inherits
+    // `whiteSpace = preserve`, so no trimming or collapsing is performed and
+    // leading or trailing spaces are preserved exactly as supplied.
+    static std::optional<{name}> create(std::string_view value) {
+        if (!is_visible_ascii(value)) {
+            return std::nullopt;
+        }
+        return {name}(std::string(value));
+    }
+
+    // The stored, validated lexical representation.
+    const std::string& value() const noexcept { return value_; }
+
+private:
+    explicit {name}(std::string validated) : value_(std::move(validated)) {}
+
+    // minLength, which is also the pattern quantifier's minimum.
+    static constexpr std::size_t kMinLength = {min_length};
+
+    // maxLength, which is also the pattern quantifier's maximum.
+    static constexpr std::size_t kMaxLength = {max_length};
+
+    // The lowest code point the [ -~] class admits: U+0020 SPACE.
+    static constexpr unsigned char kMinCodePoint = 0x20;
+
+    // The highest code point the [ -~] class admits: U+007E TILDE.
+    static constexpr unsigned char kMaxCodePoint = 0x7E;
+
+    // The [ -~] class: the inclusive ordinal interval U+0020 ..= U+007E.
+    //
+    // SPACE is inside the class; DEL (U+007F), TAB, LF, CR, every other
+    // control, and every non-ASCII byte are outside it. The cast makes the
+    // comparison ordinal regardless of whether plain `char` is signed.
+    static bool is_visible(char character) noexcept {
+        const unsigned char ordinal = static_cast<unsigned char>(character);
+        return ordinal >= kMinCodePoint && ordinal <= kMaxCodePoint;
+    }
+
+    // The whole gate: both length facets AND the character class.
+    static bool is_visible_ascii(std::string_view text) {
+        // Sound as an XSD character count: every byte that survives the class
+        // test below is single-byte in UTF-8.
+        if (text.size() < kMinLength || text.size() > kMaxLength) {
+            return false;
+        }
+        // Anchored by construction: every character must be in the class.
+        for (const char character : text) {
+            if (!is_visible(character)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    std::string value_;
+};
+"##;
 
 /// The generated C++17 UUID carrier, with `{name}` substituted.
 ///

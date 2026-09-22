@@ -8,7 +8,7 @@
 
 use ams_gra_oms_codegen_core::{
     BackendLanguage, CoverageAnalysis, GenerationWorld, UCI_SCHEMA_VERSION_PATTERN,
-    UCI_UUID_LENGTH, UCI_UUID_PATTERN,
+    UCI_UUID_LENGTH, UCI_UUID_PATTERN, visible_ascii_pattern,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, LexicalConstraintSet, NamespaceDecl, PatternExpression, PatternGroup,
@@ -61,6 +61,27 @@ fn schema_version() -> ConstraintSet {
         lexical: LexicalConstraintSet {
             pattern_groups: vec![PatternGroup {
                 alternatives: vec![PatternExpression::xml_schema(UCI_SCHEMA_VERSION_PATTERN)],
+            }],
+            white_space: None,
+        },
+        ..ConstraintSet::default()
+    }
+}
+
+/// A visible-ASCII family member with the given bounds, in normalized IR form.
+///
+/// The pattern text is derived from the bounds by the shared helper, which is
+/// the property that makes membership exact: the quantifier and the facets
+/// cannot disagree.
+fn visible_ascii(min_length: u64, max_length: u64) -> ConstraintSet {
+    ConstraintSet {
+        min_length: Some(min_length),
+        max_length: Some(max_length),
+        lexical: LexicalConstraintSet {
+            pattern_groups: vec![PatternGroup {
+                alternatives: vec![PatternExpression::xml_schema(visible_ascii_pattern(
+                    min_length, max_length,
+                ))],
             }],
             white_space: None,
         },
@@ -250,6 +271,95 @@ fn unsupported_constrained_string_profiles_are_not_baseline() {
             assert!(
                 !is_baseline(&schema, language),
                 "{language:?} must NOT treat the {label} profile as baseline"
+            );
+        }
+    }
+}
+
+/// Task 039: every visible-ASCII family member becomes baseline-renderable.
+///
+/// The classifier is the only thing that changed, which is the point: coverage
+/// already asks `string_profile`, so extending the shared classifier is
+/// sufficient and no coverage code mentions this profile.
+#[test]
+fn every_visible_ascii_family_member_is_baseline_renderable() {
+    for (min_length, max_length) in [(1, 20), (1, 32), (1, 256), (1, 1024), (2, 4)] {
+        let schema = schema(vec![primitive(
+            "Candidate",
+            PrimitiveKind::String,
+            visible_ascii(min_length, max_length),
+        )]);
+        for language in LANGUAGES {
+            assert!(
+                is_baseline(&schema, language),
+                "{language:?} must treat the {min_length}..{max_length} member as baseline"
+            );
+        }
+    }
+}
+
+/// Task 039 near-misses stay NON-baseline in every backend.
+#[test]
+fn visible_ascii_near_misses_are_not_baseline() {
+    let mut cases: Vec<(&str, ConstraintSet)> = Vec::new();
+
+    // Same pattern, a different maxLength: a different type.
+    let mut mismatched = visible_ascii(1, 256);
+    mismatched.max_length = Some(128);
+    cases.push(("mismatched bounds", mismatched));
+
+    // The explicit whiteSpace of the WhitespaceVisibleString* family.
+    let mut collapsed = visible_ascii(1, 256);
+    collapsed.lexical.white_space = Some(WhiteSpacePolicy::Collapse);
+    cases.push(("explicit whiteSpace=collapse", collapsed));
+
+    // The fixed-`length` VisibleStringLength*/NITF_* shape.
+    let mut fixed_length = ConstraintSet {
+        length: Some(10),
+        ..ConstraintSet::default()
+    };
+    fixed_length.lexical.pattern_groups = vec![PatternGroup {
+        alternatives: vec![PatternExpression::xml_schema("[ -~]{10}")],
+    }];
+    cases.push(("length instead of min/max", fixed_length));
+
+    // QueryString4096Type, whose class also admits LF and CR.
+    let mut with_breaks = visible_ascii(0, 4096);
+    with_breaks.lexical.pattern_groups = vec![PatternGroup {
+        alternatives: vec![PatternExpression::xml_schema(r"[ -~\n\r]{0,4096}")],
+    }];
+    cases.push(("a class admitting LF and CR", with_breaks));
+
+    // NATO_SpecialWordsType: ASCII-only, but a distinct lexical profile.
+    let mut nato = visible_ascii(1, 256);
+    nato.lexical.pattern_groups = vec![PatternGroup {
+        alternatives: vec![PatternExpression::xml_schema(r"NATO:[a-zA-Z\-_]{1,256}")],
+    }];
+    cases.push(("the NATO special-words profile", nato));
+
+    // An unobserved but perfectly ordinary pair. The shape agrees with itself
+    // exactly; it is simply not a bound pair the authoritative family carries,
+    // so coverage must not claim it.
+    cases.push(("unobserved bounds 3..17", visible_ascii(3, 17)));
+
+    // The load-bearing one: an internally consistent synthetic profile whose
+    // maxLength cannot be assumed representable by every backend's length
+    // constant. Coverage must not report this as baseline-renderable, because
+    // the generated C++ `static constexpr std::size_t kMaxLength` for it is not
+    // guaranteed to compile under the project's strict flags. This is the
+    // readiness/generation agreement the shared classifier exists to preserve.
+    cases.push(("unobserved u64::MAX bounds", visible_ascii(1, u64::MAX)));
+
+    for (label, constraints) in cases {
+        let schema = schema(vec![primitive(
+            "Candidate",
+            PrimitiveKind::String,
+            constraints,
+        )]);
+        for language in LANGUAGES {
+            assert!(
+                !is_baseline(&schema, language),
+                "{language:?} must NOT treat {label} as baseline"
             );
         }
     }
