@@ -314,6 +314,45 @@
 //! that adds no facets. Membership is decided from effective facets alone, so
 //! all thirteen are recognized and none of them is recognized by name.
 //!
+//! ## The parameterization is bounded by evidence, not open-ended
+//!
+//! Those thirteen declarations carry only **ten unique effective bound pairs**,
+//! because several share a shape:
+//!
+//! ```text
+//! 1..20   1..32   1..64   1..81   1..128
+//! 1..256  1..480  1..512  1..1024  2..4
+//! ```
+//!
+//! Those ten pairs, listed in `UCI_VISIBLE_ASCII_BOUNDS`, are the *entire*
+//! accepted parameter domain. This profile is deliberately **not** a general
+//! visible-ASCII datatype facility: an arbitrary `[ -~]{M,N}` whose `minLength`
+//! and `maxLength` facets agree with its quantifier is still **unsupported**
+//! unless `(M, N)` is one of the ten. A synthetic `3..17`, and a synthetic
+//! `1..18446744073709551615`, both fail closed with
+//! [`StringProfileError::UnsupportedConstraints`].
+//!
+//! The restriction is not conservatism for its own sake. Three reasons:
+//!
+//! * **no authoritative evidence.** Every other profile here is pinned to the
+//!   bytes of the tracked releases; a bound pair no release contains has no
+//!   conformance corpus and no measured declaration behind it.
+//! * **baseline support must be compiler-backed.** Claiming a declaration is
+//!   baseline-renderable is a claim that the *generated* code compiles in every
+//!   claimed backend. The ten accepted pairs are all small and are exercised by
+//!   GNAT-, rustc-, and g++-backed tests.
+//! * **unrestricted `u64` bounds would exceed backend literal and host-size
+//!   assumptions.** The backends emit the bounds as length constants --
+//!   C++ `static constexpr std::size_t kMaxLength`, Rust `const MAX_LENGTH: usize`,
+//!   Ada `Max_Length : constant` -- and a `u64::MAX` literal is not something
+//!   this task established as portable under `-std=c++17 -Wall -Wextra
+//!   -pedantic-errors`. Widening the domain is a future task with its own
+//!   evidence and its own compile-backed tests, not a side effect of this one.
+//!
+//! Membership in that table is purely semantic. A differently named declaration
+//! carrying one of the ten exact profiles classifies; a UCI-looking local name
+//! carrying unobserved bounds does not.
+//!
 //! The selected blocker, `VisibleString256Type`, is byte-identical in both
 //! releases after end-of-line normalization:
 //!
@@ -490,6 +529,53 @@ pub fn visible_ascii_pattern(min_length: u64, max_length: u64) -> String {
     format!("{VISIBLE_ASCII_CLASS}{{{min_length},{max_length}}}")
 }
 
+/// Every `(minLength, maxLength)` pair the authoritative visible-ASCII family
+/// is actually observed to carry, in both pinned releases.
+///
+/// These are the **unique effective bound pairs**, not one entry per
+/// declaration: the thirteen family members of UCI 2.5 and 2.6 collapse onto
+/// these ten profiles because several declarations share a shape. `1..256` is
+/// carried by `AttributedURI_Type`, `MIME_Type`, and `VisibleString256Type`
+/// alike, and `1..32` by both `VisibleString32Type` and the depth-2
+/// `MissionCategoryType`. Every pair occurs in *both* tracked releases, so no
+/// entry here is release-specific.
+///
+/// Nothing in this table is derived from a declaration's name. A member is
+/// matched entirely on its effective facets, so a differently named
+/// declaration carrying one of these exact profiles classifies, and a
+/// UCI-looking name carrying unobserved bounds does not.
+///
+/// The table exists because "baseline-renderable" is a claim about *generated*
+/// code. A bound pair only belongs here once the pinned evidence shows it, and
+/// each accepted pair is small enough that the Ada, Rust, and C++ length
+/// constants are representable and compiler-backed. Admitting arbitrary `u64`
+/// bounds would let coverage claim support for declarations whose emitted
+/// length literals are not safely representable in every claimed backend.
+///
+/// Kept in deterministic ascending order so the set is diffable and so the
+/// enumerating test reads as an inventory.
+const UCI_VISIBLE_ASCII_BOUNDS: &[(u64, u64)] = &[
+    (1, 20),
+    (1, 32),
+    (1, 64),
+    (1, 81),
+    (1, 128),
+    (1, 256),
+    (1, 480),
+    (1, 512),
+    (1, 1024),
+    (2, 4),
+];
+
+/// Whether this bound pair is one the authoritative UCI family actually shows.
+///
+/// Semantic membership only: the pair is compared against observed evidence,
+/// never against a declaration name or a restriction depth.
+#[must_use]
+fn is_authoritative_visible_ascii_bounds(min_length: u64, max_length: u64) -> bool {
+    UCI_VISIBLE_ASCII_BOUNDS.contains(&(min_length, max_length))
+}
+
 /// A named constrained-`string` shape that the generator fully implements.
 ///
 /// Each variant arrives with its own evidence, its own validator, and its own
@@ -652,6 +738,13 @@ pub fn string_profile(
 /// checked against each other rather than independently. This is what keeps a
 /// parameterized profile from degenerating into "any minLength + maxLength +
 /// pattern": the parameters are constrained by the very pattern they explain.
+///
+/// Agreement alone is necessary but not sufficient. The bounds must in
+/// addition be one of the pairs the pinned releases are observed to carry, per
+/// [`UCI_VISIBLE_ASCII_BOUNDS`]. The parameterization is over authoritative
+/// evidence, not over the whole `u64` range, so a synthetic
+/// `[ -~]{1,18446744073709551615}` with matching facets fails closed instead of
+/// being claimed as baseline-renderable.
 fn match_visible_ascii_profile(constraints: &ConstraintSet) -> Option<StringProfile> {
     // `length` is mutually exclusive with min/maxLength in this family. The
     // `[ -~]{N}` fixed-`length` declarations UCI also defines are a *different*
@@ -670,6 +763,16 @@ fn match_visible_ascii_profile(constraints: &ConstraintSet) -> Option<StringProf
         return None;
     }
     if !has_only_pattern(constraints, &visible_ascii_pattern(min_length, max_length)) {
+        return None;
+    }
+    // The semantic shape is established above; only now is the declaration
+    // asked whether its bounds are evidence-backed. Agreeing facets and
+    // quantifier make a declaration *shaped* like the family, but this profile
+    // is parameterized over the pairs the pinned releases actually contain,
+    // not over every `u64` pair whose pattern happens to agree. An unobserved
+    // pair fails closed rather than being admitted on resemblance alone: see
+    // `UCI_VISIBLE_ASCII_BOUNDS`.
+    if !is_authoritative_visible_ascii_bounds(min_length, max_length) {
         return None;
     }
     Some(StringProfile::VisibleAscii {
@@ -1223,7 +1326,11 @@ mod tests {
     /// from effective facets.
     #[test]
     fn every_authoritative_family_member_is_supported() {
-        for (min_length, max_length) in [
+        // Spelled out literally rather than read from
+        // `UCI_VISIBLE_ASCII_BOUNDS`, so that narrowing the table away from the
+        // thirteen measured declarations fails this test instead of silently
+        // agreeing with itself.
+        let observed = [
             (1, 20),
             (1, 32),
             (1, 64),
@@ -1234,7 +1341,13 @@ mod tests {
             (1, 512),
             (1, 1024),
             (2, 4),
-        ] {
+        ];
+        assert_eq!(
+            UCI_VISIBLE_ASCII_BOUNDS,
+            observed.as_slice(),
+            "the authoritative bound table must be exactly the observed inventory"
+        );
+        for (min_length, max_length) in observed {
             assert_eq!(
                 string_profile(
                     PrimitiveKind::String,
@@ -1247,6 +1360,48 @@ mod tests {
                 "the {min_length}..{max_length} member must be supported"
             );
         }
+    }
+
+    /// A huge but internally consistent synthetic profile is NOT supported.
+    ///
+    /// This is the load-bearing regression for the bound table. `1..u64::MAX`
+    /// satisfies every structural requirement -- both facets present, ordered,
+    /// no `length`, no `whiteSpace`, one group, one expression, and a pattern
+    /// `[ -~]{1,18446744073709551615}` that agrees with its own facets -- so
+    /// the shape checks alone would admit it. Admitting it would let coverage
+    /// claim baseline support for a declaration whose emitted C++ length
+    /// constant (`static constexpr std::size_t kMaxLength = 18446744073709551615;`)
+    /// is not guaranteed to compile under the project's strict flags. The
+    /// classifier must reject before generation can claim support.
+    #[test]
+    fn an_unobserved_huge_visible_ascii_profile_is_not_supported() {
+        let constraints = visible_ascii(1, u64::MAX);
+
+        assert_eq!(
+            string_profile(PrimitiveKind::String, &constraints),
+            Err(StringProfileError::UnsupportedConstraints)
+        );
+    }
+
+    /// An ordinary, perfectly representable, but UNOBSERVED pair is rejected.
+    ///
+    /// `3..17` is small, would render fine in every backend, and carries the
+    /// exactly agreeing pattern `[ -~]{3,17}`. It is still not a member,
+    /// because the profile is bounded by authoritative evidence rather than by
+    /// machine range. This is what separates "semantically similar" from
+    /// "authoritatively supported".
+    #[test]
+    fn an_unobserved_ordinary_visible_ascii_pair_is_not_supported() {
+        let constraints = visible_ascii(3, 17);
+        assert_eq!(
+            constraints.lexical.pattern_groups[0].alternatives[0].expression,
+            "[ -~]{3,17}"
+        );
+
+        assert_eq!(
+            string_profile(PrimitiveKind::String, &constraints),
+            Err(StringProfileError::UnsupportedConstraints)
+        );
     }
 
     /// The bounds and the quantifier must AGREE. A declaration carrying one
@@ -1332,6 +1487,8 @@ mod tests {
             ("a class admitting LF and CR", with_breaks),
             ("the NATO special-words profile", nato),
             ("inverted bounds", visible_ascii(9, 4)),
+            ("unobserved bounds 3..17", visible_ascii(3, 17)),
+            ("unobserved u64::MAX bounds", visible_ascii(1, u64::MAX)),
         ] {
             assert_eq!(
                 string_profile(PrimitiveKind::String, &constraints),

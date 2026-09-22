@@ -337,6 +337,19 @@ fn visible_ascii_near_misses_are_not_baseline() {
     }];
     cases.push(("the NATO special-words profile", nato));
 
+    // An unobserved but perfectly ordinary pair. The shape agrees with itself
+    // exactly; it is simply not a bound pair the authoritative family carries,
+    // so coverage must not claim it.
+    cases.push(("unobserved bounds 3..17", visible_ascii(3, 17)));
+
+    // The load-bearing one: an internally consistent synthetic profile whose
+    // maxLength cannot be assumed representable by every backend's length
+    // constant. Coverage must not report this as baseline-renderable, because
+    // the generated C++ `static constexpr std::size_t kMaxLength` for it is not
+    // guaranteed to compile under the project's strict flags. This is the
+    // readiness/generation agreement the shared classifier exists to preserve.
+    cases.push(("unobserved u64::MAX bounds", visible_ascii(1, u64::MAX)));
+
     for (label, constraints) in cases {
         let schema = schema(vec![primitive(
             "Candidate",

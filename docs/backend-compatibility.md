@@ -4445,6 +4445,40 @@ Task 039 adds the **third** supported constrained-`string` profile, and the
 first *parameterized* one: `StringProfile::VisibleAscii { min_length,
 max_length }`.
 
+The parameterization is bounded by evidence. The implementation is
+parameterized over the **ten bound pairs observed in the authoritative UCI
+2.5/2.6 family**, and the shape is *not* an open-ended generic visible-ASCII
+datatype facility. The thirteen measured declarations collapse onto these ten
+unique effective pairs, which are the entire accepted parameter domain
+(`UCI_VISIBLE_ASCII_BOUNDS` in `codegen-core/src/string_profile.rs`):
+
+```text
+1..20   1..32   1..64   1..81   1..128
+1..256  1..480  1..512  1..1024  2..4
+```
+
+An arbitrary `[ -~]{M,N}` whose `minLength`/`maxLength` facets agree with its
+own quantifier is therefore **still unsupported** unless `(M, N)` is one of the
+ten. A synthetic `3..17`, and a synthetic `1..18446744073709551615`, both fail
+closed with `UnsupportedConstraints`. Three reasons:
+
+* **no authoritative evidence** — a bound pair no pinned release contains has
+  no measured declaration and no conformance corpus behind it;
+* **baseline support must be compiler-backed** — calling a declaration
+  baseline-renderable asserts that the *generated* code compiles in every
+  claimed backend, and only the ten accepted pairs are exercised under GNAT,
+  rustc, and g++;
+* **unrestricted `u64` bounds would exceed backend literal and host-size
+  assumptions** — the bounds are emitted as length constants (C++
+  `static constexpr std::size_t kMaxLength`, Rust `const MAX_LENGTH: usize`,
+  Ada `Max_Length : constant`), and a `u64::MAX` literal is not established as
+  portable under `-std=c++17 -Wall -Wextra -pedantic-errors`.
+
+Membership is semantic, never nominal: a differently named declaration carrying
+one of the ten exact profiles classifies, and a UCI-looking local name carrying
+unobserved bounds does not. Widening the domain is a future task with its own
+evidence and its own compile-backed tests.
+
 ### Authoritative evidence
 
 The selected blocker, `VisibleString256Type`, read from the pinned release
@@ -4704,6 +4738,8 @@ full-UCI generation claim is made.
 | `WhitespaceVisibleString1024Type` / `WhitespaceVisibleString4096Type` | unsupported: explicit `whiteSpace = collapse` needs its own normalization analysis |
 | `NATO_SpecialWordsType` (`NATO:[a-zA-Z\-_]{1,256}`) | unsupported: a distinct lexical profile, ASCII-only notwithstanding |
 | a second `PatternGroup`, an extra expression, or an explicit `whiteSpace` | unsupported |
+| an agreeing `[ -~]{M,N}` whose `(M, N)` is not one of the ten observed pairs (e.g. `3..17`) | unsupported: no authoritative evidence |
+| an agreeing `[ -~]{M,N}` with huge bounds (e.g. `1..18446744073709551615`) | unsupported: baseline support must be compiler-backed |
 | generic `minLength + maxLength + pattern` String support | not implemented, deliberately |
 | generic XML Schema regex translation | not implemented, deliberately |
 | String ordering or collation | not implemented |
