@@ -64,6 +64,30 @@ jobs:
           require_one_test tests::preflight_control_renders_and_compiles \
             cargo test -p ams-gra-oms-backend-ada --lib \
             tests::preflight_control_renders_and_compiles
+          # Task 040 corrective: repeated storage of validated carriers. These
+          # are the probes that actually execute container operations, so a run
+          # that skipped them would restate the exact false green that let the
+          # vector-growth regression reach review. Zero matched tests is a
+          # failure here for the same reason.
+          require_one_test repeated_carrier_storage_is_usable_under_gnat \
+            cargo test -p ams-gra-oms-backend-ada \
+            --test repeated_carrier_storage \
+            repeated_carrier_storage_is_usable_under_gnat
+          require_one_test repeated_storage_never_declares_a_live_carrier_for_spare_capacity \
+            cargo test -p ams-gra-oms-backend-ada \
+            --test repeated_carrier_storage \
+            repeated_storage_never_declares_a_live_carrier_for_spare_capacity
+          require_one_test task040_selected_ada_repeated_field_is_constructible \
+            cargo test -p ams-gra-codegen-oms --test service_generate \
+            task040_selected_ada_repeated_field_is_constructible
+          # The ORIGINAL Task 040 scalar/optional lifecycle controls must keep
+          # passing alongside the corrected repeated paths.
+          require_one_test a_default_declared_carrier_cannot_silently_hold_invalid_text_under_gnat \
+            cargo test -p ams-gra-oms-backend-ada --test carrier_lifecycle \
+            a_default_declared_carrier_cannot_silently_hold_invalid_text_under_gnat
+          require_one_test legitimate_construction_paths_still_work_under_gnat \
+            cargo test -p ams-gra-oms-backend-ada --test carrier_lifecycle \
+            legitimate_construction_paths_still_work_under_gnat
       # `AMS_GRA_REQUIRE_GNAT` turns the Ada probes' developer-machine skip
       # into a hard failure, so a runner that somehow lost GNAT after the gate
       # above cannot produce a green run with the Ada checks quietly elided.

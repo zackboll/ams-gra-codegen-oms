@@ -1,9 +1,9 @@
 //! Minimal Ada type generation from normalized schema IR.
 
 use ams_gra_oms_codegen_core::{
-    ADA_PORTABLE_POSITIVE_INDEX_MAX, AbstractValueProjection, Backend, BackendLanguage,
-    CodegenError, EffectiveValueMember, FloatingDomain, GeneratedFile, GenerationWorld,
-    InclusiveIntegralDomain, StringProfile, TemporalProfile, TypeEmission,
+    ADA_PORTABLE_POSITIVE_INDEX_MAX, ADA_SEQUENCE_CALLABLES, AbstractValueProjection, Backend,
+    BackendLanguage, CodegenError, EffectiveValueMember, FloatingDomain, GeneratedFile,
+    GenerationWorld, InclusiveIntegralDomain, StringProfile, TemporalProfile, TypeEmission,
     abstract_value_projection_for_ref, ada_record_field_uses_optional_wrapper, backend_preflight,
     constrains_string, effective_choice_alternatives, effective_record_fields,
     field_storage_semantics, float32_literal, float64_literal, floating_domain,
@@ -88,8 +88,17 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     }
     output.push_str("with Ada.Strings.Unbounded;\n");
     let needs_binary = schema_emits_ada_binary_vectors(schema);
-    if schema_emits_unbounded_sequence_support(schema) || needs_binary {
+    if needs_binary {
         output.push_str("with Ada.Containers.Vectors;\n");
+    }
+    // Task 040 corrective: an unbounded sequence is now stored in an
+    // `Indefinite_Vectors` instantiation, which never default-initializes
+    // spare capacity. `Binary_Vectors` is unrelated and still definite --
+    // its element is `Interfaces.Unsigned_8`, an unvalidated scalar with no
+    // rejecting default -- so the two imports are independent and a schema
+    // needing only one does not acquire the other.
+    if schema_emits_unbounded_sequence_support(schema) {
+        output.push_str("with Ada.Containers.Indefinite_Vectors;\n");
     }
     if schema_needs_interfaces(schema) || needs_binary {
         output.push_str("with Interfaces;\n");
@@ -165,7 +174,15 @@ pub fn generate_body(
     // body-generation mechanism: a schema needs a body when it emits *any*
     // validator-backed carrier. A schema requiring neither keeps its existing
     // single-`.ads` output exactly.
-    if !schema_emits_temporal_carrier(schema) && !schema_emits_string_profile_carrier(schema) {
+    //
+    // Task 040 corrective extends the same predicate a third time: an
+    // unbounded sequence's storage is now opaque, so its five operations have
+    // real bodies. A schema with neither a carrier nor an unbounded sequence
+    // still emits no `.adb` at all.
+    if !schema_emits_temporal_carrier(schema)
+        && !schema_emits_string_profile_carrier(schema)
+        && !schema_emits_unbounded_sequence_support(schema)
+    {
         return Ok(None);
     }
     validate_schema(schema, world)?;
@@ -380,17 +397,9 @@ fn render_declaration(
                     let field_name = ada_identifier(&field.name)?;
                     let helper_name = format!("{name}_{field_name}");
                     let item_type = ada_field_base(field)?;
-                    writeln!(
-                        output,
-                        "   type {helper_name}_Array is array (Positive range 1 .. {max}) of {item_type};\n\
-                         \x20  type {helper_name}_Sequence is record\n\
-                         \x20     Length : Natural range {min} .. {max} := {min};\n\
-                         \x20     Items  : {helper_name}_Array;\n\
-                         \x20  end record;\n"
-                    )
-                    .expect("writing to String cannot fail");
+                    render_bounded_helper(output, &helper_name, &item_type, min, max);
                 } else if matches!(field.cardinality.shape(), OccurrenceShape::Unbounded { .. }) {
-                    render_unbounded_helper(output, &name, field)?;
+                    render_unbounded_helper(output, private_part, body, &name, field)?;
                 } else if ada_record_field_uses_optional_wrapper(field) {
                     render_optional_helper(output, &name, field)?;
                 }
@@ -443,20 +452,12 @@ fn render_declaration(
                     let alternative_name = ada_identifier(&alternative.name)?;
                     let helper_name = format!("{name}_{alternative_name}");
                     let item_type = ada_field_base(alternative)?;
-                    writeln!(
-                        output,
-                        "   type {helper_name}_Array is array (Positive range 1 .. {max}) of {item_type};\n\
-                         \x20  type {helper_name}_Sequence is record\n\
-                         \x20     Length : Natural range {min} .. {max} := {min};\n\
-                         \x20     Items  : {helper_name}_Array;\n\
-                         \x20  end record;\n"
-                    )
-                    .expect("writing to String cannot fail");
+                    render_bounded_helper(output, &helper_name, &item_type, min, max);
                 } else if matches!(
                     alternative.cardinality.shape(),
                     OccurrenceShape::Unbounded { .. }
                 ) {
-                    render_unbounded_helper(output, &name, alternative)?;
+                    render_unbounded_helper(output, private_part, body, &name, alternative)?;
                 }
             }
             writeln!(output, "   type {kind_name} is").expect("writing to String cannot fail");
@@ -759,8 +760,162 @@ fn render_optional_helper(
     Ok(())
 }
 
+/// The package-level operations Ada emits for one generated unbounded
+/// sequence's private storage type.
+///
+/// # Why these exist at all (Task 040 corrective)
+///
+/// The unbounded helper previously published `subtype {stem}_Sequence is
+/// {stem}_Vectors.Vector`, instantiated in the **visible** part over the
+/// generated element type. That had two independent defects.
+///
+/// 1. *It did not compile whenever the element was a generated `private`
+///    type.* A generic instantiation may not use a private type before its
+///    full declaration, so every constrained-float, string-profile, and
+///    DateTime element produced `premature use of private type`. This
+///    predates Task 040.
+/// 2. *It default-initialized spare capacity.* GNAT's **definite** vector
+///    allocates a default-initialized replacement array on growth, before
+///    copying the existing elements and `New_Item`. With Task 040's rejecting
+///    component default, appending perfectly valid carriers raised
+///    `Program_Error` from inside the container.
+///
+/// Both are fixed by the same move: the instantiation is now
+/// `Ada.Containers.Indefinite_Vectors`, and it lives in the **private** part
+/// behind an opaque `{stem}_Sequence`. An indefinite vector stores access
+/// values for spare capacity and constructs each live element *from the
+/// supplied value*, so unused capacity is never a live validated value.
+///
+/// Because the representation is opaque, the container operations must be
+/// republished as package-level subprograms. They are deliberately given these
+/// five shared names rather than per-field spellings: Ada overloads on the
+/// container parameter's type, so many sequences coexist, and the shared
+/// generated-name model reserves one list instead of a name per field.
+///
+/// Allocation cost: an indefinite vector heap-allocates per element. That is
+/// accepted deliberately -- the validated-value invariant is prioritized over
+/// avoiding a per-element allocation, and it is the only representation found
+/// that constructs live elements *only* from supplied values.
+/// The operation names are owned by the shared model, not duplicated here, so
+/// the backend cannot publish a name preflight has not reserved. This assertion
+/// ties the emitted text below to that single list.
+const _: () = assert!(ADA_SEQUENCE_CALLABLES.len() == 5);
+
+/// Emit the visible declarations of one opaque unbounded-storage type.
+fn render_sequence_storage_visible(output: &mut String, storage: &str, item: &str) {
+    writeln!(
+        output,
+        "   type {storage} is private;\n\n\
+         \x20  function Length (Container : {storage}) return Natural;\n\
+         \x20  procedure Append (Container : in out {storage}; New_Item : {item});\n\
+         \x20  function Element (Container : {storage}; Index : Positive) return {item};\n\
+         \x20  procedure Clear (Container : in out {storage});\n\
+         \x20  procedure Reserve_Capacity\n\
+         \x20    (Container : in out {storage}; Capacity : Natural);\n"
+    )
+    .expect("writing to String cannot fail");
+}
+
+/// Emit the private completion of one opaque unbounded-storage type.
+fn render_sequence_storage_private(
+    private_part: &mut String,
+    storage: &str,
+    vectors: &str,
+    item: &str,
+    equality: &str,
+) {
+    writeln!(
+        private_part,
+        "   package {vectors} is new Standard.Ada.Containers.Indefinite_Vectors\n\
+         \x20    (Index_Type => Positive, Element_Type => {item}{equality});\n\n\
+         \x20  type {storage} is record\n\
+         \x20     Items : {vectors}.Vector;\n\
+         \x20  end record;\n"
+    )
+    .expect("writing to String cannot fail");
+}
+
+/// Emit the body of one opaque unbounded-storage type's operations.
+fn render_sequence_storage_body(body: &mut String, storage: &str, vectors: &str, item: &str) {
+    writeln!(
+        body,
+        "   function Length (Container : {storage}) return Natural is\n\
+         \x20  begin\n\
+         \x20     return Natural ({vectors}.Length (Container.Items));\n\
+         \x20  end Length;\n\n\
+         \x20  procedure Append (Container : in out {storage}; New_Item : {item}) is\n\
+         \x20  begin\n\
+         \x20     {vectors}.Append (Container.Items, New_Item);\n\
+         \x20  end Append;\n\n\
+         \x20  function Element\n\
+         \x20    (Container : {storage}; Index : Positive) return {item} is\n\
+         \x20  begin\n\
+         \x20     return {vectors}.Element (Container.Items, Index);\n\
+         \x20  end Element;\n\n\
+         \x20  procedure Clear (Container : in out {storage}) is\n\
+         \x20  begin\n\
+         \x20     {vectors}.Clear (Container.Items);\n\
+         \x20  end Clear;\n\n\
+         \x20  procedure Reserve_Capacity\n\
+         \x20    (Container : in out {storage}; Capacity : Natural) is\n\
+         \x20  begin\n\
+         \x20     {vectors}.Reserve_Capacity\n\
+         \x20       (Container.Items, Standard.Ada.Containers.Count_Type (Capacity));\n\
+         \x20  end Reserve_Capacity;\n"
+    )
+    .expect("writing to String cannot fail");
+}
+
+/// Emit the Task 040 corrective bounded-repeated helper for one member.
+///
+/// # Logical length versus physical capacity
+///
+/// The representation is still a *bounded* array sized to the schema maximum,
+/// with a logical `Length` constrained to the schema's `min .. max`. What
+/// changed is the array's element: each physical slot is now a discriminated
+/// `{stem}_Slot` whose `False` variant has **no payload component at all**.
+///
+/// That is the whole correction. Previously `Items` was an array of the
+/// element type, so declaring a `0 .. N` sequence with `Length = 0`
+/// default-initialized all `N` physical carriers -- and after Task 040 that
+/// raised `Program_Error` for a perfectly valid *empty* sequence. An unused
+/// slot now simply is not a live validated value, so there is nothing to
+/// default-initialize and no placeholder UUID, date, version, or string is
+/// invented to fill it.
+///
+/// Cardinality semantics are unchanged: `Length`'s subtype still enforces the
+/// schema's `minOccurs .. maxOccurs`, and the array still cannot exceed
+/// `maxOccurs`. The representation is still bounded and allocation-free -- it
+/// is deliberately **not** replaced by an unconstrained vector.
+fn render_bounded_helper(
+    output: &mut String,
+    helper_name: &str,
+    item_type: &str,
+    min: u64,
+    max: u64,
+) {
+    writeln!(
+        output,
+        "   type {helper_name}_Slot (Is_Used : Boolean := False) is record\n\
+         \x20     case Is_Used is\n\
+         \x20        when False => null;\n\
+         \x20        when True  => Value : {item_type};\n\
+         \x20     end case;\n\
+         \x20  end record;\n\
+         \x20  type {helper_name}_Array is\n\
+         \x20    array (Positive range 1 .. {max}) of {helper_name}_Slot;\n\
+         \x20  type {helper_name}_Sequence is record\n\
+         \x20     Length : Natural range {min} .. {max} := {min};\n\
+         \x20     Items  : {helper_name}_Array;\n\
+         \x20  end record;\n"
+    )
+    .expect("writing to String cannot fail");
+}
+
 fn render_unbounded_helper(
     output: &mut String,
+    private_part: &mut String,
+    body: &mut String,
     owner: &str,
     field: &ams_gra_oms_ir::FieldDecl,
 ) -> Result<(), CodegenError> {
@@ -795,29 +950,72 @@ fn render_unbounded_helper(
     } else {
         ""
     };
+    writeln!(output, "   subtype {helper_name}_Item is {item_type};\n")
+        .expect("writing to String cannot fail");
     if min == 0 {
+        // A zero-minimum sequence is exactly the opaque indefinite-vector
+        // storage: a valid empty sequence is simply an empty container, and
+        // no live element exists until one is appended.
+        render_sequence_storage_visible(
+            output,
+            &format!("{helper_name}_Sequence"),
+            &format!("{helper_name}_Item"),
+        );
+        render_sequence_storage_private(
+            private_part,
+            &format!("{helper_name}_Sequence"),
+            &format!("{helper_name}_Vectors"),
+            &format!("{helper_name}_Item"),
+            equality,
+        );
+        render_sequence_storage_body(
+            body,
+            &format!("{helper_name}_Sequence"),
+            &format!("{helper_name}_Vectors"),
+            &format!("{helper_name}_Item"),
+        );
+    } else {
+        // A positive-minimum sequence keeps its two-part shape, which is what
+        // preserves the schema's `minOccurs` in the type: the required prefix
+        // is an array the client must supply in full, and the additional
+        // portion is the same opaque storage, starting empty.
+        //
+        // The required prefix is `min` live elements by definition -- the
+        // schema says at least that many occur -- so it is genuinely an array
+        // of the element type and needs no slot wrapper. It is spare capacity,
+        // not required occupancy, that must never be a live validated value.
         writeln!(
             output,
-            "   subtype {helper_name}_Item is {item_type};\n\
-             \x20  package {helper_name}_Vectors is new Standard.Ada.Containers.Vectors\n\
-             \x20     (Index_Type => Natural, Element_Type => {helper_name}_Item{equality});\n\
-             \x20  subtype {helper_name}_Sequence is {helper_name}_Vectors.Vector;\n"
+            "   type {helper_name}_Required_Array is\n\
+             \x20    array (Positive range 1 .. {min}) of {helper_name}_Item;\n"
         )
         .expect("writing to String cannot fail");
-    } else {
+        render_sequence_storage_visible(
+            output,
+            &format!("{helper_name}_Additional"),
+            &format!("{helper_name}_Item"),
+        );
         writeln!(
             output,
-            "   subtype {helper_name}_Item is {item_type};\n\
-             \x20  type {helper_name}_Required_Array is\n\
-             \x20    array (Positive range 1 .. {min}) of {helper_name}_Item;\n\
-             \x20  package {helper_name}_Additional_Vectors is new Standard.Ada.Containers.Vectors\n\
-             \x20     (Index_Type => Natural, Element_Type => {helper_name}_Item{equality});\n\
-             \x20  type {helper_name}_Sequence is record\n\
+            "   type {helper_name}_Sequence is record\n\
              \x20     Required   : {helper_name}_Required_Array;\n\
-             \x20     Additional : {helper_name}_Additional_Vectors.Vector;\n\
+             \x20     Additional : {helper_name}_Additional;\n\
              \x20  end record;\n"
         )
         .expect("writing to String cannot fail");
+        render_sequence_storage_private(
+            private_part,
+            &format!("{helper_name}_Additional"),
+            &format!("{helper_name}_Additional_Vectors"),
+            &format!("{helper_name}_Item"),
+            equality,
+        );
+        render_sequence_storage_body(
+            body,
+            &format!("{helper_name}_Additional"),
+            &format!("{helper_name}_Additional_Vectors"),
+            &format!("{helper_name}_Item"),
+        );
     }
     Ok(())
 }
@@ -2485,14 +2683,16 @@ end Probe;
     fn preserves_repeated_minimum_cardinality_and_portable_bounds() {
         let source =
             generate(&unbounded_schema(), CLOSED).expect("supported minima should generate");
-        assert!(source.contains(
-            "subtype Container_ZeroOrMoreNamed_Sequence is Container_ZeroOrMoreNamed_Vectors.Vector;"
-        ));
+        // Task 040 corrective: a zero-minimum sequence is now an opaque
+        // storage type rather than a visible vector subtype, so unused
+        // capacity is never a live validated element.
+        assert!(source.contains("type Container_ZeroOrMoreNamed_Sequence is private;"));
         assert!(source.contains("array (Positive range 1 .. 1) of Container_OneOrMoreNamed_Item;"));
         assert!(source.contains("array (Positive range 1 .. 2) of Container_TwoOrMoreNamed_Item;"));
-        assert!(
-            source.contains("Additional : Container_TwoOrMoreNamed_Additional_Vectors.Vector;")
-        );
+        // The positive-minimum shape is preserved: a required prefix carrying
+        // `minOccurs` live elements, plus an initially empty additional
+        // portion that is now the same opaque storage.
+        assert!(source.contains("Additional : Container_TwoOrMoreNamed_Additional;"));
         assert!(source.contains("array (Positive range 1 .. 1) of Selection_OneNamed_Item;"));
 
         let mut finite_limit = unbounded_schema();
@@ -2533,17 +2733,26 @@ end Probe;
         // The fixture namespace ends in `ada`, so generated package scope can
         // shadow the root Ada library unit unless references are rooted here.
         assert!(source.contains("Standard.Ada.Strings.Unbounded.Unbounded_String"));
-        assert!(source.contains("new Standard.Ada.Containers.Vectors"));
+        // Task 040 corrective: unbounded storage instantiates the INDEFINITE
+        // vector, which constructs each live element from the supplied value
+        // and never default-initializes spare capacity.
+        assert!(source.contains("new Standard.Ada.Containers.Indefinite_Vectors"));
+        assert!(!source.contains("new Standard.Ada.Containers.Vectors\n"));
         assert!(source.contains("Length : Natural range 0 .. 3 := 0;"));
         assert!(source.contains("Length : Natural range 1 .. 2 := 1;"));
         assert!(source.contains("Length : Natural range 2 .. 3 := 2;"));
         assert!(source.contains("Length : Natural range 3 .. 5 := 3;"));
-        assert!(source.contains("array (Positive range 1 .. 2) of Interfaces.IEEE_Float_32;"));
-        assert!(source.contains(
-            "array (Positive range 1 .. 3) of Interfaces.Unsigned_64 range 0 .. 4294967295;"
-        ));
+        // A bounded sequence's physical slots are now discriminated, so an
+        // unused slot holds no element at all. The element type still appears,
+        // as the used variant's payload.
+        assert!(source.contains("when True  => Value : Interfaces.IEEE_Float_32;"));
+        assert!(source.contains("array (Positive range 1 .. 2) of Payload_OneToTwo_Slot;"));
+        assert!(
+            source.contains("when True  => Value : Interfaces.Unsigned_64 range 0 .. 4294967295;")
+        );
+        assert!(source.contains("array (Positive range 1 .. 3) of Payload_TwoToThree_Slot;"));
         assert!(source.contains("array (Positive range 1 .. 3) of Payload_ThreeOrMore_Item;"));
-        assert!(source.contains("Additional : Payload_ThreeOrMore_Additional_Vectors.Vector;"));
+        assert!(source.contains("Additional : Payload_ThreeOrMore_Additional;"));
         assert!(source.contains("Selection_Repeated_Required_Array"));
     }
 
@@ -2555,9 +2764,9 @@ end Probe;
         assert!(source.contains("Enabled : Boolean;"));
         assert!(source.contains("Byte_Value : Long_Long_Integer range -128 .. 127;"));
         assert!(source.contains("Unsigned_Byte_Value : Interfaces.Unsigned_64 range 0 .. 255;"));
-        assert!(
-            source.contains("array (Positive range 1 .. 8) of Long_Long_Integer range -128 .. 127")
-        );
+        // The bounded element's directly constrained range is preserved; it
+        // now sits on the discriminated slot's used variant.
+        assert!(source.contains("when True  => Value : Long_Long_Integer range -128 .. 127;"));
         assert!(source.contains("when True_Case_Kind =>\n            True_Case : Boolean;"));
         assert!(
             source.contains("subtype Unsigned_Bounded is Interfaces.Unsigned_64 range 1 .. 1000;")
@@ -2645,9 +2854,14 @@ end Probe;
 
         let source = generate(&repeated_choice_schema(), CLOSED)
             .expect("finite repeated Choice must generate");
+        // The repeated Choice-alternative path gets the same corrective
+        // treatment as the Record one: physical slots are discriminated, so an
+        // unused slot in an alternative is not a live element either.
+        assert!(source.contains("when True  => Value : Token;"));
         assert!(
-            source
-                .contains("type Selection_Items_Array is array (Positive range 1 .. 3) of Token;")
+            source.contains(
+                "type Selection_Items_Array is\n     array (Positive range 1 .. 3) of Selection_Items_Slot;"
+            )
         );
         assert!(source.contains("type Selection_Items_Sequence is record"));
         assert!(source.contains("Items : Selection_Items_Sequence;"));
@@ -3286,7 +3500,7 @@ end Probe;
     /// present on the stock CI image, and a missing optional toolchain must not
     /// be reported as a lowering regression. The probe still runs in every
     /// environment that has GNAT, including local development.
-    fn compile_overlay_probe_if_gnat_available(source: &str) {
+    fn compile_overlay_probe_if_gnat_available(source: &str, body: Option<&str>) {
         use std::fs;
         use std::process::Command;
 
@@ -3299,6 +3513,14 @@ end Probe;
         fs::write(directory.join("urn.ads"), "package Urn is\nend Urn;\n")
             .expect("write Ada parent package");
         fs::write(directory.join("urn-overlay.ads"), source).expect("write generated Ada spec");
+        if let Some(body) = body {
+            fs::write(directory.join("urn-overlay.adb"), body).expect("write generated Ada body");
+        }
+        // Task 040 corrective: the repeated collection's storage is opaque, so
+        // the probe uses the generated package-level operations rather than a
+        // vector's primitive ones. This is the API change being tested: a
+        // client appends valid values and reads them back, and never has to
+        // supply a value merely to populate unused capacity.
         fs::write(
             directory.join("probe.adb"),
             r#"with Urn.Overlay; use Urn.Overlay;
@@ -3313,9 +3535,9 @@ procedure Probe is
    Items : Container_Extensions_Sequence;
    Holder : Container;
 begin
-   Items.Append (Value);
+   Append (Items, Value);
    Holder := (Name => To_Unbounded_String ("c"), Extensions => Items);
-   pragma Assert (Natural (Holder.Extensions.Length) = 1);
+   pragma Assert (Length (Holder.Extensions) = 1);
 end Probe;
 "#,
         )
@@ -3350,7 +3572,9 @@ end Probe;
             "the repeated 0..* field must still be generated: {source}"
         );
 
-        compile_overlay_probe_if_gnat_available(&source);
+        let body = generate_body(&overlay_composed_schema(&["private-a.xsd"]), CLOSED)
+            .expect("body generation must agree with spec generation");
+        compile_overlay_probe_if_gnat_available(&source, body.as_deref());
 
         let message = generate(&overlay_composed_schema(&["private-a.xsd"]), OPEN)
             .expect_err("section 25: an overlay must not imply a closed world")
@@ -3481,9 +3705,24 @@ end Probe;
         )
         .expect("write Ada parent package");
         fs::write(directory.join("preflight-test.ads"), &source).expect("write generated Ada spec");
+        // Task 040 corrective: an unbounded sequence's storage is now opaque,
+        // so its operations have real bodies and the spec alone is no longer a
+        // compilable unit. Stage the body whenever the generator produces one.
+        let unit = if let Some(body) = generate_body(
+            &preflight_fixture("backend-name-preflight-control.xsd"),
+            CLOSED,
+        )
+        .expect("body generation must agree with spec generation")
+        {
+            fs::write(directory.join("preflight-test.adb"), &body)
+                .expect("write generated Ada body");
+            "preflight-test.adb"
+        } else {
+            "preflight-test.ads"
+        };
         let status = Command::new("gnatmake")
             .current_dir(&directory)
-            .args(["-gnatwa", "-c", "preflight-test.ads"])
+            .args(["-gnatwa", "-c", unit])
             .status()
             .expect("GNAT reported a version, so it must be runnable");
         let _ = fs::remove_dir_all(&directory);

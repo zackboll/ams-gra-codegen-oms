@@ -2508,3 +2508,148 @@ fn task040_selected_ada_output_requires_explicit_initialization() {
         "a default declaration must not yield a usable value:\n{text}"
     );
 }
+
+/// Task 040 corrective: the *contract-selected* Ada output can actually build
+/// and read back a REPEATED field of validated carriers.
+///
+/// This is deliberately not a compile-only check. The reviewed head produced a
+/// spec that compiled for some schemas yet raised `Program_Error` from inside
+/// the container the moment a second valid carrier was appended, because the
+/// definite vector default-initialized the replacement array it allocates when
+/// growing. A regression that merely compiled the spec would not have caught
+/// it, so this probe constructs, grows, copies, clears, and reads.
+///
+/// Built without `-gnata`, so it cannot pass as a client assertion effect.
+///
+/// Skipped only where GNAT is absent, as elsewhere in this file.
+#[test]
+fn task040_selected_ada_repeated_field_is_constructible() {
+    if Command::new("gnatmake").arg("--version").output().is_err() {
+        assert!(
+            std::env::var_os("AMS_GRA_REQUIRE_GNAT").is_none(),
+            "AMS_GRA_REQUIRE_GNAT is set but gnatmake is unavailable"
+        );
+        return;
+    }
+    let root = generate_visible_ascii("ada", "task040-ada-repeated");
+    std::fs::write(root.join("probe.adb"), ADA_REPEATED_PROBE).expect("write Ada probe");
+    let output = Command::new("gnatmake")
+        .current_dir(&root)
+        .args(["-q", "-f", "probe.adb"])
+        .output()
+        .expect("gnatmake must run");
+    assert!(
+        output.status.success(),
+        "selected Ada output with a repeated field must compile:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let run = Command::new(root.join("probe"))
+        .output()
+        .expect("probe must run");
+    let mut text = String::from_utf8_lossy(&run.stdout).into_owned();
+    text.push_str(&String::from_utf8_lossy(&run.stderr));
+    assert!(
+        run.status.success() && text.contains("ok"),
+        "a selected repeated field of validated carriers must be usable:\n{text}"
+    );
+    assert!(
+        !text.contains("PROGRAM_ERROR"),
+        "appending valid carriers must not raise from container storage:\n{text}"
+    );
+}
+
+/// The selected-generation repeated-field probe.
+const ADA_REPEATED_PROBE: &str = r##"with Ada.Text_IO;
+with Ada.Strings.Unbounded;
+with Urn.Test;
+
+procedure Probe is
+   use Ada.Text_IO;
+   Failures : Natural := 0;
+
+   procedure Check (Got, Want, Label : String) is
+   begin
+      if Got /= Want then
+    Put_Line ("wrong " & Label & ": [" & Got & "]");
+    Failures := Failures + 1;
+      end if;
+   end Check;
+begin
+   --  A 0..unbounded field of validated carriers: empty, then grown well past
+   --  several capacity boundaries. This is the exact reproduction.
+   declare
+      Aliases : Urn.Test.TrackPayload_Aliases_Sequence;
+   begin
+      if Urn.Test.Length (Aliases) /= 0 then
+    Put_Line ("a zero-minimum sequence must start empty");
+    Failures := Failures + 1;
+      end if;
+
+      for I in 1 .. 48 loop
+    Urn.Test.Append (Aliases, Urn.Test.Create ("A" & I'Image));
+      end loop;
+      if Urn.Test.Length (Aliases) /= 48 then
+    Put_Line ("growth lost elements");
+    Failures := Failures + 1;
+      end if;
+      Check (Urn.Test.Value (Urn.Test.Element (Aliases, 1)), "A 1", "first");
+      Check (Urn.Test.Value (Urn.Test.Element (Aliases, 48)), "A 48", "last");
+
+      Urn.Test.Reserve_Capacity (Aliases, 256);
+      Check
+   (Urn.Test.Value (Urn.Test.Element (Aliases, 48)), "A 48", "after reserve");
+
+      declare
+    Copied : Urn.Test.TrackPayload_Aliases_Sequence := Aliases;
+      begin
+    Check
+      (Urn.Test.Value (Urn.Test.Element (Copied, 9)), "A 9", "copied");
+    Urn.Test.Clear (Copied);
+    Urn.Test.Append (Copied, Urn.Test.Create ("REUSED"));
+    Check
+      (Urn.Test.Value (Urn.Test.Element (Copied, 1)), "REUSED", "reused");
+      end;
+
+      --  A whole selected message value carrying the populated sequence.
+      declare
+    Report : constant Urn.Test.TrackPayload :=
+      (Primary   => Urn.Test.Create ("Falcon-1"),
+       Alternate => (Is_Present => False),
+       Label     => (Is_Present => False),
+       Country   => Urn.Test.Create ("US"),
+       Version   => Urn.Test.Create ("002.5.0"),
+       Notes     => Ada.Strings.Unbounded.To_Unbounded_String ("n"),
+       Aliases   => Aliases,
+       Slots     => <>);
+      begin
+    Check
+      (Urn.Test.Value (Urn.Test.Element (Report.Aliases, 2)), "A 2",
+       "message alias");
+    --  The 0..3 bounded field is validly EMPTY here: no placeholder
+    --  carrier is required to occupy its unused slots.
+    if Report.Slots.Length /= 0 then
+       Put_Line ("an empty bounded field must have length zero");
+       Failures := Failures + 1;
+    end if;
+      end;
+   end;
+
+   --  The bounded field, partially then fully populated.
+   declare
+      Slots : Urn.Test.TrackPayload_Slots_Sequence;
+   begin
+      Slots.Items (1) := (Is_Used => True, Value => Urn.Test.Create ("S-1"));
+      Slots.Length := 1;
+      Check (Urn.Test.Value (Slots.Items (1).Value), "S-1", "bounded partial");
+      Slots.Items (2) := (Is_Used => True, Value => Urn.Test.Create ("S-2"));
+      Slots.Items (3) := (Is_Used => True, Value => Urn.Test.Create ("S-3"));
+      Slots.Length := 3;
+      Check (Urn.Test.Value (Slots.Items (3).Value), "S-3", "bounded full");
+   end;
+
+   if Failures /= 0 then
+      raise Program_Error;
+   end if;
+   Put_Line ("ok");
+end Probe;
+"##;

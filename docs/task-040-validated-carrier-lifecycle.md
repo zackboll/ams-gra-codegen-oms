@@ -256,6 +256,11 @@ than a directly invoked backend:
 - `task040_selected_cpp_output_preserves_the_validated_value`;
 - `task040_selected_ada_output_requires_explicit_initialization`.
 
+The corrective pass adds a third, which actually **constructs and manipulates**
+a repeated field rather than merely compiling the generated spec:
+
+- `task040_selected_ada_repeated_field_is_constructible`.
+
 ### Bounds coverage
 
 The visible-ASCII family is exercised at several bounds, including the **2..4**
@@ -279,10 +284,25 @@ C++ probes are built with `-std=c++17 -Wall -Wextra -pedantic-errors`. Ada
 probes are built without `-gnata`, and the negative control is repeated under
 `pragma Assertion_Policy (Ignore)`.
 
-Test counts: **785** passing before this task, **787** after, with
-`AMS_GRA_REQUIRE_GNAT=1 cargo test --workspace`. The GNAT-backed regressions
-execute rather than skip: `AMS_GRA_REQUIRE_GNAT` turns the developer-machine
-skip into a hard failure, and the existing CI gate is unchanged.
+Test counts, all measured the same way -- summing the `test result:` passed
+counts of `AMS_GRA_REQUIRE_GNAT=1 cargo test --workspace`:
+
+| Head | Passing |
+| --- | ---: |
+| original `main` (`2d97e46`) | **778** |
+| reviewed head (`aa60ba7`) | **787** |
+| corrected head | **790** |
+
+The reviewed head's commit message stated a `785 -> 787` transition. The `787`
+is correct; the `785` baseline is not, and is corrected here. Measured against
+original `main` the reviewed head added **nine** tests -- seven backend
+lifecycle tests plus two `service-generate` integration tests -- and the
+corrective pass adds **three** more: two backend repeated-storage tests and one
+further `service-generate` integration test.
+
+The GNAT-backed regressions execute rather than skip: `AMS_GRA_REQUIRE_GNAT`
+turns the developer-machine skip into a hard failure, and CI now names the new
+repeated-storage probes explicitly so zero matched tests is a failure.
 
 ## 7. Capability and output results
 
@@ -313,30 +333,22 @@ baseline binary's.
 - **No new profile or `FeatureFamily`** is introduced.
 - **Unsupported-profile diagnostics** are unchanged: no classifier code was
   touched.
-- **Generated-name preflight** behavior is preserved. The Ada change is a
-  component default inside an existing private record and introduces no
-  package-scope name, so nothing new is owed to the shared generated-name
-  model and no earlier collision or optional-storage regression is
-  reintroduced.
+- **Generated-name preflight** behavior is preserved. The original Ada change
+  was a component default inside an existing private record and introduced no
+  package-scope name. The corrective pass *does* introduce new generated
+  spellings, and they are registered in the shared model -- see §10.5.
 - **Unrelated generated outputs** are unchanged.
 
-### Verification limits
+### Verification limits — resolved in the corrective pass
 
-The pinned **UCI 2.6** set was available locally and was measured, as above.
-The pinned **UCI 2.5** set (`093610b7753944059360d3236770ab446d039556`) was
-**not** obtainable in this environment. Consequently:
+The earlier revision of this document recorded the pinned **UCI 2.5** set
+(`093610b7753944059360d3236770ab446d039556`) as unobtainable, and therefore
+recorded six of the twelve comparison cells and the `PositionReport` recheck as
+**missing measurement**.
 
-- the six UCI 2.5 cells of the twelve-cell comparison are **not** freshly
-  measured here;
-- the UCI 2.5 `PositionReport` selection recheck (Ada 51/60, Rust 55/60,
-  C++ 55/60, first blocker `SecurityInformationType`) is **not** freshly
-  measured here.
-
-That is recorded as missing evidence rather than restated from existing
-documentation as though it were a fresh authoritative measurement. Readiness is
-*expected* to be unchanged, because nothing in this task alters which
-declarations are renderable and the measured 2.6 cells moved by exactly zero;
-but expectation is not measurement, and this limitation is stated explicitly.
+Both were retried through the established source workflow during the corrective
+pass and **were** obtainable this time. They are now freshly measured, and the
+limitation is withdrawn rather than carried forward. See §10.
 
 Full-schema first blockers are unchanged and unrelated to this task: Ada
 `AltitudeRangePairType / Range`, Rust `ConfigurationParameterType / Type`, C++
@@ -382,3 +394,288 @@ broad cleanup of numeric-wrapper lifecycle semantics.
 The previously proposed whitespace-visible-string feature is deliberately
 **not** implemented here. Neither gap is addressed by documentation alone: both
 corrections are in the generator.
+
+## 10. Corrective pass — repeated storage of validated carriers
+
+### 10.1 The over-broad claim being corrected
+
+The first revision of this document stated, in effect, that the rejecting
+component default left **all** legitimate Ada construction paths unaffected,
+because `Create` builds its result with an explicit named aggregate and a
+legitimate path therefore never evaluates the default.
+
+That is **too broad**, and it is corrected here. It is true of the paths that
+were actually tested -- direct declaration, copy, assignment, array aggregates,
+record aggregates, and the optional wrapper. It is *not* true of **repeated
+storage**, which was not exercised at all: the existing capability analysis
+counts renderable declarations and never executes a container operation, so an
+unchanged coverage number could not have detected this.
+
+### 10.2 Logical elements versus spare storage
+
+The distinction the original change missed:
+
+* a **logical element** is an occurrence the schema says is present. It is
+  always constructed from a supplied, validated value;
+* **spare storage** is physical capacity a representation holds so that it
+  *can* accept future elements. It corresponds to no occurrence at all.
+
+Ada initializes storage, not occurrences. A representation that gives spare
+storage the element type therefore default-initializes carriers for occurrences
+that do not exist -- and after Task 040 those defaults raise.
+
+The invariant the corrected representations hold is:
+
+> **Unused capacity is not a live validated value.**
+
+### 10.3 The reproduced failures
+
+Both were reproduced on the reviewed head (`aa60ba7`) with GNAT 14.2.0, using
+types produced by this repository's own generator, before any production code
+was changed.
+
+**A. Unbounded.** `render_unbounded_helper()` instantiated
+`Ada.Containers.Vectors` -- the *definite* vector -- over the generated element
+type. GNAT's definite vector allocates a **default-initialized** replacement
+array when it grows, before copying the existing elements and `New_Item`. A
+client-side probe over an existing generated carrier isolated it exactly:
+
+```text
+empty vector created
+append 1 ok, length = 1
+FAILED: Program_Error from container storage
+raised PROGRAM_ERROR : probe.adb:5 finalize/adjust raised exception
+```
+
+The first insertion into an unallocated vector initializes directly from
+`New_Item` and survived; the second, which required capacity growth, did not.
+
+**B. Bounded.** The representation was a logical `Length` initialized to the
+schema minimum plus an `Items` array sized to the schema maximum. For a `0..N`
+field, `Length = 0` did **not** prevent default initialization of all `N`
+physical carrier slots, so a valid *empty* sequence raised. This was confirmed
+in a containing record with no unrelated required field, so the failure is
+attributable to unused repeated storage and to nothing else.
+
+Both the Record-field and the Choice-alternative emission paths were affected,
+and both are corrected. Fixing the unbounded vector did **not** fix the bounded
+array; they are separate representations and were separately corrected.
+
+**C. A separate, pre-existing compile-time defect.** While reproducing A, the
+unbounded helper was found not to *compile at all* whenever the element type is
+a generated `private` type: a generic instantiation may not use a private type
+before its full declaration.
+
+```text
+test-carriers.ads:53:47: error: premature use of private type
+```
+
+This is reported separately and explicitly **not** mislabelled as the
+vector-growth failure. It is not new to Task 040 -- it reproduces on original
+
+### 10.4 The corrected representations
+
+**Unbounded** storage moves to `Ada.Containers.Indefinite_Vectors`, and the
+instantiation moves into the **private part** behind an opaque sequence type:
+
+```ada
+   type Payload_Any_Sequence is private;
+
+   function Length (Container : Payload_Any_Sequence) return Natural;
+   procedure Append
+     (Container : in out Payload_Any_Sequence; New_Item : Payload_Any_Item);
+   function Element
+     (Container : Payload_Any_Sequence; Index : Positive)
+      return Payload_Any_Item;
+   procedure Clear (Container : in out Payload_Any_Sequence);
+   procedure Reserve_Capacity
+     (Container : in out Payload_Any_Sequence; Capacity : Natural);
+```
+
+An indefinite vector holds access values for spare capacity and constructs each
+live element from the supplied value, so no carrier is ever default-created.
+Moving the instantiation into the private part also resolves 10.3 C.
+
+**Bounded** storage keeps its bounded array and its logical `min .. max`
+length. Only the array's element changes: each physical slot is now a
+discriminated record whose unused variant has **no payload component at all**.
+
+```ada
+   type EmptyBounded_Slots_Slot (Is_Used : Boolean := False) is record
+      case Is_Used is
+         when False => null;
+         when True  => Value : Callsign;
+      end case;
+   end record;
+   type EmptyBounded_Slots_Array is
+     array (Positive range 1 .. 3) of EmptyBounded_Slots_Slot;
+   type EmptyBounded_Slots_Sequence is record
+      Length : Natural range 0 .. 3 := 0;
+      Items  : EmptyBounded_Slots_Array;
+   end record;
+```
+
+The bounded representation is deliberately **not** replaced by an unconstrained
+vector. Documented cardinality and storage guarantees are preserved: `Length`
+still enforces `minOccurs .. maxOccurs`, the array still cannot exceed
+`maxOccurs`, and the bounded shape remains allocation-free.
+
+A **positive-minimum** unbounded field keeps its two-part shape. Its required
+prefix is `min` live elements *by definition* -- the schema says at least that
+many occur -- so it stays an array of the element type and needs no slot
+wrapper. Only its additional portion becomes opaque storage, starting empty.
+
+Nothing is fabricated. No UUID, date, version, or string is invented to fill
+unused capacity; no initialization or validation check is suppressed; no
+unchecked public constructor is added; no value is discarded or truncated; no
+supported occurrence was marked unsupported; and the shared lexical classifier
+and its accepted bounds are untouched.
+
+### 10.5 Affected generated APIs, and the shared policy
+
+This is an explicit, documented, compiler-backed API change:
+
+* a zero-minimum unbounded field's `{Owner}_{Member}_Sequence` is now an opaque
+  private type manipulated through the five package-level operations above,
+  rather than a public `Ada.Containers.Vectors` subtype whose primitive
+  operations were directly visible;
+* a positive-minimum unbounded field's `Additional` component is now
+  `{Owner}_{Member}_Additional`, an opaque storage type, rather than a raw
+  `.Vector`;
+* a bounded field's `Items (I)` is now a `{Owner}_{Member}_Slot`, so a live
+  element is read as `Items (I).Value` and written as
+  `(Is_Used => True, Value => ...)`.
+
+The operation names are owned by **one** shared constant,
+`ADA_SEQUENCE_CALLABLES` in `codegen-core::backend_names`, which the renderer,
+the generated-name preflight, and readiness analysis all consult. There is no
+separate backend, readiness, and generated-name interpretation of the policy.
+Like the existing wrapper callables they are *checked* rather than inserted,
+because Ada overloads them on the container parameter's type.
+
+Two new user-derived spellings are registered in the shared name model, so a
+user declaration can no longer silently collide with one: `{stem}_Additional`
+for a positive-minimum unbounded member, and `{stem}_Slot` for a bounded
+member.
+
+Conditional imports are tracked: a schema with an unbounded member now imports
+`Ada.Containers.Indefinite_Vectors`. `Binary_Vectors` is unrelated and remains
+*definite* -- its element is `Interfaces.Unsigned_8`, an unvalidated scalar with
+no rejecting default -- so the two imports are independent and a schema needing
+only one does not acquire the other.
+
+Because the storage operations have real bodies, the package-body predicate is
+extended a third time: a schema emits an `.adb` when it has a temporal carrier,
+a string-profile carrier, **or** an unbounded sequence. A schema with none of
+the three still emits no `.adb` at all.
+
+### 10.6 Transitive composition
+
+Storage is selected from **semantic** information only -- the member's
+occurrence shape, and the element's structure -- never from a declaration
+spelling such as `Uuid` or `Instant`. The policy is uniform: every repeated
+member of a given occurrence shape gets the same representation, whether its
+element is a direct lexical carrier, a record that transitively contains one,
+or an ordinary scalar.
+
+A uniform policy is chosen deliberately over a "does this element reach a
+validated carrier?" analysis. Such an analysis would have to traverse inherited
+fields and recursive structures to stay correct, and would make the generated
+API depend on a whole-schema reachability property that is invisible at the use
+site. The fixture covers the composed case directly: `Tag` is a record whose
+required field is a validated carrier, and it is repeated in both a Record
+field and a Choice alternative.
+
+### 10.7 Allocation and performance implications
+
+An indefinite vector heap-allocates **per element**. That is a real cost and it
+is accepted deliberately: it is the only representation found that constructs
+live elements solely from supplied values, and the validated-value invariant is
+prioritized over avoiding a per-element allocation. Bounded fields are
+unaffected -- the discriminated slot adds a discriminant per slot and no
+allocation whatsoever.
+
+`main` (`2d97e46`) for a Task 033 constrained-float element -- but it is fixed
+by the same storage correction, so it is recorded rather than deferred.
+
+
+### 10.8 Compiler-tested versus inferred
+
+**Compiler-and-runtime tested**, GNAT 14.2.0, built without `-gnata` and again
+under `pragma Assertion_Policy (Ignore)`:
+
+* the original scalar/optional controls still hold -- a default-declared
+  carrier fails explicitly, `Create`/copy/assignment succeed, an absent
+  optional wrapper defaults successfully, and an unchecked *present* payload
+  still fails;
+* valid empty zero-minimum sequences, bounded and unbounded;
+* appending valid values, and growth through many capacity boundaries (64
+  appends, well past several reallocations);
+* `Reserve_Capacity` on both empty and populated containers;
+* copy construction, assignment, `Clear`, and reuse of populated sequences;
+* positive-minimum required values plus additional elements;
+* empty, partial, and full bounded sequences, and enforcement of the
+  cardinality limit;
+* composed element types containing validated carriers;
+* repeated Choice-alternative composition, in both storage shapes;
+* the DateTime carrier compared against its expected **normalized**
+  representation;
+* the same through `service-generate`, constructing and manipulating a real
+  repeated field rather than merely compiling the generated spec.
+
+Every live value is inspected for its exact expected text after the operation.
+
+**Inferred, not tested.** That *any* conforming Ada implementation allocates
+identically. The probes deliberately assert the required **usable API
+behavior** -- a client can build and read back these sequences without ever
+supplying a value to populate unused capacity -- rather than any particular
+allocation strategy, because allocation behavior is implementation-defined.
+
+### 10.9 Fresh measurements
+
+The pinned UCI 2.5 inputs were retried through the established source workflow
+and were obtainable this time, so the previously missing cells are now measured
+rather than restated.
+
+Full twelve-cell comparison, reviewed head (`aa60ba7`) versus corrected head,
+same pinned inputs and same binary invocation:
+
+| Cell | Ada | Rust | C++ | Delta |
+| --- | ---: | ---: | ---: | ---: |
+| 2.5 closed (of 5557) | 5314 | 5391 | 5394 | **0 / 0 / 0** |
+| 2.5 open (of 5557) | 5229 | 5303 | 5306 | **0 / 0 / 0** |
+| 2.6 closed (of 5570) | 5335 | 5413 | 5417 | **0 / 0 / 0** |
+| 2.6 open (of 5570) | 5250 | 5325 | 5329 | **0 / 0 / 0** |
+
+The two coverage reports are **byte-identical**, `diff` clean across all four
+runs. The 2.6 cells also match the Task 039 baseline exactly, and the 2.5 cells
+match the previously documented values.
+
+UCI 2.5 `PositionReport` selection recheck, closed world, now freshly measured:
+
+| Backend | Renderable selected | First blocker |
+| --- | ---: | --- |
+| Ada | 51/60 | `SecurityInformationType` |
+| Rust | 55/60 | `SecurityInformationType` |
+| C++ | 55/60 | `SecurityInformationType` |
+
+Unchanged, and no lexical support or occurrence limit was altered to obtain
+that.
+
+Three distinct properties are kept separate:
+
+1. **Deterministic generated output across repeated runs** -- two consecutive
+   generations of the same fixture are byte-identical;
+2. **Unchanged coverage-report output before/after** -- the reviewed-head and
+   corrected-head reports diff clean;
+3. **Intentionally changed Ada generated source** -- the storage
+   representations above genuinely changed, and the golden `track.ads` and the
+   backend text assertions are updated to match. Rust and C++ generated output
+   is byte-identical before and after, verified by directory diff.
+
+### 10.10 What the corrective did not touch
+
+The C++ lifecycle correction and its tests are unchanged, as are the shared
+lexical corpora under `tests/fixtures/string/` and `tests/fixtures/temporal/`.
+Rust generated output is unchanged. No classifier, no accepted lexical space,
+no normalization rule, and no occurrence limit was modified.

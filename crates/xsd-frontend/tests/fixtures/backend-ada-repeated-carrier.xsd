@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Task 040 corrective fixture: repeated occurrences of VALIDATED lexical
+  carriers, in every storage shape the Ada backend emits.
+
+  The Task 040 rejecting component default made an unchecked default carrier
+  fail explicitly, which is correct, but repeated storage default-initializes
+  PHYSICAL CAPACITY before any live element is assigned. This fixture exists so
+  that interaction is exercised by generated types rather than argued about:
+
+    * `Any`      — a 0..unbounded field, whose vector must grow;
+    * `Stamps`   — the same shape over the named Zulu DateTime carrier;
+    * `Tags`     — a 0..unbounded field whose element is a RECORD that
+                    transitively contains a required validated carrier, so the
+                    composed case is covered and not merely the direct one;
+    * `Required` — a positive-minimum unbounded field, whose required portion
+                    is explicitly supplied and whose additional portion starts
+                    empty;
+    * `Bounded`  — a 0..3 bounded field, exercised empty, partial, and full.
+
+  `EmptyBounded` deliberately has NO other required field. A failure observed
+  when declaring one is therefore attributable to unused repeated storage and
+  to nothing else in the enclosing record.
+
+  The declaration names are deliberately not UCI's: support must arise from the
+  primitive kind plus the effective facets, never from a declaration spelling.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test:carriers"
+           targetNamespace="urn:test:carriers"
+           elementFormDefault="qualified">
+
+  <!-- The authoritative 1..256 UCI visible-ASCII profile, under a non-UCI
+       name. Byte-identical facets to `VisibleString256Type`. -->
+  <xs:simpleType name="Callsign">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="256"/>
+      <xs:pattern value="[&#x20;-&#x7E;]{1,256}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- The named Zulu DateTime carrier, which normalizes its lexical form. -->
+  <xs:simpleType name="Instant">
+    <xs:restriction base="xs:dateTime">
+      <xs:pattern value=".+Z"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- A RECORD containing a required validated carrier. Repeating this type
+       reaches a carrier transitively, through composition. -->
+  <xs:complexType name="Tag">
+    <xs:sequence>
+      <xs:element name="Label" type="t:Callsign"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- A container with no unrelated required field: a valid EMPTY 0..3
+       sequence must be declarable here. -->
+  <xs:complexType name="EmptyBounded">
+    <xs:sequence>
+      <xs:element name="Slots" type="t:Callsign" minOccurs="0" maxOccurs="3"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="Payload">
+    <xs:sequence>
+      <xs:element name="Marker" type="t:Callsign"/>
+      <xs:element name="Any" type="t:Callsign" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="Stamps" type="t:Instant" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="Tags" type="t:Tag" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="Required" type="t:Callsign" minOccurs="2" maxOccurs="unbounded"/>
+      <xs:element name="Bounded" type="t:Callsign" minOccurs="0" maxOccurs="3"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Repeated Choice-alternative composition: the Choice emission path builds
+       its own helper types and must be corrected alongside the Record one. -->
+  <xs:complexType name="Selection">
+    <xs:choice>
+      <xs:element name="Repeated" type="t:Callsign" minOccurs="1" maxOccurs="unbounded"/>
+      <xs:element name="Marked" type="t:Tag" minOccurs="0" maxOccurs="2"/>
+    </xs:choice>
+  </xs:complexType>
+
+</xs:schema>

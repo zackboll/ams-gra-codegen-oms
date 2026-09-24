@@ -16,7 +16,14 @@ package Oms.Track is
       Tentative,
       Confirmed);
 
-   type Track_Sensor_Ids_Array is array (Positive range 1 .. 8) of Long_Long_Integer;
+   type Track_Sensor_Ids_Slot (Is_Used : Boolean := False) is record
+      case Is_Used is
+         when False => null;
+         when True  => Value : Long_Long_Integer;
+      end case;
+   end record;
+   type Track_Sensor_Ids_Array is
+     array (Positive range 1 .. 8) of Track_Sensor_Ids_Slot;
    type Track_Sensor_Ids_Sequence is record
       Length : Natural range 0 .. 8 := 0;
       Items  : Track_Sensor_Ids_Array;

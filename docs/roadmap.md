@@ -462,6 +462,32 @@ naming the representation; it did not stop the language from
 default-initializing it or from synthesizing destructive moves. See
 `docs/task-040-validated-carrier-lifecycle.md`.
 
+**Corrective pass (Task 040, repeated storage):**
+
+The Ada rejecting default was correct for scalar carriers but conflicted with
+**repeated storage**, which default-initializes physical capacity before any
+live element is assigned. A second over-broad claim is corrected here: not all
+legitimate Ada construction paths were unaffected. Appending valid carriers to
+an unbounded field raised `Program_Error` from inside the container, and a
+valid *empty* `0..N` bounded field raised on declaration. Unchanged coverage
+counts could not have caught either, because capability analysis never executes
+a container operation.
+
+The governing invariant is now *unused capacity is not a live validated value*:
+unbounded fields use `Ada.Containers.Indefinite_Vectors` behind an opaque
+sequence type, and bounded fields keep their bounded array but give each
+physical slot a discriminated record whose unused variant has no payload. A
+separate **pre-existing** defect — the visible-part instantiation failing to
+compile over any generated `private` element type — is fixed by the same
+change and reproduces on original `main`.
+
+This is an explicit generated-API change (documented in
+`docs/task-040-validated-carrier-lifecycle.md` §10.5) and an explicit
+allocation-policy tradeoff: indefinite vectors heap-allocate per element.
+Cardinality semantics, coverage in all twelve pinned cells, and Rust/C++ output
+are unchanged. The pinned UCI 2.5 inputs, previously unobtainable, were
+obtained and freshly measured on this pass.
+
 `PositionReport` remains NOT READY in every backend.
 
 **Still open:**

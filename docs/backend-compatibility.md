@@ -4859,8 +4859,50 @@ character, so no accidental valid-default assumption can hide behind a
 Measured UCI 2.6 (`78eb61b6112c8bffa40820c33124b57787fc5bd9`) declarations are
 identical before and after — closed `5335 / 5413 / 5417` and open
 `5250 / 5325 / 5329` for Ada / Rust / C++ — matching the Task 039 record
-exactly. The pinned UCI 2.5 set was **not** obtainable in this environment, so
-its six cells and the `PositionReport` readiness recheck are not freshly
-measured; that is recorded as missing evidence rather than restated from these
-notes as a new measurement. See
-`docs/task-040-validated-carrier-lifecycle.md`.
+exactly.
+
+The pinned UCI 2.5 set (`093610b7753944059360d3236770ab446d039556`) was **not**
+obtainable when the first revision of this section was written, and its six
+cells were recorded as missing evidence. It **was** obtainable on the
+corrective pass and is now freshly measured: closed `5314 / 5391 / 5394` and
+open `5229 / 5303 / 5306` for Ada / Rust / C++, all deltas zero, and the
+`PositionReport` recheck reproduces at Ada 51/60, Rust 55/60, C++ 55/60 with
+first blocker `SecurityInformationType`. The missing-measurement limitation is
+therefore withdrawn rather than carried forward.
+
+### Corrective: repeated storage of validated carriers
+
+The rejecting Ada component default above fixed unchecked scalar
+initialization, but it interacted badly with **repeated storage**, which
+default-initializes physical capacity before any live element is assigned. The
+earlier blanket claim that all legitimate Ada construction paths were
+unaffected was therefore too broad and is corrected.
+
+Two paths regressed, and both are fixed:
+
+- an **unbounded** field instantiated the *definite* `Ada.Containers.Vectors`,
+  which default-initializes the replacement array it allocates when growing, so
+  appending valid carriers raised `Program_Error` from inside the container. It
+  now instantiates `Ada.Containers.Indefinite_Vectors` in the **private part**
+  behind an opaque sequence type with five package-level operations
+  (`Length`, `Append`, `Element`, `Clear`, `Reserve_Capacity`);
+- a **bounded** field sized its `Items` array to `maxOccurs` over the element
+  type, so a valid *empty* `0..N` sequence default-initialized `N` carriers.
+  Each physical slot is now a discriminated record whose unused variant has no
+  payload component. The bounded array, the allocation-free shape, and the
+  `minOccurs .. maxOccurs` logical length are all preserved.
+
+A separate, **pre-existing** defect surfaced during reproduction and is fixed
+by the same change: the visible-part instantiation did not compile at all when
+the element was a generated `private` type (`premature use of private type`).
+That reproduces on original `main` for a Task 033 constrained-float element and
+is not a Task 040 regression.
+
+Storage is chosen from semantic information only — occurrence shape and element
+structure — never from a declaration spelling, and the policy is uniform across
+direct carriers, composed records, and ordinary scalars. Tradeoff: an
+indefinite vector heap-allocates per element, accepted deliberately so that
+live elements are constructed only from supplied values. Rust and C++ generated
+output is byte-identical before and after.
+
+See `docs/task-040-validated-carrier-lifecycle.md` §10.

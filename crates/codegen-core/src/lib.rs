@@ -27,9 +27,9 @@ pub use ada_optional::{
     ada_optional_direct_primitive_representable, ada_record_field_uses_optional_wrapper,
 };
 pub use backend_names::{
-    BackendNameError, NameRegion, backend_names_are_renderable, schema_emits_ada_binary_vectors,
-    schema_emits_bounded_integer_support, schema_emits_unbounded_sequence_support,
-    unsafe_named_declarations, validate_backend_names,
+    ADA_SEQUENCE_CALLABLES, BackendNameError, NameRegion, backend_names_are_renderable,
+    schema_emits_ada_binary_vectors, schema_emits_bounded_integer_support,
+    schema_emits_unbounded_sequence_support, unsafe_named_declarations, validate_backend_names,
 };
 pub use backend_preflight::{BackendPreflightError, backend_preflight, backend_preflight_passes};
 pub use coverage::{

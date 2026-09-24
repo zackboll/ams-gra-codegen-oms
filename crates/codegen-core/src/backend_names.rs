@@ -867,11 +867,68 @@ fn ada_wrapper_callable_owners(schema: &SchemaIr) -> Vec<&TypeDecl> {
 ///
 /// Both sides are implicated: the wrapper that generates the subprogram and
 /// the declaration that occupies the identifier.
+/// The package-level operations `backend-ada` republishes for each generated
+/// **unbounded sequence**'s opaque storage type (Task 040 corrective).
+///
+/// These are the exact five names `ADA_SEQUENCE_OPERATIONS` in `backend-ada`
+/// emits. They are listed here so the one policy has a single interpretation:
+/// the renderer, this name model, and readiness analysis all consult the same
+/// list rather than each deciding independently what a sequence generates.
+///
+/// Like the wrapper callables, they are *checked* rather than inserted: Ada
+/// overloads them on the container parameter's type, so many sequences coexist
+/// in one package, but a non-overloadable user declaration spelled `Append`
+/// really would conflict.
+///
+/// `backend-ada` consumes this same constant when it emits the operations, so
+/// the renderer cannot publish a name this model has not reserved.
+pub const ADA_SEQUENCE_CALLABLES: &[&str] =
+    &["Length", "Append", "Element", "Clear", "Reserve_Capacity"];
+
+/// Every declaration for which Ada emits the sequence-storage operations.
+///
+/// Selection is purely semantic: a member whose occurrence shape is unbounded.
+/// No declaration spelling is consulted.
+fn ada_sequence_callable_owners(schema: &SchemaIr) -> Vec<&TypeDecl> {
+    schema
+        .types
+        .iter()
+        .filter(|declaration| {
+            declared_members(declaration).iter().any(|member| {
+                matches!(
+                    member.cardinality.shape(),
+                    OccurrenceShape::Unbounded { .. }
+                )
+            })
+        })
+        .collect()
+}
+
 fn collect_ada_wrapper_callable_conflicts(
     top_level: &Region,
     schema: &SchemaIr,
     conflicts: &mut Vec<CollectedNameError>,
 ) {
+    for declaration in ada_sequence_callable_owners(schema) {
+        for callable in ADA_SEQUENCE_CALLABLES {
+            let key = identity_key(BackendLanguage::Ada, callable);
+            let Some(first) = top_level.taken.get(&key) else {
+                continue;
+            };
+            let source = NameSource::GeneratedCallable {
+                owner: declaration.name.clone(),
+                callable,
+            };
+            let error = BackendNameError::Collision {
+                language: BackendLanguage::Ada,
+                region: NameRegion::TopLevel,
+                generated: (*callable).to_owned(),
+                first: first.label(),
+                second: source.label(),
+            };
+            conflicts.push(CollectedNameError::new(error, &[first, &source]));
+        }
+    }
     for declaration in ada_wrapper_callable_owners(schema) {
         for callable in ADA_WRAPPER_CALLABLES {
             let key = identity_key(BackendLanguage::Ada, callable);
@@ -1675,15 +1732,24 @@ fn validate_ada_helpers(
     // `min == 0` spelling left `{stem}_Required_Array` and
     // `{stem}_Additional_Vectors` emitted but unregistered, so a user
     // declaration could silently collide with one.
+    //
+    // Task 040 corrective adds two spellings. A positive-minimum unbounded
+    // member now also emits `{stem}_Additional`, the opaque storage type
+    // standing where a raw vector component used to sit. A bounded member now
+    // also emits `{stem}_Slot`, the discriminated physical-slot record whose
+    // unused variant holds no live element. Both are user-derived names in the
+    // flat package, so both must be reserved here or a user declaration could
+    // silently collide with one.
     let suffixes: &[&str] = match cardinality.shape() {
         OccurrenceShape::Unbounded { min } if min > 0 => &[
             "_Item",
             "_Required_Array",
+            "_Additional",
             "_Additional_Vectors",
             "_Sequence",
         ],
         OccurrenceShape::Unbounded { .. } => &["_Item", "_Vectors", "_Sequence"],
-        _ => &["_Array", "_Sequence"],
+        _ => &["_Slot", "_Array", "_Sequence"],
     };
     for suffix in suffixes {
         // Attributed structurally to the owning declaration, so a collision
