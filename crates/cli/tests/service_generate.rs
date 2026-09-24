@@ -2620,31 +2620,108 @@ begin
        Version   => Urn.Test.Create ("002.5.0"),
        Notes     => Ada.Strings.Unbounded.To_Unbounded_String ("n"),
        Aliases   => Aliases,
-       Slots     => <>);
+       Slots     => <>,
+       Anchors   =>
+         Urn.Test.To_Sequence
+           ((Urn.Test.Create ("K-1"), Urn.Test.Create ("K-2"))));
       begin
     Check
       (Urn.Test.Value (Urn.Test.Element (Report.Aliases, 2)), "A 2",
        "message alias");
     --  The 0..3 bounded field is validly EMPTY here: no placeholder
     --  carrier is required to occupy its unused slots.
-    if Report.Slots.Length /= 0 then
+    if Urn.Test.Length (Report.Slots) /= 0 then
        Put_Line ("an empty bounded field must have length zero");
        Failures := Failures + 1;
     end if;
+    --  The 2..3 field carries exactly the two supplied values.
+    if Urn.Test.Length (Report.Anchors) /= 2 then
+       Put_Line ("a positive-minimum field must carry what was supplied");
+       Failures := Failures + 1;
+    end if;
+    Check
+      (Urn.Test.Value (Urn.Test.Element (Report.Anchors, 2)), "K-2",
+       "message anchor");
       end;
    end;
 
-   --  The bounded field, partially then fully populated.
+   --  The 0..3 bounded field, empty then partially then fully populated,
+   --  entirely through the generated API. There is no writable occupancy
+   --  and no reachable slot, so a claimed-but-empty position cannot be
+   --  written at all.
    declare
       Slots : Urn.Test.TrackPayload_Slots_Sequence;
    begin
-      Slots.Items (1) := (Is_Used => True, Value => Urn.Test.Create ("S-1"));
-      Slots.Length := 1;
-      Check (Urn.Test.Value (Slots.Items (1).Value), "S-1", "bounded partial");
-      Slots.Items (2) := (Is_Used => True, Value => Urn.Test.Create ("S-2"));
-      Slots.Items (3) := (Is_Used => True, Value => Urn.Test.Create ("S-3"));
-      Slots.Length := 3;
-      Check (Urn.Test.Value (Slots.Items (3).Value), "S-3", "bounded full");
+      if Urn.Test.Length (Slots) /= 0 then
+    Put_Line ("a zero-minimum bounded field must start empty");
+    Failures := Failures + 1;
+      end if;
+      Urn.Test.Append (Slots, Urn.Test.Create ("S-1"));
+      Check (Urn.Test.Value (Urn.Test.Element (Slots, 1)), "S-1",
+        "bounded partial");
+      Urn.Test.Append (Slots, Urn.Test.Create ("S-2"));
+      Urn.Test.Append (Slots, Urn.Test.Create ("S-3"));
+      Check (Urn.Test.Value (Urn.Test.Element (Slots, 3)), "S-3",
+        "bounded full");
+
+      --  maxOccurs is enforced by the generated sequence itself.
+      begin
+    Urn.Test.Append (Slots, Urn.Test.Create ("S-4"));
+    Put_Line ("appending past maxOccurs must be rejected");
+    Failures := Failures + 1;
+      exception
+    when Constraint_Error => null;
+      end;
+
+      --  Reading past the logical length is rejected rather than returning
+      --  spare capacity.
+      begin
+    declare
+       Unused : constant String :=
+         Urn.Test.Value (Urn.Test.Element (Slots, 4));
+    begin
+       Put_Line ("out-of-range read must be rejected: " & Unused);
+       Failures := Failures + 1;
+    end;
+      exception
+    when Constraint_Error => null;
+      end;
+
+      Urn.Test.Clear (Slots);
+      if Urn.Test.Length (Slots) /= 0 then
+    Put_Line ("clearing a zero-minimum field must empty it");
+    Failures := Failures + 1;
+      end if;
+   end;
+
+   --  The 2..3 field: construction with too few values is rejected, and a
+   --  valid construction still works (the positive control).
+   declare
+      Anchors : constant Urn.Test.TrackPayload_Anchors_Sequence :=
+    Urn.Test.To_Sequence
+      ((Urn.Test.Create ("A-1"), Urn.Test.Create ("A-2"),
+        Urn.Test.Create ("A-3")));
+      Copied  : Urn.Test.TrackPayload_Anchors_Sequence := Anchors;
+   begin
+      Check (Urn.Test.Value (Urn.Test.Element (Anchors, 3)), "A-3",
+        "required full");
+      Check (Urn.Test.Value (Urn.Test.Element (Copied, 1)), "A-1",
+        "required copied");
+      Copied := Anchors;
+      Check (Urn.Test.Value (Urn.Test.Element (Copied, 2)), "A-2",
+        "required assigned");
+      begin
+    declare
+       Short : constant Urn.Test.TrackPayload_Anchors_Sequence :=
+         Urn.Test.To_Sequence ((1 => Urn.Test.Create ("A-1")));
+    begin
+       Put_Line
+         ("too few values must be rejected:" & Urn.Test.Length (Short)'Image);
+       Failures := Failures + 1;
+    end;
+      exception
+    when Constraint_Error => null;
+      end;
    end;
 
    if Failures /= 0 then

@@ -149,21 +149,61 @@ fn repeated_storage_never_declares_a_live_carrier_for_spare_capacity() {
         "{spec}"
     );
 
-    // Bounded: a discriminated physical slot whose unused variant has no
-    // payload component at all. The bounded array and the schema's logical
-    // `min .. max` length are both preserved.
+    // Bounded: opaque storage. The physical slot is still discriminated, with
+    // no payload component in its unused variant, and the backing array is
+    // still finite and tied to maxOccurs -- but both now live in the private
+    // completion, because a publicly writable count beside public slots could
+    // not preserve actual occupancy.
+    assert!(
+        spec.contains("type EmptyBounded_Slots_Sequence is private;"),
+        "bounded storage must be opaque:\n{spec}"
+    );
     assert!(
         spec.contains("type EmptyBounded_Slots_Slot (Is_Used : Boolean := False) is record"),
         "{spec}"
     );
     assert!(spec.contains("when False => null;"), "{spec}");
     assert!(
-        spec.contains("array (Positive range 1 .. 3) of EmptyBounded_Slots_Slot;"),
+        spec.contains("array (EmptyBounded_Slots_Index) of EmptyBounded_Slots_Slot;"),
         "{spec}"
     );
     assert!(
-        spec.contains("Length : Natural range 0 .. 3 := 0;"),
+        spec.contains("subtype EmptyBounded_Slots_Index is Positive range 1 .. 3;"),
+        "maxOccurs must still bound the backing storage:\n{spec}"
+    );
+    assert!(
+        spec.contains("Count : Natural range 0 .. 3 := 0;"),
         "cardinality semantics must be preserved:\n{spec}"
+    );
+    // The slot array and the count appear only AFTER `private`, so no client
+    // can reach either.
+    let private_at = spec.find("\nprivate\n").expect("a private part must exist");
+    assert!(
+        spec.find("Count : Natural").expect("a count must exist") > private_at,
+        "occupancy must not be publicly writable:\n{spec}"
+    );
+    assert!(
+        spec.find("EmptyBounded_Slots_Array").expect("array") > private_at,
+        "the slot array must not be publicly reachable:\n{spec}"
+    );
+    // A positive-minimum bounded sequence has no valid default at all.
+    assert!(
+        spec.contains("Count : Natural range 2 .. 3 :=\n        raise Standard.Program_Error"),
+        "a positive-minimum bounded default must reject, not claim:\n{spec}"
+    );
+    // A fixed-count 2..2 field is representable and equally protected.
+    assert!(
+        spec.contains("Count : Natural range 2 .. 2 :=\n        raise Standard.Program_Error"),
+        "a fixed-count field must reject a default too:\n{spec}"
+    );
+    // `Clear` exists for the zero-minimum shape and not for a positive one.
+    assert!(
+        spec.contains("procedure Clear (Container : in out EmptyBounded_Slots_Sequence);"),
+        "{spec}"
+    );
+    assert!(
+        !spec.contains("procedure Clear (Container : in out Payload_Span_Sequence);"),
+        "Clear must not exist where the empty sequence is illegal:\n{spec}"
     );
 
     // The positive-minimum shape is preserved rather than collapsed into an
@@ -255,7 +295,7 @@ begin
    declare
       Empty : Test.Carriers.EmptyBounded;
    begin
-      Expect (Empty.Slots.Length, 0, "empty bounded");
+      Expect (Test.Carriers.Length (Empty.Slots), 0, "empty bounded");
    end;
 
    --  Unbounded 0..N: empty, reserve, growth through many capacity
@@ -349,31 +389,201 @@ begin
     "additional element");
    end;
 
-   --  Bounded 0..3: empty, partial, full, and the cardinality limit.
+   --  Bounded 0..3: empty, partial, full, and the cardinality limit enforced
+   --  by the GENERATED SEQUENCE itself -- not by a substitute local subtype.
+   --  The previous probe declared `Over : Natural range 0 .. 3` and observed
+   --  its Constraint_Error, which proved nothing about the generated API.
    declare
       B : Test.Carriers.Payload_Bounded_Sequence;
    begin
-      Expect (B.Length, 0, "bounded empty");
+      Expect (Test.Carriers.Length (B), 0, "bounded empty");
 
-      B.Items (1) := (Is_Used => True, Value => Test.Carriers.Create ("B-1"));
-      B.Length := 1;
-      Check (Test.Carriers.Value (B.Items (1).Value), "B-1", "bounded partial");
+      Test.Carriers.Append (B, Test.Carriers.Create ("B-1"));
+      Expect (Test.Carriers.Length (B), 1, "bounded partial");
+      Check (Test.Carriers.Value (Test.Carriers.Element (B, 1)), "B-1",
+        "bounded partial value");
 
-      B.Items (2) := (Is_Used => True, Value => Test.Carriers.Create ("B-2"));
-      B.Items (3) := (Is_Used => True, Value => Test.Carriers.Create ("B-3"));
-      B.Length := 3;
-      Check (Test.Carriers.Value (B.Items (3).Value), "B-3", "bounded full");
+      Test.Carriers.Append (B, Test.Carriers.Create ("B-2"));
+      Test.Carriers.Append (B, Test.Carriers.Create ("B-3"));
+      Expect (Test.Carriers.Length (B), 3, "bounded full");
+      Check (Test.Carriers.Value (Test.Carriers.Element (B, 3)), "B-3",
+        "bounded full value");
 
-      --  The schema's maxOccurs is still enforced by the representation.
-      declare
-    Over : Natural range 0 .. 3 := 0;
+      --  Appending at capacity is rejected by the generated Append.
       begin
-    Over := B.Length + 1;
-    Put_Line ("cardinality limit not enforced:" & Over'Image);
+    Test.Carriers.Append (B, Test.Carriers.Create ("B-4"));
+    Put_Line ("append past maxOccurs was accepted");
     Failures := Failures + 1;
       exception
     when Constraint_Error => null;
       end;
+
+      --  Reading outside the logical length is rejected rather than handing
+      --  back spare capacity.
+      begin
+    declare
+       Seen : constant String :=
+         Test.Carriers.Value (Test.Carriers.Element (B, 4));
+    begin
+       Put_Line ("out-of-range read returned: " & Seen);
+       Failures := Failures + 1;
+    end;
+      exception
+    when Constraint_Error => null;
+      end;
+
+      --  Copy and assignment preserve a coherent sequence.
+      declare
+    Copied   : constant Test.Carriers.Payload_Bounded_Sequence := B;
+    Assigned : Test.Carriers.Payload_Bounded_Sequence;
+      begin
+    Assigned := Copied;
+    Expect (Test.Carriers.Length (Assigned), 3, "bounded assigned");
+    Check (Test.Carriers.Value (Test.Carriers.Element (Copied, 2)), "B-2",
+      "bounded copy");
+    Check (Test.Carriers.Value (Test.Carriers.Element (Assigned, 2)), "B-2",
+      "bounded assignment");
+    Test.Carriers.Clear (Assigned);
+    Expect (Test.Carriers.Length (Assigned), 0, "bounded cleared");
+    begin
+       declare
+          Seen : constant String :=
+        Test.Carriers.Value (Test.Carriers.Element (Assigned, 1));
+       begin
+          Put_Line ("cleared sequence still yielded: " & Seen);
+          Failures := Failures + 1;
+       end;
+    exception
+       when Constraint_Error => null;
+    end;
+      end;
+   end;
+
+   --  Bounded 2..3 (POSITIVE minimum). Explicit construction from enough
+   --  valid values succeeds; too few and too many are both rejected.
+   declare
+      S : constant Test.Carriers.Payload_Span_Sequence :=
+    Test.Carriers.To_Sequence
+      ((Test.Carriers.Create ("S-1"), Test.Carriers.Create ("S-2")));
+   begin
+      Expect (Test.Carriers.Length (S), 2, "span minimum");
+      Check (Test.Carriers.Value (Test.Carriers.Element (S, 1)), "S-1",
+        "span first");
+      Check (Test.Carriers.Value (Test.Carriers.Element (S, 2)), "S-2",
+        "span second");
+
+      declare
+    Grown : Test.Carriers.Payload_Span_Sequence := S;
+      begin
+    Test.Carriers.Append (Grown, Test.Carriers.Create ("S-3"));
+    Expect (Test.Carriers.Length (Grown), 3, "span grown");
+    Check (Test.Carriers.Value (Test.Carriers.Element (Grown, 3)), "S-3",
+      "span appended");
+    begin
+       Test.Carriers.Append (Grown, Test.Carriers.Create ("S-4"));
+       Put_Line ("span append past maxOccurs was accepted");
+       Failures := Failures + 1;
+    exception
+       when Constraint_Error => null;
+    end;
+      end;
+
+      --  Too few: the checked constructor raises rather than fabricating a
+      --  second element or silently truncating.
+      begin
+    declare
+       Short : constant Test.Carriers.Payload_Span_Sequence :=
+         Test.Carriers.To_Sequence ((1 => Test.Carriers.Create ("S-1")));
+    begin
+       Put_Line
+         ("too few values accepted:" & Test.Carriers.Length (Short)'Image);
+       Failures := Failures + 1;
+    end;
+      exception
+    when Constraint_Error => null;
+      end;
+
+      --  Too many: rejected rather than silently truncated.
+      begin
+    declare
+       Long : constant Test.Carriers.Payload_Span_Sequence :=
+         Test.Carriers.To_Sequence
+           ((Test.Carriers.Create ("1"), Test.Carriers.Create ("2"),
+             Test.Carriers.Create ("3"), Test.Carriers.Create ("4")));
+    begin
+       Put_Line
+         ("too many values accepted:" & Test.Carriers.Length (Long)'Image);
+       Failures := Failures + 1;
+    end;
+      exception
+    when Constraint_Error => null;
+      end;
+   end;
+
+   --  A default-declared positive-minimum sequence claims nothing: it fails
+   --  explicitly instead of reporting two elements nobody supplied. This is
+   --  an initialization expression, so it holds without -gnata.
+   --  The handler is OUTSIDE the declaring block: an exception raised while
+   --  elaborating a declarative part propagates past that block's own
+   --  handler, so catching it here is what actually observes the rejection.
+   begin
+      declare
+    Unset : Test.Carriers.Payload_Span_Sequence;
+      begin
+    Put_Line
+      ("a positive-minimum default claimed"
+       & Test.Carriers.Length (Unset)'Image);
+    Failures := Failures + 1;
+      end;
+   exception
+      when Program_Error => null;
+   end;
+
+   --  Fixed count 2..2: required occupancy cannot be replaced by unused
+   --  slots, and there is no spare capacity at all.
+   declare
+      P : constant Test.Carriers.Payload_Pair_Sequence :=
+    Test.Carriers.To_Sequence
+      ((Test.Carriers.Create ("P-1"), Test.Carriers.Create ("P-2")));
+   begin
+      Expect (Test.Carriers.Length (P), 2, "fixed pair");
+      Check (Test.Carriers.Value (Test.Carriers.Element (P, 2)), "P-2",
+        "fixed pair second");
+      declare
+    Grown : Test.Carriers.Payload_Pair_Sequence := P;
+      begin
+    Test.Carriers.Append (Grown, Test.Carriers.Create ("P-3"));
+    Put_Line ("a fixed-count sequence accepted a third element");
+    Failures := Failures + 1;
+      exception
+    when Constraint_Error => null;
+      end;
+   end;
+
+   begin
+      declare
+    Unset : Test.Carriers.Payload_Pair_Sequence;
+      begin
+    Put_Line
+      ("a fixed-count default claimed" & Test.Carriers.Length (Unset)'Image);
+    Failures := Failures + 1;
+      end;
+   exception
+      when Program_Error => null;
+   end;
+
+   --  A positive-minimum bounded field of COMPOSED records, each of which
+   --  transitively contains a required validated carrier.
+   declare
+      M : constant Test.Carriers.Payload_Marks_Sequence :=
+    Test.Carriers.To_Sequence
+      (((Label => Test.Carriers.Create ("M-1")),
+        (Label => Test.Carriers.Create ("M-2"))));
+   begin
+      Expect (Test.Carriers.Length (M), 2, "composed bounded");
+      Check
+   (Test.Carriers.Value (Test.Carriers.Element (M, 2).Label), "M-2",
+    "composed bounded value");
    end;
 
    --  Repeated CHOICE alternatives, both shapes.
@@ -398,14 +608,23 @@ begin
    declare
       M : Test.Carriers.Selection (Kind => Test.Carriers.Marked_Kind);
    begin
-      Expect (M.Marked.Length, 0, "choice bounded empty");
-      M.Marked.Items (1) :=
-   (Is_Used => True,
-    Value   => (Label => Test.Carriers.Create ("M-1")));
-      M.Marked.Length := 1;
+      Expect (Test.Carriers.Length (M.Marked), 0, "choice bounded empty");
+      Test.Carriers.Append
+   (M.Marked, (Label => Test.Carriers.Create ("M-1")));
       Check
-   (Test.Carriers.Value (M.Marked.Items (1).Value.Label), "M-1",
+   (Test.Carriers.Value (Test.Carriers.Element (M.Marked, 1).Label), "M-1",
     "choice bounded partial");
+      --  The Choice emission path gets the identical protections.
+      Test.Carriers.Append
+   (M.Marked, (Label => Test.Carriers.Create ("M-2")));
+      begin
+    Test.Carriers.Append
+      (M.Marked, (Label => Test.Carriers.Create ("M-3")));
+    Put_Line ("a Choice bounded alternative exceeded maxOccurs");
+    Failures := Failures + 1;
+      exception
+    when Constraint_Error => null;
+      end;
    end;
 
    if Failures /= 0 then

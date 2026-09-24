@@ -80,6 +80,27 @@ jobs:
           require_one_test task040_selected_ada_repeated_field_is_constructible \
             cargo test -p ams-gra-codegen-oms --test service_generate \
             task040_selected_ada_repeated_field_is_constructible
+          # Task 040 corrective, pass two. The bounded-occupancy controls live
+          # inside the two repeated-storage probes above, which already run
+          # here. These are the new focused regressions the second pass adds,
+          # named explicitly for the same reason: a phantom callable or a
+          # renamed sequence operation is a silent-acceptance failure, so a run
+          # that matched zero tests must fail rather than report green.
+          require_one_test tests::emitted_sequence_operations_are_exactly_the_shared_definition \
+            cargo test -p ams-gra-oms-backend-ada --lib \
+            tests::emitted_sequence_operations_are_exactly_the_shared_definition
+          require_one_test backend_names::tests::a_non_emitted_abstract_record_reserves_no_sequence_callable \
+            cargo test -p ams-gra-oms-codegen-core --lib \
+            backend_names::tests::a_non_emitted_abstract_record_reserves_no_sequence_callable
+          require_one_test backend_names::tests::an_inherited_unbounded_member_attributes_callables_to_the_descendant \
+            cargo test -p ams-gra-oms-codegen-core --lib \
+            backend_names::tests::an_inherited_unbounded_member_attributes_callables_to_the_descendant
+          require_one_test backend_names::tests::bounded_shapes_reserve_exactly_the_operations_they_emit \
+            cargo test -p ams-gra-oms-codegen-core --lib \
+            backend_names::tests::bounded_shapes_reserve_exactly_the_operations_they_emit
+          require_one_test backend_names::tests::an_emitted_sequence_still_collides_with_a_conflicting_type_name \
+            cargo test -p ams-gra-oms-codegen-core --lib \
+            backend_names::tests::an_emitted_sequence_still_collides_with_a_conflicting_type_name
           # The ORIGINAL Task 040 scalar/optional lifecycle controls must keep
           # passing alongside the corrected repeated paths.
           require_one_test a_default_declared_carrier_cannot_silently_hold_invalid_text_under_gnat \

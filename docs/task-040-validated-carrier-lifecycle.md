@@ -290,18 +290,40 @@ counts of `AMS_GRA_REQUIRE_GNAT=1 cargo test --workspace`:
 | Head | Passing |
 | --- | ---: |
 | original `main` (`2d97e46`) | **778** |
-| reviewed head (`aa60ba7`) | **787** |
-| corrected head | **790** |
+| first reviewed head (`aa60ba7`) | **787** |
+| second reviewed head (`c726b9e`) | **790** |
+| corrected head (this pass) | **797** |
 
-The reviewed head's commit message stated a `785 -> 787` transition. The `787`
-is correct; the `785` baseline is not, and is corrected here. Measured against
-original `main` the reviewed head added **nine** tests -- seven backend
-lifecycle tests plus two `service-generate` integration tests -- and the
-corrective pass adds **three** more: two backend repeated-storage tests and one
-further `service-generate` integration test.
+The first reviewed head's commit message stated a `785 -> 787` transition. The
+`787` is correct; the `785` baseline is not, and is corrected here. Measured
+against original `main`, `aa60ba7` added **nine** tests -- seven backend
+lifecycle tests plus two `service-generate` integration tests -- and `c726b9e`
+added **three** more.
+
+The second corrective pass adds **seven**, all real regressions rather than
+count padding:
+
+| Added test | Location |
+| --- | --- |
+| `emitted_sequence_operations_are_exactly_the_shared_definition` | `backend-ada` lib |
+| `a_non_emitted_abstract_record_reserves_no_sequence_callable` | `codegen-core::backend_names` |
+| `an_inherited_unbounded_member_attributes_callables_to_the_descendant` | `codegen-core::backend_names` |
+| `bounded_shapes_reserve_exactly_the_operations_they_emit` | `codegen-core::backend_names` |
+| `an_emitted_sequence_still_collides_with_a_conflicting_type_name` | `codegen-core::backend_names` |
+| `callable_deferral_for_one_field_does_not_disable_checking` | `codegen-core::backend_names` |
+| `multiple_sequences_with_valid_overloads_coexist` | `codegen-core::backend_names` |
+
+The bounded-occupancy controls are *not* new test functions: they were added to
+the existing `repeated_carrier_storage` probe and to the existing
+`task040_selected_ada_repeated_field_is_constructible` integration test, which
+is why the count rises by seven rather than by the number of new assertions.
+No existing test was deleted or weakened to obtain this total. Two existing
+tests changed premise for a substantive reason, documented in §10.5: bounded
+storage now needs a package body, so `track.xsd` moved from the "emits no
+`.adb`" list to a positive control asserting what its body contains.
 
 The GNAT-backed regressions execute rather than skip: `AMS_GRA_REQUIRE_GNAT`
-turns the developer-machine skip into a hard failure, and CI now names the new
+turns the developer-machine skip into a hard failure, and CI names the
 repeated-storage probes explicitly so zero matched tests is a failure.
 
 ## 7. Capability and output results
@@ -472,6 +494,37 @@ test-carriers.ads:53:47: error: premature use of private type
 
 This is reported separately and explicitly **not** mislabelled as the
 vector-growth failure. It is not new to Task 040 -- it reproduces on original
+`main` (`2d97e46`) for a Task 033 constrained-float element -- but it is fixed
+by the same storage correction, so it is recorded rather than deferred.
+
+**D. Bounded occupancy (second corrective pass).** The first corrective pass's
+bounded shape was itself defective, and the defect was reproduced by execution
+on the first corrective head (`c726b9e`) before any further production code was
+changed. A probe built from this repository's own generator printed:
+
+```text
+A: length is 1 with slot 1 used = FALSE
+B: default length is 2 slot1 used = FALSE slot2 used = FALSE
+C: fixed length is 2 slot1 used = FALSE
+D: length is 2 but slot 1 used = FALSE
+```
+
+* **A** — a zero-minimum `0 .. 3` sequence was default-created, its `Length`
+  set to 1 with no element supplied, and it then claimed one element whose slot
+  had no payload.
+* **B** — a positive-minimum `2 .. 3` field's *default* construction produced
+  `Length = 2` while both required logical positions were unused slots.
+* **C** — a fixed `2 .. 2` field behaved identically: required occupancy was
+  entirely replaceable by unused slots.
+* **D** — an ordinary public mutation removed a payload from a slot still
+  counted by `Length`, creating a hole in the logical prefix.
+
+The cause is structural rather than incidental. A numeric range on `Length` is
+**not** sufficient once a slot may contain no payload: the count and the
+payloads were two independently writable facts with no enforced relationship
+between them. The earlier claim in this document that a range-constrained
+`Length` alone preserved actual occurrence semantics is therefore **withdrawn**
+and corrected in §10.4.
 
 ### 10.4 The corrected representations
 
@@ -496,29 +549,96 @@ An indefinite vector holds access values for spare capacity and constructs each
 live element from the supplied value, so no carrier is ever default-created.
 Moving the instantiation into the private part also resolves 10.3 C.
 
-**Bounded** storage keeps its bounded array and its logical `min .. max`
-length. Only the array's element changes: each physical slot is now a
-discriminated record whose unused variant has **no payload component at all**.
+**Bounded** storage keeps finite backing storage tied to `maxOccurs`, and its
+slots still carry no payload component when unused. The second corrective pass
+changes *who may write them*. The required invariant is:
+
+> Every logical element has a live, valid payload. Unused capacity is not a
+> logical element.
+
+The type is now **private**, with a checked constructor as the only way to
+obtain occupancy:
 
 ```ada
+   subtype EmptyBounded_Slots_Item is Callsign;
+   subtype EmptyBounded_Slots_Index is Positive range 1 .. 3;
+   type EmptyBounded_Slots_Values is
+     array (Positive range <>) of EmptyBounded_Slots_Item;
+
+   type EmptyBounded_Slots_Sequence is private;
+
+   function To_Sequence
+     (Values : EmptyBounded_Slots_Values) return EmptyBounded_Slots_Sequence;
+   function Length
+     (Container : EmptyBounded_Slots_Sequence) return Natural;
+   function Element
+     (Container : EmptyBounded_Slots_Sequence; Index : Positive)
+      return EmptyBounded_Slots_Item;
+   procedure Append
+     (Container : in out EmptyBounded_Slots_Sequence;
+      New_Item  : EmptyBounded_Slots_Item);
+   procedure Clear (Container : in out EmptyBounded_Slots_Sequence);
+private
    type EmptyBounded_Slots_Slot (Is_Used : Boolean := False) is record
       case Is_Used is
          when False => null;
-         when True  => Value : Callsign;
+         when True  => Value : EmptyBounded_Slots_Item;
       end case;
    end record;
+
    type EmptyBounded_Slots_Array is
-     array (Positive range 1 .. 3) of EmptyBounded_Slots_Slot;
+     array (EmptyBounded_Slots_Index) of EmptyBounded_Slots_Slot;
+
    type EmptyBounded_Slots_Sequence is record
-      Length : Natural range 0 .. 3 := 0;
-      Items  : EmptyBounded_Slots_Array;
+      Count : Natural range 0 .. 3 := 0;
+      Items : EmptyBounded_Slots_Array;
    end record;
 ```
 
+The contract this establishes, in the terms of the four reproduced failures:
+
+* **a zero-minimum sequence starts empty** — count zero over entirely unused
+  slots, which is a legal value;
+* **a positive-minimum sequence cannot claim required elements that were never
+  supplied** — its private completion gives `Count` a `raise` expression
+  default instead, exactly as Task 040 does for a validated carrier, so a
+  default declaration fails with a diagnostic naming the type. A positive count
+  over unused slots is not a valid default, and none is emitted;
+* **explicit construction from enough valid elements succeeds**, and
+  `To_Sequence` raises `Constraint_Error` for too few or too many values.
+  Nothing is silently truncated and no position is fabricated;
+* **the maximum and minimum apply to actual logical elements** — `Append`
+  raises at capacity, and every counted position was built from a supplied
+  value;
+* **no exposed operation can create a hole** — there is no occupancy setter and
+  no public component, so the disagreement in failure D is unrepresentable
+  rather than merely discouraged;
+* **spare slots do not default-create validated carriers** — the unused variant
+  still has no payload component;
+* **access outside the logical length is rejected** — `Element` raises for any
+  index past `Length`, so spare capacity is unreachable;
+* **copying and assignment preserve a coherent sequence**, since the count and
+  the slots are copied together as one value.
+
+`Clear` is emitted **only** when `minOccurs = 0`. Where the schema requires at
+least `minOccurs` occurrences, an empty sequence is not a legal value of the
+type and no operation produces one.
+
+Failure ordering in mutation is explicit: `Append` establishes the new slot
+*before* publishing the larger logical length, so a failed element copy cannot
+leave a claimed position empty.
+
+Every check is an ordinary `raise` statement, not a predicate or an assertion,
+so none of this depends on `-gnata` or on the client's `Assertion_Policy`.
+
 The bounded representation is deliberately **not** replaced by an unconstrained
-vector. Documented cardinality and storage guarantees are preserved: `Length`
-still enforces `minOccurs .. maxOccurs`, the array still cannot exceed
-`maxOccurs`, and the bounded shape remains allocation-free.
+vector, and no container heap allocation is introduced to represent spare
+bounded capacity. Cardinality is still enforced by the type, the array still
+cannot exceed `maxOccurs`, and the bounded shape remains allocation-free beyond
+whatever the element type itself owns.
+
+The correction is applied uniformly to Record fields and Choice alternatives,
+including elements that transitively contain validated carriers.
 
 A **positive-minimum** unbounded field keeps its two-part shape. Its required
 prefix is `min` live elements *by definition* -- the schema says at least that
@@ -542,21 +662,86 @@ This is an explicit, documented, compiler-backed API change:
 * a positive-minimum unbounded field's `Additional` component is now
   `{Owner}_{Member}_Additional`, an opaque storage type, rather than a raw
   `.Vector`;
-* a bounded field's `Items (I)` is now a `{Owner}_{Member}_Slot`, so a live
-  element is read as `Items (I).Value` and written as
-  `(Is_Used => True, Value => ...)`.
+* a bounded field's `{Owner}_{Member}_Sequence` is now an opaque private type.
+  The first corrective pass's `Items (I).Value` read and
+  `(Is_Used => True, Value => ...)` write are **gone from the public surface**,
+  along with the writable `Length`; a bounded sequence is built with
+  `To_Sequence`, extended with `Append`, read with `Element`, and measured with
+  `Length`. This is the change that makes the four failures in §10.3 D
+  compile errors rather than silent corruption, and it is a breaking API
+  change stated as such.
 
-The operation names are owned by **one** shared constant,
-`ADA_SEQUENCE_CALLABLES` in `codegen-core::backend_names`, which the renderer,
-the generated-name preflight, and readiness analysis all consult. There is no
-separate backend, readiness, and generated-name interpretation of the policy.
-Like the existing wrapper callables they are *checked* rather than inserted,
-because Ada overloads them on the container parameter's type.
+The operation names are owned by **one** shared definition in
+`codegen-core::backend_names`, which the renderer, the generated-name
+preflight, and readiness analysis all consult. There is no separate backend,
+readiness, and generated-name interpretation of the policy. Like the existing
+wrapper callables they are *checked* rather than inserted, because Ada
+overloads them on the container parameter's type.
 
-Two new user-derived spellings are registered in the shared name model, so a
-user declaration can no longer silently collide with one: `{stem}_Additional`
-for a positive-minimum unbounded member, and `{stem}_Slot` for a bounded
-member.
+Each storage shape publishes only what it really emits, and the shared model
+reserves exactly that:
+
+| Shape | Operations |
+| --- | --- |
+| unbounded | `Length` `Append` `Element` `Clear` `Reserve_Capacity` |
+| bounded, `minOccurs = 0` | `Length` `Append` `Element` `Clear` `To_Sequence` |
+| bounded, `minOccurs > 0` | `Length` `Append` `Element` `To_Sequence` |
+
+`Reserve_Capacity` is absent from both bounded shapes because bounded capacity
+is fixed by `maxOccurs` and there is nothing to reserve; `Clear` is absent from
+the positive-minimum shape for the reason given in §10.4. Reserving an
+operation a shape never writes would block a legal user declaration, so the
+distinction is load-bearing rather than cosmetic.
+
+**The coupling between the shared definition and the emitted text is now
+mechanical.** The previous arrangement was a `ADA_SEQUENCE_CALLABLES.len() == 5`
+assertion sitting beside hard-coded spellings in the renderer's format strings.
+A length assertion cannot detect a rename, a reorder, or a substitution: the
+renderer could have published `Size` while preflight reserved `Length` and the
+assertion would still have held. Every emitted spelling is now formatted from
+the shared per-operation constant itself, and
+`emitted_sequence_operations_are_exactly_the_shared_definition` renders real
+bounded and unbounded storage and checks set equality of the declared
+subprogram names against each shape's shared list, in both directions.
+
+User-derived spellings registered in the shared name model, so a user
+declaration can no longer silently collide with one: `{stem}_Additional` for a
+positive-minimum unbounded member, and `{stem}_Item`, `{stem}_Index`,
+`{stem}_Values`, `{stem}_Slot`, and `{stem}_Array` for a bounded member. The
+last two are private-part spellings, but Ada's package is flat, so they occupy
+the same single declarative region and are still reserved.
+
+**Callable ownership is derived from actual emissions.** The previous
+`ada_sequence_callable_owners()` scanned raw `schema.types` and
+`declared_members()`, which disagreed with rendering in four ways. It now walks
+the same name-preflight emission plan the rest of the model uses, applying the
+effective-member and storage logic, and accounts for:
+
+* **non-emitted abstract Records** — `render_declaration` returns early for an
+  abstract Record, so an unused abstract base with an unbounded field emits no
+  sequence and therefore no `Append`. A schema legitimately declaring a type
+  named `Append` was previously rejected for a callable that would never exist;
+* **effective inherited Record fields** — a concrete descendant that inherits
+  an unbounded field without declaring one has an empty `declared_members`
+  list, so the raw scan attributed the callables to nobody, while Ada really
+  emits them under the descendant;
+* **effective Choice alternatives**, projected the same way;
+* **closed-sum wrappers versus ordinary declarations** — a Task 024 wrapper is
+  a discriminated record over descendant *types* and emits no sequence storage
+  of its own, so it contributes nothing and each descendant speaks for itself;
+* **elided or semantically unrepresentable fields** — a Task 026 absent-only
+  field and a field whose abstract value reference cannot be projected generate
+  no storage, so they manufacture no callable collision;
+* **the requested generation world**, which is threaded through rather than
+  assumed.
+
+An `is_abstract` filter alone would have fixed only the first of these. The
+existing field- and entity-scoped diagnostic deferral is preserved in both
+directions: a field that cannot render manufactures no callable collision, and
+unrelated real collisions in the same schema are still reported and still
+implicate both sides. Generation preflight, collected collision attribution,
+coverage, and service readiness all consult this one function, so they agree by
+construction.
 
 Conditional imports are tracked: a schema with an unbounded member now imports
 `Ada.Containers.Indefinite_Vectors`. `Binary_Vectors` is unrelated and remains
@@ -565,9 +750,17 @@ no rejecting default -- so the two imports are independent and a schema needing
 only one does not acquire the other.
 
 Because the storage operations have real bodies, the package-body predicate is
-extended a third time: a schema emits an `.adb` when it has a temporal carrier,
-a string-profile carrier, **or** an unbounded sequence. A schema with none of
-the three still emits no `.adb` at all.
+extended: a schema emits an `.adb` when it has a temporal carrier, a
+string-profile carrier, an unbounded sequence, **or** a bounded sequence. A
+schema with none of the four still emits no `.adb` at all.
+
+The bounded clause is new in the second corrective pass and changes which
+fixtures qualify. `track.xsd` — whose `Sensor_Ids` field is `0 .. 8` — now
+legitimately acquires a body. That is recorded as a positive control asserting
+the body contains exactly the sequence operations and no carrier validator,
+rather than quietly dropped from the negative list;
+`backend-constrained-floating.xsd` has no repeated member at all and still
+emits no `.adb`, which keeps the negative control real.
 
 ### 10.6 Transitive composition
 
@@ -595,8 +788,16 @@ prioritized over avoiding a per-element allocation. Bounded fields are
 unaffected -- the discriminated slot adds a discriminant per slot and no
 allocation whatsoever.
 
-`main` (`2d97e46`) for a Task 033 constrained-float element -- but it is fixed
-by the same storage correction, so it is recorded rather than deferred.
+The second corrective pass does not change that. Making bounded storage opaque
+adds no allocation: the representation is still a fixed-size array of
+discriminated slots plus a `Natural` count, sized by `maxOccurs`. No container
+heap allocation is introduced merely to represent spare bounded capacity.
+Element-owned allocation is a separate matter and is unchanged — a validated
+carrier owning an `Unbounded_String` still owns it.
+
+`To_Sequence` copies each supplied value into its slot, which is the same
+per-element copy any construction would perform; it performs no allocation of
+its own.
 
 
 ### 10.8 Compiler-tested versus inferred
@@ -614,8 +815,23 @@ under `pragma Assertion_Policy (Ignore)`:
 * `Reserve_Capacity` on both empty and populated containers;
 * copy construction, assignment, `Clear`, and reuse of populated sequences;
 * positive-minimum required values plus additional elements;
-* empty, partial, and full bounded sequences, and enforcement of the
-  cardinality limit;
+* empty, partial, and full bounded sequences, with the cardinality limit
+  enforced by the **generated sequence itself**. The previous probe declared a
+  local `Over : Natural range 0 .. 3` and observed *its* `Constraint_Error`,
+  which proved nothing about the generated API; that substitute has been
+  replaced by a real `Append` at capacity;
+* bounded `2 .. 3` and fixed `2 .. 2` shapes: valid explicit construction
+  succeeds (the positive control), construction with too few or too many values
+  raises, `Append` past `maxOccurs` raises, reading past the logical length
+  raises, and a default declaration of a positive-minimum sequence raises
+  rather than claiming unsupplied elements;
+* bounded copy, assignment, `Clear`, and the fact that a cleared sequence
+  yields nothing on read;
+* the four §10.3 D disagreements as **compile errors**: with the type private
+  there is no `.Length` selector and no `.Items` component, so
+  length/slot disagreement is unrepresentable rather than merely rejected at
+  run time. Positive controls proving valid construction still compiles and
+  executes are retained alongside;
 * composed element types containing validated carriers;
 * repeated Choice-alternative composition, in both storage shapes;
 * the DateTime carrier compared against its expected **normalized**
@@ -637,8 +853,8 @@ The pinned UCI 2.5 inputs were retried through the established source workflow
 and were obtainable this time, so the previously missing cells are now measured
 rather than restated.
 
-Full twelve-cell comparison, reviewed head (`aa60ba7`) versus corrected head,
-same pinned inputs and same binary invocation:
+Full twelve-cell comparison, re-measured on the corrected head of the second
+pass, same pinned inputs and same binary invocation:
 
 | Cell | Ada | Rust | C++ | Delta |
 | --- | ---: | ---: | ---: | ---: |
@@ -647,9 +863,20 @@ same pinned inputs and same binary invocation:
 | 2.6 closed (of 5570) | 5335 | 5413 | 5417 | **0 / 0 / 0** |
 | 2.6 open (of 5570) | 5250 | 5325 | 5329 | **0 / 0 / 0** |
 
-The two coverage reports are **byte-identical**, `diff` clean across all four
-runs. The 2.6 cells also match the Task 039 baseline exactly, and the 2.5 cells
-match the previously documented values.
+All twelve cells are unchanged from the first corrective head and from the Task
+039 baseline. Kinds (5444/5557 for 2.5, 5457/5570 for 2.6), field-types,
+field-occurrences, and message-closures are likewise unchanged in every cell.
+
+**The zero delta was verified rather than assumed, and it is the expected
+result.** The emission-aware callable correction is a *name-analysis*
+correction, and a legitimate one can move attribution, so this was checked
+rather than asserted. It does not move any UCI cell because the correction only
+ever *removes* phantom reservations and *adds* effective-inheritance ones, and
+pinned UCI contains no declaration spelled `Length`, `Append`, `Element`,
+`Clear`, `Reserve_Capacity`, or `To_Sequence` for either direction to act on.
+The bounded-storage change is a representation change, not a capability change:
+no occurrence shape moved between supported and unsupported, and no validator
+or name check was weakened to hold the totals.
 
 UCI 2.5 `PositionReport` selection recheck, closed world, now freshly measured:
 

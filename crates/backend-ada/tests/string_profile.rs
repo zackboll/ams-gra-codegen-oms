@@ -82,20 +82,39 @@ fn generated_schema_version_api_is_an_opaque_validated_carrier() {
     assert!(spec.contains("Label : Standard.Ada.Strings.Unbounded.Unbounded_String;"));
 }
 
-/// A schema with neither validator-backed carrier must not gain a body.
+/// A schema with no body-requiring feature at all must not gain a body.
 ///
 /// Task 037 generalized the existing body predicate rather than adding a
 /// second mechanism, so this must still hold for unrelated schemas.
+///
+/// The Task 040 corrective second pass changed which fixtures qualify, and the
+/// change is real rather than cosmetic: bounded sequence storage is now an
+/// opaque private type whose operations have bodies, so `track.xsd` -- whose
+/// `Sensor_Ids` field is `0 .. 8` -- legitimately acquires one. It is asserted
+/// below as a positive control instead of being quietly dropped.
+/// `backend-constrained-floating.xsd` has no repeated member and no carrier,
+/// so it still emits no `.adb` at all, which is what keeps this a real check.
 #[test]
 fn schemas_without_a_validated_carrier_emit_no_body() {
-    for name in ["track.xsd", "backend-constrained-floating.xsd"] {
-        let schema = fixture(name);
-        assert_eq!(
-            generate_body(&schema, CLOSED).expect("body generation must not fail"),
-            None,
-            "{name} must not gain an Ada package body"
-        );
-    }
+    let name = "backend-constrained-floating.xsd";
+    assert_eq!(
+        generate_body(&fixture(name), CLOSED).expect("body generation must not fail"),
+        None,
+        "{name} must not gain an Ada package body"
+    );
+    // A bounded repeated member now needs a body, because its storage is
+    // opaque. The body must define exactly that storage's operations and
+    // nothing else -- no carrier validator appears, since this fixture has no
+    // validated carrier.
+    let track = generate_body(&fixture("track.xsd"), CLOSED)
+        .expect("body generation must not fail")
+        .expect("a bounded repeated member needs an Ada package body");
+    assert!(track.contains("function To_Sequence"), "{track}");
+    assert!(track.contains("procedure Append"), "{track}");
+    assert!(
+        !track.contains("Constraint_Error\n           with \"Create"),
+        "{track}"
+    );
     // The String-profile fixture does need one.
     assert!(
         generate_body(&string_schema(), CLOSED)

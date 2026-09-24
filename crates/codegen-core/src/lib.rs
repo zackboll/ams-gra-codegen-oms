@@ -27,8 +27,12 @@ pub use ada_optional::{
     ada_optional_direct_primitive_representable, ada_record_field_uses_optional_wrapper,
 };
 pub use backend_names::{
-    ADA_SEQUENCE_CALLABLES, BackendNameError, NameRegion, backend_names_are_renderable,
-    schema_emits_ada_binary_vectors, schema_emits_bounded_integer_support,
+    ADA_BOUNDED_REQUIRED_SEQUENCE_CALLABLES, ADA_BOUNDED_SEQUENCE_CALLABLES, ADA_SEQUENCE_APPEND,
+    ADA_SEQUENCE_CALLABLES, ADA_SEQUENCE_CLEAR, ADA_SEQUENCE_ELEMENT, ADA_SEQUENCE_LENGTH,
+    ADA_SEQUENCE_RESERVE_CAPACITY, ADA_SEQUENCE_TO_SEQUENCE, ADA_UNBOUNDED_SEQUENCE_CALLABLES,
+    AdaSequenceShape, BackendNameError, NameRegion, ada_sequence_shape,
+    backend_names_are_renderable, schema_emits_ada_binary_vectors,
+    schema_emits_bounded_integer_support, schema_emits_bounded_sequence_support,
     schema_emits_unbounded_sequence_support, unsafe_named_declarations, validate_backend_names,
 };
 pub use backend_preflight::{BackendPreflightError, backend_preflight, backend_preflight_passes};

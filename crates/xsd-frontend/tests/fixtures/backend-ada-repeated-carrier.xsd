@@ -71,6 +71,17 @@
       <xs:element name="Tags" type="t:Tag" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="Required" type="t:Callsign" minOccurs="2" maxOccurs="unbounded"/>
       <xs:element name="Bounded" type="t:Callsign" minOccurs="0" maxOccurs="3"/>
+      <!-- Task 040 corrective (second pass): a POSITIVE-minimum bounded field.
+           Default construction must not claim two logical elements that were
+           never supplied. -->
+      <xs:element name="Span" type="t:Callsign" minOccurs="2" maxOccurs="3"/>
+      <!-- A FIXED-count bounded field: minOccurs = maxOccurs. Required
+           occupancy cannot be replaced by unused slots, and no spare capacity
+           exists at all. -->
+      <xs:element name="Pair" type="t:Callsign" minOccurs="2" maxOccurs="2"/>
+      <!-- A positive-minimum bounded field whose element is a COMPOSED record
+           transitively containing a validated carrier. -->
+      <xs:element name="Marks" type="t:Tag" minOccurs="2" maxOccurs="4"/>
     </xs:sequence>
   </xs:complexType>
 

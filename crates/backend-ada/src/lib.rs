@@ -1,14 +1,16 @@
 //! Minimal Ada type generation from normalized schema IR.
 
 use ams_gra_oms_codegen_core::{
-    ADA_PORTABLE_POSITIVE_INDEX_MAX, ADA_SEQUENCE_CALLABLES, AbstractValueProjection, Backend,
-    BackendLanguage, CodegenError, EffectiveValueMember, FloatingDomain, GeneratedFile,
-    GenerationWorld, InclusiveIntegralDomain, StringProfile, TemporalProfile, TypeEmission,
-    abstract_value_projection_for_ref, ada_record_field_uses_optional_wrapper, backend_preflight,
-    constrains_string, effective_choice_alternatives, effective_record_fields,
-    field_storage_semantics, float32_literal, float64_literal, floating_domain,
-    inclusive_integral_domain, is_temporal_primitive, plan_type_emissions,
-    schema_emits_ada_binary_vectors, schema_emits_string_profile_carrier,
+    ADA_PORTABLE_POSITIVE_INDEX_MAX, ADA_SEQUENCE_APPEND, ADA_SEQUENCE_CLEAR, ADA_SEQUENCE_ELEMENT,
+    ADA_SEQUENCE_LENGTH, ADA_SEQUENCE_RESERVE_CAPACITY, ADA_SEQUENCE_TO_SEQUENCE,
+    AbstractValueProjection, Backend, BackendLanguage, CodegenError, EffectiveValueMember,
+    FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain, StringProfile,
+    TemporalProfile, TypeEmission, abstract_value_projection_for_ref,
+    ada_record_field_uses_optional_wrapper, backend_preflight, constrains_string,
+    effective_choice_alternatives, effective_record_fields, field_storage_semantics,
+    float32_literal, float64_literal, floating_domain, inclusive_integral_domain,
+    is_temporal_primitive, plan_type_emissions, schema_emits_ada_binary_vectors,
+    schema_emits_bounded_sequence_support, schema_emits_string_profile_carrier,
     schema_emits_temporal_carrier, schema_emits_unbounded_sequence_support, string_profile,
     temporal_profile,
 };
@@ -177,11 +179,14 @@ pub fn generate_body(
     //
     // Task 040 corrective extends the same predicate a third time: an
     // unbounded sequence's storage is now opaque, so its five operations have
-    // real bodies. A schema with neither a carrier nor an unbounded sequence
+    // real bodies. The second corrective pass extends it a fourth: bounded
+    // storage is opaque too, because a publicly writable count beside public
+    // slots could not preserve actual occupancy. A schema with none of these
     // still emits no `.adb` at all.
     if !schema_emits_temporal_carrier(schema)
         && !schema_emits_string_profile_carrier(schema)
         && !schema_emits_unbounded_sequence_support(schema)
+        && !schema_emits_bounded_sequence_support(schema)
     {
         return Ok(None);
     }
@@ -397,7 +402,15 @@ fn render_declaration(
                     let field_name = ada_identifier(&field.name)?;
                     let helper_name = format!("{name}_{field_name}");
                     let item_type = ada_field_base(field)?;
-                    render_bounded_helper(output, &helper_name, &item_type, min, max);
+                    render_bounded_helper(
+                        output,
+                        private_part,
+                        body,
+                        &helper_name,
+                        &item_type,
+                        min,
+                        max,
+                    );
                 } else if matches!(field.cardinality.shape(), OccurrenceShape::Unbounded { .. }) {
                     render_unbounded_helper(output, private_part, body, &name, field)?;
                 } else if ada_record_field_uses_optional_wrapper(field) {
@@ -452,7 +465,15 @@ fn render_declaration(
                     let alternative_name = ada_identifier(&alternative.name)?;
                     let helper_name = format!("{name}_{alternative_name}");
                     let item_type = ada_field_base(alternative)?;
-                    render_bounded_helper(output, &helper_name, &item_type, min, max);
+                    render_bounded_helper(
+                        output,
+                        private_part,
+                        body,
+                        &helper_name,
+                        &item_type,
+                        min,
+                        max,
+                    );
                 } else if matches!(
                     alternative.cardinality.shape(),
                     OccurrenceShape::Unbounded { .. }
@@ -797,21 +818,33 @@ fn render_optional_helper(
 /// avoiding a per-element allocation, and it is the only representation found
 /// that constructs live elements *only* from supplied values.
 /// The operation names are owned by the shared model, not duplicated here, so
-/// the backend cannot publish a name preflight has not reserved. This assertion
-/// ties the emitted text below to that single list.
-const _: () = assert!(ADA_SEQUENCE_CALLABLES.len() == 5);
-
+/// the backend cannot publish a name preflight has not reserved.
+///
+/// The previous `ADA_SEQUENCE_CALLABLES.len() == 5` assertion did not prove
+/// name *equality* -- the spellings were still hard-coded in the emitted text
+/// beside it, and a rename in the shared model would have left the renderer
+/// publishing the old names while preflight reserved the new ones. Every
+/// spelling below is now formatted from the shared constant itself, so the
+/// coupling is mechanical rather than asserted, and
+/// `emitted_sequence_operations_are_exactly_the_shared_definition` checks the
+/// agreement precisely.
+///
 /// Emit the visible declarations of one opaque unbounded-storage type.
 fn render_sequence_storage_visible(output: &mut String, storage: &str, item: &str) {
     writeln!(
         output,
         "   type {storage} is private;\n\n\
-         \x20  function Length (Container : {storage}) return Natural;\n\
-         \x20  procedure Append (Container : in out {storage}; New_Item : {item});\n\
-         \x20  function Element (Container : {storage}; Index : Positive) return {item};\n\
-         \x20  procedure Clear (Container : in out {storage});\n\
-         \x20  procedure Reserve_Capacity\n\
-         \x20    (Container : in out {storage}; Capacity : Natural);\n"
+         \x20  function {length} (Container : {storage}) return Natural;\n\
+         \x20  procedure {append} (Container : in out {storage}; New_Item : {item});\n\
+         \x20  function {element} (Container : {storage}; Index : Positive) return {item};\n\
+         \x20  procedure {clear} (Container : in out {storage});\n\
+         \x20  procedure {reserve}\n\
+         \x20    (Container : in out {storage}; Capacity : Natural);\n",
+        length = ADA_SEQUENCE_LENGTH,
+        append = ADA_SEQUENCE_APPEND,
+        element = ADA_SEQUENCE_ELEMENT,
+        clear = ADA_SEQUENCE_CLEAR,
+        reserve = ADA_SEQUENCE_RESERVE_CAPACITY,
     )
     .expect("writing to String cannot fail");
 }
@@ -839,55 +872,121 @@ fn render_sequence_storage_private(
 fn render_sequence_storage_body(body: &mut String, storage: &str, vectors: &str, item: &str) {
     writeln!(
         body,
-        "   function Length (Container : {storage}) return Natural is\n\
+        "   function {length} (Container : {storage}) return Natural is\n\
          \x20  begin\n\
          \x20     return Natural ({vectors}.Length (Container.Items));\n\
-         \x20  end Length;\n\n\
-         \x20  procedure Append (Container : in out {storage}; New_Item : {item}) is\n\
+         \x20  end {length};\n\n\
+         \x20  procedure {append} (Container : in out {storage}; New_Item : {item}) is\n\
          \x20  begin\n\
          \x20     {vectors}.Append (Container.Items, New_Item);\n\
-         \x20  end Append;\n\n\
-         \x20  function Element\n\
+         \x20  end {append};\n\n\
+         \x20  function {element}\n\
          \x20    (Container : {storage}; Index : Positive) return {item} is\n\
          \x20  begin\n\
          \x20     return {vectors}.Element (Container.Items, Index);\n\
-         \x20  end Element;\n\n\
-         \x20  procedure Clear (Container : in out {storage}) is\n\
+         \x20  end {element};\n\n\
+         \x20  procedure {clear} (Container : in out {storage}) is\n\
          \x20  begin\n\
          \x20     {vectors}.Clear (Container.Items);\n\
-         \x20  end Clear;\n\n\
-         \x20  procedure Reserve_Capacity\n\
+         \x20  end {clear};\n\n\
+         \x20  procedure {reserve}\n\
          \x20    (Container : in out {storage}; Capacity : Natural) is\n\
          \x20  begin\n\
          \x20     {vectors}.Reserve_Capacity\n\
          \x20       (Container.Items, Standard.Ada.Containers.Count_Type (Capacity));\n\
-         \x20  end Reserve_Capacity;\n"
+         \x20  end {reserve};\n",
+        length = ADA_SEQUENCE_LENGTH,
+        append = ADA_SEQUENCE_APPEND,
+        element = ADA_SEQUENCE_ELEMENT,
+        clear = ADA_SEQUENCE_CLEAR,
+        reserve = ADA_SEQUENCE_RESERVE_CAPACITY,
     )
     .expect("writing to String cannot fail");
 }
 
-/// Emit the Task 040 corrective bounded-repeated helper for one member.
+/// Emit the bounded-repeated helper for one member (Task 040 corrective, pass
+/// two).
 ///
-/// # Logical length versus physical capacity
+/// # The defect this shape replaces
 ///
-/// The representation is still a *bounded* array sized to the schema maximum,
-/// with a logical `Length` constrained to the schema's `min .. max`. What
-/// changed is the array's element: each physical slot is now a discriminated
-/// `{stem}_Slot` whose `False` variant has **no payload component at all**.
+/// The first corrective pass emitted a *public* record pairing an
+/// independently writable `Length : Natural range min .. max` with a public
+/// array of discriminated slots. Nothing tied the two together, and the
+/// reviewed head demonstrably allowed all four of:
 ///
-/// That is the whole correction. Previously `Items` was an array of the
-/// element type, so declaring a `0 .. N` sequence with `Length = 0`
-/// default-initialized all `N` physical carriers -- and after Task 040 that
-/// raised `Program_Error` for a perfectly valid *empty* sequence. An unused
-/// slot now simply is not a live validated value, so there is nothing to
-/// default-initialize and no placeholder UUID, date, version, or string is
-/// invented to fill it.
+/// ```text
+/// A: length is 1 with slot 1 used = FALSE       -- claimed, never supplied
+/// B: default length is 2 slot1/slot2 used=FALSE -- positive minimum, empty
+/// C: fixed length is 2 slot1 used = FALSE       -- 2..2, nothing supplied
+/// D: length is 2 but slot 1 used = FALSE        -- hole in the prefix
+/// ```
 ///
-/// Cardinality semantics are unchanged: `Length`'s subtype still enforces the
-/// schema's `minOccurs .. maxOccurs`, and the array still cannot exceed
-/// `maxOccurs`. The representation is still bounded and allocation-free -- it
-/// is deliberately **not** replaced by an unconstrained vector.
+/// A numeric range on the count was never sufficient once a slot could hold
+/// no payload: the count and the payloads were two independent facts.
+///
+/// # The corrected contract
+///
+/// *Every logical element has a live, valid payload; unused capacity is not a
+/// logical element.*
+///
+/// The type is now **private**. Its full view is still a bounded slot array
+/// sized to `maxOccurs` plus a logical count -- finite backing storage tied to
+/// the schema maximum, with no container heap allocation for spare capacity,
+/// and spare slots still carry no payload component so they never
+/// default-create a validated carrier. What changed is that no client can
+/// write either part:
+///
+/// * `To_Sequence (Values) return {stem}_Sequence` is the only way to obtain
+///   occupancy. It is checked: fewer than `minOccurs` or more than `maxOccurs`
+///   supplied values raises `Constraint_Error`, so nothing is silently
+///   truncated and nothing is fabricated. Every logical position is built from
+///   a supplied value.
+/// * `Append` extends by exactly one, raising `Constraint_Error` at capacity.
+///   The slot is established **first** and the count published only after the
+///   assignment has succeeded, so a failed element copy cannot leave a claimed
+///   position empty.
+/// * `Element` rejects any index outside `1 .. Length`, so spare capacity is
+///   unreachable rather than readable as a stale or absent payload.
+/// * `Clear` exists only when `minOccurs = 0`; for a positive minimum an empty
+///   sequence is not a legal value of the type and no operation produces one.
+/// * There is no occupancy setter and no public component, so a hole in the
+///   logical prefix is unrepresentable rather than merely discouraged.
+///
+/// # Positive minima
+///
+/// A positive-minimum bounded sequence has **no default initial value**: its
+/// private completion gives the count component a `raise` expression default,
+/// exactly as Task 040 does for a validated carrier. A default-declared object
+/// therefore fails with a diagnostic naming the type, instead of silently
+/// claiming `minOccurs` elements that were never supplied. Enforcement is an
+/// initialization expression, so it does not depend on `-gnata` or on any
+/// `Assertion_Policy`. `To_Sequence` builds the record with an explicit
+/// aggregate after validation, so legitimate construction never evaluates it,
+/// and copy and assignment from an already valid sequence are unaffected.
+///
+/// A zero-minimum sequence keeps an ordinary default: the empty sequence is a
+/// legal value, and the default is count zero over entirely unused slots.
+///
+/// The emitted operation spellings are formatted from the shared
+/// `ADA_SEQUENCE_*` constants rather than restated, so the renderer cannot
+/// publish a name the generated-name model has not reserved.
 fn render_bounded_helper(
+    output: &mut String,
+    private_part: &mut String,
+    body: &mut String,
+    helper_name: &str,
+    item_type: &str,
+    min: u64,
+    max: u64,
+) {
+    render_bounded_visible(output, helper_name, item_type, min, max);
+    render_bounded_private(private_part, helper_name, min, max);
+    render_bounded_body(body, helper_name, min, max);
+}
+
+/// The visible part of one bounded sequence: an opaque type plus exactly the
+/// operations the shared model reserves for this shape.
+fn render_bounded_visible(
     output: &mut String,
     helper_name: &str,
     item_type: &str,
@@ -896,20 +995,173 @@ fn render_bounded_helper(
 ) {
     writeln!(
         output,
+        "   subtype {helper_name}_Item is {item_type};\n\
+         \x20  subtype {helper_name}_Index is Positive range 1 .. {max};\n\
+         \x20  type {helper_name}_Values is\n\
+         \x20    array (Positive range <>) of {helper_name}_Item;\n\n\
+         \x20  type {helper_name}_Sequence is private;\n\n\
+         \x20  --  The ONLY way to establish occupancy. Raises Constraint_Error\n\
+         \x20  --  unless {min} .. {max} values are supplied; nothing is truncated\n\
+         \x20  --  and no logical position is fabricated.\n\
+         \x20  function {to_sequence}\n\
+         \x20    (Values : {helper_name}_Values) return {helper_name}_Sequence;\n\
+         \x20  function {length}\n\
+         \x20    (Container : {helper_name}_Sequence) return Natural;\n\
+         \x20  function {element}\n\
+         \x20    (Container : {helper_name}_Sequence; Index : Positive)\n\
+         \x20     return {helper_name}_Item;\n\
+         \x20  procedure {append}\n\
+         \x20    (Container : in out {helper_name}_Sequence;\n\
+         \x20     New_Item  : {helper_name}_Item);",
+        to_sequence = ADA_SEQUENCE_TO_SEQUENCE,
+        length = ADA_SEQUENCE_LENGTH,
+        element = ADA_SEQUENCE_ELEMENT,
+        append = ADA_SEQUENCE_APPEND,
+    )
+    .expect("writing to String cannot fail");
+    if min == 0 {
+        writeln!(
+            output,
+            "   procedure {clear} (Container : in out {helper_name}_Sequence);",
+            clear = ADA_SEQUENCE_CLEAR,
+        )
+        .expect("writing to String cannot fail");
+    } else {
+        writeln!(
+            output,
+            "   --  No Clear: this member's schema requires at least {min}\n\
+             \x20  --  occurrences, so the empty sequence is not a legal value of this\n\
+             \x20  --  type and no operation produces one."
+        )
+        .expect("writing to String cannot fail");
+    }
+    output.push('\n');
+}
+
+/// The private completion of one bounded sequence.
+fn render_bounded_private(private_part: &mut String, helper_name: &str, min: u64, max: u64) {
+    writeln!(
+        private_part,
         "   type {helper_name}_Slot (Is_Used : Boolean := False) is record\n\
          \x20     case Is_Used is\n\
          \x20        when False => null;\n\
-         \x20        when True  => Value : {item_type};\n\
+         \x20        when True  => Value : {helper_name}_Item;\n\
          \x20     end case;\n\
-         \x20  end record;\n\
+         \x20  end record;\n\n\
          \x20  type {helper_name}_Array is\n\
-         \x20    array (Positive range 1 .. {max}) of {helper_name}_Slot;\n\
-         \x20  type {helper_name}_Sequence is record\n\
-         \x20     Length : Natural range {min} .. {max} := {min};\n\
-         \x20     Items  : {helper_name}_Array;\n\
-         \x20  end record;\n"
+         \x20    array ({helper_name}_Index) of {helper_name}_Slot;\n"
     )
     .expect("writing to String cannot fail");
+    if min == 0 {
+        writeln!(
+            private_part,
+            "   type {helper_name}_Sequence is record\n\
+             \x20     --  Zero is a legal occupancy, so the default is the empty\n\
+             \x20     --  sequence over entirely unused slots. An unused slot has no\n\
+             \x20     --  payload component at all, so nothing is default-created and\n\
+             \x20     --  no placeholder value is invented.\n\
+             \x20     Count : Natural range 0 .. {max} := 0;\n\
+             \x20     Items : {helper_name}_Array;\n\
+             \x20  end record;\n"
+        )
+        .expect("writing to String cannot fail");
+    } else {
+        writeln!(
+            private_part,
+            "   type {helper_name}_Sequence is record\n\
+             \x20     --  This member's schema requires at least {min} occurrences, so\n\
+             \x20     --  there is NO valid default: a positive count over unused slots\n\
+             \x20     --  would claim elements nobody supplied. The default is a raise\n\
+             \x20     --  expression, so enforcement is part of the language's\n\
+             \x20     --  initialization semantics and does not depend on -gnata,\n\
+             \x20     --  Assertion_Policy, or any client-side check.\n\
+             \x20     --\n\
+             \x20     --  {to_sequence} builds this record with an explicit aggregate\n\
+             \x20     --  after validation succeeds, so legitimate construction never\n\
+             \x20     --  evaluates this default. Copy and assignment from an already\n\
+             \x20     --  valid sequence are likewise unaffected.\n\
+             \x20     Count : Natural range {min} .. {max} :=\n\
+             \x20       raise Standard.Program_Error\n\
+             \x20         with \"{helper_name}_Sequence requires {to_sequence}\";\n\
+             \x20     Items : {helper_name}_Array;\n\
+             \x20  end record;\n",
+            to_sequence = ADA_SEQUENCE_TO_SEQUENCE,
+        )
+        .expect("writing to String cannot fail");
+    }
+}
+
+/// The bodies of one bounded sequence's operations.
+///
+/// Every bounds test is an explicit `raise`, not a predicate or an assertion,
+/// so the guarantee holds under any client assertion policy.
+fn render_bounded_body(body: &mut String, helper_name: &str, min: u64, max: u64) {
+    writeln!(
+        body,
+        "   function {to_sequence}\n\
+         \x20    (Values : {helper_name}_Values) return {helper_name}_Sequence is\n\
+         \x20  begin\n\
+         \x20     if Values'Length < {min} or else Values'Length > {max} then\n\
+         \x20        raise Standard.Constraint_Error\n\
+         \x20          with \"{helper_name}_Sequence requires {min} .. {max} values\";\n\
+         \x20     end if;\n\
+         \x20     return Result : {helper_name}_Sequence :=\n\
+         \x20       (Count => Values'Length, Items => (others => (Is_Used => False)))\n\
+         \x20     do\n\
+         \x20        for Offset in 0 .. Values'Length - 1 loop\n\
+         \x20           Result.Items ({helper_name}_Index'First + Offset) :=\n\
+         \x20             (Is_Used => True, Value => Values (Values'First + Offset));\n\
+         \x20        end loop;\n\
+         \x20     end return;\n\
+         \x20  end {to_sequence};\n\n\
+         \x20  function {length}\n\
+         \x20    (Container : {helper_name}_Sequence) return Natural is\n\
+         \x20  begin\n\
+         \x20     return Container.Count;\n\
+         \x20  end {length};\n\n\
+         \x20  function {element}\n\
+         \x20    (Container : {helper_name}_Sequence; Index : Positive)\n\
+         \x20     return {helper_name}_Item is\n\
+         \x20  begin\n\
+         \x20     --  Spare capacity is unreachable: only the logical prefix is\n\
+         \x20     --  addressable, and every position in it has a live payload.\n\
+         \x20     if Index > Container.Count then\n\
+         \x20        raise Standard.Constraint_Error\n\
+         \x20          with \"{helper_name}_Sequence index is outside its length\";\n\
+         \x20     end if;\n\
+         \x20     return Container.Items (Index).Value;\n\
+         \x20  end {element};\n\n\
+         \x20  procedure {append}\n\
+         \x20    (Container : in out {helper_name}_Sequence;\n\
+         \x20     New_Item  : {helper_name}_Item) is\n\
+         \x20  begin\n\
+         \x20     if Container.Count >= {max} then\n\
+         \x20        raise Standard.Constraint_Error\n\
+         \x20          with \"{helper_name}_Sequence is already at its maximum\";\n\
+         \x20     end if;\n\
+         \x20     --  The payload is established BEFORE the logical length grows, so a\n\
+         \x20     --  failed element copy cannot leave a claimed position empty.\n\
+         \x20     Container.Items (Container.Count + 1) :=\n\
+         \x20       (Is_Used => True, Value => New_Item);\n\
+         \x20     Container.Count := Container.Count + 1;\n\
+         \x20  end {append};\n",
+        to_sequence = ADA_SEQUENCE_TO_SEQUENCE,
+        length = ADA_SEQUENCE_LENGTH,
+        element = ADA_SEQUENCE_ELEMENT,
+        append = ADA_SEQUENCE_APPEND,
+    )
+    .expect("writing to String cannot fail");
+    if min == 0 {
+        writeln!(
+            body,
+            "   procedure {clear} (Container : in out {helper_name}_Sequence) is\n\
+             \x20  begin\n\
+             \x20     Container := (Count => 0, Items => (others => (Is_Used => False)));\n\
+             \x20  end {clear};\n",
+            clear = ADA_SEQUENCE_CLEAR,
+        )
+        .expect("writing to String cannot fail");
+    }
 }
 
 fn render_unbounded_helper(
@@ -2205,6 +2457,10 @@ const ADA_DATE_TIME_ZULU_BODY: &str = r##"
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ams_gra_oms_codegen_core::{
+        ADA_BOUNDED_REQUIRED_SEQUENCE_CALLABLES, ADA_BOUNDED_SEQUENCE_CALLABLES,
+        ADA_SEQUENCE_CALLABLES, ADA_UNBOUNDED_SEQUENCE_CALLABLES,
+    };
     use ams_gra_oms_ir::NumericValue;
 
     /// Existing pre-Task-028 regressions all asserted closed-world behaviour,
@@ -2223,6 +2479,136 @@ mod tests {
             &Path::new(env!("CARGO_MANIFEST_DIR")).join("../xsd-frontend/tests/fixtures/track.xsd"),
         )
         .expect("track fixture should parse")
+    }
+
+    /// The renderer's emitted operation spellings are *exactly* the shared
+    /// definition -- proved by name, not by counting.
+    ///
+    /// The previous coupling was `assert!(ADA_SEQUENCE_CALLABLES.len() == 5)`
+    /// beside hard-coded spellings in the emitted text. A length assertion
+    /// cannot detect a rename, a reorder, or a substitution, so the renderer
+    /// could have published `Size` while preflight reserved `Length` and every
+    /// check would still have passed.
+    ///
+    /// Each emitted spelling is now formatted from the shared constant, and
+    /// this test closes the loop in the other direction: it renders real
+    /// bounded and unbounded storage and requires that every operation the
+    /// generated text declares is one the shared model reserves, and that
+    /// every reserved operation for that shape really appears.
+    #[test]
+    fn emitted_sequence_operations_are_exactly_the_shared_definition() {
+        let declared = |text: &str| -> Vec<String> {
+            text.lines()
+                .filter_map(|line| {
+                    let line = line.trim();
+                    let rest = line
+                        .strip_prefix("function ")
+                        .or_else(|| line.strip_prefix("procedure "))?;
+                    let name = rest.split([' ', '(']).next()?;
+                    (!name.is_empty()).then(|| name.to_owned())
+                })
+                .collect()
+        };
+
+        // Bounded, zero minimum.
+        let mut visible = String::new();
+        let mut private_part = String::new();
+        let mut body = String::new();
+        render_bounded_helper(
+            &mut visible,
+            &mut private_part,
+            &mut body,
+            "Owner_Field",
+            "Integer",
+            0,
+            3,
+        );
+        let mut names = declared(&visible);
+        names.sort();
+        let mut expected = ADA_BOUNDED_SEQUENCE_CALLABLES
+            .iter()
+            .map(|callable| (*callable).to_owned())
+            .collect::<Vec<_>>();
+        expected.sort();
+        assert_eq!(
+            names, expected,
+            "a zero-minimum bounded sequence must declare exactly the shared \
+             bounded operation list:\n{visible}"
+        );
+        // Every declaration has a matching body, so the package really compiles.
+        let mut defined = declared(&body);
+        defined.sort();
+        assert_eq!(defined, expected, "body/spec disagreement:\n{body}");
+
+        // Bounded, positive minimum: Clear is absent by design.
+        let mut visible = String::new();
+        let mut private_part = String::new();
+        let mut body = String::new();
+        render_bounded_helper(
+            &mut visible,
+            &mut private_part,
+            &mut body,
+            "Owner_Field",
+            "Integer",
+            2,
+            3,
+        );
+        let mut names = declared(&visible);
+        names.sort();
+        let mut expected = ADA_BOUNDED_REQUIRED_SEQUENCE_CALLABLES
+            .iter()
+            .map(|callable| (*callable).to_owned())
+            .collect::<Vec<_>>();
+        expected.sort();
+        assert_eq!(
+            names, expected,
+            "a positive-minimum bounded sequence must declare exactly the \
+             shared required-bounded operation list:\n{visible}"
+        );
+        assert!(
+            !names.iter().any(|name| name == ADA_SEQUENCE_CLEAR),
+            "Clear must not exist where the empty sequence is illegal"
+        );
+
+        // Unbounded.
+        let mut visible = String::new();
+        render_sequence_storage_visible(&mut visible, "Owner_Field_Sequence", "Integer");
+        let mut names = declared(&visible);
+        names.sort();
+        let mut expected = ADA_UNBOUNDED_SEQUENCE_CALLABLES
+            .iter()
+            .map(|callable| (*callable).to_owned())
+            .collect::<Vec<_>>();
+        expected.sort();
+        assert_eq!(
+            names, expected,
+            "an unbounded sequence must declare exactly the shared unbounded \
+             operation list:\n{visible}"
+        );
+
+        // Every shape's list is a subset of the single reserved superset, so
+        // no emitted operation can escape the generated-name model.
+        for shape in [
+            ADA_BOUNDED_SEQUENCE_CALLABLES,
+            ADA_BOUNDED_REQUIRED_SEQUENCE_CALLABLES,
+            ADA_UNBOUNDED_SEQUENCE_CALLABLES,
+        ] {
+            for callable in shape {
+                assert!(
+                    ADA_SEQUENCE_CALLABLES.contains(callable),
+                    "{callable} is emitted but not reserved"
+                );
+            }
+        }
+        // And nothing is reserved that no shape ever emits.
+        for callable in ADA_SEQUENCE_CALLABLES {
+            assert!(
+                ADA_BOUNDED_SEQUENCE_CALLABLES.contains(callable)
+                    || ADA_BOUNDED_REQUIRED_SEQUENCE_CALLABLES.contains(callable)
+                    || ADA_UNBOUNDED_SEQUENCE_CALLABLES.contains(callable),
+                "{callable} is reserved but never emitted"
+            );
+        }
     }
 
     fn codegen_order_schema() -> SchemaIr {
@@ -2738,19 +3124,34 @@ end Probe;
         // and never default-initializes spare capacity.
         assert!(source.contains("new Standard.Ada.Containers.Indefinite_Vectors"));
         assert!(!source.contains("new Standard.Ada.Containers.Vectors\n"));
-        assert!(source.contains("Length : Natural range 0 .. 3 := 0;"));
-        assert!(source.contains("Length : Natural range 1 .. 2 := 1;"));
-        assert!(source.contains("Length : Natural range 2 .. 3 := 2;"));
-        assert!(source.contains("Length : Natural range 3 .. 5 := 3;"));
-        // A bounded sequence's physical slots are now discriminated, so an
-        // unused slot holds no element at all. The element type still appears,
-        // as the used variant's payload.
-        assert!(source.contains("when True  => Value : Interfaces.IEEE_Float_32;"));
-        assert!(source.contains("array (Positive range 1 .. 2) of Payload_OneToTwo_Slot;"));
-        assert!(
-            source.contains("when True  => Value : Interfaces.Unsigned_64 range 0 .. 4294967295;")
-        );
-        assert!(source.contains("array (Positive range 1 .. 3) of Payload_TwoToThree_Slot;"));
+        // Task 040 corrective, pass two: a bounded sequence's occupancy is no
+        // longer a publicly writable count beside public slots. The logical
+        // length lives in the private completion, bounded by the schema's
+        // minOccurs .. maxOccurs, and the only public way to establish it is
+        // the checked `To_Sequence`.
+        assert!(source.contains("Count : Natural range 0 .. 3 := 0;"));
+        assert!(source.contains("Count : Natural range 1 .. 2 :="));
+        assert!(source.contains("Count : Natural range 2 .. 3 :="));
+        assert!(source.contains("Count : Natural range 3 .. 5 :="));
+        // A positive-minimum bounded sequence has no valid default at all: a
+        // count over unused slots would claim elements nobody supplied.
+        assert!(source.contains(
+            "Count : Natural range 1 .. 2 :=\n\
+             \x20       raise Standard.Program_Error"
+        ));
+        // No public occupancy setter and no public component exists.
+        assert!(source.contains("type Payload_OneToTwo_Sequence is private;"));
+        assert!(!source.contains("Length : Natural range"));
+        // The bounded index subtype carries maxOccurs, and the physical slots
+        // are still discriminated, so an unused slot holds no element at all.
+        assert!(source.contains("subtype Payload_OneToTwo_Index is Positive range 1 .. 2;"));
+        assert!(source.contains("subtype Payload_OneToTwo_Item is Interfaces.IEEE_Float_32;"));
+        assert!(source.contains("when True  => Value : Payload_OneToTwo_Item;"));
+        assert!(source.contains(
+            "subtype Payload_TwoToThree_Item is \
+                 Interfaces.Unsigned_64 range 0 .. 4294967295;"
+        ));
+        assert!(source.contains("subtype Payload_TwoToThree_Index is Positive range 1 .. 3;"));
         assert!(source.contains("array (Positive range 1 .. 3) of Payload_ThreeOrMore_Item;"));
         assert!(source.contains("Additional : Payload_ThreeOrMore_Additional;"));
         assert!(source.contains("Selection_Repeated_Required_Array"));
@@ -2765,8 +3166,9 @@ end Probe;
         assert!(source.contains("Byte_Value : Long_Long_Integer range -128 .. 127;"));
         assert!(source.contains("Unsigned_Byte_Value : Interfaces.Unsigned_64 range 0 .. 255;"));
         // The bounded element's directly constrained range is preserved; it
-        // now sits on the discriminated slot's used variant.
-        assert!(source.contains("when True  => Value : Long_Long_Integer range -128 .. 127;"));
+        // now names the sequence's `_Item` subtype, which the discriminated
+        // slot's used variant carries.
+        assert!(source.contains("_Item is Long_Long_Integer range -128 .. 127;"));
         assert!(source.contains("when True_Case_Kind =>\n            True_Case : Boolean;"));
         assert!(
             source.contains("subtype Unsigned_Bounded is Interfaces.Unsigned_64 range 1 .. 1000;")
@@ -2857,13 +3259,20 @@ end Probe;
         // The repeated Choice-alternative path gets the same corrective
         // treatment as the Record one: physical slots are discriminated, so an
         // unused slot in an alternative is not a live element either.
-        assert!(source.contains("when True  => Value : Token;"));
+        assert!(source.contains("subtype Selection_Items_Item is Token;"));
+        assert!(source.contains("when True  => Value : Selection_Items_Item;"));
         assert!(
             source.contains(
-                "type Selection_Items_Array is\n     array (Positive range 1 .. 3) of Selection_Items_Slot;"
+                "type Selection_Items_Array is\n     array (Selection_Items_Index) of Selection_Items_Slot;"
             )
         );
-        assert!(source.contains("type Selection_Items_Sequence is record"));
+        // And the alternative's storage is opaque, with the same checked
+        // construction the Record path gets.
+        assert!(source.contains("type Selection_Items_Sequence is private;"));
+        assert!(source.contains(
+            "function To_Sequence\n     (Values : Selection_Items_Values) \
+             return Selection_Items_Sequence;"
+        ));
         assert!(source.contains("Items : Selection_Items_Sequence;"));
     }
 
@@ -2943,7 +3352,7 @@ end Probe;
         assert!(source.contains("type Track_Id is range 1 .. 65_535;"));
         assert!(source.contains("(Unknown,\n      Tentative,\n      Confirmed);"));
         assert!(source.contains("Callsign : Optional_String;"));
-        assert!(source.contains("Length : Natural range 0 .. 8 := 0;"));
+        assert!(source.contains("Count : Natural range 0 .. 8 := 0;"));
         assert!(source.contains("Id : Track_Id;\n      Quality : Track_Quality;"));
     }
 
@@ -3836,9 +4245,17 @@ end Probe;
         .expect("write Ada parent package");
         fs::write(directory.join("preflight-helperowner.ads"), &source)
             .expect("write generated Ada spec");
+        // Task 040 corrective, pass two: bounded sequence storage is opaque,
+        // so its operations have real bodies. The spec no longer compiles
+        // alone, and requiring the body here is what proves the private
+        // completion and declaration ordering are actually well-formed.
+        if let Some(body) = generate_body(&schema, CLOSED).expect("body generation must not fail") {
+            fs::write(directory.join("preflight-helperowner.adb"), &body)
+                .expect("write generated Ada body");
+        }
         let status = Command::new("gnatmake")
             .current_dir(&directory)
-            .args(["-gnatwa", "-c", "preflight-helperowner.ads"])
+            .args(["-gnatwa", "-c", "preflight-helperowner.adb"])
             .status()
             .expect("GNAT reported a version, so it must be runnable");
         let _ = fs::remove_dir_all(&directory);

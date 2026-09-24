@@ -523,6 +523,21 @@ MIN`. Positive unbounded values use a fixed required prefix of exactly `MIN`
 items plus an `Ada.Containers.Vectors` additional tail; logical order is the
 prefix followed by tail vector order. `0..*` retains the Task 021 vector form.
 
+> **Superseded by Task 040 and its two corrective passes.** The finite shape
+> described above no longer holds, and the reasoning behind it was wrong in a
+> way worth recording. A range-constrained `Length` alone does **not** preserve
+> actual occurrence semantics once a slot may contain no payload: the count and
+> the payloads become two independently writable facts, and the first
+> corrective pass's public `Length` plus public slot array demonstrably allowed
+> a sequence to claim elements nobody supplied and to contain holes. Finite
+> repeated storage is now an **opaque private** type: occupancy is established
+> only through a checked `To_Sequence` or `Append`, a positive minimum has no
+> valid default at all, and reads outside the logical length are rejected.
+> Backing storage is still a finite array sized by `maxOccurs` and is still
+> allocation-free. The positive-minimum *unbounded* prefix/tail shape above
+> survives, with `Ada.Containers.Indefinite_Vectors` replacing the definite
+> vector. See `docs/task-040-validated-carrier-lifecycle.md` §10.3–§10.5.
+
 The shared portable array bound is 32,767: conforming Ada guarantees
 `Standard.Integer` includes `-32_767 .. 32_767`, hence `Positive` includes this
 range. Finite maxima and positive unbounded minima above it fail closed.
