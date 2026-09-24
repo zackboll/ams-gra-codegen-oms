@@ -434,6 +434,36 @@ character remain invalid. See `docs/backend-compatibility.md`.
 
 `PositionReport` remains NOT READY in every backend.
 
+**Corrective progress (Task 040):**
+
+Task 040 changed generated **lifecycle behavior**, not capability. Coverage is
+unchanged in every measured cell, no new profile or `FeatureFamily` was added,
+and Rust output is byte-identical. It closed two gaps in the *existing*
+validated lexical carriers — the schema-version, UUID, visible-ASCII, and Zulu
+DateTime families:
+
+- **Ada** default initialization created a usable, unchecked carrier whose
+  `Value` returned the empty string, which every one of these profiles rejects.
+  The private component now carries an explicitly failing `raise` default, so a
+  carrier must come from `Create` or from an already valid carrier. Enforcement
+  is a language initialization effect, proven without `-gnata` and under
+  `Assertion_Policy (Ignore)`;
+- **C++** implicit move construction and move assignment left the still-live
+  source holding a representation its own `create` rejects, which could then be
+  copied. The carriers now declare their copy operations, which suppresses the
+  implicit move operations so rvalue operations fall back to copying. The
+  tradeoff — a `std::move` may copy and allocate, and these operations are
+  correctly not `noexcept` — is accepted in favour of the validated-value
+  invariant.
+
+This also corrects an overly broad earlier claim: privacy alone does **not**
+prove there is no unchecked construction path. Privacy stops a client from
+naming the representation; it did not stop the language from
+default-initializing it or from synthesizing destructive moves. See
+`docs/task-040-validated-carrier-lifecycle.md`.
+
+`PositionReport` remains NOT READY in every backend.
+
 **Still open:**
 
 - [ ] service-specific generated wrapper APIs;

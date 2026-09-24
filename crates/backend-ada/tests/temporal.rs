@@ -50,7 +50,14 @@ fn generated_date_time_api_is_an_opaque_validated_carrier() {
     // package's existing owned-string type -- not Ada.Calendar.Time, whose
     // year range and precision are narrower than XML Schema's.
     assert!(private_part.contains("type Instant is record"));
-    assert!(private_part.contains("Lexical : Standard.Ada.Strings.Unbounded.Unbounded_String;"));
+    // Task 040 gave the component an explicitly failing default, so an
+    // ordinary default declaration of the carrier cannot silently produce
+    // empty text this profile would itself reject. The storage type is
+    // otherwise unchanged.
+    assert!(
+        private_part.contains("Lexical : Standard.Ada.Strings.Unbounded.Unbounded_String :=\n")
+    );
+    assert!(private_part.contains("raise Standard.Program_Error"));
     assert!(!spec.contains("Ada.Calendar"));
 
     // Predefined "=" is documented as lexical, not value-space, equality, and

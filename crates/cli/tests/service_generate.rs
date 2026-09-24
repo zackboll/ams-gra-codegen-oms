@@ -2328,3 +2328,183 @@ fn task039_selected_ada_output_validates_under_gnat() {
         "selected Ada validation must hold"
     );
 }
+
+/// Task 040: the *contract-selected* C++ output carries the special-member
+/// policy, and a selected carrier keeps a valid value through an rvalue
+/// operation.
+///
+/// The backend-level probes prove the templates are right. This one proves the
+/// correction propagates through the ordinary `service-generate` path that a
+/// consumer actually uses, rather than only through a directly invoked backend.
+#[test]
+fn task040_selected_cpp_output_preserves_the_validated_value() {
+    let root = generate_visible_ascii("cpp", "task040-cpp");
+    std::fs::write(
+        root.join("probe.cpp"),
+        "#include \"test.hpp\"\n#include <cstdio>\n#include <optional>\n\
+         #include <string>\n#include <utility>\n\n\
+         using urn::test::Callsign;\n\
+         using urn::test::CountryCode;\n\n\
+         int main() {\n\
+         \x20   auto made = Callsign::create(\"Falcon-1\");\n\
+         \x20   if (!made) return 1;\n\
+         \x20   Callsign origin = *made;\n\n\
+         \x20   // Construction from an rvalue must not strip the source.\n\
+         \x20   Callsign taken = std::move(origin);\n\
+         \x20   if (taken.value() != \"Falcon-1\") return 1;\n\
+         \x20   if (origin.value() != \"Falcon-1\") return 1;\n\
+         \x20   // The source must still satisfy its own validator.\n\
+         \x20   if (!Callsign::create(origin.value())) return 1;\n\n\
+         \x20   // Copying the source AFTER the rvalue operation must not\n\
+         \x20   // propagate an invalid representation.\n\
+         \x20   Callsign copied = origin;\n\
+         \x20   if (copied.value() != \"Falcon-1\") return 1;\n\n\
+         \x20   // Assignment from an rvalue, same requirement.\n\
+         \x20   Callsign target = *Callsign::create(\"Eagle-2\");\n\
+         \x20   target = std::move(origin);\n\
+         \x20   if (target.value() != \"Falcon-1\") return 1;\n\
+         \x20   if (origin.value() != \"Falcon-1\") return 1;\n\n\
+         \x20   // The 2..4 profile, whose minimum is above one character.\n\
+         \x20   auto country = CountryCode::create(\"US\");\n\
+         \x20   if (!country) return 1;\n\
+         \x20   CountryCode moved_country = std::move(*country);\n\
+         \x20   if (moved_country.value() != \"US\") return 1;\n\
+         \x20   if (!CountryCode::create(country->value())) return 1;\n\n\
+         \x20   // std::optional composition still behaves.\n\
+         \x20   std::optional<Callsign> boxed = Callsign::create(\"Hawk-3\");\n\
+         \x20   std::optional<Callsign> moved_box = std::move(boxed);\n\
+         \x20   if (!moved_box || moved_box->value() != \"Hawk-3\") return 1;\n\
+         \x20   if (!boxed || boxed->value() != \"Hawk-3\") return 1;\n\n\
+         \x20   std::puts(\"ok\");\n\
+         \x20   return 0;\n\
+         }\n",
+    )
+    .expect("write C++ probe");
+    let output = Command::new("c++")
+        .current_dir(&root)
+        .args([
+            "-std=c++17",
+            "-Wall",
+            "-Wextra",
+            "-pedantic-errors",
+            "-o",
+            "probe",
+            "probe.cpp",
+        ])
+        .output()
+        .expect("a C++ compiler must be available");
+    assert!(
+        output.status.success(),
+        "selected C++ output must compile under strict C++17:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        Command::new(root.join("probe"))
+            .status()
+            .expect("probe must run")
+            .success(),
+        "selected C++ carriers must keep their validated value"
+    );
+}
+
+/// Task 040: the *contract-selected* Ada output rejects an unchecked default
+/// declaration while every legitimate construction path still works.
+///
+/// Built without `-gnata`, so this cannot pass as a client assertion effect.
+///
+/// Skipped only where GNAT is absent, as elsewhere in this file.
+#[test]
+fn task040_selected_ada_output_requires_explicit_initialization() {
+    if Command::new("gnatmake").arg("--version").output().is_err() {
+        assert!(
+            std::env::var_os("AMS_GRA_REQUIRE_GNAT").is_none(),
+            "AMS_GRA_REQUIRE_GNAT is set but gnatmake is unavailable"
+        );
+        return;
+    }
+    let root = generate_visible_ascii("ada", "task040-ada");
+    std::fs::write(
+        root.join("probe.adb"),
+        "with Ada.Text_IO;\nwith Urn.Test;\n\n\
+         procedure Probe is\n\
+         \x20  use Ada.Text_IO;\n\
+         \x20  Failures : Natural := 0;\n\n\
+         \x20  --  Positive controls: Create, copy initialization, assignment.\n\
+         \x20  Made : constant Urn.Test.Callsign := Urn.Test.Create (\"Falcon-1\");\n\
+         \x20  Copied : constant Urn.Test.Callsign := Made;\n\
+         \x20  Assigned : Urn.Test.Callsign := Urn.Test.Create (\"Eagle-2\");\n\
+         \x20  --  The 2..4 profile, whose minimum is above one character.\n\
+         \x20  Country : constant Urn.Test.CountryCode := Urn.Test.Create (\"US\");\n\
+         begin\n\
+         \x20  Assigned := Made;\n\
+         \x20  if Urn.Test.Value (Made) /= \"Falcon-1\"\n\
+         \x20    or else Urn.Test.Value (Copied) /= \"Falcon-1\"\n\
+         \x20    or else Urn.Test.Value (Assigned) /= \"Falcon-1\"\n\
+         \x20    or else Urn.Test.Value (Country) /= \"US\"\n\
+         \x20  then\n\
+         \x20     Put_Line (\"a legitimate construction path failed\");\n\
+         \x20     Failures := Failures + 1;\n\
+         \x20  end if;\n\n\
+         \x20  --  The negative controls: an ordinary default declaration must\n\
+         \x20  --  fail explicitly rather than yield empty, invalid text.\n\
+         \x20  --\n\
+         \x20  --  The declaration lives in a nested procedure because an\n\
+         \x20  --  exception raised while elaborating a declarative part\n\
+         \x20  --  propagates PAST that block's own handler.\n\
+         \x20  declare\n\
+         \x20     procedure Default_Callsign is\n\
+         \x20        Bad : Urn.Test.Callsign;\n\
+         \x20     begin\n\
+         \x20        Put_Line (\"UNCHECKED: [\" & Urn.Test.Value (Bad) & \"]\");\n\
+         \x20     end Default_Callsign;\n\
+         \x20  begin\n\
+         \x20     Default_Callsign;\n\
+         \x20     Put_Line (\"UNCHECKED: default Callsign did not raise\");\n\
+         \x20     Failures := Failures + 1;\n\
+         \x20  exception\n\
+         \x20     when Program_Error => null;\n\
+         \x20  end;\n\n\
+         \x20  --  The same for the 2..4 profile.\n\
+         \x20  declare\n\
+         \x20     procedure Default_Country is\n\
+         \x20        Bad : Urn.Test.CountryCode;\n\
+         \x20     begin\n\
+         \x20        Put_Line (\"UNCHECKED: [\" & Urn.Test.Value (Bad) & \"]\");\n\
+         \x20     end Default_Country;\n\
+         \x20  begin\n\
+         \x20     Default_Country;\n\
+         \x20     Put_Line (\"UNCHECKED: default CountryCode did not raise\");\n\
+         \x20     Failures := Failures + 1;\n\
+         \x20  exception\n\
+         \x20     when Program_Error => null;\n\
+         \x20  end;\n\n\
+         \x20  if Failures /= 0 then\n\
+         \x20     raise Program_Error;\n\
+         \x20  end if;\n\
+         \x20  Put_Line (\"ok\");\n\
+         end Probe;\n",
+    )
+    .expect("write Ada probe");
+    let output = Command::new("gnatmake")
+        .current_dir(&root)
+        .args(["-q", "probe.adb"])
+        .output()
+        .expect("gnatmake must run");
+    assert!(
+        output.status.success(),
+        "selected Ada output must compile:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let run = Command::new(root.join("probe"))
+        .output()
+        .expect("probe must run");
+    let text = String::from_utf8_lossy(&run.stdout);
+    assert!(
+        run.status.success() && text.contains("ok"),
+        "selected Ada carriers must require explicit initialization:\n{text}"
+    );
+    assert!(
+        !text.contains("UNCHECKED"),
+        "a default declaration must not yield a usable value:\n{text}"
+    );
+}

@@ -996,6 +996,31 @@ public:
         return {name}(std::string(value));
     }
 
+    // Task 040 special-member policy: copy is explicit, destructive move is
+    // suppressed.
+    //
+    // The implicitly declared move operations would transfer `value_`'s buffer
+    // and leave the source holding an unspecified `std::string` -- in practice
+    // an empty one, which this carrier's own `create` rejects. A still-live
+    // source that no longer satisfies its profile, and that can then be copied
+    // to propagate that invalid representation, is exactly the invariant this
+    // type exists to hold.
+    //
+    // Declaring the copy operations suppresses the implicit declaration of the
+    // move constructor and move assignment operator (C++17 [class.copy.ctor]/8
+    // and [class.copy.assign]/4). The type therefore stays copy-constructible
+    // and copy-assignable, and overload resolution on an rvalue selects the
+    // copy operations rather than a destructive move. Nothing is `= delete`d,
+    // so rvalue construction, std::optional, std::swap, and generated container
+    // composition all keep working.
+    //
+    // Tradeoff: an operation written with std::move copies the string and may
+    // allocate. These operations are correctly not marked noexcept, because a
+    // copy can throw std::bad_alloc. This carrier prioritizes the
+    // validated-value invariant over destructive string-move optimization.
+    {name}(const {name}&) = default;
+    {name}& operator=(const {name}&) = default;
+
     // The stored, validated lexical representation.
     const std::string& value() const noexcept { return value_; }
 
@@ -1098,6 +1123,31 @@ public:
         }
         return {name}(std::string(value));
     }
+
+    // Task 040 special-member policy: copy is explicit, destructive move is
+    // suppressed.
+    //
+    // The implicitly declared move operations would transfer `value_`'s buffer
+    // and leave the source holding an unspecified `std::string` -- in practice
+    // an empty one, which this carrier's own `create` rejects. A still-live
+    // source that no longer satisfies its profile, and that can then be copied
+    // to propagate that invalid representation, is exactly the invariant this
+    // type exists to hold.
+    //
+    // Declaring the copy operations suppresses the implicit declaration of the
+    // move constructor and move assignment operator (C++17 [class.copy.ctor]/8
+    // and [class.copy.assign]/4). The type therefore stays copy-constructible
+    // and copy-assignable, and overload resolution on an rvalue selects the
+    // copy operations rather than a destructive move. Nothing is `= delete`d,
+    // so rvalue construction, std::optional, std::swap, and generated container
+    // composition all keep working.
+    //
+    // Tradeoff: an operation written with std::move copies the string and may
+    // allocate. These operations are correctly not marked noexcept, because a
+    // copy can throw std::bad_alloc. This carrier prioritizes the
+    // validated-value invariant over destructive string-move optimization.
+    {name}(const {name}&) = default;
+    {name}& operator=(const {name}&) = default;
 
     // The stored, validated lexical representation.
     const std::string& value() const noexcept { return value_; }
@@ -1213,6 +1263,31 @@ public:
         }
         return {name}(std::string(value));
     }
+
+    // Task 040 special-member policy: copy is explicit, destructive move is
+    // suppressed.
+    //
+    // The implicitly declared move operations would transfer `value_`'s buffer
+    // and leave the source holding an unspecified `std::string` -- in practice
+    // an empty one, which this carrier's own `create` rejects. A still-live
+    // source that no longer satisfies its profile, and that can then be copied
+    // to propagate that invalid representation, is exactly the invariant this
+    // type exists to hold.
+    //
+    // Declaring the copy operations suppresses the implicit declaration of the
+    // move constructor and move assignment operator (C++17 [class.copy.ctor]/8
+    // and [class.copy.assign]/4). The type therefore stays copy-constructible
+    // and copy-assignable, and overload resolution on an rvalue selects the
+    // copy operations rather than a destructive move. Nothing is `= delete`d,
+    // so rvalue construction, std::optional, std::swap, and generated container
+    // composition all keep working.
+    //
+    // Tradeoff: an operation written with std::move copies the string and may
+    // allocate. These operations are correctly not marked noexcept, because a
+    // copy can throw std::bad_alloc. This carrier prioritizes the
+    // validated-value invariant over destructive string-move optimization.
+    {name}(const {name}&) = default;
+    {name}& operator=(const {name}&) = default;
 
     // The stored, validated lexical representation.
     const std::string& value() const noexcept { return value_; }
@@ -1356,6 +1431,31 @@ public:
         }
         return {name}(std::move(lexical));
     }
+
+    // Task 040 special-member policy: copy is explicit, destructive move is
+    // suppressed.
+    //
+    // The implicitly declared move operations would transfer `value_`'s buffer
+    // and leave the source holding an unspecified `std::string` -- in practice
+    // an empty one, which this carrier's own `create` rejects. A still-live
+    // source that no longer satisfies its profile, and that can then be copied
+    // to propagate that invalid representation, is exactly the invariant this
+    // type exists to hold.
+    //
+    // Declaring the copy operations suppresses the implicit declaration of the
+    // move constructor and move assignment operator (C++17 [class.copy.ctor]/8
+    // and [class.copy.assign]/4). The type therefore stays copy-constructible
+    // and copy-assignable, and overload resolution on an rvalue selects the
+    // copy operations rather than a destructive move. Nothing is `= delete`d,
+    // so rvalue construction, std::optional, std::swap, and generated container
+    // composition all keep working.
+    //
+    // Tradeoff: an operation written with std::move copies the string and may
+    // allocate. These operations are correctly not marked noexcept, because a
+    // copy can throw std::bad_alloc. This carrier prioritizes the
+    // validated-value invariant over destructive string-move optimization.
+    {name}(const {name}&) = default;
+    {name}& operator=(const {name}&) = default;
 
     // The stored, normalized, validated lexical representation. This is a
     // dateTime spelling whose timezone is 'Z'; it is not a point in time.

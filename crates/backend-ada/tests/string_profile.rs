@@ -48,7 +48,12 @@ fn generated_schema_version_api_is_an_opaque_validated_carrier() {
     // The representation lives in the private completion, reusing the
     // package's existing owned-string type.
     assert!(private_part.contains("type SchemaVersion is record"));
-    assert!(private_part.contains("Text : Standard.Ada.Strings.Unbounded.Unbounded_String;"));
+    // Task 040 gave the component an explicitly failing default, so an
+    // ordinary default declaration of the carrier cannot silently produce
+    // empty text this profile would itself reject. The storage type is
+    // otherwise unchanged.
+    assert!(private_part.contains("Text : Standard.Ada.Strings.Unbounded.Unbounded_String :=\n"));
+    assert!(private_part.contains("raise Standard.Program_Error"));
 
     // Unlike the Task 036 carrier, predefined "=" IS the correct XML Schema
     // semantics here, and the generated comment says so. Still no ordering:
