@@ -323,12 +323,13 @@ fn visible_ascii_near_misses_are_not_baseline() {
     }];
     cases.push(("length instead of min/max", fixed_length));
 
-    // QueryString4096Type, whose class also admits LF and CR.
-    let mut with_breaks = visible_ascii(0, 4096);
-    with_breaks.lexical.pattern_groups = vec![PatternGroup {
-        alternatives: vec![PatternExpression::xml_schema(r"[ -~\n\r]{0,4096}")],
-    }];
-    cases.push(("a class admitting LF and CR", with_breaks));
+    // Task 041 note: `QueryString4096Type`'s `[ -~\n\r]{0,4096}` used to be
+    // listed here, because at that time no profile implemented a class
+    // containing LF and CR. Task 041 implements exactly that family, so it is
+    // now legitimately baseline and has a POSITIVE control of its own in
+    // `whitespace_visible_coverage.rs`. The visible-ASCII-specific property it
+    // was protecting is asserted there and in the classifier's own tests: a
+    // line-break class is never the visible-ASCII profile.
 
     // NATO_SpecialWordsType: ASCII-only, but a distinct lexical profile.
     let mut nato = visible_ascii(1, 256);

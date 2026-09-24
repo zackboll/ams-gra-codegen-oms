@@ -3,8 +3,8 @@
 use ams_gra_oms_codegen_core::{
     AbstractValueProjection, Backend, BackendLanguage, CodegenError, EffectiveValueMember,
     FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain, StringProfile,
-    TemporalProfile, TypeEmission, abstract_value_projection_for_ref, backend_preflight,
-    constrains_string, effective_choice_alternatives, effective_record_fields,
+    TemporalProfile, TypeEmission, WhitespaceVisiblePolicy, abstract_value_projection_for_ref,
+    backend_preflight, constrains_string, effective_choice_alternatives, effective_record_fields,
     field_storage_semantics, float32_literal, float64_literal, floating_domain,
     inclusive_integral_domain, is_temporal_primitive, plan_type_emissions,
     schema_emits_bounded_integer_support, schema_emits_string_profile_carrier,
@@ -432,7 +432,8 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
             match string_profile(kind, &declaration.constraints) {
                 Ok(Some(StringProfile::UciSchemaVersion))
                 | Ok(Some(StringProfile::UniversallyUniqueIdentifier))
-                | Ok(Some(StringProfile::VisibleAscii { .. })) => {}
+                | Ok(Some(StringProfile::VisibleAscii { .. }))
+                | Ok(Some(StringProfile::WhitespaceVisible { .. })) => {}
                 Ok(None) => unreachable!("constrains_string gates this branch"),
                 Err(reason) => {
                     return unsupported(format!("{reason} on {}", declaration.name.local_name));
@@ -929,6 +930,34 @@ fn render_string_profile_declaration(
             .replace("{name}", name)
             .replace("{min_length}", &min_length.to_string())
             .replace("{max_length}", &max_length.to_string()),
+        // Task 041. The normalization step and the collapse helpers are chosen
+        // from the classified policy, so the emitted C++ implements exactly the
+        // `whiteSpace` facet the declaration carries.
+        Ok(Some(StringProfile::WhitespaceVisible {
+            white_space,
+            min_length,
+            max_length,
+        })) => {
+            let (normalization, helpers, stored) = match white_space {
+                WhitespaceVisiblePolicy::Collapse => (
+                    CPP_WHITESPACE_VISIBLE_COLLAPSE_STEP,
+                    CPP_WHITESPACE_VISIBLE_COLLAPSE_HELPERS,
+                    "the collapse-normalized form of the input, not the input itself",
+                ),
+                WhitespaceVisiblePolicy::Preserve => (
+                    CPP_WHITESPACE_VISIBLE_PRESERVE_STEP,
+                    "",
+                    "the caller's text preserved unchanged",
+                ),
+            };
+            CPP_WHITESPACE_VISIBLE_TEMPLATE
+                .replace("{name}", name)
+                .replace("{min_length}", &min_length.to_string())
+                .replace("{max_length}", &max_length.to_string())
+                .replace("{normalization}", normalization)
+                .replace("{collapse_helpers}", helpers)
+                .replace("{stored}", stored)
+        }
         Ok(None) => return unsupported(format!("unconstrained String on {name}")),
         Err(reason) => return unsupported(format!("{reason} on {name}")),
     };
@@ -981,6 +1010,179 @@ fn render_string_profile_declaration(
 /// Compiles clean under `-std=c++17 -Wall -Wextra -pedantic-errors` using only
 /// `<string>`, `<string_view>`, and `<optional>`, which the generated header
 /// already includes. No external library.
+/// The `collapse` normalization step, substituted into `{normalization}`.
+///
+/// Normalizes first, then rebinds the `std::string_view` parameter onto the
+/// owned normalized buffer. That buffer outlives every use of the view within
+/// `create`, so no dangling view is possible.
+const CPP_WHITESPACE_VISIBLE_COLLAPSE_STEP: &str = r#"        // whiteSpace = collapse, per XML Schema Part 2 §4.3.6. This runs BEFORE
+        // the pattern and length facets, so an input whose raw length exceeds
+        // kMaxLength is still accepted when its normalized form fits.
+        const std::string normalized = collapse(value);
+        value = std::string_view(normalized);"#;
+
+/// The `preserve` normalization step: deliberately a no-op.
+const CPP_WHITESPACE_VISIBLE_PRESERVE_STEP: &str = r#"        // whiteSpace = preserve: xs:string's intrinsic policy, which this
+        // declaration does not override. Normalization is the identity, so
+        // nothing is trimmed or collapsed and LF and CR stay significant."#;
+
+/// The `collapse` helper functions, emitted only for the collapse half.
+///
+/// Omitted entirely for a `preserve` carrier, so `-Wall -Wextra
+/// -pedantic-errors` sees no unused static member function.
+const CPP_WHITESPACE_VISIBLE_COLLAPSE_HELPERS: &str = r##"
+    // XML Schema Part 2 §4.3.6 `collapse`, over XML's four whitespace
+    // characters only.
+    //
+    // SPACE, TAB, LF, and CR are the whole of XML whitespace. Runs of them
+    // collapse to a single SPACE, and leading and trailing runs are removed.
+    // Every other byte -- including the bytes of U+00A0 and every other Unicode
+    // space, and including U+000B, U+000C, and NUL -- is passed through
+    // untouched so that the class test can reject it. Invalid characters are
+    // never silently deleted.
+    //
+    // Linear in the input; the output is never longer than the input.
+    static std::string collapse(std::string_view text) {
+        std::string out;
+        out.reserve(text.size());
+        bool pending_space = false;
+        for (const char character : text) {
+            if (is_xml_whitespace(character)) {
+                // Deferred: a run becomes one SPACE only when a non-whitespace
+                // character follows, which drops the trailing run. The
+                // `!out.empty()` test drops the leading run.
+                pending_space = !out.empty();
+                continue;
+            }
+            if (pending_space) {
+                out.push_back(' ');
+                pending_space = false;
+            }
+            out.push_back(character);
+        }
+        return out;
+    }
+
+    // Exactly XML's four whitespace characters, and no others.
+    //
+    // The <cctype> whitespace classifier is deliberately not used: it is
+    // locale-dependent, it also reports U+000B and U+000C, and passing a
+    // negative `char` to it is undefined behavior. The comparison here is on
+    // explicit character constants instead.
+    static bool is_xml_whitespace(char character) noexcept {
+        return character == ' ' || character == '\t' || character == '\n' ||
+               character == '\r';
+    }
+"##;
+
+/// The generated C++17 whitespace-visible carrier.
+///
+/// # Validation order
+///
+/// 1. `whiteSpace` normalization, if the profile is the collapse half;
+/// 2. the `minLength`/`maxLength` facets, applied to the *normalized* value;
+/// 3. the authoritative `[ -~\n\r]` character class, tested per character.
+///
+/// # No regular-expression engine
+///
+/// The authoritative expression is one character class under one bounded
+/// quantifier, so membership is a length test plus an independent per-character
+/// set test. `<regex>` is deliberately not used: its grammars are
+/// ECMAScript/POSIX, not XML Schema.
+///
+/// # High-bit bytes and signed `char`
+///
+/// Every class comparison casts to `unsigned char` first. Where plain `char` is
+/// signed, a byte such as `0xC2` (the lead byte of U+00A0) is *negative*, and
+/// comparing it directly against `0x20` would report it below the interval --
+/// still a rejection, but for the wrong reason, and a latent hazard were the
+/// comparison ever restructured. The cast makes the test ordinal on every
+/// platform, and nothing locale-dependent is consulted.
+///
+/// # Task 040 special-member policy is preserved
+///
+/// The copy operations are declared, which suppresses the implicit move
+/// operations, so an rvalue selects copy and a moved-from source cannot be left
+/// holding a representation its own `create` would reject.
+const CPP_WHITESPACE_VISIBLE_TEMPLATE: &str = r##"class {name} {
+public:
+    // Validate `value` against the authoritative whitespace-visible profile.
+    //
+    // Returns std::nullopt if either length facet or the character class
+    // rejects. The stored text is {stored}.
+    static std::optional<{name}> create(std::string_view value) {
+{normalization}
+        if (!is_whitespace_visible(value)) {
+            return std::nullopt;
+        }
+        return {name}(std::string(value));
+    }
+
+    // Task 040 special-member policy: copy is explicit, destructive move is
+    // suppressed. Declaring the copy operations suppresses the implicit
+    // declaration of the move constructor and move assignment operator (C++17
+    // [class.copy.ctor]/8 and [class.copy.assign]/4), so overload resolution on
+    // an rvalue selects copy and a moved-from source can never be observed
+    // holding a representation this carrier's own `create` rejects.
+    {name}(const {name}&) = default;
+    {name}& operator=(const {name}&) = default;
+
+    // The stored, validated lexical representation.
+    const std::string& value() const noexcept { return value_; }
+
+private:
+    explicit {name}(std::string validated) : value_(std::move(validated)) {}
+
+    // minLength, which is also the pattern quantifier's minimum.
+    static constexpr std::size_t kMinLength = {min_length};
+
+    // maxLength, which is also the pattern quantifier's maximum.
+    static constexpr std::size_t kMaxLength = {max_length};
+
+    // The lowest code point the class's printable interval admits: U+0020.
+    static constexpr unsigned char kMinCodePoint = 0x20;
+
+    // The highest code point the class's printable interval admits: U+007E.
+    static constexpr unsigned char kMaxCodePoint = 0x7E;
+
+    // U+000A LINE FEED, admitted by the class escape \n.
+    static constexpr unsigned char kLineFeed = 0x0A;
+
+    // U+000D CARRIAGE RETURN, admitted by the class escape \r.
+    static constexpr unsigned char kCarriageReturn = 0x0D;
+
+    // The [ -~\n\r] class: U+0020..=U+007E, plus LF and CR.
+    //
+    // SPACE is inside the printable interval. TAB (U+0009), U+000B, U+000C, DEL
+    // (U+007F), every other control, and every non-ASCII byte are outside the
+    // class. The cast makes the comparison ordinal regardless of whether plain
+    // `char` is signed, so a high-bit byte is classified correctly.
+    static bool is_class_member(char character) noexcept {
+        const unsigned char ordinal = static_cast<unsigned char>(character);
+        return (ordinal >= kMinCodePoint && ordinal <= kMaxCodePoint) ||
+               ordinal == kLineFeed || ordinal == kCarriageReturn;
+    }
+
+    // The whole gate: both length facets AND the character class.
+    static bool is_whitespace_visible(std::string_view text) {
+        // Sound as an XSD character count: every byte that survives the class
+        // test below is single-byte in UTF-8.
+        if (text.size() < kMinLength || text.size() > kMaxLength) {
+            return false;
+        }
+        // Anchored by construction: every character must be in the class.
+        for (const char character : text) {
+            if (!is_class_member(character)) {
+                return false;
+            }
+        }
+        return true;
+    }
+{collapse_helpers}
+    std::string value_;
+};
+"##;
+
 const CPP_VISIBLE_ASCII_TEMPLATE: &str = r##"class {name} {
 public:
     // Validate `value` against the authoritative visible-ASCII profile.

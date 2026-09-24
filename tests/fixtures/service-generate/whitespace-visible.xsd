@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:test"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- Task 041 synthetic selected-service fixture.
+
+       The SELECTED closure contains supported whitespace-visible String
+       declarations in BOTH evidenced whiteSpace policies, and in required,
+       optional, bounded-repeated and unbounded-repeated positions:
+
+         RemarksReport :> RemarksPayload
+              Summary   : CollapsedRemarks    1..1  (collapse, 0..1024)
+              Detail    : PreservedRemarks    1..1  (preserve, 1..1024)
+              Addendum  : CollapsedNarrative  0..1  (collapse, 0..4096)
+              Query     : PreservedQuery      0..1  (preserve, 0..4096)
+              Version   : SchemaVersion       1..1  (Task 037 profile)
+              Notes     : xs:string           1..1  (ordinary String)
+              History   : CollapsedRemarks    0..4  (bounded)
+              Anchors   : PreservedRemarks    2..3  (POSITIVE-minimum bounded)
+              Log       : PreservedNarrative  0..*  (unbounded)
+
+       Both policies and both maxima are selected on purpose: the profile is
+       parameterized over whole evidenced triples, so each carrier must enforce
+       its own bounds AND its own normalization. In Ada each also emits a
+       package-level Create/Value, so this proves overload resolution across all
+       the selected carriers plus the older profile.
+
+       UNSELECTED, and deliberately outside the closure, is a whitespace-visible
+       shape that is NOT evidenced: the collapse policy paired with UCI 2.6's
+       minimum of one. That triple appears in no pinned release, so it must stay
+       unsupported, must not be projected into the generated output, and its
+       presence must not block readiness.
+
+       No declaration is named after a UCI type: support must arise from
+       PrimitiveKind::String plus the effective ConstraintSet alone.
+  -->
+
+  <!-- SELECTED: the UCI 2.5 collapse profile at 1024. minLength = 0, so the
+       empty string is a VALID value here. -->
+  <xs:simpleType name="CollapsedRemarks">
+    <xs:annotation>
+      <xs:documentation>String type of 1024 characters in length, restricted to visible characters (0x21-0x7E) and whitespace characters.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:minLength value="0"/>
+      <xs:maxLength value="1024"/>
+      <xs:whiteSpace value="collapse"/>
+      <xs:pattern value="[&#x20;-&#x7E;\n\r]{0,1024}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- SELECTED: the UCI 2.5 collapse profile at 4096. -->
+  <xs:simpleType name="CollapsedNarrative">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="0"/>
+      <xs:maxLength value="4096"/>
+      <xs:whiteSpace value="collapse"/>
+      <xs:pattern value="[&#x20;-&#x7E;\n\r]{0,4096}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- SELECTED: the UCI 2.6 preserve profile at 1024. No whiteSpace facet, and
+       minLength = 1, so the empty string is INVALID here. -->
+  <xs:simpleType name="PreservedRemarks">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="1024"/>
+      <xs:pattern value="[&#x20;-&#x7E;\n\r]{1,1024}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- SELECTED: the UCI 2.6 preserve profile at 4096. -->
+  <xs:simpleType name="PreservedNarrative">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="4096"/>
+      <xs:pattern value="[&#x20;-&#x7E;\n\r]{1,4096}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- SELECTED: the UCI 2.5 QueryString4096Type shape, preserve with a ZERO
+       minimum. Proves the release axes are not a product. -->
+  <xs:simpleType name="PreservedQuery">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="0"/>
+      <xs:maxLength value="4096"/>
+      <xs:pattern value="[&#x20;-&#x7E;\n\r]{0,4096}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- SELECTED: the Task 037 profile, so two String profile families are
+       generated into one unit. -->
+  <xs:simpleType name="SchemaVersion">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="7"/>
+      <xs:maxLength value="57"/>
+      <xs:pattern value="[0-9]{3}\.[0-9]{1,2}(\.[0-9]{1,2})([a-z]{1,2})?(_[a-zA-Z0-9\-]{1,45})?"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- UNSELECTED: collapse paired with UCI 2.6's minimum of one. Every
+       component appears somewhere in the pinned bytes, but this COMBINATION
+       does not, so it stays unsupported. -->
+  <xs:simpleType name="UnobservedCollapsedText">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="1024"/>
+      <xs:whiteSpace value="collapse"/>
+      <xs:pattern value="[&#x20;-&#x7E;\n\r]{1,1024}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- UNSELECTED holder, so the unsupported declaration is genuinely reachable
+       in the schema but not in the selected closure. -->
+  <xs:complexType name="UnselectedRemarksPayload">
+    <xs:sequence>
+      <xs:element name="Text" type="t:UnobservedCollapsedText"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="RemarksPayload">
+    <xs:sequence>
+      <xs:element name="Summary" type="t:CollapsedRemarks"/>
+      <xs:element name="Detail" type="t:PreservedRemarks"/>
+      <xs:element name="Addendum" type="t:CollapsedNarrative" minOccurs="0"/>
+      <xs:element name="Query" type="t:PreservedQuery" minOccurs="0"/>
+      <xs:element name="Version" type="t:SchemaVersion"/>
+      <xs:element name="Notes" type="xs:string"/>
+      <!-- Bounded repeated, and a POSITIVE-minimum bounded field whose
+           generated Clear must stay absent per Task 040. -->
+      <xs:element name="History" type="t:CollapsedRemarks"
+                  minOccurs="0" maxOccurs="4"/>
+      <xs:element name="Anchors" type="t:PreservedRemarks"
+                  minOccurs="2" maxOccurs="3"/>
+      <!-- Unbounded repeated, for growth, copying, clearing and reuse. -->
+      <xs:element name="Log" type="t:PreservedNarrative"
+                  minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="RemarksReport" type="t:RemarksPayload"
+              uci:version="001.000.000.000"/>
+
+  <xs:element name="UnselectedRemarksReport" type="t:UnselectedRemarksPayload"
+              uci:version="001.000.000.000"/>
+
+</xs:schema>

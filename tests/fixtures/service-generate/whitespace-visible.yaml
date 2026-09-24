@@ -1,0 +1,42 @@
+# SYNTHETIC Task 041 fixture. Authored for this repository only.
+#
+# Selects one message whose closure carries supported whitespace-visible String
+# declarations in BOTH evidenced whiteSpace policies, at both evidenced maxima,
+# and in required, optional, bounded-repeated and unbounded-repeated positions,
+# alongside the Task 037 schema-version profile. Before Task 041 this was NOT
+# READY for every backend; after it, all three must report READY and generate
+# compilable output -- and, for Ada, the selected generation must include the
+# `.adb` body.
+#
+# The schema also declares an UNEVIDENCED whitespace-visible triple OUTSIDE this
+# selection (collapse paired with UCI 2.6's minimum of one), which must therefore
+# neither be projected nor block readiness. Every one of that triple's individual
+# components is evidenced somewhere, so a READY result here cannot be an
+# accidental widening to any `whiteSpace + minLength + maxLength + pattern`
+# combination.
+contract_version: "0.1"
+
+service:
+  name: Remarks Reporting
+  version: "0.1.0"
+  kind: service
+  description: Synthetic contract selecting a whitespace-visible String closure.
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: remarks
+    name: Remarks
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: remarks-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: RemarksReport
+        topic: remarks.report
+        timing:
+          kind: asynchronous

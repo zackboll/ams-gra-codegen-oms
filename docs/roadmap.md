@@ -490,6 +490,47 @@ obtained and freshly measured on this pass.
 
 `PositionReport` remains NOT READY in every backend.
 
+**Measured progress (Task 041):**
+
+Task 041 added no Phase 2.5 code either. It made the named UCI
+**whitespace-visible** String family renderable in both pinned releases,
+extending the same shared `StringProfile` classifier with a fourth variant.
+Same authoritative inputs — UCI 2.5, the upstream `PositionReport` contract,
+closed world:
+
+| Backend | Before | After | First blocker now |
+| --- | ---: | ---: | --- |
+| Ada | 51/60 | **53/60** | `SecurityInformationType` (unchanged) |
+| Rust | 55/60 | **57/60** | `SecurityInformationType` (unchanged) |
+| C++ | 55/60 | **57/60** | `SecurityInformationType` (unchanged) |
+
+`WhitespaceVisibleString1024Type` and `WhitespaceVisibleString4096Type` are no
+longer blockers. `SecurityInformationType` nevertheless remains the first
+blocker, because its *other* remaining dependencies are untouched here:
+`NATO_SpecialWordsType` and several enumerations whose members — for example
+`25X1` — cannot form a legal Ada identifier without enum identifier remapping.
+Two dependencies improving does **not** make `PositionReport` ready, and it is
+still NOT READY in every backend.
+
+Coverage gained exactly **+3** in all twelve pinned cells, not +2. The third is
+`QueryString4096Type`, a genuine **semantic alias**: in UCI 2.6 its facets are
+byte-for-byte the 4096 profile's, so a name-free classifier supports it
+automatically. There were no transitive gains.
+
+This is the first task where the two pinned releases carry materially different
+*value spaces* for the same declaration name. UCI 2.5 restricts with
+`whiteSpace = collapse` and `minLength = 0`; UCI 2.6 drops the facet entirely and
+raises the minimum to one. Both are supported, as separate profile triples over
+whole observed tuples rather than independent axes — the eight combinations of the
+separately observed policies, minima and maxima include three that no release
+contains, and those fail closed. The collapse half genuinely **normalizes** its
+constructor input before storing it, so an input longer than `maxLength` is
+accepted when its normalized form fits, and `Create ("")` succeeds where the
+schema permits it. That last point corrected a Task 040 comment which had claimed
+default construction was prohibited *because* the empty string is invalid; the
+prohibition is an API policy, and for these profiles the empty string is a valid
+value. See `docs/task-041-whitespace-visible-string.md`.
+
 **Still open:**
 
 - [ ] service-specific generated wrapper APIs;

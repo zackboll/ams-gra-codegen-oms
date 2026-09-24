@@ -40,6 +40,23 @@ pub fn visible_ascii_corpus_path() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/string/visible-ascii.txt")
 }
 
+/// The repository-root path of the shared Task 041 collapse corpus.
+#[allow(dead_code)]
+pub fn whitespace_visible_collapse_corpus_path() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/fixtures/string/whitespace-visible-collapse.txt")
+}
+
+/// The repository-root path of the shared Task 041 preserve corpus.
+///
+/// Separate from the collapse corpus on purpose: the two policies have
+/// different expected stored values for the same inputs.
+#[allow(dead_code)]
+pub fn whitespace_visible_preserve_corpus_path() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/fixtures/string/whitespace-visible-preserve.txt")
+}
+
 /// Parse the shared corpus.
 ///
 /// # Panics
@@ -74,8 +91,8 @@ pub fn load_corpus(path: &Path) -> Vec<TemporalCase> {
                 .split_once(" => ")
                 .unwrap_or_else(|| panic!("VALID case needs ' => ': {line}"));
             cases.push(TemporalCase {
-                input: unescape(input),
-                expected: Some(unescape(expected)),
+                input: unescape_field(input),
+                expected: Some(unescape_field(expected)),
             });
         } else if line == "INVALID" {
             // A payload-free INVALID line is the empty string case.
@@ -85,7 +102,7 @@ pub fn load_corpus(path: &Path) -> Vec<TemporalCase> {
             });
         } else if let Some(rest) = line.strip_prefix("INVALID ") {
             cases.push(TemporalCase {
-                input: unescape(rest),
+                input: unescape_field(rest),
                 expected: None,
             });
         } else {
@@ -101,6 +118,49 @@ pub fn load_corpus(path: &Path) -> Vec<TemporalCase> {
         "corpus must contain invalid cases"
     );
     cases
+}
+
+/// The explicit empty-field token.
+///
+/// # Why an explicit token is required
+///
+/// `load_corpus` calls `line.trim_end()` before splitting a `VALID` case on
+/// `" => "`. That is deliberate text hygiene -- it keeps an editor's trailing
+/// whitespace out of every case -- but it makes an *empty* field on either side
+/// unrepresentable by ordinary means:
+///
+/// * `VALID  => ` would have its trailing space trimmed, leaving `VALID  =>`,
+///   whose `" => "` delimiter is now incomplete, so the case fails to parse;
+/// * padding with trailing spaces to compensate is exactly what `trim_end` and
+///   any repository text-hygiene check will remove again.
+///
+/// Task 041's whitespace-visible collapse profiles make empty fields
+/// load-bearing rather than hypothetical: `minLength = 0` accepts the empty
+/// string, and whitespace-only input *normalizes to* the empty string, so both
+/// an empty input and an empty expected output must be expressible.
+///
+/// # Compatibility
+///
+/// This token is a new spelling, not a changed one. No existing corpus line
+/// contains it, so every existing case parses to exactly the value it parsed to
+/// before. `Some("")` still means "construction succeeded and the stored value
+/// is the empty String", and `None` still means "rejected" -- the token affects
+/// only how an empty field is *written*, never what it means.
+///
+/// It is deliberately not `""`: a literal pair of quotation marks is itself a
+/// valid two-character input for these profiles, and would be ambiguous.
+const EMPTY_FIELD: &str = "<empty>";
+
+/// Expand one corpus field, honouring the explicit empty-field token.
+///
+/// The token is recognized only as the *entire* field. `<empty>` appearing
+/// inside a longer field is ordinary text, so a case can still test the literal
+/// characters `<empty>`.
+fn unescape_field(field: &str) -> String {
+    if field == EMPTY_FIELD {
+        return String::new();
+    }
+    unescape(field)
 }
 
 /// Expand the corpus's small escape vocabulary.
