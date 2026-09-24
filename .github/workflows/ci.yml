@@ -64,6 +64,51 @@ jobs:
           require_one_test tests::preflight_control_renders_and_compiles \
             cargo test -p ams-gra-oms-backend-ada --lib \
             tests::preflight_control_renders_and_compiles
+          # Task 040 corrective: repeated storage of validated carriers. These
+          # are the probes that actually execute container operations, so a run
+          # that skipped them would restate the exact false green that let the
+          # vector-growth regression reach review. Zero matched tests is a
+          # failure here for the same reason.
+          require_one_test repeated_carrier_storage_is_usable_under_gnat \
+            cargo test -p ams-gra-oms-backend-ada \
+            --test repeated_carrier_storage \
+            repeated_carrier_storage_is_usable_under_gnat
+          require_one_test repeated_storage_never_declares_a_live_carrier_for_spare_capacity \
+            cargo test -p ams-gra-oms-backend-ada \
+            --test repeated_carrier_storage \
+            repeated_storage_never_declares_a_live_carrier_for_spare_capacity
+          require_one_test task040_selected_ada_repeated_field_is_constructible \
+            cargo test -p ams-gra-codegen-oms --test service_generate \
+            task040_selected_ada_repeated_field_is_constructible
+          # Task 040 corrective, pass two. The bounded-occupancy controls live
+          # inside the two repeated-storage probes above, which already run
+          # here. These are the new focused regressions the second pass adds,
+          # named explicitly for the same reason: a phantom callable or a
+          # renamed sequence operation is a silent-acceptance failure, so a run
+          # that matched zero tests must fail rather than report green.
+          require_one_test tests::emitted_sequence_operations_are_exactly_the_shared_definition \
+            cargo test -p ams-gra-oms-backend-ada --lib \
+            tests::emitted_sequence_operations_are_exactly_the_shared_definition
+          require_one_test backend_names::tests::a_non_emitted_abstract_record_reserves_no_sequence_callable \
+            cargo test -p ams-gra-oms-codegen-core --lib \
+            backend_names::tests::a_non_emitted_abstract_record_reserves_no_sequence_callable
+          require_one_test backend_names::tests::an_inherited_unbounded_member_attributes_callables_to_the_descendant \
+            cargo test -p ams-gra-oms-codegen-core --lib \
+            backend_names::tests::an_inherited_unbounded_member_attributes_callables_to_the_descendant
+          require_one_test backend_names::tests::bounded_shapes_reserve_exactly_the_operations_they_emit \
+            cargo test -p ams-gra-oms-codegen-core --lib \
+            backend_names::tests::bounded_shapes_reserve_exactly_the_operations_they_emit
+          require_one_test backend_names::tests::an_emitted_sequence_still_collides_with_a_conflicting_type_name \
+            cargo test -p ams-gra-oms-codegen-core --lib \
+            backend_names::tests::an_emitted_sequence_still_collides_with_a_conflicting_type_name
+          # The ORIGINAL Task 040 scalar/optional lifecycle controls must keep
+          # passing alongside the corrected repeated paths.
+          require_one_test a_default_declared_carrier_cannot_silently_hold_invalid_text_under_gnat \
+            cargo test -p ams-gra-oms-backend-ada --test carrier_lifecycle \
+            a_default_declared_carrier_cannot_silently_hold_invalid_text_under_gnat
+          require_one_test legitimate_construction_paths_still_work_under_gnat \
+            cargo test -p ams-gra-oms-backend-ada --test carrier_lifecycle \
+            legitimate_construction_paths_still_work_under_gnat
       # `AMS_GRA_REQUIRE_GNAT` turns the Ada probes' developer-machine skip
       # into a hard failure, so a runner that somehow lost GNAT after the gate
       # above cannot produce a green run with the Ada checks quietly elided.

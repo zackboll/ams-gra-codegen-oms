@@ -50,7 +50,14 @@ fn generated_date_time_api_is_an_opaque_validated_carrier() {
     // package's existing owned-string type -- not Ada.Calendar.Time, whose
     // year range and precision are narrower than XML Schema's.
     assert!(private_part.contains("type Instant is record"));
-    assert!(private_part.contains("Lexical : Standard.Ada.Strings.Unbounded.Unbounded_String;"));
+    // Task 040 gave the component an explicitly failing default, so an
+    // ordinary default declaration of the carrier cannot silently produce
+    // empty text this profile would itself reject. The storage type is
+    // otherwise unchanged.
+    assert!(
+        private_part.contains("Lexical : Standard.Ada.Strings.Unbounded.Unbounded_String :=\n")
+    );
+    assert!(private_part.contains("raise Standard.Program_Error"));
     assert!(!spec.contains("Ada.Calendar"));
 
     // Predefined "=" is documented as lexical, not value-space, equality, and
@@ -71,17 +78,30 @@ fn generated_date_time_api_is_an_opaque_validated_carrier() {
     assert!(spec.contains("Value : Instant;"));
 }
 
-/// A schema with no Task 036 carrier must not gain a package body.
+/// A schema with no body-requiring feature must not gain a package body.
+///
+/// `track.xsd` was dropped from this list by the Task 040 corrective second
+/// pass for a real reason, not to make a test pass: its `Sensor_Ids` field is
+/// a `0 .. 8` bounded repeated member, and bounded storage is now an opaque
+/// private type whose operations have bodies. It is asserted as a positive
+/// control in `string_profile.rs` rather than silently discarded.
+/// `backend-constrained-floating.xsd` has no repeated member at all, so it
+/// still emits no `.adb` and this remains a real negative control.
 #[test]
 fn schemas_without_a_temporal_carrier_emit_no_body() {
-    for name in ["track.xsd", "backend-constrained-floating.xsd"] {
-        let schema = fixture(name);
-        assert_eq!(
-            generate_body(&schema, CLOSED).expect("body generation must not fail"),
-            None,
-            "{name} must not gain an Ada package body"
-        );
-    }
+    let name = "backend-constrained-floating.xsd";
+    assert_eq!(
+        generate_body(&fixture(name), CLOSED).expect("body generation must not fail"),
+        None,
+        "{name} must not gain an Ada package body"
+    );
+    // A bounded repeated member needs a body, but it must contain only the
+    // sequence operations -- no temporal validator, since there is no carrier.
+    let track = generate_body(&fixture("track.xsd"), CLOSED)
+        .expect("body generation must not fail")
+        .expect("a bounded repeated member needs an Ada package body");
+    assert!(track.contains("function To_Sequence"), "{track}");
+    assert!(!track.contains("Zulu"), "{track}");
     // The temporal fixture does need one.
     assert!(
         generate_body(&temporal_schema(), CLOSED)

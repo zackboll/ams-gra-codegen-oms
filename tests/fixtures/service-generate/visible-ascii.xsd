@@ -101,6 +101,16 @@
       <xs:element name="Country" type="t:CountryCode"/>
       <xs:element name="Version" type="t:SchemaVersion"/>
       <xs:element name="Notes" type="xs:string"/>
+      <!-- Task 040 corrective: REPEATED occurrences of a validated carrier, in
+           both storage shapes. These are what make the selected-generation
+           regression actually construct and manipulate a repeated field rather
+           than merely compile the generated spec. -->
+      <xs:element name="Aliases" type="t:Callsign" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="Slots" type="t:Callsign" minOccurs="0" maxOccurs="3"/>
+      <!-- Task 040 corrective, pass two: a POSITIVE-minimum bounded field, so
+           the selected-generation regression also exercises a shape whose
+           default construction must not claim elements nobody supplied. -->
+      <xs:element name="Anchors" type="t:Callsign" minOccurs="2" maxOccurs="3"/>
     </xs:sequence>
   </xs:complexType>
 

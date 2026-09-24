@@ -523,6 +523,21 @@ MIN`. Positive unbounded values use a fixed required prefix of exactly `MIN`
 items plus an `Ada.Containers.Vectors` additional tail; logical order is the
 prefix followed by tail vector order. `0..*` retains the Task 021 vector form.
 
+> **Superseded by Task 040 and its two corrective passes.** The finite shape
+> described above no longer holds, and the reasoning behind it was wrong in a
+> way worth recording. A range-constrained `Length` alone does **not** preserve
+> actual occurrence semantics once a slot may contain no payload: the count and
+> the payloads become two independently writable facts, and the first
+> corrective pass's public `Length` plus public slot array demonstrably allowed
+> a sequence to claim elements nobody supplied and to contain holes. Finite
+> repeated storage is now an **opaque private** type: occupancy is established
+> only through a checked `To_Sequence` or `Append`, a positive minimum has no
+> valid default at all, and reads outside the logical length are rejected.
+> Backing storage is still a finite array sized by `maxOccurs` and is still
+> allocation-free. The positive-minimum *unbounded* prefix/tail shape above
+> survives, with `Ada.Containers.Indefinite_Vectors` replacing the definite
+> vector. See `docs/task-040-validated-carrier-lifecycle.md` §10.3–§10.5.
+
 The shared portable array bound is 32,767: conforming Ada guarantees
 `Standard.Integer` includes `-32_767 .. 32_767`, hence `Positive` includes this
 range. Finite maxima and positive unbounded minima above it fail closed.
@@ -4748,3 +4763,161 @@ Task 036 temporal behaviour, Task 035 occurrence behaviour, and the Task 037 and
 038 String profiles are all unchanged, and their shared corpora still pass. No
 third-party runtime dependency was added in any language, and the pre-existing
 Ada namespace-ending-in-`String` hazard is untouched and still open.
+
+## Task 040: the validated lexical-carrier lifecycle
+
+Corrective. Task 040 changed **lifecycle behavior** of the carriers Tasks
+036--039 introduced; it changed no capability. The classifier, the effective
+facets, the accepted lexical spaces, and the normalization semantics are all
+untouched, coverage moved by zero in every measured cell, and the Task 039
+observed-bound domain was not widened.
+
+Two gaps were closed, and both affected **all four** existing families — the
+UCI schema-version profile, the UUID profile, every supported visible-ASCII
+profile, and the named Zulu DateTime profile. Rust was affected by neither and
+its generated output is byte-identical.
+
+### Ada: unchecked default initialization
+
+The private completion's `Unbounded_String` component carried the predefined
+null-string default, so an ordinary default declaration produced a usable,
+fully unchecked carrier whose `Value` returned the empty string — a value every
+one of these profiles rejects.
+
+The component default is now an explicitly failing `raise` expression:
+
+```ada
+type Uuid is record
+   Text : Standard.Ada.Strings.Unbounded.Unbounded_String :=
+     raise Standard.Program_Error
+       with "Uuid requires initialization from Create";
+end record;
+```
+
+Enforcement is part of Ada's initialization semantics, so it does **not** depend
+on `-gnata`, on `Assertion_Policy`, on a caller-side precondition, or on a type
+invariant a client setting could disable — the probes are built without `-gnata`
+and repeated under `Assertion_Policy (Ignore)`. `Create` already returned an
+explicit named aggregate after validation, so legitimate construction never
+evaluates the default, and the public `Create` / `Value` signatures are
+unchanged. No new package-scope name is introduced, so the shared
+generated-name model is unaffected.
+
+An **absent** optional wrapper still default-creates normally; a *constrained
+present* wrapper, `..._Optional (Is_Present => True)`, now raises, which is the
+intended result.
+
+### C++: implicit destructive move
+
+The classes declared no special members, so the compiler implicitly declared
+move operations that transferred `value_`'s buffer and left the **still-live
+source** holding a representation its own `create` rejects — which could then be
+copied, propagating it.
+
+Each class now declares its copy operations:
+
+```cpp
+Uuid(const Uuid&) = default;
+Uuid& operator=(const Uuid&) = default;
+```
+
+This suppresses the *implicit declaration* of the move operations (C++17
+`[class.copy.ctor]/8`, `[class.copy.assign]/4`), so rvalue operations select the
+copy operations: the destination gets the right value and the source keeps its
+exact spelling. Nothing is `= delete`d, because deleted overloads would still
+participate in overload resolution and would break rvalue construction,
+`std::optional`, and generated container composition.
+
+`std::is_move_constructible` remains **true** — satisfied by the copy
+constructor — so that trait is not evidence a destructive move exists. The
+regressions assert observed values, not traits.
+
+Tradeoff: a `std::move` on these carriers copies the string and may allocate,
+and the operations are correctly **not** `noexcept` because a copy can throw.
+The validated-value invariant is prioritized over destructive string-move
+optimization.
+
+Preserved: private unchecked construction, private storage, factory validation
+and rejection, exact lexical spelling for the preserving profiles, the existing
+DateTime normalization, and the read-only accessor. No new public base class and
+no broad template rewrite.
+
+### Correcting an earlier over-broad claim
+
+Prior notes stated, in effect, that privacy alone proves there is no unchecked
+construction path. That is too broad, and Task 040 is the counterexample. The
+earlier records are preserved as historical evidence; the current guarantee is:
+
+- privacy still prevents a client from **naming** the representation, so no
+  client aggregate, component read, conversion, or raw `value_` read compiles —
+  and those compile-fail probes are retained and required to fail *for
+  privacy*;
+- privacy never prevented the **language** from default-initializing the Ada
+  representation or from synthesizing C++ move operations. Those are what Task
+  040 closes.
+
+Neither backend claims protection against arbitrary unchecked or foreign-memory
+manipulation.
+
+### Evidence
+
+GNAT 14.2.0; `g++` (Debian 14.2.0-19) 14.2.0 under
+`-std=c++17 -Wall -Wextra -pedantic-errors`; rustc/cargo 1.98.1. Backend probes
+live in `crates/backend-ada/tests/carrier_lifecycle.rs` and
+`crates/backend-cpp/tests/carrier_lifecycle.rs`; contract-selected integration
+probes are `task040_selected_ada_output_requires_explicit_initialization` and
+`task040_selected_cpp_output_preserves_the_validated_value`. The visible-ASCII
+bounds exercised include the **2..4** profile, whose minimum is above one
+character, so no accidental valid-default assumption can hide behind a
+1-character minimum. The shared corpora are unchanged.
+
+Measured UCI 2.6 (`78eb61b6112c8bffa40820c33124b57787fc5bd9`) declarations are
+identical before and after — closed `5335 / 5413 / 5417` and open
+`5250 / 5325 / 5329` for Ada / Rust / C++ — matching the Task 039 record
+exactly.
+
+The pinned UCI 2.5 set (`093610b7753944059360d3236770ab446d039556`) was **not**
+obtainable when the first revision of this section was written, and its six
+cells were recorded as missing evidence. It **was** obtainable on the
+corrective pass and is now freshly measured: closed `5314 / 5391 / 5394` and
+open `5229 / 5303 / 5306` for Ada / Rust / C++, all deltas zero, and the
+`PositionReport` recheck reproduces at Ada 51/60, Rust 55/60, C++ 55/60 with
+first blocker `SecurityInformationType`. The missing-measurement limitation is
+therefore withdrawn rather than carried forward.
+
+### Corrective: repeated storage of validated carriers
+
+The rejecting Ada component default above fixed unchecked scalar
+initialization, but it interacted badly with **repeated storage**, which
+default-initializes physical capacity before any live element is assigned. The
+earlier blanket claim that all legitimate Ada construction paths were
+unaffected was therefore too broad and is corrected.
+
+Two paths regressed, and both are fixed:
+
+- an **unbounded** field instantiated the *definite* `Ada.Containers.Vectors`,
+  which default-initializes the replacement array it allocates when growing, so
+  appending valid carriers raised `Program_Error` from inside the container. It
+  now instantiates `Ada.Containers.Indefinite_Vectors` in the **private part**
+  behind an opaque sequence type with five package-level operations
+  (`Length`, `Append`, `Element`, `Clear`, `Reserve_Capacity`);
+- a **bounded** field sized its `Items` array to `maxOccurs` over the element
+  type, so a valid *empty* `0..N` sequence default-initialized `N` carriers.
+  Each physical slot is now a discriminated record whose unused variant has no
+  payload component. The bounded array, the allocation-free shape, and the
+  `minOccurs .. maxOccurs` logical length are all preserved.
+
+A separate, **pre-existing** defect surfaced during reproduction and is fixed
+by the same change: the visible-part instantiation did not compile at all when
+the element was a generated `private` type (`premature use of private type`).
+That reproduces on original `main` for a Task 033 constrained-float element and
+is not a Task 040 regression.
+
+Storage is chosen from semantic information only — occurrence shape and element
+structure — never from a declaration spelling, and the policy is uniform across
+direct carriers, composed records, and ordinary scalars. Tradeoff: an
+indefinite vector heap-allocates per element, accepted deliberately so that
+live elements are constructed only from supplied values. Rust and C++ generated
+output is byte-identical before and after.
+
+See `docs/task-040-validated-carrier-lifecycle.md` §10.

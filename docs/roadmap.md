@@ -434,6 +434,62 @@ character remain invalid. See `docs/backend-compatibility.md`.
 
 `PositionReport` remains NOT READY in every backend.
 
+**Corrective progress (Task 040):**
+
+Task 040 changed generated **lifecycle behavior**, not capability. Coverage is
+unchanged in every measured cell, no new profile or `FeatureFamily` was added,
+and Rust output is byte-identical. It closed two gaps in the *existing*
+validated lexical carriers — the schema-version, UUID, visible-ASCII, and Zulu
+DateTime families:
+
+- **Ada** default initialization created a usable, unchecked carrier whose
+  `Value` returned the empty string, which every one of these profiles rejects.
+  The private component now carries an explicitly failing `raise` default, so a
+  carrier must come from `Create` or from an already valid carrier. Enforcement
+  is a language initialization effect, proven without `-gnata` and under
+  `Assertion_Policy (Ignore)`;
+- **C++** implicit move construction and move assignment left the still-live
+  source holding a representation its own `create` rejects, which could then be
+  copied. The carriers now declare their copy operations, which suppresses the
+  implicit move operations so rvalue operations fall back to copying. The
+  tradeoff — a `std::move` may copy and allocate, and these operations are
+  correctly not `noexcept` — is accepted in favour of the validated-value
+  invariant.
+
+This also corrects an overly broad earlier claim: privacy alone does **not**
+prove there is no unchecked construction path. Privacy stops a client from
+naming the representation; it did not stop the language from
+default-initializing it or from synthesizing destructive moves. See
+`docs/task-040-validated-carrier-lifecycle.md`.
+
+**Corrective pass (Task 040, repeated storage):**
+
+The Ada rejecting default was correct for scalar carriers but conflicted with
+**repeated storage**, which default-initializes physical capacity before any
+live element is assigned. A second over-broad claim is corrected here: not all
+legitimate Ada construction paths were unaffected. Appending valid carriers to
+an unbounded field raised `Program_Error` from inside the container, and a
+valid *empty* `0..N` bounded field raised on declaration. Unchanged coverage
+counts could not have caught either, because capability analysis never executes
+a container operation.
+
+The governing invariant is now *unused capacity is not a live validated value*:
+unbounded fields use `Ada.Containers.Indefinite_Vectors` behind an opaque
+sequence type, and bounded fields keep their bounded array but give each
+physical slot a discriminated record whose unused variant has no payload. A
+separate **pre-existing** defect — the visible-part instantiation failing to
+compile over any generated `private` element type — is fixed by the same
+change and reproduces on original `main`.
+
+This is an explicit generated-API change (documented in
+`docs/task-040-validated-carrier-lifecycle.md` §10.5) and an explicit
+allocation-policy tradeoff: indefinite vectors heap-allocate per element.
+Cardinality semantics, coverage in all twelve pinned cells, and Rust/C++ output
+are unchanged. The pinned UCI 2.5 inputs, previously unobtainable, were
+obtained and freshly measured on this pass.
+
+`PositionReport` remains NOT READY in every backend.
+
 **Still open:**
 
 - [ ] service-specific generated wrapper APIs;

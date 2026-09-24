@@ -750,6 +750,25 @@ pub fn schema_emits_unbounded_sequence_support(schema: &SchemaIr) -> bool {
     })
 }
 
+/// Whether any declaration has a **bounded** repeated member.
+///
+/// The Task 040 corrective second pass makes bounded storage an opaque private
+/// type with real operation bodies, so a schema containing one now needs an
+/// Ada package body even if it has no carrier and no unbounded sequence. Like
+/// every other conditional-emission predicate, it is defined once here so the
+/// renderer and preflight cannot drift.
+#[must_use]
+pub fn schema_emits_bounded_sequence_support(schema: &SchemaIr) -> bool {
+    schema.types.iter().any(|declaration| {
+        declared_members(declaration).iter().any(|member| {
+            matches!(
+                ada_sequence_shape(member.cardinality),
+                Some(AdaSequenceShape::Bounded { .. })
+            )
+        })
+    })
+}
+
 /// Whether any declaration has a directly constrained integral member.
 ///
 /// The exact predicate behind Rust's `BoundedI64`/`BoundedU64` pair and C++'s
@@ -867,11 +886,248 @@ fn ada_wrapper_callable_owners(schema: &SchemaIr) -> Vec<&TypeDecl> {
 ///
 /// Both sides are implicated: the wrapper that generates the subprogram and
 /// the declaration that occupies the identifier.
+/// The package-level operations `backend-ada` republishes for each generated
+/// **unbounded sequence**'s opaque storage type (Task 040 corrective).
+///
+/// These are the exact five names `ADA_SEQUENCE_OPERATIONS` in `backend-ada`
+/// emits. They are listed here so the one policy has a single interpretation:
+/// the renderer, this name model, and readiness analysis all consult the same
+/// list rather than each deciding independently what a sequence generates.
+///
+/// Like the wrapper callables, they are *checked* rather than inserted: Ada
+/// overloads them on the container parameter's type, so many sequences coexist
+/// in one package, but a non-overloadable user declaration spelled `Append`
+/// really would conflict.
+///
+/// `backend-ada` consumes this same constant when it emits the operations, so
+/// the renderer cannot publish a name this model has not reserved.
+pub const ADA_SEQUENCE_CALLABLES: &[&str] = &[
+    ADA_SEQUENCE_LENGTH,
+    ADA_SEQUENCE_APPEND,
+    ADA_SEQUENCE_ELEMENT,
+    ADA_SEQUENCE_CLEAR,
+    ADA_SEQUENCE_RESERVE_CAPACITY,
+    ADA_SEQUENCE_TO_SEQUENCE,
+];
+
+/// The individual operation spellings, named so `backend-ada` can *build* its
+/// emitted text out of them rather than restate them as literals.
+///
+/// A length assertion over the aggregate list never proved name equality; the
+/// renderer formats these very constants into the generated declarations and
+/// bodies, so a rename here mechanically renames the generated API.
+pub const ADA_SEQUENCE_LENGTH: &str = "Length";
+/// See [`ADA_SEQUENCE_LENGTH`].
+pub const ADA_SEQUENCE_APPEND: &str = "Append";
+/// See [`ADA_SEQUENCE_LENGTH`].
+pub const ADA_SEQUENCE_ELEMENT: &str = "Element";
+/// See [`ADA_SEQUENCE_LENGTH`].
+pub const ADA_SEQUENCE_CLEAR: &str = "Clear";
+/// See [`ADA_SEQUENCE_LENGTH`]. Unbounded storage only.
+pub const ADA_SEQUENCE_RESERVE_CAPACITY: &str = "Reserve_Capacity";
+/// See [`ADA_SEQUENCE_LENGTH`]. Bounded storage only: the checked constructor
+/// that is the *sole* way to obtain a bounded sequence of a given occupancy.
+pub const ADA_SEQUENCE_TO_SEQUENCE: &str = "To_Sequence";
+
+/// Operations an **unbounded** sequence's opaque storage publishes.
+pub const ADA_UNBOUNDED_SEQUENCE_CALLABLES: &[&str] = &[
+    ADA_SEQUENCE_LENGTH,
+    ADA_SEQUENCE_APPEND,
+    ADA_SEQUENCE_ELEMENT,
+    ADA_SEQUENCE_CLEAR,
+    ADA_SEQUENCE_RESERVE_CAPACITY,
+];
+
+/// Operations a **zero-minimum bounded** sequence publishes.
+///
+/// `Reserve_Capacity` is absent: bounded capacity is fixed by `maxOccurs` and
+/// there is nothing to reserve. `To_Sequence` is present because checked
+/// construction replaces the previously writable count/slot pair.
+pub const ADA_BOUNDED_SEQUENCE_CALLABLES: &[&str] = &[
+    ADA_SEQUENCE_LENGTH,
+    ADA_SEQUENCE_APPEND,
+    ADA_SEQUENCE_ELEMENT,
+    ADA_SEQUENCE_CLEAR,
+    ADA_SEQUENCE_TO_SEQUENCE,
+];
+
+/// Operations a **positive-minimum bounded** sequence publishes.
+///
+/// `Clear` is deliberately absent: emptying a sequence whose schema requires
+/// at least `minOccurs` elements would produce exactly the incoherent state
+/// this corrective exists to make unrepresentable.
+pub const ADA_BOUNDED_REQUIRED_SEQUENCE_CALLABLES: &[&str] = &[
+    ADA_SEQUENCE_LENGTH,
+    ADA_SEQUENCE_APPEND,
+    ADA_SEQUENCE_ELEMENT,
+    ADA_SEQUENCE_TO_SEQUENCE,
+];
+
+/// The storage shape Ada emits for one repeated member, if any.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AdaSequenceShape {
+    /// `maxOccurs` is finite and greater than one.
+    Bounded {
+        /// Whether `minOccurs` is zero.
+        empty_is_legal: bool,
+    },
+    /// `maxOccurs` is unbounded.
+    Unbounded,
+}
+
+impl AdaSequenceShape {
+    /// The exact operations this shape's generated storage publishes.
+    #[must_use]
+    pub fn callables(self) -> &'static [&'static str] {
+        match self {
+            Self::Unbounded => ADA_UNBOUNDED_SEQUENCE_CALLABLES,
+            Self::Bounded {
+                empty_is_legal: true,
+            } => ADA_BOUNDED_SEQUENCE_CALLABLES,
+            Self::Bounded {
+                empty_is_legal: false,
+            } => ADA_BOUNDED_REQUIRED_SEQUENCE_CALLABLES,
+        }
+    }
+}
+
+/// Classify one member's cardinality into the storage `backend-ada` emits.
+///
+/// Mirrors the renderer's own `bounded_repeated` / unbounded split exactly.
+#[must_use]
+pub fn ada_sequence_shape(cardinality: Cardinality) -> Option<AdaSequenceShape> {
+    match cardinality.shape() {
+        OccurrenceShape::Bounded { min, max } if max > 1 => Some(AdaSequenceShape::Bounded {
+            empty_is_legal: min == 0,
+        }),
+        OccurrenceShape::Unbounded { .. } => Some(AdaSequenceShape::Unbounded),
+        _ => None,
+    }
+}
+
+/// Every declaration for which Ada emits sequence-storage operations, with the
+/// operations that declaration's emitted members actually publish.
+///
+/// # Why this reads the emission plan rather than raw Schema IR
+///
+/// The previous implementation scanned `schema.types` and `declared_members`.
+/// That disagrees with rendering in four ways this corrective fixes, each of
+/// which either invents a callable that is never emitted or misses one that
+/// is:
+///
+/// * **Non-emitted abstract Records.** `backend-ada::render_declaration`
+///   returns early for an abstract Record, so an unused abstract base with an
+///   unbounded field emits no sequence and therefore no `Append`. A schema
+///   legitimately declaring a type named `Append` was rejected for a callable
+///   that would never exist.
+/// * **Effective inherited members.** A concrete descendant that inherits an
+///   unbounded field *without declaring one* has no `declared_members` entry
+///   for it, so the raw scan attributed ownership to the non-emitted base --
+///   or to nobody at all. The helpers and operations are really emitted under
+///   the descendant.
+/// * **Effective Choice alternatives** are projected the same way.
+/// * **Elided or unrepresentable fields.** A Task 026 absent-only field and a
+///   field whose abstract value reference cannot be projected generate no
+///   storage, so they must not manufacture a callable collision -- the same
+///   field-scoped deferral `register_declaration_members` already applies.
+///
+/// An `is_abstract` filter alone would fix only the first of these.
+///
+/// Closed-sum wrappers contribute nothing: a Task 024 wrapper is a
+/// discriminated record over descendant *types* and emits no sequence storage
+/// of its own. Each descendant is planned separately and speaks for itself.
+fn ada_sequence_callable_owners<'a>(
+    schema: &'a SchemaIr,
+    emissions: &[TypeEmission<'a>],
+    world: GenerationWorld,
+) -> Vec<(&'a TypeDecl, Vec<&'static str>)> {
+    let mut owners: Vec<(&TypeDecl, Vec<&'static str>)> = Vec::new();
+    for emission in emissions {
+        // Only an emitted ordinary declaration renders sequence storage.
+        let TypeEmission::Declaration(declaration) = emission else {
+            continue;
+        };
+        if !emission.emits_own_top_level_name() {
+            continue;
+        }
+        // Effective members, exactly as the renderer projects them.
+        let members = match &declaration.kind {
+            TypeKind::Record { .. } => match effective_record_fields(schema, &declaration.name) {
+                Ok(fields) => fields,
+                Err(_) => continue,
+            },
+            TypeKind::Choice { .. } => {
+                match effective_choice_alternatives(schema, &declaration.name) {
+                    Ok(alternatives) => alternatives,
+                    Err(_) => continue,
+                }
+            }
+            _ => continue,
+        };
+        let mut published: Vec<&'static str> = Vec::new();
+        for member in members {
+            // A member the backend stores nowhere emits no storage, so it
+            // publishes no operation. Field-scoped deferral, not a
+            // whole-declaration one: every other member is still analysed.
+            let Ok(EffectiveValueMember::Stored(member)) =
+                field_storage_semantics(schema, member, world)
+            else {
+                continue;
+            };
+            if abstract_value_projection_for_ref(schema, &member.type_ref, world).is_err() {
+                continue;
+            }
+            let Some(shape) = ada_sequence_shape(member.cardinality) else {
+                continue;
+            };
+            for callable in shape.callables() {
+                if !published.contains(callable) {
+                    published.push(*callable);
+                }
+            }
+        }
+        if published.is_empty() {
+            continue;
+        }
+        // Deterministic order, independent of which member was seen first.
+        published.sort_unstable_by_key(|callable| {
+            ADA_SEQUENCE_CALLABLES
+                .iter()
+                .position(|known| known == callable)
+                .unwrap_or(usize::MAX)
+        });
+        owners.push((declaration, published));
+    }
+    owners
+}
+
 fn collect_ada_wrapper_callable_conflicts(
     top_level: &Region,
     schema: &SchemaIr,
+    emissions: &[TypeEmission<'_>],
+    world: GenerationWorld,
     conflicts: &mut Vec<CollectedNameError>,
 ) {
+    for (declaration, published) in ada_sequence_callable_owners(schema, emissions, world) {
+        for callable in published {
+            let key = identity_key(BackendLanguage::Ada, callable);
+            let Some(first) = top_level.taken.get(&key) else {
+                continue;
+            };
+            let source = NameSource::GeneratedCallable {
+                owner: declaration.name.clone(),
+                callable,
+            };
+            let error = BackendNameError::Collision {
+                language: BackendLanguage::Ada,
+                region: NameRegion::TopLevel,
+                generated: callable.to_owned(),
+                first: first.label(),
+                second: source.label(),
+            };
+            conflicts.push(CollectedNameError::new(error, &[first, &source]));
+        }
+    }
     for declaration in ada_wrapper_callable_owners(schema) {
         for callable in ADA_WRAPPER_CALLABLES {
             let key = identity_key(BackendLanguage::Ada, callable);
@@ -1399,7 +1655,13 @@ pub fn validate_backend_names(
         // name regardless of which was declared first.
         validate_ada_enumeration_literals(&top_level, schema, emissions)?;
         let mut callables = Vec::new();
-        collect_ada_wrapper_callable_conflicts(&top_level, schema, &mut callables);
+        collect_ada_wrapper_callable_conflicts(
+            &top_level,
+            schema,
+            emissions,
+            world,
+            &mut callables,
+        );
         if let Some(conflict) = callables.into_iter().next() {
             return Err(conflict.error);
         }
@@ -1675,15 +1937,28 @@ fn validate_ada_helpers(
     // `min == 0` spelling left `{stem}_Required_Array` and
     // `{stem}_Additional_Vectors` emitted but unregistered, so a user
     // declaration could silently collide with one.
+    //
+    // Task 040 corrective adds `{stem}_Additional`, the opaque storage type
+    // standing where a positive-minimum unbounded member's raw vector
+    // component used to sit.
+    //
+    // The second corrective pass changes the **bounded** set. Bounded storage
+    // is now an opaque private type whose representation is a slot array plus
+    // a checked logical length, so the previously public `{stem}_Slot` and
+    // `{stem}_Array` are private-part spellings -- but they still occupy the
+    // flat package's single declarative region, so they are still reserved
+    // here. `{stem}_Values` is the new visible input array `To_Sequence`
+    // consumes, and `{stem}_Index` is the logical index subtype.
     let suffixes: &[&str] = match cardinality.shape() {
         OccurrenceShape::Unbounded { min } if min > 0 => &[
             "_Item",
             "_Required_Array",
+            "_Additional",
             "_Additional_Vectors",
             "_Sequence",
         ],
         OccurrenceShape::Unbounded { .. } => &["_Item", "_Vectors", "_Sequence"],
-        _ => &["_Array", "_Sequence"],
+        _ => &["_Item", "_Index", "_Values", "_Slot", "_Array", "_Sequence"],
     };
     for suffix in suffixes {
         // Attributed structurally to the owning declaration, so a collision
@@ -1768,7 +2043,7 @@ pub fn unsafe_named_declarations(
     if language == BackendLanguage::Ada {
         let mut literals = Vec::new();
         collect_ada_literal_conflicts(&top_level, schema, emissions, &mut literals);
-        collect_ada_wrapper_callable_conflicts(&top_level, schema, &mut literals);
+        collect_ada_wrapper_callable_conflicts(&top_level, schema, emissions, world, &mut literals);
         for conflict in literals {
             unsafe_names.extend(conflict.owners);
         }
@@ -3698,6 +3973,246 @@ mod tests {
                 "a Choice companion is emitted in {world}"
             );
         }
+    }
+
+    // ---- Task 040 corrective pass two: emission-aware callable owners ---
+
+    /// A schema must not be rejected for a sequence callable that will never
+    /// be emitted.
+    ///
+    /// `Append` here is a legitimate supported user type. The only unbounded
+    /// member in the schema belongs to an **unused abstract Record** with no
+    /// concrete descendant, and `backend-ada::render_declaration` returns
+    /// early for an abstract Record, so no sequence storage and therefore no
+    /// `Append` operation is ever written. The previous raw
+    /// `schema.types` / `declared_members` scan saw the field anyway and
+    /// manufactured a collision against output that cannot exist.
+    #[test]
+    fn a_non_emitted_abstract_record_reserves_no_sequence_callable() {
+        for callable in ADA_SEQUENCE_CALLABLES {
+            let mut base = record(
+                "UnusedBase",
+                vec![field(
+                    "Items",
+                    TypeRefTarget::Primitive(PrimitiveKind::String),
+                    UNBOUNDED,
+                )],
+            );
+            base.is_abstract = true;
+            let schema = schema_with(vec![base, primitive(callable)]);
+            assert!(
+                validate_backend_names(
+                    &schema,
+                    BackendLanguage::Ada,
+                    GenerationWorld::ClosedSchemaSet
+                )
+                .is_ok(),
+                "no sequence is emitted, so `{callable}` stays available to a \
+                 user declaration"
+            );
+            assert!(
+                unsafe_named_declarations(
+                    &schema,
+                    BackendLanguage::Ada,
+                    GenerationWorld::ClosedSchemaSet
+                )
+                .is_empty(),
+                "coverage must not condemn anything for a phantom callable \
+                 `{callable}`"
+            );
+        }
+    }
+
+    /// The inherited-member counterpart, which an `is_abstract` filter alone
+    /// would **not** fix.
+    ///
+    /// An abstract base declares the unbounded field; the concrete descendant
+    /// inherits it and declares no repeated member of its own. `Derived` has
+    /// an empty `declared_members` list, so the raw scan attributed the
+    /// callables to nobody -- yet Ada really emits `Derived_Items_Sequence`
+    /// and its operations under the descendant. Ownership must follow the
+    /// effective, emitted shape.
+    #[test]
+    fn an_inherited_unbounded_member_attributes_callables_to_the_descendant() {
+        let mut base = record(
+            "Base",
+            vec![field(
+                "Items",
+                TypeRefTarget::Primitive(PrimitiveKind::String),
+                UNBOUNDED,
+            )],
+        );
+        base.is_abstract = true;
+        let mut derived = record("Derived", Vec::new());
+        derived.base_type = Some(TypeRef {
+            target: TypeRefTarget::Named(QualifiedName::new(NS, "Base")),
+        });
+        let schema = schema_with(vec![base, derived, primitive("Append")]);
+        assert_collides(&schema, BackendLanguage::Ada, "Append");
+        let condemned = unsafe_ada(&schema);
+        assert!(
+            condemned.contains("Derived") && condemned.contains("Append"),
+            "the EMITTED descendant owns the inherited sequence's callables, \
+             not the non-emitted base: {condemned:?}"
+        );
+        assert!(
+            !condemned.contains("Base"),
+            "the non-emitted abstract base emits nothing: {condemned:?}"
+        );
+    }
+
+    /// The bounded shapes participate in the same model, and each publishes
+    /// only what it really emits.
+    ///
+    /// A zero-minimum bounded member emits `Clear` and `To_Sequence` but not
+    /// `Reserve_Capacity`; a positive-minimum one omits `Clear` as well,
+    /// because an empty sequence is not a legal value of that type. Reserving
+    /// an operation a shape never writes would block a legal user declaration.
+    #[test]
+    fn bounded_shapes_reserve_exactly_the_operations_they_emit() {
+        let bounded = |min: u64, max: u64, user_type: &str| {
+            schema_with(vec![
+                record(
+                    "Holder",
+                    vec![field(
+                        "Items",
+                        TypeRefTarget::Primitive(PrimitiveKind::String),
+                        Cardinality {
+                            min_occurs: min,
+                            max_occurs: Some(max),
+                        },
+                    )],
+                ),
+                primitive(user_type),
+            ])
+        };
+        // Emitted by both bounded shapes: a real collision.
+        for callable in [ADA_SEQUENCE_TO_SEQUENCE, ADA_SEQUENCE_APPEND] {
+            assert_collides(&bounded(0, 3, callable), BackendLanguage::Ada, callable);
+            assert_collides(&bounded(2, 3, callable), BackendLanguage::Ada, callable);
+        }
+        // Never emitted by a bounded shape: the spelling stays available.
+        assert!(
+            validate_backend_names(
+                &bounded(0, 3, ADA_SEQUENCE_RESERVE_CAPACITY),
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            )
+            .is_ok(),
+            "bounded capacity is fixed by maxOccurs, so no Reserve_Capacity exists"
+        );
+        // Emitted only where the empty sequence is legal.
+        assert_collides(
+            &bounded(0, 3, ADA_SEQUENCE_CLEAR),
+            BackendLanguage::Ada,
+            ADA_SEQUENCE_CLEAR,
+        );
+        assert!(
+            validate_backend_names(
+                &bounded(2, 3, ADA_SEQUENCE_CLEAR),
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            )
+            .is_ok(),
+            "a positive-minimum bounded sequence emits no Clear"
+        );
+    }
+
+    /// Control: an actually emitted sequence plus a conflicting type name must
+    /// still fail, and both sides must still be condemned. The correction is
+    /// not "stop checking callables".
+    #[test]
+    fn an_emitted_sequence_still_collides_with_a_conflicting_type_name() {
+        for callable in ADA_UNBOUNDED_SEQUENCE_CALLABLES {
+            let schema = unbounded_schema(vec![primitive(callable)]);
+            assert_collides(&schema, BackendLanguage::Ada, callable);
+            let condemned = unsafe_ada(&schema);
+            assert!(
+                condemned.contains("Holder") && condemned.contains(*callable),
+                "both sides of a real `{callable}` collision are implicated: \
+                 {condemned:?}"
+            );
+        }
+    }
+
+    /// A field whose storage classification fails contributes no callable, and
+    /// the deferral is scoped to that field: an unrelated real collision in
+    /// the same schema is still reported.
+    #[test]
+    fn callable_deferral_for_one_field_does_not_disable_checking() {
+        let schema = elided_optional_schema(
+            "Maybe",
+            vec![
+                record(
+                    "Other",
+                    vec![field(
+                        "Items",
+                        TypeRefTarget::Primitive(PrimitiveKind::String),
+                        UNBOUNDED,
+                    )],
+                ),
+                primitive("Append"),
+            ],
+        );
+        assert_collides(&schema, BackendLanguage::Ada, "Append");
+        let condemned = unsafe_ada(&schema);
+        assert!(
+            condemned.contains("Other") && condemned.contains("Append"),
+            "the genuinely emitted sequence still owns `Append`: {condemned:?}"
+        );
+        assert!(
+            !condemned.contains("Holder"),
+            "the elided field contributes no callable: {condemned:?}"
+        );
+    }
+
+    /// Several sequences with legal Ada overloads coexist: the operations are
+    /// distinguished by their container parameter's type, so many members in
+    /// one package are fine. Only a non-overloadable declaration conflicts.
+    #[test]
+    fn multiple_sequences_with_valid_overloads_coexist() {
+        let schema = schema_with(vec![
+            record(
+                "First",
+                vec![field(
+                    "Items",
+                    TypeRefTarget::Primitive(PrimitiveKind::String),
+                    UNBOUNDED,
+                )],
+            ),
+            record(
+                "Second",
+                vec![field(
+                    "Items",
+                    TypeRefTarget::Primitive(PrimitiveKind::String),
+                    Cardinality {
+                        min_occurs: 0,
+                        max_occurs: Some(3),
+                    },
+                )],
+            ),
+            record(
+                "Third",
+                vec![field(
+                    "Items",
+                    TypeRefTarget::Primitive(PrimitiveKind::String),
+                    Cardinality {
+                        min_occurs: 2,
+                        max_occurs: Some(4),
+                    },
+                )],
+            ),
+        ]);
+        assert!(
+            validate_backend_names(
+                &schema,
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            )
+            .is_ok(),
+            "overloaded sequence operations are legal Ada"
+        );
+        assert!(unsafe_ada(&schema).is_empty());
     }
 
     // ---- Rust/C++ identifier-start syntax ------------------------------
