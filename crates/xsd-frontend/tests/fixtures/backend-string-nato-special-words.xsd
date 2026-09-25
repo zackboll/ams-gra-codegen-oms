@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Task 042 backend fixture: the NATO special-words String profile, plus
+  container compositions, older String profiles, and an ordinary String control.
+
+  The declaration names are deliberately NOT UCI's `NATO_SpecialWordsType`:
+  support must arise from PrimitiveKind::String plus the effective
+  ConstraintSet, so a differently spelled declaration with the same profile
+  must be equally renderable.
+
+  AUTHORITY. The `SpecialWord` facet set is byte-identical to:
+    UCI 2.5 093610b7753944059360d3236770ab446d039556
+            UCI_SecurityMarkings_v2_5_0.xsd:4903
+    UCI 2.6 78eb61b6112c8bffa40820c33124b57787fc5bd9
+            UCI_SecurityMarkings_v2_6_0.xsd:4916
+  including the pattern facet's leading annotation, which the frontend
+  validates and deliberately discards.
+
+  minLength/maxLength (6..261) bound the WHOLE value; the pattern quantifier
+  {1,256} bounds only the suffix after the five-character prefix `NATO:`.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test:markings"
+           targetNamespace="urn:test:markings"
+           elementFormDefault="qualified">
+
+  <xs:simpleType name="SpecialWord">
+    <xs:annotation>
+      <xs:documentation>Synthetic lexical control; values are not real markings.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:minLength value="6"/>
+      <xs:maxLength value="261"/>
+      <xs:pattern value="NATO:[a-zA-Z\-_]{1,256}">
+        <xs:annotation>
+          <xs:documentation>North Atlantic Treaty Organization Special Words</xs:documentation>
+        </xs:annotation>
+      </xs:pattern>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- A zero-facet named restriction of the profile. The frontend resolves the
+       effective constraint set, so this classifies identically without any
+       backend-specific chain walk. -->
+  <xs:simpleType name="DerivedSpecialWord">
+    <xs:restriction base="t:SpecialWord"/>
+  </xs:simpleType>
+
+  <!-- Older profiles, so several `Create (Value : String) return <type>`
+       overloads share one generated Ada package. -->
+  <xs:simpleType name="Callsign">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="256"/>
+      <xs:pattern value="[&#x20;-&#x7E;]{1,256}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="SchemaVersion">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="7"/>
+      <xs:maxLength value="57"/>
+      <xs:pattern value="[0-9]{3}\.[0-9]{1,2}(\.[0-9]{1,2})([a-z]{1,2})?(_[a-zA-Z0-9\-]{1,45})?"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="PreservedRemarks">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="1024"/>
+      <xs:pattern value="[&#x20;-&#x7E;\n\r]{1,1024}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Required, optional, bounded (zero and positive minimum), and unbounded
+       occurrences. Composition uses only the existing Task 023/034/040
+       machinery. `Notes` is an ordinary unconstrained String control. -->
+  <xs:complexType name="Marking">
+    <xs:sequence>
+      <xs:element name="Word" type="t:SpecialWord"/>
+      <xs:element name="Alternate" type="t:SpecialWord" minOccurs="0"/>
+      <xs:element name="Derived" type="t:DerivedSpecialWord"/>
+      <xs:element name="Reporter" type="t:Callsign"/>
+      <xs:element name="Version" type="t:SchemaVersion"/>
+      <xs:element name="Remarks" type="t:PreservedRemarks"/>
+      <xs:element name="Notes" type="xs:string"/>
+      <xs:element name="History" type="t:SpecialWord"
+                  minOccurs="0" maxOccurs="4"/>
+      <xs:element name="Required" type="t:SpecialWord"
+                  minOccurs="2" maxOccurs="3"/>
+      <xs:element name="Log" type="t:SpecialWord"
+                  minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+</xs:schema>

@@ -331,12 +331,19 @@ fn visible_ascii_near_misses_are_not_baseline() {
     // was protecting is asserted there and in the classifier's own tests: a
     // line-break class is never the visible-ASCII profile.
 
-    // NATO_SpecialWordsType: ASCII-only, but a distinct lexical profile.
+    // The NATO pattern with NON-AUTHORITATIVE total-length facets: built from
+    // `visible_ascii(1, 256)`, so the TOTAL bounds are 1..256, not the
+    // authoritative 6..261. Task 042 supports only the authoritative shape
+    // (positive controls in `nato_special_words_coverage.rs`), so this stays
+    // non-baseline.
     let mut nato = visible_ascii(1, 256);
     nato.lexical.pattern_groups = vec![PatternGroup {
         alternatives: vec![PatternExpression::xml_schema(r"NATO:[a-zA-Z\-_]{1,256}")],
     }];
-    cases.push(("the NATO special-words profile", nato));
+    cases.push((
+        "NATO pattern with non-authoritative total-length facets",
+        nato,
+    ));
 
     // An unobserved but perfectly ordinary pair. The shape agrees with itself
     // exactly; it is simply not a bound pair the authoritative family carries,

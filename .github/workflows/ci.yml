@@ -123,6 +123,22 @@ jobs:
           require_one_test task041_selected_ada_client_exercises_the_sequences_under_gnat \
             cargo test -p ams-gra-codegen-oms --test service_generate \
             task041_selected_ada_client_exercises_the_sequences_under_gnat
+          # Task 042: the NATO special-words carrier. These EXECUTE the shared
+          # corpus, the 256-position alphabet sweep, and null / non-1-based /
+          # Positive'Last-ending slices under both assertion policies, plus
+          # the default-construction rejection and the selected client. Zero
+          # matched tests is a failure for the same reason as above.
+          require_one_test generated_nato_special_words_validator_matches_the_shared_corpus_under_both_policies \
+            cargo test -p ams-gra-oms-backend-ada \
+            --test nato_special_words \
+            generated_nato_special_words_validator_matches_the_shared_corpus_under_both_policies
+          require_one_test a_default_declared_nato_carrier_is_rejected_under_both_policies \
+            cargo test -p ams-gra-oms-backend-ada \
+            --test nato_special_words \
+            a_default_declared_nato_carrier_is_rejected_under_both_policies
+          require_one_test task042_selected_ada_client_constructs_and_reads_under_gnat \
+            cargo test -p ams-gra-codegen-oms --test service_generate \
+            task042_selected_ada_client_constructs_and_reads_under_gnat
       # `AMS_GRA_REQUIRE_GNAT` turns the Ada probes' developer-machine skip
       # into a hard failure, so a runner that somehow lost GNAT after the gate
       # above cannot produce a green run with the Ada checks quietly elided.

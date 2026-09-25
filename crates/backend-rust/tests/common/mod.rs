@@ -57,6 +57,12 @@ pub fn whitespace_visible_preserve_corpus_path() -> PathBuf {
         .join("../../tests/fixtures/string/whitespace-visible-preserve.txt")
 }
 
+/// The repository-root path of the shared Task 042 NATO special-words corpus.
+#[allow(dead_code)]
+pub fn nato_special_words_corpus_path() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/string/nato-special-words.txt")
+}
+
 /// Parse the shared corpus.
 ///
 /// # Panics

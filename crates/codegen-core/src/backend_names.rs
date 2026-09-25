@@ -2462,6 +2462,85 @@ mod tests {
         );
     }
 
+    /// A Task 042 NATO special-words declaration, which emits the same
+    /// package-level `Create` / `Value` pair as every validated String carrier.
+    fn nato_special_words(name: &str) -> TypeDecl {
+        TypeDecl {
+            constraints: ConstraintSet {
+                min_length: Some(6),
+                max_length: Some(261),
+                lexical: ams_gra_oms_ir::LexicalConstraintSet {
+                    pattern_groups: vec![ams_gra_oms_ir::PatternGroup {
+                        alternatives: vec![ams_gra_oms_ir::PatternExpression::xml_schema(
+                            r"NATO:[a-zA-Z\-_]{1,256}",
+                        )],
+                    }],
+                    white_space: None,
+                },
+                ..ConstraintSet::default()
+            },
+            ..primitive(name)
+        }
+    }
+
+    /// Task 042: the new carrier's `Create` / `Value` collide with a type of
+    /// that name, through the shared callable model, and both sides are named.
+    #[test]
+    fn an_ada_type_named_create_or_value_collides_with_the_nato_carrier() {
+        for callable in ["Create", "Value"] {
+            let schema = schema_with(vec![nato_special_words("Word"), primitive(callable)]);
+            assert_collides(&schema, BackendLanguage::Ada, callable);
+            assert_eq!(
+                unsafe_named_declarations(
+                    &schema,
+                    BackendLanguage::Ada,
+                    GenerationWorld::ClosedSchemaSet
+                ),
+                BTreeSet::from([
+                    QualifiedName::new(NS, "Word"),
+                    QualifiedName::new(NS, callable),
+                ])
+            );
+        }
+    }
+
+    /// Task 042: the NATO carrier's overloads coexist with every other wrapper
+    /// family's, including a zero-facet derived declaration whose effective
+    /// profile is the same -- no naming disagreement between the two.
+    #[test]
+    fn nato_carriers_share_overloaded_create_and_value_with_other_families() {
+        let mut derived = nato_special_words("DerivedWord");
+        derived.base_type = Some(TypeRef {
+            target: TypeRefTarget::Named(QualifiedName::new(NS, "Word")),
+        });
+        let schema = schema_with(vec![
+            nato_special_words("Word"),
+            derived,
+            constrained_float("BurnRate"),
+            date_time_zulu("Instant"),
+        ]);
+        assert!(backend_names_are_renderable(
+            &schema,
+            BackendLanguage::Ada,
+            GenerationWorld::ClosedSchemaSet
+        ));
+    }
+
+    /// An UNSUPPORTED NATO-like declaration generates no subprogram, so it
+    /// reserves no `Create`: the old non-authoritative 1..256 shape included.
+    #[test]
+    fn unsupported_nato_like_declarations_reserve_no_callable() {
+        let mut non_authoritative = nato_special_words("Word");
+        non_authoritative.constraints.min_length = Some(1);
+        non_authoritative.constraints.max_length = Some(256);
+        let schema = schema_with(vec![non_authoritative, primitive("Create")]);
+        assert!(backend_names_are_renderable(
+            &schema,
+            BackendLanguage::Ada,
+            GenerationWorld::ClosedSchemaSet
+        ));
+    }
+
     /// Ada subprograms overload. Several constrained floats each emit a
     /// `Create` and a `Value`, and GNAT 14.2 accepts the result, so sharing
     /// the identifier must not be reported as a collision.

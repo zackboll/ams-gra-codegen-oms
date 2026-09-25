@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:test"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- Task 042 synthetic selected-service fixture.
+
+       The SELECTED closure uses the NATO special-words profile under a
+       NON-UCI name, in required, optional, bounded-repeated (zero and positive
+       minimum) and unbounded-repeated positions, alongside an older profile:
+
+         ReleaseReport :> ReleasePayload
+              Word      : ReleaseToken         1..1
+              Alternate : ReleaseToken         0..1
+              Derived   : DerivedReleaseToken  1..1  (zero-facet restriction)
+              Version   : SchemaVersion        1..1  (Task 037 profile)
+              Notes     : xs:string            1..1  (ordinary String)
+              History   : ReleaseToken         0..4
+              Anchors   : ReleaseToken         2..3
+              Log       : ReleaseToken         0..*
+
+       UNSELECTED, and outside the closure, is a neighbouring shape: the same
+       NATO expression under non-authoritative total bounds 1..256. It must stay
+       unsupported, must not be projected, and must not block readiness. -->
+
+  <xs:simpleType name="ReleaseToken">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="6"/>
+      <xs:maxLength value="261"/>
+      <xs:pattern value="NATO:[a-zA-Z\-_]{1,256}">
+        <xs:annotation>
+          <xs:documentation>North Atlantic Treaty Organization Special Words</xs:documentation>
+        </xs:annotation>
+      </xs:pattern>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="DerivedReleaseToken">
+    <xs:restriction base="t:ReleaseToken"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="SchemaVersion">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="7"/>
+      <xs:maxLength value="57"/>
+      <xs:pattern value="[0-9]{3}\.[0-9]{1,2}(\.[0-9]{1,2})([a-z]{1,2})?(_[a-zA-Z0-9\-]{1,45})?"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- UNSELECTED neighbour: the NATO expression, non-authoritative bounds. -->
+  <xs:simpleType name="LooseReleaseToken">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="256"/>
+      <xs:pattern value="NATO:[a-zA-Z\-_]{1,256}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="UnselectedReleasePayload">
+    <xs:sequence>
+      <xs:element name="Token" type="t:LooseReleaseToken"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="ReleasePayload">
+    <xs:sequence>
+      <xs:element name="Word" type="t:ReleaseToken"/>
+      <xs:element name="Alternate" type="t:ReleaseToken" minOccurs="0"/>
+      <xs:element name="Derived" type="t:DerivedReleaseToken"/>
+      <xs:element name="Version" type="t:SchemaVersion"/>
+      <xs:element name="Notes" type="xs:string"/>
+      <xs:element name="History" type="t:ReleaseToken" minOccurs="0" maxOccurs="4"/>
+      <xs:element name="Anchors" type="t:ReleaseToken" minOccurs="2" maxOccurs="3"/>
+      <xs:element name="Log" type="t:ReleaseToken" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="ReleaseReport" type="t:ReleasePayload"
+              uci:version="001.000.000.000"/>
+  <xs:element name="UnselectedReleaseReport" type="t:UnselectedReleasePayload"
+              uci:version="001.000.000.000"/>
+</xs:schema>

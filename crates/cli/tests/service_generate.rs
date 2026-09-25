@@ -3322,3 +3322,345 @@ begin
    Put_Line ("ok");
 end Probe;
 "##;
+
+/// Generate the Task 042 NATO special-words service for one language.
+fn generate_nato_special_words(language: &str, label: &str) -> PathBuf {
+    let output_root = output_dir(label);
+    let output = generate(
+        "nato-special-words.xsd",
+        "nato-special-words.yaml",
+        language,
+        "closed-schema",
+        &output_root,
+    );
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "{language} NATO special-words generation should succeed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    output_root
+}
+
+/// Task 042: a contract selecting the NATO special-words profile under a
+/// non-UCI name becomes READY in all three backends, through the shared
+/// coverage snapshot. The unselected neighbour is not projected.
+///
+/// Measured on the reviewed main (`a2c9eea`) with this same fixture, all three
+/// backends reported `NOT READY` with `blocker: {urn:test}ReleaseToken`.
+#[test]
+fn task042_nato_special_words_service_is_ready_in_every_backend() {
+    for language in ["rust", "cpp", "ada"] {
+        let check = cli()
+            .arg("service-check")
+            .arg("--schema")
+            .arg(fixture("nato-special-words.xsd"))
+            .arg("--contract")
+            .arg(fixture("nato-special-words.yaml"))
+            .args(["--language", language, "--world", "closed-schema"])
+            .output()
+            .expect("service-check must run");
+        assert_eq!(check.status.code(), Some(0), "{language} service-check");
+        let report = stdout_of(&check);
+        assert!(
+            report.contains("status: READY"),
+            "{language} must be READY:\n{report}"
+        );
+        assert!(
+            !report.contains("LooseReleaseToken"),
+            "{language} must not project the unselected neighbour:\n{report}"
+        );
+    }
+}
+
+/// Task 042: selecting the unsupported neighbour still blocks, names the
+/// blocker, and leaves no partial output.
+#[test]
+fn task042_an_unsupported_selected_neighbour_still_blocks_generation() {
+    let contract = output_dir("task042-blocked-contract").join("unselected.yaml");
+    std::fs::create_dir_all(contract.parent().expect("parent")).expect("create contract dir");
+    let source = std::fs::read_to_string(fixture("nato-special-words.yaml"))
+        .expect("read the supported contract");
+    std::fs::write(
+        &contract,
+        source.replace("message: ReleaseReport", "message: UnselectedReleaseReport"),
+    )
+    .expect("write blocked contract");
+    for language in ["rust", "cpp", "ada"] {
+        let check = cli()
+            .arg("service-check")
+            .arg("--schema")
+            .arg(fixture("nato-special-words.xsd"))
+            .arg("--contract")
+            .arg(&contract)
+            .args(["--language", language, "--world", "closed-schema"])
+            .output()
+            .expect("service-check must run");
+        let report = stdout_of(&check);
+        assert!(
+            report.contains("status: NOT READY"),
+            "{language}:\n{report}"
+        );
+        assert!(
+            report.contains("blocker: {urn:test}LooseReleaseToken"),
+            "{language} must name the neighbour as blocker:\n{report}"
+        );
+        let out = output_dir(&format!("task042-blocked-{language}"));
+        let generated = cli()
+            .arg("service-generate")
+            .arg("--schema")
+            .arg(fixture("nato-special-words.xsd"))
+            .arg("--contract")
+            .arg(&contract)
+            .args([
+                OsString::from("--language"),
+                OsString::from(language),
+                OsString::from("--world"),
+                OsString::from("closed-schema"),
+                OsString::from("--output"),
+                OsString::from(&out),
+            ])
+            .output()
+            .expect("CLI should run");
+        assert_ne!(generated.status.code(), Some(0), "{language} must fail");
+        let produced: Vec<_> = std::fs::read_dir(&out)
+            .map(|entries| entries.flatten().map(|entry| entry.path()).collect())
+            .unwrap_or_default();
+        assert!(produced.is_empty(), "{language} left output: {produced:?}");
+    }
+}
+
+/// Task 042: the selected Rust client constructs and reads the new values.
+#[test]
+fn task042_selected_rust_client_constructs_and_reads_the_new_values() {
+    let root = generate_nato_special_words("rust", "task042-rust");
+    let source = std::fs::read_to_string(root.join("test.rs")).expect("module generated");
+    assert!(!source.contains("LooseReleaseToken"), "neighbour leaked");
+    std::fs::write(root.join("probe.rs"), TASK042_RUST_PROBE).expect("write Rust probe");
+    let compiled = Command::new("rustc")
+        .current_dir(&root)
+        .args(["--edition", "2021", "-o", "probe", "probe.rs"])
+        .output()
+        .expect("rustc must run");
+    assert!(
+        compiled.status.success(),
+        "selected Rust output must compile:\n{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    assert!(
+        Command::new(root.join("probe"))
+            .status()
+            .expect("probe must run")
+            .success(),
+        "selected Rust validation must hold"
+    );
+}
+
+/// The Task 042 selected-Rust client probe.
+const TASK042_RUST_PROBE: &str = r##"include!("test.rs");
+
+fn main() {
+    let word = ReleaseToken::new("NATO:Alpha-Bravo_c").expect("valid");
+    assert_eq!(word.as_str(), "NATO:Alpha-Bravo_c");
+    assert!(ReleaseToken::new("NATO:").is_none());
+    assert!(ReleaseToken::new("nato:A").is_none());
+    assert!(ReleaseToken::new("NATO:A ").is_none());
+    assert!(ReleaseToken::new("NATO:A1").is_none());
+    assert!(ReleaseToken::new(&(String::from("NATO:") + &"z".repeat(257))).is_none());
+    let payload = ReleasePayload {
+        word: word.clone(),
+        alternate: None,
+        derived: DerivedReleaseToken::new("NATO:derived").expect("valid"),
+        version: SchemaVersion::new("002.5.0").expect("valid"),
+        notes: String::from("ordinary"),
+        history: BoundedVec::new(vec![word.clone()]).expect("0..4"),
+        anchors: BoundedVec::new(vec![word.clone(), ReleaseToken::new("NATO:_").expect("valid")])
+            .expect("2..3"),
+        log: UnboundedVec::new(vec![ReleaseToken::new("NATO:-").expect("valid")]).expect("0.."),
+    };
+    assert!(payload.alternate.is_none());
+    assert_eq!(payload.derived.as_str(), "NATO:derived");
+    assert_eq!(payload.anchors.as_slice()[1].as_str(), "NATO:_");
+    assert_eq!(payload.log.as_slice()[0].as_str(), "NATO:-");
+    assert!(BoundedVec::<ReleaseToken, 2, 3>::new(vec![word.clone()]).is_none());
+    let present = ReleasePayload { alternate: Some(word.clone()), ..payload };
+    assert_eq!(present.alternate.as_ref().expect("present").as_str(), "NATO:Alpha-Bravo_c");
+    println!("ok");
+}
+"##;
+
+/// Task 042: the selected C++ client constructs and reads the new values.
+#[test]
+fn task042_selected_cpp_client_constructs_and_reads_the_new_values() {
+    let root = generate_nato_special_words("cpp", "task042-cpp");
+    std::fs::write(root.join("probe.cpp"), TASK042_CPP_PROBE).expect("write C++ probe");
+    let compiled = Command::new("c++")
+        .current_dir(&root)
+        .args([
+            "-std=c++17",
+            "-Wall",
+            "-Wextra",
+            "-pedantic-errors",
+            "-o",
+            "probe",
+            "probe.cpp",
+        ])
+        .output()
+        .expect("a C++ compiler must be available");
+    assert!(
+        compiled.status.success(),
+        "selected C++ output must compile under strict C++17:\n{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    assert!(
+        Command::new(root.join("probe"))
+            .status()
+            .expect("probe must run")
+            .success(),
+        "selected C++ validation must hold"
+    );
+}
+
+/// The Task 042 selected-C++ client probe.
+const TASK042_CPP_PROBE: &str = r##"#include "test.hpp"
+#include <cassert>
+#include <cstdio>
+#include <string>
+#include <utility>
+#include <vector>
+
+using namespace urn::test;
+
+int main() {
+    const auto word = ReleaseToken::create("NATO:Alpha-Bravo_c");
+    assert(word && word->value() == "NATO:Alpha-Bravo_c");
+    assert(!ReleaseToken::create("NATO:").has_value());
+    assert(!ReleaseToken::create("NATO:A\n").has_value());
+    assert(!ReleaseToken::create(std::string("NATO:A\0", 7)).has_value());
+    ReleasePayload payload{
+        *word,
+        std::nullopt,
+        *DerivedReleaseToken::create("NATO:derived"),
+        *SchemaVersion::create("002.5.0"),
+        "ordinary",
+        *BoundedVector<ReleaseToken, 0, 4>::create({*word}),
+        *BoundedVector<ReleaseToken, 2, 3>::create({*word, *ReleaseToken::create("NATO:_")}),
+        *UnboundedVector<ReleaseToken, 0>::create({*ReleaseToken::create("NATO:-")}),
+    };
+    assert(!payload.alternate.has_value());
+    payload.alternate = ReleaseToken::create("NATO:alt");
+    assert(payload.alternate->value() == "NATO:alt");
+    assert(payload.derived.value() == "NATO:derived");
+    assert(payload.anchors.values().at(1).value() == "NATO:_");
+    assert(payload.log.values().at(0).value() == "NATO:-");
+    const auto too_few = BoundedVector<ReleaseToken, 2, 3>::create({*word});
+    assert(!too_few.has_value());
+    // Task 040 lifecycle through a selected carrier.
+    auto source = *word;
+    auto moved = std::move(source);
+    assert(source.value() == "NATO:Alpha-Bravo_c" && moved.value() == source.value());
+    std::puts("ok");
+    return 0;
+}
+"##;
+
+/// Task 042: the selected Ada generation includes the body through the shared
+/// predicate, projects only the selection, and the client runs under GNAT.
+#[test]
+fn task042_selected_ada_client_constructs_and_reads_under_gnat() {
+    let root = generate_nato_special_words("ada", "task042-ada");
+    let spec = std::fs::read_to_string(root.join("urn-test.ads")).expect("spec generated");
+    let body = std::fs::read_to_string(root.join("urn-test.adb"))
+        .expect("the NATO carrier must cause body emission");
+    for name in ["ReleaseToken", "DerivedReleaseToken"] {
+        assert!(spec.contains(&format!("type {name} is private;")));
+        assert!(spec.contains(&format!("function Create (Value : String) return {name};")));
+    }
+    assert!(body.contains("Prefix : constant String := \"NATO:\";"));
+    assert!(!spec.contains("LooseReleaseToken") && !body.contains("LooseReleaseToken"));
+    assert!(!spec.contains("procedure Clear (Container : in out ReleasePayload_Anchors_Sequence)"));
+
+    if Command::new("gnatmake").arg("--version").output().is_err() {
+        assert!(
+            std::env::var_os("AMS_GRA_REQUIRE_GNAT").is_none(),
+            "AMS_GRA_REQUIRE_GNAT is set but gnatmake is unavailable"
+        );
+        return;
+    }
+    std::fs::write(root.join("probe.adb"), TASK042_ADA_PROBE).expect("write Ada probe");
+    let output = Command::new("gnatmake")
+        .current_dir(&root)
+        .args(["-q", "probe.adb"])
+        .output()
+        .expect("gnatmake must run");
+    assert!(
+        output.status.success(),
+        "selected Ada output must compile:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let run = Command::new(root.join("probe"))
+        .output()
+        .expect("probe must run");
+    let stdout = String::from_utf8_lossy(&run.stdout).into_owned();
+    assert!(
+        run.status.success() && stdout.trim() == "ok",
+        "selected Ada validation must hold:\n{stdout}"
+    );
+}
+
+/// The Task 042 selected-Ada client probe.
+const TASK042_ADA_PROBE: &str = r##"with Ada.Text_IO; use Ada.Text_IO;
+with Ada.Strings.Unbounded;
+with Urn.Test;
+procedure Probe is
+   Failures : Natural := 0;
+   Word : constant Urn.Test.ReleaseToken := Urn.Test.Create ("NATO:Alpha-Bravo_c");
+   Derived : constant Urn.Test.DerivedReleaseToken := Urn.Test.Create ("NATO:derived");
+   Version : constant Urn.Test.SchemaVersion := Urn.Test.Create ("002.5.0");
+   History : Urn.Test.ReleasePayload_History_Sequence :=
+     Urn.Test.To_Sequence ((1 => Word));
+   Anchors : constant Urn.Test.ReleasePayload_Anchors_Sequence :=
+     Urn.Test.To_Sequence ((1 => Word, 2 => Urn.Test.Create ("NATO:_")));
+   Log : Urn.Test.ReleasePayload_Log_Sequence;
+begin
+   Urn.Test.Append (Log, Urn.Test.Create ("NATO:-"));
+   Urn.Test.Append (History, Urn.Test.Create ("NATO:two"));
+   if Urn.Test.Value (Word) /= "NATO:Alpha-Bravo_c"
+     or else Urn.Test.Value (Derived) /= "NATO:derived"
+     or else Urn.Test.Value (Version) /= "002.5.0"
+     or else Urn.Test.Value (Urn.Test.Element (Anchors, 2)) /= "NATO:_"
+     or else Urn.Test.Value (Urn.Test.Element (Log, 1)) /= "NATO:-"
+     or else Urn.Test.Length (History) /= 2
+   then
+      Put_Line ("read back"); Failures := Failures + 1;
+   end if;
+   declare
+      Payload : constant Urn.Test.ReleasePayload :=
+        (Word      => Word,
+         Alternate => (Is_Present => False),
+         Derived   => Derived,
+         Version   => Version,
+         Notes     => Ada.Strings.Unbounded.To_Unbounded_String ("ordinary"),
+         History   => History,
+         Anchors   => Anchors,
+         Log       => Log);
+   begin
+      if Payload.Alternate.Is_Present then
+         Put_Line ("absent optional"); Failures := Failures + 1;
+      end if;
+   end;
+   begin
+      declare
+         Bad : constant Urn.Test.ReleaseToken := Urn.Test.Create ("NATO:A1");
+      begin
+         Put_Line ("must reject" & Urn.Test.Value (Bad)); Failures := Failures + 1;
+      end;
+   exception
+      when Constraint_Error => null;
+   end;
+   if Failures /= 0 then
+      raise Program_Error;
+   end if;
+   Put_Line ("ok");
+end Probe;
+"##;

@@ -182,6 +182,10 @@ fn every_shipped_corpus_still_loads() {
             "whitespace-visible preserve",
             common::whitespace_visible_preserve_corpus_path(),
         ),
+        (
+            "NATO special-words",
+            common::nato_special_words_corpus_path(),
+        ),
     ] {
         let cases = common::load_corpus(&path);
         assert!(!cases.is_empty(), "{label} corpus must load cases");

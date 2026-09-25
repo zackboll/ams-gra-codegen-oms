@@ -390,7 +390,8 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
                 Ok(Some(StringProfile::UciSchemaVersion))
                 | Ok(Some(StringProfile::UniversallyUniqueIdentifier))
                 | Ok(Some(StringProfile::VisibleAscii { .. }))
-                | Ok(Some(StringProfile::WhitespaceVisible { .. })) => {}
+                | Ok(Some(StringProfile::WhitespaceVisible { .. }))
+                | Ok(Some(StringProfile::NatoSpecialWords)) => {}
                 Ok(None) => unreachable!("constrains_string gates this branch"),
                 Err(reason) => {
                     return unsupported(format!("{reason} on {}", declaration.name.local_name));
@@ -914,6 +915,10 @@ fn render_string_profile_declaration(
                 .replace("{collapse_helpers}", helpers)
                 .replace("{stored}", stored)
         }
+        // Task 042: one fixed profile, so nothing is substituted but the name.
+        Ok(Some(StringProfile::NatoSpecialWords)) => {
+            RUST_NATO_SPECIAL_WORDS_TEMPLATE.replace("{name}", name)
+        }
         Ok(None) => return unsupported(format!("unconstrained String on {name}")),
         Err(reason) => return unsupported(format!("{reason} on {name}")),
     };
@@ -934,6 +939,94 @@ const RUST_WHITESPACE_VISIBLE_COLLAPSE_STEP: &str = r#"        // whiteSpace = c
         // exceeds MAX_LENGTH is still accepted when its normalized form fits.
         let value = Self::collapse(value);
         let value = value.as_str();"#;
+
+/// The generated Rust NATO special-words carrier (Task 042).
+///
+/// # Validation order
+///
+/// 1. the `minLength`/`maxLength` facets over the **whole** value (6..=261);
+/// 2. the exact, case-sensitive five-byte prefix `NATO:`;
+/// 3. the `[a-zA-Z\-_]` class over every remaining byte (1..=256 of them).
+///
+/// Both length notions are enforced: the facets bound the total, and the
+/// prefix plus total bound together imply the quantifier's suffix bound.
+///
+/// # No slicing before the prefix is established
+///
+/// The prefix is compared with `as_bytes().starts_with`, which never slices a
+/// `&str` and so cannot panic on a char boundary. The suffix is then
+/// `as_bytes()[PREFIX.len()..]`, a byte slice of a value already known to be at
+/// least six bytes long. Every non-ASCII byte is outside the class, so a
+/// multibyte character is rejected rather than miscounted, and because every
+/// accepted byte is ASCII, `len()` is the XSD character count for every value
+/// that can be accepted.
+///
+/// # Ordinal, never locale- or Unicode-sensitive
+///
+/// Explicit byte ranges `A..=Z`, `a..=z` plus `-` and `_`; no
+/// `char::is_alphabetic`, no `\w`, no regex crate. `\-` in the schema
+/// expression denotes a HYPHEN; a backslash in the argument is rejected like
+/// any other non-member.
+///
+/// Validation allocates nothing; only an accepted value is copied into owned
+/// storage, unchanged and with its prefix.
+const RUST_NATO_SPECIAL_WORDS_TEMPLATE: &str = r##"#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct {name} {
+    value: String,
+}
+
+impl {name} {
+    /// `minLength`, over the WHOLE value including the prefix.
+    const MIN_LENGTH: usize = 6;
+
+    /// `maxLength`, over the WHOLE value including the prefix.
+    const MAX_LENGTH: usize = 261;
+
+    /// The exact, case-sensitive literal prefix. It is part of the value.
+    const PREFIX: &'static [u8] = b"NATO:";
+
+    /// Validate `value` against the NATO special-words lexical profile.
+    ///
+    /// Returns `None` unless the total length is within 6..=261, the value
+    /// begins with exactly `NATO:`, and every following character is an ASCII
+    /// letter, `-`, or `_`. Lexical form only: nothing about a marking's
+    /// meaning or authorization is checked. The stored text is the input
+    /// unchanged, prefix included; nothing is trimmed or case-folded.
+    pub fn new(value: &str) -> Option<Self> {
+        if !Self::is_nato_special_words(value) {
+            return None;
+        }
+        Some(Self {
+            value: value.to_owned(),
+        })
+    }
+
+    /// The stored, validated lexical representation.
+    pub fn as_str(&self) -> &str {
+        &self.value
+    }
+
+    /// The whole gate: the total-length facets, the prefix, and the class.
+    fn is_nato_special_words(text: &str) -> bool {
+        let bytes = text.as_bytes();
+        // Length first, so the prefix and first suffix position exist.
+        if bytes.len() < Self::MIN_LENGTH || bytes.len() > Self::MAX_LENGTH {
+            return false;
+        }
+        if !bytes.starts_with(Self::PREFIX) {
+            return false;
+        }
+        bytes[Self::PREFIX.len()..]
+            .iter()
+            .all(|&byte| Self::is_suffix_member(byte))
+    }
+
+    /// The suffix class `[a-zA-Z\-_]`: ASCII letters, HYPHEN, and LOW LINE.
+    fn is_suffix_member(byte: u8) -> bool {
+        matches!(byte, b'A'..=b'Z' | b'a'..=b'z' | b'-' | b'_')
+    }
+}
+"##;
 
 /// The `preserve` normalization step: deliberately a no-op, and documented as
 /// one so the generated source states which half of the family it is.

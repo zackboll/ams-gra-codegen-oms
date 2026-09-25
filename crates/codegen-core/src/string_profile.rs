@@ -14,7 +14,7 @@
 //!
 //! # The supported profiles
 //!
-//! Four, each recognized by an exact effective facet shape:
+//! Five, each recognized by an exact effective facet shape:
 //!
 //! * [`StringProfile::UciSchemaVersion`] (Task 037) -- see below;
 //! * [`StringProfile::UniversallyUniqueIdentifier`] (Task 038) -- see the
@@ -23,10 +23,13 @@
 //!   visible-ASCII bounded-string family, see its own section last;
 //! * [`StringProfile::WhitespaceVisible`] (Task 041) -- the whitespace-visible
 //!   bounded-string family, whose class adds LF and CR and whose effective
-//!   `whiteSpace` policy is part of the profile.
+//!   `whiteSpace` policy is part of the profile;
+//! * [`StringProfile::NatoSpecialWords`] (Task 042) -- the single fixed
+//!   `NATO:[a-zA-Z\-_]{1,256}` profile under `minLength 6` / `maxLength 261`;
+//!   see [`NATO_SPECIAL_WORDS_PATTERN`].
 //!
 //! None is recognized by declaration name, and a constrained `string` matching
-//! none of the four shapes fails closed.
+//! none of the five shapes fails closed.
 //!
 //! # The two pinned releases are not equivalent here
 //!
@@ -449,7 +452,9 @@
 //! * the `WhitespaceVisibleString*` family, which carries an explicit
 //!   `whiteSpace = collapse` requiring a separate normalization analysis;
 //! * `NATO_SpecialWordsType`, a distinct `NATO:[a-zA-Z\-_]{1,256}` lexical
-//!   profile that happens to be ASCII-only.
+//!   profile that happens to be ASCII-only. Task 042 supports it as its own
+//!   variant, [`StringProfile::NatoSpecialWords`]; it is still never a
+//!   visible-ASCII member.
 //!
 //! # What this classifier does not decide
 //!
@@ -508,6 +513,61 @@ pub const UCI_UUID_LENGTH: u64 = 36;
 /// `[1-5]`) and its variant nibble is `0` (outside `[89abAB]`). The nil branch
 /// is therefore load-bearing rather than redundant.
 pub const UCI_UUID_NIL: &str = "00000000-0000-0000-0000-000000000000";
+
+/// The authoritative NATO special-words lexical restriction, verbatim.
+///
+/// Read from the pinned release bytes of both tracked releases, which are
+/// byte-identical for this declaration after end-of-line normalization:
+///
+/// * UCI 2.5 `093610b7753944059360d3236770ab446d039556`:
+///   `UCI_SecurityMarkings_v2_5_0.xsd:4903`
+/// * UCI 2.6 `78eb61b6112c8bffa40820c33124b57787fc5bd9`:
+///   `UCI_SecurityMarkings_v2_6_0.xsd:4916`
+///
+/// ```xml
+/// <xs:restriction base="xs:string">
+///   <xs:minLength value="6"/>
+///   <xs:maxLength value="261"/>
+///   <xs:pattern value="NATO:[a-zA-Z\-_]{1,256}"> <!-- + a leading annotation -->
+/// </xs:restriction>
+/// ```
+///
+/// This is a Rust raw string, so `\-` is the same two characters the XSD
+/// `value` attribute and the normalized IR expression contain. In the XML
+/// Schema regex dialect `\-` is a `SingleCharEsc` denoting a literal HYPHEN;
+/// it does **not** admit a backslash in the decoded value. The string is
+/// compared for exact equality and never parsed as a regular expression.
+///
+/// The expression is a fixed five-character literal prefix followed by one
+/// character class under one bounded quantifier. The quantifier bounds the
+/// **suffix** ([`NATO_SPECIAL_WORDS_SUFFIX_MIN_LENGTH`] ..=
+/// [`NATO_SPECIAL_WORDS_SUFFIX_MAX_LENGTH`]); the length facets bound the
+/// **whole value** ([`NATO_SPECIAL_WORDS_MIN_LENGTH`] ..=
+/// [`NATO_SPECIAL_WORDS_MAX_LENGTH`]). They are different quantities that
+/// happen to agree once the prefix is counted.
+pub const NATO_SPECIAL_WORDS_PATTERN: &str = r"NATO:[a-zA-Z\-_]{1,256}";
+
+/// The exact, case-sensitive literal prefix every accepted value begins with.
+///
+/// It is part of the stored value: generated carriers neither add nor strip
+/// it.
+pub const NATO_SPECIAL_WORDS_PREFIX: &str = "NATO:";
+
+/// The authoritative `minLength` facet, over the **whole** value.
+///
+/// Read from the facet itself, never inferred from the quantifier.
+pub const NATO_SPECIAL_WORDS_MIN_LENGTH: u64 = 6;
+
+/// The authoritative `maxLength` facet, over the **whole** value.
+///
+/// Read from the facet itself, never inferred from the quantifier.
+pub const NATO_SPECIAL_WORDS_MAX_LENGTH: u64 = 261;
+
+/// The pattern quantifier's minimum, over the **suffix** after the prefix.
+pub const NATO_SPECIAL_WORDS_SUFFIX_MIN_LENGTH: u64 = 1;
+
+/// The pattern quantifier's maximum, over the **suffix** after the prefix.
+pub const NATO_SPECIAL_WORDS_SUFFIX_MAX_LENGTH: u64 = 256;
 
 /// The whitespace-visible family's character-class source text, verbatim.
 ///
@@ -864,6 +924,29 @@ pub enum StringProfile {
         /// The `maxLength` facet, which is also the quantifier's maximum.
         max_length: u64,
     },
+
+    /// The UCI NATO special-words profile (Task 042): `minLength 6`,
+    /// `maxLength 261`, no `length`, no explicit `whiteSpace`, and exactly one
+    /// pattern group holding exactly one XML-Schema-dialect expression equal to
+    /// [`NATO_SPECIAL_WORDS_PATTERN`].
+    ///
+    /// # A fixed variant, not a prefix or regex facility
+    ///
+    /// Both pinned releases carry this one exact shape and no other prefixed
+    /// string profile, so there is nothing to parameterize. A generic
+    /// "literal prefix + class" matcher would accept shapes no release
+    /// contains and whose generated code nobody has proven.
+    ///
+    /// # Generated value semantics
+    ///
+    /// Lexical validation only: total length within 6..=261, the exact
+    /// case-sensitive prefix `NATO:`, then 1..=256 characters each in
+    /// `A-Z`, `a-z`, `-`, or `_`. `whiteSpace = preserve` applies and every
+    /// whitespace character is outside the class, so nothing is trimmed and any
+    /// whitespace is rejected. The accepted text is stored exactly as supplied,
+    /// prefix included. Successful construction says nothing about a marking's
+    /// operational meaning, authorization, or release policy.
+    NatoSpecialWords,
 }
 
 /// Why a constrained `string` declaration falls outside the implemented set.
@@ -970,7 +1053,31 @@ pub fn string_profile(
     if let Some(profile) = match_whitespace_visible_profile(constraints) {
         return Ok(Some(profile));
     }
+    if matches_nato_special_words_profile(constraints) {
+        return Ok(Some(StringProfile::NatoSpecialWords));
+    }
     Err(StringProfileError::UnsupportedConstraints)
+}
+
+/// Whether these effective facets are exactly the NATO special-words profile.
+///
+/// Matched structurally, exactly like the schema-version profile: the two
+/// authoritative length facets read from the facets themselves, no `length`,
+/// and then the strict [`has_only_pattern`] guard -- no `whiteSpace` facet, no
+/// numeric facet, one group, one expression, XML Schema dialect, exact text.
+/// Nothing reads a declaration name, a file name, a schema version, or a
+/// restriction depth, so a zero-facet named restriction of a member (whose
+/// effective set the frontend has already resolved) classifies identically.
+fn matches_nato_special_words_profile(constraints: &ConstraintSet) -> bool {
+    if constraints.length.is_some() {
+        return false;
+    }
+    if constraints.min_length != Some(NATO_SPECIAL_WORDS_MIN_LENGTH)
+        || constraints.max_length != Some(NATO_SPECIAL_WORDS_MAX_LENGTH)
+    {
+        return false;
+    }
+    has_only_pattern(constraints, NATO_SPECIAL_WORDS_PATTERN)
 }
 
 /// Whether these effective facets are exactly a whitespace-visible family
@@ -1135,15 +1242,15 @@ fn matches_uuid_profile(constraints: &ConstraintSet) -> bool {
 /// neither combination is implemented, so both fail closed rather than being
 /// approximated by a validator that would ignore part of the constraint.
 fn has_only_pattern(constraints: &ConstraintSet, expected: &str) -> bool {
-    // Task 041 note: this guard is DELIBERATELY not relaxed. The three profiles
-    // that call it -- schema-version, UUID, visible-ASCII -- are each observed
-    // with no `whiteSpace` facet, and each of their validators stores the
-    // caller's text unchanged. A `collapse` facet reaching one of them would be
-    // a constraint the emitted code does not implement, so it must stay a
-    // rejection here. The whitespace-visible family instead calls
-    // `has_only_pattern_under_white_space` with the policy it has proven it
-    // implements, which is why that family needed a new entry point rather than
-    // a globally weakened one.
+    // Task 041 note: this guard is DELIBERATELY not relaxed. The profiles that
+    // call it -- schema-version, UUID, visible-ASCII, and (Task 042) NATO
+    // special-words -- are each observed with no `whiteSpace` facet, and each
+    // of their validators stores the caller's text unchanged. A `collapse`
+    // facet reaching one of them would be a constraint the emitted code does
+    // not implement, so it must stay a rejection here. The whitespace-visible
+    // family instead calls `has_only_pattern_under_white_space` with the policy
+    // it has proven it implements, which is why that family needed a new entry
+    // point rather than a globally weakened one.
     has_only_pattern_under_white_space(constraints, expected, WhitespaceVisiblePolicy::Preserve)
 }
 
@@ -1793,7 +1900,12 @@ mod tests {
         let mut numeric = visible_ascii(1, 256);
         numeric.min_inclusive = Some(NumericValue::Integer(0));
 
-        // NATO_SpecialWordsType: ASCII-only, but a distinct lexical profile.
+        // The NATO pattern with NON-AUTHORITATIVE total-length facets. This is
+        // built from `visible_ascii(1, 256)`, so its TOTAL bounds are 1..256 --
+        // not the authoritative 6..261 of `NATO_SpecialWordsType`. Task 042
+        // supports only the latter (see `nato_special_words()`), so this case
+        // must stay rejected: it is neither a visible-ASCII member nor the NATO
+        // profile.
         let mut nato = visible_ascii(1, 256);
         nato.lexical.pattern_groups = vec![PatternGroup {
             alternatives: vec![PatternExpression::xml_schema(r"NATO:[a-zA-Z\-_]{1,256}")],
@@ -1806,7 +1918,10 @@ mod tests {
             ("a second pattern group", two_groups),
             ("a second expression", two_alternatives),
             ("a numeric facet", numeric),
-            ("the NATO special-words profile", nato),
+            (
+                "NATO pattern with non-authoritative total-length facets",
+                nato,
+            ),
             ("inverted bounds", visible_ascii(9, 4)),
             ("unobserved bounds 3..17", visible_ascii(3, 17)),
             ("unobserved u64::MAX bounds", visible_ascii(1, u64::MAX)),
@@ -2350,6 +2465,253 @@ mod tests {
         assert_eq!(
             WhitespaceVisiblePolicy::Collapse.expected_facet(),
             Some(WhiteSpacePolicy::Collapse)
+        );
+    }
+
+    // ---------------------------------------------------------------------
+    // Task 042: the NATO special-words profile.
+    // ---------------------------------------------------------------------
+
+    /// The authoritative profile, built from the normalized IR shape observed
+    /// for `NATO_SpecialWordsType` in both pinned releases. The literals are
+    /// spelled out rather than taken from the module constants, so this is an
+    /// independent statement of the evidence.
+    fn nato_special_words() -> ConstraintSet {
+        ConstraintSet {
+            min_length: Some(6),
+            max_length: Some(261),
+            lexical: LexicalConstraintSet {
+                pattern_groups: vec![PatternGroup {
+                    alternatives: vec![PatternExpression::xml_schema(r"NATO:[a-zA-Z\-_]{1,256}")],
+                }],
+                white_space: None,
+            },
+            ..ConstraintSet::default()
+        }
+    }
+
+    /// The complete authoritative shape is supported, from kind + facets alone.
+    #[test]
+    fn the_authoritative_nato_special_words_profile_is_supported() {
+        assert_eq!(
+            string_profile(PrimitiveKind::String, &nato_special_words()),
+            Ok(Some(StringProfile::NatoSpecialWords))
+        );
+        // A non-String kind with the same facets is nobody's business.
+        assert_eq!(
+            string_profile(PrimitiveKind::Boolean, &nato_special_words()),
+            Ok(None)
+        );
+    }
+
+    /// The constants restate the evidence, and the two length notions differ.
+    #[test]
+    fn the_nato_constants_separate_total_length_from_suffix_length() {
+        assert_eq!(NATO_SPECIAL_WORDS_PATTERN, r"NATO:[a-zA-Z\-_]{1,256}");
+        // `\-` is two characters in the expression: a backslash and a hyphen.
+        assert!(NATO_SPECIAL_WORDS_PATTERN.contains("\\-"));
+        assert_eq!(NATO_SPECIAL_WORDS_PATTERN.len(), 23);
+        assert_eq!(NATO_SPECIAL_WORDS_PREFIX, "NATO:");
+        assert!(NATO_SPECIAL_WORDS_PATTERN.starts_with(NATO_SPECIAL_WORDS_PREFIX));
+        assert_eq!(NATO_SPECIAL_WORDS_MIN_LENGTH, 6);
+        assert_eq!(NATO_SPECIAL_WORDS_MAX_LENGTH, 261);
+        assert_eq!(NATO_SPECIAL_WORDS_SUFFIX_MIN_LENGTH, 1);
+        assert_eq!(NATO_SPECIAL_WORDS_SUFFIX_MAX_LENGTH, 256);
+        // Total and suffix bounds are different quantities; they agree only
+        // once the five-character prefix is counted.
+        let prefix = NATO_SPECIAL_WORDS_PREFIX.len() as u64;
+        assert_eq!(prefix, 5);
+        assert_ne!(
+            NATO_SPECIAL_WORDS_MIN_LENGTH,
+            NATO_SPECIAL_WORDS_SUFFIX_MIN_LENGTH
+        );
+        assert_eq!(
+            NATO_SPECIAL_WORDS_MIN_LENGTH,
+            prefix + NATO_SPECIAL_WORDS_SUFFIX_MIN_LENGTH
+        );
+        assert_eq!(
+            NATO_SPECIAL_WORDS_MAX_LENGTH,
+            prefix + NATO_SPECIAL_WORDS_SUFFIX_MAX_LENGTH
+        );
+    }
+
+    /// Pattern-text near-misses of the NATO profile fail closed.
+    #[test]
+    fn nato_special_words_pattern_near_misses_are_unsupported() {
+        for (label, expression) in [
+            // Changed prefix, prefix case, or colon.
+            ("lower-case prefix", r"nato:[a-zA-Z\-_]{1,256}"),
+            ("mixed-case prefix", r"Nato:[a-zA-Z\-_]{1,256}"),
+            ("different prefix", r"OTAN:[a-zA-Z\-_]{1,256}"),
+            ("missing colon", r"NATO[a-zA-Z\-_]{1,256}"),
+            ("doubled colon", r"NATO::[a-zA-Z\-_]{1,256}"),
+            ("no prefix", r"[a-zA-Z\-_]{1,256}"),
+            // Changed suffix quantifier.
+            ("suffix {0,256}", r"NATO:[a-zA-Z\-_]{0,256}"),
+            ("suffix {1,255}", r"NATO:[a-zA-Z\-_]{1,255}"),
+            ("suffix {1,257}", r"NATO:[a-zA-Z\-_]{1,257}"),
+            ("suffix +", r"NATO:[a-zA-Z\-_]+"),
+            // Changed alphabet.
+            ("digits added", r"NATO:[a-zA-Z0-9\-_]{1,256}"),
+            ("space added", r"NATO:[a-zA-Z \-_]{1,256}"),
+            ("hyphen dropped", r"NATO:[a-zA-Z_]{1,256}"),
+            ("underscore dropped", r"NATO:[a-zA-Z\-]{1,256}"),
+            ("\\w shorthand", r"NATO:[\w\-]{1,256}"),
+            ("[A-z] range", r"NATO:[A-z\-]{1,256}"),
+            ("unescaped hyphen spelling", r"NATO:[a-zA-Z_-]{1,256}"),
+            // Substring, not whole-expression, resemblance.
+            ("leading text", r"xNATO:[a-zA-Z\-_]{1,256}"),
+            ("trailing text", r"NATO:[a-zA-Z\-_]{1,256}x"),
+        ] {
+            let mut constraints = nato_special_words();
+            constraints.lexical.pattern_groups = vec![PatternGroup {
+                alternatives: vec![PatternExpression::xml_schema(expression)],
+            }];
+            assert_eq!(
+                string_profile(PrimitiveKind::String, &constraints),
+                Err(StringProfileError::UnsupportedConstraints),
+                "{label} must fail closed"
+            );
+        }
+    }
+
+    /// Facet-shape near-misses of the NATO profile fail closed.
+    #[test]
+    fn nato_special_words_facet_near_misses_are_unsupported() {
+        let mut cases: Vec<(&str, ConstraintSet)> = Vec::new();
+
+        // Absent / changed total-length facets.
+        let mut no_min = nato_special_words();
+        no_min.min_length = None;
+        cases.push(("absent minLength", no_min));
+        let mut no_max = nato_special_words();
+        no_max.max_length = None;
+        cases.push(("absent maxLength", no_max));
+        for (min, max) in [(5, 261), (7, 261), (6, 260), (6, 262), (1, 256), (6, 256)] {
+            let mut changed = nato_special_words();
+            changed.min_length = Some(min);
+            changed.max_length = Some(max);
+            cases.push(("changed total-length bounds", changed));
+        }
+        // Huge or arbitrary bounds that agree with their own quantifier once
+        // the prefix is counted, but that no release carries.
+        let mut huge = nato_special_words();
+        huge.lexical.pattern_groups[0].alternatives[0] =
+            PatternExpression::xml_schema(r"NATO:[a-zA-Z\-_]{1,18446744073709551610}");
+        huge.max_length = Some(u64::MAX);
+        cases.push(("huge agreeing bounds", huge));
+        let mut arbitrary = nato_special_words();
+        arbitrary.lexical.pattern_groups[0].alternatives[0] =
+            PatternExpression::xml_schema(r"NATO:[a-zA-Z\-_]{1,100}");
+        arbitrary.max_length = Some(105);
+        cases.push(("arbitrary agreeing bounds", arbitrary));
+
+        // `length` instead of the observed min/max shape, and alongside it.
+        let mut length_only = nato_special_words();
+        length_only.min_length = None;
+        length_only.max_length = None;
+        length_only.length = Some(261);
+        cases.push(("length instead of min/max", length_only));
+        let mut length_extra = nato_special_words();
+        length_extra.length = Some(10);
+        cases.push(("length alongside min/max", length_extra));
+
+        // Every explicit whiteSpace facet, including a restated `preserve`.
+        for policy in [
+            WhiteSpacePolicy::Preserve,
+            WhiteSpacePolicy::Replace,
+            WhiteSpacePolicy::Collapse,
+        ] {
+            let mut explicit = nato_special_words();
+            explicit.lexical.white_space = Some(policy);
+            cases.push(("explicit whiteSpace facet", explicit));
+        }
+
+        // Extra alternatives or restriction-level groups, or no pattern.
+        let mut two_alternatives = nato_special_words();
+        two_alternatives.lexical.pattern_groups[0]
+            .alternatives
+            .push(PatternExpression::xml_schema(r"NATO:[a-zA-Z\-_]{1,256}"));
+        cases.push(("a second alternative", two_alternatives));
+        let mut two_groups = nato_special_words();
+        two_groups.lexical.pattern_groups.push(PatternGroup {
+            alternatives: vec![PatternExpression::xml_schema(r"NATO:[a-zA-Z\-_]{1,256}")],
+        });
+        cases.push(("a second restriction-level group", two_groups));
+        let mut no_pattern = nato_special_words();
+        no_pattern.lexical.pattern_groups.clear();
+        cases.push(("bounds without a pattern", no_pattern));
+
+        // Numeric facets.
+        let mut min_inclusive = nato_special_words();
+        min_inclusive.min_inclusive = Some(NumericValue::Integer(0));
+        cases.push(("minInclusive", min_inclusive));
+        let mut max_exclusive = nato_special_words();
+        max_exclusive.max_exclusive = Some(NumericValue::Integer(10));
+        cases.push(("maxExclusive", max_exclusive));
+
+        for (label, constraints) in cases {
+            assert_eq!(
+                string_profile(PrimitiveKind::String, &constraints),
+                Err(StringProfileError::UnsupportedConstraints),
+                "{label} must fail closed"
+            );
+        }
+    }
+
+    /// The pre-existing NATO-pattern negative case keeps its rejection.
+    ///
+    /// It carries the NATO expression under TOTAL bounds 1..256, inherited from
+    /// `visible_ascii(1, 256)`. Those are not the authoritative facets, so the
+    /// new profile must not claim it and visible-ASCII must not either.
+    #[test]
+    fn the_nato_pattern_under_non_authoritative_total_length_facets_stays_rejected() {
+        let mut constraints = visible_ascii(1, 256);
+        constraints.lexical.pattern_groups = vec![PatternGroup {
+            alternatives: vec![PatternExpression::xml_schema(r"NATO:[a-zA-Z\-_]{1,256}")],
+        }];
+        assert_eq!(constraints.min_length, Some(1));
+        assert_eq!(constraints.max_length, Some(256));
+        assert_eq!(
+            string_profile(PrimitiveKind::String, &constraints),
+            Err(StringProfileError::UnsupportedConstraints)
+        );
+    }
+
+    /// All five profiles stay distinct; none shadows another.
+    #[test]
+    fn the_five_implemented_profiles_remain_distinct() {
+        let supported = [
+            (schema_version(), StringProfile::UciSchemaVersion),
+            (uuid(), StringProfile::UniversallyUniqueIdentifier),
+            (
+                visible_ascii(1, 256),
+                StringProfile::VisibleAscii {
+                    min_length: 1,
+                    max_length: 256,
+                },
+            ),
+            (
+                whitespace_visible(WhitespaceVisiblePolicy::Preserve, 1, 1024),
+                StringProfile::WhitespaceVisible {
+                    white_space: WhitespaceVisiblePolicy::Preserve,
+                    min_length: 1,
+                    max_length: 1024,
+                },
+            ),
+            (nato_special_words(), StringProfile::NatoSpecialWords),
+        ];
+        for (constraints, expected) in &supported {
+            assert_eq!(
+                string_profile(PrimitiveKind::String, constraints),
+                Ok(Some(*expected))
+            );
+        }
+        // The NATO bounds under the visible-ASCII class are an unobserved
+        // visible-ASCII pair, and are claimed by neither profile.
+        assert_eq!(
+            string_profile(PrimitiveKind::String, &visible_ascii(6, 261)),
+            Err(StringProfileError::UnsupportedConstraints)
         );
     }
 }
