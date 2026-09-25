@@ -25,8 +25,12 @@ facets and whitespace policy. Pattern groups are shown in base-to-derived
 order: AND between groups and OR within each group's alternatives. The
 shared `direct_named_dependencies` supplies direct Uses links; a reverse index
 is built once and includes message payload references. Structural pages use
-the shared projection, retaining base-to-derived owner and Record/Choice
-compositor distinctions instead of flattening mixed inheritance. Ordinal
+a shared **lossless** ancestry/segment traversal over valid normalized `SchemaIr`,
+retaining base-to-derived owners, empty ancestry levels, and Record/Choice
+compositor distinctions instead of flattening mixed inheritance. Inherited
+duplicate member names remain visible under both owners in documentation;
+source backends impose stricter representability rules and can still reject
+those duplicates as `InheritedMemberNameCollision`. Ordinal
 paths, sorted indexes and schema-ordered message anchors ensure deterministic
 files for the same complete IR, including source provenance.
 
@@ -43,7 +47,9 @@ escaped (`&`, `<`, `>`, quotes and apostrophes); JavaScript results use
 
 Frontend-backed fixture and CLI tests cover repeated overlays, navigation,
 escaping/injection, pattern group semantics, search data and deterministic
-file sets. The public API accepts only normalized IR. No language snippets,
+file sets. A valid IR fixture with `Base.Same` and `Derived.Same` verifies
+that both members are documented even though codegen projection rejects the
+collision. The public API accepts only normalized IR. No language snippets,
 backend badges, world selection, service-specific views, web server, source
 copying or schema diff are part of this task.
 

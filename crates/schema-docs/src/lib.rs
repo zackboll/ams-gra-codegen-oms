@@ -1,7 +1,8 @@
 //! Offline documentation over the already-normalized schema IR.
 
 use ams_gra_oms_codegen_core::{
-    GeneratedFile, StructuralSegmentContent, direct_named_dependencies, project_with_index,
+    GeneratedFile, StructuralSegmentContent, direct_named_dependencies,
+    lossless_structural_with_index,
 };
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, FieldDecl, NumericValue, PrimitiveKind, QualifiedName, SchemaIr,
@@ -309,9 +310,9 @@ fn type_page(index: &Index<'_>, t: &TypeDecl) -> Result<String, String> {
             };
             let _ = write!(out, "<h2>Declared {label}</h2>");
             out.push_str(&members(index, fields));
-            let projection =
-                project_with_index(&index.declarations, &t.name).map_err(|e| e.to_string())?;
-            out.push_str("<h2>Effective structural ancestry (base to derived)</h2><ol>");
+            let projection = lossless_structural_with_index(&index.declarations, &t.name)
+                .map_err(|e| e.to_string())?;
+            out.push_str("<h2>Structural ancestry (base to derived)</h2><ol>");
             for level in &projection.ancestry {
                 let _ = write!(
                     out,
@@ -321,7 +322,7 @@ fn type_page(index: &Index<'_>, t: &TypeDecl) -> Result<String, String> {
                     level.declaration.is_abstract
                 );
             }
-            out.push_str("</ol><h2>Effective members by owner and compositor</h2>");
+            out.push_str("</ol><h2>Structural members by owner and compositor</h2>");
             for segment in &projection.segments {
                 let (label, fields) = match segment.content {
                     StructuralSegmentContent::RecordFields(fields) => ("Record fields", fields),

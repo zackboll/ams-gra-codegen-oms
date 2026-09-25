@@ -71,7 +71,7 @@ pub use string_profile::{
 pub use structure::{
     EffectiveStructuralType, StructuralKind, StructuralLevel, StructuralProjectionError,
     StructuralSegment, StructuralSegmentContent, effective_choice_alternatives,
-    effective_record_fields, project_structural_type, project_with_index,
+    effective_record_fields, lossless_structural_with_index, project_structural_type,
 };
 pub use temporal::{
     TemporalProfile, TemporalProfileError, is_temporal_primitive, schema_emits_temporal_carrier,
@@ -725,8 +725,8 @@ fn find_cycle(
 /// This is the single semantic dependency model for the whole crate: named
 /// base types, alias targets, record field types, choice alternative types,
 /// and list item types. Declaration ordering, coverage closure analysis, and
-/// the contract-selected type closure all call this one function, so those
-/// three consumers can never drift into disagreeing about what a type
+/// the contract-selected type closure, and schema documentation all call this
+/// one function, so consumers cannot drift into disagreeing about what a type
 /// "depends on". Callers that want a canonical set sort and dedup the result
 /// themselves; the raw order here is source order.
 pub fn direct_named_dependencies(declaration: &TypeDecl) -> Vec<&QualifiedName> {

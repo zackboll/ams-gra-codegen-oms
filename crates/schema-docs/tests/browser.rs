@@ -12,6 +12,81 @@ fn fixture() -> ams_gra_oms_ir::SchemaIr {
     load_schema_set_with_overlays(&root, &[root.with_file_name("private-overlay.xsd")]).unwrap()
 }
 
+fn duplicate_inherited_member_schema() -> ams_gra_oms_ir::SchemaIr {
+    use ams_gra_oms_ir::{NamespaceDecl, PrimitiveKind, SchemaIr};
+    let ns = "urn:docs-collision";
+    let source = SourceRef {
+        document: "collision.ir".into(),
+        line: Some(1),
+    };
+    let declaration = |name: &str, base: Option<TypeRef>| TypeDecl {
+        name: QualifiedName::new(ns, name),
+        is_abstract: false,
+        base_type: base,
+        kind: TypeKind::Record {
+            fields: vec![FieldDecl {
+                name: "Same".into(),
+                type_ref: TypeRef::primitive(PrimitiveKind::String),
+                cardinality: Cardinality::REQUIRED_ONE,
+                nillable: false,
+                constraints: ConstraintSet::default(),
+                documentation: None,
+                source: source.clone(),
+            }],
+        },
+        constraints: ConstraintSet::default(),
+        documentation: None,
+        source: source.clone(),
+    };
+    SchemaIr {
+        schema_version: None,
+        namespaces: vec![NamespaceDecl {
+            uri: ns.into(),
+            preferred_prefix: Some("c".into()),
+        }],
+        types: vec![
+            declaration("Base", None),
+            declaration(
+                "Derived",
+                Some(TypeRef::named(QualifiedName::new(ns, "Base"))),
+            ),
+        ],
+        messages: vec![],
+    }
+}
+
+#[test]
+fn valid_inherited_duplicate_names_are_browsable_without_weakening_codegen() {
+    use ams_gra_oms_codegen_core::{StructuralProjectionError, project_structural_type};
+    let schema = duplicate_inherited_member_schema();
+    assert!(
+        schema.validate().is_ok(),
+        "duplicate inherited names are valid IR"
+    );
+    let name = QualifiedName::new("urn:docs-collision", "Derived");
+    assert!(matches!(
+        project_structural_type(&schema, &name),
+        Err(StructuralProjectionError::InheritedMemberNameCollision { .. })
+    ));
+    let files = generate(&schema).expect("valid normalized IR must remain browsable");
+    let derived = page(&files, "Derived");
+    let base_header = derived.find("}Base</a> — Record fields").unwrap();
+    let derived_header = derived.find("}Derived</a> — Record fields").unwrap();
+    assert!(base_header < derived_header);
+    assert_eq!(derived.matches("<strong>Same</strong>").count(), 3); // declared + both ancestry segments
+    assert!(derived[base_header..derived_header].contains("<strong>Same</strong>"));
+    assert!(derived[derived_header..].contains("<strong>Same</strong>"));
+    let ancestry = derived
+        .split("<h2>Structural ancestry (base to derived)</h2><ol>")
+        .nth(1)
+        .unwrap()
+        .split("</ol>")
+        .next()
+        .unwrap();
+    assert!(ancestry.find("}Base</a>").unwrap() < ancestry.find("}Derived</a>").unwrap());
+    assert_eq!(ancestry.matches("<li>").count(), 2);
+}
+
 #[test]
 fn deterministic_pages_and_navigation() {
     let schema = fixture();
