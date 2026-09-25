@@ -9,7 +9,11 @@ on:
       - 'crates/schema-docs/**'
       - 'crates/xsd-frontend/**'
       - 'crates/ir/**'
+      - 'crates/codegen-core/**'
       - 'crates/cli/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
       - 'scripts/build-uci-pages.sh'
       - 'scripts/validate-uci-pages.py'
       - 'scripts/test_validate_uci_pages.py'
@@ -20,15 +24,17 @@ permissions:
   contents: read
 
 concurrency:
-  group: uci-pages-publication
+  # Non-main dispatches must not cancel an in-flight production publication.
+  group: ${{ github.ref == 'refs/heads/main' && 'uci-pages-publication' || format('uci-pages-non-main-{0}', github.ref) }}
   cancel-in-progress: true
 
 jobs:
   build:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - name: Validate archive and link checks
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts -p 'test_*.py'
@@ -40,6 +46,7 @@ jobs:
           path: ${{ runner.temp }}/uci-pages
 
   deploy:
+    if: github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     permissions:

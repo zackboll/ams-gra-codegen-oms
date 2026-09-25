@@ -34,11 +34,18 @@ both authoritative releases takes roughly 9–15 minutes on CI-class hardware.
 Ordinary repository CI (including schema-docs, frontend and CLI tests) covers
 PR correctness; the full real-release build was also validated locally below.
 Pushes to `main` trigger the full build only when the renderer, XSD frontend,
-IR, CLI, Pages builder/validator/tests, landing-page assets, or the Pages
-workflow itself change. A new pinned release requires updating the build inputs
-and will trigger regeneration; changes to schema interpretation or rendering
-also require regeneration, even without a new release. `workflow_dispatch`
-on `main` provides a manual complete rebuild and redeployment at any time.
+IR, shared `codegen-core` structural/dependency logic, CLI, Pages
+builder/validator/tests, landing-page assets, Pages workflow, or workspace
+build inputs (`Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`) change. The
+binary uses these workspace inputs, and `schema-docs` directly depends on
+`codegen-core`. A new pinned release requires updating the build inputs and
+will trigger regeneration; changes to schema interpretation or rendering also
+require regeneration, even without a new release. `workflow_dispatch` on
+`main` provides a manual complete rebuild and redeployment at any time.
+Both jobs explicitly require `refs/heads/main`, so dispatch from a feature
+branch or tag cannot build or deploy the production site. Non-main dispatches
+also use a separate concurrency group and cannot cancel a main publication.
+The workflow has no PR trigger; unrelated main pushes do not match its paths.
 
 **Initial publication:** merging PR #45 changes `.github/workflows/uci-pages.yml`,
 which is included in the `push.paths` filter. That merge itself triggers the
@@ -46,11 +53,14 @@ first full generation: acquire pinned 2.5 and 2.6 → render both with Task 043
 → validate → upload the validated artifact → deploy to
 https://zackboll.github.io/ams-gra-codegen-oms/. The build job has a 30-minute
 timeout (normal generation takes about 9–15 minutes). One stable workflow-level
-publication concurrency group cancels superseded runs so an older deployment
-cannot overwrite a newer one. No `gh-pages` branch or repository write token
-is used. The official action majors were checked against their upstream
-releases: `configure-pages@v6`, `upload-pages-artifact@v5`, and
-`deploy-pages@v5`.
+publication concurrency group cancels superseded main runs so an older
+deployment cannot overwrite a newer one. No `gh-pages` branch or repository
+write token is used. The official action majors were checked against their
+upstream releases: `checkout@v7` (Node 24; current upstream README and v7
+release), `configure-pages@v6`, `upload-pages-artifact@v5`, and
+`deploy-pages@v5`. Workflow policy was reviewed for PR, relevant/unrelated
+main pushes, main/non-main dispatch, and codegen-core-only changes without
+adding a YAML parser dependency.
 
 One-time maintainer setup: Repository **Settings → Pages → Build and deployment
 → Source → GitHub Actions**. The read-only Pages API returned 404 and the
