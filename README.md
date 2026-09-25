@@ -41,6 +41,17 @@ cargo run -p ams-gra-codegen-oms -- docs \
 Open `generated/uci-docs/index.html` locally; navigation and client-side search
 work from `file://` with no server. See [Task 043](docs/task-043-uci-html-type-browser.md).
 
+**UCI HTML Reference:** https://zackboll.github.io/ams-gra-codegen-oms/
+
+The hosted reference offers both UCI 2.5 and UCI 2.6, built from exact pinned
+authoritative revisions. No UCI schema source is vendored here. Build the same
+Task 043 browser locally with the `docs` command above, or assemble the complete
+site with `scripts/build-uci-pages.sh <empty-output-directory>`. See
+[Task 045](docs/task-045-uci-pages.md).
+The full site is built after relevant changes reach `main`, including this
+workflow's initial merge, or on a manual UCI Pages workflow run; ordinary PR CI
+tests the code without rebuilding both authoritative releases on every PR.
+
 `--world closed-schema` here is **your assertion** that the supplied schema set
 is the complete value-type universe — it is not an inferred default. `generate`
 and `coverage` have no default world and fail as a usage error without one; see
