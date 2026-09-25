@@ -71,7 +71,7 @@ pub use string_profile::{
 pub use structure::{
     EffectiveStructuralType, StructuralKind, StructuralLevel, StructuralProjectionError,
     StructuralSegment, StructuralSegmentContent, effective_choice_alternatives,
-    effective_record_fields, project_structural_type,
+    effective_record_fields, project_structural_type, project_with_index,
 };
 pub use temporal::{
     TemporalProfile, TemporalProfileError, is_temporal_primitive, schema_emits_temporal_carrier,
@@ -729,7 +729,7 @@ fn find_cycle(
 /// three consumers can never drift into disagreeing about what a type
 /// "depends on". Callers that want a canonical set sort and dedup the result
 /// themselves; the raw order here is source order.
-pub(crate) fn direct_named_dependencies(declaration: &TypeDecl) -> Vec<&QualifiedName> {
+pub fn direct_named_dependencies(declaration: &TypeDecl) -> Vec<&QualifiedName> {
     let mut dependencies = Vec::new();
     if let Some(base_type) = &declaration.base_type {
         push_named(&mut dependencies, base_type);

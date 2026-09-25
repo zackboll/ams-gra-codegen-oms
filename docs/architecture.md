@@ -2,6 +2,11 @@
 
 ## 1. Architectural intent
 
+Task 043 adds `schema-docs`: a separate, language-neutral offline HTML view
+of validated `SchemaIr`. It uses the shared direct-dependency and structural
+projection APIs, and does not implement `Backend` or select a `GenerationWorld`.
+See [Task 043](task-043-uci-html-type-browser.md).
+
 `ams-gra-codegen-oms` is a compiler/tooling project that sits **above** the OMS LA-CAL runtime boundary. Its purpose is to remove repetitive, error-prone schema and protocol glue from application code without changing the externally visible OMS behavior of the mission system.
 
 The repository deliberately separates four concerns:

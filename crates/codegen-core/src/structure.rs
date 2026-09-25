@@ -244,7 +244,8 @@ pub fn project_structural_type<'a>(
     project_with_index(&declarations, name)
 }
 
-pub(crate) fn project_with_index<'a>(
+/// Project using a caller-built declaration index, avoiding repeated whole-schema indexing.
+pub fn project_with_index<'a>(
     declarations: &BTreeMap<&'a QualifiedName, &'a TypeDecl>,
     name: &QualifiedName,
 ) -> Result<EffectiveStructuralType<'a>, StructuralProjectionError> {

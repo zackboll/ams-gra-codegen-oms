@@ -11,6 +11,7 @@ dependencies = [
  "ams-gra-oms-backend-rust",
  "ams-gra-oms-codegen-core",
  "ams-gra-oms-ir",
+ "ams-gra-oms-schema-docs",
  "ams-gra-oms-service-contract",
  "ams-gra-oms-xsd-frontend",
 ]
@@ -53,6 +54,16 @@ dependencies = [
 [[package]]
 name = "ams-gra-oms-ir"
 version = "0.1.0"
+
+[[package]]
+name = "ams-gra-oms-schema-docs"
+version = "0.1.0"
+dependencies = [
+ "ams-gra-oms-codegen-core",
+ "ams-gra-oms-ir",
+ "ams-gra-oms-xsd-frontend",
+ "serde_json",
+]
 
 [[package]]
 name = "ams-gra-oms-service-contract"

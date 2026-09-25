@@ -1,0 +1,11 @@
+:root { color-scheme: light dark; font: 1rem/1.5 system-ui, sans-serif; }
+body { max-width: 72rem; margin: auto; padding: 1rem 2rem; }
+a { color: #246bb1; }
+@media (prefers-color-scheme: dark) { a { color: #9dccff; } }
+section { margin: 1.5rem 0; }
+li { margin: .35rem 0; overflow-wrap: anywhere; }
+dd, p, code { overflow-wrap: anywhere; }
+dt { font-weight: bold; }
+.documentation { white-space: pre-wrap; }
+input { font: inherit; padding: .3rem; width: min(100%, 32rem); }
+.count { display: inline-block; padding: .25rem; }

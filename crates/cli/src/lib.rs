@@ -11,6 +11,7 @@ use ams_gra_oms_codegen_core::{
 // Only the CLI's own loading path touches contract files; no backend parses
 // YAML, and the resolution itself lives in codegen-core.
 use ams_gra_oms_ir::SchemaIr;
+use ams_gra_oms_schema_docs::generate as generate_docs;
 use ams_gra_oms_service_contract::load_contract;
 use ams_gra_oms_xsd_frontend::load_schema_set_with_overlays;
 use std::collections::BTreeSet;
@@ -28,6 +29,7 @@ USAGE:
     ams-gra-codegen-oms validate --schema PATH [--overlay PATH]...
     ams-gra-codegen-oms coverage --schema PATH [--overlay PATH]... --world WORLD
     ams-gra-codegen-oms generate --schema PATH [--overlay PATH]... --language LANGUAGE --output DIR --world WORLD
+    ams-gra-codegen-oms docs --schema PATH [--overlay PATH]... --output DIR
     ams-gra-codegen-oms service-plan --schema PATH --contract PATH [--extension ID=PATH]...
     ams-gra-codegen-oms service-check --schema PATH --contract PATH [--extension ID=PATH]... --language LANGUAGE --world WORLD
     ams-gra-codegen-oms service-generate --schema PATH --contract PATH [--extension ID=PATH]... --language LANGUAGE --world WORLD --output DIR
@@ -36,6 +38,7 @@ COMMANDS:
     validate           Load and validate an XSD schema set
     coverage           Report deterministic IR and backend coverage counts
     generate           Generate source files from an XSD schema set
+    docs               Generate an offline HTML browser for a normalized XSD schema set
     service-plan       Resolve a portable Service Contract against a schema set
     service-check      Report backend/world readiness for a contract's selection
     service-generate   Generate only a contract's selected UCI type model
@@ -137,6 +140,20 @@ OPTIONS:
         --overlay PATH   Repeatable same-target-namespace schema overlay,
                          additively composed into the validated schema set in
                          the order given; never overrides root declarations
+    -h, --help           Print help
+"#;
+
+const DOCS_HELP: &str = r#"ams-gra-codegen-oms docs
+
+Generate an offline HTML browser for a normalized XSD schema set.
+
+USAGE:
+    ams-gra-codegen-oms docs --schema PATH [--overlay PATH]... --output DIR
+
+OPTIONS:
+    -s, --schema PATH    Root schema
+        --overlay PATH   Additional schema (repeatable)
+    -o, --output DIR     Documentation output directory
     -h, --help           Print help
 "#;
 
@@ -488,6 +505,11 @@ enum Command {
         output: PathBuf,
         world: GenerationWorld,
     },
+    Docs {
+        schema: PathBuf,
+        overlays: Vec<PathBuf>,
+        output: PathBuf,
+    },
     ServicePlan {
         schema: PathBuf,
         contract: PathBuf,
@@ -542,6 +564,11 @@ where
             output,
             world,
         } => generate(&schema, &overlays, language, &output, world, stdout),
+        Command::Docs {
+            schema,
+            overlays,
+            output,
+        } => docs(&schema, &overlays, &output, stdout),
         Command::ServicePlan {
             schema,
             contract,
@@ -579,7 +606,7 @@ where
 {
     let mut args = args.into_iter();
     let command = args.next().ok_or_else(|| {
-        CliError::usage("missing command; expected 'validate', 'coverage', or 'generate'")
+        CliError::usage("missing command; expected 'validate', 'coverage', 'generate', 'docs', 'service-plan', 'service-check', or 'service-generate'")
     })?;
     match command.to_str() {
         Some("-h" | "--help") => no_trailing_args(args, Command::Help(HELP)),
@@ -587,12 +614,13 @@ where
         Some("validate") => parse_validate(args.collect()),
         Some("coverage") => parse_coverage(args.collect()),
         Some("generate") => parse_generate(args.collect()),
+        Some("docs") => parse_docs(args.collect()),
         Some("service-plan") => parse_service_plan(args.collect()),
         Some("service-check") => parse_service_check(args.collect()),
         Some("service-generate") => parse_service_generate(args.collect()),
         Some(command) => Err(CliError::usage(format!(
             "unknown command '{command}'; expected 'validate', 'coverage', 'generate', \
-             'service-plan', 'service-check', or 'service-generate'"
+             'docs', 'service-plan', 'service-check', or 'service-generate'"
         ))),
         None => Err(CliError::usage("command must be valid UTF-8")),
     }
@@ -674,6 +702,26 @@ fn parse_generate(args: Vec<OsString>) -> Result<Command, CliError> {
         // Required, with no fallback: the caller must state the semantic
         // assumption rather than inherit a silent closed-schema default.
         world: parse_world(&required(world, "--world")?)?,
+    })
+}
+
+fn parse_docs(args: Vec<OsString>) -> Result<Command, CliError> {
+    if is_help_request(&args) {
+        return Ok(Command::Help(DOCS_HELP));
+    }
+    let mut schema = None;
+    let mut overlays = Vec::new();
+    let mut output = None;
+    parse_options(args, |option, value| match option {
+        "-s" | "--schema" => set_once(&mut schema, value, "--schema"),
+        "--overlay" => push_overlay(&mut overlays, value),
+        "-o" | "--output" => set_once(&mut output, value, "--output"),
+        _ => Err(CliError::usage(format!("unknown option '{option}'"))),
+    })?;
+    Ok(Command::Docs {
+        schema: required(schema, "--schema")?.into(),
+        overlays,
+        output: required(output, "--output")?.into(),
     })
 }
 
@@ -884,6 +932,29 @@ fn coverage<W: Write>(
         .report()
         .map_err(|error| CliError::execution(error.to_string()))?;
     write_output(stdout, &report)
+}
+
+fn docs<W: Write>(
+    schema_path: &Path,
+    overlays: &[PathBuf],
+    output_dir: &Path,
+    stdout: &mut W,
+) -> Result<(), CliError> {
+    let schema = load_schema_set_with_overlays(schema_path, overlays)
+        .map_err(|error| CliError::execution(error.to_string()))?;
+    schema
+        .validate()
+        .map_err(|error| CliError::execution(format!("invalid schema IR: {error}")))?;
+    let files = generate_docs(&schema).map_err(CliError::execution)?;
+    write_generated_files(&files, output_dir)?;
+    write_output(
+        stdout,
+        &format!(
+            "generated {} documentation file(s)\noutput: {}\n",
+            files.len(),
+            output_dir.display()
+        ),
+    )
 }
 
 fn generate<W: Write>(

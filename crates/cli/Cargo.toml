@@ -9,6 +9,7 @@ rust-version.workspace = true
 ams-gra-oms-ir = { path = "../ir" }
 ams-gra-oms-xsd-frontend = { path = "../xsd-frontend" }
 ams-gra-oms-codegen-core = { path = "../codegen-core" }
+ams-gra-oms-schema-docs = { path = "../schema-docs" }
 ams-gra-oms-service-contract = { path = "../service-contract" }
 ams-gra-oms-backend-ada = { path = "../backend-ada" }
 ams-gra-oms-backend-rust = { path = "../backend-rust" }
