@@ -67,4 +67,7 @@ paths. The artifact contains no UCI checkout, XSD, ZIP, `.git` or `target`.
 Local `cargo fmt --all -- --check`, `cargo check --workspace --all-targets`,
 `cargo clippy --workspace --all-targets -- -D warnings`, and
 `AMS_GRA_REQUIRE_GNAT=1 cargo test --workspace` passed (including GNAT-backed
-tests); `git diff --check` passed. Two-build byte comparison: pending.
+tests); `git diff --check` passed. Two complete builds into separate empty
+directories, each fetching the pinned inputs independently, passed validation
+at 11,136 files and 63,672,092 bytes. `diff -qr` over their entire trees
+returned zero differences: every file path and byte is identical.
