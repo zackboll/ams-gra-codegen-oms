@@ -1,0 +1,17 @@
+[package]
+name = "ams-gra-oms-schema-docs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+ams-gra-oms-ir = { path = "../ir" }
+ams-gra-oms-codegen-core = { path = "../codegen-core" }
+serde_json = "1"
+
+[dev-dependencies]
+ams-gra-oms-xsd-frontend = { path = "../xsd-frontend" }
+
+[lints]
+workspace = true

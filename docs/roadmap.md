@@ -1,5 +1,8 @@
 # Roadmap
 
+Task 043: [offline searchable HTML browser](task-043-uci-html-type-browser.md)
+is implemented as a `SchemaIr` consumer, independent of source backends.
+
 ## Phase 0 — Repository bootstrap
 
 - [x] Document architecture and boundaries.

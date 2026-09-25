@@ -30,10 +30,12 @@ pub struct StructuralSegment<'a> {
     pub content: StructuralSegmentContent<'a>,
 }
 
-/// Effective structural content, ordered from the oldest base to the target.
+/// Structural content, ordered from the oldest base to the target.
 ///
 /// Empty local segments are omitted, but their declarations remain in
 /// `ancestry`, preserving identity, local kind, and abstractness.
+/// The lossless traversal can include duplicate inherited names; the codegen
+/// projection checks representability before returning this shape.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EffectiveStructuralType<'a> {
     pub declaration: &'a TypeDecl,
@@ -244,7 +246,43 @@ pub fn project_structural_type<'a>(
     project_with_index(&declarations, name)
 }
 
+/// Codegen projection using a caller-built declaration index.
+/// In addition to shared ancestry traversal, rejects inherited name collisions
+/// that cannot be flattened safely by source-code backends.
 pub(crate) fn project_with_index<'a>(
+    declarations: &BTreeMap<&'a QualifiedName, &'a TypeDecl>,
+    name: &QualifiedName,
+) -> Result<EffectiveStructuralType<'a>, StructuralProjectionError> {
+    let projection = lossless_structural_with_index(declarations, name)?;
+    let mut names = BTreeMap::new();
+    for projected in &projection.segments {
+        let members = match projected.content {
+            StructuralSegmentContent::RecordFields(fields) => fields,
+            StructuralSegmentContent::ChoiceAlternatives(alternatives) => alternatives,
+        };
+        for member in members {
+            if let Some(first_owner) = names.insert(&member.name, &projected.owner.name) {
+                return Err(StructuralProjectionError::InheritedMemberNameCollision {
+                    target: Box::new(projection.declaration.name.clone()),
+                    member: member.name.clone(),
+                    first_owner: Box::new(first_owner.clone()),
+                    second_owner: Box::new(projected.owner.name.clone()),
+                });
+            }
+        }
+    }
+    Ok(projection)
+}
+
+/// Return lossless structural ancestry and owner-labelled compositor segments.
+///
+/// Unlike codegen's projection, this view retains inherited duplicate member
+/// names. Empty local segments are omitted, but their declarations remain in
+/// `ancestry`. The caller supplies a declaration index built once per schema.
+///
+/// # Errors
+/// Returns a structural resolution error for missing/non-structural bases or cycles.
+pub fn lossless_structural_with_index<'a>(
     declarations: &BTreeMap<&'a QualifiedName, &'a TypeDecl>,
     name: &QualifiedName,
 ) -> Result<EffectiveStructuralType<'a>, StructuralProjectionError> {
@@ -288,23 +326,6 @@ pub(crate) fn project_with_index<'a>(
         .iter()
         .filter_map(|declaration| segment(declaration))
         .collect::<Vec<_>>();
-    let mut names = BTreeMap::new();
-    for projected in &segments {
-        let members = match projected.content {
-            StructuralSegmentContent::RecordFields(fields) => fields,
-            StructuralSegmentContent::ChoiceAlternatives(alternatives) => alternatives,
-        };
-        for member in members {
-            if let Some(first_owner) = names.insert(&member.name, &projected.owner.name) {
-                return Err(StructuralProjectionError::InheritedMemberNameCollision {
-                    target: Box::new(target.name.clone()),
-                    member: member.name.clone(),
-                    first_owner: Box::new(first_owner.clone()),
-                    second_owner: Box::new(projected.owner.name.clone()),
-                });
-            }
-        }
-    }
     Ok(EffectiveStructuralType {
         declaration: target,
         immediate_base,
@@ -627,8 +648,18 @@ mod tests {
             declaration("Base", false, &["same"]),
             derived(declaration("Derived", true, &["same"]), "Base"),
         ]);
+        assert!(schema.validate().is_ok());
+        let name = QualifiedName::new(NS, "Derived");
+        let declarations = schema.types.iter().map(|t| (&t.name, t)).collect();
+        let lossless = lossless_structural_with_index(&declarations, &name).unwrap();
+        assert_eq!(lossless.ancestry.len(), 2);
+        assert_eq!(lossless.segments.len(), 2);
         assert!(matches!(
-            project_structural_type(&schema, &QualifiedName::new(NS, "Derived")),
+            project_with_index(&declarations, &name),
+            Err(StructuralProjectionError::InheritedMemberNameCollision { .. })
+        ));
+        assert!(matches!(
+            project_structural_type(&schema, &name),
             Err(StructuralProjectionError::InheritedMemberNameCollision { .. })
         ));
     }

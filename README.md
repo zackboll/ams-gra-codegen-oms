@@ -29,6 +29,18 @@ cargo run -p ams-gra-codegen-oms -- \
   --world closed-schema
 ```
 
+Browse the normalized schema offline, without a language or world selection:
+
+```bash
+cargo run -p ams-gra-codegen-oms -- docs \
+  --schema tests/fixtures/service-plan/root.xsd \
+  --overlay tests/fixtures/service-plan/private-overlay.xsd \
+  --output generated/uci-docs
+```
+
+Open `generated/uci-docs/index.html` locally; navigation and client-side search
+work from `file://` with no server. See [Task 043](docs/task-043-uci-html-type-browser.md).
+
 `--world closed-schema` here is **your assertion** that the supplied schema set
 is the complete value-type universe — it is not an inferred default. `generate`
 and `coverage` have no default world and fail as a usage error without one; see
@@ -245,7 +257,8 @@ Schema IR
     +----> Rust backend
     +----> C++ backend
     +----> Python backend (planned)
-    +----> schema-diff / docs / lint tools (planned)
+    +----> offline HTML type browser (docs)
+    +----> schema-diff / lint tools (planned)
 ```
 
 The IR is **not another public interface standard** and is **not serialized onto the mission network**. It is an internal compiler representation.
