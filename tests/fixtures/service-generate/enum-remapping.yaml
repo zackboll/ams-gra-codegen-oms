@@ -1,0 +1,24 @@
+# Synthetic Task 044 selected message; not a real UCI contract.
+contract_version: "0.1"
+service:
+  name: Signal Monitor
+  version: "0.1.0"
+  kind: service
+  description: Synthetic enum naming selection.
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+functions:
+  - id: signals
+    name: Signals
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: signal-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: SignalNotice
+        topic: signal.notice
+        timing:
+          kind: asynchronous

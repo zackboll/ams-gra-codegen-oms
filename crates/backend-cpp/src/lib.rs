@@ -6,8 +6,8 @@ use ams_gra_oms_codegen_core::{
     TemporalProfile, TypeEmission, WhitespaceVisiblePolicy, abstract_value_projection_for_ref,
     backend_preflight, constrains_string, effective_choice_alternatives, effective_record_fields,
     field_storage_semantics, float32_literal, float64_literal, floating_domain,
-    inclusive_integral_domain, is_temporal_primitive, plan_type_emissions,
-    schema_emits_bounded_integer_support, schema_emits_string_profile_carrier,
+    generated_enum_variant_name, inclusive_integral_domain, is_temporal_primitive,
+    plan_type_emissions, schema_emits_bounded_integer_support, schema_emits_string_profile_carrier,
     schema_emits_temporal_carrier, schema_emits_unbounded_sequence_support, string_profile,
     temporal_profile,
 };
@@ -290,8 +290,18 @@ fn render_declaration(
             }
             writeln!(output, "enum class {name} {{").expect("writing to String cannot fail");
             for variant in variants {
-                writeln!(output, "    {},", upper_camel(&variant.wire_value)?)
-                    .expect("writing to String cannot fail");
+                writeln!(
+                    output,
+                    "    {},",
+                    generated_enum_variant_name(BackendLanguage::Cpp, &variant.wire_value)
+                        .ok_or_else(|| CodegenError {
+                            message: format!(
+                                "invalid C++ enumeration wire value {:?}",
+                                variant.wire_value
+                            ),
+                        })?
+                )
+                .expect("writing to String cannot fail");
             }
             output.push_str("};\n\n");
         }

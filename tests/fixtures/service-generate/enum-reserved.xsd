@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test" xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:test" elementFormDefault="qualified" version="000.1.0">
+  <xs:simpleType name="SignalCode"><xs:restriction base="xs:string">
+    <xs:enumeration value="NORMAL"/><xs:enumeration value="AND"/>
+  </xs:restriction></xs:simpleType>
+  <xs:complexType name="SignalPayload"><xs:sequence>
+    <xs:element name="Signal" type="t:SignalCode"/>
+  </xs:sequence></xs:complexType>
+  <xs:element name="SignalNotice" type="t:SignalPayload" uci:version="001.000.000.000"/>
+</xs:schema>

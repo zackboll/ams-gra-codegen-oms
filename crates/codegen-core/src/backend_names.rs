@@ -23,10 +23,8 @@
 //! infrastructure -- never in Schema IR. Nothing here mutates IR, and no
 //! generated name is stored back into IR.
 //!
-//! This module **rejects**; it never mangles, escapes, suffixes, or renames.
-//! Inventing a disambiguation scheme would silently change the generated API
-//! surface, so an unsafe generated name fails closed and deterministically
-//! instead.
+//! Except for the two evidence-backed plain-enumeration wire-value categories
+//! below, unsafe generated names fail closed without disambiguation.
 
 use crate::abstract_value::{
     EffectiveValueMember, abstract_value_projection_for_ref, field_storage_semantics,
@@ -577,6 +575,47 @@ fn variant_name(language: BackendLanguage, name: &str) -> Option<String> {
         BackendLanguage::Rust | BackendLanguage::Cpp => upper_camel(name),
         BackendLanguage::Ada => ada_identifier(name),
     }
+}
+
+/// Generated identifier for a *plain Enumeration* wire value, never a Choice
+/// alternative or a schema identifier. Prefix the wire spelling before the
+/// ordinary transformation only for an ASCII digit start whose remaining
+/// spelling is accepted, or an otherwise syntactically valid target reserved
+/// literal. Collisions remain preflight errors.
+/// The original wire value is never modified in SchemaIr.
+#[must_use]
+pub fn generated_enum_variant_name(language: BackendLanguage, wire_value: &str) -> Option<String> {
+    let ordinary = variant_name(language, wire_value);
+    match ordinary {
+        Some(ref name) if !is_reserved(language, name) => return ordinary,
+        None if !wire_value
+            .as_bytes()
+            .first()
+            .is_some_and(u8::is_ascii_digit) =>
+        {
+            return None;
+        }
+        None => {
+            // Prefixing must repair only the initial digit, not punctuation,
+            // Unicode, or illegal Ada underscore structure.
+            let rest_is_legal = match language {
+                BackendLanguage::Ada => {
+                    !wire_value.contains("__")
+                        && !wire_value.ends_with('_')
+                        && wire_value
+                            .bytes()
+                            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
+                }
+                BackendLanguage::Rust | BackendLanguage::Cpp => words(wire_value).is_some(),
+            };
+            if !rest_is_legal {
+                return None;
+            }
+        }
+        Some(_) => {} // Otherwise-valid target reserved identifier.
+    }
+    variant_name(language, &format!("Value_{wire_value}"))
+        .filter(|name| !is_reserved(language, name))
 }
 
 /// The comparison key for collision detection.
@@ -1376,7 +1415,9 @@ fn collect_ada_literal_conflicts(
             // A plain enumeration's literals are the variant identifiers.
             TypeKind::Enumeration { variants } => {
                 for variant in variants {
-                    if let Some(literal) = ada_identifier(&variant.wire_value) {
+                    if let Some(literal) =
+                        generated_enum_variant_name(BackendLanguage::Ada, &variant.wire_value)
+                    {
                         let source = NameSource::EnumLiteral {
                             owner: declaration.name.clone(),
                             literal: variant.wire_value.clone(),
@@ -1790,7 +1831,7 @@ fn register_declaration_members(
                         owner: declaration.name.clone(),
                         member: variant.wire_value.clone(),
                     },
-                    variant_name(language, &variant.wire_value),
+                    generated_enum_variant_name(language, &variant.wire_value),
                 )?;
             }
         }
@@ -2154,6 +2195,290 @@ mod tests {
             types,
             messages: Vec::new(),
         }
+    }
+
+    fn task044_enum(values: &[&str]) -> TypeDecl {
+        TypeDecl {
+            kind: TypeKind::Enumeration {
+                variants: values
+                    .iter()
+                    .map(|wire_value| EnumVariant {
+                        wire_value: (*wire_value).to_owned(),
+                        documentation: None,
+                    })
+                    .collect(),
+            },
+            ..primitive("SignalEnum")
+        }
+    }
+
+    #[test]
+    fn task044_enum_policy_preserves_safe_spelling_and_maps_only_evidenced_categories() {
+        for language in [
+            BackendLanguage::Ada,
+            BackendLanguage::Rust,
+            BackendLanguage::Cpp,
+        ] {
+            for safe in ["UNKNOWN", "FRIENDLY", "Red", "SOME_VALUE"] {
+                assert_eq!(
+                    generated_enum_variant_name(language, safe),
+                    variant_name(language, safe)
+                );
+            }
+            for digit in [
+                "1",
+                "123",
+                "2D",
+                "70W",
+                "5G",
+                "25X1",
+                "1METER",
+                "25_FEET",
+                "0_TO_2METERS",
+                "1_IN_1",
+                "0_TO_1METERS",
+                "1_SIGMA",
+            ] {
+                let expected = if language == BackendLanguage::Ada {
+                    format!("Value_{digit}")
+                } else {
+                    upper_camel(&format!("Value_{digit}")).unwrap()
+                };
+                assert_eq!(
+                    generated_enum_variant_name(language, digit),
+                    Some(expected.clone())
+                );
+                assert_eq!(generated_enum_variant_name(language, digit), Some(expected));
+            }
+            assert_eq!(
+                generated_enum_variant_name(language, "AND"),
+                Some(
+                    if language == BackendLanguage::Ada {
+                        "Value_AND"
+                    } else {
+                        "AND"
+                    }
+                    .to_owned()
+                )
+            );
+            assert_eq!(generated_enum_variant_name(language, "BAD VALUE"), None);
+            assert_eq!(generated_enum_variant_name(language, "25-BAD"), None);
+            assert_eq!(generated_enum_variant_name(language, "25 é"), None);
+            assert_eq!(
+                generated_enum_variant_name(language, "25__BAD"),
+                if language == BackendLanguage::Ada {
+                    None
+                } else {
+                    Some("Value25BAD".to_owned())
+                }
+            );
+            assert!(matches!(
+                validate_backend_names(
+                    &schema_with(vec![task044_enum(&["25X1", "Value_25X1"])]),
+                    language,
+                    GenerationWorld::ClosedSchemaSet
+                ),
+                Err(BackendNameError::Collision { .. })
+            ));
+        }
+        for wire in ["AND", "and", "And", "TYPE", "RECORD"] {
+            assert_eq!(
+                generated_enum_variant_name(BackendLanguage::Ada, wire),
+                Some(format!("Value_{wire}"))
+            );
+        }
+        assert_eq!(
+            generated_enum_variant_name(BackendLanguage::Rust, "Self"),
+            Some("ValueSelf".to_owned())
+        );
+        assert!(
+            validate_backend_names(
+                &schema_with(vec![task044_enum(&["Self"])]),
+                BackendLanguage::Rust,
+                GenerationWorld::ClosedSchemaSet
+            )
+            .is_ok()
+        );
+        assert_eq!(
+            generated_enum_variant_name(BackendLanguage::Cpp, "AND"),
+            Some("AND".to_owned())
+        );
+        assert!(matches!(
+            validate_backend_names(
+                &schema_with(vec![task044_enum(&["AND", "value_and"])]),
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            ),
+            Err(BackendNameError::Collision { .. })
+        ));
+        assert!(matches!(
+            validate_backend_names(
+                &schema_with(vec![task044_enum(&["AND", "Value_AND"])]),
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            ),
+            Err(BackendNameError::Collision { .. })
+        ));
+    }
+
+    #[test]
+    fn task044_ada_literal_type_collisions_attribute_both_owners() {
+        for (wire, generated) in [("AND", "Value_AND"), ("25X1", "Value_25X1")] {
+            let schema = schema_with(vec![task044_enum(&[wire]), primitive(generated)]);
+            assert_collides(&schema, BackendLanguage::Ada, generated);
+            let unsafe_names = unsafe_ada(&schema);
+            assert!(unsafe_names.contains("SignalEnum") && unsafe_names.contains(generated));
+        }
+        for language in [
+            BackendLanguage::Ada,
+            BackendLanguage::Rust,
+            BackendLanguage::Cpp,
+        ] {
+            let schema = schema_with(vec![task044_enum(&["25X1", "Value_25X1"])]);
+            assert!(
+                unsafe_named_declarations(&schema, language, GenerationWorld::ClosedSchemaSet)
+                    .contains(&QualifiedName::new(NS, "SignalEnum"))
+            );
+            assert!(!backend_names_are_renderable(
+                &schema,
+                language,
+                GenerationWorld::ClosedSchemaSet
+            ));
+        }
+    }
+
+    #[test]
+    fn task044_coverage_attributes_enum_name_collisions_without_regressing_safe_names() {
+        use crate::CoverageAnalysis;
+
+        for language in BackendLanguage::ALL {
+            let safe = schema_with(vec![task044_enum(&["NORMAL", "25X1"])]);
+            assert!(backend_names_are_renderable(
+                &safe,
+                language,
+                GenerationWorld::ClosedSchemaSet
+            ));
+            assert_eq!(
+                CoverageAnalysis::new(&safe, GenerationWorld::ClosedSchemaSet)
+                    .unwrap()
+                    .backend_coverage(language)
+                    .unwrap()
+                    .declarations_fully_renderable,
+                1
+            );
+            let colliding = schema_with(vec![task044_enum(&["25X1", "Value_25X1"])]);
+            assert_eq!(
+                CoverageAnalysis::new(&colliding, GenerationWorld::ClosedSchemaSet)
+                    .unwrap()
+                    .backend_coverage(language)
+                    .unwrap()
+                    .declarations_fully_renderable,
+                0
+            );
+        }
+        let top_level = schema_with(vec![task044_enum(&["AND"]), primitive("Value_AND")]);
+        assert_eq!(
+            CoverageAnalysis::new(&top_level, GenerationWorld::ClosedSchemaSet)
+                .unwrap()
+                .backend_coverage(BackendLanguage::Ada)
+                .unwrap()
+                .declarations_fully_renderable,
+            0,
+            "both the remapped literal owner and its top-level type are unsafe"
+        );
+    }
+
+    #[test]
+    fn task044_reserved_and_malformed_non_enum_names_remain_unsafe() {
+        for schema in [
+            schema_with(vec![primitive("AND")]),
+            schema_with(vec![record(
+                "Holder",
+                vec![field(
+                    "AND",
+                    TypeRefTarget::Primitive(PrimitiveKind::String),
+                    Cardinality::REQUIRED_ONE,
+                )],
+            )]),
+            schema_with(vec![choice("Holder", &["AND", "Other"])]),
+        ] {
+            assert!(matches!(
+                validate_backend_names(
+                    &schema,
+                    BackendLanguage::Ada,
+                    GenerationWorld::ClosedSchemaSet
+                ),
+                Err(BackendNameError::ReservedWord { .. })
+            ));
+        }
+        for language in [
+            BackendLanguage::Ada,
+            BackendLanguage::Rust,
+            BackendLanguage::Cpp,
+        ] {
+            assert!(matches!(
+                validate_backend_names(
+                    &schema_with(vec![task044_enum(&["BAD VALUE"])]),
+                    language,
+                    GenerationWorld::ClosedSchemaSet
+                ),
+                Err(BackendNameError::InvalidIdentifier { .. })
+            ));
+        }
+        assert!(matches!(
+            validate_backend_names(
+                &schema_with(vec![task044_enum(&["Self"])]),
+                BackendLanguage::Rust,
+                GenerationWorld::ClosedSchemaSet
+            ),
+            Ok(())
+        ));
+        assert!(matches!(
+            validate_backend_names(
+                &schema_with(vec![record(
+                    "Holder",
+                    vec![field(
+                        "class",
+                        TypeRefTarget::Primitive(PrimitiveKind::String),
+                        Cardinality::REQUIRED_ONE
+                    )],
+                )]),
+                BackendLanguage::Cpp,
+                GenerationWorld::ClosedSchemaSet
+            ),
+            Err(BackendNameError::ReservedWord { .. })
+        ));
+    }
+
+    #[test]
+    fn task044_every_pinned_leading_digit_owner_and_value_is_supported() {
+        // The Task 044 evidence table is the exhaustive normalized 2.5 / 2.6
+        // inventory (the two releases have identical owner/value pairs).
+        let evidence = include_str!("../../../docs/task-044-enum-identifier-remapping.md");
+        let table = evidence
+            .split("## All leading-digit values and current candidates")
+            .nth(1)
+            .unwrap();
+        let table = table
+            .split("## Review-authorized scope extension")
+            .next()
+            .unwrap();
+        let mut count = 0;
+        for row in table.lines().filter(|row| row.starts_with("| `")) {
+            let parts: Vec<_> = row.split('`').collect();
+            let wire = parts[3];
+            assert!(wire.as_bytes()[0].is_ascii_digit(), "{row}");
+            for language in BackendLanguage::ALL {
+                let name = generated_enum_variant_name(language, wire).unwrap();
+                assert!(name.starts_with("Value"), "{row}: {name}");
+                assert_eq!(
+                    generated_enum_variant_name(language, wire).as_deref(),
+                    Some(name.as_str())
+                );
+            }
+            count += 1;
+        }
+        assert_eq!(count, 126);
     }
 
     /// A schema whose only repeated member is unbounded, so every backend's

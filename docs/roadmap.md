@@ -519,6 +519,15 @@ blocker, because its *other* remaining dependencies are untouched here:
 Two dependencies improving does **not** make `PositionReport` ready, and it is
 still NOT READY in every backend.
 
+> **Task 044 follow-up:** Enum-only remapping now supports both leading-digit
+> wire values and otherwise-valid target-reserved enum literals (the pinned
+> schemas exercise the reserved-word path only in Ada).
+> Rechecking selected UCI 2.5 exposed a separate blocker: the
+> `SecurityInformationType` Record contains direct primitive `xs:dateTime`
+> fields, outside this enum task. See
+> [Task 044 evidence](task-044-enum-identifier-remapping.md) for the measured
+> post-remapping result; the figures above remain the historical Task 041 result.
+
 Coverage gained exactly **+3** in all twelve pinned cells, not +2. The third is
 `QueryString4096Type`, a genuine **semantic alias**: in UCI 2.6 its facets are
 byte-for-byte the 4096 profile's, so a name-free classifier supports it
@@ -559,8 +568,10 @@ validation only. Same authoritative inputs — UCI 2.5, the upstream
 READY in every backend: every remaining selected blocker is an enumeration whose
 members need identifier remapping (`DeclassExceptionEnum` everywhere; in Ada also
 `FGI_SourceOpenEnum`, `FGI_SourceProtectedEnum`, `OwnerProducerEnum`,
-`ReleasableToEnum`), which is the obvious next task and is deliberately not done
-here.
+`ReleasableToEnum`), which was deliberately not done in Task 042. Task 044
+subsequently delivered narrow plain-enum remapping, but its recheck exposed
+direct primitive `xs:dateTime` fields in `SecurityInformationType` as the next
+independent blocker. See [Task 044](task-044-enum-identifier-remapping.md).
 
 Coverage gained exactly **+1** in all twelve pinned cells: the inventory found
 exactly one declaration with this effective profile per release and no
