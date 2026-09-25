@@ -2,6 +2,8 @@
 
 Task 043: [offline searchable HTML browser](task-043-uci-html-type-browser.md)
 is implemented as a `SchemaIr` consumer, independent of source backends.
+Task 045: [UCI Pages publication](task-045-uci-pages.md) assembles pinned 2.5
+and 2.6 browsers through the production CLI; it adds no documentation model.
 
 ## Phase 0 — Repository bootstrap
 
