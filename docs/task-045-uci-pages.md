@@ -29,18 +29,36 @@ search inventory counts (the generated structured JSON records), type page
 counts, assets, every local HTML `href`/`src`, and artifact purity and size.
 It fails closed on unexpected content or an artifact at/above 1 GB.
 
-`.github/workflows/uci-pages.yml` builds and validates on PRs without deploying.
-On main pushes (and manual runs on main) it uploads the validated Pages artifact
-and deploys that artifact to the `github-pages` environment. Workflow-level
-concurrency cancels stale runs for the same ref, including stale deployments;
-PRs have separate concurrency groups and never deploy. No `gh-pages` branch or
-repository write token is used. The official action majors were checked against
-their upstream releases: `configure-pages@v6`, `upload-pages-artifact@v5`, and
+`.github/workflows/uci-pages.yml` does **not** run on pull requests: generating
+both authoritative releases takes roughly 9–15 minutes on CI-class hardware.
+Ordinary repository CI (including schema-docs, frontend and CLI tests) covers
+PR correctness; the full real-release build was also validated locally below.
+Pushes to `main` trigger the full build only when the renderer, XSD frontend,
+IR, CLI, Pages builder/validator/tests, landing-page assets, or the Pages
+workflow itself change. A new pinned release requires updating the build inputs
+and will trigger regeneration; changes to schema interpretation or rendering
+also require regeneration, even without a new release. `workflow_dispatch`
+on `main` provides a manual complete rebuild and redeployment at any time.
+
+**Initial publication:** merging PR #45 changes `.github/workflows/uci-pages.yml`,
+which is included in the `push.paths` filter. That merge itself triggers the
+first full generation: acquire pinned 2.5 and 2.6 → render both with Task 043
+→ validate → upload the validated artifact → deploy to
+https://zackboll.github.io/ams-gra-codegen-oms/. The build job has a 30-minute
+timeout (normal generation takes about 9–15 minutes). One stable workflow-level
+publication concurrency group cancels superseded runs so an older deployment
+cannot overwrite a newer one. No `gh-pages` branch or repository write token
+is used. The official action majors were checked against their upstream
+releases: `configure-pages@v6`, `upload-pages-artifact@v5`, and
 `deploy-pages@v5`.
-Repository Settings → Pages → Build and deployment → Source must be set to
-**GitHub Actions** once by a maintainer. The read-only Pages API returned 404
-and the repository reported `has_pages: false` before this PR: Pages was not
-enabled at implementation time.
+
+One-time maintainer setup: Repository **Settings → Pages → Build and deployment
+→ Source → GitHub Actions**. The read-only Pages API returned 404 and the
+repository reported `has_pages: false` before this PR. If Pages is still
+disabled when the merge-triggered build runs, the build may pass but deployment
+cannot finish. After enabling Pages, go to **Actions → UCI Pages → Run workflow**
+on `main`; this `workflow_dispatch` regenerates, validates and deploys the same
+complete artifact without changing repository credentials or creating a branch.
 
 ## Reproducibility evidence
 

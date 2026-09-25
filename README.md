@@ -48,6 +48,9 @@ authoritative revisions. No UCI schema source is vendored here. Build the same
 Task 043 browser locally with the `docs` command above, or assemble the complete
 site with `scripts/build-uci-pages.sh <empty-output-directory>`. See
 [Task 045](docs/task-045-uci-pages.md).
+The full site is built after relevant changes reach `main`, including this
+workflow's initial merge, or on a manual UCI Pages workflow run; ordinary PR CI
+tests the code without rebuilding both authoritative releases on every PR.
 
 `--world closed-schema` here is **your assertion** that the supplied schema set
 is the complete value-type universe — it is not an inferred default. `generate`

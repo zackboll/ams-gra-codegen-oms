@@ -1,21 +1,32 @@
 name: UCI Pages
 
 on:
-  pull_request:
-  push:
-    branches: [main]
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'crates/schema-docs/**'
+      - 'crates/xsd-frontend/**'
+      - 'crates/ir/**'
+      - 'crates/cli/**'
+      - 'scripts/build-uci-pages.sh'
+      - 'scripts/validate-uci-pages.py'
+      - 'scripts/test_validate_uci_pages.py'
+      - 'site/**'
+      - '.github/workflows/uci-pages.yml'
 
 permissions:
   contents: read
 
 concurrency:
-  group: uci-pages-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.ref }}
+  group: uci-pages-publication
   cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -24,13 +35,11 @@ jobs:
       - name: Build and validate both pinned releases
         run: scripts/build-uci-pages.sh "$RUNNER_TEMP/uci-pages"
       - name: Upload validated Pages artifact
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v5
         with:
           path: ${{ runner.temp }}/uci-pages
 
   deploy:
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     permissions:
