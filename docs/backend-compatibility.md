@@ -5028,3 +5028,14 @@ field-occurrences, and message-closures are unchanged. Selected UCI 2.5
 `PositionReport` improved from 53/57/57 to **54/58/58** (Ada/Rust/C++) and
 remains **NOT READY** everywhere; every remaining blocker is an enumeration
 needing identifier remapping, which is out of scope.
+
+> **Task 044 follow-up:** Plain Enumeration wire values now use a shared
+> codegen-core policy: `Value_` is prepended for digit-leading values in all
+> backends and for otherwise-valid target reserved enum literals. The pinned
+> schemas exercise the reserved-word path only in Ada. The
+> Task 042 assertion that *every* remaining blocker was enum naming was
+> disproved by a fresh selected-service check: `SecurityInformationType`
+> still contains direct `xs:dateTime` fields, which are outside the supported
+> temporal model and outside Task 044. See
+> [Task 044 evidence](task-044-enum-identifier-remapping.md) for current
+> readiness and coverage; the preceding counts remain historical Task 042 data.

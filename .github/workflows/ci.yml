@@ -139,6 +139,14 @@ jobs:
           require_one_test task042_selected_ada_client_constructs_and_reads_under_gnat \
             cargo test -p ams-gra-codegen-oms --test service_generate \
             task042_selected_ada_client_constructs_and_reads_under_gnat
+          # Task 044: require both the digit-leading and reserved-only Ada
+          # selected clients to compile and run, not merely match zero tests.
+          require_one_test task044_generated_selected_models_compile_and_use_every_variant \
+            cargo test -p ams-gra-codegen-oms --test enum_remapping \
+            task044_generated_selected_models_compile_and_use_every_variant
+          require_one_test task044_ada_reserved_only_selection_compiles_under_gnat \
+            cargo test -p ams-gra-codegen-oms --test enum_remapping \
+            task044_ada_reserved_only_selection_compiles_under_gnat
       # `AMS_GRA_REQUIRE_GNAT` turns the Ada probes' developer-machine skip
       # into a hard failure, so a runner that somehow lost GNAT after the gate
       # above cannot produce a green run with the Ada checks quietly elided.
