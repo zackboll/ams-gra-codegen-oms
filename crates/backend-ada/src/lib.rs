@@ -585,7 +585,8 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
                 Ok(Some(StringProfile::UciSchemaVersion))
                 | Ok(Some(StringProfile::UniversallyUniqueIdentifier))
                 | Ok(Some(StringProfile::VisibleAscii { .. }))
-                | Ok(Some(StringProfile::WhitespaceVisible { .. })) => {}
+                | Ok(Some(StringProfile::WhitespaceVisible { .. }))
+                | Ok(Some(StringProfile::NatoSpecialWords)) => {}
                 Ok(None) => unreachable!("constrains_string gates this branch"),
                 Err(reason) => {
                     return unsupported(format!("{reason} on {}", declaration.name.local_name));
@@ -1691,6 +1692,13 @@ fn render_string_profile_declaration(
             }
             .to_owned(),
         ),
+        // Task 042. Lexical form only: the summary says so, because a marking
+        // being well-formed says nothing about its meaning or authorization.
+        Ok(Some(StringProfile::NatoSpecialWords)) => (
+            StringProfile::NatoSpecialWords,
+            "A validated NATO special-words string (lexical form only).",
+            "NATO:[a-zA-Z\\-_]{1,256} pattern and both length facets".to_owned(),
+        ),
         Ok(None) => return unsupported(format!("unconstrained String on {name}")),
         Err(reason) => return unsupported(format!("{reason} on {name}")),
     };
@@ -1786,10 +1794,96 @@ fn render_string_profile_declaration(
         .replace("{name}", name)
         .replace("{min_length}", &min_length.to_string())
         .replace("{max_length}", &max_length.to_string()),
+        StringProfile::NatoSpecialWords => ADA_NATO_SPECIAL_WORDS_BODY.replace("{name}", name),
     };
     body.push_str(&rendered);
     Ok(())
 }
+
+/// The generated Ada body for one NATO special-words carrier (Task 042).
+///
+/// # Validation order
+///
+/// 1. the `minLength`/`maxLength` facets over the **whole** value (6..261);
+/// 2. the exact, case-sensitive five-character prefix `NATO:`;
+/// 3. the `[a-zA-Z\-_]` class over every remaining character (1..256 of them).
+///
+/// Step 1 runs first and short-circuits, so steps 2 and 3 only ever see a value
+/// of at least six characters: the prefix positions and the first suffix
+/// position all exist, and no index is formed outside `Value'Range`.
+///
+/// # Null, non-1-based, and high-index input slices
+///
+/// Every index is `Text'First + Offset` with `Offset` below `Text'Length`, or
+/// runs `Text'First + Prefix'Length .. Text'Last`, so nothing assumes
+/// `Value'First = 1` and nothing computes an index past `Value'Last` -- which
+/// matters for a legal slice ending at `Positive'Last`. A null slice fails the
+/// length test before any index is formed.
+///
+/// # Ordinal, never locale-sensitive
+///
+/// Explicit `Character` range comparisons; no `Ada.Characters.Handling`, no
+/// `GNAT.Regpat`. Digits, whitespace, and every Latin-1 letter above U+007E are
+/// outside the class. `\-` in the schema expression denotes a HYPHEN; a
+/// backslash in the argument is rejected like any other non-member.
+///
+/// # Scope
+///
+/// Every helper is declared in `Create`'s own declarative part, so no
+/// package-scope identifier is introduced beyond the `Create` / `Value`
+/// overloads the shared name model already registers.
+const ADA_NATO_SPECIAL_WORDS_BODY: &str = r##"
+   function Create (Value : String) return {name} is
+
+      --  minLength and maxLength bound the WHOLE value, prefix included. The
+      --  pattern quantifier {1,256} bounds only the suffix.
+      Min_Length : constant := 6;
+      Max_Length : constant := 261;
+
+      --  The exact, case-sensitive literal prefix. It is part of the value.
+      Prefix : constant String := "NATO:";
+
+      --  The suffix class [a-zA-Z\-_]: ASCII letters, HYPHEN, and LOW LINE.
+      function Is_Suffix_Member (Item : Character) return Boolean is
+        (Item in 'A' .. 'Z'
+           or else Item in 'a' .. 'z'
+           or else Item = '-'
+           or else Item = '_');
+
+      --  Requires Text'Length >= Min_Length, which the caller establishes.
+      function Matches_Pattern (Text : String) return Boolean is
+      begin
+         for Offset in 0 .. Prefix'Length - 1 loop
+            if Text (Text'First + Offset) /= Prefix (Prefix'First + Offset) then
+               return False;
+            end if;
+         end loop;
+         for Index in Text'First + Prefix'Length .. Text'Last loop
+            if not Is_Suffix_Member (Text (Index)) then
+               return False;
+            end if;
+         end loop;
+         return True;
+      end Matches_Pattern;
+
+   begin
+      --  Length first, so Matches_Pattern never sees a value too short to
+      --  hold the prefix. The stored text is the argument unchanged.
+      if Value'Length not in Min_Length .. Max_Length
+        or else not Matches_Pattern (Value)
+      then
+         raise Standard.Constraint_Error
+           with "invalid NATO special-words string";
+      end if;
+      return {name}'
+        (Text => Standard.Ada.Strings.Unbounded.To_Unbounded_String (Value));
+   end Create;
+
+   function Value (Item : {name}) return String is
+   begin
+      return Standard.Ada.Strings.Unbounded.To_String (Item.Text);
+   end Value;
+"##;
 
 /// The generated Ada body for one visible-ASCII carrier, with `{name}` and the
 /// bounds substituted.

@@ -1,0 +1,192 @@
+# Task 042 shared NATO special-words conformance corpus.
+#
+# ONE canonical corpus drives the Rust, C++, and Ada generated validators.
+#
+# FORMAT (unchanged from Tasks 036-041; same loader, same escapes)
+#   '#' begins a comment line; blank lines are ignored.
+#   VALID <input> => <expected stored form>
+#   INVALID <input>
+# Exactly one space follows the VALID/INVALID keyword.
+#   \s space   \t tab   \n line feed   \r carriage return   \\ backslash
+#   \u{HEX} any code point
+#   <empty> the EMPTY field, as a whole field only.
+#
+#   Some(text) = construction succeeded, stored value is exactly `text`
+#   None       = rejected
+#
+# AUTHORITY
+# Read verbatim from the pinned release bytes, byte-identical in both releases
+# after end-of-line normalization:
+#   UCI 2.5 093610b7753944059360d3236770ab446d039556
+#           UCI_SecurityMarkings_v2_5_0.xsd:4903
+#   UCI 2.6 78eb61b6112c8bffa40820c33124b57787fc5bd9
+#           UCI_SecurityMarkings_v2_6_0.xsd:4916
+#
+#   <xs:restriction base="xs:string">
+#     <xs:minLength value="6"/>
+#     <xs:maxLength value="261"/>
+#     <xs:pattern value="NATO:[a-zA-Z\-_]{1,256}"> (+ leading annotation)
+#   </xs:restriction>
+#
+# No whiteSpace facet, so xs:string's intrinsic `preserve` applies: nothing is
+# trimmed or collapsed, and every whitespace character is outside the class.
+#
+# TWO LENGTHS
+# minLength/maxLength bound the TOTAL value (6..261). The quantifier {1,256}
+# bounds the SUFFIX after the five-character prefix "NATO:". Total = 5 + suffix.
+#
+# THE SUFFIX CLASS
+# [a-zA-Z\-_]: A-Z, a-z, HYPHEN, LOW LINE. In the schema expression `\-` is an
+# XML Schema regex escape denoting HYPHEN. Constructor input is DECODED text, so
+# a BACKSLASH in the input is simply a non-member and is rejected.
+#
+# SYNTHETIC VALUES
+# Every VALID case below demonstrates grammar membership only. None is claimed
+# to be a recognized real-world special word, and acceptance says nothing about
+# a marking's meaning, authorization, or release policy.
+#
+# Boundary cases needing generated lengths (suffix 255/256/257, total 260/261/
+# 262, long invalid inputs) live in each backend's probe, not here.
+
+# --- VALID: minimal and representative suffixes ---
+VALID NATO:A => NATO:A
+VALID NATO:a => NATO:a
+VALID NATO:Z => NATO:Z
+VALID NATO:z => NATO:z
+VALID NATO:- => NATO:-
+VALID NATO:_ => NATO:_
+VALID NATO:aBc-X_ => NATO:aBc-X_
+# Suffix case is preserved exactly.
+VALID NATO:ABCDEFGHIJKLMNOPQRSTUVWXYZ => NATO:ABCDEFGHIJKLMNOPQRSTUVWXYZ
+VALID NATO:abcdefghijklmnopqrstuvwxyz => NATO:abcdefghijklmnopqrstuvwxyz
+# Hyphen and underscore anywhere, including as the entire suffix.
+VALID NATO:--- => NATO:---
+VALID NATO:___ => NATO:___
+VALID NATO:-_-_ => NATO:-_-_
+VALID NATO:a-b_c => NATO:a-b_c
+VALID NATO:-lead => NATO:-lead
+VALID NATO:trail_ => NATO:trail_
+# A second "NATO" and a letter after the prefix are ordinary suffix letters.
+VALID NATO:NATO => NATO:NATO
+VALID NATO:nato => NATO:nato
+
+# --- INVALID: empty input and every truncated prefix (total 0..5) ---
+INVALID <empty>
+INVALID N
+INVALID NA
+INVALID NAT
+INVALID NATO
+# Bare prefix: total length 5, suffix length 0.
+INVALID NATO:
+
+# --- INVALID: wrong-case or misspelled prefix ---
+INVALID nato:A
+INVALID Nato:A
+INVALID NAto:A
+INVALID NATo:A
+INVALID nATO:A
+INVALID OTAN:A
+INVALID NAT0:A
+INVALID NATA:A
+INVALID MATO:A
+INVALID NBTO:A
+
+# --- INVALID: missing, duplicated, or misplaced colon ---
+INVALID NATOA
+INVALID NATOAB
+INVALID NATO::A
+INVALID NATO;A
+INVALID NATO.A
+INVALID NAT:OA
+INVALID :NATOA
+INVALID NATO:A:B
+INVALID NATO:A:
+
+# --- INVALID: matching text preceded by extra characters ---
+INVALID xNATO:A
+INVALID _NATO:A
+INVALID -NATO:A
+INVALID NATO:NATO:A
+
+# --- INVALID: whitespace, leading / trailing / interior ---
+INVALID \sNATO:A
+INVALID NATO:A\s
+INVALID NATO:\sA
+INVALID NATO:A\sB
+INVALID NATO\s:A
+INVALID NATO:A\t
+INVALID \tNATO:A
+INVALID NATO:A\tB
+INVALID NATO:\s\s\s
+# A valid-looking value followed by LF or CR, or CRLF.
+INVALID NATO:A\n
+INVALID NATO:A\r
+INVALID NATO:A\r\n
+INVALID \nNATO:A
+INVALID NATO:A\nB
+
+# --- INVALID: digits in the suffix ---
+INVALID NATO:0
+INVALID NATO:9
+INVALID NATO:A1
+INVALID NATO:1A
+INVALID NATO:COSMIC2
+
+# --- INVALID: punctuation outside the class ---
+INVALID NATO:\\
+INVALID NATO:A\\-B
+INVALID NATO:\\-
+INVALID NATO:/
+INVALID NATO:A/B
+INVALID NATO:[
+INVALID NATO:]
+INVALID NATO:[A]
+INVALID NATO:^
+INVALID NATO:`
+INVALID NATO:@
+INVALID NATO:{
+INVALID NATO:|
+INVALID NATO:~
+INVALID NATO:.
+INVALID NATO:+
+INVALID NATO:*
+INVALID NATO:'
+INVALID NATO:"
+
+# --- INVALID: NUL and other controls ---
+INVALID NATO:\u{0}
+INVALID NATO:A\u{0}
+INVALID NATO:\u{0}A
+INVALID NATO\u{0}:A
+INVALID \u{0}NATO:A
+INVALID NATO:\u{1}
+INVALID NATO:\u{b}
+INVALID NATO:\u{c}
+INVALID NATO:\u{1b}
+INVALID NATO:\u{1f}
+INVALID NATO:\u{7f}
+INVALID NATO:A\u{7f}
+
+# --- INVALID: non-ASCII letters, lookalikes, multibyte characters ---
+# Latin-1 letters.
+INVALID NATO:\u{e9}
+INVALID NATO:caf\u{e9}
+INVALID NATO:\u{c0}
+INVALID NATO:\u{df}
+INVALID NATO:\u{ff}
+# NO-BREAK SPACE and other non-ASCII spaces.
+INVALID NATO:A\u{a0}
+INVALID NATO:A\u{2028}B
+INVALID NATO:A\u{3000}B
+# Lookalikes: Cyrillic A (U+0410), Greek Alpha (U+0391), fullwidth A (U+FF21),
+# fullwidth colon (U+FF1A), en dash (U+2013), non-breaking hyphen (U+2011).
+INVALID NATO:\u{410}
+INVALID NATO:\u{391}
+INVALID NATO:\u{ff21}
+INVALID NATO\u{ff1a}A
+INVALID NATO:A\u{2013}B
+INVALID NATO:A\u{2011}B
+INVALID \u{39d}ATO:A
+# CJK and a 4-byte emoji.
+INVALID NATO:\u{5e74}
+INVALID NATO:A\u{1f600}

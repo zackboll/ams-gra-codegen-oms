@@ -433,7 +433,8 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
                 Ok(Some(StringProfile::UciSchemaVersion))
                 | Ok(Some(StringProfile::UniversallyUniqueIdentifier))
                 | Ok(Some(StringProfile::VisibleAscii { .. }))
-                | Ok(Some(StringProfile::WhitespaceVisible { .. })) => {}
+                | Ok(Some(StringProfile::WhitespaceVisible { .. }))
+                | Ok(Some(StringProfile::NatoSpecialWords)) => {}
                 Ok(None) => unreachable!("constrains_string gates this branch"),
                 Err(reason) => {
                     return unsupported(format!("{reason} on {}", declaration.name.local_name));
@@ -958,12 +959,107 @@ fn render_string_profile_declaration(
                 .replace("{collapse_helpers}", helpers)
                 .replace("{stored}", stored)
         }
+        // Task 042: one fixed profile, so nothing is substituted but the name.
+        Ok(Some(StringProfile::NatoSpecialWords)) => {
+            CPP_NATO_SPECIAL_WORDS_TEMPLATE.replace("{name}", name)
+        }
         Ok(None) => return unsupported(format!("unconstrained String on {name}")),
         Err(reason) => return unsupported(format!("{reason} on {name}")),
     };
     writeln!(output, "{rendered}").expect("writing to String cannot fail");
     Ok(())
 }
+
+/// The generated C++17 NATO special-words carrier (Task 042).
+///
+/// # Validation order
+///
+/// 1. the `minLength`/`maxLength` facets over the **whole** value (6..=261);
+/// 2. the exact, case-sensitive five-character prefix `NATO:`;
+/// 3. the `[a-zA-Z\-_]` class over every remaining byte (1..=256 of them).
+///
+/// Length is checked first, so the prefix and suffix loops only ever index a
+/// view of at least six bytes; no `substr` or positional `compare` is called,
+/// so no incidental `std::out_of_range` can replace the checked factory's
+/// `std::nullopt`.
+///
+/// # Ordinal, never locale-sensitive
+///
+/// Each byte is converted to `unsigned char` before comparison, so a high-bit
+/// byte cannot compare as negative on a signed-`char` platform. `<cctype>` and
+/// `<regex>` are not used. `\-` in the schema expression denotes a HYPHEN; a
+/// backslash in the argument is rejected like any other non-member.
+///
+/// Validation allocates nothing; only an accepted value is copied into owned
+/// storage, unchanged and with its prefix. The Task 040 copy-special-member
+/// policy is the same as every other validated String carrier's.
+const CPP_NATO_SPECIAL_WORDS_TEMPLATE: &str = r##"class {name} {
+public:
+    // Validate `value` against the NATO special-words lexical profile.
+    //
+    // Returns std::nullopt unless the total length is within 6..261, the value
+    // begins with exactly "NATO:", and every following character is an ASCII
+    // letter, '-', or '_'. Lexical form only: nothing about a marking's
+    // meaning or authorization is checked. The stored text is the input
+    // unchanged, prefix included; nothing is trimmed or case-folded.
+    static std::optional<{name}> create(std::string_view value) {
+        if (!is_nato_special_words(value)) {
+            return std::nullopt;
+        }
+        return {name}(std::string(value));
+    }
+
+    // Task 040 special-member policy: copy is explicit, destructive move is
+    // suppressed (declaring the copy operations suppresses the implicit moves,
+    // so an rvalue selects copy). Not noexcept: a copy can throw bad_alloc.
+    {name}(const {name}&) = default;
+    {name}& operator=(const {name}&) = default;
+
+    // The stored, validated lexical representation.
+    const std::string& value() const noexcept { return value_; }
+
+private:
+    explicit {name}(std::string validated) : value_(std::move(validated)) {}
+
+    // minLength and maxLength, over the WHOLE value including the prefix.
+    static constexpr std::size_t kMinLength = 6;
+    static constexpr std::size_t kMaxLength = 261;
+
+    // The exact, case-sensitive literal prefix. It is part of the value.
+    static constexpr std::string_view kPrefix = "NATO:";
+
+    // The suffix class [a-zA-Z\-_]: ASCII letters, HYPHEN, and LOW LINE.
+    static bool is_suffix_member(char character) noexcept {
+        const unsigned char ordinal = static_cast<unsigned char>(character);
+        return (ordinal >= 'A' && ordinal <= 'Z')
+            || (ordinal >= 'a' && ordinal <= 'z')
+            || ordinal == '-'
+            || ordinal == '_';
+    }
+
+    // The whole gate: the total-length facets, the prefix, and the class.
+    static bool is_nato_special_words(std::string_view text) noexcept {
+        // Length first, so the prefix and first suffix position exist.
+        if (text.size() < kMinLength || text.size() > kMaxLength) {
+            return false;
+        }
+        // Case-sensitive, byte by byte; indexing is in range by the check above.
+        for (std::size_t index = 0; index < kPrefix.size(); ++index) {
+            if (text[index] != kPrefix[index]) {
+                return false;
+            }
+        }
+        for (std::size_t index = kPrefix.size(); index < text.size(); ++index) {
+            if (!is_suffix_member(text[index])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    std::string value_;
+};
+"##;
 
 /// The generated C++17 visible-ASCII carrier, with `{name}` and the bounds
 /// substituted.

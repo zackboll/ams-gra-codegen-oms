@@ -1,0 +1,37 @@
+# SYNTHETIC Task 042 fixture. Authored for this repository only.
+#
+# Selects one message whose closure carries the NATO special-words String
+# profile under a non-UCI declaration name, in every occurrence shape. Before
+# Task 042 this was NOT READY for every backend; after it, all three must
+# report READY and generate compilable output -- and, for Ada, the selected
+# generation must include the `.adb` body.
+#
+# The schema also declares an UNSELECTED neighbour (the same pattern under
+# non-authoritative total bounds 1..256), which must neither be projected nor
+# block readiness.
+contract_version: "0.1"
+
+service:
+  name: Release Reporting
+  version: "0.1.0"
+  kind: service
+  description: Synthetic contract selecting a NATO special-words String closure.
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: release
+    name: Release
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: release-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: ReleaseReport
+        topic: release.report
+        timing:
+          kind: asynchronous

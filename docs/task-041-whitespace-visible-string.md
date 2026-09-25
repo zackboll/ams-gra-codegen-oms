@@ -416,8 +416,11 @@ Generated output is **compiled and executed**, not only snapshotted.
 | rustc | `1.98.1 (48a229cea 2026-09-01)` | `rustc --edition 2021` |
 | C++ | `g++ (Debian 14.2.0-19) 14.2.0` | `-std=c++17 -Wall -Wextra -pedantic-errors` |
 
-CI toolchain versions are pinned by the workflow rather than by this document and
-are reported separately; the versions above are the **local** ones.
+The versions above are the **local** ones. CI toolchain versions are *not*
+pinned: the workflow selects `ubuntu-latest`, `dtolnay/rust-toolchain@stable`,
+and apt's `gnat`, all floating selections. (Correction recorded by Task 042,
+which reports the observed CI versions — for example GNAT 13.3.0 on
+`ubuntu-24.04` — in `docs/task-042-nato-special-words.md` §8.)
 
 Both maxima (1024 and 4096) and both normalization modes are exercised in every
 language. The named runtime probes are:

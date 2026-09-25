@@ -4984,3 +4984,47 @@ UCI 2.5 `PositionReport` improved from 51/55/55 to **53/57/57** (Ada/Rust/C++) a
 remains **NOT READY** in every backend, with `SecurityInformationType` still the
 first blocker — its other dependencies (`NATO_SpecialWordsType`, enumerations
 needing identifier remapping) are deliberately out of scope here.
+
+## Task 042 — NATO special-words String profile
+
+Supersedes the "unsupported" rows for `NATO_SpecialWordsType` in the dated
+Task 037–041 sections above; those rows stay as historical evidence. Full
+evidence, reasoning, and measurements are in
+`docs/task-042-nato-special-words.md` and are not duplicated here.
+
+### Current constrained-String capability
+
+| Concern | Status |
+| --- | --- |
+| the schema-version profile | **supported (Task 037), unchanged** |
+| the UUID profile | **supported (Task 038), unchanged** |
+| the visible-ASCII family, ten observed bound pairs | **supported (Task 039), unchanged** |
+| the whitespace-visible family, five observed triples | **supported (Task 041), unchanged** |
+| `minLength 6` + `maxLength 261` + `NATO:[a-zA-Z\-_]{1,256}`, no `whiteSpace` (`NATO_SpecialWordsType`, both releases) | **supported (Task 042)** |
+| the same expression under other total bounds (e.g. 1..256), or without both bounds | unsupported |
+| `length` instead of `minLength`/`maxLength` | unsupported |
+| any explicit `whiteSpace` facet, including a restated `preserve` | unsupported |
+| a changed prefix, prefix case, colon, suffix quantifier, or alphabet (digits, space, `\w`, `[A-z]`) | unsupported |
+| extra pattern groups or alternatives, or numeric facets | unsupported |
+| fixed-`length` `[ -~]{N}` (`VisibleStringLength*`, `NITF_*`) | unsupported |
+| generic prefix-string support or XML Schema regex translation | not implemented, deliberately |
+
+### Generated behaviour, in brief
+
+Total length 6..261 is checked first; then the exact case-sensitive prefix
+`NATO:`; then every remaining character must be `A`–`Z`, `a`–`z`, `-`, or `_`.
+Nothing is trimmed or case-folded, all whitespace is rejected, and the accepted
+text — prefix included — is stored unchanged. Short or malformed input is
+rejected through the checked API in every language, never by a slice panic or an
+incidental exception. Acceptance is lexical only: it says nothing about a
+marking's meaning, authorization, or release policy.
+
+### Measured coverage
+
+All twelve pinned cells gained exactly **+1** declaration and +1 kind; no
+equivalent or derived declaration exists in either release, and the four
+consuming choice types were already counted renderable. Field-types,
+field-occurrences, and message-closures are unchanged. Selected UCI 2.5
+`PositionReport` improved from 53/57/57 to **54/58/58** (Ada/Rust/C++) and
+remains **NOT READY** everywhere; every remaining blocker is an enumeration
+needing identifier remapping, which is out of scope.

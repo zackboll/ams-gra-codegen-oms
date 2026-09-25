@@ -531,6 +531,36 @@ default construction was prohibited *because* the empty string is invalid; the
 prohibition is an API policy, and for these profiles the empty string is a valid
 value. See `docs/task-041-whitespace-visible-string.md`.
 
+**Measured progress (Task 042):**
+
+Task 042 added no Phase 2.5 code either. It made the constrained-String profile
+of `NATO_SpecialWordsType` — `minLength 6`, `maxLength 261`, pattern
+`NATO:[a-zA-Z\-_]{1,256}`, identical in both pinned releases — renderable,
+extending the shared `StringProfile` classifier with a fifth, fixed variant.
+Generated carriers check the total length, the exact case-sensitive `NATO:`
+prefix, and the suffix class, and store the text unchanged. This is lexical
+validation only. Same authoritative inputs — UCI 2.5, the upstream
+`PositionReport` contract, closed world:
+
+| Backend | Before | After | First blocker now |
+| --- | ---: | ---: | --- |
+| Ada | 53/60 | **54/60** | `SecurityInformationType` (unchanged) |
+| Rust | 57/60 | **58/60** | `SecurityInformationType` (unchanged) |
+| C++ | 57/60 | **58/60** | `SecurityInformationType` (unchanged) |
+
+`NATO_SpecialWordsType` is no longer a blocker. `PositionReport` is still NOT
+READY in every backend: every remaining selected blocker is an enumeration whose
+members need identifier remapping (`DeclassExceptionEnum` everywhere; in Ada also
+`FGI_SourceOpenEnum`, `FGI_SourceProtectedEnum`, `OwnerProducerEnum`,
+`ReleasableToEnum`), which is the obvious next task and is deliberately not done
+here.
+
+Coverage gained exactly **+1** in all twelve pinned cells: the inventory found
+exactly one declaration with this effective profile per release and no
+derivations, and the four consuming choice types were already counted
+renderable. In Rust and C++ those choice types' complete closures are now
+renderable. See `docs/task-042-nato-special-words.md`.
+
 **Still open:**
 
 - [ ] service-specific generated wrapper APIs;
