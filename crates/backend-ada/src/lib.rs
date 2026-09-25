@@ -5,7 +5,7 @@ use ams_gra_oms_codegen_core::{
     ADA_SEQUENCE_LENGTH, ADA_SEQUENCE_RESERVE_CAPACITY, ADA_SEQUENCE_TO_SEQUENCE,
     AbstractValueProjection, Backend, BackendLanguage, CodegenError, EffectiveValueMember,
     FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain, StringProfile,
-    TemporalProfile, TypeEmission, abstract_value_projection_for_ref,
+    TemporalProfile, TypeEmission, WhitespaceVisiblePolicy, abstract_value_projection_for_ref,
     ada_record_field_uses_optional_wrapper, backend_preflight, constrains_string,
     effective_choice_alternatives, effective_record_fields, field_storage_semantics,
     float32_literal, float64_literal, floating_domain, inclusive_integral_domain,
@@ -584,7 +584,8 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
             match string_profile(kind, &declaration.constraints) {
                 Ok(Some(StringProfile::UciSchemaVersion))
                 | Ok(Some(StringProfile::UniversallyUniqueIdentifier))
-                | Ok(Some(StringProfile::VisibleAscii { .. })) => {}
+                | Ok(Some(StringProfile::VisibleAscii { .. }))
+                | Ok(Some(StringProfile::WhitespaceVisible { .. })) => {}
                 Ok(None) => unreachable!("constrains_string gates this branch"),
                 Err(reason) => {
                     return unsupported(format!("{reason} on {}", declaration.name.local_name));
@@ -1667,6 +1668,29 @@ fn render_string_profile_declaration(
             "A validated visible-ASCII string.",
             "[ -~] character class and both length facets".to_owned(),
         ),
+        // Task 041. The summary names the whitespace policy, because the two
+        // halves of this family store DIFFERENT values for the same input.
+        Ok(Some(profile @ StringProfile::WhitespaceVisible { white_space, .. })) => (
+            profile,
+            match white_space {
+                WhitespaceVisiblePolicy::Collapse => {
+                    "A validated whitespace-visible string, stored collapse-normalized."
+                }
+                WhitespaceVisiblePolicy::Preserve => {
+                    "A validated whitespace-visible string, stored with whitespace preserved."
+                }
+            },
+            match white_space {
+                WhitespaceVisiblePolicy::Collapse => {
+                    "[ -~\\n\\r] character class and both length facets, applied \
+                     after whiteSpace = collapse normalization"
+                }
+                WhitespaceVisiblePolicy::Preserve => {
+                    "[ -~\\n\\r] character class and both length facets"
+                }
+            }
+            .to_owned(),
+        ),
         Ok(None) => return unsupported(format!("unconstrained String on {name}")),
         Err(reason) => return unsupported(format!("{reason} on {name}")),
     };
@@ -1683,11 +1707,22 @@ fn render_string_profile_declaration(
             "   --  Raises Constraint_Error unless Value matches the authoritative\n",
             "   --  {facets}.\n",
             "   function Create (Value : String) return {name};\n\n",
-            "   --  The stored representation, exactly as supplied.\n",
+            "   --  The stored representation, {stored}.\n",
             "   function Value (Item : {name}) return String;\n",
         ),
         summary = summary,
         facets = facets,
+        // Task 041: "exactly as supplied" is a claim about the PRESERVE
+        // profiles only. A collapse carrier stores the normalized value, so
+        // reusing that phrase here would make the generated documentation
+        // wrong. Every other profile keeps its original wording exactly.
+        stored = match profile {
+            StringProfile::WhitespaceVisible {
+                white_space: WhitespaceVisiblePolicy::Collapse,
+                ..
+            } => "which is the collapse-normalized form of Create's argument",
+            _ => "exactly as supplied",
+        },
         name = name,
     )
     .expect("writing to String cannot fail");
@@ -1696,10 +1731,17 @@ fn render_string_profile_declaration(
         private_part,
         concat!(
             "   type {name} is record\n",
-            "      --  Task 040: an explicitly failing component default. An ordinary\n",
-            "      --  default declaration of this carrier would otherwise produce an\n",
-            "      --  empty string, which this profile's own validator rejects. The\n",
-            "      --  default is a raise expression, so enforcement is part of the\n",
+            "      --  Task 040: an explicitly failing component default, so a\n",
+            "      --  default-initialized object of this type cannot exist.\n",
+            "      --\n",
+            "      --  This is an explicit Ada API POLICY: a validated carrier is\n",
+            "      --  constructed by Create or not at all. It is deliberately NOT a\n",
+            "      --  claim that the empty string is an invalid value. Task 041's\n",
+            "      --  collapse profiles carry minLength = 0, so Create (\"\") SUCCEEDS\n",
+            "      --  for them and yields a carrier holding the empty string; what\n",
+            "      --  stays prohibited is obtaining one WITHOUT calling Create.\n",
+            "      --\n",
+            "      --  The default is a raise expression, so enforcement is part of the\n",
             "      --  language's initialization semantics and does not depend on\n",
             "      --  -gnata, Assertion_Policy, or any client-side check.\n",
             "      --\n",
@@ -1729,6 +1771,21 @@ fn render_string_profile_declaration(
             .replace("{name}", name)
             .replace("{min_length}", &min_length.to_string())
             .replace("{max_length}", &max_length.to_string()),
+        // Task 041: two bodies, selected by the classified policy. They are
+        // separate templates rather than one template with a flag, because the
+        // collapse body needs a normalization buffer and its own helpers while
+        // the preserve body must provably have neither.
+        StringProfile::WhitespaceVisible {
+            white_space,
+            min_length,
+            max_length,
+        } => match white_space {
+            WhitespaceVisiblePolicy::Collapse => ADA_WHITESPACE_VISIBLE_COLLAPSE_BODY,
+            WhitespaceVisiblePolicy::Preserve => ADA_WHITESPACE_VISIBLE_PRESERVE_BODY,
+        }
+        .replace("{name}", name)
+        .replace("{min_length}", &min_length.to_string())
+        .replace("{max_length}", &max_length.to_string()),
     };
     body.push_str(&rendered);
     Ok(())
@@ -1815,6 +1872,224 @@ const ADA_VISIBLE_ASCII_BODY: &str = r##"
       then
          raise Standard.Constraint_Error
            with "invalid visible-ASCII string";
+      end if;
+      return {name}'
+        (Text => Standard.Ada.Strings.Unbounded.To_Unbounded_String (Value));
+   end Create;
+
+   function Value (Item : {name}) return String is
+   begin
+      return Standard.Ada.Strings.Unbounded.To_String (Item.Text);
+   end Value;
+"##;
+
+/// The generated Ada body for one **collapse** whitespace-visible carrier.
+///
+/// # Validation order
+///
+/// 1. `whiteSpace = collapse` normalization of `Create`'s argument;
+/// 2. the `minLength`/`maxLength` facets, applied to the *normalized* value;
+/// 3. the authoritative `[ -~\n\r]` class over the normalized value.
+///
+/// Normalization comes first, which is what lets an argument longer than
+/// `maxLength` be accepted when its normalized form fits. The stored value is
+/// the normalized one, never the argument.
+///
+/// # Bounded output buffer, not an input-sized one
+///
+/// `Normalized` is `String (1 .. Max_Length)`, whose size is the declaration's
+/// own `maxLength` -- at most 4096 characters in the authoritative family. It is
+/// deliberately **not** `String (1 .. Value'Length)`: a client-supplied argument
+/// can be arbitrarily long, and an input-sized stack object would make
+/// `Create`'s stack demand a function of untrusted input, risking
+/// `Storage_Error` on a small task stack.
+///
+/// Because a normalized value longer than `maxLength` is *invalid anyway*, the
+/// buffer never needs to hold one. `Append` sets `Overflowed` the moment the
+/// output would exceed the bound, and the value is then rejected on the facet it
+/// actually violates. There is therefore **no undocumented lexical input-length
+/// cap**: an over-long argument is rejected for exceeding `maxLength` after
+/// normalization, which is exactly the schema's own rule, and normalization
+/// itself still visits every input character in one linear pass.
+///
+/// # Only XML's four whitespace characters
+///
+/// SPACE, TAB (`ASCII.HT`), LF, and CR participate in normalization. VT, FF,
+/// NUL, U+00A0, and every other Latin-1 character are passed through untouched
+/// so that the class test rejects them; nothing invalid is silently deleted.
+///
+/// # Null and non-1-based input slices
+///
+/// `for Item of Value loop` iterates the slice's own elements and never indexes
+/// it, so nothing depends on `Value'First` being 1, and a null slice normalizes
+/// to the empty string.
+///
+/// # Scope
+///
+/// Every helper is declared in `Create`'s own declarative part, so no
+/// package-scope identifier is introduced beyond the `Create` / `Value`
+/// overloads the shared name model already registers.
+const ADA_WHITESPACE_VISIBLE_COLLAPSE_BODY: &str = r##"
+   function Create (Value : String) return {name} is
+
+      --  minLength, which is also the pattern quantifier's minimum.
+      Min_Length : constant := {min_length};
+
+      --  maxLength, which is also the pattern quantifier's maximum.
+      Max_Length : constant := {max_length};
+
+      --  The [ -~\n\r] class: U+0020 .. U+007E, plus LF and CR.
+      --
+      --  Ordinal and never locale-sensitive: no Ada.Characters.Handling
+      --  classification is consulted.
+      function Is_Class_Member (Item : Character) return Boolean is
+        (Item in ' ' .. '~'
+           or else Item = Standard.ASCII.LF
+           or else Item = Standard.ASCII.CR);
+
+      --  Exactly XML's four whitespace characters, and no others. VT, FF, and
+      --  every Unicode space outside this set are NOT whitespace here.
+      function Is_XML_Whitespace (Item : Character) return Boolean is
+        (Item = ' '
+           or else Item = Standard.ASCII.HT
+           or else Item = Standard.ASCII.LF
+           or else Item = Standard.ASCII.CR);
+
+      --  The normalized result. Bounded by the declaration's own maxLength, NOT
+      --  by the argument's length: see this template's documentation.
+      Normalized : String (1 .. Max_Length);
+      Last       : Natural := 0;
+
+      --  Set when the normalized value would exceed Max_Length. Such a value is
+      --  invalid on the maxLength facet, so it never needs to be materialized.
+      Overflowed : Boolean := False;
+
+      procedure Append (Item : Character) is
+      begin
+         if Last = Max_Length then
+            Overflowed := True;
+            return;
+         end if;
+         Last := Last + 1;
+         Normalized (Last) := Item;
+      end Append;
+
+      --  Deferred: a whitespace run becomes one SPACE only when a
+      --  non-whitespace character follows, which drops the trailing run.
+      Pending_Space : Boolean := False;
+
+   begin
+      --  Step 1: whiteSpace = collapse, per XML Schema Part 2 4.3.6. One
+      --  linear pass over the argument.
+      for Item of Value loop
+         if Is_XML_Whitespace (Item) then
+            --  Last > 0 is what drops the LEADING run.
+            Pending_Space := Last > 0;
+         else
+            if Pending_Space then
+               Append (' ');
+               Pending_Space := False;
+            end if;
+            Append (Item);
+         end if;
+         exit when Overflowed;
+      end loop;
+
+      --  Steps 2 and 3, against the NORMALIZED value.
+      if Overflowed
+        or else Last not in Min_Length .. Max_Length
+      then
+         raise Standard.Constraint_Error
+           with "invalid whitespace-visible string";
+      end if;
+      for Item of Normalized (1 .. Last) loop
+         if not Is_Class_Member (Item) then
+            raise Standard.Constraint_Error
+              with "invalid whitespace-visible string";
+         end if;
+      end loop;
+
+      --  The STORED value is the normalized one, not the argument.
+      return {name}'
+        (Text => Standard.Ada.Strings.Unbounded.To_Unbounded_String
+                   (Normalized (1 .. Last)));
+   end Create;
+
+   function Value (Item : {name}) return String is
+   begin
+      return Standard.Ada.Strings.Unbounded.To_String (Item.Text);
+   end Value;
+"##;
+
+/// The generated Ada body for one **preserve** whitespace-visible carrier.
+///
+/// # Validation order
+///
+/// 1. the `minLength`/`maxLength` facets;
+/// 2. the authoritative `[ -~\n\r]` character class, tested per character.
+///
+/// No normalization: `xs:string`'s intrinsic `whiteSpace = preserve` applies,
+/// this declaration does not override it, so `Create`'s argument is stored
+/// unchanged and LF, CR, and every interior space remain significant. TAB is
+/// outside the class and is rejected.
+///
+/// # No regular-expression engine
+///
+/// `GNAT.Regpat` is deliberately not used: its syntax is Perl-derived, not XML
+/// Schema. One character class under one bounded quantifier is a length test
+/// plus a per-character membership test. Patterns are anchored, which testing
+/// every character of the slice enforces directly.
+///
+/// # Null and non-1-based input slices
+///
+/// `for Item of Value loop` iterates the slice's own elements, and `'Length` is
+/// its own count, so neither depends on `Value'First` being 1. A null slice
+/// simply has `'Length = 0`.
+///
+/// # Scope
+///
+/// Every helper is declared in `Create`'s own declarative part, so no
+/// package-scope identifier is introduced beyond the `Create` / `Value`
+/// overloads the shared name model already registers.
+const ADA_WHITESPACE_VISIBLE_PRESERVE_BODY: &str = r##"
+   function Create (Value : String) return {name} is
+
+      --  minLength, which is also the pattern quantifier's minimum.
+      Min_Length : constant := {min_length};
+
+      --  maxLength, which is also the pattern quantifier's maximum.
+      Max_Length : constant := {max_length};
+
+      --  The [ -~\n\r] class: U+0020 .. U+007E, plus LF and CR.
+      --
+      --  SPACE is inside the printable interval. TAB, VT, FF, DEL, every other
+      --  control, and every Latin-1 character above '~' are outside the class.
+      --  No Ada.Characters.Handling classification is consulted, so this is
+      --  ordinal and never locale-sensitive.
+      function Is_Class_Member (Item : Character) return Boolean is
+        (Item in ' ' .. '~'
+           or else Item = Standard.ASCII.LF
+           or else Item = Standard.ASCII.CR);
+
+      --  The character class over the whole value. Anchored by construction.
+      function Matches_Pattern (Text : String) return Boolean is
+      begin
+         for Item of Text loop
+            if not Is_Class_Member (Item) then
+               return False;
+            end if;
+         end loop;
+         return True;
+      end Matches_Pattern;
+
+   begin
+      --  The whole gate: both length facets AND the character class. The stored
+      --  text is the argument unchanged.
+      if Value'Length not in Min_Length .. Max_Length
+        or else not Matches_Pattern (Value)
+      then
+         raise Standard.Constraint_Error
+           with "invalid whitespace-visible string";
       end if;
       return {name}'
         (Text => Standard.Ada.Strings.Unbounded.To_Unbounded_String (Value));

@@ -1,0 +1,158 @@
+# Task 041 shared whitespace-visible COLLAPSE conformance corpus.
+#
+# ONE canonical corpus drives the Rust, C++, and Ada generated validators, so
+# the three backends are proven to agree rather than each passing its own
+# curated subset. Rust-side tests read this file and emit the cases into the
+# probe program for every language.
+#
+# THIS FILE IS THE COLLAPSE HALF ONLY.
+# The preserve half lives in whitespace-visible-preserve.txt and has DIFFERENT
+# expectations for the same inputs. Do not merge the two: an input such as
+# "  a   b  " is stored as "a b" here and as "  a   b  " there. Keeping them in
+# separate files is what prevents one policy's expectations from being copied
+# onto the other.
+#
+# FORMAT
+#   '#' begins a comment line; blank lines are ignored.
+#   VALID <input> => <expected stored form>
+#   INVALID <input>
+# Exactly one space follows the VALID/INVALID keyword.
+# <input> is escaped so whitespace and control cases are unambiguous:
+#   \s space   \t tab   \n line feed   \r carriage return   \\ backslash
+#   \u{HEX} any code point
+#   <empty> the EMPTY field, as a whole field only.
+#
+# THE <empty> TOKEN
+# The shared loader trims each line's end before splitting on ' => ', so an
+# empty field cannot be written as literal nothing, and trailing-space padding
+# would be removed by the same trim. `<empty>` is the explicit spelling. It is
+# load-bearing here: this profile's minLength is 0, so the empty string is a
+# VALID value, and whitespace-only input NORMALIZES to it.
+#
+#   Some("") = construction succeeded, stored value is the empty String
+#   None     = rejected
+# An empty stored value is NOT a NUL character and NOT missing data.
+#
+# AUTHORITY
+# Read verbatim from the pinned UCI 2.5 release bytes:
+#   UCI 2.5 093610b7753944059360d3236770ab446d039556
+#           UCI_SecurityMarkings_v2_5_0.xsd:8565 (1024)
+#           UCI_SecurityMarkings_v2_5_0.xsd:8576 (4096)
+#
+#   <xs:restriction base="xs:string">
+#     <xs:minLength value="0"/>
+#     <xs:maxLength value="1024"/>
+#     <xs:whiteSpace value="collapse"/>
+#     <xs:pattern value="[&#x20;-&#x7E;\n\r]{0,1024}"/>
+#   </xs:restriction>
+#
+# UCI 2.6 does NOT carry this shape: it drops the whiteSpace facet and raises
+# minLength to 1. That release's expectations are in the preserve corpus.
+#
+# THREE LAYERS OF ESCAPING
+#   &#x20; and &#x7E; are XML character references, expanded by the XML parser,
+#     so the IR expression holds a literal SPACE and a literal TILDE.
+#   \n and \r are XSD-REGEX escapes, passed through by the XML parser as two
+#     characters each, denoting LF and CR to a regex reader.
+#   The generated constructor receives DECODED text: an actual U+000A.
+#
+# THE CHARACTER CLASS
+# [ -~\n\r] is U+0020 SPACE .. U+007E TILDE, PLUS U+000A and U+000D. It excludes
+# TAB, U+000B, U+000C, NUL, every other C0 control, DEL (U+007F), and every
+# non-ASCII character. The cases below pin all the boundaries.
+#
+# NORMALIZATION APPLIES FIRST
+# whiteSpace = collapse (XML Schema Part 2 4.3.6) runs BEFORE the pattern and
+# length facets. Consequences tested below:
+#   - a RAW input longer than 1024 is VALID when its NORMALIZED form fits;
+#   - TAB, LF, and CR become SPACE, so they never reach the class test;
+#   - leading and trailing runs are removed, interior runs become ONE space;
+#   - only XML's FOUR whitespace characters participate. U+00A0 and every other
+#     Unicode space are ordinary characters, and are REJECTED by the class test
+#     rather than normalized away. Invalid controls are never silently deleted.
+#
+# LENGTH IS A CHARACTER COUNT
+# Every accepted character is at most U+007E, hence single-byte in UTF-8, so the
+# UTF-8 byte count equals the XSD character count for this alphabet.
+#
+# BOUNDS
+# This corpus is written for the 0..1024 member.
+
+# --- VALID: the empty and whitespace-only values ---
+# minLength = 0, so the empty string is a VALID value of this type.
+VALID <empty> => <empty>
+# Whitespace-only input NORMALIZES to empty, which then fits minLength 0.
+VALID \s => <empty>
+VALID \s\s\s => <empty>
+VALID \t => <empty>
+VALID \n => <empty>
+VALID \r => <empty>
+VALID \t\n\r\s => <empty>
+VALID \n\n\n => <empty>
+
+# --- VALID: the class boundaries themselves ---
+VALID ~ => ~
+VALID ! => !
+VALID } => }
+VALID | => |
+VALID 0 => 0
+VALID 9 => 9
+VALID A => A
+VALID z => z
+# A lone SPACE is whitespace, so it normalizes away; see above.
+
+# --- VALID: leading and trailing runs are REMOVED ---
+VALID \sabc => abc
+VALID abc\s => abc
+VALID \s\s\sabc\s\s\s => abc
+VALID \tabc\t => abc
+VALID \nabc\r => abc
+
+# --- VALID: interior runs collapse to exactly ONE space ---
+VALID a\sb => a\sb
+VALID a\s\sb => a\sb
+VALID a\s\s\s\s\sb => a\sb
+VALID a\tb => a\sb
+VALID a\nb => a\sb
+VALID a\rb => a\sb
+VALID a\t\n\rb => a\sb
+VALID a\s\tb => a\sb
+VALID \s\sa\s\s\sb\s\s => a\sb
+
+# --- VALID: normalization is IDEMPOTENT ---
+# Each expected form below is itself a valid input that maps to itself.
+VALID a\sb\sc => a\sb\sc
+VALID hello\sworld => hello\sworld
+
+# --- VALID: ordinary words and punctuation ---
+VALID hello => hello
+VALID Callsign-7 => Callsign-7
+VALID a,b.c;d:e!f?g => a,b.c;d:e!f?g
+VALID {a|b}~c => {a|b}~c
+VALID \s\sTOP\sSECRET\s\s => TOP\sSECRET
+
+# --- INVALID: characters OUTSIDE the class, never silently deleted ---
+# NUL. An empty stored value and a NUL character are different things.
+INVALID \u{0}
+INVALID a\u{0}b
+# VERTICAL TAB and FORM FEED are NOT XML whitespace and NOT in the class.
+INVALID \u{b}
+INVALID a\u{b}b
+INVALID \u{c}
+INVALID a\u{c}b
+# U+001F, immediately below SPACE.
+INVALID \u{1f}
+INVALID a\u{1f}b
+# DEL, immediately above TILDE.
+INVALID \u{7f}
+INVALID a\u{7f}b
+# NO-BREAK SPACE and other non-ASCII whitespace are NOT XML whitespace, so they
+# are not normalized; they reach the class test and are rejected.
+INVALID \u{a0}
+INVALID a\u{a0}b
+INVALID a\u{2028}b
+INVALID a\u{3000}b
+# Non-ASCII letters and multibyte characters.
+INVALID caf\u{e9}
+INVALID \u{5e74}
+INVALID a\u{1f600}b

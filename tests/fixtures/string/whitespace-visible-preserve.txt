@@ -1,0 +1,144 @@
+# Task 041 shared whitespace-visible PRESERVE conformance corpus.
+#
+# ONE canonical corpus drives the Rust, C++, and Ada generated validators.
+#
+# THIS FILE IS THE PRESERVE HALF ONLY.
+# The collapse half lives in whitespace-visible-collapse.txt and has DIFFERENT
+# expectations for the same inputs. An input such as "  a   b  " is stored
+# UNCHANGED here and as "a b" there. The two files are deliberately separate so
+# one policy's expectations cannot be copied onto the other.
+#
+# FORMAT
+#   '#' begins a comment line; blank lines are ignored.
+#   VALID <input> => <expected stored form>
+#   INVALID <input>
+# Exactly one space follows the VALID/INVALID keyword.
+# <input> is escaped so whitespace and control cases are unambiguous:
+#   \s space   \t tab   \n line feed   \r carriage return   \\ backslash
+#   \u{HEX} any code point
+#   <empty> the EMPTY field, as a whole field only.
+#
+# THE <empty> TOKEN
+# See the collapse corpus for why an explicit token is needed. Here it appears
+# as an INVALID INPUT: this profile's minLength is 1, so the empty string is
+# REJECTED. That is the case that proves the token is not merely a synonym for
+# "valid and empty" -- it is a way to write the empty INPUT, whose outcome
+# depends entirely on the profile.
+#
+#   Some("") = construction succeeded, stored value is the empty String
+#   None     = rejected
+#
+# AUTHORITY
+# Read verbatim from the pinned UCI 2.6 release bytes:
+#   UCI 2.6 78eb61b6112c8bffa40820c33124b57787fc5bd9
+#           UCI_SecurityMarkings_v2_6_0.xsd:8578 (1024)
+#           UCI_SecurityMarkings_v2_6_0.xsd:8588 (4096)
+#
+#   <xs:restriction base="xs:string">
+#     <xs:minLength value="1"/>
+#     <xs:maxLength value="1024"/>
+#     <xs:pattern value="[&#x20;-&#x7E;\n\r]{1,1024}"/>
+#   </xs:restriction>
+#
+# There is NO whiteSpace facet, so xs:string's intrinsic `preserve` applies.
+# This is NOT inherited from UCI 2.5 merely because the declaration names match:
+# 2.5 carries an explicit collapse facet and a ZERO minimum, and its
+# expectations are in the other corpus.
+#
+# The minLength facet and the pattern quantifier's lower bound are BOTH 1 here.
+# They were read independently from the pinned bytes; the agreement is an
+# observation, not an inference from the quantifier.
+#
+# THE CHARACTER CLASS
+# [ -~\n\r] is U+0020 SPACE .. U+007E TILDE, PLUS U+000A and U+000D.
+#
+# TAB IS REJECTED
+# This is the sharpest difference from the collapse half. TAB (U+0009) is
+# admitted by neither the printable interval nor the two escapes \n and \r, and
+# no normalization runs to turn it into a SPACE, so a value containing TAB is
+# INVALID. Under collapse the same input is valid, because the TAB has already
+# become a SPACE before the class is consulted.
+#
+# NOTHING IS TRIMMED OR COLLAPSED
+# Leading, trailing, and repeated interior whitespace are all STORED UNCHANGED,
+# and remain significant for equality. LF and CR are preserved, not turned into
+# SPACE and not removed.
+#
+# BOUNDS
+# This corpus is written for the 1..1024 member.
+
+# --- INVALID: the empty input ---
+# minLength = 1. This is the same empty input the collapse corpus accepts.
+INVALID <empty>
+
+# --- VALID: whitespace-only values are ORDINARY values here ---
+# SPACE is a class member and nothing is trimmed, so these round-trip exactly.
+VALID \s => \s
+VALID \s\s\s => \s\s\s
+VALID \n => \n
+VALID \r => \r
+VALID \n\n\n => \n\n\n
+VALID \r\n => \r\n
+VALID \n\r => \n\r
+VALID \s\n\s\r\s => \s\n\s\r\s
+
+# --- VALID: the class boundaries themselves ---
+VALID ~ => ~
+VALID ! => !
+VALID } => }
+VALID | => |
+VALID 0 => 0
+VALID 9 => 9
+VALID A => A
+VALID z => z
+
+# --- VALID: leading and trailing runs are PRESERVED ---
+VALID \sabc => \sabc
+VALID abc\s => abc\s
+VALID \s\s\sabc\s\s\s => \s\s\sabc\s\s\s
+VALID \nabc\r => \nabc\r
+
+# --- VALID: interior runs are PRESERVED, never collapsed ---
+VALID a\sb => a\sb
+VALID a\s\sb => a\s\sb
+VALID a\s\s\s\s\sb => a\s\s\s\s\sb
+VALID a\nb => a\nb
+VALID a\rb => a\rb
+VALID a\r\nb => a\r\nb
+VALID a\n\s\rb => a\n\s\rb
+VALID line1\nline2\nline3 => line1\nline2\nline3
+
+# --- VALID: ordinary words and punctuation ---
+VALID hello => hello
+VALID Callsign-7 => Callsign-7
+VALID a,b.c;d:e!f?g => a,b.c;d:e!f?g
+VALID {a|b}~c => {a|b}~c
+
+# --- INVALID: TAB, which the preserved pattern EXCLUDES ---
+# The collapse corpus accepts every one of these, normalized.
+INVALID \t
+INVALID a\tb
+INVALID \tabc
+INVALID abc\t
+INVALID a\t\tb
+
+# --- INVALID: characters OUTSIDE the class ---
+INVALID \u{0}
+INVALID a\u{0}b
+INVALID \u{b}
+INVALID a\u{b}b
+INVALID \u{c}
+INVALID a\u{c}b
+INVALID \u{1f}
+INVALID a\u{1f}b
+INVALID \u{7f}
+INVALID a\u{7f}b
+# NO-BREAK SPACE and other non-ASCII whitespace.
+INVALID \u{a0}
+INVALID a\u{a0}b
+INVALID a\u{2028}b
+INVALID a\u{3000}b
+# Non-ASCII letters and multibyte characters.
+INVALID caf\u{e9}
+INVALID \u{5e74}
+INVALID a\u{1f600}b

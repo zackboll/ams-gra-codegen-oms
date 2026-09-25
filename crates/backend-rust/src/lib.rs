@@ -3,8 +3,8 @@
 use ams_gra_oms_codegen_core::{
     AbstractValueProjection, Backend, BackendLanguage, CodegenError, EffectiveValueMember,
     FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain, StringProfile,
-    TemporalProfile, TypeEmission, abstract_value_projection_for_ref, backend_preflight,
-    constrains_string, effective_choice_alternatives, effective_record_fields,
+    TemporalProfile, TypeEmission, WhitespaceVisiblePolicy, abstract_value_projection_for_ref,
+    backend_preflight, constrains_string, effective_choice_alternatives, effective_record_fields,
     field_storage_semantics, float32_literal, float64_literal, floating_domain,
     inclusive_integral_domain, is_temporal_primitive, plan_type_emissions,
     schema_emits_bounded_integer_support, schema_emits_unbounded_sequence_support, string_profile,
@@ -389,7 +389,8 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
             match string_profile(kind, &declaration.constraints) {
                 Ok(Some(StringProfile::UciSchemaVersion))
                 | Ok(Some(StringProfile::UniversallyUniqueIdentifier))
-                | Ok(Some(StringProfile::VisibleAscii { .. })) => {}
+                | Ok(Some(StringProfile::VisibleAscii { .. }))
+                | Ok(Some(StringProfile::WhitespaceVisible { .. })) => {}
                 Ok(None) => unreachable!("constrains_string gates this branch"),
                 Err(reason) => {
                     return unsupported(format!("{reason} on {}", declaration.name.local_name));
@@ -883,12 +884,217 @@ fn render_string_profile_declaration(
             .replace("{name}", name)
             .replace("{min_length}", &min_length.to_string())
             .replace("{max_length}", &max_length.to_string()),
+        // Task 041. The classifier has proven the bounds agree with the
+        // declaration's own quantifier AND that the policy is the evidenced
+        // one, so the normalization step is selected from the profile rather
+        // than guessed from the declaration's name or its release.
+        Ok(Some(StringProfile::WhitespaceVisible {
+            white_space,
+            min_length,
+            max_length,
+        })) => {
+            let (normalization, helpers, stored) = match white_space {
+                WhitespaceVisiblePolicy::Collapse => (
+                    RUST_WHITESPACE_VISIBLE_COLLAPSE_STEP,
+                    RUST_WHITESPACE_VISIBLE_COLLAPSE_HELPERS,
+                    "the collapse-normalized form of the input, not the input \
+                     itself",
+                ),
+                WhitespaceVisiblePolicy::Preserve => (
+                    RUST_WHITESPACE_VISIBLE_PRESERVE_STEP,
+                    "",
+                    "the caller's text preserved unchanged",
+                ),
+            };
+            RUST_WHITESPACE_VISIBLE_TEMPLATE
+                .replace("{name}", name)
+                .replace("{min_length}", &min_length.to_string())
+                .replace("{max_length}", &max_length.to_string())
+                .replace("{normalization}", normalization)
+                .replace("{collapse_helpers}", helpers)
+                .replace("{stored}", stored)
+        }
         Ok(None) => return unsupported(format!("unconstrained String on {name}")),
         Err(reason) => return unsupported(format!("{reason} on {name}")),
     };
     writeln!(output, "{rendered}").expect("writing to String cannot fail");
     Ok(())
 }
+
+/// The `collapse` normalization step, substituted into `{normalization}`.
+///
+/// Implements XML Schema §4.3.6 `collapse` exactly: after `replace` has turned
+/// every TAB, LF, and CR into SPACE, contiguous SPACE runs become one SPACE and
+/// leading and trailing SPACEs are dropped. Only XML's four whitespace
+/// characters participate; U+00A0 NO-BREAK SPACE and every other Unicode space
+/// are ordinary characters here and are later *rejected* by the class test
+/// rather than normalized away.
+const RUST_WHITESPACE_VISIBLE_COLLAPSE_STEP: &str = r#"        // whiteSpace = collapse, per XML Schema Part 2 §4.3.6. This runs
+        // BEFORE the pattern and length facets, so an input whose raw length
+        // exceeds MAX_LENGTH is still accepted when its normalized form fits.
+        let value = Self::collapse(value);
+        let value = value.as_str();"#;
+
+/// The `preserve` normalization step: deliberately a no-op, and documented as
+/// one so the generated source states which half of the family it is.
+const RUST_WHITESPACE_VISIBLE_PRESERVE_STEP: &str = r#"        // whiteSpace = preserve: xs:string's intrinsic policy, which this
+        // declaration does not override. Normalization is the identity, so
+        // nothing is trimmed or collapsed and LF and CR stay significant."#;
+
+/// The `collapse` helper functions, emitted only for the collapse half.
+///
+/// A `preserve` carrier does not get them at all, so no `#[allow(dead_code)]`
+/// and no unused-function warning is needed: generated Rust stays clean under
+/// the workspace's `-D warnings`.
+const RUST_WHITESPACE_VISIBLE_COLLAPSE_HELPERS: &str = r##"
+    /// XML Schema Part 2 §4.3.6 `collapse`, over XML's four whitespace
+    /// characters only.
+    ///
+    /// SPACE, TAB, LF, and CR are the whole of XML whitespace. Runs of them
+    /// collapse to a single SPACE, and leading and trailing runs are removed.
+    /// Every other character -- including U+00A0 and every other Unicode space,
+    /// and including U+000B, U+000C, and NUL -- is passed through untouched so
+    /// that the class test can reject it. Invalid characters are never silently
+    /// deleted.
+    ///
+    /// Linear in the input, and the output is never longer than the input.
+    fn collapse(text: &str) -> String {
+        let mut out = String::with_capacity(text.len());
+        let mut pending_space = false;
+        for character in text.chars() {
+            if Self::is_xml_whitespace(character) {
+                // Deferred: a run becomes one SPACE only when a non-whitespace
+                // character follows, which is what drops the trailing run. The
+                // `!out.is_empty()` test is what drops the leading run.
+                pending_space = !out.is_empty();
+                continue;
+            }
+            if pending_space {
+                out.push(' ');
+                pending_space = false;
+            }
+            out.push(character);
+        }
+        out
+    }
+
+    /// Exactly XML's four whitespace characters, and no others.
+    ///
+    /// The standard library's Unicode whitespace predicate is deliberately not
+    /// used: it is true of U+00A0, U+2028, and many others that XML Schema does
+    /// not treat as whitespace and that this profile's class must reject rather
+    /// than normalize away.
+    fn is_xml_whitespace(character: char) -> bool {
+        matches!(character, ' ' | '\t' | '\n' | '\r')
+    }
+"##;
+
+/// The generated Rust whitespace-visible carrier.
+///
+/// # Validation order
+///
+/// 1. `whiteSpace` normalization, if the profile is the collapse half;
+/// 2. the `minLength`/`maxLength` facets, applied to the *normalized* value;
+/// 3. the authoritative `[ -~\n\r]` character class, tested per character.
+///
+/// All three are enforced. Steps 2 and 3 are formally redundant with each other
+/// (the quantifier repeats the facets), but both are checked so no facet is
+/// silently lost -- and the evidence is explicit that their minima must not be
+/// *assumed* to agree even though in these releases they do.
+///
+/// # No regular-expression engine
+///
+/// The authoritative expression is `[ -~\n\r]{min,max}`: **one** character class
+/// under **one** bounded quantifier, with no alternation, no grouping, no
+/// backreference, and no unbounded repetition. Membership is therefore exactly a
+/// length test plus an independent per-character set test, decided in one linear
+/// pass with no backtracking. XML Schema patterns are implicitly anchored, which
+/// testing *every* character enforces directly. A regex dependency would add a
+/// second dialect to reason about and buy nothing here.
+///
+/// # The class, and the escapes that spell it
+///
+/// `[ -~\n\r]` is the visible-ASCII interval U+0020..=U+007E *plus* U+000A and
+/// U+000D. The `\n` and `\r` are XSD-regex escapes in the schema text, not XML
+/// character references; the validator compares decoded code points. TAB is
+/// **not** in the class, so it is rejected under `preserve`. Under `collapse` a
+/// TAB has already become a SPACE before the class is consulted, which is a
+/// normalization result and not a class-membership claim.
+///
+/// # Byte length is the XSD character count
+///
+/// Every accepted character is at most U+007E, hence single-byte in UTF-8, so
+/// `len()` counts characters for every value that can be accepted. Any
+/// multi-byte character contains bytes outside the class and fails the class
+/// test, so no such value reaches a length comparison as an accepted one.
+const RUST_WHITESPACE_VISIBLE_TEMPLATE: &str = r##"#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct {name} {
+    value: String,
+}
+
+impl {name} {
+    /// `minLength`, which is also the pattern quantifier's minimum.
+    const MIN_LENGTH: usize = {min_length};
+
+    /// `maxLength`, which is also the pattern quantifier's maximum.
+    const MAX_LENGTH: usize = {max_length};
+
+    /// The lowest code point the class's printable interval admits: U+0020.
+    const MIN_CODE_POINT: u8 = 0x20;
+
+    /// The highest code point the class's printable interval admits: U+007E.
+    const MAX_CODE_POINT: u8 = 0x7E;
+
+    /// U+000A LINE FEED, admitted by the class escape `\n`.
+    const LINE_FEED: u8 = 0x0A;
+
+    /// U+000D CARRIAGE RETURN, admitted by the class escape `\r`.
+    const CARRIAGE_RETURN: u8 = 0x0D;
+
+    /// Validate `value` against the authoritative whitespace-visible profile.
+    ///
+    /// Returns `None` if either length facet or the character class rejects.
+    /// The stored text is {stored}.
+    pub fn new(value: &str) -> Option<Self> {
+{normalization}
+        if !Self::is_whitespace_visible(value) {
+            return None;
+        }
+        Some(Self {
+            value: value.to_owned(),
+        })
+    }
+
+    /// The stored, validated lexical representation.
+    pub fn as_str(&self) -> &str {
+        &self.value
+    }
+
+    /// The whole gate: both length facets AND the character class.
+    fn is_whitespace_visible(text: &str) -> bool {
+        // Sound as an XSD character count: every byte that survives the class
+        // test below is single-byte in UTF-8, and any value containing a
+        // multi-byte character fails that test.
+        let length = text.len();
+        if length < Self::MIN_LENGTH || length > Self::MAX_LENGTH {
+            return false;
+        }
+        // Anchored by construction: every character must be in the class.
+        text.bytes().all(Self::is_class_member)
+    }
+
+    /// The `[ -~\n\r]` class: U+0020..=U+007E, plus LF and CR.
+    ///
+    /// SPACE is inside the printable interval. TAB (U+0009), U+000B, U+000C,
+    /// DEL (U+007F), every other control, and every non-ASCII byte are outside
+    /// the class. Nothing locale-sensitive is consulted.
+    fn is_class_member(byte: u8) -> bool {
+        (byte >= Self::MIN_CODE_POINT && byte <= Self::MAX_CODE_POINT)
+            || byte == Self::LINE_FEED
+            || byte == Self::CARRIAGE_RETURN
+    }
+{collapse_helpers}}
+"##;
 
 /// The generated Rust visible-ASCII carrier, with `{name}` and the bounds
 /// substituted.

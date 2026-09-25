@@ -4921,3 +4921,66 @@ live elements are constructed only from supplied values. Rust and C++ generated
 output is byte-identical before and after.
 
 See `docs/task-040-validated-carrier-lifecycle.md` §10.
+
+## Task 041 — whitespace-visible String profiles
+
+Supersedes the "unsupported" rows for `WhitespaceVisibleString1024Type`,
+`WhitespaceVisibleString4096Type`, and `QueryString4096Type` in the dated
+Task 037–039 sections above. Those rows are preserved as historical evidence of
+what was true at the time; the current status is this section. Full evidence,
+reasoning and measurements are in
+`docs/task-041-whitespace-visible-string.md` and are not duplicated here.
+
+### Current constrained-String capability
+
+| Concern | Status |
+| --- | --- |
+| the schema-version profile | **supported (Task 037), unchanged** |
+| the UUID profile | **supported (Task 038), unchanged** |
+| the visible-ASCII family, ten observed bound pairs | **supported (Task 039), unchanged** |
+| whitespace-visible, `collapse` + `0..1024` / `0..4096` (UCI 2.5) | **supported (Task 041)** |
+| whitespace-visible, no facet + `0..4096` (UCI 2.5 `QueryString4096Type`) | **supported (Task 041)** |
+| whitespace-visible, no facet + `1..1024` / `1..4096` (UCI 2.6, incl. `QueryString4096Type`) | **supported (Task 041)** |
+| an *unobserved* whitespace-visible triple, e.g. `collapse` + `1..1024` | unsupported: every component is evidenced, the combination is not |
+| an explicit `whiteSpace = preserve` or `= replace` on the family | unsupported: unobserved; "absent" stays distinct from "restated" |
+| `minLength` disagreeing with the pattern's own lower bound | unsupported: both are read, neither inferred |
+| an agreeing `[ -~\n\r]{M,N}` with unobserved or huge bounds | unsupported: baseline support must be compiler-backed |
+| a whitespace-visible class extended with TAB | unsupported: a different lexical space |
+| an explicit `whiteSpace` facet on the Task 037/038/039 profiles | **still unsupported** — the old guard was not relaxed |
+| fixed-`length` `[ -~]{N}` (`VisibleStringLength*`, `NITF_*`) | unsupported |
+| `NATO_SpecialWordsType` (`NATO:[a-zA-Z\-_]{1,256}`) | unsupported: a distinct lexical profile |
+| generic XML Schema regex translation | not implemented, deliberately |
+
+### The two releases are not equivalent
+
+This is the first family whose *value space* differs between the pinned releases
+under the same declaration name. UCI 2.5's whitespace-visible pair carries
+`whiteSpace = collapse` and `minLength = 0`; UCI 2.6's carries **no** `whiteSpace`
+facet and `minLength = 1`. Nothing infers one release's shape from the other's.
+
+`QueryString4096Type` is a genuine semantic neighbour, supported in both releases
+because its facets match — and it is a *different* shape in 2.5 than in 2.6.
+
+### Generated behaviour, in brief
+
+- **collapse**: the decoded input is normalized per §4.3.6 (SPACE, TAB, LF, CR
+  only) *before* the facets are applied, and the **normalized** value is stored.
+  A raw input longer than `maxLength` is therefore accepted when its normalized
+  form fits. `Create ("")` succeeds, because `minLength` is 0;
+- **preserve**: the decoded text is stored unchanged; LF and CR stay significant
+  and **TAB is rejected**.
+
+Generated documentation says "normalized" for collapse and keeps "exactly as
+supplied" only for preserve. Equality is on the stored value, so normalized
+spellings that become identical compare equal while preserved whitespace stays
+significant. No regex engine and no new dependency was added; the Ada collapse
+buffer is sized by the declaration's `maxLength`, never by client input.
+
+### Measured coverage
+
+All twelve pinned cells gained exactly **+3** declarations and +3 kinds;
+field-types, field-occurrences, and message-closures are unchanged. Selected
+UCI 2.5 `PositionReport` improved from 51/55/55 to **53/57/57** (Ada/Rust/C++) and
+remains **NOT READY** in every backend, with `SecurityInformationType` still the
+first blocker — its other dependencies (`NATO_SpecialWordsType`, enumerations
+needing identifier remapping) are deliberately out of scope here.

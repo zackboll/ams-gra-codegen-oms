@@ -2062,6 +2062,598 @@ fn generate_visible_ascii(language: &str, label: &str) -> PathBuf {
     output_root
 }
 
+/// Generate the Task 041 whitespace-visible service for one language.
+fn generate_whitespace_visible(language: &str, label: &str) -> PathBuf {
+    let output_root = output_dir(label);
+    let output = generate(
+        "whitespace-visible.xsd",
+        "whitespace-visible.yaml",
+        language,
+        "closed-schema",
+        &output_root,
+    );
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "{language} whitespace-visible generation should succeed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    output_root
+}
+
+/// Task 041: a contract selecting whitespace-visible String declarations becomes
+/// READY in all three backends.
+///
+/// The point of this test is *propagation*. No Task 041 change was made to
+/// `service_plan.rs`, `service_readiness.rs`, or `service_generation.rs`; the new
+/// capability arrives through the single shared coverage snapshot and the
+/// ordinary backends. The fixture also declares an UNEVIDENCED whitespace-visible
+/// triple outside the selection -- collapse paired with UCI 2.6's minimum of one
+/// -- so a READY result here cannot be a whole-schema accident and cannot be an
+/// accidental widening to every agreeing facet combination.
+#[test]
+fn task041_whitespace_visible_service_is_ready_in_every_backend() {
+    for language in ["rust", "cpp", "ada"] {
+        let check = cli()
+            .arg("service-check")
+            .arg("--schema")
+            .arg(fixture("whitespace-visible.xsd"))
+            .arg("--contract")
+            .arg(fixture("whitespace-visible.yaml"))
+            .args(["--language", language, "--world", "closed-schema"])
+            .output()
+            .expect("service-check must run");
+        assert_eq!(
+            check.status.code(),
+            Some(0),
+            "{language} service-check should succeed"
+        );
+        let report = stdout_of(&check);
+        assert!(
+            report.contains("status: READY"),
+            "{language} must be READY for the whitespace-visible contract:\n{report}"
+        );
+        // The unevidenced triple is outside the selection, so it must not
+        // contaminate the projected closure.
+        assert!(
+            !report.contains("UnobservedCollapsedText"),
+            "{language} must not project the unselected shape:\n{report}"
+        );
+    }
+}
+
+/// Task 041: an UNSUPPORTED selected neighbour still BLOCKS and produces no
+/// partial output.
+///
+/// Selecting the unevidenced triple's own message must fail closed, and the
+/// failure must leave no generated artifact behind. This is the other half of the
+/// readiness claim: the `READY` above has to mean something.
+#[test]
+fn task041_an_unsupported_selected_neighbour_still_blocks_generation() {
+    let contract = output_dir("task041-blocked-contract").join("unselected.yaml");
+    std::fs::create_dir_all(contract.parent().expect("parent")).expect("create contract dir");
+    // The same contract shape, but selecting the message whose closure carries
+    // the UNEVIDENCED whitespace-visible triple.
+    let source = std::fs::read_to_string(fixture("whitespace-visible.yaml"))
+        .expect("read the supported contract");
+    std::fs::write(
+        &contract,
+        source.replace("message: RemarksReport", "message: UnselectedRemarksReport"),
+    )
+    .expect("write blocked contract");
+
+    for language in ["rust", "cpp", "ada"] {
+        let check = cli()
+            .arg("service-check")
+            .arg("--schema")
+            .arg(fixture("whitespace-visible.xsd"))
+            .arg("--contract")
+            .arg(&contract)
+            .args(["--language", language, "--world", "closed-schema"])
+            .output()
+            .expect("service-check must run");
+        let report = stdout_of(&check);
+        assert!(
+            report.contains("status: NOT READY"),
+            "{language} must block the unevidenced triple:\n{report}"
+        );
+        assert!(
+            report.contains("UnobservedCollapsedText"),
+            "{language} must name the blocker:\n{report}"
+        );
+
+        // And generation must produce NO partial output. The CLI is invoked
+        // directly here because the shared `generate` helper resolves its
+        // contract argument through `fixture()`, and this contract is generated
+        // into a temporary directory rather than shipped.
+        let out = output_dir(&format!("task041-blocked-{language}"));
+        let generated = cli()
+            .arg("service-generate")
+            .arg("--schema")
+            .arg(fixture("whitespace-visible.xsd"))
+            .arg("--contract")
+            .arg(&contract)
+            .args([
+                OsString::from("--language"),
+                OsString::from(language),
+                OsString::from("--world"),
+                OsString::from("closed-schema"),
+                OsString::from("--output"),
+                OsString::from(&out),
+            ])
+            .output()
+            .expect("CLI should run");
+        assert_ne!(
+            generated.status.code(),
+            Some(0),
+            "{language} generation must fail for an unsupported selection"
+        );
+        let produced: Vec<_> = std::fs::read_dir(&out)
+            .map(|entries| entries.flatten().map(|entry| entry.path()).collect())
+            .unwrap_or_default();
+        assert!(
+            produced.is_empty(),
+            "{language} must not leave partial output: {produced:?}"
+        );
+    }
+}
+
+/// Task 041: the selected Ada generation emits both policies' bodies, and the
+/// projected output carries no unselected declaration.
+#[test]
+fn task041_selected_ada_generation_emits_both_whitespace_policies() {
+    let root = generate_whitespace_visible("ada", "task041-ada-files");
+    let spec = std::fs::read_to_string(root.join("urn-test.ads")).expect("spec must be generated");
+    let body = std::fs::read_to_string(root.join("urn-test.adb")).expect("body must be generated");
+
+    for name in [
+        "CollapsedRemarks",
+        "CollapsedNarrative",
+        "PreservedRemarks",
+        "PreservedNarrative",
+        "PreservedQuery",
+    ] {
+        assert!(
+            spec.contains(&format!("type {name} is private;")),
+            "spec must project {name}"
+        );
+        assert!(
+            spec.contains(&format!("function Create (Value : String) return {name};")),
+            "spec must project {name}'s Create"
+        );
+    }
+    // Both maxima and both minima are projected, so the carriers really do carry
+    // their own bounds rather than a single shared pair.
+    assert!(body.contains("Max_Length : constant := 1024;"));
+    assert!(body.contains("Max_Length : constant := 4096;"));
+    assert!(body.contains("Min_Length : constant := 0;"));
+    assert!(body.contains("Min_Length : constant := 1;"));
+    // The collapse half normalizes into a BOUNDED buffer; nothing is sized by
+    // client input.
+    assert!(body.contains("Normalized : String (1 .. Max_Length);"));
+    assert!(
+        !body.contains("String (1 .. Value'Length)"),
+        "the buffer must not be sized by client input"
+    );
+    // Documentation distinguishes the two policies.
+    assert!(spec.contains("collapse-normalized form of Create's argument"));
+    assert!(spec.contains("The stored representation, exactly as supplied."));
+    // No generic regex engine is pulled in.
+    assert!(!body.contains("Regpat"), "body must not use GNAT.Regpat");
+
+    for unselected in ["UnobservedCollapsedText", "Unselected"] {
+        assert!(!spec.contains(unselected), "spec leaked {unselected}");
+        assert!(!body.contains(unselected), "body leaked {unselected}");
+    }
+}
+
+/// Task 041: the selected Rust client constructs and reads the new values.
+///
+/// Exercises required, optional, bounded and unbounded occurrences through the
+/// ordinary generated containers -- there is no profile-specific container path.
+#[test]
+fn task041_selected_rust_client_constructs_and_reads_the_new_values() {
+    let root = generate_whitespace_visible("rust", "task041-rust");
+    std::fs::write(root.join("probe.rs"), TASK041_RUST_PROBE).expect("write Rust probe");
+    let compiled = Command::new("rustc")
+        .current_dir(&root)
+        .args(["--edition", "2021", "-o", "probe", "probe.rs"])
+        .output()
+        .expect("rustc must run");
+    assert!(
+        compiled.status.success(),
+        "selected Rust output must compile:\n{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    assert!(
+        Command::new(root.join("probe"))
+            .status()
+            .expect("probe must run")
+            .success(),
+        "selected Rust validation must hold"
+    );
+}
+
+/// The Task 041 selected-Rust client probe.
+const TASK041_RUST_PROBE: &str = r##"include!("test.rs");
+
+fn main() {
+    // COLLAPSE: the stored value is the NORMALIZED one, not the argument.
+    let summary = CollapsedRemarks::new("  Target   sighted  ").expect("valid");
+    assert_eq!(summary.as_str(), "Target sighted");
+    // minLength 0, so the empty string is a valid value of this type.
+    assert_eq!(CollapsedRemarks::new("").expect("empty is valid").as_str(), "");
+    // A raw argument longer than maxLength is accepted when it normalizes short.
+    let raw = String::from("a") + &" ".repeat(4000) + "b";
+    assert!(raw.len() > 1024);
+    assert_eq!(CollapsedRemarks::new(&raw).expect("normalizes").as_str(), "a b");
+
+    // PRESERVE: LF and CR survive, and nothing is trimmed.
+    let detail = PreservedRemarks::new("  line1\nline2\r  ").expect("valid");
+    assert_eq!(detail.as_str(), "  line1\nline2\r  ");
+    // minLength 1, so the empty string is INVALID here.
+    assert!(PreservedRemarks::new("").is_none());
+    // TAB is outside the class under preserve, but normalizes under collapse.
+    assert!(PreservedRemarks::new("a\tb").is_none());
+    assert_eq!(CollapsedRemarks::new("a\tb").expect("valid").as_str(), "a b");
+
+    // The UCI 2.5 query shape: preserve policy with a ZERO minimum.
+    assert_eq!(PreservedQuery::new("").expect("valid").as_str(), "");
+    assert_eq!(PreservedQuery::new("  ").expect("valid").as_str(), "  ");
+
+    // The two maxima genuinely differ.
+    let between = "x".repeat(2000);
+    assert!(CollapsedRemarks::new(&between).is_none());
+    assert!(CollapsedNarrative::new(&between).is_some());
+    assert!(PreservedNarrative::new(&between).is_some());
+
+    // Container composition through the ordinary generated machinery.
+    let payload = RemarksPayload {
+        summary: summary.clone(),
+        detail: detail.clone(),
+        addendum: Some(CollapsedNarrative::new(" extra  text ").expect("valid")),
+        query: Some(PreservedQuery::new("q=1").expect("valid")),
+        version: SchemaVersion::new("001.1.0").expect("valid"),
+        notes: String::from("ordinary"),
+        history: BoundedVec::new(vec![
+            CollapsedRemarks::new(" h1 ").expect("valid"),
+            CollapsedRemarks::new("h2").expect("valid"),
+        ])
+        .expect("within 0..4"),
+        anchors: BoundedVec::new(vec![
+            PreservedRemarks::new("a1").expect("valid"),
+            PreservedRemarks::new(" a2 ").expect("valid"),
+        ])
+        .expect("meets the minimum of 2"),
+        log: UnboundedVec::new(vec![PreservedNarrative::new("entry\n").expect("valid")])
+            .expect("no minimum"),
+    };
+    // Read every value back out, including the normalized and preserved forms.
+    assert_eq!(payload.summary.as_str(), "Target sighted");
+    assert_eq!(payload.detail.as_str(), "  line1\nline2\r  ");
+    assert_eq!(payload.addendum.as_ref().expect("present").as_str(), "extra text");
+    assert_eq!(payload.query.as_ref().expect("present").as_str(), "q=1");
+    assert_eq!(payload.history.as_slice()[0].as_str(), "h1");
+    assert_eq!(payload.anchors.as_slice()[1].as_str(), " a2 ");
+    assert_eq!(payload.log.as_slice()[0].as_str(), "entry\n");
+    // A bounded field below its positive minimum is rejected.
+    assert!(BoundedVec::<PreservedRemarks, 2, 3>::new(vec![
+        PreservedRemarks::new("only").expect("valid")
+    ])
+    .is_none());
+    // Equality follows the STORED value.
+    assert_eq!(summary, CollapsedRemarks::new("Target sighted").expect("valid"));
+    assert_ne!(detail, PreservedRemarks::new("line1\nline2").expect("valid"));
+    println!("ok");
+}
+"##;
+
+/// Task 041: the selected C++ client constructs and reads the new values, and
+/// keeps the Task 040 lifecycle guarantees after copying and rvalue operations.
+#[test]
+fn task041_selected_cpp_client_constructs_and_reads_the_new_values() {
+    let root = generate_whitespace_visible("cpp", "task041-cpp");
+    std::fs::write(root.join("probe.cpp"), TASK041_CPP_PROBE).expect("write C++ probe");
+    let compiled = Command::new("c++")
+        .current_dir(&root)
+        .args([
+            "-std=c++17",
+            "-Wall",
+            "-Wextra",
+            "-pedantic-errors",
+            "-o",
+            "probe",
+            "probe.cpp",
+        ])
+        .output()
+        .expect("a C++ compiler must be available");
+    assert!(
+        compiled.status.success(),
+        "selected C++ output must compile under strict C++17:\n{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    assert!(
+        Command::new(root.join("probe"))
+            .status()
+            .expect("probe must run")
+            .success(),
+        "selected C++ validation must hold"
+    );
+}
+
+/// The Task 041 selected-C++ client probe.
+///
+/// Control-character inputs are built with EXPLICIT lengths so an embedded NUL
+/// case is not accidentally truncated into a shorter, valid input.
+const TASK041_CPP_PROBE: &str = r##"#include "test.hpp"
+#include <cassert>
+#include <cstdio>
+#include <string>
+#include <utility>
+
+using namespace urn::test;
+
+int main() {
+    // COLLAPSE: the stored value is the NORMALIZED one.
+    const auto summary = CollapsedRemarks::create("  Target   sighted  ");
+    assert(summary && summary->value() == "Target sighted");
+    // minLength 0, so the empty string is a valid value of this type.
+    const auto empty = CollapsedRemarks::create("");
+    assert(empty && empty->value().empty());
+    // A raw argument longer than maxLength is accepted when it normalizes short.
+    const std::string raw = std::string("a") + std::string(4000, ' ') + "b";
+    assert(raw.size() > 1024);
+    const auto normalized = CollapsedRemarks::create(raw);
+    assert(normalized && normalized->value() == "a b");
+
+    // PRESERVE: LF and CR survive, and nothing is trimmed.
+    const auto detail = PreservedRemarks::create("  line1\nline2\r  ");
+    assert(detail && detail->value() == "  line1\nline2\r  ");
+    // minLength 1, so the empty string is INVALID here.
+    assert(!PreservedRemarks::create("").has_value());
+    // TAB is outside the class under preserve, but normalizes under collapse.
+    assert(!PreservedRemarks::create("a\tb").has_value());
+    const auto tabbed = CollapsedRemarks::create("a\tb");
+    assert(tabbed && tabbed->value() == "a b");
+
+    // The UCI 2.5 query shape: preserve policy with a ZERO minimum.
+    const auto query = PreservedQuery::create("  ");
+    assert(query && query->value() == "  ");
+
+    // The two maxima genuinely differ.
+    assert(!CollapsedRemarks::create(std::string(2000, 'x')).has_value());
+    assert(CollapsedNarrative::create(std::string(2000, 'x')).has_value());
+
+    // Invalid controls, with EXPLICIT lengths so NUL is not truncated.
+    for (const char bad : {'\0', '\v', '\f', '\x7f'}) {
+        const std::string s = std::string("a") + std::string(1, bad) + "b";
+        assert(s.size() == 3);
+        assert(!CollapsedRemarks::create(s).has_value());
+        assert(!PreservedRemarks::create(s).has_value());
+    }
+    // High-bit bytes: U+00A0 is 0xC2 0xA0, both negative as a signed char.
+    assert(!CollapsedRemarks::create(std::string("a\302\240b", 4)).has_value());
+
+    // Task 040 lifecycle: source AND destination keep their validated values
+    // after copying and after rvalue operations.
+    auto source = *CollapsedRemarks::create(" keep  me ");
+    auto dest = source;
+    assert(source.value() == "keep me" && dest.value() == "keep me");
+    auto moved = std::move(source);
+    assert(source.value() == "keep me" && moved.value() == "keep me");
+    dest = std::move(moved);
+    assert(moved.value() == "keep me" && dest.value() == "keep me");
+
+    // Container composition through the ordinary generated machinery.
+    //
+    // The record is AGGREGATE-initialized, which is itself part of the
+    // guarantee: the carriers have no default constructor, so a
+    // `RemarksPayload payload;` declaration does not compile and every member
+    // must be supplied from a validated value.
+    const RemarksPayload payload{
+        *summary,
+        *detail,
+        CollapsedNarrative::create(" extra  text "),
+        query,
+        *SchemaVersion::create("001.1.0"),
+        "ordinary",
+        *BoundedVector<CollapsedRemarks, 0, 4>::create(
+            {*CollapsedRemarks::create(" h1 "), *CollapsedRemarks::create("h2")}),
+        *BoundedVector<PreservedRemarks, 2, 3>::create(
+            {*PreservedRemarks::create("a1"), *PreservedRemarks::create(" a2 ")}),
+        *UnboundedVector<PreservedNarrative, 0>::create(
+            {*PreservedNarrative::create("entry\n")}),
+    };
+    assert(payload.summary.value() == "Target sighted");
+    assert(payload.detail.value() == "  line1\nline2\r  ");
+    assert(payload.addendum->value() == "extra text");
+    assert(payload.query->value() == "  ");
+    assert(payload.history.values().at(0).value() == "h1");
+    assert(payload.anchors.values().at(1).value() == " a2 ");
+    assert(payload.log.values().at(0).value() == "entry\n");
+    // A bounded field below its positive minimum is rejected. Bound to a name
+    // first: a braced initializer's commas would otherwise be read as extra
+    // arguments by the `assert` macro.
+    const auto too_few = BoundedVector<PreservedRemarks, 2, 3>::create(
+        {*PreservedRemarks::create("only")});
+    assert(!too_few.has_value());
+    std::puts("ok");
+    return 0;
+}
+"##;
+
+/// Task 041: the selected Ada client constructs, reads, and exercises the
+/// sequences, under GNAT.
+///
+/// Covers bounded empty/partial/full, the positive-minimum bounded shape whose
+/// `Clear` stays absent, and unbounded growth, copying, clearing and reuse.
+#[test]
+fn task041_selected_ada_client_exercises_the_sequences_under_gnat() {
+    if Command::new("gnatmake").arg("--version").output().is_err() {
+        assert!(
+            std::env::var_os("AMS_GRA_REQUIRE_GNAT").is_none(),
+            "AMS_GRA_REQUIRE_GNAT is set but gnatmake is unavailable"
+        );
+        return;
+    }
+    let root = generate_whitespace_visible("ada", "task041-ada-runtime");
+    // The positive-minimum bounded member must NOT expose Clear.
+    let spec = std::fs::read_to_string(root.join("urn-test.ads")).expect("spec must be generated");
+    assert!(
+        !spec.contains("procedure Clear (Container : in out RemarksPayload_Anchors_Sequence)"),
+        "a positive-minimum bounded member must not expose Clear"
+    );
+    assert!(
+        spec.contains("procedure Clear (Container : in out RemarksPayload_History_Sequence)"),
+        "a zero-minimum bounded member keeps Clear"
+    );
+
+    std::fs::write(root.join("probe.adb"), TASK041_ADA_PROBE).expect("write Ada probe");
+    let output = Command::new("gnatmake")
+        .current_dir(&root)
+        .args(["-q", "probe.adb"])
+        .output()
+        .expect("gnatmake must run");
+    assert!(
+        output.status.success(),
+        "selected Ada output must compile:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let run = Command::new(root.join("probe"))
+        .output()
+        .expect("probe must run");
+    let stdout = String::from_utf8_lossy(&run.stdout).into_owned();
+    assert!(
+        run.status.success() && stdout.trim() == "ok",
+        "selected Ada validation must hold:\n{stdout}"
+    );
+}
+
+/// The Task 041 selected-Ada client probe.
+const TASK041_ADA_PROBE: &str = r##"with Ada.Text_IO; use Ada.Text_IO;
+with Urn.Test;
+procedure Probe is
+   Failures : Natural := 0;
+   procedure Check (Got, Want, Label : String) is
+   begin
+      if Got /= Want then
+         Put_Line ("mismatch: " & Label & " got [" & Got & "]");
+         Failures := Failures + 1;
+      end if;
+   end Check;
+
+   --  COLLAPSE: the stored value is the NORMALIZED one.
+   Summary : constant Urn.Test.CollapsedRemarks :=
+     Urn.Test.Create ("  Target   sighted  ");
+   --  minLength 0, so Create ("") SUCCEEDS for this profile. This is a VALUE
+   --  fact; default construction remains prohibited as an API policy.
+   Empty : constant Urn.Test.CollapsedRemarks := Urn.Test.Create ("");
+   --  PRESERVE: LF and CR survive and nothing is trimmed.
+   Detail : constant Urn.Test.PreservedRemarks :=
+     Urn.Test.Create ("  line1" & ASCII.LF & "line2" & ASCII.CR & "  ");
+   Query : constant Urn.Test.PreservedQuery := Urn.Test.Create ("  ");
+begin
+   Check (Urn.Test.Value (Summary), "Target sighted", "collapse normalizes");
+   Check (Urn.Test.Value (Empty), "", "minLength 0 accepts empty");
+   Check (Urn.Test.Value (Detail),
+     "  line1" & ASCII.LF & "line2" & ASCII.CR & "  ", "preserve keeps text");
+   Check (Urn.Test.Value (Query), "  ", "preserve does not trim");
+
+   --  BOUNDED, zero minimum: partial, full, then Clear and reuse.
+   declare
+      History : Urn.Test.RemarksPayload_History_Sequence :=
+        Urn.Test.To_Sequence
+          ((1 => Urn.Test.Create (" h1 "), 2 => Urn.Test.Create ("h2")));
+   begin
+      if Urn.Test.Length (History) /= 2 then
+         Put_Line ("bounded length"); Failures := Failures + 1;
+      end if;
+      Check (Urn.Test.Value (Urn.Test.Element (History, 1)), "h1",
+        "bounded element normalized");
+      Urn.Test.Append (History, Urn.Test.Create ("  h3  "));
+      Urn.Test.Append (History, Urn.Test.Create ("h4"));
+      if Urn.Test.Length (History) /= 4 then
+         Put_Line ("bounded full"); Failures := Failures + 1;
+      end if;
+      Check (Urn.Test.Value (Urn.Test.Element (History, 3)), "h3",
+        "appended element normalized");
+      --  Full: a fifth value must be rejected.
+      begin
+         Urn.Test.Append (History, Urn.Test.Create ("h5"));
+         Put_Line ("bounded overflow must be rejected");
+         Failures := Failures + 1;
+      exception
+         when Constraint_Error => null;
+      end;
+      --  Clear and reuse, which the zero-minimum shape permits.
+      Urn.Test.Clear (History);
+      if Urn.Test.Length (History) /= 0 then
+         Put_Line ("bounded clear"); Failures := Failures + 1;
+      end if;
+      Urn.Test.Append (History, Urn.Test.Create (" reused "));
+      Check (Urn.Test.Value (Urn.Test.Element (History, 1)), "reused",
+        "bounded reuse");
+   end;
+
+   --  BOUNDED, POSITIVE minimum: copying and assignment preserve the values,
+   --  and a too-short sequence is rejected.
+   declare
+      Anchors : constant Urn.Test.RemarksPayload_Anchors_Sequence :=
+        Urn.Test.To_Sequence
+          ((1 => Urn.Test.Create ("a1"), 2 => Urn.Test.Create (" a2 ")));
+      Copied : Urn.Test.RemarksPayload_Anchors_Sequence := Anchors;
+   begin
+      Check (Urn.Test.Value (Urn.Test.Element (Copied, 2)), " a2 ",
+        "positive-minimum copy preserves");
+      Copied := Anchors;
+      Check (Urn.Test.Value (Urn.Test.Element (Copied, 1)), "a1",
+        "positive-minimum assignment preserves");
+      begin
+         declare
+            Short : constant Urn.Test.RemarksPayload_Anchors_Sequence :=
+              Urn.Test.To_Sequence ((1 => Urn.Test.Create ("only")));
+         begin
+            Put_Line ("too few values must be rejected:" &
+              Urn.Test.Length (Short)'Image);
+            Failures := Failures + 1;
+         end;
+      exception
+         when Constraint_Error => null;
+      end;
+   end;
+
+   --  UNBOUNDED: growth, copying, clearing and reuse.
+   declare
+      Log : Urn.Test.RemarksPayload_Log_Sequence;
+      Copy : Urn.Test.RemarksPayload_Log_Sequence;
+   begin
+      Urn.Test.Reserve_Capacity (Log, 8);
+      for Index in 1 .. 5 loop
+         Urn.Test.Append (Log, Urn.Test.Create ("entry" & ASCII.LF));
+      end loop;
+      if Urn.Test.Length (Log) /= 5 then
+         Put_Line ("unbounded growth"); Failures := Failures + 1;
+      end if;
+      Check (Urn.Test.Value (Urn.Test.Element (Log, 3)), "entry" & ASCII.LF,
+        "unbounded element preserves LF");
+      Copy := Log;
+      Urn.Test.Clear (Log);
+      if Urn.Test.Length (Log) /= 0 or else Urn.Test.Length (Copy) /= 5 then
+         Put_Line ("unbounded clear must not disturb the copy");
+         Failures := Failures + 1;
+      end if;
+      Urn.Test.Append (Log, Urn.Test.Create ("reused"));
+      Check (Urn.Test.Value (Urn.Test.Element (Log, 1)), "reused",
+        "unbounded reuse");
+   end;
+
+   if Failures /= 0 then
+      raise Program_Error;
+   end if;
+   Put_Line ("ok");
+end Probe;
+"##;
+
 /// Task 039: a contract whose selected closure carries supported visible-ASCII
 /// String declarations becomes READY in all three backends.
 ///

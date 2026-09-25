@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Task 041 backend fixture: the supported whitespace-visible String family, in
+  BOTH of its evidenced whiteSpace policies, plus container compositions and an
+  ordinary String control.
+
+  The declaration names here are deliberately NOT UCI's
+  `WhitespaceVisibleString1024Type`: support must arise from
+  PrimitiveKind::String plus the effective ConstraintSet, so a differently
+  spelled declaration with the same profile must be equally renderable. The
+  authoritative schemas make the same point from the other direction:
+  `QueryString4096Type` does not mention "WhitespaceVisible" at all and is a
+  member of this family in both releases.
+
+  AUTHORITY. Each facet set below is byte-identical to a pinned declaration:
+    UCI 2.5 093610b7753944059360d3236770ab446d039556
+            UCI_SecurityMarkings_v2_5_0.xsd:8565  (collapse, 0..1024)
+            UCI_SecurityMarkings_v2_5_0.xsd:8576  (collapse, 0..4096)
+            UCI_MessageDefinitions_v2_5_0.xsd:138224 (no facet, 0..4096)
+    UCI 2.6 78eb61b6112c8bffa40820c33124b57787fc5bd9
+            UCI_SecurityMarkings_v2_6_0.xsd:8578  (no facet, 1..1024)
+            UCI_SecurityMarkings_v2_6_0.xsd:8588  (no facet, 1..4096)
+
+  The patterns are written with the SAME XML character references the pinned
+  XSD uses, while `\n` and `\r` are written as the literal two-character
+  sequences the pinned XSD contains. The XML parser expands the former and
+  passes the latter through, so the normalized IR expression is exactly
+  `[ -~\n\r]{m,n}` either way.
+
+  The target namespace deliberately does not end in `string`: a generated Ada
+  child package whose final namespace component is `String` can shadow
+  Standard.String, which is a pre-existing generator hazard outside this
+  fixture's scope.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test:remarks"
+           targetNamespace="urn:test:remarks"
+           elementFormDefault="qualified">
+
+  <!-- The UCI 2.5 collapse profile at 1024. minLength = 0 means Create ("")
+       SUCCEEDS here, and the collapse policy means the STORED value differs
+       from the argument whenever the argument carries XML whitespace. -->
+  <xs:simpleType name="CollapsedRemarks">
+    <xs:annotation>
+      <xs:documentation>String type of 1024 characters in length, restricted to visible characters (0x21-0x7E) and whitespace characters.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:minLength value="0"/>
+      <xs:maxLength value="1024"/>
+      <xs:whiteSpace value="collapse"/>
+      <xs:pattern value="[&#x20;-&#x7E;\n\r]{0,1024}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- The UCI 2.5 collapse profile at 4096. Proves the two maxima genuinely
+       differ: a 2000-character value is valid here and invalid above. -->
+  <xs:simpleType name="CollapsedNarrative">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="0"/>
+      <xs:maxLength value="4096"/>
+      <xs:whiteSpace value="collapse"/>
+      <xs:pattern value="[&#x20;-&#x7E;\n\r]{0,4096}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- The UCI 2.6 preserve profile at 1024. No whiteSpace facet at all, and
+       minLength = 1, so the empty string is INVALID here while it is valid for
+       the collapse declarations above. LF and CR are stored unchanged. -->
+  <xs:simpleType name="PreservedRemarks">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="1024"/>
+      <xs:pattern value="[&#x20;-&#x7E;\n\r]{1,1024}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- The UCI 2.6 preserve profile at 4096, which is the shape shared by both
+       `WhitespaceVisibleString4096Type` and `QueryString4096Type` in 2.6. -->
+  <xs:simpleType name="PreservedNarrative">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="4096"/>
+      <xs:pattern value="[&#x20;-&#x7E;\n\r]{1,4096}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- The UCI 2.5 `QueryString4096Type` shape: preserve policy with a ZERO
+       minimum. This is the entry that proves the release axes are not a
+       product: it pairs 2.5's minimum with 2.6's absent facet. -->
+  <xs:simpleType name="PreservedQuery">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="0"/>
+      <xs:maxLength value="4096"/>
+      <xs:pattern value="[&#x20;-&#x7E;\n\r]{0,4096}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- A transitive member: a restriction of a member that adds no facets.
+       Task 015 resolves the chain, so the effective constraint set reaching
+       the classifier is the collapse 0..1024 profile and this must be equally
+       renderable, at a chain depth the classifier never inspects. -->
+  <xs:simpleType name="DerivedCollapsedRemarks">
+    <xs:restriction base="t:CollapsedRemarks"/>
+  </xs:simpleType>
+
+  <!-- Task 039 and Task 037 carriers, so the older profiles are proven to
+       coexist with the new family in one generated unit. In Ada this puts
+       several `Create (Value : String) return <different type>` overloads in
+       the same package. -->
+  <xs:simpleType name="Callsign">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="256"/>
+      <xs:pattern value="[&#x20;-&#x7E;]{1,256}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="SchemaVersion">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="7"/>
+      <xs:maxLength value="57"/>
+      <xs:pattern value="[0-9]{3}\.[0-9]{1,2}(\.[0-9]{1,2})([a-z]{1,2})?(_[a-zA-Z0-9\-]{1,45})?"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Required, optional, bounded-sequence and unbounded-sequence occurrences
+       of the new profiles. There must be NO profile-specific container path:
+       these compose through exactly the machinery Tasks 023/034/040 built.
+       `Notes` is an ordinary unconstrained String, which must keep its plain
+       representation in every backend. -->
+  <xs:complexType name="Report">
+    <xs:sequence>
+      <xs:element name="Summary" type="t:CollapsedRemarks"/>
+      <xs:element name="Detail" type="t:PreservedRemarks"/>
+      <xs:element name="Addendum" type="t:CollapsedNarrative" minOccurs="0"/>
+      <xs:element name="Query" type="t:PreservedQuery" minOccurs="0"/>
+      <xs:element name="Derived" type="t:DerivedCollapsedRemarks"/>
+      <xs:element name="Reporter" type="t:Callsign"/>
+      <xs:element name="Version" type="t:SchemaVersion"/>
+      <xs:element name="Notes" type="xs:string"/>
+      <!-- Bounded repeated: an optional-from-empty one, and a POSITIVE-minimum
+           one, whose generated Clear must stay absent per Task 040. -->
+      <xs:element name="History" type="t:CollapsedRemarks"
+                  minOccurs="0" maxOccurs="4"/>
+      <xs:element name="Required" type="t:PreservedRemarks"
+                  minOccurs="2" maxOccurs="3"/>
+      <!-- Unbounded repeated. -->
+      <xs:element name="Log" type="t:PreservedNarrative"
+                  minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+</xs:schema>
