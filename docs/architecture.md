@@ -865,9 +865,13 @@ ServiceApiModel
   input endpoint only Subscribe; the wrong one does not exist and fails to
   compile. Mandate and timing are metadata only; nothing is scheduled.
 * **The adapter boundary is the future runtime contract.** Publish hands the
-  adapter the topic and a typed payload; Subscribe hands it the resolved
-  message namespace and local name (structured, never flattened), the topic,
-  the optional group, and a payload-typed handler. The adapter picks its own
+  adapter the resolved message namespace and local name, the topic, and a
+  typed payload; Subscribe hands it the same resolved message identity, the
+  topic, the optional group, and a payload-typed handler. The identity is
+  structured, never flattened, and comes from the plan binding. Publish needs
+  it because OMS JSON keys a message by its global element (OMSC-SPC-013 Rev B
+  §6.1.1), and distinct messages may share one payload type and one topic
+  (Task 048 corrective). The adapter picks its own
   result, error, blocking, threading, and subscription-token policy: Rust
   associated `Output`, C++ `decltype(auto)`, Ada generic formal `Result`.
 * **No runtime in generated code.** No WebSocket, OWP framing, subscription

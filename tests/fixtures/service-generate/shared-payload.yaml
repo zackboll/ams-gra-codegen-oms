@@ -1,0 +1,46 @@
+# SYNTHETIC Task 048 corrective fixture. Authored for this repository only.
+#
+# Selects against shared-payload.xsd, where MessageA and MessageB are two
+# distinct global elements of the SAME type SharedPayload. Both exchanges are
+# OUTPUTS on the SAME topic, so neither the payload type nor the topic can
+# tell the two publications apart:
+#
+#   output-a: MessageA -> SharedPayload, topic common-topic -> Publish only
+#   output-b: MessageB -> SharedPayload, topic common-topic -> Publish only
+#
+# The generated Publish operations must therefore forward the resolved
+# message identity (namespace + local name) to the adapter, taken from the
+# ServicePlan binding.
+contract_version: "0.1"
+
+service:
+  name: shared-payload
+  version: "0.1.0"
+  kind: service
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: report
+    name: Report
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: output-a
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: MessageA
+        topic: common-topic
+        timing:
+          kind: asynchronous
+      - id: output-b
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: MessageB
+        topic: common-topic
+        timing:
+          kind: asynchronous

@@ -613,8 +613,8 @@ pub struct ServiceApiFixedNames {
 /// | --- | --- | --- | --- |
 /// | `publish_adapter` | trait `PublishAdapter` (root) | -- | -- |
 /// | `subscribe_adapter` | trait `SubscribeAdapter` (root) | -- | -- |
-/// | `message_namespace` | `MESSAGE_NAMESPACE` (Subscribe exchange) | `message_namespace` (Subscribe exchange) | `Message_Namespace` (Subscribe exchange) |
-/// | `message_name` | `MESSAGE_NAME` (Subscribe exchange) | `message_name` (Subscribe exchange) | `Message_Name` (Subscribe exchange) |
+/// | `message_namespace` | `MESSAGE_NAMESPACE` (every OMS exchange) | `message_namespace` (every OMS exchange) | `Message_Namespace` (every OMS exchange) |
+/// | `message_name` | `MESSAGE_NAME` (every OMS exchange) | `message_name` (every OMS exchange) | `Message_Name` (every OMS exchange) |
 /// | `has_subscription_group` | -- | -- | `Has_Subscription_Group` (Subscribe exchange) |
 /// | `subscription_group` | `SUBSCRIPTION_GROUP` (Subscribe exchange) | `subscription_group` (Subscribe exchange) | `Subscription_Group` (Subscribe exchange) |
 /// | `handler` | -- | -- | interface `Handler` (Subscribe exchange) |
@@ -724,7 +724,12 @@ impl ServiceApiFacadeNames {
     /// emission order, after the Task 047 metadata and `Payload`.
     fn exchange_names(&self, operation: ServiceApiOmsOperation) -> Vec<&'static str> {
         match operation {
-            ServiceApiOmsOperation::Publish => vec![self.publish],
+            // Task 048 corrective: Publish carries the resolved global
+            // message identity too, so both constants are emitted (and
+            // claimed) in every OMS exchange scope, before the operation.
+            ServiceApiOmsOperation::Publish => {
+                vec![self.message_namespace, self.message_name, self.publish]
+            }
             ServiceApiOmsOperation::Subscribe => [
                 Some(self.message_namespace),
                 Some(self.message_name),
@@ -2200,6 +2205,27 @@ mod tests {
             assert!(!subscribe.contains(&facade.publish), "{language:?}");
             assert!(subscribe.contains(&facade.subscription_group));
             assert!(!publish.contains(&facade.subscription_group));
+            // Task 048 corrective: the resolved global message identity is
+            // emitted for BOTH operations, in the same order, before the
+            // operation itself.
+            for names in [&publish, &subscribe] {
+                let namespace = names.iter().position(|n| *n == facade.message_namespace);
+                let name = names.iter().position(|n| *n == facade.message_name);
+                let operation = names
+                    .iter()
+                    .position(|n| *n == facade.publish || *n == facade.subscribe);
+                assert!(namespace.is_some() && name.is_some(), "{language:?}");
+                assert!(namespace < name && name < operation, "{language:?}");
+            }
+            assert_eq!(
+                publish,
+                [
+                    facade.message_namespace,
+                    facade.message_name,
+                    facade.publish
+                ],
+                "{language:?}"
+            );
             let root = facade.root_names();
             match language {
                 BackendLanguage::Rust => {

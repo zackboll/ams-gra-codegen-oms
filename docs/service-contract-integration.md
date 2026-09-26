@@ -847,9 +847,12 @@ ServicePlan -> ServiceApiModel
 - **Only OMS Message exchanges** get an operation. A Data Transfer, Special
   Signal, Security Exchange, or Non-OMS Message keeps its Task 047 metadata.
 - **Routing comes from the contract, not the caller.** The adapter receives
-  the topic (Publish) or the resolved message namespace + local name, topic,
-  and optional group (Subscribe). The `QualifiedName` is never flattened; the
-  LA-CAL message-name spelling is Task 049's.
+  the resolved message namespace + local name and the topic (Publish), plus
+  the optional group (Subscribe). The `QualifiedName` is never flattened; the
+  LA-CAL message-name spelling is Task 049's. Publish carries the identity
+  because OMS JSON names a message by its global element, not its type
+  (OMSC-SPC-013 Rev B §6.1.1), and two messages may share a payload type and
+  a topic (Task 048 corrective).
 - **READY still covers everything.** The new names are part of the shared
   service-API name analysis and model/wrapper artifact preflight, so
   `service-check READY` implies the façade generates. The Ada wrapper stays a

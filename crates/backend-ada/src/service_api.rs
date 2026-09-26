@@ -164,18 +164,53 @@ fn operation(
         ServiceApiOmsOperation::Publish => {
             let publish_to = required(facade.publish_hook, "publish hook")?;
             let publish = required(facade.publish_operation, "publish operation")?;
+            let hook_namespace = required(
+                parameters.hook_message_namespace,
+                "hook message namespace parameter",
+            )?;
+            let hook_name = required(parameters.hook_message_name, "hook message name parameter")?;
             let publisher = facade.publish;
+            let (namespace, name) = (facade.message_namespace, facade.message_name);
+            // Every OMS endpoint carries its resolved global message identity,
+            // taken verbatim from the binding.
+            let message = binding.message_name();
+            output.push('\n');
+            constants(
+                output,
+                3,
+                &[
+                    (namespace, &message.namespace_uri),
+                    (name, &message.local_name),
+                ],
+            );
+            let profile = [
+                (hook_namespace, "String"),
+                (hook_name, "String"),
+                (hook_topic, "String"),
+                (value, payload),
+            ];
+            let width = profile
+                .iter()
+                .map(|(name, _)| name.len())
+                .max()
+                .unwrap_or(0);
+            let hook_profile = profile
+                .iter()
+                .map(|(name, type_name)| format!("{name:<width$} : {type_name}"))
+                .collect::<Vec<_>>()
+                .join(";\n               ");
             writeln!(
                 output,
                 "\n         --  Bind this output endpoint to a runtime hook. {publish} supplies the\n\
-                 \x20        --  topic; the runtime chooses {result}.\n\
+                 \x20        --  message identity and topic; the runtime chooses {result}.\n\
                  \x20        generic\n\
                  \x20           type {result} (<>) is limited private;\n\
                  \x20           with function {publish_to}\n\
-                 \x20             ({hook_topic} : String; {value} : {payload}) return {result};\n\
+                 \x20             ({hook_profile})\n\
+                 \x20              return {result};\n\
                  \x20        package {publisher} is\n\
                  \x20           function {publish} ({value} : {payload}) return {result} is\n\
-                 \x20             ({publish_to} ({topic}, {value}));\n\
+                 \x20             ({publish_to} ({namespace}, {name}, {topic}, {value}));\n\
                  \x20        end {publisher};"
             )
             .expect("writing to String cannot fail");

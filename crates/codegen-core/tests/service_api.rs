@@ -610,3 +610,66 @@ fn non_oms_kinds_have_no_operation() {
         assert!(exchange.oms_binding().is_none(), "{}", exchange.id());
     }
 }
+
+// ---------------------------------------------------------------------
+// Task 048 corrective: global element identity != payload type identity
+// ---------------------------------------------------------------------
+
+/// OMSC-SPC-013 Rev B §6.1.1 (Global Element Declarations): the OMS JSON
+/// text of a global element is an object with exactly ONE member whose name
+/// is derived from the ELEMENT's target namespace and name. Two distinct
+/// global messages of one payload type therefore serialize differently, so
+/// a Publish boundary carrying only `topic + payload` loses information.
+///
+/// This is the same fact `projection_keeps_only_selected_messages`
+/// (tests/service_generation.rs) relies on. Here both messages are SELECTED,
+/// as two outputs on one topic: the lowered bindings must still disagree on
+/// message identity while agreeing on payload type AND topic, and that
+/// identity must be the plan's structured `QualifiedName` (the value every
+/// generated Publish now forwards). No LA-CAL spelling is produced here.
+#[test]
+fn global_message_identity_is_not_payload_or_topic_identity() {
+    let mut schema = schema();
+    schema.messages.push(message(
+        "ReportAlias",
+        TypeRef::named(qualified("PayloadA")),
+    ));
+    let functions = function(
+        "f",
+        "F",
+        &[
+            oms("out-a", "output", "mandatory", "ReportA", "shared.topic"),
+            oms(
+                "out-b",
+                "output",
+                "mandatory",
+                "ReportAlias",
+                "shared.topic",
+            ),
+        ]
+        .concat(),
+    );
+    let plan = resolve_service_plan(&contract(&functions), &schema).expect("plan");
+    let projection = project_service_generation_schema(&plan, &schema, CLOSED).expect("project");
+    // One payload type, two global messages.
+    assert_eq!(projection.schema().types.len(), 1);
+    assert_eq!(projection.schema().messages.len(), 2);
+    let model = build_service_api_model(&plan, projection.schema(), CLOSED).expect("lower");
+
+    use ams_gra_oms_codegen_core::ServiceApiOmsOperation::Publish;
+    let [a, b] = [0, 1].map(|index| {
+        model.functions()[0].exchanges()[index]
+            .oms_binding()
+            .expect("OMS binding")
+    });
+    assert_eq!((a.operation(), b.operation()), (Publish, Publish));
+    assert_eq!(a.payload_type(), b.payload_type());
+    assert_eq!(a.payload_name(), b.payload_name());
+    assert_eq!(a.topic(), b.topic());
+    assert_ne!(a.message_name(), b.message_name());
+    assert_eq!(a.message_name(), &qualified("ReportA"));
+    assert_eq!(b.message_name(), &qualified("ReportAlias"));
+    // Structured: namespace and local name stay separate components.
+    assert_eq!(b.message_name().namespace_uri, NS);
+    assert_eq!(b.message_name().local_name, "ReportAlias");
+}

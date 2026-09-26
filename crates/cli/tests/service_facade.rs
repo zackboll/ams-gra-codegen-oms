@@ -631,14 +631,15 @@ struct Token(u32);
 
 #[derive(Default)]
 struct Fake {
-    published: Vec<(&'static str, i64)>,
+    published: Vec<(&'static str, &'static str, &'static str, i64)>,
     routes: Vec<(&'static str, &'static str, &'static str, Option<&'static str>)>,
 }
 
 impl PublishAdapter<PayloadA> for Fake {
     type Output = Result<Sent, String>;
-    fn publish(&mut self, topic: &'static str, value: &PayloadA) -> Self::Output {
-        self.published.push((topic, value.shared.count.get()));
+    fn publish(&mut self, namespace: &'static str, name: &'static str, topic: &'static str,
+               value: &PayloadA) -> Self::Output {
+        self.published.push((namespace, name, topic, value.shared.count.get()));
         Ok(Sent::Ok)
     }
 }
@@ -678,7 +679,13 @@ fn main() {
     ]);
     assert_eq!(track::exchange_out_mandatory::publish(&mut fake, &sample(5)), Ok(Sent::Ok));
     assert_eq!(track::exchange_out_optional::publish(&mut fake, &sample(6)), Ok(Sent::Ok));
-    assert_eq!(fake.published, vec![("track.out.mandatory", 5), ("track.out.optional", 6)]);
+    // Publish now carries the resolved global message identity as well.
+    assert_eq!(fake.published, vec![
+        ("urn:test", "MessageA", "track.out.mandatory", 5),
+        ("urn:test", "MessageA", "track.out.optional", 6),
+    ]);
+    assert_eq!(track::exchange_out_mandatory::MESSAGE_NAMESPACE, "urn:test");
+    assert_eq!(track::exchange_out_mandatory::MESSAGE_NAME, "MessageA");
     // Task 047 metadata is still there, unchanged.
     assert_eq!(track::exchange_in_optional::MANDATE, "optional");
     assert_eq!(track::exchange_out_mandatory::DIRECTION, "output");
@@ -742,8 +749,10 @@ struct Token { int id; };
 
 struct Fake {
     std::vector<std::string> log;
-    int publish(std::string_view topic, const PayloadA& value) {
-        log.push_back("PUB " + std::string(topic) + " " + std::to_string(value.shared.count.value()));
+    int publish(std::string_view ns, std::string_view name, std::string_view topic,
+                const PayloadA& value) {
+        log.push_back("PUB " + std::string(ns) + " " + std::string(name) + " " +
+                      std::string(topic) + " " + std::to_string(value.shared.count.value()));
         return 200;
     }
     template <typename Payload, typename Handler>
@@ -776,8 +785,10 @@ int main() {
     assert(fake.log[1] == "SUB urn:test MessageA track.in.optional pool 7: \"hot\"");
     assert(track::exchange_out_mandatory::publish(fake, sample(5)) == 200);
     assert(track::exchange_out_optional::publish(fake, sample(6)) == 200);
-    assert(fake.log[2] == "PUB track.out.mandatory 5");
-    assert(fake.log[3] == "PUB track.out.optional 6");
+    assert(fake.log[2] == "PUB urn:test MessageA track.out.mandatory 5");
+    assert(fake.log[3] == "PUB urn:test MessageA track.out.optional 6");
+    static_assert(track::exchange_out_mandatory::message_namespace == "urn:test");
+    static_assert(track::exchange_out_mandatory::message_name == "MessageA");
     static_assert(track::exchange_out_mandatory::direction == "output");
 #if defined(NEG_PUBLISH_ON_INPUT)
     track::exchange_in_mandatory::publish(fake, sample(1));
@@ -829,8 +840,11 @@ package Fake_Hooks is
    Log_Line : array (1 .. 4) of String (1 .. 64) := (others => (others => ' '));
    Log_Size : Natural := 0;
 
-   function Publish_To (Topic : String; Value : Track.Exchange_Out_Mandatory.Payload)
-     return Status;
+   function Publish_To
+     (Message_Namespace : String;
+      Message_Name      : String;
+      Topic             : String;
+      Value             : Track.Exchange_Out_Mandatory.Payload) return Status;
    function Subscribe_M
      (Message_Namespace      : String;
       Message_Name           : String;
@@ -865,10 +879,14 @@ package body Fake_Hooks is
      return String is
      (Namespace & "|" & Name & "|" & Topic & "|" & (if Has_Group then Group else "<none>"));
 
-   function Publish_To (Topic : String; Value : Track.Exchange_Out_Mandatory.Payload)
-     return Status is
+   function Publish_To
+     (Message_Namespace : String;
+      Message_Name      : String;
+      Topic             : String;
+      Value             : Track.Exchange_Out_Mandatory.Payload) return Status is
    begin
-      Record_Line ("PUB|" & Topic & "|" & Long_Long_Integer'Image (Value.Shared.Count));
+      Record_Line ("PUB|" & Message_Namespace & "|" & Message_Name & "|" & Topic & "|"
+                   & Long_Long_Integer'Image (Value.Shared.Count));
       return Accepted;
    end Publish_To;
 
@@ -951,8 +969,10 @@ fn ada_client(negative: Option<&str>) -> String {
          \x20    or else not Logged (2, \"urn:test|MessageA|track.in.optional|pool 7: \"\"hot\"\"\")\n\
          \x20    or else Pub_M.Publish (Sample) /= Accepted\n\
          \x20    or else Pub_O.Publish (Sample) /= Accepted\n\
-         \x20    or else not Logged (3, \"PUB|track.out.mandatory| 5\")\n\
-         \x20    or else not Logged (4, \"PUB|track.out.optional| 5\")\n\
+         \x20    or else not Logged (3, \"PUB|urn:test|MessageA|track.out.mandatory| 5\")\n\
+         \x20    or else not Logged (4, \"PUB|urn:test|MessageA|track.out.optional| 5\")\n\
+         \x20    or else not Logged (4, \"PUB|\" & Track.Exchange_Out_Optional.Message_Namespace\n\
+         \x20      & \"|\" & Track.Exchange_Out_Optional.Message_Name & \"|track.out.optional| 5\")\n\
          \x20  then\n\
          \x20     raise Program_Error;\n\
          \x20  end if;\n\
@@ -1202,25 +1222,446 @@ fn task048_upstream_service_status_is_publish_subscribe_publish() {
         assert_in_order(&source, &in_order, language);
         assert_eq!(source.matches(publish).count(), 2, "{language}");
         assert_eq!(source.matches(subscribe).count(), 1, "{language}");
+        // Task 048 corrective: each fake adapter records the exact global
+        // message identity of both outputs (and of the input), in contract
+        // order Publish, Subscribe, Publish.
         match language {
-            "rust" => rust_library(&root),
+            "rust" => {
+                rust_library(&root);
+                let probe = rust_consumer(&root, "client", RUST_SERVICE_STATUS, None);
+                assert_success(&probe, "Rust service-status consumer");
+                run_binary(&root, "client", "Rust service-status consumer run");
+            }
             "cpp" => {
-                let probe = cpp_compile(
-                    &root,
-                    "client",
-                    "#include \"service_api.hpp\"\nint main() { return 0; }\n",
-                    None,
-                );
-                assert_success(&probe, "C++ service-status compile");
+                let probe = cpp_compile(&root, "client", CPP_SERVICE_STATUS, None);
+                assert_success(&probe, "C++ service-status consumer");
+                run_binary(&root, "client", "C++ service-status consumer run");
             }
             _ => {
-                if gnat_available() {
-                    ada_spec(&root);
+                if !gnat_available() {
+                    continue;
                 }
+                ada_spec(&root);
+                std::fs::write(root.join("client.adb"), ADA_SERVICE_STATUS).expect("write");
+                assert_success(
+                    &ada_build(&root, "client.adb"),
+                    "Ada service-status consumer",
+                );
+                run_binary(&root, "client", "Ada service-status consumer run");
             }
         }
     }
 }
+
+const RUST_SERVICE_STATUS: &str = r#"
+use service_api::model::{ServiceStatusDataRequestMT, ServiceStatusDataRequestStatusMT, ServiceStatusMT};
+use service_api::service_api::function_service_status as status;
+use service_api::service_api::{PublishAdapter, SubscribeAdapter};
+
+const UCI: &str = "https://www.vdl.afrl.af.mil/programs/oam";
+
+#[derive(Default)]
+struct Fake(Vec<String>);
+impl PublishAdapter<ServiceStatusMT> for Fake {
+    type Output = ();
+    fn publish(&mut self, ns: &'static str, name: &'static str, topic: &'static str,
+               value: &ServiceStatusMT) -> Self::Output {
+        self.0.push(format!("PUB|{ns}|{name}|{topic}|{}", value.state));
+    }
+}
+impl PublishAdapter<ServiceStatusDataRequestStatusMT> for Fake {
+    type Output = ();
+    fn publish(&mut self, ns: &'static str, name: &'static str, topic: &'static str,
+               value: &ServiceStatusDataRequestStatusMT) -> Self::Output {
+        self.0.push(format!("PUB|{ns}|{name}|{topic}|{}", value.requestid));
+    }
+}
+impl<H: FnMut(&ServiceStatusDataRequestMT)> SubscribeAdapter<ServiceStatusDataRequestMT, H> for Fake {
+    type Output = ();
+    fn subscribe(&mut self, ns: &'static str, name: &'static str, topic: &'static str,
+                 group: Option<&'static str>, mut handler: H) -> Self::Output {
+        self.0.push(format!("SUB|{ns}|{name}|{topic}|{}", group.unwrap_or("<none>")));
+        handler(&ServiceStatusDataRequestMT { requestid: "r1".to_owned() });
+    }
+}
+
+fn main() {
+    let mut fake = Fake::default();
+    let mut request = String::new();
+    status::exchange_service_status_output::publish(&mut fake, &ServiceStatusMT { state: "NORMAL".to_owned() });
+    status::exchange_service_status_data_request_input::subscribe(&mut fake, |r: &ServiceStatusDataRequestMT| {
+        request = r.requestid.clone();
+    });
+    status::exchange_service_status_data_request_status_output::publish(
+        &mut fake,
+        &ServiceStatusDataRequestStatusMT { requestid: request.clone(), accepted: true },
+    );
+    assert_eq!(fake.0, vec![
+        format!("PUB|{UCI}|ServiceStatus|ServiceStatus|NORMAL"),
+        format!("SUB|{UCI}|ServiceStatusDataRequest|ServiceStatusDataRequest|<none>"),
+        format!("PUB|{UCI}|ServiceStatusDataRequestStatus|ServiceStatusDataRequestStatus|r1"),
+    ]);
+}
+"#;
+
+const CPP_SERVICE_STATUS: &str = r#"
+#include "service_api.hpp"
+#include <cassert>
+#include <optional>
+#include <string>
+#include <type_traits>
+#include <vector>
+
+namespace status = service_api::function_service_status;
+namespace oam = ::programs::oam;
+
+std::string route(std::string_view ns, std::string_view name, std::string_view topic) {
+    return std::string(ns) + "|" + std::string(name) + "|" + std::string(topic) + "|";
+}
+
+struct Fake {
+    std::vector<std::string> log;
+    void publish(std::string_view ns, std::string_view name, std::string_view topic,
+                 const oam::ServiceStatusMT& value) {
+        log.push_back("PUB|" + route(ns, name, topic) + value.state);
+    }
+    void publish(std::string_view ns, std::string_view name, std::string_view topic,
+                 const oam::ServiceStatusDataRequestStatusMT& value) {
+        log.push_back("PUB|" + route(ns, name, topic) + value.requestid);
+    }
+    template <typename Payload, typename Handler>
+    void subscribe(std::string_view ns, std::string_view name, std::string_view topic,
+                   std::optional<std::string_view> group, Handler&& handler) {
+        static_assert(std::is_same_v<Payload, oam::ServiceStatusDataRequestMT>);
+        log.push_back("SUB|" + route(ns, name, topic) + std::string(group.value_or("<none>")));
+        handler(Payload{"r1"});
+    }
+};
+
+int main() {
+    const std::string uci = "https://www.vdl.afrl.af.mil/programs/oam";
+    Fake fake;
+    std::string request;
+    status::exchange_service_status_output::publish(fake, oam::ServiceStatusMT{"NORMAL"});
+    status::exchange_service_status_data_request_input::subscribe(
+        fake, [&](const oam::ServiceStatusDataRequestMT& r) { request = r.requestid; });
+    status::exchange_service_status_data_request_status_output::publish(
+        fake, oam::ServiceStatusDataRequestStatusMT{request, true});
+    assert(fake.log.size() == 3);
+    assert(fake.log[0] == "PUB|" + uci + "|ServiceStatus|ServiceStatus|NORMAL");
+    assert(fake.log[1] == "SUB|" + uci + "|ServiceStatusDataRequest|ServiceStatusDataRequest|<none>");
+    assert(fake.log[2] ==
+           "PUB|" + uci + "|ServiceStatusDataRequestStatus|ServiceStatusDataRequestStatus|r1");
+    return 0;
+}
+"#;
+
+const ADA_SERVICE_STATUS: &str = r#"with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
+with Service_API;
+procedure Client is
+   package Status renames Service_API.Function_Service_Status;
+   package Out_S renames Status.Exchange_Service_Status_Output;
+   package In_R renames Status.Exchange_Service_Status_Data_Request_Input;
+   package Out_R renames Status.Exchange_Service_Status_Data_Request_Status_Output;
+
+   UCI  : constant String := "https://www.vdl.afrl.af.mil/programs/oam";
+   Log  : array (1 .. 3) of Unbounded_String;
+   Size : Natural := 0;
+
+   procedure Put (Text : String) is
+   begin
+      Size := Size + 1;
+      Log (Size) := To_Unbounded_String (Text);
+   end Put;
+
+   package Handlers is
+      type Recorder is new In_R.Handler with record
+         Request : Unbounded_String;
+      end record;
+      overriding procedure Handle (Self : in out Recorder; Message : In_R.Payload);
+   end Handlers;
+   package body Handlers is
+      overriding procedure Handle (Self : in out Recorder; Message : In_R.Payload) is
+      begin
+         Self.Request := Message.RequestID;
+      end Handle;
+   end Handlers;
+
+   function Publish_Status
+     (Message_Namespace : String;
+      Message_Name      : String;
+      Topic             : String;
+      Value             : Out_S.Payload) return Boolean is
+   begin
+      Put ("PUB|" & Message_Namespace & "|" & Message_Name & "|" & Topic & "|"
+           & To_String (Value.State));
+      return True;
+   end Publish_Status;
+
+   function Publish_Request_Status
+     (Message_Namespace : String;
+      Message_Name      : String;
+      Topic             : String;
+      Value             : Out_R.Payload) return Boolean is
+   begin
+      Put ("PUB|" & Message_Namespace & "|" & Message_Name & "|" & Topic & "|"
+           & To_String (Value.RequestID));
+      return Value.Accepted;
+   end Publish_Request_Status;
+
+   function Subscribe_Request
+     (Message_Namespace      : String;
+      Message_Name           : String;
+      Topic                  : String;
+      Has_Subscription_Group : Boolean;
+      Subscription_Group     : String;
+      Receiver               : not null access In_R.Handler'Class) return Boolean is
+   begin
+      Put ("SUB|" & Message_Namespace & "|" & Message_Name & "|" & Topic & "|"
+           & (if Has_Subscription_Group then Subscription_Group else "<none>"));
+      Receiver.Handle ((RequestID => To_Unbounded_String ("r1")));
+      return True;
+   end Subscribe_Request;
+
+   package Pub_S is new Out_S.Publisher (Boolean, Publish_Status);
+   package Sub_R is new In_R.Subscriber (Boolean, Subscribe_Request);
+   package Pub_R is new Out_R.Publisher (Boolean, Publish_Request_Status);
+
+   R : aliased Handlers.Recorder;
+begin
+   if not Pub_S.Publish ((State => To_Unbounded_String ("NORMAL")))
+     or else not Sub_R.Subscribe (R'Access)
+     or else not Pub_R.Publish ((RequestID => R.Request, Accepted => True))
+     or else Size /= 3
+     or else To_String (Log (1)) /= "PUB|" & UCI & "|ServiceStatus|ServiceStatus|NORMAL"
+     or else To_String (Log (2))
+       /= "SUB|" & UCI & "|ServiceStatusDataRequest|ServiceStatusDataRequest|<none>"
+     or else To_String (Log (3))
+       /= "PUB|" & UCI & "|ServiceStatusDataRequestStatus|ServiceStatusDataRequestStatus|r1"
+   then
+      raise Program_Error;
+   end if;
+end Client;
+"#;
+
+// ---------------------------------------------------------------------
+// Task 048 corrective: global message identity on Publish
+// ---------------------------------------------------------------------
+
+/// The core corrective regression. Two DISTINCT global messages share ONE
+/// payload type (`MessageA -> SharedPayload`, `MessageB -> SharedPayload`)
+/// and both outputs share ONE topic (`common-topic`). Neither the payload
+/// type nor the topic can therefore recover which global element a value
+/// must be published as (OMSC-SPC-013 Rev B §6.1.1 keys the OMS JSON object
+/// by the element, not the type). Each generated Publish must hand its
+/// adapter the endpoint's own resolved message identity; the application
+/// still supplies only the payload.
+#[test]
+fn task048_publish_carries_message_identity_not_payload_or_topic() {
+    let schema = fixture("shared-payload.xsd");
+    let contract = fixture("shared-payload.yaml");
+    for (language, file) in LANGUAGES {
+        let check = run("service-check", &schema, &contract, language, None);
+        assert_success(&check, "shared-payload service-check");
+        assert!(String::from_utf8_lossy(&check.stdout).ends_with("status: READY\n"));
+
+        let root = generate_with(&schema, &contract, language, "shared-payload");
+        let model = model_files(&root)
+            .into_iter()
+            .map(|(_, source)| source)
+            .collect::<String>();
+        let declaration = match language {
+            "ada" => "type SharedPayload is record",
+            "rust" => "pub struct SharedPayload {",
+            _ => "struct SharedPayload {",
+        };
+        assert_eq!(model.matches(declaration).count(), 1, "{language}");
+
+        let source = wrapper(&root, file);
+        assert_eq!(source.matches(publish_marker(language)).count(), 2);
+        assert_eq!(source.matches(subscribe_marker(language)).count(), 0);
+        let (name_constant, topic_constant) = match language {
+            "rust" => (
+                "pub const MESSAGE_NAME: &str = ",
+                "pub const TOPIC: &str = ",
+            ),
+            "cpp" => (
+                "inline constexpr std::string_view message_name = ",
+                "inline constexpr std::string_view topic = ",
+            ),
+            _ => (
+                "Message_Name      : constant String := ",
+                "Topic     : constant String := ",
+            ),
+        };
+        for (snake, title, message) in [
+            ("output_a", "Output_A", "MessageA"),
+            ("output_b", "Output_B", "MessageB"),
+        ] {
+            let block = exchange_block(&source, language, snake, title);
+            assert!(
+                block.contains(publish_marker(language)),
+                "{language} {snake}"
+            );
+            assert!(
+                !block.contains(subscribe_marker(language)),
+                "{language} {snake}"
+            );
+            assert!(
+                block.contains(&format!("{topic_constant}\"common-topic\";")),
+                "{language} {snake}:\n{block}"
+            );
+            assert!(
+                block.contains(&format!("{name_constant}\"{message}\";")),
+                "{language} {snake}:\n{block}"
+            );
+            assert!(block.contains("\"urn:shared\""), "{language} {snake}");
+            // Structured, never pre-formatted into an LA-CAL spelling.
+            assert!(!block.contains("{urn:shared}"), "{language} {snake}");
+        }
+
+        match language {
+            "rust" => {
+                rust_library(&root);
+                let probe = rust_consumer(&root, "client", RUST_SHARED_PAYLOAD, None);
+                assert_success(&probe, "Rust shared-payload consumer");
+                run_binary(&root, "client", "Rust shared-payload consumer run");
+            }
+            "cpp" => {
+                let probe = cpp_compile(&root, "client", CPP_SHARED_PAYLOAD, None);
+                assert_success(&probe, "C++ shared-payload consumer");
+                run_binary(&root, "client", "C++ shared-payload consumer run");
+            }
+            _ => {
+                if !gnat_available() {
+                    continue;
+                }
+                ada_spec(&root);
+                std::fs::write(root.join("client.adb"), ADA_SHARED_PAYLOAD).expect("write");
+                assert_success(
+                    &ada_build(&root, "client.adb"),
+                    "Ada shared-payload consumer",
+                );
+                run_binary(&root, "client", "Ada shared-payload consumer run");
+            }
+        }
+    }
+}
+
+const RUST_SHARED_PAYLOAD: &str = r#"
+use service_api::model::{BoundedI64, SharedPayload};
+use service_api::service_api::function_report as report;
+use service_api::service_api::PublishAdapter;
+
+#[derive(Default)]
+struct Fake(Vec<(&'static str, &'static str, &'static str, i64)>);
+impl PublishAdapter<SharedPayload> for Fake {
+    type Output = usize;
+    fn publish(&mut self, ns: &'static str, name: &'static str, topic: &'static str,
+               value: &SharedPayload) -> usize {
+        self.0.push((ns, name, topic, value.count.get()));
+        self.0.len()
+    }
+}
+
+fn main() {
+    // One value of the one shared payload type, published through both.
+    let payload = SharedPayload { count: BoundedI64::new(7).expect("in range") };
+    let a: &report::exchange_output_a::Payload = &payload;
+    let b: &report::exchange_output_b::Payload = &payload;
+    assert_eq!(report::exchange_output_a::TOPIC, report::exchange_output_b::TOPIC);
+    let mut fake = Fake::default();
+    assert_eq!(report::exchange_output_a::publish(&mut fake, a), 1);
+    assert_eq!(report::exchange_output_b::publish(&mut fake, b), 2);
+    assert_eq!(fake.0, vec![
+        ("urn:shared", "MessageA", "common-topic", 7),
+        ("urn:shared", "MessageB", "common-topic", 7),
+    ]);
+    assert_eq!(report::exchange_output_a::MESSAGE_NAMESPACE, "urn:shared");
+    assert_eq!(report::exchange_output_b::MESSAGE_NAME, "MessageB");
+}
+"#;
+
+const CPP_SHARED_PAYLOAD: &str = r#"
+#include "service_api.hpp"
+#include <cassert>
+#include <cstddef>
+#include <string>
+#include <type_traits>
+#include <utility>
+#include <vector>
+
+namespace report = service_api::function_report;
+using ::urn::shared::SharedPayload;
+
+static_assert(std::is_same_v<report::exchange_output_a::Payload, SharedPayload>);
+static_assert(std::is_same_v<report::exchange_output_b::Payload, SharedPayload>);
+static_assert(report::exchange_output_a::topic == report::exchange_output_b::topic);
+static_assert(report::exchange_output_a::message_name == "MessageA");
+static_assert(report::exchange_output_b::message_name == "MessageB");
+
+struct Fake {
+    std::vector<std::string> log;
+    std::size_t publish(std::string_view ns, std::string_view name, std::string_view topic,
+                        const SharedPayload& value) {
+        log.push_back(std::string(ns) + "|" + std::string(name) + "|" + std::string(topic) + "|" +
+                      std::to_string(value.count.value()));
+        return log.size();
+    }
+};
+
+int main() {
+    using Count = decltype(std::declval<SharedPayload&>().count);
+    const SharedPayload payload{*Count::create(7)};
+    Fake fake;
+    const std::size_t first = report::exchange_output_a::publish(fake, payload);
+    const std::size_t second = report::exchange_output_b::publish(fake, payload);
+    assert(first == 1 && second == 2);
+    assert(fake.log[0] == "urn:shared|MessageA|common-topic|7");
+    assert(fake.log[1] == "urn:shared|MessageB|common-topic|7");
+    return 0;
+}
+"#;
+
+const ADA_SHARED_PAYLOAD: &str = r#"with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
+with Service_API;
+procedure Client is
+   package Report renames Service_API.Function_Report;
+   package Out_A renames Report.Exchange_Output_A;
+   package Out_B renames Report.Exchange_Output_B;
+
+   Log  : array (1 .. 2) of Unbounded_String;
+   Size : Natural := 0;
+
+   --  One hook serves both endpoints: they share one payload type, so only
+   --  the forwarded message identity tells the publications apart.
+   function Publish_To
+     (Message_Namespace : String;
+      Message_Name      : String;
+      Topic             : String;
+      Value             : Out_A.Payload) return Natural is
+   begin
+      Size := Size + 1;
+      Log (Size) := To_Unbounded_String
+        (Message_Namespace & "|" & Message_Name & "|" & Topic & "|"
+         & Long_Long_Integer'Image (Value.Count));
+      return Size;
+   end Publish_To;
+
+   package Pub_A is new Out_A.Publisher (Natural, Publish_To);
+   package Pub_B is new Out_B.Publisher (Natural, Publish_To);
+
+   Sample : constant Out_B.Payload := (Count => 7);
+begin
+   if Pub_A.Publish (Sample) /= 1
+     or else Pub_B.Publish (Sample) /= 2
+     or else To_String (Log (1)) /= "urn:shared|MessageA|common-topic| 7"
+     or else To_String (Log (2)) /= "urn:shared|MessageB|common-topic| 7"
+   then
+      raise Program_Error;
+   end if;
+end Client;
+"#;
 
 /// `service-check` stays read-only and READY, and ordinary `generate` still
 /// emits no service API or façade.

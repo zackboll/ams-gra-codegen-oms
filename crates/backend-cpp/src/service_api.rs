@@ -168,24 +168,28 @@ fn operation(
     let adapter_type = required(parameters.adapter_type, "adapter type parameter")?;
     let (value, handler) = (parameters.value, parameters.handler);
     let (topic, payload) = (fixed.topic, fixed.payload);
+    // Every OMS endpoint carries its resolved global message identity, taken
+    // verbatim from the binding (never from the payload, topic, or type name).
+    let message = binding.message_name();
+    output.push('\n');
+    constant(output, message_namespace, &message.namespace_uri);
+    constant(output, message_name, &message.local_name);
     match binding.operation() {
         ServiceApiOmsOperation::Publish => {
             writeln!(
                 output,
-                "\n// Publish one {payload} on this endpoint's topic through `{adapter}`.\n\
+                "\n// Publish one {payload} on this endpoint's topic through `{adapter}`,\n\
+                 // supplying the resolved message identity and topic.\n\
                  template <typename {adapter_type}>\n\
                  decltype(auto) {publish}({adapter_type}&& {adapter}, const {payload}& {value}) {{\n\
-                 \x20   return std::forward<{adapter_type}>({adapter}).{publish}({topic}, {value});\n\
+                 \x20   return std::forward<{adapter_type}>({adapter}).{publish}(\n\
+                 \x20       {message_namespace}, {message_name}, {topic}, {value});\n\
                  }}"
             )
             .expect("writing to String cannot fail");
         }
         ServiceApiOmsOperation::Subscribe => {
             let handler_type = required(parameters.handler_type, "handler type parameter")?;
-            let message = binding.message_name();
-            output.push('\n');
-            constant(output, message_namespace, &message.namespace_uri);
-            constant(output, message_name, &message.local_name);
             let group = binding.subscription_group().map_or_else(
                 || "std::nullopt".to_owned(),
                 |group| format!("std::string_view(\"{}\")", string_literal_body(group)),

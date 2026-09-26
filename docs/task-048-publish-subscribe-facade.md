@@ -144,7 +144,7 @@ operations with different adapter hooks:
 
 | | Generated façade supplies | Application supplies | Future runtime owns |
 | --- | --- | --- | --- |
-| output (Publish) | topic | typed Payload | JSON encoding, PUB framing, connection, errors |
+| output (Publish) | message namespace + local name, topic (corrective, §11) | typed Payload | QName→OMS JSON member name, JSON encoding, PUB framing, connection, errors |
 | input (Subscribe) | message namespace + local name, topic, optional group | typed handler | subscription ID, QName→OWP spelling, SUB/UNSUB/MSG framing, JSON decoding, dispatch, errors |
 
 The resolved message identity stays **structured** end to end: the model
@@ -236,7 +236,13 @@ pub mod service_api {
 
     pub trait PublishAdapter<P> {
         type Output;
-        fn publish(&mut self, topic: &'static str, value: &P) -> Self::Output;
+        fn publish(
+            &mut self,
+            message_namespace: &'static str,
+            message_name: &'static str,
+            topic: &'static str,
+            value: &P,
+        ) -> Self::Output;
     }
 
     pub trait SubscribeAdapter<P, H> {
@@ -271,11 +277,14 @@ An input exchange (after its unchanged Task 047 metadata and `Payload`):
 An output exchange:
 
 ```rust
+            pub const MESSAGE_NAMESPACE: &str = "urn:test";
+            pub const MESSAGE_NAME: &str = "MessageA";
+
             pub fn publish<A>(adapter: &mut A, value: &Payload) -> A::Output
             where
                 A: super::super::PublishAdapter<Payload> + ?Sized,
             {
-                adapter.publish(TOPIC, value)
+                adapter.publish(MESSAGE_NAMESPACE, MESSAGE_NAME, TOPIC, value)
             }
 ```
 
@@ -313,13 +322,18 @@ decltype(auto) subscribe(Adapter&& adapter, Handler&& handler) {
 An output exchange:
 
 ```cpp
+inline constexpr std::string_view message_namespace = "urn:test";
+inline constexpr std::string_view message_name = "MessageA";
+
 template <typename Adapter>
 decltype(auto) publish(Adapter&& adapter, const Payload& value) {
-    return std::forward<Adapter>(adapter).publish(topic, value);
+    return std::forward<Adapter>(adapter).publish(
+        message_namespace, message_name, topic, value);
 }
 ```
 
-The adapter must provide `publish(std::string_view topic, const P&)` and
+The adapter must provide `publish(std::string_view namespace,
+std::string_view name, std::string_view topic, const P&)` and
 `template <typename P, typename H> subscribe(std::string_view namespace,
 std::string_view name, std::string_view topic,
 std::optional<std::string_view> group, H&& handler)`, returning anything.
@@ -366,13 +380,20 @@ exactly its `Payload`, and a generic `Subscriber` bound to a runtime hook:
 An output exchange:
 
 ```ada
+         Message_Namespace : constant String := "urn:test";
+         Message_Name      : constant String := "MessageA";
+
          generic
             type Result (<>) is limited private;
             with function Publish_To
-              (Topic : String; Value : Payload) return Result;
+              (Message_Namespace : String;
+               Message_Name      : String;
+               Topic             : String;
+               Value             : Payload)
+               return Result;
          package Publisher is
             function Publish (Value : Payload) return Result is
-              (Publish_To (Topic, Value));
+              (Publish_To (Message_Namespace, Message_Name, Topic, Value));
          end Publisher;
 ```
 
@@ -418,9 +439,9 @@ the renderers read their spellings only from there.
 
 | Language | Root | Subscribe exchange | Publish exchange | Nested operation region |
 | --- | --- | --- | --- | --- |
-| Rust | `PublishAdapter`, `SubscribeAdapter` | `MESSAGE_NAMESPACE`, `MESSAGE_NAME`, `SUBSCRIPTION_GROUP`, `subscribe` | `publish` | -- |
-| C++ | -- | `message_namespace`, `message_name`, `subscription_group`, `subscribe` | `publish` | -- |
-| Ada | -- | `Message_Namespace`, `Message_Name`, `Has_Subscription_Group`, `Subscription_Group`, `Handler`, `Handle`, `Subscriber` | `Publisher` | `Result`, `Subscribe_To`/`Publish_To`, `Subscribe`/`Publish` |
+| Rust | `PublishAdapter`, `SubscribeAdapter` | `MESSAGE_NAMESPACE`, `MESSAGE_NAME`, `SUBSCRIPTION_GROUP`, `subscribe` | `MESSAGE_NAMESPACE`, `MESSAGE_NAME`, `publish` (corrective) | -- |
+| C++ | -- | `message_namespace`, `message_name`, `subscription_group`, `subscribe` | `message_namespace`, `message_name`, `publish` (corrective) | -- |
+| Ada | -- | `Message_Namespace`, `Message_Name`, `Has_Subscription_Group`, `Subscription_Group`, `Handler`, `Handle`, `Subscriber` | `Message_Namespace`, `Message_Name`, `Publisher` (corrective) | `Result`, `Subscribe_To`/`Publish_To`, `Subscribe`/`Publish` |
 
 * **Shared name analysis** (`validate_names`, used by readiness via
   `service_api_blocker` and re-run by every backend): root names are claimed
@@ -570,3 +591,147 @@ Local toolchains: `rustc 1.98.1`, GCC `c++ 14.2.0` (Debian), GNAT
 - [ ] codec and runtime integration (OMS JSON);
 - kind-specific metadata for the four non-OMS exchange kinds;
 - full-UCI generation (Phase 5).
+
+## 11. Corrective review — global message identity on Publish
+
+Review of PR #49 at head `2a954160a1de5106156eed68468d26319ccc1bba` found
+that the Publish boundary dropped information the future OMS JSON codec
+needs. Everything else in the Task 048 design is kept; the sections above
+have been updated in place only where they spell the Publish adapter shape.
+
+### Finding
+
+At the reviewed head the two operations forwarded:
+
+```text
+Subscribe: message namespace, message local name, topic, optional group, handler
+Publish:   topic, payload
+```
+
+### Pinned evidence: LA-CAL §6.1.1 Global Element Declarations
+
+`open-arsenal/oms` at `726272bd0390982a759c91a9cf4e13b81c2b510b`,
+`docs_official/20_OMSC-SPC-013_RevB_LanguageAgnostic_CAL_Specification_DandD_v2_5.docx`
+(sha256 `b1c3c07872570fb4f2c84fd819076b1b588148ef28225f5a8e23433efe94b1a7`,
+the same file already pinned in §1), section 6.1.1:
+
+> For a JSON text of a global Element Declaration, all of the following must
+> be true:
+> It is an object with exactly one member.
+> The string is given by the appropriate case among the following:
+> If {target namespace} is https://www.vdl.afrl.af.mil/programs/oam, then
+> "{name}".
+> Otherwise "{{target namespace}}{name}".
+> The value is given by the appropriate case among the following: [...]
+> Simple Type Definitions [...] Complex Type Definitions.
+
+So the single member NAME comes from the global element, and only its VALUE
+comes from the type definition. A PUB `<message>` is that JSON text (§1).
+
+### Why the payload type is insufficient
+
+Distinct global elements may have the same type. A runtime given only
+`topic + Payload` cannot tell whether to write `{"MessageA": ...}` or
+`{"MessageB": ...}`. The topic cannot tell it either: it is an authored
+routing string, not a schema identity, and two outputs may share one.
+
+This repository already relies on the distinction:
+`crates/codegen-core/tests/service_generation.rs`
+`projection_keeps_only_selected_messages` has `SelectedReport -> Payload` and
+`UnselectedReport -> Payload`, precisely because message identity and payload
+reachability differ.
+
+### Revised Publish adapter metadata
+
+The generated Publish now forwards the endpoint's resolved message identity,
+taken verbatim from `ServiceApiOmsBinding::message_name()` (the plan's
+`QualifiedName`, as Subscribe already did). It is not re-looked-up, and it is
+never derived from the payload, topic, contract text, or generated type name:
+
+```text
+Publish:   message namespace, message local name, topic, payload
+```
+
+| Language | Adapter hook |
+| --- | --- |
+| Rust | `PublishAdapter<P>::publish(&mut self, message_namespace: &'static str, message_name: &'static str, topic: &'static str, value: &P) -> Self::Output` |
+| C++ | `std::forward<Adapter>(adapter).publish(message_namespace, message_name, topic, value)` |
+| Ada | `with function Publish_To (Message_Namespace : String; Message_Name : String; Topic : String; Value : Payload) return Result;` |
+
+Every OMS endpoint, Publish and Subscribe, now exposes the same public
+`MESSAGE_NAMESPACE`/`MESSAGE_NAME` (`message_namespace`/`message_name`,
+`Message_Namespace`/`Message_Name`) constants, emitted after `Payload` and
+before the operation. `ServiceApiFacadeNames::exchange_names(Publish)` claims
+them in exactly that exchange region, so the shared analysis (Ada still
+case-insensitive) keeps `service-check READY => complete wrapper generation
+is safe`. No backend-private check was added. Task 047 names are unchanged.
+
+The identity stays **structured**. No `PositionReport` vs
+`{namespace}PositionReport` string is produced; that §6.1.1 / OWP spelling is
+Task 049's. Nothing else changes: associated `Output`, `?Sized`,
+`decltype(auto)`, forwarding references, generic `Result`, body-less
+`service_api.ads`, no async, no allocation, no dependency.
+
+### Unchanged application-facing call
+
+```text
+output_endpoint::publish(&mut runtime, &payload);   // Rust
+output_endpoint::publish(runtime, payload);         // C++
+Pub.Publish (Value);                                 -- Ada
+```
+
+No application overload accepts a namespace, name, or topic.
+
+### Corrective evidence
+
+* **Same payload, different message, same topic** (`shared-payload.xsd` +
+  `shared-payload.yaml`, new `task048_publish_carries_message_identity_not_payload_or_topic`):
+  `MessageA -> SharedPayload` and `MessageB -> SharedPayload`, two outputs,
+  both on `common-topic`. READY in all three languages; one `SharedPayload`;
+  two Publish, zero Subscribe. The fake adapters, given the very same value,
+  record `urn:shared | MessageA | common-topic` and then
+  `urn:shared | MessageB | common-topic` (Rust, C++, and GNAT; the Ada consumer
+  binds one hook to both endpoints).
+* **Model-level proof** (`global_message_identity_is_not_payload_or_topic_identity`,
+  codegen-core): two selected outputs with equal `payload_type`,
+  `payload_name`, and `topic` still have distinct structured `message_name`s.
+* **Bidirectional fake adapters** now assert Publish saw
+  `urn:test | MessageA | track.out.{mandatory,optional}` plus the payload in
+  all three languages. The Subscribe records are unchanged.
+* **Service Status** is now exercised end to end through fake adapters in all
+  three languages, in contract order Publish, Subscribe, Publish:
+  `PUB | https://www.vdl.afrl.af.mil/programs/oam | ServiceStatus | ServiceStatus`,
+  `SUB | … | ServiceStatusDataRequest | ServiceStatusDataRequest | <none>`,
+  `PUB | … | ServiceStatusDataRequestStatus | ServiceStatusDataRequestStatus`.
+* **Negative compiles**: all four per language are kept and still fail for the
+  same diagnostics. None needs the new arguments, which the application never
+  supplies.
+* **Subscribe byte identity**: against the reviewed head, every generated
+  Subscribe declaration is byte-identical. For the upstream `PositionReport`
+  (Subscribe-only) the C++ and Ada wrappers are byte-identical files; the Rust
+  wrapper differs only in the shared root `PublishAdapter` declaration.
+* **Real UCI 2.5 `PositionReport`** (same pinned XSD as §9, sha256
+  `ac943049…bf27`, release builds of `2a954160` and this corrective): 60/60
+  READY in all three; `service-check` report byte-identical; all model files
+  byte-identical; Subscribe only, no Publish.
+* **Zero-OMS** (`non-uci.yaml`): wrappers byte-identical to the reviewed head
+  (hence to Task 047) in all three languages.
+* **Task 047 corrective checks** (Ada package-parent hiding, model/wrapper
+  path layout, C++ scope walk, fixed-name checks) all still pass unchanged.
+  The Publish constants are declared after `Payload`, so they add no
+  model-reference site. `ada_facade_names_after_payload_never_hide_the_model`
+  now also iterates them through `exchange_names(Publish)`.
+* **Adjusted assertion**: `task047_repeated_message_selection_is_two_endpoints_one_type`
+  now expects `"MessageA"` twice (once per OMS endpoint, input and output)
+  instead of once, and still never on a `Payload` line.
+
+### Corrective workspace validation
+
+`cargo fmt --all -- --check`, `cargo check --workspace --all-targets`,
+`cargo clippy --workspace --all-targets -- -D warnings`, and
+`git diff --check` are clean. `AMS_GRA_REQUIRE_GNAT=1 cargo test --workspace`:
+**963** passed, 0 failed, 0 ignored. That is 961 at the reviewed head plus the
+new CLI regression and the new codegen-core evidence test; the other updated
+tests keep their counts. Every GNAT `require_one_test` gate is kept unchanged,
+and no dependency is added. Local toolchains are unchanged: `rustc 1.98.1`,
+GCC `c++ 14.2.0` (Debian), GNAT `GNATMAKE 14.2.0`.

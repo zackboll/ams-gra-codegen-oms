@@ -181,11 +181,20 @@ fn adapter_contracts(
         output,
         "\n    /// The runtime hook behind every generated `{publish}` operation.\n\
          \x20   ///\n\
-         \x20   /// Receives the endpoint's authored topic and a typed payload.\n\
-         \x20   /// `Output` is the adapter's own result/error type.\n\
+         \x20   /// Receives the resolved global message identity (namespace and local\n\
+         \x20   /// name, unformatted), the endpoint's authored topic, and a typed\n\
+         \x20   /// payload. The identity is required because distinct global messages\n\
+         \x20   /// may share one payload type and one topic. `Output` is the adapter's\n\
+         \x20   /// own result/error type.\n\
          \x20   pub trait {publish_adapter}<{p}> {{\n\
          \x20       type Output;\n\
-         \x20       fn {publish}(&mut self, {hook_topic}: &'static str, {value}: &{p}) -> Self::Output;\n\
+         \x20       fn {publish}(\n\
+         \x20           &mut self,\n\
+         \x20           {hook_message_namespace}: &'static str,\n\
+         \x20           {hook_message_name}: &'static str,\n\
+         \x20           {hook_topic}: &'static str,\n\
+         \x20           {value}: &{p},\n\
+         \x20       ) -> Self::Output;\n\
          \x20   }}\n\n\
          \x20   /// The runtime hook behind every generated `{subscribe}` operation.\n\
          \x20   ///\n\
@@ -278,26 +287,30 @@ fn operation(
     let (value, handler) = (facade.parameters.value, facade.parameters.handler);
     // exchange -> function -> service_api root.
     let root = "super::super";
+    // Every OMS endpoint carries its resolved global message identity, taken
+    // verbatim from the binding (never from the payload, topic, or type name).
+    let message = binding.message_name();
+    output.push('\n');
+    constant(output, 3, facade.message_namespace, &message.namespace_uri);
+    constant(output, 3, facade.message_name, &message.local_name);
     match binding.operation() {
         ServiceApiOmsOperation::Publish => {
             let publish = facade.publish;
             writeln!(
                 output,
-                "\n            /// Publish one `{payload}` on this endpoint's topic through `{adapter}`.\n\
+                "\n            /// Publish one `{payload}` on this endpoint's topic through `{adapter}`,\n\
+                 \x20           /// supplying the resolved message identity and topic.\n\
                  \x20           pub fn {publish}<{a}>({adapter}: &mut {a}, {value}: &{payload}) -> {a}::Output\n\
                  \x20           where\n\
                  \x20               {a}: {root}::{publish_adapter}<{payload}> + ?Sized,\n\
                  \x20           {{\n\
-                 \x20               {adapter}.{publish}({topic}, {value})\n\
-                 \x20           }}"
+                 \x20               {adapter}.{publish}({}, {}, {topic}, {value})\n\
+                 \x20           }}",
+                facade.message_namespace, facade.message_name
             )
             .expect("writing to String cannot fail");
         }
         ServiceApiOmsOperation::Subscribe => {
-            let message = binding.message_name();
-            output.push('\n');
-            constant(output, 3, facade.message_namespace, &message.namespace_uri);
-            constant(output, 3, facade.message_name, &message.local_name);
             let group = binding.subscription_group().map_or_else(
                 || "None".to_owned(),
                 |group| format!("Some(\"{}\")", string_literal_body(group)),
