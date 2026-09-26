@@ -1,0 +1,67 @@
+# SYNTHETIC Task 048 fixture. Authored for this repository only.
+#
+# Selects against root.xsd. Isolates the publish/subscribe facade decision
+# from payload differences: all four exchanges select the SAME message
+# (MessageA -> PayloadA), so the model declares PayloadA once and all four
+# Payload aliases name it. Only direction and mandate vary, plus one authored
+# subscription group, each on its own distinct topic:
+#
+#   input  mandatory                      -> Subscribe only, no group
+#   input  optional + subscription_group  -> Subscribe only, group verbatim
+#   output mandatory                      -> Publish only
+#   output optional                       -> Publish only
+#
+# The group text deliberately contains a space, a colon, and a double quote:
+# the facade transports the contract value verbatim and does not apply any
+# LA-CAL lexical rule (that belongs to the future runtime adapter).
+contract_version: "0.1"
+
+service:
+  name: facade-bidirectional
+  version: "0.1.0"
+  kind: service
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: track-io
+    name: Track I/O
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: in-mandatory
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: MessageA
+        topic: track.in.mandatory
+        timing:
+          kind: asynchronous
+      - id: in-optional
+        kind: oms_message
+        direction: input
+        mandate: optional
+        message: MessageA
+        topic: track.in.optional
+        subscription_group: 'pool 7: "hot"'
+        timing:
+          kind: asynchronous
+      - id: out-mandatory
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: MessageA
+        topic: track.out.mandatory
+        timing:
+          kind: periodic
+          nominal_rate_hz: 1
+      - id: out-optional
+        kind: oms_message
+        direction: output
+        mandate: optional
+        message: MessageA
+        topic: track.out.optional
+        timing:
+          kind: on_demand

@@ -755,8 +755,9 @@ measurable cost at that scale.
 wrappers; see [below](#task-047--typed-service-api-wrappers). Everything else
 listed here is still not implemented.)
 
-Not implemented, deliberately: Ada/Rust/C++ service wrappers, generated
-publish/subscribe façades, a typed CAL API, OWP, WebSocket, JSON codec generation,
+Not implemented, deliberately (Task 048 later delivered the generated
+publish/subscribe façade; the rest remains open): Ada/Rust/C++ service
+wrappers, generated publish/subscribe façades, a typed CAL API, OWP, WebSocket, JSON codec generation,
 OMS profile validation, completion-assistant parsing, contract completion
 logic, automatic Capability inference, automatic function grouping, automatic
 topic generation, contract message-name qualification syntax, full-UCI
@@ -825,6 +826,39 @@ Against real UCI 2.5 with the upstream `PositionReport` contract, readiness
 stays 60/60 READY in Ada, Rust, and C++; the `service-check` report and every
 model file are byte-identical to `origin/main`; and each wrapper, plus a
 consumer probe, compiles (GNAT, `rustc -D warnings`, strict C++17).
+
+## Task 048 — typed publish/subscribe façade
+
+Task 048 turns each OMS Message endpoint into a typed, direction-safe
+operation, still without any communication.
+
+```text
+ServicePlan -> ServiceApiModel
+                 + ServiceApiOmsOperation per OMS exchange
+                   (Direction::Output -> Publish, Direction::Input -> Subscribe)
+                 + authored subscription_group (verbatim, Option)
+            -> Backend::generate_service_api (renders the decided operation)
+```
+
+- **Direction is authoritative and service-relative.** OMSC-INS-003 Rev M
+  defines the I/O column from the Service's side (Service Status publishes
+  `ServiceStatus`, receives `ServiceStatusDataRequest`); exchange IDs are never
+  consulted. Mandate and timing never change the operation.
+- **Only OMS Message exchanges** get an operation. A Data Transfer, Special
+  Signal, Security Exchange, or Non-OMS Message keeps its Task 047 metadata.
+- **Routing comes from the contract, not the caller.** The adapter receives
+  the topic (Publish) or the resolved message namespace + local name, topic,
+  and optional group (Subscribe). The `QualifiedName` is never flattened; the
+  LA-CAL message-name spelling is Task 049's.
+- **READY still covers everything.** The new names are part of the shared
+  service-API name analysis and model/wrapper artifact preflight, so
+  `service-check READY` implies the façade generates. The Ada wrapper stays a
+  body-less spec, so the artifact layout is unchanged.
+- **Compatibility.** Task 047 constants and `Payload` aliases are unchanged;
+  zero-OMS wrappers and all model files are byte-identical; real UCI 2.5
+  `PositionReport` stays 60/60 READY and gets Subscribe only.
+
+See [Task 048](task-048-publish-subscribe-facade.md).
 
 ## Task 033 follow-up — constrained floating ranges
 

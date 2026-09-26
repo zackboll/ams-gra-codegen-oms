@@ -1,0 +1,44 @@
+# SYNTHETIC Task 048 fixture. Authored for this repository only.
+#
+# facade-repeated.yaml with its two functions in the opposite contract order.
+# The selected messages are identical, so the model files must be
+# byte-identical; the wrapper must follow the new order; and each operation
+# is still decided only by its own exchange's direction.
+contract_version: "0.1"
+
+service:
+  name: facade-repeated
+  version: "0.1.0"
+  kind: service
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: function-b
+    name: Function B
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: report-out
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: MessageA
+        topic: position.b
+        timing:
+          kind: asynchronous
+  - id: function-a
+    name: Function A
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: report-in
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: MessageA
+        topic: position.a
+        timing:
+          kind: asynchronous

@@ -34,10 +34,20 @@
 //! # What the model is not
 //!
 //! It is not a serialized mirror of the portable contract. Traceability,
-//! operational attributes, subscription groups, Appendix C mappings, timing
-//! parameters, Capability ownership, standard roles, descriptions, and the
-//! kind-specific details of the four non-OMS exchange kinds all remain in the
-//! [`ServicePlan`], unmodified, for a later façade/runtime task to consume.
+//! operational attributes, Appendix C mappings, timing parameters,
+//! Capability ownership, standard roles, descriptions, and the kind-specific
+//! details of the four non-OMS exchange kinds all remain in the
+//! [`ServicePlan`], unmodified, for a later runtime task to consume.
+//!
+//! # Task 048: the publish/subscribe facade
+//!
+//! Each OMS binding also carries its [`ServiceApiOmsOperation`] -- decided
+//! here, once, from the exchange's typed direction (`Output -> Publish`,
+//! `Input -> Subscribe`) -- and the authored `subscription_group`, verbatim.
+//! Backends render exactly that operation, forwarding the endpoint's routing
+//! metadata to an injected adapter; they never reinterpret direction,
+//! mandate, timing, or IDs. No runtime, codec, or connection code exists at
+//! this layer.
 //!
 //! # Authority
 //!
@@ -121,6 +131,18 @@ impl ServiceApiModel {
     #[must_use]
     pub const fn world(&self) -> GenerationWorld {
         self.world
+    }
+
+    /// Whether any exchange is an OMS Message, i.e. whether the wrapper
+    /// carries a publish/subscribe façade at all. A service without one
+    /// (zero OMS exchanges) emits no façade support declarations, so its
+    /// wrapper stays exactly the Task 047 descriptor file.
+    #[must_use]
+    pub fn has_oms_exchanges(&self) -> bool {
+        self.functions
+            .iter()
+            .flat_map(ServiceApiFunction::exchanges)
+            .any(|exchange| exchange.oms_binding().is_some())
     }
 }
 
@@ -223,6 +245,55 @@ impl ServiceApiExchangeKind {
     }
 }
 
+/// The one typed operation an application may perform at an OMS Message
+/// endpoint (Task 048).
+///
+/// Decided **once**, here, from the exchange's typed [`Direction`], which
+/// the OMS 2.5 Service Contract instructions define relative to the
+/// Service: an input is something the Service receives, an output is
+/// something it publishes. Backends render the decided operation and never
+/// reinterpret the direction, the exchange ID, the mandate, or the timing.
+///
+/// This is a statement about the application-facing API only. How an
+/// operation is executed (LA-CAL `PUB`/`SUB`, subscription IDs, encoding) is
+/// a runtime concern outside codegen-core.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ServiceApiOmsOperation {
+    /// An `output` OMS exchange: the application publishes its payload.
+    Publish,
+    /// An `input` OMS exchange: the application subscribes a typed handler.
+    Subscribe,
+}
+
+impl ServiceApiOmsOperation {
+    /// The single direction-to-operation mapping.
+    ///
+    /// ```text
+    /// Direction::Output -> Publish
+    /// Direction::Input  -> Subscribe
+    /// ```
+    ///
+    /// Mandate and timing deliberately do not participate: an optional
+    /// input is still a subscription, and a periodic output is still an
+    /// ordinary publication the application invokes when it chooses.
+    #[must_use]
+    pub const fn for_direction(direction: Direction) -> Self {
+        match direction {
+            Direction::Output => Self::Publish,
+            Direction::Input => Self::Subscribe,
+        }
+    }
+
+    /// A lowercase diagnostic spelling. Not emitted into generated source.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Publish => "publish",
+            Self::Subscribe => "subscribe",
+        }
+    }
+}
+
 /// The resolved UCI identity behind one OMS Message exchange.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ServiceApiOmsBinding {
@@ -230,6 +301,8 @@ pub struct ServiceApiOmsBinding {
     message_name: QualifiedName,
     payload_type: TypeRef,
     payload_name: QualifiedName,
+    operation: ServiceApiOmsOperation,
+    subscription_group: Option<String>,
 }
 
 impl ServiceApiOmsBinding {
@@ -237,6 +310,24 @@ impl ServiceApiOmsBinding {
     #[must_use]
     pub fn topic(&self) -> &str {
         &self.topic
+    }
+
+    /// The typed operation this endpoint exposes, decided centrally from
+    /// the exchange direction by [`ServiceApiOmsOperation::for_direction`].
+    #[must_use]
+    pub const fn operation(&self) -> ServiceApiOmsOperation {
+        self.operation
+    }
+
+    /// The authored portable `subscription_group`, verbatim, or `None` when
+    /// the contract omits it. Never inferred, defaulted, or derived from any
+    /// ID or mandate, and not validated against any runtime grammar here.
+    ///
+    /// Carried for every OMS exchange because it is contract data; only a
+    /// [`ServiceApiOmsOperation::Subscribe`] façade hands it to the adapter.
+    #[must_use]
+    pub fn subscription_group(&self) -> Option<&str> {
+        self.subscription_group.as_deref()
     }
 
     /// The resolved, fully qualified UCI message identity.
@@ -444,6 +535,8 @@ pub fn build_service_api_model(
                         message_name: oms.message_name.clone(),
                         payload_type: oms.payload_type.clone(),
                         payload_name,
+                        operation: ServiceApiOmsOperation::for_direction(oms.direction),
+                        subscription_group: oms.subscription_group.clone(),
                     })
                 }
                 ResolvedExchange::DataTransfer(_) => ServiceApiExchangeKind::DataTransfer,
@@ -504,6 +597,175 @@ pub struct ServiceApiFixedNames {
     pub mandate: &'static str,
     pub topic: &'static str,
     pub payload: &'static str,
+    /// Task 048 façade names. Present only in wrappers that have at least
+    /// one OMS exchange (see [`ServiceApiFacadeNames`]).
+    pub facade: ServiceApiFacadeNames,
+}
+
+/// The fixed identifiers the Task 048 publish/subscribe façade emits.
+///
+/// Which region each occupies depends on the language's façade shape; the
+/// shared naming analysis ([`validate_service_api_names`]) and the artifact
+/// preflight ([`validate_service_api_artifacts`]) claim exactly the names a
+/// given wrapper renders, in the regions it renders them.
+///
+/// | Field | Rust | C++ | Ada |
+/// | --- | --- | --- | --- |
+/// | `publish_adapter` | trait `PublishAdapter` (root) | -- | -- |
+/// | `subscribe_adapter` | trait `SubscribeAdapter` (root) | -- | -- |
+/// | `message_namespace` | `MESSAGE_NAMESPACE` (Subscribe exchange) | `message_namespace` (Subscribe exchange) | `Message_Namespace` (Subscribe exchange) |
+/// | `message_name` | `MESSAGE_NAME` (Subscribe exchange) | `message_name` (Subscribe exchange) | `Message_Name` (Subscribe exchange) |
+/// | `has_subscription_group` | -- | -- | `Has_Subscription_Group` (Subscribe exchange) |
+/// | `subscription_group` | `SUBSCRIPTION_GROUP` (Subscribe exchange) | `subscription_group` (Subscribe exchange) | `Subscription_Group` (Subscribe exchange) |
+/// | `handler` | -- | -- | interface `Handler` (Subscribe exchange) |
+/// | `handle` | -- | -- | primitive `Handle` (Subscribe exchange) |
+/// | `publish` | fn `publish` (Publish exchange) | fn template `publish` (Publish exchange) | generic package `Publisher` (Publish exchange) |
+/// | `subscribe` | fn `subscribe` (Subscribe exchange) | fn template `subscribe` (Subscribe exchange) | generic package `Subscriber` (Subscribe exchange) |
+/// | `adapter_result` | -- | -- | formal type `Result` (inside `Publisher`/`Subscriber`) |
+/// | `publish_hook` | -- | -- | formal function `Publish_To` (inside `Publisher`) |
+/// | `subscribe_hook` | -- | -- | formal function `Subscribe_To` (inside `Subscriber`) |
+/// | `publish_operation` | -- | -- | function `Publish` (inside `Publisher`) |
+/// | `subscribe_operation` | -- | -- | function `Subscribe` (inside `Subscriber`) |
+///
+/// Every exchange-scope façade name is emitted **after** that exchange's
+/// `Payload`, so none is visible at the `Payload` reference to the model;
+/// the façade itself names model types only through the local `Payload`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ServiceApiFacadeNames {
+    pub publish_adapter: Option<&'static str>,
+    pub subscribe_adapter: Option<&'static str>,
+    pub message_namespace: &'static str,
+    pub message_name: &'static str,
+    pub has_subscription_group: Option<&'static str>,
+    pub subscription_group: &'static str,
+    pub handler: Option<&'static str>,
+    pub handle: Option<&'static str>,
+    pub publish: &'static str,
+    pub subscribe: &'static str,
+    pub adapter_result: Option<&'static str>,
+    pub publish_hook: Option<&'static str>,
+    pub subscribe_hook: Option<&'static str>,
+    pub publish_operation: Option<&'static str>,
+    pub subscribe_operation: Option<&'static str>,
+    /// Parameter and generic-parameter spellings. They occupy only their own
+    /// subprogram/template profile, so they are not claimed in a wrapper
+    /// scope; the `facade_parameters_*` unit tests pin that each is legal and
+    /// never hides a type or wrapper name that the same profile or body uses.
+    pub parameters: ServiceApiFacadeParameters,
+}
+
+/// Every parameter / generic-parameter identifier the façade emits.
+///
+/// `None` where a language emits no such parameter (C++ adapters are
+/// duck-typed, so no hook profile is written; Ada binds the adapter as a
+/// generic formal subprogram, so no adapter parameter exists).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ServiceApiFacadeParameters {
+    /// The adapter argument of `publish`/`subscribe` (Rust, C++).
+    pub adapter: Option<&'static str>,
+    /// The adapter's generic type parameter (Rust `A`, C++ `Adapter`).
+    pub adapter_type: Option<&'static str>,
+    /// The payload argument of a publication.
+    pub value: &'static str,
+    /// The handler argument of a subscription.
+    pub handler: &'static str,
+    /// The handler's generic type parameter (Rust `H`, C++ `Handler`).
+    pub handler_type: Option<&'static str>,
+    /// The Rust adapter-trait payload type parameter (`P`).
+    pub payload_type: Option<&'static str>,
+    /// The Ada `Handle` primitive's controlling and message parameters.
+    pub handle_self: Option<&'static str>,
+    pub handle_message: Option<&'static str>,
+    /// The runtime-hook profile parameters (Rust trait methods, Ada formal
+    /// functions). C++ writes no hook profile.
+    pub hook_message_namespace: Option<&'static str>,
+    pub hook_message_name: Option<&'static str>,
+    pub hook_topic: Option<&'static str>,
+    pub hook_has_subscription_group: Option<&'static str>,
+    pub hook_subscription_group: Option<&'static str>,
+}
+
+impl ServiceApiFacadeParameters {
+    /// Every parameter spelling, for inventory checks.
+    #[must_use]
+    pub fn all(&self) -> Vec<&'static str> {
+        [
+            self.adapter,
+            self.adapter_type,
+            Some(self.value),
+            Some(self.handler),
+            self.handler_type,
+            self.payload_type,
+            self.handle_self,
+            self.handle_message,
+            self.hook_message_namespace,
+            self.hook_message_name,
+            self.hook_topic,
+            self.hook_has_subscription_group,
+            self.hook_subscription_group,
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+}
+
+impl ServiceApiFacadeNames {
+    /// Adapter contract names declared directly in the wrapper root, only
+    /// when the service has at least one OMS exchange.
+    fn root_names(&self) -> Vec<&'static str> {
+        [self.publish_adapter, self.subscribe_adapter]
+            .into_iter()
+            .flatten()
+            .collect()
+    }
+
+    /// The façade names one OMS exchange scope declares directly, in
+    /// emission order, after the Task 047 metadata and `Payload`.
+    fn exchange_names(&self, operation: ServiceApiOmsOperation) -> Vec<&'static str> {
+        match operation {
+            ServiceApiOmsOperation::Publish => vec![self.publish],
+            ServiceApiOmsOperation::Subscribe => [
+                Some(self.message_namespace),
+                Some(self.message_name),
+                self.has_subscription_group,
+                Some(self.subscription_group),
+                self.handler,
+                self.handle,
+                Some(self.subscribe),
+            ]
+            .into_iter()
+            .flatten()
+            .collect(),
+        }
+    }
+
+    /// The names declared inside the operation's own nested region (the Ada
+    /// generic package), or empty when the operation is a plain function.
+    fn operation_names(&self, operation: ServiceApiOmsOperation) -> Vec<&'static str> {
+        let (hook, callable) = match operation {
+            ServiceApiOmsOperation::Publish => (self.publish_hook, self.publish_operation),
+            ServiceApiOmsOperation::Subscribe => (self.subscribe_hook, self.subscribe_operation),
+        };
+        [self.adapter_result, hook, callable]
+            .into_iter()
+            .flatten()
+            .collect()
+    }
+
+    /// Every façade name, for inventory tests.
+    #[cfg(test)]
+    fn all(&self) -> Vec<&'static str> {
+        let mut names = self.root_names();
+        for operation in [
+            ServiceApiOmsOperation::Publish,
+            ServiceApiOmsOperation::Subscribe,
+        ] {
+            names.extend(self.exchange_names(operation));
+            names.extend(self.operation_names(operation));
+        }
+        names
+    }
 }
 
 /// The fixed wrapper identifiers for `language`.
@@ -524,6 +786,38 @@ pub const fn service_api_fixed_names(language: BackendLanguage) -> ServiceApiFix
             mandate: "MANDATE",
             topic: "TOPIC",
             payload: "Payload",
+            facade: ServiceApiFacadeNames {
+                publish_adapter: Some("PublishAdapter"),
+                subscribe_adapter: Some("SubscribeAdapter"),
+                message_namespace: "MESSAGE_NAMESPACE",
+                message_name: "MESSAGE_NAME",
+                has_subscription_group: None,
+                subscription_group: "SUBSCRIPTION_GROUP",
+                handler: None,
+                handle: None,
+                publish: "publish",
+                subscribe: "subscribe",
+                adapter_result: None,
+                publish_hook: None,
+                subscribe_hook: None,
+                publish_operation: None,
+                subscribe_operation: None,
+                parameters: ServiceApiFacadeParameters {
+                    adapter: Some("adapter"),
+                    adapter_type: Some("A"),
+                    value: "value",
+                    handler: "handler",
+                    handler_type: Some("H"),
+                    payload_type: Some("P"),
+                    handle_self: None,
+                    handle_message: None,
+                    hook_message_namespace: Some("message_namespace"),
+                    hook_message_name: Some("message_name"),
+                    hook_topic: Some("topic"),
+                    hook_has_subscription_group: None,
+                    hook_subscription_group: Some("subscription_group"),
+                },
+            },
         },
         BackendLanguage::Cpp => ServiceApiFixedNames {
             file: "service_api.hpp",
@@ -539,6 +833,38 @@ pub const fn service_api_fixed_names(language: BackendLanguage) -> ServiceApiFix
             mandate: "mandate",
             topic: "topic",
             payload: "Payload",
+            facade: ServiceApiFacadeNames {
+                publish_adapter: None,
+                subscribe_adapter: None,
+                message_namespace: "message_namespace",
+                message_name: "message_name",
+                has_subscription_group: None,
+                subscription_group: "subscription_group",
+                handler: None,
+                handle: None,
+                publish: "publish",
+                subscribe: "subscribe",
+                adapter_result: None,
+                publish_hook: None,
+                subscribe_hook: None,
+                publish_operation: None,
+                subscribe_operation: None,
+                parameters: ServiceApiFacadeParameters {
+                    adapter: Some("adapter"),
+                    adapter_type: Some("Adapter"),
+                    value: "value",
+                    handler: "handler",
+                    handler_type: Some("Handler"),
+                    payload_type: None,
+                    handle_self: None,
+                    handle_message: None,
+                    hook_message_namespace: None,
+                    hook_message_name: None,
+                    hook_topic: None,
+                    hook_has_subscription_group: None,
+                    hook_subscription_group: None,
+                },
+            },
         },
         BackendLanguage::Ada => ServiceApiFixedNames {
             file: "service_api.ads",
@@ -554,6 +880,38 @@ pub const fn service_api_fixed_names(language: BackendLanguage) -> ServiceApiFix
             mandate: "Mandate",
             topic: "Topic",
             payload: "Payload",
+            facade: ServiceApiFacadeNames {
+                publish_adapter: None,
+                subscribe_adapter: None,
+                message_namespace: "Message_Namespace",
+                message_name: "Message_Name",
+                has_subscription_group: Some("Has_Subscription_Group"),
+                subscription_group: "Subscription_Group",
+                handler: Some("Handler"),
+                handle: Some("Handle"),
+                publish: "Publisher",
+                subscribe: "Subscriber",
+                adapter_result: Some("Result"),
+                publish_hook: Some("Publish_To"),
+                subscribe_hook: Some("Subscribe_To"),
+                publish_operation: Some("Publish"),
+                subscribe_operation: Some("Subscribe"),
+                parameters: ServiceApiFacadeParameters {
+                    adapter: None,
+                    adapter_type: None,
+                    value: "Value",
+                    handler: "Receiver",
+                    handler_type: None,
+                    payload_type: None,
+                    handle_self: Some("Self"),
+                    handle_message: Some("Message"),
+                    hook_message_namespace: Some("Message_Namespace"),
+                    hook_message_name: Some("Message_Name"),
+                    hook_topic: Some("Topic"),
+                    hook_has_subscription_group: Some("Has_Subscription_Group"),
+                    hook_subscription_group: Some("Subscription_Group"),
+                },
+            },
         },
     }
 }
@@ -568,8 +926,17 @@ pub enum ServiceApiRegion {
     Service,
     /// Inside one function scope: its constants and exchange scopes.
     Function(String),
-    /// Inside one exchange scope: its constants and `Payload`.
+    /// Inside one exchange scope: its constants, `Payload`, and (Task 048)
+    /// its façade declarations.
     Exchange { function: String, exchange: String },
+    /// Inside one exchange's façade operation, when the language renders it
+    /// as its own declarative region (the Ada generic `Publisher` /
+    /// `Subscriber` package).
+    Operation {
+        function: String,
+        exchange: String,
+        operation: ServiceApiOmsOperation,
+    },
 }
 
 impl fmt::Display for ServiceApiRegion {
@@ -581,6 +948,15 @@ impl fmt::Display for ServiceApiRegion {
             Self::Exchange { function, exchange } => write!(
                 formatter,
                 "scope of function '{function}' exchange '{exchange}'"
+            ),
+            Self::Operation {
+                function,
+                exchange,
+                operation,
+            } => write!(
+                formatter,
+                "{} operation scope of function '{function}' exchange '{exchange}'",
+                operation.as_str()
             ),
         }
     }
@@ -836,8 +1212,9 @@ impl ApiRegion {
     }
 }
 
-/// One function's naming inputs: its ID and each exchange's `(id, is_oms)`.
-type NamingFunction<'a> = (&'a str, Vec<(&'a str, bool)>);
+/// One function's naming inputs: its ID and each exchange's ID plus, for an
+/// OMS exchange only, the façade operation it renders.
+type NamingFunction<'a> = (&'a str, Vec<(&'a str, Option<ServiceApiOmsOperation>)>);
 
 /// The single naming analysis every public entry point delegates to.
 ///
@@ -856,12 +1233,21 @@ fn validate_names<'a>(
         file.claim_fixed(&[model])?;
     }
 
+    let functions = functions.into_iter().collect::<Vec<_>>();
     let mut service = ApiRegion::new(language, ServiceApiRegion::Service);
     service.claim_fixed(&[
         fixed.service_name,
         fixed.service_version,
         fixed.service_kind,
     ])?;
+    // Task 048: the adapter contracts exist only when some exchange renders
+    // a façade operation, so a zero-OMS wrapper claims nothing new.
+    if functions
+        .iter()
+        .any(|(_, exchanges)| exchanges.iter().any(|(_, operation)| operation.is_some()))
+    {
+        service.claim_fixed(&fixed.facade.root_names())?;
+    }
 
     for (function_id, exchanges) in functions {
         service.claim(
@@ -872,7 +1258,7 @@ fn validate_names<'a>(
         let mut function =
             ApiRegion::new(language, ServiceApiRegion::Function(function_id.to_owned()));
         function.claim_fixed(&[fixed.id, fixed.name])?;
-        for (exchange_id, is_oms) in exchanges {
+        for (exchange_id, operation) in exchanges {
             function.claim(
                 ServiceApiNameOwner::Exchange {
                     function: function_id.to_owned(),
@@ -889,8 +1275,24 @@ fn validate_names<'a>(
                 },
             );
             exchange.claim_fixed(&[fixed.id, fixed.kind, fixed.direction, fixed.mandate])?;
-            if is_oms {
+            if let Some(operation) = operation {
                 exchange.claim_fixed(&[fixed.topic, fixed.payload])?;
+                exchange.claim_fixed(&fixed.facade.exchange_names(operation))?;
+
+                // The operation's own nested region (Ada generic package):
+                // its formal type, formal hook, and callable.
+                let nested = fixed.facade.operation_names(operation);
+                if !nested.is_empty() {
+                    let mut region = ApiRegion::new(
+                        language,
+                        ServiceApiRegion::Operation {
+                            function: function_id.to_owned(),
+                            exchange: exchange_id.to_owned(),
+                            operation,
+                        },
+                    );
+                    region.claim_fixed(&nested)?;
+                }
             }
         }
     }
@@ -918,7 +1320,12 @@ pub fn validate_service_api_names(
                 function
                     .exchanges
                     .iter()
-                    .map(|exchange| (exchange.id.as_str(), exchange.oms_binding().is_some()))
+                    .map(|exchange| {
+                        (
+                            exchange.id.as_str(),
+                            exchange.oms_binding().map(ServiceApiOmsBinding::operation),
+                        )
+                    })
                     .collect(),
             )
         }),
@@ -947,7 +1354,14 @@ pub fn validate_service_plan_api_names(
                 function
                     .exchanges
                     .iter()
-                    .map(|exchange| (exchange.id(), exchange.as_oms_message().is_some()))
+                    .map(|exchange| {
+                        (
+                            exchange.id(),
+                            exchange
+                                .as_oms_message()
+                                .map(|oms| ServiceApiOmsOperation::for_direction(oms.direction)),
+                        )
+                    })
                     .collect(),
             )
         }),
@@ -977,6 +1391,7 @@ pub fn service_api_preflight(
     validate_service_api_artifacts(&model, projected_schema, language)?;
     Ok(model)
 }
+
 /// Check that `model`'s wrapper can be emitted beside the type model that
 /// type generation writes for `projected_schema`, in `language`.
 ///
@@ -1003,6 +1418,14 @@ pub fn service_api_preflight(
 /// Rust needs only the path check: the model is mounted as the fixed module
 /// `model` and referenced by a `super`-relative path, so no URI-derived
 /// identifier ever enters a wrapper scope.
+///
+/// Task 048 facade names are covered by the same walks. Root-level ones
+/// (only Rust's two adapter traits) join the root region; every other one
+/// lives inside an exchange scope, after that exchange's `Payload`, which no
+/// model region reaches and no `Payload` reference can see. The facade names
+/// model types only through the local `Payload`, so it adds no new
+/// model-reference site. Ada still needs no package body, so the artifact
+/// layout is unchanged.
 ///
 /// A service with no type model has no model artifacts and passes
 /// trivially.
@@ -1120,11 +1543,23 @@ fn check_cpp_scopes(
             },
         ));
     }
+    // Task 048: any facade support name declared directly in the root joins
+    // the root constants. C++ declares none today (its adapters are
+    // duck-typed), so this is empty; it is included so a future root-level
+    // facade name can never escape this walk.
+    let facade_root = if model.has_oms_exchanges() {
+        fixed.facade.root_names()
+    } else {
+        Vec::new()
+    };
     for constant in [
         fixed.service_name,
         fixed.service_version,
         fixed.service_kind,
-    ] {
+    ]
+    .into_iter()
+    .chain(facade_root)
+    {
         if inner == constant {
             return Err(collision(
                 &root_scope,
@@ -1256,6 +1691,20 @@ fn check_ada_payload_visibility(
             ServiceApiNameOwner::Fixed(constant),
             ServiceApiRegion::Service,
         ));
+    }
+    // Task 048: root-level facade support names (none for Ada today) would be
+    // visible at every `Payload`. Every exchange-level facade name is declared
+    // AFTER its exchange's `Payload`, inside that exchange's own package, so
+    // it is never visible at any `Payload` reference; the facade itself names
+    // model types only through the local `Payload` subtype.
+    if model.has_oms_exchanges() {
+        for name in fixed.facade.root_names() {
+            service_names.push((
+                name.to_owned(),
+                ServiceApiNameOwner::Fixed(name),
+                ServiceApiRegion::Service,
+            ));
+        }
     }
 
     for function in &model.functions {
@@ -1451,10 +1900,25 @@ mod tests {
 
     const ALL: [BackendLanguage; 3] = BackendLanguage::ALL;
 
+    /// `(function, [(exchange, is_oms)])`; every OMS exchange here is an
+    /// input, i.e. a Subscribe façade, matching [`api_model`].
     fn names<'a>(functions: &[(&'a str, &[(&'a str, bool)])]) -> Vec<NamingFunction<'a>> {
         functions
             .iter()
-            .map(|(id, exchanges)| (*id, exchanges.to_vec()))
+            .map(|(id, exchanges)| {
+                (
+                    *id,
+                    exchanges
+                        .iter()
+                        .map(|(exchange, is_oms)| {
+                            (
+                                *exchange,
+                                is_oms.then_some(ServiceApiOmsOperation::Subscribe),
+                            )
+                        })
+                        .collect(),
+                )
+            })
             .collect()
     }
 
@@ -1618,6 +2082,226 @@ mod tests {
     }
 
     // -----------------------------------------------------------------
+    // Task 048: publish/subscribe facade names
+    // -----------------------------------------------------------------
+
+    /// The one direction -> operation mapping. Mandate and timing are not
+    /// inputs to it at all, so they cannot change it.
+    #[test]
+    fn direction_alone_decides_the_operation() {
+        assert_eq!(
+            ServiceApiOmsOperation::for_direction(Direction::Output),
+            ServiceApiOmsOperation::Publish
+        );
+        assert_eq!(
+            ServiceApiOmsOperation::for_direction(Direction::Input),
+            ServiceApiOmsOperation::Subscribe
+        );
+    }
+
+    /// Every facade name and parameter is legal, unreserved, and
+    /// unreachable from any prefixed contract scope name.
+    #[test]
+    fn facade_names_are_safe_and_unreachable_from_contract_ids() {
+        for language in ALL {
+            let fixed = service_api_fixed_names(language);
+            let parameters = fixed.facade.parameters.all();
+            for name in fixed.facade.all().into_iter().chain(parameters) {
+                assert!(
+                    !crate::backend_names::is_reserved(language, name),
+                    "{language:?} {name}"
+                );
+                let folded = name.to_ascii_lowercase();
+                assert!(
+                    !folded.starts_with("function_") && !folded.starts_with("exchange_"),
+                    "{language:?} {name}"
+                );
+            }
+        }
+    }
+
+    /// Facade parameters never shadow a type or wrapper name the same
+    /// profile or body must still reach: the local `Payload`, `TOPIC`, the
+    /// subscription constants, the Ada `Handler` interface, or `Result`.
+    #[test]
+    fn facade_parameters_never_shadow_what_their_profile_uses() {
+        for language in ALL {
+            let fixed = service_api_fixed_names(language);
+            let facade = fixed.facade;
+            let used = [
+                Some(fixed.payload),
+                Some(fixed.topic),
+                Some(facade.message_namespace),
+                Some(facade.message_name),
+                Some(facade.subscription_group),
+                facade.has_subscription_group,
+                facade.handler,
+                facade.adapter_result,
+                facade.publish_hook,
+                facade.subscribe_hook,
+            ]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>();
+            let same = |a: &str, b: &str| match language {
+                BackendLanguage::Ada => a.eq_ignore_ascii_case(b),
+                _ => a == b,
+            };
+            let p = facade.parameters;
+            let body_parameters = [
+                p.adapter,
+                p.adapter_type,
+                Some(p.value),
+                Some(p.handler),
+                p.handler_type,
+                p.payload_type,
+                p.handle_self,
+                p.handle_message,
+            ];
+            for parameter in body_parameters.into_iter().flatten() {
+                for name in &used {
+                    assert!(
+                        !same(parameter, name),
+                        "{language:?}: {parameter} vs {name}"
+                    );
+                }
+            }
+        }
+    }
+
+    /// The Ada hook profile's parameters are spelled like the exchange's
+    /// constants on purpose (they carry the same values). Inside the formal
+    /// profile only the parameter is in scope, and the generic body refers
+    /// to the constants from outside it; GNAT accepts this shape (proved by
+    /// the CLI Ada facade consumer). This pins it so a rename is deliberate.
+    #[test]
+    fn ada_hook_parameters_mirror_the_exchange_constants() {
+        let facade = service_api_fixed_names(BackendLanguage::Ada).facade;
+        let p = facade.parameters;
+        assert_eq!(p.hook_message_namespace, Some(facade.message_namespace));
+        assert_eq!(p.hook_message_name, Some(facade.message_name));
+        assert_eq!(p.hook_has_subscription_group, facade.has_subscription_group);
+        assert_eq!(p.hook_subscription_group, Some(facade.subscription_group));
+        assert_eq!(p.hook_topic, Some("Topic"));
+    }
+
+    /// Facade names occupy the regions the renderers put them in: Subscribe
+    /// names only in input exchange scopes, Publish names only in output
+    /// exchange scopes, Rust adapter traits only in the root.
+    #[test]
+    fn facade_names_are_claimed_per_operation() {
+        for language in ALL {
+            let facade = service_api_fixed_names(language).facade;
+            let publish = facade.exchange_names(ServiceApiOmsOperation::Publish);
+            let subscribe = facade.exchange_names(ServiceApiOmsOperation::Subscribe);
+            assert!(publish.contains(&facade.publish), "{language:?}");
+            assert!(!publish.contains(&facade.subscribe), "{language:?}");
+            assert!(subscribe.contains(&facade.subscribe), "{language:?}");
+            assert!(!subscribe.contains(&facade.publish), "{language:?}");
+            assert!(subscribe.contains(&facade.subscription_group));
+            assert!(!publish.contains(&facade.subscription_group));
+            let root = facade.root_names();
+            match language {
+                BackendLanguage::Rust => {
+                    assert_eq!(root, ["PublishAdapter", "SubscribeAdapter"]);
+                }
+                _ => assert!(root.is_empty(), "{language:?}"),
+            }
+        }
+    }
+
+    /// Ada identifiers are case-insensitive: the facade names must not fold
+    /// onto any Task 047 fixed name in the same exchange scope.
+    #[test]
+    fn ada_facade_names_do_not_fold_onto_task047_names() {
+        let fixed = service_api_fixed_names(BackendLanguage::Ada);
+        let task047 = [
+            fixed.id,
+            fixed.kind,
+            fixed.direction,
+            fixed.mandate,
+            fixed.topic,
+            fixed.payload,
+        ];
+        for operation in [
+            ServiceApiOmsOperation::Publish,
+            ServiceApiOmsOperation::Subscribe,
+        ] {
+            for name in fixed.facade.exchange_names(operation) {
+                for existing in task047 {
+                    assert!(!name.eq_ignore_ascii_case(existing), "{name} vs {existing}");
+                }
+            }
+        }
+        assert_eq!(
+            validate_names(
+                BackendLanguage::Ada,
+                vec![(
+                    "f",
+                    vec![
+                        ("in", Some(ServiceApiOmsOperation::Subscribe)),
+                        ("out", Some(ServiceApiOmsOperation::Publish)),
+                        ("sig", None),
+                    ],
+                )],
+            ),
+            Ok(())
+        );
+    }
+
+    /// Task 047 function/exchange normalization collisions still fail
+    /// closed with the facade present, and IDs spelled like facade names are
+    /// safe behind the fixed prefix.
+    #[test]
+    fn task047_normalization_still_fails_closed_with_the_facade() {
+        let publish = Some(ServiceApiOmsOperation::Publish);
+        let subscribe = Some(ServiceApiOmsOperation::Subscribe);
+        for language in ALL {
+            let error = validate_names(
+                language,
+                vec![
+                    ("foo-bar", vec![("e", publish)]),
+                    ("foo_bar", vec![("e", subscribe)]),
+                ],
+            )
+            .expect_err("function IDs must still collide");
+            assert!(
+                matches!(
+                    &error,
+                    ServiceApiNameError::Collision(collision)
+                        if collision.region == ServiceApiRegion::Service
+                ),
+                "{language:?}: {error:?}"
+            );
+            for id in [
+                "publish",
+                "subscribe",
+                "publisher",
+                "subscriber",
+                "handler",
+                "result",
+            ] {
+                assert_eq!(
+                    validate_names(language, vec![(id, vec![(id, subscribe), ("x", publish)])]),
+                    Ok(()),
+                    "{language:?} {id}"
+                );
+            }
+        }
+    }
+
+    /// Only a service with an OMS exchange claims the root adapter names.
+    #[test]
+    fn zero_oms_services_claim_no_facade_names() {
+        assert_eq!(
+            validate_names(BackendLanguage::Rust, vec![("f", vec![("sig", None)])]),
+            Ok(())
+        );
+        assert!(!api_model(&[("f", &[("sig", false)])]).has_oms_exchanges());
+        assert!(api_model(&[("f", &[("e", true)])]).has_oms_exchanges());
+    }
+
+    // -----------------------------------------------------------------
     // Artifact preflight (Task 047 corrective)
     // -----------------------------------------------------------------
 
@@ -1664,6 +2348,8 @@ mod tests {
                                     message_name: placeholder.clone(),
                                     payload_type: TypeRef::named(placeholder.clone()),
                                     payload_name: placeholder.clone(),
+                                    operation: ServiceApiOmsOperation::Subscribe,
+                                    subscription_group: None,
                                 })
                             } else {
                                 ServiceApiExchangeKind::SpecialSignal
@@ -1984,6 +2670,73 @@ mod tests {
             check_ada_payload_visibility(&signals_only, &package("Id")),
             Ok(())
         );
+    }
+
+    /// Task 048 extends the model/wrapper walks with the facade's names. For
+    /// Ada, the facade's exchange-level names (`Handler`, `Subscriber`,
+    /// `Publisher`, `Result`, ...) come AFTER the `Payload` reference, so a
+    /// model parent package spelled like one is NOT hidden there: GNAT
+    /// accepts it (checked for every facade name against a generated
+    /// wrapper; see the Task 048 design document). Only the Task 047 names
+    /// that precede `Payload` still hide it. No false positive is added.
+    #[test]
+    fn ada_facade_names_after_payload_never_hide_the_model() {
+        let package = |outer: &str| [outer.to_owned(), "Model".to_owned()];
+        let facade = service_api_fixed_names(BackendLanguage::Ada).facade;
+        let mut model = api_model(&[("f", &[("e", true), ("o", true)])]);
+        // Make the second exchange an output so both operations exist.
+        if let ServiceApiExchangeKind::OmsMessage(binding) =
+            &mut model.functions[0].exchanges[1].kind
+        {
+            binding.operation = ServiceApiOmsOperation::Publish;
+        }
+        let names = facade
+            .exchange_names(ServiceApiOmsOperation::Subscribe)
+            .into_iter()
+            .chain(facade.exchange_names(ServiceApiOmsOperation::Publish))
+            .chain(facade.operation_names(ServiceApiOmsOperation::Subscribe))
+            .chain(facade.operation_names(ServiceApiOmsOperation::Publish))
+            .chain(facade.parameters.all());
+        for outer in names {
+            // `Topic` is also a hook parameter AND a Task 047 constant
+            // declared before `Payload`; the constant is what hides it.
+            if outer.eq_ignore_ascii_case("Topic") {
+                continue;
+            }
+            assert_eq!(
+                check_ada_payload_visibility(&model, &package(outer)),
+                Ok(()),
+                "{outer}"
+            );
+        }
+        // The Task 047 hiders are unchanged.
+        assert!(check_ada_payload_visibility(&model, &package("Topic")).is_err());
+        assert!(check_ada_payload_visibility(&model, &package("Payload")).is_err());
+    }
+
+    /// Rust's adapter traits live in the root only when a facade exists; the
+    /// C++ walk still ignores ordinary model namespaces, and still flags the
+    /// genuine `::service_api` conflicts with the facade present.
+    #[test]
+    fn facade_root_names_join_the_root_regions() {
+        let model = api_model(&[("f", &[("e", true)])]);
+        assert_eq!(
+            cpp_scopes(&model, ["programs", "oam"], &["PayloadA"]),
+            Ok(())
+        );
+        let collision = cpp_collision(cpp_scopes(&model, ["service_api", "service_kind"], &[]));
+        assert_eq!(collision.conflict, ServiceApiModelConflict::Redeclaration);
+        // C++ facade names are all exchange-scoped, lowercase, and so never
+        // reachable by a C++ model top-level name (always UpperCamel).
+        let facade = service_api_fixed_names(BackendLanguage::Cpp).facade;
+        for name in facade
+            .exchange_names(ServiceApiOmsOperation::Subscribe)
+            .into_iter()
+            .chain(facade.exchange_names(ServiceApiOmsOperation::Publish))
+        {
+            assert!(name.as_bytes()[0].is_ascii_lowercase(), "{name}");
+        }
+        assert!(facade.root_names().is_empty());
     }
 
     /// No type model, no model artifacts: the artifact preflight is vacuous

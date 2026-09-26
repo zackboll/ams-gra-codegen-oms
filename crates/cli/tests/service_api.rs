@@ -274,7 +274,17 @@ fn task047_repeated_message_selection_is_two_endpoints_one_type() {
         assert_eq!(source.matches(alias).count(), 2, "{language}:\n{source}");
         assert!(source.contains("\"mission.a\"") && source.contains("\"backup.a\""));
         // The Payload binds the resolved PAYLOAD, not the message's name.
-        assert!(!source.contains("MessageA"), "{language}");
+        // (Task 048: the message's local name now legitimately appears, but
+        // only as the Subscribe façade's message-identity constant, and only
+        // in the one input occurrence `a-input`; `a-repeat` is an output.)
+        for line in source.lines().filter(|line| line.contains("Payload")) {
+            assert!(!line.contains("MessageA"), "{language}: {line}");
+        }
+        assert_eq!(
+            source.matches("\"MessageA\"").count(),
+            1,
+            "{language}:\n{source}"
+        );
     }
 }
 

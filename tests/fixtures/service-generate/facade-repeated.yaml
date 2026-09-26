@@ -1,0 +1,48 @@
+# SYNTHETIC Task 048 fixture. Authored for this repository only.
+#
+# Selects against root.xsd. One message (MessageA -> PayloadA) used by two
+# exchange occurrences in two functions with OPPOSITE directions and
+# different topics. Expected: one PayloadA model type; function A's input
+# exposes Subscribe on topic position.a; function B's output exposes Publish
+# on topic position.b. The two operations are NOT deduplicated.
+#
+# facade-repeated-reversed.yaml selects the same message with the functions
+# in the opposite order.
+contract_version: "0.1"
+
+service:
+  name: facade-repeated
+  version: "0.1.0"
+  kind: service
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: function-a
+    name: Function A
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: report-in
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: MessageA
+        topic: position.a
+        timing:
+          kind: asynchronous
+  - id: function-b
+    name: Function B
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: report-out
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: MessageA
+        topic: position.b
+        timing:
+          kind: asynchronous

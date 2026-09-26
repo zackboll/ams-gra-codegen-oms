@@ -1,0 +1,91 @@
+# PROVENANCE: copied verbatim (body unchanged below this header) from
+#   zackboll/ams-gra-service-contract
+#   commit 4ea5be8dd36e9695bd58f2c36c6b3dd8075de249
+#   path: examples/service-status.yaml
+#   body sha256: 4611b098d566e66ddddbaabff3dbff6c209e2cc3c469f27c992928fec83d53d5
+#
+# The portable-contract project's illustrative Service Status function
+# (OMS 2.5 OMSC-INS-003 Rev M, Table 3.1-2): ServiceStatus output,
+# ServiceStatusDataRequest input, ServiceStatusDataRequestStatus output.
+# Task 048 uses it to prove the facade pattern Publish, Subscribe, Publish
+# in contract order. It is resolved in CI against the synthetic
+# tests/fixtures/service-generate/service-status.xsd.
+contract_version: "0.1"
+
+service:
+  name: example-status-service
+  version: "0.1.0"
+  kind: service
+  description: >-
+    Illustrative machine-readable representation of the Service Status
+    function shape from the OMS v2.5 Service Contract material. This is
+    an example of this independent format, not an official OMS artifact.
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+sources:
+  - id: oms-service-contract-instructions-v25
+    title: OMS Service Contract Instructions v2.5
+    document_number: OMSC-INS-003
+    revision: M
+    date: "2026-01-22"
+    uri: https://github.com/open-arsenal/oms/blob/main/docs_official/14_2_OMSC-INS-003_RevM_ServiceContractInstructions_DandD_v2_5.docx
+
+functions:
+  - id: service-status
+    name: Service Status
+    category: required
+    required_group: service
+    applicability: applicable
+    description: >-
+      Required Service Status interface example. Message primitive is
+      intentionally omitted and must be resolved from the selected UCI schema.
+    traceability:
+      - source: oms-service-contract-instructions-v25
+        locator: Required Service Functions / Service Status
+    exchanges:
+      - id: service-status-output
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: ServiceStatus
+        topic: ServiceStatus
+        operational_attribute: SOAC-1
+        timing:
+          kind: periodic
+          nominal_rate_hz: 1.0
+          max_rate_hz: 0.5
+        traceability:
+          - source: oms-service-contract-instructions-v25
+            locator: Service Status / Inputs and Outputs
+            note: >-
+              Timing values mirror the upstream example table and are informative,
+              not hard real-time requirements in this v0.1 format.
+
+      - id: service-status-data-request-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: ServiceStatusDataRequest
+        topic: ServiceStatusDataRequest
+        timing:
+          kind: asynchronous
+        traceability:
+          - source: oms-service-contract-instructions-v25
+            locator: Service Status / Inputs and Outputs
+
+      - id: service-status-data-request-status-output
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: ServiceStatusDataRequestStatus
+        topic: ServiceStatusDataRequestStatus
+        timing:
+          kind: on_demand
+          nominal_response_seconds: 0.5
+          max_response_seconds: 3.0
+        traceability:
+          - source: oms-service-contract-instructions-v25
+            locator: Service Status / Inputs and Outputs
