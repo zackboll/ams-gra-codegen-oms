@@ -166,7 +166,18 @@ pub fn direct_temporal_profile(
 #[must_use]
 pub fn schema_emits_direct_date_time(schema: &SchemaIr, world: GenerationWorld) -> bool {
     let plan = name_preflight_plan(schema, world);
-    plan.surfaces().iter().any(|emission| {
+    emissions_emit_direct_date_time(schema, plan.surfaces(), world)
+}
+
+/// Inspect an existing emission surface; callers that already own a plan must
+/// use this instead of constructing another name-preflight plan.
+#[must_use]
+pub fn emissions_emit_direct_date_time(
+    schema: &SchemaIr,
+    emissions: &[TypeEmission<'_>],
+    world: GenerationWorld,
+) -> bool {
+    emissions.iter().any(|emission| {
         let TypeEmission::Declaration(declaration) = emission else {
             return false;
         };

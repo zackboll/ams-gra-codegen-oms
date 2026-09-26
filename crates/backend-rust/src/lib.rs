@@ -6,11 +6,10 @@ use ams_gra_oms_codegen_core::{
     StringProfile, TemporalProfile, TypeEmission, WhitespaceVisiblePolicy,
     abstract_value_projection_for_ref, backend_preflight, constrains_string,
     direct_temporal_profile, effective_choice_alternatives, effective_record_fields,
-    field_storage_semantics, float32_literal, float64_literal, floating_domain,
-    generated_enum_variant_name, inclusive_integral_domain, is_temporal_primitive,
-    plan_type_emissions, schema_emits_bounded_integer_support, schema_emits_direct_date_time,
-    schema_emits_temporal_carrier, schema_emits_unbounded_sequence_support, string_profile,
-    temporal_profile,
+    emissions_emit_direct_date_time, field_storage_semantics, float32_literal, float64_literal,
+    floating_domain, generated_enum_variant_name, inclusive_integral_domain, is_temporal_primitive,
+    plan_type_emissions, schema_emits_bounded_integer_support, schema_emits_temporal_carrier,
+    schema_emits_unbounded_sequence_support, string_profile, temporal_profile,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -65,6 +64,7 @@ impl Backend for RustBackend {
 pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, CodegenError> {
     validate_schema(schema, world)?;
     let emissions = plan_type_emissions(schema, world)?;
+    let emits_direct_date_time = emissions_emit_direct_date_time(schema, &emissions, world);
     let mut output = String::from(concat!(
         "#[derive(Debug, Clone, PartialEq, Eq)]\n",
         "pub struct BoundedVec<T, const MIN: usize, const MAX: usize>(Vec<T>);\n\n",
@@ -104,10 +104,10 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
             "    pub const fn get(self) -> u64 { self.0 }\n}\n\n",
         ));
     }
-    if schema_emits_direct_date_time(schema, world) {
+    if emits_direct_date_time {
         output.push_str("#[derive(Clone, Debug)]\npub struct XmlSchemaDateTime { lexical: String }\n\nimpl XmlSchemaDateTime {\n    pub fn new(value: &str) -> Option<Self> {\n        let lexical = XmlSchemaDateTimeParser::collapse(value);\n        XmlSchemaDateTimeParser::is_date_time(&lexical).then_some(Self { lexical })\n    }\n    pub fn as_str(&self) -> &str { &self.lexical }\n}\n\n");
     }
-    if schema_emits_direct_date_time(schema, world) || schema_emits_temporal_carrier(schema) {
+    if emits_direct_date_time || schema_emits_temporal_carrier(schema) {
         output.push_str(&rust_date_time_parser());
     }
     for emission in emissions {

@@ -6,11 +6,11 @@ use ams_gra_oms_codegen_core::{
     StringProfile, TemporalProfile, TypeEmission, WhitespaceVisiblePolicy,
     abstract_value_projection_for_ref, backend_preflight, constrains_string,
     direct_temporal_profile, effective_choice_alternatives, effective_record_fields,
-    field_storage_semantics, float32_literal, float64_literal, floating_domain,
-    generated_enum_variant_name, inclusive_integral_domain, is_temporal_primitive,
-    plan_type_emissions, schema_emits_bounded_integer_support, schema_emits_direct_date_time,
-    schema_emits_string_profile_carrier, schema_emits_temporal_carrier,
-    schema_emits_unbounded_sequence_support, string_profile, temporal_profile,
+    emissions_emit_direct_date_time, field_storage_semantics, float32_literal, float64_literal,
+    floating_domain, generated_enum_variant_name, inclusive_integral_domain, is_temporal_primitive,
+    plan_type_emissions, schema_emits_bounded_integer_support, schema_emits_string_profile_carrier,
+    schema_emits_temporal_carrier, schema_emits_unbounded_sequence_support, string_profile,
+    temporal_profile,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -65,6 +65,7 @@ impl Backend for CppBackend {
 pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, CodegenError> {
     validate_schema(schema, world)?;
     let emissions = plan_type_emissions(schema, world)?;
+    let emits_direct_date_time = emissions_emit_direct_date_time(schema, &emissions, world);
     let namespace = namespace_name(schema)?;
     let variant_header = if emissions.iter().any(|emission| {
         matches!(
@@ -102,7 +103,7 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     // header is required whenever either carrier is emitted.
     let string_view_header = if schema_emits_temporal_carrier(schema)
         || schema_emits_string_profile_carrier(schema)
-        || schema_emits_direct_date_time(schema, world)
+        || emits_direct_date_time
     {
         "#include <string_view>\n"
     } else {
@@ -172,10 +173,10 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
             "    explicit BoundedInteger(T value) noexcept : value_(value) {}\n    T value_;\n};\n\n",
         ));
     }
-    if schema_emits_temporal_carrier(schema) || schema_emits_direct_date_time(schema, world) {
+    if schema_emits_temporal_carrier(schema) || emits_direct_date_time {
         output.push_str(&cpp_date_time_parser());
     }
-    if schema_emits_direct_date_time(schema, world) {
+    if emits_direct_date_time {
         output.push_str(CPP_DIRECT_DATE_TIME_CARRIER);
     }
     for emission in emissions {

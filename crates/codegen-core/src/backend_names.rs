@@ -34,7 +34,7 @@ use crate::coverage::BackendLanguage;
 use crate::floating::floating_domain;
 use crate::string_profile::string_profile;
 use crate::structure::{effective_choice_alternatives, effective_record_fields};
-use crate::temporal::{schema_emits_direct_date_time, temporal_profile};
+use crate::temporal::{emissions_emit_direct_date_time, temporal_profile};
 use crate::world::GenerationWorld;
 use crate::{AbstractValueProjection, TypeEmission, name_preflight_plan};
 use ams_gra_oms_ir::{
@@ -1145,6 +1145,7 @@ fn collect_ada_wrapper_callable_conflicts(
     schema: &SchemaIr,
     emissions: &[TypeEmission<'_>],
     world: GenerationWorld,
+    emits_direct_date_time: bool,
     conflicts: &mut Vec<CollectedNameError>,
 ) {
     for (declaration, published) in ada_sequence_callable_owners(schema, emissions, world) {
@@ -1190,7 +1191,7 @@ fn collect_ada_wrapper_callable_conflicts(
     // The conditional direct carrier publishes the same overloadable pair.
     // It has no schema owner, so attribute a collision only to the conflicting
     // user declaration, while preserving the ordinary wrapper overload model.
-    if schema_emits_direct_date_time(schema, world) {
+    if emits_direct_date_time {
         for callable in ADA_WRAPPER_CALLABLES {
             let key = identity_key(BackendLanguage::Ada, callable);
             let Some(first) = top_level.taken.get(&key) else {
@@ -1245,7 +1246,7 @@ fn register_support_names(
     top_level: &mut Region,
     schema: &SchemaIr,
     language: BackendLanguage,
-    world: GenerationWorld,
+    emits_direct_date_time: bool,
 ) -> Result<(), BackendNameError> {
     // Attribution names the generator rather than pretending some schema
     // identifier was responsible for the reservation. Because a support type
@@ -1254,7 +1255,7 @@ fn register_support_names(
     let reserve = |top_level: &mut Region, generated: &str| -> Result<(), BackendNameError> {
         top_level.insert(NameSource::GeneratedSupport(language), generated.to_owned())
     };
-    if schema_emits_direct_date_time(schema, world) {
+    if emits_direct_date_time {
         reserve(
             top_level,
             match language {
@@ -1267,8 +1268,7 @@ fn register_support_names(
     // or a supported named Task 036 Zulu declaration is present. It lives in
     // the same top-level region as schema-generated declarations.
     if language != BackendLanguage::Ada
-        && (schema_emits_direct_date_time(schema, world)
-            || crate::schema_emits_temporal_carrier(schema))
+        && (emits_direct_date_time || crate::schema_emits_temporal_carrier(schema))
     {
         reserve(top_level, "XmlSchemaDateTimeParser")?;
     }
@@ -1709,11 +1709,13 @@ pub fn validate_backend_names(
     // planning abort says nothing about them.
     let plan = name_preflight_plan(schema, world);
     let emissions = plan.surfaces();
+    // One generated-name pass => one name_preflight_plan, shared by all support surfaces.
+    let emits_direct_date_time = emissions_emit_direct_date_time(schema, emissions, world);
     let mut top_level = Region::new(language, NameRegion::TopLevel);
     // Generated support types occupy the top-level scope before any user
     // declaration is placed in it, so a user declaration colliding with one is
     // attributed to the user declaration as the second, conflicting source.
-    register_support_names(&mut top_level, schema, language, world)?;
+    register_support_names(&mut top_level, schema, language, emits_direct_date_time)?;
     register_emitted_declaration_names(&mut top_level, emissions, language)?;
     if language == BackendLanguage::Ada {
         register_ada_kind_companions(&mut top_level, emissions)?;
@@ -1740,6 +1742,7 @@ pub fn validate_backend_names(
             schema,
             emissions,
             world,
+            emits_direct_date_time,
             &mut callables,
         );
         if let Some(conflict) = callables.into_iter().next() {
@@ -2094,10 +2097,12 @@ pub fn unsafe_named_declarations(
     // rules already handle on their own terms.
     let plan = name_preflight_plan(schema, world);
     let emissions = plan.surfaces();
+    // One generated-name pass => one name_preflight_plan, including attribution.
+    let emits_direct_date_time = emissions_emit_direct_date_time(schema, emissions, world);
     let mut top_level = Region::collecting(language, NameRegion::TopLevel);
     // Ignoring the `Result` is correct for a collecting region: it only ever
     // returns `Ok`, accumulating into `errors` instead.
-    let _ = register_support_names(&mut top_level, schema, language, world);
+    let _ = register_support_names(&mut top_level, schema, language, emits_direct_date_time);
     let _ = register_emitted_declaration_names(&mut top_level, emissions, language);
     if language == BackendLanguage::Ada {
         let _ = register_ada_kind_companions(&mut top_level, emissions);
@@ -2123,7 +2128,14 @@ pub fn unsafe_named_declarations(
     if language == BackendLanguage::Ada {
         let mut literals = Vec::new();
         collect_ada_literal_conflicts(&top_level, schema, emissions, &mut literals);
-        collect_ada_wrapper_callable_conflicts(&top_level, schema, emissions, world, &mut literals);
+        collect_ada_wrapper_callable_conflicts(
+            &top_level,
+            schema,
+            emissions,
+            world,
+            emits_direct_date_time,
+            &mut literals,
+        );
         for conflict in literals {
             unsafe_names.extend(conflict.owners);
         }
@@ -2246,58 +2258,61 @@ mod tests {
 
     #[test]
     fn direct_temporal_support_tracks_emitted_storage_and_inheritance() {
-        use crate::schema_emits_direct_date_time;
+        use crate::{emissions_emit_direct_date_time, schema_emits_direct_date_time};
+        let check = |schema: SchemaIr, world: GenerationWorld, expected: bool| {
+            let plan = crate::name_preflight_plan(&schema, world);
+            let from_plan = emissions_emit_direct_date_time(&schema, plan.surfaces(), world);
+            assert_eq!(from_plan, expected);
+            assert_eq!(schema_emits_direct_date_time(&schema, world), from_plan);
+        };
         for world in [
             GenerationWorld::ClosedSchemaSet,
             GenerationWorld::OpenExtensions,
         ] {
             for cardinality in [Cardinality::REQUIRED_ONE, Cardinality::OPTIONAL_ONE] {
-                assert!(schema_emits_direct_date_time(
-                    &schema_with(vec![record(
+                check(
+                    schema_with(vec![record(
                         "Owner",
                         vec![direct_date_time("Timestamp", cardinality)],
                     )]),
-                    world
-                ));
+                    world,
+                    true,
+                );
             }
             let mut ancestor = record(
                 "Ancestor",
                 vec![direct_date_time("Timestamp", Cardinality::REQUIRED_ONE)],
             );
             ancestor.is_abstract = true;
-            assert!(!schema_emits_direct_date_time(
-                &schema_with(vec![ancestor.clone()]),
-                world
-            ));
+            check(schema_with(vec![ancestor.clone()]), world, false);
             let mut descendant = record("Descendant", vec![]);
             descendant.base_type = Some(TypeRef::named(ancestor.name.clone()));
-            assert!(schema_emits_direct_date_time(
-                &schema_with(vec![ancestor, descendant]),
-                world
-            ));
+            check(schema_with(vec![ancestor, descendant]), world, true);
             for kind in [
                 PrimitiveKind::String,
                 PrimitiveKind::Time,
                 PrimitiveKind::Duration,
             ] {
-                assert!(!schema_emits_direct_date_time(
-                    &schema_with(vec![record(
+                check(
+                    schema_with(vec![record(
                         "Owner",
                         vec![field(
                             "When",
                             TypeRefTarget::Primitive(kind),
-                            Cardinality::REQUIRED_ONE
-                        )]
+                            Cardinality::REQUIRED_ONE,
+                        )],
                     )]),
-                    world
-                ));
+                    world,
+                    false,
+                );
             }
             let mut constrained = direct_date_time("Timestamp", Cardinality::REQUIRED_ONE);
             constrained.constraints.min_length = Some(1);
-            assert!(!schema_emits_direct_date_time(
-                &schema_with(vec![record("Owner", vec![constrained])]),
-                world
-            ));
+            check(
+                schema_with(vec![record("Owner", vec![constrained])]),
+                world,
+                false,
+            );
         }
     }
 

@@ -8,9 +8,10 @@ use ams_gra_oms_codegen_core::{
     StringProfile, TemporalProfile, TypeEmission, WhitespaceVisiblePolicy,
     abstract_value_projection_for_ref, ada_record_field_uses_optional_wrapper, backend_preflight,
     constrains_string, direct_temporal_profile, effective_choice_alternatives,
-    effective_record_fields, field_storage_semantics, float32_literal, float64_literal,
-    floating_domain, generated_enum_variant_name, inclusive_integral_domain, is_temporal_primitive,
-    plan_type_emissions, schema_emits_ada_binary_vectors, schema_emits_bounded_sequence_support,
+    effective_record_fields, emissions_emit_direct_date_time, field_storage_semantics,
+    float32_literal, float64_literal, floating_domain, generated_enum_variant_name,
+    inclusive_integral_domain, is_temporal_primitive, plan_type_emissions,
+    schema_emits_ada_binary_vectors, schema_emits_bounded_sequence_support,
     schema_emits_direct_date_time, schema_emits_string_profile_carrier,
     schema_emits_temporal_carrier, schema_emits_unbounded_sequence_support, string_profile,
     temporal_profile,
@@ -78,6 +79,7 @@ impl Backend for AdaBackend {
 pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, CodegenError> {
     validate_schema(schema, world)?;
     let emissions = plan_type_emissions(schema, world)?;
+    let emits_direct_date_time = emissions_emit_direct_date_time(schema, &emissions, world);
     let package = package_name(schema)?;
     // Task 033: predicate checks follow the assertion policy in force where a
     // conversion is written, so the generated spec states its own policy. It is
@@ -136,7 +138,7 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     // accumulated here and emitted only if some declaration actually produced
     // one, which keeps every other schema's single-`.ads` output unchanged.
     let mut body = String::new();
-    if schema_emits_direct_date_time(schema, world) {
+    if emits_direct_date_time {
         render_direct_date_time_spec(&mut output, &mut private_part);
     }
     for emission in emissions {
@@ -197,14 +199,15 @@ pub fn generate_body(
     }
     validate_schema(schema, world)?;
     let emissions = plan_type_emissions(schema, world)?;
+    let emits_direct_date_time = emissions_emit_direct_date_time(schema, &emissions, world);
     let package = package_name(schema)?;
     let mut discard_spec = String::new();
     let mut discard_private = String::new();
     let mut body = String::new();
-    if schema_emits_temporal_carrier(schema) || schema_emits_direct_date_time(schema, world) {
+    if schema_emits_temporal_carrier(schema) || emits_direct_date_time {
         body.push_str(&ada_date_time_parser());
     }
-    if schema_emits_direct_date_time(schema, world) {
+    if emits_direct_date_time {
         body.push_str(ADA_DIRECT_DATE_TIME_BODY);
     }
     for emission in emissions {

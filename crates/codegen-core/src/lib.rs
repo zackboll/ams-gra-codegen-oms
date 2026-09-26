@@ -75,8 +75,8 @@ pub use structure::{
 };
 pub use temporal::{
     DirectTemporalProfile, DirectTemporalProfileError, TemporalProfile, TemporalProfileError,
-    direct_temporal_profile, is_temporal_primitive, schema_emits_direct_date_time,
-    schema_emits_temporal_carrier, temporal_profile,
+    direct_temporal_profile, emissions_emit_direct_date_time, is_temporal_primitive,
+    schema_emits_direct_date_time, schema_emits_temporal_carrier, temporal_profile,
 };
 pub use world::GenerationWorld;
 
