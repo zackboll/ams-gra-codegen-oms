@@ -626,7 +626,7 @@ The façade still performs no communication: no WebSocket, OWP, subscription
 IDs, codec, thread, or dispatcher. See
 [Task 048](task-048-publish-subscribe-facade.md).
 
-**Still open:**
+**Still open** (Phase 3 progress is tracked below):
 
 - [ ] typed LA-CAL integration;
 - [ ] codec and runtime integration.
@@ -671,6 +671,34 @@ Implement or integrate small runtimes for:
 - C++.
 
 Validate each against unmodified Sleet.
+
+Progress (typed LA-CAL integration as a whole is **not** complete):
+
+- [x] Rust reference LA-CAL runtime adapter (Task 049). The Task 048 adapter
+      traits moved verbatim into the tiny, dependency-free
+      `ams-gra-oms-runtime-api` crate, and generated Rust wrappers re-export
+      them (application imports and calls unchanged). `ams-gra-oms-runtime-rust`
+      implements them over the pinned public `sleet-client`
+      (`e38f61d8`): connect + `INIT`/`INFO`, typed Publish/Subscribe,
+      runtime-owned subscription IDs, `MSG` dispatch by SID, explicit
+      unsubscribe, close, the §6.1.1 global-element envelope and LA-CAL
+      message-name formatting, and runtime errors/events. Proven through the
+      generated façade against a mock OWP peer in CI and against the
+      unmodified pinned Sleet.
+- [ ] Ada LA-CAL runtime.
+- [ ] C++ LA-CAL runtime.
+- [ ] generated OMS JSON payload codecs (the `OmsJsonCodec<P>` seam exists;
+      codecs are handwritten until then, so no UCI message such as
+      `PositionReport` traverses Sleet yet).
+- [ ] reconnect/backoff, TLS/auth policy, timers, service lifecycle.
+
+```text
+Task 048:  generated type-safe operation
+Task 049:  first reusable runtime executing that operation through real LA-CAL
+Task 050:  generated OMS JSON payload codecs / broader runtime integration
+```
+
+See [Task 049](task-049-rust-la-cal-runtime.md).
 
 ## Phase 4 — SPARK-oriented Ada backend
 

@@ -756,7 +756,8 @@ wrappers; see [below](#task-047--typed-service-api-wrappers). Everything else
 listed here is still not implemented.)
 
 Not implemented, deliberately (Task 048 later delivered the generated
-publish/subscribe façade; the rest remains open): Ada/Rust/C++ service
+publish/subscribe façade and Task 049 a Rust OWP/WebSocket runtime adapter
+over `sleet-client`; the rest remains open): Ada/Rust/C++ service
 wrappers, generated publish/subscribe façades, a typed CAL API, OWP, WebSocket, JSON codec generation,
 OMS profile validation, completion-assistant parsing, contract completion
 logic, automatic Capability inference, automatic function grouping, automatic
@@ -862,6 +863,34 @@ ServicePlan -> ServiceApiModel
   `PositionReport` stays 60/60 READY and gets Subscribe only.
 
 See [Task 048](task-048-publish-subscribe-facade.md).
+
+## Task 049 — Rust LA-CAL runtime adapter
+
+Task 049 executes the Task 048 Rust façade through real LA-CAL. The contract
+pipeline and `service-check` are unchanged.
+
+- **Trait move, same paths.** `PublishAdapter` / `SubscribeAdapter` now live
+  in the dependency-free `ams-gra-oms-runtime-api` crate. A Rust wrapper with
+  any OMS exchange re-exports them as `service_api::{PublishAdapter,
+  SubscribeAdapter}`, so application imports and endpoint calls are unchanged.
+  The wrapper must be compiled with that crate available. Zero-OMS Rust
+  wrappers, all Ada and C++ wrappers, and all model files are byte-identical.
+- **Runtime.** `ams-gra-oms-runtime-rust` implements the traits over the pinned
+  public `sleet-client` (`open-arsenal/ams-gra-hello-world-sk-infra-sleet`
+  `e38f61d8`). It maps the endpoint's structured message identity to the
+  LA-CAL name (`{name}` for the OAM namespace, `{namespace}name` otherwise)
+  for both the global JSON member and `SUB`, and dispatches `MSG` by the
+  subscription ID it generated.
+- **Readiness versus runtime validity.** A READY contract may still carry a
+  topic or group that is not an OWP identifier. The portable format only
+  requires non-empty text. The runtime reports that as a `sleet-client`
+  `InvalidInput` error and writes no frame. Readiness semantics did not
+  change.
+- **Codecs.** Payload JSON goes through a caller-supplied `OmsJsonCodec<P>`.
+  Generated codecs are future work, so real UCI messages (e.g.
+  `PositionReport`) do not yet traverse Sleet.
+
+See [Task 049](task-049-rust-la-cal-runtime.md).
 
 ## Task 033 follow-up — constrained floating ranges
 

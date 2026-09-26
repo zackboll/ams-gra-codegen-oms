@@ -1,0 +1,29 @@
+[package]
+name = "ams-gra-oms-runtime-rust-facade-tests"
+description = "Task 049 test-only consumer: generated Rust facade -> runtime-rust -> sleet-client"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version = "1.95"
+publish = false
+
+# TEST-ONLY crate. Its build script runs the real `service-generate` on the
+# Task 049 fixtures and the library `include!`s the generated wrappers, so the
+# integration tests drive the GENERATED endpoint functions against the
+# runtime. Nothing here ships; the mock OWP peer lives under tests/.
+
+[dependencies]
+ams-gra-oms-runtime-api = { path = "../runtime-api-rust" }
+ams-gra-oms-runtime-rust = { path = "../runtime-rust" }
+serde_json = "1"
+
+[build-dependencies]
+ams-gra-codegen-oms = { path = "../cli" }
+
+[dev-dependencies]
+futures-util = "0.3"
+tokio = { version = "1", features = ["rt", "net", "macros", "sync", "time"] }
+tokio-tungstenite = "0.29"
+
+[lints]
+workspace = true

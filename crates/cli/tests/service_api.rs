@@ -574,11 +574,32 @@ fn run_binary(root: &Path, what: &str) {
     );
 }
 
+/// Task 049: a wrapper with any OMS exchange re-exports its adapter traits
+/// from the stable `ams-gra-oms-runtime-api` crate, so every Rust probe
+/// compiles that dependency-free crate into `root` first. A zero-OMS
+/// wrapper never names it; the unused `--extern` is harmless.
+fn compile_runtime_api(root: &Path) {
+    let api = Command::new("rustc")
+        .current_dir(root)
+        .args(["--edition", "2024", "--crate-type", "lib"])
+        .args(["--crate-name", "ams_gra_oms_runtime_api", "-D", "warnings"])
+        .arg(workspace_root().join("crates/runtime-api-rust/src/lib.rs"))
+        .args(["-o", "libams_gra_oms_runtime_api.rlib"])
+        .output()
+        .expect("rustc should be available in a Rust workspace");
+    assert_success(&api, "Rust runtime API crate compile");
+}
+
 fn compile_rust(root: &Path, probe: Option<&str>) {
+    compile_runtime_api(root);
     let library = Command::new("rustc")
         .current_dir(root)
         .args(["--edition", "2021", "--crate-type", "lib"])
         .args(["--crate-name", "service_api", "-D", "warnings"])
+        .args([
+            "--extern",
+            "ams_gra_oms_runtime_api=libams_gra_oms_runtime_api.rlib",
+        ])
         .args(["service_api.rs", "-o", "libservice_api.rlib"])
         .output()
         .expect("rustc should be available in a Rust workspace");

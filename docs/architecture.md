@@ -65,9 +65,10 @@ flowchart TD
     RUST --> RG[Generated Rust schema bindings]
     CPP --> CG[Generated C++ schema bindings]
 
-    AG --> AR[Ada LA-CAL runtime]
-    RG --> RR[Rust LA-CAL runtime]
-    CG --> CR[C++ LA-CAL runtime]
+    AG --> AR[Ada LA-CAL runtime - planned]
+    RG --> RAPI[runtime-api-rust traits]
+    RAPI --> RR[runtime-rust over pinned sleet-client - Task 049]
+    CG --> CR[C++ LA-CAL runtime - planned]
 
     AR --> OWP[OWP + JSON over WebSocket]
     RR --> OWP
@@ -98,8 +99,8 @@ The code generator must preserve the existing observable LA-CAL contract.
 - generated validation;
 - generated JSON codecs/mappings;
 - generated message descriptors/qualified names;
-- typed publish/subscribe facades (generated since Task 048; runtime
-  adapters are a later task);
+- typed publish/subscribe facades (generated since Task 048; the first
+  runtime adapter, Rust, is Task 049 — see section 7);
 - reproducible generation manifests;
 - optional schema compatibility/diff tooling.
 
@@ -303,6 +304,47 @@ Protocol-specific and relatively stable:
 - TLS/authentication hooks.
 
 This line is important because it keeps generated output deterministic and reviewable while allowing runtime code to be tested like normal infrastructure software.
+
+### The Rust runtime stack (Task 049)
+
+```text
+Generated Rust Service API        service_api.rs (service-generate)
+        |                         pub use ::ams_gra_oms_runtime_api::{PublishAdapter, SubscribeAdapter};
+runtime-api-rust traits           ams-gra-oms-runtime-api: two traits, no dependencies
+        |
+runtime-rust                      ams-gra-oms-runtime-rust: SleetRuntime<C>
+        |                           one worker thread, one current-thread Tokio runtime
+        |
+OmsJsonCodec<P>                   caller-supplied payload codec (generated in a later task)
+        |
+sleet-client @ e38f61d8           pinned public git dependency; never copied or forked
+        |
+OWP / WebSocket                   Sec-WebSocket-Protocol: owp; non-verbose
+        |
+Sleet                             unmodified
+```
+
+The split between the runtime and the codec is deliberate:
+
+```text
+runtime generic envelope (depends only on the message QName):
+    message QName -> LA-CAL name ({name} for the OAM namespace, else {ns}name)
+    the one global JSON member around every OMS JSON text
+    PUB / SUB / UNSUB / MSG, subscription IDs, dispatch by SID
+    connection, worker, runtime errors and events
+
+generated codec (depends only on the payload type):
+    payload fields and values
+```
+
+The same payload type can serve two global messages, so the codec never
+chooses the JSON member key and the runtime never looks inside a payload. One
+formatter produces the outgoing member, the expected incoming member, and the
+`SUB` message name. OWP lexical validity (topic, group, SID, service ID) is
+decided by `sleet-client` at run time. It is a separate layer from
+`service-check` readiness, which only checks the portable contract. No
+generator crate depends on the runtime, Tokio, or `sleet-client`. See
+[Task 049](task-049-rust-la-cal-runtime.md).
 
 ## 8. Ada/SPARK architecture
 
