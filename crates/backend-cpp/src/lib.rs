@@ -1,15 +1,16 @@
 //! Minimal C++17 type generation from normalized schema IR.
 
 use ams_gra_oms_codegen_core::{
-    AbstractValueProjection, Backend, BackendLanguage, CodegenError, EffectiveValueMember,
-    FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain, StringProfile,
-    TemporalProfile, TypeEmission, WhitespaceVisiblePolicy, abstract_value_projection_for_ref,
-    backend_preflight, constrains_string, effective_choice_alternatives, effective_record_fields,
+    AbstractValueProjection, Backend, BackendLanguage, CodegenError, DirectTemporalProfile,
+    EffectiveValueMember, FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain,
+    StringProfile, TemporalProfile, TypeEmission, WhitespaceVisiblePolicy,
+    abstract_value_projection_for_ref, backend_preflight, constrains_string,
+    direct_temporal_profile, effective_choice_alternatives, effective_record_fields,
     field_storage_semantics, float32_literal, float64_literal, floating_domain,
     generated_enum_variant_name, inclusive_integral_domain, is_temporal_primitive,
-    plan_type_emissions, schema_emits_bounded_integer_support, schema_emits_string_profile_carrier,
-    schema_emits_temporal_carrier, schema_emits_unbounded_sequence_support, string_profile,
-    temporal_profile,
+    plan_type_emissions, schema_emits_bounded_integer_support, schema_emits_direct_date_time,
+    schema_emits_string_profile_carrier, schema_emits_temporal_carrier,
+    schema_emits_unbounded_sequence_support, string_profile, temporal_profile,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -99,12 +100,14 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     // byte for byte.
     // Task 037's schema-version carrier takes a `std::string_view` too, so the
     // header is required whenever either carrier is emitted.
-    let string_view_header =
-        if schema_emits_temporal_carrier(schema) || schema_emits_string_profile_carrier(schema) {
-            "#include <string_view>\n"
-        } else {
-            ""
-        };
+    let string_view_header = if schema_emits_temporal_carrier(schema)
+        || schema_emits_string_profile_carrier(schema)
+        || schema_emits_direct_date_time(schema, world)
+    {
+        "#include <string_view>\n"
+    } else {
+        ""
+    };
     let mut output = String::from(
         "#pragma once\n\n\
          #include <cstddef>\n\
@@ -168,6 +171,12 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
             "    T value() const noexcept { return value_; }\nprivate:\n",
             "    explicit BoundedInteger(T value) noexcept : value_(value) {}\n    T value_;\n};\n\n",
         ));
+    }
+    if schema_emits_temporal_carrier(schema) || schema_emits_direct_date_time(schema, world) {
+        output.push_str(&cpp_date_time_parser());
+    }
+    if schema_emits_direct_date_time(schema, world) {
+        output.push_str(CPP_DIRECT_DATE_TIME_CARRIER);
     }
     for emission in emissions {
         match emission {
@@ -721,6 +730,15 @@ fn integral_domain(
 
 fn cpp_field_base(field: &ams_gra_oms_ir::FieldDecl) -> Result<String, CodegenError> {
     match field.type_ref.target {
+        TypeRefTarget::Primitive(PrimitiveKind::DateTime) => {
+            match direct_temporal_profile(PrimitiveKind::DateTime, &field.constraints) {
+                Ok(Some(DirectTemporalProfile::DateTime)) => Ok("XmlSchemaDateTime".to_owned()),
+                _ => unsupported(format!(
+                    "direct DateTime field constraints on {}",
+                    field.name
+                )),
+            }
+        }
         TypeRefTarget::Primitive(
             kind @ (PrimitiveKind::SignedInteger | PrimitiveKind::UnsignedInteger),
         ) => match integral_domain(kind, &field.constraints, &field.name)? {
@@ -899,11 +917,83 @@ fn render_temporal_declaration(
     writeln!(
         output,
         "{}",
-        CPP_DATE_TIME_ZULU_TEMPLATE.replace("{name}", name)
+        CPP_DATE_TIME_ZULU_CARRIER.replace("{name}", name)
     )
     .expect("writing to String cannot fail");
     Ok(())
 }
+
+// Reuse the Task 036 calendar/time helpers as a single generated parser.
+// Named Zulu and direct carriers differ only at the final timezone gate.
+fn cpp_date_time_parser() -> String {
+    let source = CPP_DATE_TIME_ZULU_TEMPLATE;
+    let start = source
+        .find("    // XML Schema `collapse`")
+        .expect("parser start");
+    let end = source
+        .find("    std::string value_;\n};")
+        .expect("parser end");
+    let helpers = &source[start..end];
+    let gate_start = helpers.find("    // The whole gate:").expect("gate start");
+    let gate_end = helpers.find("    // '-'? yyyy").expect("gate end");
+    let gate = r#"    static bool is_date_time(std::string_view text) {
+        std::string_view body = text;
+        if (!text.empty() && text.back() == 'Z') {
+            body.remove_suffix(1);
+        } else if (text.size() >= 6 && (text[text.size() - 6] == '+' || text[text.size() - 6] == '-')) {
+            const auto offset = text.substr(text.size() - 6);
+            unsigned hour = 0;
+            unsigned minute = 0;
+            if (offset[3] != ':' || !two_digits(offset.substr(1, 2), hour)
+                || !two_digits(offset.substr(4, 2), minute)
+                || hour > 14 || minute > 59 || (hour == 14 && minute != 0)) {
+                return false;
+            }
+            body.remove_suffix(6);
+        }
+        return is_date_time_body(body);
+    }
+
+"#;
+    format!(
+        "class XmlSchemaDateTimeParser {{\npublic:\n{}{}{}\n}};\n\n",
+        &helpers[..gate_start],
+        gate,
+        &helpers[gate_end..]
+    )
+}
+
+const CPP_DIRECT_DATE_TIME_CARRIER: &str = r#"class XmlSchemaDateTime {
+public:
+    static std::optional<XmlSchemaDateTime> create(std::string_view value) {
+        std::string lexical = XmlSchemaDateTimeParser::collapse(value);
+        if (!XmlSchemaDateTimeParser::is_date_time(lexical)) return std::nullopt;
+        return XmlSchemaDateTime(std::move(lexical));
+    }
+    XmlSchemaDateTime(const XmlSchemaDateTime&) = default;
+    XmlSchemaDateTime& operator=(const XmlSchemaDateTime&) = default;
+    const std::string& value() const noexcept { return value_; }
+private:
+    explicit XmlSchemaDateTime(std::string lexical) : value_(std::move(lexical)) {}
+    std::string value_;
+};
+"#;
+
+const CPP_DATE_TIME_ZULU_CARRIER: &str = r#"class {name} {
+public:
+    static std::optional<{name}> create(std::string_view value) {
+        std::string lexical = XmlSchemaDateTimeParser::collapse(value);
+        if (lexical.empty() || lexical.back() != 'Z' || !XmlSchemaDateTimeParser::is_date_time(lexical)) return std::nullopt;
+        return {name}(std::move(lexical));
+    }
+    {name}(const {name}&) = default;
+    {name}& operator=(const {name}&) = default;
+    const std::string& value() const noexcept { return value_; }
+private:
+    explicit {name}(std::string normalized) : value_(std::move(normalized)) {}
+    std::string value_;
+};
+"#;
 
 /// Render a named constrained String declaration.
 ///

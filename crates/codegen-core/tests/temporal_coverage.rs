@@ -189,13 +189,11 @@ fn time_and_duration_remain_unsupported() {
     }
 }
 
-/// A **direct** primitive DateTime field remains unsupported.
+/// A **direct** primitive DateTime field now uses the general validated carrier.
 ///
-/// This is the distinction Task 036 rests on: making the named declaration
-/// renderable must not silently enable `<xs:element type="xs:dateTime"/>`,
-/// whose reusable representation is deliberately left to a later task.
+/// Named support is still independently restricted to the Task 036 Zulu shape.
 #[test]
-fn a_direct_primitive_date_time_field_remains_unsupported() {
+fn a_direct_primitive_date_time_field_is_baseline_renderable() {
     for cardinality in [Cardinality::REQUIRED_ONE, Cardinality::OPTIONAL_ONE] {
         let holder = TypeDecl {
             name: QualifiedName::new(NS, "Holder"),
@@ -225,9 +223,8 @@ fn a_direct_primitive_date_time_field_remains_unsupported() {
         for language in LANGUAGES {
             assert_eq!(
                 renderable_declarations(&schema, language),
-                1,
-                "{language:?}: the named carrier is renderable but the direct \
-                 primitive field holder is not ({cardinality:?})"
+                2,
+                "{language:?}: the named Zulu carrier and direct field holder are both renderable ({cardinality:?})"
             );
         }
     }

@@ -34,7 +34,7 @@ use crate::coverage::BackendLanguage;
 use crate::floating::floating_domain;
 use crate::string_profile::string_profile;
 use crate::structure::{effective_choice_alternatives, effective_record_fields};
-use crate::temporal::temporal_profile;
+use crate::temporal::{schema_emits_direct_date_time, temporal_profile};
 use crate::world::GenerationWorld;
 use crate::{AbstractValueProjection, TypeEmission, name_preflight_plan};
 use ams_gra_oms_ir::{
@@ -1187,6 +1187,26 @@ fn collect_ada_wrapper_callable_conflicts(
             conflicts.push(CollectedNameError::new(error, &[first, &source]));
         }
     }
+    // The conditional direct carrier publishes the same overloadable pair.
+    // It has no schema owner, so attribute a collision only to the conflicting
+    // user declaration, while preserving the ordinary wrapper overload model.
+    if schema_emits_direct_date_time(schema, world) {
+        for callable in ADA_WRAPPER_CALLABLES {
+            let key = identity_key(BackendLanguage::Ada, callable);
+            let Some(first) = top_level.taken.get(&key) else {
+                continue;
+            };
+            let source = NameSource::GeneratedSupport(BackendLanguage::Ada);
+            let error = BackendNameError::Collision {
+                language: BackendLanguage::Ada,
+                region: NameRegion::TopLevel,
+                generated: (*callable).to_owned(),
+                first: first.label(),
+                second: source.label(),
+            };
+            conflicts.push(CollectedNameError::new(error, &[first, &source]));
+        }
+    }
 }
 
 /// Whether Ada instantiates its `Binary_Vectors` octet-vector package.
@@ -1225,6 +1245,7 @@ fn register_support_names(
     top_level: &mut Region,
     schema: &SchemaIr,
     language: BackendLanguage,
+    world: GenerationWorld,
 ) -> Result<(), BackendNameError> {
     // Attribution names the generator rather than pretending some schema
     // identifier was responsible for the reservation. Because a support type
@@ -1233,6 +1254,24 @@ fn register_support_names(
     let reserve = |top_level: &mut Region, generated: &str| -> Result<(), BackendNameError> {
         top_level.insert(NameSource::GeneratedSupport(language), generated.to_owned())
     };
+    if schema_emits_direct_date_time(schema, world) {
+        reserve(
+            top_level,
+            match language {
+                BackendLanguage::Ada => "XML_Schema_Date_Time",
+                BackendLanguage::Rust | BackendLanguage::Cpp => "XmlSchemaDateTime",
+            },
+        )?;
+    }
+    // One shared parser helper is emitted whenever either the direct carrier
+    // or a supported named Task 036 Zulu declaration is present. It lives in
+    // the same top-level region as schema-generated declarations.
+    if language != BackendLanguage::Ada
+        && (schema_emits_direct_date_time(schema, world)
+            || crate::schema_emits_temporal_carrier(schema))
+    {
+        reserve(top_level, "XmlSchemaDateTimeParser")?;
+    }
     match language {
         BackendLanguage::Rust => {
             // Emitted unconditionally by `backend-rust::generate`.
@@ -1674,7 +1713,7 @@ pub fn validate_backend_names(
     // Generated support types occupy the top-level scope before any user
     // declaration is placed in it, so a user declaration colliding with one is
     // attributed to the user declaration as the second, conflicting source.
-    register_support_names(&mut top_level, schema, language)?;
+    register_support_names(&mut top_level, schema, language, world)?;
     register_emitted_declaration_names(&mut top_level, emissions, language)?;
     if language == BackendLanguage::Ada {
         register_ada_kind_companions(&mut top_level, emissions)?;
@@ -2058,7 +2097,7 @@ pub fn unsafe_named_declarations(
     let mut top_level = Region::collecting(language, NameRegion::TopLevel);
     // Ignoring the `Result` is correct for a collecting region: it only ever
     // returns `Ok`, accumulating into `errors` instead.
-    let _ = register_support_names(&mut top_level, schema, language);
+    let _ = register_support_names(&mut top_level, schema, language, world);
     let _ = register_emitted_declaration_names(&mut top_level, emissions, language);
     if language == BackendLanguage::Ada {
         let _ = register_ada_kind_companions(&mut top_level, emissions);
@@ -2194,6 +2233,187 @@ mod tests {
             }],
             types,
             messages: Vec::new(),
+        }
+    }
+
+    fn direct_date_time(name: &str, cardinality: Cardinality) -> FieldDecl {
+        field(
+            name,
+            TypeRefTarget::Primitive(PrimitiveKind::DateTime),
+            cardinality,
+        )
+    }
+
+    #[test]
+    fn direct_temporal_support_tracks_emitted_storage_and_inheritance() {
+        use crate::schema_emits_direct_date_time;
+        for world in [
+            GenerationWorld::ClosedSchemaSet,
+            GenerationWorld::OpenExtensions,
+        ] {
+            for cardinality in [Cardinality::REQUIRED_ONE, Cardinality::OPTIONAL_ONE] {
+                assert!(schema_emits_direct_date_time(
+                    &schema_with(vec![record(
+                        "Owner",
+                        vec![direct_date_time("Timestamp", cardinality)],
+                    )]),
+                    world
+                ));
+            }
+            let mut ancestor = record(
+                "Ancestor",
+                vec![direct_date_time("Timestamp", Cardinality::REQUIRED_ONE)],
+            );
+            ancestor.is_abstract = true;
+            assert!(!schema_emits_direct_date_time(
+                &schema_with(vec![ancestor.clone()]),
+                world
+            ));
+            let mut descendant = record("Descendant", vec![]);
+            descendant.base_type = Some(TypeRef::named(ancestor.name.clone()));
+            assert!(schema_emits_direct_date_time(
+                &schema_with(vec![ancestor, descendant]),
+                world
+            ));
+            for kind in [
+                PrimitiveKind::String,
+                PrimitiveKind::Time,
+                PrimitiveKind::Duration,
+            ] {
+                assert!(!schema_emits_direct_date_time(
+                    &schema_with(vec![record(
+                        "Owner",
+                        vec![field(
+                            "When",
+                            TypeRefTarget::Primitive(kind),
+                            Cardinality::REQUIRED_ONE
+                        )]
+                    )]),
+                    world
+                ));
+            }
+            let mut constrained = direct_date_time("Timestamp", Cardinality::REQUIRED_ONE);
+            constrained.constraints.min_length = Some(1);
+            assert!(!schema_emits_direct_date_time(
+                &schema_with(vec![record("Owner", vec![constrained])]),
+                world
+            ));
+        }
+    }
+
+    #[test]
+    fn direct_temporal_support_names_are_reserved_only_when_emitted() {
+        for (language, name) in [
+            (BackendLanguage::Ada, "XML_Schema_Date_Time"),
+            (BackendLanguage::Rust, "XmlSchemaDateTime"),
+            (BackendLanguage::Cpp, "XmlSchemaDateTime"),
+        ] {
+            let colliding = schema_with(vec![
+                record(
+                    "Owner",
+                    vec![direct_date_time("Timestamp", Cardinality::REQUIRED_ONE)],
+                ),
+                record(name, vec![]),
+            ]);
+            assert_collides(&colliding, language, name);
+            assert!(
+                validate_backend_names(
+                    &schema_with(vec![record(name, vec![])]),
+                    language,
+                    GenerationWorld::ClosedSchemaSet
+                )
+                .is_ok()
+            );
+            let mut ancestor = record(
+                "Ancestor",
+                vec![direct_date_time("Timestamp", Cardinality::REQUIRED_ONE)],
+            );
+            ancestor.is_abstract = true;
+            assert!(
+                validate_backend_names(
+                    &schema_with(vec![ancestor.clone(), record(name, vec![])]),
+                    language,
+                    GenerationWorld::ClosedSchemaSet
+                )
+                .is_ok()
+            );
+            let mut descendant = record("Descendant", vec![]);
+            descendant.base_type = Some(TypeRef::named(ancestor.name.clone()));
+            assert_collides(
+                &schema_with(vec![ancestor, descendant, record(name, vec![])]),
+                language,
+                name,
+            );
+        }
+    }
+
+    #[test]
+    fn ada_direct_temporal_callables_follow_existing_overload_rules() {
+        let owner = record(
+            "Owner",
+            vec![direct_date_time("Timestamp", Cardinality::REQUIRED_ONE)],
+        );
+        let overloaded = schema_with(vec![
+            owner.clone(),
+            constrained_float("BurnRate"),
+            date_time_zulu("ZuluStamp"),
+        ]);
+        assert!(
+            validate_backend_names(
+                &overloaded,
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            )
+            .is_ok(),
+            "{:?}",
+            validate_backend_names(
+                &overloaded,
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            )
+        );
+        for callable in ["Create", "Value"] {
+            let schema = schema_with(vec![owner.clone(), record(callable, vec![])]);
+            assert_collides(&schema, BackendLanguage::Ada, callable);
+            assert!(
+                unsafe_named_declarations(
+                    &schema,
+                    BackendLanguage::Ada,
+                    GenerationWorld::ClosedSchemaSet
+                )
+                .contains(&QualifiedName::new(NS, callable))
+            );
+        }
+    }
+
+    #[test]
+    fn shared_parser_helper_is_reserved_for_either_emitted_temporal_profile() {
+        for language in [BackendLanguage::Rust, BackendLanguage::Cpp] {
+            let name = "XmlSchemaDateTimeParser";
+            assert_collides(
+                &schema_with(vec![
+                    record(
+                        "Owner",
+                        vec![direct_date_time("Timestamp", Cardinality::REQUIRED_ONE)],
+                    ),
+                    record(name, vec![]),
+                ]),
+                language,
+                name,
+            );
+            assert_collides(
+                &schema_with(vec![date_time_zulu("Instant"), record(name, vec![])]),
+                language,
+                name,
+            );
+            assert!(
+                validate_backend_names(
+                    &schema_with(vec![record(name, vec![])]),
+                    language,
+                    GenerationWorld::ClosedSchemaSet,
+                )
+                .is_ok()
+            );
         }
     }
 

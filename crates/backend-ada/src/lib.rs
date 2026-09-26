@@ -3,16 +3,17 @@
 use ams_gra_oms_codegen_core::{
     ADA_PORTABLE_POSITIVE_INDEX_MAX, ADA_SEQUENCE_APPEND, ADA_SEQUENCE_CLEAR, ADA_SEQUENCE_ELEMENT,
     ADA_SEQUENCE_LENGTH, ADA_SEQUENCE_RESERVE_CAPACITY, ADA_SEQUENCE_TO_SEQUENCE,
-    AbstractValueProjection, Backend, BackendLanguage, CodegenError, EffectiveValueMember,
-    FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain, StringProfile,
-    TemporalProfile, TypeEmission, WhitespaceVisiblePolicy, abstract_value_projection_for_ref,
-    ada_record_field_uses_optional_wrapper, backend_preflight, constrains_string,
-    effective_choice_alternatives, effective_record_fields, field_storage_semantics,
-    float32_literal, float64_literal, floating_domain, generated_enum_variant_name,
-    inclusive_integral_domain, is_temporal_primitive, plan_type_emissions,
-    schema_emits_ada_binary_vectors, schema_emits_bounded_sequence_support,
-    schema_emits_string_profile_carrier, schema_emits_temporal_carrier,
-    schema_emits_unbounded_sequence_support, string_profile, temporal_profile,
+    AbstractValueProjection, Backend, BackendLanguage, CodegenError, DirectTemporalProfile,
+    EffectiveValueMember, FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain,
+    StringProfile, TemporalProfile, TypeEmission, WhitespaceVisiblePolicy,
+    abstract_value_projection_for_ref, ada_record_field_uses_optional_wrapper, backend_preflight,
+    constrains_string, direct_temporal_profile, effective_choice_alternatives,
+    effective_record_fields, field_storage_semantics, float32_literal, float64_literal,
+    floating_domain, generated_enum_variant_name, inclusive_integral_domain, is_temporal_primitive,
+    plan_type_emissions, schema_emits_ada_binary_vectors, schema_emits_bounded_sequence_support,
+    schema_emits_direct_date_time, schema_emits_string_profile_carrier,
+    schema_emits_temporal_carrier, schema_emits_unbounded_sequence_support, string_profile,
+    temporal_profile,
 };
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind,
@@ -135,6 +136,9 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     // accumulated here and emitted only if some declaration actually produced
     // one, which keeps every other schema's single-`.ads` output unchanged.
     let mut body = String::new();
+    if schema_emits_direct_date_time(schema, world) {
+        render_direct_date_time_spec(&mut output, &mut private_part);
+    }
     for emission in emissions {
         match emission {
             TypeEmission::Declaration(declaration) => render_declaration(
@@ -184,6 +188,7 @@ pub fn generate_body(
     // slots could not preserve actual occupancy. A schema with none of these
     // still emits no `.adb` at all.
     if !schema_emits_temporal_carrier(schema)
+        && !schema_emits_direct_date_time(schema, world)
         && !schema_emits_string_profile_carrier(schema)
         && !schema_emits_unbounded_sequence_support(schema)
         && !schema_emits_bounded_sequence_support(schema)
@@ -196,6 +201,12 @@ pub fn generate_body(
     let mut discard_spec = String::new();
     let mut discard_private = String::new();
     let mut body = String::new();
+    if schema_emits_temporal_carrier(schema) || schema_emits_direct_date_time(schema, world) {
+        body.push_str(&ada_date_time_parser());
+    }
+    if schema_emits_direct_date_time(schema, world) {
+        body.push_str(ADA_DIRECT_DATE_TIME_BODY);
+    }
     for emission in emissions {
         if let TypeEmission::Declaration(declaration) = emission {
             render_declaration(
@@ -1502,6 +1513,15 @@ fn integral_domain(
 
 fn ada_field_base(field: &ams_gra_oms_ir::FieldDecl) -> Result<String, CodegenError> {
     match field.type_ref.target {
+        TypeRefTarget::Primitive(PrimitiveKind::DateTime) => {
+            match direct_temporal_profile(PrimitiveKind::DateTime, &field.constraints) {
+                Ok(Some(DirectTemporalProfile::DateTime)) => Ok("XML_Schema_Date_Time".to_owned()),
+                _ => unsupported(format!(
+                    "direct DateTime field constraints on {}",
+                    field.name
+                )),
+            }
+        }
         TypeRefTarget::Primitive(
             kind @ (PrimitiveKind::SignedInteger | PrimitiveKind::UnsignedInteger),
         ) => match integral_domain(kind, &field.constraints, &field.name)? {
@@ -2552,9 +2572,95 @@ fn render_temporal_declaration(
     )
     .expect("writing to String cannot fail");
 
-    body.push_str(&ADA_DATE_TIME_ZULU_BODY.replace("{name}", name));
+    body.push_str(&ADA_DATE_TIME_ZULU_CARRIER_BODY.replace("{name}", name));
     Ok(())
 }
+
+fn render_direct_date_time_spec(output: &mut String, private_part: &mut String) {
+    output.push_str("   --  Predefined equality compares lexical spelling, not dateTime value-space equality.\n   type XML_Schema_Date_Time is private;\n   function Create (Value : String) return XML_Schema_Date_Time;\n   function Value (Item : XML_Schema_Date_Time) return String;\n\n");
+    private_part.push_str("   type XML_Schema_Date_Time is record\n      Lexical : Standard.Ada.Strings.Unbounded.Unbounded_String :=\n        raise Standard.Program_Error with \"XML_Schema_Date_Time requires Create\";\n   end record;\n\n");
+}
+
+// Extract the original Task 036 calendar/time implementation once and extend
+// its timezone gate. No second Gregorian, leap-year or time parser is authored.
+fn ada_date_time_parser() -> String {
+    let source = ADA_DATE_TIME_ZULU_BODY;
+    let collapse_start = source
+        .find("      function Collapse (Raw : String) return String is")
+        .expect("collapse body");
+    let parser_end = source
+        .find("      end Is_Zulu_Date_Time;")
+        .expect("parser end")
+        + "      end Is_Zulu_Date_Time;".len();
+    let mut helpers = source[collapse_start..parser_end].to_owned();
+    let gate_start = helpers
+        .find("         --  The Zulu restriction")
+        .expect("gate start");
+    let gate_end = helpers.find("         --  '-'? yyyy").expect("gate end");
+    let gate = r#"          if Text'Length = 0 then
+             return False;
+          end if;
+          Body_Last := Text'Last;
+          if Text (Body_Last) = 'Z' then
+             Body_Last := Body_Last - 1;
+          elsif Text'Length >= 6 then
+             declare
+                Offset_From : constant Positive := Text'Last - 5;
+                Hour, Minute : Natural;
+             begin
+                if Text (Offset_From) = '+' or else Text (Offset_From) = '-' then
+                   if Text (Offset_From + 3) /= ':'
+                     or else not Two_Digits (Text, Offset_From + 1, Hour)
+                     or else not Two_Digits (Text, Offset_From + 4, Minute)
+                     or else Hour > 14 or else Minute > 59
+                     or else (Hour = 14 and then Minute /= 0)
+                   then
+                      return False;
+                   end if;
+                   Body_Last := Offset_From - 1;
+                end if;
+             end;
+          end if;
+          if Body_Last < Text'First then
+             return False;
+          end if;
+
+"#;
+    helpers.replace_range(gate_start..gate_end, gate);
+    helpers = helpers.replace("Is_Zulu_Date_Time", "Is_Date_Time");
+    format!(
+        "\n   --  Shared XML Schema 1.0 dateTime parser for direct and Zulu values.\n   function Collapse (Raw : String) return String;\n   function Is_Date_Time (Text : String) return Boolean;\n{}\n",
+        helpers
+    )
+}
+
+const ADA_DATE_TIME_ZULU_CARRIER_BODY: &str = r##"
+   function Create (Value : String) return {name} is
+      Normalized : constant String := Collapse (Value);
+   begin
+      if Normalized'Length = 0 or else Normalized (Normalized'Last) /= 'Z'
+        or else not Is_Date_Time (Normalized)
+      then
+         raise Constraint_Error with "not a valid XML Schema dateTime in the Zulu timezone";
+      end if;
+      return {name}'(Lexical => Standard.Ada.Strings.Unbounded.To_Unbounded_String (Normalized));
+   end Create;
+   function Value (Item : {name}) return String is
+     (Standard.Ada.Strings.Unbounded.To_String (Item.Lexical));
+"##;
+
+const ADA_DIRECT_DATE_TIME_BODY: &str = r##"
+   function Create (Value : String) return XML_Schema_Date_Time is
+      Normalized : constant String := Collapse (Value);
+   begin
+      if not Is_Date_Time (Normalized) then
+         raise Constraint_Error with "not a valid XML Schema dateTime";
+      end if;
+      return XML_Schema_Date_Time'(Lexical => Standard.Ada.Strings.Unbounded.To_Unbounded_String (Normalized));
+   end Create;
+   function Value (Item : XML_Schema_Date_Time) return String is
+     (Standard.Ada.Strings.Unbounded.To_String (Item.Lexical));
+"##;
 
 /// The generated Ada body for one DateTime Zulu carrier, `{name}` substituted.
 ///
@@ -5148,11 +5254,10 @@ end Probe;
             error.message
         );
 
-        // Temporal and Decimal: occurrence storage does not grant primitive
+        // Time, Duration and Decimal: occurrence storage does not grant primitive
         // support, and the diagnostic keeps blaming the primitive/target rather
         // than claiming optionality is the root problem.
         for kind in [
-            PrimitiveKind::DateTime,
             PrimitiveKind::Time,
             PrimitiveKind::Duration,
             PrimitiveKind::Decimal,
@@ -5171,6 +5276,13 @@ end Probe;
                 error.message
             );
         }
+        let TypeKind::Record { fields } = &mut schema.types[record].kind else {
+            panic!("PrimitiveOptionals is a record");
+        };
+        fields[0].type_ref = TypeRef::primitive(PrimitiveKind::DateTime);
+        let source =
+            generate(&schema, CLOSED).expect("direct DateTime optional uses validated storage");
+        assert!(source.contains("Value : XML_Schema_Date_Time;"));
     }
 
     /// Task 035 is Record fields only. An optional direct primitive **Choice

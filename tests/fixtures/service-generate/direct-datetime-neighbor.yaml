@@ -1,0 +1,23 @@
+# Synthetic negative control: selecting the unsupported Time/Duration neighbor.
+contract_version: "0.1"
+service:
+  name: Unsupported Temporal Neighbor
+  version: "0.1.0"
+  kind: service
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+functions:
+  - id: observation
+    name: Observation
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: neighbor-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: NeighborReport
+        topic: neighbor.report
+        timing:
+          kind: asynchronous

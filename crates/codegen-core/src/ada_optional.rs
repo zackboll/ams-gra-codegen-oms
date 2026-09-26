@@ -44,6 +44,7 @@
 use ams_gra_oms_ir::{Cardinality, ConstraintSet, FieldDecl, PrimitiveKind, TypeRefTarget};
 
 use crate::integral::inclusive_integral_domain;
+use crate::temporal::{DirectTemporalProfile, direct_temporal_profile};
 
 /// Whether Ada stores this Record field in a generated
 /// `{Owner}_{Field}_Optional` discriminated wrapper.
@@ -112,13 +113,10 @@ pub fn ada_optional_direct_primitive_representable(
         // Unchanged: the shared `Optional_String` already represents this, so
         // no per-field wrapper is generated and no output churns.
         PrimitiveKind::String => false,
-        // Task 035 is an *occurrence* task, not primitive expansion. Ada has no
-        // value representation for these at any cardinality, so an optional
-        // occurrence grants none. Temporal support is deferred to Task 036.
-        PrimitiveKind::DateTime
-        | PrimitiveKind::Time
-        | PrimitiveKind::Duration
-        | PrimitiveKind::Decimal => false,
+        PrimitiveKind::DateTime => {
+            direct_temporal_profile(kind, constraints) == Ok(Some(DirectTemporalProfile::DateTime))
+        }
+        PrimitiveKind::Time | PrimitiveKind::Duration | PrimitiveKind::Decimal => false,
     }
 }
 
@@ -283,11 +281,19 @@ mod tests {
         )));
     }
 
-    /// Occurrence storage does not grant primitive support.
+    /// The existing optional wrapper composes with the validated direct value.
+    #[test]
+    fn direct_date_time_uses_the_optional_wrapper_only_without_facets() {
+        let mut candidate = primitive(PrimitiveKind::DateTime);
+        assert!(ada_record_field_uses_optional_wrapper(&candidate));
+        candidate.constraints = bounded(0, 9);
+        assert!(!ada_record_field_uses_optional_wrapper(&candidate));
+    }
+
+    /// Occurrence storage does not grant support for other unsupported kinds.
     #[test]
     fn temporal_and_decimal_remain_unsupported() {
         for kind in [
-            PrimitiveKind::DateTime,
             PrimitiveKind::Time,
             PrimitiveKind::Duration,
             PrimitiveKind::Decimal,

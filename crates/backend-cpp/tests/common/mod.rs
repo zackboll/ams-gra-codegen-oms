@@ -22,6 +22,15 @@ pub fn corpus_path() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/temporal/datetime-zulu.txt")
 }
 
+/// Additional direct-profile cases, sharing the same loader and expectations.
+#[allow(dead_code)]
+pub fn direct_date_time_cases() -> Vec<TemporalCase> {
+    load_corpus(
+        &Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/fixtures/temporal/datetime-direct.txt"),
+    )
+}
+
 /// The repository-root path of the shared Task 037 String-profile corpus.
 #[allow(dead_code)]
 pub fn string_corpus_path() -> PathBuf {

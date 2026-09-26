@@ -135,12 +135,11 @@ they do still require default constraints.
       036 as a validated lexical carrier in all three backends. This removed
       `DateTimeType` as the first selected `PositionReport` blocker. See
       `docs/backend-compatibility.md` for the exact supported profile;
-- [ ] **direct** temporal primitive fields (`<xs:element type="xs:dateTime"/>`)
-      — deliberately still unsupported. Task 036 is a *named declaration*
-      slice; the reusable direct-primitive temporal representation waits for a
-      later temporal-generalization task, once this validator architecture has
-      proven itself;
-- [ ] `Time` and `Duration`, and any `DateTime` outside the Zulu profile
+- [x] **direct** unconstrained `xs:dateTime` fields — Task 046 uses one
+      validated lexical carrier per generated unit and shares the Task 036
+      calendar parser, admitting absent, Z and bounded numeric timezones.
+      Named unconstrained DateTime declarations remain unsupported;
+- [ ] `Time` and `Duration`, and any *named* `DateTime` outside the Zulu profile
       (unconstrained, a different pattern, multiple alternatives or groups, or
       an unsupported neighbouring facet) — all fail closed. `TimeType` carries
       the *same* `.+Z` text as the supported DateTime profile and was

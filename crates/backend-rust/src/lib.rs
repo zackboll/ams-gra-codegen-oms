@@ -1,14 +1,16 @@
 //! Minimal Rust type generation from normalized schema IR.
 
 use ams_gra_oms_codegen_core::{
-    AbstractValueProjection, Backend, BackendLanguage, CodegenError, EffectiveValueMember,
-    FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain, StringProfile,
-    TemporalProfile, TypeEmission, WhitespaceVisiblePolicy, abstract_value_projection_for_ref,
-    backend_preflight, constrains_string, effective_choice_alternatives, effective_record_fields,
+    AbstractValueProjection, Backend, BackendLanguage, CodegenError, DirectTemporalProfile,
+    EffectiveValueMember, FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain,
+    StringProfile, TemporalProfile, TypeEmission, WhitespaceVisiblePolicy,
+    abstract_value_projection_for_ref, backend_preflight, constrains_string,
+    direct_temporal_profile, effective_choice_alternatives, effective_record_fields,
     field_storage_semantics, float32_literal, float64_literal, floating_domain,
     generated_enum_variant_name, inclusive_integral_domain, is_temporal_primitive,
-    plan_type_emissions, schema_emits_bounded_integer_support,
-    schema_emits_unbounded_sequence_support, string_profile, temporal_profile,
+    plan_type_emissions, schema_emits_bounded_integer_support, schema_emits_direct_date_time,
+    schema_emits_temporal_carrier, schema_emits_unbounded_sequence_support, string_profile,
+    temporal_profile,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -101,6 +103,12 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
             "    pub const fn new(value: u64) -> Option<Self> { if value >= MIN && value <= MAX { Some(Self(value)) } else { None } }\n",
             "    pub const fn get(self) -> u64 { self.0 }\n}\n\n",
         ));
+    }
+    if schema_emits_direct_date_time(schema, world) {
+        output.push_str("#[derive(Clone, Debug)]\npub struct XmlSchemaDateTime { lexical: String }\n\nimpl XmlSchemaDateTime {\n    pub fn new(value: &str) -> Option<Self> {\n        let lexical = XmlSchemaDateTimeParser::collapse(value);\n        XmlSchemaDateTimeParser::is_date_time(&lexical).then_some(Self { lexical })\n    }\n    pub fn as_str(&self) -> &str { &self.lexical }\n}\n\n");
+    }
+    if schema_emits_direct_date_time(schema, world) || schema_emits_temporal_carrier(schema) {
+        output.push_str(&rust_date_time_parser());
     }
     for emission in emissions {
         match emission {
@@ -563,7 +571,9 @@ fn type_ref_supports_eq(
     visiting: &mut Vec<ams_gra_oms_ir::QualifiedName>,
 ) -> bool {
     match &type_ref.target {
-        TypeRefTarget::Primitive(PrimitiveKind::Float32 | PrimitiveKind::Float64) => false,
+        TypeRefTarget::Primitive(
+            PrimitiveKind::Float32 | PrimitiveKind::Float64 | PrimitiveKind::DateTime,
+        ) => false,
         TypeRefTarget::Primitive(_) => true,
         TypeRefTarget::Named(name) => schema
             .types
@@ -627,8 +637,8 @@ fn type_ref_supports_partial_eq(
     visiting: &mut Vec<ams_gra_oms_ir::QualifiedName>,
 ) -> bool {
     match &type_ref.target {
-        // A *direct* primitive temporal field is unsupported in Task 036 and
-        // never reaches rendering, so this arm is about named targets only.
+        // The direct DateTime carrier has no value-space equality implementation.
+        TypeRefTarget::Primitive(PrimitiveKind::DateTime) => false,
         TypeRefTarget::Primitive(_) => true,
         TypeRefTarget::Named(name) => schema
             .types
@@ -769,6 +779,15 @@ fn integral_domain(
 
 fn rust_field_base(field: &ams_gra_oms_ir::FieldDecl) -> Result<String, CodegenError> {
     match field.type_ref.target {
+        TypeRefTarget::Primitive(PrimitiveKind::DateTime) => {
+            match direct_temporal_profile(PrimitiveKind::DateTime, &field.constraints) {
+                Ok(Some(DirectTemporalProfile::DateTime)) => Ok("XmlSchemaDateTime".to_owned()),
+                _ => unsupported(format!(
+                    "direct DateTime field constraints on {}",
+                    field.name
+                )),
+            }
+        }
         TypeRefTarget::Primitive(
             kind @ (PrimitiveKind::SignedInteger | PrimitiveKind::UnsignedInteger),
         ) => match integral_domain(kind, &field.constraints, &field.name)? {
@@ -1601,11 +1620,66 @@ fn render_temporal_declaration(
     writeln!(
         output,
         "{}",
-        RUST_DATE_TIME_ZULU_TEMPLATE.replace("{name}", name)
+        RUST_DATE_TIME_ZULU_CARRIER.replace("{name}", name)
     )
     .expect("writing to String cannot fail");
     Ok(())
 }
+
+// The original Task 036 parser is emitted once per unit, rather than copied
+// into each carrier. Only the timezone gate is extended; the year, calendar,
+// time, leap-second, fraction and collapse implementations remain authoritative.
+fn rust_date_time_parser() -> String {
+    let source = RUST_DATE_TIME_ZULU_TEMPLATE;
+    let start = source
+        .find("    /// XML Schema `collapse`")
+        .expect("parser start");
+    let end = source.rfind("\n}\n").expect("parser end");
+    let helpers = &source[start..end];
+    let gate_start = helpers.find("    /// The whole gate:").expect("gate start");
+    let gate_end = helpers.find("    /// `'-'? yyyy").expect("gate end");
+    let gate = r#"    fn is_date_time(text: &str) -> bool {
+        let bytes = text.as_bytes();
+        let body = if bytes.last() == Some(&b'Z') {
+            &bytes[..bytes.len() - 1]
+        } else if bytes.len() >= 6 && matches!(bytes[bytes.len() - 6], b'+' | b'-') {
+            let offset = &bytes[bytes.len() - 6..];
+            let (Some(hour), Some(minute)) = (
+                Self::two_digits(&offset[1..3]),
+                Self::two_digits(&offset[4..6]),
+            ) else { return false };
+            if offset[3] != b':' || hour > 14 || minute > 59 || (hour == 14 && minute != 0) {
+                return false;
+            }
+            &bytes[..bytes.len() - 6]
+        } else {
+            bytes
+        };
+        Self::is_date_time_body(body)
+    }
+
+"#;
+    format!(
+        "struct XmlSchemaDateTimeParser;\nimpl XmlSchemaDateTimeParser {{\n{}{}{}\n}}\n\n",
+        &helpers[..gate_start],
+        gate,
+        &helpers[gate_end..]
+    )
+}
+
+const RUST_DATE_TIME_ZULU_CARRIER: &str = r#"#[derive(Clone, Debug)]
+pub struct {name} {
+    lexical: String,
+}
+impl {name} {
+    pub fn new(value: &str) -> Option<Self> {
+        let lexical = XmlSchemaDateTimeParser::collapse(value);
+        (lexical.ends_with('Z') && XmlSchemaDateTimeParser::is_date_time(&lexical))
+            .then_some(Self { lexical })
+    }
+    pub fn as_str(&self) -> &str { &self.lexical }
+}
+"#;
 
 /// The generated Rust DateTime Zulu carrier, with `{name}` substituted.
 ///

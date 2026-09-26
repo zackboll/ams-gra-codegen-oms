@@ -74,8 +74,9 @@ pub use structure::{
     effective_record_fields, lossless_structural_with_index, project_structural_type,
 };
 pub use temporal::{
-    TemporalProfile, TemporalProfileError, is_temporal_primitive, schema_emits_temporal_carrier,
-    temporal_profile,
+    DirectTemporalProfile, DirectTemporalProfileError, TemporalProfile, TemporalProfileError,
+    direct_temporal_profile, is_temporal_primitive, schema_emits_direct_date_time,
+    schema_emits_temporal_carrier, temporal_profile,
 };
 pub use world::GenerationWorld;
 

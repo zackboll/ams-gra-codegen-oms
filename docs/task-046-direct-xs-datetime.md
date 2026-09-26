@@ -1,0 +1,83 @@
+# Task 046 — direct `xs:dateTime`: recovered pre-change baseline
+
+The pre-change coverage run completed with exit status **0** (`/tmp/task046-baseline-coverage.exit`). All four reports are nonempty. The worktree was clean on `feature/046-direct-xs-datetime` when these measurements were recovered; **none of the four baseline commands was restarted**. Reports remain at `/tmp/task046-baseline-coverage-{25,26}-{closed-schema,open-extensions}.txt`.
+
+| UCI | World | Backend | Kinds | Declarations | Field types | Field occurrences | Message closures |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 2.5 | closed | Ada | 5448/5557 | 5363/5557 | 13147/13160 | 13150/13160 | 0/722 |
+| 2.5 | closed | Rust | 5448/5557 | 5405/5557 | 13147/13160 | 13160/13160 | 0/722 |
+| 2.5 | closed | C++ | 5448/5557 | 5408/5557 | 13147/13160 | 13160/13160 | 0/722 |
+| 2.5 | open | Ada | 5448/5557 | 5278/5557 | 13147/13160 | 13150/13160 | 0/722 |
+| 2.5 | open | Rust | 5448/5557 | 5317/5557 | 13147/13160 | 13160/13160 | 0/722 |
+| 2.5 | open | C++ | 5448/5557 | 5320/5557 | 13147/13160 | 13160/13160 | 0/722 |
+| 2.6 | closed | Ada | 5461/5570 | 5385/5570 | 13198/13198 | 13198/13198 | 323/725 |
+| 2.6 | closed | Rust | 5461/5570 | 5427/5570 | 13198/13198 | 13198/13198 | 354/725 |
+| 2.6 | closed | C++ | 5461/5570 | 5431/5570 | 13198/13198 | 13198/13198 | 352/725 |
+| 2.6 | open | Ada | 5461/5570 | 5300/5570 | 13198/13198 | 13198/13198 | 316/725 |
+| 2.6 | open | Rust | 5461/5570 | 5339/5570 | 13198/13198 | 13198/13198 | 347/725 |
+| 2.6 | open | C++ | 5461/5570 | 5343/5570 | 13198/13198 | 13198/13198 | 345/725 |
+
+The inventory counts **four** direct `DateTime` references and **nine** direct `Duration` references in UCI 2.5; UCI 2.6 has zero of either. There are zero direct `Time` references in both releases. In 2.5, `SystemTimeAtReferenceMDT.SystemTimeAtLastReference` is required, while `CurrentSystemTime`, `SecurityInformationType.DeclassDate` and `SecurityInformationType.CUI_DecontrolDate` are optional; none is nillable and none has field-local constraints. The selected PositionReport pre-change probe (`/tmp/task046-position-baseline-{ada,rust,cpp}.txt`) reports 59/60 selected types renderable, blocked by `SecurityInformationType`, for each backend.
+
+## Pre-implementation boundary (historical checkpoint)
+
+Task 036's named `DateTime` carrier enforces the `.+Z` pattern. A direct, unconstrained `xs:dateTime` field **must not** use that carrier unchanged: it must accept every valid base `dateTime` lexical form, including legal offsets and omitted timezones. Validation must retain the existing calendar, leap-second, year, fractional-second and whitespace rules while extending the timezone gate; it must reject malformed or out-of-range offsets, not merely accept arbitrary suffixes. Storage must remain validated and non-bypassable in Ada, Rust and C++, including optional values. Coverage may count direct `DateTime` references only after all three backends implement that same domain. Named unsupported temporal profiles, direct `Duration` and `Time`, field-local facets, and unsupported nillability must stay fail-closed. No post-change coverage or selected-service success is claimed here.
+
+## Early implementation progress (historical checkpoint)
+
+The shared `direct_temporal_profile` decision now distinguishes unconstrained direct `DateTime` from named Task 036 Zulu declarations. Focused tests verify named unconstrained DateTime remains rejected and direct Time, Duration, and field-local facets fail closed. Ada's existing optional-field predicate now recognizes supported direct DateTime without granting support to the neighboring kinds. Rust's structural equality predicates now exclude direct DateTime. The older coverage occurrence test was adjusted to reflect Ada's new optional storage decision **without** claiming primitive value support.
+
+No backend has yet emitted the direct validated carrier; the existing named Task 036 parser has **not** yet been refactored. The shared direct support-emission predicate, generated-name controls, generated-code tests, service integration, and post-change UCI measurement are still pending. Consequently the table remains **pre-change only** and PositionReport remains unverified after these partial changes. The pre-change baseline artifacts were not regenerated.
+
+### Subsequent shared-surface progress (still incomplete)
+
+`schema_emits_direct_date_time(schema, world)` now checks the name-preflight emission plan, emitted structural declarations, effective inherited Record fields and Choice alternatives, stored (not elided) members, abstract-value projection and the supported direct field profile. Synthetic controls cover ordinary required/optional fields, inherited concrete descendants, unused abstract ancestors, absent direct values, Time/Duration-only schemas and unsupported field facets. Conditional support names are reserved in the shared name model as `XML_Schema_Date_Time` (Ada) and `XmlSchemaDateTime` (Rust/C++); synthetic collision and non-emission controls pass. Ada's conditional `Create`/`Value` pair participates in the existing overload-aware callable conflict collection, with coexistence and non-overloadable declaration controls.
+
+These are **pre-rendering** decisions only: no direct carrier, parser refactor or field base is generated yet. A separate whole-schema name-preflight probe against the pinned UCI releases completed outside the repository (`/tmp/task046-name-preflight-result.txt`, exit marker `/tmp/task046-name-preflight-exit.txt` = **0**). The probe found **zero** declarations whose local names match either `XML_Schema_Date_Time` or `XmlSchemaDateTime` in both pinned releases. It reports direct storage in both 2.5 worlds and no direct storage in both 2.6 worlds. Whole-schema generated-name validation still fails first on **existing unrelated reserved members**: Ada `AltitudeRangePairType.Range` and Rust `ConfigurationParameterType.Type` in both releases; C++ `ApprovalResponseType.Operator` in 2.5 and `COMINT_ChangeDwellType.Delete` in 2.6. These first failures mean the whole-schema probe does **not** prove global name safety beyond the direct declaration-name inventory and synthetic collision controls. The synthetic shared codegen-core unit suite passed 277 tests after the shared-surface changes. No post-change coverage or service readiness is claimed.
+
+## Implemented architecture and focused validation
+
+The preceding progress paragraphs are chronological checkpoints, **not** a description of the final implementation state. Each backend now emits one base XML Schema 1.0 dateTime parser per generated unit, extracted from the Task 036 calendar/time helpers, and builds two lexical carrier families over it. The direct carrier accepts no timezone, `Z`, or signed `hh:mm` with hour 00..14, minute 00..59 and minute 00 when hour is 14. The named carrier additionally requires literal `Z`. No offset is converted to UTC and the whitespace-collapse-normalized spelling is stored exactly, including `+00:00`, `-00:00`, `24:00:00`, fractional trailing zeros and timezone-free values. This is a **generated source refactor**; Task 036 generated output is not byte-identical.
+
+The conditional direct carrier APIs are Rust `XmlSchemaDateTime::new(&str) -> Option<Self>` and `as_str()` with private `String` and only `Clone, Debug`; C++ `XmlSchemaDateTime::create(std::string_view)` and `value()` with private construction, explicit defaulted copy operations suppressing destructive moves, and no comparisons; Ada private `XML_Schema_Date_Time`, overloaded `Create(String)` and `Value(Item)`, with private owned `Unbounded_String` and a rejecting `Program_Error` component default independent of assertions. Ada predefined equality is stored lexical equality, not XML Schema value-space equality.
+
+Synthetic generated clients run the general direct corpus *and* the unchanged Task 036 Zulu corpus in Ada/GNAT, Rust/rustc and strict C++17 (`-Wall -Wextra -Werror -pedantic-errors` for the new C++ probe). The existing Task 036 runtime regression tests also pass independently in all three backends. Rust and C++ probes compile required, optional, bounded and unbounded direct members; Ada's probe runs the general corpus, absent and present optional wrappers, a non-1-based String and default-carrier rejection. The C++ probe checks copy and rvalue construction/assignment and source/destination lexical read-back. A synthetic selected-service fixture with unselected Time/Duration neighbors reports READY in all three backends and generates the selected direct carrier. These tests do **not** claim wire serialization.
+
+An intermediate workspace run with `AMS_GRA_REQUIRE_GNAT=1 cargo test --workspace` passed **887 tests** (61 test binaries). `cargo fmt --all -- --check`, `cargo check --workspace --all-targets`, `cargo clippy --workspace --all-targets -- -D warnings` and `git diff --check` also passed. Local compiler versions: rustc 1.98.1, g++ 14.2.0, GNATMAKE 14.2.0. The subsequently completed post-change UCI measurements appear below.
+
+## Post-change coverage against the pinned inputs
+
+The four **new**, separately named reports `/tmp/task046-post-coverage-{25,26}-{closed-schema,open-extensions}.txt` each exited **0**. The pre-change reports at `/tmp/task046-baseline-coverage-*` were not rewritten. Cells list declarations, field-type references, field occurrences and message closures (numerator/denominator); kinds are unchanged at 5448/5557 (2.5) and 5461/5570 (2.6).
+
+| UCI | World | Backend | Before: declarations; field types; occurrences; closures | After: declarations; field types; occurrences; closures |
+| --- | --- | --- | --- | --- |
+| 2.5 | closed | Ada | 5363/5557; 13147/13160; 13150/13160; 0/722 | 5365/5557; 13151/13160; 13153/13160; 324/722 |
+| 2.5 | closed | Rust | 5405/5557; 13147/13160; 13160/13160; 0/722 | 5407/5557; 13151/13160; 13160/13160; 354/722 |
+| 2.5 | closed | C++ | 5408/5557; 13147/13160; 13160/13160; 0/722 | 5410/5557; 13151/13160; 13160/13160; 351/722 |
+| 2.5 | open | Ada | 5278/5557; 13147/13160; 13150/13160; 0/722 | 5280/5557; 13151/13160; 13153/13160; 317/722 |
+| 2.5 | open | Rust | 5317/5557; 13147/13160; 13160/13160; 0/722 | 5319/5557; 13151/13160; 13160/13160; 347/722 |
+| 2.5 | open | C++ | 5320/5557; 13147/13160; 13160/13160; 0/722 | 5322/5557; 13151/13160; 13160/13160; 344/722 |
+| 2.6 | closed | Ada | 5385/5570; 13198/13198; 13198/13198; 323/725 | 5385/5570; 13198/13198; 13198/13198; 323/725 |
+| 2.6 | closed | Rust | 5427/5570; 13198/13198; 13198/13198; 354/725 | 5427/5570; 13198/13198; 13198/13198; 354/725 |
+| 2.6 | closed | C++ | 5431/5570; 13198/13198; 13198/13198; 352/725 | 5431/5570; 13198/13198; 13198/13198; 352/725 |
+| 2.6 | open | Ada | 5300/5570; 13198/13198; 13198/13198; 316/725 | 5300/5570; 13198/13198; 13198/13198; 316/725 |
+| 2.6 | open | Rust | 5339/5570; 13198/13198; 13198/13198; 347/725 | 5339/5570; 13198/13198; 13198/13198; 347/725 |
+| 2.6 | open | C++ | 5343/5570; 13198/13198; 13198/13198; 345/725 | 5343/5570; 13198/13198; 13198/13198; 345/725 |
+
+UCI 2.5's four newly supported field-type references are exactly the direct DateTime inventory above. The two additional renderable declarations are the affected owners `SystemTimeAtReferenceMDT` and `SecurityInformationType`; three formerly unsupported optional Ada occurrences become representable. The zero-to-nonzero 2.5 message-closure jump reflects the shared `SecurityInformationType` dependency in message closures: its direct dates had blocked every 2.5 closure. This inference must be kept separate from any selected-service compiler result. UCI 2.6 has zero such direct references, and its measured deltas are zero in all six cells.
+
+## Selected UCI 2.5 PositionReport (closed world)
+
+The preserved pre-change probe reports **59/60, NOT READY**, blocked by `SecurityInformationType` in all three backends. The new `/tmp/task046-position-post-{ada,rust,cpp}.txt` probes each exited 0 and report **60/60, READY**. The real selection was generated under `/tmp/task046-real-position-{ada,rust,cpp}` using the same pinned UCI 2.5 root and `/tmp/position-report-only.yaml`; these are separate from the synthetic fixture. Ada generated `programs-oam.ads` and `.adb` and compiled with GNAT 14.2. The Ada client `/tmp/task046-real-position-ada/probe.adb` ran under `Assertion_Policy (Ignore)` and checks both actual `SecurityInformationType_DeclassDate_Optional` and `SecurityInformationType_CUI_DecontrolDate_Optional` absent/present paths, timezone-free, literal Z, positive and negative offsets, and exact `Value` read-back. It also checks that the generated named `DateTimeType` rejects timezone-free and offset values and accepts literal Z. Rust generated `oam.rs`, compiled with rustc 1.98.1, and the real client checks absent/present values for both actual date field types, all four timezone forms, exact lexical read-back and named `DateTimeType` Zulu-only behavior. C++ evidence follows below.
+
+The later local workspace suite passed **889 tests in 61 binaries** versus **877 in 58** in `/tmp/task046-baseline.log`: +12 passing tests and +3 binaries. Format, check, clippy with warnings denied and `git diff --check` passed after the parser-helper preflight collision regression and the negative synthetic neighbor-selection control. Local versions: rustc 1.98.1, g++ 14.2.0, GNATMAKE 14.2.0. CI compiler versions and exact-head CI status are not yet available.
+
+Real C++ selected `oam.hpp` was generated successfully. `/tmp/task046-real-position-cpp/client.cpp` compiled with `-std=c++17 -Wall -Wextra -Werror -pedantic-errors` and ran successfully. Its checks cover both optional direct date positions absent/present, timezone-free, literal Z, positive and negative offsets, lexical `value()` read-back and named `DateTimeType` Zulu-only behavior. The corresponding real Ada and Rust clients above also exited 0. These are generated model API checks, not XML wire serialization.
+
+Synthetic service controls include `/tmp`-independent fixtures selecting direct required/optional dates while Time and Duration are unselected: all three selected services report READY and generate compilable output. Selecting the neighboring Time/Duration payload reports NOT READY, and failed `service-generate` leaves no files.
+
+## Full-schema first failures (not broadened)
+
+Fresh full-schema `generate --world closed-schema` runs against the pinned schema roots fail without producing output, in both releases and all three backends, on previously known reserved Record member names. UCI 2.5: Ada `AltitudeRangePairType.Range`, Rust `ConfigurationParameterType.Type`, C++ `ApprovalResponseType.Operator`. UCI 2.6: Ada `AltitudeRangePairType.Range`, Rust `ConfigurationParameterType.Type`, C++ `COMINT_ChangeDwellType.Delete`. These are outside Task 046; no general member renaming was added. The selected PositionReport generation succeeds because its projected closure does not include those full-schema blockers.
+
+Local final gate after the extra C++ default/copy trait assertions and negative service control: `cargo fmt --all -- --check`, `cargo check --workspace --all-targets`, `cargo clippy --workspace --all-targets -- -D warnings`, `AMS_GRA_REQUIRE_GNAT=1 cargo test --workspace` (**889 passing tests, 61 binaries**) and `git diff --check` passed. The pre-change coverage artifacts remain intact. Delivery SHA, CI versions/status and PR URL must be recorded after publishing; no claim about remote CI is made in this pre-commit document.

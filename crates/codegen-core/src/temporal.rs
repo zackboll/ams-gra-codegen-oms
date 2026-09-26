@@ -90,12 +90,18 @@
 //!
 //! # What this classifier does not decide
 //!
-//! It says nothing about *direct* `TypeRefTarget::Primitive(DateTime)` fields.
-//! Task 036 is a **named declaration** slice: the wrapper type is emitted for a
-//! named declaration, and a direct primitive temporal field still has no
-//! representation. Callers must keep those two questions separate.
+//! [`temporal_profile`] only classifies named declarations. Direct primitive
+//! references use the separate [`direct_temporal_profile`] decision; an
+//! unconstrained named declaration must never inherit the direct field policy.
 
 use ams_gra_oms_ir::{ConstraintSet, PatternDialect, PrimitiveKind};
+use ams_gra_oms_ir::{SchemaIr, TypeKind, TypeRefTarget};
+
+use crate::{
+    EffectiveValueMember, GenerationWorld, TypeEmission, abstract_value_projection_for_ref,
+    effective_choice_alternatives, effective_record_fields, field_storage_semantics,
+    name_preflight_plan,
+};
 
 /// The authoritative UCI Zulu lexical restriction, verbatim.
 ///
@@ -115,6 +121,78 @@ pub enum TemporalProfile {
     /// Generated code stores the whitespace-normalized, lexically valid XML
     /// Schema `dateTime` spelling whose timezone is therefore `Z`.
     DateTimeZulu,
+}
+
+/// The supported direct primitive temporal value domain (not a named type).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DirectTemporalProfile {
+    /// Base XML Schema 1.0 dateTime, including absent and numeric timezones.
+    DateTime,
+}
+
+/// A direct temporal value that cannot be represented without dropping facets.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DirectTemporalProfileError {
+    TimeUnsupported,
+    DurationUnsupported,
+    DateTimeUnsupportedConstraints,
+}
+
+/// Classify a direct field or alternative primitive reference, never a named
+/// declaration. The intrinsic dateTime whitespace collapse is implemented by
+/// the carrier; any explicit field-local facet is rejected rather than ignored.
+///
+/// # Errors
+/// Returns an error for unsupported temporal kinds or any constrained DateTime.
+pub fn direct_temporal_profile(
+    kind: PrimitiveKind,
+    constraints: &ConstraintSet,
+) -> Result<Option<DirectTemporalProfile>, DirectTemporalProfileError> {
+    match kind {
+        PrimitiveKind::DateTime if *constraints == ConstraintSet::default() => {
+            Ok(Some(DirectTemporalProfile::DateTime))
+        }
+        PrimitiveKind::DateTime => Err(DirectTemporalProfileError::DateTimeUnsupportedConstraints),
+        PrimitiveKind::Time => Err(DirectTemporalProfileError::TimeUnsupported),
+        PrimitiveKind::Duration => Err(DirectTemporalProfileError::DurationUnsupported),
+        _ => Ok(None),
+    }
+}
+
+/// Whether an emitted structural member stores a supported direct DateTime.
+/// Inheritance, absent-only elision, abstract projection and the requested
+/// generation world are resolved against the same emission surfaces as name
+/// preflight. An unused abstract ancestor is not a generated storage owner.
+#[must_use]
+pub fn schema_emits_direct_date_time(schema: &SchemaIr, world: GenerationWorld) -> bool {
+    let plan = name_preflight_plan(schema, world);
+    plan.surfaces().iter().any(|emission| {
+        let TypeEmission::Declaration(declaration) = emission else {
+            return false;
+        };
+        if !emission.emits_own_top_level_name() {
+            return false;
+        }
+        let members = match declaration.kind {
+            TypeKind::Record { .. } => effective_record_fields(schema, &declaration.name),
+            TypeKind::Choice { .. } => effective_choice_alternatives(schema, &declaration.name),
+            _ => return false,
+        };
+        members.is_ok_and(|members| {
+            members.into_iter().any(|member| {
+                matches!(
+                    member.type_ref.target,
+                    TypeRefTarget::Primitive(PrimitiveKind::DateTime)
+                ) && direct_temporal_profile(PrimitiveKind::DateTime, &member.constraints)
+                    == Ok(Some(DirectTemporalProfile::DateTime))
+                    && matches!(
+                        field_storage_semantics(schema, member, world),
+                        Ok(EffectiveValueMember::Stored(_))
+                    )
+                    && abstract_value_projection_for_ref(schema, &member.type_ref, world).is_ok()
+            })
+        })
+    })
 }
 
 /// Why a temporal declaration falls outside the Task 036 implemented subset.
@@ -287,6 +365,65 @@ mod tests {
     use ams_gra_oms_ir::{
         LexicalConstraintSet, NumericValue, PatternExpression, PatternGroup, WhiteSpacePolicy,
     };
+
+    #[test]
+    fn direct_date_time_is_distinct_from_named_zulu() {
+        let bare = ConstraintSet::default();
+        assert_eq!(
+            direct_temporal_profile(PrimitiveKind::DateTime, &bare),
+            Ok(Some(DirectTemporalProfile::DateTime))
+        );
+        assert_eq!(
+            temporal_profile(PrimitiveKind::DateTime, &bare),
+            Err(TemporalProfileError::DateTimeUnconstrained)
+        );
+        assert_eq!(
+            temporal_profile(PrimitiveKind::DateTime, &zulu()),
+            Ok(Some(TemporalProfile::DateTimeZulu))
+        );
+        assert_eq!(
+            direct_temporal_profile(PrimitiveKind::DateTime, &zulu()),
+            Err(DirectTemporalProfileError::DateTimeUnsupportedConstraints)
+        );
+    }
+
+    #[test]
+    fn direct_neighbors_and_field_facets_fail_closed() {
+        let bare = ConstraintSet::default();
+        assert_eq!(
+            direct_temporal_profile(PrimitiveKind::Time, &bare),
+            Err(DirectTemporalProfileError::TimeUnsupported)
+        );
+        assert_eq!(
+            direct_temporal_profile(PrimitiveKind::Duration, &bare),
+            Err(DirectTemporalProfileError::DurationUnsupported)
+        );
+        assert_eq!(
+            direct_temporal_profile(PrimitiveKind::String, &bare),
+            Ok(None)
+        );
+        for mut constraints in [
+            ConstraintSet {
+                min_inclusive: Some(NumericValue::Integer(0)),
+                ..bare.clone()
+            },
+            ConstraintSet {
+                max_exclusive: Some(NumericValue::Integer(1)),
+                ..bare.clone()
+            },
+            zulu(),
+        ] {
+            assert_eq!(
+                direct_temporal_profile(PrimitiveKind::DateTime, &constraints),
+                Err(DirectTemporalProfileError::DateTimeUnsupportedConstraints)
+            );
+            constraints.lexical.white_space = Some(WhiteSpacePolicy::Collapse);
+            assert_eq!(
+                direct_temporal_profile(PrimitiveKind::DateTime, &constraints),
+                Err(DirectTemporalProfileError::DateTimeUnsupportedConstraints)
+            );
+        }
+    }
 
     /// The authoritative UCI profile, built from the normalized IR shape.
     fn zulu() -> ConstraintSet {

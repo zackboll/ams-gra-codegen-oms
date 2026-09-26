@@ -1310,6 +1310,161 @@ fn generate_temporal(language: &str, label: &str) -> PathBuf {
     output_root
 }
 
+#[test]
+fn task046_direct_temporal_service_is_ready_without_unselected_neighbors() {
+    for language in ["rust", "cpp", "ada"] {
+        let check = cli()
+            .arg("service-check")
+            .arg("--schema")
+            .arg(fixture("direct-datetime.xsd"))
+            .arg("--contract")
+            .arg(fixture("direct-datetime.yaml"))
+            .args(["--language", language, "--world", "closed-schema"])
+            .output()
+            .expect("service-check must run");
+        assert_eq!(
+            check.status.code(),
+            Some(0),
+            "{}",
+            String::from_utf8_lossy(&check.stderr)
+        );
+        let report = stdout_of(&check);
+        assert!(report.contains("status: READY"), "{language}: {report}");
+        assert!(!report.contains("UnselectedTemporalPayload"));
+        let root = output_dir(&format!("task046-{language}"));
+        let generated = generate(
+            "direct-datetime.xsd",
+            "direct-datetime.yaml",
+            language,
+            "closed-schema",
+            &root,
+        );
+        assert_eq!(
+            generated.status.code(),
+            Some(0),
+            "{language}: {}",
+            String::from_utf8_lossy(&generated.stderr)
+        );
+        let files = generated_files(&root);
+        assert!(!files.is_empty());
+        assert!(
+            files
+                .iter()
+                .any(|(_, text)| text.contains(if language == "ada" {
+                    "XML_Schema_Date_Time"
+                } else {
+                    "XmlSchemaDateTime"
+                }))
+        );
+        assert!(
+            !files
+                .iter()
+                .any(|(_, text)| text.contains("UnselectedTemporalPayload"))
+        );
+        match language {
+            "rust" => {
+                let path = root.join(&files[0].0);
+                let output = Command::new("rustc")
+                    .args(["--edition", "2021", "--crate-type", "lib"])
+                    .arg(&path)
+                    .arg("-o")
+                    .arg(root.join("client.rlib"))
+                    .output()
+                    .unwrap();
+                assert!(
+                    output.status.success(),
+                    "{}",
+                    String::from_utf8_lossy(&output.stderr)
+                );
+            }
+            "cpp" => {
+                let headers = files
+                    .iter()
+                    .find(|(path, _)| path.ends_with(".hpp"))
+                    .unwrap();
+                let probe = root.join("client.cpp");
+                std::fs::write(
+                    &probe,
+                    format!("#include \"{}\"\nint main() {{ return 0; }}\n", headers.0),
+                )
+                .unwrap();
+                let output = Command::new("c++")
+                    .current_dir(&root)
+                    .args([
+                        "-std=c++17",
+                        "-Wall",
+                        "-Wextra",
+                        "-Werror",
+                        "-pedantic-errors",
+                        "-c",
+                        "client.cpp",
+                        "-o",
+                        "client.o",
+                    ])
+                    .output()
+                    .unwrap();
+                assert!(
+                    output.status.success(),
+                    "{}",
+                    String::from_utf8_lossy(&output.stderr)
+                );
+            }
+            "ada" => {
+                let spec = files
+                    .iter()
+                    .find(|(path, _)| path.ends_with(".ads") && path.contains('-'))
+                    .unwrap();
+                let body = spec.0.replace(".ads", ".adb");
+                let output = Command::new("gnatmake")
+                    .current_dir(&root)
+                    .args(["-q", "-c", &body])
+                    .output()
+                    .unwrap();
+                assert!(
+                    output.status.success(),
+                    "{}",
+                    String::from_utf8_lossy(&output.stderr)
+                );
+            }
+            _ => unreachable!(),
+        }
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+}
+
+#[test]
+fn task046_selected_temporal_neighbors_remain_not_ready_and_emit_nothing() {
+    for language in ["rust", "cpp", "ada"] {
+        let check = cli()
+            .arg("service-check")
+            .arg("--schema")
+            .arg(fixture("direct-datetime.xsd"))
+            .arg("--contract")
+            .arg(fixture("direct-datetime-neighbor.yaml"))
+            .args(["--language", language, "--world", "closed-schema"])
+            .output()
+            .unwrap();
+        assert_eq!(check.status.code(), Some(1));
+        assert!(stdout_of(&check).contains("status: NOT READY"));
+        let root = output_dir(&format!("task046-unselected-{language}"));
+        let output = generate(
+            "direct-datetime.xsd",
+            "direct-datetime-neighbor.yaml",
+            language,
+            "closed-schema",
+            &root,
+        );
+        assert!(
+            !output.status.success(),
+            "{language} must not generate unsupported Time/Duration"
+        );
+        assert!(
+            generated_files(&root).is_empty(),
+            "{language} must leave no partial output"
+        );
+    }
+}
+
 /// Task 036: a contract whose selected closure carries the supported named
 /// DateTime Zulu profile becomes READY in all three backends.
 ///
