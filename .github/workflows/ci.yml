@@ -109,6 +109,10 @@ jobs:
           require_one_test legitimate_construction_paths_still_work_under_gnat \
             cargo test -p ams-gra-oms-backend-ada --test carrier_lifecycle \
             legitimate_construction_paths_still_work_under_gnat
+          # Task 046: require the generated GNAT direct dateTime parser probe.
+          require_one_test direct_date_time_and_named_zulu_share_the_gnat_parser \
+            cargo test -p ams-gra-oms-backend-ada --test direct_datetime \
+            direct_date_time_and_named_zulu_share_the_gnat_parser
           # Task 041: the whitespace-visible family. These are the probes that
           # actually EXECUTE the two normalization modes, so a run that skipped
           # them could report green while a collapse carrier stored the wrong

@@ -5039,3 +5039,25 @@ needing identifier remapping, which is out of scope.
 > temporal model and outside Task 044. See
 > [Task 044 evidence](task-044-enum-identifier-remapping.md) for current
 > readiness and coverage; the preceding counts remain historical Task 042 data.
+
+## Task 046 — direct XML Schema dateTime (post Task 036)
+
+The historical Task 036 section above describes the then-unsupported direct
+field boundary; it is not the current direct-field capability. An unconstrained
+direct `xs:dateTime` Record field (required, optional, or repeated) now stores
+a checked lexical value: `XML_Schema_Date_Time` in Ada and `XmlSchemaDateTime`
+in Rust/C++. The per-unit support carrier is emitted only when a stored direct
+value occurs on the emitted surface, including inherited members, and not for
+an unused abstract ancestor. Ada's existing optional discriminated wrapper
+contains the carrier, never a raw string.
+
+Each backend emits one shared XSD 1.0 calendar/time parser for both the direct
+carrier and named Zulu declarations. The former admits absent timezone, `Z`,
+and signed `hh:mm` offsets with hours at most 14, minutes at most 59, and
+exactly `:00` at hour 14; the latter additionally requires literal `Z`.
+Whitespace collapse is applied before validation and the accepted spelling is
+retained, not converted to UTC or otherwise canonicalized. Named unconstrained
+DateTime declarations, direct Time/Duration, unsupported field-local facets,
+and nillable fields remain outside this capability. The generated Task 036
+source changes due to parser sharing; its original runtime corpus is rerun,
+not claimed byte-identical. See [Task 046 evidence](task-046-direct-xs-datetime.md).

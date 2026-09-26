@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic direct XML Schema dateTime and named Zulu composition. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test:temporal"
+           targetNamespace="urn:test:temporal"
+           elementFormDefault="qualified">
+  <xs:simpleType name="Instant">
+    <xs:restriction base="xs:dateTime"><xs:pattern value=".+Z"/></xs:restriction>
+  </xs:simpleType>
+  <xs:complexType name="Payload">
+    <xs:sequence>
+      <xs:element name="Observed" type="xs:dateTime"/>
+      <xs:element name="Timestamp" type="xs:dateTime" minOccurs="0"/>
+      <xs:element name="History" type="xs:dateTime" minOccurs="0" maxOccurs="3"/>
+      <xs:element name="Other" type="xs:dateTime" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="Zulu" type="t:Instant"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

@@ -1,0 +1,23 @@
+# Synthetic Task 046 direct dateTime selection; neighbors remain unselected.
+contract_version: "0.1"
+service:
+  name: Direct Temporal Observation
+  version: "0.1.0"
+  kind: service
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+functions:
+  - id: observation
+    name: Observation
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: observation-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: DirectReport
+        topic: direct.report
+        timing:
+          kind: asynchronous

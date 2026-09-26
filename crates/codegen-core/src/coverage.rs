@@ -1543,13 +1543,9 @@ fn primitive_declaration_renderable(
     // This asks precisely the question the three backends ask, so coverage
     // cannot drift from what they will actually emit.
     //
-    // `PrimitiveKind::DateTime` is deliberately NOT marked supported wholesale.
-    // An unconstrained `DateTime`, a different pattern, `Time`, and `Duration`
-    // all stay non-baseline and remain attributed to the existing hypothetical
-    // families as future work. Crucially this is a *declaration* judgement
-    // only: `primitive_ref_renderable` still reports a **direct**
-    // `xs:dateTime` field unsupported, which is the distinction Task 036 rests
-    // on.
+    // Named DateTime is deliberately NOT marked supported wholesale. The
+    // independent direct-field classifier below accepts unconstrained direct
+    // references without broadening this named declaration decision.
     if is_temporal_primitive(kind) {
         return temporal_profile(kind, constraints).is_ok_and(|profile| profile.is_some())
             || (enabled.contains(&FeatureFamily::PrimitiveExpansion)
@@ -1595,7 +1591,13 @@ fn field_renderable(
     language: BackendLanguage,
     enabled: &BTreeSet<FeatureFamily>,
 ) -> bool {
-    type_ref_renderable(&field.type_ref, enabled)
+    (type_ref_renderable(&field.type_ref, enabled)
+        && (!matches!(
+            field.type_ref.target,
+            TypeRefTarget::Primitive(PrimitiveKind::DateTime)
+        ) || crate::direct_temporal_profile(PrimitiveKind::DateTime, &field.constraints)
+            == Ok(Some(crate::DirectTemporalProfile::DateTime))
+            || enabled.contains(&FeatureFamily::ConstrainedSimpleTypes)))
         && occurrence_renderable(field, language, enabled)
         && (field.constraints == ConstraintSet::default()
             || matches!(field.type_ref.target, TypeRefTarget::Primitive(kind) if inclusive_integral_domain(kind, &field.constraints).is_ok_and(|domain| domain.is_some()))
@@ -1617,6 +1619,7 @@ fn primitive_ref_renderable(kind: PrimitiveKind, enabled: &BTreeSet<FeatureFamil
             | PrimitiveKind::Float64
             | PrimitiveKind::String
             | PrimitiveKind::Binary
+            | PrimitiveKind::DateTime
     ) || enabled.contains(&FeatureFamily::PrimitiveExpansion)
 }
 fn occurrence_renderable(
@@ -2898,14 +2901,12 @@ mod tests {
     /// The capability model must keep **occurrence representation** and
     /// **primitive target support** as separate questions.
     ///
-    /// A temporal or Decimal optional field has a conceivable storage shape, but
-    /// its primitive type is still unsupported, so the *field* must not become
-    /// renderable. This is what keeps Task 036 honest: adding temporal primitive
-    /// support later is what should flip these, not Task 035's occurrence work.
+    /// Time, Duration and Decimal still lack both Ada optional storage and a
+    /// direct value representation. DateTime now has optional storage and a
+    /// validated direct value; the separate test below checks both decisions.
     #[test]
     fn optional_occurrence_storage_does_not_grant_primitive_support() {
         for kind in [
-            PrimitiveKind::DateTime,
             PrimitiveKind::Time,
             PrimitiveKind::Duration,
             PrimitiveKind::Decimal,
@@ -2937,6 +2938,29 @@ mod tests {
                 "{kind:?} primitive support must remain false"
             );
         }
+        let mut value = field_ref("value", TypeRef::primitive(PrimitiveKind::DateTime));
+        value.cardinality = Cardinality::OPTIONAL_ONE;
+        let schema = message_schema(
+            vec![declaration(
+                "Payload",
+                TypeKind::Record {
+                    fields: vec![value],
+                },
+            )],
+            "Payload",
+        );
+        let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
+        assert_eq!(
+            analysis
+                .backend_coverage(BackendLanguage::Ada)
+                .unwrap()
+                .field_occurrences_renderable,
+            1
+        );
+        assert!(primitive_ref_renderable(
+            PrimitiveKind::DateTime,
+            &BTreeSet::new()
+        ));
     }
 
     /// An optional direct integral field whose bounds Ada cannot represent stays

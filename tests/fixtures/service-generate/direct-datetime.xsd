@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic Task 046 selected-service fixture. Unselected neighbors stay unsupported. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:t="urn:test"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:test" elementFormDefault="qualified">
+  <xs:complexType name="DirectPayload">
+    <xs:sequence>
+      <xs:element name="Observed" type="xs:dateTime"/>
+      <xs:element name="Timestamp" type="xs:dateTime" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="UnselectedTemporalPayload">
+    <xs:sequence>
+      <xs:element name="Clock" type="xs:time"/>
+      <xs:element name="Elapsed" type="xs:duration"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="DirectReport" type="t:DirectPayload" uci:version="001.000.000.000"/>
+  <xs:element name="NeighborReport" type="t:UnselectedTemporalPayload" uci:version="001.000.000.000"/>
+</xs:schema>
