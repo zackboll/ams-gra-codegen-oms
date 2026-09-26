@@ -1,5 +1,10 @@
 //! Minimal Rust type generation from normalized schema IR.
 
+mod service_api;
+
+pub use service_api::{SERVICE_API_FILE, generate_service_api};
+
+use ams_gra_oms_codegen_core::ServiceApiModel;
 use ams_gra_oms_codegen_core::{
     AbstractValueProjection, Backend, BackendLanguage, CodegenError, DirectTemporalProfile,
     EffectiveValueMember, FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain,
@@ -32,20 +37,38 @@ impl Backend for RustBackend {
         world: GenerationWorld,
     ) -> Result<Vec<GeneratedFile>, CodegenError> {
         let contents = generate(schema, world)?;
-        let namespace = schema
-            .namespaces
-            .first()
-            .ok_or_else(|| error("Rust generation requires one namespace"))?;
-        let stem = namespace
-            .uri
-            .split(|character: char| !character.is_ascii_alphanumeric())
-            .rfind(|part| !part.is_empty())
-            .ok_or_else(|| error("Rust generation requires a named namespace"))?;
         Ok(vec![GeneratedFile {
-            relative_path: PathBuf::from(format!("{}.rs", snake_case(stem)?)),
+            relative_path: PathBuf::from(model_file_name(schema)?),
             contents,
         }])
     }
+
+    fn generate_service_api(
+        &self,
+        model: &ServiceApiModel,
+        schema: &SchemaIr,
+    ) -> Result<Vec<GeneratedFile>, CodegenError> {
+        Ok(vec![GeneratedFile {
+            relative_path: PathBuf::from(SERVICE_API_FILE),
+            contents: generate_service_api(model, schema)?,
+        }])
+    }
+}
+
+/// The model file `generate` writes: the snake-cased last namespace URI
+/// component. Shared with the Task 047 wrapper so its `#[path]` names exactly
+/// the file type generation produced.
+fn model_file_name(schema: &SchemaIr) -> Result<String, CodegenError> {
+    let namespace = schema
+        .namespaces
+        .first()
+        .ok_or_else(|| error("Rust generation requires one namespace"))?;
+    let stem = namespace
+        .uri
+        .split(|character: char| !character.is_ascii_alphanumeric())
+        .rfind(|part| !part.is_empty())
+        .ok_or_else(|| error("Rust generation requires a named namespace"))?;
+    Ok(format!("{}.rs", snake_case(stem)?))
 }
 
 /// Generate Rust declarations from normalized schema IR.

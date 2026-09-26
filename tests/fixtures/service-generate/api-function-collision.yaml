@@ -1,0 +1,46 @@
+# SYNTHETIC Task 047 fixture. Authored for this repository only.
+#
+# Two portable function IDs, 'foo-bar' and 'foo_bar'. They are DISTINCT valid
+# portable IDs (the contract crate accepts this contract), but every target
+# language normalizes both to one scope name (function_foo_bar /
+# Function_Foo_Bar). The service API wrapper must fail closed: service-check is
+# NOT READY with a 'service api boundary:' line, and service-generate writes
+# nothing. No numeric suffix is invented. Selects against root.xsd.
+contract_version: "0.1"
+
+service:
+  name: function-collision
+  version: "0.1.0"
+  kind: service
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: foo-bar
+    name: Foo Bar Dash
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: a-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: MessageA
+        topic: t.a
+        timing:
+          kind: asynchronous
+  - id: foo_bar
+    name: Foo Bar Underscore
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: b-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: MessageB
+        topic: t.b
+        timing:
+          kind: asynchronous

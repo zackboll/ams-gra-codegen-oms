@@ -279,9 +279,10 @@ could render the selected closure, not that any service source exists yet.
       same report `service-check` prints, invokes no backend, and writes no
       file — not even the output directory.
 
-Generation is still **types only**. A ready selection produces the UCI type
-model and nothing else: no CAL façade, publisher/subscriber API, service
-wrapper, codec, or runtime source is emitted yet.
+As of Task 032, generation was **types only**. A ready selection produced the
+UCI type model and nothing else: no CAL façade, publisher/subscriber API,
+service wrapper, codec, or runtime source. (Task 047 later added the typed
+service API wrapper; the other items remain open.)
 
 **Measured progress (Task 033):**
 
@@ -578,9 +579,30 @@ derivations, and the four consuming choice types were already counted
 renderable. In Rust and C++ those choice types' complete closures are now
 renderable. See `docs/task-042-nato-special-words.md`.
 
+**Complete (Task 047):**
+
+- [x] service-specific generated wrapper APIs — `codegen-core` lowers the
+      `ServicePlan` **once** into a small language-neutral `ServiceApiModel`
+      (functions and every exchange occurrence, in contract order, all five
+      exchange kinds, and a resolved payload binding for OMS Message
+      exchanges only). A new `Backend::generate_service_api` renders it as
+      `service_api.rs`, `service_api.hpp`, or `service_api.ads`, beside the
+      unchanged selected type model. Backend crates still never see a
+      contract. Scope names come from contract IDs behind fixed
+      `function_`/`exchange_` prefixes; IDs that normalize to one identifier
+      fail closed, and that wrapper preflight is part of readiness, so READY
+      means the model **and** the wrapper can be generated. The real UCI 2.5
+      `PositionReport` selection stays 60/60 READY in every backend, its model
+      files are byte-identical to Task 046, and its wrapper compiles in all
+      three languages.
+
+The wrapper is compile-time endpoint metadata only: it sends, receives,
+encodes, decodes, subscribes, publishes, dispatches, and connects to nothing.
+A zero-OMS service now produces exactly one file, its wrapper. See
+[Task 047](task-047-service-api-wrappers.md).
+
 **Still open:**
 
-- [ ] service-specific generated wrapper APIs;
 - [ ] generated service publish/subscribe façade;
 - [ ] typed LA-CAL integration;
 - [ ] codec and runtime integration.

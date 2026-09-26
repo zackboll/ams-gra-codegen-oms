@@ -7,6 +7,7 @@ mod backend_preflight;
 mod coverage;
 mod floating;
 mod integral;
+mod service_api;
 mod service_generation;
 mod service_plan;
 mod service_readiness;
@@ -45,6 +46,14 @@ pub use floating::{
     float64_literal, floating_domain,
 };
 pub use integral::{InclusiveIntegralDomain, inclusive_integral_domain};
+pub use service_api::{
+    ServiceApiCollision, ServiceApiError, ServiceApiExchange, ServiceApiExchangeKind,
+    ServiceApiFixedNames, ServiceApiFunction, ServiceApiModel, ServiceApiNameError,
+    ServiceApiNameOwner, ServiceApiOmsBinding, ServiceApiRegion, UnboundPayload,
+    UnboundPayloadReason, build_service_api_model, service_api_exchange_scope_name,
+    service_api_fixed_names, service_api_function_scope_name, service_api_preflight,
+    validate_service_api_names, validate_service_plan_api_names,
+};
 pub use service_generation::{
     ServiceGenerationError, ServiceGenerationProjection, project_service_generation_schema,
 };
@@ -784,6 +793,31 @@ pub trait Backend {
         &self,
         schema: &SchemaIr,
         world: GenerationWorld,
+    ) -> Result<Vec<GeneratedFile>, CodegenError>;
+
+    /// Render the typed service API wrapper entrypoint for an already-lowered
+    /// [`ServiceApiModel`] (Task 047).
+    ///
+    /// `schema` is the same projected schema passed to [`Backend::generate`],
+    /// used only to spell the generated model's module/namespace/package and
+    /// each payload's generated type name with the backend's own existing
+    /// rules. The backend never sees a Service Contract, YAML, a filesystem
+    /// path, or the profile engine, and it never reinterprets function
+    /// applicability, direction, mandate, kind, message identity, topic, or
+    /// ordering: those all arrive already decided in `model`.
+    ///
+    /// The result is metadata only: no runtime, CAL, codec, publisher,
+    /// subscriber, or dispatcher code is emitted.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a wrapper name fails the shared
+    /// [`validate_service_api_names`] preflight, or if the model references a
+    /// payload type this backend cannot spell.
+    fn generate_service_api(
+        &self,
+        model: &ServiceApiModel,
+        schema: &SchemaIr,
     ) -> Result<Vec<GeneratedFile>, CodegenError>;
 }
 

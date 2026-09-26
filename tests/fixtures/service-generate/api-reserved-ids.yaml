@@ -1,0 +1,67 @@
+# SYNTHETIC Task 047 fixture. Authored for this repository only.
+#
+# Portable IDs that are bare reserved words in at least one target language:
+#
+#   type      Rust keyword, Ada reserved word
+#   match     Rust keyword
+#   range     Ada reserved word
+#   operator  C++ keyword
+#   delete    C++ keyword
+#   package   Ada reserved word
+#
+# All must generate safely because every scope name carries a fixed
+# function_/exchange_ (Ada: Function_/Exchange_) prefix, so a raw ID never
+# becomes a host identifier on its own. Task 044's enum Value_ escape is not
+# involved. Selects against root.xsd.
+contract_version: "0.1"
+
+service:
+  name: reserved-ids
+  version: "0.1.0"
+  kind: service
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: type
+    name: Type
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: match
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: MessageA
+        topic: t.match
+        timing:
+          kind: asynchronous
+      - id: range
+        kind: special_signal
+        direction: output
+        mandate: optional
+        name: Range
+        timing:
+          kind: asynchronous
+  - id: operator
+    name: Operator
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: delete
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: MessageB
+        topic: t.delete
+        timing:
+          kind: asynchronous
+      - id: package
+        kind: security_exchange
+        direction: input
+        mandate: mandatory
+        name: Package
+        timing:
+          kind: asynchronous

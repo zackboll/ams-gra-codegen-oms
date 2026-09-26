@@ -1,0 +1,38 @@
+# SYNTHETIC Task 047 fixture. Authored for this repository only.
+#
+# Two exchange IDs, 'foo-bar' and 'foo_bar', inside ONE function. They are
+# distinct valid portable IDs (exchange IDs are unique per function, and these
+# differ), but both normalize to exchange_foo_bar / Exchange_Foo_Bar in the
+# same function scope. The wrapper must fail closed. Selects against root.xsd.
+contract_version: "0.1"
+
+service:
+  name: exchange-collision
+  version: "0.1.0"
+  kind: service
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: mission-data
+    name: Mission Data
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: foo-bar
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: MessageA
+        topic: t.a
+        timing:
+          kind: asynchronous
+      - id: foo_bar
+        kind: special_signal
+        direction: output
+        mandate: optional
+        name: Foo Bar Signal
+        timing:
+          kind: asynchronous

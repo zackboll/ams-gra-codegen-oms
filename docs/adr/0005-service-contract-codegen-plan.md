@@ -167,6 +167,51 @@ Readiness remains the authoritative capability gate: `service-generate` refuses
 to invoke a backend, create an output directory, or write a file for a NOT
 READY selection, and support expansion is never a route around that verdict.
 
+## Task 047 follow-up
+
+`service-generate` now also emits a typed service API wrapper
+(`service_api.rs` / `service_api.hpp` / `service_api.ads`). The architecturally
+important statement is:
+
+```text
+Backend crates still do not parse or validate Service Contracts.
+
+codegen-core lowers ServicePlan to a small language-neutral ServiceApiModel.
+
+Backend crates render that already-resolved model into language syntax.
+```
+
+This does **not** reverse the Task 030 or Task 032 boundary; it extends it by
+one step.
+
+* **One lowering, in `codegen-core`.** `build_service_api_model(plan,
+  projected_schema, world)` is the single place a plan becomes an endpoint
+  surface. It copies function/exchange order, every exchange occurrence, all
+  five exchange kinds, direction, mandate, topic, and the plan's resolved
+  message and payload identities. It re-resolves nothing, infers no topic or
+  direction, regroups nothing, and deduplicates no occurrence (unlike
+  `ServicePlan::selected_messages`, which still deduplicates the type
+  selection).
+* **One narrow backend method.** `Backend::generate_service_api(model,
+  schema)` receives the lowered model and the projected `SchemaIr` it already
+  generates from, never YAML, a `Contract`, a path, or profile-engine data.
+  The Task 032 statement that "no `generate_service()` entry point was added"
+  was true of that task; Task 047 deliberately adds this one, and it still
+  takes no contract.
+* **Naming authority stays out of the contract crate.** Wrapper scope names
+  come from portable **IDs** under a shared `codegen-core` rule, and a shared
+  preflight rejects normalization collisions (`foo-bar` / `foo_bar`). A
+  contract that fails it is still portable-valid: the failure is a statement
+  about one target language, not about the contract.
+* **Readiness stays authoritative.** The wrapper preflight is folded into
+  `ServiceBackendReadiness` as a separate `service_api_blocker`, so READY means
+  both the type model and the wrapper can be generated, with no change to any
+  selected-type count.
+* **The contract crate and the plan are untouched.** No dependency, field, or
+  generation information was added to either. Metadata the wrapper does not
+  yet expose (traceability, timing, Capability ownership, kind-specific
+  details, and so on) remains in `ServicePlan` for a later task.
+
 ## Alternatives considered
 
 * **Put contract parsing in `codegen-core`.** Rejected: it would tie the

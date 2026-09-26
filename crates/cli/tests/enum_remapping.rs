@@ -165,9 +165,16 @@ fn task044_generated_selected_models_compile_and_use_every_variant() {
             .iter()
             .map(|v| generated_enum_variant_name(backend, v).unwrap())
             .collect();
+        // Task 047: `service-generate` also emits the `service_api.*` wrapper
+        // entrypoint. This test is about the UCI MODEL's enumeration
+        // spellings, so the wrapper is excluded from the model file set.
         let files: Vec<_> = std::fs::read_dir(&root)
             .unwrap()
             .map(|f| f.unwrap().path())
+            .filter(|p| {
+                p.file_stem()
+                    .is_none_or(|stem| !stem.eq_ignore_ascii_case("service_api"))
+            })
             .collect();
         let source = files
             .iter()

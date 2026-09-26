@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="https://www.vdl.afrl.af.mil/programs/oam"
+           elementFormDefault="qualified"
+           version="002.5.0">
+  <!-- Task 047 controlled fixture. This is NOT the UCI schema.
+
+       It mirrors only the SHAPE the authoritative UCI 2.5 selection has, so
+       the verbatim upstream portable contract
+       (crates/service-contract/tests/fixtures/upstream-minimal.yaml) can be
+       exercised in ordinary CI, where the pinned UCI release is not present:
+
+         * the same target namespace, so every backend derives the same model
+           unit it derives for real UCI (Rust oam.rs, C++ programs::oam, Ada
+           Programs.Oam);
+         * a PositionReport message whose payload type is PositionReportMT,
+           so the message and payload local names DIFFER exactly as in UCI
+           2.5, and the wrapper must bind the resolved payload.
+
+       Real UCI 2.5 evidence is recorded in docs/task-047-service-api-wrappers.md. -->
+  <xs:complexType name="PositionReportMDT">
+    <xs:sequence>
+      <xs:element name="Latitude" type="xs:double"/>
+      <xs:element name="Longitude" type="xs:double"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="PositionReportMT">
+    <xs:sequence>
+      <xs:element name="MessageData" type="uci:PositionReportMDT"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="PositionReport" type="uci:PositionReportMT" uci:version="003.000.004.000"/>
+</xs:schema>

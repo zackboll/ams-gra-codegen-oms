@@ -1,0 +1,97 @@
+# SYNTHETIC Task 047 fixture. Authored for this repository only.
+#
+# The SAME functions and exchanges as api-all-kinds.yaml, selecting the SAME
+# two UCI messages, but in a different contract order: the two functions are
+# swapped, and within mission-data the exchanges are reversed.
+#
+# Task 032 semantics: the generated UCI MODEL files must be byte-identical to
+# api-all-kinds.yaml's, because the projected type model follows schema order.
+# Task 047 semantics: the generated service_api file must DIFFER, and must
+# list functions and exchanges in THIS contract order.
+contract_version: "0.1"
+
+service:
+  name: "Wrapper Demo: All \"Kinds\" (v1)"
+  version: "1.2.3"
+  kind: subsystem
+  description: Synthetic contract exercising every exchange kind.
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: mission_backup
+    name: "Mission Backup (secondary) -- 2nd"
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: a-repeat
+        kind: oms_message
+        direction: output
+        mandate: optional
+        message: MessageA
+        topic: backup.a
+        timing:
+          kind: asynchronous
+      - id: status-output
+        kind: non_oms_message
+        direction: input
+        mandate: mandatory
+        name: Backup Status
+        timing:
+          kind: asynchronous
+  - id: mission-data
+    name: "Mission Data & Status, Primary"
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: status-output
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: MessageB
+        topic: mission.b
+        timing:
+          kind: asynchronous
+      - id: legacy-status
+        kind: non_oms_message
+        direction: output
+        mandate: optional
+        name: Legacy Status
+        timing:
+          kind: asynchronous
+      - id: key-exchange
+        kind: security_exchange
+        direction: output
+        mandate: mandatory
+        name: Key Exchange
+        timing:
+          kind: on_demand
+      - id: sync-pulse
+        kind: special_signal
+        direction: input
+        mandate: mandatory
+        name: Sync Pulse
+        timing:
+          kind: periodic
+          nominal_rate_hz: 1
+      - id: bulk-imagery
+        kind: data_transfer
+        direction: output
+        mandate: optional
+        name: Bulk Imagery
+        protocol: sftp
+        data_type: imagery
+        data_format: nitf
+        sharing_pattern: push
+        timing:
+          kind: asynchronous
+      - id: a-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: MessageA
+        topic: mission.a
+        timing:
+          kind: asynchronous

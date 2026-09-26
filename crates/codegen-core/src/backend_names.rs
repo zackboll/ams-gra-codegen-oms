@@ -631,7 +631,7 @@ fn identity_key(language: BackendLanguage, generated: &str) -> String {
 }
 
 /// Whether the generated identifier is a reserved word of the target language.
-fn is_reserved(language: BackendLanguage, generated: &str) -> bool {
+pub(crate) fn is_reserved(language: BackendLanguage, generated: &str) -> bool {
     match language {
         // Case-insensitive: `Type`, `TYPE`, and `type` are one Ada word.
         BackendLanguage::Ada => ADA_RESERVED

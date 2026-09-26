@@ -310,6 +310,9 @@ fn help_documents_options_without_advertising_overlay() {
         "--language",
         "--world",
         "writes no generated source",
+        // Task 047: READY now also covers the typed service API wrapper.
+        "READY INCLUDES THE SERVICE API WRAPPER:",
+        "service api boundary:",
     ] {
         assert!(stdout.contains(expected), "help should mention {expected}");
     }

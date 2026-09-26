@@ -28,9 +28,12 @@ fn binary_prints_real_help() {
     // Task 032: selected generation is the only new top-level command.
     assert!(stdout.contains("service-generate --schema PATH --contract PATH"));
     assert!(stdout.contains("SERVICE CONTRACT SELECTED GENERATION:"));
-    assert!(
-        stdout.contains("service-generate   Generate only a contract's selected UCI type model")
-    );
+    // Task 047: service-generate now also emits the typed service API wrapper,
+    // so "only the type model" would no longer be true.
+    assert!(stdout.contains(
+        "service-generate   Generate a contract's selected UCI type model and typed\n\
+         \x20                      service API wrapper"
+    ));
     assert!(!stdout.contains("BOOTSTRAP STATUS"));
     assert!(output.stderr.is_empty());
 }

@@ -1,5 +1,10 @@
 //! Minimal Ada type generation from normalized schema IR.
 
+mod service_api;
+
+pub use service_api::{SERVICE_API_FILE, generate_service_api};
+
+use ams_gra_oms_codegen_core::ServiceApiModel;
 use ams_gra_oms_codegen_core::{
     ADA_PORTABLE_POSITIVE_INDEX_MAX, ADA_SEQUENCE_APPEND, ADA_SEQUENCE_CLEAR, ADA_SEQUENCE_ELEMENT,
     ADA_SEQUENCE_LENGTH, ADA_SEQUENCE_RESERVE_CAPACITY, ADA_SEQUENCE_TO_SEQUENCE,
@@ -60,6 +65,17 @@ impl Backend for AdaBackend {
             });
         }
         Ok(files)
+    }
+
+    fn generate_service_api(
+        &self,
+        model: &ServiceApiModel,
+        schema: &SchemaIr,
+    ) -> Result<Vec<GeneratedFile>, CodegenError> {
+        Ok(vec![GeneratedFile {
+            relative_path: PathBuf::from(SERVICE_API_FILE),
+            contents: generate_service_api(model, schema)?,
+        }])
     }
 }
 

@@ -24,8 +24,9 @@
 use crate::coverage::DeclarationRenderability;
 use crate::{
     BackendLanguage, BackendPreflightError, CoverageAnalysis, CoverageError, GenerationWorld,
-    PlanBindingMismatch, ServiceGenerationError, ServicePlan, ServicePlanError, backend_preflight,
-    project_service_generation_schema,
+    PlanBindingMismatch, ServiceApiError, ServiceGenerationError, ServicePlan, ServicePlanError,
+    backend_preflight, project_service_generation_schema, service_api_preflight,
+    validate_service_plan_api_names,
 };
 use ams_gra_oms_ir::{PrimitiveKind, QualifiedName, SchemaIr, TypeRefTarget};
 use std::collections::BTreeSet;
@@ -70,6 +71,14 @@ pub enum ServiceReadinessError {
     /// to "no backend blocker" could leave a false READY, so they are
     /// propagated as typed errors instead.
     Projection(Box<ServiceGenerationError>),
+    /// Lowering the service API model failed for an integrity reason rather
+    /// than an ordinary wrapper boundary. Only
+    /// [`ServiceApiError::EmissionPlan`] reaches here: projection already
+    /// planned the same schema, so that failure is a defect, not a NOT READY.
+    ///
+    /// Boxed, like [`Self::Projection`], so every readiness `Result` stays
+    /// small.
+    ServiceApi(Box<ServiceApiError>),
 }
 
 /// Which part of the selection referred to an absent schema identity.
@@ -108,6 +117,10 @@ impl fmt::Display for ServiceReadinessError {
             Self::Projection(error) => write!(
                 formatter,
                 "selected-service projection failed while measuring readiness: {error}"
+            ),
+            Self::ServiceApi(error) => write!(
+                formatter,
+                "service API lowering failed while measuring readiness: {error}"
             ),
         }
     }
@@ -213,6 +226,15 @@ pub struct ServiceBackendReadiness {
     /// is malformed; multi-namespace IR is valid input the backends simply do
     /// not generate yet.
     pub backend_blocker: Option<BackendPreflightError>,
+    /// A Task 047 service API wrapper boundary, if any: a wrapper name that
+    /// cannot be emitted safely in this language (for example two portable
+    /// IDs that normalize to one identifier), or an OMS payload with no
+    /// generated model type to bind.
+    ///
+    /// Kept apart from `unsupported_types` and `blocked_messages` on purpose:
+    /// it is not a statement about UCI type capability, and it never changes
+    /// a selected-type or selected-message count.
+    pub service_api_blocker: Option<ServiceApiError>,
 }
 
 impl ServiceBackendReadiness {
@@ -226,9 +248,14 @@ impl ServiceBackendReadiness {
     /// A global backend precondition violation makes the service NOT READY
     /// even when every selected declaration is individually renderable,
     /// because generation of that same projected schema would fail.
+    ///
+    /// Since Task 047 a service API boundary does too: READY means
+    /// `service-generate` can produce the type model AND the wrapper.
     #[must_use]
     pub fn is_ready(&self) -> bool {
-        self.blocked_messages.is_empty() && self.backend_blocker.is_none()
+        self.blocked_messages.is_empty()
+            && self.backend_blocker.is_none()
+            && self.service_api_blocker.is_none()
     }
 }
 
@@ -408,7 +435,7 @@ pub fn analyze_service_readiness(
     // closure narrows to one namespace or drops a colliding declaration, and
     // checking nothing at all is the historical defect that let a
     // multi-namespace selection report READY.
-    let backend_blocker = match projection {
+    let backend_blocker = match &projection {
         // Measured in the same world the readiness verdict is stated for, so
         // a world-sensitive generated name is never reserved here that the
         // requested world could not emit.
@@ -433,10 +460,43 @@ pub fn analyze_service_readiness(
             // Fail closed even in release: if the invariant does not hold,
             // reporting no blocker would be a false READY.
             if unsupported_types.is_empty() && blocked_messages.is_empty() {
-                return Err(ServiceReadinessError::Projection(Box::new(error)));
+                return Err(ServiceReadinessError::Projection(Box::new(error.clone())));
             }
             None
         }
+    };
+
+    // Task 047: READY must mean `service-generate` can emit BOTH the selected
+    // type model AND its service API wrapper, so the shared wrapper preflight
+    // joins the same authoritative verdict. It is reported in its own field,
+    // never as a fake unsupported UCI declaration, and it changes no count.
+    //
+    // Wrapper names derive only from contract IDs and exchange kinds, so they
+    // are always checked -- even when the type selection is already blocked.
+    // Payload binding is checked only when the type selection is otherwise
+    // ready: a message already blocked above would otherwise be reported twice
+    // for one cause.
+    let service_api_blocker = match validate_service_plan_api_names(plan, language) {
+        Err(name) => Some(ServiceApiError::Name(name)),
+        Ok(()) => match &projection {
+            Ok(projection)
+                if unsupported_types.is_empty()
+                    && blocked_messages.is_empty()
+                    && backend_blocker.is_none() =>
+            {
+                match service_api_preflight(plan, projection.schema(), language, world) {
+                    Ok(_) => None,
+                    // Projection already planned this exact schema, so a
+                    // planning failure here is an integrity defect, never an
+                    // ordinary NOT READY.
+                    Err(error @ ServiceApiError::EmissionPlan(_)) => {
+                        return Err(ServiceReadinessError::ServiceApi(Box::new(error)));
+                    }
+                    Err(error) => Some(error),
+                }
+            }
+            _ => None,
+        },
     };
 
     let selected_types_total = closure.len();
@@ -451,6 +511,7 @@ pub fn analyze_service_readiness(
         unsupported_types,
         blocked_messages,
         backend_blocker,
+        service_api_blocker,
     })
 }
 

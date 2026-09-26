@@ -6,7 +6,7 @@ use ams_gra_oms_backend_rust::RustBackend;
 use ams_gra_oms_codegen_core::{
     Backend, BackendLanguage, CoverageAnalysis, GeneratedFile, GenerationWorld, ResolvedExchange,
     ServiceBackendReadiness, ServiceGenerationProjection, ServicePlan, analyze_service_readiness,
-    project_service_generation_schema, resolve_service_plan,
+    project_service_generation_schema, resolve_service_plan, service_api_preflight,
 };
 // Only the CLI's own loading path touches contract files; no backend parses
 // YAML, and the resolution itself lives in codegen-core.
@@ -41,7 +41,8 @@ COMMANDS:
     docs               Generate an offline HTML browser for a normalized XSD schema set
     service-plan       Resolve a portable Service Contract against a schema set
     service-check      Report backend/world readiness for a contract's selection
-    service-generate   Generate only a contract's selected UCI type model
+    service-generate   Generate a contract's selected UCI type model and typed
+                       service API wrapper
 
 SERVICE CONTRACT PLANNING:
     'service-plan' joins a portable AMS GRA Service Contract (v0.1 YAML or
@@ -72,12 +73,15 @@ SERVICE CONTRACT BACKEND READINESS:
 
 SERVICE CONTRACT SELECTED GENERATION:
     'service-generate' emits the UCI TYPE MODEL a Service Contract selects,
-    and nothing unrelated. It checks 'service-check' readiness first and
-    writes no file at all unless the selection is READY, the projection
-    succeeds, the backend generates, and every generated path validates.
+    and nothing unrelated, plus one typed SERVICE API wrapper entrypoint
+    (service_api.rs / service_api.hpp / service_api.ads) describing the
+    contract's functions and exchanges. It checks 'service-check' readiness
+    first and writes no file at all unless the selection is READY, the
+    projection succeeds, the backend generates the model AND the wrapper, and
+    every generated path validates.
 
-    It emits selected UCI types only. No CAL facade, publisher/subscriber
-    API, service wrapper, codec, or runtime code is generated yet.
+    The wrapper is compile-time endpoint metadata only. No CAL facade,
+    publisher/subscriber API, codec, or runtime code is generated yet.
 
 SCHEMA OVERLAYS:
     'validate', 'coverage', and 'generate' accept a repeatable --overlay PATH:
@@ -299,6 +303,14 @@ READINESS IS SELECTED-CLOSURE CAPABILITY ONLY:
     security exchange, non-OMS message) require no UCI type model, so a
     contract with zero OMS Message exchanges is vacuously ready.
 
+READY INCLUDES THE SERVICE API WRAPPER:
+    READY also means 'service-generate' can emit the typed service API
+    wrapper. A wrapper name that is unsafe in the requested language -- for
+    example two distinct contract IDs such as 'foo-bar' and 'foo_bar' that
+    normalize to one identifier -- makes the service NOT READY and is
+    reported on its own 'service api boundary:' line. It is never reported as
+    an unsupported UCI type, and selected-type counts are unaffected.
+
 EXIT CODES:
     0    READY
     1    NOT READY (the full report is still written to stdout)
@@ -307,8 +319,8 @@ EXIT CODES:
 
 const SERVICE_GENERATE_HELP: &str = r#"ams-gra-codegen-oms service-generate
 
-Generate the UCI type model a Service Contract selects, after backend/world
-readiness succeeds.
+Generate the UCI type model a Service Contract selects, and its typed service
+API wrapper, after backend/world readiness succeeds.
 
 USAGE:
     ams-gra-codegen-oms service-generate --schema PATH --contract PATH [--extension ID=PATH]... --language LANGUAGE --world WORLD --output DIR
@@ -363,11 +375,31 @@ SELECTED TYPES ONLY:
     its representation requires (Task 024 closed-sum concrete descendants and
     their dependencies), are emitted. Unrelated schema declarations are
     absent, so unselected declarations contribute no helper, import, or
-    static assertion. No CAL facade, publisher/subscriber API, service
-    wrapper, codec, or runtime source is generated.
+    static assertion.
+
+TYPED SERVICE API WRAPPER:
+    One wrapper entrypoint is always emitted beside the model:
+
+      rust  service_api.rs   (compile as the crate root; mounts the model)
+      cpp   service_api.hpp  (includes the model header)
+      ada   service_api.ads  (a body-less package that 'with's the model)
+
+    It has one scope per contract function and one per exchange
+    OCCURRENCE, in contract order, with ID/KIND/DIRECTION/MANDATE constants.
+    Only OMS Message exchanges add TOPIC and a Payload type bound to the
+    generated UCI payload type. Scope names come from contract IDs behind a
+    fixed function_/exchange_ prefix, never from human-readable names; IDs
+    that normalize to the same identifier fail closed.
+
+    A contract with zero OMS Message exchanges produces zero model files and
+    exactly one wrapper file.
+
+    The wrapper sends, receives, encodes, decodes, subscribes, publishes,
+    dispatches, and connects to nothing. No CAL facade, publisher/subscriber
+    API, codec, or runtime source is generated.
 
 EXIT CODES:
-    0    Selected UCI type source generated
+    0    Selected UCI type source and service API wrapper generated
     1    NOT READY, projection failure, or filesystem error
     2    Command-line usage error
 "#;
@@ -1112,21 +1144,41 @@ fn service_generate<W: Write>(
 
     let projection = project_service_generation_schema(&inputs.plan, &inputs.schema, world)
         .map_err(|error| CliError::execution(error.to_string()))?;
+    // Task 047: lower the plan ONCE into the language-neutral service API
+    // model, with the same shared preflight readiness just passed. The CLI
+    // orchestrates; the backend renders the model and never sees the plan.
+    let api_model = service_api_preflight(
+        &inputs.plan,
+        projection.schema(),
+        language.backend_language(),
+        world,
+    )
+    .map_err(|error| CliError::execution(error.to_string()))?;
+    let backend = language.backend();
     // A contract may legitimately select zero OMS messages (a service whose
     // exchanges are all data transfer, special signal, security, or non-OMS).
     // There is no UCI type model to emit in that case, and fabricating a
     // schema type just to give the backend something to render would invent
-    // meaning the contract never stated. Zero files is the honest answer.
-    let files = if projection.schema().types.is_empty() {
-        Vec::new()
-    } else {
+    // meaning the contract never stated. Zero MODEL files is the honest
+    // answer; the service API wrapper below is still real and still emitted.
+    let model_files = if api_model.emits_type_model() {
         // The ordinary backend API, on an ordinary schema. No backend learns
         // what a Service Contract is.
-        language
-            .backend()
+        backend
             .generate(projection.schema(), world)
             .map_err(|error| CliError::execution(error.to_string()))?
+    } else {
+        Vec::new()
     };
+    let api_files = backend
+        .generate_service_api(&api_model, projection.schema())
+        .map_err(|error| CliError::execution(error.to_string()))?;
+    // Only now, with EVERY file rendered in memory, is the combined set
+    // validated (including duplicate paths across model and wrapper) and the
+    // output directory touched. A wrapper failure above leaves nothing behind.
+    let mut files = model_files;
+    let model_file_count = files.len();
+    files.extend(api_files);
     write_generated_files(&files, output_dir)?;
     write_output(
         stdout,
@@ -1135,7 +1187,8 @@ fn service_generate<W: Write>(
             &projection,
             language,
             world,
-            &files,
+            model_file_count,
+            files.len() - model_file_count,
             output_dir,
         ),
     )
@@ -1147,12 +1200,17 @@ fn service_generate<W: Write>(
 /// separate lines on purpose: the contract selected the former, while the
 /// latter exist only because generated representation (Task 024 closed sums
 /// and their dependencies) needs them.
+///
+/// Since Task 047 generated files are likewise split: UCI model files, service
+/// API wrapper files, and their total. The wrapper is never counted as a model
+/// file.
 fn render_service_generation(
     plan: &ServicePlan,
     projection: &ServiceGenerationProjection,
     language: Language,
     world: GenerationWorld,
-    files: &[GeneratedFile],
+    model_files: usize,
+    service_api_files: usize,
     output_dir: &Path,
 ) -> String {
     let mut report = String::new();
@@ -1177,7 +1235,14 @@ fn render_service_generation(
         "projected schema types: {}\n",
         projection.schema().types.len()
     ));
-    report.push_str(&format!("generated {} file(s)\n", files.len()));
+    report.push_str(&format!("generated model files: {model_files}\n"));
+    report.push_str(&format!(
+        "generated service api files: {service_api_files}\n"
+    ));
+    report.push_str(&format!(
+        "generated {} file(s)\n",
+        model_files + service_api_files
+    ));
     report.push_str(&format!("output: {}\n", output_dir.display()));
     report
 }
@@ -1241,6 +1306,20 @@ fn render_service_check(plan: &ServicePlan, readiness: &ServiceBackendReadiness)
         // is a property of the selection as a whole, not of one message.
         report.push('\n');
         report.push_str(&format!("backend boundary: {blocker}\n"));
+    }
+    if let Some(blocker) = &readiness.service_api_blocker {
+        // Task 047: the service API wrapper cannot be generated. This is a
+        // statement about wrapper names or payload bindings, never a fake
+        // unsupported UCI declaration, so it gets its own line.
+        report.push('\n');
+        report.push_str(&format!("service api boundary: {blocker}\n"));
+    }
+    // Before Task 047 every NOT READY report ended with this section, even
+    // when only a backend boundary applied. That output is kept byte-for-byte;
+    // the section is omitted only when the service API is the SOLE blocker,
+    // since no selected message is blocked at all then.
+    if readiness.blocked_messages.is_empty() && readiness.backend_blocker.is_none() {
+        return report;
     }
     report.push('\n');
     report.push_str("blocked selected messages:\n");
