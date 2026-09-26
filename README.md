@@ -627,6 +627,9 @@ status: READY
   asymmetry is the reason contract-selected generation is worth building.
 - **Non-UCI exchanges require no UCI type model.** A contract with zero OMS
   Message exchanges is vacuously ready.
+- **READY includes the service API wrapper (Task 047).** A contract whose IDs
+  cannot form safe wrapper names in the requested language is NOT READY, on a
+  separate `service api boundary:` line; selected-type counts are unaffected.
 - **Deterministic blockers.** Unsupported selected types are listed in schema
   declaration order with qualified names; blocked selected messages are listed
   in contract first-occurrence order, each with one first blocker. A message
@@ -649,7 +652,7 @@ The three contract commands answer three separate questions:
 | --- | --- |
 | `service-plan` | **what** the contract selects |
 | `service-check` | **whether** that selection is renderable today |
-| `service-generate` | **emit** the selected UCI type model, after readiness succeeds |
+| `service-generate` | **emit** the selected UCI type model and typed service API wrapper, after readiness succeeds |
 
 ```text
 ams-gra-codegen-oms service-generate \
@@ -670,7 +673,9 @@ selected oms messages: 2
 contract-selected types: 5
 generated support types: 0
 projected schema types: 5
-generated 1 file(s)
+generated model files: 1
+generated service api files: 1
+generated 2 file(s)
 output: generated/service
 ```
 
@@ -689,16 +694,52 @@ output: generated/service
   which the contract never named. Support types are never presented as
   contract selections.
 - **Type order follows the schema, not the contract.** Reordering a contract's
-  exchanges while selecting the same messages produces byte-identical output.
+  exchanges while selecting the same messages produces byte-identical *model*
+  files. (The service API wrapper, below, deliberately follows contract order.)
 - **Same extension mapping.** `--extension ID=PATH` and contract-ordered
   overlay composition behave exactly as in `service-plan`; there is no raw
   `--overlay`.
 - **Exit status.** `0` generated, `1` NOT READY / projection / filesystem
   error, `2` usage error.
 
-**No CAL or service wrapper is emitted yet.** `service-generate` produces the
-selected UCI *type model* only: no publisher/subscriber façade, typed CAL API,
-codec, or runtime source.
+### Typed service API wrappers
+
+Beside the model, `service-generate` emits one wrapper entrypoint —
+`service_api.rs`, `service_api.hpp`, or `service_api.ads` — with one scope per
+contract function and per exchange occurrence, in contract order:
+
+```rust
+pub mod service_api {
+    pub const SERVICE_NAME: &str = "example-service";
+
+    pub mod function_position_input_example {
+        pub const ID: &str = "position-input-example";
+
+        pub mod exchange_position_report_input {
+            pub const KIND: &str = "oms_message";
+            pub const DIRECTION: &str = "input";
+            pub const TOPIC: &str = "PositionReport";
+            pub type Payload = super::super::super::model::PositionReportMT;
+        }
+    }
+}
+```
+
+- **Every exchange occurrence, all five kinds.** Two exchanges that select the
+  same UCI message stay two endpoints. Only OMS Message exchanges get `TOPIC`
+  and a `Payload` bound to the generated payload type; the four non-UCI kinds
+  carry `ID`/`KIND`/`DIRECTION`/`MANDATE` only.
+- **Names come from contract IDs, never human names**, behind fixed
+  `function_`/`exchange_` prefixes. IDs that normalize to the same identifier
+  (`foo-bar` / `foo_bar`) fail closed: `service-check` reports NOT READY on a
+  separate `service api boundary:` line, and nothing is written.
+- **A zero-OMS service** produces zero model files and exactly one wrapper.
+- **Ordinary `generate` never emits a wrapper.**
+
+**The wrapper is compile-time metadata only.** It sends, receives, encodes,
+decodes, subscribes, publishes, dispatches, and connects to nothing. No
+publisher/subscriber façade, typed CAL API, codec, or runtime source is
+generated yet. See [Task 047](docs/task-047-service-api-wrappers.md).
 
 Compatibility is defined by `contract_version`, not by repository SHA. The
 baseline is `zackboll/ams-gra-service-contract`

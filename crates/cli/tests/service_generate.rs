@@ -89,9 +89,41 @@ fn collect(root: &Path, directory: &Path, files: &mut Vec<(String, String)>) {
     }
 }
 
+/// Whether a generated relative path is the Task 047 service API wrapper
+/// entrypoint (`service_api.rs`, `service_api.hpp`, or `service_api.ads`).
+fn is_service_api(relative_path: &str) -> bool {
+    Path::new(relative_path)
+        .file_stem()
+        .is_some_and(|stem| stem == "service_api")
+}
+
+/// The generated UCI MODEL files only: every generated file except the Task
+/// 047 service API wrapper.
+///
+/// Task 032 assertions are statements about the selected type model, so they
+/// are judged against these files. The wrapper is judged separately, against
+/// the contract-order semantics it represents.
+fn model_files(root: &Path) -> Vec<(String, String)> {
+    generated_files(root)
+        .into_iter()
+        .filter(|(path, _)| !is_service_api(path))
+        .collect()
+}
+
+/// The single generated service API wrapper's source.
+fn service_api_source(root: &Path) -> String {
+    let wrappers = generated_files(root)
+        .into_iter()
+        .filter(|(path, _)| is_service_api(path))
+        .collect::<Vec<_>>();
+    assert_eq!(wrappers.len(), 1, "expected exactly one service API file");
+    wrappers[0].1.clone()
+}
+
+/// The single generated UCI model source (Rust/C++ emit exactly one).
 fn single_source(root: &Path) -> String {
-    let files = generated_files(root);
-    assert_eq!(files.len(), 1, "expected exactly one generated file");
+    let files = model_files(root);
+    assert_eq!(files.len(), 1, "expected exactly one generated model file");
     files[0].1.clone()
 }
 
@@ -167,7 +199,11 @@ fn ready_report_states_selection_and_support_separately() {
     assert!(stdout.contains("contract-selected types: 5"));
     assert!(stdout.contains("generated support types: 0"));
     assert!(stdout.contains("projected schema types: 5"));
-    assert!(stdout.contains("generated 1 file(s)"));
+    // Task 047: model and wrapper files are counted separately and totalled;
+    // the wrapper is never presented as another model file.
+    assert!(stdout.contains("generated model files: 1\n"));
+    assert!(stdout.contains("generated service api files: 1\n"));
+    assert!(stdout.contains("generated 2 file(s)"));
     assert!(stdout.contains(&format!("output: {}", output_root.display())));
 }
 
@@ -259,8 +295,13 @@ fn repeated_message_selection_emits_each_type_once() {
 }
 
 /// Section 40: reversing contract exchange order while selecting the SAME
-/// message set leaves generated output byte-identical, because type order
-/// follows SchemaIr rather than contract presentation.
+/// message set leaves the generated UCI MODEL byte-identical, because type
+/// order follows SchemaIr rather than contract presentation.
+///
+/// Task 047 split: this assertion is kept at full strength for the model
+/// files. The service API wrapper is a different artifact whose meaning IS
+/// contract order, so it is judged separately (see
+/// `task047_contract_order_changes_only_the_service_api_file`).
 #[test]
 fn reversed_exchange_order_generates_identical_output() {
     let forward = output_dir("order-forward");
@@ -283,7 +324,12 @@ fn reversed_exchange_order_generates_identical_output() {
         .code(),
         Some(0)
     );
-    assert_eq!(generated_files(&forward), generated_files(&reverse));
+    assert!(!model_files(&forward).is_empty());
+    assert_eq!(model_files(&forward), model_files(&reverse));
+    // The wrapper differs because these two contracts describe different
+    // service interfaces (both.yaml also has an 'a-repeat' exchange, and the
+    // order is reversed), which is exactly what it must reflect.
+    assert_ne!(service_api_source(&forward), service_api_source(&reverse));
 }
 
 /// Sections 37/77: two runs on identical inputs produce byte-identical files,
@@ -438,27 +484,65 @@ fn zero_descendant_optional_follows_task_026_world_semantics() {
 
 /// Section 58: a contract with zero OMS Message exchanges succeeds and emits
 /// zero UCI type files rather than a fabricated boilerplate-only file.
+///
+/// Task 047 intentionally changes the rest of this behavior. Task 032's
+/// "zero files" was correct for TYPE-ONLY generation and remains true for the
+/// model: still zero model files, and still no invented SchemaIr type. But a
+/// service made only of non-UCI exchanges has a real interface, so it now
+/// gets exactly one file -- its service API wrapper.
 #[test]
 fn non_uci_only_contract_generates_no_type_files() {
-    let output_root = output_dir("non-uci");
-    let output = generate(
-        "root.xsd",
-        "non-uci.yaml",
-        "rust",
-        "closed-schema",
-        &output_root,
-    );
-    assert_eq!(output.status.code(), Some(0));
+    for (language, wrapper) in [
+        ("rust", "service_api.rs"),
+        ("cpp", "service_api.hpp"),
+        ("ada", "service_api.ads"),
+    ] {
+        let output_root = output_dir(&format!("non-uci-{language}"));
+        let output = generate(
+            "root.xsd",
+            "non-uci.yaml",
+            language,
+            "closed-schema",
+            &output_root,
+        );
+        assert_eq!(output.status.code(), Some(0), "{language}");
 
-    let stdout = stdout_of(&output);
-    assert!(stdout.contains("selected oms messages: 0"));
-    assert!(stdout.contains("contract-selected types: 0"));
-    assert!(stdout.contains("generated support types: 0"));
-    assert!(stdout.contains("generated 0 file(s)"));
-    assert!(
-        !output_root.exists(),
-        "zero files means nothing is created at all"
-    );
+        let stdout = stdout_of(&output);
+        assert!(stdout.contains("selected oms messages: 0"));
+        assert!(stdout.contains("contract-selected types: 0"));
+        assert!(stdout.contains("generated support types: 0"));
+        assert!(stdout.contains("projected schema types: 0"));
+        assert!(stdout.contains("generated model files: 0\n"), "{stdout}");
+        assert!(stdout.contains("generated service api files: 1\n"));
+        assert!(stdout.contains("generated 1 file(s)"));
+
+        assert!(model_files(&output_root).is_empty(), "{language}");
+        let files = generated_files(&output_root);
+        assert_eq!(files.len(), 1, "{language}");
+        assert_eq!(files[0].0, wrapper);
+        // Structural descriptors only; no model import and no Payload.
+        let source = &files[0].1;
+        for present in [
+            "bulk-data",
+            "\"dt\"",
+            "\"ss\"",
+            "data_transfer",
+            "special_signal",
+        ] {
+            assert!(source.contains(present), "{language} missing {present}");
+        }
+        for absent in [
+            "Payload",
+            "TOPIC",
+            "topic",
+            "Topic",
+            "#include \"",
+            "#[path",
+            "with ",
+        ] {
+            assert!(!source.contains(absent), "{language} leaked {absent}");
+        }
+    }
 }
 
 // ---------------------------------------------------------------------
@@ -714,6 +798,12 @@ fn dedicated_help_documents_the_surface_and_non_goals() {
     assert!(stdout.contains("READINESS IS CHECKED FIRST:"));
     assert!(stdout.contains("SELECTED TYPES ONLY:"));
     assert!(stdout.contains("No CAL facade"));
+    // Task 047: the wrapper is documented, including its non-goals.
+    assert!(stdout.contains("TYPED SERVICE API WRAPPER:"));
+    for file in ["service_api.rs", "service_api.hpp", "service_api.ads"] {
+        assert!(stdout.contains(file), "{file}");
+    }
+    assert!(stdout.contains("connects to nothing"));
 }
 
 // ---------------------------------------------------------------------
@@ -1345,7 +1435,8 @@ fn task046_direct_temporal_service_is_ready_without_unselected_neighbors() {
             "{language}: {}",
             String::from_utf8_lossy(&generated.stderr)
         );
-        let files = generated_files(&root);
+        // The UCI model files; the Task 047 wrapper is not what this probes.
+        let files = model_files(&root);
         assert!(!files.is_empty());
         assert!(
             files

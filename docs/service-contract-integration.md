@@ -659,6 +659,11 @@ Both lists use original `SchemaIr` declaration order, as does
 nowhere else, so reversing a contract's exchange order while selecting the same
 messages produces byte-identical output.
 
+> **Task 047:** this remains true for the generated **type model** files.
+> Task 047 adds a service API wrapper whose content *is* contract order, so
+> that one additional file intentionally changes when the contract is
+> reordered. See [the Task 047 section](#task-047--typed-service-api-wrappers).
+
 ### Readiness is the gate, and support closure is not an escape hatch
 
 `service-generate` calls `analyze_service_readiness` first. A NOT READY
@@ -746,6 +751,10 @@ measurable cost at that scale.
 
 ## Non-goals for this slice
 
+(Task 032 slice. Task 047 later delivered the typed Ada/Rust/C++ service API
+wrappers; see [below](#task-047--typed-service-api-wrappers). Everything else
+listed here is still not implemented.)
+
 Not implemented, deliberately: Ada/Rust/C++ service wrappers, generated
 publish/subscribe façades, a typed CAL API, OWP, WebSocket, JSON codec generation,
 OMS profile validation, completion-assistant parsing, contract completion
@@ -753,6 +762,69 @@ logic, automatic Capability inference, automatic function grouping, automatic
 topic generation, contract message-name qualification syntax, full-UCI
 generation, and the schema-source manifest verification port. Task 029
 overlays already provide the XSD bytes/topology path.
+
+## Task 047 — typed service API wrappers
+
+Task 047 extends `service-generate` so a READY contract produces the unchanged
+selected UCI type model **plus** one typed service API wrapper entrypoint:
+`service_api.rs`, `service_api.hpp`, or `service_api.ads`.
+
+> Task 047 generates typed endpoint descriptors. It does not send, receive,
+> encode, decode, subscribe, publish, dispatch, or connect to CAL.
+
+The pipeline gains one language-neutral stage, and the authority boundary is
+unchanged:
+
+```text
+Service Contract -> Contract IR -> ServicePlan
+  -> ServiceBackendReadiness      (now also checks the wrapper)
+  -> ServiceGenerationProjection
+  -> ServiceApiModel              (codegen-core, lowered once from the plan)
+  -> Backend::generate            (selected type model, unchanged)
+  -> Backend::generate_service_api(model, projected schema)
+```
+
+Backends receive the lowered `ServiceApiModel` and the projected `SchemaIr`
+only. They never parse YAML, receive a `Contract`, or reinterpret direction,
+mandate, kind, topic, message identity, or ordering.
+
+Rules, briefly (full detail in
+[Task 047](task-047-service-api-wrappers.md)):
+
+- **Contract order, every occurrence.** One function scope per contract
+  function and one exchange scope per exchange *occurrence*. Nothing is
+  deduplicated: two exchanges selecting the same UCI message stay two
+  endpoints, even though `selected_messages()` still deduplicates the type
+  selection.
+- **All five kinds.** Every exchange gets `ID`/`KIND`/`DIRECTION`/`MANDATE`.
+  Only OMS Message exchanges add `TOPIC` and a `Payload` alias/subtype bound to
+  the resolved generated payload type. No payload is fabricated for Data
+  Transfer, Special Signal, Security Exchange, or non-OMS Message exchanges,
+  and their kind-specific metadata is not yet emitted.
+- **IDs, never human names.** Scope names are derived from `function.id` and
+  `exchange.id` behind fixed `function_`/`exchange_` (Ada:
+  `Function_`/`Exchange_`) prefixes. Human names are string constants only.
+- **Collisions fail closed.** `foo-bar` and `foo_bar` are distinct portable
+  IDs that normalize to one identifier. No suffix is invented; the wrapper is
+  refused. The same exchange ID in two different functions is legal.
+- **READY includes the wrapper.** An unsafe wrapper name makes the service
+  NOT READY with a separate `service api boundary:` line. Selected-type counts
+  never change and no fake UCI blocker is reported. The contract itself stays
+  portable-valid; no naming rule lives in the contract crate.
+- **Atomic.** Model and wrapper are both rendered in memory, the combined file
+  set is validated (including duplicate paths), and only then is the output
+  directory touched.
+
+Two Task 032 statements are refined rather than reversed. A zero-OMS service
+still has zero **model** files, but it now gets exactly one wrapper file. And
+reordering a contract while selecting the same messages still leaves the
+**model** files byte-identical, while the wrapper, whose content is contract
+order, changes accordingly.
+
+Against real UCI 2.5 with the upstream `PositionReport` contract, readiness
+stays 60/60 READY in Ada, Rust, and C++; the `service-check` report and every
+model file are byte-identical to `origin/main`; and each wrapper, plus a
+consumer probe, compiles (GNAT, `rustc -D warnings`, strict C++17).
 
 ## Task 033 follow-up — constrained floating ranges
 

@@ -1,14 +1,20 @@
 //! Minimal C++17 type generation from normalized schema IR.
 
+mod service_api;
+
+pub use service_api::{SERVICE_API_FILE, generate_service_api};
+
+use ams_gra_oms_codegen_core::ServiceApiModel;
 use ams_gra_oms_codegen_core::{
     AbstractValueProjection, Backend, BackendLanguage, CodegenError, DirectTemporalProfile,
     EffectiveValueMember, FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain,
     StringProfile, TemporalProfile, TypeEmission, WhitespaceVisiblePolicy,
-    abstract_value_projection_for_ref, backend_preflight, constrains_string,
-    direct_temporal_profile, effective_choice_alternatives, effective_record_fields,
-    emissions_emit_direct_date_time, field_storage_semantics, float32_literal, float64_literal,
-    floating_domain, generated_enum_variant_name, inclusive_integral_domain, is_temporal_primitive,
-    plan_type_emissions, schema_emits_bounded_integer_support, schema_emits_string_profile_carrier,
+    abstract_value_projection_for_ref, backend_preflight, constrains_string, cpp_model_header_name,
+    cpp_model_namespace, direct_temporal_profile, effective_choice_alternatives,
+    effective_record_fields, emissions_emit_direct_date_time, field_storage_semantics,
+    float32_literal, float64_literal, floating_domain, generated_enum_variant_name,
+    inclusive_integral_domain, is_temporal_primitive, plan_type_emissions,
+    schema_emits_bounded_integer_support, schema_emits_string_profile_carrier,
     schema_emits_temporal_carrier, schema_emits_unbounded_sequence_support, string_profile,
     temporal_profile,
 };
@@ -33,18 +39,20 @@ impl Backend for CppBackend {
         world: GenerationWorld,
     ) -> Result<Vec<GeneratedFile>, CodegenError> {
         let contents = generate(schema, world)?;
-        let namespace = schema
-            .namespaces
-            .first()
-            .ok_or_else(|| error("C++ generation requires one namespace"))?;
-        let stem = namespace
-            .uri
-            .split(|character: char| !character.is_ascii_alphanumeric())
-            .rfind(|part| !part.is_empty())
-            .ok_or_else(|| error("C++ generation requires a named namespace"))?;
         Ok(vec![GeneratedFile {
-            relative_path: PathBuf::from(format!("{}.hpp", snake_case(stem)?)),
+            relative_path: PathBuf::from(cpp_model_header_name(schema)?),
             contents,
+        }])
+    }
+
+    fn generate_service_api(
+        &self,
+        model: &ServiceApiModel,
+        schema: &SchemaIr,
+    ) -> Result<Vec<GeneratedFile>, CodegenError> {
+        Ok(vec![GeneratedFile {
+            relative_path: PathBuf::from(SERVICE_API_FILE),
+            contents: generate_service_api(model, schema)?,
         }])
     }
 }
@@ -558,24 +566,10 @@ fn cpp_field_type(field: &ams_gra_oms_ir::FieldDecl) -> Result<String, CodegenEr
     }
 }
 
+/// The model namespace spelled `outer::inner`, from the shared layout rule
+/// that the Task 047 service API preflight also consults.
 fn namespace_name(schema: &SchemaIr) -> Result<String, CodegenError> {
-    let uri = &schema
-        .namespaces
-        .first()
-        .ok_or_else(|| error("C++ generation requires one namespace"))?
-        .uri;
-    let parts = uri
-        .split(|c: char| !c.is_ascii_alphanumeric())
-        .filter(|part| !part.is_empty())
-        .collect::<Vec<_>>();
-    if parts.len() < 2 {
-        return unsupported(format!("namespace URI {uri}"));
-    }
-    Ok(format!(
-        "{}::{}",
-        snake_case(parts[parts.len() - 2])?,
-        snake_case(parts[parts.len() - 1])?
-    ))
+    Ok(cpp_model_namespace(schema)?.join("::"))
 }
 
 fn cpp_type(type_ref: &TypeRef) -> Result<String, CodegenError> {

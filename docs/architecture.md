@@ -808,5 +808,44 @@ The key difference from section 16's `--overlay`: there, the command line is
 the explicit ordering source because nothing else is. Here, something else is
 -- the contract -- and it is more reproducible than shell history, so it wins.
 
+### Typed service API wrappers (Task 047)
+
+Contract-selected generation now also emits one typed service API wrapper
+entrypoint per language. The authority boundary above is kept, with one
+language-neutral step inserted after projection:
+
+```text
+ServicePlan
+  -> ServiceApiModel                  (codegen-core; lowered once)
+       functions + every exchange occurrence, contract order,
+       all five exchange kinds, OMS payload binding only
+  -> Backend::generate_service_api    (Ada / Rust / C++ syntax only)
+```
+
+* **Backend crates still do not parse or validate Service Contracts.**
+  `generate_service_api` receives the lowered `ServiceApiModel` and the
+  projected `SchemaIr` it already generates from. The schema is used only to
+  spell the model unit and payload type names with the backend's existing
+  rules.
+* **Naming lives in `codegen-core`.** One shared rule derives
+  `function_`/`exchange_` (Ada `Function_`/`Exchange_`) scope names from
+  contract **IDs**, and one shared preflight rejects collisions such as
+  `foo-bar` versus `foo_bar`. It is distinct from the Schema IR
+  `backend_names` preflight: different authority, different scopes. The
+  contract crate gained no naming rule.
+* **Readiness includes the wrapper.** `ServiceBackendReadiness` carries a
+  separate `service_api_blocker`, so READY means `service-generate` can emit
+  both artifacts, without changing any selected-type count.
+* **One model artifact layout.** Model file paths (including the Ada parent
+  spec and optional body) and the C++ namespace / Ada package identity are
+  derived once, by `codegen-core::BackendModelLayout`. The backends render
+  with it, and the service API artifact preflight checks the wrapper against
+  it, so readiness and generation cannot disagree about the combined output.
+* **The wrapper is metadata only.** No runtime, CAL, codec, publisher,
+  subscriber, or dispatcher code is generated. Section 7's split between
+  generated code and handwritten runtime is unchanged.
+
+Full detail: `docs/task-047-service-api-wrappers.md`.
+
 Full detail: `docs/service-contract-integration.md` and
 `docs/adr/0005-service-contract-codegen-plan.md`.

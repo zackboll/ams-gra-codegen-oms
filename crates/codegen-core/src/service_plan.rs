@@ -210,6 +210,17 @@ impl ResolvedExchange {
         }
     }
 
+    #[must_use]
+    pub const fn mandate(&self) -> Mandate {
+        match self {
+            Self::OmsMessage(exchange) => exchange.mandate,
+            Self::DataTransfer(exchange) => exchange.mandate,
+            Self::SpecialSignal(exchange) => exchange.mandate,
+            Self::SecurityExchange(exchange) => exchange.mandate,
+            Self::NonOmsMessage(exchange) => exchange.mandate,
+        }
+    }
+
     /// The OMS Message view, or `None` for the four non-UCI kinds.
     #[must_use]
     pub const fn as_oms_message(&self) -> Option<&ResolvedOmsMessageExchange> {

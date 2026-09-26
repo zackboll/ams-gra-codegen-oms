@@ -1,0 +1,30 @@
+# SYNTHETIC Task 047 corrective fixture. Authored for this repository only.
+#
+# One OMS message exchange selecting MessageA from the artifact-*.xsd
+# schemas, with safe function/exchange IDs. Whether it is READY depends only
+# on the schema namespace: see docs/task-047-service-api-wrappers.md.
+contract_version: "0.1"
+
+service:
+  name: artifact-boundary
+  version: "0.1.0"
+  kind: service
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: mission-data
+    name: Mission Data
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: a-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: MessageA
+        topic: mission.a
+        timing:
+          kind: asynchronous

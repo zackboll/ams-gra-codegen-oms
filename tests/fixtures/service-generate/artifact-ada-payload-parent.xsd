@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:payload:model"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:payload:model"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- SYNTHETIC Task 047 corrective fixture. Authored for this repository only.
+
+       One supported named payload and one message, in target namespace
+       urn:payload:model, chosen to push the model's namespace-derived file and unit
+       names toward the service API wrapper's own names. See
+       docs/task-047-service-api-wrappers.md, "Corrective review". -->
+  <xs:complexType name="PayloadA">
+    <xs:sequence>
+      <xs:element name="Count" type="xs:int"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="MessageA" type="t:PayloadA" uci:version="001.000.000.000"/>
+</xs:schema>

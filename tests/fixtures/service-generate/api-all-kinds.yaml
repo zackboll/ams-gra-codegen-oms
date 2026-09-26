@@ -1,0 +1,101 @@
+# SYNTHETIC Task 047 fixture. Authored for this repository only.
+#
+# Selects against root.xsd. Exercises the typed service API wrapper:
+#
+#   * all five portable exchange kinds, in a deliberate contract order;
+#   * MessageA selected by TWO exchange occurrences in two DIFFERENT functions
+#     with different topics, directions, and mandates. The UCI model must
+#     emit MessageA's payload once; the wrapper must emit two endpoints;
+#   * the SAME exchange id ('status-output') in two different functions,
+#     which is legal because exchange scopes nest under function scopes;
+#   * human-readable service and function names with spaces and punctuation,
+#     which must never participate in generated symbol naming;
+#   * MessageA's payload is PayloadA: message and payload local names differ,
+#     so the wrapper must bind the resolved payload, not the message name.
+contract_version: "0.1"
+
+service:
+  name: "Wrapper Demo: All \"Kinds\" (v1)"
+  version: "1.2.3"
+  kind: subsystem
+  description: Synthetic contract exercising every exchange kind.
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: mission-data
+    name: "Mission Data & Status, Primary"
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: a-input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: MessageA
+        topic: mission.a
+        timing:
+          kind: asynchronous
+      - id: bulk-imagery
+        kind: data_transfer
+        direction: output
+        mandate: optional
+        name: Bulk Imagery
+        protocol: sftp
+        data_type: imagery
+        data_format: nitf
+        sharing_pattern: push
+        timing:
+          kind: asynchronous
+      - id: sync-pulse
+        kind: special_signal
+        direction: input
+        mandate: mandatory
+        name: Sync Pulse
+        timing:
+          kind: periodic
+          nominal_rate_hz: 1
+      - id: key-exchange
+        kind: security_exchange
+        direction: output
+        mandate: mandatory
+        name: Key Exchange
+        timing:
+          kind: on_demand
+      - id: legacy-status
+        kind: non_oms_message
+        direction: output
+        mandate: optional
+        name: Legacy Status
+        timing:
+          kind: asynchronous
+      - id: status-output
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: MessageB
+        topic: mission.b
+        timing:
+          kind: asynchronous
+  - id: mission_backup
+    name: "Mission Backup (secondary) -- 2nd"
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: a-repeat
+        kind: oms_message
+        direction: output
+        mandate: optional
+        message: MessageA
+        topic: backup.a
+        timing:
+          kind: asynchronous
+      - id: status-output
+        kind: non_oms_message
+        direction: input
+        mandate: mandatory
+        name: Backup Status
+        timing:
+          kind: asynchronous
