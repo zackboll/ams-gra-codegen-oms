@@ -7,14 +7,15 @@
 use crate::{ada_type, error, package_name};
 use ams_gra_oms_codegen_core::{
     BackendLanguage, CodegenError, ServiceApiModel, service_api_exchange_scope_name,
-    service_api_fixed_names, service_api_function_scope_name, validate_service_api_names,
+    service_api_fixed_names, service_api_function_scope_name, validate_service_api_artifacts,
+    validate_service_api_names,
 };
 use ams_gra_oms_ir::SchemaIr;
 use std::fmt::Write as _;
 
 /// The stable wrapper entrypoint file name (GNAT's default naming for the
 /// `Service_API` package specification).
-pub const SERVICE_API_FILE: &str = "service_api.ads";
+pub const SERVICE_API_FILE: &str = service_api_fixed_names(LANGUAGE).file;
 
 const LANGUAGE: BackendLanguage = BackendLanguage::Ada;
 
@@ -38,6 +39,12 @@ pub fn generate_service_api(
     schema: &SchemaIr,
 ) -> Result<String, CodegenError> {
     validate_service_api_names(model, LANGUAGE).map_err(|name| error(name.to_string()))?;
+    // Task 047 corrective: the wrapper must also be emittable BESIDE the
+    // model -- no shared output path, no model/wrapper name conflict -- so a
+    // direct caller that skipped readiness cannot get source known to
+    // conflict with the model it references.
+    validate_service_api_artifacts(model, schema, LANGUAGE)
+        .map_err(|artifact| error(artifact.to_string()))?;
     let fixed = service_api_fixed_names(LANGUAGE);
 
     let mut output = String::from(concat!(

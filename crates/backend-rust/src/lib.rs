@@ -13,8 +13,9 @@ use ams_gra_oms_codegen_core::{
     direct_temporal_profile, effective_choice_alternatives, effective_record_fields,
     emissions_emit_direct_date_time, field_storage_semantics, float32_literal, float64_literal,
     floating_domain, generated_enum_variant_name, inclusive_integral_domain, is_temporal_primitive,
-    plan_type_emissions, schema_emits_bounded_integer_support, schema_emits_temporal_carrier,
-    schema_emits_unbounded_sequence_support, string_profile, temporal_profile,
+    plan_type_emissions, rust_model_file_name, schema_emits_bounded_integer_support,
+    schema_emits_temporal_carrier, schema_emits_unbounded_sequence_support, string_profile,
+    temporal_profile,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -38,7 +39,7 @@ impl Backend for RustBackend {
     ) -> Result<Vec<GeneratedFile>, CodegenError> {
         let contents = generate(schema, world)?;
         Ok(vec![GeneratedFile {
-            relative_path: PathBuf::from(model_file_name(schema)?),
+            relative_path: PathBuf::from(rust_model_file_name(schema)?),
             contents,
         }])
     }
@@ -53,22 +54,6 @@ impl Backend for RustBackend {
             contents: generate_service_api(model, schema)?,
         }])
     }
-}
-
-/// The model file `generate` writes: the snake-cased last namespace URI
-/// component. Shared with the Task 047 wrapper so its `#[path]` names exactly
-/// the file type generation produced.
-fn model_file_name(schema: &SchemaIr) -> Result<String, CodegenError> {
-    let namespace = schema
-        .namespaces
-        .first()
-        .ok_or_else(|| error("Rust generation requires one namespace"))?;
-    let stem = namespace
-        .uri
-        .split(|character: char| !character.is_ascii_alphanumeric())
-        .rfind(|part| !part.is_empty())
-        .ok_or_else(|| error("Rust generation requires a named namespace"))?;
-    Ok(format!("{}.rs", snake_case(stem)?))
 }
 
 /// Generate Rust declarations from normalized schema IR.

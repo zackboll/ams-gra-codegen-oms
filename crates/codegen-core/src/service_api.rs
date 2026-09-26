@@ -59,6 +59,7 @@
 //! [`crate::validate_backend_names`] preflight: schema names come from XSD,
 //! wrapper names from contract IDs, and they occupy different scopes.
 
+use crate::backend_layout::{BackendModelLayout, ModelUnit};
 use crate::{BackendLanguage, GenerationWorld, ResolvedExchange, ServicePlan, plan_type_emissions};
 use ams_gra_oms_ir::{PrimitiveKind, QualifiedName, SchemaIr, TypeRef, TypeRefTarget};
 use ams_gra_oms_service_contract::{Direction, Mandate, ServiceKind};
@@ -77,6 +78,7 @@ pub struct ServiceApiModel {
     service_kind: ServiceKind,
     functions: Vec<ServiceApiFunction>,
     emits_type_model: bool,
+    world: GenerationWorld,
 }
 
 impl ServiceApiModel {
@@ -111,6 +113,14 @@ impl ServiceApiModel {
     #[must_use]
     pub const fn emits_type_model(&self) -> bool {
         self.emits_type_model
+    }
+
+    /// The generation world the payload bindings were verified under. The
+    /// artifact preflight uses it to name the model's generated top-level
+    /// declarations exactly as type generation would.
+    #[must_use]
+    pub const fn world(&self) -> GenerationWorld {
+        self.world
     }
 }
 
@@ -288,6 +298,21 @@ pub enum ServiceApiError {
     EmissionPlan(String),
     /// A generated wrapper name cannot be emitted safely in one language.
     Name(ServiceApiNameError),
+    /// The wrapper entrypoint and a model artifact would be written to the
+    /// same output path.
+    ///
+    /// Boxed so every `Result` carrying this error stays small.
+    ArtifactPathCollision(Box<ServiceApiArtifactCollision>),
+    /// A model-generated entity and a wrapper-generated name conflict in a
+    /// host-language declarative region the two artifacts genuinely share.
+    ///
+    /// Boxed so every `Result` carrying this error stays small.
+    ModelWrapperNameCollision(Box<ServiceApiModelNameCollision>),
+    /// The model artifact layout could not be derived from the projected
+    /// schema. Backend preflight already validated the same namespace with
+    /// the same rules, so this is an integrity defect, never an ordinary
+    /// NOT READY.
+    ModelLayout(String),
 }
 
 impl fmt::Display for ServiceApiError {
@@ -326,6 +351,12 @@ impl fmt::Display for ServiceApiError {
                 "service API payload binding could not plan the projected model: {message}"
             ),
             Self::Name(error) => error.fmt(formatter),
+            Self::ArtifactPathCollision(collision) => collision.fmt(formatter),
+            Self::ModelWrapperNameCollision(collision) => collision.fmt(formatter),
+            Self::ModelLayout(message) => write!(
+                formatter,
+                "service API artifact preflight could not derive the model layout: {message}"
+            ),
         }
     }
 }
@@ -440,6 +471,7 @@ pub fn build_service_api_model(
         service_kind: plan.service.kind,
         functions,
         emits_type_model,
+        world,
     })
 }
 
@@ -453,6 +485,10 @@ pub fn build_service_api_model(
 /// the names the preflight checks are exactly the names that are written.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ServiceApiFixedNames {
+    /// The wrapper entrypoint file, written into the same output directory
+    /// as the model files. The artifact preflight checks it against the
+    /// shared [`crate::BackendModelLayout`].
+    pub file: &'static str,
     /// The wrapper's root module / namespace / package.
     pub root: &'static str,
     /// The Rust module the selected model file is mounted as. `None` for C++
@@ -475,6 +511,7 @@ pub struct ServiceApiFixedNames {
 pub const fn service_api_fixed_names(language: BackendLanguage) -> ServiceApiFixedNames {
     match language {
         BackendLanguage::Rust => ServiceApiFixedNames {
+            file: "service_api.rs",
             root: "service_api",
             model_module: Some("model"),
             service_name: "SERVICE_NAME",
@@ -489,6 +526,7 @@ pub const fn service_api_fixed_names(language: BackendLanguage) -> ServiceApiFix
             payload: "Payload",
         },
         BackendLanguage::Cpp => ServiceApiFixedNames {
+            file: "service_api.hpp",
             root: "service_api",
             model_module: None,
             service_name: "service_name",
@@ -503,6 +541,7 @@ pub const fn service_api_fixed_names(language: BackendLanguage) -> ServiceApiFix
             payload: "Payload",
         },
         BackendLanguage::Ada => ServiceApiFixedNames {
+            file: "service_api.ads",
             root: "Service_API",
             model_module: None,
             service_name: "Service_Name",
@@ -916,10 +955,13 @@ pub fn validate_service_plan_api_names(
 }
 
 /// The complete service API preflight for one language: lower the model
-/// (verifying every payload binding), then check every generated name.
+/// (verifying every payload binding), check every generated wrapper name,
+/// then check that the wrapper and the type model can be emitted together
+/// ([`validate_service_api_artifacts`]).
 ///
-/// Readiness consults this, so READY means `service-generate` can produce the
-/// wrapper as well as the type model.
+/// Readiness consults this, so READY means `service-generate` can write the
+/// complete artifact set -- model files and wrapper -- without a path
+/// collision or a model/wrapper name conflict.
 ///
 /// # Errors
 ///
@@ -932,7 +974,475 @@ pub fn service_api_preflight(
 ) -> Result<ServiceApiModel, ServiceApiError> {
     let model = build_service_api_model(plan, projected_schema, world)?;
     validate_service_api_names(&model, language)?;
+    validate_service_api_artifacts(&model, projected_schema, language)?;
     Ok(model)
+}
+/// Check that `model`'s wrapper can be emitted beside the type model that
+/// type generation writes for `projected_schema`, in `language`.
+///
+/// Every model-side fact comes from the shared [`BackendModelLayout`] and the
+/// shared generated-name registration, i.e. from the same functions the
+/// backends render with; nothing here re-derives a file or unit name.
+///
+/// Checked, in order:
+///
+/// 1. **Paths.** The wrapper file must not be any model artifact path,
+///    including the optional Ada body.
+/// 2. **C++ shared namespaces.** Only when the model namespace path and the
+///    wrapper namespace path actually coincide are their contents compared.
+///    Two namespaces with one name are a legal reopening and are descended
+///    into; any other pairing of kinds is a redeclaration. A model entity
+///    named `std` in a shared region would hide `::std` from the wrapper's
+///    `std::string_view` constants.
+/// 3. **Ada visibility at each `Payload`.** The wrapper names the model as
+///    `Outer.Inner.Type` from inside `Service_API.Function_*.Exchange_*`,
+///    where direct visibility finds the innermost homograph first. Any
+///    wrapper declaration already visible there and spelled `Outer`
+///    (case-insensitively) hides the model package.
+///
+/// Rust needs only the path check: the model is mounted as the fixed module
+/// `model` and referenced by a `super`-relative path, so no URI-derived
+/// identifier ever enters a wrapper scope.
+///
+/// A service with no type model has no model artifacts and passes
+/// trivially.
+///
+/// # Errors
+///
+/// [`ServiceApiError::ArtifactPathCollision`],
+/// [`ServiceApiError::ModelWrapperNameCollision`], or
+/// [`ServiceApiError::ModelLayout`] when the model layout itself cannot be
+/// derived.
+pub fn validate_service_api_artifacts(
+    model: &ServiceApiModel,
+    projected_schema: &SchemaIr,
+    language: BackendLanguage,
+) -> Result<(), ServiceApiError> {
+    if !model.emits_type_model {
+        return Ok(());
+    }
+    let layout = BackendModelLayout::for_schema(projected_schema, language)
+        .map_err(|error| ServiceApiError::ModelLayout(error.message))?;
+    check_artifact_paths(&layout)?;
+    match &layout.unit {
+        ModelUnit::RustFile => Ok(()),
+        ModelUnit::CppNamespace(namespace) => check_cpp_scopes(model, namespace, || {
+            crate::backend_names::top_level_generated_names(
+                projected_schema,
+                BackendLanguage::Cpp,
+                model.world,
+            )
+            .map_err(|error| ServiceApiError::ModelLayout(error.to_string()))
+        }),
+        ModelUnit::AdaPackage(package) => check_ada_payload_visibility(model, package),
+    }
+}
+
+/// The wrapper entrypoint must not be any model artifact path, including an
+/// optional one.
+///
+/// Every generated path is lowercase by construction; the comparison is
+/// case-insensitive anyway so a case-insensitive filesystem can never be the
+/// one to discover a collision.
+fn check_artifact_paths(layout: &BackendModelLayout) -> Result<(), ServiceApiError> {
+    let file = service_api_fixed_names(layout.language).file;
+    match layout
+        .artifacts
+        .iter()
+        .find(|artifact| artifact.relative_path.eq_ignore_ascii_case(file))
+    {
+        Some(artifact) => Err(ServiceApiError::ArtifactPathCollision(Box::new(
+            ServiceApiArtifactCollision {
+                language: layout.language,
+                path: artifact.relative_path.clone(),
+                model_artifact_optional: artifact.optional,
+            },
+        ))),
+        None => Ok(()),
+    }
+}
+
+/// The C++ combined-structure walk described on
+/// [`validate_service_api_artifacts`].
+///
+/// The model occupies exactly `::outer`, `::outer::inner`, and the top level
+/// of `::outer::inner`. The wrapper occupies `::service_api`, its constants
+/// and function namespaces, each function's constants and exchange
+/// namespaces, and each exchange's constants and `Payload`. Regions are
+/// compared only where both paths reach them; `model_top_level` is computed
+/// only if the walk gets that deep.
+fn check_cpp_scopes(
+    model: &ServiceApiModel,
+    namespace: &[String; 2],
+    model_top_level: impl FnOnce() -> Result<Vec<String>, ServiceApiError>,
+) -> Result<(), ServiceApiError> {
+    const LANGUAGE: BackendLanguage = BackendLanguage::Cpp;
+    let fixed = service_api_fixed_names(LANGUAGE);
+    let [outer, inner] = namespace;
+    // Global scope: `namespace outer` vs `namespace service_api`. Distinct
+    // names share nothing below the global scope, which is the normal case.
+    if outer != fixed.root {
+        return Ok(());
+    }
+    let root_scope = format!("::{}", fixed.root);
+    let collision = |scope: &str, generated: &str, model_entity, wrapper, region, conflict| {
+        ServiceApiError::ModelWrapperNameCollision(Box::new(ServiceApiModelNameCollision {
+            language: LANGUAGE,
+            scope: scope.to_owned(),
+            generated: generated.to_owned(),
+            model: model_entity,
+            wrapper,
+            region,
+            conflict,
+        }))
+    };
+
+    // `::service_api` is shared. The model declares only `namespace inner`
+    // here; the wrapper declares three constants and one namespace per
+    // function.
+    //
+    // Unreachable from any schema today: `outer` is one URI component and
+    // never contains `_`, while the root does (asserted by
+    // `model_paths_cannot_contain_the_wrapper_file_by_construction`). The
+    // walk exists so the verdict never silently depends on that spelling.
+    let model_namespace = ServiceApiModelEntity::CppNamespace(format!("::{outer}::{inner}"));
+    // A model `namespace std` here would capture the wrapper's unqualified
+    // `std::string_view`, first written by the `service_name` constant.
+    if inner == "std" {
+        return Err(collision(
+            &root_scope,
+            inner,
+            model_namespace,
+            ServiceApiNameOwner::Fixed(fixed.service_name),
+            ServiceApiRegion::Service,
+            ServiceApiModelConflict::Hides {
+                referenced: "::std".to_owned(),
+            },
+        ));
+    }
+    for constant in [
+        fixed.service_name,
+        fixed.service_version,
+        fixed.service_kind,
+    ] {
+        if inner == constant {
+            return Err(collision(
+                &root_scope,
+                inner,
+                model_namespace,
+                ServiceApiNameOwner::Fixed(constant),
+                ServiceApiRegion::Service,
+                ServiceApiModelConflict::Redeclaration,
+            ));
+        }
+    }
+    let mut shared_function = None;
+    for function in &model.functions {
+        let scope = service_api_function_scope_name(LANGUAGE, &function.id)?;
+        if *inner == scope {
+            // namespace + namespace: a legal reopening. Descend.
+            shared_function = Some(function);
+            break;
+        }
+    }
+    let Some(function) = shared_function else {
+        return Ok(());
+    };
+
+    // `::service_api::function_x` is shared. The model declares its
+    // top-level types here; the wrapper declares the `id` and `name`
+    // constants and one namespace per exchange.
+    //
+    // Classified against real compiler behaviour (g++ 14, -std=c++17):
+    //
+    // * a model type vs an exchange namespace is a redeclaration error;
+    // * a model class/enum vs a constant is legal C++, but the constant then
+    //   hides the model type (and an alias or template of that name is a
+    //   hard error), so it is rejected as hiding;
+    // * a model entity named `std` breaks the wrapper's `std::string_view`.
+    //
+    // Every C++ model top-level name is UpperCamel and every wrapper name
+    // here starts lowercase, so none of this is reachable from a real
+    // schema; it is kept so the verdict never rests on that spelling rule.
+    let function_scope = format!("::{outer}::{inner}");
+    let function_region = ServiceApiRegion::Function(function.id.clone());
+    let mut wrapper_names: Vec<(String, ServiceApiNameOwner, bool)> = vec![
+        (
+            fixed.id.to_owned(),
+            ServiceApiNameOwner::Fixed(fixed.id),
+            false,
+        ),
+        (
+            fixed.name.to_owned(),
+            ServiceApiNameOwner::Fixed(fixed.name),
+            false,
+        ),
+    ];
+    for exchange in &function.exchanges {
+        wrapper_names.push((
+            service_api_exchange_scope_name(LANGUAGE, &function.id, &exchange.id)?,
+            ServiceApiNameOwner::Exchange {
+                function: function.id.clone(),
+                exchange: exchange.id.clone(),
+            },
+            true,
+        ));
+    }
+    for declared in model_top_level()? {
+        let model_entity =
+            ServiceApiModelEntity::CppDeclaration(format!("{function_scope}::{declared}"));
+        if declared == "std" {
+            return Err(collision(
+                &function_scope,
+                &declared,
+                model_entity,
+                ServiceApiNameOwner::Fixed(fixed.id),
+                function_region,
+                ServiceApiModelConflict::Hides {
+                    referenced: "::std".to_owned(),
+                },
+            ));
+        }
+        if let Some((_, owner, is_namespace)) =
+            wrapper_names.iter().find(|(name, ..)| *name == declared)
+        {
+            let conflict = if *is_namespace {
+                ServiceApiModelConflict::Redeclaration
+            } else {
+                ServiceApiModelConflict::Hides {
+                    referenced: format!("{function_scope}::{declared}"),
+                }
+            };
+            return Err(collision(
+                &function_scope,
+                &declared,
+                model_entity,
+                owner.clone(),
+                function_region,
+                conflict,
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// The Ada visibility check described on [`validate_service_api_artifacts`].
+///
+/// At `subtype Payload is Outer.Inner.Type;` inside
+/// `Service_API.Function_F.Exchange_E`, direct visibility of `Outer` is
+/// searched innermost first through everything declared *before* that
+/// point. Declarations after it are not yet visible and are not checked.
+fn check_ada_payload_visibility(
+    model: &ServiceApiModel,
+    package: &[String; 2],
+) -> Result<(), ServiceApiError> {
+    const LANGUAGE: BackendLanguage = BackendLanguage::Ada;
+    let fixed = service_api_fixed_names(LANGUAGE);
+    let outer = &package[0];
+    let hides = |name: &str| name.eq_ignore_ascii_case(outer);
+    let model_entity = || ServiceApiModelEntity::AdaPackage(package.join("."));
+    let mut service_names = vec![(
+        fixed.root.to_owned(),
+        ServiceApiNameOwner::Fixed(fixed.root),
+        ServiceApiRegion::File,
+    )];
+    for constant in [
+        fixed.service_name,
+        fixed.service_version,
+        fixed.service_kind,
+    ] {
+        service_names.push((
+            constant.to_owned(),
+            ServiceApiNameOwner::Fixed(constant),
+            ServiceApiRegion::Service,
+        ));
+    }
+
+    for function in &model.functions {
+        let function_scope = service_api_function_scope_name(LANGUAGE, &function.id)?;
+        service_names.push((
+            function_scope.clone(),
+            ServiceApiNameOwner::Function(function.id.clone()),
+            ServiceApiRegion::Service,
+        ));
+        let function_region = ServiceApiRegion::Function(function.id.clone());
+        let mut function_names = vec![
+            (
+                fixed.id.to_owned(),
+                ServiceApiNameOwner::Fixed(fixed.id),
+                function_region.clone(),
+            ),
+            (
+                fixed.name.to_owned(),
+                ServiceApiNameOwner::Fixed(fixed.name),
+                function_region.clone(),
+            ),
+        ];
+        for exchange in &function.exchanges {
+            let exchange_scope =
+                service_api_exchange_scope_name(LANGUAGE, &function.id, &exchange.id)?;
+            function_names.push((
+                exchange_scope.clone(),
+                ServiceApiNameOwner::Exchange {
+                    function: function.id.clone(),
+                    exchange: exchange.id.clone(),
+                },
+                function_region.clone(),
+            ));
+            if exchange.oms_binding().is_none() {
+                continue;
+            }
+            let exchange_region = ServiceApiRegion::Exchange {
+                function: function.id.clone(),
+                exchange: exchange.id.clone(),
+            };
+            // Declared before the Payload subtype, plus the subtype itself,
+            // which may not be named inside its own declaration.
+            let exchange_names = [
+                fixed.id,
+                fixed.kind,
+                fixed.direction,
+                fixed.mandate,
+                fixed.topic,
+                fixed.payload,
+            ]
+            .map(|name| {
+                (
+                    name.to_owned(),
+                    ServiceApiNameOwner::Fixed(name),
+                    exchange_region.clone(),
+                )
+            });
+            // Innermost first: that is the homograph lookup actually finds.
+            let mut visible = exchange_names
+                .iter()
+                .chain(function_names.iter().rev())
+                .chain(service_names.iter().rev());
+            if let Some((generated, owner, region)) = visible.find(|(name, ..)| hides(name)) {
+                let scope = format!("{}.{function_scope}.{exchange_scope}", fixed.root);
+                return Err(ServiceApiError::ModelWrapperNameCollision(Box::new(
+                    ServiceApiModelNameCollision {
+                        language: LANGUAGE,
+                        scope,
+                        generated: generated.clone(),
+                        model: model_entity(),
+                        wrapper: owner.clone(),
+                        region: region.clone(),
+                        conflict: ServiceApiModelConflict::Hides {
+                            referenced: outer.clone(),
+                        },
+                    },
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Artifact preflight: the model and the wrapper, emitted together
+// ---------------------------------------------------------------------------
+
+/// The wrapper entrypoint would be written to the same path as a model file.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ServiceApiArtifactCollision {
+    pub language: BackendLanguage,
+    /// The one relative output path both artifacts claim.
+    pub path: String,
+    /// True when the model side is written only for some schemas (the Ada
+    /// package body). It is reserved regardless.
+    pub model_artifact_optional: bool,
+}
+
+impl fmt::Display for ServiceApiArtifactCollision {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            formatter,
+            "{} service API file '{}' is also a{} model artifact path derived from the \
+             schema namespace; the wrapper and the model would overwrite each other",
+            self.language.name(),
+            self.path,
+            if self.model_artifact_optional {
+                "n optional"
+            } else {
+                ""
+            }
+        )
+    }
+}
+
+/// The model-generated entity on one side of a model/wrapper name conflict.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ServiceApiModelEntity {
+    /// A C++ namespace the model header opens, fully qualified.
+    CppNamespace(String),
+    /// A C++ declaration directly inside the model namespace, fully
+    /// qualified.
+    CppDeclaration(String),
+    /// An Ada library package of the model, fully expanded.
+    AdaPackage(String),
+}
+
+impl fmt::Display for ServiceApiModelEntity {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::CppNamespace(name) => write!(formatter, "model namespace '{name}'"),
+            Self::CppDeclaration(name) => write!(formatter, "model declaration '{name}'"),
+            Self::AdaPackage(name) => write!(formatter, "model package '{name}'"),
+        }
+    }
+}
+
+/// Why a model entity and a wrapper name cannot coexist.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ServiceApiModelConflict {
+    /// One name declared twice in one declarative region as two entities
+    /// that cannot share it (anything other than a namespace reopening a
+    /// namespace).
+    Redeclaration,
+    /// A wrapper declaration hides the name `referenced` at a point where the
+    /// wrapper must resolve it to the model (Ada: the model package prefix of
+    /// a `Payload` subtype; C++: `std` in a constant's type).
+    Hides { referenced: String },
+}
+
+/// A model-generated entity and a wrapper-generated name conflict in a
+/// declarative region the two artifacts genuinely share.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ServiceApiModelNameCollision {
+    pub language: BackendLanguage,
+    /// The host-language scope where the conflict takes effect: the shared
+    /// region for a redeclaration (e.g. `::service_api`), or the reference
+    /// site for hiding (e.g. `Service_API.Function_F.Exchange_E`).
+    pub scope: String,
+    /// The conflicting identifier.
+    pub generated: String,
+    pub model: ServiceApiModelEntity,
+    pub wrapper: ServiceApiNameOwner,
+    /// Where, in contract terms, the wrapper side is declared: the file, the
+    /// wrapper root, or one contract function/exchange scope.
+    pub region: ServiceApiRegion,
+    pub conflict: ServiceApiModelConflict,
+}
+
+impl fmt::Display for ServiceApiModelNameCollision {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let language = self.language.name();
+        match &self.conflict {
+            ServiceApiModelConflict::Redeclaration => write!(
+                formatter,
+                "{language} {} and service API {} (in the {}) both declare '{}' in {}; the \
+                 model and the wrapper cannot be compiled together",
+                self.model, self.wrapper, self.region, self.generated, self.scope
+            ),
+            ServiceApiModelConflict::Hides { referenced } => write!(
+                formatter,
+                "{language} service API {} declares '{}' (in the {}), which hides '{referenced}' \
+                 of the {} where the wrapper names it in {}",
+                self.wrapper, self.generated, self.region, self.model, self.scope
+            ),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1104,6 +1614,435 @@ mod tests {
                     "{language:?} {name}"
                 );
             }
+        }
+    }
+
+    // -----------------------------------------------------------------
+    // Artifact preflight (Task 047 corrective)
+    // -----------------------------------------------------------------
+
+    use crate::backend_layout::{ModelArtifact, namespace_uri_components};
+    use ams_gra_oms_ir::NamespaceDecl;
+
+    fn namespace_only(uri: &str) -> SchemaIr {
+        SchemaIr {
+            schema_version: None,
+            namespaces: vec![NamespaceDecl {
+                uri: uri.to_owned(),
+                preferred_prefix: None,
+            }],
+            types: Vec::new(),
+            messages: Vec::new(),
+        }
+    }
+
+    /// A model with the given `(function, [(exchange, is_oms)])` shape. The
+    /// payload binding carries a placeholder: the artifact preflight never
+    /// reads it, only whether a binding exists.
+    fn api_model(functions: &[(&str, &[(&str, bool)])]) -> ServiceApiModel {
+        let placeholder = QualifiedName::new("urn:x:y", "P");
+        ServiceApiModel {
+            service_name: "s".into(),
+            service_version: "1".into(),
+            service_kind: ServiceKind::Service,
+            emits_type_model: true,
+            world: GenerationWorld::ClosedSchemaSet,
+            functions: functions
+                .iter()
+                .map(|(id, exchanges)| ServiceApiFunction {
+                    id: (*id).to_owned(),
+                    name: "F".into(),
+                    exchanges: exchanges
+                        .iter()
+                        .map(|(id, is_oms)| ServiceApiExchange {
+                            id: (*id).to_owned(),
+                            direction: Direction::Input,
+                            mandate: Mandate::Mandatory,
+                            kind: if *is_oms {
+                                ServiceApiExchangeKind::OmsMessage(ServiceApiOmsBinding {
+                                    topic: "t".into(),
+                                    message_name: placeholder.clone(),
+                                    payload_type: TypeRef::named(placeholder.clone()),
+                                    payload_name: placeholder.clone(),
+                                })
+                            } else {
+                                ServiceApiExchangeKind::SpecialSignal
+                            },
+                        })
+                        .collect(),
+                })
+                .collect(),
+        }
+    }
+
+    /// URIs chosen to push every naming rule toward the wrapper's names:
+    /// spelled-out wrapper names in every case/punctuation variant, the
+    /// wrapper's own stems, Ada parents, and the real UCI namespace.
+    const HOSTILE_URIS: &[&str] = &[
+        "urn:test:serviceApi",
+        "urn:test:service_api",
+        "urn:test:service-api",
+        "urn:test:service.api",
+        "urn:test:SERVICE_API",
+        "urn:serviceApi:serviceName",
+        "urn:service_api:service_name",
+        "urn:service:api",
+        "urn:service_api:rs",
+        "urn:x:service_api.rs",
+        "urn:x:service_api.hpp",
+        "urn:service_api:ads",
+        "urn:service:api:ads",
+        "https://www.vdl.afrl.af.mil/programs/oam",
+    ];
+
+    /// Inventory, by construction: every model artifact path in every
+    /// language is built only from URI components, which contain no `_`,
+    /// while every wrapper file contains `_`. The two sets are therefore
+    /// disjoint for EVERY namespace URI, not just the ones tried here.
+    #[test]
+    fn model_paths_cannot_contain_the_wrapper_file_by_construction() {
+        for uri in HOSTILE_URIS {
+            assert!(
+                namespace_uri_components(uri)
+                    .iter()
+                    .all(|part| part.bytes().all(|byte| byte.is_ascii_alphanumeric())),
+                "{uri}"
+            );
+            for language in ALL {
+                let file = service_api_fixed_names(language).file;
+                assert!(file.contains('_'), "{language:?}: premise of the proof");
+                let Ok(layout) = BackendModelLayout::for_schema(&namespace_only(uri), language)
+                else {
+                    continue;
+                };
+                for artifact in &layout.artifacts {
+                    let stem = artifact
+                        .relative_path
+                        .rsplit_once('.')
+                        .map_or(artifact.relative_path.as_str(), |(stem, _)| stem);
+                    assert!(
+                        !stem.contains('_'),
+                        "{language:?} {uri}: {}",
+                        artifact.relative_path
+                    );
+                    assert!(
+                        !artifact.relative_path.eq_ignore_ascii_case(file),
+                        "{language:?} {uri}"
+                    );
+                }
+                // Units, too: a model unit component can never equal a
+                // wrapper root, every one of which contains `_`.
+                match &layout.unit {
+                    ModelUnit::CppNamespace([outer, _]) | ModelUnit::AdaPackage([outer, _]) => {
+                        let root = service_api_fixed_names(language).root;
+                        assert!(root.contains('_') && !outer.contains('_'), "{uri}");
+                    }
+                    ModelUnit::RustFile => {}
+                }
+                let model = api_model(&[("f", &[("e", true)])]);
+                assert_eq!(check_artifact_paths(&layout), Ok(()), "{language:?} {uri}");
+                // The whole preflight agrees for Rust (paths only) and C++.
+                if language != BackendLanguage::Ada {
+                    assert!(
+                        validate_service_api_artifacts(&model, &namespace_only(uri), language)
+                            .is_ok(),
+                        "{language:?} {uri}"
+                    );
+                }
+            }
+        }
+    }
+
+    /// The path check itself is live: fed a layout that DOES claim the
+    /// wrapper path -- including only the optional Ada body -- it fails with
+    /// the typed error naming the language and path.
+    #[test]
+    fn a_layout_claiming_the_wrapper_path_is_a_typed_collision() {
+        for language in ALL {
+            let file = service_api_fixed_names(language).file;
+            let mut layout = BackendModelLayout::for_schema(
+                &namespace_only("https://www.vdl.afrl.af.mil/programs/oam"),
+                language,
+            )
+            .unwrap();
+            for optional in [false, true] {
+                layout.artifacts.push(ModelArtifact {
+                    relative_path: file.to_ascii_uppercase(),
+                    optional,
+                });
+                let error = check_artifact_paths(&layout).unwrap_err();
+                let ServiceApiError::ArtifactPathCollision(collision) = &error else {
+                    panic!("{language:?}: {error:?}");
+                };
+                assert_eq!(collision.language, language);
+                assert_eq!(collision.path, file.to_ascii_uppercase());
+                assert_eq!(collision.model_artifact_optional, optional);
+                let text = error.to_string();
+                assert!(
+                    text.contains(language.name()) && text.contains("overwrite"),
+                    "{text}"
+                );
+                layout.artifacts.pop();
+            }
+        }
+    }
+
+    fn cpp_scopes(
+        model: &ServiceApiModel,
+        namespace: [&str; 2],
+        top_level: &[&str],
+    ) -> Result<(), ServiceApiError> {
+        let top_level = top_level.iter().map(|name| (*name).to_owned()).collect();
+        check_cpp_scopes(model, &namespace.map(str::to_owned), || Ok(top_level))
+    }
+
+    fn cpp_collision(result: Result<(), ServiceApiError>) -> ServiceApiModelNameCollision {
+        match result {
+            Err(ServiceApiError::ModelWrapperNameCollision(collision)) => *collision,
+            other => panic!("expected a model/wrapper collision, got {other:?}"),
+        }
+    }
+
+    /// Positive controls. The walk stops at the global scope unless the model
+    /// namespace IS `service_api`, and it only descends through legal
+    /// namespace reopenings, so none of these is a false positive.
+    #[test]
+    fn cpp_scope_positive_controls() {
+        let model = api_model(&[("f", &[("e", true)])]);
+        let names = &["PayloadA", "BoundedVector", "id", "name", "std"];
+        // Ordinary UCI.
+        assert_eq!(cpp_scopes(&model, ["programs", "oam"], names), Ok(()));
+        // A harmless prefix / look-alike spelling shares no scope.
+        for outer in ["serviceapi", "service", "api", "service_api_x"] {
+            assert_eq!(
+                cpp_scopes(&model, [outer, "service_name"], names),
+                Ok(()),
+                "{outer}"
+            );
+        }
+        // `::service_api` is reopened by the model, but its inner namespace
+        // matches nothing the wrapper declares there.
+        assert_eq!(cpp_scopes(&model, ["service_api", "model"], names), Ok(()));
+        // `::service_api::function_f` is reopened too (namespace + namespace
+        // is legal), and its contents do not overlap the wrapper's.
+        assert_eq!(
+            cpp_scopes(
+                &model,
+                ["service_api", "function_f"],
+                &["PayloadA", "BoundedVector"]
+            ),
+            Ok(())
+        );
+        // Wrapper `id`/`name` live in `::service_api::function_f`; a model in
+        // a DIFFERENT function namespace may declare the same names freely.
+        assert_eq!(
+            cpp_scopes(&model, ["service_api", "function_g"], &["Id", "Name"]),
+            Ok(())
+        );
+    }
+
+    /// Negative controls: every genuine same-region conflict. Each was
+    /// reproduced with g++ 14 `-std=c++17 -pedantic-errors` against a real
+    /// generated wrapper before being encoded here; see the corrective
+    /// section of `docs/task-047-service-api-wrappers.md`.
+    #[test]
+    fn cpp_scope_negative_controls() {
+        let model = api_model(&[("f", &[("e", true), ("s", false)])]);
+        // namespace ::service_api::service_* vs a `string_view` constant.
+        for constant in ["service_name", "service_version", "service_kind"] {
+            let collision = cpp_collision(cpp_scopes(&model, ["service_api", constant], &[]));
+            assert_eq!(collision.scope, "::service_api");
+            assert_eq!(collision.generated, constant);
+            assert_eq!(collision.wrapper, ServiceApiNameOwner::Fixed(constant));
+            assert_eq!(collision.region, ServiceApiRegion::Service);
+            assert_eq!(collision.conflict, ServiceApiModelConflict::Redeclaration);
+            assert_eq!(
+                collision.model,
+                ServiceApiModelEntity::CppNamespace(format!("::service_api::{constant}"))
+            );
+        }
+        // A model namespace named `std` inside `::service_api` would make the
+        // wrapper's unqualified `std::string_view` resolve to it.
+        let collision = cpp_collision(cpp_scopes(&model, ["service_api", "std"], &[]));
+        assert!(matches!(
+            collision.conflict,
+            ServiceApiModelConflict::Hides { ref referenced } if referenced == "::std"
+        ));
+        // Reopened function namespace: model types vs wrapper `id`, `name`,
+        // and exchange namespaces (OMS or not) in the same region.
+        for (declared, owner) in [
+            ("id", ServiceApiNameOwner::Fixed("id")),
+            ("name", ServiceApiNameOwner::Fixed("name")),
+            (
+                "exchange_e",
+                ServiceApiNameOwner::Exchange {
+                    function: "f".into(),
+                    exchange: "e".into(),
+                },
+            ),
+            (
+                "exchange_s",
+                ServiceApiNameOwner::Exchange {
+                    function: "f".into(),
+                    exchange: "s".into(),
+                },
+            ),
+        ] {
+            let collision = cpp_collision(cpp_scopes(
+                &model,
+                ["service_api", "function_f"],
+                &["PayloadA", declared],
+            ));
+            assert_eq!(collision.scope, "::service_api::function_f", "{declared}");
+            // A namespace redeclared as a type is an error; a constant beside
+            // a same-named type is legal C++ but hides the model type.
+            let expected = if declared.starts_with("exchange_") {
+                ServiceApiModelConflict::Redeclaration
+            } else {
+                ServiceApiModelConflict::Hides {
+                    referenced: format!("::service_api::function_f::{declared}"),
+                }
+            };
+            assert_eq!(collision.conflict, expected, "{declared}");
+            assert_eq!(collision.wrapper, owner, "{declared}");
+            assert_eq!(collision.region, ServiceApiRegion::Function("f".into()));
+            assert_eq!(
+                collision.model,
+                ServiceApiModelEntity::CppDeclaration(format!(
+                    "::service_api::function_f::{declared}"
+                ))
+            );
+            let text = ServiceApiError::ModelWrapperNameCollision(Box::new(collision)).to_string();
+            assert!(text.starts_with("C++ "), "{text}");
+            assert!(
+                text.contains("model declaration '::service_api::function_f::"),
+                "{text}"
+            );
+        }
+    }
+
+    /// Ada: the model parent package is hidden at a `Payload` reference by
+    /// any same-spelled (case-insensitive) wrapper declaration visible there,
+    /// innermost first. Names that are not yet declared, and scopes the
+    /// reference is not nested in, do not hide it.
+    #[test]
+    fn ada_payload_visibility() {
+        let package = |outer: &str| [outer.to_owned(), "Model".to_owned()];
+        let model = api_model(&[("f", &[("e", true)])]);
+        for (outer, generated, region) in [
+            ("Name", "Name", ServiceApiRegion::Function("f".into())),
+            ("NAME", "Name", ServiceApiRegion::Function("f".into())),
+            (
+                "Payload",
+                "Payload",
+                ServiceApiRegion::Exchange {
+                    function: "f".into(),
+                    exchange: "e".into(),
+                },
+            ),
+            (
+                "Topic",
+                "Topic",
+                ServiceApiRegion::Exchange {
+                    function: "f".into(),
+                    exchange: "e".into(),
+                },
+            ),
+            ("Service_Kind", "Service_Kind", ServiceApiRegion::Service),
+            ("Function_F", "Function_F", ServiceApiRegion::Service),
+            (
+                "Exchange_E",
+                "Exchange_E",
+                ServiceApiRegion::Function("f".into()),
+            ),
+            ("Service_API", "Service_API", ServiceApiRegion::File),
+        ] {
+            let error = check_ada_payload_visibility(&model, &package(outer)).unwrap_err();
+            let ServiceApiError::ModelWrapperNameCollision(collision) = &error else {
+                panic!("{outer}: {error:?}");
+            };
+            assert_eq!(collision.generated, generated, "{outer}");
+            assert_eq!(collision.region, region, "{outer}");
+            assert_eq!(
+                collision.scope, "Service_API.Function_F.Exchange_E",
+                "{outer}"
+            );
+        }
+        // Positive controls: real UCI; a harmless prefix; a later sibling
+        // exchange scope that is not yet visible at the first Payload; and a
+        // non-OMS exchange, which names no model at all.
+        for outer in ["Programs", "Names", "Exchange_Z"] {
+            let model = api_model(&[("f", &[("e", true), ("z", false)])]);
+            assert_eq!(
+                check_ada_payload_visibility(&model, &package(outer)),
+                Ok(()),
+                "{outer}"
+            );
+        }
+        let signals_only = api_model(&[("f", &[("e", false)])]);
+        assert_eq!(
+            check_ada_payload_visibility(&signals_only, &package("Id")),
+            Ok(())
+        );
+    }
+
+    /// No type model, no model artifacts: the artifact preflight is vacuous
+    /// even for a namespace-less projected schema.
+    #[test]
+    fn zero_model_services_have_no_artifact_boundary() {
+        let mut model = api_model(&[("f", &[("e", false)])]);
+        model.emits_type_model = false;
+        let empty = SchemaIr {
+            namespaces: Vec::new(),
+            ..namespace_only("")
+        };
+        for language in ALL {
+            assert_eq!(
+                validate_service_api_artifacts(&model, &empty, language),
+                Ok(())
+            );
+        }
+    }
+
+    /// Inventory, by construction: every C++ model top-level identifier (a
+    /// support type or an emitted declaration) starts with an uppercase
+    /// letter, while every wrapper name in a function namespace starts
+    /// lowercase. So a reopened `::service_api::function_*` model namespace
+    /// can never actually clash with its contents; the check stays as
+    /// defence only.
+    #[test]
+    fn cpp_model_top_level_names_are_upper_camel() {
+        let schema = SchemaIr {
+            types: vec![ams_gra_oms_ir::TypeDecl {
+                name: QualifiedName::new("urn:service_api:function_f", "id"),
+                is_abstract: false,
+                base_type: None,
+                kind: ams_gra_oms_ir::TypeKind::Record { fields: Vec::new() },
+                constraints: ams_gra_oms_ir::ConstraintSet::default(),
+                documentation: None,
+                source: ams_gra_oms_ir::SourceRef {
+                    document: "x.xsd".into(),
+                    line: None,
+                },
+            }],
+            ..namespace_only("urn:service_api:function_f")
+        };
+        let names = crate::backend_names::top_level_generated_names(
+            &schema,
+            BackendLanguage::Cpp,
+            GenerationWorld::ClosedSchemaSet,
+        )
+        .unwrap();
+        assert!(names.contains(&"Id".to_owned()), "{names:?}");
+        assert!(
+            names
+                .iter()
+                .all(|name| name.as_bytes()[0].is_ascii_uppercase()),
+            "{names:?}"
+        );
+        let fixed = service_api_fixed_names(BackendLanguage::Cpp);
+        for wrapper in [fixed.id, fixed.name, "exchange_e", "std"] {
+            assert!(wrapper.as_bytes()[0].is_ascii_lowercase(), "{wrapper}");
         }
     }
 }

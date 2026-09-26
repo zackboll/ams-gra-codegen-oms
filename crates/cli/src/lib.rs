@@ -308,8 +308,11 @@ READY INCLUDES THE SERVICE API WRAPPER:
     wrapper. A wrapper name that is unsafe in the requested language -- for
     example two distinct contract IDs such as 'foo-bar' and 'foo_bar' that
     normalize to one identifier -- makes the service NOT READY and is
-    reported on its own 'service api boundary:' line. It is never reported as
-    an unsupported UCI type, and selected-type counts are unaffected.
+    reported on its own 'service api boundary:' line. So is a wrapper that
+    cannot be emitted beside its model: a shared output path, or a wrapper
+    name that conflicts with the model in a shared host-language scope. It is
+    never reported as an unsupported UCI type, and selected-type counts are
+    unaffected.
 
 EXIT CODES:
     0    READY
@@ -1147,6 +1150,12 @@ fn service_generate<W: Write>(
     // Task 047: lower the plan ONCE into the language-neutral service API
     // model, with the same shared preflight readiness just passed. The CLI
     // orchestrates; the backend renders the model and never sees the plan.
+    //
+    // That preflight includes the model/wrapper artifact boundary (shared
+    // output paths, shared-scope name conflicts), so a predictable collision
+    // already stopped at readiness above, before any backend call or
+    // directory creation. `write_generated_files` still validates the combined
+    // file list as defence in depth.
     let api_model = service_api_preflight(
         &inputs.plan,
         projection.schema(),

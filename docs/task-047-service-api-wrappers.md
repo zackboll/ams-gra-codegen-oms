@@ -192,6 +192,11 @@ service api boundary: Ada service API names for function id 'foo-bar' and functi
 
 A safe service's `service-check` report is byte-identical to before Task 047.
 
+Since the corrective review, READY also covers the **artifact boundary**:
+the wrapper must be emittable beside the model, with no shared output path
+and no model/wrapper name conflict in a shared host scope. See
+[Corrective review](#corrective-review-reviewed-head-10b3040).
+
 ## Atomic generation
 
 ```text
@@ -459,6 +464,225 @@ shows type output is unchanged. The existing full-schema first blockers
 (`AltitudeRangePairType.Range` in Ada, `ConfigurationParameterType.Type` in
 Rust, `ApprovalResponseType.Operator` / `COMINT_ChangeDwellType.Delete` in
 C++) are untouched and out of scope.
+
+## Corrective review (reviewed head `10b3040`)
+
+PR #48 was reviewed at `10b304061b9988eff0847876ac8d557834ecae34`. The review
+asked whether `service-check` READY really implied that the **complete**
+artifact set -- model files plus wrapper -- could be emitted. It could not:
+the Task 047 preflight checked wrapper names against each other and payload
+bindings against the model, but never checked the wrapper against the model's
+*own* namespace-derived file and unit names. Readiness could not even ask:
+those names were private to each backend (`model_file_name`,
+`model_header_name`, `namespace_name`, `package_name`), and a second copy in
+`service_api.rs` would have recreated exactly the drift readiness exists to
+prevent.
+
+### What the reproductions actually showed
+
+The review predicted two specific failures. Both were reproduced as written
+and **neither occurs**, because of one fact about the existing naming rule:
+the namespace URI is split on *every* non-alphanumeric character and each
+component is lowercased, so no model file stem and no C++/Ada unit component
+can ever contain `_`, while every wrapper file and root does
+(`service_api.rs`, `service_api.hpp`, `service_api.ads`, `service_api`,
+`Service_API`).
+
+Evidence on the reviewed head (debug build, `artifact-boundary.yaml`, closed
+world):
+
+| Schema namespace | Language | check | generate | files written | strict compile |
+| --- | --- | --- | --- | --- | --- |
+| `urn:test:serviceApi` | Rust | READY | exit 0 | `service_api.rs`, `serviceapi.rs` | ok |
+| `urn:test:serviceApi` | C++ | READY | exit 0 | `service_api.hpp`, `serviceapi.hpp` | ok |
+| `urn:serviceApi:serviceName` | C++ | READY | exit 0 | `service_api.hpp`, `servicename.hpp` | ok; model is `namespace serviceapi::servicename` |
+
+So the predicted `service_api.rs`/`service_api.hpp` duplicate path and the
+predicted `service_api::service_name` namespace/constant redeclaration are
+**unreachable** from any schema. No "duplicate generated path" diagnostic
+could be produced, and none was fabricated for this document. Both fixtures
+are kept as positive controls
+(`task047c_wrapper_look_alike_namespaces_are_ready_and_compile`).
+
+The general question still had a real "no" answer, **in Ada**. The Ada
+wrapper names its model as `Outer.Inner.Type` from inside
+`Service_API.Function_*.Exchange_*`. Ada resolves `Outer` through direct
+visibility, innermost first, so a wrapper declaration already visible there
+and spelled like the model's parent package (case-insensitively) hides it:
+
+| Schema namespace | Language | check (reviewed) | generate (reviewed) | GNAT `-gnatc -gnatwa -gnatwe` |
+| --- | --- | --- | --- | --- |
+| `urn:name:model` | Ada | READY | exit 0, 3 files | `service_api.ads:28:29: error: invalid prefix in selected component "Name"` |
+| `urn:payload:model` | Ada | READY | exit 0, 3 files | `service_api.ads:28:29: error: type "Payload" cannot be used before end of its declaration` |
+
+The same failure was reproduced for parents `Id`, `Kind`, `Topic`,
+`Direction`, and `Mandate`. Rust and C++ built from those same schemas compile,
+because their wrappers never name the model through that identifier. This is
+the corrective's actual defect: READY, successful generation, and source that
+does not compile.
+
+Separately, parents `String`, `Character`, and `Standard` failed GNAT on the
+**model alone**, before any wrapper is involved (`"String" conflicts with
+declaration in package Standard`). That is a pre-existing Schema IR
+backend-name gap in the model unit rule, not a model/wrapper boundary. It is
+recorded here and left out of scope, like the full-UCI blockers.
+
+### Shared artifact layout
+
+`codegen-core` gained `backend_layout`, the **single** home of each backend's
+model artifact rules:
+
+```text
+BackendModelLayout::for_schema(schema, language)
+  artifacts: every model path, in emission order, optional ones flagged
+  unit:      RustFile | CppNamespace([outer, inner]) | AdaPackage([Outer, Inner])
+```
+
+| Consumer | Uses |
+| --- | --- |
+| `backend-rust` `generate`, wrapper `#[path]` | `rust_model_file_name` |
+| `backend-cpp` `generate`, wrapper `#include`/`Payload` | `cpp_model_header_name`, `cpp_model_namespace` |
+| `backend-ada` `generate` (parent, spec, body files), wrapper `with` | `ada_model_package`, `ada_model_file_names` |
+| `backend_names` namespace-unit preflight | `namespace_uri_components` |
+| service API artifact preflight | `BackendModelLayout` |
+
+The backends' private copies were deleted, not wrapped. Error texts are
+preserved exactly (`Rust generation requires one namespace`,
+`unsupported C++ IR construct: namespace URI ...`, and so on), and every
+generated byte is unchanged; see the byte-identity evidence below. The
+wrapper file name moved into `ServiceApiFixedNames::file`, and each backend's
+`SERVICE_API_FILE` constant now reads it, so the preflight checks the path
+that is actually written.
+
+The C++ model's top-level names come from
+`backend_names::top_level_generated_names`, which runs the same support-type
+and declaration registration the Schema IR name preflight runs. Nothing
+re-derives them.
+
+### Artifact preflight
+
+`validate_service_api_artifacts(model, projected_schema, language)` is called
+by `service_api_preflight`, i.e. by readiness and by `service-generate`, **and**
+by every backend's `generate_service_api` before rendering. A direct library
+caller that skips readiness therefore gets the same typed diagnostic, not
+source that conflicts with its model
+(`task047c_direct_backend_call_fails_closed_on_the_artifact_boundary`). A
+service with no type model has no model artifacts and passes trivially.
+
+New typed errors, reported through `service_api_blocker` and never as an
+unsupported UCI declaration:
+
+| Variant | Carries |
+| --- | --- |
+| `ServiceApiError::ArtifactPathCollision` | language, path, whether the model side is optional |
+| `ServiceApiError::ModelWrapperNameCollision` | language, host scope, identifier, model entity, wrapper owner, contract function/exchange region, and `Redeclaration` or `Hides { referenced }` |
+| `ServiceApiError::ModelLayout` | integrity only: backend preflight already mapped the same namespace with the same rules, so readiness propagates it as `ServiceReadinessError::ServiceApi`, never as NOT READY |
+
+**Paths, all three languages.** Every model path is built from URI
+components and lowercase, so it never contains `_`. Every wrapper file does:
+
+| Language | Possible model files | Wrapper |
+| --- | --- | --- |
+| Rust | `{c}.rs` | `service_api.rs` |
+| C++ | `{c}.hpp` | `service_api.hpp` |
+| Ada | `{o}.ads`, `{o}-{i}.ads`, optional `{o}-{i}.adb` | `service_api.ads` |
+
+The collision is therefore impossible by construction, including the Ada
+parent spec and the optional body. That is proved by
+`model_paths_cannot_contain_the_wrapper_file_by_construction`, run over
+hostile URIs (`serviceApi`, `service_api`, `service-api`, `service.api`,
+`SERVICE_API`, `service_api.rs`, `service:api:ads`, real UCI, and more). The
+check is still live: `a_layout_claiming_the_wrapper_path_is_a_typed_collision`
+feeds it a layout that does claim the wrapper path (required and optional,
+different case) and gets the typed error. Comparison is case-insensitive, so
+a case-insensitive filesystem can never be the one to discover a clash.
+
+**C++ combined scopes.** Only regions both artifacts actually reach are
+compared:
+
+```text
+::                        model: namespace outer      wrapper: namespace service_api
+::service_api             model: namespace inner      wrapper: 3 constants, function namespaces
+::service_api::function_f model: top-level types      wrapper: id, name, exchange namespaces
+```
+
+The walk stops at `::` unless `outer == service_api`, and it descends only
+through namespace-reopens-namespace, which is legal. Classification was
+checked against g++ 14 `-std=c++17 -pedantic-errors`, with each model shape
+prepended to a real generated wrapper:
+
+| Model shape | g++ | Preflight |
+| --- | --- | --- |
+| `namespace service_api::service_name/_version/_kind` | redeclared as different kind of entity | `Redeclaration` |
+| `namespace service_api::std` | `string_view` does not name a type | `Hides ::std` |
+| `service_api::function_f` type `exchange_e` | redeclared as different kind of entity | `Redeclaration` |
+| `service_api::function_f` alias/template `id` | redeclared as different kind of entity | `Hides` |
+| `service_api::function_f` struct/enum `id` | compiles, constant hides the type | `Hides` |
+| `service_api::function_f` entity `std` | `string_view` does not name a type | `Hides ::std` |
+| `service_api::function_f` type `PayloadA` | compiles | ok |
+| `service_api::other` type `id` | compiles (different region) | ok |
+
+The preflight is intentionally conservative on struct/enum-vs-constant, which
+compiles but makes the model type unreachable by its own name. None of the
+C++ rows is reachable from a real schema today (`outer` never contains `_`,
+and C++ model top-level names are UpperCamel, proved by
+`cpp_model_top_level_names_are_upper_camel`). The walk exists so the verdict
+never silently depends on those spellings. Positive controls
+(`cpp_scope_positive_controls`) cover `programs::oam`, harmless prefixes
+(`serviceapi`, `service`, `service_api_x`), a reopened `::service_api` with an
+unrelated inner namespace, and a legally reopened function namespace.
+
+**Ada visibility.** At each OMS `Payload`, the preflight walks the wrapper
+declarations visible there, innermost first: the exchange's own constants
+and `Payload`, the function's `Id`/`Name` and *preceding* exchange scopes,
+the root constants and *preceding* function scopes, and `Service_API`. Any
+case-insensitive match with the model parent package is `Hides`. Later
+siblings are not yet visible and are not checked
+(`ada_payload_visibility`).
+
+### Readiness after the corrective
+
+```text
+$ service-check --schema artifact-ada-name-parent.xsd --contract artifact-boundary.yaml --language ada --world closed-schema
+...
+selected oms messages: 1
+renderable selected oms messages: 1
+selected type closure: 1
+renderable selected types: 1
+status: NOT READY
+
+service api boundary: Ada service API fixed name 'Name' declares 'Name' (in the scope of function 'mission-data'), which hides 'Name' of the model package 'Name.Model' where the wrapper names it in Service_API.Function_Mission_Data.Exchange_A_Input
+```
+
+`artifact-ada-payload-parent.xsd` reports `fixed name 'Payload'` in the scope
+of exchange `a-input`. For both schemas `service-generate` prints the same
+report, exits 1, invokes no backend generation, and creates no directory.
+Rust and C++ stay READY and compile. `validate_generated_files` is unchanged
+and still runs on the combined file list as defence in depth.
+
+### Regression evidence after the corrective
+
+The real UCI 2.5 `PositionReport` check was re-run with the pinned
+`UCI_MessageDefinitions_v2_5_0.xsd` (sha256 `ac94304...bf27`) and the verbatim
+`upstream-minimal.yaml`, comparing a release build of `10b3040` with a
+release build of the corrective:
+
+| | Ada | Rust | C++ |
+| --- | --- | --- | --- |
+| readiness | 60/60 READY | 60/60 READY | 60/60 READY |
+| `service-check` report | byte-identical | byte-identical | byte-identical |
+| model files | byte-identical | byte-identical | byte-identical |
+| wrapper file | byte-identical | byte-identical | byte-identical |
+| consumer probe | compiled and ran | compiled and ran | compiled and ran |
+
+Wrapper hashes (unchanged): `service_api.ads` `87d23f15...c3e`,
+`service_api.rs` `3be11b3a...39a7`, `service_api.hpp` `71046ff7...f155`. Model
+hashes match the table above.
+
+Every original Task 047 control still passes unchanged. Metadata escaping is
+untouched, and its literal-helper unit tests are kept. No public wrapper API
+changed, no identifier sanitization was added, and the full-UCI member-name
+blockers are untouched.
 
 ## Still open
 

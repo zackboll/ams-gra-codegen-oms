@@ -486,10 +486,16 @@ pub fn analyze_service_readiness(
             {
                 match service_api_preflight(plan, projection.schema(), language, world) {
                     Ok(_) => None,
-                    // Projection already planned this exact schema, so a
-                    // planning failure here is an integrity defect, never an
-                    // ordinary NOT READY.
-                    Err(error @ ServiceApiError::EmissionPlan(_)) => {
+                    // Projection already planned this exact schema and backend
+                    // preflight already mapped its namespace with the same
+                    // layout rules, so either failing here is an integrity
+                    // defect, never an ordinary NOT READY. A path or
+                    // model/wrapper name collision, by contrast, IS an
+                    // ordinary NOT READY and falls through below.
+                    Err(
+                        error
+                        @ (ServiceApiError::EmissionPlan(_) | ServiceApiError::ModelLayout(_)),
+                    ) => {
                         return Err(ServiceReadinessError::ServiceApi(Box::new(error)));
                     }
                     Err(error) => Some(error),

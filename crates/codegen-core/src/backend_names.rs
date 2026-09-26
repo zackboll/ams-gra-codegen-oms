@@ -1533,10 +1533,8 @@ fn validate_namespace_unit(
         return Ok(());
     };
     let uri = &namespace.uri;
-    let parts = uri
-        .split(|character: char| !character.is_ascii_alphanumeric())
-        .filter(|part| !part.is_empty())
-        .collect::<Vec<_>>();
+    // The one URI splitter the backends' layout rules use.
+    let parts = crate::backend_layout::namespace_uri_components(uri);
     let invalid = || BackendNameError::InvalidIdentifier {
         language,
         region: NameRegion::NamespaceUnit,
@@ -1671,6 +1669,35 @@ fn register_emitted_declaration_names(
         )?;
     }
     Ok(())
+}
+
+/// Every identifier the model places directly in its generated top-level
+/// scope (support types and emitted declarations), spelled exactly as the
+/// backend writes it.
+///
+/// Used by the Task 047 service API artifact preflight to model the combined
+/// C++ declarative structure when a model namespace coincides with a wrapper
+/// namespace. It runs the **same** registration the name preflight runs, so
+/// the answer can never drift from what generation emits. Only the Rust and
+/// C++ spellings are meaningful as verbatim identifiers; Ada identity keys
+/// are case-folded.
+///
+/// # Errors
+///
+/// Returns the first [`BackendNameError`], exactly as
+/// [`validate_backend_names`] would.
+pub(crate) fn top_level_generated_names(
+    schema: &SchemaIr,
+    language: BackendLanguage,
+    world: GenerationWorld,
+) -> Result<Vec<String>, BackendNameError> {
+    let plan = name_preflight_plan(schema, world);
+    let emissions = plan.surfaces();
+    let emits_direct_date_time = emissions_emit_direct_date_time(schema, emissions, world);
+    let mut top_level = Region::new(language, NameRegion::TopLevel);
+    register_support_names(&mut top_level, schema, language, emits_direct_date_time)?;
+    register_emitted_declaration_names(&mut top_level, emissions, language)?;
+    Ok(top_level.taken.into_keys().collect())
 }
 
 /// Validate every generated host-language name one backend would emit for

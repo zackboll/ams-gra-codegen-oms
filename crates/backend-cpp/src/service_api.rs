@@ -4,16 +4,17 @@
 //! syntax. Nothing here interprets a Service Contract: kind, direction,
 //! mandate, topic, message identity, and order all arrive decided.
 
-use crate::{cpp_type, error, model_header_name, namespace_name};
+use crate::{cpp_type, error, namespace_name};
 use ams_gra_oms_codegen_core::{
-    BackendLanguage, CodegenError, ServiceApiModel, service_api_exchange_scope_name,
-    service_api_fixed_names, service_api_function_scope_name, validate_service_api_names,
+    BackendLanguage, CodegenError, ServiceApiModel, cpp_model_header_name,
+    service_api_exchange_scope_name, service_api_fixed_names, service_api_function_scope_name,
+    validate_service_api_artifacts, validate_service_api_names,
 };
 use ams_gra_oms_ir::SchemaIr;
 use std::fmt::Write as _;
 
 /// The stable wrapper entrypoint file name.
-pub const SERVICE_API_FILE: &str = "service_api.hpp";
+pub const SERVICE_API_FILE: &str = service_api_fixed_names(LANGUAGE).file;
 
 const LANGUAGE: BackendLanguage = BackendLanguage::Cpp;
 
@@ -37,6 +38,12 @@ pub fn generate_service_api(
     schema: &SchemaIr,
 ) -> Result<String, CodegenError> {
     validate_service_api_names(model, LANGUAGE).map_err(|name| error(name.to_string()))?;
+    // Task 047 corrective: the wrapper must also be emittable BESIDE the
+    // model -- no shared output path, no model/wrapper name conflict -- so a
+    // direct caller that skipped readiness cannot get source known to
+    // conflict with the model it references.
+    validate_service_api_artifacts(model, schema, LANGUAGE)
+        .map_err(|artifact| error(artifact.to_string()))?;
     let fixed = service_api_fixed_names(LANGUAGE);
 
     let mut output = String::from(concat!(
@@ -48,7 +55,7 @@ pub fn generate_service_api(
         "#pragma once\n\n",
     ));
     let model_namespace = if model.emits_type_model() {
-        writeln!(output, "#include \"{}\"", model_header_name(schema)?)
+        writeln!(output, "#include \"{}\"", cpp_model_header_name(schema)?)
             .expect("writing to String cannot fail");
         Some(namespace_name(schema)?)
     } else {

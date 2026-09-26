@@ -836,6 +836,11 @@ ServicePlan
 * **Readiness includes the wrapper.** `ServiceBackendReadiness` carries a
   separate `service_api_blocker`, so READY means `service-generate` can emit
   both artifacts, without changing any selected-type count.
+* **One model artifact layout.** Model file paths (including the Ada parent
+  spec and optional body) and the C++ namespace / Ada package identity are
+  derived once, by `codegen-core::BackendModelLayout`. The backends render
+  with it, and the service API artifact preflight checks the wrapper against
+  it, so readiness and generation cannot disagree about the combined output.
 * **The wrapper is metadata only.** No runtime, CAL, codec, publisher,
   subscriber, or dispatcher code is generated. Section 7's split between
   generated code and handwritten runtime is unchanged.

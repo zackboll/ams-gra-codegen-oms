@@ -207,6 +207,12 @@ one step.
   `ServiceBackendReadiness` as a separate `service_api_blocker`, so READY means
   both the type model and the wrapper can be generated, with no change to any
   selected-type count.
+* **One model artifact layout (Task 047 corrective).** Model file names and
+  the C++ namespace / Ada package identity live once in
+  `codegen-core::BackendModelLayout`, consumed by backend rendering and by the
+  service API preflight alike. READY therefore also means the wrapper can be
+  emitted *beside* the model: no shared output path, and no wrapper name that
+  conflicts with the model in a host-language scope the two genuinely share.
 * **The contract crate and the plan are untouched.** No dependency, field, or
   generation information was added to either. Metadata the wrapper does not
   yet expose (traceability, timing, Capability ownership, kind-specific

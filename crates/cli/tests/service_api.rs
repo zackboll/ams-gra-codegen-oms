@@ -895,3 +895,228 @@ fn task047_ada_wrapper_compiles_under_gnat_and_is_consumable() {
         )),
     );
 }
+
+// ---------------------------------------------------------------------
+// Task 047 corrective: the model and the wrapper as one artifact set
+// ---------------------------------------------------------------------
+
+/// `service-check` / `service-generate` against one `artifact-*.xsd` schema
+/// and the shared single-exchange `artifact-boundary.yaml` contract.
+fn run_artifact(command: &str, schema: &str, language: &str, output: Option<&Path>) -> Output {
+    let mut invocation = cli();
+    invocation
+        .arg(command)
+        .arg("--schema")
+        .arg(fixture(schema))
+        .arg("--contract")
+        .arg(fixture("artifact-boundary.yaml"))
+        .args(["--language", language, "--world", "closed-schema"]);
+    if let Some(output) = output {
+        invocation.args([OsString::from("--output"), OsString::from(output)]);
+    }
+    invocation.output().expect("CLI should run")
+}
+
+/// The corrective brief's two predicted collisions, `urn:test:serviceApi`
+/// (model file `service_api.*`?) and `urn:serviceApi:serviceName` (C++
+/// namespace `service_api::service_name`?), do not occur: the shared layout
+/// rule splits the URI on every non-alphanumeric and lowercases, giving
+/// `serviceapi.*` and `serviceapi::servicename`. Both are READY, generate
+/// distinct files, and compile in every language -- READY is truthful and
+/// no false positive is introduced.
+#[test]
+fn task047c_wrapper_look_alike_namespaces_are_ready_and_compile() {
+    for (schema, expected) in [
+        (
+            "artifact-service-api-stem.xsd",
+            [
+                ("rust", &["service_api.rs", "serviceapi.rs"][..]),
+                ("cpp", &["service_api.hpp", "serviceapi.hpp"][..]),
+                (
+                    "ada",
+                    &["service_api.ads", "test-serviceapi.ads", "test.ads"][..],
+                ),
+            ],
+        ),
+        (
+            "artifact-service-api-namespace.xsd",
+            [
+                ("rust", &["service_api.rs", "servicename.rs"][..]),
+                ("cpp", &["service_api.hpp", "servicename.hpp"][..]),
+                (
+                    "ada",
+                    &[
+                        "service_api.ads",
+                        "serviceapi-servicename.ads",
+                        "serviceapi.ads",
+                    ][..],
+                ),
+            ],
+        ),
+    ] {
+        for (language, files_expected) in expected {
+            let check = run_artifact("service-check", schema, language, None);
+            assert_eq!(check.status.code(), Some(0), "{language} {schema}");
+            let root = output_dir(&format!("lookalike-{schema}-{language}"));
+            let generated = run_artifact("service-generate", schema, language, Some(&root));
+            assert_success(&generated, "look-alike service-generate");
+            let mut written = files(&root)
+                .into_iter()
+                .map(|(path, _)| path)
+                .collect::<Vec<_>>();
+            written.sort();
+            let mut files_expected = files_expected.to_vec();
+            files_expected.sort_unstable();
+            assert_eq!(written, files_expected, "{language} {schema}");
+            if language == "cpp" && schema == "artifact-service-api-namespace.xsd" {
+                // The model namespace is `serviceapi::servicename`, not
+                // `service_api::service_name`, so nothing is redeclared.
+                assert!(
+                    wrapper(&root, "servicename.hpp")
+                        .contains("namespace serviceapi::servicename {")
+                );
+                compile_cpp(
+                    &root,
+                    Some(concat!(
+                        "#include \"service_api.hpp\"\n#include <type_traits>\n",
+                        "static_assert(service_api::service_name == \"artifact-boundary\");\n",
+                        "static_assert(std::is_same_v<\n",
+                        "    service_api::function_mission_data::exchange_a_input::Payload,\n",
+                        "    ::serviceapi::servicename::PayloadA>);\n",
+                        "int main() { return 0; }\n",
+                    )),
+                );
+            } else {
+                compile_wrapper(language, &root, None);
+            }
+        }
+    }
+}
+
+/// The real gap the corrective closes. An Ada model whose parent package is
+/// spelled like a wrapper identifier visible at a `Payload` subtype is
+/// hidden there, so `subtype Payload is Name.Model.PayloadA;` does not
+/// compile. On the reviewed Task 047 head these were READY, generated, and
+/// failed under GNAT. Now: NOT READY with a typed `service api boundary:`
+/// line, ordinary counts, and nothing written. Rust and C++ are unaffected
+/// (their model is not named from inside the wrapper by that identifier).
+#[test]
+fn task047c_ada_model_package_hidden_by_wrapper_name_is_not_ready() {
+    for (schema, parent, hider, region) in [
+        (
+            "artifact-ada-name-parent.xsd",
+            "Name",
+            "fixed name 'Name'",
+            "scope of function 'mission-data'",
+        ),
+        (
+            "artifact-ada-payload-parent.xsd",
+            "Payload",
+            "fixed name 'Payload'",
+            "scope of function 'mission-data' exchange 'a-input'",
+        ),
+    ] {
+        let check = run_artifact("service-check", schema, "ada", None);
+        assert_eq!(check.status.code(), Some(1), "{schema}");
+        let report = stdout_of(&check);
+        for line in [
+            "selected oms messages: 1\n",
+            "renderable selected oms messages: 1\n",
+            "selected type closure: 1\n",
+            "renderable selected types: 1\n",
+            "status: NOT READY\n",
+        ] {
+            assert!(report.contains(line), "{line:?} in\n{report}");
+        }
+        let boundary = report
+            .lines()
+            .find(|line| line.starts_with("service api boundary: "))
+            .unwrap_or_else(|| panic!("no boundary line in\n{report}"));
+        assert_eq!(
+            boundary,
+            format!(
+                "service api boundary: Ada service API {hider} declares '{parent}' (in the \
+                 {region}), which hides '{parent}' of the model package '{parent}.Model' where \
+                 the wrapper names it in Service_API.Function_Mission_Data.Exchange_A_Input"
+            )
+        );
+        assert!(!report.contains("unsupported selected types:"), "{report}");
+        assert!(!report.contains("blocked selected messages:"), "{report}");
+
+        let root = output_dir(&format!("ada-hidden-{parent}"));
+        let generated = run_artifact("service-generate", schema, "ada", Some(&root));
+        assert_eq!(generated.status.code(), Some(1), "{schema}");
+        assert!(!root.exists(), "{schema}: nothing may be written");
+        assert_eq!(stdout_of(&generated), report);
+        // Readiness stopped it: the late writer diagnostic never appears.
+        assert!(
+            !String::from_utf8_lossy(&generated.stderr).contains("duplicate generated path"),
+            "{schema}"
+        );
+
+        for language in ["rust", "cpp"] {
+            assert_eq!(
+                run_artifact("service-check", schema, language, None)
+                    .status
+                    .code(),
+                Some(0),
+                "{language} {schema}"
+            );
+            let root = output_dir(&format!("ada-hidden-{parent}-{language}"));
+            assert_success(
+                &run_artifact("service-generate", schema, language, Some(&root)),
+                "non-Ada service-generate",
+            );
+            compile_wrapper(language, &root, None);
+        }
+    }
+}
+
+/// Defence in depth: a caller that skips readiness and invokes the backend
+/// wrapper renderer directly still fails closed with the same typed
+/// diagnostic, instead of emitting source known not to compile beside its
+/// model. The lowered model itself is valid: payload binding succeeds.
+#[test]
+fn task047c_direct_backend_call_fails_closed_on_the_artifact_boundary() {
+    use ams_gra_oms_codegen_core::{
+        Backend, BackendLanguage, GenerationWorld, ServiceApiError, build_service_api_model,
+        project_service_generation_schema, resolve_service_plan, service_api_preflight,
+    };
+    let world = GenerationWorld::ClosedSchemaSet;
+    let contract = ams_gra_oms_service_contract::load_contract(&fixture("artifact-boundary.yaml"))
+        .expect("contract");
+    let schema = ams_gra_oms_xsd_frontend::load_schema_set_with_overlays(
+        &fixture("artifact-ada-name-parent.xsd"),
+        &[],
+    )
+    .expect("schema");
+    let plan = resolve_service_plan(&contract, &schema).expect("plan");
+    let projection = project_service_generation_schema(&plan, &schema, world).expect("project");
+    let model = build_service_api_model(&plan, projection.schema(), world).expect("lowering");
+
+    let preflight = service_api_preflight(&plan, projection.schema(), BackendLanguage::Ada, world)
+        .expect_err("the shared preflight rejects the Ada artifact set");
+    assert!(
+        matches!(preflight, ServiceApiError::ModelWrapperNameCollision(_)),
+        "{preflight:?}"
+    );
+    let direct = ams_gra_oms_backend_ada::AdaBackend
+        .generate_service_api(&model, projection.schema())
+        .expect_err("the backend must not render a wrapper hidden from its model");
+    assert_eq!(direct.message, preflight.to_string());
+
+    // The same model is fine for Rust and C++, whose wrappers never name the
+    // model through the Ada parent package.
+    for backend in [
+        Box::new(ams_gra_oms_backend_rust::RustBackend) as Box<dyn Backend>,
+        Box::new(ams_gra_oms_backend_cpp::CppBackend),
+    ] {
+        assert!(
+            backend
+                .generate_service_api(&model, projection.schema())
+                .is_ok(),
+            "{}",
+            backend.name()
+        );
+    }
+}

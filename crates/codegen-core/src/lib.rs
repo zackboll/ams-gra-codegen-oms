@@ -2,6 +2,7 @@
 
 mod abstract_value;
 mod ada_optional;
+mod backend_layout;
 mod backend_names;
 mod backend_preflight;
 mod coverage;
@@ -27,6 +28,11 @@ pub use abstract_value::{
 pub use ada_optional::{
     ada_optional_direct_primitive_representable, ada_record_field_uses_optional_wrapper,
 };
+pub use backend_layout::{
+    AdaModelFiles, BackendModelLayout, ModelArtifact, ModelUnit, ada_model_file_names,
+    ada_model_package, cpp_model_header_name, cpp_model_namespace, namespace_uri_components,
+    rust_model_file_name,
+};
 pub use backend_names::{
     ADA_BOUNDED_REQUIRED_SEQUENCE_CALLABLES, ADA_BOUNDED_SEQUENCE_CALLABLES, ADA_SEQUENCE_APPEND,
     ADA_SEQUENCE_CALLABLES, ADA_SEQUENCE_CLEAR, ADA_SEQUENCE_ELEMENT, ADA_SEQUENCE_LENGTH,
@@ -47,12 +53,13 @@ pub use floating::{
 };
 pub use integral::{InclusiveIntegralDomain, inclusive_integral_domain};
 pub use service_api::{
-    ServiceApiCollision, ServiceApiError, ServiceApiExchange, ServiceApiExchangeKind,
-    ServiceApiFixedNames, ServiceApiFunction, ServiceApiModel, ServiceApiNameError,
-    ServiceApiNameOwner, ServiceApiOmsBinding, ServiceApiRegion, UnboundPayload,
-    UnboundPayloadReason, build_service_api_model, service_api_exchange_scope_name,
+    ServiceApiArtifactCollision, ServiceApiCollision, ServiceApiError, ServiceApiExchange,
+    ServiceApiExchangeKind, ServiceApiFixedNames, ServiceApiFunction, ServiceApiModel,
+    ServiceApiModelConflict, ServiceApiModelEntity, ServiceApiModelNameCollision,
+    ServiceApiNameError, ServiceApiNameOwner, ServiceApiOmsBinding, ServiceApiRegion,
+    UnboundPayload, UnboundPayloadReason, build_service_api_model, service_api_exchange_scope_name,
     service_api_fixed_names, service_api_function_scope_name, service_api_preflight,
-    validate_service_api_names, validate_service_plan_api_names,
+    validate_service_api_artifacts, validate_service_api_names, validate_service_plan_api_names,
 };
 pub use service_generation::{
     ServiceGenerationError, ServiceGenerationProjection, project_service_generation_schema,

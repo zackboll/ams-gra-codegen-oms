@@ -4,16 +4,17 @@
 //! syntax. Nothing here interprets a Service Contract: kind, direction,
 //! mandate, topic, message identity, and order all arrive decided.
 
-use crate::{error, model_file_name, rust_type};
+use crate::{error, rust_type};
 use ams_gra_oms_codegen_core::{
-    BackendLanguage, CodegenError, ServiceApiModel, service_api_exchange_scope_name,
-    service_api_fixed_names, service_api_function_scope_name, validate_service_api_names,
+    BackendLanguage, CodegenError, ServiceApiModel, rust_model_file_name,
+    service_api_exchange_scope_name, service_api_fixed_names, service_api_function_scope_name,
+    validate_service_api_artifacts, validate_service_api_names,
 };
 use ams_gra_oms_ir::SchemaIr;
 use std::fmt::Write as _;
 
 /// The stable wrapper entrypoint file name.
-pub const SERVICE_API_FILE: &str = "service_api.rs";
+pub const SERVICE_API_FILE: &str = service_api_fixed_names(LANGUAGE).file;
 
 const LANGUAGE: BackendLanguage = BackendLanguage::Rust;
 
@@ -40,6 +41,12 @@ pub fn generate_service_api(
     // Re-run the shared preflight: a caller that skipped readiness must
     // still fail closed instead of emitting source that cannot compile.
     validate_service_api_names(model, LANGUAGE).map_err(|name| error(name.to_string()))?;
+    // Task 047 corrective: the wrapper must also be emittable BESIDE the
+    // model -- no shared output path, no model/wrapper name conflict -- so a
+    // direct caller that skipped readiness cannot get source known to
+    // conflict with the model it references.
+    validate_service_api_artifacts(model, schema, LANGUAGE)
+        .map_err(|artifact| error(artifact.to_string()))?;
     let fixed = service_api_fixed_names(LANGUAGE);
     let model_module = fixed
         .model_module
@@ -56,7 +63,7 @@ pub fn generate_service_api(
         writeln!(
             output,
             "#[path = \"{}\"]\npub mod {model_module};\n",
-            model_file_name(schema)?
+            rust_model_file_name(schema)?
         )
         .expect("writing to String cannot fail");
     }

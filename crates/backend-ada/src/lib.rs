@@ -11,12 +11,12 @@ use ams_gra_oms_codegen_core::{
     AbstractValueProjection, Backend, BackendLanguage, CodegenError, DirectTemporalProfile,
     EffectiveValueMember, FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain,
     StringProfile, TemporalProfile, TypeEmission, WhitespaceVisiblePolicy,
-    abstract_value_projection_for_ref, ada_record_field_uses_optional_wrapper, backend_preflight,
-    constrains_string, direct_temporal_profile, effective_choice_alternatives,
-    effective_record_fields, emissions_emit_direct_date_time, field_storage_semantics,
-    float32_literal, float64_literal, floating_domain, generated_enum_variant_name,
-    inclusive_integral_domain, is_temporal_primitive, plan_type_emissions,
-    schema_emits_ada_binary_vectors, schema_emits_bounded_sequence_support,
+    abstract_value_projection_for_ref, ada_model_file_names, ada_model_package,
+    ada_record_field_uses_optional_wrapper, backend_preflight, constrains_string,
+    direct_temporal_profile, effective_choice_alternatives, effective_record_fields,
+    emissions_emit_direct_date_time, field_storage_semantics, float32_literal, float64_literal,
+    floating_domain, generated_enum_variant_name, inclusive_integral_domain, is_temporal_primitive,
+    plan_type_emissions, schema_emits_ada_binary_vectors, schema_emits_bounded_sequence_support,
     schema_emits_direct_date_time, schema_emits_string_profile_carrier,
     schema_emits_temporal_carrier, schema_emits_unbounded_sequence_support, string_profile,
     temporal_profile,
@@ -42,17 +42,17 @@ impl Backend for AdaBackend {
         world: GenerationWorld,
     ) -> Result<Vec<GeneratedFile>, CodegenError> {
         let contents = generate(schema, world)?;
-        let package = package_name(schema)?;
-        let file_stem = package.to_ascii_lowercase().replace('.', "-");
-        let mut files = Vec::new();
-        if let Some((parent, _)) = package.split_once('.') {
-            files.push(GeneratedFile {
-                relative_path: PathBuf::from(format!("{}.ads", parent.to_ascii_lowercase())),
-                contents: format!("package {parent} is\nend {parent};\n"),
-            });
-        }
+        // One shared layout rule names the package and every file, so the
+        // Task 047 service API preflight reasons about exactly these paths.
+        let package = ada_model_package(schema)?;
+        let names = ada_model_file_names(&package);
+        let parent = &package[0];
+        let mut files = vec![GeneratedFile {
+            relative_path: PathBuf::from(names.parent_spec),
+            contents: format!("package {parent} is\nend {parent};\n"),
+        }];
         files.push(GeneratedFile {
-            relative_path: PathBuf::from(format!("{file_stem}.ads")),
+            relative_path: PathBuf::from(names.spec),
             contents,
         });
         // Task 036: a package body is emitted only when some declaration
@@ -60,7 +60,7 @@ impl Backend for AdaBackend {
         // its existing single-`.ads` file set and no empty `.adb` appears.
         if let Some(body) = generate_body(schema, world)? {
             files.push(GeneratedFile {
-                relative_path: PathBuf::from(format!("{file_stem}.adb")),
+                relative_path: PathBuf::from(names.body),
                 contents: body,
             });
         }
@@ -1311,24 +1311,10 @@ fn render_unbounded_helper(
     Ok(())
 }
 
+/// The model package spelled `Outer.Inner`, from the shared layout rule that
+/// the Task 047 service API preflight also consults.
 fn package_name(schema: &SchemaIr) -> Result<String, CodegenError> {
-    let uri = &schema
-        .namespaces
-        .first()
-        .ok_or_else(|| error("Ada generation requires one namespace"))?
-        .uri;
-    let parts = uri
-        .split(|character: char| !character.is_ascii_alphanumeric())
-        .filter(|part| !part.is_empty())
-        .collect::<Vec<_>>();
-    if parts.len() < 2 {
-        return unsupported(format!("namespace URI {uri}"));
-    }
-    Ok(format!(
-        "{}.{}",
-        ada_title(parts[parts.len() - 2])?,
-        ada_title(parts[parts.len() - 1])?
-    ))
+    Ok(ada_model_package(schema)?.join("."))
 }
 
 fn ada_type(type_ref: &TypeRef) -> Result<String, CodegenError> {
@@ -1623,18 +1609,6 @@ fn ada_identifier(value: &str) -> Result<String, CodegenError> {
     } else {
         unsupported(format!("Ada identifier {value:?}"))
     }
-}
-
-fn ada_title(value: &str) -> Result<String, CodegenError> {
-    let mut characters = value.chars();
-    let first = characters
-        .next()
-        .ok_or_else(|| error("empty Ada namespace component"))?;
-    ada_identifier(&format!(
-        "{}{}",
-        first.to_ascii_uppercase(),
-        characters.as_str()
-    ))
 }
 
 fn ada_number(value: i128) -> String {

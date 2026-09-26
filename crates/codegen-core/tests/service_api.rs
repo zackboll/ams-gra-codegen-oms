@@ -418,3 +418,93 @@ fn primitive_payload_is_a_service_api_boundary_in_readiness() {
             if unbound.reason == UnboundPayloadReason::Primitive(PrimitiveKind::String)
     ));
 }
+
+/// `schema()` moved into another namespace URI.
+fn schema_in(uri: &str) -> SchemaIr {
+    let mut schema = schema();
+    schema.namespaces[0].uri = uri.to_owned();
+    let rename = |name: &mut QualifiedName| name.namespace_uri = uri.to_owned();
+    for declaration in &mut schema.types {
+        rename(&mut declaration.name);
+    }
+    for message in &mut schema.messages {
+        rename(&mut message.name);
+        if let ams_gra_oms_ir::TypeRefTarget::Named(name) = &mut message.payload_type.target {
+            rename(name);
+        }
+    }
+    schema
+}
+
+/// Task 047 corrective: READY now covers the complete artifact set. An Ada
+/// model package hidden from the wrapper is NOT READY for Ada only, with a
+/// typed `ModelWrapperNameCollision` in `service_api_blocker`, every count
+/// unchanged, and no fake UCI blocker. Namespaces that merely look like the
+/// wrapper stay READY everywhere.
+#[test]
+fn artifact_boundary_is_part_of_readiness() {
+    use ams_gra_oms_codegen_core::{ServiceApiModelConflict, ServiceApiModelEntity};
+    let functions = function(
+        "mission-data",
+        "Mission Data",
+        &oms("a-input", "input", "mandatory", "ReportA", "t.a"),
+    );
+    let contract = contract(&functions);
+
+    let hidden = schema_in("urn:topic:model");
+    let plan = resolve_service_plan(&contract, &hidden).expect("plan");
+    for language in BackendLanguage::ALL {
+        let readiness = analyze_service_readiness(&plan, &hidden, language, CLOSED).unwrap();
+        assert_eq!(readiness.selected_types_total, 1, "{language:?}");
+        assert_eq!(readiness.selected_types_renderable, 1, "{language:?}");
+        assert_eq!(readiness.selected_messages_total, 1, "{language:?}");
+        assert_eq!(readiness.selected_messages_renderable, 1, "{language:?}");
+        assert!(readiness.unsupported_types.is_empty());
+        assert!(readiness.blocked_messages.is_empty());
+        assert!(readiness.backend_blocker.is_none());
+        if language != BackendLanguage::Ada {
+            assert!(readiness.is_ready(), "{language:?}");
+            continue;
+        }
+        assert!(!readiness.is_ready());
+        let Some(ServiceApiError::ModelWrapperNameCollision(collision)) =
+            &readiness.service_api_blocker
+        else {
+            panic!("{:?}", readiness.service_api_blocker);
+        };
+        assert_eq!(collision.language, BackendLanguage::Ada);
+        assert_eq!(collision.generated, "Topic");
+        assert_eq!(
+            collision.model,
+            ServiceApiModelEntity::AdaPackage("Topic.Model".into())
+        );
+        assert_eq!(collision.wrapper, ServiceApiNameOwner::Fixed("Topic"));
+        assert_eq!(
+            collision.region,
+            ServiceApiRegion::Exchange {
+                function: "mission-data".into(),
+                exchange: "a-input".into(),
+            }
+        );
+        assert_eq!(
+            collision.conflict,
+            ServiceApiModelConflict::Hides {
+                referenced: "Topic".into()
+            }
+        );
+    }
+
+    for uri in [
+        "urn:test:serviceApi",
+        "urn:serviceApi:serviceName",
+        "urn:service_api:service_name",
+        "https://www.vdl.afrl.af.mil/programs/oam",
+    ] {
+        let schema = schema_in(uri);
+        let plan = resolve_service_plan(&contract, &schema).expect("plan");
+        for language in BackendLanguage::ALL {
+            let readiness = analyze_service_readiness(&plan, &schema, language, CLOSED).unwrap();
+            assert!(readiness.is_ready(), "{language:?} {uri}");
+        }
+    }
+}
