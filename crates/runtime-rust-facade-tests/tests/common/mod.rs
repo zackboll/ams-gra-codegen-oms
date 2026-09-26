@@ -130,6 +130,19 @@ impl MockPeer {
         assert_eq!(self.next_text(), expected);
     }
 
+    /// Skip text frames matching `skip`; return how many were skipped and
+    /// the first observation that did not match (bounded per frame).
+    pub fn skip_while(&self, skip: impl Fn(&str) -> bool) -> (u64, Observed) {
+        let mut skipped = 0;
+        loop {
+            match self.observed.recv_timeout(WAIT) {
+                Ok(Observed::Text(text)) if skip(&text) => skipped += 1,
+                Ok(observed) => return (skipped, observed),
+                Err(error) => panic!("peer observed nothing further: {error:?}"),
+            }
+        }
+    }
+
     /// The client must write nothing for `duration`.
     pub fn expect_silence(&self, duration: Duration) {
         if let Ok(observed) = self.observed.recv_timeout(duration) {

@@ -19,5 +19,11 @@ serde_json = "1"
 # One current-thread runtime on one background worker thread per connection.
 tokio = { version = "1", features = ["rt", "sync", "macros", "net", "time"] }
 
+[dev-dependencies]
+# Test-only OWP peer for the worker fairness regression (the same versions
+# sleet-client already pulls in; nothing new enters the lock file).
+futures-util = "0.3"
+tokio-tungstenite = "0.29"
+
 [lints]
 workspace = true

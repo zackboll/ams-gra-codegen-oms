@@ -64,9 +64,11 @@ name = "ams-gra-oms-runtime-rust"
 version = "0.1.0"
 dependencies = [
  "ams-gra-oms-runtime-api",
+ "futures-util",
  "serde_json",
  "sleet-client",
  "tokio",
+ "tokio-tungstenite",
 ]
 
 [[package]]

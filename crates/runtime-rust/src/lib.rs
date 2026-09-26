@@ -25,7 +25,9 @@
 //! One background OS thread per runtime owns a current-thread Tokio runtime
 //! and the only `CalClient`. Adapter calls are synchronous: each sends one
 //! command over a bounded channel ([`COMMAND_CAPACITY`]) and blocks for its
-//! reply. While idle the worker continuously receives `MSG` / `-ERR` frames.
+//! reply. The worker selects fairly between commands and incoming `MSG` /
+//! `-ERR` frames, so receive processing keeps progressing while application
+//! operations are active, and a busy socket cannot starve commands either.
 //! Subscription handlers run **on the worker thread**; a handler must not
 //! call back into the runtime (it gets [`RuntimeError::CalledFromAsyncContext`]).
 //!

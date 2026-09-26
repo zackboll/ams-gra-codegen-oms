@@ -4,7 +4,9 @@
 //! Application threads never touch the client. They send [`Command`]s over
 //! a bounded channel and wait on a per-command reply; the worker alone
 //! performs `publish` / `subscribe` / `unsubscribe` and continuously
-//! `recv`s `MSG` / `-ERR`, dispatching by subscription ID.
+//! `recv`s `MSG` / `-ERR`, dispatching by subscription ID. Commands and
+//! receives are selected fairly (see [`Worker::run`]), so neither a busy
+//! command queue nor a busy socket can starve the other.
 
 use crate::{MessageDecodeError, RuntimeError, RuntimeEvent};
 use serde_json::Value;
@@ -107,10 +109,28 @@ impl Worker {
     /// Serve until shutdown is requested (or the runtime is dropped), every
     /// command sender is gone, or the connection ends. Dropping `self`
     /// afterwards drops the `CalClient`, closing the connection.
+    ///
+    /// # Fairness (PR #50 corrective)
+    ///
+    /// The select is deliberately **unbiased**: when several branches are
+    /// ready, Tokio starts polling at a random branch, so none can starve
+    /// another. A `biased` order would always prefer whichever branch is
+    /// listed first: commands-first lets several application threads keep
+    /// the queue ready forever so `recv` never runs (no `MSG`, no late
+    /// `-ERR`, no remote close); `recv`-first would let a continuously
+    /// readable socket starve application commands the same way. Shutdown
+    /// needs no priority: its branch is polled on every iteration, and every
+    /// command or dispatch finishes before the next one.
+    ///
+    /// Losing a race drops the pending `CalClient::recv` future. That was
+    /// already true under the biased order and is safe: the pinned client
+    /// only suspends in `WebSocketStream::next` (cancel-safe; a partially
+    /// read frame stays buffered in tungstenite) or while answering a
+    /// `Ping`, and a frame it has read is parsed and returned without
+    /// another suspension point.
     pub(crate) async fn run(mut self) {
         loop {
             tokio::select! {
-                biased;
                 _ = &mut self.shutdown => break,
                 command = self.commands.recv() => match command {
                     Some(command) => self.command(command).await,
@@ -253,6 +273,9 @@ impl Worker {
         let _ = self.events.send(event);
     }
 }
+
+#[cfg(test)]
+mod fairness_tests;
 
 #[cfg(test)]
 mod tests {

@@ -108,7 +108,8 @@ CLI, `codegen-core`, or any backend. Nothing depends on the `sleet` server
 crate. `Cargo.lock` pins `sleet-client` and `sleet-types` as
 `git+https://github.com/open-arsenal/ams-gra-hello-world-sk-infra-sleet?rev=e38f61d8…#e38f61d8…`.
 The runtime crates declare `rust-version = "1.95"`, the pinned client's
-evidenced floor. The generator crates keep the workspace's `1.85`.
+evidenced floor. The generator crates keep the workspace's `1.85`. (The
+corrective review added a real `cargo +1.95.0` CI check; see §13.)
 
 ### `runtime-api-rust` public surface
 
@@ -279,7 +280,7 @@ application threads --(blocking call)--> bounded command channel (capacity 64)
     --> background OS thread "ams-gra-oms-lacal"
         current-thread Tokio runtime
         one sleet_client::CalClient (never shared, never behind a mutex)
-        select! { shutdown | next command | client.recv() }
+        select! { shutdown | next command | client.recv() }   (unbiased; see §13)
 ```
 
 This follows the public AMS GRA Rust examples, which run the async Sleet
@@ -434,3 +435,108 @@ CI runs this as its own step.
   generated PositionReport codec (Task 050).
 * No generated UCI type changed. No Ada or C++ runtime was added, and no codec
   generation.
+
+## 13. Corrective review: receive progress under command load (PR #50)
+
+Reviewed head: `168782d281cdafbdf3bcaf423e938729385be6a1`. Sections 1–12
+above describe that head and are otherwise unchanged.
+
+**Finding.** `Worker::run` used `tokio::select! { biased; shutdown, commands,
+client.recv() }`. A biased select polls branches in order on every iteration,
+so whenever the command queue was ready, `client.recv()` was never polled. The
+bounded queue does not prevent this: several application threads can keep it
+refilled indefinitely. For as long as that lasted, `MSG` dispatch, late `-ERR`
+events, and remote-close detection were all delayed without limit. That
+contradicted the claim that receive processing continues while application
+operations are active.
+
+**Reproduction.** `worker::fairness_tests::
+worker_receives_while_command_queue_is_continuously_ready` (a crate-private
+unit test in `ams-gra-oms-runtime-rust`) drives the real `Worker` over a real
+`CalClient` connected to a test-only OWP peer.
+
+* Four threads keep the capacity-64 queue full: they call `blocking_send`
+  without waiting for replies, which is the situation many concurrent callers
+  create.
+* After 500 `PUB` frames the peer sends
+  `MSG sub-1 {"{urn:test}MessageA":{"Count":42}}` and
+  `-ERR Illegal-State synthetic late error`.
+* At the reviewed head the test **failed**: `Err(Timeout)`, the `MSG` was
+  never dispatched within the 5 s bound. With a single flooder it passed,
+  because the queue briefly drains between sends. Four flooders are needed to
+  keep it continuously ready.
+
+**Correction.** The only production change is removing `biased;`. With an
+unbiased select, Tokio starts polling at a random ready branch on each
+iteration, so neither side can starve the other.
+
+* Commands-first (the old order) starves receive.
+* Receive-first would starve commands when the socket stays readable, which is
+  why it was rejected.
+* Shutdown needs no priority. Its branch is still polled on every iteration,
+  and each command or dispatch completes before the next select.
+* A dropped `CalClient::recv` future is safe. It was already dropped whenever a
+  command won under the old order. The pinned client suspends only in
+  `WebSocketStream::next`, which is cancel-safe (a partial frame stays buffered
+  in tungstenite), or while answering a `Ping`. A frame it has read is returned
+  without another suspension point.
+
+Unchanged: one worker OS thread, one current-thread runtime, one `CalClient`,
+capacity 64, non-verbose OWP, `sub-N` IDs, SID-only dispatch, consuming
+unsubscribe, the codec API, the envelope, the `RuntimeError`/`RuntimeEvent`
+shape, and the generated façade.
+
+**Evidence after the fix.**
+
+* **Worker-level test:** 30/30 runs pass. The `MSG` payload reaches dispatch
+  and `ServerError { "Illegal-State", "synthetic late error" }` is observed
+  while every flooder is still running. Shutdown under a full queue is joined
+  promptly (bounded by 5 s).
+* **Generated façade:**
+  `task049_receive_progresses_under_sustained_publish_load` (in
+  `runtime-rust-facade-tests/tests/runtime_fairness.rs`) runs four
+  application threads that publish through
+  `function_track::exchange_output_a::publish`.
+  * While they are still publishing, with at least 200 more completed
+    publishes required between probes, the typed handler receives 42 and
+    `ServerError` is observed.
+  * The publishers are then stopped and joined, `UNSUB sub-1` follows exactly
+    the counted `PUB` frames, and the runtime closes.
+  * `/proc/self/task` shows no `ams-gra-oms-lacal` thread.
+* **Scope of the façade test:** the public adapter takes
+  `&mut SleetRuntime` and blocks for each reply, so application threads
+  serialize on a lock and hold at most one queued command at a time. This test
+  therefore passed under the biased order as well. It proves end-to-end
+  liveness and cleanup through generated code; the worker-level test is the one
+  that discriminates the regression. Neither asserts a publish rate.
+
+Both tests are CI must-execute gates.
+
+**Rust 1.95 MSRV.** `runtime-rust` and `runtime-rust-facade-tests` declare
+`rust-version = "1.95"`, and `runtime-api-rust` inherits `1.85`. Normal CI
+floats on stable, and building Sleet with its own 1.95.0 toolchain says nothing
+about this crate. A new CI step, "Rust LA-CAL runtime MSRV (1.95.0)", runs
+these checks with the committed lock file:
+
+```text
+cargo +1.95.0 check --locked -p ams-gra-oms-runtime-api
+cargo +1.95.0 check --locked -p ams-gra-oms-runtime-rust --all-targets
+cargo +1.95.0 check --locked -p ams-gra-oms-runtime-rust-facade-tests --all-targets
+```
+
+Locally, all three pass with `cargo 1.95.0 (f2d3ce0bd 2026-03-21)`. The graph
+checked includes `sleet-client` and `sleet-types` at `e38f61d8`, and nothing
+blocked compilation. The test crate keeps its `1.95` claim because it builds
+and runs the 1.95 runtime.
+
+**Validation after the corrective.**
+
+* The four mock-OWP must-execute gates and both fairness gates each matched
+  and passed exactly one test.
+* `scripts/run-real-sleet-test.sh` against the unmodified pinned Sleet:
+  **PASSED**.
+* `cargo fmt --check`, `cargo check`, `cargo clippy -D warnings`, and
+  `git diff --check` are clean.
+* `AMS_GRA_REQUIRE_GNAT=1 cargo test --workspace`: **990 passed, 0 failed**
+  (988 at the reviewed head, plus the two fairness tests).
+* `Cargo.lock` gains only the two dev-dependency edges; no new package.
