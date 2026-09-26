@@ -1,14 +1,17 @@
-//! Task 047: the typed Rust service API wrapper.
+//! Tasks 047-048: the typed Rust service API wrapper and its
+//! publish/subscribe facade.
 //!
 //! Renders an already-lowered, language-neutral [`ServiceApiModel`] into Rust
 //! syntax. Nothing here interprets a Service Contract: kind, direction,
-//! mandate, topic, message identity, and order all arrive decided.
+//! mandate, topic, message identity, order, and (Task 048) the one facade
+//! operation per OMS exchange all arrive decided.
 
 use crate::{error, rust_type};
 use ams_gra_oms_codegen_core::{
-    BackendLanguage, CodegenError, ServiceApiModel, rust_model_file_name,
-    service_api_exchange_scope_name, service_api_fixed_names, service_api_function_scope_name,
-    validate_service_api_artifacts, validate_service_api_names,
+    BackendLanguage, CodegenError, ServiceApiFacadeNames, ServiceApiModel, ServiceApiOmsBinding,
+    ServiceApiOmsOperation, rust_model_file_name, service_api_exchange_scope_name,
+    service_api_fixed_names, service_api_function_scope_name, validate_service_api_artifacts,
+    validate_service_api_names,
 };
 use ams_gra_oms_ir::SchemaIr;
 use std::fmt::Write as _;
@@ -28,7 +31,12 @@ const LANGUAGE: BackendLanguage = BackendLanguage::Rust;
 /// type-name rule. Payload paths are `super`-relative, not `crate::`, so the
 /// tree resolves identically wherever the file is mounted.
 ///
-/// Metadata only: no trait, function, publisher, subscriber, or runtime code.
+/// Task 048: when the service has any OMS exchange, the root also declares
+/// the generic `PublishAdapter` / `SubscribeAdapter` contracts, and each OMS
+/// exchange gains exactly one forwarding operation decided in codegen-core:
+/// `publish` for an output, `subscribe` for an input. The operation supplies
+/// the endpoint's routing metadata to a caller-supplied adapter; nothing
+/// here connects, encodes, or dispatches.
 ///
 /// # Errors
 ///
@@ -52,13 +60,25 @@ pub fn generate_service_api(
         .model_module
         .ok_or_else(|| error("Rust service API requires a model module name"))?;
 
-    let mut output = String::from(concat!(
-        "// Generated typed service API descriptors (Task 047).\n",
-        "//\n",
-        "// Compile-time endpoint metadata only. This file sends, receives,\n",
-        "// encodes, decodes, subscribes, publishes, dispatches, and connects to\n",
-        "// nothing. Compile it as the crate root of the generated service.\n\n",
-    ));
+    let facade = model.has_oms_exchanges();
+    let mut output = String::from(if facade {
+        concat!(
+            "// Generated typed service API (Tasks 047-048).\n",
+            "//\n",
+            "// Endpoint descriptors plus a typed publish/subscribe facade that\n",
+            "// forwards each operation to a caller-supplied adapter. This file itself\n",
+            "// sends, receives, encodes, decodes, dispatches, and connects to nothing.\n",
+            "// Compile it as the crate root of the generated service.\n\n",
+        )
+    } else {
+        concat!(
+            "// Generated typed service API descriptors (Task 047).\n",
+            "//\n",
+            "// Compile-time endpoint metadata only. This file sends, receives,\n",
+            "// encodes, decodes, subscribes, publishes, dispatches, and connects to\n",
+            "// nothing. Compile it as the crate root of the generated service.\n\n",
+        )
+    });
     if model.emits_type_model() {
         writeln!(
             output,
@@ -81,6 +101,9 @@ pub fn generate_service_api(
         fixed.service_kind,
         model.service_kind().as_str(),
     );
+    if facade {
+        adapter_contracts(&mut output, &fixed.facade)?;
+    }
 
     for function in model.functions() {
         let scope = service_api_function_scope_name(LANGUAGE, function.id())
@@ -113,6 +136,13 @@ pub fn generate_service_api(
                     rust_type(binding.payload_type())?
                 )
                 .expect("writing to String cannot fail");
+                operation(
+                    &mut output,
+                    &fixed.facade,
+                    fixed.topic,
+                    fixed.payload,
+                    binding,
+                )?;
             }
             output.push_str("        }\n");
         }
@@ -120,6 +150,188 @@ pub fn generate_service_api(
     }
     output.push_str("}\n");
     Ok(output)
+}
+
+/// The two generic adapter contracts, declared once in the wrapper root.
+///
+/// Both return the adapter's own associated `Output`, so a runtime chooses
+/// its result, error, and subscription-token types; neither requires
+/// `Send`, `Sync`, `'static`, or an executor. `SubscribeAdapter` takes the
+/// handler type as a trait parameter so an implementation may add any bound
+/// it genuinely needs (for example `H: Send + 'static`) without the
+/// generated service naming it.
+fn adapter_contracts(
+    output: &mut String,
+    facade: &ServiceApiFacadeNames,
+) -> Result<(), CodegenError> {
+    let RustFacade {
+        publish_adapter,
+        subscribe_adapter,
+        payload_type: p,
+        handler_type: h,
+        hook_message_namespace,
+        hook_message_name,
+        hook_topic,
+        hook_subscription_group,
+        ..
+    } = RustFacade::new(facade)?;
+    let (publish, subscribe) = (facade.publish, facade.subscribe);
+    let (value, handler) = (facade.parameters.value, facade.parameters.handler);
+    writeln!(
+        output,
+        "\n    /// The runtime hook behind every generated `{publish}` operation.\n\
+         \x20   ///\n\
+         \x20   /// Receives the endpoint's authored topic and a typed payload.\n\
+         \x20   /// `Output` is the adapter's own result/error type.\n\
+         \x20   pub trait {publish_adapter}<{p}> {{\n\
+         \x20       type Output;\n\
+         \x20       fn {publish}(&mut self, {hook_topic}: &'static str, {value}: &{p}) -> Self::Output;\n\
+         \x20   }}\n\n\
+         \x20   /// The runtime hook behind every generated `{subscribe}` operation.\n\
+         \x20   ///\n\
+         \x20   /// Receives the resolved message identity (namespace and local name,\n\
+         \x20   /// unformatted), the authored topic, the authored subscription group\n\
+         \x20   /// if any, and a handler for payload `{p}`. `Output` is the adapter's\n\
+         \x20   /// own result, error, or subscription-token type.\n\
+         \x20   pub trait {subscribe_adapter}<{p}, {h}> {{\n\
+         \x20       type Output;\n\
+         \x20       fn {subscribe}(\n\
+         \x20           &mut self,\n\
+         \x20           {hook_message_namespace}: &'static str,\n\
+         \x20           {hook_message_name}: &'static str,\n\
+         \x20           {hook_topic}: &'static str,\n\
+         \x20           {hook_subscription_group}: Option<&'static str>,\n\
+         \x20           {handler}: {h},\n\
+         \x20       ) -> Self::Output;\n\
+         \x20   }}"
+    )
+    .expect("writing to String cannot fail");
+    Ok(())
+}
+
+/// The Rust-only façade spellings, unwrapped once. Every one is required
+/// for Rust; a missing one is a defect in the shared fixed-name table.
+struct RustFacade {
+    publish_adapter: &'static str,
+    subscribe_adapter: &'static str,
+    adapter: &'static str,
+    adapter_type: &'static str,
+    handler_type: &'static str,
+    payload_type: &'static str,
+    hook_message_namespace: &'static str,
+    hook_message_name: &'static str,
+    hook_topic: &'static str,
+    hook_subscription_group: &'static str,
+}
+
+impl RustFacade {
+    fn new(facade: &ServiceApiFacadeNames) -> Result<Self, CodegenError> {
+        let required = |name: Option<&'static str>, what: &str| {
+            name.ok_or_else(|| error(format!("Rust service API requires a {what} name")))
+        };
+        let parameters = &facade.parameters;
+        Ok(Self {
+            publish_adapter: required(facade.publish_adapter, "publish adapter")?,
+            subscribe_adapter: required(facade.subscribe_adapter, "subscribe adapter")?,
+            adapter: required(parameters.adapter, "adapter parameter")?,
+            adapter_type: required(parameters.adapter_type, "adapter type parameter")?,
+            handler_type: required(parameters.handler_type, "handler type parameter")?,
+            payload_type: required(parameters.payload_type, "payload type parameter")?,
+            hook_message_namespace: required(
+                parameters.hook_message_namespace,
+                "hook message namespace parameter",
+            )?,
+            hook_message_name: required(
+                parameters.hook_message_name,
+                "hook message name parameter",
+            )?,
+            hook_topic: required(parameters.hook_topic, "hook topic parameter")?,
+            hook_subscription_group: required(
+                parameters.hook_subscription_group,
+                "hook subscription group parameter",
+            )?,
+        })
+    }
+}
+
+/// The one forwarding operation of an OMS exchange, after its `Payload`.
+///
+/// Exactly one of `publish` / `subscribe` is emitted, as decided by
+/// [`ServiceApiOmsBinding::operation`]. Neither takes any routing string
+/// from the application; both name the payload only through the local
+/// `Payload` alias.
+fn operation(
+    output: &mut String,
+    facade: &ServiceApiFacadeNames,
+    topic: &str,
+    payload: &str,
+    binding: &ServiceApiOmsBinding,
+) -> Result<(), CodegenError> {
+    let RustFacade {
+        publish_adapter,
+        subscribe_adapter,
+        adapter,
+        adapter_type: a,
+        handler_type: h,
+        ..
+    } = RustFacade::new(facade)?;
+    let (value, handler) = (facade.parameters.value, facade.parameters.handler);
+    // exchange -> function -> service_api root.
+    let root = "super::super";
+    match binding.operation() {
+        ServiceApiOmsOperation::Publish => {
+            let publish = facade.publish;
+            writeln!(
+                output,
+                "\n            /// Publish one `{payload}` on this endpoint's topic through `{adapter}`.\n\
+                 \x20           pub fn {publish}<{a}>({adapter}: &mut {a}, {value}: &{payload}) -> {a}::Output\n\
+                 \x20           where\n\
+                 \x20               {a}: {root}::{publish_adapter}<{payload}> + ?Sized,\n\
+                 \x20           {{\n\
+                 \x20               {adapter}.{publish}({topic}, {value})\n\
+                 \x20           }}"
+            )
+            .expect("writing to String cannot fail");
+        }
+        ServiceApiOmsOperation::Subscribe => {
+            let message = binding.message_name();
+            output.push('\n');
+            constant(output, 3, facade.message_namespace, &message.namespace_uri);
+            constant(output, 3, facade.message_name, &message.local_name);
+            let group = binding.subscription_group().map_or_else(
+                || "None".to_owned(),
+                |group| format!("Some(\"{}\")", string_literal_body(group)),
+            );
+            writeln!(
+                output,
+                "            pub const {}: Option<&str> = {group};",
+                facade.subscription_group
+            )
+            .expect("writing to String cannot fail");
+            let subscribe = facade.subscribe;
+            writeln!(
+                output,
+                "\n            /// Subscribe `{handler}` to this endpoint's `{payload}` messages through\n\
+                 \x20           /// `{adapter}`, supplying the resolved message identity, topic, and group.\n\
+                 \x20           pub fn {subscribe}<{a}, {h}>({adapter}: &mut {a}, {handler}: {h}) -> {a}::Output\n\
+                 \x20           where\n\
+                 \x20               {a}: {root}::{subscribe_adapter}<{payload}, {h}> + ?Sized,\n\
+                 \x20               {h}: FnMut(&{payload}),\n\
+                 \x20           {{\n\
+                 \x20               {adapter}.{subscribe}(\n\
+                 \x20                   {},\n\
+                 \x20                   {},\n\
+                 \x20                   {topic},\n\
+                 \x20                   {},\n\
+                 \x20                   {handler},\n\
+                 \x20               )\n\
+                 \x20           }}",
+                facade.message_namespace, facade.message_name, facade.subscription_group
+            )
+            .expect("writing to String cannot fail");
+        }
+    }
+    Ok(())
 }
 
 fn constant(output: &mut String, depth: usize, name: &str, value: &str) {

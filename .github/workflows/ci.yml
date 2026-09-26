@@ -158,6 +158,13 @@ jobs:
           require_one_test task047_ada_wrapper_compiles_under_gnat_and_is_consumable \
             cargo test -p ams-gra-codegen-oms --test service_api \
             task047_ada_wrapper_compiles_under_gnat_and_is_consumable
+          # Task 048: the Ada publish/subscribe facade must stay a body-less
+          # spec under GNAT, round-trip through fake hooks, and reject the
+          # wrong operation / payload / handler at compile time. Zero matched
+          # tests is a failure, so the facade can never pass by skipping.
+          require_one_test task048_ada_facade_round_trips_through_fake_hooks \
+            cargo test -p ams-gra-codegen-oms --test service_facade \
+            task048_ada_facade_round_trips_through_fake_hooks
       # `AMS_GRA_REQUIRE_GNAT` turns the Ada probes' developer-machine skip
       # into a hard failure, so a runner that somehow lost GNAT after the gate
       # above cannot produce a green run with the Ada checks quietly elided.

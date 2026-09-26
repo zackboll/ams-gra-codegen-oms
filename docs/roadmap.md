@@ -601,9 +601,33 @@ encodes, decodes, subscribes, publishes, dispatches, and connects to nothing.
 A zero-OMS service now produces exactly one file, its wrapper. See
 [Task 047](task-047-service-api-wrappers.md).
 
+- [x] generated service publish/subscribe façade (Task 048). Every OMS
+      Message exchange gains exactly one typed operation, decided once in
+      codegen-core from its `Direction` (`output` -> Publish, `input` ->
+      Subscribe; mandate and timing never change it). Publish takes exactly
+      that endpoint's `Payload`; Subscribe registers a handler for exactly
+      that `Payload`. The application supplies no topic, message name,
+      namespace, or subscription group: the operation forwards them, with the
+      resolved message `QualifiedName` still structured and the authored
+      group verbatim, to an injected adapter whose result/error/token type the
+      runtime chooses (Rust generic traits, C++ duck-typed templates, Ada
+      generic packages; the Ada spec stays bodyless). The wrong operation is a
+      compile error in every language. Non-OMS kinds and zero-OMS wrappers are
+      unchanged; the real UCI 2.5 `PositionReport` input gets Subscribe only,
+      with 60/60 READY and byte-identical model files.
+
+```text
+Task 047:  What endpoints exist?
+Task 048:  Which typed operation may the application perform at each OMS endpoint?
+Task 049:  How are those operations executed through LA-CAL/Sleet?
+```
+
+The façade still performs no communication: no WebSocket, OWP, subscription
+IDs, codec, thread, or dispatcher. See
+[Task 048](task-048-publish-subscribe-facade.md).
+
 **Still open:**
 
-- [ ] generated service publish/subscribe façade;
 - [ ] typed LA-CAL integration;
 - [ ] codec and runtime integration.
 

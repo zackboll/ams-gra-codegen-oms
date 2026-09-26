@@ -534,6 +534,37 @@ fn parses_upstream_minimal_example_unchanged() {
     assert_eq!(oms.message, "PositionReport");
 }
 
+/// Task 048: the upstream Service Status example, copied verbatim, parses
+/// unchanged with exactly the three service-relative directions the OMS 2.5
+/// instructions table (Table 3.1-2) gives: output, input, output.
+#[test]
+fn parses_upstream_service_status_example_unchanged() {
+    let contract = load_contract(Path::new("tests/fixtures/upstream-service-status.yaml"))
+        .expect("upstream service status example should parse");
+    let observed = contract.functions[0]
+        .exchanges
+        .iter()
+        .map(|exchange| {
+            let Exchange::OmsMessage(oms) = exchange else {
+                panic!("expected only OMS message exchanges");
+            };
+            (
+                oms.message.as_str(),
+                oms.direction,
+                oms.subscription_group.clone(),
+            )
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        observed,
+        [
+            ("ServiceStatus", Direction::Output, None),
+            ("ServiceStatusDataRequest", Direction::Input, None),
+            ("ServiceStatusDataRequestStatus", Direction::Output, None),
+        ]
+    );
+}
+
 #[test]
 fn rejects_unsupported_file_extension() {
     assert!(matches!(

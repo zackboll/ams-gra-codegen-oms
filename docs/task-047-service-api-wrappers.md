@@ -94,6 +94,10 @@ not carry unchanged, or a payload that is not a generated type.
 
 ### What is intentionally not exposed yet
 
+(Task 048 later exposed `subscription_group` and the per-exchange
+publish/subscribe operation; see
+[Task 048](task-048-publish-subscribe-facade.md).)
+
 These remain in `ServicePlan`, unmodified, for a later façade/runtime task:
 traceability, `operational_attribute`, `subscription_group`,
 `appendix_c_mapping`, timing parameters, Capability ownership,
@@ -686,7 +690,8 @@ blockers are untouched.
 
 ## Still open
 
-- generated service publish/subscribe façade;
+- ~~generated service publish/subscribe façade~~ (delivered by
+  [Task 048](task-048-publish-subscribe-facade.md));
 - typed LA-CAL integration;
 - codec and runtime integration;
 - kind-specific metadata for the four non-OMS exchange kinds;

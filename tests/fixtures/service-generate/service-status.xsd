@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="https://www.vdl.afrl.af.mil/programs/oam"
+           elementFormDefault="qualified"
+           version="002.5.0">
+  <!-- Task 048 controlled fixture. This is NOT the UCI schema.
+
+       It carries the exact three global message names the portable Service
+       Status example selects (ServiceStatus, ServiceStatusDataRequest,
+       ServiceStatusDataRequestStatus) in the real UCI target namespace, each
+       with a distinct payload whose local name differs from the message
+       name (the UCI "...MT" convention). It exists only so the verbatim
+       upstream contract
+       crates/service-contract/tests/fixtures/upstream-service-status.yaml
+       resolves in ordinary CI, where the pinned UCI release is not present.
+
+       The source-backed direction evidence is recorded in
+       docs/task-048-publish-subscribe-facade.md. -->
+  <xs:complexType name="ServiceStatusMT">
+    <xs:sequence>
+      <xs:element name="State" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="ServiceStatusDataRequestMT">
+    <xs:sequence>
+      <xs:element name="RequestID" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="ServiceStatusDataRequestStatusMT">
+    <xs:sequence>
+      <xs:element name="RequestID" type="xs:string"/>
+      <xs:element name="Accepted" type="xs:boolean"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="ServiceStatus" type="uci:ServiceStatusMT" uci:version="001.000.000.000"/>
+  <xs:element name="ServiceStatusDataRequest" type="uci:ServiceStatusDataRequestMT" uci:version="001.000.000.000"/>
+  <xs:element name="ServiceStatusDataRequestStatus" type="uci:ServiceStatusDataRequestStatusMT" uci:version="001.000.000.000"/>
+</xs:schema>
