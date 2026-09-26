@@ -98,7 +98,8 @@ The code generator must preserve the existing observable LA-CAL contract.
 - generated validation;
 - generated JSON codecs/mappings;
 - generated message descriptors/qualified names;
-- typed publish/subscribe facades;
+- typed publish/subscribe facades (generated since Task 048; runtime
+  adapters are a later task);
 - reproducible generation manifests;
 - optional schema compatibility/diff tooling.
 
@@ -846,6 +847,42 @@ ServicePlan
   generated code and handwritten runtime is unchanged.
 
 Full detail: `docs/task-047-service-api-wrappers.md`.
+
+### Typed publish/subscribe façade (Task 048)
+
+Task 048 adds one typed operation per OMS Message endpoint, still on the
+generated side of the section 7 split:
+
+```text
+ServiceApiModel
+  + ServiceApiOmsOperation     (decided once: Output -> Publish, Input -> Subscribe)
+  + subscription_group         (authored, verbatim, Option)
+  -> generated façade          (forwards routing metadata to an adapter)
+  -> injected runtime adapter  (handwritten; Task 049 implements it over LA-CAL)
+```
+
+* **Direction is a capability.** An output endpoint has only Publish, an
+  input endpoint only Subscribe; the wrong one does not exist and fails to
+  compile. Mandate and timing are metadata only; nothing is scheduled.
+* **The adapter boundary is the future runtime contract.** Publish hands the
+  adapter the resolved message namespace and local name, the topic, and a
+  typed payload; Subscribe hands it the same resolved message identity, the
+  topic, the optional group, and a payload-typed handler. The identity is
+  structured, never flattened, and comes from the plan binding. Publish needs
+  it because OMS JSON keys a message by its global element (OMSC-SPC-013 Rev B
+  §6.1.1), and distinct messages may share one payload type and one topic
+  (Task 048 corrective). The adapter picks its own
+  result, error, blocking, threading, and subscription-token policy: Rust
+  associated `Output`, C++ `decltype(auto)`, Ada generic formal `Result`.
+* **No runtime in generated code.** No WebSocket, OWP framing, subscription
+  ID, JSON, allocator, thread, task, or async executor is emitted, and no
+  dependency is added.
+* **Readiness still predicts generation.** New names are shared fixed names
+  checked by the service-API name analysis and model/wrapper artifact
+  preflight. The Ada façade is expression functions in generic packages, so
+  `service_api.ads` stays body-less and the artifact layout is unchanged.
+
+Full detail: `docs/task-048-publish-subscribe-facade.md`.
 
 Full detail: `docs/service-contract-integration.md` and
 `docs/adr/0005-service-contract-codegen-plan.md`.

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:s="urn:shared"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:shared"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- SYNTHETIC Task 048 corrective fixture. This is NOT UCI.
+
+       Two DISTINCT global message elements share ONE payload type:
+
+         MessageA -> SharedPayload
+         MessageB -> SharedPayload
+
+       OMSC-SPC-013 Rev B section 6.1.1 (Global Element Declarations) keys a
+       serialized OMS JSON message by the GLOBAL ELEMENT's target namespace
+       and name, not by its type. The payload type alone therefore cannot
+       say whether a value must be sent as MessageA or MessageB; only the
+       resolved message identity can. See
+       docs/task-048-publish-subscribe-facade.md. -->
+  <xs:complexType name="SharedPayload">
+    <xs:sequence>
+      <xs:element name="Count" type="xs:int"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="MessageA" type="s:SharedPayload" uci:version="001.000.000.000"/>
+  <xs:element name="MessageB" type="s:SharedPayload" uci:version="001.000.000.000"/>
+</xs:schema>

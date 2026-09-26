@@ -54,10 +54,11 @@ pub use floating::{
 pub use integral::{InclusiveIntegralDomain, inclusive_integral_domain};
 pub use service_api::{
     ServiceApiArtifactCollision, ServiceApiCollision, ServiceApiError, ServiceApiExchange,
-    ServiceApiExchangeKind, ServiceApiFixedNames, ServiceApiFunction, ServiceApiModel,
-    ServiceApiModelConflict, ServiceApiModelEntity, ServiceApiModelNameCollision,
-    ServiceApiNameError, ServiceApiNameOwner, ServiceApiOmsBinding, ServiceApiRegion,
-    UnboundPayload, UnboundPayloadReason, build_service_api_model, service_api_exchange_scope_name,
+    ServiceApiExchangeKind, ServiceApiFacadeNames, ServiceApiFacadeParameters,
+    ServiceApiFixedNames, ServiceApiFunction, ServiceApiModel, ServiceApiModelConflict,
+    ServiceApiModelEntity, ServiceApiModelNameCollision, ServiceApiNameError, ServiceApiNameOwner,
+    ServiceApiOmsBinding, ServiceApiOmsOperation, ServiceApiRegion, UnboundPayload,
+    UnboundPayloadReason, build_service_api_model, service_api_exchange_scope_name,
     service_api_fixed_names, service_api_function_scope_name, service_api_preflight,
     validate_service_api_artifacts, validate_service_api_names, validate_service_plan_api_names,
 };

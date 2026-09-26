@@ -736,10 +736,27 @@ pub mod service_api {
 - **A zero-OMS service** produces zero model files and exactly one wrapper.
 - **Ordinary `generate` never emits a wrapper.**
 
-**The wrapper is compile-time metadata only.** It sends, receives, encodes,
-decodes, subscribes, publishes, dispatches, and connects to nothing. No
-publisher/subscriber façade, typed CAL API, codec, or runtime source is
-generated yet. See [Task 047](docs/task-047-service-api-wrappers.md).
+**Typed publish/subscribe façade (Task 048).** Each OMS Message exchange also
+gets exactly one direction-safe operation: an `output` exposes Publish taking
+exactly its `Payload`, an `input` exposes Subscribe taking a handler for
+exactly its `Payload`. The application passes no topic, message name,
+namespace, or group; the operation forwards those to an adapter the
+application injects:
+
+```rust
+output_endpoint::publish(&mut runtime, &payload);
+input_endpoint::subscribe(&mut runtime, |message: &input_endpoint::Payload| { /* typed */ });
+```
+
+Calling the wrong operation, publishing another type, or registering a
+handler for another type is a compile error in Rust, C++, and Ada. The
+adapter chooses its own result, error, and subscription-token types.
+
+**Still no communication.** The wrapper sends, receives, encodes, decodes,
+dispatches, and connects to nothing: no WebSocket, OWP, subscription IDs,
+codec, or runtime source is generated yet. See
+[Task 047](docs/task-047-service-api-wrappers.md) and
+[Task 048](docs/task-048-publish-subscribe-facade.md).
 
 Compatibility is defined by `contract_version`, not by repository SHA. The
 baseline is `zackboll/ams-gra-service-contract`

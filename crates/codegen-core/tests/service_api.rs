@@ -1,4 +1,4 @@
-//! Task 047: the language-neutral `ServiceApiModel`, its lowering from a
+//! Tasks 047-048: the language-neutral `ServiceApiModel`, its lowering from a
 //! `ServicePlan`, its shared naming preflight, and its readiness integration.
 //!
 //! Every schema here is a controlled synthetic, built directly as `SchemaIr`.
@@ -507,4 +507,169 @@ fn artifact_boundary_is_part_of_readiness() {
             assert!(readiness.is_ready(), "{language:?} {uri}");
         }
     }
+}
+
+// ---------------------------------------------------------------------
+// Task 048: operation classification and subscription group
+// ---------------------------------------------------------------------
+
+fn oms_grouped(id: &str, direction: &str, mandate: &str, topic: &str, group: &str) -> String {
+    format!(
+        "      - id: {id}\n        kind: oms_message\n        direction: {direction}\n        mandate: {mandate}\n        message: ReportA\n        topic: {topic}\n        subscription_group: '{group}'\n        timing:\n          kind: periodic\n          nominal_rate_hz: 2\n"
+    )
+}
+
+/// Direction alone decides the operation: both mandates of each direction
+/// get the same operation, a periodic output is still an ordinary Publish,
+/// IDs that SAY `input`/`output` are ignored, and the authored group is
+/// carried verbatim (absent stays absent). Same payload type throughout.
+#[test]
+fn operation_is_decided_by_direction_only() {
+    let exchanges = [
+        // IDs deliberately contradict their directions.
+        oms("x-output", "input", "mandatory", "ReportA", "t.in.m"),
+        oms_grouped("y-output", "input", "optional", "t.in.o", "Pool 7: \"hot\""),
+        oms_grouped(
+            "x-input",
+            "output",
+            "mandatory",
+            "t.out.m",
+            "ignored-for-publish",
+        ),
+        oms("y-input", "output", "optional", "ReportA", "t.out.o"),
+    ]
+    .concat();
+    let model = lower(&function("f", "F", &exchanges)).expect("lower");
+    use ams_gra_oms_codegen_core::ServiceApiOmsOperation::{Publish, Subscribe};
+    let observed = model.functions()[0]
+        .exchanges()
+        .iter()
+        .map(|exchange| {
+            let binding = exchange.oms_binding().expect("OMS");
+            (
+                exchange.id(),
+                exchange.mandate(),
+                binding.operation(),
+                binding.topic(),
+                binding.subscription_group(),
+                binding.payload_name().local_name.as_str(),
+                binding.message_name().local_name.as_str(),
+            )
+        })
+        .collect::<Vec<_>>();
+    use Mandate::{Mandatory, Optional};
+    assert_eq!(
+        observed,
+        [
+            (
+                "x-output", Mandatory, Subscribe, "t.in.m", None, "PayloadA", "ReportA"
+            ),
+            (
+                "y-output",
+                Optional,
+                Subscribe,
+                "t.in.o",
+                Some("Pool 7: \"hot\""),
+                "PayloadA",
+                "ReportA"
+            ),
+            (
+                "x-input",
+                Mandatory,
+                Publish,
+                "t.out.m",
+                Some("ignored-for-publish"),
+                "PayloadA",
+                "ReportA"
+            ),
+            (
+                "y-input", Optional, Publish, "t.out.o", None, "PayloadA", "ReportA"
+            ),
+        ]
+    );
+    // The resolved message identity stays structured, never flattened.
+    let binding = model.functions()[0].exchanges()[0].oms_binding().unwrap();
+    assert_eq!(binding.message_name(), &qualified("ReportA"));
+    assert_eq!(binding.message_name().namespace_uri, NS);
+}
+
+/// The four non-OMS kinds carry no binding, hence no operation and no
+/// subscription group, whatever their direction.
+#[test]
+fn non_oms_kinds_have_no_operation() {
+    let exchanges = [
+        non_uci("dt", "data_transfer", "input", "mandatory"),
+        non_uci("sig", "special_signal", "output", "mandatory"),
+        non_uci("sec", "security_exchange", "input", "optional"),
+        non_uci("legacy", "non_oms_message", "output", "optional"),
+    ]
+    .concat();
+    let model = lower(&function("f", "F", &exchanges)).expect("lower");
+    assert!(!model.has_oms_exchanges());
+    for exchange in model.functions()[0].exchanges() {
+        assert!(exchange.oms_binding().is_none(), "{}", exchange.id());
+    }
+}
+
+// ---------------------------------------------------------------------
+// Task 048 corrective: global element identity != payload type identity
+// ---------------------------------------------------------------------
+
+/// OMSC-SPC-013 Rev B §6.1.1 (Global Element Declarations): the OMS JSON
+/// text of a global element is an object with exactly ONE member whose name
+/// is derived from the ELEMENT's target namespace and name. Two distinct
+/// global messages of one payload type therefore serialize differently, so
+/// a Publish boundary carrying only `topic + payload` loses information.
+///
+/// This is the same fact `projection_keeps_only_selected_messages`
+/// (tests/service_generation.rs) relies on. Here both messages are SELECTED,
+/// as two outputs on one topic: the lowered bindings must still disagree on
+/// message identity while agreeing on payload type AND topic, and that
+/// identity must be the plan's structured `QualifiedName` (the value every
+/// generated Publish now forwards). No LA-CAL spelling is produced here.
+#[test]
+fn global_message_identity_is_not_payload_or_topic_identity() {
+    let mut schema = schema();
+    schema.messages.push(message(
+        "ReportAlias",
+        TypeRef::named(qualified("PayloadA")),
+    ));
+    let functions = function(
+        "f",
+        "F",
+        &[
+            oms("out-a", "output", "mandatory", "ReportA", "shared.topic"),
+            oms(
+                "out-b",
+                "output",
+                "mandatory",
+                "ReportAlias",
+                "shared.topic",
+            ),
+        ]
+        .concat(),
+    );
+    let plan = resolve_service_plan(&contract(&functions), &schema).expect("plan");
+    let projection = project_service_generation_schema(&plan, &schema, CLOSED).expect("project");
+    // One payload type, two global messages.
+    assert_eq!(projection.schema().types.len(), 1);
+    assert_eq!(projection.schema().messages.len(), 2);
+    let model = build_service_api_model(&plan, projection.schema(), CLOSED).expect("lower");
+
+    use ams_gra_oms_codegen_core::ServiceApiOmsOperation::Publish;
+    let [a, b] = [0, 1].map(|index| {
+        model.functions()[0].exchanges()[index]
+            .oms_binding()
+            .expect("OMS binding")
+    });
+    assert_eq!((a.operation(), b.operation()), (Publish, Publish));
+    assert_eq!(a.payload_type(), b.payload_type());
+    assert_eq!(a.payload_name(), b.payload_name());
+    assert_eq!(a.topic(), b.topic());
+    assert_ne!(a.message_name(), b.message_name());
+    assert_eq!(a.message_name(), &qualified("ReportA"));
+    assert_eq!(b.message_name(), &qualified("ReportAlias"));
+    // Structured: namespace and local name stay separate components.
+    assert_eq!(b.message_name().namespace_uri, NS);
+    assert_eq!(b.message_name().local_name, "ReportAlias");
 }
