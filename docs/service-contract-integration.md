@@ -886,11 +886,24 @@ pipeline and `service-check` are unchanged.
   requires non-empty text. The runtime reports that as a `sleet-client`
   `InvalidInput` error and writes no frame. Readiness semantics did not
   change.
-- **Codecs.** Payload JSON goes through a caller-supplied `OmsJsonCodec<P>`.
-  Generated codecs are future work, so real UCI messages (e.g.
-  `PositionReport`) do not yet traverse Sleet.
+- **Codecs.** Payload JSON goes through an `OmsJsonCodec<P>`. Task 050
+  generates it for Rust.
 
 See [Task 049](task-049-rust-la-cal-runtime.md).
+
+## Task 050 — generated Rust OMS JSON codecs
+
+`--with-codec` is an opt-in extension of the same selected-service pipeline.
+The codec is rendered from the lowered `ServiceApiModel`, the projected
+Schema IR, and the generation world. It never reads YAML, XSD, contract text,
+or paths, and it never re-resolves message names. Codec readiness is part of
+the same pre-generation verdict. It is reported on its own lines
+(`codec renderable emitted declarations: X/Y`, `codec status:`,
+`service codec boundary:`), so an unsupported codec construct is never shown
+as an unsupported UCI type and never changes a model count. Without the flag,
+every report and generated file is byte-identical to Task 049.
+
+See [Task 050](task-050-rust-oms-json-codecs.md).
 
 ## Task 033 follow-up — constrained floating ranges
 

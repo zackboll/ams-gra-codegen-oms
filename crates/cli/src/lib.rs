@@ -2,10 +2,14 @@
 
 use ams_gra_oms_backend_ada::AdaBackend;
 use ams_gra_oms_backend_cpp::CppBackend;
-use ams_gra_oms_backend_rust::RustBackend;
+use ams_gra_oms_backend_rust::{
+    RustBackend, SERVICE_API_FILE as RUST_SERVICE_API_FILE, generate_service_api_with_codec,
+    generate_service_codec,
+};
 use ams_gra_oms_codegen_core::{
-    Backend, BackendLanguage, CoverageAnalysis, GeneratedFile, GenerationWorld, ResolvedExchange,
-    ServiceBackendReadiness, ServiceGenerationProjection, ServicePlan, analyze_service_readiness,
+    Backend, BackendLanguage, CoverageAnalysis, GeneratedFile, GenerationWorld,
+    RUST_SERVICE_CODEC_FILE, ResolvedExchange, ServiceBackendReadiness, ServiceCodecReadiness,
+    ServiceGenerationProjection, ServicePlan, analyze_service_codec, analyze_service_readiness,
     project_service_generation_schema, resolve_service_plan, service_api_preflight,
 };
 // Only the CLI's own loading path touches contract files; no backend parses
@@ -31,8 +35,8 @@ USAGE:
     ams-gra-codegen-oms generate --schema PATH [--overlay PATH]... --language LANGUAGE --output DIR --world WORLD
     ams-gra-codegen-oms docs --schema PATH [--overlay PATH]... --output DIR
     ams-gra-codegen-oms service-plan --schema PATH --contract PATH [--extension ID=PATH]...
-    ams-gra-codegen-oms service-check --schema PATH --contract PATH [--extension ID=PATH]... --language LANGUAGE --world WORLD
-    ams-gra-codegen-oms service-generate --schema PATH --contract PATH [--extension ID=PATH]... --language LANGUAGE --world WORLD --output DIR
+    ams-gra-codegen-oms service-check --schema PATH --contract PATH [--extension ID=PATH]... --language LANGUAGE --world WORLD [--with-codec]
+    ams-gra-codegen-oms service-generate --schema PATH --contract PATH [--extension ID=PATH]... --language LANGUAGE --world WORLD --output DIR [--with-codec]
 
 COMMANDS:
     validate           Load and validate an XSD schema set
@@ -256,7 +260,7 @@ Report whether one backend can render a Service Contract's selected UCI type
 model under one generation world.
 
 USAGE:
-    ams-gra-codegen-oms service-check --schema PATH --contract PATH [--extension ID=PATH]... --language LANGUAGE --world WORLD
+    ams-gra-codegen-oms service-check --schema PATH --contract PATH [--extension ID=PATH]... --language LANGUAGE --world WORLD [--with-codec]
 
 LANGUAGES:
     ada
@@ -279,6 +283,8 @@ OPTIONS:
                                local schema document
     -l, --language LANGUAGE    Required backend to measure
     -w, --world WORLD          Required generation world policy
+        --with-codec           Also require the generated OMS JSON payload
+                               codec (Task 050); see WITH CODEC below
     -h, --help                 Print help
 
 NO OUTPUT FILES:
@@ -314,6 +320,17 @@ READY INCLUDES THE SERVICE API WRAPPER:
     never reported as an unsupported UCI type, and selected-type counts are
     unaffected.
 
+WITH CODEC (--with-codec, Task 050):
+    Opt-in. Without it this report is unchanged. With it, READY additionally
+    means 'service-generate --with-codec' can emit the generated OMS JSON
+    payload codec, and a 'codec renderable emitted declarations: X/Y' line
+    is added (Y counts every emitted model type, including generated support
+    types). A codec failure is reported on its own 'service codec boundary:'
+    line, never as an unsupported UCI type. Only Rust has a generated codec;
+    Ada and C++ services with OMS exchanges are NOT READY with --with-codec.
+    The codec covers OAM-namespace payloads only, and Binary values fail
+    closed (hexBinary/base64Binary provenance is not retained).
+
 EXIT CODES:
     0    READY
     1    NOT READY (the full report is still written to stdout)
@@ -326,7 +343,7 @@ Generate the UCI type model a Service Contract selects, and its typed service
 API wrapper, after backend/world readiness succeeds.
 
 USAGE:
-    ams-gra-codegen-oms service-generate --schema PATH --contract PATH [--extension ID=PATH]... --language LANGUAGE --world WORLD --output DIR
+    ams-gra-codegen-oms service-generate --schema PATH --contract PATH [--extension ID=PATH]... --language LANGUAGE --world WORLD --output DIR [--with-codec]
 
 LANGUAGES:
     ada
@@ -353,6 +370,8 @@ OPTIONS:
     -l, --language LANGUAGE    Required output language
     -w, --world WORLD          Required generation world policy
     -o, --output DIR           Required output directory
+        --with-codec           Also emit the generated OMS JSON payload codec
+                               (Task 050); see WITH CODEC below
     -h, --help                 Print help
 
 EXTENSIONS USE EXACT CONTRACT MAPPING:
@@ -399,7 +418,16 @@ TYPED SERVICE API WRAPPER:
 
     The wrapper sends, receives, encodes, decodes, subscribes, publishes,
     dispatches, and connects to nothing. No CAL facade, publisher/subscriber
-    API, codec, or runtime source is generated.
+    API, codec, or runtime source is generated unless --with-codec below adds
+    the payload codec.
+
+WITH CODEC (--with-codec, Task 050):
+    Opt-in; without it every generated file is unchanged. With it, readiness
+    also requires the codec, and a Rust service with OMS exchanges also gets
+    'service_codec.rs', mounted by 'service_api.rs' as the module
+    'service_codec'. It defines 'ServiceCodec', implementing
+    ams_gra_oms_runtime_rust::OmsJsonCodec<P> once per unique payload type.
+    A service with no OMS exchange needs no codec and gets no codec file.
 
 EXIT CODES:
     0    Selected UCI type source and service API wrapper generated
@@ -561,6 +589,8 @@ enum Command {
         language: Language,
         /// Required: readiness is a question under one specific type universe.
         world: GenerationWorld,
+        /// Task 050: also require the generated OMS JSON codec.
+        with_codec: bool,
     },
     ServiceGenerate {
         schema: PathBuf,
@@ -571,6 +601,8 @@ enum Command {
         /// Required: unlike `service-plan`/`service-check`, this command does
         /// write files, so the destination must be stated explicitly.
         output: PathBuf,
+        /// Task 050: also emit the generated OMS JSON codec.
+        with_codec: bool,
     },
 }
 
@@ -615,7 +647,16 @@ where
             extensions,
             language,
             world,
-        } => service_check(&schema, &contract, &extensions, language, world, stdout),
+            with_codec,
+        } => service_check(
+            &schema,
+            &contract,
+            &extensions,
+            language,
+            world,
+            with_codec,
+            stdout,
+        ),
         Command::ServiceGenerate {
             schema,
             contract,
@@ -623,12 +664,16 @@ where
             language,
             world,
             output,
+            with_codec,
         } => service_generate(
             &schema,
             &contract,
             &extensions,
-            language,
-            world,
+            GenerationTarget {
+                language,
+                world,
+                with_codec,
+            },
             &output,
             stdout,
         ),
@@ -787,6 +832,7 @@ fn parse_service_check(args: Vec<OsString>) -> Result<Command, CliError> {
     if is_help_request(&args) {
         return Ok(Command::Help(SERVICE_CHECK_HELP));
     }
+    let (args, with_codec) = take_flag(args, "--with-codec")?;
     let mut schema = None;
     let mut contract = None;
     let mut extensions = Vec::new();
@@ -811,6 +857,7 @@ fn parse_service_check(args: Vec<OsString>) -> Result<Command, CliError> {
         // state its backend and type universe would be meaningless evidence.
         language: Language::parse(&required(language, "--language")?)?,
         world: parse_world(&required(world, "--world")?)?,
+        with_codec,
     })
 }
 
@@ -818,6 +865,7 @@ fn parse_service_generate(args: Vec<OsString>) -> Result<Command, CliError> {
     if is_help_request(&args) {
         return Ok(Command::Help(SERVICE_GENERATE_HELP));
     }
+    let (args, with_codec) = take_flag(args, "--with-codec")?;
     let mut schema = None;
     let mut contract = None;
     let mut extensions = Vec::new();
@@ -845,7 +893,34 @@ fn parse_service_generate(args: Vec<OsString>) -> Result<Command, CliError> {
         // requires it: the type-universe assumption must be stated.
         world: parse_world(&required(world, "--world")?)?,
         output: required(output, "--output")?.into(),
+        with_codec,
     })
+}
+
+/// Remove every occurrence of a value-less boolean `flag` from `args`.
+///
+/// Only argument positions that are option NAMES are considered (every other
+/// option takes exactly one value), so a value spelled `--with-codec` -- for
+/// example an output directory -- is never mistaken for the flag. Repeating
+/// the flag is a usage error, like every other singular option.
+fn take_flag(args: Vec<OsString>, flag: &str) -> Result<(Vec<OsString>, bool), CliError> {
+    let mut kept = Vec::with_capacity(args.len());
+    let mut present = false;
+    let mut args = args.into_iter();
+    while let Some(argument) = args.next() {
+        if argument.to_str() == Some(flag) {
+            if present {
+                return Err(CliError::usage(format!("duplicate option '{flag}'")));
+            }
+            present = true;
+            continue;
+        }
+        kept.push(argument);
+        if let Some(value) = args.next() {
+            kept.push(value);
+        }
+    }
+    Ok((kept, present))
 }
 
 /// Accumulate one `--extension ID=PATH` mapping.
@@ -1085,6 +1160,7 @@ fn service_check<W: Write>(
     extensions: &[(String, PathBuf)],
     language: Language,
     world: GenerationWorld,
+    with_codec: bool,
     stdout: &mut W,
 ) -> Result<(), CliError> {
     let inputs = load_service_inputs(schema_path, contract_path, extensions)?;
@@ -1095,10 +1171,18 @@ fn service_check<W: Write>(
         world,
     )
     .map_err(|error| CliError::execution(error.to_string()))?;
+    let codec = if with_codec {
+        Some(codec_readiness(&inputs, &readiness, language, world)?)
+    } else {
+        None
+    };
     // The full deterministic report goes to stdout even when the verdict is
     // NOT READY: a CI failure that hides the blockers is useless.
-    write_output(stdout, &render_service_check(&inputs.plan, &readiness))?;
-    if readiness.is_ready() {
+    write_output(
+        stdout,
+        &render_service_check_with_codec(&inputs.plan, &readiness, codec.as_ref()),
+    )?;
+    if readiness.is_ready() && codec.as_ref().is_none_or(ServiceCodecReadiness::is_ready) {
         return Ok(());
     }
     Err(CliError::execution(format!(
@@ -1106,6 +1190,15 @@ fn service_check<W: Write>(
         language.label(),
         world.label()
     )))
+}
+
+/// What `service-generate` produces: one language, one world, and whether the
+/// Task 050 codec is requested.
+#[derive(Debug, Clone, Copy)]
+struct GenerationTarget {
+    language: Language,
+    world: GenerationWorld,
+    with_codec: bool,
 }
 
 /// Generate the UCI type model a contract selects, after readiness succeeds.
@@ -1120,11 +1213,15 @@ fn service_generate<W: Write>(
     schema_path: &Path,
     contract_path: &Path,
     extensions: &[(String, PathBuf)],
-    language: Language,
-    world: GenerationWorld,
+    target: GenerationTarget,
     output_dir: &Path,
     stdout: &mut W,
 ) -> Result<(), CliError> {
+    let GenerationTarget {
+        language,
+        world,
+        with_codec,
+    } = target;
     let inputs = load_service_inputs(schema_path, contract_path, extensions)?;
     let readiness = analyze_service_readiness(
         &inputs.plan,
@@ -1133,11 +1230,21 @@ fn service_generate<W: Write>(
         world,
     )
     .map_err(|error| CliError::execution(error.to_string()))?;
-    if !readiness.is_ready() {
+    // Task 050: codec readiness joins the SAME pre-generation verdict, so an
+    // unsupported codec construct stops here, before any backend call.
+    let codec = if with_codec {
+        Some(codec_readiness(&inputs, &readiness, language, world)?)
+    } else {
+        None
+    };
+    if !readiness.is_ready() || codec.as_ref().is_some_and(|codec| !codec.is_ready()) {
         // Exactly the 'service-check' report, from the same helper: an
         // operator must not have to run a second command, and a second
         // formatter would be free to disagree about the blockers.
-        write_output(stdout, &render_service_check(&inputs.plan, &readiness))?;
+        write_output(
+            stdout,
+            &render_service_check_with_codec(&inputs.plan, &readiness, codec.as_ref()),
+        )?;
         return Err(CliError::execution(format!(
             "service selection is not renderable for {} under {}; no files were generated",
             language.label(),
@@ -1179,28 +1286,140 @@ fn service_generate<W: Write>(
     } else {
         Vec::new()
     };
-    let api_files = backend
-        .generate_service_api(&api_model, projection.schema())
-        .map_err(|error| CliError::execution(error.to_string()))?;
+    let emit_codec = codec
+        .as_ref()
+        .is_some_and(ServiceCodecReadiness::emits_codec_file);
+    let api_files = if emit_codec {
+        // Only Rust reaches here: codec readiness reports every other
+        // language with OMS exchanges as NOT READY.
+        vec![
+            GeneratedFile {
+                relative_path: PathBuf::from(RUST_SERVICE_API_FILE),
+                contents: generate_service_api_with_codec(&api_model, projection.schema())
+                    .map_err(|error| CliError::execution(error.to_string()))?,
+            },
+            GeneratedFile {
+                relative_path: PathBuf::from(RUST_SERVICE_CODEC_FILE),
+                contents: generate_service_codec(&api_model, projection.schema(), world)
+                    .map_err(|error| CliError::execution(error.to_string()))?,
+            },
+        ]
+    } else {
+        backend
+            .generate_service_api(&api_model, projection.schema())
+            .map_err(|error| CliError::execution(error.to_string()))?
+    };
     // Only now, with EVERY file rendered in memory, is the combined set
     // validated (including duplicate paths across model and wrapper) and the
     // output directory touched. A wrapper failure above leaves nothing behind.
     let mut files = model_files;
     let model_file_count = files.len();
+    let codec_file_count = usize::from(emit_codec);
     files.extend(api_files);
     write_generated_files(&files, output_dir)?;
-    write_output(
-        stdout,
-        &render_service_generation(
-            &inputs.plan,
-            &projection,
-            language,
-            world,
-            model_file_count,
-            files.len() - model_file_count,
-            output_dir,
-        ),
+    let mut summary = render_service_generation(
+        &inputs.plan,
+        &projection,
+        language,
+        world,
+        model_file_count,
+        files.len() - model_file_count - codec_file_count,
+        output_dir,
+    );
+    if with_codec {
+        // Task 050: appended only under --with-codec, so the default summary
+        // stays byte-identical; the default total above excludes the codec.
+        summary.push_str(&format!(
+            "generated service codec files: {codec_file_count}\n\
+             generated {} file(s) including the codec\n",
+            files.len()
+        ));
+    }
+    write_output(stdout, &summary)
+}
+
+/// Task 050 codec readiness over exactly the projection and service API model
+/// `service-generate` would use.
+///
+/// Measured only when model readiness (including the service API boundary) is
+/// already READY: a blocked model has no projection or wrapper to build a
+/// codec for, and reporting a codec blocker too would double-report one
+/// cause. In that case the codec is reported as not measured.
+fn codec_readiness(
+    inputs: &ServiceInputs,
+    readiness: &ServiceBackendReadiness,
+    language: Language,
+    world: GenerationWorld,
+) -> Result<ServiceCodecReadiness, CliError> {
+    let execution = |error: &dyn fmt::Display| CliError::execution(error.to_string());
+    if !readiness.is_ready() {
+        return Ok(ServiceCodecReadiness {
+            language: language.backend_language(),
+            has_oms_exchanges: inputs.plan.oms_message_exchange_count() > 0,
+            emitted_declarations: 0,
+            renderable_emitted_declarations: 0,
+            blocker: None,
+        });
+    }
+    let projection = project_service_generation_schema(&inputs.plan, &inputs.schema, world)
+        .map_err(|error| execution(&error))?;
+    let api_model = service_api_preflight(
+        &inputs.plan,
+        projection.schema(),
+        language.backend_language(),
+        world,
     )
+    .map_err(|error| execution(&error))?;
+    analyze_service_codec(
+        &api_model,
+        projection.schema(),
+        language.backend_language(),
+        world,
+    )
+    .map_err(|error| execution(&error))
+}
+
+/// The readiness report, plus the Task 050 codec section when requested.
+///
+/// With `codec == None` this is exactly [`render_service_check`], byte for
+/// byte, so default output never changes.
+fn render_service_check_with_codec(
+    plan: &ServicePlan,
+    readiness: &ServiceBackendReadiness,
+    codec: Option<&ServiceCodecReadiness>,
+) -> String {
+    let mut report = render_service_check(plan, readiness);
+    let Some(codec) = codec else {
+        return report;
+    };
+    report.push('\n');
+    if !readiness.is_ready() {
+        report.push_str("codec: not measured (selected model is NOT READY)\n");
+        return report;
+    }
+    if !codec.has_oms_exchanges {
+        report.push_str("codec: not required (no OMS message exchange)\n");
+        return report;
+    }
+    report.push_str(&format!(
+        "codec renderable emitted declarations: {}/{}\n",
+        codec.renderable_emitted_declarations, codec.emitted_declarations
+    ));
+    report.push_str(&format!(
+        "codec status: {}\n",
+        if codec.is_ready() {
+            "READY"
+        } else {
+            "NOT READY"
+        }
+    ));
+    if let Some(blocker) = &codec.blocker {
+        // Distinct from 'unsupported selected types': the MODEL may be fully
+        // renderable while its codec is not.
+        report.push('\n');
+        report.push_str(&format!("service codec boundary: {blocker}\n"));
+    }
+    report
 }
 
 /// Render the deterministic selected-generation summary.

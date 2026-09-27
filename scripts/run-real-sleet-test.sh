@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Task 049: run the generated-facade -> runtime-rust -> sleet-client test
-# against the UNMODIFIED pinned Sleet server.
+# Tasks 049/050: run the generated-facade -> runtime-rust -> sleet-client tests
+# against the UNMODIFIED pinned Sleet server. Set AMS_GRA_UCI_2_5_ROOT to the
+# pinned UCI 2.5 root to also run the real PositionReport integration.
 #
 # Builds the `sleet` binary from a fresh checkout of the exact pinned
 # revision in a temporary directory (never inside this repository), then
@@ -29,9 +30,26 @@ test -z "$(git -C "$CHECKOUT" status --porcelain)"
 export AMS_GRA_SLEET_BIN="$CHECKOUT/target/release/sleet"
 
 cd "$ROOT"
-output="$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test real_sleet -- \
-  --exact task049_generated_facade_round_trips_through_real_sleet --nocapture 2>&1)"
-printf '%s\n' "$output"
-printf '%s\n' "$output" | grep -q '^REAL SLEET: PASSED$'
-printf '%s\n' "$output" | grep -qE '^test result: ok\. 1 passed'
+# run_one TEST_FILE TEST_NAME PASS_LINE: exactly one matching test must run,
+# pass, and print its PASSED line (a skip prints SKIPPED and fails here).
+run_one() {
+  output="$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test "$1" -- \
+    --exact "$2" --nocapture 2>&1)"
+  printf '%s\n' "$output"
+  printf '%s\n' "$output" | grep -q "^$3\$"
+  printf '%s\n' "$output" | grep -qE '^test result: ok\. 1 passed'
+}
+
+# Task 049: generated facade + HANDWRITTEN codec (proves the runtime seam).
+run_one real_sleet task049_generated_facade_round_trips_through_real_sleet \
+  'REAL SLEET: PASSED'
+# Task 050: generated facade + GENERATED codec, synthetic OAM fixture.
+run_one generated_codec_sleet task050_generated_codec_round_trips_through_real_sleet \
+  'REAL SLEET GENERATED CODEC: PASSED'
+# Task 050: the REAL UCI 2.5 PositionReport, only when the caller supplies the
+# pinned root (build.rs verifies its SHA-256 and fails on a mismatch).
+if [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ]; then
+  run_one real_uci_position_report real::task050_real_position_report_round_trips_through_real_sleet \
+    'REAL UCI POSITIONREPORT THROUGH REAL SLEET: PASSED'
+fi
 echo "real pinned Sleet ($SLEET_REV): PASSED"

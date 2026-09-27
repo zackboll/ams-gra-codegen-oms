@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="https://www.vdl.afrl.af.mil/programs/oam"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- SYNTHETIC Task 050 codec control. The MODEL is renderable (Binary is
+       semantic octets), but Schema IR does not retain whether the XSD
+       primitive was hexBinary or base64Binary, so the OMS JSON codec cannot
+       choose a lexical encoding and must fail closed. -->
+  <xs:complexType name="BlobPayload">
+    <xs:sequence>
+      <xs:element name="Id" type="xs:int"/>
+      <xs:element name="Data" type="xs:hexBinary"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="BlobNotice" type="uci:BlobPayload" uci:version="001.000.000.000"/>
+</xs:schema>

@@ -11,6 +11,7 @@ ams-gra-oms-codegen-core = { path = "../codegen-core" }
 
 [dev-dependencies]
 ams-gra-oms-xsd-frontend = { path = "../xsd-frontend" }
+ams-gra-oms-service-contract = { path = "../service-contract" }
 
 [lints]
 workspace = true

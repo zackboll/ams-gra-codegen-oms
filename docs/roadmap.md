@@ -628,8 +628,9 @@ IDs, codec, thread, or dispatcher. See
 
 **Still open** (Phase 3 progress is tracked below):
 
-- [ ] typed LA-CAL integration;
-- [ ] codec and runtime integration.
+- [ ] typed LA-CAL integration (Rust slice done in Task 049; Ada/C++ open);
+- [ ] codec and runtime integration (Rust generated payload codec done in
+      Task 050; Ada/C++ codecs and runtimes open).
 
 Nothing in this phase copies the OMS profile engine or the completion
 assistant: profile conformance and contract completion remain owned by
@@ -687,18 +688,30 @@ Progress (typed LA-CAL integration as a whole is **not** complete):
       unmodified pinned Sleet.
 - [ ] Ada LA-CAL runtime.
 - [ ] C++ LA-CAL runtime.
-- [ ] generated OMS JSON payload codecs (the `OmsJsonCodec<P>` seam exists;
-      codecs are handwritten until then, so no UCI message such as
-      `PositionReport` traverses Sleet yet).
+- [x] generated **Rust** OMS JSON payload codecs (Task 050). Opt-in
+      `service-check`/`service-generate --with-codec` emits `service_codec.rs`
+      with one `OmsJsonCodec<P>` impl per unique payload, following
+      OMSC-SPC-013 Rev B §6.1 from the projected Schema IR (never Serde
+      derives, never the Rust layout). Every decode is built through the
+      generated model's checked constructors. The real UCI 2.5
+      `PositionReport` round-trips through unmodified pinned Sleet as a typed
+      `PositionReportMT` in CI. OAM-namespace payloads only; Binary fails
+      closed.
+- [ ] Ada and C++ generated OMS JSON codecs (`--with-codec` reports them NOT
+      READY at the `service codec boundary`).
+- [ ] generic extension-namespace codec support (needs element member
+      QName/form in Schema IR).
+- [ ] hexBinary/base64Binary lexical provenance in Schema IR (Binary codec).
 - [ ] reconnect/backoff, TLS/auth policy, timers, service lifecycle.
 
 ```text
 Task 048:  generated type-safe operation
 Task 049:  first reusable runtime executing that operation through real LA-CAL
-Task 050:  generated OMS JSON payload codecs / broader runtime integration
+Task 050:  generated Rust payload-body OMS JSON codecs
 ```
 
-See [Task 049](task-049-rust-la-cal-runtime.md).
+See [Task 049](task-049-rust-la-cal-runtime.md) and
+[Task 050](task-050-rust-oms-json-codecs.md).
 
 ## Phase 4 — SPARK-oriented Ada backend
 

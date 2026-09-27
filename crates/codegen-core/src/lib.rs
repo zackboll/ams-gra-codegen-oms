@@ -9,6 +9,7 @@ mod coverage;
 mod floating;
 mod integral;
 mod service_api;
+mod service_codec;
 mod service_generation;
 mod service_plan;
 mod service_readiness;
@@ -61,6 +62,10 @@ pub use service_api::{
     UnboundPayloadReason, build_service_api_model, service_api_exchange_scope_name,
     service_api_fixed_names, service_api_function_scope_name, service_api_preflight,
     validate_service_api_artifacts, validate_service_api_names, validate_service_plan_api_names,
+};
+pub use service_codec::{
+    OAM_NAMESPACE, RUST_SERVICE_CODEC_FILE, RUST_SERVICE_CODEC_MODULE, ServiceCodecError,
+    ServiceCodecReadiness, analyze_service_codec,
 };
 pub use service_generation::{
     ServiceGenerationError, ServiceGenerationProjection, project_service_generation_schema,
@@ -242,7 +247,7 @@ impl TypeEmission<'_> {
     ///
     /// A `TypeEmission::AbstractValue` is always emitted: that is the Task 024
     /// closed-sum wrapper, which owns the base's name in the generated scope.
-    pub(crate) fn emits_own_top_level_name(&self) -> bool {
+    pub fn emits_own_top_level_name(&self) -> bool {
         match self {
             Self::Declaration(declaration) => {
                 !(declaration.is_abstract && matches!(declaration.kind, TypeKind::Record { .. }))

@@ -1,0 +1,29 @@
+# SYNTHETIC Task 050 fixture. Authored for this repository only.
+#
+# Selects BlobNotice from codec-binary.xsd, whose payload has a selected
+# Binary field: the model is READY, the --with-codec codec is NOT READY.
+contract_version: "0.1"
+
+service:
+  name: codec-binary
+  version: "0.1.0"
+  kind: service
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: blob
+    name: Blob
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: output-blob
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: BlobNotice
+        topic: blob-topic
+        timing:
+          kind: asynchronous
