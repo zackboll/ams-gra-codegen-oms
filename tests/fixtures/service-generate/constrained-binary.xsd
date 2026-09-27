@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="https://www.vdl.afrl.af.mil/programs/oam"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- SYNTHETIC Task 053 fixture (OAM namespace). NAMED Binary restrictions
+       whose facets count OCTETS (XML Schema 2E 4.3.1-4.3.3):
+
+         Exact4         length = 4
+         Min2           minLength = 2
+         Max6           maxLength = 6
+         Between2And6   minLength = 2, maxLength = 6
+         DerivedExact4  restriction of Between2And6, length = 4
+         ZeroBlob       length = 0          (empty is a VALID value)
+         BlobBase       minLength = 4        4 .. unbounded
+         BlobMiddle     BlobBase, maxLength = 16   4 .. 16
+         BlobExact      BlobMiddle, length = 8     8 .. 8
+         PlainBytes     unconstrained control
+
+       Every one has xs:hexBinary ancestry, so the generated Rust codec is exercised
+       too. They are used as required, optional, bounded repeated (0..N and
+       1..N), unbounded repeated (0.. and 1..), and Choice alternatives.
+       ConstrainedBlobNotice is subscribed and published on one topic so a CAL
+       server loops it back. -->
+  <xs:simpleType name="Exact4">
+    <xs:restriction base="xs:hexBinary">
+      <xs:length value="4"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Min2">
+    <xs:restriction base="xs:hexBinary">
+      <xs:minLength value="2"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Max6">
+    <xs:restriction base="xs:hexBinary">
+      <xs:maxLength value="6"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Between2And6">
+    <xs:restriction base="xs:hexBinary">
+      <xs:minLength value="2"/>
+      <xs:maxLength value="6"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="DerivedExact4">
+    <xs:restriction base="uci:Between2And6">
+      <xs:length value="4"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="ZeroBlob">
+    <xs:restriction base="xs:hexBinary">
+      <xs:length value="0"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="BlobBase">
+    <xs:restriction base="xs:hexBinary">
+      <xs:minLength value="4"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="BlobMiddle">
+    <xs:restriction base="uci:BlobBase">
+      <xs:maxLength value="16"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="BlobExact">
+    <xs:restriction base="uci:BlobMiddle">
+      <xs:length value="8"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="PlainBytes">
+    <xs:restriction base="xs:hexBinary"/>
+  </xs:simpleType>
+  <xs:complexType name="BlobChoice">
+    <xs:choice>
+      <xs:element name="Fixed" type="uci:Exact4"/>
+      <xs:element name="Ranged" type="uci:Between2And6"/>
+    </xs:choice>
+  </xs:complexType>
+  <xs:complexType name="ConstrainedBlobPayload">
+    <xs:sequence>
+      <xs:element name="Id" type="xs:int"/>
+      <xs:element name="Exact" type="uci:Exact4"/>
+      <xs:element name="MaybeMin" type="uci:Min2" minOccurs="0"/>
+      <xs:element name="Bounded" type="uci:Max6" minOccurs="0" maxOccurs="3"/>
+      <xs:element name="BoundedRequired" type="uci:Between2And6" minOccurs="1" maxOccurs="3"/>
+      <xs:element name="Stream" type="uci:DerivedExact4" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="StreamRequired" type="uci:Exact4" minOccurs="1" maxOccurs="unbounded"/>
+      <xs:element name="Zero" type="uci:ZeroBlob"/>
+      <xs:element name="Base" type="uci:BlobBase" minOccurs="0"/>
+      <xs:element name="Middle" type="uci:BlobMiddle" minOccurs="0"/>
+      <xs:element name="Hashed" type="uci:BlobExact"/>
+      <xs:element name="Plain" type="uci:PlainBytes"/>
+      <xs:element name="Pick" type="uci:BlobChoice"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="ConstrainedBlobNotice" type="uci:ConstrainedBlobPayload" uci:version="001.000.000.000"/>
+</xs:schema>

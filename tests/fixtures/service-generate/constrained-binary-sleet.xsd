@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="https://www.vdl.afrl.af.mil/programs/oam"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- SYNTHETIC Task 053 companion fixture for the REAL pinned Sleet test.
+
+       Pinned Sleet (e38f61d8, sleet/src/facets.rs) measures xs:length,
+       xs:minLength and xs:maxLength of a hexBinary value in lexical
+       CHARACTERS, while XML Schema 2E 4.3.1 measures them in OCTETS (two hex
+       characters each). A spec-correct exact-length value other than zero
+       octets is therefore always rejected by pinned Sleet, so the main
+       constrained-binary.xsd, whose required members are exact-length, can
+       never route. This companion keeps only shapes where some legal octet
+       counts also satisfy Sleet's character count, so a legal document can
+       route. The optional Exact member lets the test RECORD the
+       incompatibility without depending on it.
+
+         Ranged    Between2And6    2..6 octets   (Sleet: 2..6 chars)
+         Middle    BlobMiddle      4..16 octets, BlobMiddle <- BlobBase
+         Zero      ZeroBlob        exactly 0 octets (0 chars)
+         Exact     Exact4          optional; 4 octets = 8 chars, Sleet wants 4
+         Ranges    Between2And6    0..unbounded -->
+  <xs:simpleType name="Between2And6">
+    <xs:restriction base="xs:hexBinary">
+      <xs:minLength value="2"/>
+      <xs:maxLength value="6"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="BlobBase">
+    <xs:restriction base="xs:hexBinary">
+      <xs:minLength value="4"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="BlobMiddle">
+    <xs:restriction base="uci:BlobBase">
+      <xs:maxLength value="16"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="ZeroBlob">
+    <xs:restriction base="xs:hexBinary">
+      <xs:length value="0"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Exact4">
+    <xs:restriction base="xs:hexBinary">
+      <xs:length value="4"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:complexType name="SleetBlobPayload">
+    <xs:sequence>
+      <xs:element name="Id" type="xs:int"/>
+      <xs:element name="Ranged" type="uci:Between2And6"/>
+      <xs:element name="Middle" type="uci:BlobMiddle"/>
+      <xs:element name="Zero" type="uci:ZeroBlob"/>
+      <xs:element name="Exact" type="uci:Exact4" minOccurs="0"/>
+      <xs:element name="Ranges" type="uci:Between2And6" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="SleetBlobNotice" type="uci:SleetBlobPayload" uci:version="001.000.000.000"/>
+</xs:schema>

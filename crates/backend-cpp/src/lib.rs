@@ -6,15 +6,15 @@ pub use service_api::{SERVICE_API_FILE, generate_service_api};
 
 use ams_gra_oms_codegen_core::ServiceApiModel;
 use ams_gra_oms_codegen_core::{
-    AbstractValueProjection, Backend, BackendLanguage, CodegenError, DirectTemporalProfile,
-    EffectiveValueMember, FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain,
-    StringProfile, TemporalProfile, TypeEmission, WhitespaceVisiblePolicy,
-    abstract_value_projection_for_ref, backend_preflight, constrains_string, cpp_model_header_name,
-    cpp_model_namespace, direct_temporal_profile, effective_choice_alternatives,
-    effective_record_fields, emissions_emit_direct_date_time, field_storage_semantics,
-    float32_literal, float64_literal, floating_domain, generated_enum_variant_name,
-    inclusive_integral_domain, is_temporal_primitive, plan_type_emissions,
-    schema_emits_bounded_integer_support, schema_emits_string_profile_carrier,
+    AbstractValueProjection, Backend, BackendLanguage, BinaryLengthDomain, CodegenError,
+    DirectTemporalProfile, EffectiveValueMember, FloatingDomain, GeneratedFile, GenerationWorld,
+    InclusiveIntegralDomain, StringProfile, TemporalProfile, TypeEmission, WhitespaceVisiblePolicy,
+    abstract_value_projection_for_ref, backend_preflight, binary_length_domain, constrains_string,
+    cpp_model_header_name, cpp_model_namespace, direct_temporal_profile,
+    effective_choice_alternatives, effective_record_fields, emissions_emit_direct_date_time,
+    field_storage_semantics, float32_literal, float64_literal, floating_domain,
+    generated_enum_variant_name, inclusive_integral_domain, is_temporal_primitive,
+    plan_type_emissions, schema_emits_bounded_integer_support, schema_emits_string_profile_carrier,
     schema_emits_temporal_carrier, schema_emits_unbounded_sequence_support, string_profile,
     temporal_profile,
 };
@@ -298,6 +298,16 @@ fn render_declaration(
         {
             render_string_profile_declaration(output, &declaration.constraints, &name)?;
         }
+        // Task 053: a length-constrained named Binary is a checked carrier.
+        // The shared classifier returns `Ok(None)` for an unconstrained one,
+        // which falls through to the unchanged Task 025 class below.
+        TypeKind::Primitive(kind @ PrimitiveKind::Binary)
+            if binary_domain(*kind, &declaration.constraints, &name)?.is_some() =>
+        {
+            let domain = binary_domain(*kind, &declaration.constraints, &name)?
+                .expect("guard proved a constrained Binary domain");
+            render_constrained_binary(output, domain, &name);
+        }
         TypeKind::Primitive(PrimitiveKind::Binary) => {
             reject_any_constraints(&declaration.constraints, &name)?;
             writeln!(output, "class {name} {{\npublic:\n    explicit {name}(std::vector<std::uint8_t> value) : value_(std::move(value)) {{}}\n    const std::vector<std::uint8_t>& value() const noexcept {{ return value_; }}\nprivate:\n    std::vector<std::uint8_t> value_;\n}};\n").expect("writing to String cannot fail");
@@ -470,10 +480,13 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
             }
             continue;
         }
-        if matches!(declaration.kind, TypeKind::Primitive(PrimitiveKind::Binary))
-            && declaration.constraints != ConstraintSet::default()
-        {
-            return unsupported(format!("constraints on {}", declaration.name.local_name));
+        // Task 053: a named Binary is decided by the shared classifier. A
+        // supported length-only domain is fully enforced by the generated
+        // checked factory, so it must not reach `reject_extra_constraints`;
+        // every other facet fails closed here, before any output exists.
+        if let TypeKind::Primitive(kind @ PrimitiveKind::Binary) = declaration.kind {
+            binary_domain(kind, &declaration.constraints, &declaration.name.local_name)?;
+            continue;
         }
         reject_extra_constraints(&declaration.constraints, &declaration.name.local_name)?;
         if matches!(declaration.kind, TypeKind::Record { .. }) {
@@ -826,6 +839,84 @@ fn reject_extra_constraints(constraints: &ConstraintSet, name: &str) -> Result<(
         return unsupported(format!("constraints on {name}"));
     }
     Ok(())
+}
+
+/// Task 053: the shared Binary classifier, with a C++ diagnostic.
+fn binary_domain(
+    kind: PrimitiveKind,
+    constraints: &ConstraintSet,
+    name: &str,
+) -> Result<Option<BinaryLengthDomain>, CodegenError> {
+    binary_length_domain(kind, constraints)
+        .map_err(|reason| error(format!("unsupported C++ IR construct: {reason} on {name}")))
+}
+
+/// Task 053: a checked, owning octet carrier for a length-constrained named
+/// Binary declaration.
+///
+/// * `create` is the only public way to obtain one and returns `std::nullopt`
+///   outside the octet domain. The storing constructor is private, and no
+///   default constructor is declared (declaring any constructor suppresses the
+///   implicit default one).
+/// * Task 040 lifecycle: the copy constructor and copy assignment are
+///   declared explicitly, which suppresses the implicit move operations. An
+///   rvalue therefore COPIES, so a moved-from source keeps its valid octets;
+///   a synthesized move would empty a still-live `std::vector` and break a
+///   positive `minLength`. Copying may allocate, so nothing here is
+///   `noexcept` except the accessor.
+/// * The length check compares `std::vector::size()` against `std::uint64_t`
+///   bounds after an explicit widening cast, so no schema bound is narrowed
+///   to the host's `std::size_t` at generation time.
+fn render_constrained_binary(output: &mut String, domain: BinaryLengthDomain, name: &str) {
+    let min = domain.min_octets;
+    let mut checks = Vec::new();
+    if min > 0 {
+        checks.push("octets < min_octets");
+    }
+    let max_const = match domain.max_octets {
+        Some(max) => {
+            checks.push("octets > max_octets");
+            format!("    static constexpr std::uint64_t max_octets = {max}u;\n")
+        }
+        None => String::new(),
+    };
+    let validate = if checks.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "        const auto octets = static_cast<std::uint64_t>(value.size());\n        if ({}) return std::nullopt;\n",
+            checks.join(" || ")
+        )
+    };
+    writeln!(
+        output,
+        concat!(
+            "class {name} {{\n",
+            "public:\n",
+            "    static constexpr std::uint64_t min_octets = {min}u;\n",
+            "{max_const}",
+            "\n",
+            "    static std::optional<{name}> create(std::vector<std::uint8_t> value) {{\n",
+            "{validate}",
+            "        return {name}(std::move(value));\n",
+            "    }}\n\n",
+            "    const std::vector<std::uint8_t>& value() const noexcept {{ return value_; }}\n\n",
+            "    // Task 040/053: copy-only lifecycle. Declaring these suppresses the\n",
+            "    // implicit move operations, so an rvalue copies and a moved-from\n",
+            "    // carrier still holds its valid octets.\n",
+            "    {name}(const {name}&) = default;\n",
+            "    {name}& operator=(const {name}&) = default;\n\n",
+            "private:\n",
+            "    explicit {name}(std::vector<std::uint8_t> validated) : value_(std::move(validated)) {{}}\n",
+            "    std::vector<std::uint8_t> value_;\n",
+            "}};\n",
+        ),
+        name = name,
+        min = min,
+        max_const = max_const,
+        validate = validate,
+    )
+    .expect("writing to String cannot fail");
 }
 
 fn reject_any_constraints(constraints: &ConstraintSet, name: &str) -> Result<(), CodegenError> {
@@ -2962,19 +3053,50 @@ int main() {
 
     #[test]
     fn binary_declaration_with_constraints_remains_unsupported() {
+        // Task 053: a length-only named Binary is now a checked carrier...
         let mut schema = track_schema();
         schema.types[0].kind = TypeKind::Primitive(PrimitiveKind::Binary);
         schema.types[0].constraints = ConstraintSet {
             length: Some(4),
             ..ConstraintSet::default()
         };
-        let error =
-            generate(&schema, CLOSED).expect_err("constrained binary declaration must fail");
-        assert!(
-            error
-                .message
-                .contains("unsupported C++ IR construct: constraints on")
-        );
+        generate(&schema, CLOSED).expect("length-constrained named Binary generates");
+        // ...but every facet outside the shared octet-length classifier
+        // still fails closed, attributed to the facet and the declaration.
+        for (constraints, reason) in [
+            (
+                ConstraintSet {
+                    length: Some(4),
+                    lexical: ams_gra_oms_ir::LexicalConstraintSet {
+                        pattern_groups: vec![ams_gra_oms_ir::PatternGroup {
+                            alternatives: vec![ams_gra_oms_ir::PatternExpression::xml_schema(
+                                "[0-9A-F]*",
+                            )],
+                        }],
+                        white_space: None,
+                    },
+                    ..ConstraintSet::default()
+                },
+                "Binary pattern constraints",
+            ),
+            (
+                ConstraintSet {
+                    min_inclusive: Some(ams_gra_oms_ir::NumericValue::Integer(0)),
+                    ..ConstraintSet::default()
+                },
+                "numeric Binary constraints",
+            ),
+        ] {
+            schema.types[0].constraints = constraints;
+            let error = generate(&schema, CLOSED).expect_err("unsupported Binary facet must fail");
+            assert!(
+                error
+                    .message
+                    .contains(&format!("unsupported C++ IR construct: {reason} on")),
+                "{}",
+                error.message
+            );
+        }
     }
 
     #[test]
@@ -3013,29 +3135,30 @@ int main() {
             )));
         }
 
-        for kind in [PrimitiveKind::String, PrimitiveKind::Binary] {
-            let mut schema = track_schema();
-            schema.types[0].kind = TypeKind::Primitive(kind);
-            schema.types[0].constraints = ConstraintSet {
-                length: Some(4),
-                ..ConstraintSet::default()
-            };
-            let error = generate(&schema, CLOSED).expect_err("constraints must not be discarded");
-            // A constrained String now reports through the Task 037
-            // classifier, which names the facet profile rather than saying
-            // only "constraints". Either way it fails closed:
-            // is not the one supported profile.
-            assert!(
-                error
-                    .message
-                    .contains("unsupported C++ IR construct: constraints on")
-                    || error.message.contains(
-                        "unsupported constrained String declaration: unsupported facet profile"
-                    ),
-                "unexpected diagnostic for {kind:?}: {}",
-                error.message
-            );
-        }
+        // Task 053: Binary with only `length` is now a supported carrier, so
+        // only String remains in this length-only negative.
+        let kind = PrimitiveKind::String;
+        let mut schema = track_schema();
+        schema.types[0].kind = TypeKind::Primitive(kind);
+        schema.types[0].constraints = ConstraintSet {
+            length: Some(4),
+            ..ConstraintSet::default()
+        };
+        let error = generate(&schema, CLOSED).expect_err("constraints must not be discarded");
+        // A constrained String now reports through the Task 037
+        // classifier, which names the facet profile rather than saying
+        // only "constraints". Either way it fails closed:
+        // is not the one supported profile.
+        assert!(
+            error
+                .message
+                .contains("unsupported C++ IR construct: constraints on")
+                || error.message.contains(
+                    "unsupported constrained String declaration: unsupported facet profile"
+                ),
+            "unexpected diagnostic for {kind:?}: {}",
+            error.message
+        );
     }
 
     /// Lexical constraints still fail before rendering everywhere Task 036 has

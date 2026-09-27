@@ -8,15 +8,16 @@ use ams_gra_oms_codegen_core::ServiceApiModel;
 use ams_gra_oms_codegen_core::{
     ADA_PORTABLE_POSITIVE_INDEX_MAX, ADA_SEQUENCE_APPEND, ADA_SEQUENCE_CLEAR, ADA_SEQUENCE_ELEMENT,
     ADA_SEQUENCE_LENGTH, ADA_SEQUENCE_RESERVE_CAPACITY, ADA_SEQUENCE_TO_SEQUENCE,
-    AbstractValueProjection, Backend, BackendLanguage, CodegenError, DirectTemporalProfile,
-    EffectiveValueMember, FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain,
-    StringProfile, TemporalProfile, TypeEmission, WhitespaceVisiblePolicy,
+    AbstractValueProjection, Backend, BackendLanguage, BinaryLengthDomain, CodegenError,
+    DirectTemporalProfile, EffectiveValueMember, FloatingDomain, GeneratedFile, GenerationWorld,
+    InclusiveIntegralDomain, StringProfile, TemporalProfile, TypeEmission, WhitespaceVisiblePolicy,
     abstract_value_projection_for_ref, ada_model_file_names, ada_model_package,
-    ada_record_field_uses_optional_wrapper, backend_preflight, constrains_string,
-    direct_temporal_profile, effective_choice_alternatives, effective_record_fields,
-    emissions_emit_direct_date_time, field_storage_semantics, float32_literal, float64_literal,
-    floating_domain, generated_enum_variant_name, inclusive_integral_domain, is_temporal_primitive,
-    plan_type_emissions, schema_emits_ada_binary_vectors, schema_emits_bounded_sequence_support,
+    ada_record_field_uses_optional_wrapper, backend_preflight, binary_length_domain,
+    constrains_string, direct_temporal_profile, effective_choice_alternatives,
+    effective_record_fields, emissions_emit_direct_date_time, field_storage_semantics,
+    float32_literal, float64_literal, floating_domain, generated_enum_variant_name,
+    inclusive_integral_domain, is_temporal_primitive, plan_type_emissions,
+    schema_emits_ada_binary_vectors, schema_emits_bounded_sequence_support,
     schema_emits_direct_date_time, schema_emits_string_profile_carrier,
     schema_emits_temporal_carrier, schema_emits_unbounded_sequence_support, string_profile,
     temporal_profile,
@@ -371,6 +372,16 @@ fn render_declaration(
                 &name,
             )?;
         }
+        // Task 053: a length-constrained named Binary is a validated carrier.
+        // The shared classifier returns `Ok(None)` for an unconstrained one,
+        // which falls through to the unchanged Task 025 record below.
+        TypeKind::Primitive(kind @ PrimitiveKind::Binary)
+            if binary_domain(*kind, &declaration.constraints, &name)?.is_some() =>
+        {
+            let domain = binary_domain(*kind, &declaration.constraints, &name)?
+                .expect("guard proved a constrained Binary domain");
+            render_constrained_binary(output, private_part, domain, &name);
+        }
         TypeKind::Primitive(PrimitiveKind::Binary) => {
             reject_any_constraints(&declaration.constraints, &name)?;
             writeln!(
@@ -631,10 +642,13 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
             }
             continue;
         }
-        if matches!(declaration.kind, TypeKind::Primitive(PrimitiveKind::Binary))
-            && declaration.constraints != ConstraintSet::default()
-        {
-            return unsupported(format!("constraints on {}", declaration.name.local_name));
+        // Task 053: a named Binary is decided by the shared classifier. A
+        // supported length-only domain is fully enforced by the generated
+        // Create, so it must not reach `reject_extra_constraints`; every other
+        // facet fails closed here, before any output exists.
+        if let TypeKind::Primitive(kind @ PrimitiveKind::Binary) = declaration.kind {
+            binary_domain(kind, &declaration.constraints, &declaration.name.local_name)?;
+            continue;
         }
         reject_extra_constraints(&declaration.constraints, &declaration.name.local_name)?;
         if matches!(declaration.kind, TypeKind::Record { .. }) {
@@ -1587,6 +1601,103 @@ fn reject_extra_constraints(constraints: &ConstraintSet, name: &str) -> Result<(
         return unsupported(format!("constraints on {name}"));
     }
     Ok(())
+}
+
+/// Task 053: the shared Binary classifier, with an Ada diagnostic.
+fn binary_domain(
+    kind: PrimitiveKind,
+    constraints: &ConstraintSet,
+    name: &str,
+) -> Result<Option<BinaryLengthDomain>, CodegenError> {
+    binary_length_domain(kind, constraints)
+        .map_err(|reason| error(format!("unsupported Ada IR construct: {reason} on {name}")))
+}
+
+/// Task 053: a validated carrier for a length-constrained named Binary.
+///
+/// * Visible: an opaque private type plus the overloadable `Create` / `Value`
+///   pair every other validated carrier publishes, so the shared Ada callable
+///   analysis already models them (see `ada_wrapper_callable_owners`).
+/// * `Create` checks the octet count explicitly and raises
+///   `Constraint_Error` outside the domain: no assertion, predicate, or
+///   `Assertion_Policy` is involved.
+/// * Task 040 lifecycle: the private component's default is a raise
+///   expression, so an ordinary default declaration fails with
+///   `Program_Error` even when the domain admits zero octets. `Create` builds
+///   the record with an explicit aggregate, so it never evaluates that
+///   default.
+/// * The count is widened to `Interfaces.Unsigned_64` before comparison, so
+///   a schema bound is never narrowed to `Ada.Containers.Count_Type`.
+/// * Both subprograms are private-part expression functions, so no package
+///   body is required and no `.adb` is added for this carrier alone.
+fn render_constrained_binary(
+    output: &mut String,
+    private_part: &mut String,
+    domain: BinaryLengthDomain,
+    name: &str,
+) {
+    // Prefix-call operators: the package does not `use Interfaces`, so the
+    // infix `Unsigned_64` operators are not directly visible here.
+    let octets = "Interfaces.Unsigned_64 (Binary_Vectors.Length (Value))";
+    let mut checks = Vec::new();
+    if domain.min_octets > 0 {
+        checks.push(format!(
+            "Interfaces.\">=\" ({octets}, {})",
+            domain.min_octets
+        ));
+    }
+    if let Some(max) = domain.max_octets {
+        checks.push(format!("Interfaces.\"<=\" ({octets}, {max})"));
+    }
+    let describe = match domain.max_octets {
+        Some(max) if max == domain.min_octets => format!("exactly {max} octets"),
+        Some(max) => format!("{} .. {max} octets", domain.min_octets),
+        None => format!("at least {} octets", domain.min_octets),
+    };
+    writeln!(
+        output,
+        concat!(
+            "   --  Validated octet carrier: {describe} (XSD length facets count\n",
+            "   --  octets). Obtainable only from Create or an existing carrier.\n",
+            "   type {name} is private;\n\n",
+            "   --  Raises Constraint_Error unless Value holds {describe}.\n",
+            "   function Create (Value : Binary_Vectors.Vector) return {name};\n\n",
+            "   function Value (Item : {name}) return Binary_Vectors.Vector;\n",
+        ),
+        name = name,
+        describe = describe,
+    )
+    .expect("writing to String cannot fail");
+    let create = if checks.is_empty() {
+        // `minLength = 0` without a maximum admits every octet count.
+        format!("({name}'(Data => Value))")
+    } else {
+        format!(
+            "(if {}\n       then {name}'(Data => Value)\n       else raise Standard.Constraint_Error\n         with \"{name} requires {describe}\")",
+            checks.join("\n         and then ")
+        )
+    };
+    writeln!(
+        private_part,
+        concat!(
+            "   type {name} is record\n",
+            "      --  Task 040/053: an explicitly failing component default, so a\n",
+            "      --  default-initialized object of this type cannot exist, even\n",
+            "      --  when the empty octet sequence is a legal value. Independent\n",
+            "      --  of -gnata and Assertion_Policy.\n",
+            "      Data : Binary_Vectors.Vector :=\n",
+            "        raise Standard.Program_Error\n",
+            "          with \"{name} requires initialization from Create\";\n",
+            "   end record;\n\n",
+            "   function Create (Value : Binary_Vectors.Vector) return {name}\n",
+            "   is {create};\n\n",
+            "   function Value (Item : {name}) return Binary_Vectors.Vector\n",
+            "   is (Item.Data);\n",
+        ),
+        name = name,
+        create = create,
+    )
+    .expect("writing to String cannot fail");
 }
 
 fn reject_any_constraints(constraints: &ConstraintSet, name: &str) -> Result<(), CodegenError> {
@@ -3956,19 +4067,50 @@ end Probe;
 
     #[test]
     fn binary_declaration_with_constraints_remains_unsupported() {
+        // Task 053: a length-only named Binary is now a checked carrier...
         let mut schema = track_schema();
         schema.types[0].kind = TypeKind::Primitive(PrimitiveKind::Binary);
         schema.types[0].constraints = ConstraintSet {
             length: Some(4),
             ..ConstraintSet::default()
         };
-        let error =
-            generate(&schema, CLOSED).expect_err("constrained binary declaration must fail");
-        assert!(
-            error
-                .message
-                .contains("unsupported Ada IR construct: constraints on")
-        );
+        generate(&schema, CLOSED).expect("length-constrained named Binary generates");
+        // ...but every facet outside the shared octet-length classifier
+        // still fails closed, attributed to the facet and the declaration.
+        for (constraints, reason) in [
+            (
+                ConstraintSet {
+                    length: Some(4),
+                    lexical: ams_gra_oms_ir::LexicalConstraintSet {
+                        pattern_groups: vec![ams_gra_oms_ir::PatternGroup {
+                            alternatives: vec![ams_gra_oms_ir::PatternExpression::xml_schema(
+                                "[0-9A-F]*",
+                            )],
+                        }],
+                        white_space: None,
+                    },
+                    ..ConstraintSet::default()
+                },
+                "Binary pattern constraints",
+            ),
+            (
+                ConstraintSet {
+                    min_inclusive: Some(ams_gra_oms_ir::NumericValue::Integer(0)),
+                    ..ConstraintSet::default()
+                },
+                "numeric Binary constraints",
+            ),
+        ] {
+            schema.types[0].constraints = constraints;
+            let error = generate(&schema, CLOSED).expect_err("unsupported Binary facet must fail");
+            assert!(
+                error
+                    .message
+                    .contains(&format!("unsupported Ada IR construct: {reason} on")),
+                "{}",
+                error.message
+            );
+        }
     }
 
     #[test]
@@ -4058,29 +4200,30 @@ end Probe;
             )));
         }
 
-        for kind in [PrimitiveKind::String, PrimitiveKind::Binary] {
-            let mut schema = track_schema();
-            schema.types[0].kind = TypeKind::Primitive(kind);
-            schema.types[0].constraints = ConstraintSet {
-                length: Some(4),
-                ..ConstraintSet::default()
-            };
-            let error = generate(&schema, CLOSED).expect_err("constraints must not be discarded");
-            // A constrained String now reports through the Task 037
-            // classifier, which names the facet profile rather than saying
-            // only "constraints". Either way it fails closed:
-            // is not the one supported profile.
-            assert!(
-                error
-                    .message
-                    .contains("unsupported Ada IR construct: constraints on")
-                    || error.message.contains(
-                        "unsupported constrained String declaration: unsupported facet profile"
-                    ),
-                "unexpected diagnostic for {kind:?}: {}",
-                error.message
-            );
-        }
+        // Task 053: Binary with only `length` is now a supported carrier, so
+        // only String remains in this length-only negative.
+        let kind = PrimitiveKind::String;
+        let mut schema = track_schema();
+        schema.types[0].kind = TypeKind::Primitive(kind);
+        schema.types[0].constraints = ConstraintSet {
+            length: Some(4),
+            ..ConstraintSet::default()
+        };
+        let error = generate(&schema, CLOSED).expect_err("constraints must not be discarded");
+        // A constrained String now reports through the Task 037
+        // classifier, which names the facet profile rather than saying
+        // only "constraints". Either way it fails closed:
+        // is not the one supported profile.
+        assert!(
+            error
+                .message
+                .contains("unsupported Ada IR construct: constraints on")
+                || error.message.contains(
+                    "unsupported constrained String declaration: unsupported facet profile"
+                ),
+            "unexpected diagnostic for {kind:?}: {}",
+            error.message
+        );
     }
 
     /// Lexical constraints still fail before rendering everywhere Task 036 has

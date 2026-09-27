@@ -683,6 +683,16 @@ constrained `AA_CodeType`, `BDS_AddressType`, `SHA_2_256_HashType` (and 2.6
 `IFF_RegisterType`) are `HexBinary`-provenanced but remain model NOT READY
 exactly as before. See [Task 052](task-052-hexbinary-provenance-codec.md).
 
+**Task 053 update:** named Binary restrictions whose effective facets are only
+`length`/`minLength`/`maxLength` (octets) are now model renderable in Ada,
+Rust and C++ through one shared classifier. Every constrained Binary in the
+pinned releases is an exact `length` with no other facet and is now
+renderable: UCI 2.5 `AA_CodeType` (6), `BDS_AddressType` (2),
+`SHA_2_256_HashType` (32); UCI 2.6 the same three plus `IFF_RegisterType` (7,
+via `HexBinaryType`). `HexBinaryType` itself is unconstrained and unchanged.
+Direct field-local Binary facets and Binary patterns remain unsupported. See
+[Task 053](task-053-constrained-binary-carriers.md).
+
 The iterative progression was:
 
 ```text

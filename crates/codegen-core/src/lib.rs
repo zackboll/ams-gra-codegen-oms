@@ -5,6 +5,7 @@ mod ada_optional;
 mod backend_layout;
 mod backend_names;
 mod backend_preflight;
+mod binary;
 mod coverage;
 mod floating;
 mod integral;
@@ -44,6 +45,9 @@ pub use backend_names::{
     schema_emits_unbounded_sequence_support, unsafe_named_declarations, validate_backend_names,
 };
 pub use backend_preflight::{BackendPreflightError, backend_preflight, backend_preflight_passes};
+pub use binary::{
+    BinaryConstraintError, BinaryLengthDomain, binary_length_domain, is_constrained_binary_carrier,
+};
 pub use coverage::{
     BackendCoverage, BackendLanguage, CoverageAnalysis, CoverageError, FeatureFamily,
     SchemaInventory,

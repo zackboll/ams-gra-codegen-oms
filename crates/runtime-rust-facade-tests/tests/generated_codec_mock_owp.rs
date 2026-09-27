@@ -174,6 +174,104 @@ fn task052_hex_binary_generated_codec_round_trips_through_mock_owp() {
     peer.expect_closed();
 }
 
+/// Task 053: the `constrained-binary` service. A typed constrained carrier
+/// is encoded as canonical uppercase hex; lowercase hex of a LEGAL octet
+/// count reaches the typed handler as the checked carrier; lexically valid
+/// hex of an ILLEGAL octet count is a decode event from the GENERATED model
+/// constructor, never a handler call.
+#[test]
+fn task053_constrained_binary_round_trips_through_mock_owp() {
+    use ams_gra_oms_runtime_rust_facade_tests::constrained_binary::model as m;
+    use ams_gra_oms_runtime_rust_facade_tests::constrained_binary::service_api::function_constrained_blob as blob;
+    use ams_gra_oms_runtime_rust_facade_tests::constrained_binary::service_codec::ServiceCodec as BlobCodec;
+
+    let peer = MockPeer::start();
+    let mut runtime =
+        SleetRuntime::connect(RuntimeConfig::new(&peer.url, "svc-1", "000.1.0"), BlobCodec)
+            .expect("connect");
+    assert!(peer.next_text().starts_with("INIT "));
+
+    let (seen_tx, seen) = mpsc::channel();
+    let subscription = blob::exchange_input_constrained_blob::subscribe(
+        &mut runtime,
+        move |message: &blob::exchange_input_constrained_blob::Payload| {
+            seen_tx.send(message.clone()).expect("test alive");
+        },
+    )
+    .expect("subscribe");
+    peer.expect("SUB sub-1 ConstrainedBlobNotice constrained-blob-topic");
+
+    let four = |bytes: [u8; 4]| m::Exact4::new(bytes.to_vec()).expect("4 octets");
+    let value = m::ConstrainedBlobPayload {
+        id: m::BoundedI64::new(53).expect("xs:int"),
+        exact: four([0x00, 0x0A, 0xEE, 0xFF]),
+        maybemin: None,
+        bounded: m::BoundedVec::new(Vec::new()).expect("0 of 0..3"),
+        boundedrequired: m::BoundedVec::new(vec![
+            m::Between2And6::new(vec![0xAB, 0xCD]).expect("2"),
+        ])
+        .expect("1 of 1..3"),
+        stream: m::UnboundedVec::new(Vec::new()).expect("0.."),
+        streamrequired: m::UnboundedVec::new(vec![four([1, 2, 3, 4])]).expect("1.."),
+        zero: m::ZeroBlob::new(Vec::new()).expect("0"),
+        base: None,
+        middle: None,
+        hashed: m::BlobExact::new(vec![0xEE; 8]).expect("8"),
+        plain: m::PlainBytes::new(vec![0x0F]),
+        pick: m::BlobChoice::Fixed(four([0xDE, 0xAD, 0xBE, 0xEF])),
+    };
+    blob::exchange_output_constrained_blob::publish(&mut runtime, &value).expect("publish");
+    let document = pub_body(&peer.next_text(), "constrained-blob-topic");
+    assert_eq!(
+        document,
+        serde_json::json!({ "ConstrainedBlobNotice": {
+            "Id": 53,
+            "Exact": "000AEEFF",
+            "BoundedRequired": ["ABCD"],
+            "StreamRequired": ["01020304"],
+            "Zero": "",
+            "Hashed": "EEEEEEEEEEEEEEEE",
+            "Plain": "0F",
+            "Pick": { "Fixed": "DEADBEEF" }
+        }})
+    );
+
+    // Lowercase hex of LEGAL octet counts reaches the typed handler.
+    peer.send(
+        r#"MSG sub-1 {"ConstrainedBlobNotice":{"Id":53,"Exact":"000aeeff","BoundedRequired":["abcd"],"StreamRequired":["01020304"],"Zero":"","Hashed":"eeeeeeeeeeeeeeee","Plain":"0f","Pick":{"Fixed":"deadbeef"}}}"#,
+    );
+    let received = seen.recv_timeout(WAIT).expect("typed MSG");
+    assert_eq!(received, value);
+    assert_eq!(received.exact.as_slice(), [0x00, 0x0A, 0xEE, 0xFF]);
+
+    // Lexically VALID hex, ILLEGAL octet count (3 for Exact4): the generated
+    // model constructor rejects it; the handler never runs.
+    peer.send(
+        r#"MSG sub-1 {"ConstrainedBlobNotice":{"Id":53,"Exact":"000aee","BoundedRequired":["abcd"],"StreamRequired":["01020304"],"Zero":"","Hashed":"eeeeeeeeeeeeeeee","Plain":"0f","Pick":{"Fixed":"deadbeef"}}}"#,
+    );
+    match runtime.recv_event_timeout(WAIT) {
+        Some(RuntimeEvent::SubscriptionDecodeError {
+            message_name,
+            error: MessageDecodeError::Codec(error),
+            ..
+        }) => {
+            assert_eq!(message_name, "ConstrainedBlobNotice");
+            assert_eq!(
+                error.message(),
+                "ConstrainedBlobPayload.Exact: value rejected by generated Exact4::new"
+            );
+        }
+        other => panic!("expected a codec decode-failure event, got {other:?}"),
+    }
+    assert!(seen.try_recv().is_err());
+
+    subscription.unsubscribe().expect("unsubscribe");
+    peer.expect("UNSUB sub-1");
+    runtime.close().expect("close");
+    peer.expect_closed();
+    println!("MOCK OWP CONSTRAINED BINARY: PASSED");
+}
+
 #[test]
 fn task050_generated_codec_round_trips_through_mock_owp() {
     let peer = MockPeer::start();

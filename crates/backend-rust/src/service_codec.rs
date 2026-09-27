@@ -22,8 +22,8 @@ use super::{error, snake_case, upper_camel};
 use ams_gra_oms_codegen_core::{
     BackendLanguage, CodegenError, DirectTemporalProfile, EffectiveValueMember, GenerationWorld,
     InclusiveIntegralDomain, ServiceApiModel, TypeEmission, analyze_service_codec,
-    direct_temporal_profile, effective_choice_alternatives, effective_record_fields,
-    field_storage_semantics, floating_domain, generated_enum_variant_name,
+    binary_length_domain, direct_temporal_profile, effective_choice_alternatives,
+    effective_record_fields, field_storage_semantics, floating_domain, generated_enum_variant_name,
     inclusive_integral_domain, oms_json_member_name, oms_json_type_name, plan_type_emissions,
     service_api_fixed_names,
 };
@@ -631,16 +631,28 @@ impl Renderer<'_> {
                 "Value::String(value.as_str().to_owned())".to_owned(),
                 checked("dec_str(value, path)"),
             ),
-            // Task 052: a named unconstrained Binary wrapper, through its
-            // public model API only (`as_slice`, `new`). Constrained Binary
-            // never reaches here: model readiness rejects it first.
+            // Task 052: a named Binary through its public model API only
+            // (`as_slice`, `new`). Task 053: the SHARED classifier decides
+            // which `new` exists. Unconstrained keeps the infallible
+            // `.map(T::new)`, byte-identical to Task 052. A length-constrained
+            // declaration goes through the generated checked `T::new`, which
+            // stays the only authority on octet count: no bound is restated
+            // here, and a lexically valid value of the wrong length is a
+            // model rejection at this member's path, not a hex error.
             PrimitiveKind::Binary
                 if declaration_binary_encoding(self.schema, declaration)
                     == Some(BinaryLexicalEncoding::HexBinary) =>
             {
+                let constrained = binary_length_domain(kind, &declaration.constraints)
+                    .map_err(|reason| error(format!("service codec: {reason} on {local}")))?
+                    .is_some();
                 (
                     "encode_hex_binary(value.as_slice())".to_owned(),
-                    format!("decode_hex_binary(value, path).map({rust}::new)"),
+                    if constrained {
+                        checked("decode_hex_binary(value, path)")
+                    } else {
+                        format!("decode_hex_binary(value, path).map({rust}::new)")
+                    },
                 )
             }
             other => {

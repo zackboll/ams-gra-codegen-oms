@@ -881,6 +881,14 @@ fn ada_wrapper_callable_owners(schema: &SchemaIr) -> Vec<&TypeDecl> {
                 // neither contributes a name.
                 PrimitiveKind::String => string_profile(kind, &declaration.constraints)
                     .is_ok_and(|profile| profile.is_some()),
+                // Task 053: only a supported length-constrained Binary emits
+                // the validated carrier. An unconstrained Binary keeps its
+                // plain record and publishes no subprogram; an unsupported
+                // facet fails closed before any output, so neither reserves
+                // a name.
+                PrimitiveKind::Binary => {
+                    crate::is_constrained_binary_carrier(kind, &declaration.constraints)
+                }
                 // Task 036: only the supported DateTime Zulu profile emits a
                 // wrapper. An unsupported temporal declaration fails closed in
                 // the backend before any output exists, so it contributes no
@@ -3072,6 +3080,96 @@ mod tests {
                 ..ConstraintSet::default()
             },
             ..primitive(name)
+        }
+    }
+
+    fn constrained_binary(name: &str, length: Option<u64>) -> TypeDecl {
+        TypeDecl {
+            kind: TypeKind::Primitive(PrimitiveKind::Binary),
+            constraints: ConstraintSet {
+                length,
+                ..ConstraintSet::default()
+            },
+            ..primitive(name)
+        }
+    }
+
+    /// Task 053: a constrained Binary carrier publishes `Create` / `Value`
+    /// through the SAME shared callable analysis, so a non-overloadable
+    /// declaration of either spelling collides and both sides are named.
+    #[test]
+    fn task053_constrained_binary_create_and_value_collide_with_a_type() {
+        for callable in ["Create", "Value"] {
+            let schema = schema_with(vec![
+                constrained_binary("Blob", Some(4)),
+                primitive(callable),
+            ]);
+            assert_collides(&schema, BackendLanguage::Ada, callable);
+            assert_eq!(
+                unsafe_named_declarations(
+                    &schema,
+                    BackendLanguage::Ada,
+                    GenerationWorld::ClosedSchemaSet
+                ),
+                BTreeSet::from([
+                    QualifiedName::new(NS, "Blob"),
+                    QualifiedName::new(NS, callable),
+                ])
+            );
+            // Rust and C++ carriers use member functions: no global name.
+            for language in [BackendLanguage::Rust, BackendLanguage::Cpp] {
+                assert!(backend_names_are_renderable(
+                    &schema,
+                    language,
+                    GenerationWorld::ClosedSchemaSet
+                ));
+            }
+        }
+    }
+
+    /// Task 053: the Binary carrier's overloads coexist with the String,
+    /// DateTime and floating carriers' `Create` / `Value`.
+    #[test]
+    fn task053_constrained_binary_overloads_coexist_with_other_carriers() {
+        let schema = schema_with(vec![
+            constrained_binary("Blob", Some(4)),
+            constrained_binary("ZeroBlob", Some(0)),
+            nato_special_words("Word"),
+            constrained_float("BurnRate"),
+            date_time_zulu("Instant"),
+        ]);
+        assert!(backend_names_are_renderable(
+            &schema,
+            BackendLanguage::Ada,
+            GenerationWorld::ClosedSchemaSet
+        ));
+    }
+
+    /// Task 053: an UNCONSTRAINED Binary and an UNSUPPORTED constrained
+    /// Binary emit no subprogram, so neither reserves `Create` / `Value`.
+    #[test]
+    fn task053_unconstrained_or_unsupported_binary_reserves_no_callable() {
+        let mut pattern = constrained_binary("Patterned", Some(4));
+        pattern
+            .constraints
+            .lexical
+            .pattern_groups
+            .push(ams_gra_oms_ir::PatternGroup {
+                alternatives: vec![ams_gra_oms_ir::PatternExpression::xml_schema("[0-9A-F]*")],
+            });
+        for binary in [constrained_binary("Plain", None), pattern] {
+            for callable in ["Create", "Value"] {
+                let schema = schema_with(vec![binary.clone(), primitive(callable)]);
+                assert!(
+                    backend_names_are_renderable(
+                        &schema,
+                        BackendLanguage::Ada,
+                        GenerationWorld::ClosedSchemaSet
+                    ),
+                    "{} must not reserve {callable}",
+                    binary.name.local_name
+                );
+            }
         }
     }
 

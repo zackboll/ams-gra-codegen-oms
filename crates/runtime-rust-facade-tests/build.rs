@@ -14,8 +14,10 @@ use std::process::Command;
 /// time (as `runtime_test_codec`, beside the unchanged handwritten-codec
 /// `runtime_test`), plus the Choice, inheritance, and `$type` fixtures.
 /// Task 052 adds the two xs:hexBinary codec services: the flipped Task 050
-/// `codec-binary` control and the `codec-hexbinary` shape matrix.
-const SERVICES: [(&str, &str, bool); 9] = [
+/// `codec-binary` control and the `codec-hexbinary` shape matrix. Task 053
+/// adds `constrained-binary`: named length-constrained xs:hexBinary carriers,
+/// and `constrained-binary-sleet`, its real-Sleet-routable companion.
+const SERVICES: [(&str, &str, bool); 11] = [
     ("runtime-test", "runtime_test", false),
     ("runtime-oam", "runtime_oam", false),
     ("codec-oam", "codec_oam", true),
@@ -25,6 +27,8 @@ const SERVICES: [(&str, &str, bool); 9] = [
     ("codec-shape", "codec_shape", true),
     ("codec-binary", "codec_binary", true),
     ("codec-hexbinary", "codec_hexbinary", true),
+    ("constrained-binary", "constrained_binary", true),
+    ("constrained-binary-sleet", "constrained_binary_sleet", true),
 ];
 
 /// Task 050: the pinned UCI 2.5 root (open-arsenal/uci/standard tag v2.5,
