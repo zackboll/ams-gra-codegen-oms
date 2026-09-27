@@ -992,8 +992,11 @@ impl<'a> CoverageAnalysis<'a> {
         // Message payloads are always effectively required/non-nillable
         // occurrences of their named type, so a zero-descendant payload is
         // never a supported absent-only occurrence (Task 026 section 31).
+        // A synthetic occurrence used only for the abstract-reference check;
+        // a global element is always in its own message namespace.
         let payload_field = FieldDecl {
             name: message.name.local_name.clone(),
+            wire_namespace_uri: Some(message.name.namespace_uri.clone()),
             type_ref: message.payload_type.clone(),
             cardinality: Cardinality::REQUIRED_ONE,
             nillable: false,
@@ -1782,6 +1785,7 @@ mod tests {
     fn field_ref(name: &str, type_ref: TypeRef) -> FieldDecl {
         FieldDecl {
             name: name.to_owned(),
+            wire_namespace_uri: Some(NS.to_owned()),
             type_ref,
             cardinality: Cardinality::REQUIRED_ONE,
             nillable: false,
@@ -2017,6 +2021,13 @@ mod tests {
         for declaration in &mut schema.types {
             declaration.name =
                 QualifiedName::new("urn:backend:record", &declaration.name.local_name);
+            // Task 051: the declaring document's qualified local elements move
+            // with it; a stale field namespace would be invalid IR.
+            if let TypeKind::Record { fields } = &mut declaration.kind {
+                for field in fields {
+                    field.wire_namespace_uri = Some("urn:backend:record".to_owned());
+                }
+            }
         }
         let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet)
             .expect("analysis should build");

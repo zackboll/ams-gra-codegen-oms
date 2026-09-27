@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="urn:invalid:local-form">
+  <xs:complexType name="Holder">
+    <xs:sequence>
+      <xs:element name="Value" type="xs:int" form="sometimes"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

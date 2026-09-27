@@ -204,13 +204,27 @@ fn constraints(value: &ConstraintSet, primitive: Option<PrimitiveKind>) -> Strin
     out
 }
 
+/// Task 051: the element's own wire identity, kept visually separate from
+/// both the source field name and the field's type.
+fn wire_member(field: &FieldDecl) -> String {
+    match field.wire_name().namespace_uri {
+        Some(namespace) => format!(
+            "wire member: <code>{{{}}}{}</code>",
+            escape(namespace),
+            escape(&field.name)
+        ),
+        None => "wire member namespace: absent (unqualified)".to_owned(),
+    }
+}
+
 fn members(index: &Index<'_>, fields: &[FieldDecl]) -> String {
     let mut out = String::from("<ul>");
     for field in fields {
         let _ = write!(
             out,
-            "<li><strong>{}</strong> — {} — cardinality {} — nillable: {} — source: {}{}{} </li>",
+            "<li><strong>{}</strong> — {} — type: {} — cardinality {} — nillable: {} — source: {}{}{} </li>",
             escape(&field.name),
+            wire_member(field),
             index.reference(&field.type_ref, true),
             cardinality(field.cardinality),
             field.nillable,

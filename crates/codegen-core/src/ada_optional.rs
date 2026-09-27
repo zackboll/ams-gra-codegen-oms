@@ -131,6 +131,7 @@ mod tests {
     fn field(target: TypeRefTarget, cardinality: Cardinality) -> FieldDecl {
         FieldDecl {
             name: "Value".to_owned(),
+            wire_namespace_uri: Some("urn:test".to_owned()),
             type_ref: TypeRef { target },
             cardinality,
             nillable: false,

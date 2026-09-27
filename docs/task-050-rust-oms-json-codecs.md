@@ -74,6 +74,12 @@ but not the local element's QName/form (`elementFormDefault` is validated and
 discarded by the frontend), so member namespaces cannot be proven for any
 other namespace.
 
+> **Superseded by [Task 051](task-051-member-qname-provenance.md).** Schema
+> IR now keeps each local element's effective target namespace
+> (`FieldDecl.wire_namespace_uri`). The blanket non-OAM rejection is replaced
+> by member-level semantics: qualified non-OAM members use `{ns}local`, and
+> unqualified members fail closed. OAM codec output is byte-identical.
+
 ### Binary boundary
 
 OAC-SPC-001 Rev E (UCI 2.5 schema style spec, CERT SCH-000752) permits
@@ -281,7 +287,7 @@ validation earlier is possible later hardening work.
 
 | Boundary | Why |
 | --- | --- |
-| Any codec-emitted declaration, referenced type, or `$type` descendant outside the OAM namespace | Schema IR has no local element QName/form, so `{ns}local` member keys and `$type` values cannot be proven. A future task can strengthen IR field/member QName semantics. This is a **codec** limit; the model and Task 049's non-OAM handwritten-codec tests are unaffected (generation is opt-in). |
+| Any codec-emitted declaration, referenced type, or `$type` descendant outside the OAM namespace | Schema IR has no local element QName/form, so `{ns}local` member keys and `$type` values cannot be proven. A future task can strengthen IR field/member QName semantics. This is a **codec** limit; the model and Task 049's non-OAM handwritten-codec tests are unaffected (generation is opt-in). **Superseded by [Task 051](task-051-member-qname-provenance.md):** only an *unqualified* stored member now fails closed. |
 | `PrimitiveKind::Binary` | hexBinary vs base64Binary lexical provenance is not retained. Control: `codec-binary.xsd` is model READY, codec NOT READY, and nothing is written. |
 | `Decimal`, `Time`, `Duration` | Not evidenced in scope. (The model backend fails first for most of them; the codec reports them separately if the model can render them.) |
 | Nillable members, optional Choice alternatives, Alias/List declarations | Not represented by the codec (none occur in the PositionReport closure). |

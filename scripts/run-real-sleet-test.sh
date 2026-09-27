@@ -46,6 +46,12 @@ run_one real_sleet task049_generated_facade_round_trips_through_real_sleet \
 # Task 050: generated facade + GENERATED codec, synthetic OAM fixture.
 run_one generated_codec_sleet task050_generated_codec_round_trips_through_real_sleet \
   'REAL SLEET GENERATED CODEC: PASSED'
+# Task 051: COMPATIBILITY PROBE, qualified NON-OAM generated codec. Pinned
+# Sleet keys global elements by bare local name, so it rejects the
+# spec-correct Clark-form names; the probe asserts and records that exact
+# outcome (see docs/task-051-member-qname-provenance.md).
+run_one generated_codec_sleet_non_oam task051_non_oam_generated_codec_probe_against_real_sleet \
+  'SLEET NON-OAM PROBE: RECORDED'
 # Task 050: the REAL UCI 2.5 PositionReport, only when the caller supplies the
 # pinned root (build.rs verifies its SHA-256 and fails on a mismatch).
 if [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ]; then

@@ -905,6 +905,24 @@ every report and generated file is byte-identical to Task 049.
 
 See [Task 050](task-050-rust-oms-json-codecs.md).
 
+## Task 051 — member QName provenance
+
+Codec readiness no longer rejects a declaration merely because it is
+outside the OAM namespace. Each stored Record field and Choice alternative
+carries its local element's effective target namespace from Schema IR. A
+qualified member gets `{namespace}local` (bare for OAM), and `$type` uses the
+concrete type's QName the same way. A member whose target namespace is
+absent (unqualified) is reported as
+`service codec boundary: <Type>.<Field> has an unqualified local element with
+no evidenced OMS JSON member-name mapping`. The only intentional change is
+that qualified non-OAM Rust `--with-codec` services, such as `runtime-test`,
+move from codec NOT READY to READY (or, where another boundary exists, now
+report that real boundary, e.g. Binary). Default reports, models, wrappers,
+and OAM codecs are byte-identical, and the backend single-namespace boundary
+is unchanged.
+
+See [Task 051](task-051-member-qname-provenance.md).
+
 ## Task 033 follow-up — constrained floating ranges
 
 The Task 031 measurements above are preserved as the historical record of that

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Task 051 matrix (H): an included document with its OWN
+     elementFormDefault="qualified". The including root has no default. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:m="urn:matrix"
+           targetNamespace="urn:matrix"
+           elementFormDefault="qualified">
+  <!-- C. schema qualified, no local form -> urn:matrix -->
+  <!-- E. schema qualified, form="unqualified" -> absent -->
+  <xs:complexType name="QualifiedBase">
+    <xs:sequence>
+      <xs:element name="Inherited" type="xs:int"/>
+      <xs:element name="LocallyUnqualified" type="xs:int" form="unqualified"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="QualifiedChoice">
+    <xs:choice>
+      <xs:element name="Up" type="xs:int"/>
+      <xs:element name="Down" type="xs:int" form="unqualified"/>
+    </xs:choice>
+  </xs:complexType>
+
+  <!-- G (reverse): a qualified-document extension of an unqualified-document base. -->
+  <xs:complexType name="QualifiedDerived">
+    <xs:complexContent>
+      <xs:extension base="m:DefaultRecord">
+        <xs:sequence>
+          <xs:element name="Extra" type="xs:int"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+</xs:schema>

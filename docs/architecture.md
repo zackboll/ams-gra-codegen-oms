@@ -338,6 +338,8 @@ generated codec (depends only on the payload type):
     payload fields and values, enum wire values, sequence/choice shape,
     effective inheritance, $type on closed abstract values, checked model
     construction
+    member keys from each local element's own QName (Task 051):
+        OAM -> local, qualified non-OAM -> {ns}local, unqualified -> fail closed
 ```
 
 After Task 050:
@@ -362,6 +364,27 @@ The generated codec is a separate layer over the unchanged model: model types
 gain no Serde derive, accessor, or other API, and the model's checked
 constructors stay the validation authority. See
 [Task 050](task-050-rust-oms-json-codecs.md).
+
+### Schema IR preserves wire semantics (Task 051)
+
+Schema IR is not merely a host-language type model. It intentionally keeps
+the wire semantics code generation needs:
+
+```text
+type QName                    TypeDecl.name
+message QName                 MessageDecl.name
+field local name              FieldDecl.name               (host naming)
+field effective namespace     FieldDecl.wire_namespace_uri (None = absent)
+```
+
+It still carries no raw XML prefix spelling, no XSD parser objects, and no
+backend syntax. Prefixes are lexical input detail; namespace URIs are
+semantic identity. Clark notation is formatted by the codec generator
+(`oms_json_member_name` / `oms_json_type_name`) and is never stored in IR.
+Model backends keep using `FieldDecl.name` alone, so host identifiers and
+member-collision checks are local-name based, and the backends stay
+single-namespace. See [Task 051](task-051-member-qname-provenance.md) and
+[ADR-0001](adr/0001-language-neutral-schema-ir.md).
 
 The same payload type can serve two global messages, so the codec never
 chooses the JSON member key and the runtime never looks inside a payload. One

@@ -26,6 +26,7 @@ fn duplicate_inherited_member_schema() -> ams_gra_oms_ir::SchemaIr {
         kind: TypeKind::Record {
             fields: vec![FieldDecl {
                 name: "Same".into(),
+                wire_namespace_uri: Some(ns.into()),
                 type_ref: TypeRef::primitive(PrimitiveKind::String),
                 cardinality: Cardinality::REQUIRED_ONE,
                 nillable: false,
@@ -264,6 +265,7 @@ fn direct_references_kinds_constraints_and_search_terms() {
     };
     let field = |name: &str, target: &str| FieldDecl {
         name: name.into(),
+        wire_namespace_uri: Some(ns.clone()),
         type_ref: named(target),
         cardinality: Cardinality::OPTIONAL_ONE,
         nillable: true,
@@ -358,4 +360,32 @@ fn direct_references_kinds_constraints_and_search_terms() {
     let landing = &files[0].contents;
     assert!(landing.contains("Namespace"));
     assert!(landing.contains(&ns));
+}
+
+/// Task 051: each field shows its wire identity separately from its source
+/// name and type: `{namespace}local` when qualified, "absent" when not.
+#[test]
+fn fields_show_wire_member_identity_separately_from_type() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/fixtures/service-generate/runtime-test.xsd");
+    let schema = load_schema_set_with_overlays(&root, &[]).unwrap();
+    let files = generate(&schema).unwrap();
+    let shared = page(&files, "SharedPayload");
+    assert!(
+        shared.contains(
+            "<li><strong>Count</strong> — wire member: <code>{urn:test}Count</code> — type: "
+        ),
+        "{shared}"
+    );
+    let unqualified = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/fixtures/service-generate/codec-unqualified.xsd");
+    let schema = load_schema_set_with_overlays(&unqualified, &[]).unwrap();
+    let files = generate(&schema).unwrap();
+    let payload = page(&files, "Payload");
+    assert!(
+        payload.contains(
+            "<li><strong>Field</strong> — wire member namespace: absent (unqualified) — type: "
+        ),
+        "{payload}"
+    );
 }

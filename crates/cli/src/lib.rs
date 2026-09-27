@@ -328,7 +328,9 @@ WITH CODEC (--with-codec, Task 050):
     types). A codec failure is reported on its own 'service codec boundary:'
     line, never as an unsupported UCI type. Only Rust has a generated codec;
     Ada and C++ services with OMS exchanges are NOT READY with --with-codec.
-    The codec covers OAM-namespace payloads only, and Binary values fail
+    Member keys use each local element's own QName (bare for the OAM
+    namespace, {namespace}local otherwise); an unqualified local element has
+    no specified OMS JSON member name and fails closed. Binary values fail
     closed (hexBinary/base64Binary provenance is not retained).
 
 EXIT CODES:

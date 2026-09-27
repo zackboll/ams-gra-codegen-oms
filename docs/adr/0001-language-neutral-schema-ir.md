@@ -41,6 +41,23 @@ Backends own only language representation and emission decisions.
 - the IR must be rich enough not to lose semantics needed by future backends;
 - frontend work happens earlier instead of being hidden inside individual generators.
 
+## Amendment (Task 051, 2026-09-27): the IR preserves wire semantics
+
+The IR is not merely a host-language type model. It intentionally preserves
+the semantic identities that code generation needs on the wire:
+
+- type QName (`TypeDecl.name`);
+- message QName (`MessageDecl.name`);
+- field local name (`FieldDecl.name`), the only input to host naming;
+- field effective target namespace (`FieldDecl.wire_namespace_uri`,
+  `None` when the XSD `{target namespace}` is absent).
+
+It still excludes raw XML prefix spelling, XSD parser objects, and backend
+syntax. Prefixes are lexical input detail; namespace URIs are semantic
+identity. Serialized forms such as OMS JSON Clark notation are produced by
+generators from this semantic data and are never stored in the IR. See
+[Task 051](../task-051-member-qname-provenance.md).
+
 ## Rejected alternatives
 
 ### Backend-specific XSD parsers

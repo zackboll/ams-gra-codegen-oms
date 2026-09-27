@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:c="urn:choice"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:choice"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- SYNTHETIC Task 051 fixture. NOT UCI. A qualified NON-OAM Choice: every
+       alternative's OMS JSON member key is Clark notation "{urn:choice}Alpha"
+       (OMSC-SPC-013 Rev B 6.1.2), never the bare local name and never the
+       Rust variant spelling. -->
+  <xs:complexType name="Selection">
+    <xs:choice>
+      <xs:element name="Alpha" type="xs:int"/>
+      <xs:element name="Beta" type="xs:string"/>
+    </xs:choice>
+  </xs:complexType>
+  <xs:complexType name="ChoicePayload">
+    <xs:sequence>
+      <xs:element name="Pick" type="c:Selection"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="ChoiceNotice" type="c:ChoicePayload" uci:version="001.000.000.000"/>
+</xs:schema>

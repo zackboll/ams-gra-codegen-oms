@@ -202,6 +202,7 @@ fn a_direct_primitive_date_time_field_is_baseline_renderable() {
             kind: TypeKind::Record {
                 fields: vec![FieldDecl {
                     name: "Stamp".to_owned(),
+                    wire_namespace_uri: Some(NS.to_owned()),
                     type_ref: TypeRef::primitive(PrimitiveKind::DateTime),
                     cardinality,
                     nillable: false,

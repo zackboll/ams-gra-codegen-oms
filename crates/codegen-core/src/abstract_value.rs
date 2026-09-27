@@ -714,6 +714,7 @@ mod tests {
     fn field(name: &str) -> FieldDecl {
         FieldDecl {
             name: name.to_owned(),
+            wire_namespace_uri: Some(NS.to_owned()),
             type_ref: TypeRef::primitive(PrimitiveKind::String),
             cardinality: Cardinality::REQUIRED_ONE,
             nillable: false,

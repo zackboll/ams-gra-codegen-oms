@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:f="urn:form"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:form"
+           elementFormDefault="unqualified"
+           version="000.1.0">
+  <!-- SYNTHETIC Task 051 local-form control A. NOT UCI. The schema default is
+       unqualified, but the one stored member overrides it with
+       form="qualified", so its EFFECTIVE target namespace is urn:form and the
+       codec is READY with member key "{urn:form}Value". -->
+  <xs:complexType name="Payload">
+    <xs:sequence>
+      <xs:element name="Value" type="xs:int" form="qualified"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="FormNotice" type="f:Payload" uci:version="001.000.000.000"/>
+</xs:schema>

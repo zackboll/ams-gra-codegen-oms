@@ -30,9 +30,19 @@ generation remains partial.
 
 The first probe added support for schema-level
 `elementFormDefault="qualified"`. The frontend recognizes and lexically validates
-the XSD enumeration values `qualified` and `unqualified`, then deliberately
-discards the value during normalization because it controls local element
-qualification in XML instances rather than the language-native UCI JSON model.
+the XSD enumeration values `qualified` and `unqualified`. It originally discarded
+the value during normalization.
+
+> **Superseded by Task 051.** Discarding `elementFormDefault` lost real wire
+> semantics: OMS JSON (OMSC-SPC-013 Rev B §6.1.2) names a particle member from
+> the element declaration's target namespace. The frontend now preserves each
+> local element's effective target namespace as `FieldDecl.wire_namespace_uri`
+> (local `form` overrides the declaring document's default; `None` when
+> absent). Both UCI roots are `elementFormDefault="qualified"` with no local
+> `form=` or `ref=`: every one of the 13,160 UCI 2.5 and 13,198 UCI 2.6 local
+> elements is qualified in the OAM namespace, so UCI member names and all
+> generated UCI output are unchanged. See
+> [Task 051](task-051-member-qname-provenance.md).
 
 Unsupported-construct diagnostics now identify the source file and deterministic
 `roxmltree` line and column. Both roots then stopped at line 2 on:

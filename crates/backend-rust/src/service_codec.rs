@@ -24,7 +24,8 @@ use ams_gra_oms_codegen_core::{
     InclusiveIntegralDomain, ServiceApiModel, TypeEmission, analyze_service_codec,
     direct_temporal_profile, effective_choice_alternatives, effective_record_fields,
     field_storage_semantics, floating_domain, generated_enum_variant_name,
-    inclusive_integral_domain, plan_type_emissions, service_api_fixed_names,
+    inclusive_integral_domain, oms_json_member_name, oms_json_type_name, plan_type_emissions,
+    service_api_fixed_names,
 };
 use ams_gra_oms_ir::{
     FieldDecl, OccurrenceShape, PrimitiveKind, QualifiedName, SchemaIr, TypeDecl, TypeKind,
@@ -302,6 +303,37 @@ pub fn generate_service_codec(
     Ok(output)
 }
 
+/// Task 051: the OMS JSON member key of one stored Record field or Choice
+/// alternative, from its OWN element QName (`FieldDecl::wire_name`) through
+/// the shared formatter. Never the Rust spelling and never the owner's,
+/// message's, or member type's namespace.
+fn member_key(field: &FieldDecl) -> Result<String, CodegenError> {
+    let wire = field.wire_name();
+    let namespace = wire.namespace_uri.ok_or_else(|| {
+        error(format!(
+            "service codec boundary: {} has an unqualified local element with no \
+             evidenced OMS JSON member-name mapping",
+            field.name
+        ))
+    })?;
+    Ok(oms_json_member_name(namespace, wire.local_name))
+}
+
+/// The `"$type"` value of a concrete complexType: its OWN declaration QName.
+fn type_name(name: &QualifiedName) -> String {
+    oms_json_type_name(&name.namespace_uri, &name.local_name)
+}
+
+/// `text` embedded in a generated `format!` string literal: Rust-escaped,
+/// with `{`/`}` doubled so a Clark key (`{urn:x}Name`) stays literal. A bare
+/// NCName is returned unchanged, so OAM output is byte-identical.
+fn format_literal(text: &str) -> String {
+    let quoted = format!("{text:?}");
+    quoted[1..quoted.len() - 1]
+        .replace('{', "{{")
+        .replace('}', "}}")
+}
+
 fn emission_name<'a>(emission: &'a TypeEmission<'_>) -> &'a QualifiedName {
     match emission {
         TypeEmission::Declaration(declaration) => &declaration.name,
@@ -544,7 +576,7 @@ impl Renderer<'_> {
     /// Encode statements inserting one stored member into `object`.
     fn encode_member(&self, field: &FieldDecl, access: &str) -> Result<String, CodegenError> {
         let base = self.base(field)?;
-        let key = &field.name;
+        let key = &member_key(field)?;
         Ok(match field.cardinality.shape() {
             OccurrenceShape::RequiredOne => format!(
                 "    object.insert({key:?}.to_owned(), {{ let x = &{access}; {} }});\n",
@@ -566,9 +598,10 @@ impl Renderer<'_> {
     /// `object` (a `Map`) at parent path `path`.
     fn decode_member(&self, field: &FieldDecl) -> Result<String, CodegenError> {
         let base = self.base(field)?;
-        let key = &field.name;
+        let key = &member_key(field)?;
+        let path_key = format_literal(key);
         let model = &self.model;
-        let p = format!("&format!(\"{{path}}.{key}\")");
+        let p = format!("&format!(\"{{path}}.{path_key}\")");
         Ok(match field.cardinality.shape() {
             OccurrenceShape::RequiredOne => format!(
                 "{}?",
@@ -586,7 +619,11 @@ impl Renderer<'_> {
                 };
                 format!(
                     "{{ let items = repeated(object, {key:?}, path)?; {model}::{wrapper}::new(items.iter().enumerate().map(|(i, v)| {}).collect::<Result<Vec<_>, _>>()?).ok_or_else(|| cardinality({p}, items.len()))? }}",
-                    self.decode_base(&base, "v", &format!("&format!(\"{{path}}.{key}[{{i}}]\")"))
+                    self.decode_base(
+                        &base,
+                        "v",
+                        &format!("&format!(\"{{path}}.{path_key}[{{i}}]\")")
+                    )
                 )
             }
         })
@@ -617,11 +654,13 @@ impl Renderer<'_> {
             encode.push_str(&self.encode_member(field, &format!("value.{member}"))?);
             writeln!(decode, "        {member}: {},", self.decode_member(field)?)
                 .expect("infallible");
-            allowed.push(format!("{:?}", field.name));
+            allowed.push(format!("{:?}", member_key(field)?));
         }
+        // The only `$type` a concrete Record accepts is its own type QName.
+        let own_type = type_name(&declaration.name);
         writeln!(
             output,
-            "\n// {local} (concrete Record; effective inherited fields, no nested base)\nfn encode_t{id:03}(value: &{rust}) -> Value {{\n    let mut object = Map::new();\n{encode}    let _ = value;\n    Value::Object(object)\n}}\n\nfn decode_t{id:03}(value: &Value, path: &str) -> Result<{rust}, CodecError> {{\n    let object = expect_object(value, path)?;\n    check_members(object, path, {local:?}, &[{}])?;\n    Ok({rust} {{\n{decode}    }})\n}}",
+            "\n// {local} (concrete Record; effective inherited fields, no nested base)\nfn encode_t{id:03}(value: &{rust}) -> Value {{\n    let mut object = Map::new();\n{encode}    let _ = value;\n    Value::Object(object)\n}}\n\nfn decode_t{id:03}(value: &Value, path: &str) -> Result<{rust}, CodecError> {{\n    let object = expect_object(value, path)?;\n    check_members(object, path, {own_type:?}, &[{}])?;\n    Ok({rust} {{\n{decode}    }})\n}}",
             allowed.join(", ")
         )
         .expect("infallible");
@@ -642,10 +681,13 @@ impl Renderer<'_> {
         let mut decode = String::new();
         let mut allowed = Vec::new();
         for alternative in alternatives {
+            // Rust variant from the source local name (as the model does);
+            // wire key from the element's own QName.
             let variant = upper_camel(&alternative.name)?;
-            let key = &alternative.name;
+            let key = &member_key(alternative)?;
+            let path_key = format_literal(key);
             let base = self.base(alternative)?;
-            let p = format!("&format!(\"{{path}}.{key}\")");
+            let p = format!("&format!(\"{{path}}.{path_key}\")");
             let (enc, dec) = match alternative.cardinality.shape() {
                 OccurrenceShape::RequiredOne => (
                     self.encode_base(&base, "x"),
@@ -668,7 +710,7 @@ impl Renderer<'_> {
                             self.decode_base(
                                 &base,
                                 "v",
-                                &format!("&format!(\"{{path}}.{key}[{{i}}]\")")
+                                &format!("&format!(\"{{path}}.{path_key}[{{i}}]\")")
                             )
                         ),
                     )
@@ -681,8 +723,9 @@ impl Renderer<'_> {
         }
         writeln!(
             output,
-            "\n// {local} (Choice: exactly one selected member)\nfn encode_t{id:03}(value: &{rust}) -> Value {{\n    let (key, member) = match value {{\n{encode}    }};\n    let mut object = Map::new();\n    object.insert(key.to_owned(), member);\n    Value::Object(object)\n}}\n\nfn decode_t{id:03}(value: &Value, path: &str) -> Result<{rust}, CodecError> {{\n    let object = expect_object(value, path)?;\n    check_members(object, path, {local:?}, &[{allowed}])?;\n    let mut selected = object.iter().filter(|(key, _)| key.as_str() != \"$type\");\n    let (Some((key, member)), None) = (selected.next(), selected.next()) else {{\n        return Err(invalid(path, \"a Choice requires exactly one selected member\"));\n    }};\n    Ok(match key.as_str() {{\n{decode}        other => return Err(invalid(path, &format!(\"unknown member {{other:?}}\"))),\n    }})\n}}",
-            allowed = allowed.join(", ")
+            "\n// {local} (Choice: exactly one selected member)\nfn encode_t{id:03}(value: &{rust}) -> Value {{\n    let (key, member) = match value {{\n{encode}    }};\n    let mut object = Map::new();\n    object.insert(key.to_owned(), member);\n    Value::Object(object)\n}}\n\nfn decode_t{id:03}(value: &Value, path: &str) -> Result<{rust}, CodecError> {{\n    let object = expect_object(value, path)?;\n    check_members(object, path, {own_type:?}, &[{allowed}])?;\n    let mut selected = object.iter().filter(|(key, _)| key.as_str() != \"$type\");\n    let (Some((key, member)), None) = (selected.next(), selected.next()) else {{\n        return Err(invalid(path, \"a Choice requires exactly one selected member\"));\n    }};\n    Ok(match key.as_str() {{\n{decode}        other => return Err(invalid(path, &format!(\"unknown member {{other:?}}\"))),\n    }})\n}}",
+            allowed = allowed.join(", "),
+            own_type = type_name(&declaration.name)
         )
         .expect("infallible");
         Ok(())
@@ -701,7 +744,9 @@ impl Renderer<'_> {
         let mut decode = String::new();
         for descendant in descendants {
             let variant = upper_camel(&descendant.name.local_name)?;
-            let concrete = &descendant.name.local_name;
+            // Task 051: the concrete TYPE declaration's own QName is
+            // authoritative for `$type`; encode and decode use the same value.
+            let concrete = &type_name(&descendant.name);
             let inner = self.id(&descendant.name)?;
             writeln!(
                 encode,

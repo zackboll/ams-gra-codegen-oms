@@ -44,13 +44,40 @@ fn direct_codec_generation_fails_closed_on_binary() {
     );
 }
 
+/// Task 051: a qualified non-OAM schema renders, with Clark member keys and
+/// Clark `$type`; the model's Rust spellings are unchanged.
 #[test]
-fn direct_codec_generation_fails_closed_outside_oam() {
-    let (codec, _model) = render("runtime-test");
+fn direct_codec_generation_uses_clark_keys_outside_oam() {
+    let (codec, model) = render("runtime-test");
+    let codec = codec.expect("qualified non-OAM renders");
+    assert!(model.contains("    pub count: BoundedI64<-2147483648, 2147483647>,"));
     assert!(
-        codec
-            .expect_err("non-OAM")
-            .contains("outside the OAM namespace")
+        codec.contains("object.insert(\"{urn:test}Count\".to_owned(), { let x = &value.count;")
+    );
+    // The literal `{`/`}` of a Clark key are escaped inside format! paths.
+    assert!(codec.contains("&format!(\"{path}.{{urn:test}}Count\")"));
+    assert!(codec.contains("check_members(object, path, \"{urn:test}SharedPayload\""));
+
+    let (codec, _) = render("codec-shape");
+    let codec = codec.expect("renders");
+    assert!(codec.contains("with_type(encode_t000(x), \"{urn:shape}BoxShape\")"));
+    assert!(codec.contains("\"{urn:shape}BoxShape\" => Ok(super::model::ShapeBase::BoxShape("));
+    assert_eq!(
+        render("codec-shape").0.expect("again"),
+        codec,
+        "deterministic"
+    );
+}
+
+/// Task 051: an unqualified stored member fails closed at the direct
+/// renderer too, before any source is produced.
+#[test]
+fn direct_codec_generation_fails_closed_on_unqualified_members() {
+    let (codec, _model) = render("codec-unqualified");
+    assert_eq!(
+        codec.expect_err("unqualified"),
+        "service codec boundary: Payload.Field has an unqualified local element with no \
+         evidenced OMS JSON member-name mapping"
     );
 }
 
