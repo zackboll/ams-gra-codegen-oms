@@ -674,6 +674,15 @@ exactly as documented above; the constraint units reiterated above (octets,
 never hexadecimal lexical characters) remain the authoritative semantics for
 any future constrained-Binary tranche.
 
+**Task 052 update:** every Binary in both pinned releases now carries
+explicit `xs:hexBinary` lexical provenance in Schema IR (UCI 2.5: 5 direct
+members + 3 named declarations; UCI 2.6: 0 direct + 5 named, including
+`IFF_RegisterType -> HexBinaryType -> xs:hexBinary`; zero unknown, zero
+`base64Binary`). Provenance and value-space support are independent: the
+constrained `AA_CodeType`, `BDS_AddressType`, `SHA_2_256_HashType` (and 2.6
+`IFF_RegisterType`) are `HexBinary`-provenanced but remain model NOT READY
+exactly as before. See [Task 052](task-052-hexbinary-provenance-codec.md).
+
 The iterative progression was:
 
 ```text

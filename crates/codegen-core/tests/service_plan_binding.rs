@@ -10,8 +10,8 @@ use ams_gra_oms_codegen_core::{
     MismatchRole, PlanBindingMismatch, ServicePlan, resolve_service_plan,
 };
 use ams_gra_oms_ir::{
-    Cardinality, ConstraintSet, FieldDecl, MessageDecl, NamespaceDecl, PrimitiveKind,
-    QualifiedName, SchemaIr, SourceRef, TypeDecl, TypeKind, TypeRef,
+    BinaryLexicalEncoding, Cardinality, ConstraintSet, FieldDecl, MessageDecl, NamespaceDecl,
+    PrimitiveKind, QualifiedName, SchemaIr, SourceRef, TypeDecl, TypeKind, TypeRef,
 };
 use ams_gra_oms_service_contract::parse_yaml;
 
@@ -338,6 +338,81 @@ fn changed_transitive_constraints_or_cardinality_are_rejected() {
             "{mismatch:?}"
         );
     }
+}
+
+/// Task 052: Binary lexical provenance is TypeRef semantics, so a plan bound
+/// to a schema whose selected Binary is hexBinary does not silently bind to
+/// an otherwise identical schema whose Binary has different (or unknown)
+/// provenance -- for a direct field AND for a named restriction's base. No
+/// codec-only identity is involved: the existing snapshot already compares
+/// member `type_ref` and declaration `base_type`.
+#[test]
+fn task052_changed_binary_lexical_provenance_is_rejected() {
+    let hex = || TypeRef::binary(BinaryLexicalEncoding::HexBinary);
+    let with_nested_value = |type_ref: TypeRef| {
+        let mut schema = schema();
+        let nested = schema
+            .types
+            .iter_mut()
+            .find(|declaration| declaration.name.local_name == "NestedType")
+            .expect("NestedType must exist");
+        nested.kind = TypeKind::Record {
+            fields: vec![field("Value", type_ref)],
+        };
+        schema
+    };
+    let plan = plan_for(&with_nested_value(hex()));
+    plan.verify_schema_binding(&with_nested_value(hex()))
+        .expect("identical provenance binds");
+    for other in [
+        TypeRef::primitive(PrimitiveKind::Binary),
+        TypeRef::binary(BinaryLexicalEncoding::Base64Binary),
+    ] {
+        let mismatch = plan
+            .verify_schema_binding(&with_nested_value(other))
+            .expect_err("changed Binary provenance must be rejected");
+        assert!(
+            matches!(
+                mismatch,
+                PlanBindingMismatch::Changed {
+                    role: MismatchRole::TypeDeclaration,
+                    ref name
+                } if name.local_name == "NestedType"
+            ),
+            "{mismatch:?}"
+        );
+    }
+
+    // A named Binary restriction referenced by the selected closure.
+    let with_named_binary = |base: TypeRef| {
+        let mut schema = with_nested_value(named("Blob"));
+        schema.types.push(TypeDecl {
+            name: QualifiedName::new(NS, "Blob"),
+            is_abstract: false,
+            base_type: Some(base),
+            kind: TypeKind::Primitive(PrimitiveKind::Binary),
+            constraints: ConstraintSet::default(),
+            documentation: None,
+            source: source(),
+        });
+        schema
+    };
+    let plan = plan_for(&with_named_binary(hex()));
+    let mismatch = plan
+        .verify_schema_binding(&with_named_binary(TypeRef::binary(
+            BinaryLexicalEncoding::Base64Binary,
+        )))
+        .expect_err("changed named-restriction provenance must be rejected");
+    assert!(
+        matches!(
+            mismatch,
+            PlanBindingMismatch::Changed {
+                role: MismatchRole::TypeDeclaration,
+                ref name
+            } if name.local_name == "Blob"
+        ),
+        "{mismatch:?}"
+    );
 }
 
 /// A `ServicePlan` is selected-service scoped, so changing or removing a

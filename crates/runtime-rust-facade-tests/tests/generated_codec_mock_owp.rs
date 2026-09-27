@@ -83,6 +83,97 @@ fn task051_non_oam_generated_codec_round_trips_through_mock_owp() {
     peer.expect_closed();
 }
 
+/// Task 052: the `codec-hexbinary` service (BlobNotice with direct, named,
+/// repeated, and Choice `xs:hexBinary` members) with its GENERATED codec:
+/// typed bytes
+/// -> generated codec -> generated publish façade -> `SleetRuntime` ->
+/// pinned sleet-client -> mock OWP. The PUB body carries CANONICAL uppercase
+/// hex; a MSG spelled in lowercase decodes to the same octets; an invalid
+/// hexBinary is a decode event, never a handler call.
+#[test]
+fn task052_hex_binary_generated_codec_round_trips_through_mock_owp() {
+    use ams_gra_oms_runtime_rust_facade_tests::codec_hexbinary::model as m;
+    use ams_gra_oms_runtime_rust_facade_tests::codec_hexbinary::service_api::function_blob as blob;
+    use ams_gra_oms_runtime_rust_facade_tests::codec_hexbinary::service_codec::ServiceCodec as HexCodec;
+
+    let peer = MockPeer::start();
+    let mut runtime =
+        SleetRuntime::connect(RuntimeConfig::new(&peer.url, "svc-1", "000.1.0"), HexCodec)
+            .expect("connect");
+    assert!(peer.next_text().starts_with("INIT "));
+
+    let (seen_tx, seen) = mpsc::channel();
+    let subscription = blob::exchange_input_blob::subscribe(
+        &mut runtime,
+        move |message: &blob::exchange_input_blob::Payload| {
+            seen_tx.send(message.clone()).expect("test alive");
+        },
+    )
+    .expect("subscribe");
+    peer.expect("SUB sub-1 BlobNotice blob-topic");
+
+    let int = |n| m::BoundedI64::new(n).expect("xs:int");
+    let value = m::BlobPayload {
+        id: int(9),
+        data: vec![0x00, 0x0A, 0xEE, 0xFF],
+        maybedata: None,
+        chunks: m::BoundedVec::new(vec![vec![0xAB]]).expect("1"),
+        stream: m::UnboundedVec::new(Vec::new()).expect("0"),
+        blob: m::BlobBytes::new(vec![0x0F]),
+        alias: None,
+        atomic: m::AtomicLike::HexBinaryValue(vec![0x00, 0xA1, 0xFF]),
+    };
+    blob::exchange_output_blob::publish(&mut runtime, &value).expect("publish");
+    let document = pub_body(&peer.next_text(), "blob-topic");
+    assert_eq!(
+        document,
+        serde_json::json!({ "BlobNotice": {
+            "Id": 9,
+            "Data": "000AEEFF",
+            "Chunks": ["AB"],
+            "Blob": "0F",
+            "Atomic": { "HexBinaryValue": "00A1FF" }
+        }})
+    );
+
+    // Lowercase hex on the wire decodes to exactly the same octets.
+    peer.send(
+        r#"MSG sub-1 {"BlobNotice":{"Id":9,"Data":"000aeeff","Blob":"0f","Atomic":{"HexBinaryValue":"00a1ff"}}}"#,
+    );
+    let received = seen.recv_timeout(WAIT).expect("typed MSG");
+    assert_eq!(received.data, [0x00, 0x0A, 0xEE, 0xFF]);
+    assert_eq!(received.blob.as_slice(), [0x0F]);
+    assert_eq!(
+        received.atomic,
+        m::AtomicLike::HexBinaryValue(vec![0x00, 0xA1, 0xFF])
+    );
+
+    // An odd-length hexBinary is a codec decode event, never a handler call.
+    peer.send(
+        r#"MSG sub-1 {"BlobNotice":{"Id":9,"Data":"000","Blob":"0F","Atomic":{"IntValue":1}}}"#,
+    );
+    match runtime.recv_event_timeout(WAIT) {
+        Some(RuntimeEvent::SubscriptionDecodeError {
+            message_name,
+            error: MessageDecodeError::Codec(error),
+            ..
+        }) => {
+            assert_eq!(message_name, "BlobNotice");
+            assert_eq!(
+                error.message(),
+                "BlobPayload.Data: \"000\" is not hexBinary: odd number of hexadecimal digits"
+            );
+        }
+        other => panic!("expected a codec decode-failure event, got {other:?}"),
+    }
+    assert!(seen.try_recv().is_err());
+
+    subscription.unsubscribe().expect("unsubscribe");
+    peer.expect("UNSUB sub-1");
+    runtime.close().expect("close");
+    peer.expect_closed();
+}
+
 #[test]
 fn task050_generated_codec_round_trips_through_mock_owp() {
     let peer = MockPeer::start();

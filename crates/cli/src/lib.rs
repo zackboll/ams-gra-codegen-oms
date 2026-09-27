@@ -330,8 +330,10 @@ WITH CODEC (--with-codec, Task 050):
     Ada and C++ services with OMS exchanges are NOT READY with --with-codec.
     Member keys use each local element's own QName (bare for the OAM
     namespace, {namespace}local otherwise); an unqualified local element has
-    no specified OMS JSON member name and fails closed. Binary values fail
-    closed (hexBinary/base64Binary provenance is not retained).
+    no specified OMS JSON member name and fails closed. A Binary value is
+    codec READY only when its XSD lexical provenance resolves to
+    xs:hexBinary (Task 052); it is then a JSON string of canonical uppercase
+    hex. Binary with unknown provenance, or base64Binary, fails closed.
 
 EXIT CODES:
     0    READY
@@ -430,6 +432,10 @@ WITH CODEC (--with-codec, Task 050):
     'service_codec'. It defines 'ServiceCodec', implementing
     ams_gra_oms_runtime_rust::OmsJsonCodec<P> once per unique payload type.
     A service with no OMS exchange needs no codec and gets no codec file.
+    Binary values with xs:hexBinary provenance (Task 052) are encoded as
+    canonical uppercase hex strings and decoded with XML Schema hexBinary
+    lexical rules by private helpers inside 'service_codec.rs'; the model
+    still stores bytes.
 
 EXIT CODES:
     0    Selected UCI type source and service API wrapper generated

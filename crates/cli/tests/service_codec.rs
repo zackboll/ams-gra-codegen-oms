@@ -143,24 +143,36 @@ fn task050_oam_codec_service_is_ready_and_generates_the_codec() {
     assert_eq!(listing(&plain), ["oam.rs", "service_api.rs"]);
 }
 
-/// B. A selected Binary: model READY, codec NOT READY, nothing written.
+/// B. A selected Binary.
+///
+/// Historical (Task 050): model READY but codec NOT READY and nothing
+/// written, because Schema IR did not retain whether the XSD primitive was
+/// hexBinary or base64Binary ("service codec boundary: BlobPayload.Data is
+/// Binary; Schema IR does not retain whether the XSD primitive was hexBinary
+/// or base64Binary, ...").
+///
+/// Task 052: the frontend records xs:hexBinary lexical provenance, so the
+/// SAME fixture is model READY and codec READY, and `Data` is spelled as
+/// canonical hexBinary. Default output is unchanged. The unknown-provenance
+/// negative control is codegen-core `task052_unknown_binary_provenance_fails_closed`
+/// (manual IR), because the production frontend no longer produces it.
 #[test]
-fn task050_selected_binary_is_model_ready_but_codec_not_ready() {
-    let (code, report) = check("codec-binary.xsd", "codec-binary.yaml", "rust", false);
-    assert_eq!(code, Some(0), "{report}");
-    assert!(!report.contains("codec status") && !report.contains("service codec boundary"));
+fn task052_selected_hex_binary_is_model_and_codec_ready() {
+    let (code, plain) = check("codec-binary.xsd", "codec-binary.yaml", "rust", false);
+    assert_eq!(code, Some(0), "{plain}");
+    assert!(!plain.contains("codec status") && !plain.contains("service codec boundary"));
     let (code, report) = check("codec-binary.xsd", "codec-binary.yaml", "rust", true);
-    assert_eq!(code, Some(1));
+    assert_eq!(code, Some(0), "{report}");
     assert!(
-        report.contains("renderable selected types: 1\nstatus: READY\n"),
+        report.starts_with(&plain),
+        "the codec section is only appended"
+    );
+    assert!(
+        report.ends_with("\ncodec renderable emitted declarations: 1/1\ncodec status: READY\n"),
         "{report}"
     );
-    assert!(report.contains("codec renderable emitted declarations: 0/1\n"));
-    assert!(report.contains(
-        "service codec boundary: BlobPayload.Data is Binary; Schema IR does not retain \
-         whether the XSD primitive was hexBinary or base64Binary"
-    ));
-    assert!(!report.contains("unsupported selected types"));
+    assert!(!report.contains("service codec boundary"));
+
     let (output, dir) = generate(
         "codec-binary.xsd",
         "codec-binary.yaml",
@@ -168,8 +180,120 @@ fn task050_selected_binary_is_model_ready_but_codec_not_ready() {
         true,
         "binary",
     );
-    assert_eq!(output.status.code(), Some(1));
-    assert!(!dir.exists(), "no output directory may be created");
+    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(
+        listing(&dir),
+        ["oam.rs", "service_api.rs", "service_codec.rs"]
+    );
+    let codec = std::fs::read_to_string(dir.join("service_codec.rs")).expect("codec");
+    assert!(codec.contains(
+        "object.insert(\"Data\".to_owned(), { let x = &value.data; encode_hex_binary(x) });"
+    ));
+    assert!(codec.contains(
+        "data: decode_hex_binary(required(object, \"Data\", path)?, &format!(\"{path}.Data\"))?,"
+    ));
+    // Exactly ONE private helper pair, no public helper, no serde bytes.
+    assert_eq!(codec.matches("fn encode_hex_binary(").count(), 1);
+    assert_eq!(codec.matches("fn decode_hex_binary(").count(), 1);
+    let public: Vec<&str> = codec
+        .lines()
+        .filter(|line| line.starts_with("pub "))
+        .collect();
+    assert_eq!(public, ["pub struct ServiceCodec;"]);
+    assert!(!codec.contains("serde_bytes") && !codec.contains("hex::"));
+
+    // The model is byte-identical with and without the flag, and still bytes.
+    let (_, plain_dir) = generate(
+        "codec-binary.xsd",
+        "codec-binary.yaml",
+        "rust",
+        false,
+        "binary-plain",
+    );
+    assert_eq!(listing(&plain_dir), ["oam.rs", "service_api.rs"]);
+    let model = std::fs::read(dir.join("oam.rs")).expect("model");
+    assert_eq!(
+        model,
+        std::fs::read(plain_dir.join("oam.rs")).expect("plain")
+    );
+    assert!(
+        String::from_utf8(model)
+            .expect("UTF-8")
+            .contains("    pub data: Vec<u8>,\n")
+    );
+}
+
+/// Task 052: a codec surface WITHOUT Binary emits no hex helper at all.
+#[test]
+fn task052_hex_helpers_are_emitted_only_for_hex_binary_surfaces() {
+    for (schema, contract, label) in [
+        ("codec-oam.xsd", "codec-oam.yaml", "nohex-oam"),
+        ("runtime-test.xsd", "runtime-test.yaml", "nohex-test"),
+        ("codec-choice.xsd", "codec-choice.yaml", "nohex-choice"),
+    ] {
+        let (output, dir) = generate(schema, contract, "rust", true, label);
+        assert_eq!(output.status.code(), Some(0), "{schema}");
+        let codec = std::fs::read_to_string(dir.join("service_codec.rs")).expect("codec");
+        assert!(!codec.contains("hex_binary"), "{schema}");
+    }
+    let (output, dir) = generate(
+        "codec-hexbinary.xsd",
+        "codec-hexbinary.yaml",
+        "rust",
+        true,
+        "hex-matrix",
+    );
+    assert_eq!(output.status.code(), Some(0));
+    let codec = std::fs::read_to_string(dir.join("service_codec.rs")).expect("codec");
+    assert_eq!(codec.matches("fn encode_hex_binary(").count(), 1);
+    assert_eq!(codec.matches("fn decode_hex_binary(").count(), 1);
+    // Named Binary goes through the generated wrapper's public API only.
+    assert!(codec.contains("encode_hex_binary(value.as_slice())"));
+    assert!(codec.contains("decode_hex_binary(value, path).map(super::model::BlobBytes::new)"));
+    assert!(codec.contains("decode_hex_binary(value, path).map(super::model::BlobAlias::new)"));
+}
+
+/// Task 052: a CONSTRAINED named hexBinary (length facet) has HexBinary
+/// provenance but is still a MODEL blocker, reported before codec readiness
+/// is measured. Provenance and value-space support are independent.
+#[test]
+fn task052_constrained_hex_binary_remains_a_model_blocker() {
+    let dir = output_dir("constrained-hex");
+    std::fs::create_dir_all(&dir).expect("dir");
+    let schema = dir.join("constrained.xsd");
+    std::fs::write(
+        &schema,
+        std::fs::read_to_string(fixture("codec-binary.xsd"))
+            .expect("fixture")
+            .replace(
+                "<xs:complexType name=\"BlobPayload\">",
+                "<xs:simpleType name=\"CodeType\"><xs:restriction base=\"xs:hexBinary\">\
+                 <xs:length value=\"6\"/></xs:restriction></xs:simpleType>\n  \
+                 <xs:complexType name=\"BlobPayload\">",
+            )
+            .replace("type=\"xs:hexBinary\"", "type=\"uci:CodeType\""),
+    )
+    .expect("write");
+    let output = Command::new(env!("CARGO_BIN_EXE_ams-gra-codegen-oms"))
+        .args(["service-check", "--schema"])
+        .arg(&schema)
+        .arg("--contract")
+        .arg(fixture("codec-binary.yaml"))
+        .args([
+            "--language",
+            "rust",
+            "--world",
+            "closed-schema",
+            "--with-codec",
+        ])
+        .output()
+        .expect("CLI runs");
+    let report = String::from_utf8(output.stdout).expect("UTF-8");
+    assert_eq!(output.status.code(), Some(1), "{report}");
+    assert!(report.contains("status: NOT READY\n"), "{report}");
+    assert!(report.contains("CodeType"), "{report}");
+    assert!(!report.contains("service codec boundary"), "{report}");
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 /// C (Task 051). A qualified NON-OAM payload (`runtime-test.xsd`,

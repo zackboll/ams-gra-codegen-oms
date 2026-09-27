@@ -229,10 +229,11 @@ jobs:
             task050_generated_codec_round_trips_through_mock_owp
           # Task 051 replaced task050_non_oam_payload_fails_codec_preflight with
           # task051_qualified_non_oam_payload_is_codec_ready (below): a
-          # qualified non-OAM payload is now codec READY.
+          # qualified non-OAM payload is now codec READY. Task 052 replaced
+          # task050_selected_binary_is_model_ready_but_codec_not_ready with
+          # task052_selected_hex_binary_is_model_and_codec_ready (Task 052 step).
           for test in \
             task050_oam_codec_service_is_ready_and_generates_the_codec \
-            task050_selected_binary_is_model_ready_but_codec_not_ready \
             task050_zero_oms_service_needs_no_codec \
             task050_ada_and_cpp_have_no_generated_codec; do
             require_one_test "$test" \
@@ -297,6 +298,90 @@ jobs:
             require_one_test "$test" \
               cargo test -p ams-gra-codegen-oms --test member_qname_projection "$test"
           done
+      # Task 052: xs:hexBinary lexical provenance and generated Rust Binary
+      # codecs. IR resolution through named restrictions, frontend
+      # provenance, unknown/base64 fail-closed controls, codec-binary flip,
+      # canonical encoder, lexical decoder corpora, optional/repeated/named/
+      # Choice shapes, and the mock OWP loop. Each gate must match and pass
+      # exactly one test.
+      - name: hexBinary provenance and Binary codecs (Task 052, must execute)
+        run: |
+          set -euo pipefail
+          require_one_test() {
+            name="$1"
+            shift
+            output="$("$@" -- --exact --nocapture 2>&1)"
+            printf '%s\n' "$output"
+            printf '%s\n' "$output" | grep -qE "^test ${name} \.\.\. ok$"
+            printf '%s\n' "$output" | grep -qE '^test result: ok\. 1 passed'
+          }
+          for test in \
+            tests::task052_binary_provenance_resolves_through_named_restriction_ancestry \
+            tests::task052_constraint_intersection_keeps_provenance \
+            tests::task052_unknown_and_non_binary_provenance_resolve_to_none \
+            tests::task052_rejects_binary_provenance_on_non_binary_references; do
+            require_one_test "$test" cargo test -p ams-gra-oms-ir --lib "$test"
+          done
+          for test in \
+            task052_direct_hex_binary_field_carries_provenance \
+            task052_named_restriction_chain_inherits_provenance \
+            task052_choice_hex_binary_alternative_carries_provenance \
+            task052_base64_binary_remains_an_explicit_unsupported_construct; do
+            require_one_test "$test" \
+              cargo test -p ams-gra-oms-xsd-frontend --test binary_provenance "$test"
+          done
+          for test in \
+            service_codec::tests::task052_unknown_binary_provenance_fails_closed \
+            service_codec::tests::task052_base64_binary_is_not_ready \
+            service_codec::tests::task052_named_binary_uses_declaration_ancestry; do
+            require_one_test "$test" \
+              cargo test -p ams-gra-oms-codegen-core --lib "$test"
+          done
+          require_one_test task052_changed_binary_lexical_provenance_is_rejected \
+            cargo test -p ams-gra-oms-codegen-core --test service_plan_binding \
+            task052_changed_binary_lexical_provenance_is_rejected
+          for test in \
+            direct_codec_generation_renders_hex_binary_provenance \
+            direct_codec_generation_fails_closed_on_unknown_binary_provenance; do
+            require_one_test "$test" \
+              cargo test -p ams-gra-oms-backend-rust --test service_codec "$test"
+          done
+          for test in \
+            task052_selected_hex_binary_is_model_and_codec_ready \
+            task052_hex_helpers_are_emitted_only_for_hex_binary_surfaces \
+            task052_constrained_hex_binary_remains_a_model_blocker; do
+            require_one_test "$test" \
+              cargo test -p ams-gra-codegen-oms --test service_codec "$test"
+          done
+          for test in \
+            task052_encoder_emits_canonical_uppercase_hex \
+            task052_decoder_accepts_xsd_hex_binary_lexical_forms \
+            task052_decoder_rejects_invalid_hex_binary \
+            task052_decoder_accepts_only_json_strings \
+            task052_optional_repeated_named_and_choice_binary_round_trip \
+            task052_binary_shape_diagnostics \
+            task052_codec_binary_control_round_trips; do
+            require_one_test "$test" \
+              cargo test -p ams-gra-oms-runtime-rust-facade-tests --test generated_codec_hexbinary "$test"
+          done
+          require_one_test task052_hex_binary_generated_codec_round_trips_through_mock_owp \
+            cargo test -p ams-gra-oms-runtime-rust-facade-tests --test generated_codec_mock_owp \
+            task052_hex_binary_generated_codec_round_trips_through_mock_owp
+      # Task 052: the REAL pinned UCI 2.5 and 2.6 roots (fetched OUTSIDE the
+      # repository; SHA-256 verified by the test). Every Binary must resolve
+      # to HexBinary through the shared IR query, with exact counts.
+      - name: Real UCI Binary provenance inventory (Task 052, must execute)
+        run: |
+          set -euo pipefail
+          UCI_ROOT="$(scripts/fetch-pinned-uci-2.5.sh "$RUNNER_TEMP/uci-2.5")"
+          UCI_26_ROOT="$(scripts/fetch-pinned-uci-2.6.sh "$RUNNER_TEMP/uci-2.6")"
+          output="$(AMS_GRA_UCI_2_5_ROOT="$UCI_ROOT" AMS_GRA_UCI_2_6_ROOT="$UCI_26_ROOT" \
+            cargo test --release -p ams-gra-oms-xsd-frontend --test uci_binary_provenance -- \
+            --nocapture --test-threads 1 2>&1)"
+          printf '%s\n' "$output"
+          printf '%s\n' "$output" | grep -q '^UCI 2.5 BINARY PROVENANCE INVENTORY: PASSED$'
+          printf '%s\n' "$output" | grep -q '^UCI 2.6 BINARY PROVENANCE INVENTORY: PASSED$'
+          printf '%s\n' "$output" | grep -qE '^test result: ok\. 2 passed'
       # PR #50 corrective: the runtime crates declare `rust-version = "1.95"`
       # (the pinned sleet-client needs edition 2024 let-chains). The toolchain
       # above floats on stable, so check the declared floor explicitly with the
@@ -314,8 +399,10 @@ jobs:
           # service_codec.rs (codec-oam, --with-codec), so the check above
           # already compiles generated codec source under 1.95.0. Task 051 adds
           # the generated NON-OAM codecs (runtime_test_codec, codec_choice,
-          # codec_inherit, codec_shape) to that same crate root. Also compile
-          # the generated REAL PositionReport codec under 1.95.0.
+          # codec_inherit, codec_shape) to that same crate root. Task 052 adds
+          # the generated hexBinary codecs (codec_binary, codec_hexbinary).
+          # Also compile the generated REAL PositionReport codec and (Task 052)
+          # the REAL SubsystemStream hexBinary codec under 1.95.0.
           UCI_ROOT="$(scripts/fetch-pinned-uci-2.5.sh "$RUNNER_TEMP/uci-2.5")"
           AMS_GRA_UCI_2_5_ROOT="$UCI_ROOT" cargo +1.95.0 check --locked \
             -p ams-gra-oms-runtime-rust-facade-tests --all-targets
@@ -335,6 +422,12 @@ jobs:
             --exact real::task050_real_position_report_decodes_and_re_encodes --nocapture 2>&1)"
           printf '%s\n' "$output"
           printf '%s\n' "$output" | grep -q '^REAL POSITIONREPORT CODEC: PASSED$'
+          printf '%s\n' "$output" | grep -qE '^test result: ok\. 1 passed'
+          # Task 052: the REAL UCI 2.5 SubsystemStream hexBinary codec.
+          output="$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test real_uci_subsystem_stream -- \
+            --exact real::task052_real_subsystem_stream_hex_binary_round_trips --nocapture 2>&1)"
+          printf '%s\n' "$output"
+          printf '%s\n' "$output" | grep -q '^REAL SUBSYSTEMSTREAM HEXBINARY CODEC: PASSED$'
           printf '%s\n' "$output" | grep -qE '^test result: ok\. 1 passed'
           scripts/run-real-sleet-test.sh
       # `AMS_GRA_REQUIRE_GNAT` turns the Ada probes' developer-machine skip

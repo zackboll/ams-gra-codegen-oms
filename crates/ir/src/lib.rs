@@ -193,6 +193,15 @@ pub enum ValidationError {
         location: &'static str,
         source: SourceRef,
     },
+    /// Task 052: Binary lexical provenance attached to a reference that is
+    /// not a direct `Primitive(Binary)` (another primitive, or a named
+    /// reference whose provenance belongs to its declaration's ancestry).
+    InvalidBinaryEncodingProvenance {
+        target: TypeRefTarget,
+        encoding: BinaryLexicalEncoding,
+        location: &'static str,
+        source: SourceRef,
+    },
     /// A qualified local element names a namespace the schema set does not
     /// declare.
     UndeclaredFieldNamespace {
@@ -274,6 +283,21 @@ impl fmt::Display for ValidationError {
                 f,
                 "duplicate message declaration {} at {}",
                 format_name(name),
+                format_source(source)
+            ),
+            Self::InvalidBinaryEncodingProvenance {
+                target,
+                encoding,
+                location,
+                source,
+            } => write!(
+                f,
+                "{} lexical provenance on non-Binary-primitive {} in {location} at {}",
+                encoding.xsd_name(),
+                match target {
+                    TypeRefTarget::Primitive(kind) => format!("primitive {kind:?}"),
+                    TypeRefTarget::Named(name) => format!("named reference {}", format_name(name)),
+                },
                 format_source(source)
             ),
             Self::UnresolvedTypeReference {
@@ -395,6 +419,7 @@ fn validate_structural_inheritance(schema: &SchemaIr) -> Result<(), ValidationEr
         }
         let Some(TypeRef {
             target: TypeRefTarget::Named(base),
+            ..
         }) = &declaration.base_type
         else {
             continue;
@@ -451,6 +476,7 @@ fn validate_named_simple_restrictions(schema: &SchemaIr) -> Result<(), Validatio
         };
         let Some(TypeRef {
             target: TypeRefTarget::Named(base),
+            ..
         }) = &declaration.base_type
         else {
             continue;
@@ -651,6 +677,19 @@ fn validate_reference(
     location: &'static str,
     source: &SourceRef,
 ) -> Result<(), ValidationError> {
+    // Task 052: lexical provenance belongs only to a direct Binary primitive.
+    // A named reference inherits it from the named declaration's ancestry,
+    // and no other primitive has a Binary lexical family.
+    if let Some(encoding) = type_ref.binary_encoding {
+        if type_ref.target != TypeRefTarget::Primitive(PrimitiveKind::Binary) {
+            return Err(ValidationError::InvalidBinaryEncodingProvenance {
+                target: type_ref.target.clone(),
+                encoding,
+                location,
+                source: source.clone(),
+            });
+        }
+    }
     if let TypeRefTarget::Named(target) = &type_ref.target {
         if !declared_types.contains(target) {
             return Err(ValidationError::UnresolvedTypeReference {
@@ -991,25 +1030,144 @@ impl FieldDecl {
     }
 }
 
+/// A reference to a primitive value kind or a named declaration.
+///
+/// `binary_encoding` is Task 052 **lexical provenance** of a DIRECT primitive
+/// reference: which XML Schema primitive (`xs:hexBinary` or
+/// `xs:base64Binary`) a [`PrimitiveKind::Binary`] reference came from. It is
+/// not part of the value space -- both primitives denote finite sequences of
+/// octets -- so no model backend reads it. Encodings whose spelling depends on
+/// the XSD primitive (OMS JSON) read it through [`resolve_binary_encoding`].
+///
+/// `None` means unknown provenance. It is legal IR (synthetic or
+/// hand-constructed Binary is still semantic octets); only a consumer that
+/// needs the lexical family must refuse it. Only a `Primitive(Binary)` target
+/// may carry `Some` ([`SchemaIr::validate`]); a named reference never does,
+/// because its provenance belongs to the named declaration's own primitive
+/// ancestry, not to each referencing field.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeRef {
     pub target: TypeRefTarget,
+    pub binary_encoding: Option<BinaryLexicalEncoding>,
 }
 
 impl TypeRef {
+    /// A primitive reference with no lexical provenance.
     #[must_use]
     pub const fn primitive(kind: PrimitiveKind) -> Self {
         Self {
             target: TypeRefTarget::Primitive(kind),
+            binary_encoding: None,
         }
     }
 
+    /// A direct [`PrimitiveKind::Binary`] reference whose XML Schema lexical
+    /// primitive is known.
+    #[must_use]
+    pub const fn binary(encoding: BinaryLexicalEncoding) -> Self {
+        Self {
+            target: TypeRefTarget::Primitive(PrimitiveKind::Binary),
+            binary_encoding: Some(encoding),
+        }
+    }
+
+    /// A named reference. It never carries lexical provenance of its own.
     #[must_use]
     pub fn named(name: QualifiedName) -> Self {
         Self {
             target: TypeRefTarget::Named(name),
+            binary_encoding: None,
         }
     }
+}
+
+/// The XML Schema primitive a [`PrimitiveKind::Binary`] value was declared
+/// with (XML Schema Part 2 2E sections 3.2.15 and 3.2.16). Both have the same
+/// value space (finite-length sequences of octets); they differ only in their
+/// lexical representation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BinaryLexicalEncoding {
+    /// `xs:hexBinary`: two hexadecimal digits per octet.
+    HexBinary,
+    /// `xs:base64Binary`: RFC 2045 Base64. Representable for completeness;
+    /// the production frontend does not emit it (the pinned UCI 2.5/2.6
+    /// schema sets contain no `xs:base64Binary`).
+    Base64Binary,
+}
+
+impl BinaryLexicalEncoding {
+    /// The XML Schema built-in datatype name, for diagnostics only.
+    #[must_use]
+    pub const fn xsd_name(self) -> &'static str {
+        match self {
+            Self::HexBinary => "hexBinary",
+            Self::Base64Binary => "base64Binary",
+        }
+    }
+}
+
+/// Task 052: the XML Schema lexical primitive behind a Binary value
+/// reference.
+///
+/// * a direct `Primitive(Binary)` reference answers with its own provenance;
+/// * a named reference answers with [`declaration_binary_encoding`] of the
+///   referenced declaration, following its restriction ancestry;
+/// * anything else, an unresolved name, or unknown provenance is `None`.
+///
+/// This is the single shared query; consumers never walk `base_type` chains
+/// themselves.
+#[must_use]
+pub fn resolve_binary_encoding(
+    schema: &SchemaIr,
+    type_ref: &TypeRef,
+) -> Option<BinaryLexicalEncoding> {
+    resolve_binary_encoding_guarded(schema, type_ref, &mut BTreeSet::new())
+}
+
+/// Task 052: the XML Schema lexical primitive of a named `Primitive(Binary)`
+/// declaration, resolved through its `base_type` restriction ancestry
+/// (`B -> A -> xs:hexBinary`). A declaration without a base, a non-Binary
+/// declaration, or a cyclic chain is `None`.
+#[must_use]
+pub fn declaration_binary_encoding(
+    schema: &SchemaIr,
+    declaration: &TypeDecl,
+) -> Option<BinaryLexicalEncoding> {
+    let mut visited = BTreeSet::new();
+    visited.insert(declaration.name.clone());
+    declaration_binary_encoding_guarded(schema, declaration, &mut visited)
+}
+
+fn resolve_binary_encoding_guarded(
+    schema: &SchemaIr,
+    type_ref: &TypeRef,
+    visited: &mut BTreeSet<QualifiedName>,
+) -> Option<BinaryLexicalEncoding> {
+    match &type_ref.target {
+        TypeRefTarget::Primitive(PrimitiveKind::Binary) => type_ref.binary_encoding,
+        TypeRefTarget::Primitive(_) => None,
+        TypeRefTarget::Named(name) => {
+            if !visited.insert(name.clone()) {
+                return None;
+            }
+            let declaration = schema
+                .types
+                .iter()
+                .find(|declaration| &declaration.name == name)?;
+            declaration_binary_encoding_guarded(schema, declaration, visited)
+        }
+    }
+}
+
+fn declaration_binary_encoding_guarded(
+    schema: &SchemaIr,
+    declaration: &TypeDecl,
+    visited: &mut BTreeSet<QualifiedName>,
+) -> Option<BinaryLexicalEncoding> {
+    if declaration.kind != TypeKind::Primitive(PrimitiveKind::Binary) {
+        return None;
+    }
+    resolve_binary_encoding_guarded(schema, declaration.base_type.as_ref()?, visited)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -2376,6 +2534,131 @@ mod tests {
         assert_eq!(
             error.to_string(),
             "complex-type inheritance cycle: {urn:test}A -> {urn:test}B -> {urn:test}C -> {urn:test}A"
+        );
+    }
+
+    /// Task 052: `Hex0 restricts xs:hexBinary`, `Hex1 restricts Hex0`,
+    /// `Hex2 restricts Hex1`, and a field that merely references `Hex2`.
+    fn hex_chain() -> SchemaIr {
+        let mut hex0 = declaration("Hex0", TypeKind::Primitive(PrimitiveKind::Binary));
+        hex0.base_type = Some(TypeRef::binary(BinaryLexicalEncoding::HexBinary));
+        let mut hex1 = declaration("Hex1", TypeKind::Primitive(PrimitiveKind::Binary));
+        hex1.base_type = Some(named("Hex0"));
+        let mut hex2 = declaration("Hex2", TypeKind::Primitive(PrimitiveKind::Binary));
+        hex2.base_type = Some(named("Hex1"));
+        let holder = declaration(
+            "Holder",
+            TypeKind::Record {
+                fields: vec![field(named("Hex2"))],
+            },
+        );
+        schema(vec![hex0, hex1, hex2, holder])
+    }
+
+    /// The single shared query answers HexBinary for every link and for the
+    /// referencing field, which carries no provenance of its own.
+    #[test]
+    fn task052_binary_provenance_resolves_through_named_restriction_ancestry() {
+        let schema = hex_chain();
+        assert_eq!(schema.validate(), Ok(()));
+        for (index, name) in ["Hex0", "Hex1", "Hex2"].into_iter().enumerate() {
+            assert_eq!(
+                declaration_binary_encoding(&schema, &schema.types[index]),
+                Some(BinaryLexicalEncoding::HexBinary),
+                "{name}"
+            );
+            assert_eq!(
+                resolve_binary_encoding(&schema, &named(name)),
+                Some(BinaryLexicalEncoding::HexBinary),
+                "{name}"
+            );
+        }
+        let TypeKind::Record { fields } = &schema.types[3].kind else {
+            unreachable!()
+        };
+        assert_eq!(fields[0].type_ref.binary_encoding, None, "not copied");
+        assert_eq!(
+            resolve_binary_encoding(&schema, &fields[0].type_ref),
+            Some(BinaryLexicalEncoding::HexBinary)
+        );
+    }
+
+    /// Constraint narrowing along the chain does not touch provenance.
+    #[test]
+    fn task052_constraint_intersection_keeps_provenance() {
+        let mut schema = hex_chain();
+        schema.types[1].constraints.max_length = Some(8);
+        schema.types[2].constraints.length = Some(4);
+        schema.types[2].constraints.max_length = Some(8);
+        assert_eq!(schema.validate(), Ok(()));
+        assert_eq!(
+            declaration_binary_encoding(&schema, &schema.types[2]),
+            Some(BinaryLexicalEncoding::HexBinary)
+        );
+    }
+
+    #[test]
+    fn task052_unknown_and_non_binary_provenance_resolve_to_none() {
+        // Direct Binary with no provenance is legal IR (semantic octets).
+        let direct = TypeRef::primitive(PrimitiveKind::Binary);
+        let holder = declaration(
+            "Holder",
+            TypeKind::Record {
+                fields: vec![field(direct.clone())],
+            },
+        );
+        // A named Binary with NO base (synthetic IR) is unknown too.
+        let bare = declaration("Bare", TypeKind::Primitive(PrimitiveKind::Binary));
+        let text = declaration("Text", TypeKind::Primitive(PrimitiveKind::String));
+        let schema = schema(vec![holder, bare, text]);
+        assert_eq!(schema.validate(), Ok(()));
+        assert_eq!(resolve_binary_encoding(&schema, &direct), None);
+        assert_eq!(resolve_binary_encoding(&schema, &named("Bare")), None);
+        assert_eq!(resolve_binary_encoding(&schema, &named("Text")), None);
+        assert_eq!(resolve_binary_encoding(&schema, &named("Missing")), None);
+        // TypeRef::named never fabricates provenance.
+        assert_eq!(named("Hex0").binary_encoding, None);
+        // Base64Binary is representable and resolves as itself, never as hex.
+        assert_eq!(
+            resolve_binary_encoding(
+                &schema,
+                &TypeRef::binary(BinaryLexicalEncoding::Base64Binary)
+            ),
+            Some(BinaryLexicalEncoding::Base64Binary)
+        );
+    }
+
+    /// Impossible states: provenance on another primitive, or on a named
+    /// reference (here a named base type).
+    #[test]
+    fn task052_rejects_binary_provenance_on_non_binary_references() {
+        let mut wrong_primitive = TypeRef::primitive(PrimitiveKind::SignedInteger);
+        wrong_primitive.binary_encoding = Some(BinaryLexicalEncoding::HexBinary);
+        let holder = declaration(
+            "Holder",
+            TypeKind::Record {
+                fields: vec![field(wrong_primitive)],
+            },
+        );
+        assert_eq!(
+            schema(vec![holder])
+                .validate()
+                .expect_err("invalid")
+                .to_string(),
+            "hexBinary lexical provenance on non-Binary-primitive primitive SignedInteger \
+             in record field at test.ir:1"
+        );
+
+        let mut named_base = hex_chain();
+        named_base.types[1]
+            .base_type
+            .as_mut()
+            .expect("base")
+            .binary_encoding = Some(BinaryLexicalEncoding::HexBinary);
+        assert_eq!(
+            named_base.validate().expect_err("invalid").to_string(),
+            "hexBinary lexical provenance on non-Binary-primitive named reference \
+             {urn:test}Hex0 in base type at test.ir:1"
         );
     }
 }

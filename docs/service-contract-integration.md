@@ -923,6 +923,27 @@ is unchanged.
 
 See [Task 051](task-051-member-qname-provenance.md).
 
+## Task 052 — hexBinary provenance and Binary codecs
+
+`service-check --with-codec` no longer reports every Binary value as a codec
+boundary. A Binary whose XSD lexical provenance resolves to `xs:hexBinary`
+(directly, or through named restrictions) is codec READY and encoded as a
+canonical uppercase hex JSON string. The Task 050 `codec-binary` control moves
+from model READY / codec NOT READY (`0/1`) to model READY / codec READY
+(`1/1`). A Binary whose provenance is unknown (only possible in hand-built IR)
+reports `service codec boundary: <Type>.<Field> is Binary but its XSD lexical
+encoding provenance is unknown`; a `base64Binary` provenance reports that its
+codec mapping is not implemented. Length-constrained Binary is still a MODEL
+blocker, reported before codec readiness is measured.
+
+Real UCI 2.5 selected messages whose closure contains hexBinary: the two
+category-A messages (`SubsystemStream`, `SpectralDensityReport`) move from
+codec NOT READY to codec READY; see the inventory in
+[Task 052](task-052-hexbinary-provenance-codec.md). Default reports, models,
+wrappers, and Binary-free codecs are byte-identical, and the ServicePlan
+semantic binding now distinguishes Binary lexical provenance through the
+`TypeRef`s it already compared.
+
 ## Task 033 follow-up — constrained floating ranges
 
 The Task 031 measurements above are preserved as the historical record of that

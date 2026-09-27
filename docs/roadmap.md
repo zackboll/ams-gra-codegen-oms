@@ -695,7 +695,7 @@ Progress (typed LA-CAL integration as a whole is **not** complete):
       derives, never the Rust layout). Every decode is built through the
       generated model's checked constructors. The real UCI 2.5
       `PositionReport` round-trips through unmodified pinned Sleet as a typed
-      `PositionReportMT` in CI. Binary fails closed.
+      `PositionReportMT` in CI. Binary failed closed until Task 052.
 - [x] qualified single-namespace extension member QName support (Task 051).
       Schema IR preserves each local element's effective target namespace
       (`FieldDecl.wire_namespace_uri`, from `elementFormDefault` and local
@@ -709,7 +709,20 @@ Progress (typed LA-CAL integration as a whole is **not** complete):
 - [ ] unqualified member OMS JSON semantics: OMSC-SPC-013 Rev B gives no
       spelling for an absent element namespace, so it fails closed.
 - [ ] `xs:element ref` support.
-- [ ] hexBinary/base64Binary lexical provenance in Schema IR (Binary codec).
+- [x] `xs:hexBinary` lexical provenance in Schema IR (Task 052):
+      `TypeRef.binary_encoding` on the primitive ancestry, resolved through
+      named restrictions by one shared query; unknown provenance stays legal
+      IR but codec NOT READY.
+- [x] Rust hexBinary OMS JSON codec (Task 052): canonical uppercase encode,
+      XSD collapse + case-insensitive decode, one private generated helper
+      pair, no new dependency. Real UCI 2.5 `SubsystemStream` round-trips
+      through unmodified pinned Sleet.
+- [ ] `xs:base64Binary` support, if a real schema needs it (none of the
+      pinned UCI 2.5/2.6 documents use it; it stays an explicit unsupported
+      frontend construct and a fail-closed codec provenance).
+- [ ] constrained Binary model carriers (`length`/`minLength`/`maxLength`
+      in octets, e.g. UCI `AA_CodeType`, `SHA_2_256_HashType`); these are
+      HexBinary-provenanced but still model NOT READY.
 - [ ] reconnect/backoff, TLS/auth policy, timers, service lifecycle.
 
 ```text
@@ -717,11 +730,14 @@ Task 048:  generated type-safe operation
 Task 049:  first reusable runtime executing that operation through real LA-CAL
 Task 050:  generated Rust payload-body OMS JSON codecs
 Task 051:  local element wire QNames in Schema IR; qualified non-OAM codecs
+Task 052:  xs:hexBinary lexical provenance in Schema IR; Rust hex codecs
 ```
 
 See [Task 049](task-049-rust-la-cal-runtime.md),
-[Task 050](task-050-rust-oms-json-codecs.md), and
-[Task 051](task-051-member-qname-provenance.md).
+[Task 050](task-050-rust-oms-json-codecs.md),
+[Task 051](task-051-member-qname-provenance.md), and
+[Task 052](task-052-hexbinary-provenance-codec.md). Generic Binary codec
+completeness is NOT claimed: only hexBinary, only Rust, only unconstrained.
 
 ## Phase 4 — SPARK-oriented Ada backend
 

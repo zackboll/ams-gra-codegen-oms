@@ -2230,7 +2230,10 @@ mod tests {
         FieldDecl {
             name: name.to_owned(),
             wire_namespace_uri: Some(NS.to_owned()),
-            type_ref: TypeRef { target },
+            type_ref: TypeRef {
+                target,
+                binary_encoding: None,
+            },
             cardinality,
             nillable: false,
             constraints: ConstraintSet::default(),
@@ -2890,6 +2893,7 @@ mod tests {
         let mut descendant = record("Kind", vec![]);
         descendant.base_type = Some(TypeRef {
             target: TypeRefTarget::Named(QualifiedName::new(NS, "Base")),
+            binary_encoding: None,
         });
         let holder = record(
             "Holder",
@@ -3100,6 +3104,7 @@ mod tests {
         let mut derived = nato_special_words("DerivedWord");
         derived.base_type = Some(TypeRef {
             target: TypeRefTarget::Named(QualifiedName::new(NS, "Word")),
+            binary_encoding: None,
         });
         let schema = schema_with(vec![
             nato_special_words("Word"),
@@ -3332,6 +3337,7 @@ mod tests {
         let mut derived = record("Derived", Vec::new());
         derived.base_type = Some(TypeRef {
             target: TypeRefTarget::Named(QualifiedName::new(NS, base_name)),
+            binary_encoding: None,
         });
         let holder = record(
             "Holder",
@@ -3409,6 +3415,7 @@ mod tests {
         let mut concrete = record("Concrete", Vec::new());
         concrete.base_type = Some(TypeRef {
             target: TypeRefTarget::Named(QualifiedName::new(NS, "BoundedVec")),
+            binary_encoding: None,
         });
         let holder = record(
             "Holder",
@@ -3480,6 +3487,7 @@ mod tests {
         let mut derived = record("Derived", Vec::new());
         derived.base_type = Some(TypeRef {
             target: TypeRefTarget::Named(QualifiedName::new(NS, "BoundedVec")),
+            binary_encoding: None,
         });
         let schema = schema_with(vec![base, derived]);
         let unsafe_names = unsafe_named_declarations(
@@ -3622,6 +3630,7 @@ mod tests {
         let mut derived = record("Derived", Vec::new());
         derived.base_type = Some(TypeRef {
             target: TypeRefTarget::Named(QualifiedName::new(NS, "Base")),
+            binary_encoding: None,
         });
         schema_with(vec![
             primitive("Item"),
@@ -3660,6 +3669,7 @@ mod tests {
         let mut derived = record("Derived", Vec::new());
         derived.base_type = Some(TypeRef {
             target: TypeRefTarget::Named(QualifiedName::new(NS, "Base")),
+            binary_encoding: None,
         });
         schema_with(vec![
             primitive("Item"),
@@ -3696,6 +3706,7 @@ mod tests {
         let mut derived = record("Derived", Vec::new());
         derived.base_type = Some(TypeRef {
             target: TypeRefTarget::Named(QualifiedName::new(NS, "Base")),
+            binary_encoding: None,
         });
         let schema = schema_with(vec![base, derived]);
         let unsafe_names = unsafe_named_declarations(
@@ -3733,6 +3744,7 @@ mod tests {
         let mut concrete = record("Concrete", Vec::new());
         concrete.base_type = Some(TypeRef {
             target: TypeRefTarget::Named(QualifiedName::new(NS, "Base")),
+            binary_encoding: None,
         });
         let types = vec![
             primitive("Item"),
@@ -3782,6 +3794,7 @@ mod tests {
         let mut concrete = record("Concrete", Vec::new());
         concrete.base_type = Some(TypeRef {
             target: TypeRefTarget::Named(QualifiedName::new(NS, "BoundedVec")),
+            binary_encoding: None,
         });
         let schema = schema_with(vec![
             base,
@@ -3893,6 +3906,7 @@ mod tests {
         let mut derived = record("Derived", Vec::new());
         derived.base_type = Some(TypeRef {
             target: TypeRefTarget::Named(QualifiedName::new(NS, "BoundedVec")),
+            binary_encoding: None,
         });
         // Area B: a real semantic failure, entirely unrelated to area A.
         let mut uninhabited = record("Uninhabited", Vec::new());
@@ -4362,6 +4376,7 @@ mod tests {
         let mut concrete = record("Concrete", Vec::new());
         concrete.base_type = Some(TypeRef {
             target: TypeRefTarget::Named(QualifiedName::new(NS, "Base")),
+            binary_encoding: None,
         });
         let holder = record(
             "Holder",
@@ -4454,6 +4469,7 @@ mod tests {
         let mut concrete = record("Concrete", Vec::new());
         concrete.base_type = Some(TypeRef {
             target: TypeRefTarget::Named(QualifiedName::new(NS, "Base")),
+            binary_encoding: None,
         });
         let holder = record(
             "Holder",
@@ -4713,6 +4729,7 @@ mod tests {
         let mut derived = record("Derived", Vec::new());
         derived.base_type = Some(TypeRef {
             target: TypeRefTarget::Named(QualifiedName::new(NS, "Base")),
+            binary_encoding: None,
         });
         let schema = schema_with(vec![base, derived, primitive("Append")]);
         assert_collides(&schema, BackendLanguage::Ada, "Append");

@@ -114,6 +114,7 @@ fn a_record_holding_the_profile_is_renderable_and_isolated() {
                 wire_namespace_uri: Some(NS.to_owned()),
                 type_ref: TypeRef {
                     target: TypeRefTarget::Named(QualifiedName::new(NS, "Word")),
+                    binary_encoding: None,
                 },
                 cardinality: Cardinality::REQUIRED_ONE,
                 nillable: false,

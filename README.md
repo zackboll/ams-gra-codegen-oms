@@ -800,9 +800,20 @@ wire values, one-member Choices, `$type` on closed abstract values,
 `"NaN"`/`"Infinity"`/`"-Infinity"`), rejects unknown/missing/invalid members,
 and builds every value through the generated model's checked constructors.
 The real UCI 2.5 `PositionReport` round-trips through unmodified Sleet as a
-typed `PositionReportMT`. Without the flag all output is unchanged. Binary,
-Ada, and C++ report a `service codec boundary:`. See
+typed `PositionReportMT`. Without the flag all output is unchanged. Ada and
+C++ report a `service codec boundary:`. See
 [Task 050](docs/task-050-rust-oms-json-codecs.md).
+
+**hexBinary (Task 052).** Schema IR keeps each Binary value's XSD lexical
+primitive (`xs:hexBinary`) as provenance separate from its value kind, resolved
+through named restrictions. The generated model still stores bytes
+(`Vec<u8>` / named wrapper); the generated Rust codec writes a canonical
+uppercase hex JSON string and reads any XML Schema hexBinary lexical form
+(either case, whiteSpace collapse), rejecting odd lengths, non-hex characters,
+and non-string JSON. Binary with unknown provenance, `base64Binary`, and
+length-constrained Binary (a model limit) still fail closed. The real UCI 2.5
+`SubsystemStream` round-trips through unmodified Sleet with a hexBinary
+value. See [Task 052](docs/task-052-hexbinary-provenance-codec.md).
 
 **Member QNames (Task 051).** Schema IR keeps each local element's effective
 target namespace (`elementFormDefault` plus local `form`), separately from its

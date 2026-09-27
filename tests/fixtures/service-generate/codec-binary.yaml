@@ -1,7 +1,9 @@
 # SYNTHETIC Task 050 fixture. Authored for this repository only.
 #
 # Selects BlobNotice from codec-binary.xsd, whose payload has a selected
-# Binary field: the model is READY, the --with-codec codec is NOT READY.
+# Binary field. Task 050: model READY, --with-codec codec NOT READY (no
+# lexical provenance). Task 052: xs:hexBinary provenance is retained, so the
+# codec is READY too.
 contract_version: "0.1"
 
 service:

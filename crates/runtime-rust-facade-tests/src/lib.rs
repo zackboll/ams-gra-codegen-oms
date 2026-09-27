@@ -56,6 +56,20 @@ pub mod codec_shape {
     include!(concat!(env!("OUT_DIR"), "/codec_shape/service_api.rs"));
 }
 
+/// Task 052: the Task 050 `codec-binary` control (one direct `xs:hexBinary`
+/// field), whose codec flipped from NOT READY to READY.
+#[allow(clippy::all, clippy::pedantic)]
+pub mod codec_binary {
+    include!(concat!(env!("OUT_DIR"), "/codec_binary/service_api.rs"));
+}
+
+/// Task 052: every supported hexBinary shape (required/optional/bounded/
+/// unbounded direct, named, named-on-named, Choice) in the OAM namespace.
+#[allow(clippy::all, clippy::pedantic)]
+pub mod codec_hexbinary {
+    include!(concat!(env!("OUT_DIR"), "/codec_hexbinary/service_api.rs"));
+}
+
 /// Task 050: the REAL UCI 2.5 PositionReport model, service API, and codec,
 /// generated only when `AMS_GRA_UCI_2_5_ROOT` names the SHA-256-verified
 /// pinned root (see build.rs).
@@ -65,6 +79,18 @@ pub mod real_uci_position_report {
     include!(concat!(
         env!("OUT_DIR"),
         "/real_uci_position_report/service_api.rs"
+    ));
+}
+
+/// Task 052: the REAL UCI 2.5 SubsystemStream model, service API, and codec
+/// (optional direct `xs:hexBinary` `SubsystemStreamBinary`), generated only
+/// with the SHA-256-verified pinned root (see build.rs).
+#[cfg(ams_gra_real_uci)]
+#[allow(clippy::all, clippy::pedantic)]
+pub mod real_uci_subsystem_stream {
+    include!(concat!(
+        env!("OUT_DIR"),
+        "/real_uci_subsystem_stream/service_api.rs"
     ));
 }
 

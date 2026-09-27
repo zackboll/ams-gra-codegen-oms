@@ -4,10 +4,17 @@
            targetNamespace="https://www.vdl.afrl.af.mil/programs/oam"
            elementFormDefault="qualified"
            version="000.1.0">
-  <!-- SYNTHETIC Task 050 codec control. The MODEL is renderable (Binary is
-       semantic octets), but Schema IR does not retain whether the XSD
-       primitive was hexBinary or base64Binary, so the OMS JSON codec cannot
-       choose a lexical encoding and must fail closed. -->
+  <!-- SYNTHETIC Task 050 codec control, flipped by Task 052.
+
+       Task 050: the MODEL was renderable (Binary is semantic octets), but
+       Schema IR did not retain whether the XSD primitive was hexBinary or
+       base64Binary, so the OMS JSON codec could not choose a lexical
+       encoding and failed closed.
+
+       Task 052: the frontend now records xs:hexBinary lexical provenance on
+       the Data primitive reference, so the codec is READY and spells Data as
+       canonical uppercase hexBinary. Unknown provenance (hand-built IR) still
+       fails closed; see codegen-core service_codec tests. -->
   <xs:complexType name="BlobPayload">
     <xs:sequence>
       <xs:element name="Id" type="xs:int"/>
