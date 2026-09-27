@@ -1,0 +1,99 @@
+# SYNTHETIC Task 049 fixture. Authored for this repository only.
+#
+# Selects against runtime-test.xsd (namespace urn:test). Drives the Rust
+# LA-CAL runtime through the GENERATED facade against a mock OWP peer:
+#
+#   track/input-a          MessageA  input-topic                 -> Subscribe
+#   track/input-a-grouped  MessageA  input-topic worker-group-1  -> Subscribe
+#   track/output-a         MessageA  output-topic                -> Publish
+#   track/output-b         MessageB  output-topic                -> Publish
+#   track/output-c         MessageC  output-topic                -> Publish
+#
+# output-a and output-b share one payload type and one topic: only the
+# generated message identity separates their wire frames.
+#
+# The misconfigured function is READY for generation (the portable contract
+# only requires non-empty routing text) but its topic / group are not legal
+# OWP identifiers. Generation readiness and runtime validity are separate
+# layers: the runtime must reject these through sleet-client, emitting no
+# frame.
+contract_version: "0.1"
+
+service:
+  name: runtime-test
+  version: "0.1.0"
+  kind: service
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: track
+    name: Track
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: input-a
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: MessageA
+        topic: input-topic
+        timing:
+          kind: asynchronous
+      - id: input-a-grouped
+        kind: oms_message
+        direction: input
+        mandate: optional
+        message: MessageA
+        topic: input-topic
+        subscription_group: worker-group-1
+        timing:
+          kind: asynchronous
+      - id: output-a
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: MessageA
+        topic: output-topic
+        timing:
+          kind: asynchronous
+      - id: output-b
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: MessageB
+        topic: output-topic
+        timing:
+          kind: asynchronous
+      - id: output-c
+        kind: oms_message
+        direction: output
+        mandate: optional
+        message: MessageC
+        topic: output-topic
+        timing:
+          kind: asynchronous
+  - id: misconfigured
+    name: Misconfigured Routing
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: output-bad-topic
+        kind: oms_message
+        direction: output
+        mandate: optional
+        message: MessageB
+        topic: "bad topic"
+        timing:
+          kind: asynchronous
+      - id: input-bad-group
+        kind: oms_message
+        direction: input
+        mandate: optional
+        message: MessageA
+        topic: input-topic
+        subscription_group: 'pool 7: "hot"'
+        timing:
+          kind: asynchronous

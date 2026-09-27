@@ -327,7 +327,10 @@ ams-gra-codegen-oms/
 │   ├── backend-ada/       # Ada/SPARK generator
 │   ├── backend-rust/      # Rust generator
 │   ├── backend-cpp/       # C++ generator
-│   └── cli/               # ams-gra-codegen-oms command-line driver
+│   ├── cli/               # ams-gra-codegen-oms command-line driver
+│   ├── runtime-api-rust/  # Stable Rust adapter traits used by generated code
+│   ├── runtime-rust/      # Rust LA-CAL runtime over pinned sleet-client
+│   └── runtime-rust-facade-tests/  # Test-only: generated facade -> runtime
 ├── docs/
 │   ├── architecture.md
 │   ├── ir.md
@@ -752,11 +755,36 @@ Calling the wrong operation, publishing another type, or registering a
 handler for another type is a compile error in Rust, C++, and Ada. The
 adapter chooses its own result, error, and subscription-token types.
 
-**Still no communication.** The wrapper sends, receives, encodes, decodes,
-dispatches, and connects to nothing: no WebSocket, OWP, subscription IDs,
-codec, or runtime source is generated yet. See
+**The generated wrapper itself still does no communication.** It sends,
+receives, encodes, decodes, dispatches, and connects to nothing. See
 [Task 047](docs/task-047-service-api-wrappers.md) and
 [Task 048](docs/task-048-publish-subscribe-facade.md).
+
+**Rust LA-CAL runtime (Task 049).** The Rust adapter traits live in the tiny
+`ams-gra-oms-runtime-api` crate, and a generated Rust wrapper re-exports them.
+Compile `service_api.rs` with that crate available (for example, as a Cargo
+dependency of the crate that owns the generated file). The handwritten
+`ams-gra-oms-runtime-rust` crate implements the traits over the pinned public
+Sleet `sleet-client`, so the same generated calls now reach a real LA-CAL
+server:
+
+```rust
+let mut runtime = SleetRuntime::connect(
+    RuntimeConfig::new("ws://127.0.0.1:9000", "my-service", "002.5.0"),
+    codecs, // your OmsJsonCodec<P> implementations
+)?;
+let subscription = input_endpoint::subscribe(&mut runtime, |m: &input_endpoint::Payload| { /* typed */ })?;
+output_endpoint::publish(&mut runtime, &payload)?;
+subscription.unsubscribe()?;
+runtime.close()?;
+```
+
+The runtime owns the OMS JSON global-element wrapper, subscription IDs, OWP
+framing through `sleet-client`, `MSG` dispatch, and runtime events. A
+non-verbose connection means `Ok` indicates the frame was sent, and a server
+`-ERR` arrives later as an event. Payload JSON codecs are not generated yet,
+so for now you supply them. There are no Ada or C++ runtimes yet. See
+[Task 049](docs/task-049-rust-la-cal-runtime.md).
 
 Compatibility is defined by `contract_version`, not by repository SHA. The
 baseline is `zackboll/ams-gra-service-contract`

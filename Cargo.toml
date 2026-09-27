@@ -10,6 +10,9 @@ members = [
     "crates/backend-rust",
     "crates/backend-cpp",
     "crates/cli",
+    "crates/runtime-api-rust",
+    "crates/runtime-rust",
+    "crates/runtime-rust-facade-tests",
 ]
 
 [workspace.package]

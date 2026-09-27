@@ -1,0 +1,58 @@
+# SYNTHETIC Task 049 fixture. Authored for this repository only.
+#
+# Selects against runtime-oam.xsd (the OAM namespace). One service that
+# subscribes to MessageA and publishes MessageA and MessageB on the same
+# topic, so a real CAL server loops its own MessageA back to it while its
+# MessageB (same payload, same topic, different global element) is not
+# routed to the MessageA subscription. `denied` publishes on a topic the
+# real-Sleet test configuration does not allow, to prove a server -ERR is
+# surfaced as a runtime event.
+contract_version: "0.1"
+
+service:
+  name: runtime-oam
+  version: "0.1.0"
+  kind: service
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: loop
+    name: Loop
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: input-a
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: MessageA
+        topic: loop-topic
+        timing:
+          kind: asynchronous
+      - id: output-a
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: MessageA
+        topic: loop-topic
+        timing:
+          kind: asynchronous
+      - id: output-b
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: MessageB
+        topic: loop-topic
+        timing:
+          kind: asynchronous
+      - id: denied
+        kind: oms_message
+        direction: output
+        mandate: optional
+        message: MessageA
+        topic: denied-topic
+        timing:
+          kind: asynchronous

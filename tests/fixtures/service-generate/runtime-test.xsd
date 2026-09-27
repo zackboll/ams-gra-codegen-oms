@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:test"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- SYNTHETIC Task 049 fixture. This is NOT UCI.
+
+       A NON-OAM namespace, so every LA-CAL name is in Clark notation
+       (OMSC-SPC-013 Rev B section 6.1.1): "{urn:test}MessageA".
+
+         MessageA -> SharedPayload
+         MessageB -> SharedPayload   (same payload, different message)
+         MessageC -> OtherPayload    (a second payload type, same codec)
+
+       Used by crates/runtime-rust mock-OWP tests through the generated
+       Rust facade. See docs/task-049-rust-la-cal-runtime.md. -->
+  <xs:complexType name="SharedPayload">
+    <xs:sequence>
+      <xs:element name="Count" type="xs:int"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="OtherPayload">
+    <xs:sequence>
+      <xs:element name="Label" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="MessageA" type="t:SharedPayload" uci:version="001.000.000.000"/>
+  <xs:element name="MessageB" type="t:SharedPayload" uci:version="001.000.000.000"/>
+  <xs:element name="MessageC" type="t:OtherPayload" uci:version="001.000.000.000"/>
+</xs:schema>

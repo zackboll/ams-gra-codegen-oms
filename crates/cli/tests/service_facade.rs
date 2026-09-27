@@ -199,12 +199,33 @@ fn stderr_of(output: &Output) -> String {
     )
 }
 
+/// Task 049: compile the stable adapter-contract crate
+/// (`crates/runtime-api-rust`, dependency-free) into `root`, where the
+/// wrapper's `pub use ::ams_gra_oms_runtime_api::{..}` resolves it.
+fn rust_runtime_api(root: &Path) {
+    let source = workspace_root().join("crates/runtime-api-rust/src/lib.rs");
+    let api = Command::new("rustc")
+        .current_dir(root)
+        .args(["--edition", "2024", "--crate-type", "lib"])
+        .args(["--crate-name", "ams_gra_oms_runtime_api", "-D", "warnings"])
+        .arg(source)
+        .args(["-o", "libams_gra_oms_runtime_api.rlib"])
+        .output()
+        .expect("rustc should be available in a Rust workspace");
+    assert_success(&api, "Rust runtime API crate compile");
+}
+
 /// Compile `service_api.rs` as a library crate under `-D warnings`.
 fn rust_library(root: &Path) {
+    rust_runtime_api(root);
     let library = Command::new("rustc")
         .current_dir(root)
         .args(["--edition", "2021", "--crate-type", "lib"])
         .args(["--crate-name", "service_api", "-D", "warnings"])
+        .args([
+            "--extern",
+            "ams_gra_oms_runtime_api=libams_gra_oms_runtime_api.rlib",
+        ])
         .args(["service_api.rs", "-o", "libservice_api.rlib"])
         .output()
         .expect("rustc should be available in a Rust workspace");

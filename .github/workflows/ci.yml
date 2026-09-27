@@ -165,6 +165,58 @@ jobs:
           require_one_test task048_ada_facade_round_trips_through_fake_hooks \
             cargo test -p ams-gra-codegen-oms --test service_facade \
             task048_ada_facade_round_trips_through_fake_hooks
+      # Task 049: the generated Rust facade must drive the Rust LA-CAL runtime
+      # through the pinned sleet-client to a mock OWP peer and back into a
+      # typed MSG callback. Each gate must match and pass exactly one test, so
+      # a filter that matches nothing can never count as success.
+      - name: Rust LA-CAL runtime (generated facade -> mock OWP, must execute)
+        run: |
+          set -euo pipefail
+          require_one_test() {
+            name="$1"
+            shift
+            output="$("$@" -- --exact --nocapture 2>&1)"
+            printf '%s\n' "$output"
+            printf '%s\n' "$output" | grep -qE "^test ${name} \.\.\. ok$"
+            printf '%s\n' "$output" | grep -qE '^test result: ok\. 1 passed'
+          }
+          for test in \
+            task049_generated_facade_round_trips_through_mock_owp \
+            task049_same_payload_different_message_differs_on_the_wire \
+            task049_subscription_group_is_on_the_wire_or_absent \
+            task049_oam_namespace_uses_bare_local_names; do
+            require_one_test "$test" \
+              cargo test -p ams-gra-oms-runtime-rust-facade-tests --test mock_owp "$test"
+          done
+          # PR #50 corrective: receive must keep progressing while the command
+          # side is busy. The worker-level test holds the bounded queue at
+          # capacity and fails under a commands-first biased select; the
+          # facade-level test proves MSG/-ERR delivery under generated-publish
+          # load, then clean unsubscribe/close/no worker thread.
+          require_one_test worker::fairness_tests::worker_receives_while_command_queue_is_continuously_ready \
+            cargo test -p ams-gra-oms-runtime-rust --lib \
+            worker::fairness_tests::worker_receives_while_command_queue_is_continuously_ready
+          require_one_test task049_receive_progresses_under_sustained_publish_load \
+            cargo test -p ams-gra-oms-runtime-rust-facade-tests --test runtime_fairness \
+            task049_receive_progresses_under_sustained_publish_load
+      # PR #50 corrective: the runtime crates declare `rust-version = "1.95"`
+      # (the pinned sleet-client needs edition 2024 let-chains). The toolchain
+      # above floats on stable, so check the declared floor explicitly with the
+      # committed lock file. Building Sleet itself with 1.95 (next step) does
+      # NOT establish this; this step does.
+      - name: Rust LA-CAL runtime MSRV (1.95.0)
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.95.0 --profile minimal
+          cargo +1.95.0 --version
+          cargo +1.95.0 check --locked -p ams-gra-oms-runtime-api
+          cargo +1.95.0 check --locked -p ams-gra-oms-runtime-rust --all-targets
+          cargo +1.95.0 check --locked -p ams-gra-oms-runtime-rust-facade-tests --all-targets
+      # Task 049: the same generated facade against the UNMODIFIED Sleet
+      # server at the exact pinned revision, built from a fresh checkout. The
+      # script fails unless the test really ran and printed its PASSED line.
+      - name: Rust LA-CAL runtime against real pinned Sleet (e38f61d8)
+        run: scripts/run-real-sleet-test.sh
       # `AMS_GRA_REQUIRE_GNAT` turns the Ada probes' developer-machine skip
       # into a hard failure, so a runner that somehow lost GNAT after the gate
       # above cannot produce a green run with the Ada checks quietly elided.

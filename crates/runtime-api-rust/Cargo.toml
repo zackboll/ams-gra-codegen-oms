@@ -1,0 +1,16 @@
+[package]
+name = "ams-gra-oms-runtime-api"
+description = "Stable Rust adapter contracts used by generated OMS service APIs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+# Task 049: this crate is deliberately tiny. It owns ONLY the two generic
+# adapter traits generated Rust service code re-exports. It must never gain a
+# dependency (no Tokio, WebSocket, Sleet, serde_json) or any runtime policy:
+# generated wrappers name it, and the Task 048 compile probes build it with a
+# bare `rustc` invocation.
+
+[lints]
+workspace = true

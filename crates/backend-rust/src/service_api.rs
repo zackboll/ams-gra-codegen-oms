@@ -31,8 +31,10 @@ const LANGUAGE: BackendLanguage = BackendLanguage::Rust;
 /// type-name rule. Payload paths are `super`-relative, not `crate::`, so the
 /// tree resolves identically wherever the file is mounted.
 ///
-/// Task 048: when the service has any OMS exchange, the root also declares
-/// the generic `PublishAdapter` / `SubscribeAdapter` contracts, and each OMS
+/// Task 048: when the service has any OMS exchange, the root also exposes
+/// the generic `PublishAdapter` / `SubscribeAdapter` contracts (Task 049:
+/// re-exported from the stable `ams-gra-oms-runtime-api` crate rather than
+/// declared per wrapper, see [`RUNTIME_API_CRATE`]), and each OMS
 /// exchange gains exactly one forwarding operation decided in codegen-core:
 /// `publish` for an output, `subscribe` for an input. The operation supplies
 /// the endpoint's routing metadata to a caller-supplied adapter; nothing
@@ -63,12 +65,13 @@ pub fn generate_service_api(
     let facade = model.has_oms_exchanges();
     let mut output = String::from(if facade {
         concat!(
-            "// Generated typed service API (Tasks 047-048).\n",
+            "// Generated typed service API (Tasks 047-049).\n",
             "//\n",
             "// Endpoint descriptors plus a typed publish/subscribe facade that\n",
             "// forwards each operation to a caller-supplied adapter. This file itself\n",
             "// sends, receives, encodes, decodes, dispatches, and connects to nothing.\n",
-            "// Compile it as the crate root of the generated service.\n\n",
+            "// Compile it as the crate root of the generated service, with the\n",
+            "// `ams-gra-oms-runtime-api` crate available (it owns the adapter traits).\n\n",
         )
     } else {
         concat!(
@@ -152,14 +155,28 @@ pub fn generate_service_api(
     Ok(output)
 }
 
-/// The two generic adapter contracts, declared once in the wrapper root.
+/// The Rust crate name (Cargo's `-`→`_` mapping of the package
+/// `ams-gra-oms-runtime-api`) that owns the stable adapter contracts.
 ///
-/// Both return the adapter's own associated `Output`, so a runtime chooses
-/// its result, error, and subscription-token types; neither requires
-/// `Send`, `Sync`, `'static`, or an executor. `SubscribeAdapter` takes the
-/// handler type as a trait parameter so an implementation may add any bound
-/// it genuinely needs (for example `H: Send + 'static`) without the
-/// generated service naming it.
+/// A generated Rust wrapper with at least one OMS exchange must be compiled
+/// with this crate available (`--extern ams_gra_oms_runtime_api=...`, or a
+/// Cargo dependency on `ams-gra-oms-runtime-api`). Zero-OMS wrappers never
+/// reference it.
+pub const RUNTIME_API_CRATE: &str = "ams_gra_oms_runtime_api";
+
+/// The two generic adapter contracts, exposed once in the wrapper root.
+///
+/// Task 049: the traits are no longer declared per wrapper. They are
+/// re-exported from the stable runtime API crate ([`RUNTIME_API_CRATE`]), so
+/// one runtime implementation serves every generated service while the
+/// application-facing path `service_api::{PublishAdapter, SubscribeAdapter}`
+/// is unchanged. The trait definitions themselves (moved verbatim) still
+/// return the adapter's own associated `Output` and require no `Send`,
+/// `Sync`, `'static`, or executor; `SubscribeAdapter` still takes the handler
+/// type as a trait parameter so a runtime may add bounds without the
+/// generated service naming them.
+///
+/// The path is absolute (`::crate_name`) so no generated module can shadow it.
 fn adapter_contracts(
     output: &mut String,
     facade: &ServiceApiFacadeNames,
@@ -167,52 +184,15 @@ fn adapter_contracts(
     let RustFacade {
         publish_adapter,
         subscribe_adapter,
-        payload_type: p,
-        handler_type: h,
-        hook_message_namespace,
-        hook_message_name,
-        hook_topic,
-        hook_subscription_group,
         ..
     } = RustFacade::new(facade)?;
-    let (publish, subscribe) = (facade.publish, facade.subscribe);
-    let (value, handler) = (facade.parameters.value, facade.parameters.handler);
     writeln!(
         output,
-        "\n    /// The runtime hook behind every generated `{publish}` operation.\n\
-         \x20   ///\n\
-         \x20   /// Receives the resolved global message identity (namespace and local\n\
-         \x20   /// name, unformatted), the endpoint's authored topic, and a typed\n\
-         \x20   /// payload. The identity is required because distinct global messages\n\
-         \x20   /// may share one payload type and one topic. `Output` is the adapter's\n\
-         \x20   /// own result/error type.\n\
-         \x20   pub trait {publish_adapter}<{p}> {{\n\
-         \x20       type Output;\n\
-         \x20       fn {publish}(\n\
-         \x20           &mut self,\n\
-         \x20           {hook_message_namespace}: &'static str,\n\
-         \x20           {hook_message_name}: &'static str,\n\
-         \x20           {hook_topic}: &'static str,\n\
-         \x20           {value}: &{p},\n\
-         \x20       ) -> Self::Output;\n\
-         \x20   }}\n\n\
-         \x20   /// The runtime hook behind every generated `{subscribe}` operation.\n\
-         \x20   ///\n\
-         \x20   /// Receives the resolved message identity (namespace and local name,\n\
-         \x20   /// unformatted), the authored topic, the authored subscription group\n\
-         \x20   /// if any, and a handler for payload `{p}`. `Output` is the adapter's\n\
-         \x20   /// own result, error, or subscription-token type.\n\
-         \x20   pub trait {subscribe_adapter}<{p}, {h}> {{\n\
-         \x20       type Output;\n\
-         \x20       fn {subscribe}(\n\
-         \x20           &mut self,\n\
-         \x20           {hook_message_namespace}: &'static str,\n\
-         \x20           {hook_message_name}: &'static str,\n\
-         \x20           {hook_topic}: &'static str,\n\
-         \x20           {hook_subscription_group}: Option<&'static str>,\n\
-         \x20           {handler}: {h},\n\
-         \x20       ) -> Self::Output;\n\
-         \x20   }}"
+        "\n    /// The stable runtime adapter contracts behind every generated\n\
+         \x20   /// `publish` / `subscribe` operation, re-exported from the\n\
+         \x20   /// `ams-gra-oms-runtime-api` crate so any runtime implementing them\n\
+         \x20   /// serves this service. Compile this file with that crate available.\n\
+         \x20   pub use ::{RUNTIME_API_CRATE}::{{{publish_adapter}, {subscribe_adapter}}};"
     )
     .expect("writing to String cannot fail");
     Ok(())
@@ -220,17 +200,17 @@ fn adapter_contracts(
 
 /// The Rust-only façade spellings, unwrapped once. Every one is required
 /// for Rust; a missing one is a defect in the shared fixed-name table.
+///
+/// Task 049: the trait-profile parameter spellings (`P`, the hook
+/// parameters) are no longer rendered here -- the trait definitions live in
+/// `ams-gra-oms-runtime-api` -- so only the names this file still writes are
+/// unwrapped.
 struct RustFacade {
     publish_adapter: &'static str,
     subscribe_adapter: &'static str,
     adapter: &'static str,
     adapter_type: &'static str,
     handler_type: &'static str,
-    payload_type: &'static str,
-    hook_message_namespace: &'static str,
-    hook_message_name: &'static str,
-    hook_topic: &'static str,
-    hook_subscription_group: &'static str,
 }
 
 impl RustFacade {
@@ -245,20 +225,6 @@ impl RustFacade {
             adapter: required(parameters.adapter, "adapter parameter")?,
             adapter_type: required(parameters.adapter_type, "adapter type parameter")?,
             handler_type: required(parameters.handler_type, "handler type parameter")?,
-            payload_type: required(parameters.payload_type, "payload type parameter")?,
-            hook_message_namespace: required(
-                parameters.hook_message_namespace,
-                "hook message namespace parameter",
-            )?,
-            hook_message_name: required(
-                parameters.hook_message_name,
-                "hook message name parameter",
-            )?,
-            hook_topic: required(parameters.hook_topic, "hook topic parameter")?,
-            hook_subscription_group: required(
-                parameters.hook_subscription_group,
-                "hook subscription group parameter",
-            )?,
         })
     }
 }
