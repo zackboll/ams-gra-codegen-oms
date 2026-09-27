@@ -222,6 +222,13 @@ impl ServiceApiExchange {
 /// Only [`Self::OmsMessage`] carries a payload binding. The other four are
 /// real parts of the service interface that are simply not UCI messages, so no
 /// payload is fabricated for them.
+///
+/// `large_enum_variant` is allowed deliberately: Task 052 added lexical
+/// provenance to `TypeRef`, which moved the inline binding just past
+/// clippy's size threshold. The enum is built once per contract exchange
+/// (never in a hot path), and boxing would change the public pattern every
+/// consumer matches on for no measurable gain.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ServiceApiExchangeKind {
     OmsMessage(ServiceApiOmsBinding),

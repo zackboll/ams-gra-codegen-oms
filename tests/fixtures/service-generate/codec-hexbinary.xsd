@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="https://www.vdl.afrl.af.mil/programs/oam"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- SYNTHETIC Task 052 codec fixture (OAM namespace). Every Binary value
+       here is xs:hexBinary, either DIRECTLY or through a named restriction
+       chain, so its OMS JSON spelling is decided by IR lexical provenance:
+
+         Data      xs:hexBinary        1..1        required direct
+         MaybeData xs:hexBinary        0..1        optional direct
+         Chunks    xs:hexBinary        0..3        bounded repeated direct
+         Stream    xs:hexBinary        0..unbounded unbounded repeated direct
+         Blob      BlobBytes           1..1        named: BlobBytes -> xs:hexBinary
+         Alias     BlobAlias           0..1        named: BlobAlias -> BlobBytes -> xs:hexBinary
+         Atomic    AtomicLike          1..1        Choice shaped like UCI 2.5
+                                                   AtomicValueType.HexBinaryValue
+
+       All Binary declarations are UNCONSTRAINED: constrained Binary remains a
+       model blocker (Task 025) and is out of scope. BlobNotice is both
+       subscribed and published on one topic so a CAL server loops it back. -->
+  <xs:simpleType name="BlobBytes">
+    <xs:restriction base="xs:hexBinary"/>
+  </xs:simpleType>
+  <xs:simpleType name="BlobAlias">
+    <xs:restriction base="uci:BlobBytes"/>
+  </xs:simpleType>
+  <xs:complexType name="AtomicLike">
+    <xs:choice>
+      <xs:element name="IntValue" type="xs:int"/>
+      <xs:element name="HexBinaryValue" type="xs:hexBinary"/>
+    </xs:choice>
+  </xs:complexType>
+  <xs:complexType name="BlobPayload">
+    <xs:sequence>
+      <xs:element name="Id" type="xs:int"/>
+      <xs:element name="Data" type="xs:hexBinary"/>
+      <xs:element name="MaybeData" type="xs:hexBinary" minOccurs="0"/>
+      <xs:element name="Chunks" type="xs:hexBinary" minOccurs="0" maxOccurs="3"/>
+      <xs:element name="Stream" type="xs:hexBinary" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="Blob" type="uci:BlobBytes"/>
+      <xs:element name="Alias" type="uci:BlobAlias" minOccurs="0"/>
+      <xs:element name="Atomic" type="uci:AtomicLike"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="BlobNotice" type="uci:BlobPayload" uci:version="001.000.000.000"/>
+</xs:schema>

@@ -28,8 +28,8 @@ use ams_gra_oms_codegen_core::{
     service_api_fixed_names,
 };
 use ams_gra_oms_ir::{
-    FieldDecl, OccurrenceShape, PrimitiveKind, QualifiedName, SchemaIr, TypeDecl, TypeKind,
-    TypeRefTarget,
+    BinaryLexicalEncoding, FieldDecl, OccurrenceShape, PrimitiveKind, QualifiedName, SchemaIr,
+    TypeDecl, TypeKind, TypeRefTarget, declaration_binary_encoding, resolve_binary_encoding,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
@@ -228,6 +228,58 @@ fn with_type(mut value: Value, concrete: &str) -> Value {
 }
 "#;
 
+/// Task 052: the ONE shared private `xs:hexBinary` lexical mapping, appended
+/// only when the codec surface contains a HexBinary value, so a codec with no
+/// Binary is byte-identical to Task 050/051 output. It is generated payload
+/// lexical mapping, not a runtime dependency.
+const HEX_BINARY_HELPERS: &str = r#"
+/// XML Schema 2E 3.2.15.2 canonical `hexBinary`: two UPPERCASE hexadecimal
+/// digits per octet, no separator, no prefix.
+fn encode_hex_binary(octets: &[u8]) -> Value {
+    const DIGITS: &[u8; 16] = b"0123456789ABCDEF";
+    let mut text = String::with_capacity(octets.len() * 2);
+    for &octet in octets {
+        text.push(char::from(DIGITS[usize::from(octet >> 4)]));
+        text.push(char::from(DIGITS[usize::from(octet & 0x0F)]));
+    }
+    Value::String(text)
+}
+
+/// XML Schema 2E `hexBinary` lexical parse of one JSON string. First the
+/// fixed `whiteSpace=collapse` normalization (4.3.6): TAB/LF/CR become SPACE,
+/// SPACE runs collapse to one, leading/trailing SPACE are removed; then the
+/// result must be pairs of case-insensitive ASCII hexadecimal digits
+/// (3.2.15.1). An internal space survives collapse and is rejected.
+fn decode_hex_binary(value: &Value, path: &str) -> Result<Vec<u8>, CodecError> {
+    let raw = value.as_str().ok_or_else(|| mismatch(path, "hexBinary string", value))?;
+    let mut collapsed = String::with_capacity(raw.len());
+    for word in raw
+        .split(|c| matches!(c, ' ' | '\t' | '\n' | '\r'))
+        .filter(|word| !word.is_empty())
+    {
+        if !collapsed.is_empty() {
+            collapsed.push(' ');
+        }
+        collapsed.push_str(word);
+    }
+    let nibble = |digit: u8| match digit {
+        b'0'..=b'9' => Some(digit - b'0'),
+        b'a'..=b'f' => Some(digit - b'a' + 10),
+        b'A'..=b'F' => Some(digit - b'A' + 10),
+        _ => None,
+    };
+    let nibbles = collapsed
+        .bytes()
+        .map(nibble)
+        .collect::<Option<Vec<u8>>>()
+        .ok_or_else(|| invalid(path, &format!("{raw:?} is not hexBinary: only hexadecimal digits [0-9A-Fa-f] are allowed")))?;
+    if nibbles.len() % 2 != 0 {
+        return Err(invalid(path, &format!("{raw:?} is not hexBinary: odd number of hexadecimal digits")));
+    }
+    Ok(nibbles.chunks_exact(2).map(|pair| (pair[0] << 4) | pair[1]).collect())
+}
+"#;
+
 /// Render `service_codec.rs` for a service with at least one OMS exchange.
 ///
 /// Fails closed with the shared codec preflight's reason, so a direct caller
@@ -300,6 +352,11 @@ pub fn generate_service_codec(
     for (index, emission) in emitted.iter().enumerate() {
         renderer.emission(&mut output, index, emission)?;
     }
+    // Task 052: one shared hex helper pair, only when a HexBinary value is
+    // actually encoded, so every Binary-free codec is unchanged byte for byte.
+    if output.contains("encode_hex_binary(") {
+        output.push_str(HEX_BINARY_HELPERS);
+    }
     Ok(output)
 }
 
@@ -358,6 +415,8 @@ enum Base {
     Float64,
     String,
     DirectDateTime,
+    /// Task 052: a direct `Vec<u8>` whose provenance resolved to hexBinary.
+    HexBinary,
     Named(usize),
 }
 
@@ -410,6 +469,17 @@ impl Renderer<'_> {
                     )));
                 }
             },
+            // Task 052: only RESOLVED hexBinary provenance selects the hex
+            // mapping (readiness has already rejected anything else).
+            PrimitiveKind::Binary => match resolve_binary_encoding(self.schema, &field.type_ref) {
+                Some(BinaryLexicalEncoding::HexBinary) => Base::HexBinary,
+                _ => {
+                    return Err(error(format!(
+                        "service codec boundary: {} is Binary without hexBinary provenance",
+                        field.name
+                    )));
+                }
+            },
             other => {
                 return Err(error(format!(
                     "service codec boundary: {} is {other:?}, which has no codec mapping",
@@ -429,6 +499,7 @@ impl Renderer<'_> {
             Base::Float64 => format!("enc_f64(*{x})"),
             Base::String => format!("Value::String({x}.clone())"),
             Base::DirectDateTime => format!("Value::String({x}.as_str().to_owned())"),
+            Base::HexBinary => format!("encode_hex_binary({x})"),
             Base::Named(id) => format!("encode_t{id:03}({x})"),
         }
     }
@@ -453,6 +524,7 @@ impl Renderer<'_> {
             Base::DirectDateTime => format!(
                 "dec_str({v}, {p}).and_then(|s| {model}::XmlSchemaDateTime::new(s).ok_or_else(|| rejected({p}, \"XmlSchemaDateTime\")))"
             ),
+            Base::HexBinary => format!("decode_hex_binary({v}, {p})"),
             Base::Named(id) => format!("decode_t{id:03}({v}, {p})"),
         }
     }
@@ -559,6 +631,18 @@ impl Renderer<'_> {
                 "Value::String(value.as_str().to_owned())".to_owned(),
                 checked("dec_str(value, path)"),
             ),
+            // Task 052: a named unconstrained Binary wrapper, through its
+            // public model API only (`as_slice`, `new`). Constrained Binary
+            // never reaches here: model readiness rejects it first.
+            PrimitiveKind::Binary
+                if declaration_binary_encoding(self.schema, declaration)
+                    == Some(BinaryLexicalEncoding::HexBinary) =>
+            {
+                (
+                    "encode_hex_binary(value.as_slice())".to_owned(),
+                    format!("decode_hex_binary(value, path).map({rust}::new)"),
+                )
+            }
             other => {
                 return Err(error(format!(
                     "service codec boundary: {local} is {other:?}, which has no codec mapping"

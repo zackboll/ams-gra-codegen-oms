@@ -132,7 +132,10 @@ mod tests {
         FieldDecl {
             name: "Value".to_owned(),
             wire_namespace_uri: Some("urn:test".to_owned()),
-            type_ref: TypeRef { target },
+            type_ref: TypeRef {
+                target,
+                binary_encoding: None,
+            },
             cardinality,
             nillable: false,
             constraints: ConstraintSet::default(),

@@ -1,0 +1,39 @@
+# SYNTHETIC Task 052 fixture. Authored for this repository only.
+#
+# Selects BlobNotice from codec-hexbinary.xsd as one input and one output
+# exchange on the same topic, so a CAL server routes the service's own
+# BlobNotice back to it. Every selected Binary value has xs:hexBinary
+# provenance: model READY and --with-codec codec READY.
+contract_version: "0.1"
+
+service:
+  name: codec-hexbinary
+  version: "0.1.0"
+  kind: service
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: blob
+    name: Blob
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: input-blob
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: BlobNotice
+        topic: blob-topic
+        timing:
+          kind: asynchronous
+      - id: output-blob
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: BlobNotice
+        topic: blob-topic
+        timing:
+          kind: asynchronous

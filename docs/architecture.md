@@ -489,8 +489,31 @@ Task 025 lowers unconstrained `PrimitiveKind::Binary` as an owned sequence of
 octets in each backend (Rust `Vec<u8>`, C++ `std::vector<std::uint8_t>`, Ada
 `Interfaces.Unsigned_8`-element vector), never as a hexadecimal or base64
 lexical string. Lexical encodings — hex, base64, JSON, XML, CAL wire framing —
-belong to future codec layers that this generator does not yet produce; the
-generated value model only carries semantic bytes.
+belong to codec layers; the generated value model only carries semantic bytes.
+
+Task 052 keeps that split and adds the missing link between them:
+
+```text
+XML Schema lexical primitive (xs:hexBinary)
+      |
+      v
+binary provenance  (TypeRef.binary_encoding on the primitive ancestry;
+      |             resolve_binary_encoding / declaration_binary_encoding)
+      |
+      +------ semantic model ------> Vec<u8> / byte vector   (unchanged)
+      |
+      +------ generated codec -----> hexBinary lexical JSON string
+```
+
+* The **model** owns bytes.
+* The **provenance** owns which lexical family those bytes came from.
+* The **codec** owns the conversion between bytes and that lexical family
+  (canonical uppercase on encode; XSD collapse + case-insensitive hex on
+  decode).
+
+Lexical spelling never leaks into a model API, and no consumer infers
+"Binary means hex": unknown provenance is codec NOT READY. See
+[Task 052](task-052-hexbinary-provenance-codec.md).
 
 ## 13. Uninhabited values generate no storage
 

@@ -7,6 +7,7 @@ use ams_gra_oms_codegen_core::{
     GenerationWorld, build_service_api_model, project_service_generation_schema,
     resolve_service_plan,
 };
+use ams_gra_oms_ir::TypeKind;
 use ams_gra_oms_service_contract::parse_yaml;
 use ams_gra_oms_xsd_frontend::load_schema_set;
 use std::path::Path;
@@ -34,13 +35,46 @@ fn render(stem: &str) -> (Result<String, String>, String) {
     )
 }
 
+/// Task 052: `codec-binary` (a direct `xs:hexBinary`) now renders through the
+/// direct renderer too, with one shared hex helper pair.
 #[test]
-fn direct_codec_generation_fails_closed_on_binary() {
-    let (codec, _model) = render("codec-binary");
-    let message = codec.expect_err("Binary has no evidenced encoding");
+fn direct_codec_generation_renders_hex_binary_provenance() {
+    let (codec, model) = render("codec-binary");
+    let codec = codec.expect("hexBinary provenance renders");
     assert!(
-        message.starts_with("service codec boundary: BlobPayload.Data is Binary"),
-        "{message}"
+        model.contains("    pub data: Vec<u8>,"),
+        "model stays bytes"
+    );
+    assert!(codec.contains("encode_hex_binary(x)"));
+    assert_eq!(codec.matches("fn decode_hex_binary(").count(), 1);
+}
+
+/// Task 052: the direct renderer re-runs the shared preflight, so a caller
+/// that skipped readiness still cannot render a Binary whose lexical
+/// provenance is UNKNOWN (hand-built IR). No "Binary means hex" fallback.
+#[test]
+fn direct_codec_generation_fails_closed_on_unknown_binary_provenance() {
+    let schema = load_schema_set(&fixture("codec-binary.xsd")).expect("schema");
+    let contract =
+        parse_yaml(&std::fs::read_to_string(fixture("codec-binary.yaml")).unwrap()).expect("parse");
+    let plan = resolve_service_plan(&contract, &schema).expect("plan");
+    let projection = project_service_generation_schema(&plan, &schema, WORLD).expect("projection");
+    let mut stripped = projection.schema().clone();
+    for declaration in &mut stripped.types {
+        if let TypeKind::Record { fields } = &mut declaration.kind {
+            for field in fields {
+                field.type_ref.binary_encoding = None;
+            }
+        }
+    }
+    let model = build_service_api_model(&plan, &stripped, WORLD).expect("api model");
+    generate(&stripped, WORLD).expect("model IR is still renderable");
+    assert_eq!(
+        generate_service_codec(&model, &stripped, WORLD)
+            .expect_err("unknown provenance")
+            .message,
+        "service codec boundary: BlobPayload.Data is Binary but its XSD lexical encoding \
+         provenance is unknown"
     );
 }
 

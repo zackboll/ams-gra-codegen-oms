@@ -245,7 +245,25 @@ and then interprets the retained XML Schema pattern groups. Thus whitespace,
 length, and pattern constraints coexist rather than replacing one another.
 
 For `Binary`, length bounds count octets, as specified for XSD `hexBinary`;
-they never count hexadecimal lexical characters. Task 016 preserves observed
+they never count hexadecimal lexical characters.
+
+### Binary lexical provenance (Task 052)
+
+`PrimitiveKind::Binary` is the one semantic value kind for octet sequences.
+Which XML Schema primitive spelled it (`xs:hexBinary` or `xs:base64Binary`,
+same value space, different lexical families) is kept separately as
+`TypeRef.binary_encoding: Option<BinaryLexicalEncoding>` on the DIRECT
+primitive reference: a local element `type="xs:hexBinary"` or a named
+restriction's `base="xs:hexBinary"`. A named reference never carries it
+(`TypeRef::named` sets `None`); the shared queries
+`resolve_binary_encoding(schema, type_ref)` and
+`declaration_binary_encoding(schema, declaration)` follow `base_type`
+ancestry (`B -> A -> xs:hexBinary`). `None` on a Binary reference means
+unknown provenance: legal IR, codec-ineligible. Validation rejects
+provenance on any reference that is not `Primitive(Binary)`. No model backend
+reads it. See [Task 052](task-052-hexbinary-provenance-codec.md).
+
+Task 016 preserves observed
 patterns for String, SignedInteger, DateTime, and Time, and observed whitespace
 facets for String. Unobserved primitive/facet combinations fail closed.
 
@@ -261,7 +279,8 @@ The frontend maps direct XSD scalar fields by resolved namespace URI:
 `boolean` to `Boolean`; `byte`, `short`, `int`, `long`, and `integer` to
 `SignedInteger`; `unsignedByte`, `unsignedShort`, and `unsignedInt` to
 `UnsignedInteger`; `float`/`double` to `Float32`/`Float64`; `dateTime` to
-`DateTime`; `time` to `Time`; `duration` to `Duration`; `hexBinary` to `Binary`;
+`DateTime`; `time` to `Time`; `duration` to `Duration`; `hexBinary` to `Binary`
+plus `HexBinary` lexical provenance (Task 052, below);
 and `string` to `String`. The generic
 integer kinds deliberately do not encode machine width. Fixed-width XSD types
 instead carry exact intrinsic minima and maxima in `ConstraintSet`. Restrictions

@@ -1,0 +1,44 @@
+# SYNTHETIC Task 052 TEST-ONLY contract. Authored for this repository only;
+# it is NOT an upstream portable contract. It selects the REAL UCI 2.5
+# global SubsystemStream twice -- one input and one output exchange on the
+# same OWP-legal topic -- so the unmodified pinned Sleet server routes the
+# service's own SubsystemStream back to it.
+#
+# SubsystemStream was chosen by the Task 052 selected-message inventory
+# (docs/task-052-hexbinary-provenance-codec.md): it is the smallest UCI 2.5
+# message whose closure contains a hexBinary value
+# (SubsystemStreamMDT.SubsystemStreamBinary, direct xs:hexBinary 0..1), whose
+# model is READY, and whose ONLY Task 050/051 codec blocker was Binary.
+contract_version: "0.1"
+
+service:
+  name: subsystem-stream-loop
+  version: "0.1.0"
+  kind: service
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: loop
+    name: Loop
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: input-stream
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: SubsystemStream
+        topic: subsystem.stream
+        timing:
+          kind: asynchronous
+      - id: output-stream
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: SubsystemStream
+        topic: subsystem.stream
+        timing:
+          kind: asynchronous

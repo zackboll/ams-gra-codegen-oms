@@ -87,6 +87,13 @@ OAC-SPC-001 Rev E (UCI 2.5 schema style spec, CERT SCH-000752) permits
 retain whether the XSD primitive was `hexBinary` or `base64Binary`. Those have
 different lexical forms, so no encoding is chosen.
 
+> **Superseded by [Task 052](task-052-hexbinary-provenance-codec.md).** Schema
+> IR now keeps Binary lexical provenance separately from the value kind
+> (`TypeRef.binary_encoding`, resolved through named restrictions). A Binary
+> with `xs:hexBinary` provenance is codec READY and encoded as a canonical
+> uppercase hex JSON string; unknown provenance and `base64Binary` still fail
+> closed. `codec-binary.xsd` is now model READY **and** codec READY.
+
 ## 3. Pinned PositionReport JSON vector
 
 | | |
@@ -288,7 +295,7 @@ validation earlier is possible later hardening work.
 | Boundary | Why |
 | --- | --- |
 | Any codec-emitted declaration, referenced type, or `$type` descendant outside the OAM namespace | Schema IR has no local element QName/form, so `{ns}local` member keys and `$type` values cannot be proven. A future task can strengthen IR field/member QName semantics. This is a **codec** limit; the model and Task 049's non-OAM handwritten-codec tests are unaffected (generation is opt-in). **Superseded by [Task 051](task-051-member-qname-provenance.md):** only an *unqualified* stored member now fails closed. |
-| `PrimitiveKind::Binary` | hexBinary vs base64Binary lexical provenance is not retained. Control: `codec-binary.xsd` is model READY, codec NOT READY, and nothing is written. |
+| `PrimitiveKind::Binary` | hexBinary vs base64Binary lexical provenance is not retained. Control: `codec-binary.xsd` is model READY, codec NOT READY, and nothing is written. **Superseded by [Task 052](task-052-hexbinary-provenance-codec.md):** HexBinary-provenanced Binary is READY; only unknown provenance or base64Binary fails closed. |
 | `Decimal`, `Time`, `Duration` | Not evidenced in scope. (The model backend fails first for most of them; the codec reports them separately if the model can render them.) |
 | Nillable members, optional Choice alternatives, Alias/List declarations | Not represented by the codec (none occur in the PositionReport closure). |
 | Ada, C++ | No generated codec exists. |
@@ -373,5 +380,6 @@ the connection.
 ## 13. Still open
 
 Ada runtime; C++ runtime; Ada/C++ generated codecs; generic
-extension-namespace member QName support; binary lexical provenance;
+extension-namespace member QName support; binary lexical provenance
+(hexBinary done in Task 052);
 reconnect; Phase 4 SPARK work. Only the **Rust** codec slice is complete.

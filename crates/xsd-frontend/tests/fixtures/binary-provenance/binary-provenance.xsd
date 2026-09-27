@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SYNTHETIC Task 052 fixture: xs:hexBinary lexical provenance.
+
+     Hex0 restricts xs:hexBinary; Hex1 restricts Hex0; Hex2 restricts Hex1
+     (with a length facet on the way, so constraint intersection is
+     exercised). Holder has a DIRECT xs:hexBinary field, a field that merely
+     references Hex2, and a Choice alternative shaped like UCI 2.5
+     AtomicValueType.HexBinaryValue. No name is load-bearing. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:binary"
+           targetNamespace="urn:binary"
+           elementFormDefault="qualified">
+  <xs:simpleType name="Hex0">
+    <xs:restriction base="xs:hexBinary"/>
+  </xs:simpleType>
+  <xs:simpleType name="Hex1">
+    <xs:restriction base="t:Hex0">
+      <xs:maxLength value="8"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Hex2">
+    <xs:restriction base="t:Hex1">
+      <xs:length value="4"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:complexType name="Holder">
+    <xs:sequence>
+      <xs:element name="Direct" type="xs:hexBinary"/>
+      <xs:element name="Named" type="t:Hex2"/>
+      <xs:element name="Atomic" type="t:AtomicLike"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="AtomicLike">
+    <xs:choice>
+      <xs:element name="IntValue" type="xs:int"/>
+      <xs:element name="HexBinaryValue" type="xs:hexBinary"/>
+    </xs:choice>
+  </xs:complexType>
+</xs:schema>

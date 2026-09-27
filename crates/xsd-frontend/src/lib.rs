@@ -5,9 +5,10 @@
 //! approximated.
 
 use ams_gra_oms_ir::{
-    Cardinality, ConstraintSet, EnumVariant, FieldDecl, Float32Value, Float64Value, MessageDecl,
-    NamespaceDecl, NumericValue, PatternExpression, PatternGroup, PrimitiveKind, QualifiedName,
-    SchemaIr, SourceRef, TypeDecl, TypeKind, TypeRef, TypeRefTarget, WhiteSpacePolicy,
+    BinaryLexicalEncoding, Cardinality, ConstraintSet, EnumVariant, FieldDecl, Float32Value,
+    Float64Value, MessageDecl, NamespaceDecl, NumericValue, PatternExpression, PatternGroup,
+    PrimitiveKind, QualifiedName, SchemaIr, SourceRef, TypeDecl, TypeKind, TypeRef, TypeRefTarget,
+    WhiteSpacePolicy,
 };
 use roxmltree::{Document, Node};
 use std::collections::{BTreeMap, BTreeSet};
@@ -1172,6 +1173,8 @@ struct ResolvedTypeSemantics {
 #[derive(Debug)]
 struct BuiltinPrimitiveSemantics {
     kind: PrimitiveKind,
+    /// Task 052: XSD lexical primitive of a Binary built-in.
+    binary_encoding: Option<BinaryLexicalEncoding>,
     constraints: ConstraintSet,
 }
 
@@ -1187,8 +1190,18 @@ fn resolve_type_semantics(
         .ok_or_else(|| FrontendError::InvalidInput(format!("unbound QName prefix {prefix}")))?;
     if namespace_uri == XSD_NS {
         let semantics = builtin_primitive_semantics(node, lexical)?;
+        // Task 052: the semantic value kind stays Binary (octets); the XSD
+        // primitive it was spelled with is kept as separate lexical
+        // provenance on this primitive reference. This one site serves a
+        // direct local element @type AND a named restriction @base, so a
+        // named `restriction base="xs:hexBinary"` carries it on its
+        // `base_type`, and named-on-named restrictions reach it through
+        // `base_type` ancestry (`ams_gra_oms_ir::resolve_binary_encoding`).
         Ok(ResolvedTypeSemantics {
-            type_ref: TypeRef::primitive(semantics.kind),
+            type_ref: match semantics.binary_encoding {
+                Some(encoding) => TypeRef::binary(encoding),
+                None => TypeRef::primitive(semantics.kind),
+            },
             constraints: semantics.constraints,
         })
     } else {
@@ -1229,10 +1242,14 @@ fn builtin_primitive_semantics(
         "hexBinary" => (PrimitiveKind::Binary, None, None),
         "string" => (PrimitiveKind::String, None, None),
         "integer" => (PrimitiveKind::SignedInteger, None, None),
+        // `base64Binary` (and every other unlisted built-in) stays an
+        // explicit unsupported construct: no pinned UCI schema uses it and
+        // Task 052 adds no Base64 mapping.
         other => return Err(unsupported(node, other)),
     };
     Ok(BuiltinPrimitiveSemantics {
         kind,
+        binary_encoding: (local_name == "hexBinary").then_some(BinaryLexicalEncoding::HexBinary),
         constraints: ConstraintSet {
             min_inclusive: min_inclusive.map(NumericValue::Integer),
             max_inclusive: max_inclusive.map(NumericValue::Integer),

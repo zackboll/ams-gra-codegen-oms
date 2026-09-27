@@ -52,10 +52,17 @@ run_one generated_codec_sleet task050_generated_codec_round_trips_through_real_s
 # outcome (see docs/task-051-member-qname-provenance.md).
 run_one generated_codec_sleet_non_oam task051_non_oam_generated_codec_probe_against_real_sleet \
   'SLEET NON-OAM PROBE: RECORDED'
+# Task 052: generated xs:hexBinary codec (synthetic OAM fixture); also records
+# that pinned Sleet validates hexBinary only as a JSON string.
+run_one generated_codec_sleet_hexbinary task052_hex_binary_generated_codec_round_trips_through_real_sleet \
+  'REAL SLEET GENERATED HEXBINARY CODEC: PASSED'
 # Task 050: the REAL UCI 2.5 PositionReport, only when the caller supplies the
 # pinned root (build.rs verifies its SHA-256 and fails on a mismatch).
+# Task 052: the REAL UCI 2.5 SubsystemStream carrying a hexBinary value.
 if [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ]; then
   run_one real_uci_position_report real::task050_real_position_report_round_trips_through_real_sleet \
     'REAL UCI POSITIONREPORT THROUGH REAL SLEET: PASSED'
+  run_one real_uci_subsystem_stream real::task052_real_subsystem_stream_round_trips_through_real_sleet \
+    'REAL UCI SUBSYSTEMSTREAM THROUGH REAL SLEET: PASSED'
 fi
 echo "real pinned Sleet ($SLEET_REV): PASSED"

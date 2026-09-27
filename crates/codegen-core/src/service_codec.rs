@@ -16,9 +16,14 @@
 //!   ([`oms_json_type_name`]). A local element whose target namespace is
 //!   ABSENT (unqualified) has no evidenced OMS JSON spelling, so it fails
 //!   closed ([`ServiceCodecError::UnqualifiedMember`]).
-//! * **Binary.** `PrimitiveKind::Binary` is semantic octets; the IR does not
-//!   retain whether the XSD primitive was `hexBinary` or `base64Binary`, whose
-//!   lexical spellings differ. No encoding is chosen, so Binary fails closed.
+//! * **Binary (Task 052).** `PrimitiveKind::Binary` is semantic octets; its
+//!   OMS JSON string spelling depends on which XSD primitive it came from.
+//!   The encoding is read ONLY from IR lexical provenance
+//!   (`ams_gra_oms_ir::resolve_binary_encoding` /
+//!   `declaration_binary_encoding`), never assumed from the value kind:
+//!   `HexBinary` is supported; UNKNOWN provenance fails closed
+//!   ([`ServiceCodecError::UnknownBinaryEncoding`]); `Base64Binary` fails
+//!   closed as unimplemented ([`ServiceCodecError::UnsupportedBinaryEncoding`]).
 //!
 //! The backend single-namespace boundary is NOT relaxed here: normal backend
 //! preflight still rejects a projection spanning several namespaces.
@@ -29,7 +34,8 @@ use crate::{
     plan_type_emissions, rust_model_file_name, service_api_fixed_names,
 };
 use ams_gra_oms_ir::{
-    FieldDecl, OccurrenceShape, PrimitiveKind, SchemaIr, TypeKind, TypeRefTarget,
+    BinaryLexicalEncoding, FieldDecl, OccurrenceShape, PrimitiveKind, SchemaIr, TypeKind,
+    TypeRefTarget, declaration_binary_encoding, resolve_binary_encoding,
 };
 use std::fmt;
 
@@ -81,8 +87,15 @@ pub enum ServiceCodecError {
     /// namespace). OMSC-SPC-013 Rev B gives no unambiguous member name for
     /// it, so no spelling is guessed (Task 051).
     UnqualifiedMember { location: String },
-    /// A Binary value: hexBinary vs base64Binary provenance is not retained.
-    BinaryProvenance { location: String },
+    /// Task 052: a Binary value whose XSD lexical primitive is unknown in the
+    /// IR (synthetic/manual Binary). No lexical family is assumed.
+    UnknownBinaryEncoding { location: String },
+    /// Task 052: a Binary value whose XSD lexical primitive is known but has
+    /// no generated codec mapping (`base64Binary`).
+    UnsupportedBinaryEncoding {
+        location: String,
+        encoding: BinaryLexicalEncoding,
+    },
     /// A primitive with no evidenced codec mapping in this task.
     UnsupportedPrimitive {
         location: String,
@@ -110,11 +123,16 @@ impl fmt::Display for ServiceCodecError {
                 "{location} has an unqualified local element with no evidenced OMS JSON \
                  member-name mapping"
             ),
-            Self::BinaryProvenance { location } => write!(
+            Self::UnknownBinaryEncoding { location } => write!(
                 f,
-                "{location} is Binary; Schema IR does not retain whether the XSD \
-                 primitive was hexBinary or base64Binary, so its OMS JSON string \
-                 encoding cannot be chosen"
+                "{location} is Binary but its XSD lexical encoding provenance is unknown"
+            ),
+            Self::UnsupportedBinaryEncoding { location, encoding } => write!(
+                f,
+                "{location} is Binary with XSD lexical encoding {}; the {} codec \
+                 mapping is not implemented",
+                encoding.xsd_name(),
+                encoding.xsd_name()
             ),
             Self::UnsupportedPrimitive { location, kind } => write!(
                 f,
@@ -265,6 +283,11 @@ fn emission_codec_support(
     };
     let owner = &declaration.name.local_name;
     match &declaration.kind {
+        // Task 052: a named Binary's lexical family is its declaration's
+        // restriction ancestry, resolved by the one shared IR query.
+        TypeKind::Primitive(PrimitiveKind::Binary) => {
+            binary_support(declaration_binary_encoding(schema, declaration), owner)
+        }
         TypeKind::Primitive(kind) => primitive_support(*kind, owner),
         TypeKind::Enumeration { .. } => Ok(()),
         TypeKind::Record { .. } => {
@@ -278,7 +301,7 @@ fn emission_codec_support(
                     // Task 026: encoded as nothing, decoded as rejected.
                     continue;
                 }
-                member_support(field, owner)?;
+                member_support(schema, field, owner)?;
             }
             Ok(())
         }
@@ -294,7 +317,7 @@ fn emission_codec_support(
                         "optional Choice alternative has no unambiguous OMS JSON form".into(),
                     ));
                 }
-                member_support(alternative, owner)?;
+                member_support(schema, alternative, owner)?;
             }
             Ok(())
         }
@@ -305,7 +328,11 @@ fn emission_codec_support(
     }
 }
 
-fn member_support(field: &FieldDecl, owner: &str) -> Result<(), ServiceCodecError> {
+fn member_support(
+    schema: &SchemaIr,
+    field: &FieldDecl,
+    owner: &str,
+) -> Result<(), ServiceCodecError> {
     let location = format!("{owner}.{}", field.name);
     // Task 051: the member key comes from the ELEMENT's own target namespace,
     // never the owning type's, the message's, or the member type's.
@@ -316,12 +343,39 @@ fn member_support(field: &FieldDecl, owner: &str) -> Result<(), ServiceCodecErro
         return Err(unsupported(&location, "nillable member".into()));
     }
     match &field.type_ref.target {
+        // Task 052: a direct Binary reference carries its own provenance.
+        TypeRefTarget::Primitive(PrimitiveKind::Binary) => {
+            binary_support(resolve_binary_encoding(schema, &field.type_ref), &location)
+        }
         TypeRefTarget::Primitive(kind) => primitive_support(*kind, &location),
         // A named member type is itself an emitted declaration, checked there.
         TypeRefTarget::Named(_) => Ok(()),
     }
 }
 
+/// Task 052: the codec decision for one Binary value, from its RESOLVED
+/// lexical provenance only. There is deliberately no path from
+/// `PrimitiveKind::Binary` alone to a hex encoding.
+fn binary_support(
+    encoding: Option<BinaryLexicalEncoding>,
+    location: &str,
+) -> Result<(), ServiceCodecError> {
+    match encoding {
+        Some(BinaryLexicalEncoding::HexBinary) => Ok(()),
+        Some(encoding @ BinaryLexicalEncoding::Base64Binary) => {
+            Err(ServiceCodecError::UnsupportedBinaryEncoding {
+                location: location.to_owned(),
+                encoding,
+            })
+        }
+        None => Err(ServiceCodecError::UnknownBinaryEncoding {
+            location: location.to_owned(),
+        }),
+    }
+}
+
+/// Non-Binary primitives. Binary never reaches here: it is decided by
+/// [`binary_support`] from its provenance.
 fn primitive_support(kind: PrimitiveKind, location: &str) -> Result<(), ServiceCodecError> {
     match kind {
         PrimitiveKind::Boolean
@@ -331,7 +385,7 @@ fn primitive_support(kind: PrimitiveKind, location: &str) -> Result<(), ServiceC
         | PrimitiveKind::Float64
         | PrimitiveKind::String
         | PrimitiveKind::DateTime => Ok(()),
-        PrimitiveKind::Binary => Err(ServiceCodecError::BinaryProvenance {
+        PrimitiveKind::Binary => Err(ServiceCodecError::UnknownBinaryEncoding {
             location: location.to_owned(),
         }),
         PrimitiveKind::Decimal | PrimitiveKind::Time | PrimitiveKind::Duration => {
@@ -416,13 +470,22 @@ mod tests {
             let schema = record(OAM_NAMESPACE, vec![field("F", TypeRef::primitive(kind))]);
             assert_eq!(check(&schema), Ok(()), "{kind:?}");
         }
+        // Task 052: Binary is decided by provenance, never by the kind.
+        let hex = record(
+            OAM_NAMESPACE,
+            vec![field(
+                "F",
+                TypeRef::binary(BinaryLexicalEncoding::HexBinary),
+            )],
+        );
+        assert_eq!(check(&hex), Ok(()));
         let binary = record(
             OAM_NAMESPACE,
             vec![field("F", TypeRef::primitive(PrimitiveKind::Binary))],
         );
         assert!(matches!(
             check(&binary),
-            Err(ServiceCodecError::BinaryProvenance { .. })
+            Err(ServiceCodecError::UnknownBinaryEncoding { .. })
         ));
         for kind in [
             PrimitiveKind::Decimal,
@@ -494,6 +557,83 @@ mod tests {
             check(&schema),
             Err(ServiceCodecError::UnqualifiedMember {
                 location: "P.A".to_owned()
+            })
+        );
+    }
+
+    /// Task 052 negative control: semantic Binary WITHOUT lexical provenance
+    /// (hand-constructed IR) is valid model IR but the codec fails closed with
+    /// a deterministic diagnostic. This is what proves no code path assumes
+    /// "Binary means hexBinary".
+    #[test]
+    fn task052_unknown_binary_provenance_fails_closed() {
+        let mut schema = record(
+            OAM_NAMESPACE,
+            vec![field("Data", TypeRef::primitive(PrimitiveKind::Binary))],
+        );
+        schema.types[0].name.local_name = "Payload".to_owned();
+        assert_eq!(schema.validate(), Ok(()), "legal model IR");
+        let error = check(&schema).expect_err("unknown provenance");
+        assert_eq!(
+            error,
+            ServiceCodecError::UnknownBinaryEncoding {
+                location: "Payload.Data".to_owned()
+            }
+        );
+        assert_eq!(
+            error.to_string(),
+            "Payload.Data is Binary but its XSD lexical encoding provenance is unknown"
+        );
+    }
+
+    /// Task 052: Base64Binary is representable in IR but has no codec
+    /// mapping; it must never be routed through hex.
+    #[test]
+    fn task052_base64_binary_is_not_ready() {
+        let schema = record(
+            OAM_NAMESPACE,
+            vec![field(
+                "F",
+                TypeRef::binary(BinaryLexicalEncoding::Base64Binary),
+            )],
+        );
+        let error = check(&schema).expect_err("base64");
+        assert_eq!(
+            error.to_string(),
+            "P.F is Binary with XSD lexical encoding base64Binary; the base64Binary \
+             codec mapping is not implemented"
+        );
+    }
+
+    /// Task 052: a named Binary declaration is decided by its own
+    /// restriction ancestry: `Hex1 -> Hex0 -> xs:hexBinary` is ready, a
+    /// named Binary with no provenance is not.
+    #[test]
+    fn task052_named_binary_uses_declaration_ancestry() {
+        let named_binary = |name: &str, base: Option<TypeRef>| TypeDecl {
+            name: QualifiedName::new(OAM_NAMESPACE, name),
+            is_abstract: false,
+            base_type: base,
+            kind: TypeKind::Primitive(PrimitiveKind::Binary),
+            constraints: ConstraintSet::default(),
+            documentation: None,
+            source: source(),
+        };
+        let mut schema = record(OAM_NAMESPACE, Vec::new());
+        schema.types.push(named_binary(
+            "Hex0",
+            Some(TypeRef::binary(BinaryLexicalEncoding::HexBinary)),
+        ));
+        schema.types.push(named_binary(
+            "Hex1",
+            Some(TypeRef::named(QualifiedName::new(OAM_NAMESPACE, "Hex0"))),
+        ));
+        assert_eq!(check(&schema), Ok(()));
+        schema.types.push(named_binary("Opaque", None));
+        assert_eq!(
+            check(&schema),
+            Err(ServiceCodecError::UnknownBinaryEncoding {
+                location: "Opaque".to_owned()
             })
         );
     }

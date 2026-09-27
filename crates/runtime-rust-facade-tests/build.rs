@@ -13,7 +13,9 @@ use std::process::Command;
 /// NON-OAM qualified services with `--with-codec`: `runtime-test` a second
 /// time (as `runtime_test_codec`, beside the unchanged handwritten-codec
 /// `runtime_test`), plus the Choice, inheritance, and `$type` fixtures.
-const SERVICES: [(&str, &str, bool); 7] = [
+/// Task 052 adds the two xs:hexBinary codec services: the flipped Task 050
+/// `codec-binary` control and the `codec-hexbinary` shape matrix.
+const SERVICES: [(&str, &str, bool); 9] = [
     ("runtime-test", "runtime_test", false),
     ("runtime-oam", "runtime_oam", false),
     ("codec-oam", "codec_oam", true),
@@ -21,6 +23,8 @@ const SERVICES: [(&str, &str, bool); 7] = [
     ("codec-choice", "codec_choice", true),
     ("codec-inherit", "codec_inherit", true),
     ("codec-shape", "codec_shape", true),
+    ("codec-binary", "codec_binary", true),
+    ("codec-hexbinary", "codec_hexbinary", true),
 ];
 
 /// Task 050: the pinned UCI 2.5 root (open-arsenal/uci/standard tag v2.5,
@@ -98,25 +102,41 @@ fn real_uci_position_report(fixtures: &Path, out: &Path) {
         "AMS_GRA_UCI_2_5_ROOT {} is not the pinned UCI 2.5 root",
         root.display()
     );
-    let contract = fixtures.join("position-report-loop.yaml");
-    println!("cargo:rerun-if-changed={}", contract.display());
-    let target = out.join("real_uci_position_report");
-    let _ = std::fs::remove_dir_all(&target);
-    let arguments: Vec<OsString> = vec![
-        "service-generate".into(),
-        "--schema".into(),
-        root.into(),
-        "--contract".into(),
-        contract.into(),
-        "--language".into(),
-        "rust".into(),
-        "--world".into(),
-        "closed-schema".into(),
-        "--output".into(),
-        target.into(),
-        "--with-codec".into(),
-    ];
-    generate("real UCI PositionReport", arguments, &mut Vec::new());
+    // Task 050: PositionReport. Task 052: SubsystemStream, the smallest real
+    // UCI 2.5 message whose closure has a hexBinary value and whose only
+    // earlier codec blocker was Binary.
+    for (contract, directory, label) in [
+        (
+            "position-report-loop.yaml",
+            "real_uci_position_report",
+            "real UCI PositionReport",
+        ),
+        (
+            "subsystem-stream-loop.yaml",
+            "real_uci_subsystem_stream",
+            "real UCI SubsystemStream",
+        ),
+    ] {
+        let contract = fixtures.join(contract);
+        println!("cargo:rerun-if-changed={}", contract.display());
+        let target = out.join(directory);
+        let _ = std::fs::remove_dir_all(&target);
+        let arguments: Vec<OsString> = vec![
+            "service-generate".into(),
+            "--schema".into(),
+            root.clone().into(),
+            "--contract".into(),
+            contract.into(),
+            "--language".into(),
+            "rust".into(),
+            "--world".into(),
+            "closed-schema".into(),
+            "--output".into(),
+            target.into(),
+            "--with-codec".into(),
+        ];
+        generate(label, arguments, &mut Vec::new());
+    }
     println!("cargo:rustc-cfg=ams_gra_real_uci");
     // The test hands Sleet the SAME verified root the model was generated from.
     println!(
