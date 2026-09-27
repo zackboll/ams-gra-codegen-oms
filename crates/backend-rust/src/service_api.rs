@@ -8,10 +8,10 @@
 
 use crate::{error, rust_type};
 use ams_gra_oms_codegen_core::{
-    BackendLanguage, CodegenError, ServiceApiFacadeNames, ServiceApiModel, ServiceApiOmsBinding,
-    ServiceApiOmsOperation, rust_model_file_name, service_api_exchange_scope_name,
-    service_api_fixed_names, service_api_function_scope_name, validate_service_api_artifacts,
-    validate_service_api_names,
+    BackendLanguage, CodegenError, RUST_SERVICE_CODEC_FILE, RUST_SERVICE_CODEC_MODULE,
+    ServiceApiFacadeNames, ServiceApiModel, ServiceApiOmsBinding, ServiceApiOmsOperation,
+    rust_model_file_name, service_api_exchange_scope_name, service_api_fixed_names,
+    service_api_function_scope_name, validate_service_api_artifacts, validate_service_api_names,
 };
 use ams_gra_oms_ir::SchemaIr;
 use std::fmt::Write as _;
@@ -47,6 +47,29 @@ const LANGUAGE: BackendLanguage = BackendLanguage::Rust;
 pub fn generate_service_api(
     model: &ServiceApiModel,
     schema: &SchemaIr,
+) -> Result<String, CodegenError> {
+    render_service_api(model, schema, false)
+}
+
+/// Task 050: the same wrapper, additionally mounting the generated
+/// `service_codec.rs` as the sibling module `service_codec` when the service
+/// has OMS exchanges. Without OMS exchanges no codec exists and the output is
+/// exactly [`generate_service_api`]'s.
+///
+/// # Errors
+///
+/// Exactly as [`generate_service_api`].
+pub fn generate_service_api_with_codec(
+    model: &ServiceApiModel,
+    schema: &SchemaIr,
+) -> Result<String, CodegenError> {
+    render_service_api(model, schema, model.has_oms_exchanges())
+}
+
+fn render_service_api(
+    model: &ServiceApiModel,
+    schema: &SchemaIr,
+    mount_codec: bool,
 ) -> Result<String, CodegenError> {
     // Re-run the shared preflight: a caller that skipped readiness must
     // still fail closed instead of emitting source that cannot compile.
@@ -87,6 +110,13 @@ pub fn generate_service_api(
             output,
             "#[path = \"{}\"]\npub mod {model_module};\n",
             rust_model_file_name(schema)?
+        )
+        .expect("writing to String cannot fail");
+    }
+    if mount_codec {
+        writeln!(
+            output,
+            "#[path = \"{RUST_SERVICE_CODEC_FILE}\"]\npub mod {RUST_SERVICE_CODEC_MODULE};\n"
         )
         .expect("writing to String cannot fail");
     }

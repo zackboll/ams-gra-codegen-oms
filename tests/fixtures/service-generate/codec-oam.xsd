@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="https://www.vdl.afrl.af.mil/programs/oam"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- SYNTHETIC Task 050 codec fixture. NOT UCI. It uses the OAM target
+       namespace and elementFormDefault="qualified" so OMS JSON member names
+       are bare local names exactly as for UCI (OMSC-SPC-013 Rev B 6.1.2).
+
+         CodecNotice  -> CodecPayload
+         CodecEcho    -> CodecPayload   (same payload, second message)
+
+       Exercises every construct the Task 050 Rust codec supports: bool,
+       bounded signed/unsigned integers, finite/special floats (named bounded
+       and direct), plain string, constrained String (VisibleAscii), UUID,
+       named Zulu DateTime, direct DateTime, remapped enum wire values,
+       optional/bounded/positive-minimum/unbounded repetition, an inherited
+       Record, a Choice (including a repeated alternative), and a closed
+       abstract value that needs "$type". Small enough for the unmodified
+       pinned Sleet server to load as its schema_path. -->
+
+  <xs:simpleType name="UniversallyUniqueIdentifierType">
+    <xs:restriction base="xs:string">
+      <xs:length value="36"/>
+      <xs:pattern value="(0{8}(-0{4}){3}-0{12})|([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12})"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Label">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="32"/>
+      <xs:pattern value="[&#x20;-&#x7E;]{1,32}"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Instant">
+    <xs:restriction base="xs:dateTime">
+      <xs:pattern value=".+Z"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Level">
+    <xs:restriction base="xs:int">
+      <xs:minInclusive value="-10"/>
+      <xs:maxInclusive value="10"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Percent">
+    <xs:restriction base="xs:unsignedByte">
+      <xs:maxInclusive value="100"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Angle">
+    <xs:restriction base="xs:double">
+      <xs:minInclusive value="-180"/>
+      <xs:maxInclusive value="180"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Ratio">
+    <xs:restriction base="xs:float"/>
+  </xs:simpleType>
+  <xs:simpleType name="Measure">
+    <xs:restriction base="xs:double"/>
+  </xs:simpleType>
+  <!-- Task 044 remapping: ordinary, leading digit, and a spelling whose Rust
+       identifier differs from the wire value (underscores removed). -->
+  <xs:simpleType name="SignalCode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="NORMAL"/>
+      <xs:enumeration value="5G"/>
+      <xs:enumeration value="SOME_VALUE"/>
+      <xs:enumeration value="Self"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="IdentityBase">
+    <xs:sequence>
+      <xs:element name="UUID" type="uci:UniversallyUniqueIdentifierType"/>
+      <xs:element name="Name" type="uci:Label" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+  <!-- Inherited Record: base fields are flattened, never nested. -->
+  <xs:complexType name="VersionedIdentity">
+    <xs:complexContent>
+      <xs:extension base="uci:IdentityBase">
+        <xs:sequence>
+          <xs:element name="Version" type="xs:unsignedInt" minOccurs="0"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="SourceChoice">
+    <xs:choice>
+      <xs:element name="Code" type="uci:SignalCode"/>
+      <xs:element name="Text" type="xs:string"/>
+      <xs:element name="Levels" type="uci:Level" maxOccurs="3"/>
+    </xs:choice>
+  </xs:complexType>
+
+  <!-- Closed abstract value: concrete descendants need "$type". -->
+  <xs:complexType name="ShapeBase" abstract="true">
+    <xs:sequence>
+      <xs:element name="Tag" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="CircleShape">
+    <xs:complexContent>
+      <xs:extension base="uci:ShapeBase">
+        <xs:sequence>
+          <xs:element name="Radius" type="uci:Measure"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="BoxShape">
+    <xs:complexContent>
+      <xs:extension base="uci:ShapeBase">
+        <xs:sequence>
+          <xs:element name="Width" type="xs:double"/>
+          <xs:element name="Height" type="xs:double"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="CodecPayload">
+    <xs:sequence>
+      <xs:element name="Enabled" type="xs:boolean"/>
+      <xs:element name="Level" type="uci:Level"/>
+      <xs:element name="Percent" type="uci:Percent"/>
+      <xs:element name="Offset" type="xs:long"/>
+      <xs:element name="Count" type="xs:unsignedShort"/>
+      <xs:element name="Heading" type="uci:Angle"/>
+      <xs:element name="Gain" type="uci:Ratio"/>
+      <xs:element name="Reading" type="xs:double"/>
+      <xs:element name="Note" type="xs:string"/>
+      <xs:element name="Callsign" type="uci:Label"/>
+      <xs:element name="Identity" type="uci:VersionedIdentity"/>
+      <xs:element name="Created" type="uci:Instant"/>
+      <xs:element name="Observed" type="xs:dateTime"/>
+      <xs:element name="Signal" type="uci:SignalCode"/>
+      <xs:element name="Comment" type="xs:string" minOccurs="0"/>
+      <xs:element name="Tags" type="uci:Label" minOccurs="0" maxOccurs="3"/>
+      <xs:element name="Signals" type="uci:SignalCode" minOccurs="2" maxOccurs="4"/>
+      <xs:element name="History" type="uci:Measure" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="Source" type="uci:SourceChoice"/>
+      <xs:element name="Shape" type="uci:ShapeBase"/>
+      <xs:element name="Shapes" type="uci:ShapeBase" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="CodecNotice" type="uci:CodecPayload" uci:version="001.000.000.000"/>
+  <xs:element name="CodecEcho" type="uci:CodecPayload" uci:version="001.000.000.000"/>
+</xs:schema>

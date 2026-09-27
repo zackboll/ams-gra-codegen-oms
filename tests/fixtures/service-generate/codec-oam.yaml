@@ -1,0 +1,47 @@
+# SYNTHETIC Task 050 fixture. Authored for this repository only.
+#
+# Selects against codec-oam.xsd (the OAM namespace). CodecNotice is both
+# subscribed and published on one topic, so a real CAL server loops it back;
+# CodecEcho shares the SAME payload type, so the generated codec must emit
+# exactly ONE OmsJsonCodec<CodecPayload> impl for both messages.
+contract_version: "0.1"
+
+service:
+  name: codec-oam
+  version: "0.1.0"
+  kind: service
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: loop
+    name: Loop
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: input-notice
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: CodecNotice
+        topic: codec-topic
+        timing:
+          kind: asynchronous
+      - id: output-notice
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: CodecNotice
+        topic: codec-topic
+        timing:
+          kind: asynchronous
+      - id: output-echo
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: CodecEcho
+        topic: codec-topic
+        timing:
+          kind: asynchronous

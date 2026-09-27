@@ -199,6 +199,43 @@ jobs:
           require_one_test task049_receive_progresses_under_sustained_publish_load \
             cargo test -p ams-gra-oms-runtime-rust-facade-tests --test runtime_fairness \
             task049_receive_progresses_under_sustained_publish_load
+      # Task 050: the GENERATED OMS JSON codec (service-generate --with-codec)
+      # for the synthetic OAM fixture, plus the codec readiness controls. Each
+      # gate must match and pass exactly one test.
+      - name: Generated Rust OMS JSON codec (must execute)
+        run: |
+          set -euo pipefail
+          require_one_test() {
+            name="$1"
+            shift
+            output="$("$@" -- --exact --nocapture 2>&1)"
+            printf '%s\n' "$output"
+            printf '%s\n' "$output" | grep -qE "^test ${name} \.\.\. ok$"
+            printf '%s\n' "$output" | grep -qE '^test result: ok\. 1 passed'
+          }
+          for test in \
+            task050_generated_codec_round_trips_every_construct \
+            task050_strict_negative_decode_corpus \
+            task050_enum_codec_uses_exact_wire_values \
+            task050_choice_codec_selects_exactly_one_member \
+            task050_abstract_value_codec_uses_type_member \
+            task050_float_codec_uses_oms_special_strings \
+            task050_record_repetition_and_optional_semantics; do
+            require_one_test "$test" \
+              cargo test -p ams-gra-oms-runtime-rust-facade-tests --test generated_codec "$test"
+          done
+          require_one_test task050_generated_codec_round_trips_through_mock_owp \
+            cargo test -p ams-gra-oms-runtime-rust-facade-tests --test generated_codec_mock_owp \
+            task050_generated_codec_round_trips_through_mock_owp
+          for test in \
+            task050_oam_codec_service_is_ready_and_generates_the_codec \
+            task050_selected_binary_is_model_ready_but_codec_not_ready \
+            task050_non_oam_payload_fails_codec_preflight \
+            task050_zero_oms_service_needs_no_codec \
+            task050_ada_and_cpp_have_no_generated_codec; do
+            require_one_test "$test" \
+              cargo test -p ams-gra-codegen-oms --test service_codec "$test"
+          done
       # PR #50 corrective: the runtime crates declare `rust-version = "1.95"`
       # (the pinned sleet-client needs edition 2024 let-chains). The toolchain
       # above floats on stable, so check the declared floor explicitly with the
@@ -212,11 +249,31 @@ jobs:
           cargo +1.95.0 check --locked -p ams-gra-oms-runtime-api
           cargo +1.95.0 check --locked -p ams-gra-oms-runtime-rust --all-targets
           cargo +1.95.0 check --locked -p ams-gra-oms-runtime-rust-facade-tests --all-targets
+          # Task 050: the facade-tests crate root includes GENERATED
+          # service_codec.rs (codec-oam, --with-codec), so the check above
+          # already compiles generated codec source under 1.95.0. Also compile
+          # the generated REAL PositionReport codec under 1.95.0.
+          UCI_ROOT="$(scripts/fetch-pinned-uci-2.5.sh "$RUNNER_TEMP/uci-2.5")"
+          AMS_GRA_UCI_2_5_ROOT="$UCI_ROOT" cargo +1.95.0 check --locked \
+            -p ams-gra-oms-runtime-rust-facade-tests --all-targets
       # Task 049: the same generated facade against the UNMODIFIED Sleet
       # server at the exact pinned revision, built from a fresh checkout. The
       # script fails unless the test really ran and printed its PASSED line.
+      # Task 050 adds the GENERATED-codec Sleet test and, with the pinned public
+      # UCI 2.5 root fetched OUTSIDE the repository (revision and root SHA-256
+      # verified by the script and again by build.rs), the REAL PositionReport
+      # decode/re-encode and typed round trip through unmodified Sleet.
       - name: Rust LA-CAL runtime against real pinned Sleet (e38f61d8)
-        run: scripts/run-real-sleet-test.sh
+        run: |
+          set -euo pipefail
+          UCI_ROOT="$(scripts/fetch-pinned-uci-2.5.sh "$RUNNER_TEMP/uci-2.5")"
+          export AMS_GRA_UCI_2_5_ROOT="$UCI_ROOT"
+          output="$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test real_uci_position_report -- \
+            --exact real::task050_real_position_report_decodes_and_re_encodes --nocapture 2>&1)"
+          printf '%s\n' "$output"
+          printf '%s\n' "$output" | grep -q '^REAL POSITIONREPORT CODEC: PASSED$'
+          printf '%s\n' "$output" | grep -qE '^test result: ok\. 1 passed'
+          scripts/run-real-sleet-test.sh
       # `AMS_GRA_REQUIRE_GNAT` turns the Ada probes' developer-machine skip
       # into a hard failure, so a runner that somehow lost GNAT after the gate
       # above cannot produce a green run with the Ada checks quietly elided.

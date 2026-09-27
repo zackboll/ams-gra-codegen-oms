@@ -315,7 +315,8 @@ runtime-api-rust traits           ams-gra-oms-runtime-api: two traits, no depend
 runtime-rust                      ams-gra-oms-runtime-rust: SleetRuntime<C>
         |                           one worker thread, one current-thread Tokio runtime
         |
-OmsJsonCodec<P>                   caller-supplied payload codec (generated in a later task)
+OmsJsonCodec<P>                   payload codec: generated service_codec.rs (Task 050,
+        |                           --with-codec) or any caller-supplied provider
         |
 sleet-client @ e38f61d8           pinned public git dependency; never copied or forked
         |
@@ -334,8 +335,33 @@ runtime generic envelope (depends only on the message QName):
     connection, worker, runtime errors and events
 
 generated codec (depends only on the payload type):
-    payload fields and values
+    payload fields and values, enum wire values, sequence/choice shape,
+    effective inheritance, $type on closed abstract values, checked model
+    construction
 ```
+
+After Task 050:
+
+```text
+Service Contract
+      |
+      v
+generated service_api.rs
+      +---- generated model            (oam.rs, mounted as `model`)
+      +---- generated service_codec.rs (mounted as `service_codec`)
+                   | OmsJsonCodec<P>
+                   v
+           SleetRuntime<ServiceCodec>
+                   | generic global envelope
+              sleet-client
+                   | OWP/WebSocket
+                 Sleet (unchanged)
+```
+
+The generated codec is a separate layer over the unchanged model: model types
+gain no Serde derive, accessor, or other API, and the model's checked
+constructors stay the validation authority. See
+[Task 050](task-050-rust-oms-json-codecs.md).
 
 The same payload type can serve two global messages, so the codec never
 chooses the JSON member key and the runtime never looks inside a payload. One
