@@ -82,6 +82,127 @@ fn task053_cpp_carrier_shape_is_checked_and_copy_only() {
     ));
 }
 
+/// The body of `class {carrier} { ... };` in generated source.
+fn class_body<'a>(source: &'a str, carrier: &str) -> &'a str {
+    let open = format!("class {carrier} {{\n");
+    let start = source
+        .find(&open)
+        .unwrap_or_else(|| panic!("{carrier}: class not emitted"));
+    let end = source[start..]
+        .find("\n};\n")
+        .unwrap_or_else(|| panic!("{carrier}: class not terminated"));
+    &source[start..start + end]
+}
+
+const SIZE_GUARD: &str =
+    "if (value.size() > std::numeric_limits<std::uint64_t>::max()) return std::nullopt;";
+const SIZE_CAST: &str = "static_cast<std::uint64_t>(value.size())";
+
+/// Task 053 corrective (portability): C++ does not bound
+/// `std::vector::size_type` to 64 bits, so a direct cast could truncate
+/// (`2^64 + 4` -> `4`) and let `Exact4` accept a wrong length. The generated
+/// `create` must check representability BEFORE the cast. A 64-bit runner
+/// cannot reproduce that truncation, so this is asserted on source structure.
+#[test]
+fn task053_cpp_size_representability_guard_precedes_conversion() {
+    let source = header();
+    assert!(
+        source.contains("#include <limits>\n"),
+        "the guard needs <limits>"
+    );
+    for carrier in [
+        "Exact4",
+        "Min2",
+        "Max6",
+        "Between2And6",
+        "DerivedExact4",
+        "ZeroBlob",
+        "BlobBase",
+        "BlobMiddle",
+        "BlobExact",
+    ] {
+        let body = class_body(&source, carrier);
+        let guard = body
+            .find(SIZE_GUARD)
+            .unwrap_or_else(|| panic!("{carrier}: missing representability guard"));
+        let cast = body
+            .find(SIZE_CAST)
+            .unwrap_or_else(|| panic!("{carrier}: missing checked conversion"));
+        assert!(guard < cast, "{carrier}: guard must precede the cast");
+        assert_eq!(body.matches(SIZE_CAST).count(), 1, "{carrier}: one cast");
+        let compare = body
+            .find("const auto octets = static_cast<std::uint64_t>(value.size());\n        if (")
+            .unwrap_or_else(|| panic!("{carrier}: missing domain comparison"));
+        assert!(guard < compare, "{carrier}: comparison follows the guard");
+        assert!(!body.contains("widening"), "{carrier}: stale comment");
+    }
+    // Every conversion anywhere in the header is guarded.
+    assert_eq!(
+        source.matches(SIZE_CAST).count(),
+        source.matches(SIZE_GUARD).count()
+    );
+    assert!(!class_body(&source, "PlainBytes").contains("value.size()"));
+}
+
+fn generate_inline(label: &str, body: &str) -> String {
+    let directory = std::env::temp_dir().join(format!(
+        "ams-gra-oms-task053c-{label}-{}",
+        std::process::id()
+    ));
+    let _ = std::fs::remove_dir_all(&directory);
+    std::fs::create_dir_all(&directory).expect("create schema directory");
+    let path = directory.join("schema.xsd");
+    std::fs::write(
+        &path,
+        format!(
+            concat!(
+                "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n",
+                "<xs:schema xmlns:xs=\"http://www.w3.org/2001/XMLSchema\"\n",
+                "           targetNamespace=\"https://www.vdl.afrl.af.mil/programs/oam\"\n",
+                "           elementFormDefault=\"qualified\" version=\"000.1.0\">\n",
+                "{}\n",
+                "</xs:schema>\n",
+            ),
+            body
+        ),
+    )
+    .expect("write schema");
+    let schema = ams_gra_oms_xsd_frontend::load_schema_document(&path).expect("schema parses");
+    std::fs::remove_dir_all(&directory).expect("remove schema directory");
+    generate(&schema, CLOSED).expect("header generates")
+}
+
+/// `<limits>` is emitted exactly when a carrier needs the checked conversion:
+/// not for unconstrained Binary, and not for the degenerate `minLength = 0`
+/// (no max) domain, whose `create` inspects no length and converts nothing.
+#[test]
+fn task053_cpp_limits_header_follows_the_checked_conversion() {
+    let unconstrained = generate_inline(
+        "unconstrained",
+        "  <xs:simpleType name=\"Blob\"><xs:restriction base=\"xs:hexBinary\"/></xs:simpleType>",
+    );
+    assert!(!unconstrained.contains("#include <limits>"));
+    assert!(!unconstrained.contains("numeric_limits"));
+
+    let degenerate = generate_inline(
+        "degenerate",
+        "  <xs:simpleType name=\"AnyBlob\"><xs:restriction base=\"xs:hexBinary\"><xs:minLength value=\"0\"/></xs:restriction></xs:simpleType>",
+    );
+    let body = class_body(&degenerate, "AnyBlob");
+    assert!(body.contains("static std::optional<AnyBlob> create(std::vector<std::uint8_t> value) {\n        return AnyBlob(std::move(value));\n"));
+    assert!(!degenerate.contains(SIZE_CAST));
+    assert!(!degenerate.contains("numeric_limits"));
+    assert!(!degenerate.contains("#include <limits>"));
+
+    let exact = generate_inline(
+        "exact",
+        "  <xs:simpleType name=\"Exact4\"><xs:restriction base=\"xs:hexBinary\"><xs:length value=\"4\"/></xs:restriction></xs:simpleType>",
+    );
+    assert!(exact.contains("#include <limits>\n"));
+    let body = class_body(&exact, "Exact4");
+    assert!(body.find(SIZE_GUARD).expect("guard") < body.find(SIZE_CAST).expect("cast"));
+}
+
 const RUNTIME_PROBE: &str = r##"#include "generated.hpp"
 #include <cstdio>
 #include <optional>

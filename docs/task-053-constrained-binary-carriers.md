@@ -583,6 +583,72 @@ Rust 1.95 and real-Sleet gates are unchanged.
 Tools: rustc/cargo 1.98.1 (stable), 1.95.0 (MSRV), GNAT (gnatmake) 14.2.0,
 g++ 14.2.0, Python 3.13.5.
 
+### 12.1 Corrective review: portable C++ length conversion
+
+Reviewed head `b103d5bb483ea57fd092503b2287ae9f2221fc72`.
+
+**Finding.** The generated C++ carrier (section 3) converted first,
+`const auto octets = static_cast<std::uint64_t>(value.size());`, and the
+renderer comment called that an "explicit widening cast". C++ does not
+guarantee `std::vector::size_type` fits in 64 bits. On an implementation with
+a wider `size_type`, the cast can truncate: a real size of `2^64 + 4` becomes
+`4`, and `Exact4::create` would accept a value outside its octet domain.
+
+**Correction.** `create` now uses the same representability rule the backend
+already applies in the generated `UnboundedVector`:
+
+```cpp
+static std::optional<Exact4> create(std::vector<std::uint8_t> value) {
+    // vector::size_type is checked for representability in
+    // std::uint64_t BEFORE conversion, then compared with the
+    // schema's u64 octet domain.
+    if (value.size() > std::numeric_limits<std::uint64_t>::max()) return std::nullopt;
+    const auto octets = static_cast<std::uint64_t>(value.size());
+    if (octets < min_octets || octets > max_octets) return std::nullopt;
+    return Exact4(std::move(value));
+}
+```
+
+* One shared predicate, `binary_domain_checks_length` (`min_octets > 0` or a
+  max is present), decides two things: whether the renderer emits the
+  guard + conversion, and whether `schema_needs_limits` adds
+  `#include <limits>`. The degenerate `minLength = 0`, no-max domain inspects
+  no length, converts nothing and gets no `<limits>` from this rule.
+* The public API is unchanged: `create(std::vector<std::uint8_t>)`,
+  `const std::vector<std::uint8_t>& value() const noexcept`, the private
+  storing constructor, the copy-only Task 040 lifecycle (explicit copy
+  constructor and assignment, no move operations), and no default
+  construction.
+* Regressions: `task053_cpp_size_representability_guard_precedes_conversion`
+  asserts in every constrained carrier that the guard comes before the only
+  `static_cast<std::uint64_t>(value.size())`, and that `<limits>` is present.
+  `task053_cpp_limits_header_follows_the_checked_conversion` asserts that
+  unconstrained Binary and the degenerate domain emit no `<limits>` and no
+  `numeric_limits`, and that an `Exact4`-only schema does emit them. A 64-bit
+  runner cannot reproduce the truncation, so these are source-structure
+  checks. Both fail on `b103d5b` and pass after the fix. The three original
+  Task 053 C++ tests (shape, strict-flag runtime/lifecycle including
+  rvalue-source validity, negative API probes) are unchanged and pass.
+* Byte identity: the reviewed-head binary was compared with the corrective
+  binary over every XSD fixture in `tests/fixtures` and
+  `crates/*/tests/fixtures` (model `generate` in Ada, Rust and C++, in both
+  worlds) and every `service-generate` contract (Ada, Rust and C++, with
+  and without `--with-codec`): 1099 generated files. Every Ada and Rust file,
+  including all 35 `service_codec.rs`, is identical, and so are all exit
+  codes and diagnostics. The only changed files are the C++ headers of the
+  three fixtures that contain a constrained Binary: `constrained-binary`,
+  `constrained-binary-sleet` and `binary-provenance`. `binary-provenance`
+  had no `<limits>` before and now gets it, exactly as the predicate
+  requires. Unconstrained Binary schemas (`backend-binary-only`,
+  `codec-binary`, `codec-hexbinary`, `optional-primitive`, ...) are
+  byte-identical and gain no `<limits>`.
+* Workspace: `AMS_GRA_REQUIRE_GNAT=1 cargo test --workspace`: **1102 -> 1104
+  passed**, 0 failed, 0 ignored. fmt, check and clippy (`-D warnings`) pass.
+* Unchanged semantics: the classifier, IR, coverage and renderability are
+  untouched. The 12-cell coverage matrix (section 6), real-UCI message
+  impact (section 7) and real-Sleet evidence (section 8, Rust side) are
+  therefore unchanged and were not rerun.
+
 ## 13. Still open
 
 * [ ] direct field-local Binary constraints;

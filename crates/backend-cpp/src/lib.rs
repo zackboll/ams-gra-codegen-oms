@@ -794,6 +794,16 @@ fn schema_needs_limits(schema: &SchemaIr) -> bool {
                 .ok()
                 .flatten()
                 .is_some_and(domain_needs_limits),
+            // Task 053 corrective: a constrained Binary carrier whose `create`
+            // inspects the length emits a `std::numeric_limits` representability
+            // guard. This is the SAME predicate the renderer uses, so the
+            // header and its use cannot drift.
+            TypeKind::Primitive(kind @ PrimitiveKind::Binary) => {
+                binary_length_domain(kind, &declaration.constraints)
+                    .ok()
+                    .flatten()
+                    .is_some_and(binary_domain_checks_length)
+            }
             _ => false,
         };
         declaration_needs_limits
@@ -864,9 +874,15 @@ fn binary_domain(
 ///   a synthesized move would empty a still-live `std::vector` and break a
 ///   positive `minLength`. Copying may allocate, so nothing here is
 ///   `noexcept` except the accessor.
-/// * The length check compares `std::vector::size()` against `std::uint64_t`
-///   bounds after an explicit widening cast, so no schema bound is narrowed
-///   to the host's `std::size_t` at generation time.
+/// * Length check (Task 053 corrective): C++ does not bound
+///   `std::vector::size_type` to 64 bits, so converting `value.size()` to
+///   `std::uint64_t` is not inherently widening. `create` first rejects a
+///   size not representable in `std::uint64_t` (the same rule as the
+///   generated `UnboundedVector`), only then converts, and compares the exact
+///   octet count with the schema's u64 domain. No schema bound is narrowed to
+///   the host's `std::size_t` at generation time, and no truncated count is
+///   ever compared. A domain admitting every length (`minLength 0`, no max)
+///   inspects nothing and converts nothing.
 fn render_constrained_binary(output: &mut String, domain: BinaryLengthDomain, name: &str) {
     let min = domain.min_octets;
     let mut checks = Vec::new();
@@ -880,13 +896,21 @@ fn render_constrained_binary(output: &mut String, domain: BinaryLengthDomain, na
         }
         None => String::new(),
     };
-    let validate = if checks.is_empty() {
-        String::new()
-    } else {
+    debug_assert_eq!(!checks.is_empty(), binary_domain_checks_length(domain));
+    let validate = if binary_domain_checks_length(domain) {
         format!(
-            "        const auto octets = static_cast<std::uint64_t>(value.size());\n        if ({}) return std::nullopt;\n",
+            concat!(
+                "        // vector::size_type is checked for representability in\n",
+                "        // std::uint64_t BEFORE conversion, then compared with the\n",
+                "        // schema's u64 octet domain.\n",
+                "        if (value.size() > std::numeric_limits<std::uint64_t>::max()) return std::nullopt;\n",
+                "        const auto octets = static_cast<std::uint64_t>(value.size());\n",
+                "        if ({}) return std::nullopt;\n",
+            ),
             checks.join(" || ")
         )
+    } else {
+        String::new()
     };
     writeln!(
         output,
@@ -917,6 +941,15 @@ fn render_constrained_binary(output: &mut String, domain: BinaryLengthDomain, na
         validate = validate,
     )
     .expect("writing to String cannot fail");
+}
+
+/// Task 053 corrective: whether a constrained Binary carrier's `create`
+/// inspects the length, and therefore emits the checked
+/// `size_type -> std::uint64_t` conversion (which uses `std::numeric_limits`).
+/// Shared by [`render_constrained_binary`] and `schema_needs_limits` so the
+/// `<limits>` header is emitted exactly when the guard is.
+fn binary_domain_checks_length(domain: BinaryLengthDomain) -> bool {
+    domain.min_octets > 0 || domain.max_octets.is_some()
 }
 
 fn reject_any_constraints(constraints: &ConstraintSet, name: &str) -> Result<(), CodegenError> {
