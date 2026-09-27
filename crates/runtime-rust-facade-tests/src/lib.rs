@@ -70,6 +70,28 @@ pub mod codec_hexbinary {
     include!(concat!(env!("OUT_DIR"), "/codec_hexbinary/service_api.rs"));
 }
 
+/// Task 053: named length-constrained xs:hexBinary carriers (exact, min,
+/// max, min+max, derived, zero-length, three-level ancestry) in every
+/// occurrence shape, in the OAM namespace.
+#[allow(clippy::all, clippy::pedantic)]
+pub mod constrained_binary {
+    include!(concat!(
+        env!("OUT_DIR"),
+        "/constrained_binary/service_api.rs"
+    ));
+}
+
+/// Task 053: the real-Sleet companion of `constrained_binary`: only shapes
+/// where some legal OCTET counts also satisfy pinned Sleet's CHARACTER-count
+/// facet check, so a legal document can route.
+#[allow(clippy::all, clippy::pedantic)]
+pub mod constrained_binary_sleet {
+    include!(concat!(
+        env!("OUT_DIR"),
+        "/constrained_binary_sleet/service_api.rs"
+    ));
+}
+
 /// Task 050: the REAL UCI 2.5 PositionReport model, service API, and codec,
 /// generated only when `AMS_GRA_UCI_2_5_ROOT` names the SHA-256-verified
 /// pinned root (see build.rs).

@@ -253,47 +253,80 @@ fn task052_hex_helpers_are_emitted_only_for_hex_binary_surfaces() {
     assert!(codec.contains("decode_hex_binary(value, path).map(super::model::BlobAlias::new)"));
 }
 
-/// Task 052: a CONSTRAINED named hexBinary (length facet) has HexBinary
-/// provenance but is still a MODEL blocker, reported before codec readiness
-/// is measured. Provenance and value-space support are independent.
+/// Task 052 established that provenance and value-space support are
+/// independent. Task 053 flips the value-space half: a LENGTH-constrained
+/// named hexBinary is now a checked carrier and model + codec READY, while a
+/// PATTERN-constrained one is still a MODEL blocker, reported before codec
+/// readiness is measured. `--with-codec` never widens the model.
 #[test]
 fn task052_constrained_hex_binary_remains_a_model_blocker() {
-    let dir = output_dir("constrained-hex");
-    std::fs::create_dir_all(&dir).expect("dir");
-    let schema = dir.join("constrained.xsd");
-    std::fs::write(
-        &schema,
-        std::fs::read_to_string(fixture("codec-binary.xsd"))
-            .expect("fixture")
-            .replace(
-                "<xs:complexType name=\"BlobPayload\">",
-                "<xs:simpleType name=\"CodeType\"><xs:restriction base=\"xs:hexBinary\">\
-                 <xs:length value=\"6\"/></xs:restriction></xs:simpleType>\n  \
-                 <xs:complexType name=\"BlobPayload\">",
-            )
-            .replace("type=\"xs:hexBinary\"", "type=\"uci:CodeType\""),
-    )
-    .expect("write");
-    let output = Command::new(env!("CARGO_BIN_EXE_ams-gra-codegen-oms"))
-        .args(["service-check", "--schema"])
-        .arg(&schema)
-        .arg("--contract")
-        .arg(fixture("codec-binary.yaml"))
-        .args([
-            "--language",
-            "rust",
-            "--world",
-            "closed-schema",
-            "--with-codec",
-        ])
-        .output()
-        .expect("CLI runs");
-    let report = String::from_utf8(output.stdout).expect("UTF-8");
-    assert_eq!(output.status.code(), Some(1), "{report}");
-    assert!(report.contains("status: NOT READY\n"), "{report}");
-    assert!(report.contains("CodeType"), "{report}");
-    assert!(!report.contains("service codec boundary"), "{report}");
-    let _ = std::fs::remove_dir_all(&dir);
+    let run = |label: &str, facet: &str| {
+        let dir = output_dir(label);
+        std::fs::create_dir_all(&dir).expect("dir");
+        let schema = dir.join("constrained.xsd");
+        std::fs::write(
+            &schema,
+            std::fs::read_to_string(fixture("codec-binary.xsd"))
+                .expect("fixture")
+                .replace(
+                    "<xs:complexType name=\"BlobPayload\">",
+                    &format!(
+                        "<xs:simpleType name=\"CodeType\"><xs:restriction base=\"xs:hexBinary\">\
+                         {facet}</xs:restriction></xs:simpleType>\n  \
+                         <xs:complexType name=\"BlobPayload\">"
+                    ),
+                )
+                .replace("type=\"xs:hexBinary\"", "type=\"uci:CodeType\""),
+        )
+        .expect("write");
+        let output = Command::new(env!("CARGO_BIN_EXE_ams-gra-codegen-oms"))
+            .args(["service-check", "--schema"])
+            .arg(&schema)
+            .arg("--contract")
+            .arg(fixture("codec-binary.yaml"))
+            .args([
+                "--language",
+                "rust",
+                "--world",
+                "closed-schema",
+                "--with-codec",
+            ])
+            .output()
+            .expect("CLI runs");
+        let _ = std::fs::remove_dir_all(&dir);
+        (
+            output.status.code(),
+            String::from_utf8(output.stdout).expect("UTF-8"),
+            String::from_utf8(output.stderr).expect("UTF-8"),
+        )
+    };
+
+    // Task 053: length-only is supported by the model and the codec.
+    let (code, report, _) = run("constrained-hex-length", "<xs:length value=\"6\"/>");
+    assert_eq!(code, Some(0), "{report}");
+    assert!(report.contains("status: READY\n"), "{report}");
+    assert!(report.contains("codec status: READY\n"), "{report}");
+
+    // Every non-length Binary facet still fails closed. Through XSD the
+    // frontend is the first gate and rejects it as an unsupported construct
+    // before any readiness is computed (the shared classifier rejects the
+    // same shapes in hand-built IR; see codegen-core `binary` tests).
+    for facet in [
+        "<xs:pattern value=\"[0-9A-F]*\"/>",
+        "<xs:whiteSpace value=\"collapse\"/>",
+        "<xs:minInclusive value=\"1\"/>",
+    ] {
+        let (code, report, stderr) = run(
+            "constrained-hex-unsupported",
+            &format!("<xs:length value=\"6\"/>{facet}"),
+        );
+        assert_ne!(code, Some(0), "{facet}: {report}");
+        assert!(!report.contains("status: READY"), "{facet}: {report}");
+        assert!(
+            stderr.contains("unsupported XSD construct"),
+            "{facet}: {stderr}"
+        );
+    }
 }
 
 /// C (Task 051). A qualified NON-OAM payload (`runtime-test.xsd`,

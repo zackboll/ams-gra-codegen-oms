@@ -8,10 +8,10 @@ pub use service_codec::{SERVICE_CODEC_FILE, generate_service_codec};
 
 use ams_gra_oms_codegen_core::ServiceApiModel;
 use ams_gra_oms_codegen_core::{
-    AbstractValueProjection, Backend, BackendLanguage, CodegenError, DirectTemporalProfile,
-    EffectiveValueMember, FloatingDomain, GeneratedFile, GenerationWorld, InclusiveIntegralDomain,
-    StringProfile, TemporalProfile, TypeEmission, WhitespaceVisiblePolicy,
-    abstract_value_projection_for_ref, backend_preflight, constrains_string,
+    AbstractValueProjection, Backend, BackendLanguage, BinaryLengthDomain, CodegenError,
+    DirectTemporalProfile, EffectiveValueMember, FloatingDomain, GeneratedFile, GenerationWorld,
+    InclusiveIntegralDomain, StringProfile, TemporalProfile, TypeEmission, WhitespaceVisiblePolicy,
+    abstract_value_projection_for_ref, backend_preflight, binary_length_domain, constrains_string,
     direct_temporal_profile, effective_choice_alternatives, effective_record_fields,
     emissions_emit_direct_date_time, field_storage_semantics, float32_literal, float64_literal,
     floating_domain, generated_enum_variant_name, inclusive_integral_domain, is_temporal_primitive,
@@ -251,6 +251,16 @@ fn render_declaration(
         {
             render_string_profile_declaration(output, &declaration.constraints, &name)?;
         }
+        // Task 053: a length-constrained named Binary is a checked carrier.
+        // The shared classifier returns `Ok(None)` for an unconstrained one,
+        // which falls through to the unchanged Task 025 wrapper below.
+        TypeKind::Primitive(kind @ PrimitiveKind::Binary)
+            if binary_domain(*kind, &declaration.constraints, &name)?.is_some() =>
+        {
+            let domain = binary_domain(*kind, &declaration.constraints, &name)?
+                .expect("guard proved a constrained Binary domain");
+            render_constrained_binary(output, domain, &name);
+        }
         TypeKind::Primitive(PrimitiveKind::Binary) => {
             reject_any_constraints(&declaration.constraints, &name)?;
             writeln!(output, "#[derive(Debug, Clone, PartialEq, Eq)]\npub struct {name}(Vec<u8>);\n\nimpl {name} {{\n    pub fn new(value: Vec<u8>) -> Self {{ Self(value) }}\n    pub fn as_slice(&self) -> &[u8] {{ &self.0 }}\n    pub fn into_vec(self) -> Vec<u8> {{ self.0 }}\n}}\n").expect("writing to String cannot fail");
@@ -431,10 +441,13 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
             // fully enforced by the generated validator.
             continue;
         }
-        if matches!(declaration.kind, TypeKind::Primitive(PrimitiveKind::Binary))
-            && declaration.constraints != ConstraintSet::default()
-        {
-            return unsupported(format!("constraints on {}", declaration.name.local_name));
+        // Task 053: a named Binary is decided by the shared classifier. A
+        // supported length-only domain is fully enforced by the generated
+        // checked constructor, so it must not reach `reject_extra_constraints`;
+        // every other facet fails closed here, before any output exists.
+        if let TypeKind::Primitive(kind @ PrimitiveKind::Binary) = declaration.kind {
+            binary_domain(kind, &declaration.constraints, &declaration.name.local_name)?;
+            continue;
         }
         reject_extra_constraints(&declaration.constraints, &declaration.name.local_name)?;
         if matches!(declaration.kind, TypeKind::Record { .. }) {
@@ -814,6 +827,74 @@ fn rust_field_base(field: &ams_gra_oms_ir::FieldDecl) -> Result<String, CodegenE
             rust_type(&field.type_ref)
         }
     }
+}
+
+/// Task 053: the shared Binary classifier, with a Rust diagnostic.
+fn binary_domain(
+    kind: PrimitiveKind,
+    constraints: &ConstraintSet,
+    name: &str,
+) -> Result<Option<BinaryLengthDomain>, CodegenError> {
+    binary_length_domain(kind, constraints)
+        .map_err(|reason| error(format!("unsupported Rust IR construct: {reason} on {name}")))
+}
+
+/// Task 053: a checked, owning octet carrier for a length-constrained named
+/// Binary declaration.
+///
+/// * `new` is the only constructor and returns `None` outside the octet
+///   domain; there is no unchecked constructor and no `Default`.
+/// * The length check widens `usize` to `u64` with `u64::try_from(..).ok()?`
+///   and compares against `u64` constants, so no schema bound is ever
+///   narrowed to the host's `usize` at generation time.
+/// * No move workaround is needed: moving a Rust value makes the source
+///   statically unusable, and `Clone` copies an already valid value.
+fn render_constrained_binary(output: &mut String, domain: BinaryLengthDomain, name: &str) {
+    let min = domain.min_octets;
+    // A comparison that is always true (`len >= 0`) is omitted rather than
+    // emitted, so the carrier is clean under consumers' lints.
+    let mut checks = Vec::new();
+    if min > 0 {
+        checks.push("len >= Self::MIN_OCTETS");
+    }
+    let max_const = match domain.max_octets {
+        Some(max) => {
+            checks.push("len <= Self::MAX_OCTETS");
+            format!("    pub const MAX_OCTETS: u64 = {max};\n")
+        }
+        None => String::new(),
+    };
+    // `minLength = 0` with no maximum admits every octet count; the body then
+    // states that directly instead of emitting an unused `len`.
+    let validate = if checks.is_empty() {
+        "        Some(Self(value))\n".to_owned()
+    } else {
+        format!(
+            "        let len = u64::try_from(value.len()).ok()?;\n        if {} {{ Some(Self(value)) }} else {{ None }}\n",
+            checks.join(" && ")
+        )
+    };
+    writeln!(
+        output,
+        concat!(
+            "#[derive(Debug, Clone, PartialEq, Eq)]\n",
+            "pub struct {name}(Vec<u8>);\n\n",
+            "impl {name} {{\n",
+            "    pub const MIN_OCTETS: u64 = {min};\n",
+            "{max_const}\n",
+            "    pub fn new(value: Vec<u8>) -> Option<Self> {{\n",
+            "{validate}",
+            "    }}\n",
+            "    pub fn as_slice(&self) -> &[u8] {{ &self.0 }}\n",
+            "    pub fn into_vec(self) -> Vec<u8> {{ self.0 }}\n",
+            "}}\n",
+        ),
+        name = name,
+        min = min,
+        max_const = max_const,
+        validate = validate,
+    )
+    .expect("writing to String cannot fail");
 }
 
 fn reject_any_constraints(constraints: &ConstraintSet, name: &str) -> Result<(), CodegenError> {
@@ -2583,19 +2664,50 @@ fn main() {
 
     #[test]
     fn binary_declaration_with_constraints_remains_unsupported() {
+        // Task 053: a length-only named Binary is now a checked carrier...
         let mut schema = track_schema();
         schema.types[0].kind = TypeKind::Primitive(PrimitiveKind::Binary);
         schema.types[0].constraints = ConstraintSet {
             length: Some(4),
             ..ConstraintSet::default()
         };
-        let error =
-            generate(&schema, CLOSED).expect_err("constrained binary declaration must fail");
-        assert!(
-            error
-                .message
-                .contains("unsupported Rust IR construct: constraints on")
-        );
+        generate(&schema, CLOSED).expect("length-constrained named Binary generates");
+        // ...but every facet outside the shared octet-length classifier
+        // still fails closed, attributed to the facet and the declaration.
+        for (constraints, reason) in [
+            (
+                ConstraintSet {
+                    length: Some(4),
+                    lexical: ams_gra_oms_ir::LexicalConstraintSet {
+                        pattern_groups: vec![ams_gra_oms_ir::PatternGroup {
+                            alternatives: vec![ams_gra_oms_ir::PatternExpression::xml_schema(
+                                "[0-9A-F]*",
+                            )],
+                        }],
+                        white_space: None,
+                    },
+                    ..ConstraintSet::default()
+                },
+                "Binary pattern constraints",
+            ),
+            (
+                ConstraintSet {
+                    min_inclusive: Some(ams_gra_oms_ir::NumericValue::Integer(0)),
+                    ..ConstraintSet::default()
+                },
+                "numeric Binary constraints",
+            ),
+        ] {
+            schema.types[0].constraints = constraints;
+            let error = generate(&schema, CLOSED).expect_err("unsupported Binary facet must fail");
+            assert!(
+                error
+                    .message
+                    .contains(&format!("unsupported Rust IR construct: {reason} on")),
+                "{}",
+                error.message
+            );
+        }
     }
 
     #[test]
@@ -2634,29 +2746,30 @@ fn main() {
             )));
         }
 
-        for kind in [PrimitiveKind::String, PrimitiveKind::Binary] {
-            let mut schema = track_schema();
-            schema.types[0].kind = TypeKind::Primitive(kind);
-            schema.types[0].constraints = ConstraintSet {
-                length: Some(4),
-                ..ConstraintSet::default()
-            };
-            let error = generate(&schema, CLOSED).expect_err("constraints must not be discarded");
-            // A constrained String now reports through the Task 037
-            // classifier, which names the facet profile rather than saying
-            // only "constraints". Either way it fails closed:
-            // is not the one supported profile.
-            assert!(
-                error
-                    .message
-                    .contains("unsupported Rust IR construct: constraints on")
-                    || error.message.contains(
-                        "unsupported constrained String declaration: unsupported facet profile"
-                    ),
-                "unexpected diagnostic for {kind:?}: {}",
-                error.message
-            );
-        }
+        // Task 053: Binary with only `length` is now a supported carrier, so
+        // only String remains in this length-only negative.
+        let kind = PrimitiveKind::String;
+        let mut schema = track_schema();
+        schema.types[0].kind = TypeKind::Primitive(kind);
+        schema.types[0].constraints = ConstraintSet {
+            length: Some(4),
+            ..ConstraintSet::default()
+        };
+        let error = generate(&schema, CLOSED).expect_err("constraints must not be discarded");
+        // A constrained String now reports through the Task 037
+        // classifier, which names the facet profile rather than saying
+        // only "constraints". Either way it fails closed:
+        // is not the one supported profile.
+        assert!(
+            error
+                .message
+                .contains("unsupported Rust IR construct: constraints on")
+                || error.message.contains(
+                    "unsupported constrained String declaration: unsupported facet profile"
+                ),
+            "unexpected diagnostic for {kind:?}: {}",
+            error.message
+        );
     }
 
     /// Lexical constraints still fail before rendering everywhere Task 036 has

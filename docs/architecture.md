@@ -515,6 +515,27 @@ Lexical spelling never leaks into a model API, and no consumer infers
 "Binary means hex": unknown provenance is codec NOT READY. See
 [Task 052](task-052-hexbinary-provenance-codec.md).
 
+Task 053 adds the third, independent dimension -- which octet sequences are
+LEGAL:
+
+```text
+semantic value           PrimitiveKind::Binary          (octets)
+value-space constraint   codegen-core binary_length_domain  (allowed octet count)
+lexical provenance       declaration_binary_encoding   (xs:hexBinary)
+```
+
+* A NAMED Binary whose effective facets are only `length`/`minLength`/
+  `maxLength` (octets) is a checked carrier in every backend; the shared
+  classifier returns `Ok(None)` for unconstrained Binary, whose output is
+  byte-identical, and `Err` for any other facet.
+* The classifier never reads lexical provenance, and provenance never reads
+  the classifier: model capability does not require `xs:hexBinary`, and the
+  codec does not restate octet bounds (it decodes through the generated
+  checked constructor).
+* Field-local facets on a direct Binary field have no carrier and fail closed.
+
+See [Task 053](task-053-constrained-binary-carriers.md).
+
 ## 13. Uninhabited values generate no storage
 
 An abstract structural declaration with zero concrete structural descendants in

@@ -382,6 +382,87 @@ jobs:
           printf '%s\n' "$output" | grep -q '^UCI 2.5 BINARY PROVENANCE INVENTORY: PASSED$'
           printf '%s\n' "$output" | grep -q '^UCI 2.6 BINARY PROVENANCE INVENTORY: PASSED$'
           printf '%s\n' "$output" | grep -qE '^test result: ok\. 2 passed'
+      # Task 053: constrained NAMED Binary carriers (length/minLength/maxLength
+      # in octets). The shared classifier, the Ada name model, renderability
+      # parity, the strict C++ and GNAT runtime/lifecycle probes (GNAT under
+      # both the default and Assertion_Policy (Ignore)), the generated Rust
+      # carrier + codec, and the mock OWP loop. Each gate must match and pass
+      # exactly one test; zero matched tests fails the step.
+      - name: Constrained Binary carriers (Task 053, must execute)
+        env:
+          AMS_GRA_REQUIRE_GNAT: "1"
+        run: |
+          set -euo pipefail
+          require_one_test() {
+            name="$1"
+            shift
+            output="$("$@" -- --exact --nocapture 2>&1)"
+            printf '%s\n' "$output"
+            printf '%s\n' "$output" | grep -qE "^test ${name} \.\.\. ok$"
+            printf '%s\n' "$output" | grep -qE '^test result: ok\. 1 passed'
+          }
+          for test in \
+            binary::tests::task053_unconstrained_binary_is_none \
+            binary::tests::task053_length_shapes_normalize_to_octet_intervals \
+            binary::tests::task053_explicit_collapse_is_the_intrinsic_policy \
+            binary::tests::task053_unsupported_facets_are_rejected \
+            binary::tests::task053_domain_membership_is_inclusive \
+            binary::tests::task053_carrier_predicate_matches_the_classifier \
+            backend_names::tests::task053_constrained_binary_create_and_value_collide_with_a_type \
+            backend_names::tests::task053_constrained_binary_overloads_coexist_with_other_carriers \
+            backend_names::tests::task053_unconstrained_or_unsupported_binary_reserves_no_callable; do
+            require_one_test "$test" cargo test -p ams-gra-oms-codegen-core --lib "$test"
+          done
+          for test in \
+            task053_named_binary_renderability_parity \
+            task053_direct_field_local_binary_facets_remain_unsupported_in_every_occurrence; do
+            require_one_test "$test" \
+              cargo test -p ams-gra-codegen-oms --test constrained_binary_parity "$test"
+          done
+          for test in \
+            task053_cpp_carrier_shape_is_checked_and_copy_only \
+            task053_cpp_constrained_binary_runtime_and_lifecycle \
+            task053_cpp_negative_api_probes; do
+            require_one_test "$test" \
+              cargo test -p ams-gra-oms-backend-cpp --test constrained_binary "$test"
+          done
+          for test in \
+            task053_ada_carrier_shape \
+            task053_ada_constrained_binary_runtime_lifecycle_and_storage; do
+            require_one_test "$test" \
+              cargo test -p ams-gra-oms-backend-ada --test constrained_binary "$test"
+          done
+          for test in \
+            task053_rust_carriers_enforce_octet_bounds \
+            task053_rust_carrier_api_and_zero_length \
+            task053_generated_codec_round_trips_every_occurrence_shape \
+            task053_codec_rejects_illegal_octet_counts_through_the_model; do
+            require_one_test "$test" \
+              cargo test -p ams-gra-oms-runtime-rust-facade-tests --test generated_constrained_binary "$test"
+          done
+          require_one_test task053_constrained_binary_round_trips_through_mock_owp \
+            cargo test -p ams-gra-oms-runtime-rust-facade-tests --test generated_codec_mock_owp \
+            task053_constrained_binary_round_trips_through_mock_owp
+          output="$(cargo test -p ams-gra-oms-backend-ada --test constrained_binary -- \
+            --exact task053_ada_constrained_binary_runtime_lifecycle_and_storage --nocapture 2>&1)"
+          printf '%s\n' "$output"
+          test "$(printf '%s\n' "$output" | grep -c 'ADA CONSTRAINED BINARY RUNTIME: PASSED')" = 2
+      # Task 053: constrained-Binary inventory, per-declaration rendering in all
+      # three backends, and message-closure impact on the REAL pinned roots.
+      - name: Real UCI constrained Binary inventory (Task 053, must execute)
+        run: |
+          set -euo pipefail
+          UCI_ROOT="$(scripts/fetch-pinned-uci-2.5.sh "$RUNNER_TEMP/uci-2.5")"
+          UCI_26_ROOT="$(scripts/fetch-pinned-uci-2.6.sh "$RUNNER_TEMP/uci-2.6")"
+          output="$(AMS_GRA_UCI_2_5_ROOT="$UCI_ROOT" AMS_GRA_UCI_2_6_ROOT="$UCI_26_ROOT" \
+            cargo test --release -p ams-gra-codegen-oms --test uci_constrained_binary -- \
+            --nocapture --test-threads 1 2>&1)"
+          printf '%s\n' "$output"
+          printf '%s\n' "$output" | grep -q '^UCI 2.5 CONSTRAINED BINARY INVENTORY: PASSED$'
+          printf '%s\n' "$output" | grep -q '^UCI 2.6 CONSTRAINED BINARY INVENTORY: PASSED$'
+          printf '%s\n' "$output" | grep -q '^UCI 2.5 CONSTRAINED BINARY MESSAGE IMPACT: PASSED$'
+          printf '%s\n' "$output" | grep -q '^UCI 2.6 CONSTRAINED BINARY MESSAGE IMPACT: PASSED$'
+          printf '%s\n' "$output" | grep -qE '^test result: ok\. 3 passed'
       # PR #50 corrective: the runtime crates declare `rust-version = "1.95"`
       # (the pinned sleet-client needs edition 2024 let-chains). The toolchain
       # above floats on stable, so check the declared floor explicitly with the
@@ -401,6 +482,8 @@ jobs:
           # the generated NON-OAM codecs (runtime_test_codec, codec_choice,
           # codec_inherit, codec_shape) to that same crate root. Task 052 adds
           # the generated hexBinary codecs (codec_binary, codec_hexbinary).
+          # Task 053 adds constrained_binary: the generated checked Binary
+          # carriers (`u64::try_from(len)`) and their codec, under 1.95.0.
           # Also compile the generated REAL PositionReport codec and (Task 052)
           # the REAL SubsystemStream hexBinary codec under 1.95.0.
           UCI_ROOT="$(scripts/fetch-pinned-uci-2.5.sh "$RUNNER_TEMP/uci-2.5")"

@@ -5061,3 +5061,33 @@ DateTime declarations, direct Time/Duration, unsupported field-local facets,
 and nillable fields remain outside this capability. The generated Task 036
 source changes due to parser sharing; its original runtime corpus is rerun,
 not claimed byte-identical. See [Task 046 evidence](task-046-direct-xs-datetime.md).
+
+## Task 053 — constrained named Binary carriers
+
+A NAMED `PrimitiveKind::Binary` declaration whose effective facets are only
+`length`/`minLength`/`maxLength` (counted in OCTETS) is now baseline in all
+three backends, decided by one shared classifier,
+`codegen-core::binary_length_domain`:
+
+| Backend | Unconstrained (unchanged, byte-identical) | Constrained (new) |
+| --- | --- | --- |
+| Rust | `struct T(Vec<u8>)`, `new -> Self` | `struct T(Vec<u8>)`, `new -> Option<Self>`, `MIN_OCTETS`/`MAX_OCTETS`, `as_slice`, `into_vec`; no `Default` |
+| C++ | public `explicit T(std::vector<std::uint8_t>)` | `static std::optional<T> create(std::vector<std::uint8_t>)`, `const&` accessor, private constructor, no default constructor, copy-only lifecycle (rvalues copy; source stays valid) |
+| Ada | `record Value : Binary_Vectors.Vector` | private type, `Create` (raises `Constraint_Error`) / `Value`, component default raises `Program_Error`; expression functions, no new `.adb` |
+
+| Binary facet shape | Status |
+| --- | --- |
+| named `length` / `minLength` / `maxLength` (any combination) | **supported (Task 053)** |
+| named, explicit `whiteSpace = collapse` (hand-built IR only; the XSD frontend rejects `xs:whiteSpace` on Binary) | accepted by the classifier |
+| named `pattern`, numeric facets, `whiteSpace` preserve/replace | unsupported, fail closed with the facet named |
+| direct field-local `length`/`minLength`/`maxLength` | unsupported (`field constraints on <Field>`), no per-field carrier |
+
+Ada `Create`/`Value` join the shared overloadable-callable analysis; Ada
+repeated storage is the unchanged Task 040 indefinite/slot machinery. The
+Rust codec decodes a constrained named Binary through the generated `T::new`.
+
+Measured: every pinned cell gains exactly +3 (2.5) / +4 (2.6) declarations
+(`AA_CodeType`, `BDS_AddressType`, `SHA_2_256_HashType`, plus 2.6
+`IFF_RegisterType`); field-type, field-occurrence and message-closure counts
+are unchanged, and so is every full-schema first blocker (a reserved-word
+name issue). See [Task 053](task-053-constrained-binary-carriers.md).

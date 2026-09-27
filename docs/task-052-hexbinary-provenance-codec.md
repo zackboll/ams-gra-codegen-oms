@@ -489,7 +489,11 @@ Python 3.13.5 (`lxml` 5.4.0 for the evidence-only raw inventory).
 
 * `xs:base64Binary`: not used by pinned UCI; frontend-unsupported; codec
   fail-closed if hand-built.
-* Constrained Binary model carriers (octet `length`/`minLength`/`maxLength`).
+* ~~Constrained Binary model carriers (octet `length`/`minLength`/`maxLength`).~~
+  Done for NAMED declarations in
+  [Task 053](task-053-constrained-binary-carriers.md); the Task 052 model-blocker
+  control `task052_constrained_hex_binary_remains_a_model_blocker` now asserts
+  length-only is READY and pattern/whiteSpace/numeric facets stay rejected.
 * Ada and C++ generated codecs.
 * Real UCI messages reaching `AtomicValueType` (blocked by cyclic value
   dependencies and open abstract values, not by Binary).

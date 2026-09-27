@@ -56,6 +56,11 @@ run_one generated_codec_sleet_non_oam task051_non_oam_generated_codec_probe_agai
 # that pinned Sleet validates hexBinary only as a JSON string.
 run_one generated_codec_sleet_hexbinary task052_hex_binary_generated_codec_round_trips_through_real_sleet \
   'REAL SLEET GENERATED HEXBINARY CODEC: PASSED'
+# Task 053: generated constrained named Binary carriers (synthetic OAM fixture
+# constrained-binary-sleet.xsd); records that pinned Sleet counts hexBinary
+# length facets in CHARACTERS, not octets (see docs/task-053-*).
+run_one generated_codec_sleet_constrained_binary task053_constrained_binary_generated_codec_round_trips_through_real_sleet \
+  'REAL SLEET GENERATED CONSTRAINED BINARY CODEC: PASSED'
 # Task 050: the REAL UCI 2.5 PositionReport, only when the caller supplies the
 # pinned root (build.rs verifies its SHA-256 and fails on a mismatch).
 # Task 052: the REAL UCI 2.5 SubsystemStream carrying a hexBinary value.

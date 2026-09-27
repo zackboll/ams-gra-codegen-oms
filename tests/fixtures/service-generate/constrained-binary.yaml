@@ -1,0 +1,40 @@
+# SYNTHETIC Task 053 fixture. Authored for this repository only.
+#
+# Selects ConstrainedBlobNotice from constrained-binary.xsd as one input and
+# one output exchange on the same topic, so a CAL server routes the service's
+# own message back to it. Every Binary value is a NAMED length-constrained (or
+# unconstrained control) xs:hexBinary restriction: model READY in Ada, Rust
+# and C++, and Rust --with-codec codec READY.
+contract_version: "0.1"
+
+service:
+  name: constrained-binary
+  version: "0.1.0"
+  kind: service
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: constrained-blob
+    name: ConstrainedBlob
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: input-constrained-blob
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: ConstrainedBlobNotice
+        topic: constrained-blob-topic
+        timing:
+          kind: asynchronous
+      - id: output-constrained-blob
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: ConstrainedBlobNotice
+        topic: constrained-blob-topic
+        timing:
+          kind: asynchronous

@@ -77,7 +77,8 @@ zero length facets on floating types.
 - [ ] field-local floating constraints on a *direct* primitive field (no
       checked wrapper exists for that storage, so it stays fail-closed);
 - [ ] floating lexical facets (none exist in the authoritative releases);
-- [ ] constrained String and constrained Binary;
+- [ ] constrained String outside the supported profiles (named
+      length-only constrained Binary is done: Task 053);
 - [ ] the excluded integral exclusive/lexical shapes.
 
 ### Occurrence / cardinality representation
@@ -720,9 +721,16 @@ Progress (typed LA-CAL integration as a whole is **not** complete):
 - [ ] `xs:base64Binary` support, if a real schema needs it (none of the
       pinned UCI 2.5/2.6 documents use it; it stays an explicit unsupported
       frontend construct and a fail-closed codec provenance).
-- [ ] constrained Binary model carriers (`length`/`minLength`/`maxLength`
-      in octets, e.g. UCI `AA_CodeType`, `SHA_2_256_HashType`); these are
-      HexBinary-provenanced but still model NOT READY.
+- [x] constrained named Binary carriers (Task 053): `length`/`minLength`/
+      `maxLength` in OCTETS, classified by one shared
+      `codegen-core::binary_length_domain`; checked carriers in Ada (private,
+      failing default), Rust (`new -> Option`) and C++ (`create -> optional`,
+      copy-only lifecycle); Rust codec decodes through the generated checked
+      constructor. Every real UCI 2.5/2.6 constrained Binary (`AA_CodeType`,
+      `BDS_AddressType`, `IFF_RegisterType`, `SHA_2_256_HashType`) is model
+      renderable in all three backends.
+- [ ] direct field-local Binary constraints (no per-field carrier; fail closed).
+- [ ] Binary lexical patterns (a lexical constraint stored octets cannot enforce).
 - [ ] reconnect/backoff, TLS/auth policy, timers, service lifecycle.
 
 ```text
@@ -731,13 +739,16 @@ Task 049:  first reusable runtime executing that operation through real LA-CAL
 Task 050:  generated Rust payload-body OMS JSON codecs
 Task 051:  local element wire QNames in Schema IR; qualified non-OAM codecs
 Task 052:  xs:hexBinary lexical provenance in Schema IR; Rust hex codecs
+Task 053:  constrained named Binary carriers (octet length domain), all backends
 ```
 
 See [Task 049](task-049-rust-la-cal-runtime.md),
 [Task 050](task-050-rust-oms-json-codecs.md),
-[Task 051](task-051-member-qname-provenance.md), and
-[Task 052](task-052-hexbinary-provenance-codec.md). Generic Binary codec
-completeness is NOT claimed: only hexBinary, only Rust, only unconstrained.
+[Task 051](task-051-member-qname-provenance.md),
+[Task 052](task-052-hexbinary-provenance-codec.md), and
+[Task 053](task-053-constrained-binary-carriers.md). Generic Binary codec
+completeness is NOT claimed: only hexBinary, only Rust, and only named
+length-only constraints (no field-local facets, no patterns, no base64).
 
 ## Phase 4 — SPARK-oriented Ada backend
 

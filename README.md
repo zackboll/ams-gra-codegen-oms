@@ -810,10 +810,23 @@ through named restrictions. The generated model still stores bytes
 (`Vec<u8>` / named wrapper); the generated Rust codec writes a canonical
 uppercase hex JSON string and reads any XML Schema hexBinary lexical form
 (either case, whiteSpace collapse), rejecting odd lengths, non-hex characters,
-and non-string JSON. Binary with unknown provenance, `base64Binary`, and
-length-constrained Binary (a model limit) still fail closed. The real UCI 2.5
-`SubsystemStream` round-trips through unmodified Sleet with a hexBinary
-value. See [Task 052](docs/task-052-hexbinary-provenance-codec.md).
+and non-string JSON. Binary with unknown provenance and `base64Binary` still
+fail closed. The real UCI 2.5 `SubsystemStream` round-trips through
+unmodified Sleet with a hexBinary value. See
+[Task 052](docs/task-052-hexbinary-provenance-codec.md).
+
+**Constrained Binary (Task 053).** A NAMED Binary restriction with only
+`length`/`minLength`/`maxLength` (counted in octets) is a checked carrier in
+all three backends: Rust `T::new(Vec<u8>) -> Option<T>`, C++
+`T::create(std::vector<std::uint8_t>) -> std::optional<T>` with a copy-only
+lifecycle, and Ada `Create`/`Value` over a private type whose default
+initialization raises. One shared `codegen-core` classifier decides the
+octet domain for every backend, coverage, readiness, and the Rust codec,
+which validates decoded bytes through the generated constructor.
+Unconstrained Binary output is byte-identical. Direct field-local Binary
+facets, Binary patterns, and `base64Binary` stay fail-closed. Every real UCI
+2.5/2.6 constrained Binary declaration is now model renderable. See
+[Task 053](docs/task-053-constrained-binary-carriers.md).
 
 **Member QNames (Task 051).** Schema IR keeps each local element's effective
 target namespace (`elementFormDefault` plus local `form`), separately from its

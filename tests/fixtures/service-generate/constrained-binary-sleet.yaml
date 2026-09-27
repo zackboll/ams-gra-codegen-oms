@@ -1,0 +1,39 @@
+# SYNTHETIC Task 053 fixture. Authored for this repository only.
+#
+# Selects SleetBlobNotice from constrained-binary-sleet.xsd as one input and
+# one output exchange on the same topic, so the real pinned Sleet server routes
+# the service's own message back to it. See the schema comment for why this
+# companion of constrained-binary.xsd exists.
+contract_version: "0.1"
+
+service:
+  name: constrained-binary-sleet
+  version: "0.1.0"
+  kind: service
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: sleet-blob
+    name: SleetBlob
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: input-sleet-blob
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: SleetBlobNotice
+        topic: sleet-blob-topic
+        timing:
+          kind: asynchronous
+      - id: output-sleet-blob
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: SleetBlobNotice
+        topic: sleet-blob-topic
+        timing:
+          kind: asynchronous

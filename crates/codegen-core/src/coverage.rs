@@ -1536,8 +1536,15 @@ fn primitive_declaration_renderable(
         return floating_domain(kind, constraints).is_ok()
             || enabled.contains(&FeatureFamily::ConstrainedSimpleTypes);
     }
+    // Task 053: a NAMED Binary declaration is baseline-renderable exactly when
+    // the shared classifier accepts its effective constraints: unconstrained,
+    // or a length-only octet domain. All three backends ask this same
+    // question, so coverage cannot claim a carrier no backend emits. Pattern,
+    // numeric, or non-collapse whiteSpace facets stay attributed to
+    // `ConstrainedSimpleTypes`. Lexical provenance is deliberately NOT
+    // consulted: model capability is independent of `xs:hexBinary`.
     if kind == PrimitiveKind::Binary {
-        return constraints == &ConstraintSet::default()
+        return crate::binary_length_domain(kind, constraints).is_ok()
             || enabled.contains(&FeatureFamily::ConstrainedSimpleTypes);
     }
     // Task 036: a named temporal declaration is baseline-renderable exactly

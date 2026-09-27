@@ -944,6 +944,23 @@ wrappers, and Binary-free codecs are byte-identical, and the ServicePlan
 semantic binding now distinguishes Binary lexical provenance through the
 `TypeRef`s it already compared.
 
+## Task 053 — constrained named Binary carriers
+
+A named Binary restriction with only octet `length`/`minLength`/`maxLength`
+is no longer a MODEL blocker: `service-check` is READY in Ada, Rust and C++
+when that is the only issue, and `--with-codec` is codec READY for
+`xs:hexBinary` ancestry (the codec decodes through the generated checked
+constructor). The synthetic `constrained-binary` service is READY 12/12 in
+all three backends and codec 12/12. Pattern, numeric, or non-collapse
+whiteSpace facets on a named Binary and every field-local facet on a direct
+Binary field remain NOT READY, and coverage, readiness and generation agree
+on every shape (`constrained_binary_parity`).
+
+No real UCI 2.5/2.6 message became READY: every message whose closure
+reaches a constrained Binary still has a different model blocker, or fails
+projection on a cyclic value dependency (`Response`). See
+[Task 053](task-053-constrained-binary-carriers.md).
+
 ## Task 033 follow-up — constrained floating ranges
 
 The Task 031 measurements above are preserved as the historical record of that
