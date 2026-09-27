@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Task 051: local xs:element ref= stays UNSUPPORTED. It also carries a
+     QName, but global-element references are a separate capability; it must
+     fail explicitly rather than be misparsed as name/type. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:r="urn:ref"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:ref"
+           elementFormDefault="qualified">
+  <xs:complexType name="GlobalPayload">
+    <xs:sequence>
+      <xs:element name="Value" type="xs:int"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="Global" type="r:GlobalPayload" uci:version="001.000.000.000"/>
+  <xs:complexType name="Holder">
+    <xs:sequence>
+      <xs:element ref="r:Global"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

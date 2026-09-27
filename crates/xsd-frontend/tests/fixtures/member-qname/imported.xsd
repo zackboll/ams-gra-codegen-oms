@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Task 051 matrix (I) and (B): an imported document in ANOTHER target
+     namespace with an explicit elementFormDefault="unqualified". Its own
+     settings apply to its own local elements, independent of the root. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="urn:matrix:imported"
+           elementFormDefault="unqualified">
+  <xs:complexType name="ImportedRecord">
+    <xs:sequence>
+      <xs:element name="Loose" type="xs:int"/>
+      <xs:element name="Tight" type="xs:int" form="qualified"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

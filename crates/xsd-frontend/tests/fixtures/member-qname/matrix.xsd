@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Task 051 qualification matrix root. NO elementFormDefault, so the XSD
+     default (unqualified) applies to this document's local elements.
+
+       A. DefaultRecord.Plain           no default, no form        -> absent
+       D. DefaultRecord.ForcedQualified form="qualified"           -> urn:matrix
+       F. DefaultChoice.*               choice follows the same rule
+       G. DerivedFromQualified.Added    extension member declared HERE (default
+                                        unqualified) even though its base comes
+                                        from the qualified included document
+       H. included.xsd                  elementFormDefault="qualified" applies
+                                        to fields DECLARED in included.xsd only
+       I. imported.xsd                  its own targetNamespace and default -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:m="urn:matrix"
+           xmlns:i="urn:matrix:imported"
+           targetNamespace="urn:matrix">
+  <xs:include schemaLocation="included.xsd"/>
+  <xs:import namespace="urn:matrix:imported" schemaLocation="imported.xsd"/>
+  <xs:import namespace="urn:matrix:qualified-import" schemaLocation="imported-qualified.xsd"/>
+
+  <xs:complexType name="DefaultRecord">
+    <xs:sequence>
+      <xs:element name="Plain" type="xs:int"/>
+      <xs:element name="ForcedQualified" type="xs:int" form="qualified"/>
+      <xs:element name="ForcedUnqualified" type="xs:int" form="unqualified"/>
+      <!-- The element's namespace is independent of its TYPE's namespace. -->
+      <xs:element name="Foreign" type="i:ImportedRecord" form="qualified"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="DefaultChoice">
+    <xs:choice>
+      <xs:element name="Left" type="xs:int"/>
+      <xs:element name="Right" type="xs:int" form="qualified"/>
+    </xs:choice>
+  </xs:complexType>
+
+  <xs:complexType name="DerivedFromQualified">
+    <xs:complexContent>
+      <xs:extension base="m:QualifiedBase">
+        <xs:sequence>
+          <xs:element name="Added" type="xs:int"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+</xs:schema>

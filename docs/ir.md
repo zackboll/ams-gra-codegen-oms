@@ -75,7 +75,8 @@ TypeKind
   List(item_type, bounds)
 
 FieldDecl
-  name
+  name                 # source local name: host field/variant naming
+  wire_namespace_uri?  # element {target namespace}; None = absent (unqualified)
   type_ref: Primitive(kind) | Named(QualifiedName)
   cardinality
   nillable
@@ -382,12 +383,32 @@ This per-declaration change history is distinct from `SchemaIr.schema_version`,
 which records the root `xs:schema @version`. Declaration versions must not be
 folded into that schema-release field.
 
-The frontend validates schema-level `elementFormDefault` and
-`attributeFormDefault` values. These settings govern local element and attribute
-qualification in XML instances, but this IR models local field wire names for
-language-native UCI JSON/LA-CAL types rather than XML instance serialization.
-They are therefore deliberately discarded during normalization. Other schema
-attributes remain unsupported unless handled explicitly.
+### Local element wire QNames (Task 051)
+
+Earlier tasks validated schema-level `elementFormDefault` and discarded it.
+That lost real semantics: OMSC-SPC-013 Rev B §6.1.2 keys an OMS JSON particle
+member by the **element declaration's** target namespace. The frontend now
+preserves it:
+
+```text
+host model naming:  FieldDecl.name                       (unchanged)
+wire semantics:     FieldDecl.wire_namespace_uri + name  (FieldDecl::wire_name())
+codec formatting:   OAM                  -> local
+                    qualified non-OAM    -> {namespace}local
+                    unqualified (None)   -> currently fails closed
+```
+
+XML Schema 1.0 Structures 2E §3.3.2: a local element's `{target namespace}`
+is the declaring document's `targetNamespace` when its local `form` is
+`qualified`, or when `form` is absent and that document's
+`elementFormDefault` is `qualified`; otherwise it is *absent*. §3.15.2:
+`elementFormDefault` defaults to `unqualified`. Local `form` is accepted and
+overrides the default; each included or imported document applies its own
+default to its own declarations. Absence is `None`, never an empty URI.
+`attributeFormDefault` is still validated and discarded: no attribute
+semantics reach the IR. Local `xs:element ref=` remains unsupported. See
+[Task 051](task-051-member-qname-provenance.md). Other schema attributes
+remain unsupported unless handled explicitly.
 
 Leading XSD annotations are metadata rather than content-model children. The
 frontend accepts optional leading annotations containing supported plain-text
@@ -463,7 +484,9 @@ invariants after a frontend has assembled the complete schema. It validates
 declared namespace membership and uniqueness, qualified type identity,
 qualified message identity, resolution of every modeled named-reference
 location, finite cardinality, numeric and length consistency, and nonempty
-enumerations. Type and message names occupy separate symbol spaces, so matching
+enumerations. A qualified field or Choice alternative's `wire_namespace_uri`
+must be a declared namespace; an absent (`None`) one is valid and needs no
+declaration. Type and message names occupy separate symbol spaces, so matching
 qualified names across those categories are valid. Primitive references need no
 declaration. Unbounded cardinality and unconstrained integers remain valid IR
 even where an initial backend cannot yet represent them.

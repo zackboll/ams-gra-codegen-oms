@@ -9,11 +9,18 @@ use std::process::Command;
 ///
 /// The Task 049 services are generated exactly as before (no codec), so their
 /// tests keep proving the runtime accepts a HANDWRITTEN codec. Task 050's
-/// `codec-oam` is generated with `--with-codec`.
-const SERVICES: [(&str, &str, bool); 3] = [
+/// `codec-oam` is generated with `--with-codec`. Task 051 generates the
+/// NON-OAM qualified services with `--with-codec`: `runtime-test` a second
+/// time (as `runtime_test_codec`, beside the unchanged handwritten-codec
+/// `runtime_test`), plus the Choice, inheritance, and `$type` fixtures.
+const SERVICES: [(&str, &str, bool); 7] = [
     ("runtime-test", "runtime_test", false),
     ("runtime-oam", "runtime_oam", false),
     ("codec-oam", "codec_oam", true),
+    ("runtime-test", "runtime_test_codec", true),
+    ("codec-choice", "codec_choice", true),
+    ("codec-inherit", "codec_inherit", true),
+    ("codec-shape", "codec_shape", true),
 ];
 
 /// Task 050: the pinned UCI 2.5 root (open-arsenal/uci/standard tag v2.5,

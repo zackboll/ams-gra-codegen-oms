@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:i="urn:inherit"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:inherit"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- SYNTHETIC Task 051 fixture. NOT UCI. A qualified NON-OAM inherited
+       Record: Derived's OMS JSON object has BOTH members at one level, each
+       keyed from its OWN FieldDecl provenance, with no nested base object:
+         { "{urn:inherit}BaseValue": ..., "{urn:inherit}ExtraValue": ... } -->
+  <xs:complexType name="Base">
+    <xs:sequence>
+      <xs:element name="BaseValue" type="xs:int"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Derived">
+    <xs:complexContent>
+      <xs:extension base="i:Base">
+        <xs:sequence>
+          <xs:element name="ExtraValue" type="xs:string"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:element name="DerivedNotice" type="i:Derived" uci:version="001.000.000.000"/>
+</xs:schema>

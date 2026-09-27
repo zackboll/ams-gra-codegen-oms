@@ -26,6 +26,36 @@ pub mod codec_oam {
     include!(concat!(env!("OUT_DIR"), "/codec_oam/service_api.rs"));
 }
 
+/// Task 051: the SAME `runtime-test.xsd` (namespace `urn:test`,
+/// `elementFormDefault="qualified"`) generated with `--with-codec`. Its member
+/// keys are Clark notation, `"{urn:test}Count"`. `runtime_test` above is
+/// unchanged and still uses the handwritten codec.
+#[allow(clippy::all, clippy::pedantic)]
+pub mod runtime_test_codec {
+    include!(concat!(
+        env!("OUT_DIR"),
+        "/runtime_test_codec/service_api.rs"
+    ));
+}
+
+/// Task 051: a qualified non-OAM Choice (`urn:choice`).
+#[allow(clippy::all, clippy::pedantic)]
+pub mod codec_choice {
+    include!(concat!(env!("OUT_DIR"), "/codec_choice/service_api.rs"));
+}
+
+/// Task 051: a qualified non-OAM inherited Record (`urn:inherit`).
+#[allow(clippy::all, clippy::pedantic)]
+pub mod codec_inherit {
+    include!(concat!(env!("OUT_DIR"), "/codec_inherit/service_api.rs"));
+}
+
+/// Task 051: a qualified non-OAM closed abstract value (`urn:shape`).
+#[allow(clippy::all, clippy::pedantic)]
+pub mod codec_shape {
+    include!(concat!(env!("OUT_DIR"), "/codec_shape/service_api.rs"));
+}
+
 /// Task 050: the REAL UCI 2.5 PositionReport model, service API, and codec,
 /// generated only when `AMS_GRA_UCI_2_5_ROOT` names the SHA-256-verified
 /// pinned root (see build.rs).

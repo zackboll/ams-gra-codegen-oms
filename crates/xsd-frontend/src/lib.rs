@@ -18,10 +18,36 @@ use std::path::{Path, PathBuf};
 const XSD_NS: &str = "http://www.w3.org/2001/XMLSchema";
 const UCI_VERSION_NS: &str = "https://www.vdl.afrl.af.mil/programs/oam";
 
+/// The effective form of a local element declaration (XML Schema 1.0
+/// Structures 2E section 3.3.2): `qualified` gives it the enclosing schema
+/// document's `targetNamespace`, `unqualified` leaves its target namespace
+/// absent.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ElementForm {
+    Qualified,
+    Unqualified,
+}
+
+/// The schema-document facts every local element declaration needs. Always
+/// taken from the document that DECLARES the element, never from the root of
+/// a schema set, an including document, or the element's type.
+#[derive(Debug, Clone, Copy)]
+struct SchemaDocumentContext<'a> {
+    target_namespace: &'a str,
+    /// `xs:schema/@elementFormDefault`; `unqualified` when omitted
+    /// (Structures 2E section 3.15.2).
+    element_form_default: ElementForm,
+}
+
 #[derive(Debug)]
 struct ParsedSchemaDocument {
     source: PathBuf,
     target_namespace: String,
+    /// The document's effective `elementFormDefault` (Task 051). Already
+    /// applied to this document's local elements while parsing; retained so
+    /// the parsed document states it (checked by the unit tests below).
+    #[cfg_attr(not(test), allow(dead_code))]
+    element_form_default: ElementForm,
     preferred_prefix: Option<String>,
     schema_version: Option<String>,
     dependencies: Vec<SchemaDependency>,
@@ -119,9 +145,11 @@ impl std::error::Error for FrontendError {}
 /// includes are explicit errors;
 /// use [`load_schema_set`] when dependencies should be traversed. Anonymous
 /// types and all other XSD constructs are also explicit errors. Schema-level
-/// `elementFormDefault` and `attributeFormDefault` are validated and discarded
-/// because XML instance namespace qualification is outside the normalized type
-/// model.
+/// `elementFormDefault` (default `unqualified`) and local `xs:element/@form`
+/// determine each local element's effective target namespace, preserved as
+/// [`FieldDecl::wire_namespace_uri`] (`None` when absent). Schema-level
+/// `attributeFormDefault` is validated and discarded: no attribute semantics
+/// reach the IR. Local `xs:element ref=` remains unsupported.
 /// Leading annotations containing plain-text `xs:documentation` are accepted.
 /// Documentation for types, global messages, sequence fields, and enumeration
 /// variants is normalized into the corresponding IR field; schema and restriction
@@ -323,10 +351,18 @@ fn parse_schema_document_xml(
             "attributeFormDefault",
         ],
     )?;
-    parse_form_default(schema, "elementFormDefault")?;
+    // Task 051: elementFormDefault determines local element namespaces and is
+    // retained. attributeFormDefault is still only validated: no attribute
+    // semantics reach the IR.
+    let element_form_default =
+        parse_form_default(schema, "elementFormDefault")?.unwrap_or(ElementForm::Unqualified);
     parse_form_default(schema, "attributeFormDefault")?;
 
     let target_namespace = required_attribute(schema, "targetNamespace")?.to_owned();
+    let context = SchemaDocumentContext {
+        target_namespace: &target_namespace,
+        element_form_default,
+    };
     let source_document = path.display().to_string();
     let mut dependencies = Vec::new();
     let mut declarations = Vec::new();
@@ -357,7 +393,7 @@ fn parse_schema_document_xml(
                 &target_namespace,
             )?),
             "complexType" => declarations.push(ParsedTypeDecl::Ready(Box::new(
-                parse_complex_type(child, document, &source_document, &target_namespace)?,
+                parse_complex_type(child, document, &source_document, context)?,
             ))),
             "element" => messages.push(parse_global_element(
                 child,
@@ -373,6 +409,7 @@ fn parse_schema_document_xml(
         source: path.to_owned(),
         preferred_prefix: preferred_prefix(schema, &target_namespace),
         target_namespace,
+        element_form_default,
         schema_version: schema.attribute("version").map(str::to_owned),
         dependencies,
         declarations,
@@ -854,20 +891,23 @@ fn parse_complex_type(
     node: Node<'_, '_>,
     document: &Document<'_>,
     source_document: &str,
-    target_namespace: &str,
+    context: SchemaDocumentContext<'_>,
 ) -> Result<TypeDecl, FrontendError> {
     validate_uci_declaration_version(node, &["name", "abstract"], false)?;
-    let name = qualified_declaration_name(node, target_namespace)?;
+    let name = qualified_declaration_name(node, context.target_namespace)?;
     let is_abstract = parse_boolean_attribute(node, "abstract", false)?;
     let (documentation, children) = children_after_optional_annotation(node)?;
     let (base_type, kind) = match children.as_slice() {
         [] if is_abstract => (None, TypeKind::Record { fields: Vec::new() }),
         [content] if content.tag_name().namespace() == Some(XSD_NS) => {
             match content.tag_name().name() {
-                "sequence" | "choice" => {
-                    (None, parse_compositor(*content, document, source_document)?)
+                "sequence" | "choice" => (
+                    None,
+                    parse_compositor(*content, document, source_document, context)?,
+                ),
+                "complexContent" => {
+                    parse_complex_content(*content, document, source_document, context)?
                 }
-                "complexContent" => parse_complex_content(*content, document, source_document)?,
                 other => return Err(unsupported(*content, other)),
             }
         }
@@ -894,6 +934,7 @@ fn parse_complex_content(
     node: Node<'_, '_>,
     document: &Document<'_>,
     source_document: &str,
+    context: SchemaDocumentContext<'_>,
 ) -> Result<(Option<TypeRef>, TypeKind), FrontendError> {
     reject_unexpected_attributes(node, &[])?;
     let mut children = element_children(node);
@@ -913,7 +954,8 @@ fn parse_complex_content(
     let children = element_children(extension).collect::<Vec<_>>();
     let kind = match children.as_slice() {
         [] => TypeKind::Record { fields: Vec::new() },
-        [compositor] => parse_compositor(*compositor, document, source_document)?,
+        // Extension-added members belong to THIS (the deriving) document.
+        [compositor] => parse_compositor(*compositor, document, source_document, context)?,
         _ => {
             return Err(unsupported(
                 extension,
@@ -928,6 +970,7 @@ fn parse_compositor(
     compositor: Node<'_, '_>,
     document: &Document<'_>,
     source_document: &str,
+    context: SchemaDocumentContext<'_>,
 ) -> Result<TypeKind, FrontendError> {
     require_xsd_namespace(compositor)?;
     let is_choice = match compositor.tag_name().name() {
@@ -939,7 +982,12 @@ fn parse_compositor(
     let mut fields = Vec::new();
     for element in element_children(compositor) {
         require_xsd_element(element, "element")?;
-        fields.push(parse_local_element(element, document, source_document)?);
+        fields.push(parse_local_element(
+            element,
+            document,
+            source_document,
+            context,
+        )?);
     }
     Ok(if is_choice {
         TypeKind::Choice {
@@ -950,22 +998,36 @@ fn parse_compositor(
     })
 }
 
+/// Parse one local `xs:element name=... type=...` particle.
+///
+/// Its effective target namespace follows XML Schema 1.0 Structures 2E
+/// section 3.3.2: local `@form` if present, otherwise the declaring
+/// document's `elementFormDefault`; `qualified` means the document's
+/// `targetNamespace`, `unqualified` means absent. Local `ref=` is not
+/// supported and is rejected before `name`/`type` are read.
 fn parse_local_element(
     element: Node<'_, '_>,
     document: &Document<'_>,
     source_document: &str,
+    context: SchemaDocumentContext<'_>,
 ) -> Result<FieldDecl, FrontendError> {
     reject_unexpected_attributes(
         element,
-        &["name", "type", "minOccurs", "maxOccurs", "nillable"],
+        &["name", "type", "minOccurs", "maxOccurs", "nillable", "form"],
     )?;
     let (documentation, children) = children_after_optional_annotation(element)?;
     if !children.is_empty() {
         return Err(unsupported(element, "anonymous element type"));
     }
+    let form = parse_form_attribute(element)?.unwrap_or(context.element_form_default);
+    let wire_namespace_uri = match form {
+        ElementForm::Qualified => Some(context.target_namespace.to_owned()),
+        ElementForm::Unqualified => None,
+    };
     let semantics = resolve_type_semantics(element, required_attribute(element, "type")?)?;
     Ok(FieldDecl {
         name: required_attribute(element, "name")?.to_owned(),
+        wire_namespace_uri,
         type_ref: semantics.type_ref,
         cardinality: parse_cardinality(element)?,
         nillable: parse_boolean_attribute(element, "nillable", false)?,
@@ -1317,13 +1379,32 @@ fn reject_unexpected_attributes(node: Node<'_, '_>, allowed: &[&str]) -> Result<
     Ok(())
 }
 
-fn parse_form_default(node: Node<'_, '_>, attribute_name: &str) -> Result<(), FrontendError> {
+/// Parse an `xs:schema` form default; `None` when the attribute is omitted.
+fn parse_form_default(
+    node: Node<'_, '_>,
+    attribute_name: &str,
+) -> Result<Option<ElementForm>, FrontendError> {
+    parse_form_value(node, attribute_name, "schema")
+}
+
+/// Parse a local `xs:element/@form`; `None` when omitted.
+fn parse_form_attribute(node: Node<'_, '_>) -> Result<Option<ElementForm>, FrontendError> {
+    parse_form_value(node, "form", "element")
+}
+
+fn parse_form_value(
+    node: Node<'_, '_>,
+    attribute_name: &str,
+    owner: &str,
+) -> Result<Option<ElementForm>, FrontendError> {
     match node.attribute(attribute_name) {
-        None | Some("qualified" | "unqualified") => Ok(()),
+        None => Ok(None),
+        Some("qualified") => Ok(Some(ElementForm::Qualified)),
+        Some("unqualified") => Ok(Some(ElementForm::Unqualified)),
         Some(value) => {
             let position = text_position(node);
             Err(FrontendError::InvalidInput(format!(
-                "xs:schema @{attribute_name} must be qualified or unqualified, got {value} at {}:{}",
+                "xs:{owner} @{attribute_name} must be qualified or unqualified, got {value} at {}:{}",
                 position.line, position.column
             )))
         }
@@ -1717,5 +1798,47 @@ fn text_position(node: Node<'_, '_>) -> TextPosition {
     TextPosition {
         line: position.row,
         column: position.col,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parsed(element_form_default: Option<&str>) -> ParsedSchemaDocument {
+        let attribute = element_form_default
+            .map(|value| format!(" elementFormDefault=\"{value}\""))
+            .unwrap_or_default();
+        let xml =
+            format!("<xs:schema xmlns:xs=\"{XSD_NS}\" targetNamespace=\"urn:t\"{attribute}/>");
+        let document = Document::parse(&xml).expect("XML");
+        parse_schema_document_xml(Path::new("t.xsd"), &document).expect("schema")
+    }
+
+    /// Task 051: the parsed document RETAINS its effective element form
+    /// default; omission means `unqualified` (Structures 2E section 3.15.2).
+    #[test]
+    fn parsed_document_retains_effective_element_form_default() {
+        assert_eq!(parsed(None).element_form_default, ElementForm::Unqualified);
+        assert_eq!(
+            parsed(Some("unqualified")).element_form_default,
+            ElementForm::Unqualified
+        );
+        assert_eq!(
+            parsed(Some("qualified")).element_form_default,
+            ElementForm::Qualified
+        );
+    }
+
+    /// attributeFormDefault is validated but never conflated with
+    /// elementFormDefault.
+    #[test]
+    fn attribute_form_default_does_not_affect_element_form() {
+        let xml = format!(
+            "<xs:schema xmlns:xs=\"{XSD_NS}\" targetNamespace=\"urn:t\" attributeFormDefault=\"qualified\"/>"
+        );
+        let document = Document::parse(&xml).expect("XML");
+        let parsed = parse_schema_document_xml(Path::new("t.xsd"), &document).expect("schema");
+        assert_eq!(parsed.element_form_default, ElementForm::Unqualified);
     }
 }

@@ -126,7 +126,7 @@ impl SchemaIr {
                     }
                 }
                 TypeKind::Record { fields } => {
-                    validate_fields(fields, &declared_types, "record field")?;
+                    validate_fields(fields, &declared_types, &namespaces, "record field")?;
                 }
                 TypeKind::Choice { alternatives } => {
                     if alternatives.is_empty() {
@@ -134,7 +134,12 @@ impl SchemaIr {
                             name: declaration.name.clone(),
                         });
                     }
-                    validate_fields(alternatives, &declared_types, "choice alternative")?;
+                    validate_fields(
+                        alternatives,
+                        &declared_types,
+                        &namespaces,
+                        "choice alternative",
+                    )?;
                 }
                 TypeKind::List {
                     item_type,
@@ -186,6 +191,13 @@ pub enum ValidationError {
     UnresolvedTypeReference {
         target: QualifiedName,
         location: &'static str,
+        source: SourceRef,
+    },
+    /// A qualified local element names a namespace the schema set does not
+    /// declare.
+    UndeclaredFieldNamespace {
+        field: String,
+        namespace_uri: String,
         source: SourceRef,
     },
     InvalidCardinality {
@@ -272,6 +284,15 @@ impl fmt::Display for ValidationError {
                 f,
                 "unresolved type reference {} in {location} at {}",
                 format_name(target),
+                format_source(source)
+            ),
+            Self::UndeclaredFieldNamespace {
+                field,
+                namespace_uri,
+                source,
+            } => write!(
+                f,
+                "local element {field} uses undeclared namespace {namespace_uri} at {}",
                 format_source(source)
             ),
             Self::InvalidCardinality {
@@ -595,9 +616,20 @@ fn length_constraints_imply(derived: &ConstraintSet, base: &ConstraintSet) -> bo
 fn validate_fields(
     fields: &[FieldDecl],
     declared_types: &BTreeSet<QualifiedName>,
+    namespaces: &BTreeSet<String>,
     location: &'static str,
 ) -> Result<(), ValidationError> {
     for field in fields {
+        // An absent element namespace is valid IR and needs no declaration.
+        if let Some(uri) = &field.wire_namespace_uri {
+            if !namespaces.contains(uri) {
+                return Err(ValidationError::UndeclaredFieldNamespace {
+                    field: field.name.clone(),
+                    namespace_uri: uri.clone(),
+                    source: field.source.clone(),
+                });
+            }
+        }
         validate_reference(&field.type_ref, declared_types, location, &field.source)?;
         validate_cardinality(field.cardinality, &format!("field {}", field.name))?;
         let primitive = match field.type_ref.target {
@@ -911,15 +943,52 @@ pub struct EnumVariant {
     pub documentation: Option<String>,
 }
 
+/// One local element declaration of a Record (sequence) or Choice.
+///
+/// Two independent identities are kept:
+///
+/// * `name` is the source local name. It is the only input to host-language
+///   field/variant naming, member-collision checks, and model generation.
+/// * `wire_namespace_uri` is the element declaration's effective XML Schema
+///   `{target namespace}` (Task 051). It is wire semantics, needed by
+///   encodings such as OMS JSON whose member names depend on the element's
+///   own namespace. `Some(uri)` means the local element is namespace
+///   qualified with `uri`; `None` means its target namespace is *absent*
+///   (an unqualified local element). Absence is never spelled as an empty
+///   URI, and no serialized syntax (prefix, Clark notation) is stored.
+///
+/// The element's namespace is unrelated to `type_ref`: an element in one
+/// namespace may have a type declared in another.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FieldDecl {
     pub name: String,
+    pub wire_namespace_uri: Option<String>,
     pub type_ref: TypeRef,
     pub cardinality: Cardinality,
     pub nillable: bool,
     pub constraints: ConstraintSet,
     pub documentation: Option<String>,
     pub source: SourceRef,
+}
+
+/// The borrowed wire identity of a local element: its effective target
+/// namespace (absent for an unqualified local element) and its local name.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct FieldWireName<'a> {
+    pub namespace_uri: Option<&'a str>,
+    pub local_name: &'a str,
+}
+
+impl FieldDecl {
+    /// The semantic wire QName of this local element. The local name is
+    /// always [`FieldDecl::name`], so the two can never disagree.
+    #[must_use]
+    pub fn wire_name(&self) -> FieldWireName<'_> {
+        FieldWireName {
+            namespace_uri: self.wire_namespace_uri.as_deref(),
+            local_name: &self.name,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1126,6 +1195,7 @@ mod tests {
     fn field(type_ref: TypeRef) -> FieldDecl {
         FieldDecl {
             name: "value".to_owned(),
+            wire_namespace_uri: Some(NS.to_owned()),
             type_ref,
             cardinality: Cardinality::REQUIRED_ONE,
             nillable: false,
@@ -1225,6 +1295,92 @@ mod tests {
             .shape(),
             OccurrenceShape::Unbounded { min: u64::MAX }
         );
+    }
+
+    #[test]
+    fn field_wire_name_borrows_namespace_and_the_one_local_name() {
+        let mut qualified = field(TypeRef::primitive(PrimitiveKind::String));
+        qualified.name = "Count".to_owned();
+        assert_eq!(
+            qualified.wire_name(),
+            FieldWireName {
+                namespace_uri: Some(NS),
+                local_name: "Count",
+            }
+        );
+        // The local name is FieldDecl.name itself: there is no second copy
+        // that could drift.
+        assert!(std::ptr::eq(
+            qualified.wire_name().local_name,
+            qualified.name.as_str()
+        ));
+        let mut unqualified = qualified.clone();
+        unqualified.wire_namespace_uri = None;
+        assert_eq!(unqualified.wire_name().namespace_uri, None);
+        // Absent is distinct from an empty URI.
+        let mut empty = qualified;
+        empty.wire_namespace_uri = Some(String::new());
+        assert_ne!(empty.wire_name(), unqualified.wire_name());
+    }
+
+    #[test]
+    fn field_wire_namespace_is_independent_of_its_type_namespace() {
+        const OTHER: &str = "urn:other";
+        let mut schema = schema(vec![declaration(
+            "Owner",
+            TypeKind::Record {
+                fields: vec![field(TypeRef::named(QualifiedName::new(OTHER, "Counter")))],
+            },
+        )]);
+        schema.namespaces.push(NamespaceDecl {
+            uri: OTHER.to_owned(),
+            preferred_prefix: None,
+        });
+        schema.types.push(TypeDecl {
+            name: QualifiedName::new(OTHER, "Counter"),
+            ..declaration("Counter", TypeKind::Primitive(PrimitiveKind::SignedInteger))
+        });
+        schema
+            .validate()
+            .expect("element and type namespaces differ");
+        let TypeKind::Record { fields } = &schema.types[0].kind else {
+            unreachable!()
+        };
+        assert_eq!(fields[0].wire_name().namespace_uri, Some(NS));
+        assert_eq!(
+            fields[0].type_ref.target,
+            TypeRefTarget::Named(QualifiedName::new(OTHER, "Counter"))
+        );
+    }
+
+    #[test]
+    fn field_wire_namespace_must_be_declared_but_absence_is_valid() {
+        let kinds: [fn(Vec<FieldDecl>) -> TypeKind; 2] = [
+            |fields| TypeKind::Record { fields },
+            |alternatives| TypeKind::Choice { alternatives },
+        ];
+        for kind in kinds {
+            let mut undeclared = field(TypeRef::primitive(PrimitiveKind::String));
+            undeclared.wire_namespace_uri = Some("urn:nowhere".to_owned());
+            let error = schema(vec![declaration("Owner", kind(vec![undeclared]))])
+                .validate()
+                .expect_err("undeclared element namespace");
+            assert!(matches!(
+                &error,
+                ValidationError::UndeclaredFieldNamespace { field, namespace_uri, .. }
+                    if field == "value" && namespace_uri == "urn:nowhere"
+            ));
+            assert_eq!(
+                error.to_string(),
+                "local element value uses undeclared namespace urn:nowhere at test.ir:1"
+            );
+
+            let mut absent = field(TypeRef::primitive(PrimitiveKind::String));
+            absent.wire_namespace_uri = None;
+            schema(vec![declaration("Owner", kind(vec![absent]))])
+                .validate()
+                .expect("an unqualified local element needs no namespace declaration");
+        }
     }
 
     #[test]

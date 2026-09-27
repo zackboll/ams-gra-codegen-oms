@@ -39,6 +39,7 @@ fn record(local: &str, fields: Vec<(&str, TypeRef)>) -> TypeDecl {
                 .into_iter()
                 .map(|(name, type_ref)| FieldDecl {
                     name: name.to_owned(),
+                    wire_namespace_uri: Some(NS.to_owned()),
                     type_ref,
                     cardinality: Cardinality::REQUIRED_ONE,
                     nillable: false,
@@ -426,6 +427,13 @@ fn schema_in(uri: &str) -> SchemaIr {
     let rename = |name: &mut QualifiedName| name.namespace_uri = uri.to_owned();
     for declaration in &mut schema.types {
         rename(&mut declaration.name);
+        // Task 051: qualified local elements live in the declaring namespace,
+        // so they move with it.
+        if let TypeKind::Record { fields } = &mut declaration.kind {
+            for field in fields {
+                field.wire_namespace_uri = Some(uri.to_owned());
+            }
+        }
     }
     for message in &mut schema.messages {
         rename(&mut message.name);

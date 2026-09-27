@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Task 051 matrix (I): the SAME root default (none) importing a document
+     whose own default is qualified. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:q="urn:matrix:qualified-import"
+           targetNamespace="urn:matrix:qualified-import"
+           elementFormDefault="qualified">
+  <xs:complexType name="QualifiedImport">
+    <xs:sequence>
+      <xs:element name="Member" type="xs:int"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

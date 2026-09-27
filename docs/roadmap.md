@@ -695,12 +695,20 @@ Progress (typed LA-CAL integration as a whole is **not** complete):
       derives, never the Rust layout). Every decode is built through the
       generated model's checked constructors. The real UCI 2.5
       `PositionReport` round-trips through unmodified pinned Sleet as a typed
-      `PositionReportMT` in CI. OAM-namespace payloads only; Binary fails
-      closed.
+      `PositionReportMT` in CI. Binary fails closed.
+- [x] qualified single-namespace extension member QName support (Task 051).
+      Schema IR preserves each local element's effective target namespace
+      (`FieldDecl.wire_namespace_uri`, from `elementFormDefault` and local
+      `form`); Record/Choice member keys and `$type` values use the element or
+      concrete-type QName: bare for OAM, `{namespace}local` otherwise. A
+      qualified non-OAM single-namespace service is codec READY. Model,
+      wrapper, and OAM codec output is byte-identical.
 - [ ] Ada and C++ generated OMS JSON codecs (`--with-codec` reports them NOT
       READY at the `service codec boundary`).
-- [ ] generic extension-namespace codec support (needs element member
-      QName/form in Schema IR).
+- [ ] multi-namespace backend generation (backends remain single-namespace).
+- [ ] unqualified member OMS JSON semantics: OMSC-SPC-013 Rev B gives no
+      spelling for an absent element namespace, so it fails closed.
+- [ ] `xs:element ref` support.
 - [ ] hexBinary/base64Binary lexical provenance in Schema IR (Binary codec).
 - [ ] reconnect/backoff, TLS/auth policy, timers, service lifecycle.
 
@@ -708,10 +716,12 @@ Progress (typed LA-CAL integration as a whole is **not** complete):
 Task 048:  generated type-safe operation
 Task 049:  first reusable runtime executing that operation through real LA-CAL
 Task 050:  generated Rust payload-body OMS JSON codecs
+Task 051:  local element wire QNames in Schema IR; qualified non-OAM codecs
 ```
 
-See [Task 049](task-049-rust-la-cal-runtime.md) and
-[Task 050](task-050-rust-oms-json-codecs.md).
+See [Task 049](task-049-rust-la-cal-runtime.md),
+[Task 050](task-050-rust-oms-json-codecs.md), and
+[Task 051](task-051-member-qname-provenance.md).
 
 ## Phase 4 — SPARK-oriented Ada backend
 

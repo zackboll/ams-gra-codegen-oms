@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:u="urn:unqualified"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:unqualified"
+           version="000.1.0">
+  <!-- SYNTHETIC Task 051 fail-closed control. NOT UCI. There is deliberately
+       NO elementFormDefault, so by XML Schema 1.0 (default "unqualified") the
+       local element Field has an ABSENT target namespace. OMSC-SPC-013 Rev B
+       gives no unambiguous OMS JSON member spelling for that, so the MODEL is
+       READY and the generated codec (with-codec) is NOT READY. -->
+  <xs:complexType name="Payload">
+    <xs:sequence>
+      <xs:element name="Field" type="xs:int"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="UnqualifiedNotice" type="u:Payload" uci:version="001.000.000.000"/>
+</xs:schema>

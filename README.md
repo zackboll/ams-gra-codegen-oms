@@ -800,10 +800,19 @@ wire values, one-member Choices, `$type` on closed abstract values,
 `"NaN"`/`"Infinity"`/`"-Infinity"`), rejects unknown/missing/invalid members,
 and builds every value through the generated model's checked constructors.
 The real UCI 2.5 `PositionReport` round-trips through unmodified Sleet as a
-typed `PositionReportMT`. Without the flag all output is unchanged. It covers
-OAM-namespace payloads only; Binary, Ada, and C++ report a
-`service codec boundary:`. See
+typed `PositionReportMT`. Without the flag all output is unchanged. Binary,
+Ada, and C++ report a `service codec boundary:`. See
 [Task 050](docs/task-050-rust-oms-json-codecs.md).
+
+**Member QNames (Task 051).** Schema IR keeps each local element's effective
+target namespace (`elementFormDefault` plus local `form`), separately from its
+local name and its type. Host models still name fields from the local name.
+The codec keys members from the element's own QName: OAM gives `Count`, a
+qualified extension namespace gives `{urn:test}Count`, and `$type` gives
+`{urn:shape}BoxShape`. So a qualified single-namespace extension service
+gets a generated codec. An unqualified local element has no specified OMS
+JSON spelling and fails closed. See
+[Task 051](docs/task-051-member-qname-provenance.md).
 
 Compatibility is defined by `contract_version`, not by repository SHA. The
 baseline is `zackboll/ams-gra-service-contract`

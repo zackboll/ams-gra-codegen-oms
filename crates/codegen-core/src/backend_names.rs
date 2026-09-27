@@ -2229,6 +2229,7 @@ mod tests {
     fn field(name: &str, target: TypeRefTarget, cardinality: Cardinality) -> FieldDecl {
         FieldDecl {
             name: name.to_owned(),
+            wire_namespace_uri: Some(NS.to_owned()),
             type_ref: TypeRef { target },
             cardinality,
             nillable: false,

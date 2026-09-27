@@ -6,16 +6,22 @@
 //! schema without guessing a wire rule?
 //!
 //! The wire rules are OMSC-SPC-013 Rev B section 6.1 (see
-//! `docs/task-050-rust-oms-json-codecs.md`). Two boundaries are deliberate:
+//! `docs/task-050-rust-oms-json-codecs.md` and
+//! `docs/task-051-member-qname-provenance.md`). Two boundaries are deliberate:
 //!
-//! * **Member namespaces.** OMS JSON member keys are bare only for element
-//!   declarations whose target namespace is the OAM namespace; any other
-//!   namespace needs `{namespace}local`. Schema IR keeps `FieldDecl.name` but
-//!   not the local element's namespace/form, so only an all-OAM projection is
-//!   accepted. Every other namespace fails closed.
+//! * **Member names (Task 051).** A particle member is keyed by its ELEMENT
+//!   DECLARATION's target namespace (`FieldDecl::wire_name`): bare local name
+//!   for the OAM namespace, `{namespace}local` otherwise ([`oms_json_member_name`]).
+//!   `$type` values use the concrete complexType's QName the same way
+//!   ([`oms_json_type_name`]). A local element whose target namespace is
+//!   ABSENT (unqualified) has no evidenced OMS JSON spelling, so it fails
+//!   closed ([`ServiceCodecError::UnqualifiedMember`]).
 //! * **Binary.** `PrimitiveKind::Binary` is semantic octets; the IR does not
 //!   retain whether the XSD primitive was `hexBinary` or `base64Binary`, whose
 //!   lexical spellings differ. No encoding is chosen, so Binary fails closed.
+//!
+//! The backend single-namespace boundary is NOT relaxed here: normal backend
+//! preflight still rejects a projection spanning several namespaces.
 
 use crate::{
     BackendLanguage, EffectiveValueMember, GenerationWorld, ServiceApiModel, TypeEmission,
@@ -23,13 +29,42 @@ use crate::{
     plan_type_emissions, rust_model_file_name, service_api_fixed_names,
 };
 use ams_gra_oms_ir::{
-    FieldDecl, OccurrenceShape, PrimitiveKind, QualifiedName, SchemaIr, TypeKind, TypeRefTarget,
+    FieldDecl, OccurrenceShape, PrimitiveKind, SchemaIr, TypeKind, TypeRefTarget,
 };
 use std::fmt;
 
 /// The OAM namespace (OMSC-SPC-013 Rev B section 6.1): members of element
 /// declarations in this namespace are keyed by their bare local name.
 pub const OAM_NAMESPACE: &str = "https://www.vdl.afrl.af.mil/programs/oam";
+
+/// The OMS JSON member name of a QUALIFIED element particle
+/// (OMSC-SPC-013 Rev B section 6.1.2): `local_name` when `namespace_uri` is
+/// the OAM namespace, otherwise `{namespace_uri}local_name`.
+///
+/// The one shared formatter for Record member keys and Choice alternative
+/// keys. An unqualified (absent-namespace) element never reaches it: codec
+/// readiness rejects it first.
+#[must_use]
+pub fn oms_json_member_name(namespace_uri: &str, local_name: &str) -> String {
+    oms_json_qname(namespace_uri, local_name)
+}
+
+/// The OMS JSON `"$type"` value naming a concrete complexType
+/// (OMSC-SPC-013 Rev B section 6.1.2): `{complexType name}` in the OAM
+/// namespace, otherwise `{{complexType target namespace}}{complexType name}`.
+/// Always derived from the concrete type declaration's own QName.
+#[must_use]
+pub fn oms_json_type_name(namespace_uri: &str, local_name: &str) -> String {
+    oms_json_qname(namespace_uri, local_name)
+}
+
+fn oms_json_qname(namespace_uri: &str, local_name: &str) -> String {
+    if namespace_uri == OAM_NAMESPACE {
+        local_name.to_owned()
+    } else {
+        format!("{{{namespace_uri}}}{local_name}")
+    }
+}
 
 /// The Rust codec file written beside the model and `service_api.rs`.
 pub const RUST_SERVICE_CODEC_FILE: &str = "service_codec.rs";
@@ -42,9 +77,10 @@ pub const RUST_SERVICE_CODEC_MODULE: &str = "service_codec";
 pub enum ServiceCodecError {
     /// No generated OMS JSON codec exists for this language.
     LanguageNotImplemented(BackendLanguage),
-    /// A codec-emitted declaration is outside the OAM namespace, so member
-    /// keys and `$type` values cannot be proven from the current IR.
-    NonOamNamespace(QualifiedName),
+    /// A stored member is an unqualified local element (absent target
+    /// namespace). OMSC-SPC-013 Rev B gives no unambiguous member name for
+    /// it, so no spelling is guessed (Task 051).
+    UnqualifiedMember { location: String },
     /// A Binary value: hexBinary vs base64Binary provenance is not retained.
     BinaryProvenance { location: String },
     /// A primitive with no evidenced codec mapping in this task.
@@ -69,12 +105,10 @@ impl fmt::Display for ServiceCodecError {
                 "generated OMS JSON codec is not implemented for {}",
                 language.name()
             ),
-            Self::NonOamNamespace(name) => write!(
+            Self::UnqualifiedMember { location } => write!(
                 f,
-                "declaration {{{}}}{} is outside the OAM namespace; OMS JSON member \
-                 names and $type values for other namespaces need element QName/form \
-                 semantics that Schema IR does not retain",
-                name.namespace_uri, name.local_name
+                "{location} has an unqualified local element with no evidenced OMS JSON \
+                 member-name mapping"
             ),
             Self::BinaryProvenance { location } => write!(
                 f,
@@ -224,19 +258,11 @@ fn emission_codec_support(
 ) -> Result<(), ServiceCodecError> {
     let declaration = match emission {
         TypeEmission::Declaration(declaration) => *declaration,
-        TypeEmission::AbstractValue(projection) => {
-            // `$type` values are concrete XSD type names; bare only in OAM.
-            // Each concrete descendant is itself an emitted Declaration and
-            // is checked on its own.
-            for descendant in std::iter::once(projection.declaration)
-                .chain(projection.concrete_descendants.iter().copied())
-            {
-                require_oam(&descendant.name)?;
-            }
-            return Ok(());
-        }
+        // `$type` values are every concrete descendant's own type QName, which
+        // is always known (`oms_json_type_name`). Each concrete descendant is
+        // itself an emitted Declaration and its members are checked there.
+        TypeEmission::AbstractValue(_) => return Ok(()),
     };
-    require_oam(&declaration.name)?;
     let owner = &declaration.name.local_name;
     match &declaration.kind {
         TypeKind::Primitive(kind) => primitive_support(*kind, owner),
@@ -281,12 +307,18 @@ fn emission_codec_support(
 
 fn member_support(field: &FieldDecl, owner: &str) -> Result<(), ServiceCodecError> {
     let location = format!("{owner}.{}", field.name);
+    // Task 051: the member key comes from the ELEMENT's own target namespace,
+    // never the owning type's, the message's, or the member type's.
+    if field.wire_name().namespace_uri.is_none() {
+        return Err(ServiceCodecError::UnqualifiedMember { location });
+    }
     if field.nillable {
         return Err(unsupported(&location, "nillable member".into()));
     }
     match &field.type_ref.target {
         TypeRefTarget::Primitive(kind) => primitive_support(*kind, &location),
-        TypeRefTarget::Named(name) => require_oam(name),
+        // A named member type is itself an emitted declaration, checked there.
+        TypeRefTarget::Named(_) => Ok(()),
     }
 }
 
@@ -311,14 +343,6 @@ fn primitive_support(kind: PrimitiveKind, location: &str) -> Result<(), ServiceC
     }
 }
 
-fn require_oam(name: &QualifiedName) -> Result<(), ServiceCodecError> {
-    if name.namespace_uri == OAM_NAMESPACE {
-        Ok(())
-    } else {
-        Err(ServiceCodecError::NonOamNamespace(name.clone()))
-    }
-}
-
 fn unsupported(location: &str, reason: String) -> ServiceCodecError {
     ServiceCodecError::UnsupportedConstruct {
         location: location.to_owned(),
@@ -329,7 +353,7 @@ fn unsupported(location: &str, reason: String) -> ServiceCodecError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ams_gra_oms_ir::{Cardinality, ConstraintSet, SourceRef, TypeDecl, TypeRef};
+    use ams_gra_oms_ir::{Cardinality, ConstraintSet, QualifiedName, SourceRef, TypeDecl, TypeRef};
 
     fn source() -> SourceRef {
         SourceRef {
@@ -341,6 +365,8 @@ mod tests {
     fn field(name: &str, type_ref: TypeRef) -> FieldDecl {
         FieldDecl {
             name: name.to_owned(),
+            // Every record() below uses one namespace; tests override this.
+            wire_namespace_uri: Some(OAM_NAMESPACE.to_owned()),
             type_ref,
             cardinality: Cardinality::REQUIRED_ONE,
             nillable: false,
@@ -411,16 +437,69 @@ mod tests {
         }
     }
 
+    /// Task 051: one semantic formatter for member keys, one for `$type`;
+    /// OAM is bare, anything else is Clark notation, applied literally.
     #[test]
-    fn non_oam_declarations_and_nillable_members_fail_closed() {
-        let foreign = record(
-            "urn:test",
-            vec![field("F", TypeRef::primitive(PrimitiveKind::Boolean))],
+    fn oms_json_names_follow_omsc_spc_013_section_6_1_2() {
+        assert_eq!(oms_json_member_name(OAM_NAMESPACE, "Count"), "Count");
+        assert_eq!(oms_json_member_name("urn:test", "Count"), "{urn:test}Count");
+        assert_eq!(
+            oms_json_member_name("https://www.vdl.afrl.af.mil/programs/oam/", "Count"),
+            "{https://www.vdl.afrl.af.mil/programs/oam/}Count",
+            "only the exact OAM URI is special"
         );
-        assert!(matches!(
-            check(&foreign),
-            Err(ServiceCodecError::NonOamNamespace(_))
-        ));
+        assert_eq!(oms_json_type_name(OAM_NAMESPACE, "BoxShape"), "BoxShape");
+        assert_eq!(
+            oms_json_type_name("urn:shape", "BoxShape"),
+            "{urn:shape}BoxShape"
+        );
+    }
+
+    /// Task 051: the blanket non-OAM rejection is gone. A qualified
+    /// single-namespace non-OAM Record is ready; an UNQUALIFIED member is not,
+    /// whatever its owner's namespace is.
+    #[test]
+    fn qualified_non_oam_is_ready_and_unqualified_members_fail_closed() {
+        let mut member = field("F", TypeRef::primitive(PrimitiveKind::Boolean));
+        member.wire_namespace_uri = Some("urn:test".to_owned());
+        assert_eq!(check(&record("urn:test", vec![member.clone()])), Ok(()));
+
+        for owner in ["urn:test", OAM_NAMESPACE] {
+            member.wire_namespace_uri = None;
+            let error = check(&record(owner, vec![member.clone()])).expect_err("unqualified");
+            assert_eq!(
+                error,
+                ServiceCodecError::UnqualifiedMember {
+                    location: "P.F".to_owned()
+                }
+            );
+            assert_eq!(
+                error.to_string(),
+                "P.F has an unqualified local element with no evidenced OMS JSON \
+                 member-name mapping"
+            );
+        }
+    }
+
+    /// Choice alternatives use the same member rule.
+    #[test]
+    fn unqualified_choice_alternative_fails_closed() {
+        let mut schema = record("urn:test", Vec::new());
+        let mut alternative = field("A", TypeRef::primitive(PrimitiveKind::Boolean));
+        alternative.wire_namespace_uri = None;
+        schema.types[0].kind = TypeKind::Choice {
+            alternatives: vec![alternative],
+        };
+        assert_eq!(
+            check(&schema),
+            Err(ServiceCodecError::UnqualifiedMember {
+                location: "P.A".to_owned()
+            })
+        );
+    }
+
+    #[test]
+    fn nillable_members_fail_closed() {
         let mut nillable = field("F", TypeRef::primitive(PrimitiveKind::Boolean));
         nillable.nillable = true;
         let schema = record(OAM_NAMESPACE, vec![nillable]);

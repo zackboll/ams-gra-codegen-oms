@@ -227,14 +227,75 @@ jobs:
           require_one_test task050_generated_codec_round_trips_through_mock_owp \
             cargo test -p ams-gra-oms-runtime-rust-facade-tests --test generated_codec_mock_owp \
             task050_generated_codec_round_trips_through_mock_owp
+          # Task 051 replaced task050_non_oam_payload_fails_codec_preflight with
+          # task051_qualified_non_oam_payload_is_codec_ready (below): a
+          # qualified non-OAM payload is now codec READY.
           for test in \
             task050_oam_codec_service_is_ready_and_generates_the_codec \
             task050_selected_binary_is_model_ready_but_codec_not_ready \
-            task050_non_oam_payload_fails_codec_preflight \
             task050_zero_oms_service_needs_no_codec \
             task050_ada_and_cpp_have_no_generated_codec; do
             require_one_test "$test" \
               cargo test -p ams-gra-codegen-oms --test service_codec "$test"
+          done
+      # Task 051: local element wire QNames. Frontend form/default matrix,
+      # qualified non-OAM generated codecs (Record, Choice, inheritance,
+      # $type), the generated non-OAM codec through mock OWP, the unqualified
+      # and local-form readiness controls, and the unchanged multi-namespace
+      # backend boundary. Each gate must match and pass exactly one test.
+      - name: Member QName provenance (Task 051, must execute)
+        run: |
+          set -euo pipefail
+          require_one_test() {
+            name="$1"
+            shift
+            output="$("$@" -- --exact --nocapture 2>&1)"
+            printf '%s\n' "$output"
+            printf '%s\n' "$output" | grep -qE "^test ${name} \.\.\. ok$"
+            printf '%s\n' "$output" | grep -qE '^test result: ok\. 1 passed'
+          }
+          for test in \
+            task051_default_unqualified_document_with_local_form_overrides \
+            task051_element_namespace_is_not_the_type_namespace \
+            task051_choice_alternatives_use_the_same_rule \
+            task051_included_document_uses_its_own_default \
+            task051_extension_members_use_the_declaring_document \
+            task051_imported_documents_keep_their_own_semantics \
+            task051_local_element_ref_is_still_rejected \
+            task051_invalid_local_form_is_invalid_input; do
+            require_one_test "$test" \
+              cargo test -p ams-gra-oms-xsd-frontend --test member_qname "$test"
+          done
+          for test in \
+            record::task051_non_oam_record_uses_clark_member_keys \
+            record::task051_complete_document_combines_runtime_and_codec_keys \
+            record::task051_non_oam_record_rejects_wrong_member_spellings \
+            choice::task051_non_oam_choice_uses_clark_alternative_keys \
+            choice::task051_non_oam_choice_rejects_wrong_alternatives \
+            inheritance::task051_non_oam_inherited_record_is_flat_with_clark_keys \
+            abstract_type::task051_non_oam_type_member_uses_the_concrete_type_qname \
+            abstract_type::task051_non_oam_type_member_rejects_other_spellings; do
+            require_one_test "$test" \
+              cargo test -p ams-gra-oms-runtime-rust-facade-tests --test generated_codec_qname "$test"
+          done
+          require_one_test task051_non_oam_generated_codec_round_trips_through_mock_owp \
+            cargo test -p ams-gra-oms-runtime-rust-facade-tests --test generated_codec_mock_owp \
+            task051_non_oam_generated_codec_round_trips_through_mock_owp
+          for test in \
+            task051_qualified_non_oam_payload_is_codec_ready \
+            task051_unqualified_member_is_model_ready_but_codec_not_ready \
+            task051_local_form_overrides_decide_codec_readiness \
+            task051_multi_namespace_backend_boundary_is_unchanged; do
+            require_one_test "$test" \
+              cargo test -p ams-gra-codegen-oms --test service_codec "$test"
+          done
+          for test in \
+            task051_selected_projection_preserves_wire_namespaces \
+            task051_effective_members_keep_their_own_provenance \
+            task051_abstract_value_projection_preserves_wire_namespaces \
+            task051_private_overlay_members_keep_wire_namespaces; do
+            require_one_test "$test" \
+              cargo test -p ams-gra-codegen-oms --test member_qname_projection "$test"
           done
       # PR #50 corrective: the runtime crates declare `rust-version = "1.95"`
       # (the pinned sleet-client needs edition 2024 let-chains). The toolchain
@@ -251,7 +312,9 @@ jobs:
           cargo +1.95.0 check --locked -p ams-gra-oms-runtime-rust-facade-tests --all-targets
           # Task 050: the facade-tests crate root includes GENERATED
           # service_codec.rs (codec-oam, --with-codec), so the check above
-          # already compiles generated codec source under 1.95.0. Also compile
+          # already compiles generated codec source under 1.95.0. Task 051 adds
+          # the generated NON-OAM codecs (runtime_test_codec, codec_choice,
+          # codec_inherit, codec_shape) to that same crate root. Also compile
           # the generated REAL PositionReport codec under 1.95.0.
           UCI_ROOT="$(scripts/fetch-pinned-uci-2.5.sh "$RUNNER_TEMP/uci-2.5")"
           AMS_GRA_UCI_2_5_ROOT="$UCI_ROOT" cargo +1.95.0 check --locked \

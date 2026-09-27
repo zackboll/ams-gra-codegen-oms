@@ -65,7 +65,7 @@ pub use service_api::{
 };
 pub use service_codec::{
     OAM_NAMESPACE, RUST_SERVICE_CODEC_FILE, RUST_SERVICE_CODEC_MODULE, ServiceCodecError,
-    ServiceCodecReadiness, analyze_service_codec,
+    ServiceCodecReadiness, analyze_service_codec, oms_json_member_name, oms_json_type_name,
 };
 pub use service_generation::{
     ServiceGenerationError, ServiceGenerationProjection, project_service_generation_schema,
@@ -858,6 +858,7 @@ mod tests {
     fn field(type_ref: TypeRef) -> FieldDecl {
         FieldDecl {
             name: "value".to_owned(),
+            wire_namespace_uri: Some(NS.to_owned()),
             type_ref,
             cardinality: Cardinality::REQUIRED_ONE,
             nillable: false,

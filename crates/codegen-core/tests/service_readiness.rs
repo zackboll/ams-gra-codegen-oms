@@ -39,6 +39,7 @@ fn qualified(local: &str) -> QualifiedName {
 fn field(name: &str, type_ref: TypeRef) -> FieldDecl {
     FieldDecl {
         name: name.to_owned(),
+        wire_namespace_uri: Some(NS.to_owned()),
         type_ref,
         cardinality: Cardinality::REQUIRED_ONE,
         nillable: false,

@@ -3,7 +3,8 @@
 //! Codec readiness is opt-in and separate from model readiness: the MODEL may
 //! be READY while its codec is not, and every codec failure is a distinct
 //! `service codec boundary:` line that stops generation before any file is
-//! written. Without `--with-codec` nothing changes.
+//! written. Without `--with-codec` nothing changes. Task 051 replaces the
+//! blanket non-OAM rejection with the element-QName semantics.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -171,24 +172,26 @@ fn task050_selected_binary_is_model_ready_but_codec_not_ready() {
     assert!(!dir.exists(), "no output directory may be created");
 }
 
-/// C. A non-OAM structural payload: codec fails closed on the member
-/// namespace boundary; the default report is unchanged and READY.
+/// C (Task 051). A qualified NON-OAM payload (`runtime-test.xsd`,
+/// `elementFormDefault="qualified"`) was codec NOT READY in Task 050 only
+/// because Schema IR lost the element namespace. It is now codec READY and
+/// its member is the Clark key `{urn:test}Count`. The default report is
+/// unchanged.
 #[test]
-fn task050_non_oam_payload_fails_codec_preflight() {
+fn task051_qualified_non_oam_payload_is_codec_ready() {
     let (code, plain) = check("runtime-test.xsd", "runtime-test.yaml", "rust", false);
     assert_eq!(code, Some(0));
     assert!(!plain.contains("codec status"));
     let (code, report) = check("runtime-test.xsd", "runtime-test.yaml", "rust", true);
-    assert_eq!(code, Some(1));
+    assert_eq!(code, Some(0), "{report}");
     assert!(
         report.starts_with(&plain),
         "the codec section is only appended"
     );
-    assert!(report.contains(
-        "service codec boundary: declaration {urn:test}SharedPayload is outside the OAM \
-         namespace; OMS JSON member names and $type values for other namespaces need \
-         element QName/form semantics that Schema IR does not retain"
-    ));
+    assert!(
+        report.ends_with("\ncodec renderable emitted declarations: 2/2\ncodec status: READY\n")
+    );
+    assert!(!report.contains("service codec boundary"));
     let (output, dir) = generate(
         "runtime-test.xsd",
         "runtime-test.yaml",
@@ -196,8 +199,155 @@ fn task050_non_oam_payload_fails_codec_preflight() {
         true,
         "non-oam",
     );
+    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(
+        listing(&dir),
+        ["service_api.rs", "service_codec.rs", "test.rs"]
+    );
+    let codec = std::fs::read_to_string(dir.join("service_codec.rs")).expect("codec");
+    assert!(codec.contains("object.insert(\"{urn:test}Count\".to_owned(),"));
+    assert!(codec.contains("required(object, \"{urn:test}Count\", path)"));
+    assert!(!codec.contains("\"Count\""), "no bare member key");
+    // Model and wrapper are exactly the default generation's.
+    let (_, plain_dir) = generate(
+        "runtime-test.xsd",
+        "runtime-test.yaml",
+        "rust",
+        false,
+        "non-oam-plain",
+    );
+    assert_eq!(listing(&plain_dir), ["service_api.rs", "test.rs"]);
+    assert_eq!(
+        std::fs::read(dir.join("test.rs")).expect("model"),
+        std::fs::read(plain_dir.join("test.rs")).expect("plain model")
+    );
+}
+
+/// Task 051 fail-closed control: XSD default form (no elementFormDefault)
+/// makes the local element UNQUALIFIED. Model READY; default generation
+/// unchanged; `--with-codec` NOT READY at the codec boundary; nothing
+/// written.
+#[test]
+fn task051_unqualified_member_is_model_ready_but_codec_not_ready() {
+    let (code, plain) = check(
+        "codec-unqualified.xsd",
+        "codec-unqualified.yaml",
+        "rust",
+        false,
+    );
+    assert_eq!(code, Some(0), "{plain}");
+    assert!(plain.contains("status: READY\n"));
+    let (output, plain_dir) = generate(
+        "codec-unqualified.xsd",
+        "codec-unqualified.yaml",
+        "rust",
+        false,
+        "unqualified-plain",
+    );
+    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(listing(&plain_dir), ["service_api.rs", "unqualified.rs"]);
+
+    let (code, report) = check(
+        "codec-unqualified.xsd",
+        "codec-unqualified.yaml",
+        "rust",
+        true,
+    );
+    assert_eq!(code, Some(1));
+    assert!(report.starts_with(&plain));
+    assert!(
+        report.ends_with(
+            "\ncodec renderable emitted declarations: 0/1\ncodec status: NOT READY\n\n\
+             service codec boundary: Payload.Field has an unqualified local element with \
+             no evidenced OMS JSON member-name mapping\n"
+        ),
+        "{report}"
+    );
+    let (output, dir) = generate(
+        "codec-unqualified.xsd",
+        "codec-unqualified.yaml",
+        "rust",
+        true,
+        "unqualified",
+    );
     assert_eq!(output.status.code(), Some(1));
-    assert!(!dir.exists());
+    assert!(!dir.exists(), "no output directory may be created");
+}
+
+/// Task 051 local-form controls: readiness follows the EFFECTIVE element
+/// declaration, not the schema default alone.
+#[test]
+fn task051_local_form_overrides_decide_codec_readiness() {
+    // A. default unqualified + form="qualified" -> READY, Clark key.
+    let (code, report) = check(
+        "codec-form-qualified.xsd",
+        "codec-form-qualified.yaml",
+        "rust",
+        true,
+    );
+    assert_eq!(code, Some(0), "{report}");
+    assert!(report.ends_with("\ncodec status: READY\n"), "{report}");
+    let (output, dir) = generate(
+        "codec-form-qualified.xsd",
+        "codec-form-qualified.yaml",
+        "rust",
+        true,
+        "form-qualified",
+    );
+    assert_eq!(output.status.code(), Some(0));
+    let codec = std::fs::read_to_string(dir.join("service_codec.rs")).expect("codec");
+    assert!(codec.contains("object.insert(\"{urn:form}Value\".to_owned(),"));
+
+    // B. default qualified + form="unqualified" -> model READY, codec NOT.
+    let (code, report) = check(
+        "codec-form-unqualified.xsd",
+        "codec-form-unqualified.yaml",
+        "rust",
+        true,
+    );
+    assert_eq!(code, Some(1));
+    assert!(report.contains("status: READY\n"), "{report}");
+    assert!(report.contains(
+        "service codec boundary: Payload.Value has an unqualified local element with no \
+         evidenced OMS JSON member-name mapping\n"
+    ));
+}
+
+/// Task 051 does NOT widen the single-namespace backend boundary: a selected
+/// closure spanning two namespaces is still model NOT READY (so the codec is
+/// not even measured), with or without `--with-codec`, in every language.
+#[test]
+fn task051_multi_namespace_backend_boundary_is_unchanged() {
+    let schema = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/fixtures/service-check/multi-namespace.xsd");
+    let contract = schema.with_file_name("multi-namespace-spanning.yaml");
+    for language in ["rust", "ada", "cpp"] {
+        let output = Command::new(env!("CARGO_BIN_EXE_ams-gra-codegen-oms"))
+            .args(["service-check", "--schema"])
+            .arg(&schema)
+            .arg("--contract")
+            .arg(&contract)
+            .args([
+                "--language",
+                language,
+                "--world",
+                "closed-schema",
+                "--with-codec",
+            ])
+            .output()
+            .expect("CLI runs");
+        let report = String::from_utf8(output.stdout).expect("UTF-8");
+        assert_eq!(output.status.code(), Some(1), "{language}: {report}");
+        assert!(report.contains("status: NOT READY\n"), "{report}");
+        assert!(
+            report.contains(
+                "generation requires exactly one namespace, but the selected schema uses 2: \
+                 urn:test:a, urn:test:b"
+            ),
+            "{report}"
+        );
+        assert!(report.ends_with("codec: not measured (selected model is NOT READY)\n"));
+    }
 }
 
 /// D. Zero OMS exchanges: the codec is vacuous; no codec file is written and
