@@ -1,0 +1,55 @@
+# TEST-ONLY Task 054 contract against the REAL pinned UCI 2.5 root (never
+# committed; supplied through AMS_GRA_UCI_2_5_ROOT). Authored for this
+# repository only.
+#
+# Selects the smallest real category-A messages whose ONLY remaining model
+# blocker before Task 054 was a reserved structural member:
+#
+#   SystemOrbitalElementSetRequest  DateTimeRangeType.Begin / .End
+#                                     Ada  Begin    -> Field_Begin
+#                                     Ada  End      -> Field_End
+#   ApprovalRequestStatus           ApprovalResponseType.Operator
+#                                     C++  operator -> field_operator
+#
+# Model READY and generated in Ada, Rust and C++ after Task 054 (before it,
+# the Ada and C++ selections were NOT READY on exactly these members). No
+# pinned UCI category-A closure reaches a Rust-reserved member.
+#
+# OrderOfBattle is deliberately NOT used: its single-message selection is
+# READY yet fails in service-generate on AircraftIdentifierType / xs:duration
+# reached only through generated-support expansion. That READY-vs-generate
+# gap is pre-existing (C++ shows it on the pre-Task-054 binary) and is
+# recorded as an open item, not fixed here.
+contract_version: "0.1"
+
+service:
+  name: real-member-remapping
+  version: "0.1.0"
+  kind: service
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: remapped
+    name: Remapped
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: output-system-orbital-element-set-request
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: SystemOrbitalElementSetRequest
+        topic: system-orbital-element-set-request
+        timing:
+          kind: asynchronous
+      - id: output-approval-request-status
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: ApprovalRequestStatus
+        topic: approval-request-status
+        timing:
+          kind: asynchronous

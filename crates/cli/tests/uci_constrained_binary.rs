@@ -384,22 +384,22 @@ fn task053_real_uci_constrained_binary_message_impact() {
         // Recorded Task 053 outcome (identical in both releases): no message
         // becomes READY; four move to a non-Binary model blocker (B) and
         // `Response` fails projection on a cyclic value dependency (C).
-        let b = |ada: &str, other: &str| format!("Ada=B({ada}) Rust=B({other}) Cpp=B({other})");
+        //
+        // Task 054: Ada's first blockers here used to be the reserved-member
+        // owners `AltitudeRangePairType` (`Range`) and `DateTimeRangeType`
+        // (`Begin`/`End`). Those members are now escaped, so Ada reaches the
+        // same next (non-Binary, non-naming) blocker as Rust and C++. The
+        // A/B/C classes are unchanged.
+        let b = |blocker: &str| format!("Ada=B({blocker}) Rust=B({blocker}) Cpp=B({blocker})");
         assert_eq!(
             classes,
             [
-                ("FileMetadata".to_owned(), b("FileNameType", "FileNameType")),
-                (
-                    "IFF_Activity".to_owned(),
-                    b("AltitudeRangePairType", "AircraftIdentifierType")
-                ),
-                (
-                    "IFF_Command".to_owned(),
-                    b("AltitudeRangePairType", "AircraftIdentifierType")
-                ),
+                ("FileMetadata".to_owned(), b("FileNameType")),
+                ("IFF_Activity".to_owned(), b("AircraftIdentifierType")),
+                ("IFF_Command".to_owned(), b("AircraftIdentifierType")),
                 (
                     "ProductMetadata".to_owned(),
-                    b("DateTimeRangeType", "AlphanumericStringLength4Type")
+                    b("AlphanumericStringLength4Type")
                 ),
                 (
                     "Response".to_owned(),

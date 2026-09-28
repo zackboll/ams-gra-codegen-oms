@@ -1,0 +1,42 @@
+# SYNTHETIC Task 054 fixture. Authored for this repository only.
+#
+# Selects KeywordNotice from member-keywords.xsd as one input and one output
+# exchange on the same topic, so a CAL peer can route the service's own
+# message back to it. Its payload closure contains Record fields and Choice
+# alternatives whose ordinary host identifiers are target reserved words
+# (Ada Range/Type, Rust type/self/Self, C++ operator/delete): model READY in
+# Ada, Rust and C++ after Task 054 member remapping, and Rust --with-codec
+# codec READY with unescaped OMS JSON member keys.
+contract_version: "0.1"
+
+service:
+  name: member-keywords
+  version: "0.1.0"
+  kind: service
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: keyword-loop
+    name: KeywordLoop
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: input-keyword
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: KeywordNotice
+        topic: keyword-topic
+        timing:
+          kind: asynchronous
+      - id: output-keyword
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: KeywordNotice
+        topic: keyword-topic
+        timing:
+          kind: asynchronous

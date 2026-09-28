@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="https://www.vdl.afrl.af.mil/programs/oam"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- SYNTHETIC Task 054 negative fixture. NOT UCI.
+
+       Post-remap collisions, which must fail closed (no numeric suffix):
+
+         LocalClash:     `Type` (Rust -> field_type, Ada -> Field_Type)
+                         beside `Field_Type` (ordinary field_type/Field_Type)
+         InheritedClash: inherited `Operator` (C++ -> field_operator) and
+                         `Range` (Ada -> Field_Range) beside local
+                         `Field_Operator` / `Field_Range`
+
+       Both messages are selected, so every backend must report NOT READY and
+       service-generate must fail before any output. -->
+  <xs:complexType name="LocalClash">
+    <xs:sequence>
+      <xs:element name="Type" type="xs:int"/>
+      <xs:element name="Field_Type" type="xs:int"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="ClashBase" abstract="true">
+    <xs:sequence>
+      <xs:element name="Operator" type="xs:int"/>
+      <xs:element name="Range" type="xs:int"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="InheritedClash">
+    <xs:complexContent>
+      <xs:extension base="uci:ClashBase">
+        <xs:sequence>
+          <xs:element name="Field_Operator" type="xs:int"/>
+          <xs:element name="Field_Range" type="xs:int"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:element name="LocalClashNotice" type="uci:LocalClash" uci:version="001.000.000.000"/>
+  <xs:element name="InheritedClashNotice" type="uci:InheritedClash" uci:version="001.000.000.000"/>
+</xs:schema>

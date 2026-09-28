@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:k="urn:test"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:test"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- SYNTHETIC Task 054 fixture. NOT UCI. A qualified NON-OAM namespace
+       (urn:test), so Task 051 member keys are Clark notation. The Record
+       field `Type` becomes the Rust member `field_type`, and the Choice
+       alternative `Self` becomes the Rust variant `AlternativeSelf`, but the
+       OMS JSON keys stay "{urn:test}Type" and "{urn:test}Self". -->
+  <xs:complexType name="QualifiedPick">
+    <xs:choice>
+      <xs:element name="Self" type="xs:int"/>
+      <xs:element name="Ordinary" type="xs:int"/>
+    </xs:choice>
+  </xs:complexType>
+  <xs:complexType name="QualifiedKeywordPayload">
+    <xs:sequence>
+      <xs:element name="Type" type="xs:string"/>
+      <xs:element name="Ordinary" type="xs:int"/>
+      <xs:element name="Pick" type="k:QualifiedPick"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="QualifiedKeywordNotice" type="k:QualifiedKeywordPayload" uci:version="001.000.000.000"/>
+</xs:schema>

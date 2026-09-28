@@ -376,6 +376,11 @@ enum-only task (checked with full-schema `generate`, closed-schema):
 These Record-member failures are outside plain-enumeration wire-value
 remapping. Full-UCI generation was not claimed to succeed.
 
+> **Superseded by Task 054:** those structural-member failures are now
+> remapped with the fixed `Field_` / `Alternative_` escape. Enumeration
+> remapping (`Value_`) is unchanged and independent. See
+> [Task 054](task-054-member-identifier-remapping.md).
+
 ## Validation
 
 The baseline on `184b2bac28d22c015a8d90c24f65760416b9b17c` passed 868

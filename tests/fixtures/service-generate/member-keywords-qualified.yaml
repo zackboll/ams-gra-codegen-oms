@@ -1,0 +1,39 @@
+# SYNTHETIC Task 054 fixture. Authored for this repository only.
+#
+# Selects QualifiedKeywordNotice from member-keywords-qualified.xsd (qualified
+# non-OAM namespace urn:test) as one input and one output exchange on the same
+# topic. Proves escaped Rust member names never leak into Clark-notation OMS
+# JSON member keys.
+contract_version: "0.1"
+
+service:
+  name: member-keywords-qualified
+  version: "0.1.0"
+  kind: service
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: qualified-keyword-loop
+    name: QualifiedKeywordLoop
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: input-qualified-keyword
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: QualifiedKeywordNotice
+        topic: qualified-keyword-topic
+        timing:
+          kind: asynchronous
+      - id: output-qualified-keyword
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: QualifiedKeywordNotice
+        topic: qualified-keyword-topic
+        timing:
+          kind: asynchronous

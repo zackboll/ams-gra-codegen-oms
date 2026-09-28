@@ -463,6 +463,76 @@ jobs:
           printf '%s\n' "$output" | grep -q '^UCI 2.5 CONSTRAINED BINARY MESSAGE IMPACT: PASSED$'
           printf '%s\n' "$output" | grep -q '^UCI 2.6 CONSTRAINED BINARY MESSAGE IMPACT: PASSED$'
           printf '%s\n' "$output" | grep -qE '^test result: ok\. 3 passed'
+      # Task 054: reserved Record-field / Choice-alternative identifiers are
+      # remapped with the fixed Field_ / Alternative_ escape; malformed names
+      # and post-remap collisions still fail closed; the codec keeps source
+      # wire names.
+      - name: Member identifier remapping (Task 054, must execute)
+        env:
+          AMS_GRA_REQUIRE_GNAT: "1"
+        run: |
+          set -euo pipefail
+          require_one_test() {
+            name="$1"
+            shift
+            output="$("$@" -- --exact --nocapture 2>&1)"
+            printf '%s\n' "$output"
+            printf '%s\n' "$output" | grep -qE "^test ${name} \.\.\. ok$"
+            printf '%s\n' "$output" | grep -qE '^test result: ok\. 1 passed'
+          }
+          for test in \
+            backend_names::tests::task054_record_field_helper_escapes_only_reserved_candidates \
+            backend_names::tests::task054_choice_alternative_helper_escapes_only_reserved_candidates \
+            backend_names::tests::task054_safe_member_names_are_unchanged \
+            backend_names::tests::task054_malformed_member_names_still_fail_closed \
+            backend_names::tests::task054_reserved_members_are_renderable_after_escaping \
+            backend_names::tests::task054_post_remap_collisions_fail_closed_with_source_attribution \
+            backend_names::tests::task054_inherited_post_remap_collision_condemns_the_descendant \
+            backend_names::tests::task054_ada_helper_stems_use_final_names_and_fixed_names_stay_independent \
+            backend_names::tests::task054_enum_remapping_is_independent; do
+            require_one_test "$test" cargo test -p ams-gra-oms-codegen-core --lib "$test"
+          done
+          for test in \
+            task054_schema_ir_keeps_source_and_wire_member_names \
+            task054_keyword_service_is_ready_and_generates_in_every_backend \
+            task054_rust_escaped_members_compile_and_run \
+            task054_cpp_escaped_members_compile_strictly_and_run \
+            task054_collisions_and_malformed_names_fail_closed_with_parity \
+            task054_collisions_are_decided_by_the_actual_candidate; do
+            require_one_test "$test" cargo test -p ams-gra-codegen-oms --test member_remapping "$test"
+          done
+          output="$(cargo test -p ams-gra-codegen-oms --test member_remapping -- \
+            --exact task054_ada_escaped_members_compile_and_run --nocapture 2>&1)"
+          printf '%s\n' "$output"
+          printf '%s\n' "$output" | grep -q '^TASK054 ADA ESCAPED MEMBERS: PASSED$'
+          printf '%s\n' "$output" | grep -qE '^test result: ok\. 1 passed'
+          for test in \
+            task054_codec_wire_names_stay_source_names_and_round_trip \
+            task054_escaped_host_names_are_not_wire_aliases \
+            task054_qualified_non_oam_escaped_members_use_clark_source_keys \
+            task054_qualified_escaped_members_round_trip_through_mock_owp; do
+            require_one_test "$test" \
+              cargo test -p ams-gra-oms-runtime-rust-facade-tests --test generated_codec_member_remapping "$test"
+          done
+      # Task 054: effective member-identifier inventory and whole-schema first
+      # blockers after remapping, on the REAL pinned roots.
+      - name: Real UCI member identifier inventory (Task 054, must execute)
+        env:
+          AMS_GRA_REQUIRE_GNAT: "1"
+        run: |
+          set -euo pipefail
+          UCI_ROOT="$(scripts/fetch-pinned-uci-2.5.sh "$RUNNER_TEMP/uci-2.5")"
+          UCI_26_ROOT="$(scripts/fetch-pinned-uci-2.6.sh "$RUNNER_TEMP/uci-2.6")"
+          output="$(AMS_GRA_UCI_2_5_ROOT="$UCI_ROOT" AMS_GRA_UCI_2_6_ROOT="$UCI_26_ROOT" \
+            cargo test --release -p ams-gra-codegen-oms --test uci_member_names -- \
+            --nocapture --test-threads 1 2>&1)"
+          printf '%s\n' "$output"
+          printf '%s\n' "$output" | grep -q '^UCI 2.5 MEMBER IDENTIFIER INVENTORY: PASSED$'
+          printf '%s\n' "$output" | grep -q '^UCI 2.6 MEMBER IDENTIFIER INVENTORY: PASSED$'
+          printf '%s\n' "$output" | grep -q '^UCI 2.5 WHOLE-SCHEMA FIRST BLOCKER PROBE: PASSED$'
+          printf '%s\n' "$output" | grep -q '^UCI 2.6 WHOLE-SCHEMA FIRST BLOCKER PROBE: PASSED$'
+          printf '%s\n' "$output" | grep -q '^UCI 2.5 REAL CATEGORY-A MEMBER REMAPPING: PASSED$'
+          printf '%s\n' "$output" | grep -qE '^test result: ok\. 4 passed'
       # PR #50 corrective: the runtime crates declare `rust-version = "1.95"`
       # (the pinned sleet-client needs edition 2024 let-chains). The toolchain
       # above floats on stable, so check the declared floor explicitly with the

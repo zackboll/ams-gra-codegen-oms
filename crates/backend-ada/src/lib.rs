@@ -15,12 +15,12 @@ use ams_gra_oms_codegen_core::{
     ada_record_field_uses_optional_wrapper, backend_preflight, binary_length_domain,
     constrains_string, direct_temporal_profile, effective_choice_alternatives,
     effective_record_fields, emissions_emit_direct_date_time, field_storage_semantics,
-    float32_literal, float64_literal, floating_domain, generated_enum_variant_name,
-    inclusive_integral_domain, is_temporal_primitive, plan_type_emissions,
-    schema_emits_ada_binary_vectors, schema_emits_bounded_sequence_support,
-    schema_emits_direct_date_time, schema_emits_string_profile_carrier,
-    schema_emits_temporal_carrier, schema_emits_unbounded_sequence_support, string_profile,
-    temporal_profile,
+    float32_literal, float64_literal, floating_domain, generated_choice_alternative_name,
+    generated_enum_variant_name, generated_record_field_name, inclusive_integral_domain,
+    is_temporal_primitive, plan_type_emissions, schema_emits_ada_binary_vectors,
+    schema_emits_bounded_sequence_support, schema_emits_direct_date_time,
+    schema_emits_string_profile_carrier, schema_emits_temporal_carrier,
+    schema_emits_unbounded_sequence_support, string_profile, temporal_profile,
 };
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind,
@@ -447,7 +447,7 @@ fn render_declaration(
             for field in &fields {
                 if let Some((min, max)) = bounded_repeated(field.cardinality) {
                     ensure_portable_finite_max(max)?;
-                    let field_name = ada_identifier(&field.name)?;
+                    let field_name = record_field_name(&field.name)?;
                     let helper_name = format!("{name}_{field_name}");
                     let item_type = ada_field_base(field)?;
                     render_bounded_helper(
@@ -460,9 +460,11 @@ fn render_declaration(
                         max,
                     );
                 } else if matches!(field.cardinality.shape(), OccurrenceShape::Unbounded { .. }) {
-                    render_unbounded_helper(output, private_part, body, &name, field)?;
+                    let field_name = record_field_name(&field.name)?;
+                    render_unbounded_helper(output, private_part, body, &name, &field_name, field)?;
                 } else if ada_record_field_uses_optional_wrapper(field) {
-                    render_optional_helper(output, &name, field)?;
+                    let field_name = record_field_name(&field.name)?;
+                    render_optional_helper(output, &name, &field_name, field)?;
                 }
             }
             writeln!(output, "   type {name} is record").expect("writing to String cannot fail");
@@ -470,7 +472,7 @@ fn render_declaration(
                 output.push_str("      null;\n");
             }
             for field in fields {
-                let field_name = ada_identifier(&field.name)?;
+                let field_name = record_field_name(&field.name)?;
                 let field_type = match field.cardinality {
                     Cardinality::REQUIRED_ONE => ada_field_base(field)?,
                     Cardinality::OPTIONAL_ONE
@@ -510,7 +512,7 @@ fn render_declaration(
             for alternative in &alternatives {
                 if let Some((min, max)) = bounded_repeated(alternative.cardinality) {
                     ensure_portable_finite_max(max)?;
-                    let alternative_name = ada_identifier(&alternative.name)?;
+                    let alternative_name = choice_alternative_name(&alternative.name)?;
                     let helper_name = format!("{name}_{alternative_name}");
                     let item_type = ada_field_base(alternative)?;
                     render_bounded_helper(
@@ -526,7 +528,15 @@ fn render_declaration(
                     alternative.cardinality.shape(),
                     OccurrenceShape::Unbounded { .. }
                 ) {
-                    render_unbounded_helper(output, private_part, body, &name, alternative)?;
+                    let alternative_name = choice_alternative_name(&alternative.name)?;
+                    render_unbounded_helper(
+                        output,
+                        private_part,
+                        body,
+                        &name,
+                        &alternative_name,
+                        alternative,
+                    )?;
                 }
             }
             writeln!(output, "   type {kind_name} is").expect("writing to String cannot fail");
@@ -541,18 +551,18 @@ fn render_declaration(
                     output,
                     "{}{}_Kind{suffix}",
                     if index == 0 { "" } else { "       " },
-                    ada_identifier(&alternative.name)?
+                    choice_alternative_name(&alternative.name)?
                 )
                 .expect("writing to String cannot fail");
             }
             writeln!(
                 output,
                 "\n   type {name} (Kind : {kind_name} := {}_Kind) is record\n      case Kind is",
-                ada_identifier(&alternatives[0].name)?
+                choice_alternative_name(&alternatives[0].name)?
             )
             .expect("writing to String cannot fail");
             for alternative in alternatives {
-                let alternative_name = ada_identifier(&alternative.name)?;
+                let alternative_name = choice_alternative_name(&alternative.name)?;
                 writeln!(
                     output,
                     "         when {alternative_name}_Kind =>\n            {alternative_name} : {};",
@@ -763,7 +773,7 @@ fn ada_field_type(
             Ok(format!(
                 "{}_{}_Sequence",
                 choice_name,
-                ada_identifier(&field.name)?
+                choice_alternative_name(&field.name)?
             ))
         }
         _ => unsupported(format!("cardinality on Choice alternative {}", field.name)),
@@ -817,9 +827,9 @@ fn validate_repeated_cardinality(field: &ams_gra_oms_ir::FieldDecl) -> Result<()
 fn render_optional_helper(
     output: &mut String,
     owner: &str,
+    field_name: &str,
     field: &ams_gra_oms_ir::FieldDecl,
 ) -> Result<(), CodegenError> {
-    let field_name = ada_identifier(&field.name)?;
     let value_type = ada_field_base(field)?;
     writeln!(
         output,
@@ -1222,9 +1232,9 @@ fn render_unbounded_helper(
     private_part: &mut String,
     body: &mut String,
     owner: &str,
+    field_name: &str,
     field: &ams_gra_oms_ir::FieldDecl,
 ) -> Result<(), CodegenError> {
-    let field_name = ada_identifier(&field.name)?;
     let helper_name = format!("{owner}_{field_name}");
     let item_type = ada_field_base(field)?;
     let OccurrenceShape::Unbounded { min } = field.cardinality.shape() else {
@@ -1705,6 +1715,29 @@ fn reject_any_constraints(constraints: &ConstraintSet, name: &str) -> Result<(),
         return unsupported(format!("field constraints on {name}"));
     }
     Ok(())
+}
+
+/// Task 054: the Ada component identifier of a Record field whose XSD local
+/// name is `source` (`Range` becomes `Field_Range`), from the shared
+/// codegen-core policy. Every helper stem (`{Owner}_{Member}_Optional`,
+/// `_Sequence`, ...) is derived from THIS final identifier.
+fn record_field_name(source: &str) -> Result<String, CodegenError> {
+    generated_record_field_name(BackendLanguage::Ada, source).ok_or_else(|| {
+        error(format!(
+            "unsupported Ada IR construct: Ada identifier {source:?}"
+        ))
+    })
+}
+
+/// Task 054: the Ada variant-part component identifier of a Choice
+/// alternative (`Range` becomes `Alternative_Range`). The discriminant
+/// literal `{Final}_Kind` and every repeated helper stem derive from it.
+fn choice_alternative_name(source: &str) -> Result<String, CodegenError> {
+    generated_choice_alternative_name(BackendLanguage::Ada, source).ok_or_else(|| {
+        error(format!(
+            "unsupported Ada IR construct: Ada identifier {source:?}"
+        ))
+    })
 }
 
 fn ada_identifier(value: &str) -> Result<String, CodegenError> {

@@ -243,6 +243,14 @@ the backend's own `upper_camel`/`snake_case` and
 `generated_enum_variant_name(BackendLanguage::Rust, ..)`, the same functions
 that render the model. There is no second casing implementation.
 
+> **Task 054:** Record field and Choice variant host names now come from the
+> shared `generated_record_field_name` / `generated_choice_alternative_name`
+> (a reserved member is escaped, e.g. `field_type`, `AlternativeSelf`). Wire
+> keys are unchanged: they still come from `FieldDecl::wire_name()`, so
+> `field_type` encodes as `"Type"`, and an escaped host name is never
+> accepted as a wire alias. See
+> [Task 054](task-054-member-identifier-remapping.md).
+
 **Inputs.** `generate_service_codec(model: &ServiceApiModel, schema: &SchemaIr,
 world: GenerationWorld)` consumes the lowered model, the projected schema,
 and the world only. It reuses `plan_type_emissions`,

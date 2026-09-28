@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="https://www.vdl.afrl.af.mil/programs/oam"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- SYNTHETIC Task 054 negative control. NOT UCI. `has-dash` and
+       `has.dot` are legal XSD NCNames whose ordinary generated member is
+       syntactically invalid in every backend for reasons OTHER than being a
+       keyword. Task 054 is not a sanitizer: prefixing `Field_` would make
+       them compile, but they must stay unsupported. -->
+  <xs:complexType name="MalformedRecord">
+    <xs:sequence>
+      <xs:element name="has-dash" type="xs:int"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="MalformedChoice">
+    <xs:choice>
+      <xs:element name="has.dot" type="xs:int"/>
+      <xs:element name="Other" type="xs:int"/>
+    </xs:choice>
+  </xs:complexType>
+  <xs:complexType name="MalformedPayload">
+    <xs:sequence>
+      <xs:element name="Record" type="uci:MalformedRecord"/>
+      <xs:element name="Pick" type="uci:MalformedChoice"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="MalformedNotice" type="uci:MalformedPayload" uci:version="001.000.000.000"/>
+</xs:schema>
