@@ -527,12 +527,17 @@ jobs:
             cargo test --release -p ams-gra-codegen-oms --test uci_member_names -- \
             --nocapture --test-threads 1 2>&1)"
           printf '%s\n' "$output"
-          printf '%s\n' "$output" | grep -q '^UCI 2.5 MEMBER IDENTIFIER INVENTORY: PASSED$'
-          printf '%s\n' "$output" | grep -q '^UCI 2.6 MEMBER IDENTIFIER INVENTORY: PASSED$'
-          printf '%s\n' "$output" | grep -q '^UCI 2.5 WHOLE-SCHEMA FIRST BLOCKER PROBE: PASSED$'
-          printf '%s\n' "$output" | grep -q '^UCI 2.6 WHOLE-SCHEMA FIRST BLOCKER PROBE: PASSED$'
-          printf '%s\n' "$output" | grep -q '^UCI 2.5 REAL CATEGORY-A MEMBER REMAPPING: PASSED$'
-          printf '%s\n' "$output" | grep -qE '^test result: ok\. 4 passed'
+          # Check the captured output via here-strings, not `printf | grep -q`:
+          # with pipefail, a grep that exits early on a large output can SIGPIPE
+          # the writer. Here-strings have no upstream writer process.
+          grep -Fqx 'UCI 2.5 MEMBER IDENTIFIER INVENTORY: PASSED' <<<"$output"
+          grep -Fqx 'UCI 2.6 MEMBER IDENTIFIER INVENTORY: PASSED' <<<"$output"
+          grep -Fqx 'UCI 2.5 WHOLE-SCHEMA FIRST BLOCKER PROBE: PASSED' <<<"$output"
+          grep -Fqx 'UCI 2.6 WHOLE-SCHEMA FIRST BLOCKER PROBE: PASSED' <<<"$output"
+          # This test prints only its marker, so under --nocapture with one
+          # thread it lands on libtest's unterminated "test <name> ... " line.
+          grep -Eqx '(test task054_real_uci_category_a_selection_generates_and_compiles \.\.\. )?UCI 2\.5 REAL CATEGORY-A MEMBER REMAPPING: PASSED' <<<"$output"
+          grep -qE '^test result: ok\. 4 passed' <<<"$output"
       # PR #50 corrective: the runtime crates declare `rust-version = "1.95"`
       # (the pinned sleet-client needs edition 2024 let-chains). The toolchain
       # above floats on stable, so check the declared floor explicitly with the
