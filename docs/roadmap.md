@@ -797,6 +797,14 @@ GNATprove CI was added there; that work belongs here.
 
 ## Phase 7 — Reproducibility and supply-chain hardening
 
+- [x] Fast / Deep CI split (Task 055): one blocking deterministic Fast CI run
+      per PR head with same-PR cancellation; real pinned UCI / Sleet / real-UCI
+      MSRV evidence in Deep CI on every merge to `main`, nightly and on demand.
+      CI infrastructure only; the `OrderOfBattle` readiness vs generation item
+      in Phase 3 is still open and is the next product-correctness candidate.
+- [ ] possible follow-ups after measuring the split: consolidate the per-test
+      `require_one_test` invocations, cache builds, and decide on branch
+      protection once the check names are stable;
 - deterministic generation;
 - schema digest verification;
 - generated-file headers with source provenance;

@@ -1,0 +1,176 @@
+name: Deep CI
+
+# Task 055: slow external/reference evidence, moved OFF the pull-request
+# critical path. Nothing here was deleted or weakened; it runs after merge.
+#
+#   push to main       -> hard, visible post-merge signal on every merge
+#   nightly 06:00 UTC  -> environment / toolchain drift signal
+#   workflow_dispatch  -> manual investigation
+#   pull_request       -> ONLY when the CI harness itself changes (workflow
+#                         files or the deep-only scripts), so a PR that edits
+#                         this evidence also exercises it. Ordinary source PRs
+#                         do not match these paths and do not run Deep CI.
+#
+# See docs/task-055-ci-fast-deep-split.md.
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+      - "scripts/fetch-pinned-uci-2.5.sh"
+      - "scripts/fetch-pinned-uci-2.6.sh"
+      - "scripts/run-real-sleet-test.sh"
+
+permissions:
+  contents: read
+
+# If A and B merge to main while A's deep run is still going, B contains A and
+# is the more useful target, so the obsolete run is cancelled. PR validation
+# runs use refs/pull/N/merge and so never cancel main (or each other).
+concurrency:
+  group: deep-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Tasks 052/053/054 on the REAL pinned UCI 2.5 and 2.6 roots. GNAT is
+  # installed here because the Task 054 real category-A test compiles the
+  # generated Ada (gnatmake -gnatc) and AMS_GRA_REQUIRE_GNAT forbids a skip.
+  real-uci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install GNAT
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnat
+      # Hard gate, as in Fast CI: no `|| true`.
+      - name: Verify GNAT availability
+        run: |
+          command -v gnatmake
+          gnatmake --version
+      # Fetch each pinned release ONCE for the whole job. Both scripts verify
+      # the tag revision and root SHA-256 and fail hard on any mismatch; the
+      # tests verify the root SHA-256 again before using it.
+      - name: Fetch pinned UCI 2.5 and 2.6 (once)
+        run: |
+          set -euo pipefail
+          UCI25="$(scripts/fetch-pinned-uci-2.5.sh "$RUNNER_TEMP/uci-2.5")"
+          UCI26="$(scripts/fetch-pinned-uci-2.6.sh "$RUNNER_TEMP/uci-2.6")"
+          echo "AMS_GRA_UCI_2_5_ROOT=$UCI25" >> "$GITHUB_ENV"
+          echo "AMS_GRA_UCI_2_6_ROOT=$UCI26" >> "$GITHUB_ENV"
+      # Marker checks below use here-strings, never `printf | grep -q`: under
+      # pipefail a grep that exits on its first match can SIGPIPE a writer that
+      # is still emitting a large output and fail a passing check.
+      #
+      # Task 052: every Binary must resolve to HexBinary through the shared IR
+      # query, with exact counts.
+      - name: Real UCI Binary provenance inventory (Task 052, must execute)
+        run: |
+          set -euo pipefail
+          output="$(cargo test --release -p ams-gra-oms-xsd-frontend --test uci_binary_provenance -- \
+            --nocapture --test-threads 1 2>&1)"
+          printf '%s\n' "$output"
+          grep -Fqx 'UCI 2.5 BINARY PROVENANCE INVENTORY: PASSED' <<<"$output"
+          grep -Fqx 'UCI 2.6 BINARY PROVENANCE INVENTORY: PASSED' <<<"$output"
+          grep -qE '^test result: ok\. 2 passed' <<<"$output"
+      # Task 053: constrained-Binary inventory, per-declaration rendering in all
+      # three backends, and message-closure impact.
+      - name: Real UCI constrained Binary inventory (Task 053, must execute)
+        run: |
+          set -euo pipefail
+          output="$(cargo test --release -p ams-gra-codegen-oms --test uci_constrained_binary -- \
+            --nocapture --test-threads 1 2>&1)"
+          printf '%s\n' "$output"
+          grep -Fqx 'UCI 2.5 CONSTRAINED BINARY INVENTORY: PASSED' <<<"$output"
+          grep -Fqx 'UCI 2.6 CONSTRAINED BINARY INVENTORY: PASSED' <<<"$output"
+          grep -Fqx 'UCI 2.5 CONSTRAINED BINARY MESSAGE IMPACT: PASSED' <<<"$output"
+          grep -Fqx 'UCI 2.6 CONSTRAINED BINARY MESSAGE IMPACT: PASSED' <<<"$output"
+          grep -qE '^test result: ok\. 3 passed' <<<"$output"
+      # Task 054: effective member-identifier inventory, whole-schema first
+      # blockers after remapping, and the real category-A generate + compile.
+      - name: Real UCI member identifier inventory (Task 054, must execute)
+        env:
+          AMS_GRA_REQUIRE_GNAT: "1"
+        run: |
+          set -euo pipefail
+          output="$(cargo test --release -p ams-gra-codegen-oms --test uci_member_names -- \
+            --nocapture --test-threads 1 2>&1)"
+          printf '%s\n' "$output"
+          grep -Fqx 'UCI 2.5 MEMBER IDENTIFIER INVENTORY: PASSED' <<<"$output"
+          grep -Fqx 'UCI 2.6 MEMBER IDENTIFIER INVENTORY: PASSED' <<<"$output"
+          grep -Fqx 'UCI 2.5 WHOLE-SCHEMA FIRST BLOCKER PROBE: PASSED' <<<"$output"
+          grep -Fqx 'UCI 2.6 WHOLE-SCHEMA FIRST BLOCKER PROBE: PASSED' <<<"$output"
+          # This test prints only its marker, so under --nocapture with one
+          # thread it lands on libtest's unterminated "test <name> ... " line.
+          grep -Eqx '(test task054_real_uci_category_a_selection_generates_and_compiles \.\.\. )?UCI 2\.5 REAL CATEGORY-A MEMBER REMAPPING: PASSED' <<<"$output"
+          grep -qE '^test result: ok\. 4 passed' <<<"$output"
+
+  # The runtime crates declare rust-version = "1.95". Fast CI checks them at
+  # 1.95.0 on synthetic fixtures only; this job adds the generated REAL UCI 2.5
+  # PositionReport and SubsystemStream codecs (build.rs generates them only
+  # when AMS_GRA_UCI_2_5_ROOT is set) under 1.95.0. Rust only: no GNAT.
+  msrv-real-uci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust 1.95.0
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.95.0 --profile minimal
+          cargo +1.95.0 --version
+      - name: Fetch pinned UCI 2.5 (once)
+        run: |
+          set -euo pipefail
+          UCI25="$(scripts/fetch-pinned-uci-2.5.sh "$RUNNER_TEMP/uci-2.5")"
+          echo "AMS_GRA_UCI_2_5_ROOT=$UCI25" >> "$GITHUB_ENV"
+      - name: Real-UCI generated code MSRV (1.95.0)
+        run: |
+          set -euo pipefail
+          test -n "$AMS_GRA_UCI_2_5_ROOT"
+          cargo +1.95.0 check --locked -p ams-gra-oms-runtime-rust-facade-tests --all-targets
+
+  # Tasks 049-053: the generated facade and codecs against the UNMODIFIED
+  # Sleet server at the exact pinned revision (built by the script from a fresh
+  # checkout with Sleet's own pinned toolchain), plus the real UCI 2.5
+  # PositionReport / SubsystemStream codecs. Rust only: no GNAT.
+  real-sleet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Fetch pinned UCI 2.5 (once)
+        run: |
+          set -euo pipefail
+          UCI25="$(scripts/fetch-pinned-uci-2.5.sh "$RUNNER_TEMP/uci-2.5")"
+          echo "AMS_GRA_UCI_2_5_ROOT=$UCI25" >> "$GITHUB_ENV"
+      - name: Real UCI 2.5 codecs (Tasks 050/052, must execute)
+        run: |
+          set -euo pipefail
+          # Task 050: the REAL UCI 2.5 PositionReport codec.
+          output="$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test real_uci_position_report -- \
+            --exact real::task050_real_position_report_decodes_and_re_encodes --nocapture 2>&1)"
+          printf '%s\n' "$output"
+          grep -Fqx 'REAL POSITIONREPORT CODEC: PASSED' <<<"$output"
+          grep -qE '^test result: ok\. 1 passed' <<<"$output"
+          # Task 052: the REAL UCI 2.5 SubsystemStream hexBinary codec.
+          output="$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test real_uci_subsystem_stream -- \
+            --exact real::task052_real_subsystem_stream_hex_binary_round_trips --nocapture 2>&1)"
+          printf '%s\n' "$output"
+          grep -Fqx 'REAL SUBSYSTEMSTREAM HEXBINARY CODEC: PASSED' <<<"$output"
+          grep -qE '^test result: ok\. 1 passed' <<<"$output"
+      # AMS_GRA_UCI_2_5_ROOT (from GITHUB_ENV) also enables the script's real
+      # PositionReport / SubsystemStream round trips through Sleet.
+      - name: Rust LA-CAL runtime against real pinned Sleet (e38f61d8)
+        run: |
+          set -euo pipefail
+          test -n "$AMS_GRA_UCI_2_5_ROOT"
+          scripts/run-real-sleet-test.sh

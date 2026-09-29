@@ -344,6 +344,22 @@ ams-gra-codegen-oms/
 └── .github/workflows/
 ```
 
+### Continuous integration
+
+- **Fast CI** (`ci.yml`): the blocking PR check. It runs once per PR head, and
+  a newer push to the PR cancels the older run. It is deterministic and local:
+  Rust, GNAT/Ada, strict generated C++, generated facades and codecs through
+  mock OWP, and the runtime crates at the Rust 1.95.0 floor. It never downloads
+  real UCI and never builds Sleet.
+- **Deep CI** (`deep-ci.yml`): runs after merge to `main`, nightly, and on
+  demand. It covers the pinned real UCI 2.5/2.6 inventories, the real-UCI
+  generated-code compile at 1.95.0, and the runtime against unmodified pinned
+  Sleet.
+
+Deep CI keeps every one of these checks; they just run after merge instead of
+on each PR. See [CONTRIBUTING](CONTRIBUTING.md#continuous-integration-fast-ci-and-deep-ci)
+and [Task 055](docs/task-055-ci-fast-deep-split.md).
+
 ## Proposed generated/runtime split
 
 The long-term product should have two kinds of artifacts.
