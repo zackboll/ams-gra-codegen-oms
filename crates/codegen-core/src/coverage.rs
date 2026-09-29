@@ -247,6 +247,8 @@ impl<'a> CoverageAnalysis<'a> {
     /// Returns an error if the schema IR is invalid or if abstract value
     /// topology classification fails.
     pub fn new(schema: &'a SchemaIr, world: GenerationWorld) -> Result<Self, CoverageError> {
+        #[cfg(test)]
+        construction_probe::record();
         schema
             .validate()
             .map_err(|error| CoverageError::InvalidSchema(error.to_string()))?;
@@ -3392,5 +3394,25 @@ mod tests {
                 assert_eq!(combinations, 31, "all 31 combinations must run");
             }
         }
+    }
+}
+
+/// Unit-test-only instrumentation: how many [`CoverageAnalysis`] values this
+/// thread has constructed. Lets Task 056 prove that readiness still builds
+/// exactly one analysis per call. Compiled out of every non-test build.
+#[cfg(test)]
+pub(crate) mod construction_probe {
+    use std::cell::Cell;
+
+    thread_local! {
+        static CONSTRUCTIONS: Cell<usize> = const { Cell::new(0) };
+    }
+
+    pub(crate) fn record() {
+        CONSTRUCTIONS.with(|count| count.set(count.get() + 1));
+    }
+
+    pub(crate) fn count() -> usize {
+        CONSTRUCTIONS.with(Cell::get)
     }
 }

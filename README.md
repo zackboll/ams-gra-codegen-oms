@@ -644,6 +644,16 @@ status: READY
   the contract does not select does not make the service unready. A contract
   can be READY against a schema set whose full-schema `generate` fails; that
   asymmetry is the reason contract-selected generation is worth building.
+- **READY covers generated support too (Task 056).** A selected abstract
+  structural value is generated as a closed sum over its concrete descendants
+  (closed-schema). The contract did not select those descendants, so they are
+  never counted as selected types, but `service-generate` emits them, so every
+  one must render. When the projection has any, the report adds
+  `generated support types: N` / `renderable generated support types: M`
+  after the selected lines, and lists blockers under
+  `unsupported generated support types:` in schema order. A service whose
+  projection has no generated support prints exactly the pre-Task-056 report.
+  See [Task 056](docs/task-056-generated-support-readiness.md).
 - **Non-UCI exchanges require no UCI type model.** A contract with zero OMS
   Message exchanges is vacuously ready.
 - **READY includes the service API wrapper (Task 047).** A contract whose IDs

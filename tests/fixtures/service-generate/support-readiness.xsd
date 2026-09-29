@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:test"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- Task 056 readiness / generated-support parity fixture.
+
+       NOT UCI. A tiny stand-in that separates the contract-selected semantic
+       closure from the generated-support closure:
+
+         HolderReport -> Holder { Value : Base }        (Base abstract)
+           Base descendants (closed-schema support):
+             ConcreteGood                               renderable
+             ConcreteBad { Elapsed : BadDuration }      NOT renderable
+           BadDuration  named xs:duration restriction; no backend renders it
+
+       The contract-selected closure of HolderReport is Holder + Base, both
+       individually renderable. Generation additionally needs ConcreteGood,
+       ConcreteBad and BadDuration (schema order: BadDuration, ConcreteGood,
+       ConcreteBad). Before Task 056 readiness said READY and the backend then
+       failed; now readiness is NOT READY on the generated-support surface.
+
+       Controls in the same schema set:
+
+         SelectedBadReport -> SelectedBad { Elapsed : BadDuration }
+             the unsupported declaration is SELECTED (ordinary NOT READY)
+         GoodHolderReport -> GoodHolder { Value : GoodBase } (GoodBase abstract)
+             every support descendant renders, while BadDuration and
+             UnrelatedDuration stay unselected and unrelated (READY)
+         UnrelatedDuration  xs:duration nothing reaches -->
+  <xs:simpleType name="BadDuration">
+    <xs:restriction base="xs:duration"/>
+  </xs:simpleType>
+  <xs:complexType name="Base" abstract="true">
+    <xs:sequence>
+      <xs:element name="Id" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="ConcreteGood">
+    <xs:complexContent>
+      <xs:extension base="t:Base">
+        <xs:sequence>
+          <xs:element name="GoodField" type="xs:int"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="ConcreteBad">
+    <xs:complexContent>
+      <xs:extension base="t:Base">
+        <xs:sequence>
+          <xs:element name="Elapsed" type="t:BadDuration"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="Holder">
+    <xs:sequence>
+      <xs:element name="Value" type="t:Base"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="SelectedBad">
+    <xs:sequence>
+      <xs:element name="Elapsed" type="t:BadDuration"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="GoodBase" abstract="true">
+    <xs:sequence>
+      <xs:element name="Label" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="GoodConcreteA">
+    <xs:complexContent>
+      <xs:extension base="t:GoodBase">
+        <xs:sequence>
+          <xs:element name="Count" type="xs:int"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="GoodConcreteB">
+    <xs:complexContent>
+      <xs:extension base="t:GoodBase">
+        <xs:sequence>
+          <xs:element name="Flag" type="xs:boolean"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="GoodHolder">
+    <xs:sequence>
+      <xs:element name="Value" type="t:GoodBase"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:simpleType name="UnrelatedDuration">
+    <xs:restriction base="xs:duration"/>
+  </xs:simpleType>
+  <xs:element name="HolderReport" type="t:Holder" uci:version="001.000.000.000"/>
+  <xs:element name="SelectedBadReport" type="t:SelectedBad" uci:version="001.000.000.000"/>
+  <xs:element name="GoodHolderReport" type="t:GoodHolder" uci:version="001.000.000.000"/>
+</xs:schema>

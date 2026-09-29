@@ -345,6 +345,18 @@ regressions. The single exception is `OrderOfBattle`:
 > does not measure against the same rules. C++ already shows the identical
 > failure on the pre-Task-054 binary. Not fixed here.
 
+> **Follow-up (Task 056).** The table and counts above are preserved as
+> Task 054's historical evidence. Task 056 corrected the readiness false
+> positive this item describes: readiness now also measures the projection's
+> generated-support declarations, so `OrderOfBattle` is no longer category-A /
+> READY. It is NOT READY in all three backends (pinned 2.5 and 2.6,
+> closed-schema) before any backend call, with its 55 (2.5) / 56 (2.6) selected
+> types still all renderable and 42 / 40 of its 442 generated-support types
+> reported under `unsupported generated support types:`. The other 34
+> category-A messages remain READY and still generate. The exposed blockers
+> (`AircraftIdentifierType`, `xs:duration`, ...) are not implemented. See
+> [Task 056](task-056-generated-support-readiness.md).
+
 `real-member-remapping.yaml` therefore selects `SystemOrbitalElementSetRequest`
 (Ada `DateTimeRangeType.Begin`/`End` -> `Field_Begin`/`Field_End`, helper
 stems `DateTimeRangeType_Field_Begin_Optional`) and `ApprovalRequestStatus`

@@ -40,7 +40,8 @@ for forbidden in \
   fetch-pinned-uci-2.6.sh \
   run-real-sleet-test.sh \
   AMS_GRA_UCI_2_5_ROOT \
-  AMS_GRA_UCI_2_6_ROOT; do
+  AMS_GRA_UCI_2_6_ROOT \
+  '--test uci_generated_support'; do
   if grep -Fq -- "$forbidden" <<<"$fast_code"; then
     fail "Fast CI must not reference $forbidden"
   fi
@@ -88,6 +89,10 @@ for required in \
   'UCI 2.6 WHOLE-SCHEMA FIRST BLOCKER PROBE: PASSED' \
   'test task054_real_uci_category_a_selection_generates_and_compiles' \
   'REAL CATEGORY-A MEMBER REMAPPING: PASSED' \
+  '--test uci_generated_support' \
+  'UCI 2.5 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' \
+  'UCI 2.6 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' \
+  'UCI 2.5 CATEGORY-A GENERATED SUPPORT PARITY: PASSED' \
   'AMS_GRA_REQUIRE_GNAT: "1"' \
   'gnatmake --version' \
   'rustup toolchain install 1.95.0 --profile minimal' \

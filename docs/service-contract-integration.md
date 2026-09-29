@@ -455,11 +455,21 @@ pub struct ServiceBackendReadiness {
     pub selected_messages_renderable: usize,
     pub unsupported_types: Vec<QualifiedName>,
     pub blocked_messages: Vec<BlockedMessage>,
+    pub backend_blocker: Option<BackendPreflightError>,     // later cleanup
+    pub service_api_blocker: Option<ServiceApiError>,       // Task 047
+    pub generated_support_types_total: usize,               // Task 056
+    pub generated_support_types_renderable: usize,          // Task 056
+    pub unsupported_generated_support_types: Vec<QualifiedName>, // Task 056
 }
 ```
 
 `is_ready()` is true exactly when every selected OMS Message closure is
-renderable.
+renderable, every generated-support declaration of the projection is
+renderable (Task 056), no global backend precondition fails, and no service
+API boundary applies. The `selected_*`, `unsupported_types` and
+`blocked_messages` fields describe only the contract-selected semantic
+closure; generated support is counted separately and never relabelled as
+selected. See the Task 056 section below.
 
 ### What is measured, and what is not
 
@@ -977,6 +987,26 @@ on a pre-existing generated-support gap. The test-only
 `real-member-remapping.yaml` (`SystemOrbitalElementSetRequest` +
 `ApprovalRequestStatus`) is READY, generates, and compiles in Ada, Rust and
 C++. See [Task 054](task-054-member-identifier-remapping.md).
+
+## Task 056 — readiness accounts for generated support
+
+Readiness previously measured declaration renderability for the
+contract-selected semantic closure only, while `service-generate` hands the
+backend the whole projection, including generated-support declarations
+(Task 024 closed-sum descendants the contract never named). A support-only
+unrenderable declaration therefore produced a false READY. Readiness now
+checks `ServiceGenerationProjection::generated_support_type_names()` against
+the SAME projection, `CoverageAnalysis`, and baseline renderability snapshot
+it already built, and reports the result in separate
+`generated_support_types_*` / `unsupported_generated_support_types` fields.
+Selected counts are unchanged in meaning.
+
+`OrderOfBattle` (pinned 2.5 and 2.6, all three backends, closed-schema) was
+READY and then failed in the backend. It is now NOT READY before any backend
+call: 55 / 56 selected types all renderable, 442 generated-support types of
+which 42 (2.5) / 40 (2.6) are not. The other 34 Task 054 category-A messages
+stay READY and still generate. See
+[Task 056](task-056-generated-support-readiness.md).
 
 ## Task 033 follow-up — constrained floating ranges
 

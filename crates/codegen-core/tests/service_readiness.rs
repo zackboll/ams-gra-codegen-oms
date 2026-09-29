@@ -1105,3 +1105,245 @@ fn a_selected_ada_choice_kind_alternative_is_not_ready() {
         "Ada cannot emit an alternative named Kind beside the discriminant"
     );
 }
+
+// ---------------------------------------------------------------------
+// Task 056 -- readiness accounts for generated-support declarations
+// ---------------------------------------------------------------------
+
+/// `HolderReport -> Holder { Value : Base }`, abstract `Base` with a
+/// renderable `ConcreteGood` and a `ConcreteBad` that reaches the
+/// unsupported `BadDuration`. The contract selects `Holder` + `Base` only;
+/// `BadDuration`, `ConcreteGood`, and `ConcreteBad` are generated support.
+fn support_blocked_schema() -> SchemaIr {
+    schema(
+        vec![
+            unsupported("BadDuration"),
+            abstract_record("Base", vec![field("Id", primitive(PrimitiveKind::String))]),
+            derived_record(
+                "ConcreteGood",
+                "Base",
+                vec![field("GoodField", primitive(PrimitiveKind::Float64))],
+            ),
+            derived_record(
+                "ConcreteBad",
+                "Base",
+                vec![field("Elapsed", named("BadDuration"))],
+            ),
+            record("Holder", vec![field("Value", named("Base"))]),
+            // Neither selected nor generated support: must never appear.
+            unsupported("UnrelatedDuration"),
+        ],
+        vec![message("HolderReport", named("Holder"))],
+    )
+}
+
+/// Sections 5/6/7/11/12: the support-only unsupported declaration makes the
+/// service NOT READY, while every contract-selected field keeps its exact
+/// pre-Task-056 meaning and no support type is relabelled as selected.
+#[test]
+fn task056_support_only_unsupported_declaration_is_not_ready() {
+    let schema = support_blocked_schema();
+    let contract = contract(&oms_exchange("e1", "HolderReport"));
+    let plan = resolve_service_plan(&contract, &schema).expect("plan should resolve");
+
+    // The semantic/support distinction itself is unchanged.
+    let closure = plan
+        .selected_type_closure(&schema)
+        .expect("closure")
+        .iter()
+        .map(|declaration| declaration.name.clone())
+        .collect::<Vec<_>>();
+    assert_eq!(closure, vec![qualified("Base"), qualified("Holder")]);
+    let projection =
+        project_service_generation_schema(&plan, &schema, GenerationWorld::ClosedSchemaSet)
+            .expect("projection");
+    assert_eq!(projection.selected_type_names(), closure.as_slice());
+    assert_eq!(
+        projection.generated_support_type_names(),
+        &[
+            qualified("BadDuration"),
+            qualified("ConcreteGood"),
+            qualified("ConcreteBad"),
+        ]
+    );
+
+    for language in BackendLanguage::ALL {
+        let result = readiness(
+            &schema,
+            &contract,
+            language,
+            GenerationWorld::ClosedSchemaSet,
+        );
+        assert!(!result.is_ready(), "{language:?} must be NOT READY");
+        // Contract-selected facts: unchanged, and fully renderable.
+        assert_eq!(result.selected_messages_total, 1);
+        assert_eq!(result.selected_messages_renderable, 1);
+        assert_eq!(result.selected_types_total, 2);
+        assert_eq!(result.selected_types_renderable, 2);
+        assert!(result.unsupported_types.is_empty(), "{language:?}");
+        assert!(
+            result.blocked_messages.is_empty(),
+            "no fabricated message blocker"
+        );
+        // Generated-support facts: separate, and blocking.
+        assert_eq!(result.generated_support_types_total, 3);
+        assert_eq!(result.generated_support_types_renderable, 2);
+        assert_eq!(
+            result.unsupported_generated_support_types,
+            vec![qualified("BadDuration")]
+        );
+        // One cause, one diagnostic: no global or wrapper blocker is added.
+        assert!(result.backend_blocker.is_none(), "{language:?}");
+        assert!(result.service_api_blocker.is_none(), "{language:?}");
+    }
+}
+
+/// Section 9: unsupported support declarations are reported in ORIGINAL
+/// schema declaration order -- not alphabetical, not discovery order.
+#[test]
+fn task056_unsupported_support_types_follow_schema_order() {
+    // `Zulu` is declared first but reached LAST by the Holder walk, and sorts
+    // after `Alpha`, so any order but schema order is observable.
+    let schema = schema(
+        vec![
+            unsupported("ZuluDuration"),
+            abstract_record("Base", vec![]),
+            derived_record(
+                "FirstChild",
+                "Base",
+                vec![field("A", named("AlphaDuration"))],
+            ),
+            derived_record(
+                "SecondChild",
+                "Base",
+                vec![field("Z", named("ZuluDuration"))],
+            ),
+            unsupported("AlphaDuration"),
+            record("Holder", vec![field("Value", named("Base"))]),
+        ],
+        vec![message("HolderReport", named("Holder"))],
+    );
+    let contract = contract(&oms_exchange("e1", "HolderReport"));
+    for language in BackendLanguage::ALL {
+        let result = readiness(
+            &schema,
+            &contract,
+            language,
+            GenerationWorld::ClosedSchemaSet,
+        );
+        assert_eq!(
+            result.unsupported_generated_support_types,
+            vec![qualified("ZuluDuration"), qualified("AlphaDuration")],
+            "{language:?}"
+        );
+        assert_eq!(result.generated_support_types_total, 4);
+        assert_eq!(result.generated_support_types_renderable, 2);
+        // Deterministic across repeated runs.
+        assert_eq!(
+            result,
+            readiness(
+                &schema,
+                &contract,
+                language,
+                GenerationWorld::ClosedSchemaSet
+            )
+        );
+    }
+}
+
+/// Section 10: an abstract intermediate retained as generated support for a
+/// descendant's inherited structure is judged by the SAME baseline rules --
+/// it is never condemned merely for being abstract.
+#[test]
+fn task056_abstract_intermediate_support_stays_ready() {
+    let schema = schema(
+        vec![
+            abstract_record("Base", vec![field("Id", primitive(PrimitiveKind::String))]),
+            TypeDecl {
+                base_type: Some(named("Base")),
+                ..abstract_record(
+                    "AbstractMiddle",
+                    vec![field("MiddleField", primitive(PrimitiveKind::Float64))],
+                )
+            },
+            derived_record(
+                "MiddleLeaf",
+                "AbstractMiddle",
+                vec![field("LeafField", primitive(PrimitiveKind::Float64))],
+            ),
+            record("Holder", vec![field("Value", named("Base"))]),
+        ],
+        vec![message("HolderReport", named("Holder"))],
+    );
+    let contract = contract(&oms_exchange("e1", "HolderReport"));
+    let plan = resolve_service_plan(&contract, &schema).expect("plan");
+    let projection =
+        project_service_generation_schema(&plan, &schema, GenerationWorld::ClosedSchemaSet)
+            .expect("projection");
+    assert_eq!(
+        projection.generated_support_type_names(),
+        &[qualified("AbstractMiddle"), qualified("MiddleLeaf")],
+        "the abstract intermediate really is generated support"
+    );
+    for language in BackendLanguage::ALL {
+        let result = readiness(
+            &schema,
+            &contract,
+            language,
+            GenerationWorld::ClosedSchemaSet,
+        );
+        assert!(result.is_ready(), "{language:?}: {result:?}");
+        assert_eq!(result.generated_support_types_total, 2);
+        assert_eq!(result.generated_support_types_renderable, 2);
+        assert!(result.unsupported_generated_support_types.is_empty());
+    }
+}
+
+/// Section 19: an unsupported declaration that is neither selected nor
+/// generated support never enters the support count or the verdict.
+#[test]
+fn task056_unrelated_unsupported_declaration_is_not_support() {
+    let schema = mixed_schema();
+    let contract = contract(&oms_exchange("e1", "GoodReport"));
+    for language in BackendLanguage::ALL {
+        let result = readiness(
+            &schema,
+            &contract,
+            language,
+            GenerationWorld::ClosedSchemaSet,
+        );
+        assert!(result.is_ready(), "{language:?}");
+        assert_eq!(result.generated_support_types_total, 0);
+        assert_eq!(result.generated_support_types_renderable, 0);
+        assert!(result.unsupported_generated_support_types.is_empty());
+    }
+}
+
+/// Section 20: under `OpenExtensions` the selected abstract VALUE already
+/// fails closed with no projection, so no support surface is measured (zero)
+/// and nothing is layered on top of the existing single blocker.
+#[test]
+fn task056_open_extensions_reports_no_support_surface() {
+    let schema = support_blocked_schema();
+    let contract = contract(&oms_exchange("e1", "HolderReport"));
+    for language in BackendLanguage::ALL {
+        let result = readiness(
+            &schema,
+            &contract,
+            language,
+            GenerationWorld::OpenExtensions,
+        );
+        assert!(!result.is_ready());
+        assert_eq!(result.unsupported_types, vec![qualified("Holder")]);
+        assert_eq!(
+            blockers(&result),
+            vec![(
+                "HolderReport",
+                &ServiceMessageBlocker::Declaration(qualified("Holder"))
+            )]
+        );
+        assert_eq!(result.generated_support_types_total, 0);
+        assert_eq!(result.generated_support_types_renderable, 0);
+        assert!(result.unsupported_generated_support_types.is_empty());
+    }
+}

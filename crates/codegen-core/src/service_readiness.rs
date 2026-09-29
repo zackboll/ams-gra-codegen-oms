@@ -190,10 +190,16 @@ pub struct BlockedMessage {
 /// Whether one backend can render a contract's selected UCI type model under
 /// one asserted generation world.
 ///
-/// Counts and lists cover **only** what the contract selects. Unselected
-/// declarations are invisible here even when they are unrenderable: that is the
-/// point of contract-selected analysis, and it is why a service can be READY
-/// against a schema set whose full-schema generation fails.
+/// The `selected_*`, `unsupported_types`, and `blocked_messages` fields cover
+/// **only** what the contract selects. Since Task 056 the generated-support
+/// declarations the projection adds (closed-sum descendants the contract did
+/// not select) are measured in their own, separate `generated_support_*`
+/// fields and also gate READY, because `service-generate` emits them.
+///
+/// Declarations that are neither selected nor generated support are invisible
+/// here even when they are unrenderable: that is the point of
+/// contract-selected analysis, and it is why a service can be READY against a
+/// schema set whose full-schema generation fails.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ServiceBackendReadiness {
     pub language: BackendLanguage,
@@ -235,6 +241,27 @@ pub struct ServiceBackendReadiness {
     /// it is not a statement about UCI type capability, and it never changes
     /// a selected-type or selected-message count.
     pub service_api_blocker: Option<ServiceApiError>,
+    /// Task 056: number of declarations the projection classifies as
+    /// **generated support** -- required by the generated representation
+    /// (Task 024 closed-sum descendants and their dependencies) but NOT
+    /// selected by the contract. Exactly
+    /// [`crate::ServiceGenerationProjection::generated_support_type_names`].
+    ///
+    /// Zero when no projection exists (an abstract structural value under
+    /// `OpenExtensions`): that selection is already NOT READY through its
+    /// per-message blocker, and no generated support model exists to measure.
+    pub generated_support_types_total: usize,
+    /// How many generated-support declarations the backend can render today,
+    /// judged by the SAME baseline renderability snapshot as the selected
+    /// declarations.
+    pub generated_support_types_renderable: usize,
+    /// Generated-support declarations the backend cannot render, in original
+    /// **schema declaration order** (the projection's support order).
+    ///
+    /// Kept apart from `unsupported_types` on purpose: the contract did not
+    /// select these, so reporting them as selected would be false. They still
+    /// block READY, because `service-generate` would hand them to the backend.
+    pub unsupported_generated_support_types: Vec<QualifiedName>,
 }
 
 impl ServiceBackendReadiness {
@@ -251,9 +278,14 @@ impl ServiceBackendReadiness {
     ///
     /// Since Task 047 a service API boundary does too: READY means
     /// `service-generate` can produce the type model AND the wrapper.
+    ///
+    /// Since Task 056 every generated-support declaration must render too:
+    /// READY describes the whole emitted model surface, not only the
+    /// contract-selected semantic closure.
     #[must_use]
     pub fn is_ready(&self) -> bool {
         self.blocked_messages.is_empty()
+            && self.unsupported_generated_support_types.is_empty()
             && self.backend_blocker.is_none()
             && self.service_api_blocker.is_none()
     }
@@ -382,6 +414,29 @@ pub fn analyze_service_readiness(
         }
     }
 
+    // Task 056: the generated-support surface, measured with the SAME
+    // projection, analysis, and baseline snapshot as the selected closure --
+    // one extra pass over an already computed name list, never a second
+    // dependency walk or a second `CoverageAnalysis`. The projection lists
+    // support in original schema order, so this preserves it without a sort.
+    //
+    // Only individual renderability is consulted, exactly as for selected
+    // declarations: an abstract intermediate retained for a descendant's
+    // inherited structure is judged by the same baseline rules generation
+    // uses, never condemned merely for being abstract.
+    let mut generated_support_types_total = 0;
+    let mut unsupported_generated_support_types = Vec::new();
+    if let Ok(projection) = &projection {
+        let support = projection.generated_support_type_names();
+        generated_support_types_total = support.len();
+        for name in support {
+            let index = declaration_index(&analysis, name, MismatchRole::TypeDeclaration)?;
+            if !renderability.is_renderable(index) {
+                unsupported_generated_support_types.push(name.clone());
+            }
+        }
+    }
+
     let mut blocked_messages = Vec::new();
     // `selected_messages` is unique and in contract first-occurrence order, so
     // repeated exchange selections of one message are analyzed once and appear
@@ -482,6 +537,10 @@ pub fn analyze_service_readiness(
             Ok(projection)
                 if unsupported_types.is_empty()
                     && blocked_messages.is_empty()
+                    // Task 056: a support-blocked model cannot be generated,
+                    // so the wrapper is not lowered over it: one cause, one
+                    // diagnostic.
+                    && unsupported_generated_support_types.is_empty()
                     && backend_blocker.is_none() =>
             {
                 match service_api_preflight(plan, projection.schema(), language, world) {
@@ -518,6 +577,10 @@ pub fn analyze_service_readiness(
         blocked_messages,
         backend_blocker,
         service_api_blocker,
+        generated_support_types_total,
+        generated_support_types_renderable: generated_support_types_total
+            - unsupported_generated_support_types.len(),
+        unsupported_generated_support_types,
     })
 }
 
@@ -557,4 +620,129 @@ fn declaration_index(
             missing: name.clone(),
             role,
         })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::coverage::construction_probe;
+    use crate::resolve_service_plan;
+    use crate::service_generation::projection_probe;
+    use ams_gra_oms_ir::{
+        Cardinality, ConstraintSet, FieldDecl, MessageDecl, NamespaceDecl, SourceRef, TypeDecl,
+        TypeKind, TypeRef,
+    };
+
+    const NS: &str = "urn:test";
+
+    fn source() -> SourceRef {
+        SourceRef {
+            document: "fixture.xsd".to_owned(),
+            line: None,
+        }
+    }
+
+    fn declaration(local: &str, is_abstract: bool, base: Option<&str>, kind: TypeKind) -> TypeDecl {
+        TypeDecl {
+            name: QualifiedName::new(NS, local),
+            is_abstract,
+            base_type: base.map(|base| TypeRef::named(QualifiedName::new(NS, base))),
+            kind,
+            constraints: ConstraintSet::default(),
+            documentation: None,
+            source: source(),
+        }
+    }
+
+    fn record(fields: Vec<(&str, TypeRef)>) -> TypeKind {
+        TypeKind::Record {
+            fields: fields
+                .into_iter()
+                .map(|(name, type_ref)| FieldDecl {
+                    name: name.to_owned(),
+                    wire_namespace_uri: Some(NS.to_owned()),
+                    type_ref,
+                    cardinality: Cardinality::REQUIRED_ONE,
+                    nillable: false,
+                    constraints: ConstraintSet::default(),
+                    documentation: None,
+                    source: source(),
+                })
+                .collect(),
+        }
+    }
+
+    /// Task 056 shape: selected `Holder { Value : Base }`, with the
+    /// unsupported `BadDuration` reachable only through generated support.
+    fn support_blocked_schema() -> SchemaIr {
+        let named = |local: &str| TypeRef::named(QualifiedName::new(NS, local));
+        SchemaIr {
+            schema_version: Some("000.1.0".to_owned()),
+            namespaces: vec![NamespaceDecl {
+                uri: NS.to_owned(),
+                preferred_prefix: Some("t".to_owned()),
+            }],
+            types: vec![
+                declaration(
+                    "BadDuration",
+                    false,
+                    None,
+                    TypeKind::Primitive(PrimitiveKind::Duration),
+                ),
+                declaration("Base", true, None, record(vec![])),
+                declaration("ConcreteGood", false, Some("Base"), record(vec![])),
+                declaration(
+                    "ConcreteBad",
+                    false,
+                    Some("Base"),
+                    record(vec![("Elapsed", named("BadDuration"))]),
+                ),
+                declaration(
+                    "Holder",
+                    false,
+                    None,
+                    record(vec![("Value", named("Base"))]),
+                ),
+            ],
+            messages: vec![MessageDecl {
+                name: QualifiedName::new(NS, "HolderReport"),
+                payload_type: named("Holder"),
+                documentation: None,
+                source: source(),
+            }],
+        }
+    }
+
+    /// Section 28: support readiness reuses the ONE projection and the ONE
+    /// `CoverageAnalysis` readiness already builds; it adds only a pass over
+    /// the projection's support-name list.
+    #[test]
+    fn task056_support_readiness_builds_one_projection_and_one_analysis() {
+        let schema = support_blocked_schema();
+        let contract = ams_gra_oms_service_contract::parse_yaml(
+            "contract_version: \"0.1\"\nservice:\n  name: Probe\n  version: \"0.1\"\n  kind: service\nstandards:\n  oms_version: \"2.5\"\n  uci_schema_version: \"2.5\"\nfunctions:\n  - id: f1\n    name: F1\n    category: specific\n    applicability: applicable\n    exchanges:\n      - id: e1\n        kind: oms_message\n        direction: input\n        mandate: mandatory\n        message: HolderReport\n        topic: t.e1\n        timing:\n          kind: asynchronous\n",
+        )
+        .expect("contract");
+        let plan = resolve_service_plan(&contract, &schema).expect("plan");
+        for language in BackendLanguage::ALL {
+            let analyses = construction_probe::count();
+            let projections = projection_probe::count();
+            let readiness = analyze_service_readiness(
+                &plan,
+                &schema,
+                language,
+                GenerationWorld::ClosedSchemaSet,
+            )
+            .expect("readiness");
+            assert_eq!(construction_probe::count() - analyses, 1, "{language:?}");
+            assert_eq!(projection_probe::count() - projections, 1, "{language:?}");
+            // And the support surface really was measured from it.
+            assert_eq!(readiness.generated_support_types_total, 3);
+            assert_eq!(
+                readiness.unsupported_generated_support_types,
+                vec![QualifiedName::new(NS, "BadDuration")]
+            );
+            assert!(!readiness.is_ready());
+        }
+    }
 }

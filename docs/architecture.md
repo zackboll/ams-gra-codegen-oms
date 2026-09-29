@@ -876,6 +876,41 @@ Task 024 stores as closed-sum variants, which no selected declaration names as
 a dependency. Folding those into the semantic closure would make `ServicePlan`
 claim the contract selected types it never mentioned.
 
+### Readiness authority over the emitted surface (Task 056)
+
+Keeping the two closures apart must not mean measuring only one of them.
+Before Task 056 readiness checked declaration renderability for the semantic
+closure alone, so a support-only unrenderable declaration produced a false
+READY that `service-generate` then contradicted in the backend (pinned UCI
+`OrderOfBattle`). Readiness now measures the whole emitted model surface, from
+one projection and one analysis:
+
+```text
+ServicePlan semantic closure
+      |
+      v
+ServiceGenerationProjection            (computed once)
+    selected types
+    generated-support types
+      |
+      v
+ONE projected CoverageAnalysis         (one baseline renderability snapshot)
+    selected readiness                 -> selected_types_* / unsupported_types
+    support readiness                  -> generated_support_types_* /
+                                          unsupported_generated_support_types
+    backend preflight                  -> backend_blocker
+      |
+      v
+ServiceBackendReadiness                (+ service API preflight)
+      |
+READY only when the whole emitted model surface is renderable
+```
+
+Selected fields keep their exact meaning; support types are never relabelled
+as selected. Nothing outside the projection is measured, so this is still
+contract-selected readiness, not full-schema readiness. Full detail:
+`docs/task-056-generated-support-readiness.md`.
+
 The two inputs answer different questions and neither can answer the other's.
 The XSD knows a message exists, its qualified name, its payload type, and that
 payload's transitive type graph. The contract knows which functions exist,
