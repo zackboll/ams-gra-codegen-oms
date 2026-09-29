@@ -110,6 +110,13 @@ pub mod member_keywords_qualified {
     ));
 }
 
+/// Task 057: named and direct unconstrained xs:duration (required, optional,
+/// bounded, unbounded, Choice) in the OAM namespace, with the generated codec.
+#[allow(clippy::all, clippy::pedantic)]
+pub mod codec_duration {
+    include!(concat!(env!("OUT_DIR"), "/codec_duration/service_api.rs"));
+}
+
 /// Task 050: the REAL UCI 2.5 PositionReport model, service API, and codec,
 /// generated only when `AMS_GRA_UCI_2_5_ROOT` names the SHA-256-verified
 /// pinned root (see build.rs).

@@ -20,8 +20,9 @@ use std::process::Command;
 /// 054 adds `member-keywords` (OAM) and `member-keywords-qualified`
 /// (`urn:test`): Record fields / Choice alternatives whose Rust identifiers
 /// are escaped (`field_type`, `AlternativeSelf`) while their OMS JSON keys stay
-/// the source spellings.
-const SERVICES: [(&str, &str, bool); 13] = [
+/// the source spellings. Task 057 adds `codec-duration`: named and direct
+/// unconstrained xs:duration in every occurrence shape plus a Choice.
+const SERVICES: [(&str, &str, bool); 14] = [
     ("runtime-test", "runtime_test", false),
     ("runtime-oam", "runtime_oam", false),
     ("codec-oam", "codec_oam", true),
@@ -39,6 +40,7 @@ const SERVICES: [(&str, &str, bool); 13] = [
         "member_keywords_qualified",
         true,
     ),
+    ("codec-duration", "codec_duration", true),
 ];
 
 /// Task 050: the pinned UCI 2.5 root (open-arsenal/uci/standard tag v2.5,

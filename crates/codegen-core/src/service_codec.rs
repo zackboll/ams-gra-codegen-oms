@@ -384,11 +384,16 @@ fn primitive_support(kind: PrimitiveKind, location: &str) -> Result<(), ServiceC
         | PrimitiveKind::Float32
         | PrimitiveKind::Float64
         | PrimitiveKind::String
-        | PrimitiveKind::DateTime => Ok(()),
+        | PrimitiveKind::DateTime
+        // Task 057: OMSC-SPC-013 Rev B section 6.1.4 maps a simple type by
+        // its {primitive type definition} only; xs:duration matches none of
+        // cases 1-4, so case 5 ("Otherwise string") applies, and section
+        // 6.1.5.4 makes that string's characters the XML lexical value.
+        | PrimitiveKind::Duration => Ok(()),
         PrimitiveKind::Binary => Err(ServiceCodecError::UnknownBinaryEncoding {
             location: location.to_owned(),
         }),
-        PrimitiveKind::Decimal | PrimitiveKind::Time | PrimitiveKind::Duration => {
+        PrimitiveKind::Decimal | PrimitiveKind::Time => {
             Err(ServiceCodecError::UnsupportedPrimitive {
                 location: location.to_owned(),
                 kind,
@@ -466,6 +471,7 @@ mod tests {
             PrimitiveKind::Float64,
             PrimitiveKind::String,
             PrimitiveKind::DateTime,
+            PrimitiveKind::Duration,
         ] {
             let schema = record(OAM_NAMESPACE, vec![field("F", TypeRef::primitive(kind))]);
             assert_eq!(check(&schema), Ok(()), "{kind:?}");
@@ -487,11 +493,7 @@ mod tests {
             check(&binary),
             Err(ServiceCodecError::UnknownBinaryEncoding { .. })
         ));
-        for kind in [
-            PrimitiveKind::Decimal,
-            PrimitiveKind::Time,
-            PrimitiveKind::Duration,
-        ] {
+        for kind in [PrimitiveKind::Decimal, PrimitiveKind::Time] {
             let schema = record(OAM_NAMESPACE, vec![field("F", TypeRef::primitive(kind))]);
             assert!(
                 matches!(check(&schema), Err(ServiceCodecError::UnsupportedPrimitive { kind: k, .. }) if k == kind),

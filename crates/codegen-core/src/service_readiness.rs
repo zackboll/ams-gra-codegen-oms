@@ -673,7 +673,7 @@ mod tests {
     }
 
     /// Task 056 shape: selected `Holder { Value : Base }`, with the
-    /// unsupported `BadDuration` reachable only through generated support.
+    /// unsupported `BadTime` reachable only through generated support.
     fn support_blocked_schema() -> SchemaIr {
         let named = |local: &str| TypeRef::named(QualifiedName::new(NS, local));
         SchemaIr {
@@ -684,10 +684,10 @@ mod tests {
             }],
             types: vec![
                 declaration(
-                    "BadDuration",
+                    "BadTime",
                     false,
                     None,
-                    TypeKind::Primitive(PrimitiveKind::Duration),
+                    TypeKind::Primitive(PrimitiveKind::Time),
                 ),
                 declaration("Base", true, None, record(vec![])),
                 declaration("ConcreteGood", false, Some("Base"), record(vec![])),
@@ -695,7 +695,7 @@ mod tests {
                     "ConcreteBad",
                     false,
                     Some("Base"),
-                    record(vec![("Elapsed", named("BadDuration"))]),
+                    record(vec![("Elapsed", named("BadTime"))]),
                 ),
                 declaration(
                     "Holder",
@@ -740,7 +740,7 @@ mod tests {
             assert_eq!(readiness.generated_support_types_total, 3);
             assert_eq!(
                 readiness.unsupported_generated_support_types,
-                vec![QualifiedName::new(NS, "BadDuration")]
+                vec![QualifiedName::new(NS, "BadTime")]
             );
             assert!(!readiness.is_ready());
         }

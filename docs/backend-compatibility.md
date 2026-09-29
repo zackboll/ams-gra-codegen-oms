@@ -5133,3 +5133,41 @@ generated-support declaration `EphemerisOrbitalModelType` (direct
 unsupported); 2.6 `AircraftIdentifierType` (constrained-String facet profile;
 40 of 442). Neither is implemented by Task 056. See
 [Task 056](task-056-generated-support-readiness.md).
+
+## Task 057 — XML Schema `duration`
+
+Zero-facet `xs:duration` is renderable in Ada, Rust and C++, both as a named
+declaration (UCI `DurationType`) and as a direct Record field or Choice
+alternative. Every shape is a **checked lexical carrier**:
+
+* one carrier template per backend serves both uses: the named type, and the
+  direct `XML_Schema_Duration` (Ada) / `XmlSchemaDuration` (Rust, C++);
+* each unit has one shared parser: Ada `XML_Schema_Duration_Parser`,
+  Rust/C++ `XmlSchemaDurationParser`;
+* the stored spelling is the whitespace-collapsed lexical form, with no
+  canonicalization;
+* there is no arithmetic, ordering or value-space equality. The carrier is
+  NOT Ada `Duration`, `std::chrono::duration` or a seconds count.
+
+A Duration with any facet fails closed, with the diagnostic "unsupported
+temporal declaration: Duration with unsupported constraints". The XSD
+frontend already rejects such facets at load time. `Time` is unchanged.
+
+The Rust OMS JSON codec maps Duration to a JSON string. The authority is
+OMSC-SPC-013 Rev B §6.1.4 case 5; decoding always goes through the generated
+constructor.
+
+Coverage is measured before → after with the pinned roots and a release
+binary. The figures are identical for every backend within each
+release/world, except the Ada 2.5 field-occurrence start value.
+
+| Release | World | Kinds | Declarations | Field types | Field occurrences | Message closures |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2.5 | closed | 5448 → 5449 / 5557 | Ada 5419 → 5427, Rust/C++ 5420 → 5428 | 13151 → 13160 / 13160 | Ada 13153 → 13160, Rust/C++ 13160 = | 355 → **395** / 722 |
+| 2.5 | open | 5448 → 5449 / 5557 | 5332 → 5340 | 13151 → 13160 / 13160 | Ada 13153 → 13160, Rust/C++ 13160 = | 347 → **387** / 722 |
+| 2.6 | closed | 5461 → 5462 / 5570 | Ada 5440 → 5441, Rust/C++ 5441 → 5442 | 13198 = | 13198 = | 355 → **395** / 725 |
+| 2.6 | open | 5461 → 5462 / 5570 | 5353 → 5354 | 13198 = | 13198 = | 347 → **387** / 725 |
+
+No cell went down, and the whole-schema first blockers are unchanged. For the
+explanation of every delta, the message-impact classes and OrderOfBattle, see
+[Task 057](task-057-duration-support.md).

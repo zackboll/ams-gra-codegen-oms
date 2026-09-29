@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Task 057 negative controls that load:
+
+       TimeType      named xs:time                  -> still unsupported
+       ClockPayload  direct xs:time field           -> still unsupported
+       AbstractOnly  abstract, direct duration member, never used or
+                     extended -> no direct Duration carrier is emitted
+
+     A constrained xs:duration restriction does not load at all (the frontend
+     rejects every facet on it); the constrained-Duration IR controls are
+     built directly in the shared classifier and backend unit tests. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test:duration"
+           targetNamespace="urn:test:duration"
+           elementFormDefault="qualified">
+  <xs:simpleType name="TimeType">
+    <xs:restriction base="xs:time"/>
+  </xs:simpleType>
+  <xs:complexType name="ClockPayload">
+    <xs:sequence>
+      <xs:element name="Clock" type="xs:time"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="AbstractOnly" abstract="true">
+    <xs:sequence>
+      <xs:element name="Step" type="xs:duration"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

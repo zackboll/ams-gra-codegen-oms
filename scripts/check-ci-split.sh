@@ -41,7 +41,8 @@ for forbidden in \
   run-real-sleet-test.sh \
   AMS_GRA_UCI_2_5_ROOT \
   AMS_GRA_UCI_2_6_ROOT \
-  '--test uci_generated_support'; do
+  '--test uci_generated_support' \
+  '--test uci_duration'; do
   if grep -Fq -- "$forbidden" <<<"$fast_code"; then
     fail "Fast CI must not reference $forbidden"
   fi
@@ -93,6 +94,12 @@ for required in \
   'UCI 2.5 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' \
   'UCI 2.6 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' \
   'UCI 2.5 CATEGORY-A GENERATED SUPPORT PARITY: PASSED' \
+  '--test uci_duration' \
+  'UCI 2.5 DURATION INVENTORY: PASSED' \
+  'UCI 2.6 DURATION INVENTORY: PASSED' \
+  'UCI 2.5 DURATION MESSAGE IMPACT: RECORDED' \
+  'UCI 2.6 DURATION MESSAGE IMPACT: RECORDED' \
+  'REAL CATEGORY-A DURATION SERVICE: PASSED' \
   'AMS_GRA_REQUIRE_GNAT: "1"' \
   'gnatmake --version' \
   'rustup toolchain install 1.95.0 --profile minimal' \

@@ -3,7 +3,7 @@
 # Selects two messages whose closures reach different unsupported declarations,
 # plus the supported one. Blocked messages are reported in contract
 # first-occurrence order (B before A here) while unsupported types are reported
-# in schema declaration order (DurationA before DurationB).
+# in schema declaration order (TimeA before TimeB).
 contract_version: "0.1"
 
 service:

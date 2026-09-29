@@ -11,33 +11,35 @@
        Task 031 value proposition observable end to end:
 
          SelectedReport   -> SelectedPayload        (fully supported)
-         BlockedReportA   -> BlockedPayloadA -> DurationA
-         BlockedReportB   -> BlockedPayloadB -> DurationB
+         BlockedReportA   -> BlockedPayloadA -> TimeA
+         BlockedReportB   -> BlockedPayloadB -> TimeB
 
-       DurationA/DurationB are xs:duration, which no backend renders today.
+       TimeA/TimeB are xs:time, which no backend renders today. (Task 057
+       adaptation: these were xs:duration, which is now supported; xs:time
+       keeps the fixture's unselected-unsupported role unchanged.)
        A contract selecting only SelectedReport is READY even though ordinary
        full-schema 'generate' on this same document fails on the unselected
-       Duration declarations. That is the point of the fixture, not a defect. -->
+       Time declarations. That is the point of the fixture, not a defect. -->
   <xs:complexType name="SelectedPayload">
     <xs:sequence>
       <xs:element name="Latitude" type="xs:double"/>
       <xs:element name="Longitude" type="xs:double"/>
     </xs:sequence>
   </xs:complexType>
-  <xs:simpleType name="DurationA">
-    <xs:restriction base="xs:duration"/>
+  <xs:simpleType name="TimeA">
+    <xs:restriction base="xs:time"/>
   </xs:simpleType>
   <xs:complexType name="BlockedPayloadA">
     <xs:sequence>
-      <xs:element name="Elapsed" type="t:DurationA"/>
+      <xs:element name="Elapsed" type="t:TimeA"/>
     </xs:sequence>
   </xs:complexType>
-  <xs:simpleType name="DurationB">
-    <xs:restriction base="xs:duration"/>
+  <xs:simpleType name="TimeB">
+    <xs:restriction base="xs:time"/>
   </xs:simpleType>
   <xs:complexType name="BlockedPayloadB">
     <xs:sequence>
-      <xs:element name="Elapsed" type="t:DurationB"/>
+      <xs:element name="Elapsed" type="t:TimeB"/>
     </xs:sequence>
   </xs:complexType>
   <xs:element name="SelectedReport" type="t:SelectedPayload" uci:version="001.000.000.000"/>

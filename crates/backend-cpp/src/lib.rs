@@ -12,12 +12,12 @@ use ams_gra_oms_codegen_core::{
     abstract_value_projection_for_ref, backend_preflight, binary_length_domain, constrains_string,
     cpp_model_header_name, cpp_model_namespace, direct_temporal_profile,
     effective_choice_alternatives, effective_record_fields, emissions_emit_direct_date_time,
-    field_storage_semantics, float32_literal, float64_literal, floating_domain,
-    generated_choice_alternative_name, generated_enum_variant_name, generated_record_field_name,
-    inclusive_integral_domain, is_temporal_primitive, plan_type_emissions,
-    schema_emits_bounded_integer_support, schema_emits_string_profile_carrier,
-    schema_emits_temporal_carrier, schema_emits_unbounded_sequence_support, string_profile,
-    temporal_profile,
+    emissions_emit_direct_duration, field_storage_semantics, float32_literal, float64_literal,
+    floating_domain, generated_choice_alternative_name, generated_enum_variant_name,
+    generated_record_field_name, inclusive_integral_domain, is_temporal_primitive,
+    plan_type_emissions, schema_emits_bounded_integer_support, schema_emits_named_temporal_profile,
+    schema_emits_string_profile_carrier, schema_emits_temporal_carrier,
+    schema_emits_unbounded_sequence_support, string_profile, temporal_profile,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -75,6 +75,7 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     validate_schema(schema, world)?;
     let emissions = plan_type_emissions(schema, world)?;
     let emits_direct_date_time = emissions_emit_direct_date_time(schema, &emissions, world);
+    let emits_direct_duration = emissions_emit_direct_duration(schema, &emissions, world);
     let namespace = namespace_name(schema)?;
     let variant_header = if emissions.iter().any(|emission| {
         matches!(
@@ -113,6 +114,7 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     let string_view_header = if schema_emits_temporal_carrier(schema)
         || schema_emits_string_profile_carrier(schema)
         || emits_direct_date_time
+        || emits_direct_duration
     {
         "#include <string_view>\n"
     } else {
@@ -182,11 +184,24 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
             "    explicit BoundedInteger(T value) noexcept : value_(value) {}\n    T value_;\n};\n\n",
         ));
     }
-    if schema_emits_temporal_carrier(schema) || emits_direct_date_time {
+    if schema_emits_named_temporal_profile(schema, TemporalProfile::DateTimeZulu)
+        || emits_direct_date_time
+    {
         output.push_str(&cpp_date_time_parser());
     }
     if emits_direct_date_time {
         output.push_str(CPP_DIRECT_DATE_TIME_CARRIER);
+    }
+    // Task 057: one shared parser and one direct carrier per unit, emitted
+    // after every pre-existing support item so Duration-free output is
+    // byte-identical.
+    if emits_direct_duration
+        || schema_emits_named_temporal_profile(schema, TemporalProfile::Duration)
+    {
+        output.push_str(CPP_DURATION_PARSER);
+    }
+    if emits_direct_duration {
+        output.push_str(&CPP_DURATION_CARRIER.replace("{name}", "XmlSchemaDuration"));
     }
     for emission in emissions {
         match emission {
@@ -448,7 +463,7 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
             && is_temporal_primitive(kind)
         {
             match temporal_profile(kind, &declaration.constraints) {
-                Ok(Some(TemporalProfile::DateTimeZulu)) => {}
+                Ok(Some(TemporalProfile::DateTimeZulu | TemporalProfile::Duration)) => {}
                 Ok(None) => unreachable!("is_temporal_primitive gates this branch"),
                 Err(reason) => {
                     return unsupported(format!("{reason} on {}", declaration.name.local_name));
@@ -744,6 +759,15 @@ fn cpp_field_base(field: &ams_gra_oms_ir::FieldDecl) -> Result<String, CodegenEr
                 Ok(Some(DirectTemporalProfile::DateTime)) => Ok("XmlSchemaDateTime".to_owned()),
                 _ => unsupported(format!(
                     "direct DateTime field constraints on {}",
+                    field.name
+                )),
+            }
+        }
+        TypeRefTarget::Primitive(PrimitiveKind::Duration) => {
+            match direct_temporal_profile(PrimitiveKind::Duration, &field.constraints) {
+                Ok(Some(DirectTemporalProfile::Duration)) => Ok("XmlSchemaDuration".to_owned()),
+                _ => unsupported(format!(
+                    "direct Duration field constraints on {}",
                     field.name
                 )),
             }
@@ -1047,17 +1071,15 @@ fn render_temporal_declaration(
     constraints: &ConstraintSet,
     name: &str,
 ) -> Result<(), CodegenError> {
-    match temporal_profile(kind, constraints) {
-        Ok(Some(TemporalProfile::DateTimeZulu)) => {}
+    let carrier = match temporal_profile(kind, constraints) {
+        Ok(Some(TemporalProfile::DateTimeZulu)) => CPP_DATE_TIME_ZULU_CARRIER,
+        // Task 057: the named Duration carrier is the SAME text as the direct
+        // `XmlSchemaDuration`, calling the one shared parser.
+        Ok(Some(TemporalProfile::Duration)) => CPP_DURATION_CARRIER,
         Ok(None) => return unsupported(format!("non-temporal primitive on {name}")),
         Err(reason) => return unsupported(format!("{reason} on {name}")),
-    }
-    writeln!(
-        output,
-        "{}",
-        CPP_DATE_TIME_ZULU_CARRIER.replace("{name}", name)
-    )
-    .expect("writing to String cannot fail");
+    };
+    writeln!(output, "{}", carrier.replace("{name}", name)).expect("writing to String cannot fail");
     Ok(())
 }
 
@@ -1100,6 +1122,144 @@ fn cpp_date_time_parser() -> String {
         &helpers[gate_end..]
     )
 }
+
+/// Task 057: the one C++ duration carrier text, used verbatim for the direct
+/// `XmlSchemaDuration` and (with `{name}` substituted) for every named
+/// zero-facet Duration declaration. Both call the one shared parser.
+///
+/// A checked **lexical** carrier: deliberately not `std::chrono::duration`,
+/// seconds, or months-plus-seconds. No comparison operator is declared (the
+/// duration order is partial and `P12M`/`P1Y` are one value). Task 040
+/// lifecycle: no public default constructor, and the copy operations are
+/// declared so the implicit moves are suppressed -- an rvalue copies, so a
+/// moved-from carrier can never be observed holding the invalid empty string.
+const CPP_DURATION_CARRIER: &str = r#"// A checked XML Schema duration lexical spelling (whitespace-collapsed,
+// otherwise stored unchanged). No arithmetic, ordering or value equality.
+class {name} {
+public:
+    static std::optional<{name}> create(std::string_view value) {
+        std::string lexical = XmlSchemaDurationParser::collapse(value);
+        if (!XmlSchemaDurationParser::is_duration(lexical)) return std::nullopt;
+        return {name}(std::move(lexical));
+    }
+    // Task 040: copy-only lifecycle (declared copies suppress the moves).
+    {name}(const {name}&) = default;
+    {name}& operator=(const {name}&) = default;
+    const std::string& value() const noexcept { return value_; }
+private:
+    explicit {name}(std::string lexical) : value_(std::move(lexical)) {}
+    std::string value_;
+};
+"#;
+
+/// Task 057: the one shared C++ XML Schema 1.0 duration parser. The grammar
+/// and the overflow-free digit classification are identical to the Rust and
+/// Ada parsers; see `backend-rust`'s `RUST_DURATION_PARSER`.
+const CPP_DURATION_PARSER: &str = r#"class XmlSchemaDurationParser {
+public:
+    // XML Schema `collapse`: tab/LF/CR become spaces, runs of spaces are
+    // squeezed to one, and leading/trailing spaces are removed.
+    static std::string collapse(std::string_view value) {
+        std::string out;
+        bool pending_space = false;
+        for (char character : value) {
+            if (character == ' ' || character == '\t' || character == '\n' || character == '\r') {
+                pending_space = !out.empty();
+                continue;
+            }
+            if (pending_space) {
+                out.push_back(' ');
+                pending_space = false;
+            }
+            out.push_back(character);
+        }
+        return out;
+    }
+
+    // '-'? 'P' date? ('T' time)? with ordered, non-repeated designators.
+    static bool is_duration(std::string_view text) {
+        std::size_t at = (!text.empty() && text[0] == '-') ? 1 : 0;
+        if (at >= text.size() || text[at] != 'P') {
+            return false;
+        }
+        ++at;
+        std::size_t components = 0;
+        // Date part: Y < M < D, integers only.
+        int rank = 0;
+        while (at < text.size() && text[at] != 'T') {
+            std::size_t end = 0;
+            bool fraction = false;
+            if (!number(text, at, end, fraction) || end >= text.size()) {
+                return false;
+            }
+            const int next = text[end] == 'Y' ? 1 : text[end] == 'M' ? 2 : text[end] == 'D' ? 3 : 0;
+            if (next == 0 || fraction || next <= rank) {
+                return false;
+            }
+            rank = next;
+            ++components;
+            at = end + 1;
+        }
+        // Time part: H < M < S; only seconds may carry a fraction.
+        if (at < text.size()) {
+            ++at;
+            int time_rank = 0;
+            std::size_t time_components = 0;
+            while (at < text.size()) {
+                std::size_t end = 0;
+                bool fraction = false;
+                if (!number(text, at, end, fraction) || end >= text.size()) {
+                    return false;
+                }
+                const int next = text[end] == 'H' ? 1 : text[end] == 'M' ? 2 : text[end] == 'S' ? 3 : 0;
+                if (next == 0 || next <= time_rank || (fraction && next != 3)) {
+                    return false;
+                }
+                time_rank = next;
+                ++time_components;
+                at = end + 1;
+            }
+            // 'T' must be absent if and only if every time item is absent.
+            if (time_components == 0) {
+                return false;
+            }
+            components += time_components;
+        }
+        return components > 0;
+    }
+
+private:
+    static bool is_digit(char character) noexcept {
+        return character >= '0' && character <= '9';
+    }
+
+    // [0-9]+ ('.' [0-9]+)? from `start`. Digits are only classified, never
+    // accumulated, so no component length can overflow a host integer.
+    static bool number(std::string_view text, std::size_t start, std::size_t& end, bool& fraction) {
+        end = start;
+        while (end < text.size() && is_digit(text[end])) {
+            ++end;
+        }
+        if (end == start) {
+            return false;
+        }
+        fraction = false;
+        if (end < text.size() && text[end] == '.') {
+            const std::size_t digits = end + 1;
+            end = digits;
+            while (end < text.size() && is_digit(text[end])) {
+                ++end;
+            }
+            if (end == digits) {
+                return false;
+            }
+            fraction = true;
+        }
+        return true;
+    }
+};
+
+"#;
 
 const CPP_DIRECT_DATE_TIME_CARRIER: &str = r#"class XmlSchemaDateTime {
 public:
@@ -3173,18 +3333,30 @@ int main() {
 
     #[test]
     fn temporal_and_constrained_scalars_fail_explicitly() {
-        for kind in [PrimitiveKind::Time, PrimitiveKind::Duration] {
+        // Task 057: a zero-facet direct Duration is now a checked carrier;
+        // Time on the very same field stays a direct-temporal negative.
+        for (kind, supported) in [
+            (PrimitiveKind::Time, false),
+            (PrimitiveKind::Duration, true),
+        ] {
             let mut schema = floating_schema();
             let TypeKind::Record { fields } = &mut schema.types[0].kind else {
                 panic!("floating fixture should contain a record");
             };
             fields.truncate(1);
             fields[0].type_ref = TypeRef::primitive(kind);
-            let error =
-                generate(&schema, CLOSED).expect_err("temporal generation must remain unsupported");
-            assert!(error.message.contains(&format!(
-                "unsupported C++ IR construct: type reference Primitive({kind:?})"
-            )));
+            match generate(&schema, CLOSED) {
+                Ok(source) => {
+                    assert!(supported, "{kind:?} must remain unsupported");
+                    assert!(source.contains("XmlSchemaDuration"), "{kind:?}");
+                }
+                Err(error) => {
+                    assert!(!supported, "{kind:?}: {}", error.message);
+                    assert!(error.message.contains(&format!(
+                        "unsupported C++ IR construct: type reference Primitive({kind:?})"
+                    )));
+                }
+            }
         }
 
         // Task 053: Binary with only `length` is now a supported carrier, so

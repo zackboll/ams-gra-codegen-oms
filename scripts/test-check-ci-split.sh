@@ -51,6 +51,9 @@ expect_fail "fast lost local MSRV" "$tmp/fast-nomsrv.yml" "$deep" "$sleet"
 # Task 056: the real-UCI generated-support gate migrates into Fast CI.
 { cat "$fast"; printf '      - run: cargo test -p ams-gra-codegen-oms --test uci_generated_support\n'; } >"$tmp/fast-t056.yml"
 expect_fail "fast runs the Task 056 real-UCI gate" "$tmp/fast-t056.yml" "$deep" "$sleet"
+# Task 057: the real-UCI duration gate migrates into Fast CI.
+{ cat "$fast"; printf '      - run: cargo test -p ams-gra-codegen-oms --test uci_duration\n'; } >"$tmp/fast-t057.yml"
+expect_fail "fast runs the Task 057 real-UCI gate" "$tmp/fast-t057.yml" "$deep" "$sleet"
 grep -v -- '- run: cargo test --workspace' "$fast" >"$tmp/fast-notest.yml"
 expect_fail "fast lost workspace test" "$tmp/fast-notest.yml" "$deep" "$sleet"
 
@@ -67,7 +70,13 @@ for line in \
   '--test uci_generated_support' \
   'UCI 2.5 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' \
   'UCI 2.6 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' \
-  'UCI 2.5 CATEGORY-A GENERATED SUPPORT PARITY: PASSED'; do
+  'UCI 2.5 CATEGORY-A GENERATED SUPPORT PARITY: PASSED' \
+  '--test uci_duration' \
+  'UCI 2.5 DURATION INVENTORY: PASSED' \
+  'UCI 2.6 DURATION INVENTORY: PASSED' \
+  'UCI 2.5 DURATION MESSAGE IMPACT: RECORDED' \
+  'UCI 2.6 DURATION MESSAGE IMPACT: RECORDED' \
+  'REAL CATEGORY-A DURATION SERVICE: PASSED'; do
   grep -Fv -- "$line" "$deep" >"$tmp/deep-drop.yml"
   expect_fail "deep dropped: $line" "$fast" "$tmp/deep-drop.yml" "$sleet"
 done
@@ -114,6 +123,16 @@ task056_markers() {
   grep -Fqx 'UCI 2.6 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' <<<"$output"
   grep -Fqx 'UCI 2.5 CATEGORY-A GENERATED SUPPORT PARITY: PASSED' <<<"$output"
   grep -qE '^test result: ok\. 2 passed' <<<"$output"
+}
+task057_markers() {
+  set -euo pipefail
+  local output="$1"
+  grep -Fqx 'UCI 2.5 DURATION INVENTORY: PASSED' <<<"$output"
+  grep -Fqx 'UCI 2.6 DURATION INVENTORY: PASSED' <<<"$output"
+  grep -Fqx 'UCI 2.5 DURATION MESSAGE IMPACT: RECORDED' <<<"$output"
+  grep -Fqx 'UCI 2.6 DURATION MESSAGE IMPACT: RECORDED' <<<"$output"
+  grep -Eqx '(test task057_real_uci_category_a_log_generates_and_compiles \.\.\. )?UCI 2\.5 REAL CATEGORY-A DURATION SERVICE: PASSED' <<<"$output"
+  grep -qE '^test result: ok\. 4 passed' <<<"$output"
 }
 # Run a marker-check function as a PLAIN statement (never inside if/||/&&):
 # bash disables errexit for everything in a conditional context, subshells
@@ -201,13 +220,54 @@ glued="${good056/UCI 2.5 ada ORDEROFBATTLE: selected 55
 /}"
 must_reject "prefixed 056 marker" task056_markers "$glued"
 
+# Task 057: each test's FIRST printed line is a detail row, which is the one
+# libtest's unterminated "test <name> ... " prefix lands on; markers are whole.
+good057="running 4 tests
+test task057_real_uci_category_a_log_generates_and_compiles ... UCI 2.5 REAL CATEGORY-A DURATION SERVICE: PASSED
+ok
+test task057_real_uci_2_5_duration_inventory ... UCI 2.5 NAMED DURATION: DurationType | x
+UCI 2.5 DURATION SUMMARY: named=1 direct_refs=9
+UCI 2.5 DURATION INVENTORY: PASSED
+ok
+test task057_real_uci_2_6_duration_inventory ... UCI 2.6 NAMED DURATION: DurationType | x
+UCI 2.6 DURATION INVENTORY: PASSED
+ok
+test task057_real_uci_duration_message_impact ... UCI 2.5 NAMED DURATION: DurationType | x
+UCI 2.5 DURATION MESSAGE IMPACT: RECORDED
+UCI 2.6 DURATION MESSAGE IMPACT: RECORDED
+ok
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+$noise"
+must_accept task057_markers "$good057"
+# The category-A marker also passes when it lands on its own line.
+must_accept task057_markers "${good057/test task057_real_uci_category_a_log_generates_and_compiles ... /}"
+# ...but not behind some OTHER test's prefix.
+must_reject "foreign 057 CATEGORY-A prefix" task057_markers \
+  "${good057/test task057_real_uci_category_a_log_generates_and_compiles/test some_other_test}"
+for marker in \
+  'UCI 2.5 DURATION INVENTORY: PASSED' \
+  'UCI 2.6 DURATION INVENTORY: PASSED' \
+  'UCI 2.5 DURATION MESSAGE IMPACT: RECORDED' \
+  'UCI 2.6 DURATION MESSAGE IMPACT: RECORDED' \
+  'UCI 2.5 REAL CATEGORY-A DURATION SERVICE: PASSED' \
+  'test result: ok. 4 passed'; do
+  must_reject "missing $marker" task057_markers "${good057/"$marker"/}"
+done
+# A marker glued to libtest's prefix is not a whole line and must not count.
+glued057="${good057/UCI 2.6 NAMED DURATION: DurationType | x
+/}"
+must_reject "prefixed 057 marker" task057_markers "$glued057"
+
 # The Deep CI marker lines must be exactly the shapes tested above.
 for shape in \
   "grep -Eqx '(test task054_real_uci_category_a_selection_generates_and_compiles \\.\\.\\. )?UCI 2\\.5 REAL CATEGORY-A MEMBER REMAPPING: PASSED' <<<\"\$output\"" \
   "grep -Fqx 'UCI 2.6 BINARY PROVENANCE INVENTORY: PASSED' <<<\"\$output\"" \
   "grep -Fqx 'UCI 2.6 CONSTRAINED BINARY MESSAGE IMPACT: PASSED' <<<\"\$output\"" \
   "grep -Fqx 'UCI 2.6 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' <<<\"\$output\"" \
-  "grep -Fqx 'UCI 2.5 CATEGORY-A GENERATED SUPPORT PARITY: PASSED' <<<\"\$output\""; do
+  "grep -Fqx 'UCI 2.5 CATEGORY-A GENERATED SUPPORT PARITY: PASSED' <<<\"\$output\"" \
+  "grep -Fqx 'UCI 2.6 DURATION INVENTORY: PASSED' <<<\"\$output\"" \
+  "grep -Fqx 'UCI 2.6 DURATION MESSAGE IMPACT: RECORDED' <<<\"\$output\"" \
+  "grep -Eqx '(test task057_real_uci_category_a_log_generates_and_compiles \\.\\.\\. )?UCI 2\\.5 REAL CATEGORY-A DURATION SERVICE: PASSED' <<<\"\$output\""; do
   grep -Fq -- "$shape" "$deep" || die "deep-ci.yml no longer uses tested shape: $shape"
   ok
 done

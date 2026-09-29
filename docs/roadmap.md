@@ -113,6 +113,10 @@ backend already implements that primitive's *value* representation:
 | `String` | **unchanged** | shared `Optional_String`, no per-field wrapper |
 | `DateTime`/`Time`/`Duration`/`Decimal` | unsupported | no *direct* primitive value representation |
 
+(Later: Task 046 gives unconstrained direct `DateTime` and Task 057 gives
+unconstrained direct `Duration` a validated carrier that composes with this
+wrapper. `Time` and `Decimal` remain unsupported.)
+
 Task 036 does **not** change that last row. It adds a **named** `DateTime`
 declaration carrying the UCI Zulu profile, which is a different question: a
 named declaration gets its own generated wrapper type, and an optional field
@@ -140,7 +144,15 @@ they do still require default constraints.
       validated lexical carrier per generated unit and shares the Task 036
       calendar parser, admitting absent, Z and bounded numeric timezones.
       Named unconstrained DateTime declarations remain unsupported;
-- [ ] `Time` and `Duration`, and any *named* `DateTime` outside the Zulu profile
+- [x] **named zero-facet `xs:duration`** (UCI `DurationType`) and **direct
+      unconstrained `xs:duration`** fields / Choice alternatives -- Task 057,
+      one checked lexical carrier and one shared parser per unit in all three
+      backends, plus the Rust OMS JSON codec (JSON string = stored lexical).
+      No arithmetic, ordering or value-space equality is claimed. See
+      [Task 057](task-057-duration-support.md);
+- [ ] constrained `Duration` (range, pattern, length facets) -- fail closed
+      (none exists in pinned UCI);
+- [ ] `Time`, and any *named* `DateTime` outside the Zulu profile
       (unconstrained, a different pattern, multiple alternatives or groups, or
       an unsupported neighbouring facet) — all fail closed. `TimeType` carries
       the *same* `.+Z` text as the supported DateTime profile and was
@@ -744,11 +756,14 @@ Progress (typed LA-CAL integration as a whole is **not** complete):
       projection / `CoverageAnalysis` / baseline snapshot, in separate
       `generated_support_*` fields; READY requires them to render.
       `OrderOfBattle` is now NOT READY before any backend call.
-- [ ] the blockers Task 056 now exposes, each still open and NOT implemented:
+- [x] `xs:duration` (`DurationType`, direct `xs:duration` members such as
+      `EphemerisOrbitalModelType.IntegratorStepSize`) -- Task 057 model support
+      in Ada/Rust/C++ and the Rust Duration codec. `EphemerisOrbitalModelType`
+      is now renderable.
+- [ ] the blockers Task 056 exposed that remain open and NOT implemented:
       `AircraftIdentifierType` (and sibling constrained-String facet
-      profiles), `xs:duration` (`DurationType`, direct `xs:duration` members
-      such as `EphemerisOrbitalModelType.IntegratorStepSize`),
-      `EphemerisOrbitalModelType`, `EmptyType`.
+      profiles; now the first OrderOfBattle support blocker in BOTH
+      releases), `EmptyType`, `xs:time`.
 - [ ] plan binding scope: `SchemaBinding` fingerprints the contract-selected
       closure, not generated-support descendants, so changing only a support
       descendant between plan resolution and reuse is not detected as a
@@ -766,6 +781,7 @@ Task 052:  xs:hexBinary lexical provenance in Schema IR; Rust hex codecs
 Task 053:  constrained named Binary carriers (octet length domain), all backends
 Task 054:  reserved Record/Choice member identifier remapping, all backends
 Task 056:  readiness accounts for generated-support declarations
+Task 057:  XML Schema duration checked lexical carriers, all backends; Rust codec
 ```
 
 See [Task 049](task-049-rust-la-cal-runtime.md),

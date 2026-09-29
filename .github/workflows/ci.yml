@@ -132,6 +132,11 @@ jobs:
           require_one_test direct_date_time_and_named_zulu_share_the_gnat_parser \
             cargo test -p ams-gra-oms-backend-ada --test direct_datetime \
             direct_date_time_and_named_zulu_share_the_gnat_parser
+          # Task 057: the shared duration corpus against the named and direct
+          # Ada carriers, under the default policy and Assertion_Policy (Ignore).
+          require_one_test named_and_direct_duration_share_the_gnat_validator_under_both_policies \
+            cargo test -p ams-gra-oms-backend-ada --test duration \
+            named_and_direct_duration_share_the_gnat_validator_under_both_policies
           # Task 041: the whitespace-visible family. These are the probes that
           # actually EXECUTE the two normalization modes, so a run that skipped
           # them could report green while a collapse carrier stored the wrong
@@ -246,6 +251,18 @@ jobs:
           require_one_test task050_generated_codec_round_trips_through_mock_owp \
             cargo test -p ams-gra-oms-runtime-rust-facade-tests --test generated_codec_mock_owp \
             task050_generated_codec_round_trips_through_mock_owp
+          # Task 057: generated xs:duration codec (JSON string = stored lexical).
+          for test in \
+            task057_duration_round_trips_with_its_stored_spelling \
+            task057_decode_collapses_once_through_the_model_constructor \
+            task057_invalid_duration_lexicals_are_rejected_by_the_model \
+            task057_non_string_json_is_rejected; do
+            require_one_test "$test" \
+              cargo test -p ams-gra-oms-runtime-rust-facade-tests --test generated_codec_duration "$test"
+          done
+          require_one_test task057_duration_generated_codec_round_trips_through_mock_owp \
+            cargo test -p ams-gra-oms-runtime-rust-facade-tests --test generated_codec_mock_owp \
+            task057_duration_generated_codec_round_trips_through_mock_owp
           # Task 051 replaced task050_non_oam_payload_fails_codec_preflight with
           # task051_qualified_non_oam_payload_is_codec_ready (below): a
           # qualified non-OAM payload is now codec READY. Task 052 replaced

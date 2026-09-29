@@ -15,7 +15,7 @@
 
        plus four UNRELATED declarations that no contract here selects:
 
-         UnrelatedDuration       xs:duration; no backend renders it, so
+         UnrelatedTime       xs:time; no backend renders it, so
                                  ordinary full-schema 'generate' FAILS while
                                  'service-check' reports READY and
                                  'service-generate' succeeds.
@@ -62,12 +62,12 @@
       <xs:element name="Only" type="t:OnlyBType"/>
     </xs:sequence>
   </xs:complexType>
-  <xs:simpleType name="UnrelatedDuration">
-    <xs:restriction base="xs:duration"/>
+  <xs:simpleType name="UnrelatedTime">
+    <xs:restriction base="xs:time"/>
   </xs:simpleType>
-  <xs:complexType name="UnrelatedDurationType">
+  <xs:complexType name="UnrelatedTimeType">
     <xs:sequence>
-      <xs:element name="Elapsed" type="t:UnrelatedDuration"/>
+      <xs:element name="Elapsed" type="t:UnrelatedTime"/>
     </xs:sequence>
   </xs:complexType>
   <xs:complexType name="UnrelatedBinaryType">
@@ -82,7 +82,7 @@
   </xs:complexType>
   <xs:element name="MessageA" type="t:PayloadA" uci:version="001.000.000.000"/>
   <xs:element name="MessageB" type="t:PayloadB" uci:version="001.000.000.000"/>
-  <xs:element name="UnrelatedDurationReport" type="t:UnrelatedDurationType" uci:version="001.000.000.000"/>
+  <xs:element name="UnrelatedTimeReport" type="t:UnrelatedTimeType" uci:version="001.000.000.000"/>
   <xs:element name="UnrelatedUnboundedReport" type="t:UnrelatedUnboundedType" uci:version="001.000.000.000"/>
   <xs:element name="UnrelatedBinaryReport" type="t:UnrelatedBinaryType" uci:version="001.000.000.000"/>
   <xs:element name="UnrelatedFloatReport" type="t:UnrelatedFloatType" uci:version="001.000.000.000"/>

@@ -102,10 +102,14 @@ const RELEASES: [Expected; 2] = [
         sha256: UCI_25_SHA256,
         selected_types: 55,
         support_types: 442,
-        unsupported_support: 42,
-        // Its `IntegratorStepSize` is a direct xs:duration: the declaration
-        // behind the historical Ada "type reference Primitive(Duration)".
-        first_unsupported_support: "EphemerisOrbitalModelType",
+        // Task 057: 42 -> 39. `EphemerisOrbitalModelType` (direct
+        // `IntegratorStepSize`), `OrbitalEphemerisParametersReferenceType`
+        // (direct `EphemerisResultsStepSize`) and the named `DurationType`
+        // are renderable, so the historical Ada "type reference
+        // Primitive(Duration)" first blocker is gone and the shared String
+        // profile boundary is now first, exactly as in 2.6.
+        unsupported_support: 39,
+        first_unsupported_support: "AircraftIdentifierType",
     },
     Expected {
         release: "UCI 2.6",
@@ -114,7 +118,9 @@ const RELEASES: [Expected; 2] = [
         sha256: UCI_26_SHA256,
         selected_types: 56,
         support_types: 442,
-        unsupported_support: 40,
+        // Task 057: 40 -> 39; only the named `DurationType` became
+        // renderable (2.6 has no direct xs:duration).
+        unsupported_support: 39,
         first_unsupported_support: "AircraftIdentifierType",
     },
 ];
@@ -181,23 +187,23 @@ fn task056_real_uci_order_of_battle_support_parity() {
                 .generate(projection.schema(), WORLD)
                 .expect_err("the backend rejects the projected schema")
                 .message;
-            let named = ["AircraftIdentifierType", "DurationType"]
-                .into_iter()
-                .find(|name| error.contains(&format!(" {name}")));
-            match named {
-                Some(name) => assert!(
-                    unsupported.iter().any(|entry| entry.local_name == name),
-                    "{cell}: backend blocker {name} missing from the support set"
-                ),
-                // 2.5 Ada rejects EphemerisOrbitalModelType's direct
-                // xs:duration member, reported as a bare primitive reference.
-                None => assert!(
-                    error.contains("Primitive(Duration)")
-                        && unsupported
-                            .iter()
-                            .any(|entry| entry.local_name == "EphemerisOrbitalModelType"),
-                    "{cell}: unexpected backend failure {error}"
-                ),
+            // Task 057: every backend in both releases now fails first on the
+            // same String-profile declaration, which is in the support set.
+            // No Duration shape may be a backend blocker or a support blocker.
+            assert!(
+                error.contains(" AircraftIdentifierType"),
+                "{cell}: unexpected backend failure {error}"
+            );
+            assert!(!error.contains("Duration"), "{cell}: {error}");
+            for gone in [
+                "DurationType",
+                "EphemerisOrbitalModelType",
+                "OrbitalEphemerisParametersReferenceType",
+            ] {
+                assert!(
+                    unsupported.iter().all(|entry| entry.local_name != gone),
+                    "{cell}: {gone} is still unsupported"
+                );
             }
             println!(
                 "{cell} ORDEROFBATTLE: selected {} support {} unsupported support {} first {} \

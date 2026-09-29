@@ -1143,3 +1143,22 @@ class also admits LF and CR, multiple pattern alternatives, the explicit
 `whiteSpace = collapse` `WhitespaceVisibleString*` profiles, and
 `NATO_SpecialWordsType` — and every direct field-local constrained String remain
 unsupported and fail closed. Ordinary unconstrained `String` is unchanged.
+
+## Task 057 — XML Schema `duration`
+
+Fresh inventory from the pinned roots, before any production change:
+
+* UCI 2.5 has one named `DurationType <- xs:duration` with **zero facets**,
+  and **9** direct `xs:duration` members on 7 concrete owners: 8 Record
+  fields and 1 Choice alternative (`CollectionTime`). Two members are
+  required; all are field-local zero-facet and none is nillable.
+* UCI 2.6 has the same zero-facet `DurationType` and **0** direct members.
+
+Neither release has a constrained Duration. Both shapes are now checked
+lexical carriers in Ada, Rust and C++, with a Rust OMS JSON string codec.
+`xs:time` and constrained Duration stay unsupported.
+
+OrderOfBattle stays NOT READY on generated support. Its first unsupported
+support declaration is now `AircraftIdentifierType` in both releases (2.5
+was `EphemerisOrbitalModelType`). The full detail is in
+[Task 057](task-057-duration-support.md).

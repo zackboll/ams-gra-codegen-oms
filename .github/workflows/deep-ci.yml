@@ -126,6 +126,25 @@ jobs:
           grep -Fqx 'UCI 2.6 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' <<<"$output"
           grep -Fqx 'UCI 2.5 CATEGORY-A GENERATED SUPPORT PARITY: PASSED' <<<"$output"
           grep -qE '^test result: ok\. 2 passed' <<<"$output"
+      # Task 057: fresh XML Schema duration inventory (named + direct, every
+      # shape zero-facet), every Duration surface renderable in all three
+      # backends, the real message-impact classification, and the smallest
+      # real category-A service (`Log`) generating and compiling in Ada, Rust
+      # and C++. The inventory/impact tests print a detail row before their
+      # markers; the category-A test prints its marker FIRST, so it may share
+      # libtest's unterminated "test <name> ... " line (as Task 054's does).
+      - name: Real UCI duration inventory and message impact (Task 057, must execute)
+        run: |
+          set -euo pipefail
+          output="$(cargo test --release -p ams-gra-codegen-oms --test uci_duration -- \
+            --nocapture --test-threads 1 2>&1)"
+          printf '%s\n' "$output"
+          grep -Fqx 'UCI 2.5 DURATION INVENTORY: PASSED' <<<"$output"
+          grep -Fqx 'UCI 2.6 DURATION INVENTORY: PASSED' <<<"$output"
+          grep -Fqx 'UCI 2.5 DURATION MESSAGE IMPACT: RECORDED' <<<"$output"
+          grep -Fqx 'UCI 2.6 DURATION MESSAGE IMPACT: RECORDED' <<<"$output"
+          grep -Eqx '(test task057_real_uci_category_a_log_generates_and_compiles \.\.\. )?UCI 2\.5 REAL CATEGORY-A DURATION SERVICE: PASSED' <<<"$output"
+          grep -qE '^test result: ok\. 4 passed' <<<"$output"
 
   # The runtime crates declare rust-version = "1.95". Fast CI checks them at
   # 1.95.0 on synthetic fixtures only; this job adds the generated REAL UCI 2.5

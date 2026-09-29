@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic Task 057 selected-service fixture.
+
+       DurationReport -> DurationPayload
+           NamedDuration     : SpanType       (named zero-facet xs:duration)
+           DirectDuration    : xs:duration    1..1
+           OptionalDuration  : xs:duration    0..1
+           RepeatedDuration  : xs:duration    0..unbounded
+           Concrete          : TimedConcrete  (inherits Step : xs:duration)
+
+     Unselected negative control, reached only by its own message:
+       ClockReport       -> ClockPayload { Clock : xs:time }        (Time)
+
+     A CONSTRAINED Duration cannot appear here: the XSD frontend rejects every
+     facet on an xs:duration restriction at load time (see
+     duration-constrained.xsd), and the shared classifier independently
+     rejects a constrained Duration in IR. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:t="urn:test"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:test" elementFormDefault="qualified">
+  <xs:simpleType name="SpanType">
+    <xs:restriction base="xs:duration"/>
+  </xs:simpleType>
+  <xs:complexType name="TimedBase" abstract="true">
+    <xs:sequence>
+      <xs:element name="Step" type="xs:duration"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="TimedConcrete">
+    <xs:complexContent>
+      <xs:extension base="t:TimedBase">
+        <xs:sequence>
+          <xs:element name="Label" type="xs:string"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="DurationPayload">
+    <xs:sequence>
+      <xs:element name="NamedDuration" type="t:SpanType"/>
+      <xs:element name="DirectDuration" type="xs:duration"/>
+      <xs:element name="OptionalDuration" type="xs:duration" minOccurs="0"/>
+      <xs:element name="RepeatedDuration" type="xs:duration" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="Concrete" type="t:TimedConcrete"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="ClockPayload">
+    <xs:sequence>
+      <xs:element name="Clock" type="xs:time"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="DurationReport" type="t:DurationPayload" uci:version="001.000.000.000"/>
+  <xs:element name="ClockReport" type="t:ClockPayload" uci:version="001.000.000.000"/>
+</xs:schema>

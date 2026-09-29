@@ -34,7 +34,10 @@ use crate::coverage::BackendLanguage;
 use crate::floating::floating_domain;
 use crate::string_profile::string_profile;
 use crate::structure::{effective_choice_alternatives, effective_record_fields};
-use crate::temporal::{emissions_emit_direct_date_time, temporal_profile};
+use crate::temporal::{
+    TemporalProfile, emissions_emit_direct_date_time, emissions_emit_direct_duration,
+    schema_emits_named_temporal_profile, temporal_profile,
+};
 use crate::world::GenerationWorld;
 use crate::{AbstractValueProjection, TypeEmission, name_preflight_plan};
 use ams_gra_oms_ir::{
@@ -1386,7 +1389,7 @@ fn collect_ada_wrapper_callable_conflicts(
     schema: &SchemaIr,
     emissions: &[TypeEmission<'_>],
     world: GenerationWorld,
-    emits_direct_date_time: bool,
+    direct: DirectTemporalSupport,
     conflicts: &mut Vec<CollectedNameError>,
 ) {
     for (declaration, published) in ada_sequence_callable_owners(schema, emissions, world) {
@@ -1429,10 +1432,12 @@ fn collect_ada_wrapper_callable_conflicts(
             conflicts.push(CollectedNameError::new(error, &[first, &source]));
         }
     }
-    // The conditional direct carrier publishes the same overloadable pair.
-    // It has no schema owner, so attribute a collision only to the conflicting
-    // user declaration, while preserving the ordinary wrapper overload model.
-    if emits_direct_date_time {
+    // The conditional direct carriers (Task 046 DateTime, Task 057 Duration)
+    // publish the same overloadable pair. They have no schema owner, so a
+    // collision is attributed only to the conflicting user declaration, while
+    // preserving the ordinary wrapper overload model. Both carriers publish
+    // the identical pair, so one report per conflicting name is exact.
+    if direct.date_time || direct.duration {
         for callable in ADA_WRAPPER_CALLABLES {
             let key = identity_key(BackendLanguage::Ada, callable);
             let Some(first) = top_level.taken.get(&key) else {
@@ -1468,6 +1473,25 @@ pub fn schema_emits_ada_binary_vectors(schema: &SchemaIr) -> bool {
     })
 }
 
+/// The direct-primitive temporal support carriers one planned emission surface
+/// requires, decided ONCE per generated-name pass from the caller's plan.
+#[derive(Debug, Clone, Copy)]
+struct DirectTemporalSupport {
+    /// Task 046: `XML_Schema_Date_Time` / `XmlSchemaDateTime`.
+    date_time: bool,
+    /// Task 057: `XML_Schema_Duration` / `XmlSchemaDuration`.
+    duration: bool,
+}
+
+impl DirectTemporalSupport {
+    fn of(schema: &SchemaIr, emissions: &[TypeEmission<'_>], world: GenerationWorld) -> Self {
+        Self {
+            date_time: emissions_emit_direct_date_time(schema, emissions, world),
+            duration: emissions_emit_direct_duration(schema, emissions, world),
+        }
+    }
+}
+
 /// Register the fixed and conditional support type names one backend emits
 /// into the generated top-level scope.
 ///
@@ -1487,8 +1511,9 @@ fn register_support_names(
     top_level: &mut Region,
     schema: &SchemaIr,
     language: BackendLanguage,
-    emits_direct_date_time: bool,
+    direct: DirectTemporalSupport,
 ) -> Result<(), BackendNameError> {
+    let emits_direct_date_time = direct.date_time;
     // Attribution names the generator rather than pretending some schema
     // identifier was responsible for the reservation. Because a support type
     // has no owning declaration, a collision with one implicates only the
@@ -1509,9 +1534,33 @@ fn register_support_names(
     // or a supported named Task 036 Zulu declaration is present. It lives in
     // the same top-level region as schema-generated declarations.
     if language != BackendLanguage::Ada
-        && (emits_direct_date_time || crate::schema_emits_temporal_carrier(schema))
+        && (emits_direct_date_time
+            || schema_emits_named_temporal_profile(schema, TemporalProfile::DateTimeZulu))
     {
         reserve(top_level, "XmlSchemaDateTimeParser")?;
+    }
+    // Task 057: the direct Duration carrier and the ONE shared duration
+    // parser, each reserved exactly when the renderers emit it. A named
+    // zero-facet Duration declaration needs the parser but not the carrier.
+    if direct.duration {
+        reserve(
+            top_level,
+            match language {
+                BackendLanguage::Ada => "XML_Schema_Duration",
+                BackendLanguage::Rust | BackendLanguage::Cpp => "XmlSchemaDuration",
+            },
+        )?;
+    }
+    // Ada's shared validator is a body-level package; a package body shares
+    // its specification's declarative region, so it is reserved as well.
+    if direct.duration || schema_emits_named_temporal_profile(schema, TemporalProfile::Duration) {
+        reserve(
+            top_level,
+            match language {
+                BackendLanguage::Ada => "XML_Schema_Duration_Parser",
+                BackendLanguage::Rust | BackendLanguage::Cpp => "XmlSchemaDurationParser",
+            },
+        )?;
     }
     match language {
         BackendLanguage::Rust => {
@@ -1935,9 +1984,9 @@ pub(crate) fn top_level_generated_names(
 ) -> Result<Vec<String>, BackendNameError> {
     let plan = name_preflight_plan(schema, world);
     let emissions = plan.surfaces();
-    let emits_direct_date_time = emissions_emit_direct_date_time(schema, emissions, world);
+    let direct = DirectTemporalSupport::of(schema, emissions, world);
     let mut top_level = Region::new(language, NameRegion::TopLevel);
-    register_support_names(&mut top_level, schema, language, emits_direct_date_time)?;
+    register_support_names(&mut top_level, schema, language, direct)?;
     register_emitted_declaration_names(&mut top_level, emissions, language)?;
     Ok(top_level.taken.into_keys().collect())
 }
@@ -1979,12 +2028,12 @@ pub fn validate_backend_names(
     let plan = name_preflight_plan(schema, world);
     let emissions = plan.surfaces();
     // One generated-name pass => one name_preflight_plan, shared by all support surfaces.
-    let emits_direct_date_time = emissions_emit_direct_date_time(schema, emissions, world);
+    let direct = DirectTemporalSupport::of(schema, emissions, world);
     let mut top_level = Region::new(language, NameRegion::TopLevel);
     // Generated support types occupy the top-level scope before any user
     // declaration is placed in it, so a user declaration colliding with one is
     // attributed to the user declaration as the second, conflicting source.
-    register_support_names(&mut top_level, schema, language, emits_direct_date_time)?;
+    register_support_names(&mut top_level, schema, language, direct)?;
     register_emitted_declaration_names(&mut top_level, emissions, language)?;
     if language == BackendLanguage::Ada {
         register_ada_kind_companions(&mut top_level, emissions)?;
@@ -2011,7 +2060,7 @@ pub fn validate_backend_names(
             schema,
             emissions,
             world,
-            emits_direct_date_time,
+            direct,
             &mut callables,
         );
         if let Some(conflict) = callables.into_iter().next() {
@@ -2381,11 +2430,11 @@ pub fn unsafe_named_declarations(
     let plan = name_preflight_plan(schema, world);
     let emissions = plan.surfaces();
     // One generated-name pass => one name_preflight_plan, including attribution.
-    let emits_direct_date_time = emissions_emit_direct_date_time(schema, emissions, world);
+    let direct = DirectTemporalSupport::of(schema, emissions, world);
     let mut top_level = Region::collecting(language, NameRegion::TopLevel);
     // Ignoring the `Result` is correct for a collecting region: it only ever
     // returns `Ok`, accumulating into `errors` instead.
-    let _ = register_support_names(&mut top_level, schema, language, emits_direct_date_time);
+    let _ = register_support_names(&mut top_level, schema, language, direct);
     let _ = register_emitted_declaration_names(&mut top_level, emissions, language);
     if language == BackendLanguage::Ada {
         let _ = register_ada_kind_companions(&mut top_level, emissions);
@@ -2416,7 +2465,7 @@ pub fn unsafe_named_declarations(
             schema,
             emissions,
             world,
-            emits_direct_date_time,
+            direct,
             &mut literals,
         );
         for conflict in literals {
@@ -2685,6 +2734,266 @@ mod tests {
                 )
                 .contains(&QualifiedName::new(NS, callable))
             );
+        }
+    }
+
+    fn direct_duration(name: &str, cardinality: Cardinality) -> FieldDecl {
+        field(
+            name,
+            TypeRefTarget::Primitive(PrimitiveKind::Duration),
+            cardinality,
+        )
+    }
+
+    fn named_duration(name: &str) -> TypeDecl {
+        TypeDecl {
+            name: QualifiedName::new(NS, name),
+            is_abstract: false,
+            base_type: Some(TypeRef::primitive(PrimitiveKind::Duration)),
+            kind: TypeKind::Primitive(PrimitiveKind::Duration),
+            constraints: ConstraintSet::default(),
+            documentation: None,
+            source: SourceRef {
+                document: "t.xsd".to_owned(),
+                line: None,
+            },
+        }
+    }
+
+    /// Task 057: the direct Duration predicate follows exactly the Task 046
+    /// emission rules, and the plan-reusing and convenience APIs agree.
+    #[test]
+    fn direct_duration_support_tracks_emitted_storage_and_inheritance() {
+        use crate::{emissions_emit_direct_duration, schema_emits_direct_duration};
+        let check = |schema: SchemaIr, world: GenerationWorld, expected: bool| {
+            let plan = crate::name_preflight_plan(&schema, world);
+            let from_plan = emissions_emit_direct_duration(&schema, plan.surfaces(), world);
+            assert_eq!(from_plan, expected);
+            assert_eq!(schema_emits_direct_duration(&schema, world), from_plan);
+        };
+        for world in [
+            GenerationWorld::ClosedSchemaSet,
+            GenerationWorld::OpenExtensions,
+        ] {
+            for cardinality in [
+                Cardinality::REQUIRED_ONE,
+                Cardinality::OPTIONAL_ONE,
+                Cardinality {
+                    min_occurs: 0,
+                    max_occurs: None,
+                },
+            ] {
+                check(
+                    schema_with(vec![record(
+                        "Owner",
+                        vec![direct_duration("Elapsed", cardinality)],
+                    )]),
+                    world,
+                    true,
+                );
+            }
+            // Unused abstract ancestor: no storage owner, no carrier.
+            let mut ancestor = record(
+                "Ancestor",
+                vec![direct_duration("Elapsed", Cardinality::REQUIRED_ONE)],
+            );
+            ancestor.is_abstract = true;
+            check(schema_with(vec![ancestor.clone()]), world, false);
+            // Concrete inherited member: carrier emitted.
+            let mut descendant = record("Descendant", vec![]);
+            descendant.base_type = Some(TypeRef::named(ancestor.name.clone()));
+            check(schema_with(vec![ancestor, descendant]), world, true);
+            // Neighbours never emit it; DateTime and Duration stay separate.
+            for kind in [
+                PrimitiveKind::String,
+                PrimitiveKind::Time,
+                PrimitiveKind::DateTime,
+            ] {
+                check(
+                    schema_with(vec![record(
+                        "Owner",
+                        vec![field(
+                            "When",
+                            TypeRefTarget::Primitive(kind),
+                            Cardinality::REQUIRED_ONE,
+                        )],
+                    )]),
+                    world,
+                    false,
+                );
+            }
+            // A named Duration declaration needs the parser, not the carrier.
+            check(schema_with(vec![named_duration("Span")]), world, false);
+            let mut constrained = direct_duration("Elapsed", Cardinality::REQUIRED_ONE);
+            constrained.constraints.max_length = Some(9);
+            check(
+                schema_with(vec![record("Owner", vec![constrained])]),
+                world,
+                false,
+            );
+        }
+    }
+
+    /// Task 057: `XML_Schema_Duration` / `XmlSchemaDuration` are reserved
+    /// exactly when a stored direct duration is emitted -- free for a
+    /// duration-free schema and for an unused abstract-only owner, reserved
+    /// for a concrete inherited member.
+    #[test]
+    fn direct_duration_support_names_are_reserved_only_when_emitted() {
+        for (language, name) in [
+            (BackendLanguage::Ada, "XML_Schema_Duration"),
+            (BackendLanguage::Rust, "XmlSchemaDuration"),
+            (BackendLanguage::Cpp, "XmlSchemaDuration"),
+        ] {
+            let colliding = schema_with(vec![
+                record(
+                    "Owner",
+                    vec![direct_duration("Elapsed", Cardinality::REQUIRED_ONE)],
+                ),
+                record(name, vec![]),
+            ]);
+            assert_collides(&colliding, language, name);
+            assert!(
+                unsafe_named_declarations(&colliding, language, GenerationWorld::ClosedSchemaSet)
+                    .contains(&QualifiedName::new(NS, name))
+            );
+            for free in [
+                schema_with(vec![record(name, vec![])]),
+                // A named Duration alone emits no direct carrier.
+                schema_with(vec![named_duration("Span"), record(name, vec![])]),
+            ] {
+                assert!(
+                    validate_backend_names(&free, language, GenerationWorld::ClosedSchemaSet)
+                        .is_ok(),
+                    "{language:?} {name} must stay free"
+                );
+            }
+            let mut ancestor = record(
+                "Ancestor",
+                vec![direct_duration("Elapsed", Cardinality::REQUIRED_ONE)],
+            );
+            ancestor.is_abstract = true;
+            assert!(
+                validate_backend_names(
+                    &schema_with(vec![ancestor.clone(), record(name, vec![])]),
+                    language,
+                    GenerationWorld::ClosedSchemaSet
+                )
+                .is_ok()
+            );
+            let mut descendant = record("Descendant", vec![]);
+            descendant.base_type = Some(TypeRef::named(ancestor.name.clone()));
+            assert_collides(
+                &schema_with(vec![ancestor, descendant, record(name, vec![])]),
+                language,
+                name,
+            );
+        }
+    }
+
+    /// Task 057: the ONE shared duration parser is reserved when either a
+    /// direct carrier or a named zero-facet Duration is emitted, and not
+    /// otherwise -- including for an unused abstract-only owner.
+    #[test]
+    fn shared_duration_parser_is_reserved_only_when_emitted() {
+        for (language, name) in [
+            (BackendLanguage::Ada, "XML_Schema_Duration_Parser"),
+            (BackendLanguage::Rust, "XmlSchemaDurationParser"),
+            (BackendLanguage::Cpp, "XmlSchemaDurationParser"),
+        ] {
+            assert_collides(
+                &schema_with(vec![
+                    record(
+                        "Owner",
+                        vec![direct_duration("Elapsed", Cardinality::OPTIONAL_ONE)],
+                    ),
+                    record(name, vec![]),
+                ]),
+                language,
+                name,
+            );
+            assert_collides(
+                &schema_with(vec![named_duration("Span"), record(name, vec![])]),
+                language,
+                name,
+            );
+            let mut ancestor = record(
+                "Ancestor",
+                vec![direct_duration("Elapsed", Cardinality::REQUIRED_ONE)],
+            );
+            ancestor.is_abstract = true;
+            for free in [
+                schema_with(vec![record(name, vec![])]),
+                schema_with(vec![date_time_zulu("Instant"), record(name, vec![])]),
+                schema_with(vec![ancestor, record(name, vec![])]),
+            ] {
+                assert!(
+                    validate_backend_names(&free, language, GenerationWorld::ClosedSchemaSet)
+                        .is_ok(),
+                    "{language:?} {name} must stay free"
+                );
+            }
+        }
+        // Duration never reserves the dateTime parser.
+        for language in [BackendLanguage::Rust, BackendLanguage::Cpp] {
+            assert!(
+                validate_backend_names(
+                    &schema_with(vec![
+                        named_duration("Span"),
+                        record("XmlSchemaDateTimeParser", vec![]),
+                    ]),
+                    language,
+                    GenerationWorld::ClosedSchemaSet
+                )
+                .is_ok()
+            );
+        }
+    }
+
+    /// Task 057: Duration's `Create` / `Value` join the existing overload-aware
+    /// Ada callable model beside every other carrier family, while a
+    /// non-overloadable user declaration named `Create` or `Value` still fails
+    /// before output -- for the direct carrier and for a named Duration.
+    #[test]
+    fn ada_duration_callables_follow_existing_overload_rules() {
+        let owner = record(
+            "Owner",
+            vec![
+                direct_duration("Elapsed", Cardinality::REQUIRED_ONE),
+                direct_date_time("Timestamp", Cardinality::REQUIRED_ONE),
+            ],
+        );
+        let overloaded = schema_with(vec![
+            owner,
+            named_duration("Span"),
+            constrained_float("BurnRate"),
+            date_time_zulu("ZuluStamp"),
+            nato_special_words("Marking"),
+            constrained_binary("Digest", Some(32)),
+        ]);
+        let verdict = validate_backend_names(
+            &overloaded,
+            BackendLanguage::Ada,
+            GenerationWorld::ClosedSchemaSet,
+        );
+        assert!(verdict.is_ok(), "{verdict:?}");
+        let direct_only = record(
+            "Owner",
+            vec![direct_duration("Elapsed", Cardinality::REQUIRED_ONE)],
+        );
+        for source in [direct_only, named_duration("Span")] {
+            for callable in ["Create", "Value"] {
+                let schema = schema_with(vec![source.clone(), record(callable, vec![])]);
+                assert_collides(&schema, BackendLanguage::Ada, callable);
+                assert!(
+                    unsafe_named_declarations(
+                        &schema,
+                        BackendLanguage::Ada,
+                        GenerationWorld::ClosedSchemaSet
+                    )
+                    .contains(&QualifiedName::new(NS, callable))
+                );
+            }
         }
     }
 
@@ -3279,9 +3588,11 @@ mod tests {
             kind: TypeKind::Primitive(PrimitiveKind::Time),
             ..date_time_zulu("WallClock")
         };
+        // Task 057: a zero-facet Duration is now a supported carrier (its
+        // Create/Value are tested elsewhere); a *constrained* Duration is the
+        // unsupported neighbour that must still reserve nothing.
         let duration = TypeDecl {
             kind: TypeKind::Primitive(PrimitiveKind::Duration),
-            constraints: ConstraintSet::default(),
             ..date_time_zulu("Span")
         };
         for declaration in [unconstrained_date_time, wrong_pattern, zulu_time, duration] {

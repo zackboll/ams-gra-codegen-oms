@@ -13,25 +13,32 @@
          HolderReport -> Holder { Value : Base }        (Base abstract)
            Base descendants (closed-schema support):
              ConcreteGood                               renderable
-             ConcreteBad { Elapsed : BadDuration }      NOT renderable
-           BadDuration  named xs:duration restriction; no backend renders it
+             ConcreteBad { Elapsed : BadTime }          NOT renderable
+           BadTime  named xs:time restriction; no backend renders it
+
+       Task 057 test-fixture adaptation: the intentionally unsupported support
+       primitive was xs:duration (BadDuration/UnrelatedDuration). Task 057
+       makes zero-facet xs:duration renderable, which would silently turn this
+       fixture READY and stop it testing Task 056. xs:time is still
+       unsupported, so it now plays that role; Task 056 semantics are
+       unchanged.
 
        The contract-selected closure of HolderReport is Holder + Base, both
        individually renderable. Generation additionally needs ConcreteGood,
-       ConcreteBad and BadDuration (schema order: BadDuration, ConcreteGood,
+       ConcreteBad and BadTime (schema order: BadTime, ConcreteGood,
        ConcreteBad). Before Task 056 readiness said READY and the backend then
        failed; now readiness is NOT READY on the generated-support surface.
 
        Controls in the same schema set:
 
-         SelectedBadReport -> SelectedBad { Elapsed : BadDuration }
+         SelectedBadReport -> SelectedBad { Elapsed : BadTime }
              the unsupported declaration is SELECTED (ordinary NOT READY)
          GoodHolderReport -> GoodHolder { Value : GoodBase } (GoodBase abstract)
-             every support descendant renders, while BadDuration and
-             UnrelatedDuration stay unselected and unrelated (READY)
-         UnrelatedDuration  xs:duration nothing reaches -->
-  <xs:simpleType name="BadDuration">
-    <xs:restriction base="xs:duration"/>
+             every support descendant renders, while BadTime and
+             UnrelatedTime stay unselected and unrelated (READY)
+         UnrelatedTime  xs:time nothing reaches -->
+  <xs:simpleType name="BadTime">
+    <xs:restriction base="xs:time"/>
   </xs:simpleType>
   <xs:complexType name="Base" abstract="true">
     <xs:sequence>
@@ -51,7 +58,7 @@
     <xs:complexContent>
       <xs:extension base="t:Base">
         <xs:sequence>
-          <xs:element name="Elapsed" type="t:BadDuration"/>
+          <xs:element name="Elapsed" type="t:BadTime"/>
         </xs:sequence>
       </xs:extension>
     </xs:complexContent>
@@ -63,7 +70,7 @@
   </xs:complexType>
   <xs:complexType name="SelectedBad">
     <xs:sequence>
-      <xs:element name="Elapsed" type="t:BadDuration"/>
+      <xs:element name="Elapsed" type="t:BadTime"/>
     </xs:sequence>
   </xs:complexType>
   <xs:complexType name="GoodBase" abstract="true">
@@ -94,8 +101,8 @@
       <xs:element name="Value" type="t:GoodBase"/>
     </xs:sequence>
   </xs:complexType>
-  <xs:simpleType name="UnrelatedDuration">
-    <xs:restriction base="xs:duration"/>
+  <xs:simpleType name="UnrelatedTime">
+    <xs:restriction base="xs:time"/>
   </xs:simpleType>
   <xs:element name="HolderReport" type="t:Holder" uci:version="001.000.000.000"/>
   <xs:element name="SelectedBadReport" type="t:SelectedBad" uci:version="001.000.000.000"/>

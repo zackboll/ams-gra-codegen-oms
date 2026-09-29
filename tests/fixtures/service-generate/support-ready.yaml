@@ -1,7 +1,7 @@
 # SYNTHETIC Task 056 fixture (support-readiness.xsd). Authored for this
 # repository only.
 #
-# Abstract value whose every generated-support descendant renders, beside unselected unsupported xs:duration declarations (READY).
+# Abstract value whose every generated-support descendant renders, beside unselected unsupported xs:time declarations (READY).
 contract_version: "0.1"
 
 service:
