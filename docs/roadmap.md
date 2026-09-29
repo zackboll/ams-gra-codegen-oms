@@ -739,9 +739,22 @@ Progress (typed LA-CAL integration as a whole is **not** complete):
       -> `QueryType_Kind`), now the closed-schema Ada full-schema first blocker.
 - [ ] abstract value targets with no concrete descendant (`SourceCommandEXT`)
       and open-extensions `CapabilityCommandBaseType`.
-- [ ] readiness vs generated-support parity: `OrderOfBattle` is READY yet
-      `service-generate` fails on `AircraftIdentifierType` / `xs:duration`
-      reached only through generated-support expansion (pre-existing).
+- [x] readiness vs generated-support parity (Task 056): readiness measures the
+      projection's generated-support declarations with the same single
+      projection / `CoverageAnalysis` / baseline snapshot, in separate
+      `generated_support_*` fields; READY requires them to render.
+      `OrderOfBattle` is now NOT READY before any backend call.
+- [ ] the blockers Task 056 now exposes, each still open and NOT implemented:
+      `AircraftIdentifierType` (and sibling constrained-String facet
+      profiles), `xs:duration` (`DurationType`, direct `xs:duration` members
+      such as `EphemerisOrbitalModelType.IntegratorStepSize`),
+      `EphemerisOrbitalModelType`, `EmptyType`.
+- [ ] plan binding scope: `SchemaBinding` fingerprints the contract-selected
+      closure, not generated-support descendants, so changing only a support
+      descendant between plan resolution and reuse is not detected as a
+      binding mismatch (readiness and generation still agree, because both
+      re-project the schema they are given). Separate integrity item; not
+      part of Task 056.
 - [ ] reconnect/backoff, TLS/auth policy, timers, service lifecycle.
 
 ```text
@@ -752,6 +765,7 @@ Task 051:  local element wire QNames in Schema IR; qualified non-OAM codecs
 Task 052:  xs:hexBinary lexical provenance in Schema IR; Rust hex codecs
 Task 053:  constrained named Binary carriers (octet length domain), all backends
 Task 054:  reserved Record/Choice member identifier remapping, all backends
+Task 056:  readiness accounts for generated-support declarations
 ```
 
 See [Task 049](task-049-rust-la-cal-runtime.md),
@@ -800,8 +814,8 @@ GNATprove CI was added there; that work belongs here.
 - [x] Fast / Deep CI split (Task 055): one blocking deterministic Fast CI run
       per PR head with same-PR cancellation; real pinned UCI / Sleet / real-UCI
       MSRV evidence in Deep CI on every merge to `main`, nightly and on demand.
-      CI infrastructure only; the `OrderOfBattle` readiness vs generation item
-      in Phase 3 is still open and is the next product-correctness candidate.
+      CI infrastructure only. (The `OrderOfBattle` readiness vs generation
+      item it left open in Phase 3 was closed by Task 056.)
 - [ ] possible follow-ups after measuring the split: consolidate the per-test
       `require_one_test` invocations, cache builds, and decide on branch
       protection once the check names are stable;

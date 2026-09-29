@@ -198,6 +198,8 @@ pub fn project_service_generation_schema(
     schema: &SchemaIr,
     world: GenerationWorld,
 ) -> Result<ServiceGenerationProjection, ServiceGenerationError> {
+    #[cfg(test)]
+    projection_probe::record();
     // 0. Wrong-schema reuse, via the SAME binding mechanism readiness uses.
     //    Verifying here rather than relying on the identity-only lookups below
     //    means a schema with matching names but different semantics cannot
@@ -429,4 +431,24 @@ fn find_declaration<'schema>(
             missing: name.clone(),
             role: MismatchRole::TypeDeclaration,
         })
+}
+
+/// Unit-test-only instrumentation: how many projections this thread has
+/// computed. Lets Task 056 prove readiness still projects exactly once per
+/// call. Compiled out of every non-test build.
+#[cfg(test)]
+pub(crate) mod projection_probe {
+    use std::cell::Cell;
+
+    thread_local! {
+        static PROJECTIONS: Cell<usize> = const { Cell::new(0) };
+    }
+
+    pub(crate) fn record() {
+        PROJECTIONS.with(|count| count.set(count.get() + 1));
+    }
+
+    pub(crate) fn count() -> usize {
+        PROJECTIONS.with(Cell::get)
+    }
 }

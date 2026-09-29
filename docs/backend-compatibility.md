@@ -5112,3 +5112,24 @@ names, service API IDs and wire names are out of scope. Measured before ->
 after: the full-schema first blocker in all 12 cells is no longer a naming
 boundary, and closed-schema message closures are 355 in every backend (2.5
 and 2.6). See [Task 054](task-054-member-identifier-remapping.md).
+
+## Task 056 — generated-support readiness
+
+No backend capability changed. What changed is which declarations the
+selected-service READY verdict consults: in addition to the contract-selected
+semantic closure it now consults the projection's generated-support
+declarations (the Task 024 closed-sum descendants of a selected abstract
+structural value, and their dependencies), with the same baseline
+renderability rules. A declaration is still judged individually, so an
+abstract intermediate retained only for inheritance (`AbstractMiddle`) stays
+renderable exactly as before. Declarations outside the projection are still
+not consulted: this is not full-schema readiness, and the full-schema and
+message-closure coverage counts above are unchanged.
+
+Measured effect on the pinned roots (closed-schema, single-message
+`OrderOfBattle`, identical in Ada / Rust / C++): 2.5 first unsupported
+generated-support declaration `EphemerisOrbitalModelType` (direct
+`xs:duration` member `IntegratorStepSize`; 42 of 442 support declarations
+unsupported); 2.6 `AircraftIdentifierType` (constrained-String facet profile;
+40 of 442). Neither is implemented by Task 056. See
+[Task 056](task-056-generated-support-readiness.md).

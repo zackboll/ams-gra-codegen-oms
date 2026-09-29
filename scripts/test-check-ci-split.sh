@@ -48,6 +48,9 @@ expect_pass "$tmp/fast-comment.yml" "$deep" "$sleet"
 # The PR-side local MSRV check or the final workspace test disappears.
 grep -v 'cargo +1.95.0 check --locked -p ams-gra-oms-runtime-api' "$fast" >"$tmp/fast-nomsrv.yml"
 expect_fail "fast lost local MSRV" "$tmp/fast-nomsrv.yml" "$deep" "$sleet"
+# Task 056: the real-UCI generated-support gate migrates into Fast CI.
+{ cat "$fast"; printf '      - run: cargo test -p ams-gra-codegen-oms --test uci_generated_support\n'; } >"$tmp/fast-t056.yml"
+expect_fail "fast runs the Task 056 real-UCI gate" "$tmp/fast-t056.yml" "$deep" "$sleet"
 grep -v -- '- run: cargo test --workspace' "$fast" >"$tmp/fast-notest.yml"
 expect_fail "fast lost workspace test" "$tmp/fast-notest.yml" "$deep" "$sleet"
 
@@ -60,7 +63,11 @@ for line in \
   'fetch-pinned-uci-2.6.sh' \
   'scripts/run-real-sleet-test.sh' \
   'REAL SUBSYSTEMSTREAM HEXBINARY CODEC: PASSED' \
-  'cargo +1.95.0 check --locked -p ams-gra-oms-runtime-rust-facade-tests'; do
+  'cargo +1.95.0 check --locked -p ams-gra-oms-runtime-rust-facade-tests' \
+  '--test uci_generated_support' \
+  'UCI 2.5 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' \
+  'UCI 2.6 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' \
+  'UCI 2.5 CATEGORY-A GENERATED SUPPORT PARITY: PASSED'; do
   grep -Fv -- "$line" "$deep" >"$tmp/deep-drop.yml"
   expect_fail "deep dropped: $line" "$fast" "$tmp/deep-drop.yml" "$sleet"
 done
@@ -99,6 +106,14 @@ task053_markers() {
   grep -Fqx 'UCI 2.5 CONSTRAINED BINARY MESSAGE IMPACT: PASSED' <<<"$output"
   grep -Fqx 'UCI 2.6 CONSTRAINED BINARY MESSAGE IMPACT: PASSED' <<<"$output"
   grep -qE '^test result: ok\. 3 passed' <<<"$output"
+}
+task056_markers() {
+  set -euo pipefail
+  local output="$1"
+  grep -Fqx 'UCI 2.5 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' <<<"$output"
+  grep -Fqx 'UCI 2.6 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' <<<"$output"
+  grep -Fqx 'UCI 2.5 CATEGORY-A GENERATED SUPPORT PARITY: PASSED' <<<"$output"
+  grep -qE '^test result: ok\. 2 passed' <<<"$output"
 }
 # Run a marker-check function as a PLAIN statement (never inside if/||/&&):
 # bash disables errexit for everything in a conditional context, subshells
@@ -160,11 +175,39 @@ must_accept task053_markers "$good053"
 must_reject "missing 053 test result" task053_markers "${good053/test result: ok. 3 passed/}"
 must_reject "missing message-impact marker" task053_markers "${good053/UCI 2.6 CONSTRAINED BINARY MESSAGE IMPACT: PASSED/}"
 
+# Task 056: each test prints a detail line first, which is the one that lands
+# on libtest's unterminated "test <name> ... " line, so every marker is whole.
+good056="running 2 tests
+test task056_real_uci_category_a_readiness_matches_generation ... UCI 2.5 CATEGORY-A ada: READY+generated 34 NOT READY [\"OrderOfBattle\"]
+UCI 2.5 CATEGORY-A rust: READY+generated 34 NOT READY [\"OrderOfBattle\"]
+UCI 2.5 CATEGORY-A GENERATED SUPPORT PARITY: PASSED
+ok
+test task056_real_uci_order_of_battle_support_parity ... UCI 2.5 ada ORDEROFBATTLE: selected 55
+UCI 2.5 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED
+UCI 2.6 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED
+ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+$noise"
+must_accept task056_markers "$good056"
+for marker in \
+  'UCI 2.5 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' \
+  'UCI 2.6 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' \
+  'UCI 2.5 CATEGORY-A GENERATED SUPPORT PARITY: PASSED' \
+  'test result: ok. 2 passed'; do
+  must_reject "missing $marker" task056_markers "${good056/"$marker"/}"
+done
+# A marker glued to libtest's prefix is not a whole line and must not count.
+glued="${good056/UCI 2.5 ada ORDEROFBATTLE: selected 55
+/}"
+must_reject "prefixed 056 marker" task056_markers "$glued"
+
 # The Deep CI marker lines must be exactly the shapes tested above.
 for shape in \
   "grep -Eqx '(test task054_real_uci_category_a_selection_generates_and_compiles \\.\\.\\. )?UCI 2\\.5 REAL CATEGORY-A MEMBER REMAPPING: PASSED' <<<\"\$output\"" \
   "grep -Fqx 'UCI 2.6 BINARY PROVENANCE INVENTORY: PASSED' <<<\"\$output\"" \
-  "grep -Fqx 'UCI 2.6 CONSTRAINED BINARY MESSAGE IMPACT: PASSED' <<<\"\$output\""; do
+  "grep -Fqx 'UCI 2.6 CONSTRAINED BINARY MESSAGE IMPACT: PASSED' <<<\"\$output\"" \
+  "grep -Fqx 'UCI 2.6 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' <<<\"\$output\"" \
+  "grep -Fqx 'UCI 2.5 CATEGORY-A GENERATED SUPPORT PARITY: PASSED' <<<\"\$output\""; do
   grep -Fq -- "$shape" "$deep" || die "deep-ci.yml no longer uses tested shape: $shape"
   ok
 done

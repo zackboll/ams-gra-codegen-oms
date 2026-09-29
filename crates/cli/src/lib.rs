@@ -1514,6 +1514,19 @@ fn render_service_check(plan: &ServicePlan, readiness: &ServiceBackendReadiness)
         "renderable selected types: {}\n",
         readiness.selected_types_renderable
     ));
+    // Task 056: generated support is reported separately from the selected
+    // closure, and only when the projection has any, so a concrete-only
+    // service's report stays byte-identical to its pre-Task-056 form.
+    if readiness.generated_support_types_total > 0 {
+        report.push_str(&format!(
+            "generated support types: {}\n",
+            readiness.generated_support_types_total
+        ));
+        report.push_str(&format!(
+            "renderable generated support types: {}\n",
+            readiness.generated_support_types_renderable
+        ));
+    }
     report.push_str(&format!(
         "status: {}\n",
         if readiness.is_ready() {
@@ -1530,6 +1543,19 @@ fn render_service_check(plan: &ServicePlan, readiness: &ServiceBackendReadiness)
         report.push_str("unsupported selected types:\n");
         // Schema declaration order, qualified to avoid local-name ambiguity.
         for name in &readiness.unsupported_types {
+            report.push_str(&format!(
+                "  {{{}}}{}\n",
+                name.namespace_uri, name.local_name
+            ));
+        }
+    }
+    if !readiness.unsupported_generated_support_types.is_empty() {
+        // Task 056: the contract did not select these, so they are never
+        // labelled "selected"; they block READY because generation emits them.
+        report.push('\n');
+        report.push_str("unsupported generated support types:\n");
+        // Schema declaration order, as the projection lists support.
+        for name in &readiness.unsupported_generated_support_types {
             report.push_str(&format!(
                 "  {{{}}}{}\n",
                 name.namespace_uri, name.local_name
