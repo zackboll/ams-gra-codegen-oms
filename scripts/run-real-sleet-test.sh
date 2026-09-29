@@ -36,8 +36,12 @@ run_one() {
   output="$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test "$1" -- \
     --exact "$2" --nocapture 2>&1)"
   printf '%s\n' "$output"
-  printf '%s\n' "$output" | grep -q "^$3\$"
-  printf '%s\n' "$output" | grep -qE '^test result: ok\. 1 passed'
+  # Task 055: here-strings, not `printf | grep -q`. Under pipefail a grep that
+  # exits on its first match can SIGPIPE a writer still emitting a large
+  # output and fail an otherwise-passing check. A here-string has no writer
+  # process. `-x` keeps the same whole-line match the `^...$` regex had.
+  grep -Fqx -- "$3" <<<"$output"
+  grep -qE '^test result: ok\. 1 passed' <<<"$output"
 }
 
 # Task 049: generated facade + HANDWRITTEN codec (proves the runtime seam).
