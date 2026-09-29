@@ -693,6 +693,17 @@ via `HexBinaryType`). `HexBinaryType` itself is unconstrained and unchanged.
 Direct field-local Binary facets and Binary patterns remain unsupported. See
 [Task 053](task-053-constrained-binary-carriers.md).
 
+**Task 054 update:** reserved structural member names no longer block
+generation. The pinned releases have zero syntax-invalid Record-field or
+Choice-alternative identifiers; the reserved ones (Ada 58, Rust 10, C++ 7 in
+2.5 / 6 in 2.6, per world) are escaped with `Field_` / `Alternative_`, with
+zero post-remap collisions. Closed-schema message-closure coverage is now 355
+in all three backends (2.5: 355/722, 2.6: 355/725). The full-schema first
+blockers are now non-naming boundaries (Ada `QueryType_Kind` companion clash;
+Rust/C++ `SourceCommandEXT` with no concrete descendants; open-extensions
+`CapabilityCommandBaseType`). See
+[Task 054](task-054-member-identifier-remapping.md).
+
 The iterative progression was:
 
 ```text

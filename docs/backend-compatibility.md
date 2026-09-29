@@ -5091,3 +5091,24 @@ Measured: every pinned cell gains exactly +3 (2.5) / +4 (2.6) declarations
 `IFF_RegisterType`); field-type, field-occurrence and message-closure counts
 are unchanged, and so is every full-schema first blocker (a reserved-word
 name issue). See [Task 053](task-053-constrained-binary-carriers.md).
+
+## Task 054 — reserved Record and Choice member identifiers
+
+The earlier rule "no identifier mangling, escaping, or renaming; an unsafe
+generated name remains a rejection" is narrowed for exactly one case: a
+structural member (effective Record field or Choice alternative) whose
+ordinary candidate is a target reserved word.
+
+| Ordinary candidate | Result |
+| --- | --- |
+| syntax-invalid (`has-dash`, `1Bad`, Ada `A__B`, ...) | unsupported, fail closed (unchanged) |
+| legal, not reserved | unchanged, byte-identical output |
+| legal, reserved, Record field | `Field_` + source, ordinary transform (Ada `Field_Range`, Rust `field_type`, C++ `field_operator`) |
+| legal, reserved, Choice alternative | `Alternative_` + source (Ada `Alternative_Range`, Rust `AlternativeSelf`; C++ upper-camel alternatives are never reserved) |
+| escaped name collides with another final member | unsupported, fail closed with source attribution |
+
+Top-level declarations, enumeration variants (Task 044 `Value_`), message
+names, service API IDs and wire names are out of scope. Measured before ->
+after: the full-schema first blocker in all 12 cells is no longer a naming
+boundary, and closed-schema message closures are 355 in every backend (2.5
+and 2.6). See [Task 054](task-054-member-identifier-remapping.md).

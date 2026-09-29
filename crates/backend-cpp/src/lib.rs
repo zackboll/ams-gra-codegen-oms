@@ -13,8 +13,9 @@ use ams_gra_oms_codegen_core::{
     cpp_model_header_name, cpp_model_namespace, direct_temporal_profile,
     effective_choice_alternatives, effective_record_fields, emissions_emit_direct_date_time,
     field_storage_semantics, float32_literal, float64_literal, floating_domain,
-    generated_enum_variant_name, inclusive_integral_domain, is_temporal_primitive,
-    plan_type_emissions, schema_emits_bounded_integer_support, schema_emits_string_profile_carrier,
+    generated_choice_alternative_name, generated_enum_variant_name, generated_record_field_name,
+    inclusive_integral_domain, is_temporal_primitive, plan_type_emissions,
+    schema_emits_bounded_integer_support, schema_emits_string_profile_carrier,
     schema_emits_temporal_carrier, schema_emits_unbounded_sequence_support, string_profile,
     temporal_profile,
 };
@@ -357,7 +358,7 @@ fn render_declaration(
                     // member is generated for it in this schema set.
                     continue;
                 }
-                let field_name = snake_case(&field.name)?;
+                let field_name = record_field_name(&field.name)?;
                 let base = cpp_field_base(field)?;
                 let field_type = match field.cardinality.shape() {
                     OccurrenceShape::RequiredOne => base,
@@ -383,7 +384,7 @@ fn render_declaration(
                 },
             )?;
             for alternative in &alternatives {
-                let alternative_name = upper_camel(&alternative.name)?;
+                let alternative_name = choice_alternative_name(&alternative.name)?;
                 writeln!(
                     output,
                     "    struct {alternative_name} {{ {} value; }};",
@@ -396,7 +397,7 @@ fn render_declaration(
                 "\n    std::variant<{}> value;\n}};\n",
                 alternatives
                     .iter()
-                    .map(|alternative| upper_camel(&alternative.name))
+                    .map(|alternative| choice_alternative_name(&alternative.name))
                     .collect::<Result<Vec<_>, _>>()?
                     .join(", ")
             )
@@ -988,8 +989,26 @@ fn upper_camel(value: &str) -> Result<String, CodegenError> {
     Ok(result)
 }
 
-fn snake_case(value: &str) -> Result<String, CodegenError> {
-    Ok(words(value)?.join("_").to_ascii_lowercase())
+/// Task 054: the C++ data-member identifier of a Record field whose XSD local
+/// name is `source`, from the shared codegen-core policy (`operator` becomes
+/// `field_operator`; no leading/trailing-underscore or macro escape).
+fn record_field_name(source: &str) -> Result<String, CodegenError> {
+    generated_record_field_name(BackendLanguage::Cpp, source).ok_or_else(|| {
+        error(format!(
+            "unsupported C++ IR construct: identifier {source:?}"
+        ))
+    })
+}
+
+/// Task 054: the C++ nested alternative-type identifier of a Choice
+/// alternative. Upper-camel candidates such as `Operator` are already legal
+/// (C++ keywords are lowercase), so they are unchanged.
+fn choice_alternative_name(source: &str) -> Result<String, CodegenError> {
+    generated_choice_alternative_name(BackendLanguage::Cpp, source).ok_or_else(|| {
+        error(format!(
+            "unsupported C++ IR construct: identifier {source:?}"
+        ))
+    })
 }
 
 fn unsupported<T>(construct: String) -> Result<T, CodegenError> {
@@ -3587,12 +3606,15 @@ int probe() {
 
     /// A member named `class` snake_cases onto a C++ keyword.
     #[test]
-    fn reserved_word_member_is_rejected() {
+    fn reserved_word_member_is_escaped() {
+        // Task 054: `class` is escaped to `field_class` (no macro trick, no
+        // leading/trailing underscore); the Rust keyword `type` is an
+        // ordinary C++ member and stays unchanged.
         let schema = preflight_fixture("backend-name-preflight-reserved.xsd");
-        let message = generate(&schema, CLOSED)
-            .expect_err("a C++ keyword member must be rejected")
-            .message;
-        assert!(message.contains("reserved word"), "{message}");
+        let source = generate(&schema, CLOSED).expect("a C++ keyword member is escaped");
+        assert!(source.contains(" field_class;"), "{source}");
+        assert!(!source.contains(" class;"), "{source}");
+        assert!(source.contains(" type;"), "{source}");
     }
 
     /// C++ is case-sensitive, so a case-only difference is NOT a C++

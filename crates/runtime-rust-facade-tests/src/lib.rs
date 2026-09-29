@@ -92,6 +92,24 @@ pub mod constrained_binary_sleet {
     ));
 }
 
+/// Task 054: OAM Record fields / Choice alternatives whose Rust identifiers
+/// are escaped (`field_type`, `field_self`, `AlternativeSelf`) while the OMS
+/// JSON member keys stay `"Type"`, `"Self"`.
+#[allow(clippy::all, clippy::pedantic)]
+pub mod member_keywords {
+    include!(concat!(env!("OUT_DIR"), "/member_keywords/service_api.rs"));
+}
+
+/// Task 054: the qualified NON-OAM companion (`urn:test`): escaped Rust
+/// members, Clark-notation keys `"{urn:test}Type"`, `"{urn:test}Self"`.
+#[allow(clippy::all, clippy::pedantic)]
+pub mod member_keywords_qualified {
+    include!(concat!(
+        env!("OUT_DIR"),
+        "/member_keywords_qualified/service_api.rs"
+    ));
+}
+
 /// Task 050: the REAL UCI 2.5 PositionReport model, service API, and codec,
 /// generated only when `AMS_GRA_UCI_2_5_ROOT` names the SHA-256-verified
 /// pinned root (see build.rs).

@@ -3,9 +3,12 @@
 //! Consumes only the lowered [`ServiceApiModel`], the projected [`SchemaIr`],
 //! and the [`GenerationWorld`]. Every Rust spelling it emits -- type, field,
 //! enum variant, Choice variant, abstract-value variant -- comes from the
-//! SAME private functions the model renderer uses (`super::upper_camel`,
-//! `super::snake_case`, `generated_enum_variant_name`), so a model rename
-//! changes the codec identically. Effective inheritance, storage elision, and
+//! SAME functions the model renderer uses (`super::upper_camel` for type
+//! names, Task 054 `super::record_field_name` / `super::choice_alternative_name`
+//! for structural members, `generated_enum_variant_name` for enumerations),
+//! so a model rename changes the codec identically. The OMS JSON member key
+//! never comes from those: it is always `member_key` (the element's own
+//! QName), so a host-language escape can never leak onto the wire. Effective inheritance, storage elision, and
 //! closed abstract sums come from the shared codegen-core helpers.
 //!
 //! Validation authority stays with the generated model: every decoded value
@@ -18,7 +21,7 @@
 //! need no name preflight. The public surface is `ServiceCodec` and its
 //! `OmsJsonCodec<P>` impls.
 
-use super::{error, snake_case, upper_camel};
+use super::{choice_alternative_name, error, record_field_name, upper_camel};
 use ams_gra_oms_codegen_core::{
     BackendLanguage, CodegenError, DirectTemporalProfile, EffectiveValueMember, GenerationWorld,
     InclusiveIntegralDomain, ServiceApiModel, TypeEmission, analyze_service_codec,
@@ -746,7 +749,9 @@ impl Renderer<'_> {
                 // rejected on decode as unknown.
                 continue;
             }
-            let member = snake_case(&field.name)?;
+            // Task 054: host API member (possibly escaped, e.g. `field_type`)
+            // versus wire key (always the source QName, e.g. "Type").
+            let member = record_field_name(&field.name)?;
             encode.push_str(&self.encode_member(field, &format!("value.{member}"))?);
             writeln!(decode, "        {member}: {},", self.decode_member(field)?)
                 .expect("infallible");
@@ -777,9 +782,9 @@ impl Renderer<'_> {
         let mut decode = String::new();
         let mut allowed = Vec::new();
         for alternative in alternatives {
-            // Rust variant from the source local name (as the model does);
-            // wire key from the element's own QName.
-            let variant = upper_camel(&alternative.name)?;
+            // Rust variant from the shared Task 054 helper (as the model
+            // does); wire key from the element's own QName, never escaped.
+            let variant = choice_alternative_name(&alternative.name)?;
             let key = &member_key(alternative)?;
             let path_key = format_literal(key);
             let base = self.base(alternative)?;

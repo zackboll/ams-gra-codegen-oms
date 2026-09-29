@@ -961,6 +961,23 @@ reaches a constrained Binary still has a different model blocker, or fails
 projection on a cyclic value dependency (`Response`). See
 [Task 053](task-053-constrained-binary-carriers.md).
 
+## Task 054 — reserved member identifier remapping
+
+A reserved Record field or Choice alternative is no longer a MODEL blocker:
+it is escaped (`Field_` / `Alternative_`) and `service-check`,
+`service-generate` and plain `generate` agree. A post-remap collision or a
+malformed member name is NOT READY in all three with the same diagnostic, and
+generation writes nothing. The Rust codec keeps the source wire names.
+
+On the real roots (closed-schema, single-message contracts) the READY message
+count rises to 355 in every backend (Ada +31 in 2.5 / +32 in 2.6, Rust +1,
+C++ +4 / +3); 34 of the 35 UCI 2.5 newly-READY messages generate in all three
+backends. `OrderOfBattle` is the exception: it is READY but fails to generate
+on a pre-existing generated-support gap. The test-only
+`real-member-remapping.yaml` (`SystemOrbitalElementSetRequest` +
+`ApprovalRequestStatus`) is READY, generates, and compiles in Ada, Rust and
+C++. See [Task 054](task-054-member-identifier-remapping.md).
+
 ## Task 033 follow-up — constrained floating ranges
 
 The Task 031 measurements above are preserved as the historical record of that

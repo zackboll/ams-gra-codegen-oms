@@ -561,20 +561,253 @@ fn declaration_name(language: BackendLanguage, local_name: &str) -> Option<Strin
     }
 }
 
-/// The generated Record-field / Ada Choice-component member identifier.
-fn member_name(language: BackendLanguage, name: &str) -> Option<String> {
-    match language {
-        BackendLanguage::Rust | BackendLanguage::Cpp => snake_case(name),
-        BackendLanguage::Ada => ada_identifier(name),
-    }
-}
-
-/// The generated enumeration-variant / Choice-variant identifier.
+/// The ordinary (pre-escape) generated enumeration-variant identifier.
+///
+/// Task 044 owns enumeration remapping on top of this; Task 054 structural
+/// members use [`ordinary_member_name`] instead.
 fn variant_name(language: BackendLanguage, name: &str) -> Option<String> {
     match language {
         BackendLanguage::Rust | BackendLanguage::Cpp => upper_camel(name),
         BackendLanguage::Ada => ada_identifier(name),
     }
+}
+
+/// Which structural member surface a generated member identifier belongs to.
+///
+/// Task 054: Record fields and Choice alternatives have distinct ordinary
+/// transformations in Rust/C++ (snake_case components versus upper-camel
+/// variants/nested types) and distinct fixed escape categories, so the kind is
+/// explicit rather than inferred from the owner at every call site.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum StructuralMemberKind {
+    /// A (possibly inherited) Record field.
+    RecordField,
+    /// A (possibly inherited) Choice alternative.
+    ChoiceAlternative,
+}
+
+impl StructuralMemberKind {
+    /// The fixed Task 054 escape category, prepended to the *source* spelling
+    /// before the target's ordinary transformation is re-applied.
+    const fn escape_prefix(self) -> &'static str {
+        match self {
+            Self::RecordField => "Field_",
+            Self::ChoiceAlternative => "Alternative_",
+        }
+    }
+
+    /// Human-readable label for diagnostics and inventory reports.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::RecordField => "Record field",
+            Self::ChoiceAlternative => "Choice alternative",
+        }
+    }
+}
+
+/// The target's ORDINARY (pre-Task-054) member identifier for one source
+/// spelling: exactly the transformation every renderer applied before.
+fn ordinary_member_name(
+    language: BackendLanguage,
+    kind: StructuralMemberKind,
+    source_name: &str,
+) -> Option<String> {
+    match (language, kind) {
+        (BackendLanguage::Ada, _) => ada_identifier(source_name),
+        (BackendLanguage::Rust | BackendLanguage::Cpp, StructuralMemberKind::RecordField) => {
+            snake_case(source_name)
+        }
+        (BackendLanguage::Rust | BackendLanguage::Cpp, StructuralMemberKind::ChoiceAlternative) => {
+            upper_camel(source_name)
+        }
+    }
+}
+
+/// Task 054: the one authoritative generated host identifier of a structural
+/// member, shared by generated-name preflight, every renderer, and the Rust
+/// codec.
+///
+/// 1. The ordinary candidate is formed by the target's existing rule.
+/// 2. A syntactically invalid candidate stays `None` (fail closed; this is
+///    NOT a sanitizer -- `1Bad`, `has-dash`, `a__b` remain unsupported).
+/// 3. A legal, non-reserved candidate is returned unchanged (byte identity).
+/// 4. Only a legal candidate that is a target RESERVED WORD is escaped, by
+///    prefixing the fixed category to the source spelling and re-applying the
+///    same ordinary transformation, so casing comes from one rule.
+///
+/// No suffix, counter or hash is ever added: a post-remap collision is left
+/// for preflight to reject. The source/wire name in Schema IR is untouched.
+fn generated_member_name(
+    language: BackendLanguage,
+    kind: StructuralMemberKind,
+    source_name: &str,
+) -> Option<String> {
+    let ordinary = ordinary_member_name(language, kind, source_name)?;
+    if !is_reserved(language, &ordinary) {
+        return Some(ordinary);
+    }
+    ordinary_member_name(
+        language,
+        kind,
+        &format!("{}{source_name}", kind.escape_prefix()),
+    )
+    .filter(|escaped| !is_reserved(language, escaped))
+}
+
+/// Task 054: the generated host identifier of a Record field whose XSD local
+/// name is `source_name` (`FieldDecl::name`).
+///
+/// Ada `Range` -> `Field_Range`; Rust `Type` -> `field_type`; C++ `Operator`
+/// -> `field_operator`. Safe spellings are returned unchanged; malformed
+/// spellings return `None`. Never used for enumeration variants (Task 044's
+/// [`generated_enum_variant_name`] owns those).
+#[must_use]
+pub fn generated_record_field_name(language: BackendLanguage, source_name: &str) -> Option<String> {
+    generated_member_name(language, StructuralMemberKind::RecordField, source_name)
+}
+
+/// Task 054: the generated host identifier of a Choice alternative whose XSD
+/// local name is `source_name`.
+///
+/// Ada `Range` -> `Alternative_Range`; Rust `Self` -> `AlternativeSelf`. C++
+/// upper-camel alternatives such as `Operator` are already legal and so are
+/// unchanged: only the ACTUAL generated candidate decides.
+#[must_use]
+pub fn generated_choice_alternative_name(
+    language: BackendLanguage,
+    source_name: &str,
+) -> Option<String> {
+    generated_member_name(
+        language,
+        StructuralMemberKind::ChoiceAlternative,
+        source_name,
+    )
+}
+
+/// Task 054 inventory row: one effective, actually-emitted Record field or
+/// Choice alternative and how the shared member-name policy treats it.
+///
+/// Produced by [`structural_member_name_inventory`] from the very emission
+/// plan and storage classification generated-name preflight uses, so the
+/// inventory describes exactly the member surfaces the renderers write.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StructuralMemberNameRecord {
+    /// The emitted declaration owning the member region.
+    pub owner: QualifiedName,
+    /// The XSD local name (`FieldDecl::name`); never rewritten.
+    pub source_name: String,
+    pub kind: StructuralMemberKind,
+    /// Whether the member reaches `owner` only through inheritance.
+    pub inherited: bool,
+    /// The ordinary (pre-Task-054) candidate, if syntactically legal.
+    pub ordinary: Option<String>,
+    /// Whether the ordinary candidate is a target reserved word.
+    pub ordinary_reserved: bool,
+    /// The final generated spelling (`generated_*_name`), if any.
+    pub generated: Option<String>,
+    /// Whether the final spelling collides with another final spelling (or
+    /// the Ada Choice discriminant) in the same member region.
+    pub region_collision: bool,
+}
+
+impl StructuralMemberNameRecord {
+    /// Whether the fixed escape category was applied.
+    #[must_use]
+    pub fn escaped(&self) -> bool {
+        self.ordinary_reserved && self.generated.is_some()
+    }
+}
+
+/// Task 054: every effective emitted Record field / Choice alternative of
+/// `schema` for one backend and world, in emission order.
+///
+/// Walks the shared [`name_preflight_plan`] and applies the same storage
+/// elision and abstract-value checks as `register_declaration_members`, so a
+/// member counted here is a member some renderer really writes.
+#[must_use]
+pub fn structural_member_name_inventory(
+    schema: &SchemaIr,
+    language: BackendLanguage,
+    world: GenerationWorld,
+) -> Vec<StructuralMemberNameRecord> {
+    let plan = name_preflight_plan(schema, world);
+    let mut rows = Vec::new();
+    for emission in plan.surfaces() {
+        let TypeEmission::Declaration(declaration) = emission else {
+            continue;
+        };
+        if !emission.emits_own_top_level_name() {
+            continue;
+        }
+        let (kind, members) = match &declaration.kind {
+            TypeKind::Record { .. } => {
+                let Ok(fields) = effective_record_fields(schema, &declaration.name) else {
+                    continue;
+                };
+                let stored = fields
+                    .into_iter()
+                    .filter_map(
+                        |field| match field_storage_semantics(schema, field, world) {
+                            Ok(EffectiveValueMember::Stored(field))
+                                if abstract_value_projection_for_ref(
+                                    schema,
+                                    &field.type_ref,
+                                    world,
+                                )
+                                .is_ok() =>
+                            {
+                                Some(field)
+                            }
+                            _ => None,
+                        },
+                    )
+                    .collect::<Vec<_>>();
+                (StructuralMemberKind::RecordField, stored)
+            }
+            TypeKind::Choice { .. } => {
+                let Ok(alternatives) = effective_choice_alternatives(schema, &declaration.name)
+                else {
+                    continue;
+                };
+                (StructuralMemberKind::ChoiceAlternative, alternatives)
+            }
+            _ => continue,
+        };
+        let local = declared_members(declaration);
+        let mut identities: BTreeMap<String, usize> = BTreeMap::new();
+        if language == BackendLanguage::Ada && kind == StructuralMemberKind::ChoiceAlternative {
+            identities.insert(identity_key(language, ADA_CHOICE_DISCRIMINANT), 1);
+        }
+        let first = rows.len();
+        for member in members {
+            let ordinary = ordinary_member_name(language, kind, &member.name);
+            let ordinary_reserved = ordinary
+                .as_deref()
+                .is_some_and(|name| is_reserved(language, name));
+            let generated = generated_member_name(language, kind, &member.name);
+            if let Some(name) = &generated {
+                *identities.entry(identity_key(language, name)).or_insert(0) += 1;
+            }
+            rows.push(StructuralMemberNameRecord {
+                owner: declaration.name.clone(),
+                source_name: member.name.clone(),
+                kind,
+                inherited: !local.iter().any(|own| std::ptr::eq(own, member)),
+                ordinary,
+                ordinary_reserved,
+                generated,
+                region_collision: false,
+            });
+        }
+        for row in &mut rows[first..] {
+            row.region_collision = row
+                .generated
+                .as_deref()
+                .is_some_and(|name| identities[&identity_key(language, name)] > 1);
+        }
+    }
+    rows
 }
 
 /// Generated identifier for a *plain Enumeration* wire value, never a Choice
@@ -1480,7 +1713,11 @@ fn collect_ada_literal_conflicts(
                     continue;
                 };
                 for alternative in alternatives {
-                    if let Some(name) = ada_identifier(&alternative.name) {
+                    // Task 054: `{Final}_Kind`, from the same shared
+                    // alternative identifier the renderer uses.
+                    if let Some(name) =
+                        generated_choice_alternative_name(BackendLanguage::Ada, &alternative.name)
+                    {
                         let source = NameSource::EnumLiteral {
                             owner: declaration.name.clone(),
                             literal: alternative.name.clone(),
@@ -1624,11 +1861,8 @@ fn validate_ada_optional_helper(
     top_level: &mut Region,
     owner: &QualifiedName,
     member: &str,
+    member_identifier: &str,
 ) -> Result<(), BackendNameError> {
-    let Some(member_identifier) = ada_identifier(member) else {
-        // The member identifier itself already failed in the member region.
-        return Ok(());
-    };
     top_level.insert(
         NameSource::Helper {
             owner: owner.clone(),
@@ -1950,19 +2184,30 @@ fn register_declaration_members(
                 if abstract_value_projection_for_ref(schema, &field.type_ref, world).is_err() {
                     continue;
                 }
+                // Task 054: the FINAL generated spelling (reserved candidates
+                // already escaped) is what occupies the region; the source
+                // local name is kept only for attribution.
+                let generated = generated_record_field_name(language, &field.name);
                 members.insert_transformed(
                     NameSource::Member {
                         owner: declaration.name.clone(),
                         member: field.name.clone(),
                     },
-                    member_name(language, &field.name),
+                    generated.clone(),
                 )?;
                 if language == BackendLanguage::Ada {
+                    // Helper stems derive from the final identifier, exactly
+                    // as `backend-ada` derives them.
+                    let Some(generated) = generated else {
+                        // Already rejected in the member region.
+                        continue;
+                    };
                     if ada_emits_helper(field.cardinality) {
                         validate_ada_helpers(
                             top_level,
                             &declaration.name,
                             &field.name,
+                            &generated,
                             field.cardinality,
                         )?;
                     } else if ada_record_field_uses_optional_wrapper(field) {
@@ -1971,7 +2216,12 @@ fn register_declaration_members(
                         // exclusivity is already carried by the generated
                         // discriminant, so no optional wrapper is emitted --
                         // or reserved -- there.
-                        validate_ada_optional_helper(top_level, &declaration.name, &field.name)?;
+                        validate_ada_optional_helper(
+                            top_level,
+                            &declaration.name,
+                            &field.name,
+                            &generated,
+                        )?;
                     }
                 }
             }
@@ -2003,24 +2253,23 @@ fn register_declaration_members(
                     owner: declaration.name.clone(),
                     member: alternative.name.clone(),
                 };
-                match language {
-                    // Rust enum variants and C++ nested alternative structs
-                    // are upper-camel.
-                    BackendLanguage::Rust | BackendLanguage::Cpp => members
-                        .insert_transformed(source, variant_name(language, &alternative.name))?,
-                    // Ada renders alternatives as variant-part components.
-                    BackendLanguage::Ada => {
-                        members
-                            .insert_transformed(source, member_name(language, &alternative.name))?;
-                        if ada_emits_helper(alternative.cardinality) {
-                            validate_ada_helpers(
-                                top_level,
-                                &declaration.name,
-                                &alternative.name,
-                                alternative.cardinality,
-                            )?;
-                        }
-                    }
+                // Task 054: Rust enum variants and C++ nested alternative
+                // structs are upper-camel, Ada alternatives are variant-part
+                // components; the shared helper owns all three, including the
+                // reserved-word escape, and yields the FINAL spelling.
+                let generated = generated_choice_alternative_name(language, &alternative.name);
+                members.insert_transformed(source, generated.clone())?;
+                if language == BackendLanguage::Ada
+                    && ada_emits_helper(alternative.cardinality)
+                    && let Some(generated) = generated
+                {
+                    validate_ada_helpers(
+                        top_level,
+                        &declaration.name,
+                        &alternative.name,
+                        &generated,
+                        alternative.cardinality,
+                    )?;
                 }
             }
         }
@@ -2040,12 +2289,11 @@ fn validate_ada_helpers(
     top_level: &mut Region,
     owner: &QualifiedName,
     member: &str,
+    member_identifier: &str,
     cardinality: Cardinality,
 ) -> Result<(), BackendNameError> {
-    let Some(member_identifier) = ada_identifier(member) else {
-        // The member identifier itself already failed in the member region.
-        return Ok(());
-    };
+    // `member` is the source local name (attribution only); the stem uses the
+    // FINAL Task 054 member identifier the renderer writes.
     let stem = format!("{}_{member_identifier}", owner.local_name);
     // Exactly the suffixes `backend-ada` emits for each repeated shape.
     //
@@ -2664,8 +2912,19 @@ mod tests {
 
     #[test]
     fn task044_reserved_and_malformed_non_enum_names_remain_unsafe() {
+        // A reserved top-level DECLARATION is still unsafe: Task 054 remaps
+        // structural members only, never declaration names.
+        assert!(matches!(
+            validate_backend_names(
+                &schema_with(vec![primitive("AND")]),
+                BackendLanguage::Ada,
+                GenerationWorld::ClosedSchemaSet
+            ),
+            Err(BackendNameError::ReservedWord { .. })
+        ));
+        // Task 054: reserved Record fields / Choice alternatives are escaped
+        // (`Field_AND`, `Alternative_AND`) rather than rejected.
         for schema in [
-            schema_with(vec![primitive("AND")]),
             schema_with(vec![record(
                 "Holder",
                 vec![field(
@@ -2676,14 +2935,14 @@ mod tests {
             )]),
             schema_with(vec![choice("Holder", &["AND", "Other"])]),
         ] {
-            assert!(matches!(
+            assert_eq!(
                 validate_backend_names(
                     &schema,
                     BackendLanguage::Ada,
                     GenerationWorld::ClosedSchemaSet
                 ),
-                Err(BackendNameError::ReservedWord { .. })
-            ));
+                Ok(())
+            );
         }
         for language in [
             BackendLanguage::Ada,
@@ -2707,7 +2966,8 @@ mod tests {
             ),
             Ok(())
         ));
-        assert!(matches!(
+        // Task 054: C++ `class` is escaped to `field_class`, not rejected.
+        assert_eq!(
             validate_backend_names(
                 &schema_with(vec![record(
                     "Holder",
@@ -2720,8 +2980,8 @@ mod tests {
                 BackendLanguage::Cpp,
                 GenerationWorld::ClosedSchemaSet
             ),
-            Err(BackendNameError::ReservedWord { .. })
-        ));
+            Ok(())
+        );
     }
 
     #[test]
@@ -3570,6 +3830,10 @@ mod tests {
     /// Inherited members still belong to the emitted descendant's scope. The
     /// base is not emitted, but its fields are folded into `Derived`, so an
     /// unsafe effective member must still condemn the descendant.
+    ///
+    /// Task 054: an inherited reserved `match` is now escaped to
+    /// `field_match`, so the unsafe effective member here is the POST-REMAP
+    /// collision with a locally declared `Field_Match`.
     #[test]
     fn inherited_members_of_a_non_emitted_base_still_condemn_the_descendant() {
         let mut base = record(
@@ -3587,6 +3851,23 @@ mod tests {
             target: TypeRefTarget::Named(QualifiedName::new(NS, "BoundedVec")),
             binary_encoding: None,
         });
+        // Escaping alone makes the inherited keyword safe.
+        let alone = schema_with(vec![base.clone(), derived.clone()]);
+        assert!(
+            unsafe_named_declarations(
+                &alone,
+                BackendLanguage::Rust,
+                GenerationWorld::ClosedSchemaSet
+            )
+            .is_empty()
+        );
+        derived.kind = TypeKind::Record {
+            fields: vec![field(
+                "Field_Match",
+                TypeRefTarget::Primitive(PrimitiveKind::String),
+                Cardinality::REQUIRED_ONE,
+            )],
+        };
         let schema = schema_with(vec![base, derived]);
         let unsafe_names = unsafe_named_declarations(
             &schema,
@@ -3595,7 +3876,7 @@ mod tests {
         );
         assert!(
             unsafe_names.contains(&QualifiedName::new(NS, "Derived")),
-            "an inherited reserved member must still condemn the emitted descendant"
+            "an inherited post-remap collision must still condemn the emitted descendant"
         );
     }
 
@@ -3789,6 +4070,10 @@ mod tests {
     /// of a record that is never written. Ada must not diagnose `Base` for it,
     /// but must diagnose `Derived`, whose effective emitted record really does
     /// contain the component.
+    ///
+    /// Task 054: inherited `Range` is escaped to `Field_Range`; the diagnosed
+    /// component is therefore the post-remap collision with a local
+    /// `field_range` (Ada identity is case-insensitive).
     #[test]
     fn a_reserved_member_on_a_non_emitted_base_is_attributed_to_the_descendant() {
         let mut base = record(
@@ -3801,7 +4086,14 @@ mod tests {
             )],
         );
         base.is_abstract = true;
-        let mut derived = record("Derived", Vec::new());
+        let mut derived = record(
+            "Derived",
+            vec![field(
+                "field_range",
+                TypeRefTarget::Primitive(PrimitiveKind::String),
+                Cardinality::REQUIRED_ONE,
+            )],
+        );
         derived.base_type = Some(TypeRef {
             target: TypeRefTarget::Named(QualifiedName::new(NS, "Base")),
             binary_encoding: None,
@@ -5167,5 +5459,368 @@ mod tests {
         assert!(is_ascii_identifier("_private"));
         assert!(!is_ascii_identifier("1Foo"));
         assert!(!is_ascii_identifier(""));
+    }
+
+    // ---- Task 054: reserved Record/Choice member remapping ---------------
+
+    const ALL_LANGUAGES: [BackendLanguage; 3] = [
+        BackendLanguage::Ada,
+        BackendLanguage::Rust,
+        BackendLanguage::Cpp,
+    ];
+
+    fn int_field(name: &str) -> FieldDecl {
+        field(
+            name,
+            TypeRefTarget::Primitive(PrimitiveKind::SignedInteger),
+            Cardinality::REQUIRED_ONE,
+        )
+    }
+
+    fn validate(schema: &SchemaIr, language: BackendLanguage) -> Result<(), BackendNameError> {
+        validate_backend_names(schema, language, GenerationWorld::ClosedSchemaSet)
+    }
+
+    #[test]
+    fn task054_record_field_helper_escapes_only_reserved_candidates() {
+        use BackendLanguage::{Ada, Cpp, Rust};
+        for (language, source, expected) in [
+            (Ada, "Range", "Field_Range"),
+            (Ada, "Type", "Field_Type"),
+            (Ada, "RANGE", "Field_RANGE"),
+            (Ada, "Operator", "Operator"),
+            (Ada, "Self", "Self"),
+            (Rust, "Type", "field_type"),
+            (Rust, "Self", "field_self"),
+            (Rust, "Yield", "field_yield"),
+            (Rust, "Range", "range"),
+            (Rust, "Operator", "operator"),
+            (Cpp, "Operator", "field_operator"),
+            (Cpp, "Delete", "field_delete"),
+            (Cpp, "class", "field_class"),
+            (Cpp, "Type", "type"),
+            (Cpp, "Self", "self"),
+        ] {
+            assert_eq!(
+                generated_record_field_name(language, source).as_deref(),
+                Some(expected),
+                "{language:?} {source}"
+            );
+        }
+    }
+
+    #[test]
+    fn task054_choice_alternative_helper_escapes_only_reserved_candidates() {
+        use BackendLanguage::{Ada, Cpp, Rust};
+        for (language, source, expected) in [
+            (Ada, "Range", "Alternative_Range"),
+            (Ada, "Type", "Alternative_Type"),
+            (Ada, "And", "Alternative_And"),
+            (Ada, "Self", "Self"),
+            (Rust, "Self", "AlternativeSelf"),
+            // Rust variants are upper-camel: `Type`/`Range` are not keywords.
+            (Rust, "Type", "Type"),
+            (Rust, "Range", "Range"),
+            // C++ keywords are lowercase, so upper-camel nested types are legal.
+            (Cpp, "Operator", "Operator"),
+            (Cpp, "Delete", "Delete"),
+            (Cpp, "Self", "Self"),
+        ] {
+            assert_eq!(
+                generated_choice_alternative_name(language, source).as_deref(),
+                Some(expected),
+                "{language:?} {source}"
+            );
+        }
+    }
+
+    /// Safe spellings are byte-identical to the pre-Task-054 transformation.
+    #[test]
+    fn task054_safe_member_names_are_unchanged() {
+        for language in ALL_LANGUAGES {
+            for source in ["Ordinary", "Track_Id", "SystemID", "Value1", "Field_Range"] {
+                assert_eq!(
+                    generated_record_field_name(language, source),
+                    ordinary_member_name(language, StructuralMemberKind::RecordField, source)
+                );
+                assert_eq!(
+                    generated_choice_alternative_name(language, source),
+                    ordinary_member_name(language, StructuralMemberKind::ChoiceAlternative, source)
+                );
+            }
+        }
+        assert_eq!(
+            generated_record_field_name(BackendLanguage::Rust, "Track_Id").as_deref(),
+            Some("track_id")
+        );
+        assert_eq!(
+            generated_choice_alternative_name(BackendLanguage::Cpp, "track_id").as_deref(),
+            Some("TrackId")
+        );
+    }
+
+    /// Task 054 is NOT a sanitizer: a syntactically invalid ordinary candidate
+    /// stays unsupported even though a prefix would make it compile.
+    #[test]
+    fn task054_malformed_member_names_still_fail_closed() {
+        for language in ALL_LANGUAGES {
+            for source in ["1Bad", "has-dash", "", "_", "space name", "caf\u{e9}"] {
+                assert_eq!(
+                    generated_record_field_name(language, source),
+                    None,
+                    "{source:?}"
+                );
+                assert_eq!(
+                    generated_choice_alternative_name(language, source),
+                    None,
+                    "{source:?}"
+                );
+                for schema in [
+                    schema_with(vec![record("Holder", vec![int_field(source)])]),
+                    schema_with(vec![choice("Holder", &[source, "Other"])]),
+                ] {
+                    assert!(
+                        matches!(
+                            validate(&schema, language),
+                            Err(BackendNameError::InvalidIdentifier { .. })
+                        ),
+                        "{language:?} {source:?}"
+                    );
+                    assert!(
+                        unsafe_named_declarations(
+                            &schema,
+                            language,
+                            GenerationWorld::ClosedSchemaSet
+                        )
+                        .contains(&QualifiedName::new(NS, "Holder"))
+                    );
+                }
+            }
+        }
+        // Ada-only structural illegality is not repaired either.
+        for source in ["Double__Underscore", "Trailing_"] {
+            assert_eq!(
+                generated_record_field_name(BackendLanguage::Ada, source),
+                None
+            );
+        }
+    }
+
+    /// A reserved member alone is now renderable in every backend.
+    #[test]
+    fn task054_reserved_members_are_renderable_after_escaping() {
+        let schema = schema_with(vec![
+            record(
+                "Holder",
+                ["Range", "Type", "Operator", "Delete", "Self", "Ordinary"]
+                    .into_iter()
+                    .map(int_field)
+                    .collect(),
+            ),
+            choice("Pick", &["Range", "Self", "Type", "Delete", "Ordinary"]),
+        ]);
+        for language in ALL_LANGUAGES {
+            assert_eq!(validate(&schema, language), Ok(()), "{language:?}");
+            assert!(
+                unsafe_named_declarations(&schema, language, GenerationWorld::ClosedSchemaSet)
+                    .is_empty()
+            );
+        }
+    }
+
+    /// A post-remap collision fails closed with source attribution: no second
+    /// suffix, counter or hash is ever synthesized.
+    #[test]
+    fn task054_post_remap_collisions_fail_closed_with_source_attribution() {
+        for (language, reserved, clashing, generated) in [
+            (BackendLanguage::Rust, "Type", "Field_Type", "field_type"),
+            (BackendLanguage::Ada, "Range", "Field_Range", "Field_Range"),
+            // Ada identity is case-insensitive.
+            (BackendLanguage::Ada, "Range", "field_range", "field_range"),
+            (
+                BackendLanguage::Cpp,
+                "Operator",
+                "Field_Operator",
+                "field_operator",
+            ),
+        ] {
+            let schema = schema_with(vec![record(
+                "Owner",
+                vec![int_field(reserved), int_field(clashing)],
+            )]);
+            let error = validate(&schema, language).expect_err("collision");
+            assert_eq!(
+                error,
+                BackendNameError::Collision {
+                    language,
+                    region: NameRegion::Members(QualifiedName::new(NS, "Owner")),
+                    generated: generated.to_owned(),
+                    first: reserved.to_owned(),
+                    second: clashing.to_owned(),
+                },
+                "{language:?}"
+            );
+            // The diagnostic names owner, both source members, the final
+            // spelling, and the backend language.
+            let text = error.to_string();
+            for needle in [language.name(), "Owner", reserved, clashing, generated] {
+                assert!(text.contains(needle), "{text}");
+            }
+            assert_eq!(
+                unsafe_named_declarations(&schema, language, GenerationWorld::ClosedSchemaSet),
+                BTreeSet::from([QualifiedName::new(NS, "Owner")])
+            );
+        }
+        // Choice alternatives use the Alternative_ category.
+        let rust = schema_with(vec![choice("Pick", &["Self", "Alternative_Self"])]);
+        assert!(matches!(
+            validate(&rust, BackendLanguage::Rust),
+            Err(BackendNameError::Collision { ref generated, .. }) if generated == "AlternativeSelf"
+        ));
+        let ada = schema_with(vec![choice("Pick", &["Range", "Alternative_Range"])]);
+        assert!(matches!(
+            validate(&ada, BackendLanguage::Ada),
+            Err(BackendNameError::Collision { ref generated, .. }) if generated == "Alternative_Range"
+        ));
+        // Record and Choice categories are distinct: no cross-talk.
+        let distinct = schema_with(vec![choice("Pick", &["Self", "Field_Self"])]);
+        assert_eq!(validate(&distinct, BackendLanguage::Rust), Ok(()));
+    }
+
+    /// Collision analysis runs over EFFECTIVE members: an escaped inherited
+    /// field colliding with a local one condemns the emitted descendant.
+    #[test]
+    fn task054_inherited_post_remap_collision_condemns_the_descendant() {
+        for (language, inherited, local) in [
+            (BackendLanguage::Rust, "Type", "Field_Type"),
+            (BackendLanguage::Ada, "Range", "Field_Range"),
+            (BackendLanguage::Cpp, "Delete", "Field_Delete"),
+        ] {
+            let mut base = record("Base", vec![int_field(inherited)]);
+            base.is_abstract = true;
+            let mut derived = record("Derived", vec![int_field(local)]);
+            derived.base_type = Some(TypeRef::named(QualifiedName::new(NS, "Base")));
+            let schema = schema_with(vec![base.clone(), derived]);
+            let error = validate(&schema, language).expect_err("inherited collision");
+            assert!(
+                matches!(
+                    &error,
+                    BackendNameError::Collision { region: NameRegion::Members(owner), first, second, .. }
+                        if owner.local_name == "Derived" && first == inherited && second == local
+                ),
+                "{language:?}: {error}"
+            );
+            assert_eq!(
+                unsafe_named_declarations(&schema, language, GenerationWorld::ClosedSchemaSet),
+                BTreeSet::from([QualifiedName::new(NS, "Derived")])
+            );
+            // Control: without the local clash the inherited keyword is fine.
+            let mut alone = record("Derived", vec![int_field("Ordinary")]);
+            alone.base_type = Some(TypeRef::named(QualifiedName::new(NS, "Base")));
+            assert_eq!(validate(&schema_with(vec![base, alone]), language), Ok(()));
+        }
+    }
+
+    /// Ada helper stems derive from the FINAL identifier, and generated
+    /// fixed names (the `Kind` discriminant, helper types) still collide
+    /// independently of reserved-word remapping.
+    #[test]
+    fn task054_ada_helper_stems_use_final_names_and_fixed_names_stay_independent() {
+        let repeated = Cardinality {
+            min_occurs: 0,
+            max_occurs: Some(2),
+        };
+        let optional_named = |name: &str| {
+            field(
+                name,
+                TypeRefTarget::Named(QualifiedName::new(NS, "Target")),
+                Cardinality::OPTIONAL_ONE,
+            )
+        };
+        // A user declaration spelled like the ESCAPED helper collides.
+        let schema = schema_with(vec![
+            record(
+                "Owner",
+                vec![field(
+                    "Range",
+                    TypeRefTarget::Primitive(PrimitiveKind::SignedInteger),
+                    repeated,
+                )],
+            ),
+            primitive("Owner_Field_Range_Sequence"),
+        ]);
+        assert!(matches!(
+            validate(&schema, BackendLanguage::Ada),
+            Err(BackendNameError::Collision { ref generated, .. })
+                if generated == "Owner_Field_Range_Sequence"
+        ));
+        // ...while the pre-escape spelling is now free.
+        let schema = schema_with(vec![
+            record(
+                "Owner",
+                vec![field(
+                    "Range",
+                    TypeRefTarget::Primitive(PrimitiveKind::SignedInteger),
+                    repeated,
+                )],
+            ),
+            primitive("Owner_Range_Sequence"),
+        ]);
+        assert_eq!(validate(&schema, BackendLanguage::Ada), Ok(()));
+        // Task 034 optional wrapper stem.
+        let schema = schema_with(vec![
+            record("Target", vec![int_field("Value")]),
+            record("Owner", vec![optional_named("Type")]),
+            primitive("Owner_Field_Type_Optional"),
+        ]);
+        assert!(matches!(
+            validate(&schema, BackendLanguage::Ada),
+            Err(BackendNameError::Collision { ref generated, .. })
+                if generated == "Owner_Field_Type_Optional"
+        ));
+        // Choice discriminant literal `{Final}_Kind` against a type name.
+        let schema = schema_with(vec![
+            choice("Pick", &["Range", "Other"]),
+            primitive("Alternative_Range_Kind"),
+        ]);
+        assert!(validate(&schema, BackendLanguage::Ada).is_err());
+        // The fixed Ada discriminant `Kind` is NOT a reserved word, so it is
+        // never escaped into legality: it still collides.
+        let schema = schema_with(vec![choice("Pick", &["Kind", "Other"])]);
+        assert!(matches!(
+            validate(&schema, BackendLanguage::Ada),
+            Err(BackendNameError::Collision { ref generated, .. }) if generated == "Kind"
+        ));
+    }
+
+    /// Task 044 is untouched: enumeration variants never use the Task 054
+    /// member helpers.
+    #[test]
+    fn task054_enum_remapping_is_independent() {
+        assert_eq!(
+            generated_enum_variant_name(BackendLanguage::Ada, "Range").as_deref(),
+            Some("Value_Range")
+        );
+        assert_eq!(
+            generated_enum_variant_name(BackendLanguage::Rust, "Self").as_deref(),
+            Some("ValueSelf")
+        );
+        assert_eq!(
+            generated_enum_variant_name(BackendLanguage::Cpp, "25X1").as_deref(),
+            Some("Value25X1")
+        );
+        assert_ne!(
+            generated_enum_variant_name(BackendLanguage::Rust, "Self"),
+            generated_choice_alternative_name(BackendLanguage::Rust, "Self")
+        );
+        // Leading digits are repaired for enumerations ONLY.
+        assert_eq!(
+            generated_record_field_name(BackendLanguage::Cpp, "25X1"),
+            None
+        );
+        assert_eq!(
+            generated_choice_alternative_name(BackendLanguage::Cpp, "25X1"),
+            None
+        );
     }
 }

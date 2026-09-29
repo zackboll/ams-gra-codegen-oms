@@ -536,6 +536,20 @@ lexical provenance       declaration_binary_encoding   (xs:hexBinary)
 
 See [Task 053](task-053-constrained-binary-carriers.md).
 
+### Structural member identifiers (Task 054)
+
+Every backend API spelling for a Record field or Choice alternative comes from
+`codegen-core::generated_record_field_name` /
+`generated_choice_alternative_name`. The rule is: form the ordinary candidate;
+a syntax-invalid one fails; a legal, non-reserved one is used unchanged; a
+reserved one gets the fixed `Field_` / `Alternative_` prefix on the SOURCE
+spelling and the ordinary transform is applied again. Preflight registers the
+FINAL names (collisions fail closed with the source attribution), Ada helper
+stems and `{Final}_Kind` literals derive from the final name, and the Rust
+codec uses the same helpers for host access while wire keys still come from
+`FieldDecl::wire_name()`. Schema IR is never renamed. See
+[Task 054](task-054-member-identifier-remapping.md).
+
 ## 13. Uninhabited values generate no storage
 
 An abstract structural declaration with zero concrete structural descendants in

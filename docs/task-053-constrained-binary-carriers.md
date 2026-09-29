@@ -437,6 +437,14 @@ backend, `closed-schema` (`task053_real_uci_constrained_binary_message_impact`):
 
 The test asserts no constrained Binary is ever the reported blocker.
 
+> **Task 054 follow-up:** the Ada column above was measured before reserved
+> structural members were remapped. `AltitudeRangePairType` (`Range`) and
+> `DateTimeRangeType` (`Begin`/`End`) are no longer Ada blockers, so Ada now
+> reports the same next blocker as Rust/C++ (`AircraftIdentifierType`,
+> `AlphanumericStringLength4Type`). The A/B/C classes are unchanged (0 / 4 /
+> 1), and the test asserts the updated values. See
+> [Task 054](task-054-member-identifier-remapping.md).
+
 ### No category-A message, so no real selected-service milestone
 
 As required, no milestone was forced. The **synthetic** `constrained-binary`

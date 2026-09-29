@@ -731,6 +731,17 @@ Progress (typed LA-CAL integration as a whole is **not** complete):
       renderable in all three backends.
 - [ ] direct field-local Binary constraints (no per-field carrier; fail closed).
 - [ ] Binary lexical patterns (a lexical constraint stored octets cannot enforce).
+- [x] reserved Record-field / Choice-alternative identifier remapping
+      (Task 054): fixed `Field_` / `Alternative_` escape from shared
+      `codegen-core` helpers, final-name preflight, Rust codec keeps source
+      wire names. Every reserved UCI 2.5/2.6 structural member is renderable.
+- [ ] Ada top-level companion collision (`QueryType` vs `QueryType companion`
+      -> `QueryType_Kind`), now the closed-schema Ada full-schema first blocker.
+- [ ] abstract value targets with no concrete descendant (`SourceCommandEXT`)
+      and open-extensions `CapabilityCommandBaseType`.
+- [ ] readiness vs generated-support parity: `OrderOfBattle` is READY yet
+      `service-generate` fails on `AircraftIdentifierType` / `xs:duration`
+      reached only through generated-support expansion (pre-existing).
 - [ ] reconnect/backoff, TLS/auth policy, timers, service lifecycle.
 
 ```text
@@ -740,6 +751,7 @@ Task 050:  generated Rust payload-body OMS JSON codecs
 Task 051:  local element wire QNames in Schema IR; qualified non-OAM codecs
 Task 052:  xs:hexBinary lexical provenance in Schema IR; Rust hex codecs
 Task 053:  constrained named Binary carriers (octet length domain), all backends
+Task 054:  reserved Record/Choice member identifier remapping, all backends
 ```
 
 See [Task 049](task-049-rust-la-cal-runtime.md),

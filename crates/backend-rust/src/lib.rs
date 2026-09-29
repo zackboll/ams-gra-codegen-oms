@@ -14,7 +14,8 @@ use ams_gra_oms_codegen_core::{
     abstract_value_projection_for_ref, backend_preflight, binary_length_domain, constrains_string,
     direct_temporal_profile, effective_choice_alternatives, effective_record_fields,
     emissions_emit_direct_date_time, field_storage_semantics, float32_literal, float64_literal,
-    floating_domain, generated_enum_variant_name, inclusive_integral_domain, is_temporal_primitive,
+    floating_domain, generated_choice_alternative_name, generated_enum_variant_name,
+    generated_record_field_name, inclusive_integral_domain, is_temporal_primitive,
     plan_type_emissions, rust_model_file_name, schema_emits_bounded_integer_support,
     schema_emits_temporal_carrier, schema_emits_unbounded_sequence_support, string_profile,
     temporal_profile,
@@ -319,7 +320,7 @@ fn render_declaration(
                     // field is generated for it in this schema set.
                     continue;
                 }
-                let field_name = snake_case(&field.name)?;
+                let field_name = record_field_name(&field.name)?;
                 let base = rust_field_base(field)?;
                 let field_type = match field.cardinality.shape() {
                     OccurrenceShape::RequiredOne => base,
@@ -347,7 +348,7 @@ fn render_declaration(
                     error(format!("unsupported Rust IR construct: {projection_error}"))
                 },
             )? {
-                let alternative_name = upper_camel(&alternative.name)?;
+                let alternative_name = choice_alternative_name(&alternative.name)?;
                 writeln!(
                     output,
                     "    {alternative_name}({}),",
@@ -946,8 +947,26 @@ fn upper_camel(value: &str) -> Result<String, CodegenError> {
     Ok(result)
 }
 
-fn snake_case(value: &str) -> Result<String, CodegenError> {
-    Ok(words(value)?.join("_").to_ascii_lowercase())
+/// Task 054: the Rust field identifier of a Record field whose XSD local
+/// name is `source`, from the shared codegen-core policy (reserved candidates
+/// such as `type` become `field_type`; never a raw identifier). Shared by the
+/// model renderer and the generated codec so the two cannot drift.
+pub(crate) fn record_field_name(source: &str) -> Result<String, CodegenError> {
+    generated_record_field_name(BackendLanguage::Rust, source).ok_or_else(|| {
+        error(format!(
+            "unsupported Rust IR construct: identifier {source:?}"
+        ))
+    })
+}
+
+/// Task 054: the Rust enum-variant identifier of a Choice alternative whose
+/// XSD local name is `source` (`Self` becomes `AlternativeSelf`).
+pub(crate) fn choice_alternative_name(source: &str) -> Result<String, CodegenError> {
+    generated_choice_alternative_name(BackendLanguage::Rust, source).ok_or_else(|| {
+        error(format!(
+            "unsupported Rust IR construct: identifier {source:?}"
+        ))
+    })
 }
 
 fn unsupported<T>(construct: String) -> Result<T, CodegenError> {
@@ -3168,14 +3187,27 @@ fn main() {
         assert!(message.contains("track_id"), "{message}");
     }
 
-    /// A field named `type` snake_cases onto a Rust keyword.
+    /// A field named `type` snake_cases onto a Rust keyword. Task 054: it is
+    /// no longer rejected but escaped to `field_type` -- never the raw
+    /// identifier `r#type`, and never stored back into Schema IR.
     #[test]
-    fn reserved_word_field_is_rejected() {
+    fn reserved_word_field_is_escaped() {
         let schema = preflight_fixture("backend-name-preflight-reserved.xsd");
-        let message = generate(&schema, CLOSED)
-            .expect_err("a Rust keyword field must be rejected")
-            .message;
-        assert!(message.contains("reserved word"), "{message}");
+        let source = generate(&schema, CLOSED).expect("a Rust keyword field is escaped");
+        assert!(source.contains("    pub field_type: "), "{source}");
+        assert!(!source.contains("r#type") && !source.contains("pub type:"));
+        // The C++ keyword `class` is an ordinary Rust field: unchanged.
+        assert!(source.contains("    pub class: "), "{source}");
+        let field = schema
+            .types
+            .iter()
+            .find(|t| t.name.local_name == "RustKeywordField")
+            .and_then(|t| match &t.kind {
+                TypeKind::Record { fields } => fields.first(),
+                _ => None,
+            })
+            .expect("RustKeywordField.type");
+        assert_eq!(field.name, "type", "Schema IR keeps the XSD local name");
     }
 
     /// The control must still render, and the generated module must actually

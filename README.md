@@ -828,6 +828,17 @@ facets, Binary patterns, and `base64Binary` stay fail-closed. Every real UCI
 2.5/2.6 constrained Binary declaration is now model renderable. See
 [Task 053](docs/task-053-constrained-binary-carriers.md).
 
+**Reserved member identifiers (Task 054).** A Record field or Choice
+alternative whose ordinary generated identifier is a target reserved word gets
+one fixed escape: `Field_` for Record fields, `Alternative_` for Choice
+alternatives (Ada `Range` -> `Field_Range`, Rust `type` -> `field_type`, C++
+`operator` -> `field_operator`, Rust variant `Self` -> `AlternativeSelf`).
+Only reserved words are escaped; malformed names and post-remap collisions
+still fail closed (no suffixes, hashing, or counters). Schema IR and wire
+names are unchanged: the Rust codec still encodes `"Type"`. Every reserved
+structural member in UCI 2.5/2.6 is now renderable. See
+[Task 054](docs/task-054-member-identifier-remapping.md).
+
 **Member QNames (Task 051).** Schema IR keeps each local element's effective
 target namespace (`elementFormDefault` plus local `form`), separately from its
 local name and its type. Host models still name fields from the local name.

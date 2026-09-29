@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="https://www.vdl.afrl.af.mil/programs/oam"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- SYNTHETIC Task 054 fixture (OAM namespace). NOT UCI.
+
+       Record fields and Choice alternatives whose ORDINARY generated host
+       identifier is a target reserved word in at least one backend:
+
+         source    Ada ordinary   Rust field/variant   C++ field/nested type
+         Range     Range  (resv)  range / Range        range / Range
+         Type      Type   (resv)  type (resv) / Type   type / Type
+         Operator  Operator       operator / Operator  operator (resv) / Operator
+         Delete    Delete         delete / Delete      delete (resv) / Delete
+         Self      Self           self (resv) / Self (resv)   self / Self
+         Ordinary  Ordinary       ordinary / Ordinary  ordinary / Ordinary
+
+       Only the ACTUAL generated candidate decides whether a member is
+       escaped (Field_ / Alternative_). The OMS JSON member keys stay the
+       source spellings ("Type", "Self", ...).
+
+       KeywordBase (abstract) contributes an INHERITED unsafe field (`Type`)
+       to KeywordRecord. KeywordRecord also has an optional unsafe field
+       (`Delete`) and a repeated unsafe field (`Range`), so Ada helper stems
+       (`_Optional`, `_Sequence`, ...) are derived from escaped identifiers.
+       KeywordChoice has a repeated unsafe alternative (`Range`). -->
+  <xs:complexType name="KeywordChoice">
+    <xs:choice>
+      <xs:element name="Range" type="xs:int" minOccurs="1" maxOccurs="3"/>
+      <xs:element name="Self" type="xs:int"/>
+      <xs:element name="Type" type="xs:string"/>
+      <xs:element name="Delete" type="xs:boolean"/>
+      <xs:element name="Ordinary" type="xs:int"/>
+    </xs:choice>
+  </xs:complexType>
+  <xs:complexType name="KeywordBase" abstract="true">
+    <xs:sequence>
+      <xs:element name="Type" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="KeywordRecord">
+    <xs:complexContent>
+      <xs:extension base="uci:KeywordBase">
+        <xs:sequence>
+          <xs:element name="Range" type="xs:int" minOccurs="0" maxOccurs="2"/>
+          <xs:element name="Operator" type="xs:string"/>
+          <xs:element name="Delete" type="xs:boolean" minOccurs="0"/>
+          <xs:element name="Self" type="xs:int"/>
+          <xs:element name="Ordinary" type="xs:int"/>
+          <xs:element name="Pick" type="uci:KeywordChoice"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:element name="KeywordNotice" type="uci:KeywordRecord" uci:version="001.000.000.000"/>
+</xs:schema>
