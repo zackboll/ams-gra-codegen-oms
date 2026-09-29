@@ -379,13 +379,62 @@ locally and the hard `Verify GNAT availability` gate still ran.
 | Job | Steps | Result | Local wall time |
 | --- | --- | --- | --- |
 | `real-uci` | GNAT gate, fetch 2.5 + 2.6 once, Task 052, Task 053, Task 054 | all exit 0 | 4m34s |
+| `msrv-real-uci` | install 1.95.0, fetch 2.5 once, real-UCI `cargo +1.95.0 check --locked` | all exit 0 | 4m58s |
+| `real-sleet` | fetch 2.5 once, real PositionReport + SubsystemStream codecs, `run-real-sleet-test.sh` | all exit 0 | 6m09s |
 
-The Task 054 step's local output contained the CATEGORY-A marker on libtest's
-line exactly as expected:
-`test task054_real_uci_category_a_selection_generates_and_compiles ... UCI 2.5 REAL CATEGORY-A MEMBER REMAPPING: PASSED`.
-The other two jobs and the full-repository regression are recorded below.
+Markers observed:
 
-### 9.3 GitHub observation
+- Task 054 CATEGORY-A marker on libtest's line, exactly the accepted shape:
+  `test task054_real_uci_category_a_selection_generates_and_compiles ... UCI 2.5 REAL CATEGORY-A MEMBER REMAPPING: PASSED`;
+- `REAL POSITIONREPORT CODEC: PASSED`, `REAL SUBSYSTEMSTREAM HEXBINARY CODEC: PASSED`;
+- through the modified `run_one`, all 7 Sleet markers: `REAL SLEET: PASSED`,
+  `REAL SLEET GENERATED CODEC: PASSED`, `SLEET NON-OAM PROBE: RECORDED`,
+  `REAL SLEET GENERATED HEXBINARY CODEC: PASSED`,
+  `REAL SLEET GENERATED CONSTRAINED BINARY CODEC: PASSED`,
+  `REAL UCI POSITIONREPORT THROUGH REAL SLEET: PASSED`,
+  `REAL UCI SUBSYSTEMSTREAM THROUGH REAL SLEET: PASSED`, then
+  `real pinned Sleet (e38f61d8...): PASSED`.
 
-Recorded after the push; see the follow-up commit.
+### 9.3 Full repository regression (local, commit `bed4389`)
+
+| Command | Result |
+| --- | --- |
+| `cargo fmt --all -- --check` | pass |
+| `cargo check --workspace --all-targets` | pass |
+| `cargo clippy --workspace --all-targets -- -D warnings` | pass |
+| `AMS_GRA_REQUIRE_GNAT=1 cargo test --workspace` | pass: 100 test binaries, 1128 passed, 0 failed, 0 ignored |
+| `git diff --check` | clean |
+
+No real-UCI root was set for the workspace test, matching Fast CI. The
+12-cell Task 054 coverage matrix was not rerun: no model capability changed.
+
+### 9.4 GitHub observation (PR #56, head `bed43890`)
+
+| Event | Result |
+| --- | --- |
+| `git push` of the new branch, before the PR existed | **no workflow run at all**; under the old `on: push:` this push alone would have started a full CI run |
+| PR opened | `CI` run [36508448320](https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/36508448320), event `pull_request`: **success** |
+| same | `Deep CI` run [36508448373](https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/36508448373), event `pull_request` (workflow-file path filter; intended for this PR only) |
+| `push`-event runs on `feature/055-ci-fast-deep-split` | **none** (`gh run list --event push --branch feature/055-ci-fast-deep-split` is empty) |
+
+Fast CI `pull_request` wall time: created 01:33:13Z, completed 01:38:24Z =
+**5m11s**, down from 33m33s for the PR run and ~60 runner-minutes over two runs
+for the baseline head. That is one Fast CI run per PR head. Step times
+included Ada 42s, mock OWP 38s, MSRV-local 43s, split guard 4s, and workspace
+test 1m22s.
+
+GitHub runner performance varies, so these numbers are observations, not
+assertions. The acceptance criteria are structural: one Fast CI run per PR
+head, and no real-UCI/Sleet work in Fast CI.
+
+Deep CI run 36508448373 was still running (all three jobs in progress) when
+this documentation commit was pushed. That commit is a new PR head in the same
+`deep-ci-refs/pull/56/merge` group, so the older run is expected to be
+cancelled in favour of the new head. The Deep CI result for this PR is
+reported on the PR, not here, because it cannot exist before this commit does.
+
+No meaningless commit was pushed to exercise cancellation. For Fast CI the
+configuration is covered by static review and actionlint, and cancellation
+will show up naturally on the next PR that receives a corrective push while
+its CI is still running.
 
