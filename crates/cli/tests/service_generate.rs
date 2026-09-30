@@ -166,7 +166,7 @@ fn full_schema_generate_fails_while_selected_generation_succeeds() {
     // ...and the unrelated declarations that break full-schema generation are
     // not, so selection is a genuine narrowing rather than a retry.
     for absent in [
-        "UnrelatedDuration",
+        "UnrelatedTime",
         "UnrelatedUnboundedType",
         "UnrelatedBinaryType",
         "UnrelatedFloatType",
@@ -940,7 +940,7 @@ fn generate_constrained_float(language: &str, label: &str) -> PathBuf {
 /// `service_plan.rs`, `service_readiness.rs`, or `service_generation.rs`; the
 /// new capability has to arrive through the single shared coverage snapshot
 /// and the ordinary backends. The fixture also contains an unselected
-/// `xs:duration` that no backend can render, so a READY result here cannot be
+/// `xs:time` that no backend can render, so a READY result here cannot be
 /// a whole-schema accident.
 #[test]
 fn task033_constrained_float_service_is_ready_in_every_backend() {
@@ -1171,7 +1171,7 @@ fn task034_optional_named_service_is_ready_in_every_backend() {
     }
 }
 
-/// The unselected `xs:duration` really is unrenderable, so ordinary
+/// The unselected `xs:time` really is unrenderable, so ordinary
 /// whole-schema generation still fails for Ada on the very same file that
 /// service-generate handles. Without this, READY above could be explained by
 /// the schema simply being fully supported.
@@ -1193,7 +1193,7 @@ fn task034_optional_named_whole_schema_generation_still_fails() {
     );
     let diagnostics = String::from_utf8(output.stderr).expect("UTF-8 diagnostic");
     assert!(
-        diagnostics.contains("UnrelatedDuration"),
+        diagnostics.contains("UnrelatedTime"),
         "the unselected declaration must be the stated reason: {diagnostics}"
     );
 }
@@ -1290,7 +1290,7 @@ fn task035_optional_primitive_service_is_ready_in_every_backend() {
     }
 }
 
-/// The unselected `xs:duration` really is unrenderable, so ordinary whole-schema
+/// The unselected `xs:time` really is unrenderable, so ordinary whole-schema
 /// generation still fails for Ada on the very same file that service-generate
 /// handles. Without this, READY above could be explained by the schema simply
 /// being fully supported.
@@ -1312,7 +1312,7 @@ fn task035_optional_primitive_whole_schema_generation_still_fails() {
     );
     let diagnostics = String::from_utf8(output.stderr).expect("UTF-8 diagnostic");
     assert!(
-        diagnostics.contains("UnrelatedDuration"),
+        diagnostics.contains("UnrelatedTime"),
         "the unselected declaration must be the stated reason: {diagnostics}"
     );
 }

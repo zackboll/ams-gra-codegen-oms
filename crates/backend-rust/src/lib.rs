@@ -13,12 +13,12 @@ use ams_gra_oms_codegen_core::{
     InclusiveIntegralDomain, StringProfile, TemporalProfile, TypeEmission, WhitespaceVisiblePolicy,
     abstract_value_projection_for_ref, backend_preflight, binary_length_domain, constrains_string,
     direct_temporal_profile, effective_choice_alternatives, effective_record_fields,
-    emissions_emit_direct_date_time, field_storage_semantics, float32_literal, float64_literal,
-    floating_domain, generated_choice_alternative_name, generated_enum_variant_name,
-    generated_record_field_name, inclusive_integral_domain, is_temporal_primitive,
-    plan_type_emissions, rust_model_file_name, schema_emits_bounded_integer_support,
-    schema_emits_temporal_carrier, schema_emits_unbounded_sequence_support, string_profile,
-    temporal_profile,
+    emissions_emit_direct_date_time, emissions_emit_direct_duration, field_storage_semantics,
+    float32_literal, float64_literal, floating_domain, generated_choice_alternative_name,
+    generated_enum_variant_name, generated_record_field_name, inclusive_integral_domain,
+    is_temporal_primitive, plan_type_emissions, rust_model_file_name,
+    schema_emits_bounded_integer_support, schema_emits_named_temporal_profile,
+    schema_emits_unbounded_sequence_support, string_profile, temporal_profile,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -76,6 +76,7 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     validate_schema(schema, world)?;
     let emissions = plan_type_emissions(schema, world)?;
     let emits_direct_date_time = emissions_emit_direct_date_time(schema, &emissions, world);
+    let emits_direct_duration = emissions_emit_direct_duration(schema, &emissions, world);
     let mut output = String::from(concat!(
         "#[derive(Debug, Clone, PartialEq, Eq)]\n",
         "pub struct BoundedVec<T, const MIN: usize, const MAX: usize>(Vec<T>);\n\n",
@@ -118,8 +119,22 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     if emits_direct_date_time {
         output.push_str("#[derive(Clone, Debug)]\npub struct XmlSchemaDateTime { lexical: String }\n\nimpl XmlSchemaDateTime {\n    pub fn new(value: &str) -> Option<Self> {\n        let lexical = XmlSchemaDateTimeParser::collapse(value);\n        XmlSchemaDateTimeParser::is_date_time(&lexical).then_some(Self { lexical })\n    }\n    pub fn as_str(&self) -> &str { &self.lexical }\n}\n\n");
     }
-    if emits_direct_date_time || schema_emits_temporal_carrier(schema) {
+    if emits_direct_date_time
+        || schema_emits_named_temporal_profile(schema, TemporalProfile::DateTimeZulu)
+    {
         output.push_str(&rust_date_time_parser());
+    }
+    // Task 057: one direct carrier and one shared parser per unit, each only
+    // when the emission surface needs it. Appended after every pre-existing
+    // support item so a Duration-free unit is byte-identical.
+    if emits_direct_duration {
+        output.push_str(&RUST_DURATION_CARRIER.replace("{name}", "XmlSchemaDuration"));
+        output.push('\n');
+    }
+    if emits_direct_duration
+        || schema_emits_named_temporal_profile(schema, TemporalProfile::Duration)
+    {
+        output.push_str(RUST_DURATION_PARSER);
     }
     for emission in emissions {
         match emission {
@@ -405,7 +420,7 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
             && is_temporal_primitive(kind)
         {
             match temporal_profile(kind, &declaration.constraints) {
-                Ok(Some(TemporalProfile::DateTimeZulu)) => {}
+                Ok(Some(TemporalProfile::DateTimeZulu | TemporalProfile::Duration)) => {}
                 Ok(None) => unreachable!("is_temporal_primitive gates this branch"),
                 Err(reason) => {
                     return unsupported(format!("{reason} on {}", declaration.name.local_name));
@@ -596,7 +611,10 @@ fn type_ref_supports_eq(
 ) -> bool {
     match &type_ref.target {
         TypeRefTarget::Primitive(
-            PrimitiveKind::Float32 | PrimitiveKind::Float64 | PrimitiveKind::DateTime,
+            PrimitiveKind::Float32
+            | PrimitiveKind::Float64
+            | PrimitiveKind::DateTime
+            | PrimitiveKind::Duration,
         ) => false,
         TypeRefTarget::Primitive(_) => true,
         TypeRefTarget::Named(name) => schema
@@ -661,8 +679,9 @@ fn type_ref_supports_partial_eq(
     visiting: &mut Vec<ams_gra_oms_ir::QualifiedName>,
 ) -> bool {
     match &type_ref.target {
-        // The direct DateTime carrier has no value-space equality implementation.
-        TypeRefTarget::Primitive(PrimitiveKind::DateTime) => false,
+        // The direct DateTime and Duration carriers have no value-space
+        // equality implementation (Tasks 046/057).
+        TypeRefTarget::Primitive(PrimitiveKind::DateTime | PrimitiveKind::Duration) => false,
         TypeRefTarget::Primitive(_) => true,
         TypeRefTarget::Named(name) => schema
             .types
@@ -808,6 +827,15 @@ fn rust_field_base(field: &ams_gra_oms_ir::FieldDecl) -> Result<String, CodegenE
                 Ok(Some(DirectTemporalProfile::DateTime)) => Ok("XmlSchemaDateTime".to_owned()),
                 _ => unsupported(format!(
                     "direct DateTime field constraints on {}",
+                    field.name
+                )),
+            }
+        }
+        TypeRefTarget::Primitive(PrimitiveKind::Duration) => {
+            match direct_temporal_profile(PrimitiveKind::Duration, &field.constraints) {
+                Ok(Some(DirectTemporalProfile::Duration)) => Ok("XmlSchemaDuration".to_owned()),
+                _ => unsupported(format!(
+                    "direct Duration field constraints on {}",
                     field.name
                 )),
             }
@@ -1722,17 +1750,15 @@ fn render_temporal_declaration(
     constraints: &ConstraintSet,
     name: &str,
 ) -> Result<(), CodegenError> {
-    match temporal_profile(kind, constraints) {
-        Ok(Some(TemporalProfile::DateTimeZulu)) => {}
+    let carrier = match temporal_profile(kind, constraints) {
+        Ok(Some(TemporalProfile::DateTimeZulu)) => RUST_DATE_TIME_ZULU_CARRIER,
+        // Task 057: the named Duration carrier is the SAME text as the
+        // direct `XmlSchemaDuration`, calling the one shared parser.
+        Ok(Some(TemporalProfile::Duration)) => RUST_DURATION_CARRIER,
         Ok(None) => return unsupported(format!("non-temporal primitive on {name}")),
         Err(reason) => return unsupported(format!("{reason} on {name}")),
-    }
-    writeln!(
-        output,
-        "{}",
-        RUST_DATE_TIME_ZULU_CARRIER.replace("{name}", name)
-    )
-    .expect("writing to String cannot fail");
+    };
+    writeln!(output, "{}", carrier.replace("{name}", name)).expect("writing to String cannot fail");
     Ok(())
 }
 
@@ -1776,6 +1802,137 @@ fn rust_date_time_parser() -> String {
         &helpers[gate_end..]
     )
 }
+
+/// Task 057: the one Rust duration carrier text, used verbatim for the direct
+/// `XmlSchemaDuration` and (with `{name}` substituted) for every named
+/// zero-facet Duration declaration. Both call the one shared parser, so named
+/// and direct Duration cannot disagree about the lexical space.
+///
+/// A checked **lexical** carrier: never seconds, `std::time::Duration`, a
+/// float, or months-plus-seconds. No `PartialEq`/`Ord` is derived, exactly as
+/// for the Task 036/046 dateTime carriers: two spellings (`P12M`, `P1Y`) can
+/// denote one value and the duration order is partial, so stored-string
+/// equality would falsely claim value-space semantics.
+const RUST_DURATION_CARRIER: &str = r#"/// A checked XML Schema duration lexical spelling (whitespace-collapsed,
+/// otherwise stored unchanged). No arithmetic, ordering or value equality.
+#[derive(Clone, Debug)]
+pub struct {name} {
+    lexical: String,
+}
+impl {name} {
+    pub fn new(value: &str) -> Option<Self> {
+        let lexical = XmlSchemaDurationParser::collapse(value);
+        XmlSchemaDurationParser::is_duration(&lexical).then_some(Self { lexical })
+    }
+    pub fn as_str(&self) -> &str { &self.lexical }
+}
+"#;
+
+/// Task 057: the one shared XML Schema 1.0 duration parser (section 3.2.6.1).
+///
+/// ```text
+/// '-'? 'P' (n 'Y')? (n 'M')? (n 'D')? ('T' (n 'H')? (n 'M')? (n ('.' n)? 'S')?)?
+/// n := [0-9]+
+/// ```
+///
+/// plus: at least one component overall, and `T` present iff at least one
+/// time component follows. A deterministic single pass; component digits are
+/// only classified, never converted, so an arbitrarily long component is
+/// valid and no host integer can overflow.
+const RUST_DURATION_PARSER: &str = r#"struct XmlSchemaDurationParser;
+impl XmlSchemaDurationParser {
+    /// XML Schema `collapse`: tab/LF/CR become spaces, runs of spaces are
+    /// squeezed to one, and leading/trailing spaces are removed.
+    fn collapse(value: &str) -> String {
+        value
+            .split(|c: char| c == ' ' || c == '\t' || c == '\n' || c == '\r')
+            .filter(|part| !part.is_empty())
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+
+    /// `'-'? 'P' date? ('T' time)?` with ordered, non-repeated designators.
+    fn is_duration(text: &str) -> bool {
+        let bytes = text.as_bytes();
+        let mut at = usize::from(bytes.first() == Some(&b'-'));
+        if bytes.get(at) != Some(&b'P') {
+            return false;
+        }
+        at += 1;
+        let mut components = 0_usize;
+        // Date part: Y < M < D, integers only.
+        let mut rank = 0_u8;
+        while at < bytes.len() && bytes[at] != b'T' {
+            let Some((end, fraction)) = Self::number(bytes, at) else {
+                return false;
+            };
+            let next = match bytes.get(end) {
+                Some(b'Y') => 1,
+                Some(b'M') => 2,
+                Some(b'D') => 3,
+                _ => return false,
+            };
+            if fraction || next <= rank {
+                return false;
+            }
+            rank = next;
+            components += 1;
+            at = end + 1;
+        }
+        // Time part: H < M < S; only seconds may carry a fraction.
+        if at < bytes.len() {
+            at += 1;
+            let mut rank = 0_u8;
+            let mut time_components = 0_usize;
+            while at < bytes.len() {
+                let Some((end, fraction)) = Self::number(bytes, at) else {
+                    return false;
+                };
+                let next = match bytes.get(end) {
+                    Some(b'H') => 1,
+                    Some(b'M') => 2,
+                    Some(b'S') => 3,
+                    _ => return false,
+                };
+                if next <= rank || (fraction && next != 3) {
+                    return false;
+                }
+                rank = next;
+                time_components += 1;
+                at = end + 1;
+            }
+            // 'T' must be absent if and only if every time item is absent.
+            if time_components == 0 {
+                return false;
+            }
+            components += time_components;
+        }
+        components > 0
+    }
+
+    /// `[0-9]+ ('.' [0-9]+)?` from `start`: its end and whether it had a
+    /// fraction. Digits are only classified, never accumulated.
+    fn number(bytes: &[u8], start: usize) -> Option<(usize, bool)> {
+        let digits = |from: usize| {
+            let mut end = from;
+            while end < bytes.len() && bytes[end].is_ascii_digit() {
+                end += 1;
+            }
+            end
+        };
+        let end = digits(start);
+        if end == start {
+            return None;
+        }
+        if bytes.get(end) != Some(&b'.') {
+            return Some((end, false));
+        }
+        let fraction_end = digits(end + 1);
+        (fraction_end > end + 1).then_some((fraction_end, true))
+    }
+}
+
+"#;
 
 const RUST_DATE_TIME_ZULU_CARRIER: &str = r#"#[derive(Clone, Debug)]
 pub struct {name} {
@@ -2751,18 +2908,30 @@ fn main() {
 
     #[test]
     fn temporal_and_constrained_scalars_fail_explicitly() {
-        for kind in [PrimitiveKind::Time, PrimitiveKind::Duration] {
+        // Task 057: a zero-facet direct Duration is now a checked carrier;
+        // Time on the very same field stays a direct-temporal negative.
+        for (kind, supported) in [
+            (PrimitiveKind::Time, false),
+            (PrimitiveKind::Duration, true),
+        ] {
             let mut schema = floating_schema();
             let TypeKind::Record { fields } = &mut schema.types[0].kind else {
                 panic!("floating fixture should contain a record");
             };
             fields.truncate(1);
             fields[0].type_ref = TypeRef::primitive(kind);
-            let error =
-                generate(&schema, CLOSED).expect_err("temporal generation must remain unsupported");
-            assert!(error.message.contains(&format!(
-                "unsupported Rust IR construct: type reference Primitive({kind:?})"
-            )));
+            match generate(&schema, CLOSED) {
+                Ok(source) => {
+                    assert!(supported, "{kind:?} must remain unsupported");
+                    assert!(source.contains("XmlSchemaDuration"), "{kind:?}");
+                }
+                Err(error) => {
+                    assert!(!supported, "{kind:?}: {}", error.message);
+                    assert!(error.message.contains(&format!(
+                        "unsupported Rust IR construct: type reference Primitive({kind:?})"
+                    )));
+                }
+            }
         }
 
         // Task 053: Binary with only `length` is now a supported carrier, so

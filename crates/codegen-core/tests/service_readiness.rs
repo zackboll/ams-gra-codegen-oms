@@ -82,14 +82,15 @@ fn derived_record(local: &str, base: &str, fields: Vec<FieldDecl>) -> TypeDecl {
     }
 }
 
-/// A declaration no backend can render today: an unconstrained `Duration`
+/// A declaration no backend can render today: an unconstrained `Time`
 /// primitive. Used as the controlled "unsupported construct" throughout.
+/// (Task 057 adaptation: this was `Duration`, which is now supported.)
 fn unsupported(local: &str) -> TypeDecl {
     TypeDecl {
         name: qualified(local),
         is_abstract: false,
         base_type: None,
-        kind: TypeKind::Primitive(PrimitiveKind::Duration),
+        kind: TypeKind::Primitive(PrimitiveKind::Time),
         constraints: ConstraintSet::default(),
         documentation: None,
         source: source(),
@@ -681,14 +682,11 @@ fn base_only_abstract_ancestry_is_world_independent() {
 fn unsupported_primitive_payload_is_reported_as_a_primitive_blocker() {
     let schema = schema(
         Vec::new(),
-        vec![message(
-            "DurationReport",
-            primitive(PrimitiveKind::Duration),
-        )],
+        vec![message("TimeReport", primitive(PrimitiveKind::Time))],
     );
     let result = readiness(
         &schema,
-        &contract(&oms_exchange("e1", "DurationReport")),
+        &contract(&oms_exchange("e1", "TimeReport")),
         BackendLanguage::Rust,
         GenerationWorld::ClosedSchemaSet,
     );
@@ -698,8 +696,8 @@ fn unsupported_primitive_payload_is_reported_as_a_primitive_blocker() {
     assert_eq!(
         blockers(&result),
         vec![(
-            "DurationReport",
-            &ServiceMessageBlocker::Primitive(PrimitiveKind::Duration)
+            "TimeReport",
+            &ServiceMessageBlocker::Primitive(PrimitiveKind::Time)
         )]
     );
 }
@@ -715,7 +713,7 @@ fn readiness_never_enables_hypothetical_features() {
         BackendLanguage::Rust,
         GenerationWorld::ClosedSchemaSet,
     );
-    // `PrimitiveExpansion` would make `Duration` renderable; it is not enabled.
+    // `PrimitiveExpansion` would make `Time` renderable; it is not enabled.
     assert!(!result.is_ready());
 }
 
@@ -1112,12 +1110,12 @@ fn a_selected_ada_choice_kind_alternative_is_not_ready() {
 
 /// `HolderReport -> Holder { Value : Base }`, abstract `Base` with a
 /// renderable `ConcreteGood` and a `ConcreteBad` that reaches the
-/// unsupported `BadDuration`. The contract selects `Holder` + `Base` only;
-/// `BadDuration`, `ConcreteGood`, and `ConcreteBad` are generated support.
+/// unsupported `BadTime`. The contract selects `Holder` + `Base` only;
+/// `BadTime`, `ConcreteGood`, and `ConcreteBad` are generated support.
 fn support_blocked_schema() -> SchemaIr {
     schema(
         vec![
-            unsupported("BadDuration"),
+            unsupported("BadTime"),
             abstract_record("Base", vec![field("Id", primitive(PrimitiveKind::String))]),
             derived_record(
                 "ConcreteGood",
@@ -1127,11 +1125,11 @@ fn support_blocked_schema() -> SchemaIr {
             derived_record(
                 "ConcreteBad",
                 "Base",
-                vec![field("Elapsed", named("BadDuration"))],
+                vec![field("Elapsed", named("BadTime"))],
             ),
             record("Holder", vec![field("Value", named("Base"))]),
             // Neither selected nor generated support: must never appear.
-            unsupported("UnrelatedDuration"),
+            unsupported("UnrelatedTime"),
         ],
         vec![message("HolderReport", named("Holder"))],
     )
@@ -1161,7 +1159,7 @@ fn task056_support_only_unsupported_declaration_is_not_ready() {
     assert_eq!(
         projection.generated_support_type_names(),
         &[
-            qualified("BadDuration"),
+            qualified("BadTime"),
             qualified("ConcreteGood"),
             qualified("ConcreteBad"),
         ]
@@ -1190,7 +1188,7 @@ fn task056_support_only_unsupported_declaration_is_not_ready() {
         assert_eq!(result.generated_support_types_renderable, 2);
         assert_eq!(
             result.unsupported_generated_support_types,
-            vec![qualified("BadDuration")]
+            vec![qualified("BadTime")]
         );
         // One cause, one diagnostic: no global or wrapper blocker is added.
         assert!(result.backend_blocker.is_none(), "{language:?}");
@@ -1206,19 +1204,11 @@ fn task056_unsupported_support_types_follow_schema_order() {
     // after `Alpha`, so any order but schema order is observable.
     let schema = schema(
         vec![
-            unsupported("ZuluDuration"),
+            unsupported("ZuluTime"),
             abstract_record("Base", vec![]),
-            derived_record(
-                "FirstChild",
-                "Base",
-                vec![field("A", named("AlphaDuration"))],
-            ),
-            derived_record(
-                "SecondChild",
-                "Base",
-                vec![field("Z", named("ZuluDuration"))],
-            ),
-            unsupported("AlphaDuration"),
+            derived_record("FirstChild", "Base", vec![field("A", named("AlphaTime"))]),
+            derived_record("SecondChild", "Base", vec![field("Z", named("ZuluTime"))]),
+            unsupported("AlphaTime"),
             record("Holder", vec![field("Value", named("Base"))]),
         ],
         vec![message("HolderReport", named("Holder"))],
@@ -1233,7 +1223,7 @@ fn task056_unsupported_support_types_follow_schema_order() {
         );
         assert_eq!(
             result.unsupported_generated_support_types,
-            vec![qualified("ZuluDuration"), qualified("AlphaDuration")],
+            vec![qualified("ZuluTime"), qualified("AlphaTime")],
             "{language:?}"
         );
         assert_eq!(result.generated_support_types_total, 4);

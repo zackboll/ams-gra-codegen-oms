@@ -1606,10 +1606,13 @@ fn field_renderable(
     (type_ref_renderable(&field.type_ref, enabled)
         && (!matches!(
             field.type_ref.target,
-            TypeRefTarget::Primitive(PrimitiveKind::DateTime)
-        ) || crate::direct_temporal_profile(PrimitiveKind::DateTime, &field.constraints)
-            == Ok(Some(crate::DirectTemporalProfile::DateTime))
-            || enabled.contains(&FeatureFamily::ConstrainedSimpleTypes)))
+            TypeRefTarget::Primitive(PrimitiveKind::DateTime | PrimitiveKind::Duration)
+        ) || matches!(
+            field.type_ref.target,
+            TypeRefTarget::Primitive(kind)
+                if crate::direct_temporal_profile(kind, &field.constraints)
+                    .is_ok_and(|profile| profile.is_some())
+        ) || enabled.contains(&FeatureFamily::ConstrainedSimpleTypes)))
         && occurrence_renderable(field, language, enabled)
         && (field.constraints == ConstraintSet::default()
             || matches!(field.type_ref.target, TypeRefTarget::Primitive(kind) if inclusive_integral_domain(kind, &field.constraints).is_ok_and(|domain| domain.is_some()))
@@ -1632,6 +1635,9 @@ fn primitive_ref_renderable(kind: PrimitiveKind, enabled: &BTreeSet<FeatureFamil
             | PrimitiveKind::String
             | PrimitiveKind::Binary
             | PrimitiveKind::DateTime
+            // Task 057: the direct *reference* is renderable; a field-local
+            // facet is still decided by the shared direct classifier above.
+            | PrimitiveKind::Duration
     ) || enabled.contains(&FeatureFamily::PrimitiveExpansion)
 }
 fn occurrence_renderable(
@@ -2217,21 +2223,65 @@ mod tests {
         }
     }
 
+    /// Task 057 adaptation: this used a direct `Duration` as the stable
+    /// unsupported primitive. Duration is now baseline-renderable, so `Time`
+    /// -- still unsupported -- keeps proving the same feature-family property.
     #[test]
-    fn primitive_expansion_alone_unblocks_duration_field_closure() {
+    fn primitive_expansion_alone_unblocks_time_field_closure() {
         let schema = message_schema(
             vec![declaration(
                 "Payload",
                 TypeKind::Record {
-                    fields: vec![field_ref(
-                        "duration",
-                        TypeRef::primitive(PrimitiveKind::Duration),
-                    )],
+                    fields: vec![field_ref("time", TypeRef::primitive(PrimitiveKind::Time))],
                 },
             )],
             "Payload",
         );
         assert_only_family_unblocks(&schema, FeatureFamily::PrimitiveExpansion);
+    }
+
+    /// Task 057: a zero-facet direct Duration and a named zero-facet Duration
+    /// declaration are baseline renderable in every backend; a constrained
+    /// direct Duration is not, and is attributed to constrained simple types.
+    #[test]
+    fn duration_is_baseline_renderable_only_without_facets() {
+        let mut optional = field_ref("optional", TypeRef::primitive(PrimitiveKind::Duration));
+        optional.cardinality = Cardinality::OPTIONAL_ONE;
+        let schema = message_schema(
+            vec![
+                declaration("Span", TypeKind::Primitive(PrimitiveKind::Duration)),
+                declaration(
+                    "Payload",
+                    TypeKind::Record {
+                        fields: vec![
+                            field_ref("direct", TypeRef::primitive(PrimitiveKind::Duration)),
+                            optional,
+                            field("named", "Span"),
+                        ],
+                    },
+                ),
+            ],
+            "Payload",
+        );
+        let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
+        for language in BackendLanguage::ALL {
+            let coverage = analysis.backend_coverage(language).unwrap();
+            assert_eq!(coverage.declarations_fully_renderable, 2, "{language:?}");
+            assert_eq!(coverage.field_occurrences_renderable, 3, "{language:?}");
+            assert_eq!(coverage.message_closures_renderable, 1, "{language:?}");
+        }
+        let mut constrained = field_ref("bounded", TypeRef::primitive(PrimitiveKind::Duration));
+        constrained.constraints.max_length = Some(9);
+        let schema = message_schema(
+            vec![declaration(
+                "Payload",
+                TypeKind::Record {
+                    fields: vec![constrained],
+                },
+            )],
+            "Payload",
+        );
+        assert_only_family_unblocks(&schema, FeatureFamily::ConstrainedSimpleTypes);
     }
 
     #[test]
@@ -2754,13 +2804,12 @@ mod tests {
 
     #[test]
     fn message_closure_includes_unsupported_transitive_dependency() {
+        // Task 057: `Time` replaces the now-supported `Duration` as the
+        // unsupported transitive dependency.
         let inner = declaration(
             "Inner",
             TypeKind::Record {
-                fields: vec![field_ref(
-                    "value",
-                    TypeRef::primitive(PrimitiveKind::Duration),
-                )],
+                fields: vec![field_ref("value", TypeRef::primitive(PrimitiveKind::Time))],
             },
         );
         let outer = declaration(
@@ -2921,16 +2970,13 @@ mod tests {
     /// The capability model must keep **occurrence representation** and
     /// **primitive target support** as separate questions.
     ///
-    /// Time, Duration and Decimal still lack both Ada optional storage and a
-    /// direct value representation. DateTime now has optional storage and a
-    /// validated direct value; the separate test below checks both decisions.
+    /// Time and Decimal still lack both Ada optional storage and a direct
+    /// value representation. DateTime (Task 046) and Duration (Task 057) now
+    /// have optional storage and a validated direct value; the checks below
+    /// cover both decisions for each.
     #[test]
     fn optional_occurrence_storage_does_not_grant_primitive_support() {
-        for kind in [
-            PrimitiveKind::Time,
-            PrimitiveKind::Duration,
-            PrimitiveKind::Decimal,
-        ] {
+        for kind in [PrimitiveKind::Time, PrimitiveKind::Decimal] {
             let mut value = field_ref("value", TypeRef::primitive(kind));
             value.cardinality = Cardinality::OPTIONAL_ONE;
             let schema = message_schema(
@@ -2958,29 +3004,30 @@ mod tests {
                 "{kind:?} primitive support must remain false"
             );
         }
-        let mut value = field_ref("value", TypeRef::primitive(PrimitiveKind::DateTime));
-        value.cardinality = Cardinality::OPTIONAL_ONE;
-        let schema = message_schema(
-            vec![declaration(
+        for kind in [PrimitiveKind::DateTime, PrimitiveKind::Duration] {
+            let mut value = field_ref("value", TypeRef::primitive(kind));
+            value.cardinality = Cardinality::OPTIONAL_ONE;
+            let schema = message_schema(
+                vec![declaration(
+                    "Payload",
+                    TypeKind::Record {
+                        fields: vec![value],
+                    },
+                )],
                 "Payload",
-                TypeKind::Record {
-                    fields: vec![value],
-                },
-            )],
-            "Payload",
-        );
-        let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
-        assert_eq!(
-            analysis
-                .backend_coverage(BackendLanguage::Ada)
-                .unwrap()
-                .field_occurrences_renderable,
-            1
-        );
-        assert!(primitive_ref_renderable(
-            PrimitiveKind::DateTime,
-            &BTreeSet::new()
-        ));
+            );
+            let analysis =
+                CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
+            assert_eq!(
+                analysis
+                    .backend_coverage(BackendLanguage::Ada)
+                    .unwrap()
+                    .field_occurrences_renderable,
+                1,
+                "{kind:?}"
+            );
+            assert!(primitive_ref_renderable(kind, &BTreeSet::new()), "{kind:?}");
+        }
     }
 
     /// An optional direct integral field whose bounds Ada cannot represent stays

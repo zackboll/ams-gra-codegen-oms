@@ -259,3 +259,34 @@ only a generated-support descendant between plan resolution and reuse is not
 reported as a binding mismatch. Readiness and generation still agree in that
 situation, because both re-project the schema they are given, so Task 056
 parity does not depend on it. Recorded as its own roadmap item.
+
+## 10. Task 057 follow-up: fixture adaptation and new measured figures
+
+[Task 057](task-057-duration-support.md) makes zero-facet `xs:duration`
+(named and direct) renderable in all three backends. Two things follow for
+this task.
+
+**Fixture adaptation, not a semantic change.** `support-readiness.xsd` used an
+unconstrained `xs:duration` (`BadDuration`, `UnrelatedDuration`) as its
+intentionally unsupported generated-support primitive. Left as is, case B
+would silently turn READY and stop testing Task 056. It now uses `xs:time`
+(`BadTime`, `UnrelatedTime`), which is still unsupported, and every case keeps
+its verdict: A and B NOT READY, C and D READY, and B still exits 1 before any
+backend call and writes nothing. The unit-level Task 056 schema in
+`service_readiness.rs` was adapted the same way.
+
+**OrderOfBattle after Task 057** (closed-schema, single-message contract,
+identical in Ada / Rust / C++):
+
+| Release | Support total | Renderable before → after | Unsupported before → after | First unsupported support before → after | Status |
+| --- | --- | --- | --- | --- | --- |
+| 2.5 | 442 | 400 → **403** | 42 → **39** | `EphemerisOrbitalModelType` → **`AircraftIdentifierType`** | NOT READY |
+| 2.6 | 442 | 402 → **403** | 40 → **39** | `AircraftIdentifierType` → `AircraftIdentifierType` | NOT READY |
+
+2.5 regained `EphemerisOrbitalModelType` (direct `IntegratorStepSize`),
+`OrbitalEphemerisParametersReferenceType` (direct `EphemerisResultsStepSize`)
+and `DurationType`. 2.6 regained `DurationType`. The two releases now have the
+same 39-name unsupported support list, and the backend of every cell fails
+first on `AircraftIdentifierType`, which is in that list. Selected counts are
+unchanged (55 / 56, all renderable). `OrderOfBattle` stays NOT READY on
+generated support, which is the Task 056 behaviour.

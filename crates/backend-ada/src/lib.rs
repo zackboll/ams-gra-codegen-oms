@@ -14,13 +14,15 @@ use ams_gra_oms_codegen_core::{
     abstract_value_projection_for_ref, ada_model_file_names, ada_model_package,
     ada_record_field_uses_optional_wrapper, backend_preflight, binary_length_domain,
     constrains_string, direct_temporal_profile, effective_choice_alternatives,
-    effective_record_fields, emissions_emit_direct_date_time, field_storage_semantics,
-    float32_literal, float64_literal, floating_domain, generated_choice_alternative_name,
-    generated_enum_variant_name, generated_record_field_name, inclusive_integral_domain,
-    is_temporal_primitive, plan_type_emissions, schema_emits_ada_binary_vectors,
-    schema_emits_bounded_sequence_support, schema_emits_direct_date_time,
-    schema_emits_string_profile_carrier, schema_emits_temporal_carrier,
-    schema_emits_unbounded_sequence_support, string_profile, temporal_profile,
+    effective_record_fields, emissions_emit_direct_date_time, emissions_emit_direct_duration,
+    field_storage_semantics, float32_literal, float64_literal, floating_domain,
+    generated_choice_alternative_name, generated_enum_variant_name, generated_record_field_name,
+    inclusive_integral_domain, is_temporal_primitive, plan_type_emissions,
+    schema_emits_ada_binary_vectors, schema_emits_bounded_sequence_support,
+    schema_emits_direct_date_time, schema_emits_direct_duration,
+    schema_emits_named_temporal_profile, schema_emits_string_profile_carrier,
+    schema_emits_temporal_carrier, schema_emits_unbounded_sequence_support, string_profile,
+    temporal_profile,
 };
 use ams_gra_oms_ir::{
     Cardinality, ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind,
@@ -97,6 +99,7 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     validate_schema(schema, world)?;
     let emissions = plan_type_emissions(schema, world)?;
     let emits_direct_date_time = emissions_emit_direct_date_time(schema, &emissions, world);
+    let emits_direct_duration = emissions_emit_direct_duration(schema, &emissions, world);
     let package = package_name(schema)?;
     // Task 033: predicate checks follow the assertion policy in force where a
     // conversion is written, so the generated spec states its own policy. It is
@@ -158,6 +161,10 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     if emits_direct_date_time {
         render_direct_date_time_spec(&mut output, &mut private_part);
     }
+    // Task 057: the direct carrier is the same spec text as a named Duration.
+    if emits_direct_duration {
+        render_duration_spec(&mut output, &mut private_part, "XML_Schema_Duration");
+    }
     for emission in emissions {
         match emission {
             TypeEmission::Declaration(declaration) => render_declaration(
@@ -208,6 +215,7 @@ pub fn generate_body(
     // still emits no `.adb` at all.
     if !schema_emits_temporal_carrier(schema)
         && !schema_emits_direct_date_time(schema, world)
+        && !schema_emits_direct_duration(schema, world)
         && !schema_emits_string_profile_carrier(schema)
         && !schema_emits_unbounded_sequence_support(schema)
         && !schema_emits_bounded_sequence_support(schema)
@@ -217,15 +225,27 @@ pub fn generate_body(
     validate_schema(schema, world)?;
     let emissions = plan_type_emissions(schema, world)?;
     let emits_direct_date_time = emissions_emit_direct_date_time(schema, &emissions, world);
+    let emits_direct_duration = emissions_emit_direct_duration(schema, &emissions, world);
     let package = package_name(schema)?;
     let mut discard_spec = String::new();
     let mut discard_private = String::new();
     let mut body = String::new();
-    if schema_emits_temporal_carrier(schema) || emits_direct_date_time {
+    if schema_emits_named_temporal_profile(schema, TemporalProfile::DateTimeZulu)
+        || emits_direct_date_time
+    {
         body.push_str(&ada_date_time_parser());
     }
     if emits_direct_date_time {
         body.push_str(ADA_DIRECT_DATE_TIME_BODY);
+    }
+    // Task 057: the ONE duration validator package, then the direct carrier.
+    if emits_direct_duration
+        || schema_emits_named_temporal_profile(schema, TemporalProfile::Duration)
+    {
+        body.push_str(ADA_DURATION_PARSER);
+    }
+    if emits_direct_duration {
+        body.push_str(&ADA_DURATION_BODY.replace("{name}", "XML_Schema_Duration"));
     }
     for emission in emissions {
         if let TypeEmission::Declaration(declaration) = emission {
@@ -619,7 +639,7 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
             && is_temporal_primitive(kind)
         {
             match temporal_profile(kind, &declaration.constraints) {
-                Ok(Some(TemporalProfile::DateTimeZulu)) => {}
+                Ok(Some(TemporalProfile::DateTimeZulu | TemporalProfile::Duration)) => {}
                 Ok(None) => unreachable!("is_temporal_primitive gates this branch"),
                 Err(reason) => {
                     return unsupported(format!("{reason} on {}", declaration.name.local_name));
@@ -1547,6 +1567,15 @@ fn ada_field_base(field: &ams_gra_oms_ir::FieldDecl) -> Result<String, CodegenEr
                 Ok(Some(DirectTemporalProfile::DateTime)) => Ok("XML_Schema_Date_Time".to_owned()),
                 _ => unsupported(format!(
                     "direct DateTime field constraints on {}",
+                    field.name
+                )),
+            }
+        }
+        TypeRefTarget::Primitive(PrimitiveKind::Duration) => {
+            match direct_temporal_profile(PrimitiveKind::Duration, &field.constraints) {
+                Ok(Some(DirectTemporalProfile::Duration)) => Ok("XML_Schema_Duration".to_owned()),
+                _ => unsupported(format!(
+                    "direct Duration field constraints on {}",
                     field.name
                 )),
             }
@@ -2662,6 +2691,12 @@ fn render_temporal_declaration(
 ) -> Result<(), CodegenError> {
     match temporal_profile(kind, constraints) {
         Ok(Some(TemporalProfile::DateTimeZulu)) => {}
+        // Task 057: the SAME spec/body text as the direct carrier.
+        Ok(Some(TemporalProfile::Duration)) => {
+            render_duration_spec(output, private_part, name);
+            body.push_str(&ADA_DURATION_BODY.replace("{name}", name));
+            return Ok(());
+        }
         Ok(None) => return unsupported(format!("non-temporal primitive on {name}")),
         Err(reason) => return unsupported(format!("{reason} on {name}")),
     }
@@ -2712,6 +2747,221 @@ fn render_temporal_declaration(
     body.push_str(&ADA_DATE_TIME_ZULU_CARRIER_BODY.replace("{name}", name));
     Ok(())
 }
+
+/// Task 057: the Ada duration carrier spec and private completion, shared by
+/// the direct `XML_Schema_Duration` and every named zero-facet Duration.
+///
+/// A checked **lexical** carrier: deliberately NOT Ada's `Duration` (a fixed
+/// point number of seconds that cannot represent a year or month component
+/// without calendar context). Predefined equality compares the stored
+/// lexical spelling, exactly as for the Task 036/046 dateTime carriers, and
+/// is documented as such; no ordering operator is declared.
+///
+/// Task 040: the component default is a raise expression, so a default
+/// declared carrier fails independently of `-gnata`/`Assertion_Policy`.
+fn render_duration_spec(output: &mut String, private_part: &mut String, name: &str) {
+    writeln!(
+        output,
+        concat!(
+            "   --  A checked XML Schema duration lexical spelling (whitespace-collapsed,\n",
+            "   --  otherwise stored unchanged). NOT Ada's Duration: no arithmetic or\n",
+            "   --  ordering. Predefined \"=\" compares the stored lexical spelling; it is\n",
+            "   --  NOT XML Schema value-space equality (P12M and P1Y are one value).\n",
+            "   type {name} is private;\n",
+            "   --  Raises Constraint_Error unless the collapsed value is a valid duration.\n",
+            "   function Create (Value : String) return {name};\n",
+            "   function Value (Item : {name}) return String;\n",
+        ),
+        name = name,
+    )
+    .expect("writing to String cannot fail");
+    writeln!(
+        private_part,
+        concat!(
+            "   type {name} is record\n",
+            "      --  Task 040: a raise-expression default; enforcement does not\n",
+            "      --  depend on -gnata or Assertion_Policy. Create never evaluates it.\n",
+            "      Lexical : Standard.Ada.Strings.Unbounded.Unbounded_String :=\n",
+            "        raise Standard.Program_Error\n",
+            "          with \"{name} requires initialization from Create\";\n",
+            "   end record;\n",
+        ),
+        name = name,
+    )
+    .expect("writing to String cannot fail");
+}
+
+/// Task 057: the ONE Ada duration validator for a unit, as a nested package
+/// in the body. Named and direct Duration carriers call it; no second parser
+/// exists. Its helpers live inside the package, so the only new body-level
+/// name is `XML_Schema_Duration_Parser`, which name preflight reserves.
+///
+/// Same grammar as the Rust/C++ parsers. Component digits are only
+/// classified (`in '0' .. '9'`), never converted, so an arbitrarily long
+/// component is valid and no `Integer` can overflow.
+const ADA_DURATION_PARSER: &str = r##"
+   --  Task 057: shared XML Schema 1.0 duration lexical validator.
+   package XML_Schema_Duration_Parser is
+      function Collapse (Raw : String) return String;
+      function Is_Duration (Text : String) return Boolean;
+   end XML_Schema_Duration_Parser;
+
+   package body XML_Schema_Duration_Parser is
+      --  XML Schema collapse: tab/LF/CR become spaces, runs of spaces are
+      --  squeezed to one, and leading/trailing spaces are removed.
+      function Collapse (Raw : String) return String is
+         Result        : String (1 .. Raw'Length);
+         Last          : Natural := 0;
+         Pending_Space : Boolean := False;
+      begin
+         for Index in Raw'Range loop
+            if Raw (Index) = ' '
+              or else Raw (Index) = Character'Val (9)
+              or else Raw (Index) = Character'Val (10)
+              or else Raw (Index) = Character'Val (13)
+            then
+               Pending_Space := Last > 0;
+            else
+               if Pending_Space then
+                  Last := Last + 1;
+                  Result (Last) := ' ';
+                  Pending_Space := False;
+               end if;
+               Last := Last + 1;
+               Result (Last) := Raw (Index);
+            end if;
+         end loop;
+         return Result (1 .. Last);
+      end Collapse;
+
+      --  [0-9]+ ('.' [0-9]+)? starting at From. On success Stop is the index
+      --  just past the number. Digits are classified, never accumulated.
+      procedure Number
+        (Text     : String;
+         From     : Positive;
+         Stop     : out Positive;
+         Fraction : out Boolean;
+         Valid    : out Boolean)
+      is
+         At_Index : Positive := From;
+      begin
+         Fraction := False;
+         Valid := False;
+         Stop := From;
+         while At_Index <= Text'Last and then Text (At_Index) in '0' .. '9' loop
+            At_Index := At_Index + 1;
+         end loop;
+         if At_Index = From then
+            return;
+         end if;
+         if At_Index <= Text'Last and then Text (At_Index) = '.' then
+            declare
+               Digits_From : constant Positive := At_Index + 1;
+            begin
+               At_Index := Digits_From;
+               while At_Index <= Text'Last and then Text (At_Index) in '0' .. '9' loop
+                  At_Index := At_Index + 1;
+               end loop;
+               if At_Index = Digits_From then
+                  return;
+               end if;
+               Fraction := True;
+            end;
+         end if;
+         Stop := At_Index;
+         Valid := True;
+      end Number;
+
+      --  '-'? 'P' date? ('T' time)? with ordered, non-repeated designators.
+      function Is_Duration (Text : String) return Boolean is
+         At_Index   : Positive := Text'First;
+         Components : Natural := 0;
+         Rank       : Natural := 0;
+         Stop       : Positive;
+         Fraction   : Boolean;
+         Valid      : Boolean;
+         Next       : Natural;
+      begin
+         if Text'Length = 0 then
+            return False;
+         end if;
+         if Text (At_Index) = '-' then
+            At_Index := At_Index + 1;
+         end if;
+         if At_Index > Text'Last or else Text (At_Index) /= 'P' then
+            return False;
+         end if;
+         At_Index := At_Index + 1;
+         --  Date part: Y < M < D, integers only.
+         while At_Index <= Text'Last and then Text (At_Index) /= 'T' loop
+            Number (Text, At_Index, Stop, Fraction, Valid);
+            if not Valid or else Stop > Text'Last then
+               return False;
+            end if;
+            case Text (Stop) is
+               when 'Y' => Next := 1;
+               when 'M' => Next := 2;
+               when 'D' => Next := 3;
+               when others => return False;
+            end case;
+            if Fraction or else Next <= Rank then
+               return False;
+            end if;
+            Rank := Next;
+            Components := Components + 1;
+            At_Index := Stop + 1;
+         end loop;
+         --  Time part: H < M < S; only seconds may carry a fraction.
+         if At_Index <= Text'Last then
+            At_Index := At_Index + 1;
+            Rank := 0;
+            declare
+               Time_Components : Natural := 0;
+            begin
+               while At_Index <= Text'Last loop
+                  Number (Text, At_Index, Stop, Fraction, Valid);
+                  if not Valid or else Stop > Text'Last then
+                     return False;
+                  end if;
+                  case Text (Stop) is
+                     when 'H' => Next := 1;
+                     when 'M' => Next := 2;
+                     when 'S' => Next := 3;
+                     when others => return False;
+                  end case;
+                  if Next <= Rank or else (Fraction and then Next /= 3) then
+                     return False;
+                  end if;
+                  Rank := Next;
+                  Time_Components := Time_Components + 1;
+                  At_Index := Stop + 1;
+               end loop;
+               --  'T' must be absent if and only if every time item is absent.
+               if Time_Components = 0 then
+                  return False;
+               end if;
+               Components := Components + Time_Components;
+            end;
+         end if;
+         return Components > 0;
+      end Is_Duration;
+   end XML_Schema_Duration_Parser;
+"##;
+
+/// Task 057: the Ada duration carrier body, `{name}` substituted, shared by
+/// the direct and named carriers. Both call the one validator package.
+const ADA_DURATION_BODY: &str = r##"
+   function Create (Value : String) return {name} is
+      Normalized : constant String := XML_Schema_Duration_Parser.Collapse (Value);
+   begin
+      if not XML_Schema_Duration_Parser.Is_Duration (Normalized) then
+         raise Constraint_Error with "not a valid XML Schema duration";
+      end if;
+      return {name}'(Lexical => Standard.Ada.Strings.Unbounded.To_Unbounded_String (Normalized));
+   end Create;
+   function Value (Item : {name}) return String is
+     (Standard.Ada.Strings.Unbounded.To_String (Item.Lexical));
+"##;
 
 fn render_direct_date_time_spec(output: &mut String, private_part: &mut String) {
     output.push_str("   --  Predefined equality compares lexical spelling, not dateTime value-space equality.\n   type XML_Schema_Date_Time is private;\n   function Create (Value : String) return XML_Schema_Date_Time;\n   function Value (Item : XML_Schema_Date_Time) return String;\n\n");
@@ -4220,17 +4470,29 @@ end Probe;
 
     #[test]
     fn temporal_and_constrained_scalars_fail_explicitly() {
-        for kind in [PrimitiveKind::Time, PrimitiveKind::Duration] {
+        // Task 057: a zero-facet direct Duration is now a checked carrier;
+        // Time on the very same field stays a direct-temporal negative.
+        for (kind, supported) in [
+            (PrimitiveKind::Time, false),
+            (PrimitiveKind::Duration, true),
+        ] {
             let mut schema = track_schema();
             let TypeKind::Record { fields } = &mut schema.types[2].kind else {
                 panic!("track fixture should contain a record");
             };
             fields[0].type_ref = TypeRef::primitive(kind);
-            let error =
-                generate(&schema, CLOSED).expect_err("temporal generation must remain unsupported");
-            assert!(error.message.contains(&format!(
-                "unsupported Ada IR construct: type reference Primitive({kind:?})"
-            )));
+            match generate(&schema, CLOSED) {
+                Ok(source) => {
+                    assert!(supported, "{kind:?} must remain unsupported");
+                    assert!(source.contains("XML_Schema_Duration"), "{kind:?}");
+                }
+                Err(error) => {
+                    assert!(!supported, "{kind:?}: {}", error.message);
+                    assert!(error.message.contains(&format!(
+                        "unsupported Ada IR construct: type reference Primitive({kind:?})"
+                    )));
+                }
+            }
         }
 
         // Task 053: Binary with only `length` is now a supported carrier, so
@@ -5423,14 +5685,11 @@ end Probe;
             error.message
         );
 
-        // Time, Duration and Decimal: occurrence storage does not grant primitive
+        // Time and Decimal: occurrence storage does not grant primitive
         // support, and the diagnostic keeps blaming the primitive/target rather
-        // than claiming optionality is the root problem.
-        for kind in [
-            PrimitiveKind::Time,
-            PrimitiveKind::Duration,
-            PrimitiveKind::Decimal,
-        ] {
+        // than claiming optionality is the root problem. (Task 057: Duration
+        // now composes with the optional wrapper; checked below.)
+        for kind in [PrimitiveKind::Time, PrimitiveKind::Decimal] {
             let TypeKind::Record { fields } = &mut schema.types[record].kind else {
                 panic!("PrimitiveOptionals is a record");
             };
@@ -5452,6 +5711,13 @@ end Probe;
         let source =
             generate(&schema, CLOSED).expect("direct DateTime optional uses validated storage");
         assert!(source.contains("Value : XML_Schema_Date_Time;"));
+        let TypeKind::Record { fields } = &mut schema.types[record].kind else {
+            panic!("PrimitiveOptionals is a record");
+        };
+        fields[0].type_ref = TypeRef::primitive(PrimitiveKind::Duration);
+        let source =
+            generate(&schema, CLOSED).expect("direct Duration optional uses validated storage");
+        assert!(source.contains("Value : XML_Schema_Duration;"));
     }
 
     /// Task 035 is Record fields only. An optional direct primitive **Choice

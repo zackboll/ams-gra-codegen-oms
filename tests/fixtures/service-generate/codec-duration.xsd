@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="https://www.vdl.afrl.af.mil/programs/oam"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- SYNTHETIC Task 057 codec fixture (OAM namespace). Every Duration here
+       is UNCONSTRAINED xs:duration, either named or direct:
+
+         Named      SpanType           1..1         named: SpanType -> xs:duration (UCI DurationType shape)
+         Step       xs:duration        1..1         required direct
+         MaybeStep  xs:duration        0..1         optional direct
+         Steps      xs:duration        0..3         bounded repeated direct
+         History    xs:duration        0..unbounded unbounded repeated direct
+         Pick       IntervalChoice     1..1         Choice with a direct duration alternative
+
+       OMSC-SPC-013 Rev B 6.1.4 case 5: xs:duration is a JSON string whose
+       characters are the XML lexical value (6.1.5.4). DurationNotice is both
+       subscribed and published on one topic so a CAL server loops it back. -->
+  <xs:simpleType name="SpanType">
+    <xs:restriction base="xs:duration"/>
+  </xs:simpleType>
+  <xs:complexType name="IntervalChoice">
+    <xs:choice>
+      <xs:element name="Every" type="xs:duration"/>
+      <xs:element name="Count" type="xs:int"/>
+    </xs:choice>
+  </xs:complexType>
+  <xs:complexType name="DurationPayload">
+    <xs:sequence>
+      <xs:element name="Named" type="uci:SpanType"/>
+      <xs:element name="Step" type="xs:duration"/>
+      <xs:element name="MaybeStep" type="xs:duration" minOccurs="0"/>
+      <xs:element name="Steps" type="xs:duration" minOccurs="0" maxOccurs="3"/>
+      <xs:element name="History" type="xs:duration" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="Pick" type="uci:IntervalChoice"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="DurationNotice" type="uci:DurationPayload" uci:version="001.000.000.000"/>
+</xs:schema>

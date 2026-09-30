@@ -116,7 +116,13 @@ pub fn ada_optional_direct_primitive_representable(
         PrimitiveKind::DateTime => {
             direct_temporal_profile(kind, constraints) == Ok(Some(DirectTemporalProfile::DateTime))
         }
-        PrimitiveKind::Time | PrimitiveKind::Duration | PrimitiveKind::Decimal => false,
+        // Task 057: a supported (zero-facet) direct Duration composes with the
+        // same wrapper as direct DateTime. A constrained Duration is rejected
+        // by the shared classifier and so is not optional-representable.
+        PrimitiveKind::Duration => {
+            direct_temporal_profile(kind, constraints) == Ok(Some(DirectTemporalProfile::Duration))
+        }
+        PrimitiveKind::Time | PrimitiveKind::Decimal => false,
     }
 }
 
@@ -294,14 +300,19 @@ mod tests {
         assert!(!ada_record_field_uses_optional_wrapper(&candidate));
     }
 
+    /// Task 057: direct Duration uses the wrapper only without facets.
+    #[test]
+    fn direct_duration_uses_the_optional_wrapper_only_without_facets() {
+        let mut candidate = primitive(PrimitiveKind::Duration);
+        assert!(ada_record_field_uses_optional_wrapper(&candidate));
+        candidate.constraints = bounded(0, 9);
+        assert!(!ada_record_field_uses_optional_wrapper(&candidate));
+    }
+
     /// Occurrence storage does not grant support for other unsupported kinds.
     #[test]
-    fn temporal_and_decimal_remain_unsupported() {
-        for kind in [
-            PrimitiveKind::Time,
-            PrimitiveKind::Duration,
-            PrimitiveKind::Decimal,
-        ] {
+    fn time_and_decimal_remain_unsupported() {
+        for kind in [PrimitiveKind::Time, PrimitiveKind::Decimal] {
             assert!(
                 !ada_record_field_uses_optional_wrapper(&primitive(kind)),
                 "{kind:?} has no Ada value representation at any cardinality"

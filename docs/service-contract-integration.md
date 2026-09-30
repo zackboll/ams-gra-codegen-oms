@@ -1143,3 +1143,25 @@ disagreeing notions of "wrong schema". A mismatch is a typed
 
 Scope is the selected service: changing or removing a declaration **outside** the
 selected closure does not invalidate the plan.
+
+## Task 057 — XML Schema `duration`
+
+Zero-facet `xs:duration` (named and direct) is now renderable, so it no
+longer blocks a selection or its generated support. Readiness and generation
+both take this from the shared classifier, and nothing else changed in
+readiness.
+
+Pinned `OrderOfBattle`, which Task 056 made NOT READY on generated support,
+stays NOT READY:
+
+| Release | Unsupported support declarations | First unsupported support |
+| --- | --- | --- |
+| 2.5 | 42 → 39 | was `EphemerisOrbitalModelType`, now `AircraftIdentifierType` |
+| 2.6 | 40 → 39 | `AircraftIdentifierType` (unchanged) |
+
+The Rust `--with-codec` path now accepts Duration: it is a JSON string equal
+to the carrier's stored spelling.
+
+Synthetic fixtures that used `xs:duration` as their unselected or unsupported
+construct now use `xs:time`, with the same verdicts. The per-message impact on
+real UCI is in [Task 057](task-057-duration-support.md).

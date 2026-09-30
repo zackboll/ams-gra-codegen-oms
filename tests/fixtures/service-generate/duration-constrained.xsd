@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic Task 057 negative control: a CONSTRAINED named Duration.
+     Task 057 supports only zero-facet xs:duration. The XSD frontend rejects
+     the facet at load time, so service-check and service-generate fail
+     before any readiness verdict or output. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:t="urn:test"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:test" elementFormDefault="qualified">
+  <xs:simpleType name="BoundedSpan">
+    <xs:restriction base="xs:duration">
+      <xs:maxInclusive value="P1D"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:complexType name="BoundedPayload">
+    <xs:sequence>
+      <xs:element name="Span" type="t:BoundedSpan"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="BoundedReport" type="t:BoundedPayload" uci:version="001.000.000.000"/>
+</xs:schema>

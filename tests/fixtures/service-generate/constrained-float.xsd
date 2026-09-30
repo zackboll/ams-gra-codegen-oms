@@ -19,7 +19,7 @@
 
        plus one UNRELATED declaration no contract selects:
 
-         UnrelatedDuration  xs:duration; no backend renders it, so ordinary
+         UnrelatedTime  xs:time; no backend renders it, so ordinary
                             full-schema generation still fails while
                             service-check reports READY. That is what proves
                             readiness is contract-selected rather than
@@ -57,8 +57,8 @@
   </xs:simpleType>
 
   <!-- Unselected, and unrenderable by every backend. -->
-  <xs:simpleType name="UnrelatedDuration">
-    <xs:restriction base="xs:duration"/>
+  <xs:simpleType name="UnrelatedTime">
+    <xs:restriction base="xs:time"/>
   </xs:simpleType>
 
   <xs:complexType name="TelemetryPayload">

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Task 057 synthetic XML Schema duration fixture (all three backends).
+
+     Supported:
+       Span              named zero-facet xs:duration (the UCI DurationType shape)
+       Payload           NamedDuration : Span
+                         DirectDuration : xs:duration          1..1
+                         OptionalDuration : xs:duration        0..1
+                         RepeatedDuration : xs:duration        0..3
+                         UnboundedDuration : xs:duration       0..unbounded
+       Timed (abstract)  Step : xs:duration  (inherited by Concrete)
+       Concrete          extends Timed
+       Pick (Choice)     ByDuration : xs:duration | ByCount : xs:int
+       Unrelated         duration-free
+
+     The unsupported negative controls (xs:time, constrained Duration) live in
+     separate fixtures so this one generates in every backend. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test:duration"
+           targetNamespace="urn:test:duration"
+           elementFormDefault="qualified">
+  <xs:simpleType name="Span">
+    <xs:restriction base="xs:duration"/>
+  </xs:simpleType>
+  <xs:complexType name="Payload">
+    <xs:sequence>
+      <xs:element name="NamedDuration" type="t:Span"/>
+      <xs:element name="DirectDuration" type="xs:duration"/>
+      <xs:element name="OptionalDuration" type="xs:duration" minOccurs="0"/>
+      <xs:element name="RepeatedDuration" type="xs:duration" minOccurs="0" maxOccurs="3"/>
+      <xs:element name="UnboundedDuration" type="xs:duration" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Timed" abstract="true">
+    <xs:sequence>
+      <xs:element name="Step" type="xs:duration"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Concrete">
+    <xs:complexContent>
+      <xs:extension base="t:Timed">
+        <xs:sequence>
+          <xs:element name="Label" type="xs:string"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="Pick">
+    <xs:choice>
+      <xs:element name="ByDuration" type="xs:duration"/>
+      <xs:element name="ByCount" type="xs:int"/>
+    </xs:choice>
+  </xs:complexType>
+  <xs:complexType name="Unrelated">
+    <xs:sequence>
+      <xs:element name="Count" type="xs:int"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

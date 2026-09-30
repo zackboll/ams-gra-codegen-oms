@@ -14,6 +14,7 @@
 //! Validation authority stays with the generated model: every decoded value
 //! is built through its generated checked constructor (`Type::new`,
 //! `BoundedVec::new`, `UnboundedVec::new`, `XmlSchemaDateTime::new`,
+//! `XmlSchemaDuration::new`,
 //! `BoundedI64/U64::new`). No bound, facet, or cardinality is duplicated here.
 //!
 //! Recursive helpers are named `encode_tNNN` / `decode_tNNN` from the stable
@@ -418,6 +419,8 @@ enum Base {
     Float64,
     String,
     DirectDateTime,
+    /// Task 057: the direct `XmlSchemaDuration` checked lexical carrier.
+    DirectDuration,
     /// Task 052: a direct `Vec<u8>` whose provenance resolved to hexBinary.
     HexBinary,
     Named(usize),
@@ -472,6 +475,15 @@ impl Renderer<'_> {
                     )));
                 }
             },
+            PrimitiveKind::Duration => match direct_temporal_profile(kind, &field.constraints) {
+                Ok(Some(DirectTemporalProfile::Duration)) => Base::DirectDuration,
+                _ => {
+                    return Err(error(format!(
+                        "service codec: direct Duration constraints on {}",
+                        field.name
+                    )));
+                }
+            },
             // Task 052: only RESOLVED hexBinary provenance selects the hex
             // mapping (readiness has already rejected anything else).
             PrimitiveKind::Binary => match resolve_binary_encoding(self.schema, &field.type_ref) {
@@ -501,7 +513,9 @@ impl Renderer<'_> {
             Base::Float32 => format!("enc_f32(*{x})"),
             Base::Float64 => format!("enc_f64(*{x})"),
             Base::String => format!("Value::String({x}.clone())"),
-            Base::DirectDateTime => format!("Value::String({x}.as_str().to_owned())"),
+            Base::DirectDateTime | Base::DirectDuration => {
+                format!("Value::String({x}.as_str().to_owned())")
+            }
             Base::HexBinary => format!("encode_hex_binary({x})"),
             Base::Named(id) => format!("encode_t{id:03}({x})"),
         }
@@ -526,6 +540,11 @@ impl Renderer<'_> {
             Base::String => format!("dec_str({v}, {p}).map(str::to_owned)"),
             Base::DirectDateTime => format!(
                 "dec_str({v}, {p}).and_then(|s| {model}::XmlSchemaDateTime::new(s).ok_or_else(|| rejected({p}, \"XmlSchemaDateTime\")))"
+            ),
+            // Task 057: the generated checked constructor is the only
+            // authority on the duration lexical space; no grammar is here.
+            Base::DirectDuration => format!(
+                "dec_str({v}, {p}).and_then(|s| {model}::XmlSchemaDuration::new(s).ok_or_else(|| rejected({p}, \"XmlSchemaDuration\")))"
             ),
             Base::HexBinary => format!("decode_hex_binary({v}, {p})"),
             Base::Named(id) => format!("decode_t{id:03}({v}, {p})"),
@@ -630,7 +649,7 @@ impl Renderer<'_> {
                     },
                 )
             }
-            PrimitiveKind::String | PrimitiveKind::DateTime => (
+            PrimitiveKind::String | PrimitiveKind::DateTime | PrimitiveKind::Duration => (
                 "Value::String(value.as_str().to_owned())".to_owned(),
                 checked("dec_str(value, path)"),
             ),

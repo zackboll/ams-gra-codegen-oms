@@ -323,3 +323,87 @@ fn task050_generated_codec_round_trips_through_mock_owp() {
     runtime.close().expect("close");
     peer.expect_closed();
 }
+
+/// Task 057: the `codec-duration` service. A typed duration is published as
+/// its stored lexical spelling; a MSG with collapsible whitespace reaches the
+/// typed handler collapsed; an invalid duration lexical is a decode event from
+/// the GENERATED model constructor, never a handler call.
+#[test]
+fn task057_duration_generated_codec_round_trips_through_mock_owp() {
+    use ams_gra_oms_runtime_rust_facade_tests::codec_duration::model as m;
+    use ams_gra_oms_runtime_rust_facade_tests::codec_duration::service_api::function_span as span;
+    use ams_gra_oms_runtime_rust_facade_tests::codec_duration::service_codec::ServiceCodec as DurationCodec;
+
+    let peer = MockPeer::start();
+    let mut runtime = SleetRuntime::connect(
+        RuntimeConfig::new(&peer.url, "svc-1", "000.1.0"),
+        DurationCodec,
+    )
+    .expect("connect");
+    assert!(peer.next_text().starts_with("INIT "));
+
+    let (seen_tx, seen) = mpsc::channel();
+    let subscription = span::exchange_input_span::subscribe(
+        &mut runtime,
+        move |message: &span::exchange_input_span::Payload| {
+            seen_tx.send(message.clone()).expect("test alive");
+        },
+    )
+    .expect("subscribe");
+    peer.expect("SUB sub-1 DurationNotice span-topic");
+
+    let d = |text| m::XmlSchemaDuration::new(text).expect("duration");
+    let value = m::DurationPayload {
+        named: m::SpanType::new("P1DT2H").expect("named"),
+        step: d("PT0.25S"),
+        maybestep: None,
+        steps: m::BoundedVec::new(vec![d("-P1D")]).expect("1"),
+        history: m::UnboundedVec::new(Vec::new()).expect("0"),
+        pick: m::IntervalChoice::Every(d("P12M")),
+    };
+    span::exchange_output_span::publish(&mut runtime, &value).expect("publish");
+    let document = pub_body(&peer.next_text(), "span-topic");
+    assert_eq!(
+        document,
+        serde_json::json!({ "DurationNotice": {
+            "Named": "P1DT2H",
+            "Step": "PT0.25S",
+            "Steps": ["-P1D"],
+            "Pick": { "Every": "P12M" }
+        }})
+    );
+
+    peer.send(
+        r#"MSG sub-1 {"DurationNotice":{"Named":" P1Y ","Step":"PT1S","MaybeStep":"\tP0D\n","Pick":{"Count":2}}}"#,
+    );
+    let received = seen.recv_timeout(WAIT).expect("typed MSG");
+    assert_eq!(received.named.as_str(), "P1Y");
+    assert_eq!(
+        received.maybestep.as_ref().expect("present").as_str(),
+        "P0D"
+    );
+
+    peer.send(r#"MSG sub-1 {"DurationNotice":{"Named":"P1Y","Step":"PT1H1H","Pick":{"Count":2}}}"#);
+    match runtime.recv_event_timeout(WAIT) {
+        Some(RuntimeEvent::SubscriptionDecodeError {
+            message_name,
+            error: MessageDecodeError::Codec(error),
+            ..
+        }) => {
+            assert_eq!(message_name, "DurationNotice");
+            assert!(
+                error.message().starts_with("DurationPayload.Step")
+                    && error.message().contains("XmlSchemaDuration"),
+                "{}",
+                error.message()
+            );
+        }
+        other => panic!("expected a codec decode-failure event, got {other:?}"),
+    }
+    assert!(seen.try_recv().is_err());
+
+    subscription.unsubscribe().expect("unsubscribe");
+    peer.expect("UNSUB sub-1");
+    runtime.close().expect("close");
+    peer.expect_closed();
+}

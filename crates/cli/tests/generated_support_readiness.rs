@@ -119,7 +119,7 @@ fn support_schema() -> PathBuf {
 
 /// Case B (the Task 056 defect). The contract selects only `Holder` + `Base`,
 /// both renderable; the generated-support descendant `ConcreteBad` reaches
-/// `BadDuration` (xs:duration), which no backend renders.
+/// `BadTime` (xs:time; Task 057 adaptation, formerly xs:duration), which no backend renders.
 #[test]
 fn task056_b_support_only_unsupported_type_is_not_ready_and_writes_nothing() {
     for language in LANGUAGES {
@@ -145,7 +145,7 @@ fn task056_b_support_only_unsupported_type_is_not_ready_and_writes_nothing() {
              status: NOT READY\n\
              \n\
              unsupported generated support types:\n  \
-             {{urn:test}}BadDuration\n"
+             {{urn:test}}BadTime\n"
         );
         assert_eq!(report, expected, "{language}");
         // Never mislabelled as selected; no duplicated wrapper diagnostic.
@@ -167,9 +167,9 @@ fn task056_a_selected_unsupported_type_is_not_ready() {
             language,
             false,
         );
-        assert!(report.contains("unsupported selected types:\n  {urn:test}BadDuration\n"));
+        assert!(report.contains("unsupported selected types:\n  {urn:test}BadTime\n"));
         assert!(
-            report.contains("    blocker: {urn:test}BadDuration\n"),
+            report.contains("    blocker: {urn:test}BadTime\n"),
             "{report}"
         );
         assert!(!report.contains("generated support types"), "{report}");
@@ -177,7 +177,7 @@ fn task056_a_selected_unsupported_type_is_not_ready() {
 }
 
 /// Case C: an abstract value whose every support descendant renders, beside
-/// unselected unsupported declarations (`BadDuration`, `UnrelatedDuration`,
+/// unselected unsupported declarations (`BadTime`, `UnrelatedTime`,
 /// `ConcreteBad`). READY, generates, compiles, and the output omits them.
 #[test]
 fn task056_c_supported_support_closure_is_ready_and_generates() {
@@ -196,12 +196,7 @@ fn task056_c_supported_support_closure_is_ready_and_generates() {
         for present in ["GoodConcreteA", "GoodConcreteB"] {
             assert!(combined.contains(present), "{language} {present}");
         }
-        for absent in [
-            "BadDuration",
-            "UnrelatedDuration",
-            "ConcreteBad",
-            "SelectedBad",
-        ] {
+        for absent in ["BadTime", "UnrelatedTime", "ConcreteBad", "SelectedBad"] {
             assert!(!combined.contains(absent), "{language} leaked {absent}");
         }
         compile(language, &root);
@@ -223,8 +218,8 @@ fn task056_d_unrelated_unsupported_declaration_stays_ready() {
             true,
         );
         assert!(!report.contains("generated support"), "{report}");
-        assert!(!report.contains("UnrelatedDuration"), "{report}");
-        assert!(!collect(&root).contains("UnrelatedDuration"), "{language}");
+        assert!(!report.contains("UnrelatedTime"), "{report}");
+        assert!(!collect(&root).contains("UnrelatedTime"), "{language}");
         let _ = std::fs::remove_dir_all(&root);
     }
 }

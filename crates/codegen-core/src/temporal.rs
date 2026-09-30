@@ -121,6 +121,15 @@ pub enum TemporalProfile {
     /// Generated code stores the whitespace-normalized, lexically valid XML
     /// Schema `dateTime` spelling whose timezone is therefore `Z`.
     DateTimeZulu,
+    /// Task 057: [`PrimitiveKind::Duration`] with **no** effective facet at
+    /// all -- the authoritative UCI `DurationType <- xs:duration` shape.
+    ///
+    /// Generated code stores the whitespace-collapsed, lexically valid XML
+    /// Schema `duration` spelling unchanged. It is a checked lexical carrier,
+    /// never a number of seconds: year/month components have no fixed length
+    /// without calendar context, so no arithmetic, ordering or value-space
+    /// equality is claimed.
+    Duration,
 }
 
 /// The supported direct primitive temporal value domain (not a named type).
@@ -128,13 +137,17 @@ pub enum TemporalProfile {
 pub enum DirectTemporalProfile {
     /// Base XML Schema 1.0 dateTime, including absent and numeric timezones.
     DateTime,
+    /// Task 057: base XML Schema 1.0 duration with no field-local facet.
+    Duration,
 }
 
 /// A direct temporal value that cannot be represented without dropping facets.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DirectTemporalProfileError {
     TimeUnsupported,
-    DurationUnsupported,
+    /// Task 057: a direct duration carrying any field-local facet. A plain
+    /// direct duration is supported; this is the constrained neighbour only.
+    DurationUnsupportedConstraints,
     DateTimeUnsupportedConstraints,
 }
 
@@ -154,7 +167,10 @@ pub fn direct_temporal_profile(
         }
         PrimitiveKind::DateTime => Err(DirectTemporalProfileError::DateTimeUnsupportedConstraints),
         PrimitiveKind::Time => Err(DirectTemporalProfileError::TimeUnsupported),
-        PrimitiveKind::Duration => Err(DirectTemporalProfileError::DurationUnsupported),
+        PrimitiveKind::Duration if *constraints == ConstraintSet::default() => {
+            Ok(Some(DirectTemporalProfile::Duration))
+        }
+        PrimitiveKind::Duration => Err(DirectTemporalProfileError::DurationUnsupportedConstraints),
         _ => Ok(None),
     }
 }
@@ -177,6 +193,41 @@ pub fn emissions_emit_direct_date_time(
     emissions: &[TypeEmission<'_>],
     world: GenerationWorld,
 ) -> bool {
+    emissions_store_direct(schema, emissions, world, DirectTemporalProfile::DateTime)
+}
+
+/// Task 057: whether an emitted structural member stores a supported direct
+/// Duration. Exactly the Task 046 emission rules: inherited effective members
+/// count, absent-only elided members and unused abstract ancestors do not,
+/// and the generation world is respected.
+#[must_use]
+pub fn schema_emits_direct_duration(schema: &SchemaIr, world: GenerationWorld) -> bool {
+    let plan = name_preflight_plan(schema, world);
+    emissions_emit_direct_duration(schema, plan.surfaces(), world)
+}
+
+/// Inspect an existing emission surface; callers that already own a plan must
+/// use this instead of constructing another name-preflight plan.
+#[must_use]
+pub fn emissions_emit_direct_duration(
+    schema: &SchemaIr,
+    emissions: &[TypeEmission<'_>],
+    world: GenerationWorld,
+) -> bool {
+    emissions_store_direct(schema, emissions, world, DirectTemporalProfile::Duration)
+}
+
+/// The one shared "does an emitted owner store this direct profile" rule.
+fn emissions_store_direct(
+    schema: &SchemaIr,
+    emissions: &[TypeEmission<'_>],
+    world: GenerationWorld,
+    profile: DirectTemporalProfile,
+) -> bool {
+    let kind = match profile {
+        DirectTemporalProfile::DateTime => PrimitiveKind::DateTime,
+        DirectTemporalProfile::Duration => PrimitiveKind::Duration,
+    };
     emissions.iter().any(|emission| {
         let TypeEmission::Declaration(declaration) = emission else {
             return false;
@@ -191,11 +242,8 @@ pub fn emissions_emit_direct_date_time(
         };
         members.is_ok_and(|members| {
             members.into_iter().any(|member| {
-                matches!(
-                    member.type_ref.target,
-                    TypeRefTarget::Primitive(PrimitiveKind::DateTime)
-                ) && direct_temporal_profile(PrimitiveKind::DateTime, &member.constraints)
-                    == Ok(Some(DirectTemporalProfile::DateTime))
+                member.type_ref.target == TypeRefTarget::Primitive(kind)
+                    && direct_temporal_profile(kind, &member.constraints) == Ok(Some(profile))
                     && matches!(
                         field_storage_semantics(schema, member, world),
                         Ok(EffectiveValueMember::Stored(_))
@@ -214,8 +262,11 @@ pub fn emissions_emit_direct_date_time(
 pub enum TemporalProfileError {
     /// `PrimitiveKind::Time`; the UCI `TimeType` profile is follow-up work.
     TimeUnsupported,
-    /// `PrimitiveKind::Duration`; the UCI `DurationType` profile is follow-up.
-    DurationUnsupported,
+    /// Task 057: a `Duration` carrying any effective facet (pattern, explicit
+    /// `whiteSpace`, ordering bound, or length). The zero-facet declaration is
+    /// the supported [`TemporalProfile::Duration`]; a constrained neighbour is
+    /// rejected rather than having a facet silently ignored.
+    DurationUnsupportedConstraints,
     /// A `DateTime` with no lexical restriction at all.
     ///
     /// Unconstrained `dateTime` admits every timezone spelling, including none,
@@ -236,7 +287,9 @@ impl TemporalProfileError {
     pub const fn reason(self) -> &'static str {
         match self {
             Self::TimeUnsupported => "unsupported temporal declaration: Time",
-            Self::DurationUnsupported => "unsupported temporal declaration: Duration",
+            Self::DurationUnsupportedConstraints => {
+                "unsupported temporal declaration: Duration with unsupported constraints"
+            }
             Self::DateTimeUnconstrained => {
                 "unsupported temporal declaration: DateTime without the UCI Zulu pattern"
             }
@@ -287,7 +340,13 @@ pub fn temporal_profile(
 ) -> Result<Option<TemporalProfile>, TemporalProfileError> {
     match kind {
         PrimitiveKind::Time => Err(TemporalProfileError::TimeUnsupported),
-        PrimitiveKind::Duration => Err(TemporalProfileError::DurationUnsupported),
+        // Task 057: only the zero-facet shape. `duration` admits ordering
+        // bounds and patterns, but a lexical carrier performs no value-space
+        // comparison and no regex, so any facet is a rejection.
+        PrimitiveKind::Duration if *constraints == ConstraintSet::default() => {
+            Ok(Some(TemporalProfile::Duration))
+        }
+        PrimitiveKind::Duration => Err(TemporalProfileError::DurationUnsupportedConstraints),
         PrimitiveKind::DateTime => date_time_profile(constraints).map(Some),
         _ => Ok(None),
     }
@@ -370,6 +429,24 @@ pub fn schema_emits_temporal_carrier(schema: &ams_gra_oms_ir::SchemaIr) -> bool 
     })
 }
 
+/// Whether a schema declares at least one named carrier of exactly `profile`.
+///
+/// Parser emission is per profile: a Duration-only unit must not emit the
+/// Task 036 dateTime parser (and vice versa), so each backend asks this for
+/// the profile whose parser it is about to emit. For a schema without any
+/// named Duration, `DateTimeZulu` is exactly [`schema_emits_temporal_carrier`],
+/// which keeps every pre-Task-057 output byte-identical.
+#[must_use]
+pub fn schema_emits_named_temporal_profile(
+    schema: &ams_gra_oms_ir::SchemaIr,
+    profile: TemporalProfile,
+) -> bool {
+    schema.types.iter().any(|declaration| {
+        matches!(declaration.kind, ams_gra_oms_ir::TypeKind::Primitive(kind)
+            if temporal_profile(kind, &declaration.constraints) == Ok(Some(profile)))
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -404,10 +481,6 @@ mod tests {
         assert_eq!(
             direct_temporal_profile(PrimitiveKind::Time, &bare),
             Err(DirectTemporalProfileError::TimeUnsupported)
-        );
-        assert_eq!(
-            direct_temporal_profile(PrimitiveKind::Duration, &bare),
-            Err(DirectTemporalProfileError::DurationUnsupported)
         );
         assert_eq!(
             direct_temporal_profile(PrimitiveKind::String, &bare),
@@ -477,8 +550,12 @@ mod tests {
     /// opportunistically admitted because the machinery looks similar. The
     /// authoritative `TimeType` carries the *same* `.+Z` text, which is exactly
     /// why this must be asserted with that pattern present.
+    ///
+    /// Task 057 narrows the Duration half: the zero-facet shape is now the
+    /// supported [`TemporalProfile::Duration`], and only a *constrained*
+    /// Duration stays unsupported -- with its own diagnostic.
     #[test]
-    fn time_and_duration_remain_unsupported() {
+    fn time_and_constrained_duration_remain_unsupported() {
         assert_eq!(
             temporal_profile(PrimitiveKind::Time, &zulu()),
             Err(TemporalProfileError::TimeUnsupported)
@@ -488,13 +565,111 @@ mod tests {
             Err(TemporalProfileError::TimeUnsupported)
         );
         assert_eq!(
-            temporal_profile(PrimitiveKind::Duration, &ConstraintSet::default()),
-            Err(TemporalProfileError::DurationUnsupported)
+            temporal_profile(PrimitiveKind::Duration, &zulu()),
+            Err(TemporalProfileError::DurationUnsupportedConstraints)
+        );
+    }
+
+    /// Task 057: named zero-facet Duration is the supported profile, and
+    /// every neighbouring facet -- pattern, explicit `whiteSpace` (even the
+    /// intrinsic `collapse`), ordering bound, or length -- fails closed with
+    /// the constrained-Duration diagnostic rather than the old kind-level one.
+    #[test]
+    fn named_duration_is_supported_only_without_facets() {
+        let bare = ConstraintSet::default();
+        assert_eq!(
+            temporal_profile(PrimitiveKind::Duration, &bare),
+            Ok(Some(TemporalProfile::Duration))
+        );
+        for constraints in duration_neighbour_constraints() {
+            assert_eq!(
+                temporal_profile(PrimitiveKind::Duration, &constraints),
+                Err(TemporalProfileError::DurationUnsupportedConstraints),
+                "{constraints:?}"
+            );
+        }
+        // Profiles never cross kinds: a bare DateTime is not a Duration, and
+        // a Duration never borrows the DateTime Zulu classification.
+        assert_eq!(
+            temporal_profile(PrimitiveKind::DateTime, &bare),
+            Err(TemporalProfileError::DateTimeUnconstrained)
+        );
+    }
+
+    /// Task 057 direct matrix: DateTime unchanged, Duration newly supported,
+    /// Time still unsupported, constrained Duration unsupported.
+    #[test]
+    fn direct_duration_is_supported_only_without_field_facets() {
+        let bare = ConstraintSet::default();
+        assert_eq!(
+            direct_temporal_profile(PrimitiveKind::DateTime, &bare),
+            Ok(Some(DirectTemporalProfile::DateTime))
         );
         assert_eq!(
-            temporal_profile(PrimitiveKind::Duration, &zulu()),
-            Err(TemporalProfileError::DurationUnsupported)
+            direct_temporal_profile(PrimitiveKind::Duration, &bare),
+            Ok(Some(DirectTemporalProfile::Duration))
         );
+        assert_eq!(
+            direct_temporal_profile(PrimitiveKind::Time, &bare),
+            Err(DirectTemporalProfileError::TimeUnsupported)
+        );
+        for constraints in duration_neighbour_constraints() {
+            assert_eq!(
+                direct_temporal_profile(PrimitiveKind::Duration, &constraints),
+                Err(DirectTemporalProfileError::DurationUnsupportedConstraints),
+                "{constraints:?}"
+            );
+        }
+    }
+
+    /// Every single-facet neighbour of the zero-facet Duration shape.
+    fn duration_neighbour_constraints() -> Vec<ConstraintSet> {
+        let bare = ConstraintSet::default();
+        let bound = NumericValue::Integer(0);
+        let mut out = vec![
+            ConstraintSet {
+                min_inclusive: Some(bound),
+                ..bare.clone()
+            },
+            ConstraintSet {
+                max_inclusive: Some(bound),
+                ..bare.clone()
+            },
+            ConstraintSet {
+                min_exclusive: Some(bound),
+                ..bare.clone()
+            },
+            ConstraintSet {
+                max_exclusive: Some(bound),
+                ..bare.clone()
+            },
+            ConstraintSet {
+                length: Some(4),
+                ..bare.clone()
+            },
+            ConstraintSet {
+                min_length: Some(1),
+                ..bare.clone()
+            },
+            ConstraintSet {
+                max_length: Some(9),
+                ..bare.clone()
+            },
+            zulu(),
+            with_patterns(vec![PatternGroup {
+                alternatives: vec![PatternExpression::xml_schema("P.*")],
+            }]),
+        ];
+        for policy in [
+            WhiteSpacePolicy::Collapse,
+            WhiteSpacePolicy::Replace,
+            WhiteSpacePolicy::Preserve,
+        ] {
+            let mut constraints = bare.clone();
+            constraints.lexical.white_space = Some(policy);
+            out.push(constraints);
+        }
+        out
     }
 
     /// A non-temporal primitive is not this module's business at all, and must
@@ -690,7 +865,7 @@ mod tests {
     fn every_error_reason_is_distinct() {
         let reasons = [
             TemporalProfileError::TimeUnsupported.reason(),
-            TemporalProfileError::DurationUnsupported.reason(),
+            TemporalProfileError::DurationUnsupportedConstraints.reason(),
             TemporalProfileError::DateTimeUnconstrained.reason(),
             TemporalProfileError::DateTimeUnsupportedConstraints.reason(),
         ];

@@ -31,6 +31,14 @@ pub fn direct_date_time_cases() -> Vec<TemporalCase> {
     )
 }
 
+/// Task 057: the shared XML Schema `duration` corpus (named and direct).
+#[allow(dead_code)]
+pub fn duration_cases() -> Vec<TemporalCase> {
+    load_corpus(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/temporal/duration.txt"),
+    )
+}
+
 /// The repository-root path of the shared Task 037 String-profile corpus.
 #[allow(dead_code)]
 pub fn string_corpus_path() -> PathBuf {

@@ -122,19 +122,19 @@ fn unready_selection_reports_blockers_and_exits_one() {
         .expect("unsupported types should be reported");
     let listed = &stdout[types..];
     let a = listed
-        .find("{urn:test}DurationA")
-        .expect("DurationA should be listed");
+        .find("{urn:test}TimeA")
+        .expect("TimeA should be listed");
     let b = listed
-        .find("{urn:test}DurationB")
-        .expect("DurationB should be listed");
+        .find("{urn:test}TimeB")
+        .expect("TimeB should be listed");
     assert!(a < b, "types must follow schema declaration order");
 
     // Section 47: contract spelling, resolved identity, and first blocker.
     assert!(stdout.contains("blocked selected messages:"));
     assert!(stdout.contains("resolved: {urn:test}BlockedReportB"));
-    assert!(stdout.contains("blocker: {urn:test}DurationB"));
+    assert!(stdout.contains("blocker: {urn:test}TimeB"));
     assert!(stdout.contains("resolved: {urn:test}BlockedReportA"));
-    assert!(stdout.contains("blocker: {urn:test}DurationA"));
+    assert!(stdout.contains("blocker: {urn:test}TimeA"));
 
     // The supported message is not blamed.
     assert!(!stdout.contains("resolved: {urn:test}SelectedReport"));
@@ -411,9 +411,9 @@ fn ready_selection_coexists_with_failing_full_schema_generation() {
     let generated = run_generate("root.xsd", "rust", "closed-schema", &directory);
     assert!(
         !generated.status.success(),
-        "full-schema generation should fail on the UNSELECTED Duration declaration"
+        "full-schema generation should fail on the UNSELECTED Time declaration"
     );
-    assert!(stderr_of(&generated).contains("Duration"));
+    assert!(stderr_of(&generated).contains("Time"));
     let _ = std::fs::remove_dir_all(&directory);
 }
 

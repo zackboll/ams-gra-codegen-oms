@@ -1,0 +1,27 @@
+# Task 057 real-UCI category-A selection (test-only; used against the pinned
+# UCI 2.5 root in Deep CI). `Log` is the smallest real message (42 selected
+# declarations, no generated support) that became READY solely because of
+# Task 057: its payload `LogMDT` has the direct optional xs:duration
+# `ServiceUpTime`. Before Task 057 it was NOT READY on `LogMDT` in every backend.
+contract_version: "0.1"
+service:
+  name: Task 057 Log
+  version: "0.1.0"
+  kind: service
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+functions:
+  - id: log
+    name: Log
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: log-output
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: Log
+        topic: log
+        timing:
+          kind: asynchronous

@@ -168,15 +168,16 @@ fn the_pattern_dialect_is_part_of_the_supported_profile() {
     );
 }
 
-/// Time and Duration remain unsupported after Task 036, including `TimeType`'s
+/// Time remains unsupported after Task 036, including `TimeType`'s
 /// authoritative `.+Z` pattern -- which is the *same text* as the supported
-/// DateTime profile, and must not be admitted by accident.
+/// DateTime profile, and must not be admitted by accident. Task 057 makes a
+/// zero-facet Duration renderable, so only a *constrained* Duration stays in
+/// this negative list.
 #[test]
-fn time_and_duration_remain_unsupported() {
+fn time_and_constrained_duration_remain_unsupported() {
     for (kind, constraints) in [
         (PrimitiveKind::Time, zulu()),
         (PrimitiveKind::Time, ConstraintSet::default()),
-        (PrimitiveKind::Duration, ConstraintSet::default()),
         (PrimitiveKind::Duration, zulu()),
     ] {
         let schema = schema(vec![primitive("Span", kind, constraints)]);
@@ -184,6 +185,26 @@ fn time_and_duration_remain_unsupported() {
             assert!(
                 !is_baseline(&schema, language),
                 "{language:?} must not render {kind:?}"
+            );
+        }
+    }
+}
+
+/// Task 057: a named zero-facet Duration is baseline renderable in every
+/// backend -- coverage, preflight and the backends agree -- regardless of the
+/// declaration's local name.
+#[test]
+fn a_named_zero_facet_duration_is_baseline_renderable() {
+    for name in ["DurationType", "Span"] {
+        let schema = schema(vec![primitive(
+            name,
+            PrimitiveKind::Duration,
+            ConstraintSet::default(),
+        )]);
+        for language in LANGUAGES {
+            assert!(
+                is_baseline(&schema, language),
+                "{language:?} must render named Duration {name}"
             );
         }
     }

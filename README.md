@@ -654,6 +654,13 @@ status: READY
   `unsupported generated support types:` in schema order. A service whose
   projection has no generated support prints exactly the pre-Task-056 report.
   See [Task 056](docs/task-056-generated-support-readiness.md).
+- **XML Schema `duration` (Task 057).** A named zero-facet `xs:duration` (UCI
+  `DurationType`) or a direct unconstrained `xs:duration` member is generated
+  as a checked lexical carrier in Ada, Rust and C++. It stores the collapsed
+  spelling and offers no arithmetic or ordering, and it is NOT Ada `Duration`
+  or `std::chrono`. The Rust codec encodes it as a JSON string.
+  `xs:time` and constrained Duration remain unsupported. See
+  [Task 057](docs/task-057-duration-support.md).
 - **Non-UCI exchanges require no UCI type model.** A contract with zero OMS
   Message exchanges is vacuously ready.
 - **READY includes the service API wrapper (Task 047).** A contract whose IDs

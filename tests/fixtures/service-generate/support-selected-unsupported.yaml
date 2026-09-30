@@ -1,7 +1,7 @@
 # SYNTHETIC Task 056 fixture (support-readiness.xsd). Authored for this
 # repository only.
 #
-# Selects the unsupported xs:duration directly (ordinary selected NOT READY).
+# Selects the unsupported xs:time directly (ordinary selected NOT READY).
 contract_version: "0.1"
 
 service:

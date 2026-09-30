@@ -911,6 +911,25 @@ as selected. Nothing outside the projection is measured, so this is still
 contract-selected readiness, not full-schema readiness. Full detail:
 `docs/task-056-generated-support-readiness.md`.
 
+### Temporal carriers are lexical, and profiles are classified once (Task 057)
+
+`codegen-core::temporal` is the only place that decides temporal capability.
+Task 057 adds `TemporalProfile::Duration` and `DirectTemporalProfile::Duration`,
+both for `PrimitiveKind::Duration` with `ConstraintSet::default()` only.
+Coverage, Ada optional storage, generated-name preflight, the three backends
+and the Rust codec readiness all read this classifier, so they cannot disagree.
+
+The backends generate a **checked lexical carrier**. It stores the collapsed
+`duration` spelling and exposes no arithmetic, ordering or value-space
+equality, because XML Schema year/month components have no fixed length in
+seconds without calendar context.
+
+Each generated unit gets at most one shared parser per temporal profile, and
+only when the emission surface needs it: `XmlSchemaDateTimeParser` and
+`XmlSchemaDurationParser` (Rust/C++), or the Ada body-level
+`XML_Schema_Duration_Parser`. Named and direct carriers call that same parser.
+See `docs/task-057-duration-support.md`.
+
 The two inputs answer different questions and neither can answer the other's.
 The XSD knows a message exists, its qualified name, its payload type, and that
 payload's transitive type graph. The contract knows which functions exist,

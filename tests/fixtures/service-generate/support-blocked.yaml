@@ -1,7 +1,7 @@
 # SYNTHETIC Task 056 fixture (support-readiness.xsd). Authored for this
 # repository only.
 #
-# Holds an abstract Base value whose generated-support descendant ConcreteBad reaches an unsupported xs:duration. The contract selects only Holder + Base; readiness must still be NOT READY.
+# Holds an abstract Base value whose generated-support descendant ConcreteBad reaches an unsupported xs:time. The contract selects only Holder + Base; readiness must still be NOT READY.
 contract_version: "0.1"
 
 service:
