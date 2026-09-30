@@ -5171,3 +5171,58 @@ release/world, except the Ada 2.5 field-occurrence start value.
 No cell went down, and the whole-schema first blockers are unchanged. For the
 explanation of every delta, the message-impact classes and OrderOfBattle, see
 [Task 057](task-057-duration-support.md).
+
+## Task 058 — bounded-ASCII String profiles
+
+Named constrained `xs:string` declarations of the shape **one finite ASCII
+character class under one bounded quantifier** are renderable in Ada, Rust and
+C++ as checked lexical carriers. The shape is either `[CLASS]{N}` with
+`length = N`, or `[CLASS]{M,N}` with `minLength = M` / `maxLength = N`. The
+Rust OMS JSON codec handles them as JSON strings, decoded only through the
+generated constructor.
+
+* **Classifier.** `StringProfile::BoundedAscii { alphabet, length }` in
+  `codegen-core::string_profile`. It admits only the 60 pinned
+  `(alphabet, spelling, length)` rows, covering 19 alphabets and 61
+  declarations in both releases, among them `EmptyType`,
+  `AircraftIdentifierType`, the `Alphanumeric*` family, `LaunchPieceType`,
+  `AO_PIM_CodeType`, the fixed-length `[ -~]{N}` `VisibleStringLength*` /
+  `NITF_*` types, and the USMTF/ATO text types.
+* **Fails closed.** Everything else still fails closed with "unsupported
+  constrained String declaration: unsupported facet profile":
+  * unobserved bounds, alphabets or spellings;
+  * any `whiteSpace` facet;
+  * extra groups or alternatives;
+  * `maxLength`-only facets;
+  * position-specific, alternating, literal-prefixed or unbounded patterns;
+  * unquantified length-1 classes.
+* **Semantics.** `whiteSpace = preserve`: nothing is trimmed or folded.
+  SPACE is valid only where the alphabet has it. The length facets and the
+  class are both enforced. Every member is <= U+007E, so byte length equals
+  character count.
+* **API.** Unchanged from the other validated String carriers:
+  * Rust `new(&str) -> Option<Self>` / `as_str()`, with no `Default`;
+  * C++ `create(std::string_view)` / `value()`, with no public default
+    constructor and copy-only lifecycle;
+  * Ada private type, `Create` / `Value`, and a default that raises
+    `Program_Error`.
+
+  The zero-length `EmptyType` accepts `""` and still forbids unchecked
+  default construction.
+
+Coverage before → after (pinned roots, release binaries; identical across
+backends except Ada closed-schema, which is one declaration below Rust/C++
+both before and after, and three message closures below only after Task 058):
+
+| Release | World | Kinds | Declarations | Field types / occurrences | Message closures |
+| --- | --- | --- | --- | --- | --- |
+| 2.5 | closed | 5449 → 5510 / 5557 | Ada 5427 → 5488, Rust/C++ 5428 → 5489 | 13160 = | Ada 395 → **526**, Rust/C++ 395 → **529** / 722 |
+| 2.5 | open | 5449 → 5510 | 5340 → 5401 | 13160 = | 387 → **504** |
+| 2.6 | closed | 5462 → 5523 / 5570 | Ada 5441 → 5502, Rust/C++ 5442 → 5503 | 13198 = | Ada 395 → **526**, Rust/C++ 395 → **529** / 725 |
+| 2.6 | open | 5462 → 5523 | 5354 → 5415 | 13198 = | 387 → **504** |
+
+No cell went down. The whole-schema first blockers are unchanged. **131**
+real messages per release became READY in every backend, confirmed with
+`service-check`. `OrderOfBattle` stays NOT READY; its next support blocker is
+`IMO_NumberType`. See
+[Task 058](task-058-bounded-ascii-string-profiles.md).

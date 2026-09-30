@@ -8,17 +8,18 @@ pub use service_codec::{SERVICE_CODEC_FILE, generate_service_codec};
 
 use ams_gra_oms_codegen_core::ServiceApiModel;
 use ams_gra_oms_codegen_core::{
-    AbstractValueProjection, Backend, BackendLanguage, BinaryLengthDomain, CodegenError,
-    DirectTemporalProfile, EffectiveValueMember, FloatingDomain, GeneratedFile, GenerationWorld,
-    InclusiveIntegralDomain, StringProfile, TemporalProfile, TypeEmission, WhitespaceVisiblePolicy,
-    abstract_value_projection_for_ref, backend_preflight, binary_length_domain, constrains_string,
-    direct_temporal_profile, effective_choice_alternatives, effective_record_fields,
-    emissions_emit_direct_date_time, emissions_emit_direct_duration, field_storage_semantics,
-    float32_literal, float64_literal, floating_domain, generated_choice_alternative_name,
-    generated_enum_variant_name, generated_record_field_name, inclusive_integral_domain,
-    is_temporal_primitive, plan_type_emissions, rust_model_file_name,
-    schema_emits_bounded_integer_support, schema_emits_named_temporal_profile,
-    schema_emits_unbounded_sequence_support, string_profile, temporal_profile,
+    AbstractValueProjection, Backend, BackendLanguage, BinaryLengthDomain, BoundedAsciiAlphabet,
+    BoundedAsciiLength, CodegenError, DirectTemporalProfile, EffectiveValueMember, FloatingDomain,
+    GeneratedFile, GenerationWorld, InclusiveIntegralDomain, StringProfile, TemporalProfile,
+    TypeEmission, WhitespaceVisiblePolicy, abstract_value_projection_for_ref, backend_preflight,
+    binary_length_domain, constrains_string, direct_temporal_profile,
+    effective_choice_alternatives, effective_record_fields, emissions_emit_direct_date_time,
+    emissions_emit_direct_duration, field_storage_semantics, float32_literal, float64_literal,
+    floating_domain, generated_choice_alternative_name, generated_enum_variant_name,
+    generated_record_field_name, inclusive_integral_domain, is_temporal_primitive,
+    plan_type_emissions, rust_model_file_name, schema_emits_bounded_integer_support,
+    schema_emits_named_temporal_profile, schema_emits_unbounded_sequence_support, string_profile,
+    temporal_profile,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -445,7 +446,8 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
                 | Ok(Some(StringProfile::UniversallyUniqueIdentifier))
                 | Ok(Some(StringProfile::VisibleAscii { .. }))
                 | Ok(Some(StringProfile::WhitespaceVisible { .. }))
-                | Ok(Some(StringProfile::NatoSpecialWords)) => {}
+                | Ok(Some(StringProfile::NatoSpecialWords))
+                | Ok(Some(StringProfile::BoundedAscii { .. })) => {}
                 Ok(None) => unreachable!("constrains_string gates this branch"),
                 Err(reason) => {
                     return unsupported(format!("{reason} on {}", declaration.name.local_name));
@@ -1086,6 +1088,12 @@ fn render_string_profile_declaration(
         Ok(Some(StringProfile::NatoSpecialWords)) => {
             RUST_NATO_SPECIAL_WORDS_TEMPLATE.replace("{name}", name)
         }
+        // Task 058: the classifier has proven the alphabet, the length shape
+        // and the quantifier agree with one pinned row; the class is rendered
+        // from its numeric member ranges, never from the XSD spelling.
+        Ok(Some(StringProfile::BoundedAscii { alphabet, length })) => {
+            render_rust_bounded_ascii(name, alphabet, length)
+        }
         Ok(None) => return unsupported(format!("unconstrained String on {name}")),
         Err(reason) => return unsupported(format!("{reason} on {name}")),
     };
@@ -1106,6 +1114,112 @@ const RUST_WHITESPACE_VISIBLE_COLLAPSE_STEP: &str = r#"        // whiteSpace = c
         // exceeds MAX_LENGTH is still accepted when its normalized form fits.
         let value = Self::collapse(value);
         let value = value.as_str();"#;
+
+/// Render one Task 058 bounded-ASCII carrier.
+///
+/// # Validation order
+///
+/// 1. the length facet(s): `length` as one equality test, or `minLength` and
+///    `maxLength` as an inclusive interval (never a comparison against zero,
+///    so no `unused_comparisons` diagnostic can arise);
+/// 2. the character class, as an ordinal byte `matches!` over the alphabet's
+///    member ranges.
+///
+/// Both are enforced even though the quantifier repeats the facets. Every
+/// member is at most U+007E, so `len()` is the XSD character count for every
+/// value that can be accepted; any multi-byte UTF-8 character contains a byte
+/// of 0x80 or above, which no alphabet admits. Nothing is trimmed, folded or
+/// canonicalized (`whiteSpace = preserve`).
+fn render_rust_bounded_ascii(
+    name: &str,
+    alphabet: BoundedAsciiAlphabet,
+    length: BoundedAsciiLength,
+) -> String {
+    let (constants, check, facets) = match length {
+        BoundedAsciiLength::Exact(length) => (
+            format!(
+                "    /// The `length` facet, which is also the pattern quantifier `{{{length}}}`.\n    const LENGTH: usize = {length};\n"
+            ),
+            "text.len() == Self::LENGTH".to_owned(),
+            "the `length` facet".to_owned(),
+        ),
+        BoundedAsciiLength::Range {
+            min_length,
+            max_length,
+        } => (
+            format!(
+                "    /// `minLength`, which is also the pattern quantifier's minimum.\n    const MIN_LENGTH: usize = {min_length};\n\n    /// `maxLength`, which is also the pattern quantifier's maximum.\n    const MAX_LENGTH: usize = {max_length};\n"
+            ),
+            "(Self::MIN_LENGTH..=Self::MAX_LENGTH).contains(&text.len())".to_owned(),
+            "both length facets".to_owned(),
+        ),
+    };
+    let members = alphabet
+        .ranges()
+        .iter()
+        .map(|&(low, high)| {
+            if low == high {
+                format!("0x{low:02X}")
+            } else {
+                format!("0x{low:02X}..=0x{high:02X}")
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" | ");
+    RUST_BOUNDED_ASCII_TEMPLATE
+        .replace("{name}", name)
+        .replace("{constants}", &constants)
+        .replace("{check}", &check)
+        .replace("{facets}", &facets)
+        .replace("{members}", &members)
+        .replace("{describe}", &alphabet.describe())
+}
+
+/// The generated Rust bounded-ASCII carrier (Task 058). See
+/// [`render_rust_bounded_ascii`].
+const RUST_BOUNDED_ASCII_TEMPLATE: &str = r##"#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct {name} {
+    value: String,
+}
+
+impl {name} {
+{constants}
+    /// Validate `value` against the authoritative bounded-ASCII profile.
+    ///
+    /// Returns `None` unless {facets} and the character class accept it. The
+    /// stored text is the input unchanged (`whiteSpace = preserve`): nothing
+    /// is trimmed, collapsed or case-folded.
+    pub fn new(value: &str) -> Option<Self> {
+        if !Self::is_valid(value) {
+            return None;
+        }
+        Some(Self {
+            value: value.to_owned(),
+        })
+    }
+
+    /// The stored, validated lexical representation.
+    pub fn as_str(&self) -> &str {
+        &self.value
+    }
+
+    /// The whole gate: the length facet(s) AND the character class.
+    fn is_valid(text: &str) -> bool {
+        // Sound as an XSD character count: every class member is ASCII, and
+        // any multi-byte character fails the class test below.
+        if !({check}) {
+            return false;
+        }
+        // Anchored by construction: every character must be in the class.
+        text.bytes().all(Self::is_member)
+    }
+
+    /// The class: {describe}. Ordinal and locale-free.
+    fn is_member(byte: u8) -> bool {
+        matches!(byte, {members})
+    }
+}
+"##;
 
 /// The generated Rust NATO special-words carrier (Task 042).
 ///

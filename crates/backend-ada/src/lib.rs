@@ -8,17 +8,17 @@ use ams_gra_oms_codegen_core::ServiceApiModel;
 use ams_gra_oms_codegen_core::{
     ADA_PORTABLE_POSITIVE_INDEX_MAX, ADA_SEQUENCE_APPEND, ADA_SEQUENCE_CLEAR, ADA_SEQUENCE_ELEMENT,
     ADA_SEQUENCE_LENGTH, ADA_SEQUENCE_RESERVE_CAPACITY, ADA_SEQUENCE_TO_SEQUENCE,
-    AbstractValueProjection, Backend, BackendLanguage, BinaryLengthDomain, CodegenError,
-    DirectTemporalProfile, EffectiveValueMember, FloatingDomain, GeneratedFile, GenerationWorld,
-    InclusiveIntegralDomain, StringProfile, TemporalProfile, TypeEmission, WhitespaceVisiblePolicy,
-    abstract_value_projection_for_ref, ada_model_file_names, ada_model_package,
-    ada_record_field_uses_optional_wrapper, backend_preflight, binary_length_domain,
-    constrains_string, direct_temporal_profile, effective_choice_alternatives,
-    effective_record_fields, emissions_emit_direct_date_time, emissions_emit_direct_duration,
-    field_storage_semantics, float32_literal, float64_literal, floating_domain,
-    generated_choice_alternative_name, generated_enum_variant_name, generated_record_field_name,
-    inclusive_integral_domain, is_temporal_primitive, plan_type_emissions,
-    schema_emits_ada_binary_vectors, schema_emits_bounded_sequence_support,
+    AbstractValueProjection, Backend, BackendLanguage, BinaryLengthDomain, BoundedAsciiAlphabet,
+    BoundedAsciiLength, CodegenError, DirectTemporalProfile, EffectiveValueMember, FloatingDomain,
+    GeneratedFile, GenerationWorld, InclusiveIntegralDomain, StringProfile, TemporalProfile,
+    TypeEmission, WhitespaceVisiblePolicy, abstract_value_projection_for_ref, ada_model_file_names,
+    ada_model_package, ada_record_field_uses_optional_wrapper, backend_preflight,
+    binary_length_domain, constrains_string, direct_temporal_profile,
+    effective_choice_alternatives, effective_record_fields, emissions_emit_direct_date_time,
+    emissions_emit_direct_duration, field_storage_semantics, float32_literal, float64_literal,
+    floating_domain, generated_choice_alternative_name, generated_enum_variant_name,
+    generated_record_field_name, inclusive_integral_domain, is_temporal_primitive,
+    plan_type_emissions, schema_emits_ada_binary_vectors, schema_emits_bounded_sequence_support,
     schema_emits_direct_date_time, schema_emits_direct_duration,
     schema_emits_named_temporal_profile, schema_emits_string_profile_carrier,
     schema_emits_temporal_carrier, schema_emits_unbounded_sequence_support, string_profile,
@@ -664,7 +664,8 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
                 | Ok(Some(StringProfile::UniversallyUniqueIdentifier))
                 | Ok(Some(StringProfile::VisibleAscii { .. }))
                 | Ok(Some(StringProfile::WhitespaceVisible { .. }))
-                | Ok(Some(StringProfile::NatoSpecialWords)) => {}
+                | Ok(Some(StringProfile::NatoSpecialWords))
+                | Ok(Some(StringProfile::BoundedAscii { .. })) => {}
                 Ok(None) => unreachable!("constrains_string gates this branch"),
                 Err(reason) => {
                     return unsupported(format!("{reason} on {}", declaration.name.local_name));
@@ -1892,6 +1893,23 @@ fn render_string_profile_declaration(
             "A validated NATO special-words string (lexical form only).",
             "NATO:[a-zA-Z\\-_]{1,256} pattern and both length facets".to_owned(),
         ),
+        // Task 058. The facet summary is numeric so no class character has to
+        // be quoted inside an Ada comment.
+        Ok(Some(profile @ StringProfile::BoundedAscii { alphabet, length })) => (
+            profile,
+            "A validated bounded-ASCII string.",
+            format!(
+                "character class ({}) and {}",
+                alphabet.describe(),
+                match length {
+                    BoundedAsciiLength::Exact(length) => format!("the length facet {length}"),
+                    BoundedAsciiLength::Range {
+                        min_length,
+                        max_length,
+                    } => format!("both length facets {min_length} .. {max_length}"),
+                }
+            ),
+        ),
         Ok(None) => return unsupported(format!("unconstrained String on {name}")),
         Err(reason) => return unsupported(format!("{reason} on {name}")),
     };
@@ -1988,10 +2006,103 @@ fn render_string_profile_declaration(
         .replace("{min_length}", &min_length.to_string())
         .replace("{max_length}", &max_length.to_string()),
         StringProfile::NatoSpecialWords => ADA_NATO_SPECIAL_WORDS_BODY.replace("{name}", name),
+        StringProfile::BoundedAscii { alphabet, length } => {
+            render_ada_bounded_ascii_body(name, alphabet, length)
+        }
     };
     body.push_str(&rendered);
     Ok(())
 }
+
+/// Render the Ada body of one Task 058 bounded-ASCII carrier.
+///
+/// `Value'Length` is already a character count. The class is a membership
+/// test of `Character'Pos` against the alphabet's numeric member ranges, so
+/// no character literal (quote, apostrophe, bracket) is ever spelled in Ada
+/// source. Every member is below 16#80#, so every Latin-1 upper-half
+/// `Character` -- and therefore every byte of a UTF-8 multi-byte sequence --
+/// is rejected. Length and class are both enforced; nothing is trimmed.
+fn render_ada_bounded_ascii_body(
+    name: &str,
+    alphabet: BoundedAsciiAlphabet,
+    length: BoundedAsciiLength,
+) -> String {
+    let (constants, check) = match length {
+        BoundedAsciiLength::Exact(length) => (
+            format!(
+                "      --  The length facet, which is also the pattern quantifier {{{length}}}.\n      Length_Facet : constant := {length};\n"
+            ),
+            "Value'Length /= Length_Facet",
+        ),
+        BoundedAsciiLength::Range {
+            min_length,
+            max_length,
+        } => (
+            format!(
+                "      --  minLength, which is also the pattern quantifier's minimum.\n      Min_Length : constant := {min_length};\n\n      --  maxLength, which is also the pattern quantifier's maximum.\n      Max_Length : constant := {max_length};\n"
+            ),
+            "Value'Length not in Min_Length .. Max_Length",
+        ),
+    };
+    let members = alphabet
+        .ranges()
+        .iter()
+        .map(|&(low, high)| {
+            if low == high {
+                format!("16#{low:02X}#")
+            } else {
+                format!("16#{low:02X}# .. 16#{high:02X}#")
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" | ");
+    ADA_BOUNDED_ASCII_BODY
+        .replace("{name}", name)
+        .replace("{constants}", &constants)
+        .replace("{check}", check)
+        .replace("{members}", &members)
+        .replace("{describe}", &alphabet.describe())
+}
+
+/// The generated Ada body for one Task 058 bounded-ASCII carrier.
+const ADA_BOUNDED_ASCII_BODY: &str = r##"
+   function Create (Value : String) return {name} is
+
+{constants}
+      --  The class: {describe}. Ordinal and locale-free.
+      function Is_Member (Item : Character) return Boolean is
+        (Character'Pos (Item) in {members});
+
+      --  The character class over the whole value. Anchored by construction:
+      --  every character must be a member.
+      function Matches_Pattern (Text : String) return Boolean is
+      begin
+         for Item of Text loop
+            if not Is_Member (Item) then
+               return False;
+            end if;
+         end loop;
+         return True;
+      end Matches_Pattern;
+
+   begin
+      --  The whole gate: the length facet(s) AND the character class. The
+      --  stored text is the input unchanged (whiteSpace = preserve).
+      if {check}
+        or else not Matches_Pattern (Value)
+      then
+         raise Standard.Constraint_Error
+           with "invalid bounded-ASCII string";
+      end if;
+      return {name}'
+        (Text => Standard.Ada.Strings.Unbounded.To_Unbounded_String (Value));
+   end Create;
+
+   function Value (Item : {name}) return String is
+   begin
+      return Standard.Ada.Strings.Unbounded.To_String (Item.Text);
+   end Value;
+"##;
 
 /// The generated Ada body for one NATO special-words carrier (Task 042).
 ///

@@ -145,6 +145,25 @@ jobs:
           grep -Fqx 'UCI 2.6 DURATION MESSAGE IMPACT: RECORDED' <<<"$output"
           grep -Eqx '(test task057_real_uci_category_a_log_generates_and_compiles \.\.\. )?UCI 2\.5 REAL CATEGORY-A DURATION SERVICE: PASSED' <<<"$output"
           grep -qE '^test result: ok\. 4 passed' <<<"$output"
+      # Task 058: fresh bounded-ASCII String inventory (the exact 61-member
+      # set per release, 19 alphabets, 46 still-unsupported neighbours), the
+      # real message-impact classification (no member may remain a blocker),
+      # and the smallest real newly-READY service generating and compiling in
+      # Ada, Rust and C++ with a real Rust codec round trip. The service test
+      # prints its marker FIRST, so it may share libtest's unterminated
+      # "test <name> ... " line.
+      - name: Real UCI bounded-ASCII String inventory and message impact (Task 058, must execute)
+        run: |
+          set -euo pipefail
+          output="$(cargo test --release -p ams-gra-codegen-oms --test uci_bounded_ascii_string -- \
+            --nocapture --test-threads 1 2>&1)"
+          printf '%s\n' "$output"
+          grep -Fqx 'UCI 2.5 BOUNDED ASCII INVENTORY: PASSED' <<<"$output"
+          grep -Fqx 'UCI 2.6 BOUNDED ASCII INVENTORY: PASSED' <<<"$output"
+          grep -Fqx 'UCI 2.5 BOUNDED ASCII MESSAGE IMPACT: RECORDED' <<<"$output"
+          grep -Fqx 'UCI 2.6 BOUNDED ASCII MESSAGE IMPACT: RECORDED' <<<"$output"
+          grep -Eqx '(test task058_real_uci_newly_ready_service_generates_and_compiles \.\.\. )?UCI 2\.5 REAL NEWLY-READY BOUNDED ASCII SERVICE: PASSED' <<<"$output"
+          grep -qE '^test result: ok\. 4 passed' <<<"$output"
 
   # The runtime crates declare rust-version = "1.95". Fast CI checks them at
   # 1.95.0 on synthetic fixtures only; this job adds the generated REAL UCI 2.5
@@ -200,6 +219,13 @@ jobs:
             --exact real::task052_real_subsystem_stream_hex_binary_round_trips --nocapture 2>&1)"
           printf '%s\n' "$output"
           grep -Fqx 'REAL SUBSYSTEMSTREAM HEXBINARY CODEC: PASSED' <<<"$output"
+          grep -qE '^test result: ok\. 1 passed' <<<"$output"
+          # Task 058: the REAL UCI 2.5 AMTI_SettingsCommand codec (the
+          # zero-length bounded-ASCII EmptyType through the generated model).
+          output="$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test real_uci_amti_settings -- \
+            --exact real::task058_real_amti_settings_empty_type_round_trips --nocapture 2>&1)"
+          printf '%s\n' "$output"
+          grep -Fqx 'REAL AMTI_SETTINGSCOMMAND EMPTYTYPE CODEC: PASSED' <<<"$output"
           grep -qE '^test result: ok\. 1 passed' <<<"$output"
       # AMS_GRA_UCI_2_5_ROOT (from GITHUB_ENV) also enables the script's real
       # PositionReport / SubsystemStream round trips through Sleet.

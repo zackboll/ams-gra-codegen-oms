@@ -108,8 +108,13 @@ const RELEASES: [Expected; 2] = [
         // are renderable, so the historical Ada "type reference
         // Primitive(Duration)" first blocker is gone and the shared String
         // profile boundary is now first, exactly as in 2.6.
-        unsupported_support: 39,
-        first_unsupported_support: "AircraftIdentifierType",
+        //
+        // Task 058: 39 -> 12. The 27 bounded-ASCII String declarations in
+        // the support set (led by `AircraftIdentifierType`) are renderable;
+        // the next blocker is `IMO_NumberType` (`IMO[0-9]{7}`, a literal
+        // prefix, deliberately out of scope).
+        unsupported_support: 12,
+        first_unsupported_support: "IMO_NumberType",
     },
     Expected {
         release: "UCI 2.6",
@@ -120,8 +125,11 @@ const RELEASES: [Expected; 2] = [
         support_types: 442,
         // Task 057: 40 -> 39; only the named `DurationType` became
         // renderable (2.6 has no direct xs:duration).
-        unsupported_support: 39,
-        first_unsupported_support: "AircraftIdentifierType",
+        //
+        // Task 058: 39 -> 12, the same 27 bounded-ASCII declarations as 2.5;
+        // next blocker `IMO_NumberType`.
+        unsupported_support: 12,
+        first_unsupported_support: "IMO_NumberType",
     },
 ];
 
@@ -187,11 +195,13 @@ fn task056_real_uci_order_of_battle_support_parity() {
                 .generate(projection.schema(), WORLD)
                 .expect_err("the backend rejects the projected schema")
                 .message;
-            // Task 057: every backend in both releases now fails first on the
+            // Task 057: every backend in both releases fails first on the
             // same String-profile declaration, which is in the support set.
-            // No Duration shape may be a backend blocker or a support blocker.
+            // Task 058: that declaration is now `IMO_NumberType`; no
+            // bounded-ASCII member and no Duration shape may be a backend
+            // blocker or a support blocker.
             assert!(
-                error.contains(" AircraftIdentifierType"),
+                error.contains(" IMO_NumberType"),
                 "{cell}: unexpected backend failure {error}"
             );
             assert!(!error.contains("Duration"), "{cell}: {error}");
@@ -199,6 +209,9 @@ fn task056_real_uci_order_of_battle_support_parity() {
                 "DurationType",
                 "EphemerisOrbitalModelType",
                 "OrbitalEphemerisParametersReferenceType",
+                "AircraftIdentifierType",
+                "EmptyType",
+                "AlphanumericDashSpaceUnderscoreStringLength15Type",
             ] {
                 assert!(
                     unsupported.iter().all(|entry| entry.local_name != gone),

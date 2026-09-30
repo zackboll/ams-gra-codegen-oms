@@ -390,17 +390,21 @@ fn task053_real_uci_constrained_binary_message_impact() {
         // (`Begin`/`End`). Those members are now escaped, so Ada reaches the
         // same next (non-Binary, non-naming) blocker as Rust and C++. The
         // A/B/C classes are unchanged.
+        //
+        // Task 058: `AircraftIdentifierType` and
+        // `AlphanumericStringLength4Type` are bounded-ASCII String profiles
+        // now. `IFF_Activity` / `IFF_Command` became READY in every backend
+        // (they are Task 058 category-A), and `ProductMetadata` advanced to
+        // its next non-Binary blocker, `FileNameType`.
         let b = |blocker: &str| format!("Ada=B({blocker}) Rust=B({blocker}) Cpp=B({blocker})");
+        let a = "Ada=A Rust=A Cpp=A".to_owned();
         assert_eq!(
             classes,
             [
                 ("FileMetadata".to_owned(), b("FileNameType")),
-                ("IFF_Activity".to_owned(), b("AircraftIdentifierType")),
-                ("IFF_Command".to_owned(), b("AircraftIdentifierType")),
-                (
-                    "ProductMetadata".to_owned(),
-                    b("AlphanumericStringLength4Type")
-                ),
+                ("IFF_Activity".to_owned(), a.clone()),
+                ("IFF_Command".to_owned(), a),
+                ("ProductMetadata".to_owned(), b("FileNameType")),
                 (
                     "Response".to_owned(),
                     "Ada=C(cyclic value dependencies) Rust=C(cyclic value dependencies) \

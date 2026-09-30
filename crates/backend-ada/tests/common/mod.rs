@@ -80,6 +80,66 @@ pub fn nato_special_words_corpus_path() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/string/nato-special-words.txt")
 }
 
+/// Task 058: one carrier's slice of the shared bounded-ASCII corpus.
+#[allow(dead_code)]
+pub struct CarrierCases {
+    /// The generated carrier type the following cases target.
+    pub carrier: String,
+    /// Its cases, in corpus order.
+    pub cases: Vec<TemporalCase>,
+}
+
+/// Task 058: parse `tests/fixtures/string/bounded-ascii.txt`, which groups
+/// ordinary `VALID`/`INVALID` lines under `CARRIER <Name>` headers.
+///
+/// Each group is parsed by the SAME [`load_corpus`] line rules, so escaping and
+/// the `<empty>` token cannot drift from the other String corpora.
+///
+/// # Panics
+///
+/// Panics when the corpus is missing, a case precedes the first header, or a
+/// group lacks either a valid or an invalid case.
+#[allow(dead_code)]
+pub fn bounded_ascii_cases() -> Vec<CarrierCases> {
+    let path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/string/bounded-ascii.txt");
+    let text = std::fs::read_to_string(&path)
+        .unwrap_or_else(|error| panic!("shared corpus {}: {error}", path.display()));
+    let mut groups: Vec<(String, String)> = Vec::new();
+    for line in text.lines() {
+        if let Some(carrier) = line.strip_prefix("CARRIER ") {
+            groups.push((carrier.trim().to_owned(), String::new()));
+        } else if line.trim().is_empty() || line.starts_with('#') {
+            continue;
+        } else {
+            let (_, body) = groups
+                .last_mut()
+                .unwrap_or_else(|| panic!("case before any CARRIER header: {line}"));
+            body.push_str(line);
+            body.push('\n');
+        }
+    }
+    let scratch = std::env::temp_dir().join(format!(
+        "ams-gra-task058-corpus-{}-{}",
+        std::process::id(),
+        env!("CARGO_CRATE_NAME")
+    ));
+    std::fs::create_dir_all(&scratch).expect("corpus scratch directory");
+    let parsed = groups
+        .into_iter()
+        .map(|(carrier, body)| {
+            let file = scratch.join(format!("{carrier}.txt"));
+            std::fs::write(&file, body).expect("write corpus group");
+            CarrierCases {
+                cases: load_corpus(&file),
+                carrier,
+            }
+        })
+        .collect();
+    let _ = std::fs::remove_dir_all(&scratch);
+    parsed
+}
+
 /// Parse the shared corpus.
 ///
 /// # Panics

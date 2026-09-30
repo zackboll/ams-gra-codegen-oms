@@ -6,18 +6,19 @@ pub use service_api::{SERVICE_API_FILE, generate_service_api};
 
 use ams_gra_oms_codegen_core::ServiceApiModel;
 use ams_gra_oms_codegen_core::{
-    AbstractValueProjection, Backend, BackendLanguage, BinaryLengthDomain, CodegenError,
-    DirectTemporalProfile, EffectiveValueMember, FloatingDomain, GeneratedFile, GenerationWorld,
-    InclusiveIntegralDomain, StringProfile, TemporalProfile, TypeEmission, WhitespaceVisiblePolicy,
-    abstract_value_projection_for_ref, backend_preflight, binary_length_domain, constrains_string,
-    cpp_model_header_name, cpp_model_namespace, direct_temporal_profile,
-    effective_choice_alternatives, effective_record_fields, emissions_emit_direct_date_time,
-    emissions_emit_direct_duration, field_storage_semantics, float32_literal, float64_literal,
-    floating_domain, generated_choice_alternative_name, generated_enum_variant_name,
-    generated_record_field_name, inclusive_integral_domain, is_temporal_primitive,
-    plan_type_emissions, schema_emits_bounded_integer_support, schema_emits_named_temporal_profile,
-    schema_emits_string_profile_carrier, schema_emits_temporal_carrier,
-    schema_emits_unbounded_sequence_support, string_profile, temporal_profile,
+    AbstractValueProjection, Backend, BackendLanguage, BinaryLengthDomain, BoundedAsciiAlphabet,
+    BoundedAsciiLength, CodegenError, DirectTemporalProfile, EffectiveValueMember, FloatingDomain,
+    GeneratedFile, GenerationWorld, InclusiveIntegralDomain, StringProfile, TemporalProfile,
+    TypeEmission, WhitespaceVisiblePolicy, abstract_value_projection_for_ref, backend_preflight,
+    binary_length_domain, constrains_string, cpp_model_header_name, cpp_model_namespace,
+    direct_temporal_profile, effective_choice_alternatives, effective_record_fields,
+    emissions_emit_direct_date_time, emissions_emit_direct_duration, field_storage_semantics,
+    float32_literal, float64_literal, floating_domain, generated_choice_alternative_name,
+    generated_enum_variant_name, generated_record_field_name, inclusive_integral_domain,
+    is_temporal_primitive, plan_type_emissions, schema_emits_bounded_integer_support,
+    schema_emits_named_temporal_profile, schema_emits_string_profile_carrier,
+    schema_emits_temporal_carrier, schema_emits_unbounded_sequence_support, string_profile,
+    temporal_profile,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -488,7 +489,8 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
                 | Ok(Some(StringProfile::UniversallyUniqueIdentifier))
                 | Ok(Some(StringProfile::VisibleAscii { .. }))
                 | Ok(Some(StringProfile::WhitespaceVisible { .. }))
-                | Ok(Some(StringProfile::NatoSpecialWords)) => {}
+                | Ok(Some(StringProfile::NatoSpecialWords))
+                | Ok(Some(StringProfile::BoundedAscii { .. })) => {}
                 Ok(None) => unreachable!("constrains_string gates this branch"),
                 Err(reason) => {
                     return unsupported(format!("{reason} on {}", declaration.name.local_name));
@@ -1361,12 +1363,127 @@ fn render_string_profile_declaration(
         Ok(Some(StringProfile::NatoSpecialWords)) => {
             CPP_NATO_SPECIAL_WORDS_TEMPLATE.replace("{name}", name)
         }
+        // Task 058: rendered from the classified alphabet's numeric member
+        // ranges and length shape; nothing is taken from the XSD spelling.
+        Ok(Some(StringProfile::BoundedAscii { alphabet, length })) => {
+            render_cpp_bounded_ascii(name, alphabet, length)
+        }
         Ok(None) => return unsupported(format!("unconstrained String on {name}")),
         Err(reason) => return unsupported(format!("{reason} on {name}")),
     };
     writeln!(output, "{rendered}").expect("writing to String cannot fail");
     Ok(())
 }
+
+/// Render one Task 058 bounded-ASCII carrier for C++17.
+///
+/// Length first (one `==` for `length`, an interval for
+/// `minLength`/`maxLength`), then an ordinal `unsigned char` class test over
+/// the alphabet's member ranges; both are enforced. Every member is at most
+/// U+007E, so `size()` is the XSD character count for every accepted value.
+/// Nothing is trimmed, folded or canonicalized. No range starts at 0 and no
+/// pinned `minLength` is 0, so no comparison is tautological under
+/// `-Wextra`'s `-Wtype-limits`.
+fn render_cpp_bounded_ascii(
+    name: &str,
+    alphabet: BoundedAsciiAlphabet,
+    length: BoundedAsciiLength,
+) -> String {
+    let (constants, check, facets) = match length {
+        BoundedAsciiLength::Exact(length) => (
+            format!(
+                "    // The `length` facet, which is also the pattern quantifier {{{length}}}.\n    static constexpr std::size_t kLength = {length};\n"
+            ),
+            "text.size() == kLength".to_owned(),
+            "the length facet",
+        ),
+        BoundedAsciiLength::Range {
+            min_length,
+            max_length,
+        } => (
+            format!(
+                "    // minLength, which is also the pattern quantifier's minimum.\n    static constexpr std::size_t kMinLength = {min_length};\n\n    // maxLength, which is also the pattern quantifier's maximum.\n    static constexpr std::size_t kMaxLength = {max_length};\n"
+            ),
+            "text.size() >= kMinLength && text.size() <= kMaxLength".to_owned(),
+            "both length facets",
+        ),
+    };
+    let members = alphabet
+        .ranges()
+        .iter()
+        .map(|&(low, high)| {
+            if low == high {
+                format!("ordinal == 0x{low:02X}")
+            } else {
+                format!("(ordinal >= 0x{low:02X} && ordinal <= 0x{high:02X})")
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ||\n               ");
+    CPP_BOUNDED_ASCII_TEMPLATE
+        .replace("{name}", name)
+        .replace("{constants}", &constants)
+        .replace("{check}", &check)
+        .replace("{facets}", facets)
+        .replace("{members}", &members)
+        .replace("{describe}", &alphabet.describe())
+}
+
+/// The generated C++17 bounded-ASCII carrier (Task 058). Same public API and
+/// Task 040 copy-only lifecycle as every other validated String carrier.
+const CPP_BOUNDED_ASCII_TEMPLATE: &str = r##"class {name} {
+public:
+    // Validate `value` against the authoritative bounded-ASCII profile.
+    //
+    // Returns std::nullopt unless {facets} and the character class
+    // accept it. The stored text is the input unchanged (whiteSpace =
+    // preserve): nothing is trimmed, collapsed or case-folded.
+    static std::optional<{name}> create(std::string_view value) {
+        if (!is_valid(value)) {
+            return std::nullopt;
+        }
+        return {name}(std::string(value));
+    }
+
+    // Task 040 special-member policy: copy is explicit, destructive move is
+    // suppressed, so a moved-from carrier can never hold a representation
+    // this profile rejects. There is no public default constructor.
+    {name}(const {name}&) = default;
+    {name}& operator=(const {name}&) = default;
+
+    // The stored, validated lexical representation.
+    const std::string& value() const noexcept { return value_; }
+
+private:
+    explicit {name}(std::string validated) : value_(std::move(validated)) {}
+
+{constants}
+    // The class: {describe}.
+    // The cast makes the comparison ordinal regardless of whether plain
+    // `char` is signed.
+    static bool is_member(char character) noexcept {
+        const unsigned char ordinal = static_cast<unsigned char>(character);
+        return {members};
+    }
+
+    // The whole gate: the length facet(s) AND the character class.
+    static bool is_valid(std::string_view text) {
+        // Sound as an XSD character count: every class member is ASCII.
+        if (!({check})) {
+            return false;
+        }
+        // Anchored by construction: every character must be in the class.
+        for (const char character : text) {
+            if (!is_member(character)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    std::string value_;
+};
+"##;
 
 /// The generated C++17 NATO special-words carrier (Task 042).
 ///
