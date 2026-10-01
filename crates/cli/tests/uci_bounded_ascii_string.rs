@@ -18,9 +18,9 @@
 
 use ams_gra_oms_codegen_core::{
     BackendLanguage, CoverageAnalysis, GenerationWorld, ServiceMessageBlocker, StringProfile,
-    TypeEmission, analyze_service_readiness, effective_choice_alternatives,
+    TypeEmission, analyze_service_readiness, backend_preflight, effective_choice_alternatives,
     effective_record_fields, project_service_generation_schema, resolve_service_plan,
-    string_profile,
+    string_profile, unsafe_named_declarations,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, PrimitiveKind, QualifiedName, SchemaIr, TypeDecl, TypeKind, TypeRefTarget,
@@ -354,6 +354,142 @@ fn task058_real_uci_2_6_bounded_ascii_inventory() {
     };
     inventory("UCI 2.6", &schema);
     println!("UCI 2.6 BOUNDED ASCII INVENTORY: PASSED");
+}
+
+#[test]
+fn task058_closed_schema_ada_gap_evidence() {
+    let world = GenerationWorld::ClosedSchemaSet;
+    for (variable, digest, version, ada_count, peer_count) in [
+        ("AMS_GRA_UCI_2_5_ROOT", UCI_25_SHA256, "2.5", 526, 529),
+        ("AMS_GRA_UCI_2_6_ROOT", UCI_26_SHA256, "2.6", 526, 529),
+    ] {
+        let Some(schema) = pinned_root(variable, digest) else {
+            continue;
+        };
+        let analysis = CoverageAnalysis::new(&schema, world).expect("coverage");
+        for (language, count) in [
+            (BackendLanguage::Ada, ada_count),
+            (BackendLanguage::Rust, peer_count),
+            (BackendLanguage::Cpp, peer_count),
+        ] {
+            assert_eq!(
+                analysis
+                    .backend_coverage(language)
+                    .unwrap()
+                    .message_closures_renderable,
+                count
+            );
+        }
+        let ada_unsafe = unsafe_named_declarations(&schema, BackendLanguage::Ada, world);
+        let rust_unsafe = unsafe_named_declarations(&schema, BackendLanguage::Rust, world);
+        let cpp_unsafe = unsafe_named_declarations(&schema, BackendLanguage::Cpp, world);
+        let ada = analysis
+            .renderable_message_closure_names(BackendLanguage::Ada)
+            .unwrap();
+        let rust = analysis
+            .renderable_message_closure_names(BackendLanguage::Rust)
+            .unwrap();
+        let cpp = analysis
+            .renderable_message_closure_names(BackendLanguage::Cpp)
+            .unwrap();
+        assert_eq!(rust, cpp);
+        assert_eq!(rust.len(), peer_count);
+        assert_eq!(ada.len(), ada_count);
+        let expected = [
+            "Authorization",
+            "AuthorizationRequest",
+            "CommSupportActivity",
+        ];
+        let difference: Vec<_> = rust
+            .difference(&ada)
+            .map(|n| n.local_name.as_str())
+            .collect();
+        assert_eq!(difference, expected, "{version}");
+        assert!(ada.difference(&rust).next().is_none());
+        let ada_only: Vec<_> = ada_unsafe
+            .difference(&rust_unsafe)
+            .filter(|n| !cpp_unsafe.contains(*n))
+            .map(|n| n.local_name.as_str())
+            .collect();
+        assert_eq!(ada_only, ["QueryPET", "QueryType"]);
+        let error = backend_preflight(&schema, BackendLanguage::Ada, world)
+            .expect_err("full-schema Ada name conflict")
+            .to_string();
+        assert_eq!(
+            error,
+            "Ada names \"QueryType companion\" and \"QueryType\" both generate \
+             \"QueryType_Kind\" in the generated top-level scope"
+        );
+        assert!(backend_preflight(&schema, BackendLanguage::Rust, world).is_ok());
+        assert!(backend_preflight(&schema, BackendLanguage::Cpp, world).is_ok());
+        for name in expected {
+            let message = schema
+                .messages
+                .iter()
+                .find(|m| m.name.local_name == name)
+                .unwrap();
+            let TypeRefTarget::Named(payload) = &message.payload_type.target else {
+                panic!("named payload")
+            };
+            let closure = analysis.dependency_closure(payload).unwrap();
+            let blockers: Vec<_> = closure
+                .iter()
+                .filter(|d| {
+                    ada_unsafe.contains(&d.name)
+                        && !rust_unsafe.contains(&d.name)
+                        && !cpp_unsafe.contains(&d.name)
+                })
+                .map(|d| d.name.local_name.as_str())
+                .collect();
+            let members: Vec<_> = closure
+                .iter()
+                .filter(|d| is_member(d))
+                .map(|d| d.name.local_name.as_str())
+                .collect();
+            assert_eq!(blockers, ["QueryPET"], "{version} {name}");
+            assert_eq!(
+                members,
+                [
+                    "AlphanumericDashSpaceUnderscoreStringLength15Type",
+                    "EmptyType"
+                ],
+                "{version} {name}"
+            );
+            assert!(!closure.iter().any(|d| d.name.local_name == "QueryType"));
+            assert!(members.iter().all(|n| {
+                !ada_unsafe
+                    .iter()
+                    .chain(&rust_unsafe)
+                    .chain(&cpp_unsafe)
+                    .any(|unsafe_name| unsafe_name.local_name == *n)
+            }));
+            let plan =
+                resolve_service_plan(&single_message_contract(name, version), &schema).unwrap();
+            let projection = project_service_generation_schema(&plan, &schema, world).unwrap();
+            let projected_unsafe =
+                unsafe_named_declarations(projection.schema(), BackendLanguage::Ada, world);
+            assert!(
+                projection
+                    .schema()
+                    .types
+                    .iter()
+                    .any(|d| d.name.local_name == "QueryPET")
+            );
+            assert!(
+                !projection
+                    .schema()
+                    .types
+                    .iter()
+                    .any(|d| d.name.local_name == "QueryType")
+            );
+            assert!(!projected_unsafe.iter().any(|n| n.local_name == "QueryPET"));
+            assert!(backend_preflight(projection.schema(), BackendLanguage::Ada, world).is_ok());
+            for language in BackendLanguage::ALL {
+                assert_eq!(verdict(&plan, &schema, language), "A", "{version} {name}");
+            }
+        }
+        println!("UCI {version} CLOSED-SCHEMA ADA GAP: PASSED {difference:?}");
+    }
 }
 
 /// A single-message contract for `message` against UCI `version`.

@@ -385,6 +385,36 @@ No cell went down. The deltas break down as follows:
   three-closure difference. The Ada-only name-preflight collision on
   `QueryType_Kind` remains unchanged (see below).
 
+**Exact three-closure attribution (both pinned releases).** The sorted
+Rust/C++-minus-Ada closed-schema set is `Authorization`,
+`AuthorizationRequest`, `CommSupportActivity`; Ada-minus-Rust/C++ is empty.
+Their payload dependency closures each contain `QueryPET`, but **not**
+`QueryType`. Full-schema Ada name attribution marks `QueryPET` and `QueryType`
+unsafe, whereas Rust and C++ mark neither unsafe. The Ada preflight reports
+`Ada names "QueryType companion" and "QueryType" both generate
+"QueryType_Kind" in the generated top-level scope`. In the closed world,
+`QueryType` (a Choice and concrete descendant of abstract `QueryPET`) emits
+the `QueryType_Kind` companion; `QueryPET_Kind` also contains a
+`QueryType_Kind` literal. Each of the three closures contains the Task 058
+types `AlphanumericDashSpaceUnderscoreStringLength15Type` and `EmptyType`,
+neither of which is unsafe in any backend. The only Ada-only unsafe
+declaration in each closure is `QueryPET`: this is the pre-existing naming
+collision, not a bounded-ASCII carrier failure.
+
+For each of these messages, the single-message service projection retains
+`QueryPET` but omits `QueryType`. Ada's projected unsafe-name set no longer
+contains `QueryPET`, projected `backend_preflight` passes, and selected-service
+readiness is READY in Ada, Rust and C++. Whole-schema coverage intentionally
+attributes generated-name conflicts against the **full** schema; service
+readiness intentionally re-evaluates the **projected** schema that generation
+receives. Thus this is expected context-dependent behavior, not a
+coverage-semantics defect: the implicated declaration is inside each affected
+closure, even though the other side of its full-schema collision is outside.
+Open-extensions has no closed-sum `QueryPET_Kind` literal, so this conflict
+does not occur there; all three backends have 504 message closures.
+`task058_closed_schema_ada_gap_evidence` pins the exact sets, conflict,
+closure membership and projected readiness for both releases.
+
 The library `CoverageAnalysis` inside the Deep CI test reports the same
 figures for `kinds`/`declarations`.
 
