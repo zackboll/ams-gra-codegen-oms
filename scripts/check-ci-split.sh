@@ -42,7 +42,8 @@ for forbidden in \
   AMS_GRA_UCI_2_5_ROOT \
   AMS_GRA_UCI_2_6_ROOT \
   '--test uci_generated_support' \
-  '--test uci_duration'; do
+  '--test uci_duration' \
+  '--test uci_bounded_ascii_string'; do
   if grep -Fq -- "$forbidden" <<<"$fast_code"; then
     fail "Fast CI must not reference $forbidden"
   fi
@@ -100,6 +101,12 @@ for required in \
   'UCI 2.5 DURATION MESSAGE IMPACT: RECORDED' \
   'UCI 2.6 DURATION MESSAGE IMPACT: RECORDED' \
   'REAL CATEGORY-A DURATION SERVICE: PASSED' \
+  '--test uci_bounded_ascii_string' \
+  'UCI 2.5 BOUNDED ASCII INVENTORY: PASSED' \
+  'UCI 2.6 BOUNDED ASCII INVENTORY: PASSED' \
+  'UCI 2.5 BOUNDED ASCII MESSAGE IMPACT: RECORDED' \
+  'UCI 2.6 BOUNDED ASCII MESSAGE IMPACT: RECORDED' \
+  'REAL NEWLY-READY BOUNDED ASCII SERVICE: PASSED' \
   'AMS_GRA_REQUIRE_GNAT: "1"' \
   'gnatmake --version' \
   'rustup toolchain install 1.95.0 --profile minimal' \
@@ -108,6 +115,8 @@ for required in \
   'REAL POSITIONREPORT CODEC: PASSED' \
   'real::task052_real_subsystem_stream_hex_binary_round_trips' \
   'REAL SUBSYSTEMSTREAM HEXBINARY CODEC: PASSED' \
+  'real::task058_real_amti_settings_empty_type_round_trips' \
+  'REAL AMTI_SETTINGSCOMMAND EMPTYTYPE CODEC: PASSED' \
   'scripts/run-real-sleet-test.sh' \
   'set -euo pipefail'; do
   if ! grep -Fq -- "$required" <<<"$deep_code"; then

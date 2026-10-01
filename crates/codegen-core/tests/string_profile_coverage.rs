@@ -313,15 +313,20 @@ fn visible_ascii_near_misses_are_not_baseline() {
     collapsed.lexical.white_space = Some(WhiteSpacePolicy::Collapse);
     cases.push(("explicit whiteSpace=collapse", collapsed));
 
-    // The fixed-`length` VisibleStringLength*/NITF_* shape.
+    // Task 058 note: the fixed-`length` VisibleStringLength*/NITF_* shape
+    // (`[ -~]{10}`, `length 10`) used to be listed here. Task 058 supports
+    // exactly those pinned rows as `StringProfile::BoundedAscii`, so it is now
+    // legitimately baseline with positive controls in
+    // `bounded_ascii_coverage.rs`. What stays non-baseline is a fixed length
+    // no release carries.
     let mut fixed_length = ConstraintSet {
-        length: Some(10),
+        length: Some(11),
         ..ConstraintSet::default()
     };
     fixed_length.lexical.pattern_groups = vec![PatternGroup {
-        alternatives: vec![PatternExpression::xml_schema("[ -~]{10}")],
+        alternatives: vec![PatternExpression::xml_schema("[ -~]{11}")],
     }];
-    cases.push(("length instead of min/max", fixed_length));
+    cases.push(("unobserved fixed length [ -~]{11}", fixed_length));
 
     // Task 041 note: `QueryString4096Type`'s `[ -~\n\r]{0,4096}` used to be
     // listed here, because at that time no profile implemented a class

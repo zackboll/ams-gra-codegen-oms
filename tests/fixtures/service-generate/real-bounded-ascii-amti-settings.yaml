@@ -1,0 +1,28 @@
+# Task 058 real-UCI newly-READY selection (test-only; used against the pinned
+# UCI 2.5 root in Deep CI). `AMTI_SettingsCommand` is the smallest real UCI
+# message (61 selected declarations, no generated support) that became READY
+# solely because of Task 058: its payload `AMTI_SettingsCommandMDT` carries
+# the optional `UnassignAll : EmptyType` (`[a-zA-Z]{0}`, `length 0`). Before
+# Task 058 it was NOT READY on `EmptyType` in every backend.
+contract_version: "0.1"
+service:
+  name: Task 058 AMTI Settings
+  version: "0.1.0"
+  kind: service
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+functions:
+  - id: amti-settings
+    name: AMTI Settings
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: settings-output
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: AMTI_SettingsCommand
+        topic: amti.settings
+        timing:
+          kind: asynchronous

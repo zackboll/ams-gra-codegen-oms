@@ -407,3 +407,87 @@ fn task057_duration_generated_codec_round_trips_through_mock_owp() {
     runtime.close().expect("close");
     peer.expect_closed();
 }
+
+/// Task 058: the `codec-bounded-ascii` service. Typed bounded-ASCII carriers
+/// (including the zero-length `EmptyType` shape) are published as their
+/// stored text; a MSG reaches the typed handler with SPACE preserved; an
+/// invalid lexical is a decode event from the GENERATED constructor, never a
+/// handler call.
+#[test]
+fn task058_bounded_ascii_generated_codec_round_trips_through_mock_owp() {
+    use ams_gra_oms_runtime_rust_facade_tests::codec_bounded_ascii::model as m;
+    use ams_gra_oms_runtime_rust_facade_tests::codec_bounded_ascii::service_api::function_tail as tail;
+    use ams_gra_oms_runtime_rust_facade_tests::codec_bounded_ascii::service_codec::ServiceCodec as BoundedCodec;
+
+    let peer = MockPeer::start();
+    let mut runtime = SleetRuntime::connect(
+        RuntimeConfig::new(&peer.url, "svc-1", "000.1.0"),
+        BoundedCodec,
+    )
+    .expect("connect");
+    assert!(peer.next_text().starts_with("INIT "));
+
+    let (seen_tx, seen) = mpsc::channel();
+    let subscription = tail::exchange_input_tail::subscribe(
+        &mut runtime,
+        move |message: &tail::exchange_input_tail::Payload| {
+            seen_tx.send(message.clone()).expect("test alive");
+        },
+    )
+    .expect("subscribe");
+    peer.expect("SUB sub-1 BoundedNotice tail-topic");
+
+    let empty = m::MarkerType::new("").expect("zero-length");
+    let value = m::BoundedPayload {
+        marker: empty.clone(),
+        tail: m::TailType::new("N123AB  ").expect("tail"),
+        label: None,
+        markers: m::BoundedVec::new(vec![empty.clone()]).expect("1"),
+        codes: m::UnboundedVec::new(Vec::new()).expect("0"),
+        pick: m::PickChoice::Empty(empty),
+    };
+    tail::exchange_output_tail::publish(&mut runtime, &value).expect("publish");
+    let document = pub_body(&peer.next_text(), "tail-topic");
+    assert_eq!(
+        document,
+        serde_json::json!({ "BoundedNotice": {
+            "Marker": "",
+            "Tail": "N123AB  ",
+            "Markers": [""],
+            "Pick": { "Empty": "" }
+        }})
+    );
+
+    peer.send(
+        r#"MSG sub-1 {"BoundedNotice":{"Marker":"","Tail":" 7 7 7 7","Label":"a b","Pick":{"Launch":"Z"}}}"#,
+    );
+    let received = seen.recv_timeout(WAIT).expect("typed MSG");
+    assert_eq!(received.tail.as_str(), " 7 7 7 7");
+    assert_eq!(received.label.as_ref().expect("present").as_str(), "a b");
+
+    peer.send(
+        r#"MSG sub-1 {"BoundedNotice":{"Marker":"","Tail":"n123ab  ","Pick":{"Launch":"Z"}}}"#,
+    );
+    match runtime.recv_event_timeout(WAIT) {
+        Some(RuntimeEvent::SubscriptionDecodeError {
+            message_name,
+            error: MessageDecodeError::Codec(error),
+            ..
+        }) => {
+            assert_eq!(message_name, "BoundedNotice");
+            assert!(
+                error.message().starts_with("BoundedPayload.Tail")
+                    && error.message().contains("TailType"),
+                "{}",
+                error.message()
+            );
+        }
+        other => panic!("expected a codec decode-failure event, got {other:?}"),
+    }
+    assert!(seen.try_recv().is_err());
+
+    subscription.unsubscribe().expect("unsubscribe");
+    peer.expect("UNSUB sub-1");
+    runtime.close().expect("close");
+    peer.expect_closed();
+}

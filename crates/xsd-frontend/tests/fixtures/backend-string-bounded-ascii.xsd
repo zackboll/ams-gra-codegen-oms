@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Task 058 backend fixture: one representative of EVERY bounded-ASCII
+  alphabet admitted from the pinned UCI 2.5/2.6 inventory. Each carries the
+  exact normalized class spelling and bounds of one pinned row, under a
+  deliberately non-UCI name (support never depends on a declaration name).
+
+    Blank    = the EmptyType shape               [a-zA-Z]{0}, length 0
+    Tail8    = the AircraftIdentifierType shape  [A-Z0-9&#x20;]{8}, length 8
+    Serial7  = the USMTF_MessageSerialNumberType shape (quote, apostrophe,
+               backslash, brackets, braces, ampersand, less-than)
+
+  SPACE is written as the character reference &#x20; exactly as UCI does.
+
+  Payload / Concrete / Pick compose the carriers in every supported storage
+  position: required, optional, bounded repeated, unbounded repeated,
+  inherited from an abstract base, and a Choice alternative. Notes is an
+  ordinary unconstrained String control.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test:bounded"
+           targetNamespace="urn:test:bounded"
+           elementFormDefault="qualified">
+
+  <xs:simpleType name="Blank">
+    <xs:restriction base="xs:string">
+      <xs:length value="0"/>
+      <xs:pattern value="[a-zA-Z]{0}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Tail8">
+    <xs:restriction base="xs:string">
+      <xs:length value="8"/>
+      <xs:pattern value="[A-Z0-9&#x20;]{8}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Word15">
+    <xs:restriction base="xs:string">
+      <xs:length value="15"/>
+      <xs:pattern value="[a-zA-Z0-9&#x20;\-_]{15}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Word20">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="20"/>
+      <xs:pattern value="[a-zA-Z0-9&#x20;\-_]{1,20}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Code4">
+    <xs:restriction base="xs:string">
+      <xs:length value="4"/>
+      <xs:pattern value="[a-zA-Z0-9]{4}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Code6">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="6"/>
+      <xs:pattern value="[a-zA-Z0-9]{1,6}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Spaced15">
+    <xs:restriction base="xs:string">
+      <xs:length value="15"/>
+      <xs:pattern value="[A-Za-z0-9&#x20;]{15}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Hyphened15">
+    <xs:restriction base="xs:string">
+      <xs:length value="15"/>
+      <xs:pattern value="[a-zA-Z0-9\-]{15}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Ident12">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="12"/>
+      <xs:pattern value="[a-zA-Z0-9_\-]{1,12}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="IdentAlt20">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="20"/>
+      <xs:pattern value="[A-Za-z0-9_\-]{1,20}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Phone20">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="20"/>
+      <xs:pattern value="[a-zA-Z0-9&#x20;\-\.]{1,20}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Letters3">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="3"/>
+      <xs:pattern value="[A-Z]{1,3}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Digits4">
+    <xs:restriction base="xs:string">
+      <xs:length value="4"/>
+      <xs:pattern value="[0-9]{4}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Digits45">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="4"/>
+      <xs:maxLength value="5"/>
+      <xs:pattern value="[0-9]{4,5}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Octal5">
+    <xs:restriction base="xs:string">
+      <xs:length value="5"/>
+      <xs:pattern value="[0-7]{5}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Upper23">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="2"/>
+      <xs:maxLength value="3"/>
+      <xs:pattern value="[A-Z0-9]{2,3}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Tail210">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="2"/>
+      <xs:maxLength value="10"/>
+      <xs:pattern value="[A-Z0-9\-]{2,10}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Unit256">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="256"/>
+      <xs:pattern value="[a-zA-Z0-9&#x20;'\(\).,@;+\-]{1,256}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Usmtf8">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="8"/>
+      <xs:pattern value="[\-\.,\(\)\?A-Z0-9&#x20;]{1,8}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="UsmtfTight5">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="5"/>
+      <xs:pattern value="[\-\.,\(\)\?A-Z0-9]{1,5}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="UsmtfLow30">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="30"/>
+      <xs:pattern value="[\-\.,\(\)_\?A-Z0-9&#x20;]{1,30}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Serial7">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="7"/>
+      <xs:pattern value="[\-A-Z0-9&#x20;\.,\(\)&amp;\?!@#$%\^\*=_\+\[\]\{\}\\&quot;';&gt;&lt;~`\|]{1,7}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Fixed10">
+    <xs:restriction base="xs:string">
+      <xs:length value="10"/>
+      <xs:pattern value="[&#x20;-~]{10}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- A zero-facet restriction of a member: the effective set is resolved. -->
+  <xs:simpleType name="DerivedTail">
+    <xs:restriction base="t:Tail8"/>
+  </xs:simpleType>
+
+  <xs:complexType name="Payload">
+    <xs:sequence>
+      <xs:element name="Marker" type="t:Blank"/>
+      <xs:element name="Aircraft" type="t:Tail8"/>
+      <xs:element name="OptionalMarker" type="t:Blank" minOccurs="0"/>
+      <xs:element name="OptionalWord" type="t:Word20" minOccurs="0"/>
+      <xs:element name="Markers" type="t:Blank" minOccurs="0" maxOccurs="3"/>
+      <xs:element name="Codes" type="t:Code4" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="Derived" type="t:DerivedTail"/>
+      <xs:element name="Notes" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="Base" abstract="true">
+    <xs:sequence>
+      <xs:element name="Launch" type="t:Letters3"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="Concrete">
+    <xs:complexContent>
+      <xs:extension base="t:Base">
+        <xs:sequence>
+          <xs:element name="Serial" type="t:Serial7"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="Pick">
+    <xs:choice>
+      <xs:element name="ByDigits" type="t:Digits4"/>
+      <xs:element name="ByEmpty" type="t:Blank"/>
+    </xs:choice>
+  </xs:complexType>
+
+</xs:schema>

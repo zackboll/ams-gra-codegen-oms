@@ -54,6 +54,9 @@ expect_fail "fast runs the Task 056 real-UCI gate" "$tmp/fast-t056.yml" "$deep" 
 # Task 057: the real-UCI duration gate migrates into Fast CI.
 { cat "$fast"; printf '      - run: cargo test -p ams-gra-codegen-oms --test uci_duration\n'; } >"$tmp/fast-t057.yml"
 expect_fail "fast runs the Task 057 real-UCI gate" "$tmp/fast-t057.yml" "$deep" "$sleet"
+# Task 058: the real-UCI bounded-ASCII gate migrates into Fast CI.
+{ cat "$fast"; printf '      - run: cargo test -p ams-gra-codegen-oms --test uci_bounded_ascii_string\n'; } >"$tmp/fast-t058.yml"
+expect_fail "fast runs the Task 058 real-UCI gate" "$tmp/fast-t058.yml" "$deep" "$sleet"
 grep -v -- '- run: cargo test --workspace' "$fast" >"$tmp/fast-notest.yml"
 expect_fail "fast lost workspace test" "$tmp/fast-notest.yml" "$deep" "$sleet"
 
@@ -76,7 +79,14 @@ for line in \
   'UCI 2.6 DURATION INVENTORY: PASSED' \
   'UCI 2.5 DURATION MESSAGE IMPACT: RECORDED' \
   'UCI 2.6 DURATION MESSAGE IMPACT: RECORDED' \
-  'REAL CATEGORY-A DURATION SERVICE: PASSED'; do
+  'REAL CATEGORY-A DURATION SERVICE: PASSED' \
+  '--test uci_bounded_ascii_string' \
+  'UCI 2.5 BOUNDED ASCII INVENTORY: PASSED' \
+  'UCI 2.6 BOUNDED ASCII INVENTORY: PASSED' \
+  'UCI 2.5 BOUNDED ASCII MESSAGE IMPACT: RECORDED' \
+  'UCI 2.6 BOUNDED ASCII MESSAGE IMPACT: RECORDED' \
+  'REAL NEWLY-READY BOUNDED ASCII SERVICE: PASSED' \
+  'REAL AMTI_SETTINGSCOMMAND EMPTYTYPE CODEC: PASSED'; do
   grep -Fv -- "$line" "$deep" >"$tmp/deep-drop.yml"
   expect_fail "deep dropped: $line" "$fast" "$tmp/deep-drop.yml" "$sleet"
 done
@@ -133,6 +143,16 @@ task057_markers() {
   grep -Fqx 'UCI 2.6 DURATION MESSAGE IMPACT: RECORDED' <<<"$output"
   grep -Eqx '(test task057_real_uci_category_a_log_generates_and_compiles \.\.\. )?UCI 2\.5 REAL CATEGORY-A DURATION SERVICE: PASSED' <<<"$output"
   grep -qE '^test result: ok\. 4 passed' <<<"$output"
+}
+task058_markers() {
+  set -euo pipefail
+  local output="$1"
+  grep -Fqx 'UCI 2.5 BOUNDED ASCII INVENTORY: PASSED' <<<"$output"
+  grep -Fqx 'UCI 2.6 BOUNDED ASCII INVENTORY: PASSED' <<<"$output"
+  grep -Fqx 'UCI 2.5 BOUNDED ASCII MESSAGE IMPACT: RECORDED' <<<"$output"
+  grep -Fqx 'UCI 2.6 BOUNDED ASCII MESSAGE IMPACT: RECORDED' <<<"$output"
+  grep -Eqx '(test task058_real_uci_newly_ready_service_generates_and_compiles \.\.\. )?UCI 2\.5 REAL NEWLY-READY BOUNDED ASCII SERVICE: PASSED' <<<"$output"
+  grep -qE '^test result: ok\. 5 passed' <<<"$output"
 }
 # Run a marker-check function as a PLAIN statement (never inside if/||/&&):
 # bash disables errexit for everything in a conditional context, subshells
@@ -258,6 +278,44 @@ glued057="${good057/UCI 2.6 NAMED DURATION: DurationType | x
 /}"
 must_reject "prefixed 057 marker" task057_markers "$glued057"
 
+# Task 058: same shape as Task 057 -- detail rows first, whole-line markers,
+# the service marker possibly on libtest's "test <name> ... " line.
+good058="running 5 tests
+test task058_closed_schema_ada_gap_evidence ... UCI 2.5 CLOSED-SCHEMA ADA GAP: PASSED ["Authorization", "AuthorizationRequest", "CommSupportActivity"]
+UCI 2.6 CLOSED-SCHEMA ADA GAP: PASSED ["Authorization", "AuthorizationRequest", "CommSupportActivity"]
+ok
+test task058_real_uci_newly_ready_service_generates_and_compiles ... UCI 2.5 REAL NEWLY-READY BOUNDED ASCII SERVICE: PASSED
+ok
+test task058_real_uci_2_5_bounded_ascii_inventory ... UCI 2.5 CONSTRAINED STRING: AircraftIdentifierType | x
+UCI 2.5 BOUNDED ASCII SUMMARY: members=61 alphabets=19 still-unsupported=46
+UCI 2.5 BOUNDED ASCII INVENTORY: PASSED
+ok
+test task058_real_uci_2_6_bounded_ascii_inventory ... UCI 2.6 CONSTRAINED STRING: AircraftIdentifierType | x
+UCI 2.6 BOUNDED ASCII INVENTORY: PASSED
+ok
+test task058_real_uci_bounded_ascii_message_impact ... UCI 2.5 BOUNDED ASCII MESSAGE IMPACT: Log x
+UCI 2.5 BOUNDED ASCII MESSAGE IMPACT: RECORDED
+UCI 2.6 BOUNDED ASCII MESSAGE IMPACT: RECORDED
+ok
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+$noise"
+must_accept task058_markers "$good058"
+must_accept task058_markers "${good058/test task058_real_uci_newly_ready_service_generates_and_compiles ... /}"
+must_reject "foreign 058 NEWLY-READY prefix" task058_markers \
+  "${good058/test task058_real_uci_newly_ready_service_generates_and_compiles/test some_other_test}"
+for marker in \
+  'UCI 2.5 BOUNDED ASCII INVENTORY: PASSED' \
+  'UCI 2.6 BOUNDED ASCII INVENTORY: PASSED' \
+  'UCI 2.5 BOUNDED ASCII MESSAGE IMPACT: RECORDED' \
+  'UCI 2.6 BOUNDED ASCII MESSAGE IMPACT: RECORDED' \
+  'UCI 2.5 REAL NEWLY-READY BOUNDED ASCII SERVICE: PASSED' \
+  'test result: ok. 5 passed'; do
+  must_reject "missing $marker" task058_markers "${good058/"$marker"/}"
+done
+glued058="${good058/UCI 2.6 CONSTRAINED STRING: AircraftIdentifierType | x
+/}"
+must_reject "prefixed 058 marker" task058_markers "$glued058"
+
 # The Deep CI marker lines must be exactly the shapes tested above.
 for shape in \
   "grep -Eqx '(test task054_real_uci_category_a_selection_generates_and_compiles \\.\\.\\. )?UCI 2\\.5 REAL CATEGORY-A MEMBER REMAPPING: PASSED' <<<\"\$output\"" \
@@ -267,7 +325,10 @@ for shape in \
   "grep -Fqx 'UCI 2.5 CATEGORY-A GENERATED SUPPORT PARITY: PASSED' <<<\"\$output\"" \
   "grep -Fqx 'UCI 2.6 DURATION INVENTORY: PASSED' <<<\"\$output\"" \
   "grep -Fqx 'UCI 2.6 DURATION MESSAGE IMPACT: RECORDED' <<<\"\$output\"" \
-  "grep -Eqx '(test task057_real_uci_category_a_log_generates_and_compiles \\.\\.\\. )?UCI 2\\.5 REAL CATEGORY-A DURATION SERVICE: PASSED' <<<\"\$output\""; do
+  "grep -Eqx '(test task057_real_uci_category_a_log_generates_and_compiles \\.\\.\\. )?UCI 2\\.5 REAL CATEGORY-A DURATION SERVICE: PASSED' <<<\"\$output\"" \
+  "grep -Fqx 'UCI 2.6 BOUNDED ASCII INVENTORY: PASSED' <<<\"\$output\"" \
+  "grep -Fqx 'UCI 2.6 BOUNDED ASCII MESSAGE IMPACT: RECORDED' <<<\"\$output\"" \
+  "grep -Eqx '(test task058_real_uci_newly_ready_service_generates_and_compiles \\.\\.\\. )?UCI 2\\.5 REAL NEWLY-READY BOUNDED ASCII SERVICE: PASSED' <<<\"\$output\""; do
   grep -Fq -- "$shape" "$deep" || die "deep-ci.yml no longer uses tested shape: $shape"
   ok
 done

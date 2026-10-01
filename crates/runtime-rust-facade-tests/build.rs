@@ -21,8 +21,10 @@ use std::process::Command;
 /// (`urn:test`): Record fields / Choice alternatives whose Rust identifiers
 /// are escaped (`field_type`, `AlternativeSelf`) while their OMS JSON keys stay
 /// the source spellings. Task 057 adds `codec-duration`: named and direct
-/// unconstrained xs:duration in every occurrence shape plus a Choice.
-const SERVICES: [(&str, &str, bool); 14] = [
+/// unconstrained xs:duration in every occurrence shape plus a Choice. Task
+/// 058 adds `codec-bounded-ascii`: named bounded-ASCII String carriers,
+/// including the zero-length `EmptyType` shape, in every occurrence shape.
+const SERVICES: [(&str, &str, bool); 15] = [
     ("runtime-test", "runtime_test", false),
     ("runtime-oam", "runtime_oam", false),
     ("codec-oam", "codec_oam", true),
@@ -41,6 +43,7 @@ const SERVICES: [(&str, &str, bool); 14] = [
         true,
     ),
     ("codec-duration", "codec_duration", true),
+    ("codec-bounded-ascii", "codec_bounded_ascii", true),
 ];
 
 /// Task 050: the pinned UCI 2.5 root (open-arsenal/uci/standard tag v2.5,
@@ -131,6 +134,13 @@ fn real_uci_position_report(fixtures: &Path, out: &Path) {
             "subsystem-stream-loop.yaml",
             "real_uci_subsystem_stream",
             "real UCI SubsystemStream",
+        ),
+        // Task 058: AMTI_SettingsCommand, the smallest real message made
+        // READY by the bounded-ASCII String profiles (its `EmptyType`).
+        (
+            "real-bounded-ascii-amti-settings.yaml",
+            "real_uci_amti_settings",
+            "real UCI AMTI_SettingsCommand",
         ),
     ] {
         let contract = fixtures.join(contract);

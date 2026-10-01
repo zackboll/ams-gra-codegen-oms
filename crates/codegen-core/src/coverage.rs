@@ -429,6 +429,31 @@ impl<'a> CoverageAnalysis<'a> {
         self.backend_coverage_with(language, &BTreeSet::new())
     }
 
+    /// Names of baseline-renderable message closures in this analysis's schema
+    /// and generation world. Uses the same renderability vector and verdict as
+    /// [`Self::backend_coverage`], computed once for the entire schema.
+    pub fn renderable_message_closure_names(
+        &self,
+        language: BackendLanguage,
+    ) -> Result<BTreeSet<QualifiedName>, CoverageError> {
+        let enabled = BTreeSet::new();
+        let renderability = self.declaration_renderability(language, &enabled);
+        if self.namespace_unit_is_unusable(language) {
+            return Ok(BTreeSet::new());
+        }
+        self.schema
+            .messages
+            .iter()
+            .filter_map(|message| {
+                match self.message_closure_renderable(message, language, &enabled, &renderability) {
+                    Ok(true) => Some(Ok(message.name.clone())),
+                    Ok(false) => None,
+                    Err(error) => Some(Err(error)),
+                }
+            })
+            .collect()
+    }
+
     /// Return message closures made renderable by each requested hypothetical feature set.
     pub fn impact(
         &self,
@@ -2827,6 +2852,44 @@ mod tests {
                     .impact(language, &[FeatureFamily::PrimitiveExpansion])
                     .unwrap(),
                 1
+            );
+        }
+    }
+
+    #[test]
+    fn renderable_message_names_match_coverage_and_exclude_blocked_closures() {
+        let inner = declaration(
+            "Inner",
+            TypeKind::Record {
+                fields: vec![field_ref("value", TypeRef::primitive(PrimitiveKind::Time))],
+            },
+        );
+        let outer = declaration(
+            "Outer",
+            TypeKind::Record {
+                fields: vec![field("inner", "Inner")],
+            },
+        );
+        let mut schema = message_schema(vec![outer, inner, renderable_record("Safe")], "Outer");
+        schema.messages.push(MessageDecl {
+            name: QualifiedName::new(NS, "SafeMessage"),
+            payload_type: named("Safe"),
+            documentation: None,
+            source: source(),
+        });
+        let analysis = CoverageAnalysis::new(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
+        for language in BackendLanguage::ALL {
+            let names = analysis.renderable_message_closure_names(language).unwrap();
+            assert_eq!(
+                names,
+                BTreeSet::from([QualifiedName::new(NS, "SafeMessage")])
+            );
+            assert_eq!(
+                names.len(),
+                analysis
+                    .backend_coverage(language)
+                    .unwrap()
+                    .message_closures_renderable
             );
         }
     }

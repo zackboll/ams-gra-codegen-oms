@@ -78,7 +78,8 @@ zero length facets on floating types.
       checked wrapper exists for that storage, so it stays fail-closed);
 - [ ] floating lexical facets (none exist in the authoritative releases);
 - [ ] constrained String outside the supported profiles (named
-      length-only constrained Binary is done: Task 053);
+      length-only constrained Binary is done: Task 053; the pinned
+      single-class bounded-ASCII String family is done: Task 058);
 - [ ] the excluded integral exclusive/lexical shapes.
 
 ### Occurrence / cardinality representation
@@ -760,10 +761,21 @@ Progress (typed LA-CAL integration as a whole is **not** complete):
       `EphemerisOrbitalModelType.IntegratorStepSize`) -- Task 057 model support
       in Ada/Rust/C++ and the Rust Duration codec. `EphemerisOrbitalModelType`
       is now renderable.
-- [ ] the blockers Task 056 exposed that remain open and NOT implemented:
-      `AircraftIdentifierType` (and sibling constrained-String facet
-      profiles; now the first OrderOfBattle support blocker in BOTH
-      releases), `EmptyType`, `xs:time`.
+- [x] `AircraftIdentifierType`, `EmptyType` and the sibling single-class
+      bounded ASCII String profiles -- Task 058: 61 declarations / 19
+      alphabets / 60 pinned rows, all backends plus the Rust codec; 131 real
+      messages per release became READY. See
+      [Task 058](task-058-bounded-ascii-string-profiles.md).
+- [ ] remaining constrained-String blockers (Task 058 current distribution):
+      `IMO_NumberType` (literal prefix; next OrderOfBattle support blocker),
+      `AO_PRF_CodeType`, `NotationType`, `FileNameType`, `NIIRS_Type`,
+      `CounterSpaceCycleNumberType`, position-specific classes
+      (`CounterSpaceSENO_Type`, `OB_O_SuffixType`, `Link16_TrackNumberType`,
+      ...), the `maxLength`-only near-misses (`Link16_SpecificTypeModelType`,
+      `MISP_ItemDesignatorType`) and unquantified length-1 classes. None is
+      admitted by the bounded-ASCII family.
+- [ ] `xs:time` (`TimeType`, now the first blocker of 28 messages per
+      release).
 - [ ] plan binding scope: `SchemaBinding` fingerprints the contract-selected
       closure, not generated-support descendants, so changing only a support
       descendant between plan resolution and reuse is not detected as a
@@ -782,6 +794,7 @@ Task 053:  constrained named Binary carriers (octet length domain), all backends
 Task 054:  reserved Record/Choice member identifier remapping, all backends
 Task 056:  readiness accounts for generated-support declarations
 Task 057:  XML Schema duration checked lexical carriers, all backends; Rust codec
+Task 058:  bounded-ASCII single-class String carriers, all backends; Rust codec
 ```
 
 See [Task 049](task-049-rust-la-cal-runtime.md),

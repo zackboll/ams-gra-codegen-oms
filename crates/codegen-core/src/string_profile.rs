@@ -14,7 +14,7 @@
 //!
 //! # The supported profiles
 //!
-//! Five, each recognized by an exact effective facet shape:
+//! Six, each recognized by an exact effective facet shape:
 //!
 //! * [`StringProfile::UciSchemaVersion`] (Task 037) -- see below;
 //! * [`StringProfile::UniversallyUniqueIdentifier`] (Task 038) -- see the
@@ -26,10 +26,14 @@
 //!   `whiteSpace` policy is part of the profile;
 //! * [`StringProfile::NatoSpecialWords`] (Task 042) -- the single fixed
 //!   `NATO:[a-zA-Z\-_]{1,256}` profile under `minLength 6` / `maxLength 261`;
-//!   see [`NATO_SPECIAL_WORDS_PATTERN`].
+//!   see [`NATO_SPECIAL_WORDS_PATTERN`];
+//! * [`StringProfile::BoundedAscii`] (Task 058) -- one finite ASCII character
+//!   class under one bounded quantifier, parameterized by
+//!   [`BoundedAsciiAlphabet`] and [`BoundedAsciiLength`] over exactly the
+//!   rows observed in the pinned releases ([`bounded_ascii_profiles`]).
 //!
 //! None is recognized by declaration name, and a constrained `string` matching
-//! none of the five shapes fails closed.
+//! none of the six shapes fails closed.
 //!
 //! # The two pinned releases are not equivalent here
 //!
@@ -834,6 +838,447 @@ fn is_authoritative_visible_ascii_bounds(min_length: u64, max_length: u64) -> bo
     UCI_VISIBLE_ASCII_BOUNDS.contains(&(min_length, max_length))
 }
 
+/// One finite ASCII character class of the Task 058 bounded-ASCII family,
+/// identified by its exact **member set**.
+///
+/// Each variant is the member set of one or more authoritative normalized
+/// class spellings (see `UCI_BOUNDED_ASCII_PROFILES`). UCI writes both
+/// `[a-zA-Z0-9_\-]` and `[A-Za-z0-9_\-]`; an XML Schema character class
+/// denotes a set, so both are the same alphabet.
+///
+/// Names describe the member set, never a UCI declaration. Every alphabet is a
+/// subset of U+0020..U+007E: none contains TAB, LF, CR, DEL, any other
+/// control, or any non-ASCII character.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum BoundedAsciiAlphabet {
+    /// `0-9`.
+    Digits,
+    /// `0-7`.
+    OctalDigits,
+    /// `A-Z`.
+    UpperLetters,
+    /// `A-Z a-z`.
+    Letters,
+    /// `0-9 A-Z`.
+    UpperAlphanumeric,
+    /// SPACE `0-9 A-Z`.
+    UpperAlphanumericSpace,
+    /// `- 0-9 A-Z`.
+    UpperAlphanumericHyphen,
+    /// `0-9 A-Z a-z`.
+    Alphanumeric,
+    /// SPACE `0-9 A-Z a-z`.
+    AlphanumericSpace,
+    /// `- 0-9 A-Z a-z`.
+    AlphanumericHyphen,
+    /// `- 0-9 A-Z _ a-z`.
+    AlphanumericUnderscoreHyphen,
+    /// SPACE `- 0-9 A-Z _ a-z`.
+    AlphanumericSpaceHyphenUnderscore,
+    /// SPACE `- . 0-9 A-Z a-z`.
+    AlphanumericSpaceHyphenPeriod,
+    /// SPACE `' ( ) + , - . 0-9 ; @ A-Z a-z`.
+    UnitNameText,
+    /// SPACE `( ) , - . 0-9 ? A-Z`.
+    UsmtfText,
+    /// `( ) , - . 0-9 ? A-Z` (no SPACE).
+    UsmtfTextWithoutSpace,
+    /// SPACE `( ) , - . 0-9 ? A-Z _`.
+    UsmtfTextUnderscore,
+    /// SPACE..`.`, `0-9`, `;`..`` ` ``, `{`..`~`: visible ASCII except `/`,
+    /// `:` and `a-z`.
+    UsmtfSerialText,
+    /// SPACE..`~`, the whole visible-ASCII interval, under a fixed `length`.
+    /// Distinct from [`StringProfile::VisibleAscii`], whose members carry
+    /// `minLength`/`maxLength`; the two never classify the same declaration.
+    VisibleAscii,
+}
+
+impl BoundedAsciiAlphabet {
+    /// Every alphabet, in declaration order.
+    pub const ALL: [Self; 19] = [
+        Self::Digits,
+        Self::OctalDigits,
+        Self::UpperLetters,
+        Self::Letters,
+        Self::UpperAlphanumeric,
+        Self::UpperAlphanumericSpace,
+        Self::UpperAlphanumericHyphen,
+        Self::Alphanumeric,
+        Self::AlphanumericSpace,
+        Self::AlphanumericHyphen,
+        Self::AlphanumericUnderscoreHyphen,
+        Self::AlphanumericSpaceHyphenUnderscore,
+        Self::AlphanumericSpaceHyphenPeriod,
+        Self::UnitNameText,
+        Self::UsmtfText,
+        Self::UsmtfTextWithoutSpace,
+        Self::UsmtfTextUnderscore,
+        Self::UsmtfSerialText,
+        Self::VisibleAscii,
+    ];
+
+    /// The member set as ascending, disjoint, non-adjacent inclusive byte
+    /// ranges.
+    ///
+    /// This -- never the class spelling -- is what generated validators test,
+    /// as plain ordinal comparisons, so no class character (`\`, `"`, `'`,
+    /// `[`, `]`) is ever escaped into Rust, C++ or Ada source.
+    #[must_use]
+    pub const fn ranges(self) -> &'static [(u8, u8)] {
+        match self {
+            Self::Digits => &[(0x30, 0x39)],
+            Self::OctalDigits => &[(0x30, 0x37)],
+            Self::UpperLetters => &[(0x41, 0x5A)],
+            Self::Letters => &[(0x41, 0x5A), (0x61, 0x7A)],
+            Self::UpperAlphanumeric => &[(0x30, 0x39), (0x41, 0x5A)],
+            Self::UpperAlphanumericSpace => &[(0x20, 0x20), (0x30, 0x39), (0x41, 0x5A)],
+            Self::UpperAlphanumericHyphen => &[(0x2D, 0x2D), (0x30, 0x39), (0x41, 0x5A)],
+            Self::Alphanumeric => &[(0x30, 0x39), (0x41, 0x5A), (0x61, 0x7A)],
+            Self::AlphanumericSpace => &[(0x20, 0x20), (0x30, 0x39), (0x41, 0x5A), (0x61, 0x7A)],
+            Self::AlphanumericHyphen => &[(0x2D, 0x2D), (0x30, 0x39), (0x41, 0x5A), (0x61, 0x7A)],
+            Self::AlphanumericUnderscoreHyphen => &[
+                (0x2D, 0x2D),
+                (0x30, 0x39),
+                (0x41, 0x5A),
+                (0x5F, 0x5F),
+                (0x61, 0x7A),
+            ],
+            Self::AlphanumericSpaceHyphenUnderscore => &[
+                (0x20, 0x20),
+                (0x2D, 0x2D),
+                (0x30, 0x39),
+                (0x41, 0x5A),
+                (0x5F, 0x5F),
+                (0x61, 0x7A),
+            ],
+            Self::AlphanumericSpaceHyphenPeriod => &[
+                (0x20, 0x20),
+                (0x2D, 0x2E),
+                (0x30, 0x39),
+                (0x41, 0x5A),
+                (0x61, 0x7A),
+            ],
+            Self::UnitNameText => &[
+                (0x20, 0x20),
+                (0x27, 0x29),
+                (0x2B, 0x2E),
+                (0x30, 0x39),
+                (0x3B, 0x3B),
+                (0x40, 0x5A),
+                (0x61, 0x7A),
+            ],
+            Self::UsmtfText => &[
+                (0x20, 0x20),
+                (0x28, 0x29),
+                (0x2C, 0x2E),
+                (0x30, 0x39),
+                (0x3F, 0x3F),
+                (0x41, 0x5A),
+            ],
+            Self::UsmtfTextWithoutSpace => &[
+                (0x28, 0x29),
+                (0x2C, 0x2E),
+                (0x30, 0x39),
+                (0x3F, 0x3F),
+                (0x41, 0x5A),
+            ],
+            Self::UsmtfTextUnderscore => &[
+                (0x20, 0x20),
+                (0x28, 0x29),
+                (0x2C, 0x2E),
+                (0x30, 0x39),
+                (0x3F, 0x3F),
+                (0x41, 0x5A),
+                (0x5F, 0x5F),
+            ],
+            Self::UsmtfSerialText => &[(0x20, 0x2E), (0x30, 0x39), (0x3B, 0x60), (0x7B, 0x7E)],
+            Self::VisibleAscii => &[(0x20, 0x7E)],
+        }
+    }
+
+    /// Whether `byte` is a member.
+    #[must_use]
+    pub fn contains(self, byte: u8) -> bool {
+        self.ranges()
+            .iter()
+            .any(|&(low, high)| byte >= low && byte <= high)
+    }
+
+    /// A source-safe description of the member set, e.g.
+    /// `U+0030..U+0039, U+0041..U+005A`, for generated documentation. It never
+    /// contains a quote, backslash or bracket.
+    #[must_use]
+    pub fn describe(self) -> String {
+        self.ranges()
+            .iter()
+            .map(|&(low, high)| {
+                if low == high {
+                    format!("U+{low:04X}")
+                } else {
+                    format!("U+{low:04X}..U+{high:04X}")
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(", ")
+    }
+}
+
+/// The length-facet shape of a bounded-ASCII declaration.
+///
+/// Two distinct declaration shapes, not two spellings of one: `Exact` is an
+/// XSD `length` facet with a `{N}` quantifier; `Range` is `minLength` plus
+/// `maxLength` with a `{M,N}` quantifier. A declaration mixing them, or
+/// carrying only one of `minLength`/`maxLength`, is neither.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum BoundedAsciiLength {
+    /// `<xs:length value="N"/>` with quantifier `{N}`.
+    Exact(u64),
+    /// `<xs:minLength value="M"/>`, `<xs:maxLength value="N"/>` with
+    /// quantifier `{M,N}`.
+    Range {
+        /// The `minLength` facet, also the quantifier's minimum.
+        min_length: u64,
+        /// The `maxLength` facet, also the quantifier's maximum.
+        max_length: u64,
+    },
+}
+
+impl BoundedAsciiLength {
+    /// The smallest accepted character count.
+    #[must_use]
+    pub const fn min_length(self) -> u64 {
+        match self {
+            Self::Exact(length) => length,
+            Self::Range { min_length, .. } => min_length,
+        }
+    }
+
+    /// The largest accepted character count.
+    #[must_use]
+    pub const fn max_length(self) -> u64 {
+        match self {
+            Self::Exact(length) => length,
+            Self::Range { max_length, .. } => max_length,
+        }
+    }
+
+    /// The quantifier this shape implies: `{N}` or `{M,N}`.
+    #[must_use]
+    pub fn quantifier(self) -> String {
+        match self {
+            Self::Exact(length) => format!("{{{length}}}"),
+            Self::Range {
+                min_length,
+                max_length,
+            } => format!("{{{min_length},{max_length}}}"),
+        }
+    }
+}
+
+const fn bounded(min_length: u64, max_length: u64) -> BoundedAsciiLength {
+    BoundedAsciiLength::Range {
+        min_length,
+        max_length,
+    }
+}
+
+/// Every Task 058 bounded-ASCII profile observed in the pinned releases:
+/// `(alphabet, exact normalized class spelling, length shape)`.
+///
+/// Read through the normalized `SchemaIr` of UCI 2.5 `093610b7...` and UCI
+/// 2.6 `78eb61b6...`, cross-checked against the raw XSD. Both releases carry
+/// the same **61** declarations of the strict shape (one group, one
+/// XML-Schema expression `[CLASS]{N}` / `[CLASS]{M,N}` of ASCII members,
+/// matching `length` or `minLength`+`maxLength`, no `whiteSpace`, no other
+/// facet). They collapse onto these **60** rows: `ATO_TargetFacilityNameType`
+/// and `USMTF_AircraftCallSignType` share one. `EmptyType` is `[a-zA-Z]{0}` /
+/// `length 0`; `AircraftIdentifierType` is `[A-Z0-9 ]{8}` / `length 8` (the
+/// XSD's `&#x20;` reaches the IR as a literal SPACE).
+///
+/// Membership is a whole observed row. An observed alphabet with an
+/// unobserved bound, an unobserved spelling of an observed member set, or an
+/// unobserved alphabet all fail closed. The expression is compared as whole
+/// text against `spelling + quantifier`, so nothing here parses a regex.
+///
+/// Deliberately absent neighbours: the two `maxLength`-only near-misses
+/// (`Link16_SpecificTypeModelType`, `MISP_ItemDesignatorType`) -- a missing
+/// `minLength` is never inferred from the quantifier; unquantified `length 1`
+/// classes (`[0-9]`, `[m]`, ...); and every position-specific, alternating,
+/// literal-prefixed or unbounded pattern.
+const UCI_BOUNDED_ASCII_PROFILES: &[(BoundedAsciiAlphabet, &str, BoundedAsciiLength)] = {
+    use BoundedAsciiAlphabet as A;
+    use BoundedAsciiLength::Exact;
+    &[
+        (A::Alphanumeric, r"[a-zA-Z0-9]", Exact(4)),
+        (A::Alphanumeric, r"[a-zA-Z0-9]", Exact(7)),
+        (A::Alphanumeric, r"[a-zA-Z0-9]", bounded(1, 4)),
+        (A::Alphanumeric, r"[a-zA-Z0-9]", bounded(1, 6)),
+        (A::Alphanumeric, r"[a-zA-Z0-9]", bounded(1, 20)),
+        (A::Alphanumeric, r"[a-zA-Z0-9]", bounded(1, 25)),
+        (A::Alphanumeric, r"[a-zA-Z0-9]", bounded(1, 54)),
+        (A::AlphanumericHyphen, r"[a-zA-Z0-9\-]", Exact(15)),
+        (A::AlphanumericSpace, r"[A-Za-z0-9 ]", Exact(15)),
+        (
+            A::AlphanumericSpaceHyphenPeriod,
+            r"[a-zA-Z0-9 \-\.]",
+            bounded(1, 20),
+        ),
+        (
+            A::AlphanumericSpaceHyphenUnderscore,
+            r"[a-zA-Z0-9 \-_]",
+            Exact(12),
+        ),
+        (
+            A::AlphanumericSpaceHyphenUnderscore,
+            r"[a-zA-Z0-9 \-_]",
+            Exact(15),
+        ),
+        (
+            A::AlphanumericSpaceHyphenUnderscore,
+            r"[a-zA-Z0-9 \-_]",
+            Exact(20),
+        ),
+        (
+            A::AlphanumericSpaceHyphenUnderscore,
+            r"[a-zA-Z0-9 \-_]",
+            bounded(1, 3),
+        ),
+        (
+            A::AlphanumericSpaceHyphenUnderscore,
+            r"[a-zA-Z0-9 \-_]",
+            bounded(1, 20),
+        ),
+        (
+            A::AlphanumericSpaceHyphenUnderscore,
+            r"[a-zA-Z0-9 \-_]",
+            bounded(1, 40),
+        ),
+        (
+            A::AlphanumericUnderscoreHyphen,
+            r"[A-Za-z0-9_\-]",
+            bounded(1, 20),
+        ),
+        (
+            A::AlphanumericUnderscoreHyphen,
+            r"[a-zA-Z0-9_\-]",
+            bounded(1, 5),
+        ),
+        (
+            A::AlphanumericUnderscoreHyphen,
+            r"[a-zA-Z0-9_\-]",
+            bounded(1, 12),
+        ),
+        (
+            A::AlphanumericUnderscoreHyphen,
+            r"[a-zA-Z0-9_\-]",
+            bounded(1, 54),
+        ),
+        (
+            A::AlphanumericUnderscoreHyphen,
+            r"[a-zA-Z0-9_\-]",
+            bounded(1, 128),
+        ),
+        (A::Digits, r"[0-9]", Exact(4)),
+        (A::Digits, r"[0-9]", Exact(5)),
+        (A::Digits, r"[0-9]", Exact(6)),
+        (A::Digits, r"[0-9]", Exact(9)),
+        (A::Digits, r"[0-9]", bounded(4, 5)),
+        (A::Letters, r"[a-zA-Z]", Exact(0)),
+        (A::OctalDigits, r"[0-7]", Exact(4)),
+        (A::OctalDigits, r"[0-7]", Exact(5)),
+        (
+            A::UnitNameText,
+            r"[a-zA-Z0-9 '\(\).,@;+\-]",
+            bounded(1, 256),
+        ),
+        (A::UpperAlphanumeric, r"[A-Z0-9]", bounded(1, 3)),
+        (A::UpperAlphanumeric, r"[A-Z0-9]", bounded(2, 3)),
+        (A::UpperAlphanumericHyphen, r"[A-Z0-9\-]", bounded(2, 10)),
+        (A::UpperAlphanumericSpace, r"[A-Z0-9 ]", Exact(4)),
+        (A::UpperAlphanumericSpace, r"[A-Z0-9 ]", Exact(8)),
+        (A::UpperLetters, r"[A-Z]", Exact(2)),
+        (A::UpperLetters, r"[A-Z]", Exact(4)),
+        (A::UpperLetters, r"[A-Z]", bounded(1, 3)),
+        (A::UsmtfSerialText, USMTF_SERIAL_CLASS, bounded(1, 7)),
+        (A::UsmtfText, r"[\-\.,\(\)\?A-Z0-9 ]", bounded(1, 8)),
+        (A::UsmtfText, r"[\-\.,\(\)\?A-Z0-9 ]", bounded(1, 24)),
+        (A::UsmtfText, r"[\-\.,\(\)\?A-Z0-9 ]", bounded(1, 30)),
+        (A::UsmtfText, r"[\-\.,\(\)\?A-Z0-9 ]", bounded(1, 32)),
+        (A::UsmtfText, r"[\-\.,\(\)\?A-Z0-9 ]", bounded(1, 38)),
+        (A::UsmtfText, r"[\-\.,\(\)\?A-Z0-9 ]", bounded(1, 56)),
+        (
+            A::UsmtfTextUnderscore,
+            r"[\-\.,\(\)_\?A-Z0-9 ]",
+            bounded(1, 30),
+        ),
+        (
+            A::UsmtfTextWithoutSpace,
+            r"[\-\.,\(\)\?A-Z0-9]",
+            bounded(1, 5),
+        ),
+        (A::VisibleAscii, r"[ -~]", Exact(2)),
+        (A::VisibleAscii, r"[ -~]", Exact(6)),
+        (A::VisibleAscii, r"[ -~]", Exact(10)),
+        (A::VisibleAscii, r"[ -~]", Exact(12)),
+        (A::VisibleAscii, r"[ -~]", Exact(15)),
+        (A::VisibleAscii, r"[ -~]", Exact(17)),
+        (A::VisibleAscii, r"[ -~]", Exact(18)),
+        (A::VisibleAscii, r"[ -~]", Exact(20)),
+        (A::VisibleAscii, r"[ -~]", Exact(24)),
+        (A::VisibleAscii, r"[ -~]", Exact(40)),
+        (A::VisibleAscii, r"[ -~]", Exact(42)),
+        (A::VisibleAscii, r"[ -~]", Exact(43)),
+        (A::VisibleAscii, r"[ -~]", Exact(80)),
+    ]
+};
+
+/// The one class spelling that needs `"` and `'` both, verbatim from the
+/// normalized IR (the XSD writes `&amp;`, `&quot;` and `&lt;`).
+const USMTF_SERIAL_CLASS: &str = r#"[\-A-Z0-9 \.,\(\)&\?!@#$%\^\*=_\+\[\]\{\}\\"';><~`\|]"#;
+
+/// The pinned `(alphabet, class spelling, length)` domain, read-only, for
+/// evidence tests that must enumerate it. Classification consults nothing
+/// else.
+#[must_use]
+pub fn bounded_ascii_profiles()
+-> &'static [(BoundedAsciiAlphabet, &'static str, BoundedAsciiLength)] {
+    UCI_BOUNDED_ASCII_PROFILES
+}
+
+/// Whether these effective facets are exactly one pinned bounded-ASCII row.
+///
+/// 1. read the length shape from the facets alone: `length` without
+///    `minLength`/`maxLength` is `Exact`; both `minLength` and `maxLength`
+///    without `length` is `Range`; anything else is not a member (a
+///    `maxLength`-only declaration is never completed from its quantifier);
+/// 2. apply the strict [`has_only_pattern`] guard with, for each pinned row of
+///    that length shape, the expected text `spelling + quantifier` -- so the
+///    facets and the quantifier cannot disagree, `whiteSpace` must be absent,
+///    and there must be exactly one group holding one XML-Schema expression.
+///
+/// Nothing reads a declaration name, file, release or restriction depth.
+fn match_bounded_ascii_profile(constraints: &ConstraintSet) -> Option<StringProfile> {
+    let length = match (
+        constraints.length,
+        constraints.min_length,
+        constraints.max_length,
+    ) {
+        (Some(length), None, None) => BoundedAsciiLength::Exact(length),
+        (None, Some(min_length), Some(max_length)) if min_length <= max_length => {
+            bounded(min_length, max_length)
+        }
+        _ => return None,
+    };
+    UCI_BOUNDED_ASCII_PROFILES
+        .iter()
+        .find(|(_, spelling, row)| {
+            *row == length
+                && has_only_pattern(constraints, &format!("{spelling}{}", length.quantifier()))
+        })
+        .map(|&(alphabet, _, length)| StringProfile::BoundedAscii { alphabet, length })
+}
+
 /// A named constrained-`string` shape that the generator fully implements.
 ///
 /// Each variant arrives with its own evidence, its own validator, and its own
@@ -947,6 +1392,41 @@ pub enum StringProfile {
     /// prefix included. Successful construction says nothing about a marking's
     /// operational meaning, authorization, or release policy.
     NatoSpecialWords,
+
+    /// The Task 058 bounded-ASCII family: one finite ASCII character class
+    /// under one bounded quantifier, `[CLASS]{N}` with `length = N` or
+    /// `[CLASS]{M,N}` with `minLength = M` / `maxLength = N`, no explicit
+    /// `whiteSpace`, over exactly one XML-Schema expression.
+    ///
+    /// # Evidence-bounded, not a character-class facility
+    ///
+    /// Only the 60 `(alphabet, spelling, length)` rows observed in the pinned
+    /// releases (`UCI_BOUNDED_ASCII_PROFILES`, 61 declarations per release)
+    /// are admitted. An observed alphabet under an unobserved bound, an
+    /// unobserved class, or an unobserved spelling fails closed.
+    ///
+    /// # Generated value semantics
+    ///
+    /// `whiteSpace = preserve` (intrinsic to `xs:string`, not overridden):
+    /// the argument is validated and stored unchanged -- no trimming,
+    /// collapsing, case folding or canonicalization. SPACE is accepted only
+    /// by an alphabet that contains U+0020. TAB, LF, CR, DEL, NUL and every
+    /// non-ASCII character are outside every alphabet and are rejected.
+    ///
+    /// Both the class and the length facet(s) are enforced independently.
+    /// Every member is at most U+007E, so an accepted value's UTF-8 byte
+    /// length equals its XML Schema character count, and any multi-byte
+    /// character contains a byte no alphabet admits.
+    ///
+    /// `length = 0` (`EmptyType`) is an ordinary member: the empty string is
+    /// its only valid value. That does not make unchecked default
+    /// construction legal (Task 040).
+    BoundedAscii {
+        /// The exact member set.
+        alphabet: BoundedAsciiAlphabet,
+        /// The length-facet shape and bounds.
+        length: BoundedAsciiLength,
+    },
 }
 
 /// Why a constrained `string` declaration falls outside the implemented set.
@@ -1055,6 +1535,13 @@ pub fn string_profile(
     }
     if matches_nato_special_words_profile(constraints) {
         return Ok(Some(StringProfile::NatoSpecialWords));
+    }
+    // Task 058, offered last so no earlier profile can change verdict: none
+    // of the pinned rows' expressions or length shapes is also one of the
+    // five profiles above (asserted by `the_bounded_ascii_family_never_
+    // shadows_an_existing_profile`).
+    if let Some(profile) = match_bounded_ascii_profile(constraints) {
+        return Ok(Some(profile));
     }
     Err(StringProfileError::UnsupportedConstraints)
 }
@@ -1911,9 +2398,21 @@ mod tests {
             alternatives: vec![PatternExpression::xml_schema(r"NATO:[a-zA-Z\-_]{1,256}")],
         }];
 
+        // Task 058 note: the fixed-`length` `[ -~]{10}` shape
+        // (`VisibleStringLength10Type`) is still NEVER a visible-ASCII
+        // member, which is the property this case protects. It is now a
+        // pinned bounded-ASCII row, so it is asserted to classify as THAT
+        // family rather than to fail closed.
+        assert_eq!(
+            string_profile(PrimitiveKind::String, &fixed_length),
+            Ok(Some(StringProfile::BoundedAscii {
+                alphabet: BoundedAsciiAlphabet::VisibleAscii,
+                length: BoundedAsciiLength::Exact(10),
+            }))
+        );
+
         for (label, constraints) in [
             ("explicit whiteSpace=collapse", collapse),
-            ("length instead of min/max", fixed_length),
             ("half-bounded", half_bounded),
             ("a second pattern group", two_groups),
             ("a second expression", two_alternatives),

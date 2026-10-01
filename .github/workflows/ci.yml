@@ -137,6 +137,13 @@ jobs:
           require_one_test named_and_direct_duration_share_the_gnat_validator_under_both_policies \
             cargo test -p ams-gra-oms-backend-ada --test duration \
             named_and_direct_duration_share_the_gnat_validator_under_both_policies
+          # Task 058: the shared bounded-ASCII corpus (every admitted alphabet)
+          # against the generated Ada carriers, -gnatwa on the package, plus
+          # zero-length storage and Task 040 default rejection, under the
+          # default policy and Assertion_Policy (Ignore).
+          require_one_test generated_bounded_ascii_validators_match_the_shared_corpus_under_both_policies \
+            cargo test -p ams-gra-oms-backend-ada --test bounded_ascii \
+            generated_bounded_ascii_validators_match_the_shared_corpus_under_both_policies
           # Task 041: the whitespace-visible family. These are the probes that
           # actually EXECUTE the two normalization modes, so a run that skipped
           # them could report green while a collapse carrier stored the wrong
@@ -263,6 +270,18 @@ jobs:
           require_one_test task057_duration_generated_codec_round_trips_through_mock_owp \
             cargo test -p ams-gra-oms-runtime-rust-facade-tests --test generated_codec_mock_owp \
             task057_duration_generated_codec_round_trips_through_mock_owp
+          # Task 058: generated bounded-ASCII String codec (JSON string =
+          # stored text, decoded only through the checked constructor).
+          for test in \
+            task058_bounded_ascii_round_trips_its_stored_text \
+            task058_invalid_bounded_ascii_lexicals_are_rejected_by_the_model \
+            task058_non_string_json_is_rejected; do
+            require_one_test "$test" \
+              cargo test -p ams-gra-oms-runtime-rust-facade-tests --test generated_codec_bounded_ascii "$test"
+          done
+          require_one_test task058_bounded_ascii_generated_codec_round_trips_through_mock_owp \
+            cargo test -p ams-gra-oms-runtime-rust-facade-tests --test generated_codec_mock_owp \
+            task058_bounded_ascii_generated_codec_round_trips_through_mock_owp
           # Task 051 replaced task050_non_oam_payload_fails_codec_preflight with
           # task051_qualified_non_oam_payload_is_codec_ready (below): a
           # qualified non-OAM payload is now codec READY. Task 052 replaced
