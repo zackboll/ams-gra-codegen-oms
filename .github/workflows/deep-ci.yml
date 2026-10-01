@@ -148,6 +148,7 @@ jobs:
       # Task 058: fresh bounded-ASCII String inventory (the exact 61-member
       # set per release, 19 alphabets, 46 still-unsupported neighbours), the
       # real message-impact classification (no member may remain a blocker),
+      # exact Ada-only full-schema closure/name-context regression,
       # and the smallest real newly-READY service generating and compiling in
       # Ada, Rust and C++ with a real Rust codec round trip. The service test
       # prints its marker FIRST, so it may share libtest's unterminated
@@ -163,7 +164,7 @@ jobs:
           grep -Fqx 'UCI 2.5 BOUNDED ASCII MESSAGE IMPACT: RECORDED' <<<"$output"
           grep -Fqx 'UCI 2.6 BOUNDED ASCII MESSAGE IMPACT: RECORDED' <<<"$output"
           grep -Eqx '(test task058_real_uci_newly_ready_service_generates_and_compiles \.\.\. )?UCI 2\.5 REAL NEWLY-READY BOUNDED ASCII SERVICE: PASSED' <<<"$output"
-          grep -qE '^test result: ok\. 4 passed' <<<"$output"
+          grep -qE '^test result: ok\. 5 passed' <<<"$output"
 
   # The runtime crates declare rust-version = "1.95". Fast CI checks them at
   # 1.95.0 on synthetic fixtures only; this job adds the generated REAL UCI 2.5

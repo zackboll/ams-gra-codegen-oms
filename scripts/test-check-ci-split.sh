@@ -152,7 +152,7 @@ task058_markers() {
   grep -Fqx 'UCI 2.5 BOUNDED ASCII MESSAGE IMPACT: RECORDED' <<<"$output"
   grep -Fqx 'UCI 2.6 BOUNDED ASCII MESSAGE IMPACT: RECORDED' <<<"$output"
   grep -Eqx '(test task058_real_uci_newly_ready_service_generates_and_compiles \.\.\. )?UCI 2\.5 REAL NEWLY-READY BOUNDED ASCII SERVICE: PASSED' <<<"$output"
-  grep -qE '^test result: ok\. 4 passed' <<<"$output"
+  grep -qE '^test result: ok\. 5 passed' <<<"$output"
 }
 # Run a marker-check function as a PLAIN statement (never inside if/||/&&):
 # bash disables errexit for everything in a conditional context, subshells
@@ -280,7 +280,10 @@ must_reject "prefixed 057 marker" task057_markers "$glued057"
 
 # Task 058: same shape as Task 057 -- detail rows first, whole-line markers,
 # the service marker possibly on libtest's "test <name> ... " line.
-good058="running 4 tests
+good058="running 5 tests
+test task058_closed_schema_ada_gap_evidence ... UCI 2.5 CLOSED-SCHEMA ADA GAP: PASSED ["Authorization", "AuthorizationRequest", "CommSupportActivity"]
+UCI 2.6 CLOSED-SCHEMA ADA GAP: PASSED ["Authorization", "AuthorizationRequest", "CommSupportActivity"]
+ok
 test task058_real_uci_newly_ready_service_generates_and_compiles ... UCI 2.5 REAL NEWLY-READY BOUNDED ASCII SERVICE: PASSED
 ok
 test task058_real_uci_2_5_bounded_ascii_inventory ... UCI 2.5 CONSTRAINED STRING: AircraftIdentifierType | x
@@ -294,7 +297,7 @@ test task058_real_uci_bounded_ascii_message_impact ... UCI 2.5 BOUNDED ASCII MES
 UCI 2.5 BOUNDED ASCII MESSAGE IMPACT: RECORDED
 UCI 2.6 BOUNDED ASCII MESSAGE IMPACT: RECORDED
 ok
-test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 $noise"
 must_accept task058_markers "$good058"
 must_accept task058_markers "${good058/test task058_real_uci_newly_ready_service_generates_and_compiles ... /}"
@@ -306,7 +309,7 @@ for marker in \
   'UCI 2.5 BOUNDED ASCII MESSAGE IMPACT: RECORDED' \
   'UCI 2.6 BOUNDED ASCII MESSAGE IMPACT: RECORDED' \
   'UCI 2.5 REAL NEWLY-READY BOUNDED ASCII SERVICE: PASSED' \
-  'test result: ok. 4 passed'; do
+  'test result: ok. 5 passed'; do
   must_reject "missing $marker" task058_markers "${good058/"$marker"/}"
 done
 glued058="${good058/UCI 2.6 CONSTRAINED STRING: AircraftIdentifierType | x

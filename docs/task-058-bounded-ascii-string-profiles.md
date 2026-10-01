@@ -653,13 +653,14 @@ It also has explicit `require_one_test` gates for:
 
 **Deep CI `real-uci`** runs
 `cargo test --release -p ams-gra-codegen-oms --test uci_bounded_ascii_string`
-(4 tests) and checks these whole-line markers:
+(5 tests, including the Ada closed-schema gap regression) and checks these
+whole-line markers:
 
 * `UCI 2.{5,6} BOUNDED ASCII INVENTORY: PASSED`;
 * `UCI 2.{5,6} BOUNDED ASCII MESSAGE IMPACT: RECORDED`;
 * the libtest-prefix-tolerant `UCI 2.5 REAL NEWLY-READY BOUNDED ASCII SERVICE:
   PASSED`;
-* `test result: ok. 4 passed`.
+* `test result: ok. 5 passed`.
 
 The same job still runs the updated Task 053 (`uci_constrained_binary`) and
 Task 056 (`uci_generated_support`) tests.
