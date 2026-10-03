@@ -71,6 +71,13 @@ jobs:
       # pipefail a grep that exits on its first match can SIGPIPE a writer that
       # is still emitting a large output and fail a passing check.
       #
+      - name: Named TimeZulu pinned inventory and impact (Task 061)
+        run: bash scripts/check-task061-pinned.sh
+      - name: Confirm unique newly READY Time services (Task 061)
+        run: |
+          set -euo pipefail
+          export TMPDIR="$RUNNER_TEMP"
+          python3 scripts/check-task061-service-impact.py target/release/ams-gra-codegen-oms
       # Task 052: every Binary must resolve to HexBinary through the shared IR
       # query, with exact counts.
       - name: Real UCI Binary provenance inventory (Task 052, must execute)

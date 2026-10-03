@@ -46,7 +46,9 @@ for forbidden in \
   '--test uci_bounded_ascii_string' \
   '--test uci_structured_ascii' \
   '--test uci_alternating_admission' \
-  '--test uci_alternating_after'; do
+  '--test uci_alternating_after' \
+  'check-task061-pinned.sh' \
+  '--test uci_time_zulu'; do
   if grep -Fq -- "$forbidden" <<<"$fast_code"; then
     fail "Fast CI must not reference $forbidden"
   fi
@@ -64,6 +66,8 @@ for required in \
   'cargo +1.95.0 check --locked -p ams-gra-oms-runtime-rust-facade-tests --all-targets' \
   'cargo test --workspace' \
   'python3 scripts/test-task060-ci-wrappers.py' \
+  'bash scripts/check-task061-fast.sh' \
+  'python3 scripts/test-task061-ci-wrappers.py' \
   'AMS_GRA_REQUIRE_GNAT: "1"'; do
   if ! grep -Fq -- "$required" <<<"$fast_code"; then
     fail "Fast CI lost required check: $required"
@@ -112,6 +116,8 @@ for required in \
   '--test uci_structured_ascii' \
   '--test uci_alternating_admission' \
   '--test uci_alternating_after' \
+  'bash scripts/check-task061-pinned.sh' \
+  'python3 scripts/check-task061-service-impact.py target/release/ams-gra-codegen-oms' \
   'UCI 2.5 TASK060 PROJECTED MESSAGE IMPACT: PASSED' \
   'UCI 2.6 TASK060 PROJECTED MESSAGE IMPACT: PASSED' \
   'UCI 2.5 TASK060 OrderOfBattle COMPILER CODEC VERTICAL: PASSED' \

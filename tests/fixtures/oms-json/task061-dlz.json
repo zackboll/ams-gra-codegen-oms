@@ -1,0 +1,30 @@
+{
+  "SecurityInformation": {
+    "Classification": "U",
+    "OwnerProducer": [{"GovernmentIdentifier": "USA"}]
+  },
+  "MessageHeader": {
+    "SystemID": {"UUID": "550e8400-e29b-41d4-a716-446655440000"},
+    "Timestamp": "2026-01-01T00:00:00Z",
+    "SchemaVersion": "002.5.0",
+    "Mode": "LIVE"
+  },
+  "MessageData": {
+    "DLZ_ID": {"UUID": "550e8400-e29b-41d4-a716-446655440000"},
+    "CapabilityID": {"UUID": "550e8400-e29b-41d4-a716-446655440000"},
+    "DLZ_Type": "DLZ_STAPLE",
+    "GeneratedByWeapon": false,
+    "DLZ_Data": {
+      "RangeMinimum": 1.0,
+      "RangeTurnAndRun": 1.0,
+      "RangeProbabilityOfIntercept": 1.0,
+      "RangeMaxGuidance": 1.0,
+      "RangeOptimal": 1.0,
+      "RangeMaxAero": 1.0,
+      "TargetClosureRate": {"NorthSpeed": 1.0, "EastSpeed": 1.0},
+      "TargetRange": 1.0,
+      "TimeOfIntercept": "12:34:56.5000Z",
+      "TimeToRelease": "24:00:00.000Z"
+    }
+  }
+}

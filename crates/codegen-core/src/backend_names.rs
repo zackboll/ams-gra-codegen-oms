@@ -3582,10 +3582,10 @@ mod tests {
             },
             ..date_time_zulu("Instant")
         };
-        // `TimeType` carries the same `.+Z` text as the supported profile and
-        // is still unsupported, so it must still reserve nothing.
+        // Task 061 admits exact .+Z Time; a different pattern stays unsupported.
         let zulu_time = TypeDecl {
             kind: TypeKind::Primitive(PrimitiveKind::Time),
+            constraints: wrong_pattern.constraints.clone(),
             ..date_time_zulu("WallClock")
         };
         // Task 057: a zero-facet Duration is now a supported carrier (its

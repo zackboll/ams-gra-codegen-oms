@@ -1,5 +1,28 @@
 # Backend compatibility
 
+## Current update — Task 061 named Zulu Time
+
+Named `PrimitiveKind::Time` is supported by Ada/Rust/C++ **only** with one
+effective XML-Schema pattern group, one alternative exactly `.+Z`, and no other
+author facets. Admission is name-free. Direct `xs:time`, unconstrained named
+Time, other patterns/groups/alternatives, explicit whitespace and range/other
+facets remain unsupported. This is checked lexical storage, not general temporal
+support. XML whitespace collapse precedes validation; accepted spelling stays
+unchanged (including fractional zeros and `24:00:00.000Z`). XSD 1.0 permits
+seconds 60 with fractions, rejects 61, and requires zero represented seconds at
+hour 24. No value equality/ordering/arithmetic is offered.
+
+Rust OMS JSON uses the existing checked-temporal string codec path, with compiled
+round trips and mock-OWP rejection before typed handler delivery. No Ada/C++ codec.
+Compiler-backed corpus/lifecycle/storage probes pass on all backends. Exact
+Time-impact projected gains: UCI2.5 **72** closed / **26** open messages per
+backend; UCI2.6 **76** / **29**. These are not full-schema closure counts.
+Full-schema Ada name context now exposes 32 Rust/C++-minus-Ada closures per
+release; projected newly READY sets are equal across backends. Known
+`QueryType_Kind` behavior is unchanged. Historical tables below retain their
+original task baselines. See [Task 061 evidence](task-061-time-zulu-support.md)
+for frozen parent, exact inventory, coverage cells, tuples and validation status.
+
 Tested: **2026-09-18**, baseline `1fa2ab4d380158728d383a5e4fbaebea6a2006b1`.
 
 This document records backend status separately from frontend compatibility.

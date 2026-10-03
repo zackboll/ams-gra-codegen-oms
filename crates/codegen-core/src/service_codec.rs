@@ -288,6 +288,15 @@ fn emission_codec_support(
         TypeKind::Primitive(PrimitiveKind::Binary) => {
             binary_support(declaration_binary_encoding(schema, declaration), owner)
         }
+        TypeKind::Primitive(PrimitiveKind::Time) => {
+            match crate::temporal_profile(PrimitiveKind::Time, &declaration.constraints) {
+                Ok(Some(crate::TemporalProfile::TimeZulu)) => Ok(()),
+                _ => Err(unsupported(
+                    owner,
+                    "unsupported named Time constraints".into(),
+                )),
+            }
+        }
         TypeKind::Primitive(kind) => primitive_support(*kind, owner),
         TypeKind::Enumeration { .. } => Ok(()),
         TypeKind::Record { .. } => {
