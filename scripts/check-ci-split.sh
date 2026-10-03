@@ -43,7 +43,8 @@ for forbidden in \
   AMS_GRA_UCI_2_6_ROOT \
   '--test uci_generated_support' \
   '--test uci_duration' \
-  '--test uci_bounded_ascii_string'; do
+  '--test uci_bounded_ascii_string' \
+  '--test uci_structured_ascii'; do
   if grep -Fq -- "$forbidden" <<<"$fast_code"; then
     fail "Fast CI must not reference $forbidden"
   fi
@@ -102,6 +103,11 @@ for required in \
   'UCI 2.6 DURATION MESSAGE IMPACT: RECORDED' \
   'REAL CATEGORY-A DURATION SERVICE: PASSED' \
   '--test uci_bounded_ascii_string' \
+  '--test uci_structured_ascii' \
+  'UCI 2.5 STRUCTURED ASCII INVENTORY: PASSED' \
+  'UCI 2.6 STRUCTURED ASCII INVENTORY: PASSED' \
+  'UCI 2.5 STRUCTURED ASCII MESSAGE IMPACT: RECORDED' \
+  'UCI 2.6 STRUCTURED ASCII MESSAGE IMPACT: RECORDED' \
   'UCI 2.5 BOUNDED ASCII INVENTORY: PASSED' \
   'UCI 2.6 BOUNDED ASCII INVENTORY: PASSED' \
   'UCI 2.5 BOUNDED ASCII MESSAGE IMPACT: RECORDED' \
@@ -117,6 +123,8 @@ for required in \
   'REAL SUBSYSTEMSTREAM HEXBINARY CODEC: PASSED' \
   'real::task058_real_amti_settings_empty_type_round_trips' \
   'REAL AMTI_SETTINGSCOMMAND EMPTYTYPE CODEC: PASSED' \
+  'real::task059_real_file_metadata_structured_ascii_codec' \
+  'REAL FILEMETADATA STRUCTURED ASCII CODEC: PASSED' \
   'scripts/run-real-sleet-test.sh' \
   'set -euo pipefail'; do
   if ! grep -Fq -- "$required" <<<"$deep_code"; then

@@ -144,6 +144,13 @@ jobs:
           require_one_test generated_bounded_ascii_validators_match_the_shared_corpus_under_both_policies \
             cargo test -p ams-gra-oms-backend-ada --test bounded_ascii \
             generated_bounded_ascii_validators_match_the_shared_corpus_under_both_policies
+          require_one_test generated_structured_ascii_ada_corpus_under_both_policies \
+            cargo test -p ams-gra-oms-backend-ada --test structured_ascii \
+            generated_structured_ascii_ada_corpus_under_both_policies
+          require_one_test generated_structured_ascii_rust_corpus \
+            cargo test -p ams-gra-oms-backend-rust --test structured_ascii generated_structured_ascii_rust_corpus
+          require_one_test generated_structured_ascii_cpp_corpus \
+            cargo test -p ams-gra-oms-backend-cpp --test structured_ascii generated_structured_ascii_cpp_corpus
           # Task 041: the whitespace-visible family. These are the probes that
           # actually EXECUTE the two normalization modes, so a run that skipped
           # them could report green while a collapse carrier stored the wrong
@@ -282,6 +289,12 @@ jobs:
           require_one_test task058_bounded_ascii_generated_codec_round_trips_through_mock_owp \
             cargo test -p ams-gra-oms-runtime-rust-facade-tests --test generated_codec_mock_owp \
             task058_bounded_ascii_generated_codec_round_trips_through_mock_owp
+          require_one_test task059_structured_ascii_codec_round_trip_and_rejections \
+            cargo test -p ams-gra-oms-runtime-rust-facade-tests --test generated_codec_structured_ascii \
+            task059_structured_ascii_codec_round_trip_and_rejections
+          require_one_test task059_structured_ascii_generated_codec_round_trips_through_mock_owp \
+            cargo test -p ams-gra-oms-runtime-rust-facade-tests --test generated_codec_mock_owp \
+            task059_structured_ascii_generated_codec_round_trips_through_mock_owp
           # Task 051 replaced task050_non_oam_payload_fails_codec_preflight with
           # task051_qualified_non_oam_payload_is_codec_ready (below): a
           # qualified non-OAM payload is now codec READY. Task 052 replaced

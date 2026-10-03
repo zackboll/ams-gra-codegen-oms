@@ -12,7 +12,8 @@
 //! Everything is read from the NORMALIZED IR. The inventory enumerates every
 //! named constrained `xs:string` declaration that is not one of the five
 //! earlier profiles: the 61 per release that are now
-//! `StringProfile::BoundedAscii`, and the 46 that still fail closed, each
+//! `StringProfile::BoundedAscii`, and the 19 that still fail closed after
+//! Task 059 (27 additional shapes now use `StructuredAscii`), each
 //! printed with its exact normalized pattern text and facets. The member list
 //! below is ASSERTED against the classifier's output; it never drives it.
 
@@ -102,12 +103,12 @@ const MEMBERS: [&str; 61] = [
 /// Neighbours the scope gate deliberately leaves unsupported; each must still
 /// fail closed in both releases.
 const EXCLUDED_NEIGHBOURS: [&str; 6] = [
-    "Link16_SpecificTypeModelType",
-    "MISP_ItemDesignatorType",
-    "CounterSpaceSENO_Type",
     "NotationType",
-    "NumericStringLength1Type",
-    "OctalValueType",
+    "MilitaryGridType",
+    "RecordOriginatorType",
+    "FIPS_CountryCodeType",
+    "IPv4_AddressType",
+    "IPv6_AddressType",
 ];
 
 fn pinned_root(variable: &str, sha256: &str) -> Option<SchemaIr> {
@@ -225,7 +226,7 @@ fn references(schema: &SchemaIr) -> BTreeMap<QualifiedName, (usize, usize)> {
 }
 
 /// The section 1 evidence gate, re-run on every Deep CI build.
-fn inventory(label: &str, schema: &SchemaIr) {
+fn bounded_inventory(label: &str, schema: &SchemaIr) {
     let references = references(schema);
     let analysis =
         CoverageAnalysis::new(schema, GenerationWorld::ClosedSchemaSet).expect("coverage");
@@ -297,7 +298,7 @@ fn inventory(label: &str, schema: &SchemaIr) {
     let expected: BTreeSet<String> = MEMBERS.iter().map(|&m| m.to_owned()).collect();
     assert_eq!(members, expected, "{label}: member set drifted");
     assert_eq!(alphabets.len(), 19, "{label}");
-    assert_eq!(unsupported.len(), 46, "{label}");
+    assert_eq!(unsupported.len(), 19, "{label}");
     for neighbour in EXCLUDED_NEIGHBOURS {
         assert!(unsupported.contains(neighbour), "{label} {neighbour}");
     }
@@ -343,7 +344,7 @@ fn task058_real_uci_2_5_bounded_ascii_inventory() {
     let Some(schema) = pinned_root("AMS_GRA_UCI_2_5_ROOT", UCI_25_SHA256) else {
         return;
     };
-    inventory("UCI 2.5", &schema);
+    bounded_inventory("UCI 2.5", &schema);
     println!("UCI 2.5 BOUNDED ASCII INVENTORY: PASSED");
 }
 
@@ -352,7 +353,7 @@ fn task058_real_uci_2_6_bounded_ascii_inventory() {
     let Some(schema) = pinned_root("AMS_GRA_UCI_2_6_ROOT", UCI_26_SHA256) else {
         return;
     };
-    inventory("UCI 2.6", &schema);
+    bounded_inventory("UCI 2.6", &schema);
     println!("UCI 2.6 BOUNDED ASCII INVENTORY: PASSED");
 }
 
@@ -360,8 +361,8 @@ fn task058_real_uci_2_6_bounded_ascii_inventory() {
 fn task058_closed_schema_ada_gap_evidence() {
     let world = GenerationWorld::ClosedSchemaSet;
     for (variable, digest, version, ada_count, peer_count) in [
-        ("AMS_GRA_UCI_2_5_ROOT", UCI_25_SHA256, "2.5", 526, 529),
-        ("AMS_GRA_UCI_2_6_ROOT", UCI_26_SHA256, "2.6", 526, 529),
+        ("AMS_GRA_UCI_2_5_ROOT", UCI_25_SHA256, "2.5", 552, 555),
+        ("AMS_GRA_UCI_2_6_ROOT", UCI_26_SHA256, "2.6", 553, 556),
     ] {
         let Some(schema) = pinned_root(variable, digest) else {
             continue;

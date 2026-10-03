@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="https://www.vdl.afrl.af.mil/programs/oam"
+           elementFormDefault="qualified"
+           version="000.1.0">
+  <!-- Task 059: exact pinned structured rows under non-UCI carrier names. -->
+  <xs:simpleType name="ImoType">
+    <xs:restriction base="xs:string">
+      <xs:length value="10"/>
+      <xs:pattern value="IMO[0-9]{7}"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="PrfType">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="3"/><xs:maxLength value="4"/>
+      <xs:pattern value="1?[1-7][1-8]{2}"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="FileNameType">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/><xs:maxLength value="255"/>
+      <xs:pattern value="[a-zA-Z0-9_\-]+\.[a-zA-Z0-9_\.\-]+"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="OctalType">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/><xs:maxLength value="16"/>
+      <xs:pattern value="[0-7]+"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="ModelType">
+    <xs:restriction base="xs:string">
+      <xs:maxLength value="4"/>
+      <xs:pattern value="[A-Za-z0-9]{1,4}"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:complexType name="StructuredPick">
+    <xs:choice>
+      <xs:element name="Model" type="uci:ModelType"/>
+      <xs:element name="Imo" type="uci:ImoType"/>
+    </xs:choice>
+  </xs:complexType>
+  <xs:complexType name="StructuredPayload">
+    <xs:sequence>
+      <xs:element name="Imo" type="uci:ImoType"/>
+      <xs:element name="Prf" type="uci:PrfType"/>
+      <xs:element name="FileName" type="uci:FileNameType" minOccurs="0"/>
+      <xs:element name="Imos" type="uci:ImoType" minOccurs="0" maxOccurs="3"/>
+      <xs:element name="Octals" type="uci:OctalType" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="Pick" type="uci:StructuredPick"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="StructuredNotice" type="uci:StructuredPayload" uci:version="001.000.000.000"/>
+</xs:schema>

@@ -5226,3 +5226,24 @@ real messages per release became READY in every backend, confirmed with
 `service-check`. `OrderOfBattle` stays NOT READY; its next support blocker is
 `IMO_NumberType`. See
 [Task 058](task-058-bounded-ascii-string-profiles.md).
+
+## Task 059 — deterministic structured ASCII String profiles
+
+Supersedes the *current-state* Task 058 remaining-profile wording above; its
+measured Task 058 numbers remain a historical baseline. Exactly 27 more
+pinned constrained `xs:string` declaration shapes have checked lexical
+carriers in Ada, Rust and C++, plus the generated Rust OMS JSON codec.
+`StringProfile::StructuredAscii` maps exact normalized expression/facet rows
+to ordered literal/class segments and numeric member ranges; no backend parses
+regex text. Task 058's `BoundedAscii` classification is unchanged. Unobserved
+rows and the other 19 declarations (alternation/union) still fail closed.
+
+`FileNameType` is single-pass deterministic: its prefix class excludes dot,
+so the first dot delimits it, while the suffix consumes through end-of-input.
+Facets are independent of pattern repetition: `maxLength`-only does not
+synthesize `minLength`, and an unquantified class plus `length=1` enforces
+both constraints. `whiteSpace=preserve` stores exactly the caller's bytes.
+All admitted code points are ASCII, so accepted UTF-8 byte length equals XSD
+character length. `OrderOfBattle` has 439/442 generated support renderable;
+only `MilitaryGridType`, `NotationType`, and `RecordOriginatorType` remain.
+Full evidence and measurements: [Task 059](task-059-structured-ascii-string-profiles.md).

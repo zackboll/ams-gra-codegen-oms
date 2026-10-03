@@ -42,7 +42,9 @@ jobs:
   # generated Ada (gnatmake -gnatc) and AMS_GRA_REQUIRE_GNAT forbids a skip.
   real-uci:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # Tasks 052-059 run serially; the complete evidence exceeds one hour.
+    # Keep every test and marker gate, allowing the pinned campaign to finish.
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -165,6 +167,19 @@ jobs:
           grep -Fqx 'UCI 2.6 BOUNDED ASCII MESSAGE IMPACT: RECORDED' <<<"$output"
           grep -Eqx '(test task058_real_uci_newly_ready_service_generates_and_compiles \.\.\. )?UCI 2\.5 REAL NEWLY-READY BOUNDED ASCII SERVICE: PASSED' <<<"$output"
           grep -qE '^test result: ok\. 5 passed' <<<"$output"
+      # Task 059: pinned inventory, twelve coverage cells and real-message
+      # impact. No pinned UCI root is required by Fast CI.
+      - name: Real UCI structured ASCII evidence (Task 059, must execute)
+        run: |
+          set -euo pipefail
+          output="$(cargo test --release -p ams-gra-codegen-oms --test uci_structured_ascii -- \
+            --nocapture --test-threads 1 2>&1)"
+          printf '%s\n' "$output"
+          grep -Fqx 'UCI 2.5 STRUCTURED ASCII INVENTORY: PASSED' <<<"$output"
+          grep -Fqx 'UCI 2.6 STRUCTURED ASCII INVENTORY: PASSED' <<<"$output"
+          grep -Fqx 'UCI 2.5 STRUCTURED ASCII MESSAGE IMPACT: RECORDED' <<<"$output"
+          grep -Fqx 'UCI 2.6 STRUCTURED ASCII MESSAGE IMPACT: RECORDED' <<<"$output"
+          grep -qE '^test result: ok\. 2 passed' <<<"$output"
 
   # The runtime crates declare rust-version = "1.95". Fast CI checks them at
   # 1.95.0 on synthetic fixtures only; this job adds the generated REAL UCI 2.5
@@ -227,6 +242,13 @@ jobs:
             --exact real::task058_real_amti_settings_empty_type_round_trips --nocapture 2>&1)"
           printf '%s\n' "$output"
           grep -Fqx 'REAL AMTI_SETTINGSCOMMAND EMPTYTYPE CODEC: PASSED' <<<"$output"
+          grep -qE '^test result: ok\. 1 passed' <<<"$output"
+          # Task 059: real FileMetadata's FileNameType through the generated
+          # Rust codec; invalid lexical text must fail checked construction.
+          output="$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test real_uci_file_metadata -- \
+            --exact real::task059_real_file_metadata_structured_ascii_codec --nocapture 2>&1)"
+          printf '%s\n' "$output"
+          grep -Fqx 'REAL FILEMETADATA STRUCTURED ASCII CODEC: PASSED' <<<"$output"
           grep -qE '^test result: ok\. 1 passed' <<<"$output"
       # AMS_GRA_UCI_2_5_ROOT (from GITHUB_ENV) also enables the script's real
       # PositionReport / SubsystemStream round trips through Sleet.

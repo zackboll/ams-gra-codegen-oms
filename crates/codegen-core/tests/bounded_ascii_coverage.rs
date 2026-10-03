@@ -206,25 +206,11 @@ fn negative_neighbours_fail_closed() {
         ("multi-char escape", range("\\d{1,20}", 1, 20)),
         ("wildcard", range(".{1,20}", 1, 20)),
         (
-            "position-specific classes (CounterSpaceSENO)",
-            exact("[A-Z][IRS][0-9]{3}", 5),
-        ),
-        (
             "alternation (NotationType)",
             range("[A-Z0-9]{5}|UNKN|NONE", 4, 5),
         ),
-        ("unbounded + (OctalValueType)", range("[0-7]+", 1, 16)),
         ("unbounded *", range("[0-7]*", 1, 16)),
-        ("unquantified length-1 class", exact("[0-9]", 1)),
-        ("literal prefix (IMO_NumberType)", exact("IMO[0-9]{7}", 10)),
     ];
-    // The two maxLength-only near-misses: minLength is never inferred.
-    let mut link16 = range("[A-Za-z0-9]{1,4}", 1, 4);
-    link16.min_length = None;
-    cases.push(("Link16_SpecificTypeModelType (maxLength only)", link16));
-    let mut misp = range("[a-zA-Z0-9 \\-_]{1,16}", 1, 16);
-    misp.min_length = None;
-    cases.push(("MISP_ItemDesignatorType (maxLength only)", misp));
     // Extra facets on an admitted row.
     let mut both = exact("[A-Z0-9 ]{8}", 8);
     both.min_length = Some(8);

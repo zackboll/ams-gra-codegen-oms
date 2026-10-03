@@ -24,7 +24,7 @@ use std::process::Command;
 /// unconstrained xs:duration in every occurrence shape plus a Choice. Task
 /// 058 adds `codec-bounded-ascii`: named bounded-ASCII String carriers,
 /// including the zero-length `EmptyType` shape, in every occurrence shape.
-const SERVICES: [(&str, &str, bool); 15] = [
+const SERVICES: [(&str, &str, bool); 16] = [
     ("runtime-test", "runtime_test", false),
     ("runtime-oam", "runtime_oam", false),
     ("codec-oam", "codec_oam", true),
@@ -44,6 +44,7 @@ const SERVICES: [(&str, &str, bool); 15] = [
     ),
     ("codec-duration", "codec_duration", true),
     ("codec-bounded-ascii", "codec_bounded_ascii", true),
+    ("codec-structured-ascii", "codec_structured_ascii", true),
 ];
 
 /// Task 050: the pinned UCI 2.5 root (open-arsenal/uci/standard tag v2.5,
@@ -141,6 +142,11 @@ fn real_uci_position_report(fixtures: &Path, out: &Path) {
             "real-bounded-ascii-amti-settings.yaml",
             "real_uci_amti_settings",
             "real UCI AMTI_SettingsCommand",
+        ),
+        (
+            "real-structured-ascii-file-metadata.yaml",
+            "real_uci_file_metadata",
+            "real UCI FileMetadata",
         ),
     ] {
         let contract = fixtures.join(contract);

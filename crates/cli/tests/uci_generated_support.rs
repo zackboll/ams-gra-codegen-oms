@@ -113,8 +113,10 @@ const RELEASES: [Expected; 2] = [
         // the support set (led by `AircraftIdentifierType`) are renderable;
         // the next blocker is `IMO_NumberType` (`IMO[0-9]{7}`, a literal
         // prefix, deliberately out of scope).
-        unsupported_support: 12,
-        first_unsupported_support: "IMO_NumberType",
+        // Task 059: nine deterministic ASCII shapes become renderable. Only
+        // three alternation profiles remain in the 442-name support set.
+        unsupported_support: 3,
+        first_unsupported_support: "MilitaryGridType",
     },
     Expected {
         release: "UCI 2.6",
@@ -127,9 +129,10 @@ const RELEASES: [Expected; 2] = [
         // renderable (2.6 has no direct xs:duration).
         //
         // Task 058: 39 -> 12, the same 27 bounded-ASCII declarations as 2.5;
-        // next blocker `IMO_NumberType`.
-        unsupported_support: 12,
-        first_unsupported_support: "IMO_NumberType",
+        // Task 059: nine more support declarations are renderable; the
+        // remaining three require union/alternation semantics.
+        unsupported_support: 3,
+        first_unsupported_support: "MilitaryGridType",
     },
 ];
 
@@ -177,6 +180,14 @@ fn task056_real_uci_order_of_battle_support_parity() {
             let unsupported = &readiness.unsupported_generated_support_types;
             assert_eq!(unsupported.len(), expected.unsupported_support, "{cell}");
             assert_eq!(
+                unsupported
+                    .iter()
+                    .map(|n| n.local_name.as_str())
+                    .collect::<Vec<_>>(),
+                ["MilitaryGridType", "NotationType", "RecordOriginatorType"],
+                "{cell}"
+            );
+            assert_eq!(
                 readiness.generated_support_types_renderable,
                 expected.support_types - expected.unsupported_support
             );
@@ -197,11 +208,9 @@ fn task056_real_uci_order_of_battle_support_parity() {
                 .message;
             // Task 057: every backend in both releases fails first on the
             // same String-profile declaration, which is in the support set.
-            // Task 058: that declaration is now `IMO_NumberType`; no
-            // bounded-ASCII member and no Duration shape may be a backend
-            // blocker or a support blocker.
+            // Task 059: only the three union profiles remain unsupported.
             assert!(
-                error.contains(" IMO_NumberType"),
+                error.contains(" MilitaryGridType"),
                 "{cell}: unexpected backend failure {error}"
             );
             assert!(!error.contains("Duration"), "{cell}: {error}");

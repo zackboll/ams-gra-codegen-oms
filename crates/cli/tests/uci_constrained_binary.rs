@@ -317,6 +317,57 @@ fn message_impact(label: &str, schema: &SchemaIr) -> Vec<(String, String)> {
         );
         let contract = ams_gra_oms_service_contract::parse_yaml(&contract).expect("contract");
         let plan = resolve_service_plan(&contract, schema).expect("plan");
+        if message == "ProductMetadata" {
+            let payload = schema
+                .messages
+                .iter()
+                .find(|m| m.name.local_name == *message)
+                .unwrap();
+            let TypeRefTarget::Named(payload) = &payload.payload_type.target else {
+                panic!("named ProductMetadata payload required");
+            };
+            let closure = analysis.dependency_closure(payload).expect("closure");
+            let filename = closure
+                .iter()
+                .find(|d| d.name.local_name == "FileNameType")
+                .expect("filename dependency");
+            assert!(matches!(
+                ams_gra_oms_codegen_core::string_profile(
+                    PrimitiveKind::String,
+                    &filename.constraints
+                ),
+                Ok(Some(
+                    ams_gra_oms_codegen_core::StringProfile::StructuredAscii(_)
+                ))
+            ));
+            let remaining: Vec<_> = closure
+                .iter()
+                .filter(|d| {
+                    matches!(d.kind, TypeKind::Primitive(PrimitiveKind::String))
+                        && ams_gra_oms_codegen_core::string_profile(
+                            PrimitiveKind::String,
+                            &d.constraints,
+                        )
+                        .is_err()
+                })
+                .map(|d| d.name.local_name.as_str())
+                .collect();
+            println!("{label} ProductMetadata unsupported Strings in schema order: {remaining:?}");
+            assert_eq!(remaining.first(), Some(&"RecordOriginatorType"));
+            // Notation remains excluded globally; Task 059 does not admit unions.
+            let notation = schema
+                .types
+                .iter()
+                .find(|d| d.name.local_name == "NotationType")
+                .unwrap();
+            assert!(
+                ams_gra_oms_codegen_core::string_profile(
+                    PrimitiveKind::String,
+                    &notation.constraints
+                )
+                .is_err()
+            );
+        }
         let mut per_backend = Vec::new();
         for language in BackendLanguage::ALL {
             per_backend.push(
@@ -394,17 +445,19 @@ fn task053_real_uci_constrained_binary_message_impact() {
         // Task 058: `AircraftIdentifierType` and
         // `AlphanumericStringLength4Type` are bounded-ASCII String profiles
         // now. `IFF_Activity` / `IFF_Command` became READY in every backend
-        // (they are Task 058 category-A), and `ProductMetadata` advanced to
-        // its next non-Binary blocker, `FileNameType`.
+        // (they are Task 058 category-A). Task 059 admits the pinned
+        // `FileNameType` shape: FileMetadata becomes READY and ProductMetadata
+        // advances to `RecordOriginatorType`, the first remaining unsupported
+        // String in dependency-closure schema order. NotationType stays excluded.
         let b = |blocker: &str| format!("Ada=B({blocker}) Rust=B({blocker}) Cpp=B({blocker})");
         let a = "Ada=A Rust=A Cpp=A".to_owned();
         assert_eq!(
             classes,
             [
-                ("FileMetadata".to_owned(), b("FileNameType")),
+                ("FileMetadata".to_owned(), a.clone()),
                 ("IFF_Activity".to_owned(), a.clone()),
                 ("IFF_Command".to_owned(), a),
-                ("ProductMetadata".to_owned(), b("FileNameType")),
+                ("ProductMetadata".to_owned(), b("RecordOriginatorType")),
                 (
                     "Response".to_owned(),
                     "Ada=C(cyclic value dependencies) Rust=C(cyclic value dependencies) \

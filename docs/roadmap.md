@@ -766,14 +766,15 @@ Progress (typed LA-CAL integration as a whole is **not** complete):
       alphabets / 60 pinned rows, all backends plus the Rust codec; 131 real
       messages per release became READY. See
       [Task 058](task-058-bounded-ascii-string-profiles.md).
-- [ ] remaining constrained-String blockers (Task 058 current distribution):
-      `IMO_NumberType` (literal prefix; next OrderOfBattle support blocker),
-      `AO_PRF_CodeType`, `NotationType`, `FileNameType`, `NIIRS_Type`,
-      `CounterSpaceCycleNumberType`, position-specific classes
-      (`CounterSpaceSENO_Type`, `OB_O_SuffixType`, `Link16_TrackNumberType`,
-      ...), the `maxLength`-only near-misses (`Link16_SpecificTypeModelType`,
-      `MISP_ItemDesignatorType`) and unquantified length-1 classes. None is
-      admitted by the bounded-ASCII family.
+- [x] 27 pinned deterministic structured ASCII String declarations (Task 059):
+      literal prefixes/separators, position-specific classes, optional and
+      one-or-more repetitions, maxLength-only and length-1 follow-ups. Checked
+      carriers in all three backends and Rust JSON codec. `OrderOfBattle`
+      support now has only three alternation blockers. See
+      [Task 059](task-059-structured-ascii-string-profiles.md).
+- [ ] the 19 constrained String declarations requiring alternation/union
+      semantics, including `NotationType`, `MilitaryGridType` and
+      `RecordOriginatorType`. No general regex engine is implemented.
 - [ ] `xs:time` (`TimeType`, now the first blocker of 28 messages per
       release).
 - [ ] plan binding scope: `SchemaBinding` fingerprints the contract-selected
