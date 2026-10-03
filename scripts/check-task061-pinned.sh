@@ -3,6 +3,10 @@
 set -euo pipefail
 test -n "${AMS_GRA_UCI_2_5_ROOT:-}"
 test -n "${AMS_GRA_UCI_2_6_ROOT:-}"
+# Generated standalone probes deliberately run offline. The CLI-only build
+# does not fetch runtime crates (e.g. block-buffer); seed the LOCKED workspace
+# cache explicitly rather than depending on another hosted job's private cache.
+cargo fetch --locked
 status=0
 output="$(cargo test --release -p ams-gra-codegen-oms --test uci_time_zulu \
   task061_pinned_time_inventory_and_impact -- --exact --nocapture 2>&1)" || status=$?

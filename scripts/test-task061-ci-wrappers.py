@@ -17,3 +17,4 @@ for label, command, status, diagnostic in [
     assert diagnostic in result.stdout, (label, result)
     print(f"PASS: {label}: diagnostic visible, exit {status}")
 print("TASK061 CI WRAPPER ADVERSARIAL: PASSED (4 checks)")
+assert "cargo fetch --locked" in (repo / "scripts/check-task061-pinned.sh").read_text()

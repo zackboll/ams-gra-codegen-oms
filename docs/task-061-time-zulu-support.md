@@ -200,12 +200,30 @@ Source manifests under `/tmp/task061/manifests/` include Git tracked, unstaged a
 |`scripts/check-ci-split.sh` / adversarial helper|pass, 125 checks|`ci-split-final.log`|
 |Task060 and Task061 actual CI-wrapper adversarial scripts|pass, 4 checks each; failure diagnostics/zero tests/wrong names rejected|captured tool output|
 |1.95.0 runtime API/runtime/facade all-target checks|pass, exit 0 (includes generated synthetic Time codec)|`msrv-api.log`, `msrv-runtime.log`, `msrv-final.log`|
-|1.95.0 facade all-target with pinned 2.5 root|pending completion|`msrv-pinned.log`|
-|OrderOfBattle/SMTI_SettingsCommand real regressions|pending settled run|`oob-smti-regression.log`|
-|current historical subset and Ada gap assertions|pending settled runs|`subset-regression.log`, `gap-regression.log`|
+|1.95.0 facade all-target with pinned 2.5 root|pass, exit 0; actual real UCI generated model/codec included, 9m18s|`msrv-pinned.log`|
+|OrderOfBattle/SMTI_SettingsCommand real regressions|pass, exit 0; all four release/message markers; 384.16s|`oob-smti-regression.log`|
+|current historical subset and Ada gap assertions|Ada gap pass, 1 executed test, both releases; subset run pending|`subset-regression.log`, `gap-regression.log`|
 
 Wrong dialect: the current normalized IR has only `PatternDialect::XmlSchema`; a wrong dialect cannot be constructed through its safe API. Explicit dialect equality remains in shared admission, and the boundary test documents this limitation instead of inventing a new regex dialect. Additional invalid whitespace facets/illegal Time length facets fail either schema validation or classification; redundant authored collapse still fails classification.
 
 ## Delivery and hosted review gates
 
-PR #61 remains open at original head; Task061 must target its feature branch while unmerged. Hosted Task060 Fast was green and Deep real-uci still running when last inspected; its watchers/validation were not changed. No Task061 PR/head/base/checkout success is claimed yet. After push, require associated Fast and Deep run identities; stacked green is only stacked-review evidence, not final-main-base review approval. Keep both PRs unmerged and auto-merge disabled.
+PR #61 remains open at original head; Task061 targets its feature branch while
+unmerged. Task060 Fast passed; its final Deep run `37135864214` later failed
+because the fresh runner's offline OrderOfBattle Rust probe lacked
+`block-buffer v0.10.4`, not because carrier validation failed. The exact inherited
+failure is in `/tmp/task061/logs/parent-final-deep-failure.log`. Task061's pinned
+helper now explicitly `cargo fetch --locked`s workspace dependencies before
+offline standalone probes, without changing the parent, shared Cargo cache
+configuration, runtime semantics or its watchers.
+
+PR **#62**, OPEN, non-draft, auto-merge disabled, base
+`feature/060-alternating-ascii-string-profiles` @ `ca31412f78a157efeef43157de58ad36471e2975`.
+Initial committed head `f1bdd978cdfa22f3cca5a4f7eae0f5dc5b25dc46` triggered Fast
+`37141773853` and Deep `37141773883`, attempts 1, both pull_request. Associated
+head/base identities were verified with Actions API. Synthetic merge ref was
+`1a39bcc33098a0053694c951dcffe0c70cc55d0c` with exactly those base/head parents;
+actual checkout log is not yet available while jobs run. These initial runs are
+historical after the evidence/cache prerequisite correction; final-head gates
+remain mandatory. Stacked green is only stacked-review evidence, not
+final-main-base review approval. Both PRs remain unmerged.
