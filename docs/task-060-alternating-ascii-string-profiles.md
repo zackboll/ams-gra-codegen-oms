@@ -976,3 +976,30 @@ Validated final fixture matrix remains 185 XSDs × six scopes = 1,110 cells:
 and both worlds), zero changed successes/regressions. Final review inspected
 all 20 untracked files; no source manifest, scratch log, generated output,
 compiler binary, object or ALI file is included.
+
+### Live base reconciliation and review PR
+
+Task 059 PR #60 is MERGED (2026-10-03T05:43:21Z) at
+`a7aed23dd9f3852d20bbabf6b5b9aecd4e96bd87`. Live fetch confirms original benchmark
+parent `263df8be24439f368b64cfde56b9b0c70a93e226` is an ancestor of main; main's
+tree is byte-identical to that parent. No transplant/rebase was needed.
+Task 060 implementation commit: `096ab10dcd5934ae3e96313e607488c0604d974a`.
+Normal main reconciliation merge: `b44e57149e292afb42fc56b406cc322c5b966ea7`.
+Every committed non-documentation file was checked against the validated
+manifest after committing and after reconciliation: identity unchanged.
+The main-relative diff has only the intended 40 Task 060/corrective files,
+not duplicate Task 059 work. Task 059 branch/worktree was not modified.
+
+Review PR **#61**, base **main**:
+https://github.com/zackboll/ams-gra-codegen-oms/pull/61
+Branch: `feature/060-alternating-ascii-string-profiles`. Open, non-draft,
+unmerged, auto-merge disabled. No remaining PR #60 dependency. This final
+provenance update is documentation-only; its resulting delivery HEAD is visible
+in the PR and commit history (not self-embedded into its own content).
+
+Hosted exact-head Fast and Deep CI are required independently. Workflow
+pull_request triggers cover this main-target PR, including Deep because workflow
+files changed. Do not substitute PR #60 CI or an obsolete Task 060 head.
+Run IDs/results and final equality of local/remote/PR head are reported in the
+review-gate PR evidence comment/final report once completed; a pending run is
+not a pass. No auto-merge or merge is requested.
