@@ -35,6 +35,8 @@ expect_fail() {
 expect_pass "$fast" "$deep" "$sleet"
 
 # ---- 2. mutations fail --------------------------------------------------
+sed 's/task060_probes::generated_group_and_carrier_composes_with_production_service_codec/generated_group_and_carrier_composes_with_production_service_codec/g' "$fast" >"$tmp/fast-unqualified-and.yml"
+expect_fail "Task060 AND name lost module qualification" "$tmp/fast-unqualified-and.yml" "$deep" "$sleet"
 # A real-UCI fetch leaks into Fast CI.
 { cat "$fast"; printf '      - run: scripts/fetch-pinned-uci-2.5.sh "$RUNNER_TEMP/u"\n'; } >"$tmp/fast-uci25.yml"
 expect_fail "fast fetches UCI 2.5" "$tmp/fast-uci25.yml" "$deep" "$sleet"

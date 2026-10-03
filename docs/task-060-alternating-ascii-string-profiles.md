@@ -1,11 +1,10 @@
 # Task 060 — alternating ASCII profiles and compiler/codec evidence
 
-> **Current verification status:** all five final local stages completed with
-> explicit exit 0. Final production byte/compiler checks and 228 unique CLI
-> confirmations pass. Final workspace: 1,234 passed, zero failed/ignored.
-> Commit/base/PR/remote-CI provenance is recorded in the delivery section as it
-> becomes available. Chronological entries below preserve intermediate and
-> historical evidence; completed final-source results supersede pending wording.
+> **Current verification status:** the original local capability evidence passes,
+> but hosted head `cdbf095` failed Fast (zero matched AND unit tests) and Deep
+> real-uci (stale constrained-Binary ProductMetadata assertion). Corrective
+> tests/workflow changes and explicit provenance are recorded below. Hosted
+> final-head success remains mandatory; no merge/readiness claim is made.
 
 
 ## Pattern-group semantics
@@ -1003,3 +1002,98 @@ files changed. Do not substitute PR #60 CI or an obsolete Task 060 head.
 Run IDs/results and final equality of local/remote/PR head are reported in the
 review-gate PR evidence comment/final report once completed; a pending run is
 not a pass. No auto-merge or merge is requested.
+
+## PR #61 hosted-failure corrective
+
+Previous head: `cdbf0950055194122094bb49766abfaabee28ca4`.
+Fast run 37134770117 / job 111236999638 completed **failure**, step Generated
+Rust OMS JSON codec (must execute). Deep run 37134770126 / real-uci job
+111237001544 completed **failure**, step Real UCI constrained Binary inventory
+(Task 053, must execute). Other Deep jobs could still run; this does not make
+its failed real-uci job pending. Old runs remain failure evidence, not final CI.
+Fast complete log `/tmp/task060-fast-failure.log`; Deep job metadata
+`/tmp/task060-deep-failed-job.json` (GitHub withholds run logs while other jobs
+are active), and pinned reproduction diagnostics are preserved separately.
+
+### Exact execution-name defect
+
+`cargo test -p ams-gra-oms-backend-rust --lib -- --list` registers
+`task060_probes::generated_group_and_carrier_composes_with_production_service_codec`.
+The previous workflow used the unqualified name both as guard expectation and
+Cargo filter, while its helper adds `--exact`. Hosted output correctly reported
+zero passed/49 filtered and the execution guard failed. Both occurrences now
+use the fully qualified name. No test moved, public seam added, or execution
+requirement weakened. All six new explicit Task 060 guard/filter pairs were
+cross-checked against their actual registered test lists, then executed through
+the actual extracted workflow helper: six separate exactly-one passing tests,
+exit 0, `/tmp/task060-exact-workflow.{log,exit}`. The guard now detects loss of
+module qualification; CI-split/adversarial suite is **121 checks**, superseding
+the valid original 120-check measurement.
+
+### Constrained-Binary current-state defect and reproduction
+
+Before editing assertions, the exact committed target was run with BOTH pinned
+roots and `--release --nocapture --test-threads 1`. It failed with exit 101 at
+`uci_constrained_binary.rs:356`: actual first unsupported String **None**, stale
+expected **Some(RecordOriginatorType)**. ProductMetadata's printed remaining
+String list was **[]**. Log `/tmp/task060-binary-reproduce.log`, exit artifact
+`/tmp/task060-binary-reproduce.exit`, 2 inventory tests passed/impact failed.
+Normal production CLI evidence already records ProductMetadata READY in Ada,
+Rust, C++ in both releases (181 selected declarations in 2.5, 183 in 2.6).
+The corrected regression asserts the empty unsupported String list and exact
+AlternatingAscii classification of both NotationType and RecordOriginatorType,
+then compares all three actual readiness verdicts to A. It retains constrained
+Binary lexical/provenance inventories, no-Binary-first-blocker assertions,
+exact backend comparisons and Response cyclic-topology negatives.
+Historical Task 053/059 measurements were not rewritten.
+
+### Precise earlier-local provenance correction
+
+`/tmp/task060-historical-updated.log` ran ONLY uci_bounded_ascii_string and
+uci_structured_ascii with both roots, their markers and 5+2 passing tests.
+It **did not execute uci_constrained_binary**. The GNAT-required synthetic
+workspace run did include that target, but roots were absent: three tests
+returned early, completed in 0.01s, and no required constrained-Binary inventory
+or impact markers exist. Thus the genuine 1,234-test synthetic workspace result
+is retained, but it never established pinned constrained-Binary execution.
+The hosted failure does not contradict the separate Task 058/059 pinned runs.
+Neither the earlier substring-filtered AND test success nor its compiled codec
+proof validated the previous `--exact` workflow filter. Those proofs remain
+valid while the actual invocation defect is now separately tested.
+
+### Diagnostic-preserving shell correction
+
+Narrowly affected Fast codec helper, Deep constrained-Binary capture, and new
+Task 060 Deep captures now initialize status, capture output with `|| status=$?`,
+print diagnostics on either outcome, and propagate the original status before
+checking success evidence. set -euo pipefail, exact matching, one-test count and
+all mandatory markers remain. New `scripts/test-task060-ci-wrappers.py` extracts
+actual workflow shell and executes it: failure diagnostic visible with original
+exit 23 (Fast) and 37 (Deep), zero matched tests rejected, success without
+required markers rejected. Four checks pass; Fast invokes this regression.
+No general CI redesign or timeout increase.
+
+The initial corrected Binary shell block passed all 3 tests and unchanged
+inventory/impact markers in both releases in 110.14s,
+`/tmp/task060-binary-workflow.{log,exit}`. Clippy then identified a newly unused
+old B-verdict helper; only that dead test closure was removed. A final-snapshot
+Binary wrapper run captures the same unchanged assertions without that warning
+at `/tmp/task060-binary-final-wrapper.{log,exit}`. No production code changed.
+
+Corrective non-documentation identity:
+`ccee06c4171e3b1a6f0ae671dcf358b34fefefc364ac27480b5403965afd5217`, manifest
+`/tmp/task060-corrective-final-manifest.json`. The prior whole-source identity
+is **not** claimed unchanged: affected files are the two workflows, constrained
+Binary test, CI-split guard/adversarial script, and new wrapper regression.
+Production inputs remain identical. Established model/compiler/codec evidence,
+228 unique CLI confirmations and 1,110 fixture cells retain their original
+provenance; these workflow/test fixes do not invalidate generation outputs.
+Formatting, all-target workspace check, Clippy with warnings denied and diff
+whitespace pass on the corrective sources. No capability survey or real vertical
+was restarted. Fresh hosted final-head workflows remain a separate gate.
+
+Final corrective Binary wrapper completed with explicit exit **0**, three tests
+passed in **110.06s**. Its actual workflow block verified all four unchanged
+UCI 2.5/2.6 inventory and message-impact markers plus the three-test summary.
+`/tmp/task060-binary-final-wrapper.{log,exit}` contains printed complete output.
+The final snapshot remained unchanged throughout this run.

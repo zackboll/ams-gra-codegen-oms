@@ -87,9 +87,11 @@ jobs:
       - name: Real UCI constrained Binary inventory (Task 053, must execute)
         run: |
           set -euo pipefail
+          status=0
           output="$(cargo test --release -p ams-gra-codegen-oms --test uci_constrained_binary -- \
-            --nocapture --test-threads 1 2>&1)"
+            --nocapture --test-threads 1 2>&1)" || status=$?
           printf '%s\n' "$output"
+          if (( status != 0 )); then exit "$status"; fi
           grep -Fqx 'UCI 2.5 CONSTRAINED BINARY INVENTORY: PASSED' <<<"$output"
           grep -Fqx 'UCI 2.6 CONSTRAINED BINARY INVENTORY: PASSED' <<<"$output"
           grep -Fqx 'UCI 2.5 CONSTRAINED BINARY MESSAGE IMPACT: PASSED' <<<"$output"
@@ -184,13 +186,17 @@ jobs:
       - name: Real UCI alternating ASCII evidence (Task 060, must execute)
         run: |
           set -euo pipefail
-          output="$(cargo test --release -p ams-gra-codegen-oms --test uci_alternating_admission -- --nocapture --test-threads 1 2>&1)"
+          status=0
+          output="$(cargo test --release -p ams-gra-codegen-oms --test uci_alternating_admission -- --nocapture --test-threads 1 2>&1)" || status=$?
           printf '%s\n' "$output"
+          if (( status != 0 )); then exit "$status"; fi
           grep -Fqx 'UCI 2.5 TASK060 FINAL ADMISSION: baseline=19 admitted=15 DEFERRED_UNICODE=3 DEFERRED_COMPLEX=1' <<<"$output"
           grep -Fqx 'UCI 2.6 TASK060 FINAL ADMISSION: baseline=19 admitted=15 DEFERRED_UNICODE=3 DEFERRED_COMPLEX=1' <<<"$output"
           grep -qE '^test result: ok\. 2 passed' <<<"$output"
-          output="$(cargo test --release -p ams-gra-codegen-oms --test uci_alternating_after -- --nocapture --test-threads 1 2>&1)"
+          status=0
+          output="$(cargo test --release -p ams-gra-codegen-oms --test uci_alternating_after -- --nocapture --test-threads 1 2>&1)" || status=$?
           printf '%s\n' "$output"
+          if (( status != 0 )); then exit "$status"; fi
           grep -Fqx 'UCI 2.5 TASK060 PROJECTED MESSAGE IMPACT: PASSED' <<<"$output"
           grep -Fqx 'UCI 2.6 TASK060 PROJECTED MESSAGE IMPACT: PASSED' <<<"$output"
           grep -Fqx 'UCI 2.5 TASK060 OrderOfBattle COMPILER CODEC VERTICAL: PASSED' <<<"$output"

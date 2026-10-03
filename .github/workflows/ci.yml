@@ -246,8 +246,10 @@ jobs:
           require_one_test() {
             name="$1"
             shift
-            output="$("$@" -- --exact --nocapture 2>&1)"
+            local status=0
+            output="$("$@" -- --exact --nocapture 2>&1)" || status=$?
             printf '%s\n' "$output"
+            if (( status != 0 )); then return "$status"; fi
             printf '%s\n' "$output" | grep -qE "^test ${name} \.\.\. ok$"
             printf '%s\n' "$output" | grep -qE '^test result: ok\. 1 passed'
           }
@@ -296,9 +298,9 @@ jobs:
             cargo test -p ams-gra-oms-runtime-rust-facade-tests --test generated_codec_mock_owp \
             task059_structured_ascii_generated_codec_round_trips_through_mock_owp
           # Task 060: compiled synthetic proofs must execute, not just build.
-          require_one_test generated_group_and_carrier_composes_with_production_service_codec \
+          require_one_test task060_probes::generated_group_and_carrier_composes_with_production_service_codec \
             cargo test -p ams-gra-oms-backend-rust --lib \
-            generated_group_and_carrier_composes_with_production_service_codec
+            task060_probes::generated_group_and_carrier_composes_with_production_service_codec
           require_one_test closed_sum_container_traits_follow_concrete_payload_traits \
             cargo test -p ams-gra-oms-backend-rust --test equality_closed_sum \
             closed_sum_container_traits_follow_concrete_payload_traits
@@ -611,6 +613,7 @@ jobs:
           set -euo pipefail
           scripts/check-ci-split.sh
           scripts/test-check-ci-split.sh
+          python3 scripts/test-task060-ci-wrappers.py
       # `AMS_GRA_REQUIRE_GNAT` turns the Ada probes' developer-machine skip
       # into a hard failure, so a runner that somehow lost GNAT after the gate
       # above cannot produce a green run with the Ada checks quietly elided.
