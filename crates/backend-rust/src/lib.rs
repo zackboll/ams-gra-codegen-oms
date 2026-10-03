@@ -27,6 +27,8 @@ use ams_gra_oms_ir::{
     TypeRefTarget,
 };
 use std::fmt::Write as _;
+
+mod time_zulu;
 use std::path::PathBuf;
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -422,7 +424,11 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
             && is_temporal_primitive(kind)
         {
             match temporal_profile(kind, &declaration.constraints) {
-                Ok(Some(TemporalProfile::DateTimeZulu | TemporalProfile::Duration)) => {}
+                Ok(Some(
+                    TemporalProfile::DateTimeZulu
+                    | TemporalProfile::TimeZulu
+                    | TemporalProfile::Duration,
+                )) => {}
                 Ok(None) => unreachable!("is_temporal_primitive gates this branch"),
                 Err(reason) => {
                     return unsupported(format!("{reason} on {}", declaration.name.local_name));
@@ -2055,6 +2061,7 @@ fn render_temporal_declaration(
     name: &str,
 ) -> Result<(), CodegenError> {
     let carrier = match temporal_profile(kind, constraints) {
+        Ok(Some(TemporalProfile::TimeZulu)) => time_zulu::CARRIER,
         Ok(Some(TemporalProfile::DateTimeZulu)) => RUST_DATE_TIME_ZULU_CARRIER,
         // Task 057: the named Duration carrier is the SAME text as the
         // direct `XmlSchemaDuration`, calling the one shared parser.
@@ -3288,7 +3295,7 @@ fn main() {
             } else {
                 schema.types[0].constraints.lexical.pattern_groups.push(
                     ams_gra_oms_ir::PatternGroup {
-                        alternatives: vec![ams_gra_oms_ir::PatternExpression::xml_schema(".+Z")],
+                        alternatives: vec![ams_gra_oms_ir::PatternExpression::xml_schema(".*Z")],
                     },
                 );
             }

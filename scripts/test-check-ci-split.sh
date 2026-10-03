@@ -66,7 +66,13 @@ grep -v -- '- run: cargo test --workspace' "$fast" >"$tmp/fast-notest.yml"
 expect_fail "fast lost workspace test" "$tmp/fast-notest.yml" "$deep" "$sleet"
 
 # Every moved Deep CI check is individually load-bearing.
+{ cat "$fast"; printf '      - run: bash scripts/check-task061-pinned.sh\n'; } >"$tmp/fast-t061.yml"
+expect_fail "fast runs Task061 pinned gate" "$tmp/fast-t061.yml" "$deep" "$sleet"
+grep -v 'bash scripts/check-task061-fast.sh' "$fast" >"$tmp/fast-no-t061.yml"
+expect_fail "fast lost Task061 gate" "$tmp/fast-no-t061.yml" "$deep" "$sleet"
 for line in \
+  'bash scripts/check-task061-pinned.sh' \
+  'python3 scripts/check-task061-service-impact.py target/release/ams-gra-codegen-oms' \
   'UCI 2.6 BINARY PROVENANCE INVENTORY: PASSED' \
   'UCI 2.5 CONSTRAINED BINARY MESSAGE IMPACT: PASSED' \
   'UCI 2.6 WHOLE-SCHEMA FIRST BLOCKER PROBE: PASSED' \

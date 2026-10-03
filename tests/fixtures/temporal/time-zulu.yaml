@@ -1,0 +1,22 @@
+contract_version: "0.1"
+service:
+  name: time-zulu
+  version: "0.1.0"
+  kind: service
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+functions:
+  - id: clock
+    name: Clock
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: notice
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: Message
+        topic: clock
+        timing:
+          kind: asynchronous

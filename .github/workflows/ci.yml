@@ -48,6 +48,10 @@ jobs:
           command -v gnatmake
           gnatmake --version
       - run: cargo fmt --all -- --check
+      - name: Named TimeZulu (Task 061, exact compiler/codec/readiness gates)
+        env:
+          AMS_GRA_REQUIRE_GNAT: "1"
+        run: bash scripts/check-task061-fast.sh
       - run: cargo check --workspace --all-targets
       - run: cargo clippy --workspace --all-targets -- -D warnings
       # The four GNAT-backed Task 033 regressions are named explicitly so the
@@ -614,6 +618,7 @@ jobs:
           scripts/check-ci-split.sh
           scripts/test-check-ci-split.sh
           python3 scripts/test-task060-ci-wrappers.py
+          python3 scripts/test-task061-ci-wrappers.py
       # `AMS_GRA_REQUIRE_GNAT` turns the Ada probes' developer-machine skip
       # into a hard failure, so a runner that somehow lost GNAT after the gate
       # above cannot produce a green run with the Ada checks quietly elided.

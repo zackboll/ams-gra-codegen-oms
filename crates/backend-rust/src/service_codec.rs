@@ -649,7 +649,10 @@ impl Renderer<'_> {
                     },
                 )
             }
-            PrimitiveKind::String | PrimitiveKind::DateTime | PrimitiveKind::Duration => (
+            PrimitiveKind::String
+            | PrimitiveKind::DateTime
+            | PrimitiveKind::Time
+            | PrimitiveKind::Duration => (
                 "Value::String(value.as_str().to_owned())".to_owned(),
                 checked("dec_str(value, path)"),
             ),

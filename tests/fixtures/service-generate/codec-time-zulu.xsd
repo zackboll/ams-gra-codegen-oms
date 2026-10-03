@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:t="https://www.vdl.afrl.af.mil/programs/oam" targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified">
+  <xs:simpleType name="Clock"><xs:restriction base="xs:time"><xs:pattern value=".+Z"/></xs:restriction></xs:simpleType>
+  <xs:complexType name="Base"><xs:sequence><xs:element name="Required" type="t:Clock"/></xs:sequence></xs:complexType>
+  <xs:complexType name="TimePayload"><xs:complexContent><xs:extension base="t:Base"><xs:sequence>
+    <xs:element name="Optional" type="t:Clock" minOccurs="0"/>
+    <xs:element name="Bounded" type="t:Clock" minOccurs="0" maxOccurs="3"/>
+    <xs:element name="Unbounded" type="t:Clock" minOccurs="0" maxOccurs="unbounded"/>
+    <xs:element name="Selection" type="t:TimeChoice"/>
+    <xs:element name="Item" type="t:AbstractClock"/>
+  </xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+  <xs:complexType name="TimeChoice"><xs:choice><xs:element name="Time" type="t:Clock"/><xs:element name="Text" type="xs:string"/></xs:choice></xs:complexType>
+  <xs:complexType name="AbstractClock" abstract="true"><xs:sequence/></xs:complexType>
+  <xs:complexType name="ConcreteClock"><xs:complexContent><xs:extension base="t:AbstractClock"><xs:sequence><xs:element name="Time" type="t:Clock"/></xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+  <xs:element name="TimeNotice" type="t:TimePayload" t:version="000.000.000.000"/>
+</xs:schema>
