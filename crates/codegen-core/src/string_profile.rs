@@ -1101,11 +1101,9 @@ const fn bounded(min_length: u64, max_length: u64) -> BoundedAsciiLength {
 /// unobserved alphabet all fail closed. The expression is compared as whole
 /// text against `spelling + quantifier`, so nothing here parses a regex.
 ///
-/// Deliberately absent neighbours: the two `maxLength`-only near-misses
-/// (`Link16_SpecificTypeModelType`, `MISP_ItemDesignatorType`) -- a missing
-/// `minLength` is never inferred from the quantifier; unquantified `length 1`
-/// classes (`[0-9]`, `[m]`, ...); and every position-specific, alternating,
-/// literal-prefixed or unbounded pattern.
+/// Task 058 intentionally left the other shapes unsupported. Task 059 admits
+/// only individually pinned deterministic rows through a *separate* variant;
+/// the bounded-ASCII classification contract remains unchanged.
 const UCI_BOUNDED_ASCII_PROFILES: &[(BoundedAsciiAlphabet, &str, BoundedAsciiLength)] = {
     use BoundedAsciiAlphabet as A;
     use BoundedAsciiLength::Exact;
@@ -1244,6 +1242,354 @@ const USMTF_SERIAL_CLASS: &str = r#"[\-A-Z0-9 \.,\(\)&\?!@#$%\^\*=_\+\[\]\{\}\\"
 pub fn bounded_ascii_profiles()
 -> &'static [(BoundedAsciiAlphabet, &'static str, BoundedAsciiLength)] {
     UCI_BOUNDED_ASCII_PROFILES
+}
+
+/// Exact finite ASCII sets needed by the pinned structured profiles. Existing
+/// sets delegate to Task 058; new sets are defined once as ordinal ranges.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StructuredAsciiAlphabet {
+    Existing(BoundedAsciiAlphabet),
+    One,
+    OneToSeven,
+    OneToEight,
+    TOrE,
+    IOrROrS,
+    TrackOne,
+    TrackSixteen,
+    LowerM,
+    FileExtension,
+    DigitOrSpace,
+    OOrDOrMOrSpace,
+    AToHOrSpace,
+    SOrCOrROrSpace,
+    OneToSixOrSpace,
+    TOrSOrCOrROrU,
+    OneToFive,
+    UnitCode,
+    Zero,
+}
+
+impl StructuredAsciiAlphabet {
+    #[must_use]
+    pub const fn ranges(self) -> &'static [(u8, u8)] {
+        use StructuredAsciiAlphabet as A;
+        match self {
+            A::Existing(a) => a.ranges(),
+            A::One => &[(0x31, 0x31)],
+            A::OneToSeven => &[(0x31, 0x37)],
+            A::OneToEight => &[(0x31, 0x38)],
+            A::TOrE => &[(0x45, 0x45), (0x54, 0x54)],
+            A::IOrROrS => &[(0x49, 0x49), (0x52, 0x53)],
+            A::TrackOne => &[(0x41, 0x41), (0x45, 0x45), (0x47, 0x48), (0x4a, 0x4d)],
+            A::TrackSixteen => &[(0x30, 0x37), (0x41, 0x48), (0x4a, 0x4e), (0x50, 0x5a)],
+            A::LowerM => &[(0x6d, 0x6d)],
+            A::FileExtension => &[
+                (0x2d, 0x2e),
+                (0x30, 0x39),
+                (0x41, 0x5a),
+                (0x5f, 0x5f),
+                (0x61, 0x7a),
+            ],
+            A::DigitOrSpace => &[(0x20, 0x20), (0x30, 0x39)],
+            A::OOrDOrMOrSpace => &[(0x20, 0x20), (0x44, 0x44), (0x4d, 0x4d), (0x4f, 0x4f)],
+            A::AToHOrSpace => &[(0x20, 0x20), (0x41, 0x48)],
+            A::SOrCOrROrSpace => &[(0x20, 0x20), (0x43, 0x43), (0x52, 0x53)],
+            A::OneToSixOrSpace => &[(0x20, 0x20), (0x31, 0x36)],
+            A::TOrSOrCOrROrU => &[(0x43, 0x43), (0x52, 0x55)],
+            A::OneToFive => &[(0x31, 0x35)],
+            A::UnitCode => &[
+                (0x41, 0x45),
+                (0x47, 0x47),
+                (0x4a, 0x4a),
+                (0x4d, 0x4e),
+                (0x53, 0x53),
+                (0x58, 0x58),
+            ],
+            A::Zero => &[(0x30, 0x30)],
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StructuredAsciiRepetition {
+    One,
+    OptionalOne,
+    /// The pinned overlapping optional prefix, selected by total length.
+    /// The remaining fixed-width suffix has exactly three members.
+    OptionalOneByTotalLength(u8),
+    Exact(u8),
+    Bounded(u8, u8),
+    OneOrMore,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StructuredAsciiSegment {
+    Literal(&'static str),
+    Class(StructuredAsciiAlphabet, StructuredAsciiRepetition),
+}
+
+/// Facets are deliberately separate from the pattern's segment repetitions.
+/// In particular `Max(4)` does NOT imply an XML Schema `minLength` facet.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StructuredAsciiFacets {
+    Exact(u64),
+    Range(u64, u64),
+    Max(u64),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StructuredAsciiProfile {
+    pub segments: &'static [StructuredAsciiSegment],
+    pub facets: StructuredAsciiFacets,
+}
+
+/// Each row is an entire authoritative expression and *actual* facet shape.
+/// No pattern is parsed at generation time. The one redundant grouping row is
+/// pinned as text, but its semantic sequence is the enclosed fixed-width class.
+const STRUCTURED_ASCII_ROWS: &[(&str, StructuredAsciiProfile)] = {
+    use BoundedAsciiAlphabet as B;
+    use StructuredAsciiAlphabet::{Existing as E, *};
+    use StructuredAsciiFacets::{Exact as L, Max, Range};
+    use StructuredAsciiRepetition::{
+        Bounded as R, Exact as N, One as O, OneOrMore as Plus, OptionalOne as Opt,
+    };
+    use StructuredAsciiSegment::{Class as C, Literal as Lit};
+    &[
+        (
+            "1?[1-7][1-8]{2}",
+            StructuredAsciiProfile {
+                facets: Range(3, 4),
+                segments: &[
+                    C(One, StructuredAsciiRepetition::OptionalOneByTotalLength(4)),
+                    C(OneToSeven, O),
+                    C(OneToEight, N(2)),
+                ],
+            },
+        ),
+        (
+            "[A-Z0-9]{2}-[0-9]{4}[TE]?",
+            StructuredAsciiProfile {
+                facets: Range(7, 8),
+                segments: &[
+                    C(E(B::UpperAlphanumeric), N(2)),
+                    Lit("-"),
+                    C(E(B::Digits), N(4)),
+                    C(TOrE, Opt),
+                ],
+            },
+        ),
+        (
+            "[A-Z][IRS][0-9]{3}",
+            StructuredAsciiProfile {
+                facets: L(5),
+                segments: &[
+                    C(E(B::UpperLetters), O),
+                    C(IOrROrS, O),
+                    C(E(B::Digits), N(3)),
+                ],
+            },
+        ),
+        (
+            r"[a-zA-Z0-9_\-]+\.[a-zA-Z0-9_\.\-]+",
+            StructuredAsciiProfile {
+                facets: Range(1, 255),
+                segments: &[
+                    C(E(B::AlphanumericUnderscoreHyphen), Plus),
+                    Lit("."),
+                    C(FileExtension, Plus),
+                ],
+            },
+        ),
+        (
+            "IMO[0-9]{7}",
+            StructuredAsciiProfile {
+                facets: L(10),
+                segments: &[Lit("IMO"), C(E(B::Digits), N(7))],
+            },
+        ),
+        (
+            "[AEGHJKLM]{2}[0-7]{3}",
+            StructuredAsciiProfile {
+                facets: L(5),
+                segments: &[C(TrackOne, N(2)), C(E(B::OctalDigits), N(3))],
+            },
+        ),
+        (
+            "[A-Za-z0-9]{1,4}",
+            StructuredAsciiProfile {
+                facets: Max(4),
+                segments: &[C(E(B::Alphanumeric), R(1, 4))],
+            },
+        ),
+        (
+            "[A-HJ-NP-Z0-7]{2}[0-7]{3}",
+            StructuredAsciiProfile {
+                facets: L(5),
+                segments: &[C(TrackSixteen, N(2)), C(E(B::OctalDigits), N(3))],
+            },
+        ),
+        (
+            "[m]",
+            StructuredAsciiProfile {
+                facets: L(1),
+                segments: &[C(LowerM, O)],
+            },
+        ),
+        (
+            r"[a-zA-Z0-9 \-_]{1,16}",
+            StructuredAsciiProfile {
+                facets: Max(16),
+                segments: &[C(E(B::AlphanumericSpaceHyphenUnderscore), R(1, 16))],
+            },
+        ),
+        (
+            r"[0-9]\.[0-9]",
+            StructuredAsciiProfile {
+                facets: L(3),
+                segments: &[C(E(B::Digits), O), Lit("."), C(E(B::Digits), O)],
+            },
+        ),
+        (
+            "[0-9 ]",
+            StructuredAsciiProfile {
+                facets: L(1),
+                segments: &[C(DigitOrSpace, O)],
+            },
+        ),
+        (
+            "[A-Z0-9][0-9]",
+            StructuredAsciiProfile {
+                facets: L(2),
+                segments: &[C(E(B::UpperAlphanumeric), O), C(E(B::Digits), O)],
+            },
+        ),
+        (
+            "[ODM ]",
+            StructuredAsciiProfile {
+                facets: L(1),
+                segments: &[C(OOrDOrMOrSpace, O)],
+            },
+        ),
+        (
+            "[A-H ]",
+            StructuredAsciiProfile {
+                facets: L(1),
+                segments: &[C(AToHOrSpace, O)],
+            },
+        ),
+        (
+            "[SCR ]",
+            StructuredAsciiProfile {
+                facets: L(1),
+                segments: &[C(SOrCOrROrSpace, O)],
+            },
+        ),
+        (
+            "[1-6 ]",
+            StructuredAsciiProfile {
+                facets: L(1),
+                segments: &[C(OneToSixOrSpace, O)],
+            },
+        ),
+        (
+            "[TSCRU]",
+            StructuredAsciiProfile {
+                facets: L(1),
+                segments: &[C(TOrSOrCOrROrU, O)],
+            },
+        ),
+        (
+            "([A-Z0-9]{2})",
+            StructuredAsciiProfile {
+                facets: L(2),
+                segments: &[C(E(B::UpperAlphanumeric), N(2))],
+            },
+        ),
+        (
+            "[0-9]",
+            StructuredAsciiProfile {
+                facets: L(1),
+                segments: &[C(E(B::Digits), O)],
+            },
+        ),
+        (
+            "[A-Z]{2}[0][0-9]{2}",
+            StructuredAsciiProfile {
+                facets: L(5),
+                segments: &[
+                    C(E(B::UpperLetters), N(2)),
+                    C(Zero, O),
+                    C(E(B::Digits), N(2)),
+                ],
+            },
+        ),
+        (
+            "[a-zA-Z0-9]{5}[0-9]{9}",
+            StructuredAsciiProfile {
+                facets: Max(14),
+                segments: &[C(E(B::Alphanumeric), N(5)), C(E(B::Digits), N(9))],
+            },
+        ),
+        (
+            "[A-Z]{2}[0-9]{3}",
+            StructuredAsciiProfile {
+                facets: L(5),
+                segments: &[C(E(B::UpperLetters), N(2)), C(E(B::Digits), N(3))],
+            },
+        ),
+        (
+            "[0-7]+",
+            StructuredAsciiProfile {
+                facets: Range(1, 16),
+                segments: &[C(E(B::OctalDigits), Plus)],
+            },
+        ),
+        (
+            "[a-zA-Z0-9]+",
+            StructuredAsciiProfile {
+                facets: Range(1, 10),
+                segments: &[C(E(B::Alphanumeric), Plus)],
+            },
+        ),
+        (
+            "[1-5]",
+            StructuredAsciiProfile {
+                facets: L(1),
+                segments: &[C(OneToFive, O)],
+            },
+        ),
+        (
+            "[A-Z]{2}[ABCDEGJMNSX][A-Z]{2}[0-9]{5}",
+            StructuredAsciiProfile {
+                facets: L(10),
+                segments: &[
+                    C(E(B::UpperLetters), N(2)),
+                    C(UnitCode, O),
+                    C(E(B::UpperLetters), N(2)),
+                    C(E(B::Digits), N(5)),
+                ],
+            },
+        ),
+    ]
+};
+
+/// The exact pinned expression/facet rows, useful to independent evidence tests.
+#[must_use]
+pub fn structured_ascii_profiles() -> &'static [(&'static str, StructuredAsciiProfile)] {
+    STRUCTURED_ASCII_ROWS
+}
+
+fn match_structured_ascii_profile(c: &ConstraintSet) -> Option<StringProfile> {
+    let facets = match (c.length, c.min_length, c.max_length) {
+        (Some(n), None, None) => StructuredAsciiFacets::Exact(n),
+        (None, Some(min), Some(max)) => StructuredAsciiFacets::Range(min, max),
+        (None, None, Some(max)) => StructuredAsciiFacets::Max(max),
+        _ => return None,
+    };
+    STRUCTURED_ASCII_ROWS
+        .iter()
+        .find(|(expression, row)| row.facets == facets && has_only_pattern(c, expression))
+        .map(|(_, row)| StringProfile::StructuredAscii(*row))
 }
 
 /// Whether these effective facets are exactly one pinned bounded-ASCII row.
@@ -1427,6 +1773,8 @@ pub enum StringProfile {
         /// The length-facet shape and bounds.
         length: BoundedAsciiLength,
     },
+    /// One of the exact pinned deterministic ASCII expression/facet rows.
+    StructuredAscii(StructuredAsciiProfile),
 }
 
 /// Why a constrained `string` declaration falls outside the implemented set.
@@ -1541,6 +1889,9 @@ pub fn string_profile(
     // five profiles above (asserted by `the_bounded_ascii_family_never_
     // shadows_an_existing_profile`).
     if let Some(profile) = match_bounded_ascii_profile(constraints) {
+        return Ok(Some(profile));
+    }
+    if let Some(profile) = match_structured_ascii_profile(constraints) {
         return Ok(Some(profile));
     }
     Err(StringProfileError::UnsupportedConstraints)

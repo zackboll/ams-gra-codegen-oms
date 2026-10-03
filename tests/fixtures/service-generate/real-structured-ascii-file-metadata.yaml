@@ -1,0 +1,23 @@
+# Task 059: real UCI 2.5 FileMetadata, pinned structured FileNameType.
+contract_version: "0.1"
+service:
+  name: Task 059 File Metadata
+  version: "0.1.0"
+  kind: service
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+functions:
+  - id: file-metadata
+    name: File Metadata
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: file-output
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: FileMetadata
+        topic: file.metadata
+        timing:
+          kind: asynchronous

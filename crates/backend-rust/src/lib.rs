@@ -10,7 +10,8 @@ use ams_gra_oms_codegen_core::ServiceApiModel;
 use ams_gra_oms_codegen_core::{
     AbstractValueProjection, Backend, BackendLanguage, BinaryLengthDomain, BoundedAsciiAlphabet,
     BoundedAsciiLength, CodegenError, DirectTemporalProfile, EffectiveValueMember, FloatingDomain,
-    GeneratedFile, GenerationWorld, InclusiveIntegralDomain, StringProfile, TemporalProfile,
+    GeneratedFile, GenerationWorld, InclusiveIntegralDomain, StringProfile, StructuredAsciiFacets,
+    StructuredAsciiProfile, StructuredAsciiRepetition, StructuredAsciiSegment, TemporalProfile,
     TypeEmission, WhitespaceVisiblePolicy, abstract_value_projection_for_ref, backend_preflight,
     binary_length_domain, constrains_string, direct_temporal_profile,
     effective_choice_alternatives, effective_record_fields, emissions_emit_direct_date_time,
@@ -447,7 +448,8 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
                 | Ok(Some(StringProfile::VisibleAscii { .. }))
                 | Ok(Some(StringProfile::WhitespaceVisible { .. }))
                 | Ok(Some(StringProfile::NatoSpecialWords))
-                | Ok(Some(StringProfile::BoundedAscii { .. })) => {}
+                | Ok(Some(StringProfile::BoundedAscii { .. }))
+                | Ok(Some(StringProfile::StructuredAscii(_))) => {}
                 Ok(None) => unreachable!("constrains_string gates this branch"),
                 Err(reason) => {
                     return unsupported(format!("{reason} on {}", declaration.name.local_name));
@@ -1094,6 +1096,9 @@ fn render_string_profile_declaration(
         Ok(Some(StringProfile::BoundedAscii { alphabet, length })) => {
             render_rust_bounded_ascii(name, alphabet, length)
         }
+        Ok(Some(StringProfile::StructuredAscii(profile))) => {
+            render_rust_structured_ascii(name, profile)
+        }
         Ok(None) => return unsupported(format!("unconstrained String on {name}")),
         Err(reason) => return unsupported(format!("{reason} on {name}")),
     };
@@ -1173,6 +1178,70 @@ fn render_rust_bounded_ascii(
         .replace("{facets}", &facets)
         .replace("{members}", &members)
         .replace("{describe}", &alphabet.describe())
+}
+
+fn render_rust_structured_ascii(name: &str, profile: StructuredAsciiProfile) -> String {
+    use StructuredAsciiSegment::{Class, Literal};
+    let facets = match profile.facets {
+        StructuredAsciiFacets::Exact(n) => format!("text.len() == {n}"),
+        StructuredAsciiFacets::Range(a, b) => format!("({a}..={b}).contains(&text.len())"),
+        StructuredAsciiFacets::Max(n) => format!("text.len() <= {n}"),
+    };
+    let mut matcher = String::new();
+    for segment in profile.segments {
+        match segment {
+            Literal(text) => {
+                let bytes = text
+                    .as_bytes()
+                    .iter()
+                    .map(|b| format!("0x{b:02X}"))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                matcher.push_str(&format!(
+                    "        if !text.get(pos..).is_some_and(|rest| rest.starts_with(&[{bytes}])) {{ return false; }}\n        pos += {};\n",
+                    text.len()
+                ));
+            }
+            Class(alphabet, repetition) => {
+                let members = alphabet
+                    .ranges()
+                    .iter()
+                    .map(|&(a, b)| {
+                        if a == b {
+                            format!("0x{a:02X}")
+                        } else {
+                            format!("0x{a:02X}..=0x{b:02X}")
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" | ");
+                let test = format!("matches!(text[pos], {members})");
+                let (min, max) = match repetition {
+                    StructuredAsciiRepetition::One => (1, Some(1)),
+                    StructuredAsciiRepetition::Exact(n) => (*n as u64, Some(*n as u64)),
+                    StructuredAsciiRepetition::Bounded(a, b) => (*a as u64, Some(*b as u64)),
+                    StructuredAsciiRepetition::OptionalOne => (0, Some(1)),
+                    StructuredAsciiRepetition::OptionalOneByTotalLength(_) => (0, Some(1)),
+                    StructuredAsciiRepetition::OneOrMore => (1, None),
+                };
+                let limit =
+                    if let StructuredAsciiRepetition::OptionalOneByTotalLength(n) = repetition {
+                        format!("if text.len() == {n} {{ 1 }} else {{ 0 }}")
+                    } else {
+                        max.map_or_else(|| "text.len()".to_owned(), |n| n.to_string())
+                    };
+                let minimum = if min == 0 {
+                    String::new()
+                } else {
+                    format!("        if count < {min} {{ return false; }}\n")
+                };
+                matcher.push_str(&format!("        {{\n        let limit = {limit};\n        let mut count = 0;\n        while count < limit && pos < text.len() && {test} {{\n            pos += 1;\n            count += 1;\n        }}\n{minimum}        }}\n"));
+            }
+        }
+    }
+    format!(
+        "#[derive(Clone, Debug, PartialEq, Eq)]\npub struct {name} {{ value: String }}\nimpl {name} {{\n    pub fn new(value: &str) -> Option<Self> {{\n        if !Self::is_valid(value.as_bytes()) {{ return None; }}\n        Some(Self {{ value: value.to_owned() }})\n    }}\n    pub fn as_str(&self) -> &str {{ &self.value }}\n    fn is_valid(text: &[u8]) -> bool {{\n        if !({facets}) {{ return false; }}\n        let mut pos = 0;\n{matcher}        pos == text.len()\n    }}\n}}\n"
+    )
 }
 
 /// The generated Rust bounded-ASCII carrier (Task 058). See

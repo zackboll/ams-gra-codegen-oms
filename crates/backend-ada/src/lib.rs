@@ -10,7 +10,8 @@ use ams_gra_oms_codegen_core::{
     ADA_SEQUENCE_LENGTH, ADA_SEQUENCE_RESERVE_CAPACITY, ADA_SEQUENCE_TO_SEQUENCE,
     AbstractValueProjection, Backend, BackendLanguage, BinaryLengthDomain, BoundedAsciiAlphabet,
     BoundedAsciiLength, CodegenError, DirectTemporalProfile, EffectiveValueMember, FloatingDomain,
-    GeneratedFile, GenerationWorld, InclusiveIntegralDomain, StringProfile, TemporalProfile,
+    GeneratedFile, GenerationWorld, InclusiveIntegralDomain, StringProfile, StructuredAsciiFacets,
+    StructuredAsciiProfile, StructuredAsciiRepetition, StructuredAsciiSegment, TemporalProfile,
     TypeEmission, WhitespaceVisiblePolicy, abstract_value_projection_for_ref, ada_model_file_names,
     ada_model_package, ada_record_field_uses_optional_wrapper, backend_preflight,
     binary_length_domain, constrains_string, direct_temporal_profile,
@@ -665,7 +666,8 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
                 | Ok(Some(StringProfile::VisibleAscii { .. }))
                 | Ok(Some(StringProfile::WhitespaceVisible { .. }))
                 | Ok(Some(StringProfile::NatoSpecialWords))
-                | Ok(Some(StringProfile::BoundedAscii { .. })) => {}
+                | Ok(Some(StringProfile::BoundedAscii { .. }))
+                | Ok(Some(StringProfile::StructuredAscii(_))) => {}
                 Ok(None) => unreachable!("constrains_string gates this branch"),
                 Err(reason) => {
                     return unsupported(format!("{reason} on {}", declaration.name.local_name));
@@ -1910,6 +1912,11 @@ fn render_string_profile_declaration(
                 }
             ),
         ),
+        Ok(Some(profile @ StringProfile::StructuredAscii(_))) => (
+            profile,
+            "A validated structured-ASCII string.",
+            "pinned ASCII segments and their independent length facets".to_owned(),
+        ),
         Ok(None) => return unsupported(format!("unconstrained String on {name}")),
         Err(reason) => return unsupported(format!("{reason} on {name}")),
     };
@@ -2009,6 +2016,7 @@ fn render_string_profile_declaration(
         StringProfile::BoundedAscii { alphabet, length } => {
             render_ada_bounded_ascii_body(name, alphabet, length)
         }
+        StringProfile::StructuredAscii(profile) => render_ada_structured_ascii_body(name, profile),
     };
     body.push_str(&rendered);
     Ok(())
@@ -2062,6 +2070,68 @@ fn render_ada_bounded_ascii_body(
         .replace("{check}", check)
         .replace("{members}", &members)
         .replace("{describe}", &alphabet.describe())
+}
+
+fn render_ada_structured_ascii_body(name: &str, profile: StructuredAsciiProfile) -> String {
+    use StructuredAsciiSegment::{Class, Literal};
+    let facets = match profile.facets {
+        StructuredAsciiFacets::Exact(n) => format!("Value'Length /= {n}"),
+        StructuredAsciiFacets::Range(a, b) => format!("Value'Length not in {a} .. {b}"),
+        StructuredAsciiFacets::Max(n) => format!("Value'Length > {n}"),
+    };
+    let mut matcher = String::new();
+    for segment in profile.segments {
+        match segment {
+            Literal(text) => {
+                let conditions = text
+                    .bytes()
+                    .enumerate()
+                    .map(|(i, b)| {
+                        format!("Character'Pos (Text (Text'First + Pos + {i})) = 16#{b:02X}#")
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" and then ");
+                matcher.push_str(&format!("         if Text'Length - Pos < {} then return False; end if;\n         if not ({conditions}) then return False; end if;\n         Pos := Pos + {};\n",text.len(),text.len()));
+            }
+            Class(alphabet, repetition) => {
+                let ranges = alphabet
+                    .ranges()
+                    .iter()
+                    .map(|&(a, b)| {
+                        if a == b {
+                            format!("16#{a:02X}#")
+                        } else {
+                            format!("16#{a:02X}# .. 16#{b:02X}#")
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" | ");
+                let (min, max) = match repetition {
+                    StructuredAsciiRepetition::One => (1, Some(1)),
+                    StructuredAsciiRepetition::Exact(n) => (*n as usize, Some(*n as usize)),
+                    StructuredAsciiRepetition::Bounded(a, b) => (*a as usize, Some(*b as usize)),
+                    StructuredAsciiRepetition::OptionalOne => (0, Some(1)),
+                    StructuredAsciiRepetition::OptionalOneByTotalLength(_) => (0, Some(1)),
+                    StructuredAsciiRepetition::OneOrMore => (1, None),
+                };
+                let limit =
+                    if let StructuredAsciiRepetition::OptionalOneByTotalLength(n) = repetition {
+                        format!("(if Text'Length = {n} then 1 else 0)")
+                    } else {
+                        max.map_or_else(|| "Text'Length".to_owned(), |n| n.to_string())
+                    };
+                let minimum = if min == 0 {
+                    String::new()
+                } else {
+                    format!("            if Count < {min} then return False; end if;\n")
+                };
+                matcher.push_str(&format!("         declare\n            Limit : constant Natural := {limit};\n            Count : Natural := 0;\n         begin\n            while Count < Limit and then Pos < Text'Length loop\n               exit when Character'Pos (Text (Text'First + Pos)) not in {ranges};\n               Pos := Pos + 1;\n               Count := Count + 1;\n            end loop;\n{minimum}         end;\n"));
+            }
+        }
+    }
+    format!(
+        "\n   function Create (Value : String) return {name} is\n      function Matches_Pattern (Text : String) return Boolean is\n         Pos : Natural := 0;\n      begin\n{matcher}         return Pos = Text'Length;\n      end Matches_Pattern;\n   begin\n      if {facets} or else not Matches_Pattern (Value) then\n         raise Standard.Constraint_Error with \"invalid structured-ASCII string\";\n      end if;\n      return {name}' (Text => Standard.Ada.Strings.Unbounded.To_Unbounded_String (Value));\n   end Create;\n\n   function Value (Item : {name}) return String is\n   begin\n      return Standard.Ada.Strings.Unbounded.To_String (Item.Text);\n   end Value;\n"
+    )
 }
 
 /// The generated Ada body for one Task 058 bounded-ASCII carrier.

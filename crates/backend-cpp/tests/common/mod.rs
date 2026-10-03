@@ -140,6 +140,48 @@ pub fn bounded_ascii_cases() -> Vec<CarrierCases> {
     parsed
 }
 
+/// Task 059: shared structured-ASCII carrier corpus.
+#[allow(dead_code)]
+pub fn structured_ascii_cases() -> Vec<CarrierCases> {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/fixtures/string/structured-ascii.txt");
+    let text = std::fs::read_to_string(&path)
+        .unwrap_or_else(|error| panic!("shared corpus {}: {error}", path.display()));
+    let mut groups: Vec<(String, String)> = Vec::new();
+    for line in text.lines() {
+        if let Some(carrier) = line.strip_prefix("CARRIER ") {
+            groups.push((carrier.trim().to_owned(), String::new()));
+        } else if line.trim().is_empty() || line.starts_with('#') {
+            continue;
+        } else {
+            let (_, body) = groups
+                .last_mut()
+                .unwrap_or_else(|| panic!("case before any CARRIER header: {line}"));
+            body.push_str(line);
+            body.push('\n');
+        }
+    }
+    let scratch = std::env::temp_dir().join(format!(
+        "ams-gra-task059-corpus-{}-{}",
+        std::process::id(),
+        env!("CARGO_CRATE_NAME")
+    ));
+    std::fs::create_dir_all(&scratch).expect("corpus scratch directory");
+    let parsed = groups
+        .into_iter()
+        .map(|(carrier, body)| {
+            let file = scratch.join(format!("{carrier}.txt"));
+            std::fs::write(&file, body).expect("write corpus group");
+            CarrierCases {
+                cases: load_corpus(&file),
+                carrier,
+            }
+        })
+        .collect();
+    let _ = std::fs::remove_dir_all(&scratch);
+    parsed
+}
+
 /// Parse the shared corpus.
 ///
 /// # Panics

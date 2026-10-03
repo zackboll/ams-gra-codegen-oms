@@ -57,6 +57,9 @@ expect_fail "fast runs the Task 057 real-UCI gate" "$tmp/fast-t057.yml" "$deep" 
 # Task 058: the real-UCI bounded-ASCII gate migrates into Fast CI.
 { cat "$fast"; printf '      - run: cargo test -p ams-gra-codegen-oms --test uci_bounded_ascii_string\n'; } >"$tmp/fast-t058.yml"
 expect_fail "fast runs the Task 058 real-UCI gate" "$tmp/fast-t058.yml" "$deep" "$sleet"
+# Task 059 must also remain in Deep CI.
+{ cat "$fast"; printf '      - run: cargo test -p ams-gra-codegen-oms --test uci_structured_ascii\n'; } >"$tmp/fast-t059.yml"
+expect_fail "fast runs the Task 059 real-UCI gate" "$tmp/fast-t059.yml" "$deep" "$sleet"
 grep -v -- '- run: cargo test --workspace' "$fast" >"$tmp/fast-notest.yml"
 expect_fail "fast lost workspace test" "$tmp/fast-notest.yml" "$deep" "$sleet"
 
@@ -81,12 +84,18 @@ for line in \
   'UCI 2.6 DURATION MESSAGE IMPACT: RECORDED' \
   'REAL CATEGORY-A DURATION SERVICE: PASSED' \
   '--test uci_bounded_ascii_string' \
+  '--test uci_structured_ascii' \
+  'UCI 2.5 STRUCTURED ASCII INVENTORY: PASSED' \
+  'UCI 2.6 STRUCTURED ASCII INVENTORY: PASSED' \
+  'UCI 2.5 STRUCTURED ASCII MESSAGE IMPACT: RECORDED' \
+  'UCI 2.6 STRUCTURED ASCII MESSAGE IMPACT: RECORDED' \
   'UCI 2.5 BOUNDED ASCII INVENTORY: PASSED' \
   'UCI 2.6 BOUNDED ASCII INVENTORY: PASSED' \
   'UCI 2.5 BOUNDED ASCII MESSAGE IMPACT: RECORDED' \
   'UCI 2.6 BOUNDED ASCII MESSAGE IMPACT: RECORDED' \
   'REAL NEWLY-READY BOUNDED ASCII SERVICE: PASSED' \
-  'REAL AMTI_SETTINGSCOMMAND EMPTYTYPE CODEC: PASSED'; do
+  'REAL AMTI_SETTINGSCOMMAND EMPTYTYPE CODEC: PASSED' \
+  'REAL FILEMETADATA STRUCTURED ASCII CODEC: PASSED'; do
   grep -Fv -- "$line" "$deep" >"$tmp/deep-drop.yml"
   expect_fail "deep dropped: $line" "$fast" "$tmp/deep-drop.yml" "$sleet"
 done
@@ -316,6 +325,33 @@ glued058="${good058/UCI 2.6 CONSTRAINED STRING: AircraftIdentifierType | x
 /}"
 must_reject "prefixed 058 marker" task058_markers "$glued058"
 
+task059_markers() {
+  set -euo pipefail
+  local output="$1"
+  grep -Fqx 'UCI 2.5 STRUCTURED ASCII INVENTORY: PASSED' <<<"$output"
+  grep -Fqx 'UCI 2.6 STRUCTURED ASCII INVENTORY: PASSED' <<<"$output"
+  grep -Fqx 'UCI 2.5 STRUCTURED ASCII MESSAGE IMPACT: RECORDED' <<<"$output"
+  grep -Fqx 'UCI 2.6 STRUCTURED ASCII MESSAGE IMPACT: RECORDED' <<<"$output"
+  grep -qE '^test result: ok\. 2 passed' <<<"$output"
+}
+good059="test task059_real_uci_inventory_and_coverage ... UCI 2.5 STRUCTURED ASCII: x
+UCI 2.5 STRUCTURED ASCII INVENTORY: PASSED
+UCI 2.6 STRUCTURED ASCII INVENTORY: PASSED
+test task059_real_uci_message_impact ... UCI 2.5 STRUCTURED ASCII MESSAGE: x
+UCI 2.5 STRUCTURED ASCII MESSAGE IMPACT: RECORDED
+UCI 2.6 STRUCTURED ASCII MESSAGE IMPACT: RECORDED
+test result: ok. 2 passed; 0 failed"
+must_accept task059_markers "$good059"
+for marker in \
+  'UCI 2.5 STRUCTURED ASCII INVENTORY: PASSED' \
+  'UCI 2.6 STRUCTURED ASCII INVENTORY: PASSED' \
+  'UCI 2.5 STRUCTURED ASCII MESSAGE IMPACT: RECORDED' \
+  'UCI 2.6 STRUCTURED ASCII MESSAGE IMPACT: RECORDED' \
+  'test result: ok. 2 passed'; do
+  must_reject "missing $marker" task059_markers "${good059/"$marker"/}"
+done
+must_reject "prefixed 059 marker" task059_markers "${good059/UCI 2.6 STRUCTURED ASCII INVENTORY: PASSED/foreign UCI 2.6 STRUCTURED ASCII INVENTORY: PASSED}"
+
 # The Deep CI marker lines must be exactly the shapes tested above.
 for shape in \
   "grep -Eqx '(test task054_real_uci_category_a_selection_generates_and_compiles \\.\\.\\. )?UCI 2\\.5 REAL CATEGORY-A MEMBER REMAPPING: PASSED' <<<\"\$output\"" \
@@ -328,6 +364,8 @@ for shape in \
   "grep -Eqx '(test task057_real_uci_category_a_log_generates_and_compiles \\.\\.\\. )?UCI 2\\.5 REAL CATEGORY-A DURATION SERVICE: PASSED' <<<\"\$output\"" \
   "grep -Fqx 'UCI 2.6 BOUNDED ASCII INVENTORY: PASSED' <<<\"\$output\"" \
   "grep -Fqx 'UCI 2.6 BOUNDED ASCII MESSAGE IMPACT: RECORDED' <<<\"\$output\"" \
+  "grep -Fqx 'UCI 2.6 STRUCTURED ASCII INVENTORY: PASSED' <<<\"\$output\"" \
+  "grep -Fqx 'UCI 2.6 STRUCTURED ASCII MESSAGE IMPACT: RECORDED' <<<\"\$output\"" \
   "grep -Eqx '(test task058_real_uci_newly_ready_service_generates_and_compiles \\.\\.\\. )?UCI 2\\.5 REAL NEWLY-READY BOUNDED ASCII SERVICE: PASSED' <<<\"\$output\""; do
   grep -Fq -- "$shape" "$deep" || die "deep-ci.yml no longer uses tested shape: $shape"
   ok

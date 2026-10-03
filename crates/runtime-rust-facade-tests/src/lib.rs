@@ -128,6 +128,15 @@ pub mod codec_bounded_ascii {
     ));
 }
 
+/// Task 059: pinned deterministic structured-ASCII String carriers and codec.
+#[allow(clippy::all, clippy::pedantic)]
+pub mod codec_structured_ascii {
+    include!(concat!(
+        env!("OUT_DIR"),
+        "/codec_structured_ascii/service_api.rs"
+    ));
+}
+
 /// Task 050: the REAL UCI 2.5 PositionReport model, service API, and codec,
 /// generated only when `AMS_GRA_UCI_2_5_ROOT` names the SHA-256-verified
 /// pinned root (see build.rs).
@@ -152,6 +161,16 @@ pub mod real_uci_amti_settings {
     include!(concat!(
         env!("OUT_DIR"),
         "/real_uci_amti_settings/service_api.rs"
+    ));
+}
+
+/// Task 059: REAL pinned FileMetadata, whose FileNameType is structured ASCII.
+#[cfg(ams_gra_real_uci)]
+#[allow(clippy::all, clippy::pedantic)]
+pub mod real_uci_file_metadata {
+    include!(concat!(
+        env!("OUT_DIR"),
+        "/real_uci_file_metadata/service_api.rs"
     ));
 }
 

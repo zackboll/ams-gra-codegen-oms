@@ -22,6 +22,73 @@ fn pub_body(frame: &str, topic: &str) -> Value {
     serde_json::from_str(body).expect("PUB body is JSON")
 }
 
+/// The Task 059 checked structured profile crosses the generated codec and
+/// mock-OWP transport in both directions. Invalid lexical text is reported as
+/// a decode event, never delivered to the typed handler.
+#[test]
+fn task059_structured_ascii_generated_codec_round_trips_through_mock_owp() {
+    use ams_gra_oms_runtime_rust_facade_tests::codec_structured_ascii::model as m;
+    use ams_gra_oms_runtime_rust_facade_tests::codec_structured_ascii::service_api::function_tail as tail;
+    use ams_gra_oms_runtime_rust_facade_tests::codec_structured_ascii::service_codec::ServiceCodec as StructuredCodec;
+
+    let peer = MockPeer::start();
+    let mut runtime = SleetRuntime::connect(
+        RuntimeConfig::new(&peer.url, "svc-1", "000.1.0"),
+        StructuredCodec,
+    )
+    .expect("connect");
+    assert!(peer.next_text().starts_with("INIT "));
+    let (tx, rx) = mpsc::channel();
+    let subscription = tail::exchange_input_tail::subscribe(
+        &mut runtime,
+        move |message: &tail::exchange_input_tail::Payload| {
+            tx.send(message.clone()).expect("test alive");
+        },
+    )
+    .expect("subscribe");
+    peer.expect("SUB sub-1 StructuredNotice structured-topic");
+    let value = m::StructuredPayload {
+        imo: m::ImoType::new("IMO0000001").unwrap(),
+        prf: m::PrfType::new("1178").unwrap(),
+        filename: Some(m::FileNameType::new("a.tar.bz2").unwrap()),
+        imos: m::BoundedVec::new(Vec::new()).unwrap(),
+        octals: m::UnboundedVec::new(Vec::new()).unwrap(),
+        pick: m::StructuredPick::Model(m::ModelType::new("aB3").unwrap()),
+    };
+    tail::exchange_output_tail::publish(&mut runtime, &value).expect("publish");
+    assert_eq!(
+        pub_body(&peer.next_text(), "structured-topic"),
+        serde_json::json!({"StructuredNotice": {
+            "Imo":"IMO0000001", "Prf":"1178", "FileName":"a.tar.bz2",
+            "Pick":{"Model":"aB3"}
+        }})
+    );
+    peer.send(
+        r#"MSG sub-1 {"StructuredNotice":{"Imo":"IMO9999999","Prf":"178","Pick":{"Model":"aB3"}}}"#,
+    );
+    assert_eq!(
+        rx.recv_timeout(WAIT).expect("typed payload").imo.as_str(),
+        "IMO9999999"
+    );
+    peer.send(
+        r#"MSG sub-1 {"StructuredNotice":{"Imo":"imo9999999","Prf":"178","Pick":{"Model":"aB3"}}}"#,
+    );
+    match runtime.recv_event_timeout(WAIT) {
+        Some(RuntimeEvent::SubscriptionDecodeError {
+            message_name,
+            error: MessageDecodeError::Codec(error),
+            ..
+        }) => {
+            assert_eq!(message_name, "StructuredNotice");
+            assert!(error.message().contains("ImoType"), "{}", error.message());
+        }
+        other => panic!("expected invalid lexical decode event, got {other:?}"),
+    }
+    assert!(rx.try_recv().is_err());
+    subscription.unsubscribe().expect("unsubscribe");
+    peer.expect("UNSUB sub-1");
+}
+
 /// Task 051: qualified NON-OAM `runtime-test.xsd` with its GENERATED codec:
 /// typed payload -> generated `service_codec.rs` -> generated publish façade
 /// -> `SleetRuntime<ServiceCodec>` -> pinned sleet-client -> mock OWP. No
