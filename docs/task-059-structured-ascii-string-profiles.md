@@ -263,8 +263,16 @@ Task 058 whole-message baseline attribution is preserved, not re-created:
 IMO_NumberType 39 (+1 support), AO_PRF_CodeType 31, TimeType 28 per release
 in its 305 reaching-message population. Task 059 has zero remaining IMO/AO_PRF
 blockers in its 131 reaching-message population; TimeType remains 1 in that
-subset. These different populations must not be conflated. Final workspace
-bounded-ASCII message-impact output supplies the current 305-message distribution.
+subset. These different populations must not be conflated. The final workspace
+executes the bounded-ASCII regression, but libtest captures successful stdout;
+the current numeric distribution must be read from the pinned evidence logs.
+
+The first exact-head Deep CI run completed the preceding real-UCI tasks but
+hit the real-uci job's one-hour execution limit during Task 059 (GitHub's
+explicit timeout annotation). The job budget is now 120 minutes; all tests,
+required execution markers and fail-closed checks remain unchanged. This
+workflow/documentation-only correction does not invalidate local workspace,
+production byte-identity or MSRV evidence. Exact-head CI must pass again.
 
 Delivery requires successful Fast and Deep CI on the exact pushed PR head;
 no merge or auto-merge is authorized. Remote run IDs and final SHA are recorded
