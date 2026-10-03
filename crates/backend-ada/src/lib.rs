@@ -2093,8 +2093,11 @@ fn render_ada_alternating_ascii_body(
             for (b, branch) in product.alternatives.iter().enumerate() {
                 let matcher = render_ada_ascii_sequence(branch);
                 helpers.push_str(&format!("      function Component_{g}_{b} (Text : String) return Boolean is\n         Pos : Natural := 0;\n      begin\n{matcher}         return Pos = Text'Length;\n      end Component_{g}_{b};\n"));
+                // The empty-component short circuit below establishes Finish > Start.
+                // Subtract the offset before adding Text'First: the input may end
+                // at Positive'Last, so Text'First + Finish can overflow at EOF.
                 calls.push(format!(
-                    "Component_{g}_{b} (Text (Text'First + Start .. Text'First + Finish - 1))"
+                    "Component_{g}_{b} (Text (Text'First + Start .. Text'First + (Finish - 1)))"
                 ));
             }
             let union = calls.join(" or else ");
