@@ -114,8 +114,8 @@ jobs:
           grep -Eqx '(test task054_real_uci_category_a_selection_generates_and_compiles \.\.\. )?UCI 2\.5 REAL CATEGORY-A MEMBER REMAPPING: PASSED' <<<"$output"
           grep -qE '^test result: ok\. 4 passed' <<<"$output"
       # Task 056: readiness accounts for generated-support declarations.
-      # Pinned OrderOfBattle is NOT READY on generated support (never reaching
-      # the backend) in every backend/release, and the Task 054 category-A set
+      # Task 060 closes the remaining OrderOfBattle support blockers in every
+      # backend/release; the historical Task 054 category-A set
       # keeps readiness == generation. Both tests print other lines first, so
       # their markers are always on their own whole lines.
       - name: Real UCI generated-support readiness parity (Task 056, must execute)
@@ -180,6 +180,24 @@ jobs:
           grep -Fqx 'UCI 2.5 STRUCTURED ASCII MESSAGE IMPACT: RECORDED' <<<"$output"
           grep -Fqx 'UCI 2.6 STRUCTURED ASCII MESSAGE IMPACT: RECORDED' <<<"$output"
           grep -qE '^test result: ok\. 2 passed' <<<"$output"
+
+      - name: Real UCI alternating ASCII evidence (Task 060, must execute)
+        run: |
+          set -euo pipefail
+          output="$(cargo test --release -p ams-gra-codegen-oms --test uci_alternating_admission -- --nocapture --test-threads 1 2>&1)"
+          printf '%s\n' "$output"
+          grep -Fqx 'UCI 2.5 TASK060 FINAL ADMISSION: baseline=19 admitted=15 DEFERRED_UNICODE=3 DEFERRED_COMPLEX=1' <<<"$output"
+          grep -Fqx 'UCI 2.6 TASK060 FINAL ADMISSION: baseline=19 admitted=15 DEFERRED_UNICODE=3 DEFERRED_COMPLEX=1' <<<"$output"
+          grep -qE '^test result: ok\. 2 passed' <<<"$output"
+          output="$(cargo test --release -p ams-gra-codegen-oms --test uci_alternating_after -- --nocapture --test-threads 1 2>&1)"
+          printf '%s\n' "$output"
+          grep -Fqx 'UCI 2.5 TASK060 PROJECTED MESSAGE IMPACT: PASSED' <<<"$output"
+          grep -Fqx 'UCI 2.6 TASK060 PROJECTED MESSAGE IMPACT: PASSED' <<<"$output"
+          grep -Fqx 'UCI 2.5 TASK060 OrderOfBattle COMPILER CODEC VERTICAL: PASSED' <<<"$output"
+          grep -Fqx 'UCI 2.6 TASK060 OrderOfBattle COMPILER CODEC VERTICAL: PASSED' <<<"$output"
+          grep -Fqx 'UCI 2.5 TASK060 SMTI_SettingsCommand COMPILER CODEC VERTICAL: PASSED' <<<"$output"
+          grep -Fqx 'UCI 2.6 TASK060 SMTI_SettingsCommand COMPILER CODEC VERTICAL: PASSED' <<<"$output"
+          grep -qE '^test result: ok\. 3 passed' <<<"$output"
 
   # The runtime crates declare rust-version = "1.95". Fast CI checks them at
   # 1.95.0 on synthetic fixtures only; this job adds the generated REAL UCI 2.5

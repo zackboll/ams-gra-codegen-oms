@@ -295,6 +295,25 @@ jobs:
           require_one_test task059_structured_ascii_generated_codec_round_trips_through_mock_owp \
             cargo test -p ams-gra-oms-runtime-rust-facade-tests --test generated_codec_mock_owp \
             task059_structured_ascii_generated_codec_round_trips_through_mock_owp
+          # Task 060: compiled synthetic proofs must execute, not just build.
+          require_one_test generated_group_and_carrier_composes_with_production_service_codec \
+            cargo test -p ams-gra-oms-backend-rust --lib \
+            generated_group_and_carrier_composes_with_production_service_codec
+          require_one_test closed_sum_container_traits_follow_concrete_payload_traits \
+            cargo test -p ams-gra-oms-backend-rust --test equality_closed_sum \
+            closed_sum_container_traits_follow_concrete_payload_traits
+          require_one_test absent_only_storage_preserves_equality_in_closed_world \
+            cargo test -p ams-gra-oms-backend-rust --test equality_closed_sum \
+            absent_only_storage_preserves_equality_in_closed_world
+          require_one_test task060_compiled_checked_string_codec_preserves_union_lexicals \
+            cargo test -p ams-gra-oms-runtime-rust-facade-tests --test generated_codec_alternating_ascii \
+            task060_compiled_checked_string_codec_preserves_union_lexicals
+          require_one_test generated_support_string_controls_final_readiness_not_selected_counts \
+            cargo test -p ams-gra-codegen-oms --test alternating_capability \
+            generated_support_string_controls_final_readiness_not_selected_counts
+          require_one_test task060_alternating_ascii_generated_codec_mock_owp_round_trip \
+            cargo test -p ams-gra-oms-runtime-rust-facade-tests --test generated_codec_mock_owp \
+            task060_alternating_ascii_generated_codec_mock_owp_round_trip
           # Task 051 replaced task050_non_oam_payload_fails_codec_preflight with
           # task051_qualified_non_oam_payload_is_codec_ready (below): a
           # qualified non-OAM payload is now codec READY. Task 052 replaced

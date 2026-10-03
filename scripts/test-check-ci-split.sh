@@ -85,6 +85,14 @@ for line in \
   'REAL CATEGORY-A DURATION SERVICE: PASSED' \
   '--test uci_bounded_ascii_string' \
   '--test uci_structured_ascii' \
+  '--test uci_alternating_admission' \
+  '--test uci_alternating_after' \
+  'UCI 2.5 TASK060 PROJECTED MESSAGE IMPACT: PASSED' \
+  'UCI 2.6 TASK060 PROJECTED MESSAGE IMPACT: PASSED' \
+  'UCI 2.5 TASK060 OrderOfBattle COMPILER CODEC VERTICAL: PASSED' \
+  'UCI 2.6 TASK060 OrderOfBattle COMPILER CODEC VERTICAL: PASSED' \
+  'UCI 2.5 TASK060 SMTI_SettingsCommand COMPILER CODEC VERTICAL: PASSED' \
+  'UCI 2.6 TASK060 SMTI_SettingsCommand COMPILER CODEC VERTICAL: PASSED' \
   'UCI 2.5 STRUCTURED ASCII INVENTORY: PASSED' \
   'UCI 2.6 STRUCTURED ASCII INVENTORY: PASSED' \
   'UCI 2.5 STRUCTURED ASCII MESSAGE IMPACT: RECORDED' \
@@ -102,6 +110,10 @@ done
 # UCI 2.6 fetched twice in one workflow.
 { cat "$deep"; printf '          scripts/fetch-pinned-uci-2.6.sh "$RUNNER_TEMP/again"\n'; } >"$tmp/deep-refetch.yml"
 expect_fail "deep refetches UCI 2.6" "$fast" "$tmp/deep-refetch.yml" "$sleet"
+for target in uci_alternating_admission uci_alternating_after; do
+  { cat "$fast"; printf '      - run: cargo test -p ams-gra-codegen-oms --test %s\n' "$target"; } >"$tmp/fast-task060.yml"
+  expect_fail "Fast leaked Task 060 $target" "$tmp/fast-task060.yml" "$deep" "$sleet"
+done
 # `printf | grep -q` reintroduced in Deep CI or in the Sleet harness.
 { cat "$deep"; printf "          printf '%%s\\\\n' \"\$output\" | grep -q '^UCI 2.5 BINARY PROVENANCE INVENTORY: PASSED\$'\n"; } >"$tmp/deep-pipe.yml"
 expect_fail "deep printf|grep -q" "$fast" "$tmp/deep-pipe.yml" "$sleet"
@@ -163,6 +175,16 @@ task058_markers() {
   grep -Eqx '(test task058_real_uci_newly_ready_service_generates_and_compiles \.\.\. )?UCI 2\.5 REAL NEWLY-READY BOUNDED ASCII SERVICE: PASSED' <<<"$output"
   grep -qE '^test result: ok\. 5 passed' <<<"$output"
 }
+task060_markers() {
+  set -euo pipefail
+  local output="$1"
+  for release in 2.5 2.6; do
+    grep -Fqx "UCI $release TASK060 PROJECTED MESSAGE IMPACT: PASSED" <<<"$output"
+    grep -Fqx "UCI $release TASK060 OrderOfBattle COMPILER CODEC VERTICAL: PASSED" <<<"$output"
+    grep -Fqx "UCI $release TASK060 SMTI_SettingsCommand COMPILER CODEC VERTICAL: PASSED" <<<"$output"
+  done
+  grep -qE '^test result: ok\. 3 passed' <<<"$output"
+}
 # Run a marker-check function as a PLAIN statement (never inside if/||/&&):
 # bash disables errexit for everything in a conditional context, subshells
 # included, which would let all but the last grep fail silently.
@@ -181,6 +203,24 @@ must_reject() {
 # Markers FIRST, then a large tail: `printf | grep -q` would exit early here
 # and could SIGPIPE the writer; here-strings must still pass.
 noise="$(for _ in $(seq 1 20000); do echo 'inventory row: SomeType.SomeMember -> Some_Member'; done)"
+
+good060="UCI 2.5 TASK060 PROJECTED MESSAGE IMPACT: PASSED
+UCI 2.6 TASK060 PROJECTED MESSAGE IMPACT: PASSED
+UCI 2.5 TASK060 OrderOfBattle COMPILER CODEC VERTICAL: PASSED
+UCI 2.6 TASK060 OrderOfBattle COMPILER CODEC VERTICAL: PASSED
+UCI 2.5 TASK060 SMTI_SettingsCommand COMPILER CODEC VERTICAL: PASSED
+UCI 2.6 TASK060 SMTI_SettingsCommand COMPILER CODEC VERTICAL: PASSED
+test result: ok. 3 passed; 0 failed
+$noise"
+must_accept task060_markers "$good060"
+for marker in \
+  'UCI 2.6 TASK060 PROJECTED MESSAGE IMPACT: PASSED' \
+  'UCI 2.6 TASK060 OrderOfBattle COMPILER CODEC VERTICAL: PASSED' \
+  'UCI 2.5 TASK060 SMTI_SettingsCommand COMPILER CODEC VERTICAL: PASSED' \
+  'test result: ok. 3 passed'; do
+  must_reject "missing Task060 $marker" task060_markers "${good060/"$marker"/}"
+done
+must_reject "prefixed Task060 marker" task060_markers "${good060/UCI 2.5 TASK060 PROJECTED/x UCI 2.5 TASK060 PROJECTED}"
 
 good054="running 4 tests
 UCI 2.5 MEMBER IDENTIFIER INVENTORY: PASSED

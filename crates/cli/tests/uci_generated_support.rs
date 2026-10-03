@@ -21,12 +21,11 @@ use ams_gra_oms_codegen_core::{
 use ams_gra_oms_ir::SchemaIr;
 use ams_gra_oms_service_contract::{Contract, parse_yaml};
 use ams_gra_oms_xsd_frontend::load_schema_set;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 
 const UCI_25_SHA256: &str = "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27";
 const UCI_26_SHA256: &str = "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b";
-const OAM: &str = "https://www.vdl.afrl.af.mil/programs/oam";
 const WORLD: GenerationWorld = GenerationWorld::ClosedSchemaSet;
 
 const LANGUAGES: [(BackendLanguage, &str); 3] = [
@@ -91,7 +90,6 @@ struct Expected {
     selected_types: usize,
     support_types: usize,
     unsupported_support: usize,
-    first_unsupported_support: &'static str,
 }
 
 const RELEASES: [Expected; 2] = [
@@ -115,8 +113,7 @@ const RELEASES: [Expected; 2] = [
         // prefix, deliberately out of scope).
         // Task 059: nine deterministic ASCII shapes become renderable. Only
         // three alternation profiles remain in the 442-name support set.
-        unsupported_support: 3,
-        first_unsupported_support: "MilitaryGridType",
+        unsupported_support: 0,
     },
     Expected {
         release: "UCI 2.6",
@@ -131,20 +128,17 @@ const RELEASES: [Expected; 2] = [
         // Task 058: 39 -> 12, the same 27 bounded-ASCII declarations as 2.5;
         // Task 059: nine more support declarations are renderable; the
         // remaining three require union/alternation semantics.
-        unsupported_support: 3,
-        first_unsupported_support: "MilitaryGridType",
+        unsupported_support: 0,
     },
 ];
 
-/// Sections 4/17/22/23: pinned `OrderOfBattle` is now NOT READY on its
-/// generated support in every backend and release, the contract-selected
-/// counts are unchanged, the backend really does reject that projected
-/// schema, and `service-generate` stops before writing anything.
+/// Current-state regression: Task 060 closes the final three support blockers.
+/// Historical Task 056/058/059 measurements remain in their evidence documents.
 #[test]
 fn task056_real_uci_order_of_battle_support_parity() {
     let mut ran = false;
     for expected in &RELEASES {
-        let Some((root, schema)) = pinned_root(expected.variable, expected.sha256) else {
+        let Some((_root, schema)) = pinned_root(expected.variable, expected.sha256) else {
             continue;
         };
         ran = true;
@@ -171,72 +165,29 @@ fn task056_real_uci_order_of_battle_support_parity() {
             assert_eq!(readiness.selected_types_renderable, expected.selected_types);
             assert!(readiness.unsupported_types.is_empty(), "{cell}");
             assert!(readiness.blocked_messages.is_empty(), "{cell}");
-            // The generated-support surface is what blocks it.
-            assert!(!readiness.is_ready(), "{cell} must be NOT READY");
+            assert!(readiness.is_ready(), "{cell}");
             assert_eq!(
                 readiness.generated_support_types_total,
                 expected.support_types
             );
-            let unsupported = &readiness.unsupported_generated_support_types;
-            assert_eq!(unsupported.len(), expected.unsupported_support, "{cell}");
-            assert_eq!(
-                unsupported
-                    .iter()
-                    .map(|n| n.local_name.as_str())
-                    .collect::<Vec<_>>(),
-                ["MilitaryGridType", "NotationType", "RecordOriginatorType"],
-                "{cell}"
-            );
             assert_eq!(
                 readiness.generated_support_types_renderable,
-                expected.support_types - expected.unsupported_support
+                expected.support_types
             );
             assert_eq!(
-                unsupported[0].local_name, expected.first_unsupported_support,
-                "{cell}"
+                readiness.unsupported_generated_support_types.len(),
+                expected.unsupported_support
             );
-            assert!(unsupported.iter().all(|name| name.namespace_uri == OAM));
-            assert!(readiness.backend_blocker.is_none(), "{cell}");
-            assert!(readiness.service_api_blocker.is_none(), "{cell}");
-
-            // Parity: the backend really rejects this projected schema, and
-            // what it names is in the reported support set (the historical
-            // pre-Task-056 service-generate failure).
-            let error = backend(language)
+            assert!(readiness.backend_blocker.is_none());
+            assert!(readiness.service_api_blocker.is_none());
+            let files = backend(language)
                 .generate(projection.schema(), WORLD)
-                .expect_err("the backend rejects the projected schema")
-                .message;
-            // Task 057: every backend in both releases fails first on the
-            // same String-profile declaration, which is in the support set.
-            // Task 059: only the three union profiles remain unsupported.
-            assert!(
-                error.contains(" MilitaryGridType"),
-                "{cell}: unexpected backend failure {error}"
-            );
-            assert!(!error.contains("Duration"), "{cell}: {error}");
-            for gone in [
-                "DurationType",
-                "EphemerisOrbitalModelType",
-                "OrbitalEphemerisParametersReferenceType",
-                "AircraftIdentifierType",
-                "EmptyType",
-                "AlphanumericDashSpaceUnderscoreStringLength15Type",
-            ] {
-                assert!(
-                    unsupported.iter().all(|entry| entry.local_name != gone),
-                    "{cell}: {gone} is still unsupported"
-                );
-            }
+                .expect("Task 060 support renders");
+            assert!(!files.is_empty());
             println!(
-                "{cell} ORDEROFBATTLE: selected {} support {} unsupported support {} first {} \
-                 backend: {error}",
-                readiness.selected_types_total,
-                readiness.generated_support_types_total,
-                unsupported.len(),
-                unsupported[0].local_name
+                "{cell} ORDEROFBATTLE: selected {} support {} unsupported support 0 READY",
+                expected.selected_types, expected.support_types
             );
-
-            cli_stops_before_generation(&root, expected, label);
         }
         println!(
             "{} ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED",
@@ -246,72 +197,6 @@ fn task056_real_uci_order_of_battle_support_parity() {
     if !ran {
         eprintln!("SKIPPED: no pinned UCI root is set");
     }
-}
-
-/// The user-visible result: `service-check` NOT READY on generated support,
-/// and `service-generate` prints the same report, exits 1, and writes nothing.
-fn cli_stops_before_generation(root: &Path, expected: &Expected, label: &str) {
-    let scratch = std::env::temp_dir().join(format!(
-        "ams-gra-oms-task056-oob-{}-{label}",
-        expected.version
-    ));
-    let _ = std::fs::remove_dir_all(&scratch);
-    std::fs::create_dir_all(&scratch).expect("scratch");
-    let contract_path = scratch.join("order-of-battle.yaml");
-    std::fs::write(
-        &contract_path,
-        contract_yaml("OrderOfBattle", expected.version),
-    )
-    .expect("write contract");
-    let output_root = scratch.join("out");
-    let run = |command: &str| {
-        let mut cli = Command::new(env!("CARGO_BIN_EXE_ams-gra-codegen-oms"));
-        cli.arg(command)
-            .arg("--schema")
-            .arg(root)
-            .arg("--contract")
-            .arg(&contract_path)
-            .args(["--language", label, "--world", "closed-schema"]);
-        if command == "service-generate" {
-            cli.arg("--output").arg(&output_root);
-        }
-        cli.output().expect("CLI runs")
-    };
-    let check = run("service-check");
-    let report = String::from_utf8(check.stdout).expect("UTF-8");
-    assert_eq!(check.status.code(), Some(1), "{label}: {report}");
-    for line in [
-        format!("selected type closure: {}", expected.selected_types),
-        format!("renderable selected types: {}", expected.selected_types),
-        format!("generated support types: {}", expected.support_types),
-        format!(
-            "renderable generated support types: {}",
-            expected.support_types - expected.unsupported_support
-        ),
-        "status: NOT READY".to_owned(),
-        "unsupported generated support types:".to_owned(),
-        format!("  {{{OAM}}}{}", expected.first_unsupported_support),
-    ] {
-        assert!(
-            report.lines().any(|l| l == line),
-            "{label}: {line}\n{report}"
-        );
-    }
-    assert!(!report.contains("unsupported selected types:"), "{report}");
-    let generated = run("service-generate");
-    assert_eq!(generated.status.code(), Some(1), "{label}");
-    assert_eq!(String::from_utf8(generated.stdout).expect("UTF-8"), report);
-    let stderr = String::from_utf8_lossy(&generated.stderr);
-    assert!(stderr.contains("no files were generated"), "{stderr}");
-    assert!(
-        !stderr.contains("IR construct"),
-        "backend was reached: {stderr}"
-    );
-    assert!(
-        !output_root.exists(),
-        "{label}: output directory was created"
-    );
-    let _ = std::fs::remove_dir_all(&scratch);
 }
 
 /// The 35 Task 054 category-A messages (single-message contracts).
@@ -354,9 +239,8 @@ const CATEGORY_A: [&str; 35] = [
 ];
 
 /// Section 25: the Task 054 category-A set, through the library (no CLI
-/// subprocess per message). In every backend each of the 34 messages that
-/// really generated stays READY and its projected schema still generates;
-/// `OrderOfBattle` alone becomes NOT READY, on generated support. Readiness
+/// subprocess per message). All 35 messages now remain READY, including
+/// `OrderOfBattle` after Task 060 closes its support blockers. Readiness
 /// and backend generation agree for all 105 cells.
 #[test]
 fn task056_real_uci_category_a_readiness_matches_generation() {
@@ -389,8 +273,8 @@ fn task056_real_uci_category_a_readiness_matches_generation() {
                 not_ready.push(message);
             }
         }
-        assert_eq!(not_ready, ["OrderOfBattle"], "{label}");
-        assert_eq!(ready.len(), 34, "{label}");
+        assert!(not_ready.is_empty(), "{label}: {not_ready:?}");
+        assert_eq!(ready.len(), 35, "{label}");
         println!(
             "UCI 2.5 CATEGORY-A {label}: READY+generated {} NOT READY {:?}",
             ready.len(),

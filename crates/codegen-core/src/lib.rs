@@ -2,6 +2,7 @@
 
 mod abstract_value;
 mod ada_optional;
+mod alternating_ascii;
 mod backend_layout;
 mod backend_names;
 mod backend_preflight;
@@ -29,6 +30,10 @@ pub use abstract_value::{
 };
 pub use ada_optional::{
     ada_optional_direct_primitive_representable, ada_record_field_uses_optional_wrapper,
+};
+pub use alternating_ascii::{
+    AlternatingAsciiProfile, AlternatingAsciiRow, AsciiBranch, DelimitedAsciiProduct,
+    alternating_ascii_profile, alternating_ascii_rows, factor_delimited_ascii,
 };
 pub use backend_layout::{
     AdaModelFiles, BackendModelLayout, ModelArtifact, ModelUnit, ada_model_file_names,

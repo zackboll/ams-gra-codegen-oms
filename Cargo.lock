@@ -40,8 +40,10 @@ version = "0.1.0"
 dependencies = [
  "ams-gra-oms-codegen-core",
  "ams-gra-oms-ir",
+ "ams-gra-oms-runtime-rust",
  "ams-gra-oms-service-contract",
  "ams-gra-oms-xsd-frontend",
+ "serde_json",
 ]
 
 [[package]]

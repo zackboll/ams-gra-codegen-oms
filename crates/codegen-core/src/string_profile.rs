@@ -1248,6 +1248,8 @@ pub fn bounded_ascii_profiles()
 /// sets delegate to Task 058; new sets are defined once as ordinal ranges.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StructuredAsciiAlphabet {
+    /// Exact finite sets used only in frozen Task 060 semantic bodies.
+    Finite(&'static [(u8, u8)]),
     Existing(BoundedAsciiAlphabet),
     One,
     OneToSeven,
@@ -1274,6 +1276,7 @@ impl StructuredAsciiAlphabet {
     pub const fn ranges(self) -> &'static [(u8, u8)] {
         use StructuredAsciiAlphabet as A;
         match self {
+            A::Finite(ranges) => ranges,
             A::Existing(a) => a.ranges(),
             A::One => &[(0x31, 0x31)],
             A::OneToSeven => &[(0x31, 0x37)],
@@ -1775,6 +1778,8 @@ pub enum StringProfile {
     },
     /// One of the exact pinned deterministic ASCII expression/facet rows.
     StructuredAscii(StructuredAsciiProfile),
+    /// Task 060 exact pinned finite-union profiles; groups retain AND semantics.
+    AlternatingAscii(&'static crate::AlternatingAsciiProfile),
 }
 
 /// Why a constrained `string` declaration falls outside the implemented set.
@@ -1893,6 +1898,9 @@ pub fn string_profile(
     }
     if let Some(profile) = match_structured_ascii_profile(constraints) {
         return Ok(Some(profile));
+    }
+    if let Some(profile) = crate::alternating_ascii_profile(constraints) {
+        return Ok(Some(StringProfile::AlternatingAscii(profile)));
     }
     Err(StringProfileError::UnsupportedConstraints)
 }

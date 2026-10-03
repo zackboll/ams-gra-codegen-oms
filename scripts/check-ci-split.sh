@@ -44,7 +44,9 @@ for forbidden in \
   '--test uci_generated_support' \
   '--test uci_duration' \
   '--test uci_bounded_ascii_string' \
-  '--test uci_structured_ascii'; do
+  '--test uci_structured_ascii' \
+  '--test uci_alternating_admission' \
+  '--test uci_alternating_after'; do
   if grep -Fq -- "$forbidden" <<<"$fast_code"; then
     fail "Fast CI must not reference $forbidden"
   fi
@@ -104,6 +106,14 @@ for required in \
   'REAL CATEGORY-A DURATION SERVICE: PASSED' \
   '--test uci_bounded_ascii_string' \
   '--test uci_structured_ascii' \
+  '--test uci_alternating_admission' \
+  '--test uci_alternating_after' \
+  'UCI 2.5 TASK060 PROJECTED MESSAGE IMPACT: PASSED' \
+  'UCI 2.6 TASK060 PROJECTED MESSAGE IMPACT: PASSED' \
+  'UCI 2.5 TASK060 OrderOfBattle COMPILER CODEC VERTICAL: PASSED' \
+  'UCI 2.6 TASK060 OrderOfBattle COMPILER CODEC VERTICAL: PASSED' \
+  'UCI 2.5 TASK060 SMTI_SettingsCommand COMPILER CODEC VERTICAL: PASSED' \
+  'UCI 2.6 TASK060 SMTI_SettingsCommand COMPILER CODEC VERTICAL: PASSED' \
   'UCI 2.5 STRUCTURED ASCII INVENTORY: PASSED' \
   'UCI 2.6 STRUCTURED ASCII INVENTORY: PASSED' \
   'UCI 2.5 STRUCTURED ASCII MESSAGE IMPACT: RECORDED' \

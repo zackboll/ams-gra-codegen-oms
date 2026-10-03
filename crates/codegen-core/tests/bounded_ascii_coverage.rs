@@ -206,8 +206,8 @@ fn negative_neighbours_fail_closed() {
         ("multi-char escape", range("\\d{1,20}", 1, 20)),
         ("wildcard", range(".{1,20}", 1, 20)),
         (
-            "alternation (NotationType)",
-            range("[A-Z0-9]{5}|UNKN|NONE", 4, 5),
+            "unobserved alternation neighbor",
+            range("[A-Z0-9]{5}|UNKN|NOPE", 4, 5),
         ),
         ("unbounded *", range("[0-7]*", 1, 16)),
     ];
