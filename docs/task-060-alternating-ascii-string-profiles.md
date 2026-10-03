@@ -1,10 +1,11 @@
 # Task 060 — alternating ASCII profiles and compiler/codec evidence
 
-> **Current verification status:** the original local capability evidence passes,
-> but hosted head `cdbf095` failed Fast (zero matched AND unit tests) and Deep
-> real-uci (stale constrained-Binary ProductMetadata assertion). Corrective
-> tests/workflow changes and explicit provenance are recorded below. Hosted
-> final-head success remains mandatory; no merge/readiness claim is made.
+> **Current verification status:** Fast passed on `ca31412`, but Deep failed in
+> Task 060's generated Rust compiler/codec probe because `--offline` required an
+> uncached dependency. Live job evidence shows Duration and Tasks 058/059 passed,
+> contrary to the initial Duration-failure report. The in-place corrective and
+> diagnostic-preserving wrappers are recorded below. Fresh final-head hosted
+> Fast and Deep success remain mandatory; no merge/readiness claim is made.
 
 
 ## Pattern-group semantics
@@ -1097,3 +1098,252 @@ passed in **110.06s**. Its actual workflow block verified all four unchanged
 UCI 2.5/2.6 inventory and message-impact markers plus the three-test summary.
 `/tmp/task060-binary-final-wrapper.{log,exit}` contains printed complete output.
 The final snapshot remained unchanged throughout this run.
+
+## Second in-place PR #61 corrective: recover live evidence first
+
+Inspected parent/source SHA: `ca31412f78a157efeef43157de58ad36471e2975` on
+`feature/060-alternating-ascii-string-profiles`, with a clean worktree. PR #61
+remains the existing main-target review PR; no replacement PR, rebase, merge,
+timeout increase, or Task 061 edit is part of this correction.
+
+### Actual hosted failure, not an inferred Duration expectation
+
+Live GitHub metadata and the complete job log for **Deep run 37135864214,
+attempt 1, real-uci job 111240192389** show:
+
+* Tasks 052/053/054/056 **passed**.
+* Task 057 Duration **passed**, four tests in **1063.12s**, with all five
+  inventory/impact/real-Log markers.
+* Tasks 058 and 059 **passed**, five and two tests respectively; they were
+  **not skipped**.
+* Task 060 admission passed two tests. The subsequent `uci_alternating_after`
+  failed: two passed, one failed, command exit **101**. Failing subtest:
+  `task060_real_service_compiler_and_codec_verticals`, assertion at
+  `crates/cli/tests/uci_alternating_after.rs:358`.
+
+First relevant diagnostic, during the **UCI 2.5 OrderOfBattle Rust generated
+client Cargo invocation**, before the codec client could execute:
+
+```text
+2.5 OrderOfBattle rust: error: failed to download `block-buffer v0.10.4`
+
+Caused by:
+  attempting to make an HTTP request, but --offline was specified
+```
+
+This is not an actual-versus-expected inventory/count failure. The isolated
+generated Cargo manifest includes the existing runtime dependencies, but the
+CLI test build in this Deep job does not guarantee their crate archives are
+cached. The explicit `cargo run --offline --quiet` makes that cache prerequisite
+an erroneous hard requirement. It is a test-harness process defect, not a
+Duration, Time, renderer, readiness, or projection defect.
+
+The old job checked out synthetic merge
+`148601f4b50304ba428b14ee7d543615fba425eb`, with parents
+`a7aed23dd9f3852d20bbabf6b5b9aecd4e96bd87` and `ca31412f78a157efeef43157de58ad36471e2975`.
+Its tree `a6d13290af254d429c263326d124f3f8383a4ce5` exactly equals the inspected
+Task 060 head's tree. Hosted Rust was **1.99.0**, GNAT **13.3.0**. Fast run
+**37135864225**, attempt 1, succeeded on that old head only.
+
+Complete hosted output: `/tmp/task060-corrective-ca31412/logs/old-real-uci.log`.
+The initial report identified a hidden Duration failure, but the live completed
+run does not support that assertion. No Duration root cause or stale
+expectation is manufactured. Historical Task 057 results remain historical.
+
+### Reproduction and minimal correction
+
+Local toolchains: Rust **1.98.1** (`48a229cea`), Cargo **1.98.1**, GNAT **14.2.0**,
+g++ **14.2.0**. Source is this Task 060 worktree, never Task 061's temporal code.
+All new logs, shells, generated files and temporary directories use the
+separate `/tmp/task060-corrective-ca31412` namespace. The existing Task 060
+release build cache is `/tmp/task060-target`; static checks use a separate
+`/home/zboll/.cache/task060-corrective-check-target`.
+
+Both variables were configured and root hashes verified before reproduction:
+
+|Variable|Existing verified schema file|Pinned release identity / root SHA-256|
+|---|---|---|
+|`AMS_GRA_UCI_2_5_ROOT`|`/tmp/task058-corrective/uci25/03_OAC-STD-002_RevE_UCI_Schema_v2_5/UCI_MessageDefinitions_v2_5_0.xsd`|v2.5 at `093610b7753944059360d3236770ab446d039556`; `ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27`|
+|`AMS_GRA_UCI_2_6_ROOT`|`/tmp/task058-corrective/uci26.extracted/UCI_MessageDefinitions_v2_6_0.xsd`|v2.6 at `78eb61b6112c8bffa40820c33124b57787fc5bd9`; `af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b`|
+
+Both release checkouts were clean and their tag revisions matched their HEADs.
+`TMPDIR=/tmp/task060-corrective-ca31412/tmp` prevents shared fixed-name probes
+from interfering with Task 061. The initial complete command was:
+
+```sh
+source /tmp/task060-corrective-ca31412/env.sh
+cargo test --release -p ams-gra-codegen-oms --test uci_duration -- \
+  --nocapture --test-threads 1
+```
+
+Complete output and explicit exit status are preserved at
+`logs/duration-original.{log,exit}` under that scratch root: **exit 0, four
+tests passed in 461.91s**. All five required markers were present, including
+the Log marker on its deliberately supported libtest-prefixed line. Inventory
+remains one named zero-facet DurationType per release, 9/0 direct references,
+and no constrained Duration. Dynamic impact counts are recorded, not newly
+asserted expectations.
+
+A separate Cargo home reproduced the actual hosted failure using the same
+standalone dependency manifest with cached index/git inputs but the
+`block-buffer` archive/source absent: `cargo run --offline --quiet` returned
+**101** and the exact diagnostic above. Removing only `--offline` allowed
+`cargo run --quiet` to fetch the missing crate and return **0**. Before/after
+logs are `logs/cold-cache-before.log` and `logs/cold-cache-after.{log,exit}`;
+the reproduction manifest, Cargo.lock and Cargo home are retained outside Git.
+This cache-state process reproduction explains why local warm-cache compiler
+evidence previously passed without requiring a compiler-version explanation.
+
+The minimal correction removes only `--offline` from the real generated
+Rust probe. Its dependencies, Sleet revision, warning denial, actual
+compilation/execution, round-trip and invalid-value assertions remain intact.
+No production code or expected result changes.
+
+### Reliable diagnostics in the existing real-uci shells
+
+Task 057's previous `set -euo pipefail; output="$(cargo test ... 2>&1)"`
+would exit immediately on a failing assignment, before printing its captured
+diagnostics. That latent wrapper defect did **not** hide the observed Task 060
+error: the Task 060 wrapper already preserved status and printed it. It must
+nevertheless be corrected to avoid losing the next historical-target failure.
+
+Task 057 now initializes status, guards capture with `|| status=$?`, prints
+the output, and exits with the original nonzero status **before** marker
+checks. The same mechanical fix covers the remaining unguarded test captures
+in this **same real-uci job**: Tasks 052, 054, 056, 058 and 059. Existing guarded
+Task 053/060 captures are retained. Fetch/root checks, exact commands, counts,
+success markers, anchored Log-prefix matching, permissions, triggers and
+timeouts are unchanged. No other job's wrappers were redesigned.
+
+`python3 scripts/test-task060-ci-wrappers.py` extracts and executes the actual
+Task 057 shell (and the other real-uci test shells), substituting only Cargo.
+**47 checks pass**: failure stdout/stderr is printed; exits 37/43/101 propagate;
+every success marker cannot override failure; success with missing evidence
+is rejected; each of Task 057's six marker/count requirements is independently
+required; standalone and exact libtest-prefixed Log markers pass, foreign
+prefixes/unanchored substrings fail. Fast zero-test and qualified-name controls
+remain covered. Task 060's second-command failure is explicitly exercised.
+`scripts/check-ci-split.sh` passes; `scripts/test-check-ci-split.sh` passes
+**121 adversarial checks**.
+
+### Execution ledger and provenance boundary
+
+The ledger is derived from the actual real-uci workflow, including commands,
+per-test source hashes, both required root variables, every marker gate and
+test counts: `logs/validation-ledger-original.json` and
+`logs/validation-ledger-reuse.json`. Production inputs are byte-identical to
+the established production snapshot
+`ed45c844bea9caa4831f34c1301413c200fc3d352dd4b931dea1ab1acc2d6aba`.
+
+|Target|Expected count|Source / required roots / markers|Completed coverage|
+|---|---:|---|---|
+|`uci_binary_provenance`|2|unchanged Task 060 parent inputs; both roots; both inventory markers|old-head hosted PASS; only capture changed|
+|`uci_constrained_binary`|3|unchanged already-corrected test; both roots; both inventories and impact markers|old-head hosted PASS; no reopened expectation fix|
+|`uci_member_names`|4|unchanged test; both roots; inventories, first blockers, exact category-A marker|old-head hosted PASS; only capture changed|
+|`uci_generated_support`|2|unchanged test; both roots; both OrderOfBattle and category-A parity markers|old-head hosted PASS; only capture changed|
+|`uci_duration`|4|unchanged test; both roots; both inventories/impacts and exact real Log marker|original local PASS; corrected actual-wrapper result recorded below|
+|`uci_bounded_ascii_string`|5|unchanged test/production; both roots; both inventories/impacts and category-A marker|old-head hosted PASS, 1063.57s; final shell's marker checks also pass on captured command output|
+|`uci_structured_ascii`|2|unchanged test/production; both roots; both inventories and impacts|old-head hosted PASS, 1058.89s; final shell's marker checks also pass on captured command output|
+|`uci_alternating_admission`|2|unchanged admission test/fixture; both roots; exact 19/15/3/1 markers|old-head hosted PASS; corrected full-wrapper result recorded below|
+|`uci_alternating_after`|3|modified process invocation; both roots; both projected impacts and four compiler/codec markers|old-head hosted FAILURE; invalidated vertical rerun through actual wrapper required|
+
+Task 058/059 evidence reuse was checked against their actual hosted command
+output, not Actions' printed shell source. Their source hashes, root identities,
+commands, execution counts and all marker checks match the final relevant code;
+only status preservation differs. No missing target is inferred from a synthetic
+workspace summary, and the 228 CLI confirmations and fixture matrix are not
+restarted merely for capture changes.
+
+**Duration provenance correction:** the original Task 060
+`/tmp/task060-workspace-final.log` contains a four-test Duration summary but no
+pinned inventory/impact/Log markers; roots were absent and that synthetic run
+does **not** establish pinned Duration execution. The original
+`historical-updated` continuation ran only Tasks 058/059, not Duration.
+The live completed old-head Deep run and the new complete pinned local
+Duration command above independently establish actual execution. Historical
+Task 057's own evidence is not relabeled as current Task 060 evidence.
+
+New non-documentation source identity:
+`d2eb39138a200e6605f71cfc6a34925dc240dab4f59251b679f5abfd9e443954`, manifest
+`logs/corrective-source-manifest.json` (ordered tracked path/content hash pairs,
+excluding documentation). The previous complete source identity is **not**
+claimed unchanged. Only the Deep workflow, `uci_alternating_after.rs` and
+wrapper regression differ; this document records the correction. Earlier
+admission boundary, IPv4 factoring, Rust equality, measured message impact,
+generated model/codec semantics and 1,110-cell fixture comparison remain valid.
+The affected durable compiler/codec harness is separately reverified.
+
+Static local gates completed with explicit exit **0**: `cargo fmt --all -- --check`,
+`cargo check --workspace --all-targets`, and
+`cargo clippy --workspace --all-targets -- -D warnings`, with pinned roots
+absent for these synthetic checks. Logs: `logs/{fmt,check,clippy}.{log,exit}`.
+`git diff --check` passes. Fresh hosted Fast/Deep for the corrective head remain
+mandatory and are not inferred from these local gates.
+
+### Complete corrected pinned Duration wrapper
+
+`source /tmp/task060-corrective-ca31412/env.sh; bash
+/tmp/task060-corrective-ca31412/wrappers/duration-corrected.sh` executed the
+actual extracted final Task 057 workflow shell with both verified roots:
+**exit 0; four passed, zero failed/ignored/filtered; 459.52s**. Full printed
+output and explicit shell status: `logs/duration-corrected.{log,exit}`.
+All required gates passed unchanged:
+
+```text
+UCI 2.5 DURATION INVENTORY: PASSED
+UCI 2.6 DURATION INVENTORY: PASSED
+UCI 2.5 DURATION MESSAGE IMPACT: RECORDED
+UCI 2.6 DURATION MESSAGE IMPACT: RECORDED
+UCI 2.5 REAL CATEGORY-A DURATION SERVICE: PASSED
+```
+
+The final marker actually shares the exact Log test's libtest name line; the
+anchored optional-prefix check, not an arbitrary substring, accepted it.
+Current measured impact is reaching **270/273** messages (2.5/2.6), category A
+in all backends **159/159**, category C in any backend **32/32**. These are
+recorded observations, not a rewritten historical count assertion. The real
+Log service check, generation, generated-source assertions, Ada/Rust/C++
+compiler invocations and C++ client execution all completed successfully.
+
+### Corrected Task 060 actual-wrapper result and pre-push review
+
+With the same pinned environment, the actual final Task 060 shell was executed:
+
+```sh
+source /tmp/task060-corrective-ca31412/env.sh
+CARGO_HOME=/tmp/task060-corrective-ca31412/cold-cargo-home \
+  bash /tmp/task060-corrective-ca31412/wrappers/alternating-corrected.sh
+```
+
+**Wrapper exit 0**. Admission: **two tests passed, 11.63s**. Complete AFTER
+target: **three tests passed, 934.45s**, zero failed/ignored/filtered.
+Both 2.5/2.6 projected impact markers and all four release/service compiler
+codec markers passed the unchanged actual workflow gates. The initially absent
+`block-buffer-0.10.4` was fetched in the isolated Cargo home; its archive
+SHA-256 matches the committed dependency checksum
+`3078c7629b62d3f0439517fa394996acacc5cbc91c5a20d8c658e77abd503a71`.
+Thus the formerly failing cache boundary and actual OrderOfBattle/SMTI
+Ada/Rust/C++ compilation and Rust codec execution are reverified, rather than
+only treating earlier warm-cache verticals as sufficient.
+
+Full printed output/status: `logs/alternating-corrected.{log,exit}`. Completed
+ledger: `logs/validation-ledger-final.json`. Existing exact admission fixtures,
+coverage/deferred boundaries, projected closure/blocker assertions and negative
+codec values are unchanged. Two additional mutation trials confirm the wrapper
+regression rejects reintroducing the original hidden Task 057 capture or
+discarding its command status; `logs/wrapper-mutation-*.log` preserve the
+expected regression failures.
+
+Pre-commit complete diff/untracked review contains exactly these four intended
+files: `.github/workflows/deep-ci.yml`,
+`crates/cli/tests/uci_alternating_after.rs`,
+`scripts/test-task060-ci-wrappers.py`, and this document. No scratch artifacts,
+schema files, generated probes, Cargo cache, or Task 061 changes are included.
+All nine existing real-uci Cargo captures now preserve diagnostics/status;
+removing only those additions yields the identical previous workflow. The
+source/production manifests still match after full execution; whitespace and
+47 wrapper/121 split-adversarial checks pass. This normal corrective commit's
+parent is `ca31412f78a157efeef43157de58ad36471e2975`; Task 061 remains untouched
+and can reconcile the resulting new Task 060 SHA in its separate continuation.
+Fresh exact-head hosted results will be recorded separately without claiming
+that old-head Fast success certifies this correction. PR #61 is not merged.

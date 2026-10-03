@@ -346,9 +346,11 @@ let rejected:Result<{payload},_>=ServiceCodec.decode_payload(&changed);assert!(r
 }}
 }}
 "#)).unwrap();
+                        // This standalone manifest resolves its own dependencies.
+                        // Deep CI's CLI build does not warm the runtime's crate cache.
                         Command::new("cargo")
                             .current_dir(&out)
-                            .args(["run", "--offline", "--quiet"])
+                            .args(["run", "--quiet"])
                             .env("CARGO_TARGET_DIR", scratch.join("cargo-target"))
                             .env("RUSTFLAGS", "-Dwarnings")
                             .output()
