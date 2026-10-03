@@ -3,7 +3,7 @@
 ## Status and isolated provenance
 
 Production capability and local synthetic/real-service evidence implemented;
-final settled validation and hosted delivery/review gates remain pending.
+all local settled gates pass; hosted final-head and final-main-base review gates remain explicit.
 
 * Original Task 060 parent, actual starting SHA, and frozen BEFORE benchmark:
   `ca31412f78a157efeef43157de58ad36471e2975`.
@@ -202,7 +202,7 @@ Source manifests under `/tmp/task061/manifests/` include Git tracked, unstaged a
 |1.95.0 runtime API/runtime/facade all-target checks|pass, exit 0 (includes generated synthetic Time codec)|`msrv-api.log`, `msrv-runtime.log`, `msrv-final.log`|
 |1.95.0 facade all-target with pinned 2.5 root|pass, exit 0; actual real UCI generated model/codec included, 9m18s|`msrv-pinned.log`|
 |OrderOfBattle/SMTI_SettingsCommand real regressions|pass, exit 0; all four release/message markers; 384.16s|`oob-smti-regression.log`|
-|current historical subset and Ada gap assertions|Ada gap pass, 1 executed test, both releases; subset run pending|`subset-regression.log`, `gap-regression.log`|
+|current historical subset and Ada gap assertions|pass, 1 executed test each, both release markers, exits 0|`subset-regression.log`, `gap-regression.log`|
 
 Wrong dialect: the current normalized IR has only `PatternDialect::XmlSchema`; a wrong dialect cannot be constructed through its safe API. Explicit dialect equality remains in shared admission, and the boundary test documents this limitation instead of inventing a new regex dialect. Additional invalid whitespace facets/illegal Time length facets fail either schema validation or classification; redundant authored collapse still fails classification.
 
@@ -227,3 +227,11 @@ actual checkout log is not yet available while jobs run. These initial runs are
 historical after the evidence/cache prerequisite correction; final-head gates
 remain mandatory. Stacked green is only stacked-review evidence, not
 final-main-base review approval. Both PRs remain unmerged.
+
+### Settled local delivery checkpoint
+
+All late local gates completed: exact current subset 1 test / both markers / 387.80s; Ada gap 1 test / both releases / 177.49s; OrderOfBattle/SMTI 1 test / four markers / 384.16s; pinned MSRV exit 0 / 9m18s. GNAT-required workspace completed 136 test-suite summaries with **1248 passed tests**, exit 0. Final fixture replay confirmed the same 1122-cell outcome and zero regressions. Locked cache prerequisite `cargo fetch --locked` passed (`fetch-locked.log`) and actual wrapper/split adversarial guards passed after the correction. No expensive production campaign was repeated solely for the cache/doc change.
+
+Capability commit `f1bdd978cdfa22f3cca5a4f7eae0f5dc5b25dc46`; cache/evidence correction `117fd6af0ea738b4ca8c3c8c5dc0e3d9a7f6e142`. Source manifest for the latter is `/tmp/task061/manifests/117fd6a-source.json`, identity `f21e2f1ef9f47c2b17c3fc9e6a40459c1e4588c08f6425620224cb5dd5d50e76`. Current correction-head Fast **37142245678**, Deep **37142245733**, attempts 1, associated base/head verified; synthetic merge ref **2de91e1b05368969e11db5f2d64e865ccc56715e**. Initial runs were cancelled by normal same-PR concurrency after push. Actual checkout log and final conclusions remain outstanding until jobs finish. Documentation-only updates must also receive final-head associated gates; final run/head/base/checkout outcomes will be retained on PR #62 and in the delivery report, never inferred from this checkpoint.
+
+Review status: implementation/local evidence complete; **hosted gate pending**. PR stays open, non-draft, unmerged, auto-merge disabled. Ready for discussion of the stacked diff is not a claim of final-base review or merge approval. Parent remains original unmerged Task060 branch; no rebase/retarget was needed.
