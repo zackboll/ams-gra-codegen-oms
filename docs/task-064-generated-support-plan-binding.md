@@ -196,3 +196,45 @@ Prepublication fetch still showed main at the immutable BEFORE commit. PR #63
 remained OPEN at `8765b455235197eb533ba3d89c8a0522cf81dd60`, based on Task 061's
 feature branch. Task 063 progressed independently to OPEN PR #64 against main,
 head `a0b7930d24ac3a963917685a81fd1a17a42b4a89`; none of its commits are included.
+
+## Corrective CI integration and Task 062 reconciliation
+
+The original published head was `6981fb12739d3ced7ddb62b541e5e1e96948769b`,
+based on the immutable BEFORE commit above. Deep CI `37179006472` succeeded,
+including the compact binding proof. Fast CI `37179006463` failed only in the
+split guard: the adversarial wrapper injected a Cargo listing failure into the
+new Task 064 Deep step, and `set -e` exited before captured diagnostics printed.
+This exact assertion was reproduced locally before correction.
+
+Corrective commit `6da11f5930331213b5abed3678d9ee5dfc4a139e` captures the listing
+status, prints combined stdout/stderr, and then propagates the original status.
+The same pattern now protects all three Task 064 Fast listing commands. The
+existing actual-workflow adversarial harness also supplies the registered test
+name in its success fixture and requires both distinct generated-support steps.
+It separately rejects listing/execution failures even with success markers,
+missing registration, zero executed tests, and either missing release marker.
+No inherited gate was removed or relaxed.
+
+Normal merge `10b7bfc9c554ada19949e9515c8a40e64f7b08d1` has second parent
+`52e22b67b94b431d96925c41ff730749c33b3c9e` (main after Task 062). Git resolved
+the workflow, core export, roadmap and split-guard overlaps automatically;
+there were no conflicts or manual overlap resolutions. No Task 063 commit was
+merged or cherry-picked. Task 064 production binding code and regression tests
+are unchanged from the original implementation head.
+
+The immutable BEFORE source and output still pass their original SHA-256
+manifest. Fresh corrective logs and extracted actual workflow blocks are kept
+separately under `/tmp/task064/corrective`, using only Task 064's existing
+isolated target and temporary directories. Post-merge split validation passes
+132 checks; the actual-workflow adversarial suite passes 57 checks, and the
+Task 061/062 wrapper suites pass 4/6 checks respectively. Fresh hosted results
+must be keyed to the final published head and the reconciled main base; the
+old successful Deep run does not certify this new pairing.
+
+Before corrective publication, fmt, workspace all-target check, Clippy with
+warnings denied, the inherited Task 062 exact compiler/codec gates, and the
+actual Task 064 Fast workflow block all passed on the merged tree. Injected
+failures in each of the three Fast listing commands also printed diagnostics
+and preserved exit 53. The full GNAT-required workspace, MSRV and pinned
+binding/parity campaign continues separately; its status and fresh hosted
+head/base evidence must be checked before claiming final certification.
