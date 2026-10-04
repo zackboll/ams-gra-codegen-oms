@@ -290,7 +290,20 @@ fn campaign(inventory_only: bool) {
                             })
                             .expect("frozen impact row");
                             let row: Vec<_> = expected.split('\t').collect();
-                            assert_eq!(r.is_ready(), row[4] == "ready", "{expected}");
+                            // Preserve the Task 061 historical ledger. Task 063's
+                            // independently measured exact profile resolves this
+                            // one closed-world blocker without moving that baseline.
+                            let task063_gain = version == "2.5"
+                                && world == GenerationWorld::ClosedSchemaSet
+                                && m.name.local_name == "PrioritizationList";
+                            if task063_gain {
+                                assert_eq!(row[4], "USMTF_SerialNumberOfQualifierType");
+                            }
+                            assert_eq!(
+                                r.is_ready(),
+                                row[4] == "ready" || task063_gain,
+                                "{expected}"
+                            );
                             assert_eq!(r.selected_types_total, row[5].parse::<usize>().unwrap());
                             assert_eq!(
                                 r.generated_support_types_total,

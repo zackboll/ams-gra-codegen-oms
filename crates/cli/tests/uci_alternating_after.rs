@@ -160,11 +160,19 @@ fn task060_real_projected_message_impact_and_naming() {
                 );
                 assert_eq!(
                     r.is_ready(),
-                    row[2] == "ready",
+                    row[2] == "ready"
+                        || (version == "2.5"
+                            && row[1] == "PrioritizationList"
+                            && row[2] == "USMTF_SerialNumberOfQualifierType"),
                     "{version} {} {language:?}",
                     row[1]
                 );
-                if !r.is_ready() {
+                if version == "2.5" && row[1] == "PrioritizationList" {
+                    // Keep historical Task 060 counts/ledger intact. The
+                    // exact Task 063 gain has its own frozen nine-tuple gate.
+                    assert_eq!(row[2], "USMTF_SerialNumberOfQualifierType");
+                    assert!(r.is_ready());
+                } else if !r.is_ready() {
                     let first = r
                         .unsupported_types
                         .first()

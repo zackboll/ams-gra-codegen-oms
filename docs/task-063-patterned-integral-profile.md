@@ -193,6 +193,14 @@ new classifier, producer hashes for String/temporal/scanners and corresponding
 fixture bytes remain unchanged. The full workspace gate still runs their local
 regressions; no historical pinned evidence is replaced by an unexecuted claim.
 
+Dependency audit identified two inherited pinned impact assertions that freeze
+PrioritizationList's old serial blocker (Task 061 Time impact and the Task 060
+subset under Task 061). Their historical TSVs and counts remain untouched.
+Current-source assertions explicitly require the exact UCI2.5 closed-world
+PrioritizationList gain; every other historical readiness/blocker assertion
+remains exact. The affected pinned impact tests are rerun, not the unaffected
+long compiler verticals. These edits belong only to Task 063's worktree.
+
 ## CI and local environment controls
 
 Fast runs seven exact synthetic/compiler/codec/readiness tests and three exact
