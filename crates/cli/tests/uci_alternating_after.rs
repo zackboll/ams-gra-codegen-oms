@@ -63,7 +63,6 @@ fn task060_real_uci_after_coverage_and_order_of_battle() {
         assert_eq!(
             deferred,
             BTreeSet::from([
-                "IPv6_AddressType",
                 "NITF_DateAndTimeType",
                 "NITF_DateType",
                 "NITF_MSTGTA_TargetLocationType"
@@ -104,8 +103,8 @@ fn task060_real_uci_after_coverage_and_order_of_battle() {
 /// and topology independently from full-schema closure coverage.
 #[test]
 fn task060_real_projected_message_impact_and_naming() {
-    // Historical Task060 rows remain frozen; Task061 changes current readiness.
-    let rows = include_str!("../../../tests/fixtures/temporal/task061-task060-subset-current.tsv");
+    // Historical Task060/061 rows remain frozen; Task062 changes current readiness.
+    let rows = include_str!("../../../tests/fixtures/string/task062-task060-subset-current.tsv");
     for (version, var, digest) in ROOTS {
         let Some((_, schema)) = root(var, digest) else {
             continue;
@@ -121,7 +120,7 @@ fn task060_real_projected_message_impact_and_naming() {
                     .difference(&ada)
                     .map(|n| n.local_name.as_str())
                     .collect::<BTreeSet<_>>(),
-                include_str!("../../../tests/fixtures/temporal/task061-ada-full-schema-gap.tsv")
+                include_str!("../../../tests/fixtures/string/task062-ada-full-schema-gap.tsv")
                     .lines()
                     .filter_map(|line| line.strip_prefix(&format!("{version}\t")))
                     .collect()
@@ -179,12 +178,9 @@ fn task060_real_projected_message_impact_and_naming() {
                 blocker => *blocked.entry(blocker).or_insert(0) += 1,
             }
         }
-        assert_eq!(ready, if version == "2.5" { 80 } else { 81 });
+        assert_eq!(ready, if version == "2.5" { 85 } else { 86 });
         assert_eq!(topology, 6);
-        let mut expected = std::collections::BTreeMap::from([
-            ("IPv6_AddressType", 11),
-            ("NITF_DateAndTimeType", 5),
-        ]);
+        let mut expected = std::collections::BTreeMap::from([("NITF_DateAndTimeType", 11)]);
         if version == "2.5" {
             expected.insert("USMTF_SerialNumberOfQualifierType", 1);
         }

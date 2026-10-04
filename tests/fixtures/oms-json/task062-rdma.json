@@ -1,0 +1,21 @@
+{
+  "SecurityInformation": {
+    "Classification": "U",
+    "OwnerProducer": [{"GovernmentIdentifier": "USA"}]
+  },
+  "MessageHeader": {
+    "SystemID": {"UUID": "550e8400-e29b-41d4-a716-446655440000"},
+    "Timestamp": "2026-01-01T00:00:00Z",
+    "SchemaVersion": "002.5.0",
+    "Mode": "LIVE"
+  },
+  "MessageData": {
+    "RDMA_InitializeSetupID": {"UUID": "550e8400-e29b-41d4-a716-446655440000"},
+    "Endpoint": [
+      {"IPv6_Endpoint": {"IPv6_Address": "Fe80::aBcD"}},
+      {"IPv6_Endpoint": {"IPv6_Address": "::ffff:001.009.099.199"}}
+    ],
+    "RDMA_Provider": "TCP",
+    "Host": {"IPv6_Endpoint": {"IPv6_Address": "1::2::3"}}
+  }
+}

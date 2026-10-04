@@ -24,8 +24,9 @@ use std::process::Command;
 /// unconstrained xs:duration in every occurrence shape plus a Choice. Task
 /// 058 adds `codec-bounded-ascii`: named bounded-ASCII String carriers,
 /// including the zero-length `EmptyType` shape, in every occurrence shape.
-const SERVICES: [(&str, &str, bool); 18] = [
+const SERVICES: [(&str, &str, bool); 19] = [
     ("codec-time-zulu", "codec_time_zulu", true),
+    ("codec-ipv6", "codec_ipv6", true),
     ("runtime-test", "runtime_test", false),
     ("runtime-oam", "runtime_oam", false),
     ("codec-oam", "codec_oam", true),
