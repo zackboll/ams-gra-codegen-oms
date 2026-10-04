@@ -42,9 +42,10 @@ jobs:
   # generated Ada (gnatmake -gnatc) and AMS_GRA_REQUIRE_GNAT forbids a skip.
   real-uci:
     runs-on: ubuntu-latest
-    # Tasks 052-059 run serially; the complete evidence exceeds one hour.
-    # Keep every test and marker gate, allowing the pinned campaign to finish.
-    timeout-minutes: 120
+    # Task 061 inventory/impact and all 609 CLI confirmations precede the full
+    # inherited Tasks 052-060 evidence sequence. Keep every test and marker gate
+    # with a finite four-hour budget for the complete combined campaign.
+    timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable

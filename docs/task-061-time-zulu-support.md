@@ -2,8 +2,10 @@
 
 ## Status and isolated provenance
 
-Production capability and local synthetic/real-service evidence implemented;
-all local settled gates pass; hosted final-head and final-main-base review gates remain explicit.
+Production capability and local synthetic/real-service evidence implemented.
+The original delivery and its measurements below are historical checkpoints;
+the corrected-parent reconciliation and fresh final-head/base hosted gates are
+recorded in the final section and on PR #62. No merge approval is implied.
 
 * Original Task 060 parent, actual starting SHA, and frozen BEFORE benchmark:
   `ca31412f78a157efeef43157de58ad36471e2975`.
@@ -171,9 +173,9 @@ UCI2.6 adds: PrioritizationList; SystemSchedule; SystemScheduleDataRequest; Syst
 
 Deterministic minimum of selected + support declarations, then message name, is **DLZ**, 54 + 0 in both releases. Production service-check/service-generate, Ada model/API, strict C++17 model/API and Rust warnings-denied model/API/codec valid-invalid round trips passed in `/tmp/task061/logs/dlz-second.log` (1 test, both markers, exit 0). The settled gate also compiles Ada generated bodies. Initial vector incorrectly used a number for TargetClosureRate; checked codec rejected it. Raw Velocity2D_Type requires NorthSpeed/EastSpeed, and the corrected vector uses that object. No production relaxation was made. OrderOfBattle and SMTI_SettingsCommand remain parent-READY regressions, not Task061 gains.
 
-## Fixture comparison
+## Historical delivery fixture comparison
 
-Frozen-parent source archive and rebuilt CLI versus Task061 CLI, all 187 repository XSD fixtures × Ada/Rust/C++ × closed/open: **563 byte-identical successes; 547 shared failures; 12 new successes; zero changed-success cells; zero regressions**. All previously successful DateTime, Duration and String output (including Rust derives) is byte-identical. New fixtures contribute expected new successes. Log `/tmp/task061/logs/fixture-compare.log`, exit 0; detailed result `/tmp/task061/evidence/fixture-results.json`.
+Frozen-parent source archive and rebuilt CLI versus the original delivered Task061 source, all 187 repository XSD fixtures × Ada/Rust/C++ × closed/open: **563 byte-identical successes; 547 shared failures; 12 new successes; zero changed-success cells; zero regressions**. All previously successful DateTime, Duration and String output (including Rust derives) was byte-identical at that source identity. This result is retained unchanged as historical evidence, not asserted for the later Ada-corrected source. New fixtures contribute expected new successes. Log `/tmp/task061/logs/fixture-compare.log`, exit 0; detailed result `/tmp/task061/evidence/fixture-results.json`.
 
 ## Ada naming attribution and whole-schema first blockers
 
@@ -234,4 +236,154 @@ All late local gates completed: exact current subset 1 test / both markers / 387
 
 Capability commit `f1bdd978cdfa22f3cca5a4f7eae0f5dc5b25dc46`; cache/evidence correction `117fd6af0ea738b4ca8c3c8c5dc0e3d9a7f6e142`. Source manifest for the latter is `/tmp/task061/manifests/117fd6a-source.json`, identity `f21e2f1ef9f47c2b17c3fc9e6a40459c1e4588c08f6425620224cb5dd5d50e76`. Current correction-head Fast **37142245678**, Deep **37142245733**, attempts 1, associated base/head verified; synthetic merge ref **2de91e1b05368969e11db5f2d64e865ccc56715e**. Initial runs were cancelled by normal same-PR concurrency after push. Actual checkout log and final conclusions remain outstanding until jobs finish. Documentation-only updates must also receive final-head associated gates; final run/head/base/checkout outcomes will be retained on PR #62 and in the delivery report, never inferred from this checkpoint.
 
-Review status: implementation/local evidence complete; **hosted gate pending**. PR stays open, non-draft, unmerged, auto-merge disabled. Ready for discussion of the stacked diff is not a claim of final-base review or merge approval. Parent remains original unmerged Task060 branch; no rebase/retarget was needed.
+Historical review status at this checkpoint: implementation/local evidence
+complete; hosted gate pending. The following continuation supersedes those
+pending-run and original-parent status statements without relabeling their evidence.
+
+## Corrected-parent and complete hosted-validation continuation
+
+### Closed original run record
+
+Original delivery `1a836075a973a5ccb8de2bbbfe65d1d47d187e46` associated with
+base `ca31412f78a157efeef43157de58ad36471e2975`:
+
+* Fast **37142559823**, attempt **1**: completed / **success**.
+* Deep **37142559805**, attempt **1**: completed / **cancelled**, not success.
+* Every completed job's checkout log identifies synthetic merge
+  `678cc2d50cbe554c929a3a4f076ce09dc2a70757`, distinct from the associated
+  head/base and not evidence for a later reconciliation.
+* Real-UCI job **111259893530** passed Time inventory/impact, the complete
+  **609 world-specific CLI tuples / 444 unique release/backend/message gains**,
+  and inherited Tasks **052, 053, 054, 056 and 057**. Task **058 cancelled**;
+  Tasks **059 and 060 skipped**. Real-Sleet and MSRV-real-UCI passed.
+* The explicit annotation says **"The job has exceeded the maximum execution
+  time of 2h0m0s"**. The cancellation log is at **2026-10-03T20:00:33Z**, during
+  Task 058. This is a documented timeout cancellation, not an inferred
+  dependency or Duration failure. Successful sections are partial historical
+  evidence; cancelled/skipped gates are not counted as executed successes.
+* The original collector finished with exit **0**, posted its terminal report,
+  and has no active waiting process. Retained completed job logs and
+  `/tmp/task061/evidence/delivery-hosted-completed.json` are reused. Closure and
+  the once-retrieved annotation are under
+  `/tmp/task061/ada-reconciliation/evidence/`.
+
+### Normal ancestry and distinct integration/measurement identities
+
+The previously local-only reconciliation
+`3527d32e133a82b887eed61a4f45fd511fc70a09`, containing Task 060
+`49ca06f24f891b4c041e8f3caabcd39e441f3f05`, is preserved as an ancestor.
+The complete required corrected parent is
+`770e288e8b547cd1b8c1ac2bda75f65292b9cc63`. Its later production Ada renderer
+correction, production-generated bounds regression and actual Fast execution
+are incorporated by a normal merge, not a duplicate cherry-pick or rewrite.
+
+Before this continuation's publication, PR #61 independently merged at
+`0800e97c71d8bf3edcef40ef1dc4ef5200b76deb` on **2026-10-04T01:28:47Z**.
+The two-parent GitHub merge has corrected parent `770e288` as an ancestor;
+its tree equals that corrected parent. A further normal child merge preserves
+the actual main ancestry. No Task 060 branch/worktree was modified, its
+validation was not repeated, and this task did not merge PR #61. The child-only
+diff against that main base retains Task 061 and its narrow CI integration,
+with no duplicate Task 060 corrective diff. PR #62 may therefore target main
+only after this verified actual merge; fresh head/main-base Fast and Deep
+remain mandatory.
+
+**Immutable BEFORE benchmark remains**
+`ca31412f78a157efeef43157de58ad36471e2975`. The later integration parent and
+main merge do not replace it, its pinned schema identities, selection rules,
+BEFORE/AFTER measurements, or historical artifacts.
+
+### Finite full-campaign time budget
+
+Only `jobs.real-uci.timeout-minutes` changes from **120 to 240**, with the
+adjacent comment identifying Task 061 plus all inherited Tasks 052–060.
+Original Time steps measured **18m21s + 56m39s = 75m**. The parent's complete
+inherited sequence took approximately **93m** on a different run; **168m** is
+a planning estimate, not a measured completed child duration. The finite
+four-hour budget accommodates the complete campaign without skipping,
+sampling, reducing the 609 tuple set, weakening counts/markers, adding blind
+retries, changing triggers/concurrency, or altering other jobs' budgets.
+Locked fetching, failed-command diagnostics/original exit status, qualified
+AND registration, all bounds/Time gates and inherited target checks remain.
+
+### Production Ada output impact and reused evidence
+
+This continuation is **not workflow-only**. The shared factored Ada renderer
+now emits `Text'First + (Finish - 1)` so an endpoint at `Positive'Last` does not
+overflow before subtraction. Empty-component short-circuit and lexical
+admission remain unchanged. The new production-generated regression checks
+19 spellings × three placements × three assertion policies = **171 constructor
+checks**, with `-O0 -gnato` and actual compilation/execution.
+
+Manifest `/tmp/task061/ada-reconciliation/manifests/reconciled-code.json`,
+identity `899dc98c7968b7852f997dbf8c7eca8e0a909ac4b18d406ff90d5000afc9fcbc`,
+records all tracked/unstaged/untracked inputs before this documentation-only
+addition. Compared with delivery identity
+`8cad96e6904e6ef6c74b546443d708710e99c88466c01c20768986faa086483c` and earlier
+reconciliation identity
+`2e42424f8da667572d30e7748afd76bf4d96273b8f1be468aa9444905ae8b2bf`, the only
+additional production change is the Ada renderer; the new bounds test and
+Fast execution, finite Deep budget and parent document are recorded separately.
+Comparison ledger: `evidence/source-manifest-comparison.json` in that scratch.
+All frontend/IR, classifier/readiness/naming, Rust/C++ producer/codec, pinned
+schemas, Cargo inputs, measurement fixtures and benchmark selection inputs
+retain their prior hashes. Original 1,248 workspace passes, MSRV checks,
+609 CLI confirmations and 444 unique gains retain original provenance; they
+are not relabeled as fresh final-source hosted results.
+
+To establish the complete child fixture boundary rather than assuming the
+parent's changed slices exhaust it, **all 187 child XSD fixtures × both worlds
+= 374 Ada cells** were regenerated using frozen, earlier reconciled and
+corrected child CLIs. Previous-to-corrected result: **184 identical successes,
+188 shared failures, two expected changed successes, zero acceptance changes
+and zero unexplained changes**. Only
+`tests/fixtures/service-generate/codec-alternating-ascii.xsd` changes, in each
+world; each `programs-oam.adb` differs only by five corrected endpoint
+expressions (**10 replacements across two cells**). Exact normalization of
+those expressions reproduces the corrected bytes. Files/digests/diffs are
+retained in `outputs/`; full inventory/ledger is
+`evidence/ada-fixture-comparison.json` under the reconciliation scratch.
+
+Corrected Ada versus frozen: **180 identical successes, two expected endpoint
+changed successes, four new successes, 188 shared failures**. Rust/C++ outputs
+reuse the historical cells because their complete producer/input dependency
+hashes are unchanged and the production change is confined to Ada rendering;
+the combined **derived** final-source matrix is therefore **561 identical
+successes, two expected changed successes, 12 new successes, 547 shared
+failures, zero regressions**. It is not represented as a fresh all-backend
+1,122-cell run. In particular, historical “zero changed successes” is not an
+unqualified final-source claim. New compiler checks validate the affected Ada
+behavior; original unchanged long campaigns are not repeated merely for SHAs.
+
+### Reconciled local checks and publication gate
+
+On the actual reconciled source, registered-test lists were audited before
+exact execution. The inherited
+`generated_factored_ascii_ada_bounds_under_strict_overflow` executed **one Rust
+test**, all **171** constructor checks and compile/run exit 0 under default,
+assertions-enabled and assertions-ignored policies. The existing Time helper
+executed every exact compiler corpus/lifecycle/storage/equality,
+readiness/naming, checked codec and mock-OWP gate. Split/wrapper checks pass
+**125 / 47 / 4** adversarial checks, retaining failed-command propagation,
+qualified names and zero-test rejection. fmt, workspace all-target check,
+warnings-denied Clippy, script syntax and `git diff --check` pass.
+
+The affected inherited OrderOfBattle/SMTI compiler-codec vertical completed
+once on this Ada-corrected child identity: **one exact test, all four
+release/service markers, exit 0, 400.00s**, not borrowed from `3527d32` or the
+parent's completed validation. The focused Time DLZ model/API/compiler/codec
+vertical also completed **one exact test, both release markers, exit 0,
+117.37s**. Their completion artifacts and the validation ledger are retained under
+`/tmp/task061/ada-reconciliation/logs/` and `evidence/`.
+
+Publication uses the existing child branch/PR and a normal push after local
+checks complete. One head/base-keyed read-only owner collects automatically
+triggered Fast and Deep runs with restrained polling, exact attempts and
+terminal conclusions; it does not silently retry workflows. Completed logs
+must prove bounds execution, both Time inventory/DLZ releases, all 609 CLI
+tuples, inherited Tasks 052–060, Real-Sleet and MSRV-real-UCI. Actual per-job
+checkout SHA and synthetic parentage are distinct from associated PR head/base.
+No CI-status-only source commit follows the settled validated head. Final
+results supersede pending status on PR #62 and in scratch completion records.
+Final-main-base readiness is claimed only after both fresh complete workflows
+succeed on that head/base; neither success nor this document authorizes merge.
