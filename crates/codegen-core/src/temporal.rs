@@ -11,7 +11,7 @@
 //! renderable, while coverage measured a fourth opinion. Every consumer calls
 //! [`temporal_profile`].
 //!
-//! # The one supported profile
+//! # Supported named profiles
 //!
 //! [`TemporalProfile::DateTimeZulu`]: a [`PrimitiveKind::DateTime`]
 //! declaration whose *effective* [`ConstraintSet`] carries exactly one pattern
@@ -85,7 +85,7 @@
 //! temporal declaration at all" (an integer, a string, a record); and
 //! `Err(_)` means "this genuinely is a temporal declaration, but its shape is
 //! outside the implemented subset" -- an unconstrained `DateTime`, a different
-//! pattern, or any `Time`/`Duration`. Collapsing the last two would make a
+//! pattern, or an unadmitted `Time`/`Duration` constraint shape. Collapsing the last two would make a
 //! backend report a `Duration` as though it were not temporal.
 //!
 //! # What this classifier does not decide
@@ -93,6 +93,16 @@
 //! [`temporal_profile`] only classifies named declarations. Direct primitive
 //! references use the separate [`direct_temporal_profile`] decision; an
 //! unconstrained named declaration must never inherit the direct field policy.
+//!
+//! Task 057 also admits zero-facet Duration; Task 061 admits TimeZulu with the
+//! same exact facet shape as DateTimeZulu. For Time (§3.2.8) the lexical domain
+//! is the left-truncated dateTime grammar `hh:mm:ss ('.' [0-9]+)? timezone?`.
+//! Appendix D admits second 60 with fractions, rejects second 61, and requires
+//! zero minutes and represented seconds at hour 24, including all fractional
+//! digits. On collapsed, validated Time, the prefix is nonempty and has no
+//! CR/LF, and Z is the only timezone ending in literal Z; the same pattern
+//! equivalence therefore holds. Neither scanner canonicalizes the spelling.
+//! Direct Time and every other named Time constraint shape still fail closed.
 
 use ams_gra_oms_ir::{ConstraintSet, PatternDialect, PrimitiveKind};
 use ams_gra_oms_ir::{SchemaIr, TypeKind, TypeRefTarget};
@@ -116,6 +126,10 @@ const UCI_ZULU_PATTERN: &str = ".+Z";
 /// conformance corpus; this is not a place to accumulate near-misses.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TemporalProfile {
+    /// Task 061: named XML Schema Time with exactly the effective `.+Z` facet.
+    /// XML whitespace collapse, lexical validation, then terminal literal Z;
+    /// stored spelling is not canonicalized and no equality is claimed.
+    TimeZulu,
     /// [`PrimitiveKind::DateTime`] restricted by exactly the UCI `.+Z` pattern.
     ///
     /// Generated code stores the whitespace-normalized, lexically valid XML
@@ -260,7 +274,7 @@ fn emissions_store_direct(
 /// declaration is reported as `Ok(None)` instead, never as an error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TemporalProfileError {
-    /// `PrimitiveKind::Time`; the UCI `TimeType` profile is follow-up work.
+    /// A named Time outside the exact single-pattern Zulu profile.
     TimeUnsupported,
     /// Task 057: a `Duration` carrying any effective facet (pattern, explicit
     /// `whiteSpace`, ordering bound, or length). The zero-facet declaration is
@@ -339,7 +353,10 @@ pub fn temporal_profile(
     constraints: &ConstraintSet,
 ) -> Result<Option<TemporalProfile>, TemporalProfileError> {
     match kind {
-        PrimitiveKind::Time => Err(TemporalProfileError::TimeUnsupported),
+        PrimitiveKind::Time => match date_time_profile(constraints) {
+            Ok(_) => Ok(Some(TemporalProfile::TimeZulu)),
+            Err(_) => Err(TemporalProfileError::TimeUnsupported),
+        },
         // Task 057: only the zero-facet shape. `duration` admits ordering
         // bounds and patterns, but a lexical carrier performs no value-space
         // comparison and no regex, so any facet is a rejection.
@@ -546,19 +563,13 @@ mod tests {
         );
     }
 
-    /// Task 036: `Time` and `Duration` remain unsupported, and are not
-    /// opportunistically admitted because the machinery looks similar. The
-    /// authoritative `TimeType` carries the *same* `.+Z` text, which is exactly
-    /// why this must be asserted with that pattern present.
-    ///
-    /// Task 057 narrows the Duration half: the zero-facet shape is now the
-    /// supported [`TemporalProfile::Duration`], and only a *constrained*
-    /// Duration stays unsupported -- with its own diagnostic.
+    /// Task 061 admits exact named TimeZulu, not unconstrained Time. Constrained
+    /// Duration remains the Task 057 unsupported neighbour.
     #[test]
-    fn time_and_constrained_duration_remain_unsupported() {
+    fn time_zulu_is_supported_but_unconstrained_time_and_constrained_duration_are_not() {
         assert_eq!(
             temporal_profile(PrimitiveKind::Time, &zulu()),
-            Err(TemporalProfileError::TimeUnsupported)
+            Ok(Some(TemporalProfile::TimeZulu))
         );
         assert_eq!(
             temporal_profile(PrimitiveKind::Time, &ConstraintSet::default()),

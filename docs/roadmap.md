@@ -1,5 +1,14 @@
 # Roadmap
 
+Task 061 implements evidence-bounded **named TimeZulu** checked carriers in
+Ada/Rust/C++, plus the existing Rust OMS JSON codec path. Exact XML Schema `.+Z`
+facets only; name-free admission, XML-collapse spelling preservation and no
+temporal comparison. Direct Time, general temporal support, other Time facets,
+Ada/C++ codecs and naming remediation remain deferred. Compiler-backed synthetic
+and pinned evidence is recorded in [Task 061](task-061-time-zulu-support.md);
+hosted final-head and final-base review gates remain explicit, not implied by
+local capability tests.
+
 Task 043: [offline searchable HTML browser](task-043-uci-html-type-browser.md)
 is implemented as a `SchemaIr` consumer, independent of source backends.
 Task 045: [UCI Pages publication](task-045-uci-pages.md) assembles pinned 2.5

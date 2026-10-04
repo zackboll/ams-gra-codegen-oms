@@ -168,15 +168,10 @@ fn the_pattern_dialect_is_part_of_the_supported_profile() {
     );
 }
 
-/// Time remains unsupported after Task 036, including `TimeType`'s
-/// authoritative `.+Z` pattern -- which is the *same text* as the supported
-/// DateTime profile, and must not be admitted by accident. Task 057 makes a
-/// zero-facet Duration renderable, so only a *constrained* Duration stays in
-/// this negative list.
+/// Unconstrained Time and constrained Duration remain unsupported.
 #[test]
 fn time_and_constrained_duration_remain_unsupported() {
     for (kind, constraints) in [
-        (PrimitiveKind::Time, zulu()),
         (PrimitiveKind::Time, ConstraintSet::default()),
         (PrimitiveKind::Duration, zulu()),
     ] {
@@ -187,6 +182,14 @@ fn time_and_constrained_duration_remain_unsupported() {
                 "{language:?} must not render {kind:?}"
             );
         }
+    }
+}
+
+#[test]
+fn exact_named_time_zulu_is_baseline_renderable_without_name_recognition() {
+    let schema = schema(vec![primitive("Clock", PrimitiveKind::Time, zulu())]);
+    for language in LANGUAGES {
+        assert!(is_baseline(&schema, language));
     }
 }
 

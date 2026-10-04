@@ -30,6 +30,8 @@ use ams_gra_oms_ir::{
     TypeRef, TypeRefTarget,
 };
 use std::fmt::Write as _;
+
+mod time_zulu;
 use std::path::PathBuf;
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -640,7 +642,11 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
             && is_temporal_primitive(kind)
         {
             match temporal_profile(kind, &declaration.constraints) {
-                Ok(Some(TemporalProfile::DateTimeZulu | TemporalProfile::Duration)) => {}
+                Ok(Some(
+                    TemporalProfile::DateTimeZulu
+                    | TemporalProfile::TimeZulu
+                    | TemporalProfile::Duration,
+                )) => {}
                 Ok(None) => unreachable!("is_temporal_primitive gates this branch"),
                 Err(reason) => {
                     return unsupported(format!("{reason} on {}", declaration.name.local_name));
@@ -2927,8 +2933,9 @@ fn render_temporal_declaration(
     constraints: &ConstraintSet,
     name: &str,
 ) -> Result<(), CodegenError> {
-    match temporal_profile(kind, constraints) {
-        Ok(Some(TemporalProfile::DateTimeZulu)) => {}
+    let lexical_kind = match temporal_profile(kind, constraints) {
+        Ok(Some(TemporalProfile::DateTimeZulu)) => "dateTime",
+        Ok(Some(TemporalProfile::TimeZulu)) => "Time",
         // Task 057: the SAME spec/body text as the direct carrier.
         Ok(Some(TemporalProfile::Duration)) => {
             render_duration_spec(output, private_part, name);
@@ -2937,24 +2944,25 @@ fn render_temporal_declaration(
         }
         Ok(None) => return unsupported(format!("non-temporal primitive on {name}")),
         Err(reason) => return unsupported(format!("{reason} on {name}")),
-    }
+    };
     // Visible part: an opaque handle plus the two operations a client may use.
     // The representation is not nameable from here, so no aggregate or
     // conversion can bypass `Create`.
     writeln!(
         output,
         concat!(
-            "   --  A validated XML Schema dateTime restricted to the Zulu timezone.\n",
+            "   --  A validated XML Schema {lexical_kind} restricted to the Zulu timezone.\n",
             "   --  Predefined \"=\" compares the stored normalized lexical\n",
             "   --  representation; it is NOT XML Schema value-space equality.\n",
             "   type {name} is private;\n\n",
             "   --  Raises Constraint_Error unless the whitespace-normalized value is\n",
-            "   --  a valid lexical dateTime whose timezone is 'Z'.\n",
+            "   --  a valid lexical {lexical_kind} whose timezone is 'Z'.\n",
             "   function Create (Value : String) return {name};\n\n",
             "   --  The stored normalized lexical representation.\n",
             "   function Value (Item : {name}) return String;\n",
         ),
         name = name,
+        lexical_kind = lexical_kind,
     )
     .expect("writing to String cannot fail");
 
@@ -2964,7 +2972,7 @@ fn render_temporal_declaration(
             "   type {name} is record\n",
             "      --  Task 040: an explicitly failing component default. An ordinary\n",
             "      --  default declaration of this carrier would otherwise produce an\n",
-            "      --  empty string, which is not a valid Zulu dateTime. The default is\n",
+            "      --  empty string, which is not a valid Zulu {lexical_kind}. The default is\n",
             "      --  a raise expression, so enforcement is part of the language's\n",
             "      --  initialization semantics and does not depend on -gnata,\n",
             "      --  Assertion_Policy, or any client-side check.\n",
@@ -2979,10 +2987,15 @@ fn render_temporal_declaration(
             "   end record;\n",
         ),
         name = name,
+        lexical_kind = lexical_kind,
     )
     .expect("writing to String cannot fail");
 
-    body.push_str(&ADA_DATE_TIME_ZULU_CARRIER_BODY.replace("{name}", name));
+    if lexical_kind == "Time" {
+        body.push_str(&time_zulu::body().replace("{name}", name));
+    } else {
+        body.push_str(&ADA_DATE_TIME_ZULU_CARRIER_BODY.replace("{name}", name));
+    }
     Ok(())
 }
 
@@ -4783,7 +4796,7 @@ end Probe;
             } else {
                 schema.types[0].constraints.lexical.pattern_groups.push(
                     ams_gra_oms_ir::PatternGroup {
-                        alternatives: vec![ams_gra_oms_ir::PatternExpression::xml_schema(".+Z")],
+                        alternatives: vec![ams_gra_oms_ir::PatternExpression::xml_schema(".*Z")],
                     },
                 );
             }

@@ -193,3 +193,9 @@ pub mod real_uci_subsystem_stream {
 }
 
 pub mod codec;
+
+/// Task 061 checked named Time model/API/codec, generated in the build.
+#[allow(clippy::all, clippy::pedantic)]
+pub mod codec_time_zulu {
+    include!(concat!(env!("OUT_DIR"), "/codec_time_zulu/service_api.rs"));
+}

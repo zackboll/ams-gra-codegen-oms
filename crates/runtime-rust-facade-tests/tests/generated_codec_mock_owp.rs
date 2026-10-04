@@ -23,6 +23,58 @@ fn pub_body(frame: &str, topic: &str) -> Value {
 }
 
 #[test]
+fn task061_invalid_time_is_not_delivered_to_the_typed_handler() {
+    use ams_gra_oms_runtime_rust_facade_tests::codec_time_zulu::{
+        model as m, service_api::function_clock as clock, service_codec::ServiceCodec as ClockCodec,
+    };
+    let peer = MockPeer::start();
+    let mut runtime = SleetRuntime::connect(
+        RuntimeConfig::new(&peer.url, "svc-1", "000.1.0"),
+        ClockCodec,
+    )
+    .unwrap();
+    assert!(peer.next_text().starts_with("INIT "));
+    let (tx, rx) = mpsc::channel();
+    let subscription =
+        clock::exchange_input_clock::subscribe(&mut runtime, move |value: &m::TimePayload| {
+            tx.send(value.clone()).unwrap();
+        })
+        .unwrap();
+    peer.expect("SUB sub-1 TimeNotice clock-topic");
+    let mut body = serde_json::json!({"Required":"\t12:34:56.5000Z\r", "Selection":{"Time":"23:59:60Z"}, "Item":{"$type":"ConcreteClock","Time":"24:00:00Z"}});
+    peer.send(&format!(
+        "MSG sub-1 {}",
+        serde_json::json!({"TimeNotice":body})
+    ));
+    let value = rx.recv_timeout(WAIT).unwrap();
+    assert_eq!(value.required.as_str(), "12:34:56.5000Z");
+    clock::exchange_output_clock::publish(&mut runtime, &value).unwrap();
+    body["Required"] = serde_json::json!("12:34:56.5000Z");
+    assert_eq!(
+        pub_body(&peer.next_text(), "clock-topic"),
+        serde_json::json!({"TimeNotice":body})
+    );
+    body["Required"] = serde_json::json!("12:34:56+00:00");
+    peer.send(&format!(
+        "MSG sub-1 {}",
+        serde_json::json!({"TimeNotice":body})
+    ));
+    assert!(matches!(
+        runtime.recv_event_timeout(WAIT),
+        Some(RuntimeEvent::SubscriptionDecodeError {
+            error: MessageDecodeError::Codec(_),
+            ..
+        })
+    ));
+    assert!(rx.recv_timeout(common::QUIET).is_err());
+    subscription.unsubscribe().unwrap();
+    peer.expect("UNSUB sub-1");
+    runtime.close().unwrap();
+    peer.expect_closed();
+    println!("TASK061 TIME MOCK OWP: PASSED");
+}
+
+#[test]
 fn task060_alternating_ascii_generated_codec_mock_owp_round_trip() {
     use ams_gra_oms_runtime_rust_facade_tests::codec_alternating_ascii::{
         model as m, service_api::function_union as union, service_codec::ServiceCodec as UnionCodec,

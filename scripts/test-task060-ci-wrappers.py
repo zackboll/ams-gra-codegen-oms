@@ -59,6 +59,10 @@ category_markers = {
 }
 targets = []
 for step in real_uci.split("      - name: ")[1:]:
+    # Task061 helper/CLI steps have dedicated gates, not inline Cargo captures.
+    # The exact target list below still requires every inherited Cargo gate.
+    if "cargo test" not in step:
+        continue
     match = re.search(r"^        run: \|\n((?:          .*\n|\n)+)", step, re.MULTILINE)
     assert match, step
     block = textwrap.dedent(match[1])
