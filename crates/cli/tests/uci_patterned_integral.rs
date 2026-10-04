@@ -7,6 +7,10 @@ use ams_gra_oms_codegen_core::{
 use ams_gra_oms_ir::{PrimitiveKind, TypeKind, TypeRefTarget};
 use std::{path::PathBuf, process::Command};
 
+#[path = "../../../tests/task063_integrated_coverage.rs"]
+mod task063_integrated_coverage;
+use task063_integrated_coverage::integrated_coverage;
+
 #[test]
 fn task063_pinned_inventory_coverage_and_service_impact() {
     for (release, variable, digest) in [
@@ -138,26 +142,12 @@ fn task063_pinned_inventory_coverage_and_service_impact() {
             let coverage = CoverageAnalysis::new(&schema, world).unwrap();
             for lang in BackendLanguage::ALL {
                 let actual = coverage.backend_coverage(lang).unwrap();
-                let world_key = match world {
-                    GenerationWorld::ClosedSchemaSet => "closed-schema",
-                    GenerationWorld::OpenExtensions => "open-extensions",
-                };
                 let backend_key = match lang {
                     BackendLanguage::Ada => "Ada",
                     BackendLanguage::Rust => "Rust",
                     BackendLanguage::Cpp => "Cpp",
                 };
-                let row = include_str!("../../../tests/fixtures/integral/task063-coverage.tsv")
-                    .lines()
-                    .find(|line| {
-                        line.starts_with(&format!("{release}\t{world_key}\t{backend_key}\t"))
-                    })
-                    .unwrap();
-                let expected: Vec<usize> = row
-                    .split('\t')
-                    .skip(8)
-                    .map(|v| v.parse().unwrap())
-                    .collect();
+                let expected = integrated_coverage(release, world, backend_key);
                 assert_eq!(
                     vec![
                         actual.declaration_kinds_renderable,

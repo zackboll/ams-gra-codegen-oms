@@ -92,7 +92,7 @@ fn task061_pinned_ada_full_schema_naming_attribution() {
             .renderable_message_closure_names(BackendLanguage::Cpp)
             .unwrap();
         assert_eq!(rust, cpp);
-        assert_eq!(rust.difference(&ada).count(), 32);
+        assert_eq!(rust.difference(&ada).count(), 33);
         let unsafe_ada = ams_gra_oms_codegen_core::unsafe_named_declarations(
             &schema,
             BackendLanguage::Ada,
@@ -110,6 +110,35 @@ fn task061_pinned_ada_full_schema_naming_attribution() {
                 "{}",
                 name.local_name
             );
+            if name.local_name == "Task" {
+                let unsafe_names: BTreeSet<_> = closure
+                    .iter()
+                    .filter(|d| unsafe_ada.contains(&d.name))
+                    .map(|d| d.name.local_name.as_str())
+                    .collect();
+                println!("TASK062 TASK ADA UNSAFE\t{version}\t{unsafe_names:?}");
+                let plan = resolve_service_plan(&contract("Task", version), &schema).unwrap();
+                let r = analyze_service_readiness(
+                    &plan,
+                    &schema,
+                    BackendLanguage::Ada,
+                    GenerationWorld::ClosedSchemaSet,
+                )
+                .unwrap();
+                assert!(r.backend_blocker.is_none());
+                assert!(!r.is_ready());
+                assert_eq!(
+                    r.unsupported_generated_support_types
+                        .iter()
+                        .map(|n| n.local_name.as_str())
+                        .collect::<BTreeSet<_>>(),
+                    BTreeSet::from([
+                        "NITF_DateAndTimeType",
+                        "NITF_DateType",
+                        "NITF_MSTGTA_TargetLocationType"
+                    ])
+                );
+            }
         }
         println!("UCI {version} TASK061 ADA FULL-SCHEMA NAMING: PASSED");
     }
@@ -268,6 +297,20 @@ fn campaign(inventory_only: bool) {
                 // This is evidence harness scheduling, not a capability change.
                 if let Err(error) = &projection {
                     for language in BackendLanguage::ALL {
+                        let expected = include_str!(
+                            "../../../tests/fixtures/string/task062-time-impact-current.tsv"
+                        )
+                        .lines()
+                        .find(|line| {
+                            line.starts_with(&format!(
+                                "{version}\t{world:?}\t{language:?}\t{}\t",
+                                m.name.local_name
+                            ))
+                        })
+                        .expect("frozen projection row");
+                        let row: Vec<_> = expected.split('\t').collect();
+                        assert_eq!(row[4], "projection", "{expected}");
+                        assert_eq!(row[5], error.to_string(), "{expected}");
                         println!(
                             "ERROR\t{version}\t{world:?}\t{language:?}\t{}\t{error}",
                             m.name.local_name
@@ -279,7 +322,7 @@ fn campaign(inventory_only: bool) {
                     match analyze_service_readiness(&plan, &schema, language, world) {
                         Ok(r) => {
                             let expected = include_str!(
-                                "../../../tests/fixtures/temporal/task061-message-impact.tsv"
+                                "../../../tests/fixtures/string/task062-time-impact-current.tsv"
                             )
                             .lines()
                             .find(|line| {
@@ -290,9 +333,9 @@ fn campaign(inventory_only: bool) {
                             })
                             .expect("frozen impact row");
                             let row: Vec<_> = expected.split('\t').collect();
-                            // Preserve the Task 061 historical ledger. Task 063's
-                            // independently measured exact profile resolves this
-                            // one closed-world blocker without moving that baseline.
+                            // Preserve the Task 062 current baseline. Task 063's
+                            // isolated delta resolves exactly this closed-world
+                            // blocker; selected/support counts remain unchanged.
                             let task063_gain = version == "2.5"
                                 && world == GenerationWorld::ClosedSchemaSet
                                 && m.name.local_name == "PrioritizationList";
@@ -309,6 +352,14 @@ fn campaign(inventory_only: bool) {
                                 r.generated_support_types_total,
                                 row[6].parse::<usize>().unwrap()
                             );
+                            if !r.is_ready() {
+                                let first = r
+                                    .unsupported_types
+                                    .first()
+                                    .or_else(|| r.unsupported_generated_support_types.first())
+                                    .expect("baseline blocker");
+                                assert_eq!(first.local_name, row[4], "{expected}");
+                            }
                             println!(
                                 "SERVICE\t{version}\t{world:?}\t{language:?}\t{}\t{}\t{}\t{}\t{:?}\t{:?}\t{:?}\t{:?}",
                                 m.name.local_name,
@@ -321,8 +372,8 @@ fn campaign(inventory_only: bool) {
                                 r.service_api_blocker
                             );
                         }
-                        Err(e) => println!(
-                            "ERROR\t{version}\t{world:?}\t{language:?}\t{}\t{e}",
+                        Err(e) => panic!(
+                            "unexpected readiness error: {version} {world:?} {language:?} {}: {e}",
                             m.name.local_name
                         ),
                     }

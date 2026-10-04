@@ -63,7 +63,6 @@ fn task060_real_uci_after_coverage_and_order_of_battle() {
         assert_eq!(
             deferred,
             BTreeSet::from([
-                "IPv6_AddressType",
                 "NITF_DateAndTimeType",
                 "NITF_DateType",
                 "NITF_MSTGTA_TargetLocationType"
@@ -104,8 +103,8 @@ fn task060_real_uci_after_coverage_and_order_of_battle() {
 /// and topology independently from full-schema closure coverage.
 #[test]
 fn task060_real_projected_message_impact_and_naming() {
-    // Historical Task060 rows remain frozen; Task061 changes current readiness.
-    let rows = include_str!("../../../tests/fixtures/temporal/task061-task060-subset-current.tsv");
+    // Preserve Task 062's baseline; layer only Task 063's exact closed 2.5 gain.
+    let rows = include_str!("../../../tests/fixtures/string/task062-task060-subset-current.tsv");
     for (version, var, digest) in ROOTS {
         let Some((_, schema)) = root(var, digest) else {
             continue;
@@ -121,7 +120,7 @@ fn task060_real_projected_message_impact_and_naming() {
                     .difference(&ada)
                     .map(|n| n.local_name.as_str())
                     .collect::<BTreeSet<_>>(),
-                include_str!("../../../tests/fixtures/temporal/task061-ada-full-schema-gap.tsv")
+                include_str!("../../../tests/fixtures/string/task062-ada-full-schema-gap.tsv")
                     .lines()
                     .filter_map(|line| line.strip_prefix(&format!("{version}\t")))
                     .collect()
@@ -136,6 +135,11 @@ fn task060_real_projected_message_impact_and_naming() {
                 continue;
             }
             let plan = resolve_service_plan(&contract(row[1], version), &schema).unwrap();
+            let task063_gain = version == "2.5" && row[1] == "PrioritizationList";
+            if task063_gain {
+                assert_eq!(row[2], "USMTF_SerialNumberOfQualifierType");
+            }
+            let mut current_verdict = row[2];
             for language in BackendLanguage::ALL {
                 let result = analyze_service_readiness(
                     &plan,
@@ -160,17 +164,11 @@ fn task060_real_projected_message_impact_and_naming() {
                 );
                 assert_eq!(
                     r.is_ready(),
-                    row[2] == "ready"
-                        || (version == "2.5"
-                            && row[1] == "PrioritizationList"
-                            && row[2] == "USMTF_SerialNumberOfQualifierType"),
+                    row[2] == "ready" || task063_gain,
                     "{version} {} {language:?}",
                     row[1]
                 );
-                if version == "2.5" && row[1] == "PrioritizationList" {
-                    // Keep historical Task 060 counts/ledger intact. The
-                    // exact Task 063 gain has its own frozen nine-tuple gate.
-                    assert_eq!(row[2], "USMTF_SerialNumberOfQualifierType");
+                if task063_gain {
                     assert!(r.is_ready());
                 } else if !r.is_ready() {
                     let first = r
@@ -180,22 +178,22 @@ fn task060_real_projected_message_impact_and_naming() {
                         .unwrap();
                     assert_eq!(first.local_name, row[2]);
                 }
+                if r.is_ready() {
+                    current_verdict = "ready";
+                }
             }
-            match row[2] {
+            match current_verdict {
                 "ready" => ready += 1,
                 "topology" => topology += 1,
                 blocker => *blocked.entry(blocker).or_insert(0) += 1,
             }
         }
-        assert_eq!(ready, if version == "2.5" { 80 } else { 81 });
+        println!(
+            "UCI {version} INTEGRATED CURRENT: ready={ready} topology={topology} blockers={blocked:?}"
+        );
+        assert_eq!(ready, 86);
         assert_eq!(topology, 6);
-        let mut expected = std::collections::BTreeMap::from([
-            ("IPv6_AddressType", 11),
-            ("NITF_DateAndTimeType", 5),
-        ]);
-        if version == "2.5" {
-            expected.insert("USMTF_SerialNumberOfQualifierType", 1);
-        }
+        let expected = std::collections::BTreeMap::from([("NITF_DateAndTimeType", 11)]);
         assert_eq!(blocked, expected);
         println!("\nUCI {version} TASK060 PROJECTED MESSAGE IMPACT: PASSED");
     }

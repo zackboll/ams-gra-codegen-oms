@@ -2,7 +2,7 @@
 
 ## Isolation and immutable measurement identity
 
-Task 063 is a sibling of Task 062, not its descendant. Actual Task 061 parent
+Task 063 was created as a sibling of Task 062, not its descendant. Actual Task 061 parent
 and immutable BEFORE benchmark: `add348ce867daf4253a88510a65a48a3ed23f218`.
 At creation PR #62 was OPEN, base `main`, at that SHA; PR #63 was OPEN,
 base `feature/061-time-zulu-support`, head
@@ -328,3 +328,78 @@ UCI 2.6 remains zero delta. Newly READY services remain OrdersMetadata
 (closed/open) and PrioritizationList (closed only), with nine world tuples,
 six release/backend/message tuples and the 82-declaration OrdersMetadata
 smallest vertical. Task 062 and Task 064 worktrees/branches are not modified.
+
+## Corrective #2 — reconciliation with merged Task 062
+
+The immutable measurement benchmark remains
+`add348ce867daf4253a88510a65a48a3ed23f218`. The **current final integration
+base** is `52e22b67b94b431d96925c41ff730749c33b3c9e`, the normal main merge of
+Task 062 / PR #63 (parents `cf9ebc518f49e58b1731417186c836f3a41e0e74` and
+`4391761f3cd27901f11bd8c93fa35d6a31750156`). Task 062 merged after Task 063's
+isolated measurements. Earlier integration/isolation statements above describe
+their historical checkpoints, not this combined source tree.
+
+Previous final Task 063 head: `d4d4dbbd83a1691b9337fcdf36f582bc713aa358`.
+Fast **37208561985 / attempt 1 succeeded**. Deep **37208561994 / attempt 1
+failed**, real-UCI job **111454836469**, with actual Actions checkout
+`76bd0fc0c695613766b9e3cc5ac088a482e0f12c`: merge of that feature head into
+old main `cf9ebc518f49e58b1731417186c836f3a41e0e74`.
+
+The failure was `task058_closed_schema_ada_gap_evidence`, at
+`crates/cli/tests/uci_bounded_ascii_string.rs:374`: **live 634, stale expected
+632**. The immutable Task 063 coverage ledger independently records 632 → 634
+closed UCI 2.5 Ada closures: exactly the legitimate +2 capability gain. The
+Task 063 hosted pinned inventory/impact/vertical and all nine production
+service checks **passed**, proving the TMPDIR corrective worked. Deep's
+`msrv-real-uci` and `real-sleet` also succeeded. Tasks 059–060 were skipped
+after inherited Task 058 failed. Original metadata and full job log are saved
+outside the checkout in `/tmp/task063-reconcile-evidence/`.
+
+The repair imports main's already-reviewed **capability-relative Task 058
+test unchanged**, not a Task 063 bespoke total. It retains peer-set equality,
+Ada subset, the three naming witnesses, Query unsafe declarations/collision,
+bounded-ASCII members and projected naming/readiness invariants. No production
+capability is rolled back. The TMPDIR → RUNNER_TEMP → platform-temp fallback,
+`main()` guard and no-service-check import regression remain unchanged.
+
+### Integrated-current oracle (not a replacement historical campaign)
+
+`task063-coverage.tsv` and `task062-after.tsv` remain byte-for-byte historical.
+The Task 063 pinned test computes each final expected cell as **Task 062 AFTER
++ (Task 063 isolated AFTER − BEFORE)**, and checks that the isolated delta
+itself is exactly the documented gain. Kind/field metrics have zero Task 063
+delta; UCI 2.6 has zero delta throughout.
+
+Source review also identified the same inherited absolute-current hazard in
+`task062_pinned_ipv6_inventory_coverage_and_impact`: its full coverage row was
+compared directly with Task 062's isolated AFTER. It now calls the shared
+Task 063 integrated-current oracle in `tests/task063_integrated_coverage.rs`,
+while still checking unchanged schema totals and every exact Task 062 service
+row. No Task 062 fixture or production-specific IPv6 implementation changes.
+This is a test-layer integration correction, not numerical fixture regeneration.
+
+|Release|World|Backend|Kinds|Full declarations|Field types|Field occurrences|Closures|
+|---|---|---|---:|---:|---:|---:|---:|
+|2.5|closed|Ada|5554|5533|13160|13160|643|
+|2.5|closed|Rust|5554|5534|13160|13160|676|
+|2.5|closed|C++|5554|5534|13160|13160|676|
+|2.5|open|Ada|5554|5446|13160|13160|571|
+|2.5|open|Rust|5554|5446|13160|13160|571|
+|2.5|open|C++|5554|5446|13160|13160|571|
+|2.6|closed|Ada|5567|5546|13198|13198|646|
+|2.6|closed|Rust|5567|5547|13198|13198|679|
+|2.6|closed|C++|5567|5547|13198|13198|679|
+|2.6|open|Ada|5567|5459|13198|13198|574|
+|2.6|open|Rust|5567|5459|13198|13198|574|
+|2.6|open|C++|5567|5459|13198|13198|574|
+
+Task 061 live Time impact uses `task062-time-impact-current.tsv`; Task 060's
+subset uses `task062-task060-subset-current.tsv` and the 33-message
+`task062-ada-full-schema-gap.tsv`. Only closed UCI 2.5 PrioritizationList
+overrides its verified baseline serial-number blocker to READY; selected and
+support counts are unchanged. Current subset summaries must measure 86 READY,
+six topology failures and eleven NITF_DateAndTimeType blockers per release,
+with no remaining serial-number blocker. Both task families' Fast/Deep and
+runtime registration gates are retained; Deep keeps the 240-minute budget.
+
+Validation and final hosted certification are recorded below when complete.

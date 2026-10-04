@@ -25,6 +25,9 @@ on:
       - "scripts/fetch-pinned-uci-2.5.sh"
       - "scripts/fetch-pinned-uci-2.6.sh"
       - "scripts/run-real-sleet-test.sh"
+      - "scripts/check-task062-pinned.sh"
+      - "scripts/check-task062-service-impact.py"
+      - "scripts/check-task062-vertical.py"
       - "scripts/check-task063-pinned.sh"
       - "scripts/check-task063-service-impact.py"
 
@@ -76,6 +79,8 @@ jobs:
       #
       - name: Named TimeZulu pinned inventory and impact (Task 061)
         run: bash scripts/check-task061-pinned.sh
+      - name: Exact IPv6 pinned inventory, impact and real vertical (Task 062)
+        run: bash scripts/check-task062-pinned.sh
       - name: Exact patterned integral pinned evidence (Task 063)
         run: bash scripts/check-task063-pinned.sh
       - name: Confirm unique newly READY Time services (Task 061)
@@ -170,9 +175,10 @@ jobs:
           grep -Eqx '(test task057_real_uci_category_a_log_generates_and_compiles \.\.\. )?UCI 2\.5 REAL CATEGORY-A DURATION SERVICE: PASSED' <<<"$output"
           grep -qE '^test result: ok\. 4 passed' <<<"$output"
       # Task 058: fresh bounded-ASCII String inventory (the exact 61-member
-      # set per release, 19 alphabets, 46 still-unsupported neighbours), the
+      # set per release, 19 alphabets, three still-unsupported Unicode neighbours
+      # after Task 062 admits IPv6), the
       # real message-impact classification (no member may remain a blocker),
-      # exact Ada-only full-schema closure/name-context regression,
+      # capability-relative Task058 Ada-only closure/name-context regression,
       # and the smallest real newly-READY service generating and compiling in
       # Ada, Rust and C++ with a real Rust codec round trip. The service test
       # prints its marker FIRST, so it may share libtest's unterminated

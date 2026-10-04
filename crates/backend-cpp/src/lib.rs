@@ -1,5 +1,6 @@
 //! Minimal C++17 type generation from normalized schema IR.
 
+mod ipv6_address;
 mod service_api;
 
 pub use service_api::{SERVICE_API_FILE, generate_service_api};
@@ -499,7 +500,8 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
                 | Ok(Some(StringProfile::NatoSpecialWords))
                 | Ok(Some(StringProfile::BoundedAscii { .. }))
                 | Ok(Some(StringProfile::StructuredAscii(_)))
-                | Ok(Some(StringProfile::AlternatingAscii(_))) => {}
+                | Ok(Some(StringProfile::AlternatingAscii(_)))
+                | Ok(Some(StringProfile::Ipv6Address)) => {}
                 Ok(None) => unreachable!("constrains_string gates this branch"),
                 Err(reason) => {
                     return unsupported(format!("{reason} on {}", declaration.name.local_name));
@@ -1400,6 +1402,7 @@ fn render_string_profile_declaration(
         Ok(Some(StringProfile::AlternatingAscii(profile))) => {
             render_cpp_alternating_ascii(name, profile)
         }
+        Ok(Some(StringProfile::Ipv6Address)) => ipv6_address::render(name),
         Ok(None) => return unsupported(format!("unconstrained String on {name}")),
         Err(reason) => return unsupported(format!("{reason} on {name}")),
     };

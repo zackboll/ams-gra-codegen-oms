@@ -35,6 +35,29 @@ expect_fail() {
 expect_pass "$fast" "$deep" "$sleet"
 
 # ---- 2. mutations fail --------------------------------------------------
+grep -v 'bash scripts/check-task062-fast.sh' "$fast" >"$tmp/fast-no-t062.yml"
+expect_fail "fast lost Task062 gate" "$tmp/fast-no-t062.yml" "$deep" "$sleet"
+grep -v 'bash scripts/check-task062-pinned.sh' "$deep" >"$tmp/deep-no-t062.yml"
+expect_fail "deep lost Task062 gate" "$fast" "$tmp/deep-no-t062.yml" "$sleet"
+{ cat "$fast"; printf '      - run: bash scripts/check-task062-pinned.sh\n'; } >"$tmp/fast-t062.yml"
+expect_fail "fast runs Task062 pinned gate" "$tmp/fast-t062.yml" "$deep" "$sleet"
+{ cat "$fast"; printf '      - run: cargo test --test uci_ipv6_address\n'; } >"$tmp/fast-t062-direct.yml"
+expect_fail "fast runs Task062 pinned target directly" "$tmp/fast-t062-direct.yml" "$deep" "$sleet"
+for script in \
+  'check-task062-service-impact.py' \
+  'check-task062-vertical.py' \
+  'check-task063-pinned.sh' \
+  'check-task063-service-impact.py' \
+  '--test uci_patterned_integral'; do
+  { cat "$fast"; printf '      - run: %s\n' "$script"; } >"$tmp/fast-deep-only.yml"
+  expect_fail "fast references $script" "$tmp/fast-deep-only.yml" "$deep" "$sleet"
+done
+for gate in 'bash scripts/check-task063-fast.sh' 'python3 scripts/test-task063-ci-wrappers.py'; do
+  grep -v "$gate" "$fast" >"$tmp/fast-no-t063.yml"
+  expect_fail "fast lost $gate" "$tmp/fast-no-t063.yml" "$deep" "$sleet"
+done
+grep -v 'bash scripts/check-task063-pinned.sh' "$deep" >"$tmp/deep-no-t063.yml"
+expect_fail "deep lost Task063 gate" "$fast" "$tmp/deep-no-t063.yml" "$sleet"
 sed 's/task060_probes::generated_group_and_carrier_composes_with_production_service_codec/generated_group_and_carrier_composes_with_production_service_codec/g' "$fast" >"$tmp/fast-unqualified-and.yml"
 expect_fail "Task060 AND name lost module qualification" "$tmp/fast-unqualified-and.yml" "$deep" "$sleet"
 # A real-UCI fetch leaks into Fast CI.
