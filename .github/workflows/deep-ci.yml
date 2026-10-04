@@ -168,9 +168,10 @@ jobs:
           grep -Eqx '(test task057_real_uci_category_a_log_generates_and_compiles \.\.\. )?UCI 2\.5 REAL CATEGORY-A DURATION SERVICE: PASSED' <<<"$output"
           grep -qE '^test result: ok\. 4 passed' <<<"$output"
       # Task 058: fresh bounded-ASCII String inventory (the exact 61-member
-      # set per release, 19 alphabets, 46 still-unsupported neighbours), the
+      # set per release, 19 alphabets, three still-unsupported Unicode neighbours
+      # after Task 062 admits IPv6), the
       # real message-impact classification (no member may remain a blocker),
-      # exact Ada-only full-schema closure/name-context regression,
+      # capability-relative Task058 Ada-only closure/name-context regression,
       # and the smallest real newly-READY service generating and compiling in
       # Ada, Rust and C++ with a real Rust codec round trip. The service test
       # prints its marker FIRST, so it may share libtest's unterminated

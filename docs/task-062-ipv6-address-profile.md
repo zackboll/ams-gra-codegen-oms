@@ -13,8 +13,10 @@ unmerged, with auto-merge disabled, head
 **Selected parent and immutable BEFORE benchmark:**
 `add348ce867daf4253a88510a65a48a3ed23f218`.
 No parent advancement required inspection. Later parent advancement must not
-change this benchmark. Neither Task 061 nor Task 062 is authorized to merge.
-Task 061's worktree, branch, PR, CI and collectors remain untouched.
+change this benchmark. At publication neither task had merge authorization.
+Task 061 subsequently merged independently; see the corrective integration
+section below. Task 062 remains unauthorized to merge. Task 061's worktree,
+branch, PR, CI and collectors were not modified by this task.
 
 Task-specific artifacts are outside the worktree at
 `/home/zboll/git/ams-gra-codegen-oms-task062-artifacts/`: `target/` is
@@ -346,12 +348,132 @@ deferral assertion corrected while retaining the historical rows. A complete
 workspace invocation passed **1,260 tests, zero test failures**, then failed
 rustdoc with missing-crate diagnostics after another toolchain build had reused
 the target during its execution. This invocation is NOT a successful workspace
-gate. A serial full workspace rerun is underway; Rust 1.95 now uses a separate
+gate. The serial full workspace rerun subsequently completed with exit 0
+(`logs/workspace-final.log` and `logs/workspace-final.exit`); Rust 1.95 uses a separate
 Task062 `msrv-target` directory. No shared target was cleaned. Source manifests
 and command-specific durable exits are under the Task062 artifact root.
 
-The production source is settled; any unfinished workspace/hosted gates are
-explicit pending gates, not review approval. PR publication will remain stacked
-on Task061 while PR #62 is open. Hosted Fast/Deep conclusions and actual checkout
+The initial PR publication was stacked on Task061 while PR #62 was open.
+The corrective below reconciles onto its independently merged main tree without
+moving the immutable benchmark. Fresh hosted conclusions and actual checkout
 identities must be recorded before final readiness is claimed. No merge
 authorization, and no auto-merge.
+
+## Inherited Task058 Deep-CI corrective and main reconciliation
+
+### Preserved old stacked failure
+
+The reviewed Task062 head was
+`8765b455235197eb533ba3d89c8a0522cf81dd60`, stacked on the immutable
+BEFORE `add348ce867daf4253a88510a65a48a3ed23f218`.
+
+| Gate | Run | Attempt | Conclusion |
+|---|---:|---:|---|
+| Old stacked Fast | 37173941536 | 1 | SUCCESS |
+| Old stacked Deep | 37173941535 | 1 | FAILURE |
+
+Deep's real-uci job `111352510175` completed the **Task062 exact IPv6
+inventory/impact/real vertical step SUCCESS** before the inherited Task058
+failure. Task061 Time and 609 unique service confirmations and Tasks052–057
+also passed; Tasks059/060 were skipped after Task058 failed. The other Deep
+jobs, msrv-real-uci `111352510070` and real-sleet `111352510176`, succeeded.
+
+The actual first panic was in `task058_closed_schema_ada_gap_evidence` at
+`crates/cli/tests/uci_bounded_ascii_string.rs:373:13` on that old source:
+
+```text
+assertion `left == right` failed
+  left: 641
+ right: 632
+```
+
+**641 is correct:** Task062 independently measured a +9 UCI2.5 closed Ada
+renderable-closure gain over 632. Rust/C++ gained +10 (664→674); UCI2.6 gained
+637→646 Ada and 669→679 peers. This is an inherited stale current-state
+assertion, not an IPv6 compiler, lexical matcher, or codec failure.
+
+Complete attempt-1 log archives, per-run/job JSON and original diagnostics were
+recovered once into the external artifact directory
+`logs/hosted-old-corrective/`. The old collector is retired, not restarted;
+neither old workflow was rerun. The old synthetic checkout was
+`c876e726197db5bccdd2205dad59ce59d8931e52`, distinct from the feature head and
+stacked base. Terminal old evidence does not certify the corrected main-base PR.
+
+### Narrow corrective ownership
+
+Task058 no longer asserts moving global closure totals or compares the entire
+live gap with Task061's historical TSV. Replacing 632/664/637/669 with
+641/674/646/679 would merely cause another legitimate capability task to break
+the inherited regression. Instead its existing test retains:
+
+- equal current Rust/C++ renderable-closure sets and Ada as their subset;
+- `Authorization`, `AuthorizationRequest`, and `CommSupportActivity` in the
+  peer-minus-Ada gap, without claiming they are the entire current gap;
+- exactly `QueryPET` and `QueryType` as Ada-only unsafe declarations, not unsafe
+  in Rust/C++;
+- the exact full-schema `QueryType companion` / `QueryType` collision at
+  `QueryType_Kind`, with peer preflight safe;
+- for each historical witness, sole relevant unsafe closure declaration
+  `QueryPET`, the established bounded-ASCII members
+  `AlphanumericDashSpaceUnderscoreStringLength15Type` and `EmptyType`, absent
+  `QueryType`, safe projected Ada naming and production projected service
+  readiness in all backends.
+
+There are still **five Task058 tests**. The Deep workflow changes only comments:
+its inherited inventory now retains three unsupported Unicode neighbours after
+IPv6 admission. Commands, count requirements, markers, ordering, timeout,
+triggers and concurrency are unchanged.
+
+`tests/fixtures/temporal/task061-ada-full-schema-gap.tsv` remains historical and
+unchanged. Exact Task062 current-state coverage remains owned by
+`task062_pinned_ipv6_inventory_coverage_and_impact` (all 12 cells). Current
+33-message naming remains independently enforced by
+`task061_pinned_ada_full_schema_naming_attribution` and the exact-set assertion
+in `task060_real_projected_message_impact_and_naming` against
+`tests/fixtures/string/task062-ada-full-schema-gap.tsv`. No historical
+Task058/061 measurement is rewritten as a Task062 measurement.
+
+The full Task062 production diff was reread: admission is exact, name-free
+ConstraintSet equality; independent 2..45 length facets and full authored XSD
+lexical matching are enforced; embedded IPv4 implements precisely the authored
+decimal alternatives; all carriers preserve spelling; Ada forms absolute
+indices only at proven in-range offsets, never one-past-Positive'Last; shared
+codec readiness and generated checked construction remain aligned;
+unsupported String neighbours fail closed. There is no production blocker and
+**no production change or rollback** in this corrective. Source-size guards
+remain part of the requested Fast validation.
+
+### Integration identity and fresh gate
+
+Focused corrective validation used independently rehashed Task062 copies of
+both pinned roots. `task058_closed_schema_ada_gap_evidence` completed exactly
+one release test, exit 0, both release markers (**176.60s**).
+`task061_pinned_ada_full_schema_naming_attribution` then completed exactly one
+release test, exit 0, both release markers (**118.20s**); its fresh 33-message
+output for each release was also compared exactly with the Task062 gap TSV.
+The requested `check-task062-fast.sh`, Task062 CI wrapper tests, CI split and
+adversarial split tests, fmt, all-target workspace check, warnings-denied
+all-target Clippy and diff check all completed exit 0. Durable commands, logs,
+exits and marker verification are in `logs/corrective/`.
+
+The successful old exact-head pinned Task062 12-cell impact/vertical campaign
+is retained by source/dependency identity, rather than rerun locally for this
+test-only correction. `manifests/corrective-production-identity.json` records
+67 unchanged production, build, corpus and Task062 fixture inputs. The fresh
+hosted Deep campaign will execute the full current evidence again.
+
+Live main was verified at `cf9ebc518f49e58b1731417186c836f3a41e0e74`, the
+Task061 merge with parents `0800e97c71d8bf3edcef40ef1dc4ef5200b76deb` and
+`add348ce867daf4253a88510a65a48a3ed23f218`. Its tree
+`f0451bd2e04da6f298fab754b23afe1ad390e721` exactly equals the immutable BEFORE
+tree. Normal merge reconciliation, not rebase/cherry-pick/force-push, is used.
+The immutable Task062 benchmark remains
+`add348ce867daf4253a88510a65a48a3ed23f218`; the separate final integration base
+is `cf9ebc518f49e58b1731417186c836f3a41e0e74`.
+
+Fresh automatically triggered Fast/Deep on the final feature head and main base
+are required. Their results are **pending, not claimed successful** until the
+single head/base-keyed collector preserves terminal logs, actual synthetic
+checkout SHA and parent relationship, all Deep jobs and execution markers.
+PR #63 must stay open, non-draft, unmerged, auto-merge disabled. Task063/064
+and their worktrees are outside this corrective.
