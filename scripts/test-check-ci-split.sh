@@ -128,6 +128,14 @@ expect_fail "deep printf|grep -q" "$fast" "$tmp/deep-pipe.yml" "$sleet"
 { cat "$sleet"; printf "printf '%%s\\\\n' \"\$output\" | grep -qE 'x'\n"; } >"$tmp/sleet-pipe.sh"
 expect_fail "sleet printf|grep -qE" "$fast" "$deep" "$tmp/sleet-pipe.sh"
 
+# Task 064: losing compact pinned integrity or single-pass evidence must fail.
+sed '/task064_real_uci_generated_support_binding/d' "$deep" >"$tmp/deep-task064.yml"
+expect_fail "Task064 pinned test removed" "$fast" "$tmp/deep-task064.yml" "$sleet"
+sed '/UCI 2.5 GENERATED SUPPORT BINDING: PASSED/d' "$deep" >"$tmp/deep-task064-marker.yml"
+expect_fail "Task064 pinned marker removed" "$fast" "$tmp/deep-task064-marker.yml" "$sleet"
+sed '/TASK064 SINGLE PROJECTION EXPANSION ANALYSIS: PASSED/d' "$fast" >"$tmp/fast-task064.yml"
+expect_fail "Task064 instrumentation removed" "$tmp/fast-task064.yml" "$deep" "$sleet"
+
 # ---- 3. marker-check shapes (verbatim from deep-ci.yml job real-uci) ------
 task054_markers() {
   set -euo pipefail

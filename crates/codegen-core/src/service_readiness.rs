@@ -727,6 +727,7 @@ mod tests {
         for language in BackendLanguage::ALL {
             let analyses = construction_probe::count();
             let projections = projection_probe::count();
+            let expansions = projection_probe::expansions();
             let readiness = analyze_service_readiness(
                 &plan,
                 &schema,
@@ -736,6 +737,11 @@ mod tests {
             .expect("readiness");
             assert_eq!(construction_probe::count() - analyses, 1, "{language:?}");
             assert_eq!(projection_probe::count() - projections, 1, "{language:?}");
+            assert_eq!(
+                projection_probe::expansions() - expansions,
+                1,
+                "{language:?}"
+            );
             // And the support surface really was measured from it.
             assert_eq!(readiness.generated_support_types_total, 3);
             assert_eq!(

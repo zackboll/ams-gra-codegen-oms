@@ -58,6 +58,41 @@ jobs:
       # log proves each one executed. `require_one_test` fails the step if a
       # filter matches nothing, since a passing run of zero tests is exactly
       # the false green this workflow change exists to prevent.
+      - name: Service generated-support binding (Task 064, must execute)
+        run: |
+          set -euo pipefail
+          listing="$(cargo test -p ams-gra-oms-codegen-core --test generated_support_binding -- --list 2>&1)"
+          printf '%s\n' "$listing"
+          for name in changed_support_rejected_with_readiness_generation_parity added_descendant_changes_closed_support_topology removed_descendant_is_typed_missing_support transitive_support_dependency_is_bound nested_abstract_value_support_is_bound task026_absent_only_topology_becoming_inhabited_is_bound simultaneous_support_changes_use_original_schema_order_not_names_or_stack added_descendants_use_supplied_schema_order compatible_rebuild_and_provenance_and_unrelated_edits_are_accepted selected_only_concrete_service_has_no_support_binding open_world_preserves_authoritative_abstract_value_failure member_wire_namespace_is_bound_for_selected_and_support_members; do
+            grep -Fqx "$name: test" <<<"$listing"
+            status=0
+            output="$(cargo test -p ams-gra-oms-codegen-core --test generated_support_binding "$name" -- --exact --nocapture 2>&1)" || status=$?
+            printf '%s\n' "$output"
+            if (( status != 0 )); then exit "$status"; fi
+            grep -qE '^test result: ok\. 1 passed' <<<"$output"
+          done
+          echo 'TASK064 SYNTHETIC BINDING MATRIX: PASSED'
+          for name in task064_compatible_schema_preserves_readiness_generated_source_and_codec task064_wire_namespace_changes_actual_codec_spelling_and_invalidates_old_plan; do
+            listing="$(cargo test -p ams-gra-codegen-oms --test generated_support_binding -- --list 2>&1)"
+            printf '%s\n' "$listing"
+            grep -Fqx "$name: test" <<<"$listing"
+            status=0
+            output="$(cargo test -p ams-gra-codegen-oms --test generated_support_binding "$name" -- --exact --nocapture 2>&1)" || status=$?
+            printf '%s\n' "$output"
+            if (( status != 0 )); then exit "$status"; fi
+            grep -qE '^test result: ok\. 1 passed' <<<"$output"
+            grep -q 'TASK064 .*: PASSED' <<<"$output"
+          done
+          name=service_readiness::tests::task056_support_readiness_builds_one_projection_and_one_analysis
+          listing="$(cargo test -p ams-gra-oms-codegen-core --lib -- --list 2>&1)"
+          printf '%s\n' "$listing"
+          grep -Fqx "$name: test" <<<"$listing"
+          status=0
+          output="$(cargo test -p ams-gra-oms-codegen-core --lib "$name" -- --exact --nocapture 2>&1)" || status=$?
+          printf '%s\n' "$output"
+          if (( status != 0 )); then exit "$status"; fi
+          grep -qE '^test result: ok\. 1 passed' <<<"$output"
+          echo 'TASK064 SINGLE PROJECTION EXPANSION ANALYSIS: PASSED'
       - name: Ada regressions (GNAT-backed, must execute)
         run: |
           set -euo pipefail
