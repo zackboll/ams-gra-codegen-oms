@@ -35,6 +35,14 @@ expect_fail() {
 expect_pass "$fast" "$deep" "$sleet"
 
 # ---- 2. mutations fail --------------------------------------------------
+grep -v 'bash scripts/check-task062-fast.sh' "$fast" >"$tmp/fast-no-t062.yml"
+expect_fail "fast lost Task062 gate" "$tmp/fast-no-t062.yml" "$deep" "$sleet"
+grep -v 'bash scripts/check-task062-pinned.sh' "$deep" >"$tmp/deep-no-t062.yml"
+expect_fail "deep lost Task062 gate" "$fast" "$tmp/deep-no-t062.yml" "$sleet"
+{ cat "$fast"; printf '      - run: bash scripts/check-task062-pinned.sh\n'; } >"$tmp/fast-t062.yml"
+expect_fail "fast runs Task062 pinned gate" "$tmp/fast-t062.yml" "$deep" "$sleet"
+{ cat "$fast"; printf '      - run: cargo test --test uci_ipv6_address\n'; } >"$tmp/fast-t062-direct.yml"
+expect_fail "fast runs Task062 pinned target directly" "$tmp/fast-t062-direct.yml" "$deep" "$sleet"
 sed 's/task060_probes::generated_group_and_carrier_composes_with_production_service_codec/generated_group_and_carrier_composes_with_production_service_codec/g' "$fast" >"$tmp/fast-unqualified-and.yml"
 expect_fail "Task060 AND name lost module qualification" "$tmp/fast-unqualified-and.yml" "$deep" "$sleet"
 # A real-UCI fetch leaks into Fast CI.

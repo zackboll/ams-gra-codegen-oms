@@ -83,7 +83,12 @@ fn task060_final_admission_boundary_matches_exact_pinned_ir() {
                 should_admit,
                 "{release} {name}"
             );
-            if !should_admit {
+            if name == "IPv6_AddressType" {
+                assert_eq!(
+                    live,
+                    Ok(Some(ams_gra_oms_codegen_core::StringProfile::Ipv6Address))
+                );
+            } else if !should_admit {
                 assert!(live.is_err());
             }
             if UNICODE.contains(&name) {

@@ -1780,6 +1780,9 @@ pub enum StringProfile {
     StructuredAscii(StructuredAsciiProfile),
     /// Task 060 exact pinned finite-union profiles; groups retain AND semantics.
     AlternatingAscii(&'static crate::AlternatingAsciiProfile),
+    /// Task 062 exact pinned IPv6 lexical expression and both length facets.
+    /// Original spelling is retained; this is not RFC address parsing.
+    Ipv6Address,
 }
 
 /// Why a constrained `string` declaration falls outside the implemented set.
@@ -1901,6 +1904,9 @@ pub fn string_profile(
     }
     if let Some(profile) = crate::alternating_ascii_profile(constraints) {
         return Ok(Some(StringProfile::AlternatingAscii(profile)));
+    }
+    if constraints == &crate::ipv6_address_constraints() {
+        return Ok(Some(StringProfile::Ipv6Address));
     }
     Err(StringProfileError::UnsupportedConstraints)
 }

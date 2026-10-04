@@ -10,6 +10,7 @@ mod binary;
 mod coverage;
 mod floating;
 mod integral;
+mod ipv6_address;
 mod service_api;
 mod service_codec;
 mod service_generation;
@@ -64,6 +65,7 @@ pub use floating::{
     float64_literal, floating_domain,
 };
 pub use integral::{InclusiveIntegralDomain, inclusive_integral_domain};
+pub use ipv6_address::{Ipv6AddressModel, UCI_IPV6_PATTERN, ipv6_address_constraints};
 pub use service_api::{
     ServiceApiArtifactCollision, ServiceApiCollision, ServiceApiError, ServiceApiExchange,
     ServiceApiExchangeKind, ServiceApiFacadeNames, ServiceApiFacadeParameters,

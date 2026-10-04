@@ -1,5 +1,15 @@
 # Roadmap
 
+Task 062 adds **exact pinned IPv6 constrained-String support** across Ada,
+Rust and C++, preserving lexical spelling without networking parsers or a
+general regex engine. All strict compiler corpora and Rust checked JSON/mock-OWP
+gates pass locally. Both releases gain five closed / four open projected READY
+services per backend; the smallest, `RDMA_InitializeSetup`, passes the real
+three-language model/API and Rust codec vertical. Three Unicode profiles and
+the known Ada Query companion naming collision remain deferred. See
+[Task 062](task-062-ipv6-address-profile.md) for frozen parent and actual delivery
+gate status; local evidence does not imply hosted validation or merge approval.
+
 Task 061 implements evidence-bounded **named TimeZulu** checked carriers in
 Ada/Rust/C++, plus the existing Rust OMS JSON codec path. Exact XML Schema `.+Z`
 facets only; name-free admission, XML-collapse spelling preservation and no
@@ -786,7 +796,8 @@ Progress (typed LA-CAL integration as a whole is **not** complete):
       and `RecordOriginatorType`; no general regex engine. OrderOfBattle
       generated support is 442/442, with six-way model/API compiler evidence.
       See [Task 060](task-060-alternating-ascii-string-profiles.md).
-- [ ] three deferred Unicode profiles and IPv6_AddressType complexity.
+- [x] exact pinned IPv6_AddressType lexical profile (Task 062; name-free).
+- [ ] three deferred Unicode profiles.
 - [ ] `xs:time` (`TimeType`, now the first blocker of 28 messages per
       release).
 - [ ] plan binding scope: `SchemaBinding` fingerprints the contract-selected

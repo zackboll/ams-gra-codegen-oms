@@ -92,7 +92,7 @@ fn task061_pinned_ada_full_schema_naming_attribution() {
             .renderable_message_closure_names(BackendLanguage::Cpp)
             .unwrap();
         assert_eq!(rust, cpp);
-        assert_eq!(rust.difference(&ada).count(), 32);
+        assert_eq!(rust.difference(&ada).count(), 33);
         let unsafe_ada = ams_gra_oms_codegen_core::unsafe_named_declarations(
             &schema,
             BackendLanguage::Ada,
@@ -110,6 +110,35 @@ fn task061_pinned_ada_full_schema_naming_attribution() {
                 "{}",
                 name.local_name
             );
+            if name.local_name == "Task" {
+                let unsafe_names: BTreeSet<_> = closure
+                    .iter()
+                    .filter(|d| unsafe_ada.contains(&d.name))
+                    .map(|d| d.name.local_name.as_str())
+                    .collect();
+                println!("TASK062 TASK ADA UNSAFE\t{version}\t{unsafe_names:?}");
+                let plan = resolve_service_plan(&contract("Task", version), &schema).unwrap();
+                let r = analyze_service_readiness(
+                    &plan,
+                    &schema,
+                    BackendLanguage::Ada,
+                    GenerationWorld::ClosedSchemaSet,
+                )
+                .unwrap();
+                assert!(r.backend_blocker.is_none());
+                assert!(!r.is_ready());
+                assert_eq!(
+                    r.unsupported_generated_support_types
+                        .iter()
+                        .map(|n| n.local_name.as_str())
+                        .collect::<BTreeSet<_>>(),
+                    BTreeSet::from([
+                        "NITF_DateAndTimeType",
+                        "NITF_DateType",
+                        "NITF_MSTGTA_TargetLocationType"
+                    ])
+                );
+            }
         }
         println!("UCI {version} TASK061 ADA FULL-SCHEMA NAMING: PASSED");
     }
@@ -279,7 +308,7 @@ fn campaign(inventory_only: bool) {
                     match analyze_service_readiness(&plan, &schema, language, world) {
                         Ok(r) => {
                             let expected = include_str!(
-                                "../../../tests/fixtures/temporal/task061-message-impact.tsv"
+                                "../../../tests/fixtures/string/task062-time-impact-current.tsv"
                             )
                             .lines()
                             .find(|line| {

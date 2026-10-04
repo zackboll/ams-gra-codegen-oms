@@ -199,3 +199,9 @@ pub mod codec;
 pub mod codec_time_zulu {
     include!(concat!(env!("OUT_DIR"), "/codec_time_zulu/service_api.rs"));
 }
+
+/// Task 062 generated checked-String codec, following the fixture lint policy.
+#[allow(clippy::all, clippy::pedantic)]
+pub mod codec_ipv6 {
+    include!(concat!(env!("OUT_DIR"), "/codec_ipv6/service_api.rs"));
+}
