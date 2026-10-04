@@ -447,7 +447,7 @@ remain part of the requested Fast validation.
 
 Focused corrective validation used independently rehashed Task062 copies of
 both pinned roots. `task058_closed_schema_ada_gap_evidence` completed exactly
-one release test, exit 0, both release markers (**176.60s**).
+one release test, exit 0, both release markers (**176.87s**).
 `task061_pinned_ada_full_schema_naming_attribution` then completed exactly one
 release test, exit 0, both release markers (**118.20s**); its fresh 33-message
 output for each release was also compared exactly with the Task062 gap TSV.
@@ -470,6 +470,15 @@ tree. Normal merge reconciliation, not rebase/cherry-pick/force-push, is used.
 The immutable Task062 benchmark remains
 `add348ce867daf4253a88510a65a48a3ed23f218`; the separate final integration base
 is `cf9ebc518f49e58b1731417186c836f3a41e0e74`.
+
+The corrective commit is `ccf4863af0f658071c0588746be82596ba6f2c5d`.
+Normal reconciliation produced merge
+`f3c2cd7442822c4e5f11e8c0c3070dca947b443e` with parents corrective/main;
+its tree is byte-identical to the corrective tree. The only commits beyond
+main at reconciliation are the original Task062 implementation, corrective
+and merge. PR #63 was retargeted to main and pushed normally, with a clean
+worktree and matching local/remote/PR heads. A documentation-only follow-up
+records this verified reconciliation; no production or test content changes.
 
 Fresh automatically triggered Fast/Deep on the final feature head and main base
 are required. Their results are **pending, not claimed successful** until the
