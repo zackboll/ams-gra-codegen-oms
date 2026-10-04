@@ -151,6 +151,11 @@ jobs:
           require_one_test generated_structured_ascii_ada_corpus_under_both_policies \
             cargo test -p ams-gra-oms-backend-ada --test structured_ascii \
             generated_structured_ascii_ada_corpus_under_both_policies
+          # Task 060 corrective: actual generated factored carrier construction
+          # at Positive'Last, with -O0 -gnato under all three assertion policies.
+          require_one_test generated_factored_ascii_ada_bounds_under_strict_overflow \
+            cargo test -p ams-gra-oms-backend-ada --test alternating_ascii_bounds \
+            generated_factored_ascii_ada_bounds_under_strict_overflow
           require_one_test generated_structured_ascii_rust_corpus \
             cargo test -p ams-gra-oms-backend-rust --test structured_ascii generated_structured_ascii_rust_corpus
           require_one_test generated_structured_ascii_cpp_corpus \

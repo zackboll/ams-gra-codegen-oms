@@ -1,11 +1,11 @@
 # Task 060 — alternating ASCII profiles and compiler/codec evidence
 
-> **Current verification status:** Fast passed on `ca31412`, but Deep failed in
-> Task 060's generated Rust compiler/codec probe because `--offline` required an
-> uncached dependency. Live job evidence shows Duration and Tasks 058/059 passed,
-> contrary to the initial Duration-failure report. The in-place corrective and
-> diagnostic-preserving wrappers are recorded below. Fresh final-head hosted
-> Fast and Deep success remain mandatory; no merge/readiness claim is made.
+> **Current verification status:** reviewed head `49ca06f` completed hosted Fast
+> and Deep validation. Subsequent code review identified an uncovered generated
+> Ada high-bound slice overflow. Its generated-code reproduction and narrow
+> production correction are recorded below. Earlier successful hosted runs
+> certify the reviewed head, not this new source; fresh corrective-head gates
+> remain mandatory. PR #61 is unmerged and requires review.
 
 
 ## Pattern-group semantics
@@ -586,7 +586,8 @@ that validates every dot-separated slice with their union and requires exactly
 four components. No validation heap allocation, numeric conversion, platform IP
 parser or regex evaluator is introduced. Classification is unchanged.
 
-Measured post-factoring generated carrier/body sizes (bytes / lines):
+Historical post-factoring generated carrier/body sizes (bytes / lines, before
+the later Ada high-bound arithmetic correction; current measured sizes below):
 
 |Profile|Ada|Rust|C++|
 |---|---:|---:|---:|
@@ -597,7 +598,7 @@ Measured post-factoring generated carrier/body sizes (bytes / lines):
 |IPv4|5862 / 141|3415 / 110|4919 / 123|
 |NITF_ReleasingInstructions|21575 / 523|13116 / 414|18439 / 453|
 
-Ada IPv4 decreases from 2,230,528 bytes / 51,767 lines to 5,862 bytes / 141
+Historically, Ada IPv4 decreased from 2,230,528 bytes / 51,767 lines to 5,862 bytes / 141
 lines, approximately 380-fold smaller. Source-size tests pass in all three
 backends and require this expanded family to stay below 25 KB as a regression
 guard, not an admission rule. Task 059 generated corpus regressions still pass
@@ -1347,3 +1348,202 @@ parent is `ca31412f78a157efeef43157de58ad36471e2975`; Task 061 remains untouched
 and can reconcile the resulting new Task 060 SHA in its separate continuation.
 Fresh exact-head hosted results will be recorded separately without claiming
 that old-head Fast success certifies this correction. PR #61 is not merged.
+
+## Ada factored slice-bound corrective after completed review-head CI
+
+Reviewed/source parent: `49ca06f24f891b4c041e8f3caabcd39e441f3f05`, existing
+Task 060 branch and PR #61. Starting worktree was clean; local, remote and PR
+heads matched, with no later Task 060 continuation already addressing the
+finding. Starting non-documentation source identity:
+`d2eb39138a200e6605f71cfc6a34925dc240dab4f59251b679f5abfd9e443954`.
+The completed previous Fast/Deep runs **37144605093 / 37144605074**, attempt 1,
+remain successful historical evidence for that head and base
+`a7aed23dd9f3852d20bbabf6b5b9aecd4e96bd87`, tested through synthetic merge
+`785086c474773a2e0079708196497065668bbff9`. They are not reinterpreted as
+covering the new Ada production source. This correction does not repeat or
+alter the previous dependency-process diagnosis.
+
+### Actual production-generated seven-character reproduction
+
+The normal CLI `generate --schema
+/home/zboll/git/ams-gra-codegen-oms-task060/tests/fixtures/service-generate/codec-alternating-ascii.xsd
+--language ada --world closed-schema --output
+/tmp/task060-ada-bounds-49ca06f/before/ada` generated the actual
+`Programs.Oam.AddressType` carrier (generation exit **0**). The small client
+declares:
+
+```ada
+High : String (Positive'Last - 6 .. Positive'Last) := "1.2.3.4";
+Item : constant Programs.Oam.AddressType := Programs.Oam.Create (High);
+```
+
+Its explicit runtime check requires `Programs.Oam.Value (Item) = "1.2.3.4"`.
+With **GNAT 14.2.0**, `gnatmake -q -f -gnat2022 -O0 -gnato probe.adb`
+compiled successfully (**exit 0**), but execution returned **1**:
+
+```text
+raised CONSTRAINT_ERROR : programs-oam.adb:220 overflow check failed
+```
+
+The actual generated component call was
+`Component_0_b (Text (Text'First + Start .. Text'First + Finish - 1))`.
+On the final component, `Finish = Text'Length`; the left-associated intermediate
+`Text'First + Finish` overflows before subtracting 1 even though the
+mathematical result is the valid upper bound. This is a measured generated
+constructor failure, not merely source-review inference or a large-allocation
+example. Scratch reproduction sources, GNAT diagnostics and separate compile
+and execution statuses remain at `/tmp/task060-ada-bounds-49ca06f/logs/`
+(`pre-fix-{compile,execution}.{log,exit}`); generated files are retained.
+
+### Narrow shared correction and arithmetic invariants
+
+`render_ada_alternating_ascii_body` now emits
+`Text'First + (Finish - 1)` as the component slice's upper bound. The rendering
+factorization remains semantic/name-free; no AddressType/IPv4-name check is
+added. Rust/C++ rendering, lexical values/facets, API and input storage are
+unchanged. No rebasing/copying of input, disabled checks, Overflow_Mode pragma
+or lower-bound restriction is used.
+
+The existing `Finish = Start or else not (...)` protection remains. At a
+component boundary the monotonically advancing scan has `Start <= Finish`:
+initially Start is 0, and after each successful boundary it is the next scan
+position. Thus evaluating the slice establishes **Finish > Start >= 0**,
+so Finish >= 1, `0 <= Start <= Finish - 1 < Text'Length`. Both
+`Text'First + Start` and `Text'First + (Finish - 1)` lie in the actual String
+range, including strings ending at Positive'Last; subtracting the offset
+first avoids the overflowing intermediate.
+
+The surrounding arithmetic is unchanged and bounded:
+
+* `Text'First + Finish` for character indexing executes only when
+  `Finish < Text'Length`: the terminal test uses **or else**, so it never
+  evaluates a one-past-end index. Its executed offset lies in `0 .. Length-1`.
+* `Count := Count + 1` counts at most one boundary per scan position;
+  `Start := Finish + 1` is an offset, not an absolute String index. The
+  admitted factored profile is IPv4 with the already-short-circuited length
+  facet **7 .. 15**, so these operations are at most **16**, within Natural.
+  The final Start value is not used to index another character.
+* Component matchers retain `Pos < Text'Length` before character indexing;
+  octet branches are delimiter-free, bounded 1–3-character alternatives.
+* Null/short/overlong inputs are rejected by the existing facet gate before
+  the matcher. Empty components return False before either slice is evaluated.
+
+The corrected generated CLI client compiled **0** and executed **0**, printing
+`HIGH-BOUND CREATE: PASSED`, with identical flags. Logs:
+`post-fix-{compile,execution}.{log,exit}`.
+
+### Durable production-generated boundary test and sabotage
+
+New integration target `crates/backend-ada/tests/alternating_ascii_bounds.rs`
+loads the existing fixture with the frontend and calls the production
+`AdaBackend.generate` path. It compiles and executes the real generated
+`Programs.Oam.Create/Value`, not a handwritten validator.
+
+Each of these seven valid values is constructed and checked for identical
+stored spelling with 1-based bounds, lower bound **37**, and upper bound
+**Positive'Last**: `1.2.3.4`, `1.2.3.99`, `1.2.3.199`, `1.2.3.249`,
+`1.2.3.255`, `0.0.0.0`, `255.255.255.255`. Final octets cover all five
+lexical alternatives. Twelve invalid/facet controls run at the same three
+placements: leading zero, final 256, empty component, three components with
+length >= 7, extra component, leading/trailing dot, invalid character, null,
+and lengths 1/3/5. Invalid inputs must raise Constraint_Error with the exact
+constructor lexical/facet diagnostic `invalid structured-ASCII string`;
+an arithmetic exception cannot masquerade as correct lexical rejection.
+
+All **171 constructor checks** passed with `-q -f -gnat2022 -O0 -gnato` under
+default policy, `-gnata` assertions enabled, and the established `-gnata` plus
+client `pragma Assertion_Policy (Ignore)` configuration. Each policy records
+separate compiler/client exit **0**. Explicit branches and exceptions, not
+pragma Assert, enforce results under Ignore. Failing generated files are
+retained; passing probes are cleaned.
+
+The new test first failed against the unchanged reviewed renderer (Cargo
+**101**, GNAT compile **0**, client **1**, high `1.2.3.4` overflow). After the
+fix it passed. Deliberately restoring only the old emitted expression produced
+the same failing high-bound case and Cargo **101**; the safe expression was
+restored and the test passed again. Logs: `new-regression-{before,after}` and
+`sabotage-old-expression`. The one-test registered name is
+`generated_factored_ascii_ada_bounds_under_strict_overflow` (an integration-test
+root name, with no module prefix). Fast CI now invokes it explicitly. The
+**actual extracted Fast Ada helper and invocation** executed it with --exact:
+**one passed, exit 0**, all three policies; `actual-fast-boundary-helper.log`
+and `registered-name.log` preserve execution and registration evidence.
+
+### Affected generated-source comparison and scope boundary
+
+Prior-head and corrected CLI output for `codec-alternating-ascii.xsd` and
+`codec-structured-ascii.xsd` was compared for Ada, Rust and C++. All Rust/C++
+files and all Task 059 fixture files are **byte-identical**. In the alternating
+Ada output, specs/API are identical; only **five** component-call upper bounds
+in `programs-oam.adb` differ. Exact replacement of the old expression yields
+the complete corrected file. Hashes/diff are preserved in
+`logs/generated-comparison.json` and `logs/affected-generated.diff`.
+
+Consistently measured complete generated **AddressType body** (opening newline
+through `end Value;` newline): **5,868 → 5,878 bytes, 141 lines unchanged**.
+The private source-size probe's consistent `Carrier1` body is
+**5,859 → 5,869 bytes, 141 lines**. The earlier table's **5,862 / 141** is
+preserved as historical naming/source evidence, not the current final Ada
+size. Ten added bytes are the two parentheses in each of five calls. IPv4
+factoring and the <25 KB source-size guard remain intact.
+
+Affected compiler/source-size/semantic/readiness outcomes and the updated
+source identity are recorded below after the scoped checks complete. Earlier
+228 CLI confirmations, admission/coverage surveys and full fixture comparison
+remain valid with their original provenance and are **not rerun/relabelled**.
+Previous Ada compiler results alone do not certify the modified production
+output: affected Ada scopes are explicitly rerun, and fresh Fast/Deep gates
+for the corrective head remain required. Task 061 is not edited or rebased.
+
+### Completed focused local validation and new source identity
+
+All required local gates completed on the restored safe expression, with
+`CARGO_TARGET_DIR=/tmp/task060-target`,
+`TMPDIR=/tmp/task060-ada-bounds-49ca06f/tmp`, and `AMS_GRA_REQUIRE_GNAT=1`
+for compiler scopes. Separate static-check cache:
+`/home/zboll/.cache/task060-corrective-check-target`. No pinned campaign or
+capability survey was restarted for these local checks.
+
+|Command / scope|Actual result|
+|---|---|
+|new `alternating_ascii_bounds` target, actual Fast helper --exact|1 passed; all three policies; exit 0|
+|`cargo test -p ams-gra-oms-backend-ada --lib -- task060_probes::standalone_task060_compiler_probe --exact --nocapture`|1 passed, 328.21s, exit 0; all admitted profiles and intersection corpus, both existing policies and negative control|
+|same lib target, `task060_probes::factored_task060_source_sizes --exact`|1 passed, exit 0; Carrier1 5,869 bytes / 141 lines, <25 KB|
+|`cargo test -p ams-gra-oms-codegen-core --test alternating_ascii --test structured_ascii_coverage -- --nocapture`|7 + 3 passed, exit 0; exact Cartesian-product factoring, lexical controls and Task 059 boundaries|
+|`cargo test -p ams-gra-oms-backend-ada --test structured_ascii -- --nocapture`|1 passed, 1.84s, exit 0; complete Task 059 generated corpus under both policies|
+|`cargo test -p ams-gra-codegen-oms --test alternating_capability -- --nocapture`|3 passed, exit 0; backend generation and selected/generated-support readiness boundary|
+|`cargo fmt --all -- --check`|exit 0|
+|`cargo check --workspace --all-targets`|exit 0|
+|`cargo clippy --workspace --all-targets -- -D warnings`|exit 0|
+|`scripts/check-ci-split.sh`|PASSED|
+|`scripts/test-check-ci-split.sh`|121 checks PASSED|
+|`python3 scripts/test-task060-ci-wrappers.py`|47 checks PASSED|
+|`git diff --check`|passed|
+
+Complete command captures and explicit statuses are in
+`/tmp/task060-ada-bounds-49ca06f/logs/{ada-task060-corpus,ada-source-sizes,shared-semantics,ada-task059,focused-readiness,fmt,check,clippy}.{log,exit}`;
+CI-script logs are in the same scratch namespace. Rust is **1.98.1**, Cargo
+**1.98.1**. The pre-fix/sabotage failures are preserved, not confused with the
+passing final checks. The test's first authoring trial failed to compile due
+to an Ada reserved identifier; that client-only error was corrected before
+the measured production overflow and sabotage results were recorded.
+
+New corrective non-documentation source identity:
+`708004adb7c459b9fcae2bfe2e327e212a68e0938df900e03ed7fd65cd23f604`;
+manifest `logs/corrective-source-manifest.json`, ordered tracked plus new
+test path/content hash pairs excluding documentation. Compared with the
+reviewed source, only `.github/workflows/ci.yml`, the shared Ada renderer,
+and the new generated bounds integration test differ. The evidence document
+also changes; previous whole-source/production identities are not claimed
+unchanged. The guarded factoring classifier, readiness implementation,
+Rust/C++ renderers and fixtures are unchanged.
+
+This is a normal corrective on PR #61; no new PR, rebase, force-push or merge.
+The newly pushed SHA will be the parent handoff for Task 061's separate
+continuation, which must incorporate this production correction before final
+review while preserving its original frozen benchmark identity. No Task 061
+worktree, branch or processes are modified. Fresh corrective-head Fast and
+Deep evidence, including actual boundary test execution and Task 060 admission,
+impact and all compiler/codec markers, is recorded in PR metadata after the
+hosted gates rather than changing the successfully tested SHA solely for CI
+status documentation.
