@@ -48,6 +48,8 @@ for forbidden in \
   '--test uci_alternating_admission' \
   '--test uci_alternating_after' \
   'check-task061-pinned.sh' \
+  'check-task063-pinned.sh' \
+  '--test uci_patterned_integral' \
   '--test uci_time_zulu'; do
   if grep -Fq -- "$forbidden" <<<"$fast_code"; then
     fail "Fast CI must not reference $forbidden"
@@ -67,6 +69,8 @@ for required in \
   'cargo test --workspace' \
   'python3 scripts/test-task060-ci-wrappers.py' \
   'bash scripts/check-task061-fast.sh' \
+  'bash scripts/check-task063-fast.sh' \
+  'python3 scripts/test-task063-ci-wrappers.py' \
   'python3 scripts/test-task061-ci-wrappers.py' \
   'AMS_GRA_REQUIRE_GNAT: "1"'; do
   if ! grep -Fq -- "$required" <<<"$fast_code"; then
@@ -117,6 +121,7 @@ for required in \
   '--test uci_alternating_admission' \
   '--test uci_alternating_after' \
   'bash scripts/check-task061-pinned.sh' \
+  'bash scripts/check-task063-pinned.sh' \
   'python3 scripts/check-task061-service-impact.py target/release/ams-gra-codegen-oms' \
   'UCI 2.5 TASK060 PROJECTED MESSAGE IMPACT: PASSED' \
   'UCI 2.6 TASK060 PROJECTED MESSAGE IMPACT: PASSED' \

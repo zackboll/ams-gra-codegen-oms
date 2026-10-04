@@ -1,5 +1,11 @@
 # Roadmap
 
+Task 063 implements the exact UCI 2.5 named patterned integral value-space
+profile without broadening direct integers or importing concurrent Task 062.
+Numeric carriers and the OMS JSON integer mapping are retained. General numeric
+patterns, lexical integer storage and exclusive-bound support remain deferred.
+Evidence and outstanding review gates: [Task 063](task-063-patterned-integral-profile.md).
+
 Task 061 implements evidence-bounded **named TimeZulu** checked carriers in
 Ada/Rust/C++, plus the existing Rust OMS JSON codec path. Exact XML Schema `.+Z`
 facets only; name-free admission, XML-collapse spelling preservation and no

@@ -1,5 +1,18 @@
 # Backend compatibility
 
+Task 063 adds a shared, name-free exact **named patterned integer** capability:
+SignedInteger, inclusive 1..999, one XML Schema `[0-9]{1,3}` alternative in one
+group, intrinsic collapse and no neighboring authored facets. It reuses numeric
+Task 020 carriers and Rust integer JSON codecs; direct field-local lexical
+constraints remain unsupported. This is value-space lowering, not XML spelling
+preservation or general regex support. Measured 2.5 gain: one declaration per
+backend/world, two closed message closures and one open. UCI2.6 gains zero;
+parent/current control sources are byte-identical. Newly READY: OrdersMetadata
+(both worlds) and PrioritizationList (closed), all backends. Local compiler,
+codec/mock-OWP and workspace gates pass. Task 061 merged during validation;
+Task 063 reconciles to source-identical merged main without Task 062.
+See [Task 063](task-063-patterned-integral-profile.md).
+
 ## Current update — Task 061 named Zulu Time
 
 Named `PrimitiveKind::Time` is supported by Ada/Rust/C++ **only** with one
