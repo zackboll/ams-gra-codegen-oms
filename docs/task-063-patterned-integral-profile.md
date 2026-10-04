@@ -402,4 +402,46 @@ six topology failures and eleven NITF_DateAndTimeType blockers per release,
 with no remaining serial-number blocker. Both task families' Fast/Deep and
 runtime registration gates are retained; Deep keeps the 240-minute budget.
 
-Validation and final hosted certification are recorded below when complete.
+### Corrective #2 local validation checkpoint
+
+Normal merge commit: `d76f070994ffaa8ea80fc5826553903c93f3e46e`, with parents
+`d4d4dbbd83a1691b9337fcdf36f582bc713aa358` and
+`52e22b67b94b431d96925c41ff730749c33b3c9e`. No history rewrite.
+
+The exact Task 058 command ran one test, passed both releases, exit 0
+(209.72 s). The exact Task 061 naming test ran one test and passed both
+releases (130.24 s): Rust == C++, 33 peer-minus-Ada messages, and Task's unsafe
+QueryPET attribution plus safe projected naming/deferred Unicode support remain.
+
+Task 063's real pinned wrapper passed once on this combined production source:
+exact inventory/impact test (253.47 s), all 12 live coverage cells matching the
+table above; exact OrdersMetadata compiler/codec vertical (147.78 s), both
+releases and all three backends; all nine production world tuples returned 0,
+with six unique release/backend/message tuples. The nine frozen UCI 2.6
+OrdersMetadata model/API/codec source hashes passed unchanged: **byte-identical**.
+
+Task 062 and Task 063 Fast wrappers passed. Task 062's exact classifier,
+fail-closed facet neighbors, all three 26,946-case compiler/lifecycle corpora,
+name-free shared capability, support-only readiness, private-helper preflight,
+compiled checked JSON codec and mock-OWP tests survived. Byte review proves
+Task 062 IPv6 modules, string-profile classifier and service codec match main;
+Task 063 backend/coverage production deltas match the original implementation.
+
+General gates passed: fmt, workspace/all-target check, warnings-denied
+workspace/all-target Clippy, GNAT-required workspace tests (**1,269 passed,
+zero failed/ignored**), split guard plus **137 adversarial checks**, Task 063
+wrapper controls (five) plus temp-root/no-command controls (three), Task 062
+wrapper controls (six), and diff checks. Rust **1.95.0** locked runtime API,
+runtime and facade all-target checks passed in the isolated
+`/home/zboll/git/ams-gra-codegen-oms-task063-artifacts/msrv-target`; IPv6,
+patterned-integral and combined mock-OWP tests passed there (13 tests total).
+Normal workspace targets were not shared with the alternate toolchain.
+
+The pre-commit final-source manifest includes **579 files**, including the
+then-untracked integrated oracle. Every byte matched after the merge commit.
+Manifest and complete local logs are retained outside the repository in
+`/tmp/task063-reconcile-evidence/`; compiler/target scratch is isolated under
+`/home/zboll/git/ams-gra-codegen-oms-task063-artifacts/`.
+
+Remaining focused baseline results and final hosted certification are recorded
+on PR #64 for the exact final head/base, not implied by this local checkpoint.
