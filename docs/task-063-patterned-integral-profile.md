@@ -253,3 +253,78 @@ OPEN at reconciliation. Task 061's associated-head Deep run `37169015690`
 completed successfully before Task 063 publication consideration, satisfying
 the wait-for-an-existing-Deep-completion condition. Any Task 063 PR must now
 target `main`, not either task feature branch.
+
+## PR #64 temp-directory corrective: preserved failure provenance
+
+Reviewed previous head: `a0b7930d24ac3a963917685a81fd1a17a42b4a89`.
+At corrective start, local HEAD, the remote Task 063 branch and PR #64 head
+all matched that identity; the worktree was clean and `origin/main` remained
+`cf9ebc518f49e58b1731417186c836f3a41e0e74`. No existing corrective was present.
+
+* Fast CI `37178325975`, attempt 1: **SUCCESS**.
+* Deep CI `37178326029`, attempt 1: **FAILURE**; `real-sleet` and
+  `msrv-real-uci` succeeded. Failing job: `real-uci`, `111365537692`.
+  Its actual Actions checkout was the synthetic PR merge
+  `abb6d18906c5388574b62d93a620ef2ec7b0bdc4`, not the branch head or main base.
+* The Task 061 Named TimeZulu step succeeded. Within Task 063, both
+  `task063_pinned_inventory_coverage_and_service_impact` and
+  `task063_smallest_real_service_compiler_codec_vertical` passed, with both
+  release inventory/impact markers and all six Ada/Rust/C++ OrdersMetadata
+  compiler markers. The subsequent Python helper crashed at line 11:
+  `scratch = Path(os.environ["TMPDIR"]) / "task063-service-check"`, with
+  **`KeyError: 'TMPDIR'`**. GitHub Actions did not define `TMPDIR`.
+
+This is a helper/CI portability defect, not a patterned-integral production or
+measurement failure. The old run was not rerun or replaced. Original run/job
+metadata and the complete failing job log were retained outside the checkout
+in `/var/tmp/task063-temp-corrective-evidence/` (`old-fast.json`, `old-deep.json`,
+`old-real-uci-api.log`). A lightweight `env -u TMPDIR` load of the original
+helper reproduced the exact exception before launching any service-check.
+
+The correction adds one Python fallback policy: **`TMPDIR` → `RUNNER_TEMP` →
+`tempfile.gettempdir()`**, retaining the `task063-service-check` subdirectory.
+Execution is guarded by `main()` so importing `scratch_root()` launches no
+campaign. All nine production checks, the six unique tuple assertion, threaded
+execution, diagnostics and failure propagation remain intact. The pinned shell
+wrapper is unchanged: locked fetch, exact names, one-test checks, release
+markers and original error propagation are preserved. No workflow, production
+code or measured fixture changes are needed.
+
+The wrapper adversarial regression retains all five original checks and adds
+three controlled-environment checks: explicit `TMPDIR` wins even with
+`RUNNER_TEMP` present; absent `TMPDIR` selects `RUNNER_TEMP`; both absent select
+Python's platform temp root. A subprocess guard rejects accidental service-check
+execution during these tests. All eight checks passed. Separate lightweight
+`env -u TMPDIR` probes established scratch directories successfully with
+`RUNNER_TEMP` set and with both variables unset, without real UCI execution.
+The latter selected `/tmp/task063-service-check` on this host via Python, not
+a hardcoded Linux path.
+
+Focused local gates passed: the Task 063 Fast wrapper, Python wrapper regression,
+affected Python `py_compile`, `cargo fmt --all -- --check`,
+`cargo check --workspace --all-targets`, warnings-denied workspace/all-target
+Clippy, `check-ci-split.sh`, all 125 `test-check-ci-split.sh` controls and
+`git diff --check`. The Fast invocation inherited pinned roots and consequently
+also generated real runtime-facade models. An unfinished workspace check with
+that unnecessarily broad environment was stopped; the successful workspace
+check and Clippy ran without UCI roots. No pinned Task 063 campaign was stopped
+or repeated. Targets and compiler scratch remain Task 063-specific under
+`/home/zboll/git/ams-gra-codegen-oms-task063-artifacts/`; corrective logs are in
+the separate evidence directory above.
+
+The real `check-task063-pinned.sh` campaign ran **once** after the fix, with
+both pinned roots and isolated target/temp paths: exit **0**, completed
+`2026-10-04T10:13:11-04:00`. Inventory/impact ran exactly one test (228.22 s)
+with both release markers. The smallest compiler/codec vertical ran exactly
+one test (126.75 s), with both release completion markers and all six backend
+compiler markers. All nine actual production service-check tuples returned 0;
+the helper emitted `TASK063 NEWLY READY SERVICE-CHECK: PASSED (9 world tuples;
+6 release/backend/message tuples)` and the wrapper emitted
+`TASK063 PINNED GATES: PASSED`. Complete output is retained as `pinned.log`.
+
+Immutable BEFORE remains `add348ce867daf4253a88510a65a48a3ed23f218`.
+UCI 2.5 gains remain +1 declaration, +2 closed closures, +1 open closure;
+UCI 2.6 remains zero delta. Newly READY services remain OrdersMetadata
+(closed/open) and PrioritizationList (closed only), with nine world tuples,
+six release/backend/message tuples and the 82-declaration OrdersMetadata
+smallest vertical. Task 062 and Task 064 worktrees/branches are not modified.
