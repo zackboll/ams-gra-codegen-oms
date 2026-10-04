@@ -60,7 +60,7 @@ fn task059_real_uci_inventory_and_coverage() {
             })
             .collect();
         assert_eq!(matched.len(), 27);
-        assert_eq!(excluded.len(), 4);
+        assert_eq!(excluded.len(), 3);
         for d in &matched {
             let c = &d.constraints;
             assert!(c.lexical.white_space.is_none());
@@ -76,7 +76,6 @@ fn task059_real_uci_inventory_and_coverage() {
             .map(|d| d.name.local_name.as_str())
             .collect();
         for name in [
-            "IPv6_AddressType",
             "NITF_DateType",
             "NITF_DateAndTimeType",
             "NITF_MSTGTA_TargetLocationType",

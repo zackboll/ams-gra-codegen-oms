@@ -23,6 +23,57 @@ fn pub_body(frame: &str, topic: &str) -> Value {
 }
 
 #[test]
+fn task062_invalid_ipv6_is_not_delivered_to_the_typed_handler() {
+    use ams_gra_oms_runtime_rust_facade_tests::codec_ipv6::{
+        model as m, service_api::function_ipv6 as ipv6, service_codec::ServiceCodec as Ipv6Codec,
+    };
+    let peer = MockPeer::start();
+    let mut runtime =
+        SleetRuntime::connect(RuntimeConfig::new(&peer.url, "svc-1", "000.1.0"), Ipv6Codec)
+            .unwrap();
+    assert!(peer.next_text().starts_with("INIT "));
+    let (tx, rx) = mpsc::channel();
+    let subscription =
+        ipv6::exchange_input_ipv6::subscribe(&mut runtime, move |value: &m::Ipv6Payload| {
+            tx.send(value.clone()).unwrap();
+        })
+        .unwrap();
+    peer.expect("SUB sub-1 Ipv6Notice ipv6-topic");
+    let mut body = serde_json::json!({"Address":"Fe80::aBcD","Optional":"1::2::3","Repeated":["::ffff:001.009.099.199"]});
+    peer.send(&format!(
+        "MSG sub-1 {}",
+        serde_json::json!({"Ipv6Notice":body})
+    ));
+    let value = rx.recv_timeout(WAIT).unwrap();
+    assert_eq!(value.address.as_str(), "Fe80::aBcD");
+    ipv6::exchange_output_ipv6::publish(&mut runtime, &value).unwrap();
+    assert_eq!(
+        pub_body(&peer.next_text(), "ipv6-topic"),
+        serde_json::json!({"Ipv6Notice":body})
+    );
+    for bad in [serde_json::json!("::12345"), serde_json::json!(42)] {
+        body["Address"] = bad;
+        peer.send(&format!(
+            "MSG sub-1 {}",
+            serde_json::json!({"Ipv6Notice":body})
+        ));
+        assert!(matches!(
+            runtime.recv_event_timeout(WAIT),
+            Some(RuntimeEvent::SubscriptionDecodeError {
+                error: MessageDecodeError::Codec(_),
+                ..
+            })
+        ));
+        assert!(rx.recv_timeout(common::QUIET).is_err());
+    }
+    subscription.unsubscribe().unwrap();
+    peer.expect("UNSUB sub-1");
+    runtime.close().unwrap();
+    peer.expect_closed();
+    println!("TASK062 IPV6 MOCK OWP: PASSED");
+}
+
+#[test]
 fn task061_invalid_time_is_not_delivered_to_the_typed_handler() {
     use ams_gra_oms_runtime_rust_facade_tests::codec_time_zulu::{
         model as m, service_api::function_clock as clock, service_codec::ServiceCodec as ClockCodec,

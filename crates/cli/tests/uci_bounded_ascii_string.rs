@@ -102,8 +102,7 @@ const MEMBERS: [&str; 61] = [
 
 /// Neighbours the scope gate deliberately leaves unsupported; each must still
 /// fail closed in both releases.
-const EXCLUDED_NEIGHBOURS: [&str; 4] = [
-    "IPv6_AddressType",
+const EXCLUDED_NEIGHBOURS: [&str; 3] = [
     "NITF_DateType",
     "NITF_DateAndTimeType",
     "NITF_MSTGTA_TargetLocationType",
@@ -296,7 +295,7 @@ fn bounded_inventory(label: &str, schema: &SchemaIr) {
     let expected: BTreeSet<String> = MEMBERS.iter().map(|&m| m.to_owned()).collect();
     assert_eq!(members, expected, "{label}: member set drifted");
     assert_eq!(alphabets.len(), 19, "{label}");
-    assert_eq!(unsupported.len(), 4, "{label}");
+    assert_eq!(unsupported.len(), 3, "{label}");
     for neighbour in EXCLUDED_NEIGHBOURS {
         assert!(unsupported.contains(neighbour), "{label} {neighbour}");
     }

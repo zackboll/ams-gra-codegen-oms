@@ -48,11 +48,20 @@ for forbidden in \
   '--test uci_alternating_admission' \
   '--test uci_alternating_after' \
   'check-task061-pinned.sh' \
-  '--test uci_time_zulu'; do
+  '--test uci_time_zulu' \
+  '--test uci_ipv6_address'; do
   if grep -Fq -- "$forbidden" <<<"$fast_code"; then
     fail "Fast CI must not reference $forbidden"
   fi
 done
+
+if grep -Fq 'check-task062-pinned.sh' <<<"$fast_code"; then
+  fail "Fast CI must not run Task 062 pinned work"
+fi
+grep -Fq 'bash scripts/check-task062-fast.sh' <<<"$fast_code" ||
+  fail "Fast CI lost Task 062 exact-profile compiler/codec gates"
+grep -Fq 'bash scripts/check-task062-pinned.sh' <<<"$deep_code" ||
+  fail "Deep CI lost Task 062 pinned impact/vertical gates"
 
 # ---- Fast CI must keep its pre-merge floor --------------------------------
 for required in \

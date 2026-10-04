@@ -144,6 +144,11 @@ fn all_frozen_release_rows_match_the_name_free_core_boundary() {
                     ams_gra_oms_codegen_core::StringProfile::AlternatingAscii(_)
                 ))
             ));
+        } else if cells[1] == "IPv6_AddressType" {
+            assert_eq!(
+                classified,
+                Ok(Some(ams_gra_oms_codegen_core::StringProfile::Ipv6Address))
+            );
         } else {
             assert!(classified.is_err(), "deferred {}", cells[1]);
         }

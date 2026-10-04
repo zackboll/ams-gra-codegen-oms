@@ -297,6 +297,11 @@ fn emission_codec_support(
                 )),
             }
         }
+        TypeKind::Primitive(PrimitiveKind::String) => {
+            crate::string_profile(PrimitiveKind::String, &declaration.constraints)
+                .map(|_| ())
+                .map_err(|reason| unsupported(owner, reason.to_string()))
+        }
         TypeKind::Primitive(kind) => primitive_support(*kind, owner),
         TypeKind::Enumeration { .. } => Ok(()),
         TypeKind::Record { .. } => {

@@ -74,6 +74,8 @@ jobs:
       #
       - name: Named TimeZulu pinned inventory and impact (Task 061)
         run: bash scripts/check-task061-pinned.sh
+      - name: Exact IPv6 pinned inventory, impact and real vertical (Task 062)
+        run: bash scripts/check-task062-pinned.sh
       - name: Confirm unique newly READY Time services (Task 061)
         run: |
           set -euo pipefail

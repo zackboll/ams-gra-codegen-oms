@@ -1,6 +1,37 @@
 # Backend compatibility
 
-## Current update — Task 061 named Zulu Time
+## Current update — Task 062 exact IPv6 profile
+
+Ada/Rust/C++ now support the one exact pinned IPv6 `xs:string` expression with
+`minLength=2`, `maxLength=45`, intrinsic preserve whitespace, one XML Schema
+pattern group/alternative, and no additional authored facets. Admission is
+name-free and fail-closed. Validation is a bounded factored lexical scanner,
+not a host IPv6 parser or RFC rules. Accepted original spelling is unchanged.
+Private helpers add no generated top-level names. All three strict compiler
+probes pass 26,946 independent cases; Ada also passes shifted/high-bound input
+and all assertion policies. Rust uses checked String JSON construction, with
+compiled round trips and mock-OWP invalid-input rejection before typed delivery.
+
+Both pinned releases gain five projected closed-world READY services per
+backend: `IO_PortCommand`, `IO_PortStatus`, `RDMA_Initialize`,
+`RDMA_InitializeSetup`, `ProductOrFileDisseminationDestination`; the first four
+also become READY in open world. Exact sets: **54 world/backend tuples**,
+**30 release/backend/message tuples**. The smallest real vertical is
+`RDMA_InitializeSetup` (50 selected + 0 support); both releases compile model/API
+in all languages and pass Rust lexical codec round-trip/rejection.
+`Task` and PO paths still fail on deferred Unicode support; no scope widening.
+
+Full-schema message closure gains are different: closed Ada +9, Rust/C++ +10;
+open all +4 per release. Each of the 12 cells gains one kind and one fully
+renderable declaration, with unchanged field metrics. The Ada full-schema gap
+grows from 32 to 33 messages per release: the added message is `Task`, still
+name-unsafe through the existing Query companion collision. Projected Task is
+name-safe but Unicode-support-blocked. Naming remediation is not included.
+See [Task 062 evidence](task-062-ipv6-address-profile.md) for immutable benchmark,
+profile, complete cells and validation status. Historical Task 060/061 figures
+below are not overwritten.
+
+## Historical update — Task 061 named Zulu Time
 
 Named `PrimitiveKind::Time` is supported by Ada/Rust/C++ **only** with one
 effective XML-Schema pattern group, one alternative exactly `.+Z`, and no other
