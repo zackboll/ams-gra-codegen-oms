@@ -22,6 +22,56 @@ fn pub_body(frame: &str, topic: &str) -> Value {
     serde_json::from_str(body).expect("PUB body is JSON")
 }
 
+#[test]
+fn task060_alternating_ascii_generated_codec_mock_owp_round_trip() {
+    use ams_gra_oms_runtime_rust_facade_tests::codec_alternating_ascii::{
+        model as m, service_api::function_union as union, service_codec::ServiceCodec as UnionCodec,
+    };
+    let peer = MockPeer::start();
+    let mut runtime = SleetRuntime::connect(
+        RuntimeConfig::new(&peer.url, "svc-1", "000.1.0"),
+        UnionCodec,
+    )
+    .unwrap();
+    assert!(peer.next_text().starts_with("INIT "));
+    let (tx, rx) = mpsc::channel();
+    let subscription = union::exchange_input_union::subscribe(
+        &mut runtime,
+        move |message: &union::exchange_input_union::Payload| {
+            tx.send(message.clone()).unwrap();
+        },
+    )
+    .unwrap();
+    peer.expect("SUB sub-1 AlternatingNotice alternating-topic");
+    let payload = m::AlternatingPayload {
+        notation: m::NotationType::new("NONE0").unwrap(),
+        origin: m::OriginType::new("-").unwrap(),
+        address: m::AddressType::new("9.99.199.249").unwrap(),
+    };
+    union::exchange_output_union::publish(&mut runtime, &payload).unwrap();
+    assert_eq!(
+        pub_body(&peer.next_text(), "alternating-topic"),
+        serde_json::json!({"AlternatingNotice":{"Notation":"NONE0","Origin":"-","Address":"9.99.199.249"}})
+    );
+    peer.send(
+        r#"MSG sub-1 {"AlternatingNotice":{"Notation":"UNKN","Origin":"E","Address":"0.0.0.0"}}"#,
+    );
+    assert_eq!(rx.recv_timeout(WAIT).unwrap().notation.as_str(), "UNKN");
+    peer.send(
+        r#"MSG sub-1 {"AlternatingNotice":{"Notation":"UNKN","Origin":"E","Address":"01.2.3.4"}}"#,
+    );
+    assert!(matches!(
+        runtime.recv_event_timeout(WAIT),
+        Some(RuntimeEvent::SubscriptionDecodeError {
+            error: MessageDecodeError::Codec(_),
+            ..
+        })
+    ));
+    assert!(rx.try_recv().is_err());
+    subscription.unsubscribe().unwrap();
+    peer.expect("UNSUB sub-1");
+}
+
 /// The Task 059 checked structured profile crosses the generated codec and
 /// mock-OWP transport in both directions. Invalid lexical text is reported as
 /// a decode event, never delivered to the typed handler.

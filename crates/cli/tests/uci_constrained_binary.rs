@@ -353,20 +353,28 @@ fn message_impact(label: &str, schema: &SchemaIr) -> Vec<(String, String)> {
                 .map(|d| d.name.local_name.as_str())
                 .collect();
             println!("{label} ProductMetadata unsupported Strings in schema order: {remaining:?}");
-            assert_eq!(remaining.first(), Some(&"RecordOriginatorType"));
-            // Notation remains excluded globally; Task 059 does not admit unions.
-            let notation = schema
-                .types
-                .iter()
-                .find(|d| d.name.local_name == "NotationType")
-                .unwrap();
-            assert!(
-                ams_gra_oms_codegen_core::string_profile(
-                    PrimitiveKind::String,
-                    &notation.constraints
-                )
-                .is_err()
-            );
+            assert!(remaining.is_empty(), "{label}: {remaining:?}");
+            // Task 060 admits both exact alternation profiles; Task 053/059
+            // historical measurements remain in their evidence documents.
+            for name in ["NotationType", "RecordOriginatorType"] {
+                let declaration = schema
+                    .types
+                    .iter()
+                    .find(|d| d.name.local_name == name)
+                    .unwrap();
+                assert!(
+                    matches!(
+                        ams_gra_oms_codegen_core::string_profile(
+                            PrimitiveKind::String,
+                            &declaration.constraints
+                        ),
+                        Ok(Some(
+                            ams_gra_oms_codegen_core::StringProfile::AlternatingAscii(_)
+                        ))
+                    ),
+                    "{label} {name}"
+                );
+            }
         }
         let mut per_backend = Vec::new();
         for language in BackendLanguage::ALL {
@@ -447,17 +455,16 @@ fn task053_real_uci_constrained_binary_message_impact() {
         // now. `IFF_Activity` / `IFF_Command` became READY in every backend
         // (they are Task 058 category-A). Task 059 admits the pinned
         // `FileNameType` shape: FileMetadata becomes READY and ProductMetadata
-        // advances to `RecordOriginatorType`, the first remaining unsupported
-        // String in dependency-closure schema order. NotationType stays excluded.
-        let b = |blocker: &str| format!("Ada=B({blocker}) Rust=B({blocker}) Cpp=B({blocker})");
+        // becomes READY after Task 060 admits its remaining String profiles.
+        // No constrained Binary remains a blocker.
         let a = "Ada=A Rust=A Cpp=A".to_owned();
         assert_eq!(
             classes,
             [
                 ("FileMetadata".to_owned(), a.clone()),
                 ("IFF_Activity".to_owned(), a.clone()),
-                ("IFF_Command".to_owned(), a),
-                ("ProductMetadata".to_owned(), b("RecordOriginatorType")),
+                ("IFF_Command".to_owned(), a.clone()),
+                ("ProductMetadata".to_owned(), a.clone()),
                 (
                     "Response".to_owned(),
                     "Ada=C(cyclic value dependencies) Rust=C(cyclic value dependencies) \

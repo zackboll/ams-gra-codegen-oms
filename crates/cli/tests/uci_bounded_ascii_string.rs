@@ -102,13 +102,11 @@ const MEMBERS: [&str; 61] = [
 
 /// Neighbours the scope gate deliberately leaves unsupported; each must still
 /// fail closed in both releases.
-const EXCLUDED_NEIGHBOURS: [&str; 6] = [
-    "NotationType",
-    "MilitaryGridType",
-    "RecordOriginatorType",
-    "FIPS_CountryCodeType",
-    "IPv4_AddressType",
+const EXCLUDED_NEIGHBOURS: [&str; 4] = [
     "IPv6_AddressType",
+    "NITF_DateType",
+    "NITF_DateAndTimeType",
+    "NITF_MSTGTA_TargetLocationType",
 ];
 
 fn pinned_root(variable: &str, sha256: &str) -> Option<SchemaIr> {
@@ -298,7 +296,7 @@ fn bounded_inventory(label: &str, schema: &SchemaIr) {
     let expected: BTreeSet<String> = MEMBERS.iter().map(|&m| m.to_owned()).collect();
     assert_eq!(members, expected, "{label}: member set drifted");
     assert_eq!(alphabets.len(), 19, "{label}");
-    assert_eq!(unsupported.len(), 19, "{label}");
+    assert_eq!(unsupported.len(), 4, "{label}");
     for neighbour in EXCLUDED_NEIGHBOURS {
         assert!(unsupported.contains(neighbour), "{label} {neighbour}");
     }
@@ -361,8 +359,8 @@ fn task058_real_uci_2_6_bounded_ascii_inventory() {
 fn task058_closed_schema_ada_gap_evidence() {
     let world = GenerationWorld::ClosedSchemaSet;
     for (variable, digest, version, ada_count, peer_count) in [
-        ("AMS_GRA_UCI_2_5_ROOT", UCI_25_SHA256, "2.5", 552, 555),
-        ("AMS_GRA_UCI_2_6_ROOT", UCI_26_SHA256, "2.6", 553, 556),
+        ("AMS_GRA_UCI_2_5_ROOT", UCI_25_SHA256, "2.5", 587, 590),
+        ("AMS_GRA_UCI_2_6_ROOT", UCI_26_SHA256, "2.6", 588, 591),
     ] {
         let Some(schema) = pinned_root(variable, digest) else {
             continue;

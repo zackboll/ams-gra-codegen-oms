@@ -24,7 +24,7 @@ use std::process::Command;
 /// unconstrained xs:duration in every occurrence shape plus a Choice. Task
 /// 058 adds `codec-bounded-ascii`: named bounded-ASCII String carriers,
 /// including the zero-length `EmptyType` shape, in every occurrence shape.
-const SERVICES: [(&str, &str, bool); 16] = [
+const SERVICES: [(&str, &str, bool); 17] = [
     ("runtime-test", "runtime_test", false),
     ("runtime-oam", "runtime_oam", false),
     ("codec-oam", "codec_oam", true),
@@ -45,6 +45,7 @@ const SERVICES: [(&str, &str, bool); 16] = [
     ("codec-duration", "codec_duration", true),
     ("codec-bounded-ascii", "codec_bounded_ascii", true),
     ("codec-structured-ascii", "codec_structured_ascii", true),
+    ("codec-alternating-ascii", "codec_alternating_ascii", true),
 ];
 
 /// Task 050: the pinned UCI 2.5 root (open-arsenal/uci/standard tag v2.5,

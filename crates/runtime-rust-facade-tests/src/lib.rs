@@ -137,6 +137,15 @@ pub mod codec_structured_ascii {
     ));
 }
 
+/// Task 060: exact finite-union String carriers, generated model/API/codec.
+#[allow(clippy::all, clippy::pedantic)]
+pub mod codec_alternating_ascii {
+    include!(concat!(
+        env!("OUT_DIR"),
+        "/codec_alternating_ascii/service_api.rs"
+    ));
+}
+
 /// Task 050: the REAL UCI 2.5 PositionReport model, service API, and codec,
 /// generated only when `AMS_GRA_UCI_2_5_ROOT` names the SHA-256-verified
 /// pinned root (see build.rs).

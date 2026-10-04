@@ -772,9 +772,12 @@ Progress (typed LA-CAL integration as a whole is **not** complete):
       carriers in all three backends and Rust JSON codec. `OrderOfBattle`
       support now has only three alternation blockers. See
       [Task 059](task-059-structured-ascii-string-profiles.md).
-- [ ] the 19 constrained String declarations requiring alternation/union
-      semantics, including `NotationType`, `MilitaryGridType` and
-      `RecordOriginatorType`. No general regex engine is implemented.
+- [x] 15 alternating ASCII constrained String declarations per release
+      (Task 060, 16 exact profiles): includes `NotationType`, `MilitaryGridType`
+      and `RecordOriginatorType`; no general regex engine. OrderOfBattle
+      generated support is 442/442, with six-way model/API compiler evidence.
+      See [Task 060](task-060-alternating-ascii-string-profiles.md).
+- [ ] three deferred Unicode profiles and IPv6_AddressType complexity.
 - [ ] `xs:time` (`TimeType`, now the first blocker of 28 messages per
       release).
 - [ ] plan binding scope: `SchemaBinding` fingerprints the contract-selected

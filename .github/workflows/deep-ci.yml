@@ -76,9 +76,11 @@ jobs:
       - name: Real UCI Binary provenance inventory (Task 052, must execute)
         run: |
           set -euo pipefail
+          status=0
           output="$(cargo test --release -p ams-gra-oms-xsd-frontend --test uci_binary_provenance -- \
-            --nocapture --test-threads 1 2>&1)"
+            --nocapture --test-threads 1 2>&1)" || status=$?
           printf '%s\n' "$output"
+          if (( status != 0 )); then exit "$status"; fi
           grep -Fqx 'UCI 2.5 BINARY PROVENANCE INVENTORY: PASSED' <<<"$output"
           grep -Fqx 'UCI 2.6 BINARY PROVENANCE INVENTORY: PASSED' <<<"$output"
           grep -qE '^test result: ok\. 2 passed' <<<"$output"
@@ -87,9 +89,11 @@ jobs:
       - name: Real UCI constrained Binary inventory (Task 053, must execute)
         run: |
           set -euo pipefail
+          status=0
           output="$(cargo test --release -p ams-gra-codegen-oms --test uci_constrained_binary -- \
-            --nocapture --test-threads 1 2>&1)"
+            --nocapture --test-threads 1 2>&1)" || status=$?
           printf '%s\n' "$output"
+          if (( status != 0 )); then exit "$status"; fi
           grep -Fqx 'UCI 2.5 CONSTRAINED BINARY INVENTORY: PASSED' <<<"$output"
           grep -Fqx 'UCI 2.6 CONSTRAINED BINARY INVENTORY: PASSED' <<<"$output"
           grep -Fqx 'UCI 2.5 CONSTRAINED BINARY MESSAGE IMPACT: PASSED' <<<"$output"
@@ -102,9 +106,11 @@ jobs:
           AMS_GRA_REQUIRE_GNAT: "1"
         run: |
           set -euo pipefail
+          status=0
           output="$(cargo test --release -p ams-gra-codegen-oms --test uci_member_names -- \
-            --nocapture --test-threads 1 2>&1)"
+            --nocapture --test-threads 1 2>&1)" || status=$?
           printf '%s\n' "$output"
+          if (( status != 0 )); then exit "$status"; fi
           grep -Fqx 'UCI 2.5 MEMBER IDENTIFIER INVENTORY: PASSED' <<<"$output"
           grep -Fqx 'UCI 2.6 MEMBER IDENTIFIER INVENTORY: PASSED' <<<"$output"
           grep -Fqx 'UCI 2.5 WHOLE-SCHEMA FIRST BLOCKER PROBE: PASSED' <<<"$output"
@@ -114,16 +120,18 @@ jobs:
           grep -Eqx '(test task054_real_uci_category_a_selection_generates_and_compiles \.\.\. )?UCI 2\.5 REAL CATEGORY-A MEMBER REMAPPING: PASSED' <<<"$output"
           grep -qE '^test result: ok\. 4 passed' <<<"$output"
       # Task 056: readiness accounts for generated-support declarations.
-      # Pinned OrderOfBattle is NOT READY on generated support (never reaching
-      # the backend) in every backend/release, and the Task 054 category-A set
+      # Task 060 closes the remaining OrderOfBattle support blockers in every
+      # backend/release; the historical Task 054 category-A set
       # keeps readiness == generation. Both tests print other lines first, so
       # their markers are always on their own whole lines.
       - name: Real UCI generated-support readiness parity (Task 056, must execute)
         run: |
           set -euo pipefail
+          status=0
           output="$(cargo test --release -p ams-gra-codegen-oms --test uci_generated_support -- \
-            --nocapture --test-threads 1 2>&1)"
+            --nocapture --test-threads 1 2>&1)" || status=$?
           printf '%s\n' "$output"
+          if (( status != 0 )); then exit "$status"; fi
           grep -Fqx 'UCI 2.5 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' <<<"$output"
           grep -Fqx 'UCI 2.6 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' <<<"$output"
           grep -Fqx 'UCI 2.5 CATEGORY-A GENERATED SUPPORT PARITY: PASSED' <<<"$output"
@@ -138,9 +146,11 @@ jobs:
       - name: Real UCI duration inventory and message impact (Task 057, must execute)
         run: |
           set -euo pipefail
+          status=0
           output="$(cargo test --release -p ams-gra-codegen-oms --test uci_duration -- \
-            --nocapture --test-threads 1 2>&1)"
+            --nocapture --test-threads 1 2>&1)" || status=$?
           printf '%s\n' "$output"
+          if (( status != 0 )); then exit "$status"; fi
           grep -Fqx 'UCI 2.5 DURATION INVENTORY: PASSED' <<<"$output"
           grep -Fqx 'UCI 2.6 DURATION INVENTORY: PASSED' <<<"$output"
           grep -Fqx 'UCI 2.5 DURATION MESSAGE IMPACT: RECORDED' <<<"$output"
@@ -158,9 +168,11 @@ jobs:
       - name: Real UCI bounded-ASCII String inventory and message impact (Task 058, must execute)
         run: |
           set -euo pipefail
+          status=0
           output="$(cargo test --release -p ams-gra-codegen-oms --test uci_bounded_ascii_string -- \
-            --nocapture --test-threads 1 2>&1)"
+            --nocapture --test-threads 1 2>&1)" || status=$?
           printf '%s\n' "$output"
+          if (( status != 0 )); then exit "$status"; fi
           grep -Fqx 'UCI 2.5 BOUNDED ASCII INVENTORY: PASSED' <<<"$output"
           grep -Fqx 'UCI 2.6 BOUNDED ASCII INVENTORY: PASSED' <<<"$output"
           grep -Fqx 'UCI 2.5 BOUNDED ASCII MESSAGE IMPACT: RECORDED' <<<"$output"
@@ -172,14 +184,38 @@ jobs:
       - name: Real UCI structured ASCII evidence (Task 059, must execute)
         run: |
           set -euo pipefail
+          status=0
           output="$(cargo test --release -p ams-gra-codegen-oms --test uci_structured_ascii -- \
-            --nocapture --test-threads 1 2>&1)"
+            --nocapture --test-threads 1 2>&1)" || status=$?
           printf '%s\n' "$output"
+          if (( status != 0 )); then exit "$status"; fi
           grep -Fqx 'UCI 2.5 STRUCTURED ASCII INVENTORY: PASSED' <<<"$output"
           grep -Fqx 'UCI 2.6 STRUCTURED ASCII INVENTORY: PASSED' <<<"$output"
           grep -Fqx 'UCI 2.5 STRUCTURED ASCII MESSAGE IMPACT: RECORDED' <<<"$output"
           grep -Fqx 'UCI 2.6 STRUCTURED ASCII MESSAGE IMPACT: RECORDED' <<<"$output"
           grep -qE '^test result: ok\. 2 passed' <<<"$output"
+
+      - name: Real UCI alternating ASCII evidence (Task 060, must execute)
+        run: |
+          set -euo pipefail
+          status=0
+          output="$(cargo test --release -p ams-gra-codegen-oms --test uci_alternating_admission -- --nocapture --test-threads 1 2>&1)" || status=$?
+          printf '%s\n' "$output"
+          if (( status != 0 )); then exit "$status"; fi
+          grep -Fqx 'UCI 2.5 TASK060 FINAL ADMISSION: baseline=19 admitted=15 DEFERRED_UNICODE=3 DEFERRED_COMPLEX=1' <<<"$output"
+          grep -Fqx 'UCI 2.6 TASK060 FINAL ADMISSION: baseline=19 admitted=15 DEFERRED_UNICODE=3 DEFERRED_COMPLEX=1' <<<"$output"
+          grep -qE '^test result: ok\. 2 passed' <<<"$output"
+          status=0
+          output="$(cargo test --release -p ams-gra-codegen-oms --test uci_alternating_after -- --nocapture --test-threads 1 2>&1)" || status=$?
+          printf '%s\n' "$output"
+          if (( status != 0 )); then exit "$status"; fi
+          grep -Fqx 'UCI 2.5 TASK060 PROJECTED MESSAGE IMPACT: PASSED' <<<"$output"
+          grep -Fqx 'UCI 2.6 TASK060 PROJECTED MESSAGE IMPACT: PASSED' <<<"$output"
+          grep -Fqx 'UCI 2.5 TASK060 OrderOfBattle COMPILER CODEC VERTICAL: PASSED' <<<"$output"
+          grep -Fqx 'UCI 2.6 TASK060 OrderOfBattle COMPILER CODEC VERTICAL: PASSED' <<<"$output"
+          grep -Fqx 'UCI 2.5 TASK060 SMTI_SettingsCommand COMPILER CODEC VERTICAL: PASSED' <<<"$output"
+          grep -Fqx 'UCI 2.6 TASK060 SMTI_SettingsCommand COMPILER CODEC VERTICAL: PASSED' <<<"$output"
+          grep -qE '^test result: ok\. 3 passed' <<<"$output"
 
   # The runtime crates declare rust-version = "1.95". Fast CI checks them at
   # 1.95.0 on synthetic fixtures only; this job adds the generated REAL UCI 2.5

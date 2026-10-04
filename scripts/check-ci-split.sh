@@ -44,7 +44,9 @@ for forbidden in \
   '--test uci_generated_support' \
   '--test uci_duration' \
   '--test uci_bounded_ascii_string' \
-  '--test uci_structured_ascii'; do
+  '--test uci_structured_ascii' \
+  '--test uci_alternating_admission' \
+  '--test uci_alternating_after'; do
   if grep -Fq -- "$forbidden" <<<"$fast_code"; then
     fail "Fast CI must not reference $forbidden"
   fi
@@ -61,6 +63,7 @@ for required in \
   'cargo +1.95.0 check --locked -p ams-gra-oms-runtime-rust --all-targets' \
   'cargo +1.95.0 check --locked -p ams-gra-oms-runtime-rust-facade-tests --all-targets' \
   'cargo test --workspace' \
+  'python3 scripts/test-task060-ci-wrappers.py' \
   'AMS_GRA_REQUIRE_GNAT: "1"'; do
   if ! grep -Fq -- "$required" <<<"$fast_code"; then
     fail "Fast CI lost required check: $required"
@@ -68,6 +71,9 @@ for required in \
 done
 
 # ---- Deep CI must keep every moved check ----------------------------------
+qualified_and='task060_probes::generated_group_and_carrier_composes_with_production_service_codec'
+[[ "$(grep -Fc "$qualified_and" <<<"$fast_code")" -eq 2 ]] ||
+  fail "Fast CI must use the qualified Task 060 AND test name in guard and Cargo filter"
 # An INVOCATION (script followed by its quoted destination argument), not a
 # mere mention such as the pull_request.paths filter entries.
 fetch25='scripts/fetch-pinned-uci-2.5.sh "$'
@@ -104,6 +110,14 @@ for required in \
   'REAL CATEGORY-A DURATION SERVICE: PASSED' \
   '--test uci_bounded_ascii_string' \
   '--test uci_structured_ascii' \
+  '--test uci_alternating_admission' \
+  '--test uci_alternating_after' \
+  'UCI 2.5 TASK060 PROJECTED MESSAGE IMPACT: PASSED' \
+  'UCI 2.6 TASK060 PROJECTED MESSAGE IMPACT: PASSED' \
+  'UCI 2.5 TASK060 OrderOfBattle COMPILER CODEC VERTICAL: PASSED' \
+  'UCI 2.6 TASK060 OrderOfBattle COMPILER CODEC VERTICAL: PASSED' \
+  'UCI 2.5 TASK060 SMTI_SettingsCommand COMPILER CODEC VERTICAL: PASSED' \
+  'UCI 2.6 TASK060 SMTI_SettingsCommand COMPILER CODEC VERTICAL: PASSED' \
   'UCI 2.5 STRUCTURED ASCII INVENTORY: PASSED' \
   'UCI 2.6 STRUCTURED ASCII INVENTORY: PASSED' \
   'UCI 2.5 STRUCTURED ASCII MESSAGE IMPACT: RECORDED' \

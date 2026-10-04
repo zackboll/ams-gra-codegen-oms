@@ -144,7 +144,7 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
                 render_declaration(&mut output, schema, declaration, world)?
             }
             TypeEmission::AbstractValue(projection) => {
-                render_abstract_value(&mut output, schema, &projection)?
+                render_abstract_value(&mut output, schema, &projection, world)?
             }
         }
     }
@@ -155,19 +155,19 @@ fn render_abstract_value(
     output: &mut String,
     schema: &SchemaIr,
     projection: &AbstractValueProjection<'_>,
+    world: GenerationWorld,
 ) -> Result<(), CodegenError> {
     let name = upper_camel(&projection.declaration.name.local_name)?;
     // Task 036: `PartialEq` is omitted when any descendant transitively holds
     // a temporal carrier, which derives no equality of its own.
-    let supports_partial_eq = projection
-        .concrete_descendants
-        .iter()
-        .all(|descendant| declaration_supports_partial_eq(schema, descendant, &mut Vec::new()));
+    let supports_partial_eq = projection.concrete_descendants.iter().all(|descendant| {
+        declaration_supports_partial_eq(schema, descendant, &mut Vec::new(), world)
+    });
     let supports_eq = supports_partial_eq
         && projection
             .concrete_descendants
             .iter()
-            .all(|descendant| declaration_supports_eq(schema, descendant, &mut Vec::new()));
+            .all(|descendant| declaration_supports_eq(schema, descendant, &mut Vec::new(), world));
     writeln!(
         output,
         "#[derive(Debug, Clone{})]\npub enum {name} {{",
@@ -315,7 +315,7 @@ fn render_declaration(
             writeln!(
                 output,
                 "#[derive(Debug, Clone{})]\npub struct {name} {{",
-                structural_derives(schema, declaration)
+                structural_derives(schema, declaration, world)
             )
             .expect("writing to String cannot fail");
             for field in effective_record_fields(schema, &declaration.name).map_err(|_| {
@@ -357,7 +357,7 @@ fn render_declaration(
             writeln!(
                 output,
                 "#[derive(Debug, Clone{})]\npub enum {name} {{",
-                structural_derives(schema, declaration)
+                structural_derives(schema, declaration, world)
             )
             .expect("writing to String cannot fail");
             for alternative in effective_choice_alternatives(schema, &declaration.name).map_err(
@@ -449,7 +449,8 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
                 | Ok(Some(StringProfile::WhitespaceVisible { .. }))
                 | Ok(Some(StringProfile::NatoSpecialWords))
                 | Ok(Some(StringProfile::BoundedAscii { .. }))
-                | Ok(Some(StringProfile::StructuredAscii(_))) => {}
+                | Ok(Some(StringProfile::StructuredAscii(_)))
+                | Ok(Some(StringProfile::AlternatingAscii(_))) => {}
                 Ok(None) => unreachable!("constrains_string gates this branch"),
                 Err(reason) => {
                     return unsupported(format!("{reason} on {}", declaration.name.local_name));
@@ -575,6 +576,7 @@ fn declaration_supports_eq(
     schema: &SchemaIr,
     declaration: &TypeDecl,
     visiting: &mut Vec<ams_gra_oms_ir::QualifiedName>,
+    world: GenerationWorld,
 ) -> bool {
     if visiting.contains(&declaration.name) {
         return false;
@@ -591,16 +593,22 @@ fn declaration_supports_eq(
         TypeKind::Primitive(_) | TypeKind::Enumeration { .. } => true,
         TypeKind::Record { .. } => {
             effective_record_fields(schema, &declaration.name).is_ok_and(|fields| {
-                fields
-                    .iter()
-                    .all(|field| type_ref_supports_eq(schema, &field.type_ref, visiting))
+                fields.iter().all(|field| {
+                    matches!(
+                        field_storage_semantics(schema, field, world),
+                        Ok(EffectiveValueMember::AbsentOnly(_))
+                    ) || type_ref_supports_eq(schema, &field.type_ref, visiting, world)
+                })
             })
         }
         TypeKind::Choice { .. } => effective_choice_alternatives(schema, &declaration.name)
             .is_ok_and(|fields| {
-                fields
-                    .iter()
-                    .all(|field| type_ref_supports_eq(schema, &field.type_ref, visiting))
+                fields.iter().all(|field| {
+                    matches!(
+                        field_storage_semantics(schema, field, world),
+                        Ok(EffectiveValueMember::AbsentOnly(_))
+                    ) || type_ref_supports_eq(schema, &field.type_ref, visiting, world)
+                })
             }),
         TypeKind::Alias(_) | TypeKind::List { .. } => false,
     };
@@ -612,7 +620,13 @@ fn type_ref_supports_eq(
     schema: &SchemaIr,
     type_ref: &TypeRef,
     visiting: &mut Vec<ams_gra_oms_ir::QualifiedName>,
+    world: GenerationWorld,
 ) -> bool {
+    if let Some(supported) =
+        abstract_reference_supports_trait(schema, type_ref, visiting, false, world)
+    {
+        return supported;
+    }
     match &type_ref.target {
         TypeRefTarget::Primitive(
             PrimitiveKind::Float32
@@ -625,7 +639,7 @@ fn type_ref_supports_eq(
             .types
             .iter()
             .find(|candidate| candidate.name == *name)
-            .is_some_and(|candidate| declaration_supports_eq(schema, candidate, visiting)),
+            .is_some_and(|candidate| declaration_supports_eq(schema, candidate, visiting, world)),
     }
 }
 
@@ -650,9 +664,10 @@ fn declaration_supports_partial_eq(
     schema: &SchemaIr,
     declaration: &TypeDecl,
     visiting: &mut Vec<ams_gra_oms_ir::QualifiedName>,
+    world: GenerationWorld,
 ) -> bool {
     if visiting.contains(&declaration.name) {
-        return true;
+        return false;
     }
     visiting.push(declaration.name.clone());
     let result = match &declaration.kind {
@@ -660,16 +675,22 @@ fn declaration_supports_partial_eq(
         TypeKind::Primitive(_) | TypeKind::Enumeration { .. } => true,
         TypeKind::Record { .. } => {
             effective_record_fields(schema, &declaration.name).is_ok_and(|fields| {
-                fields
-                    .iter()
-                    .all(|field| type_ref_supports_partial_eq(schema, &field.type_ref, visiting))
+                fields.iter().all(|field| {
+                    matches!(
+                        field_storage_semantics(schema, field, world),
+                        Ok(EffectiveValueMember::AbsentOnly(_))
+                    ) || type_ref_supports_partial_eq(schema, &field.type_ref, visiting, world)
+                })
             })
         }
         TypeKind::Choice { .. } => effective_choice_alternatives(schema, &declaration.name)
             .is_ok_and(|fields| {
-                fields
-                    .iter()
-                    .all(|field| type_ref_supports_partial_eq(schema, &field.type_ref, visiting))
+                fields.iter().all(|field| {
+                    matches!(
+                        field_storage_semantics(schema, field, world),
+                        Ok(EffectiveValueMember::AbsentOnly(_))
+                    ) || type_ref_supports_partial_eq(schema, &field.type_ref, visiting, world)
+                })
             }),
         TypeKind::Alias(_) | TypeKind::List { .. } => true,
     };
@@ -681,7 +702,13 @@ fn type_ref_supports_partial_eq(
     schema: &SchemaIr,
     type_ref: &TypeRef,
     visiting: &mut Vec<ams_gra_oms_ir::QualifiedName>,
+    world: GenerationWorld,
 ) -> bool {
+    if let Some(supported) =
+        abstract_reference_supports_trait(schema, type_ref, visiting, true, world)
+    {
+        return supported;
+    }
     match &type_ref.target {
         // The direct DateTime and Duration carriers have no value-space
         // equality implementation (Tasks 046/057).
@@ -691,18 +718,56 @@ fn type_ref_supports_partial_eq(
             .types
             .iter()
             .find(|candidate| candidate.name == *name)
-            .is_none_or(|candidate| declaration_supports_partial_eq(schema, candidate, visiting)),
+            .is_some_and(|candidate| {
+                declaration_supports_partial_eq(schema, candidate, visiting, world)
+            }),
     }
+}
+
+/// A stored abstract reference denotes the emitted closed sum, not merely the
+/// abstract declaration's own fields. Use the same payload projection as its
+/// renderer. Optional/sequence wrappers preserve their element's trait bounds.
+/// Cycles decline traits conservatively and terminate independent of type order.
+fn abstract_reference_supports_trait(
+    schema: &SchemaIr,
+    type_ref: &TypeRef,
+    visiting: &mut Vec<ams_gra_oms_ir::QualifiedName>,
+    partial: bool,
+    world: GenerationWorld,
+) -> Option<bool> {
+    let projection = match abstract_value_projection_for_ref(schema, type_ref, world) {
+        Ok(None) => return None,
+        Ok(Some(projection)) => projection,
+        Err(_) => return Some(false),
+    };
+    let name = &projection.declaration.name;
+    if visiting.contains(name) {
+        return Some(false);
+    }
+    visiting.push(name.clone());
+    let result = projection.concrete_descendants.iter().all(|descendant| {
+        if partial {
+            declaration_supports_partial_eq(schema, descendant, visiting, world)
+        } else {
+            declaration_supports_eq(schema, descendant, visiting, world)
+        }
+    });
+    visiting.pop();
+    Some(result)
 }
 
 /// The `derive` list for a generated record or choice.
 ///
 /// `PartialEq` is omitted entirely when some reachable member is a Task 036
 /// temporal carrier, and `Eq` additionally requires total equality.
-fn structural_derives(schema: &SchemaIr, declaration: &TypeDecl) -> &'static str {
-    if !declaration_supports_partial_eq(schema, declaration, &mut Vec::new()) {
+fn structural_derives(
+    schema: &SchemaIr,
+    declaration: &TypeDecl,
+    world: GenerationWorld,
+) -> &'static str {
+    if !declaration_supports_partial_eq(schema, declaration, &mut Vec::new(), world) {
         ""
-    } else if declaration_supports_eq(schema, declaration, &mut Vec::new()) {
+    } else if declaration_supports_eq(schema, declaration, &mut Vec::new(), world) {
         ", PartialEq, Eq"
     } else {
         ", PartialEq"
@@ -1099,6 +1164,9 @@ fn render_string_profile_declaration(
         Ok(Some(StringProfile::StructuredAscii(profile))) => {
             render_rust_structured_ascii(name, profile)
         }
+        Ok(Some(StringProfile::AlternatingAscii(profile))) => {
+            render_rust_alternating_ascii(name, profile)
+        }
         Ok(None) => return unsupported(format!("unconstrained String on {name}")),
         Err(reason) => return unsupported(format!("{reason} on {name}")),
     };
@@ -1180,15 +1248,58 @@ fn render_rust_bounded_ascii(
         .replace("{describe}", &alphabet.describe())
 }
 
-fn render_rust_structured_ascii(name: &str, profile: StructuredAsciiProfile) -> String {
+fn render_rust_alternating_ascii(
+    name: &str,
+    profile: &ams_gra_oms_codegen_core::AlternatingAsciiProfile,
+) -> String {
+    let mut helpers = String::new();
+    let mut groups = Vec::new();
+    for (g, branches) in profile.groups.iter().enumerate() {
+        if let Some(product) = ams_gra_oms_codegen_core::factor_delimited_ascii(branches) {
+            let mut calls = Vec::new();
+            for (b, branch) in product.alternatives.iter().enumerate() {
+                let matcher = render_rust_ascii_sequence(branch);
+                helpers.push_str(&format!("    fn component_{g}_{b}(text: &[u8]) -> bool {{\n        let mut pos = 0;\n{matcher}        pos == text.len()\n    }}\n"));
+                calls.push(format!("Self::component_{g}_{b}(part)"));
+            }
+            let union = calls.join(" || ");
+            helpers.push_str(&format!("    fn group_{g}(text: &[u8]) -> bool {{\n        let mut count = 0;\n        for part in text.split(|byte| *byte == {}) {{\n            if part.is_empty() || !({union}) {{ return false; }}\n            count += 1;\n        }}\n        count == {}\n    }}\n", product.delimiter, product.components));
+            groups.push(format!("Self::group_{g}(text)"));
+            continue;
+        }
+        let mut calls = Vec::new();
+        for (b, branch) in branches.iter().enumerate() {
+            let matcher = render_rust_ascii_sequence(branch);
+            helpers.push_str(&format!("    fn branch_{g}_{b}(text: &[u8]) -> bool {{\n        let mut pos = 0;\n{matcher}        pos == text.len()\n    }}\n"));
+            calls.push(format!("Self::branch_{g}_{b}(text)"));
+        }
+        groups.push(if profile.groups.len() == 1 {
+            calls.join(" || ")
+        } else {
+            format!("({})", calls.join(" || "))
+        });
+    }
+    let base = render_rust_structured_ascii(
+        name,
+        StructuredAsciiProfile {
+            segments: &[],
+            facets: profile.facets,
+        },
+    );
+    base.replace(
+        "        let mut pos = 0;\n        pos == text.len()",
+        &format!("        {}", groups.join(" && ")),
+    )
+    .replace(
+        "    fn is_valid(text:",
+        &format!("{helpers}    fn is_valid(text:"),
+    )
+}
+
+fn render_rust_ascii_sequence(segments: &[StructuredAsciiSegment]) -> String {
     use StructuredAsciiSegment::{Class, Literal};
-    let facets = match profile.facets {
-        StructuredAsciiFacets::Exact(n) => format!("text.len() == {n}"),
-        StructuredAsciiFacets::Range(a, b) => format!("({a}..={b}).contains(&text.len())"),
-        StructuredAsciiFacets::Max(n) => format!("text.len() <= {n}"),
-    };
     let mut matcher = String::new();
-    for segment in profile.segments {
+    for segment in segments {
         match segment {
             Literal(text) => {
                 let bytes = text
@@ -1239,6 +1350,16 @@ fn render_rust_structured_ascii(name: &str, profile: StructuredAsciiProfile) -> 
             }
         }
     }
+    matcher
+}
+
+fn render_rust_structured_ascii(name: &str, profile: StructuredAsciiProfile) -> String {
+    let facets = match profile.facets {
+        StructuredAsciiFacets::Exact(n) => format!("text.len() == {n}"),
+        StructuredAsciiFacets::Range(a, b) => format!("({a}..={b}).contains(&text.len())"),
+        StructuredAsciiFacets::Max(n) => format!("text.len() <= {n}"),
+    };
+    let matcher = render_rust_ascii_sequence(profile.segments);
     format!(
         "#[derive(Clone, Debug, PartialEq, Eq)]\npub struct {name} {{ value: String }}\nimpl {name} {{\n    pub fn new(value: &str) -> Option<Self> {{\n        if !Self::is_valid(value.as_bytes()) {{ return None; }}\n        Some(Self {{ value: value.to_owned() }})\n    }}\n    pub fn as_str(&self) -> &str {{ &self.value }}\n    fn is_valid(text: &[u8]) -> bool {{\n        if !({facets}) {{ return false; }}\n        let mut pos = 0;\n{matcher}        pos == text.len()\n    }}\n}}\n"
     )
@@ -3717,3 +3838,6 @@ fn main() {
         }
     }
 }
+
+#[cfg(test)]
+mod task060_probes;

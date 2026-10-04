@@ -5247,3 +5247,23 @@ All admitted code points are ASCII, so accepted UTF-8 byte length equals XSD
 character length. `OrderOfBattle` has 439/442 generated support renderable;
 only `MilitaryGridType`, `NotationType`, and `RecordOriginatorType` remain.
 Full evidence and measurements: [Task 059](task-059-structured-ascii-string-profiles.md).
+
+## Task 060 — evidence-bounded alternating ASCII profiles
+
+Supersedes the current remaining-profile boundary above, not historical
+measurements. Fifteen exact declaration names per pinned release (16 profiles
+across releases) now have checked Ada/Rust/C++ lexical carriers and checked
+Rust codecs. Alternatives are OR within groups; groups are AND, with independent
+whole-input branch matching and separate facets. Classification remains exact
+and fail-closed. Three Unicode profiles remain deferred: NITF_DateAndTimeType,
+NITF_DateType, NITF_MSTGTA_TargetLocationType. IPv6_AddressType remains deferred
+for complexity. TimeType and generated-name remediation remain out of scope.
+
+OrderOfBattle selected model and 442 generated-support declarations are READY
+in all three backends for both releases; six-way model/API compilation passes.
+Rust codec readiness and compiled lexical round trips also pass in both releases.
+Generic equality analysis follows actually stored closed-sum descendants, the
+generation world and storage elision; temporal carriers remain non-comparable.
+RecordDRLE and OrderOfBattleML derive Debug, Clone only. Final-source fixture
+comparison has zero changed-success or regression cells. Full evidence and
+remaining delivery gates: [Task 060](task-060-alternating-ascii-string-profiles.md).

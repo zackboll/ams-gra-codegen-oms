@@ -667,7 +667,8 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
                 | Ok(Some(StringProfile::WhitespaceVisible { .. }))
                 | Ok(Some(StringProfile::NatoSpecialWords))
                 | Ok(Some(StringProfile::BoundedAscii { .. }))
-                | Ok(Some(StringProfile::StructuredAscii(_))) => {}
+                | Ok(Some(StringProfile::StructuredAscii(_)))
+                | Ok(Some(StringProfile::AlternatingAscii(_))) => {}
                 Ok(None) => unreachable!("constrains_string gates this branch"),
                 Err(reason) => {
                     return unsupported(format!("{reason} on {}", declaration.name.local_name));
@@ -1917,6 +1918,11 @@ fn render_string_profile_declaration(
             "A validated structured-ASCII string.",
             "pinned ASCII segments and their independent length facets".to_owned(),
         ),
+        Ok(Some(profile @ StringProfile::AlternatingAscii(_))) => (
+            profile,
+            "A validated alternating-ASCII string.",
+            "pinned ASCII pattern groups and independent length facets".to_owned(),
+        ),
         Ok(None) => return unsupported(format!("unconstrained String on {name}")),
         Err(reason) => return unsupported(format!("{reason} on {name}")),
     };
@@ -2017,6 +2023,9 @@ fn render_string_profile_declaration(
             render_ada_bounded_ascii_body(name, alphabet, length)
         }
         StringProfile::StructuredAscii(profile) => render_ada_structured_ascii_body(name, profile),
+        StringProfile::AlternatingAscii(profile) => {
+            render_ada_alternating_ascii_body(name, profile)
+        }
     };
     body.push_str(&rendered);
     Ok(())
@@ -2072,15 +2081,53 @@ fn render_ada_bounded_ascii_body(
         .replace("{describe}", &alphabet.describe())
 }
 
-fn render_ada_structured_ascii_body(name: &str, profile: StructuredAsciiProfile) -> String {
+fn render_ada_alternating_ascii_body(
+    name: &str,
+    profile: &ams_gra_oms_codegen_core::AlternatingAsciiProfile,
+) -> String {
+    let mut helpers = String::new();
+    let mut groups = Vec::new();
+    for (g, branches) in profile.groups.iter().enumerate() {
+        if let Some(product) = ams_gra_oms_codegen_core::factor_delimited_ascii(branches) {
+            let mut calls = Vec::new();
+            for (b, branch) in product.alternatives.iter().enumerate() {
+                let matcher = render_ada_ascii_sequence(branch);
+                helpers.push_str(&format!("      function Component_{g}_{b} (Text : String) return Boolean is\n         Pos : Natural := 0;\n      begin\n{matcher}         return Pos = Text'Length;\n      end Component_{g}_{b};\n"));
+                // The empty-component short circuit below establishes Finish > Start.
+                // Subtract the offset before adding Text'First: the input may end
+                // at Positive'Last, so Text'First + Finish can overflow at EOF.
+                calls.push(format!(
+                    "Component_{g}_{b} (Text (Text'First + Start .. Text'First + (Finish - 1)))"
+                ));
+            }
+            let union = calls.join(" or else ");
+            helpers.push_str(&format!("      function Group_{g} (Text : String) return Boolean is\n         Start : Natural := 0;\n         Count : Natural := 0;\n      begin\n         for Finish in 0 .. Text'Length loop\n            if Finish = Text'Length or else Character'Pos (Text (Text'First + Finish)) = {} then\n               if Finish = Start or else not ({union}) then return False; end if;\n               Count := Count + 1;\n               Start := Finish + 1;\n            end if;\n         end loop;\n         return Count = {};\n      end Group_{g};\n", product.delimiter, product.components));
+            groups.push(format!("Group_{g} (Text)"));
+            continue;
+        }
+        let mut calls = Vec::new();
+        for (b, branch) in branches.iter().enumerate() {
+            let matcher = render_ada_ascii_sequence(branch);
+            helpers.push_str(&format!("      function Branch_{g}_{b} (Text : String) return Boolean is\n         Pos : Natural := 0;\n      begin\n{matcher}         return Pos = Text'Length;\n      end Branch_{g}_{b};\n"));
+            calls.push(format!("Branch_{g}_{b} (Text)"));
+        }
+        groups.push(format!("({})", calls.join(" or else ")));
+    }
+    let base = render_ada_structured_ascii_body(
+        name,
+        StructuredAsciiProfile {
+            segments: &[],
+            facets: profile.facets,
+        },
+    );
+    let old = "      function Matches_Pattern (Text : String) return Boolean is\n         Pos : Natural := 0;\n      begin\n         return Pos = Text'Length;\n      end Matches_Pattern;";
+    base.replace(old, &format!("{helpers}      function Matches_Pattern (Text : String) return Boolean is\n      begin\n         return {};\n      end Matches_Pattern;", groups.join(" and then ")))
+}
+
+fn render_ada_ascii_sequence(segments: &[StructuredAsciiSegment]) -> String {
     use StructuredAsciiSegment::{Class, Literal};
-    let facets = match profile.facets {
-        StructuredAsciiFacets::Exact(n) => format!("Value'Length /= {n}"),
-        StructuredAsciiFacets::Range(a, b) => format!("Value'Length not in {a} .. {b}"),
-        StructuredAsciiFacets::Max(n) => format!("Value'Length > {n}"),
-    };
     let mut matcher = String::new();
-    for segment in profile.segments {
+    for segment in segments {
         match segment {
             Literal(text) => {
                 let conditions = text
@@ -2129,6 +2176,16 @@ fn render_ada_structured_ascii_body(name: &str, profile: StructuredAsciiProfile)
             }
         }
     }
+    matcher
+}
+
+fn render_ada_structured_ascii_body(name: &str, profile: StructuredAsciiProfile) -> String {
+    let facets = match profile.facets {
+        StructuredAsciiFacets::Exact(n) => format!("Value'Length /= {n}"),
+        StructuredAsciiFacets::Range(a, b) => format!("Value'Length not in {a} .. {b}"),
+        StructuredAsciiFacets::Max(n) => format!("Value'Length > {n}"),
+    };
+    let matcher = render_ada_ascii_sequence(profile.segments);
     format!(
         "\n   function Create (Value : String) return {name} is\n      function Matches_Pattern (Text : String) return Boolean is\n         Pos : Natural := 0;\n      begin\n{matcher}         return Pos = Text'Length;\n      end Matches_Pattern;\n   begin\n      if {facets} or else not Matches_Pattern (Value) then\n         raise Standard.Constraint_Error with \"invalid structured-ASCII string\";\n      end if;\n      return {name}' (Text => Standard.Ada.Strings.Unbounded.To_Unbounded_String (Value));\n   end Create;\n\n   function Value (Item : {name}) return String is\n   begin\n      return Standard.Ada.Strings.Unbounded.To_String (Item.Text);\n   end Value;\n"
     )
@@ -6305,3 +6362,6 @@ end Probe;
         );
     }
 }
+
+#[cfg(test)]
+mod task060_probes;

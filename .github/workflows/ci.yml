@@ -147,6 +147,11 @@ jobs:
           require_one_test generated_structured_ascii_ada_corpus_under_both_policies \
             cargo test -p ams-gra-oms-backend-ada --test structured_ascii \
             generated_structured_ascii_ada_corpus_under_both_policies
+          # Task 060 corrective: actual generated factored carrier construction
+          # at Positive'Last, with -O0 -gnato under all three assertion policies.
+          require_one_test generated_factored_ascii_ada_bounds_under_strict_overflow \
+            cargo test -p ams-gra-oms-backend-ada --test alternating_ascii_bounds \
+            generated_factored_ascii_ada_bounds_under_strict_overflow
           require_one_test generated_structured_ascii_rust_corpus \
             cargo test -p ams-gra-oms-backend-rust --test structured_ascii generated_structured_ascii_rust_corpus
           require_one_test generated_structured_ascii_cpp_corpus \
@@ -246,8 +251,10 @@ jobs:
           require_one_test() {
             name="$1"
             shift
-            output="$("$@" -- --exact --nocapture 2>&1)"
+            local status=0
+            output="$("$@" -- --exact --nocapture 2>&1)" || status=$?
             printf '%s\n' "$output"
+            if (( status != 0 )); then return "$status"; fi
             printf '%s\n' "$output" | grep -qE "^test ${name} \.\.\. ok$"
             printf '%s\n' "$output" | grep -qE '^test result: ok\. 1 passed'
           }
@@ -295,6 +302,25 @@ jobs:
           require_one_test task059_structured_ascii_generated_codec_round_trips_through_mock_owp \
             cargo test -p ams-gra-oms-runtime-rust-facade-tests --test generated_codec_mock_owp \
             task059_structured_ascii_generated_codec_round_trips_through_mock_owp
+          # Task 060: compiled synthetic proofs must execute, not just build.
+          require_one_test task060_probes::generated_group_and_carrier_composes_with_production_service_codec \
+            cargo test -p ams-gra-oms-backend-rust --lib \
+            task060_probes::generated_group_and_carrier_composes_with_production_service_codec
+          require_one_test closed_sum_container_traits_follow_concrete_payload_traits \
+            cargo test -p ams-gra-oms-backend-rust --test equality_closed_sum \
+            closed_sum_container_traits_follow_concrete_payload_traits
+          require_one_test absent_only_storage_preserves_equality_in_closed_world \
+            cargo test -p ams-gra-oms-backend-rust --test equality_closed_sum \
+            absent_only_storage_preserves_equality_in_closed_world
+          require_one_test task060_compiled_checked_string_codec_preserves_union_lexicals \
+            cargo test -p ams-gra-oms-runtime-rust-facade-tests --test generated_codec_alternating_ascii \
+            task060_compiled_checked_string_codec_preserves_union_lexicals
+          require_one_test generated_support_string_controls_final_readiness_not_selected_counts \
+            cargo test -p ams-gra-codegen-oms --test alternating_capability \
+            generated_support_string_controls_final_readiness_not_selected_counts
+          require_one_test task060_alternating_ascii_generated_codec_mock_owp_round_trip \
+            cargo test -p ams-gra-oms-runtime-rust-facade-tests --test generated_codec_mock_owp \
+            task060_alternating_ascii_generated_codec_mock_owp_round_trip
           # Task 051 replaced task050_non_oam_payload_fails_codec_preflight with
           # task051_qualified_non_oam_payload_is_codec_ready (below): a
           # qualified non-OAM payload is now codec READY. Task 052 replaced
@@ -592,6 +618,7 @@ jobs:
           set -euo pipefail
           scripts/check-ci-split.sh
           scripts/test-check-ci-split.sh
+          python3 scripts/test-task060-ci-wrappers.py
       # `AMS_GRA_REQUIRE_GNAT` turns the Ada probes' developer-machine skip
       # into a hard failure, so a runner that somehow lost GNAT after the gate
       # above cannot produce a green run with the Ada checks quietly elided.

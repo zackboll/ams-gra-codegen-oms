@@ -492,7 +492,8 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
                 | Ok(Some(StringProfile::WhitespaceVisible { .. }))
                 | Ok(Some(StringProfile::NatoSpecialWords))
                 | Ok(Some(StringProfile::BoundedAscii { .. }))
-                | Ok(Some(StringProfile::StructuredAscii(_))) => {}
+                | Ok(Some(StringProfile::StructuredAscii(_)))
+                | Ok(Some(StringProfile::AlternatingAscii(_))) => {}
                 Ok(None) => unreachable!("constrains_string gates this branch"),
                 Err(reason) => {
                     return unsupported(format!("{reason} on {}", declaration.name.local_name));
@@ -1373,6 +1374,9 @@ fn render_string_profile_declaration(
         Ok(Some(StringProfile::StructuredAscii(profile))) => {
             render_cpp_structured_ascii(name, profile)
         }
+        Ok(Some(StringProfile::AlternatingAscii(profile))) => {
+            render_cpp_alternating_ascii(name, profile)
+        }
         Ok(None) => return unsupported(format!("unconstrained String on {name}")),
         Err(reason) => return unsupported(format!("{reason} on {name}")),
     };
@@ -1434,15 +1438,54 @@ fn render_cpp_bounded_ascii(
         .replace("{describe}", &alphabet.describe())
 }
 
-fn render_cpp_structured_ascii(name: &str, profile: StructuredAsciiProfile) -> String {
+fn render_cpp_alternating_ascii(
+    name: &str,
+    profile: &ams_gra_oms_codegen_core::AlternatingAsciiProfile,
+) -> String {
+    let mut helpers = String::new();
+    let mut groups = Vec::new();
+    for (g, branches) in profile.groups.iter().enumerate() {
+        if let Some(product) = ams_gra_oms_codegen_core::factor_delimited_ascii(branches) {
+            let mut calls = Vec::new();
+            for (b, branch) in product.alternatives.iter().enumerate() {
+                let matcher = render_cpp_ascii_sequence(branch);
+                helpers.push_str(&format!("    static bool component_{g}_{b}(std::string_view text) {{\n        std::size_t pos = 0;\n{matcher}        return pos == text.size();\n    }}\n"));
+                calls.push(format!("component_{g}_{b}(part)"));
+            }
+            let union = calls.join(" || ");
+            helpers.push_str(&format!("    static bool group_{g}(std::string_view text) {{\n        std::size_t start = 0, count = 0;\n        for (std::size_t end = 0; end <= text.size(); ++end) {{\n            if (end != text.size() && static_cast<unsigned char>(text[end]) != {}) continue;\n            const auto part = text.substr(start, end - start);\n            if (part.empty() || !({union})) return false;\n            ++count; start = end + 1;\n        }}\n        return count == {};\n    }}\n", product.delimiter, product.components));
+            groups.push(format!("group_{g}(text)"));
+            continue;
+        }
+        let mut calls = Vec::new();
+        for (b, branch) in branches.iter().enumerate() {
+            let matcher = render_cpp_ascii_sequence(branch);
+            helpers.push_str(&format!("    static bool branch_{g}_{b}(std::string_view text) {{\n        std::size_t pos = 0;\n{matcher}        return pos == text.size();\n    }}\n"));
+            calls.push(format!("branch_{g}_{b}(text)"));
+        }
+        groups.push(format!("({})", calls.join(" || ")));
+    }
+    let base = render_cpp_structured_ascii(
+        name,
+        StructuredAsciiProfile {
+            segments: &[],
+            facets: profile.facets,
+        },
+    );
+    base.replace(
+        "        std::size_t pos = 0;\n        return pos == text.size();",
+        &format!("        return {};", groups.join(" && ")),
+    )
+    .replace(
+        "    static bool is_valid(",
+        &format!("{helpers}    static bool is_valid("),
+    )
+}
+
+fn render_cpp_ascii_sequence(segments: &[StructuredAsciiSegment]) -> String {
     use StructuredAsciiSegment::{Class, Literal};
-    let facets = match profile.facets {
-        StructuredAsciiFacets::Exact(n) => format!("text.size() == {n}"),
-        StructuredAsciiFacets::Range(a, b) => format!("text.size() >= {a} && text.size() <= {b}"),
-        StructuredAsciiFacets::Max(n) => format!("text.size() <= {n}"),
-    };
     let mut matcher = String::new();
-    for segment in profile.segments {
+    for segment in segments {
         match segment {
             Literal(text) => {
                 let conditions = text
@@ -1491,6 +1534,16 @@ fn render_cpp_structured_ascii(name: &str, profile: StructuredAsciiProfile) -> S
             }
         }
     }
+    matcher
+}
+
+fn render_cpp_structured_ascii(name: &str, profile: StructuredAsciiProfile) -> String {
+    let facets = match profile.facets {
+        StructuredAsciiFacets::Exact(n) => format!("text.size() == {n}"),
+        StructuredAsciiFacets::Range(a, b) => format!("text.size() >= {a} && text.size() <= {b}"),
+        StructuredAsciiFacets::Max(n) => format!("text.size() <= {n}"),
+    };
+    let matcher = render_cpp_ascii_sequence(profile.segments);
     format!(
         "class {name} {{\npublic:\n    static std::optional<{name}> create(std::string_view text) {{\n        if (!is_valid(text)) return std::nullopt;\n        return {name}(std::string(text));\n    }}\n    {name}(const {name}&) = default;\n    {name}& operator=(const {name}&) = default;\n    const std::string& value() const noexcept {{ return value_; }}\nprivate:\n    explicit {name}(std::string text) : value_(std::move(text)) {{}}\n    static bool is_valid(std::string_view text) {{\n        if (!({facets})) return false;\n        std::size_t pos = 0;\n{matcher}        return pos == text.size();\n    }}\n    std::string value_;\n}};\n"
     )
@@ -4034,3 +4087,6 @@ int probe() {
         }
     }
 }
+
+#[cfg(test)]
+mod task060_probes;
