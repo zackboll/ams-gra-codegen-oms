@@ -503,17 +503,20 @@ fn render_declaration(
                     render_unbounded_helper(output, private_part, body, &name, &field_name, field)?;
                 } else if ada_record_field_uses_optional_wrapper(field) {
                     let field_name = record_field_name(&field.name)?;
-                    render_optional_helper(output, &name, &field_name, field)?;
+                    render_optional_helper(output, schema, &name, &field_name, field)?;
                 }
             }
             writeln!(output, "   type {name} is record").expect("writing to String cannot fail");
             if fields.is_empty() {
                 output.push_str("      null;\n");
             }
+            let mut preceding_components = Vec::new();
             for field in fields {
                 let field_name = record_field_name(&field.name)?;
                 let field_type = match field.cardinality {
-                    Cardinality::REQUIRED_ONE => ada_field_base(field)?,
+                    Cardinality::REQUIRED_ONE => {
+                        ada_component_type(schema, &field_name, &preceding_components, field)?
+                    }
                     Cardinality::OPTIONAL_ONE
                         if field.type_ref.target
                             == TypeRefTarget::Primitive(PrimitiveKind::String) =>
@@ -538,6 +541,7 @@ fn render_declaration(
                 };
                 writeln!(output, "      {field_name} : {field_type};")
                     .expect("writing to String cannot fail");
+                preceding_components.push(field_name);
             }
             output.push_str("   end record;\n\n");
         }
@@ -601,14 +605,20 @@ fn render_declaration(
                 choice_alternative_name(&alternatives[0].name)?
             )
             .expect("writing to String cannot fail");
+            let mut preceding_components = vec!["Kind".to_owned()];
             for alternative in alternatives {
                 let alternative_name = choice_alternative_name(&alternative.name)?;
                 writeln!(
                     output,
                     "         when {alternative_name}_Kind =>\n            {alternative_name} : {};",
-                    ada_field_type(&name, alternative)?
+                    if alternative.cardinality == Cardinality::REQUIRED_ONE {
+                        ada_component_type(schema, &alternative_name, &preceding_components, alternative)?
+                    } else {
+                        ada_field_type(&name, alternative)?
+                    }
                 )
                 .expect("writing to String cannot fail");
+                preceding_components.push(alternative_name);
             }
             output.push_str("      end case;\n   end record;\n\n");
         }
@@ -881,11 +891,12 @@ fn validate_repeated_cardinality(field: &ams_gra_oms_ir::FieldDecl) -> Result<()
 /// is the scope where the component is really rendered.
 fn render_optional_helper(
     output: &mut String,
+    schema: &SchemaIr,
     owner: &str,
     field_name: &str,
     field: &ams_gra_oms_ir::FieldDecl,
 ) -> Result<(), CodegenError> {
-    let value_type = ada_field_base(field)?;
+    let value_type = ada_component_type(schema, "Value", &["Is_Present".to_owned()], field)?;
     writeln!(
         output,
         "   type {owner}_{field_name}_Optional (Is_Present : Boolean := False) is record\n\
@@ -1641,6 +1652,46 @@ fn ada_field_base(field: &ams_gra_oms_ir::FieldDecl) -> Result<String, CodegenEr
             reject_any_constraints(&field.constraints, &field.name)?;
             ada_type(&field.type_ref)
         }
+    }
+}
+
+/// Preserve the public component spelling while disambiguating a named subtype
+/// hidden by that component, a preceding component, or the discriminant in
+/// Ada's case-insensitive record scope. Primitive
+/// targets and non-hiding named targets retain their ordinary bytes. Optional
+/// helpers pass their actual internal component (`Value`), not the wire name;
+/// repeated helpers already introduce distinct item subtypes.
+fn ada_component_type(
+    schema: &SchemaIr,
+    component: &str,
+    preceding_components: &[String],
+    field: &ams_gra_oms_ir::FieldDecl,
+) -> Result<String, CodegenError> {
+    let ordinary = ada_field_base(field)?;
+    if matches!(field.type_ref.target, TypeRefTarget::Named(_))
+        && (component.eq_ignore_ascii_case(&ordinary)
+            || preceding_components
+                .iter()
+                .any(|name| name.eq_ignore_ascii_case(&ordinary)))
+    {
+        let package = package_name(schema)?;
+        let root = package.split('.').next().expect("validated model package");
+        // The expanded mark's prefix can itself be hidden (e.g. a type and
+        // component named Test inside Test.Shadow). Standard anchors that
+        // otherwise ambiguous library-unit prefix without affecting ordinary
+        // qualification bytes such as Programs.Oam.CommType.
+        let anchor = if component.eq_ignore_ascii_case(root)
+            || preceding_components
+                .iter()
+                .any(|name| name.eq_ignore_ascii_case(root))
+        {
+            "Standard."
+        } else {
+            ""
+        };
+        Ok(format!("{anchor}{package}.{ordinary}"))
+    } else {
+        Ok(ordinary)
     }
 }
 

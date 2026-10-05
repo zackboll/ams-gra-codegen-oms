@@ -30,6 +30,7 @@ on:
       - "scripts/check-task062-vertical.py"
       - "scripts/check-task063-pinned.sh"
       - "scripts/check-task063-service-impact.py"
+      - "scripts/check-task065-pinned.sh"
 
 permissions:
   contents: read

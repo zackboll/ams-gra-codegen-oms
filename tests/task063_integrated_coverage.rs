@@ -54,7 +54,11 @@ pub fn integrated_coverage(release: &str, world: GenerationWorld, backend: &str)
             ))
         })
         .collect();
-    assert_eq!(rows.len(), 1, "unique historical Task 065 AFTER coverage cell");
+    assert_eq!(
+        rows.len(),
+        1,
+        "unique historical Task 065 AFTER coverage cell"
+    );
     [
         "declaration_kinds_renderable",
         "declarations_fully_renderable",

@@ -10,6 +10,54 @@ use std::{collections::BTreeSet, path::PathBuf, process::Command};
 
 const CLOSED: GenerationWorld = GenerationWorld::ClosedSchemaSet;
 
+#[path = "../../../tests/task063_integrated_coverage.rs"]
+mod task063_integrated_coverage;
+
+fn hiding_inventory(schema: &ams_gra_oms_ir::SchemaIr, release: &str, reach: &str) -> Vec<String> {
+    use ams_gra_oms_codegen_core::{
+        StructuralMemberKind, effective_choice_alternatives, effective_record_fields,
+        structural_member_name_inventory,
+    };
+    let mut rows = Vec::new();
+    for member in structural_member_name_inventory(schema, BackendLanguage::Ada, CLOSED) {
+        let fields = match member.kind {
+            StructuralMemberKind::RecordField => {
+                effective_record_fields(schema, &member.owner).unwrap()
+            }
+            StructuralMemberKind::ChoiceAlternative => {
+                effective_choice_alternatives(schema, &member.owner).unwrap()
+            }
+        };
+        let field = fields
+            .iter()
+            .find(|f| f.name == member.source_name)
+            .unwrap();
+        let TypeRefTarget::Named(target) = &field.type_ref.target else {
+            continue;
+        };
+        if member
+            .generated
+            .as_deref()
+            .is_some_and(|name| name.eq_ignore_ascii_case(&target.local_name))
+        {
+            rows.push(format!(
+                "HIDING\t{release}\t{reach}\t{}\t{:?}\t{}\t{}\t{:?}\tinherited={}",
+                member.owner.local_name,
+                member.kind,
+                member.generated.unwrap(),
+                target.local_name,
+                field.cardinality,
+                member.inherited
+            ));
+        }
+    }
+    rows.sort();
+    for row in &rows {
+        println!("{row}");
+    }
+    rows
+}
+
 #[test]
 fn task065_synthetic_collision_repaired() {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -259,6 +307,17 @@ fn task065_pinned_naming_evidence() {
             Some(digest)
         );
         let schema = load_schema_set(&root).unwrap();
+        let hiding = hiding_inventory(&schema, release, "full-schema");
+        assert_eq!(
+            hiding,
+            include_str!("../../../tests/fixtures/string/task065-component-hiding.tsv")
+                .lines()
+                .filter(|line| line.starts_with(&format!("HIDING\t{release}\t")))
+                .map(str::to_owned)
+                .collect::<Vec<_>>()
+        );
+        println!("HIDING-COUNT\t{release}\t{}", hiding.len());
+        println!("UCI {release} TASK065 HIDING INVENTORY: PASSED");
         for name in ["QueryPET", "QueryType"] {
             let d = schema
                 .types
@@ -270,6 +329,45 @@ fn task065_pinned_naming_evidence() {
                 d.is_abstract, d.base_type, d.kind, d.source
             );
         }
+        let query = schema
+            .types
+            .iter()
+            .find(|d| d.name.local_name == "QueryType")
+            .unwrap();
+        let base = schema
+            .types
+            .iter()
+            .find(|d| d.name.local_name == "QueryPET")
+            .unwrap();
+        assert!(matches!(
+            query.kind,
+            ams_gra_oms_ir::TypeKind::Choice { .. }
+        ));
+        assert!(!query.is_abstract);
+        assert!(base.is_abstract);
+        assert!(matches!(base.kind, ams_gra_oms_ir::TypeKind::Record { .. }));
+        assert!(
+            matches!(&query.base_type, Some(r) if r.target == TypeRefTarget::Named(base.name.clone()))
+        );
+        assert_eq!(
+            ams_gra_oms_codegen_core::ada_kind_companion_name(query).as_deref(),
+            Some("QueryType_Kind")
+        );
+        assert_eq!(
+            ams_gra_oms_codegen_core::ada_closed_sum_literal_name(query).as_deref(),
+            Some("QueryType_Choice_Value_Kind")
+        );
+        let historical = include_str!("../../../tests/fixtures/string/task065-before-naming.tsv");
+        let diagnostic = "Ada names \"QueryType companion\" and \"QueryType\" both generate \"QueryType_Kind\" in the generated top-level scope";
+        assert_eq!(
+            historical
+                .lines()
+                .filter(|line| *line
+                    == format!("DIAGNOSTIC\t{release}\tClosedSchemaSet\tAda\t{diagnostic}"))
+                .count(),
+            1
+        );
+        println!("UCI {release} TASK065 ORIGINAL COLLISION ATTRIBUTION: PASSED");
         match plan_type_emissions(&schema, CLOSED) {
             Ok(emissions) => {
                 for e in emissions {
@@ -304,14 +402,21 @@ fn task065_pinned_naming_evidence() {
                 let unsafe_set = unsafe_named_declarations(&schema, language, world);
                 assert!(unsafe_set.is_empty());
                 println!("UNSAFE\t{release}\t{world:?}\t{language:?}\t{unsafe_set:?}");
-                let row = format!(
-                    "COVERAGE\t{release}\t{world:?}\t{language:?}\t{:?}",
-                    coverage.backend_coverage(language).unwrap()
-                );
-                assert!(
-                    include_str!("../../../tests/fixtures/string/task065-current-coverage.tsv")
-                        .lines()
-                        .any(|expected| expected == row),
+                let actual = coverage.backend_coverage(language).unwrap();
+                let row = format!("COVERAGE\t{release}\t{world:?}\t{language:?}\t{:?}", actual);
+                assert_eq!(
+                    vec![
+                        actual.declaration_kinds_renderable,
+                        actual.declarations_fully_renderable,
+                        actual.field_type_references_renderable,
+                        actual.field_occurrences_renderable,
+                        actual.message_closures_renderable
+                    ],
+                    task063_integrated_coverage::integrated_coverage(
+                        release,
+                        world,
+                        &format!("{language:?}")
+                    ),
                     "{row}"
                 );
                 println!("{row}");
@@ -375,6 +480,7 @@ fn task065_pinned_naming_evidence() {
                 .filter_map(|line| line.strip_prefix(&format!("{release}\t")))
                 .collect();
         let mut sizes = Vec::new();
+        assert_eq!(former.len(), 33);
         for message in former {
             let m = schema
                 .messages
@@ -393,16 +499,96 @@ fn task065_pinned_naming_evidence() {
             );
             let plan = resolve_service_plan(&contract(message, release), &schema).unwrap();
             let p = project_service_generation_schema(&plan, &schema, CLOSED).unwrap();
-            sizes.push((
-                p.selected_type_names().len() + p.generated_support_type_names().len(),
-                message,
-            ));
+            let cost = p.selected_type_names().len() + p.generated_support_type_names().len();
+            let readiness = ams_gra_oms_codegen_core::analyze_service_readiness(
+                &plan,
+                &schema,
+                BackendLanguage::Ada,
+                CLOSED,
+            )
+            .unwrap();
+            assert!(backend_preflight(p.schema(), BackendLanguage::Ada, CLOSED).is_ok());
+            println!(
+                "FORMER-GAP-PROJECTION\t{release}\t{message}\t{cost}\tready={}",
+                readiness.is_ready()
+            );
+            if !readiness.is_ready() {
+                continue;
+            }
+            // Check generation feasibility for every READY former-gap message.
+            // Strict object compilation of every large schema would duplicate
+            // historical campaigns. Rank first, then compile the smallest below;
+            // no larger candidate can defeat its declaration-count ordering.
+            use ams_gra_oms_codegen_core::Backend;
+            ams_gra_oms_backend_ada::AdaBackend
+                .generate(p.schema(), CLOSED)
+                .unwrap();
+            println!("FORMER-GAP-GENERATE\t{release}\t{message}\t{cost}\tPASSED");
+            sizes.push((cost, message));
         }
         sizes.sort();
         let (count, message) = sizes[0];
+        assert_eq!(
+            (count, message),
+            (if release == "2.5" { 230 } else { 231 }, "Authorization")
+        );
+        // Only minimum-cost candidates need GNAT to prove the smallest clean
+        // vertical. A different compiler defect remains a review stop, not a
+        // reason to silently skip a lower-cost candidate.
+        for &(cost, message) in sizes.iter().take_while(|(cost, _)| *cost == count) {
+            let plan = resolve_service_plan(&contract(message, release), &schema).unwrap();
+            let p = project_service_generation_schema(&plan, &schema, CLOSED).unwrap();
+            let directory = std::env::temp_dir().join(format!(
+                "task065-former-{release}-{message}-{}",
+                std::process::id()
+            ));
+            std::fs::create_dir_all(&directory).unwrap();
+            use ams_gra_oms_codegen_core::Backend;
+            for file in ams_gra_oms_backend_ada::AdaBackend
+                .generate(p.schema(), CLOSED)
+                .unwrap()
+            {
+                std::fs::write(directory.join(file.relative_path), file.contents).unwrap();
+            }
+            let package = ams_gra_oms_codegen_core::ada_model_package(p.schema()).unwrap();
+            let names = ams_gra_oms_codegen_core::ada_model_file_names(&package);
+            let entry = if directory.join(&names.body).exists() {
+                &names.body
+            } else {
+                &names.spec
+            };
+            let result = Command::new("gnatmake")
+                .current_dir(&directory)
+                .args(["-c", "-q", "-gnat2022", "-gnatwe", "-gnato"])
+                .arg(entry)
+                .output()
+                .unwrap();
+            std::fs::write(directory.join("gnat.log"), &result.stderr).unwrap();
+            assert!(
+                result.status.success(),
+                "different real compiler blocker: {release} {message}, source {}: {}",
+                directory.display(),
+                String::from_utf8_lossy(&result.stderr)
+            );
+            println!("FORMER-GAP-COMPILE\t{release}\t{message}\t{cost}\tPASSED");
+        }
         println!("FORMER-GAP-SMALLEST\t{release}\t{message}\t{count}");
         let plan = resolve_service_plan(&contract(message, release), &schema).unwrap();
         let p = project_service_generation_schema(&plan, &schema, CLOSED).unwrap();
+        let selected_hiding = hiding_inventory(p.schema(), release, "selected-vertical");
+        for row in selected_hiding {
+            let owner = row.split('\t').nth(3).unwrap();
+            let selected = p
+                .selected_type_names()
+                .iter()
+                .any(|n| n.local_name == owner);
+            let support = p
+                .generated_support_type_names()
+                .iter()
+                .any(|n| n.local_name == owner);
+            assert_ne!(selected, support);
+            println!("HIDING-REACH\t{release}\t{owner}\tselected={selected}\tsupport={support}");
+        }
         assert!(backend_preflight(&schema, BackendLanguage::Ada, CLOSED).is_ok());
         for language in BackendLanguage::ALL {
             let readiness = ams_gra_oms_codegen_core::analyze_service_readiness(
