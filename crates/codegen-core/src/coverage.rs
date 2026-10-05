@@ -1613,7 +1613,7 @@ fn primitive_declaration_renderable(
             && (constraints == &ConstraintSet::default()
                 || enabled.contains(&FeatureFamily::ConstrainedSimpleTypes));
     }
-    inclusive_integral_domain(kind, constraints).is_ok_and(|domain| domain.is_some())
+    crate::named_integral_domain(kind, constraints).is_ok_and(|domain| domain.is_some())
         || enabled.contains(&FeatureFamily::ConstrainedSimpleTypes)
 }
 fn declaration_constraints_renderable(

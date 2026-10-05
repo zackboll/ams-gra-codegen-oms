@@ -12,6 +12,9 @@ use ams_gra_oms_ir::{
 use ams_gra_oms_xsd_frontend::load_schema_set;
 use std::{collections::BTreeSet, path::PathBuf, process::Command};
 
+#[path = "../../../tests/task063_integrated_coverage.rs"]
+mod task063_integrated_coverage;
+
 // Cross-checked against both raw pinned XSD roots before writing this harness.
 const PATTERN: &str = r"((:|[0-9a-fA-F]{0,4}):)([0-9a-fA-F]{0,4}:){0,5}((([0-9a-fA-F]{0,4}:)?(:|[0-9a-fA-F]{0,4}))|(((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])))";
 const ROOTS: [(&str, &str, &str); 2] = [
@@ -171,18 +174,38 @@ fn task062_pinned_ipv6_inventory_coverage_and_impact() {
         ] {
             let coverage = CoverageAnalysis::new(&schema, world).unwrap();
             for language in BackendLanguage::ALL {
-                let row = format!(
-                    "COVERAGE\t{version}\t{world:?}\t{language:?}\t{:?}",
-                    coverage.backend_coverage(language).unwrap()
-                );
-                assert!(
-                    // The historical Task062 cells are not rewritten. Task065
-                    // owns separate current naming/coverage measurements.
-                    include_str!("../../../tests/fixtures/string/task065-current-coverage.tsv")
-                        .lines()
-                        .any(|expected| expected == row),
+                let actual = coverage.backend_coverage(language).unwrap();
+                let row = format!("COVERAGE\t{version}\t{world:?}\t{language:?}\t{:?}", actual);
+                // Task 062's AFTER campaign stays historical. The newest
+                // evidence layer owns exact combined-current capability counts.
+                assert_eq!(
+                    vec![
+                        actual.declaration_kinds_renderable,
+                        actual.declarations_fully_renderable,
+                        actual.field_type_references_renderable,
+                        actual.field_occurrences_renderable,
+                        actual.message_closures_renderable,
+                    ],
+                    task063_integrated_coverage::integrated_coverage(
+                        version,
+                        world,
+                        &format!("{language:?}"),
+                    ),
                     "{row}"
                 );
+                let baseline = include_str!("../../../tests/fixtures/string/task062-after.tsv")
+                    .lines()
+                    .find(|line| {
+                        line.starts_with(&format!("COVERAGE\t{version}\t{world:?}\t{language:?}\t"))
+                    })
+                    .unwrap();
+                for (metric, value) in [
+                    ("declarations_total", actual.declarations_total),
+                    ("fields_total", actual.fields_total),
+                    ("messages_total", actual.messages_total),
+                ] {
+                    assert!(baseline.contains(&format!("{metric}: {value},")), "{row}");
+                }
                 println!(
                     "COVERAGE\t{version}\t{world:?}\t{language:?}\t{:?}",
                     coverage.backend_coverage(language).unwrap()

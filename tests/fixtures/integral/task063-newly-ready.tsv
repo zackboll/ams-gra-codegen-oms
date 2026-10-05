@@ -1,0 +1,10 @@
+# release world backend message
+2.5	closed-schema	ada	OrdersMetadata
+2.5	closed-schema	cpp	OrdersMetadata
+2.5	closed-schema	rust	OrdersMetadata
+2.5	closed-schema	ada	PrioritizationList
+2.5	closed-schema	cpp	PrioritizationList
+2.5	closed-schema	rust	PrioritizationList
+2.5	open-extensions	ada	OrdersMetadata
+2.5	open-extensions	cpp	OrdersMetadata
+2.5	open-extensions	rust	OrdersMetadata

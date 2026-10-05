@@ -65,7 +65,10 @@ pub use floating::{
     Float32Bound, Float64Bound, FloatingBoundKind, FloatingDomain, float32_literal,
     float64_literal, floating_domain,
 };
-pub use integral::{InclusiveIntegralDomain, inclusive_integral_domain};
+pub use integral::{
+    InclusiveIntegralDomain, PatternedIntegralProfile, inclusive_integral_domain,
+    named_integral_domain, patterned_integral_profile,
+};
 pub use ipv6_address::{Ipv6AddressModel, UCI_IPV6_PATTERN, ipv6_address_constraints};
 pub use service_api::{
     ServiceApiArtifactCollision, ServiceApiCollision, ServiceApiError, ServiceApiExchange,
