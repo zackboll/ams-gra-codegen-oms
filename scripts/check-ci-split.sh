@@ -63,6 +63,14 @@ grep -Fq 'bash scripts/check-task062-fast.sh' <<<"$fast_code" ||
 grep -Fq 'bash scripts/check-task062-pinned.sh' <<<"$deep_code" ||
   fail "Deep CI lost Task 062 pinned impact/vertical gates"
 
+if grep -Fq 'check-task066-pinned.sh' <<<"$fast_code"; then
+  fail "Fast CI must not run Task066 pinned work"
+fi
+grep -Fq 'bash scripts/check-task066-fast.sh' <<<"$fast_code" ||
+  fail "Fast CI lost Task066 Unicode conformance gates"
+grep -Fq 'bash scripts/check-task066-pinned.sh' <<<"$deep_code" ||
+  fail "Deep CI lost Task066 pinned evidence"
+
 # ---- Fast CI must keep its pre-merge floor --------------------------------
 for required in \
   'gnatmake --version' \

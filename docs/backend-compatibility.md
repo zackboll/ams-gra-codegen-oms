@@ -1,5 +1,17 @@
 # Backend compatibility
 
+## Current update — Task 066 exact Unicode 3.1 profiles
+
+The authorized repository policy pins XML Schema Nd membership to Unicode
+3.1.0 (248 points / 21 ranges), not host/latest Unicode. All three exact
+previously deferred profiles now have name-free facet admission and checked
+Ada/Rust/C++ UTF-8 carriers with scalar length and unchanged lexical bytes.
+Both releases gain eleven closed projected READY services per backend;
+full-schema closure counts remain unchanged. AO_CapabilityStatus is the real
+smallest three-language/Unicode JSON vertical. See [Task066 evidence](task-066-unicode-string-profiles.md)
+for the historical authority stop, authorized resume and actual delivery gates.
+Task060's historical `DEFERRED_UNICODE=3` remains unchanged.
+
 ## Current update — Task 062 exact IPv6 profile
 
 Ada/Rust/C++ now support the one exact pinned IPv6 `xs:string` expression with

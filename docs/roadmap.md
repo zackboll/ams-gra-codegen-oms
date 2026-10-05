@@ -1,5 +1,13 @@
 # Roadmap
 
+Task066 resumes under the authorized **Unicode 3.1.0 Nd baseline** and supports
+the three exact formerly deferred String profiles across Ada/Rust/C++. UTF-8
+scalar length, checked lifecycle and JSON/mock-OWP lexical preservation are
+compiler-backed. Eleven closed projected services per release/backend become
+READY; full-schema message closures do not change. See [Task066 evidence](task-066-unicode-string-profiles.md)
+for historical STOP provenance and explicit final delivery status. Historical
+Task060 measurements are unchanged.
+
 Task 062 adds **exact pinned IPv6 constrained-String support** across Ada,
 Rust and C++, preserving lexical spelling without networking parsers or a
 general regex engine. All strict compiler corpora and Rust checked JSON/mock-OWP

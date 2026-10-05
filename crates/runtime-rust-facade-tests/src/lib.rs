@@ -205,3 +205,9 @@ pub mod codec_time_zulu {
 pub mod codec_ipv6 {
     include!(concat!(env!("OUT_DIR"), "/codec_ipv6/service_api.rs"));
 }
+
+/// Task066 checked Unicode 3.1 String carriers, production API and codec.
+#[allow(clippy::all, clippy::pedantic)]
+pub mod codec_unicode31 {
+    include!(concat!(env!("OUT_DIR"), "/codec_unicode31/service_api.rs"));
+}

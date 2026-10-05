@@ -60,14 +60,7 @@ fn task060_real_uci_after_coverage_and_order_of_battle() {
             })
             .map(|d| d.name.local_name.as_str())
             .collect();
-        assert_eq!(
-            deferred,
-            BTreeSet::from([
-                "NITF_DateAndTimeType",
-                "NITF_DateType",
-                "NITF_MSTGTA_TargetLocationType"
-            ])
-        );
+        assert!(deferred.is_empty(), "Task066 supersedes Unicode deferral");
         for world in [
             GenerationWorld::ClosedSchemaSet,
             GenerationWorld::OpenExtensions,
@@ -159,7 +152,7 @@ fn task060_real_projected_message_impact_and_naming() {
                 );
                 assert_eq!(
                     r.is_ready(),
-                    row[2] == "ready",
+                    row[2] == "ready" || row[2] == "NITF_DateAndTimeType",
                     "{version} {} {language:?}",
                     row[1]
                 );
@@ -173,14 +166,23 @@ fn task060_real_projected_message_impact_and_naming() {
                 }
             }
             match row[2] {
+                "NITF_DateAndTimeType" => ready += 1,
                 "ready" => ready += 1,
                 "topology" => topology += 1,
                 blocker => *blocked.entry(blocker).or_insert(0) += 1,
             }
         }
-        assert_eq!(ready, if version == "2.5" { 85 } else { 86 });
+        let historical_ready = if version == "2.5" { 85 } else { 86 };
+        let superseded = rows
+            .lines()
+            .filter(|l| {
+                l.starts_with(&format!("{version}\t"))
+                    && l.split('\t').nth(2) == Some("NITF_DateAndTimeType")
+            })
+            .count();
+        assert_eq!(ready, historical_ready + superseded);
         assert_eq!(topology, 6);
-        let mut expected = std::collections::BTreeMap::from([("NITF_DateAndTimeType", 11)]);
+        let mut expected = std::collections::BTreeMap::new();
         if version == "2.5" {
             expected.insert("USMTF_SerialNumberOfQualifierType", 1);
         }

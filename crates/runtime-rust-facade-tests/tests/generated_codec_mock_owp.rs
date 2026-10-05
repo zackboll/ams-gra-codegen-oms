@@ -23,6 +23,64 @@ fn pub_body(frame: &str, topic: &str) -> Value {
 }
 
 #[test]
+fn task066_unicode_values_are_checked_before_typed_delivery() {
+    use ams_gra_oms_runtime_rust_facade_tests::codec_unicode31::{
+        model as m, service_api::function_unicode as api,
+        service_codec::ServiceCodec as UnicodeCodec,
+    };
+    let peer = MockPeer::start();
+    let mut runtime = SleetRuntime::connect(
+        RuntimeConfig::new(&peer.url, "svc-1", "000.1.0"),
+        UnicodeCodec,
+    )
+    .unwrap();
+    assert!(peer.next_text().starts_with("INIT "));
+    let (tx, rx) = mpsc::channel();
+    let subscription =
+        api::exchange_input_unicode::subscribe(&mut runtime, move |v: &m::UnicodePayload| {
+            tx.send(v.clone()).unwrap();
+        })
+        .unwrap();
+    peer.expect("SUB sub-1 UnicodeNotice unicode-topic");
+    let mut body = serde_json::json!({"Stamp":"2١0001010000","Day":"2١000101","Location":"+1١.123456+012.123456","Repeated":["2١000101"],"Selection":{"Date":"2١000101"}});
+    peer.send(&format!(
+        "MSG sub-1 {}",
+        serde_json::json!({"UnicodeNotice":body})
+    ));
+    let v = rx.recv_timeout(WAIT).unwrap();
+    assert_eq!(v.day.as_str(), "2١000101");
+    assert_eq!(v.location.as_str(), "+1١.123456+012.123456");
+    api::exchange_output_unicode::publish(&mut runtime, &v).unwrap();
+    let published = pub_body(&peer.next_text(), "unicode-topic");
+    assert_eq!(published["UnicodeNotice"]["Day"], body["Day"]);
+    for bad in [
+        serde_json::json!("2A000101"),
+        serde_json::json!("١0000101"),
+        serde_json::json!("2𞥐000101"),
+        serde_json::json!(42),
+    ] {
+        body["Day"] = bad;
+        peer.send(&format!(
+            "MSG sub-1 {}",
+            serde_json::json!({"UnicodeNotice":body})
+        ));
+        assert!(matches!(
+            runtime.recv_event_timeout(WAIT),
+            Some(RuntimeEvent::SubscriptionDecodeError {
+                error: MessageDecodeError::Codec(_),
+                ..
+            })
+        ));
+        assert!(rx.recv_timeout(common::QUIET).is_err());
+    }
+    subscription.unsubscribe().unwrap();
+    peer.expect("UNSUB sub-1");
+    runtime.close().unwrap();
+    peer.expect_closed();
+    println!("TASK066 UNICODE MOCK OWP: PASSED");
+}
+
+#[test]
 fn task062_invalid_ipv6_is_not_delivered_to_the_typed_handler() {
     use ams_gra_oms_runtime_rust_facade_tests::codec_ipv6::{
         model as m, service_api::function_ipv6 as ipv6, service_codec::ServiceCodec as Ipv6Codec,

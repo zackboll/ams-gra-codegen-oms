@@ -176,7 +176,7 @@ fn task062_pinned_ipv6_inventory_coverage_and_impact() {
                     coverage.backend_coverage(language).unwrap()
                 );
                 assert!(
-                    include_str!("../../../tests/fixtures/string/task062-after.tsv")
+                    include_str!("../../../tests/fixtures/string/task066-after.tsv")
                         .lines()
                         .any(|expected| expected == row),
                     "{row}"
@@ -229,10 +229,20 @@ fn task062_pinned_ipv6_inventory_coverage_and_impact() {
                         r.backend_blocker,
                         r.service_api_blocker
                     );
-                    assert!(
-                        include_str!("../../../tests/fixtures/string/task062-after.tsv")
+                    let task066_owned =
+                        include_str!("../../../tests/fixtures/string/task066-new-ready.tsv")
                             .lines()
-                            .any(|expected| expected == row),
+                            .any(|l| {
+                                l == format!(
+                                    "{version}\t{world:?}\t{language:?}\t{}",
+                                    m.name.local_name
+                                )
+                            });
+                    assert!(
+                        task066_owned && r.is_ready()
+                            || include_str!("../../../tests/fixtures/string/task062-after.tsv")
+                                .lines()
+                                .any(|expected| expected == row),
                         "{row}"
                     );
                     println!(

@@ -126,18 +126,10 @@ fn task061_pinned_ada_full_schema_naming_attribution() {
                 )
                 .unwrap();
                 assert!(r.backend_blocker.is_none());
-                assert!(!r.is_ready());
-                assert_eq!(
-                    r.unsupported_generated_support_types
-                        .iter()
-                        .map(|n| n.local_name.as_str())
-                        .collect::<BTreeSet<_>>(),
-                    BTreeSet::from([
-                        "NITF_DateAndTimeType",
-                        "NITF_DateType",
-                        "NITF_MSTGTA_TargetLocationType"
-                    ])
-                );
+                // Task066 supersedes the generated-support blocker, not the
+                // unchanged whole-schema Query naming attribution above.
+                assert!(r.is_ready());
+                assert!(r.unsupported_generated_support_types.is_empty());
             }
         }
         println!("UCI {version} TASK061 ADA FULL-SCHEMA NAMING: PASSED");
@@ -319,7 +311,12 @@ fn campaign(inventory_only: bool) {
                             })
                             .expect("frozen impact row");
                             let row: Vec<_> = expected.split('\t').collect();
-                            assert_eq!(r.is_ready(), row[4] == "ready", "{expected}");
+                            let task066_owned = world == GenerationWorld::ClosedSchemaSet && include_str!("../../../tests/fixtures/string/task062-task060-subset-current.tsv").lines().any(|l| l.starts_with(&format!("{version}\t{}\tNITF_DateAndTimeType\t",m.name.local_name)));
+                            assert_eq!(
+                                r.is_ready(),
+                                row[4] == "ready" || task066_owned,
+                                "{expected}"
+                            );
                             assert_eq!(r.selected_types_total, row[5].parse::<usize>().unwrap());
                             assert_eq!(
                                 r.generated_support_types_total,
