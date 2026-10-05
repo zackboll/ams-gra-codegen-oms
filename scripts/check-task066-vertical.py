@@ -51,6 +51,7 @@ functions:
         out = scratch / release / language
         run([binary, "service-generate", *common, "--output", out, *(["--with-codec"] if language == "rust" else [])])
         sources = list(out.glob("*.rs")) + list(out.glob("*.ads")) + list(out.glob("*.adb")) + list(out.glob("*.hpp"))
+        sources = [p for p in sources if p.name not in ("probe.rs", "probe.adb", "probe.cpp")]
         print("SIZE", release, language, sum(p.stat().st_size for p in sources), sum(len(p.read_text().splitlines()) for p in sources), flush=True)
         if language == "ada":
             run(["gnatmake", "-c", "-gnat2022", "-gnatwe", "-gnato", "service_api.ads"], out)

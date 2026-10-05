@@ -120,8 +120,12 @@ Real generated model/API/body/codec source totals (bytes / lines):
 
 |Release|Ada|Rust|C++|
 |---|---|---|---|
-|2.5|408652 / 10731|545265 / 12379|209412 / 6415|
-|2.6|405772 / 10673|551091 / 12423|205866 / 6358|
+|2.5|408652 / 10731|544089 / 12361|209412 / 6415|
+|2.6|405772 / 10673|549915 / 12405|205866 / 6358|
+
+Repeated vertical runs exclude the locally authored `probe.rs` from generated
+source totals. The final audit corrected that evidence-only counting defect;
+compiler and JSON results were unaffected. Fresh hosted head-keyed CI is required.
 
 Remaining full-schema Ada Query companion collision is Task065 scope and is
 unchanged on this independent branch. Required zero-descendant abstract values,
