@@ -48,6 +48,11 @@ jobs:
           command -v gnatmake
           gnatmake --version
       - run: cargo fmt --all -- --check
+      - name: Exact patterned integral Fast gates (Task 063)
+        env:
+          AMS_GRA_REQUIRE_GNAT: "1"
+        run: bash scripts/check-task063-fast.sh
+      - run: python3 scripts/test-task063-ci-wrappers.py
       - name: Named TimeZulu (Task 061, exact compiler/codec/readiness gates)
         env:
           AMS_GRA_REQUIRE_GNAT: "1"

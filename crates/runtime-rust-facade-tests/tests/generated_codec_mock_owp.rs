@@ -23,6 +23,61 @@ fn pub_body(frame: &str, topic: &str) -> Value {
 }
 
 #[test]
+fn task063_out_of_range_integer_never_reaches_typed_handler() {
+    use ams_gra_oms_runtime_rust_facade_tests::codec_patterned_integral::{
+        model as m, service_api::function_serial as serial,
+        service_codec::ServiceCodec as SerialCodec,
+    };
+    let peer = MockPeer::start();
+    let mut runtime = SleetRuntime::connect(
+        RuntimeConfig::new(&peer.url, "svc-1", "000.1.0"),
+        SerialCodec,
+    )
+    .unwrap();
+    assert!(peer.next_text().starts_with("INIT "));
+    let (tx, rx) = mpsc::channel();
+    let subscription =
+        serial::exchange_input_serial::subscribe(&mut runtime, move |v: &m::SerialPayload| {
+            tx.send(v.clone()).unwrap();
+        })
+        .unwrap();
+    peer.expect("SUB sub-1 SerialNotice serial-topic");
+    for n in [1, 999] {
+        let body = serde_json::json!({"Required":n,"Selection":{"Number":n}});
+        peer.send(&format!(
+            "MSG sub-1 {}",
+            serde_json::json!({"SerialNotice":body})
+        ));
+        let value = rx.recv_timeout(WAIT).unwrap();
+        assert_eq!(value.required.get(), n);
+        serial::exchange_output_serial::publish(&mut runtime, &value).unwrap();
+        assert_eq!(
+            pub_body(&peer.next_text(), "serial-topic"),
+            serde_json::json!({"SerialNotice":body})
+        );
+    }
+    for n in [0, 1000, -1] {
+        peer.send(&format!(
+            "MSG sub-1 {}",
+            serde_json::json!({"SerialNotice":{"Required":n,"Selection":{"Number":1}}})
+        ));
+        assert!(matches!(
+            runtime.recv_event_timeout(WAIT),
+            Some(RuntimeEvent::SubscriptionDecodeError {
+                error: MessageDecodeError::Codec(_),
+                ..
+            })
+        ));
+        assert!(rx.recv_timeout(common::QUIET).is_err());
+    }
+    subscription.unsubscribe().unwrap();
+    peer.expect("UNSUB sub-1");
+    runtime.close().unwrap();
+    peer.expect_closed();
+    println!("TASK063 INTEGER MOCK OWP: PASSED");
+}
+
+#[test]
 fn task062_invalid_ipv6_is_not_delivered_to_the_typed_handler() {
     use ams_gra_oms_runtime_rust_facade_tests::codec_ipv6::{
         model as m, service_api::function_ipv6 as ipv6, service_codec::ServiceCodec as Ipv6Codec,

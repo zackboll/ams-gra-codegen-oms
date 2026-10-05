@@ -1,6 +1,22 @@
 # Backend compatibility
 
-## Current update — Task 062 exact IPv6 profile
+## Current update — Task 063 exact patterned integral profile
+
+Task 063 adds a shared, name-free exact **named patterned integer** capability:
+SignedInteger, inclusive 1..999, one XML Schema `[0-9]{1,3}` alternative in one
+group, intrinsic collapse and no neighboring authored facets. It reuses numeric
+Task 020 carriers and Rust integer JSON codecs; direct field-local lexical
+constraints remain unsupported. This is value-space lowering, not XML spelling
+preservation or general regex support. Measured 2.5 gain: one declaration per
+backend/world, two closed message closures and one open. UCI2.6 gains zero;
+parent/current control sources are byte-identical. Newly READY: OrdersMetadata
+(both worlds) and PrioritizationList (closed), all backends. Local compiler,
+codec/mock-OWP and workspace gates pass. The isolated measurements retain their
+Task 061 benchmark; current integration composes this capability with merged
+Task 062 IPv6 support without rewriting either historical campaign.
+See [Task 063](task-063-patterned-integral-profile.md).
+
+## Merged update — Task 062 exact IPv6 profile
 
 Ada/Rust/C++ now support the one exact pinned IPv6 `xs:string` expression with
 `minLength=2`, `maxLength=45`, intrinsic preserve whitespace, one XML Schema
