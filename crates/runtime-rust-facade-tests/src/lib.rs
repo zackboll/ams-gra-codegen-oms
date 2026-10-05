@@ -7,6 +7,15 @@
 //! handwritten payload codec for the fixture types; it is evidence for the
 //! `OmsJsonCodec` boundary, not generated codec output.
 
+/// Task 063 exact named patterned integral numeric carriers and production codec.
+#[allow(clippy::all, clippy::pedantic)]
+pub mod codec_patterned_integral {
+    include!(concat!(
+        env!("OUT_DIR"),
+        "/codec_patterned_integral/service_api.rs"
+    ));
+}
+
 /// `runtime-test.xsd` / `runtime-test.yaml`: namespace `urn:test`.
 #[allow(clippy::all, clippy::pedantic)]
 pub mod runtime_test {
