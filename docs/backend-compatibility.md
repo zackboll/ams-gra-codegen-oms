@@ -1,5 +1,19 @@
 # Backend compatibility
 
+## Current update — Task 065 semantic Ada artifact names
+
+The concrete-Choice value literal in an abstract closed sum now uses
+`{Descendant}_Choice_Value_Kind`, avoiding its intrinsic conflict with the
+unchanged `{Descendant}_Kind` Choice companion type. Preflight and rendering
+share the naming helpers; no Query/UCI special case or occupied-name retry.
+Both pinned releases are now whole-schema Ada **name-safe**, and the measured
+closed peer-minus-Ada gap is 33 -> 0 (Ada 674/679, equal to Rust/C++).
+Unrelated successful fixture outputs are byte-identical. Full schema rendering
+still has unrelated abstract-value/Unicode blockers. Projected Authorization
+was already name-safe before this repair; this is not a projected readiness
+gain. See [Task065 evidence](task-065-ada-companion-naming.md). Historical
+Task058/060/061/062 measurements below are not rewritten.
+
 ## Current update — Task 062 exact IPv6 profile
 
 Ada/Rust/C++ now support the one exact pinned IPv6 `xs:string` expression with

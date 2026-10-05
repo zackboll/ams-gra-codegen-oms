@@ -1,5 +1,13 @@
 # Roadmap
 
+Task065 implements **generic semantic Ada artifact naming** for a concrete
+Choice's literal in an abstract closed sum, without renaming established
+companion types or unrelated successful outputs. Both pinned full-schema
+Ada naming preflights pass; closed coverage equals Rust/C++ (674/679).
+Three Unicode profiles and other semantic/topology blockers remain deferred.
+See [Task065 evidence](task-065-ada-companion-naming.md) for immutable BEFORE,
+full versus projected distinctions and explicit delivery-gate status.
+
 Task 062 adds **exact pinned IPv6 constrained-String support** across Ada,
 Rust and C++, preserving lexical spelling without networking parsers or a
 general regex engine. All strict compiler corpora and Rust checked JSON/mock-OWP

@@ -338,7 +338,9 @@ fn task054_real_uci_2_6_member_identifier_inventory() {
 const FIRST_BLOCKERS: [(&str, &str); 6] = [
     (
         "closed-schema Ada",
-        "unsupported Ada IR construct: Ada names \"QueryType companion\" and \"QueryType\" both generate \"QueryType_Kind\" in the generated top-level scope",
+        // Task065 supersedes the historical Task054 naming blocker; the
+        // original measurement remains in its historical documentation.
+        "unsupported abstract structural value: abstract value target SourceCommandEXT has no concrete structural descendants",
     ),
     (
         "closed-schema Rust",

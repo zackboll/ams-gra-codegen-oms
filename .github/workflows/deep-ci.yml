@@ -76,6 +76,8 @@ jobs:
         run: bash scripts/check-task061-pinned.sh
       - name: Exact IPv6 pinned inventory, impact and real vertical (Task 062)
         run: bash scripts/check-task062-pinned.sh
+      - name: Ada semantic companion naming and smallest real vertical (Task 065)
+        run: bash scripts/check-task065-pinned.sh
       - name: Confirm unique newly READY Time services (Task 061)
         run: |
           set -euo pipefail

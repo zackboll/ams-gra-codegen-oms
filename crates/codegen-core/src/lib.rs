@@ -46,11 +46,12 @@ pub use backend_names::{
     ADA_SEQUENCE_CALLABLES, ADA_SEQUENCE_CLEAR, ADA_SEQUENCE_ELEMENT, ADA_SEQUENCE_LENGTH,
     ADA_SEQUENCE_RESERVE_CAPACITY, ADA_SEQUENCE_TO_SEQUENCE, ADA_UNBOUNDED_SEQUENCE_CALLABLES,
     AdaSequenceShape, BackendNameError, NameRegion, StructuralMemberKind,
-    StructuralMemberNameRecord, ada_sequence_shape, backend_names_are_renderable,
-    generated_choice_alternative_name, generated_enum_variant_name, generated_record_field_name,
-    schema_emits_ada_binary_vectors, schema_emits_bounded_integer_support,
-    schema_emits_bounded_sequence_support, schema_emits_unbounded_sequence_support,
-    structural_member_name_inventory, unsafe_named_declarations, validate_backend_names,
+    StructuralMemberNameRecord, ada_closed_sum_literal_name, ada_kind_companion_name,
+    ada_sequence_shape, backend_names_are_renderable, generated_choice_alternative_name,
+    generated_enum_variant_name, generated_record_field_name, schema_emits_ada_binary_vectors,
+    schema_emits_bounded_integer_support, schema_emits_bounded_sequence_support,
+    schema_emits_unbounded_sequence_support, structural_member_name_inventory,
+    unsafe_named_declarations, validate_backend_names,
 };
 pub use backend_preflight::{BackendPreflightError, backend_preflight, backend_preflight_passes};
 pub use binary::{

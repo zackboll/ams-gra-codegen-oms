@@ -176,7 +176,9 @@ fn task062_pinned_ipv6_inventory_coverage_and_impact() {
                     coverage.backend_coverage(language).unwrap()
                 );
                 assert!(
-                    include_str!("../../../tests/fixtures/string/task062-after.tsv")
+                    // The historical Task062 cells are not rewritten. Task065
+                    // owns separate current naming/coverage measurements.
+                    include_str!("../../../tests/fixtures/string/task065-current-coverage.tsv")
                         .lines()
                         .any(|expected| expected == row),
                     "{row}"

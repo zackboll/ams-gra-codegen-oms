@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:companion" targetNamespace="urn:companion">
+  <!-- A concrete Choice is also a closed-sum variant of its abstract base.
+       The old policy gives both its companion type and that variant literal
+       the top-level Ada identifier Dispatch_Kind. -->
+  <xs:complexType name="Base" abstract="true"><xs:sequence/></xs:complexType>
+  <xs:complexType name="Dispatch">
+    <xs:complexContent><xs:extension base="t:Base">
+      <xs:choice><xs:element name="Enabled" type="xs:boolean"/></xs:choice>
+    </xs:extension></xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="Holder">
+    <xs:sequence><xs:element name="Item" type="t:Base"/></xs:sequence>
+  </xs:complexType>
+</xs:schema>

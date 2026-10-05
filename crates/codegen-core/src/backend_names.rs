@@ -1660,17 +1660,45 @@ fn register_ada_kind_companions(
         // If the declaration's own identifier is unusable, that failure is
         // already reported for the declaration itself; do not re-report it
         // here as a companion problem.
-        let Some(owner) = ada_identifier(&declaration.name.local_name) else {
+        let Some(companion) = ada_kind_companion_name(declaration) else {
             continue;
         };
         top_level.insert(
             NameSource::Companion {
                 owner: declaration.name.clone(),
             },
-            format!("{owner}_Kind"),
+            companion,
         )?;
     }
     Ok(())
+}
+
+/// The discriminant type of an Ada Choice or abstract closed sum.
+/// Shared verbatim by registration and both renderer paths.
+#[must_use]
+pub fn ada_kind_companion_name(owner: &TypeDecl) -> Option<String> {
+    ada_identifier(&owner.name.local_name).map(|name| format!("{name}_Kind"))
+}
+
+/// The Ada literal identifying a concrete value in an abstract closed sum.
+///
+/// A concrete Choice already owns `{Name}_Kind` as its discriminant *type*.
+/// Giving its closed-sum value literal that same name necessarily conflicts
+/// in Ada's enclosing package. Distinguish the semantic value artifact, not
+/// an occupied spelling: this decision depends only on the descendant kind,
+/// never schema order, projection membership, or names of its peers.
+///
+/// Record-descendant literals retain their established API. The fixed Choice
+/// value spelling is checked by normal preflight; an authored declaration
+/// that occupies it remains a diagnosed collision, not a numeric retry.
+#[must_use]
+pub fn ada_closed_sum_literal_name(descendant: &TypeDecl) -> Option<String> {
+    let name = ada_identifier(&descendant.name.local_name)?;
+    Some(if matches!(descendant.kind, TypeKind::Choice { .. }) {
+        format!("{name}_Choice_Value_Kind")
+    } else {
+        format!("{name}_Kind")
+    })
 }
 
 /// Validate every generated Ada enumeration literal against the top-level
@@ -1786,12 +1814,12 @@ fn collect_ada_literal_conflicts(
         TypeEmission::Declaration(_) => None,
     }) {
         for descendant in &projection.concrete_descendants {
-            if let Some(name) = ada_identifier(&descendant.name.local_name) {
+            if let Some(name) = ada_closed_sum_literal_name(descendant) {
                 let source = NameSource::EnumLiteral {
                     owner: projection.declaration.name.clone(),
                     literal: descendant.name.local_name.clone(),
                 };
-                check(source, &format!("{name}_Kind"), conflicts);
+                check(source, &name, conflicts);
             }
         }
     }
