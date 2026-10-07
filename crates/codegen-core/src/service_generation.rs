@@ -218,34 +218,16 @@ pub fn project_service_generation_schema(
         .map(|declaration| declaration.name.clone())
         .collect::<BTreeSet<_>>();
 
-    // 2. Fixed-point generated-support expansion. Every newly admitted
-    //    declaration contributes its ordinary named dependencies and, for any
-    //    abstract structural VALUE position it contains, every concrete
-    //    transitive descendant Task 024 stores as a wrapper variant. Those
-    //    descendants can themselves introduce new dependencies and new nested
-    //    abstract values, so this iterates rather than expanding once.
-    let mut required = selected_names.clone();
-    let mut pending = selected_names.iter().cloned().collect::<Vec<_>>();
-
-    // Selected message payload references are value positions too, so a
-    // message whose payload is directly an abstract structural type demands
-    // the same wrapper treatment as a Record field would.
-    for message in plan.selected_messages() {
-        if let Some(target) = abstract_value_target(schema, &message.payload_type)? {
-            admit_abstract_value(schema, &target, world, &mut required, &mut pending)?;
-        }
+    // One shared support model: resolution snapshots it, projection computes it
+    // once and reuses the resulting set for both binding and filtering.
+    if world == GenerationWorld::ClosedSchemaSet {
+        plan.verify_generated_support_declarations(schema)
+            .map_err(ServiceGenerationError::PlanBinding)?;
     }
-
-    while let Some(name) = pending.pop() {
-        let declaration = find_declaration(schema, &name)?;
-        for dependency in direct_named_dependencies(declaration) {
-            if required.insert(dependency.clone()) {
-                pending.push(dependency.clone());
-            }
-        }
-        for target in declared_abstract_value_targets(schema, declaration)? {
-            admit_abstract_value(schema, &target, world, &mut required, &mut pending)?;
-        }
+    let required = expand_service_support(plan, schema, world, &selected_names)?;
+    if world == GenerationWorld::ClosedSchemaSet {
+        plan.verify_generated_support_topology(schema, &required, &selected_names)
+            .map_err(ServiceGenerationError::PlanBinding)?;
     }
 
     // 3. Filter the ORIGINAL declaration sequence. Schema order, not
@@ -342,6 +324,49 @@ pub fn project_service_generation_schema(
         generated_support_type_names,
         selected_message_names,
     })
+}
+
+/// The sole fixed-point support expansion, shared by resolution and projection.
+/// Returns identities only; callers filter the original schema sequence.
+pub(crate) fn expand_service_support(
+    plan: &ServicePlan,
+    schema: &SchemaIr,
+    world: GenerationWorld,
+    selected_names: &BTreeSet<QualifiedName>,
+) -> Result<BTreeSet<QualifiedName>, ServiceGenerationError> {
+    #[cfg(test)]
+    projection_probe::record_expansion();
+    // 2. Fixed-point generated-support expansion. Every newly admitted
+    //    declaration contributes its ordinary named dependencies and, for any
+    //    abstract structural VALUE position it contains, every concrete
+    //    transitive descendant Task 024 stores as a wrapper variant. Those
+    //    descendants can themselves introduce new dependencies and new nested
+    //    abstract values, so this iterates rather than expanding once.
+    let mut required = selected_names.clone();
+    let mut pending = selected_names.iter().cloned().collect::<Vec<_>>();
+
+    // Selected message payload references are value positions too, so a
+    // message whose payload is directly an abstract structural type demands
+    // the same wrapper treatment as a Record field would.
+    for message in plan.selected_messages() {
+        if let Some(target) = abstract_value_target(schema, &message.payload_type)? {
+            admit_abstract_value(schema, &target, world, &mut required, &mut pending)?;
+        }
+    }
+
+    while let Some(name) = pending.pop() {
+        let declaration = find_declaration(schema, &name)?;
+        for dependency in direct_named_dependencies(declaration) {
+            if required.insert(dependency.clone()) {
+                pending.push(dependency.clone());
+            }
+        }
+        for target in declared_abstract_value_targets(schema, declaration)? {
+            admit_abstract_value(schema, &target, world, &mut required, &mut pending)?;
+        }
+    }
+
+    Ok(required)
 }
 
 /// Admit one abstract structural value target's generated representation.
@@ -442,10 +467,19 @@ pub(crate) mod projection_probe {
 
     thread_local! {
         static PROJECTIONS: Cell<usize> = const { Cell::new(0) };
+        static EXPANSIONS: Cell<usize> = const { Cell::new(0) };
     }
 
     pub(crate) fn record() {
         PROJECTIONS.with(|count| count.set(count.get() + 1));
+    }
+
+    pub(crate) fn record_expansion() {
+        EXPANSIONS.with(|count| count.set(count.get() + 1));
+    }
+
+    pub(crate) fn expansions() -> usize {
+        EXPANSIONS.with(Cell::get)
     }
 
     pub(crate) fn count() -> usize {

@@ -283,3 +283,80 @@ fn task056_real_uci_category_a_readiness_matches_generation() {
     }
     println!("UCI 2.5 CATEGORY-A GENERATED SUPPORT PARITY: PASSED");
 }
+
+/// Task 064: one compact stale-plan proof across both pinned releases.
+#[test]
+fn task064_real_uci_generated_support_binding() {
+    let mut releases = 0;
+    for expected in &RELEASES {
+        let Some((_root, schema)) = pinned_root(expected.variable, expected.sha256) else {
+            continue;
+        };
+        releases += 1;
+        let plan =
+            resolve_service_plan(&contract("OrderOfBattle", expected.version), &schema).unwrap();
+        let projection = project_service_generation_schema(&plan, &schema, WORLD).unwrap();
+        assert_eq!(
+            projection.selected_type_names().len(),
+            expected.selected_types
+        );
+        assert_eq!(
+            projection.generated_support_type_names().len(),
+            expected.support_types
+        );
+        // First support record with a member, in production schema order.
+        // Changing only wire namespace preserves IR validity and type closure.
+        let name = projection
+            .generated_support_type_names()
+            .iter()
+            .find(|name| {
+                matches!(&schema.types.iter().find(|d| &d.name == *name).unwrap().kind,
+                ams_gra_oms_ir::TypeKind::Record { fields } if !fields.is_empty())
+            })
+            .expect("nonempty support member surface")
+            .clone();
+        let mut changed = schema.clone();
+        let declaration = changed.types.iter_mut().find(|d| d.name == name).unwrap();
+        let ams_gra_oms_ir::TypeKind::Record { fields } = &mut declaration.kind else {
+            unreachable!()
+        };
+        fields[0].wire_namespace_uri = if fields[0].wire_namespace_uri.is_some() {
+            None
+        } else {
+            Some(name.namespace_uri.clone())
+        };
+        changed.validate().unwrap();
+        let closure = |s: &SchemaIr| {
+            plan.selected_type_closure(s)
+                .unwrap()
+                .iter()
+                .map(|d| d.name.clone())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(closure(&schema), closure(&changed));
+        plan.verify_schema_binding(&changed)
+            .expect("selected binding remains identical");
+        let mismatch = ams_gra_oms_codegen_core::PlanBindingMismatch::GeneratedSupport {
+            name: name.clone(),
+            change: ams_gra_oms_codegen_core::GeneratedSupportChange::Changed,
+        };
+        assert_eq!(
+            project_service_generation_schema(&plan, &changed, WORLD),
+            Err(ams_gra_oms_codegen_core::ServiceGenerationError::PlanBinding(mismatch.clone()))
+        );
+        assert_eq!(
+            analyze_service_readiness(&plan, &changed, BackendLanguage::Rust, WORLD),
+            Err(ams_gra_oms_codegen_core::ServiceReadinessError::PlanBinding(mismatch))
+        );
+        println!(
+            "{} Task064: selected {} support {} changed {:?}",
+            expected.release, expected.selected_types, expected.support_types, name
+        );
+        println!("{} GENERATED SUPPORT BINDING: PASSED", expected.release);
+    }
+    if releases == 0 {
+        eprintln!("SKIPPED: no pinned UCI roots set");
+    } else {
+        assert_eq!(releases, 2, "Task 064 requires both pinned releases");
+    }
+}

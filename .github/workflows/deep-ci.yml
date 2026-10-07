@@ -145,7 +145,7 @@ jobs:
         run: |
           set -euo pipefail
           status=0
-          output="$(cargo test --release -p ams-gra-codegen-oms --test uci_generated_support -- \
+          output="$(cargo test --release -p ams-gra-codegen-oms --test uci_generated_support task056_real_uci -- \
             --nocapture --test-threads 1 2>&1)" || status=$?
           printf '%s\n' "$output"
           if (( status != 0 )); then exit "$status"; fi
@@ -153,6 +153,23 @@ jobs:
           grep -Fqx 'UCI 2.6 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' <<<"$output"
           grep -Fqx 'UCI 2.5 CATEGORY-A GENERATED SUPPORT PARITY: PASSED' <<<"$output"
           grep -qE '^test result: ok\. 2 passed' <<<"$output"
+      - name: Real UCI generated-support plan binding (Task 064, must execute)
+        run: |
+          set -euo pipefail
+          name=task064_real_uci_generated_support_binding
+          status=0
+          listing="$(cargo test --release -p ams-gra-codegen-oms --test uci_generated_support -- --list 2>&1)" || status=$?
+          printf '%s\n' "$listing"
+          if (( status != 0 )); then exit "$status"; fi
+          grep -Fqx "$name: test" <<<"$listing"
+          status=0
+          output="$(cargo test --release -p ams-gra-codegen-oms --test uci_generated_support "$name" -- \
+            --exact --nocapture --test-threads 1 2>&1)" || status=$?
+          printf '%s\n' "$output"
+          if (( status != 0 )); then exit "$status"; fi
+          grep -qE '^test result: ok\. 1 passed' <<<"$output"
+          grep -Fqx 'UCI 2.5 GENERATED SUPPORT BINDING: PASSED' <<<"$output"
+          grep -Fqx 'UCI 2.6 GENERATED SUPPORT BINDING: PASSED' <<<"$output"
       # Task 057: fresh XML Schema duration inventory (named + direct, every
       # shape zero-facet), every Duration surface renderable in all three
       # backends, the real message-impact classification, and the smallest

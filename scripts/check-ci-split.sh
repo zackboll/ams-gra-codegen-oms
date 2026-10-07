@@ -84,6 +84,7 @@ for required in \
   'bash scripts/check-task063-fast.sh' \
   'python3 scripts/test-task063-ci-wrappers.py' \
   'python3 scripts/test-task061-ci-wrappers.py' \
+  'TASK064 SINGLE PROJECTION EXPANSION ANALYSIS: PASSED' \
   'AMS_GRA_REQUIRE_GNAT: "1"'; do
   if ! grep -Fq -- "$required" <<<"$fast_code"; then
     fail "Fast CI lost required check: $required"
@@ -119,6 +120,9 @@ for required in \
   'test task054_real_uci_category_a_selection_generates_and_compiles' \
   'REAL CATEGORY-A MEMBER REMAPPING: PASSED' \
   '--test uci_generated_support' \
+  'task064_real_uci_generated_support_binding' \
+  'UCI 2.5 GENERATED SUPPORT BINDING: PASSED' \
+  'UCI 2.6 GENERATED SUPPORT BINDING: PASSED' \
   'UCI 2.5 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' \
   'UCI 2.6 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' \
   'UCI 2.5 CATEGORY-A GENERATED SUPPORT PARITY: PASSED' \

@@ -1165,3 +1165,41 @@ to the carrier's stored spelling.
 Synthetic fixtures that used `xs:duration` as their unselected or unsupported
 construct now use `xs:time`, with the same verdicts. The per-message impact on
 real UCI is in [Task 057](task-057-duration-support.md).
+
+## Task 064 — world-aware generated-support plan integrity
+
+`ServicePlan::verify_schema_binding` remains the world-independent selected
+message/type check. It is not a sufficient gate for closed-world generation:
+call `project_service_generation_schema`, which additionally protects exactly
+what it can add as generated support. `analyze_service_readiness` uses that
+same projection and forwards its typed binding rejection before capability
+analysis or backend consumption.
+
+Resolution captures the closed support model through the same internal
+`expand_service_support` function projection calls once. There is no second
+support walker, no global fingerprint, and no change to `selected_type_closure`.
+An empty support snapshot is meaningful: adding a descendant can turn Task 026
+absent-only storage into a closed sum. OpenExtensions skips the closed snapshot
+and preserves its existing abstract-value failure and blocker attribution.
+
+The additive diagnostic is `PlanBindingMismatch::GeneratedSupport { name,
+change: GeneratedSupportChange }`; categories are `Missing`, `Changed`, and
+`ClosureChanged`. `MismatchRole` is unchanged. **Source compatibility:** callers
+exhaustively matching the public `PlanBindingMismatch` enum must add this arm.
+Existing selected mismatch categories and fields remain unchanged.
+
+Both selected and support member snapshots include `wire_namespace_uri`, which
+Task 051 codec preflight and Rust OMS JSON member-key generation consume. Source
+paths, lines, and documentation remain excluded. Unrelated unselected edits are
+accepted. Original-schema order chooses support body mismatches; topology checks
+removed identities in original order, then added identities in supplied order.
+
+Ordinary CLI commands resolve and consume the same schema in one invocation;
+stale-plan reuse is a public codegen-core API condition, not a persisted-plan
+CLI feature. No serialized plan format was added. Projection/readiness reject
+before CLI file writing; these library operations themselves do no filesystem
+access. Existing CLI output atomicity and failure regressions remain in place.
+
+See [Task 064](task-064-generated-support-plan-binding.md) for the frozen BEFORE
+reproduction, synthetic controls, semantic consumer audit, and compact two-release
+pinned proof. Task 056 counters retain their selected/support meanings.
