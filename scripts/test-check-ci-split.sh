@@ -35,6 +35,12 @@ expect_fail() {
 expect_pass "$fast" "$deep" "$sleet"
 
 # ---- 2. mutations fail --------------------------------------------------
+for gate in 'bash scripts/check-task066-fast.sh' 'python3 scripts/test-task066-ci-wrappers.py'; do
+  grep -Fv "$gate" "$fast" >"$tmp/fast-no-t066.yml"
+  expect_fail "fast lost $gate" "$tmp/fast-no-t066.yml" "$deep" "$sleet"
+done
+grep -Fv 'bash scripts/check-task066-pinned.sh' "$deep" >"$tmp/deep-no-t066.yml"
+expect_fail "deep lost Task066 gate" "$fast" "$tmp/deep-no-t066.yml" "$sleet"
 grep -v 'bash scripts/check-task062-fast.sh' "$fast" >"$tmp/fast-no-t062.yml"
 expect_fail "fast lost Task062 gate" "$tmp/fast-no-t062.yml" "$deep" "$sleet"
 grep -v 'bash scripts/check-task062-pinned.sh' "$deep" >"$tmp/deep-no-t062.yml"
@@ -43,6 +49,21 @@ expect_fail "deep lost Task062 gate" "$fast" "$tmp/deep-no-t062.yml" "$sleet"
 expect_fail "fast runs Task062 pinned gate" "$tmp/fast-t062.yml" "$deep" "$sleet"
 { cat "$fast"; printf '      - run: cargo test --test uci_ipv6_address\n'; } >"$tmp/fast-t062-direct.yml"
 expect_fail "fast runs Task062 pinned target directly" "$tmp/fast-t062-direct.yml" "$deep" "$sleet"
+for script in \
+  'check-task062-service-impact.py' \
+  'check-task062-vertical.py' \
+  'check-task063-pinned.sh' \
+  'check-task063-service-impact.py' \
+  '--test uci_patterned_integral'; do
+  { cat "$fast"; printf '      - run: %s\n' "$script"; } >"$tmp/fast-deep-only.yml"
+  expect_fail "fast references $script" "$tmp/fast-deep-only.yml" "$deep" "$sleet"
+done
+for gate in 'bash scripts/check-task063-fast.sh' 'python3 scripts/test-task063-ci-wrappers.py'; do
+  grep -v "$gate" "$fast" >"$tmp/fast-no-t063.yml"
+  expect_fail "fast lost $gate" "$tmp/fast-no-t063.yml" "$deep" "$sleet"
+done
+grep -v 'bash scripts/check-task063-pinned.sh' "$deep" >"$tmp/deep-no-t063.yml"
+expect_fail "deep lost Task063 gate" "$fast" "$tmp/deep-no-t063.yml" "$sleet"
 sed 's/task060_probes::generated_group_and_carrier_composes_with_production_service_codec/generated_group_and_carrier_composes_with_production_service_codec/g' "$fast" >"$tmp/fast-unqualified-and.yml"
 expect_fail "Task060 AND name lost module qualification" "$tmp/fast-unqualified-and.yml" "$deep" "$sleet"
 # A real-UCI fetch leaks into Fast CI.
@@ -135,6 +156,14 @@ done
 expect_fail "deep printf|grep -q" "$fast" "$tmp/deep-pipe.yml" "$sleet"
 { cat "$sleet"; printf "printf '%%s\\\\n' \"\$output\" | grep -qE 'x'\n"; } >"$tmp/sleet-pipe.sh"
 expect_fail "sleet printf|grep -qE" "$fast" "$deep" "$tmp/sleet-pipe.sh"
+
+# Task 064: losing compact pinned integrity or single-pass evidence must fail.
+sed '/task064_real_uci_generated_support_binding/d' "$deep" >"$tmp/deep-task064.yml"
+expect_fail "Task064 pinned test removed" "$fast" "$tmp/deep-task064.yml" "$sleet"
+sed '/UCI 2.5 GENERATED SUPPORT BINDING: PASSED/d' "$deep" >"$tmp/deep-task064-marker.yml"
+expect_fail "Task064 pinned marker removed" "$fast" "$tmp/deep-task064-marker.yml" "$sleet"
+sed '/TASK064 SINGLE PROJECTION EXPANSION ANALYSIS: PASSED/d' "$fast" >"$tmp/fast-task064.yml"
+expect_fail "Task064 instrumentation removed" "$tmp/fast-task064.yml" "$deep" "$sleet"
 
 # ---- 3. marker-check shapes (verbatim from deep-ci.yml job real-uci) ------
 task054_markers() {

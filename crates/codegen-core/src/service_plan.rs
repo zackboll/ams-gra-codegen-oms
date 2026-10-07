@@ -323,6 +323,9 @@ struct SchemaBinding {
     /// The selected transitive named type closure's semantics, in schema
     /// declaration order.
     types: Vec<TypeSemantics>,
+    // None means closed support expansion was already unrepresentable at
+    // resolution. Keep resolution world-independent; projection owns that error.
+    generated_support: Option<Vec<TypeSemantics>>,
 }
 
 /// The generation-relevant semantics of one selected OMS message.
@@ -419,6 +422,7 @@ impl TypeKindSemantics {
 #[derive(Debug, Clone, PartialEq)]
 struct MemberSemantics {
     name: String,
+    wire_namespace_uri: Option<String>,
     type_ref: TypeRef,
     cardinality: Cardinality,
     nillable: bool,
@@ -429,6 +433,7 @@ impl MemberSemantics {
     fn of(field: &FieldDecl) -> Self {
         Self {
             name: field.name.clone(),
+            wire_namespace_uri: field.wire_namespace_uri.clone(),
             type_ref: field.type_ref.clone(),
             cardinality: field.cardinality,
             nillable: field.nillable,
@@ -449,7 +454,18 @@ impl TypeSemantics {
     }
 }
 
-/// Which selected identity failed semantic verification, and how.
+/// How generated-support integrity failed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GeneratedSupportChange {
+    /// An expected support declaration is absent from the schema.
+    Missing,
+    /// An expected support declaration has different generation semantics.
+    Changed,
+    /// A declaration entered or left the actual generated-support closure.
+    ClosureChanged,
+}
+
+/// Which plan-relevant identity failed semantic verification, and how.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PlanBindingMismatch {
     /// The supplied schema does not declare a selected identity at all.
@@ -466,11 +482,22 @@ pub enum PlanBindingMismatch {
     /// The selected type closure itself differs: the supplied schema reaches a
     /// different set of declarations from the same selected messages.
     ClosureChanged,
+    /// Closed-world generated support differs. `name` is the first affected
+    /// identity in original schema order (new identities use supplied order).
+    GeneratedSupport {
+        name: QualifiedName,
+        change: GeneratedSupportChange,
+    },
 }
 
 impl fmt::Display for PlanBindingMismatch {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::GeneratedSupport { name, change } => write!(
+                formatter,
+                "generated-support declaration {{{}}}{}: {:?}; the service plan was resolved against a different generated-support model",
+                name.namespace_uri, name.local_name, change
+            ),
             Self::Missing { name, role } => write!(
                 formatter,
                 "{} {{{}}}{} is absent from the supplied schema set; the service plan was \
@@ -538,8 +565,9 @@ impl ServicePlan {
     /// selected type's body, or a transitive dependency's constraints or
     /// cardinality is detected even though every qualified name is unchanged.
     ///
-    /// Changes to declarations outside the selected closure do not invalidate
-    /// the plan: a `ServicePlan` is selected-service scoped by construction.
+    /// This world-independent method checks selected semantics only. The
+    /// production projection additionally verifies actual generated support
+    /// under `ClosedSchemaSet`; open-world capability errors remain authoritative.
     ///
     /// # Errors
     ///
@@ -590,6 +618,67 @@ impl ServicePlan {
             .map_err(|_| PlanBindingMismatch::ClosureChanged)?;
         if closure.len() != self.binding.types.len() {
             return Err(PlanBindingMismatch::ClosureChanged);
+        }
+        Ok(())
+    }
+
+    /// Check expected support bodies before expansion so missing transitive
+    /// dependencies cannot escape as an unrelated projection lookup error.
+    pub(crate) fn verify_generated_support_declarations(
+        &self,
+        schema: &SchemaIr,
+    ) -> Result<(), PlanBindingMismatch> {
+        if let Some(expected_support) = &self.binding.generated_support {
+            for expected in expected_support {
+                let actual = schema.types.iter().find(|d| d.name == expected.name);
+                let change = match actual {
+                    None => Some(GeneratedSupportChange::Missing),
+                    Some(actual) if TypeSemantics::of(actual) != *expected => {
+                        Some(GeneratedSupportChange::Changed)
+                    }
+                    Some(_) => None,
+                };
+                if let Some(change) = change {
+                    return Err(PlanBindingMismatch::GeneratedSupport {
+                        name: expected.name.clone(),
+                        change,
+                    });
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub(crate) fn verify_generated_support_topology(
+        &self,
+        schema: &SchemaIr,
+        required: &BTreeSet<QualifiedName>,
+        selected: &BTreeSet<QualifiedName>,
+    ) -> Result<(), PlanBindingMismatch> {
+        if let Some(expected) = &self.binding.generated_support {
+            // Removed identities first in original declaration order, then new
+            // identities in supplied declaration order. Never traversal order.
+            let removed = expected.iter().find(|d| !required.contains(&d.name));
+            let added = schema.types.iter().find(|d| {
+                required.contains(&d.name)
+                    && !selected.contains(&d.name)
+                    && !expected.iter().any(|e| e.name == d.name)
+            });
+            if let Some(name) = removed.map(|d| &d.name).or_else(|| added.map(|d| &d.name)) {
+                return Err(PlanBindingMismatch::GeneratedSupport {
+                    name: name.clone(),
+                    change: GeneratedSupportChange::ClosureChanged,
+                });
+            }
+        } else if let Some(declaration) = schema.types.iter().find(|d| required.contains(&d.name)) {
+            // The original closed support model could not be expanded, but
+            // this one can. Do not silently turn an incompatible pairing into
+            // a newly generable service. Resolution itself still never fails
+            // on world-specific capability boundaries.
+            return Err(PlanBindingMismatch::GeneratedSupport {
+                name: declaration.name.clone(),
+                change: GeneratedSupportChange::ClosureChanged,
+            });
         }
         Ok(())
     }
@@ -802,6 +891,7 @@ pub fn resolve_service_plan(
         binding: SchemaBinding {
             messages: Vec::new(),
             types: Vec::new(),
+            generated_support: None,
         },
     };
 
@@ -830,7 +920,24 @@ pub fn resolve_service_plan(
             .into_iter()
             .map(TypeSemantics::of)
             .collect(),
+        generated_support: None,
     };
+    let selected = plan.binding.types.iter().map(|d| d.name.clone()).collect();
+    plan.binding.generated_support = crate::service_generation::expand_service_support(
+        &plan,
+        schema,
+        crate::GenerationWorld::ClosedSchemaSet,
+        &selected,
+    )
+    .ok()
+    .map(|required| {
+        schema
+            .types
+            .iter()
+            .filter(|d| required.contains(&d.name) && !selected.contains(&d.name))
+            .map(TypeSemantics::of)
+            .collect()
+    });
     Ok(plan)
 }
 

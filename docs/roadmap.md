@@ -8,6 +8,13 @@ READY; full-schema message closures do not change. See [Task066 evidence](task-0
 for historical STOP provenance and explicit final delivery status. Historical
 Task060 measurements are unchanged.
 
+Task 063 implements the exact UCI 2.5 named patterned integral value-space
+profile without broadening direct integers. Its isolated historical evidence
+remains frozen; current integration includes the independently merged Task 062.
+Numeric carriers and the OMS JSON integer mapping are retained. General numeric
+patterns, lexical integer storage and exclusive-bound support remain deferred.
+Evidence and outstanding review gates: [Task 063](task-063-patterned-integral-profile.md).
+
 Task 062 adds **exact pinned IPv6 constrained-String support** across Ada,
 Rust and C++, preserving lexical spelling without networking parsers or a
 general regex engine. All strict compiler corpora and Rust checked JSON/mock-OWP
@@ -808,12 +815,11 @@ Progress (typed LA-CAL integration as a whole is **not** complete):
 - [ ] three deferred Unicode profiles.
 - [ ] `xs:time` (`TimeType`, now the first blocker of 28 messages per
       release).
-- [ ] plan binding scope: `SchemaBinding` fingerprints the contract-selected
-      closure, not generated-support descendants, so changing only a support
-      descendant between plan resolution and reuse is not detected as a
-      binding mismatch (readiness and generation still agree, because both
-      re-project the schema they are given). Separate integrity item; not
-      part of Task 056.
+- [x] plan binding scope (Task 064): selected semantic binding is retained;
+      closed-world projection also binds actual generated-support semantics
+      and membership through the one production expansion model. Open-world
+      abstract-value attribution remains unchanged. See
+      [Task 064](task-064-generated-support-plan-binding.md).
 - [ ] reconnect/backoff, TLS/auth policy, timers, service lifecycle.
 
 ```text

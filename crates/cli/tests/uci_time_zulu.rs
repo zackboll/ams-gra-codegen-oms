@@ -289,6 +289,20 @@ fn campaign(inventory_only: bool) {
                 // This is evidence harness scheduling, not a capability change.
                 if let Err(error) = &projection {
                     for language in BackendLanguage::ALL {
+                        let expected = include_str!(
+                            "../../../tests/fixtures/string/task062-time-impact-current.tsv"
+                        )
+                        .lines()
+                        .find(|line| {
+                            line.starts_with(&format!(
+                                "{version}\t{world:?}\t{language:?}\t{}\t",
+                                m.name.local_name
+                            ))
+                        })
+                        .expect("frozen projection row");
+                        let row: Vec<_> = expected.split('\t').collect();
+                        assert_eq!(row[4], "projection", "{expected}");
+                        assert_eq!(row[5], error.to_string(), "{expected}");
                         println!(
                             "ERROR\t{version}\t{world:?}\t{language:?}\t{}\t{error}",
                             m.name.local_name
@@ -311,10 +325,19 @@ fn campaign(inventory_only: bool) {
                             })
                             .expect("frozen impact row");
                             let row: Vec<_> = expected.split('\t').collect();
+                            // Preserve the Task 062 current baseline. Task 063's
+                            // isolated delta resolves exactly this closed-world
+                            // blocker; selected/support counts remain unchanged.
+                            let task063_gain = version == "2.5"
+                                && world == GenerationWorld::ClosedSchemaSet
+                                && m.name.local_name == "PrioritizationList";
+                            if task063_gain {
+                                assert_eq!(row[4], "USMTF_SerialNumberOfQualifierType");
+                            }
                             let task066_owned = world == GenerationWorld::ClosedSchemaSet && include_str!("../../../tests/fixtures/string/task062-task060-subset-current.tsv").lines().any(|l| l.starts_with(&format!("{version}\t{}\tNITF_DateAndTimeType\t",m.name.local_name)));
                             assert_eq!(
                                 r.is_ready(),
-                                row[4] == "ready" || task066_owned,
+                                row[4] == "ready" || task063_gain || task066_owned,
                                 "{expected}"
                             );
                             assert_eq!(r.selected_types_total, row[5].parse::<usize>().unwrap());
@@ -322,6 +345,14 @@ fn campaign(inventory_only: bool) {
                                 r.generated_support_types_total,
                                 row[6].parse::<usize>().unwrap()
                             );
+                            if !r.is_ready() {
+                                let first = r
+                                    .unsupported_types
+                                    .first()
+                                    .or_else(|| r.unsupported_generated_support_types.first())
+                                    .expect("baseline blocker");
+                                assert_eq!(first.local_name, row[4], "{expected}");
+                            }
                             println!(
                                 "SERVICE\t{version}\t{world:?}\t{language:?}\t{}\t{}\t{}\t{}\t{:?}\t{:?}\t{:?}\t{:?}",
                                 m.name.local_name,
@@ -334,8 +365,8 @@ fn campaign(inventory_only: bool) {
                                 r.service_api_blocker
                             );
                         }
-                        Err(e) => println!(
-                            "ERROR\t{version}\t{world:?}\t{language:?}\t{}\t{e}",
+                        Err(e) => panic!(
+                            "unexpected readiness error: {version} {world:?} {language:?} {}: {e}",
                             m.name.local_name
                         ),
                     }

@@ -217,7 +217,8 @@ fn task066_production_compiler_corpus_lifecycle_and_planted_failure() {
 #[test]
 fn task066_generated_support_neighbor_fails_closed_everywhere() {
     use ams_gra_oms_codegen_core::{
-        BackendLanguage, analyze_service_codec, analyze_service_readiness, build_service_api_model,
+        BackendLanguage, GeneratedSupportChange, PlanBindingMismatch, ServiceReadinessError,
+        analyze_service_codec, analyze_service_readiness, build_service_api_model,
         project_service_generation_schema, resolve_service_plan,
     };
     use ams_gra_oms_ir::{QualifiedName, TypeKind, TypeRef};
@@ -284,6 +285,18 @@ fn task066_generated_support_neighbor_fails_closed_everywhere() {
         .unwrap()
         .constraints
         .length = Some(9);
+    // Task064 binds generated support: a stale plan must fail before classification.
+    for language in BackendLanguage::ALL {
+        assert!(matches!(
+            analyze_service_readiness(&plan, &schema, language, GenerationWorld::ClosedSchemaSet),
+            Err(ServiceReadinessError::PlanBinding(PlanBindingMismatch::GeneratedSupport {
+                name,
+                change: GeneratedSupportChange::Changed,
+            })) if name.local_name == "DayValue"
+        ));
+    }
+    // A newly resolved plan still proves Task066's neighboring facets fail closed.
+    let plan = resolve_service_plan(&contract, &schema).unwrap();
     for language in BackendLanguage::ALL {
         let r =
             analyze_service_readiness(&plan, &schema, language, GenerationWorld::ClosedSchemaSet)

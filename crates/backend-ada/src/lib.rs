@@ -328,7 +328,7 @@ fn render_declaration(
     let name = ada_identifier(&declaration.name.local_name)?;
     match &declaration.kind {
         TypeKind::Primitive(PrimitiveKind::SignedInteger) => {
-            let Some(InclusiveIntegralDomain::Signed { min, max }) = integral_domain(
+            let Some(InclusiveIntegralDomain::Signed { min, max }) = named_integral_domain(
                 PrimitiveKind::SignedInteger,
                 &declaration.constraints,
                 &name,
@@ -345,7 +345,7 @@ fn render_declaration(
             .expect("writing to String cannot fail");
         }
         TypeKind::Primitive(PrimitiveKind::UnsignedInteger) => {
-            let Some(InclusiveIntegralDomain::Unsigned { min, max }) = integral_domain(
+            let Some(InclusiveIntegralDomain::Unsigned { min, max }) = named_integral_domain(
                 PrimitiveKind::UnsignedInteger,
                 &declaration.constraints,
                 &name,
@@ -695,6 +695,13 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
         // facet fails closed here, before any output exists.
         if let TypeKind::Primitive(kind @ PrimitiveKind::Binary) = declaration.kind {
             binary_domain(kind, &declaration.constraints, &declaration.name.local_name)?;
+            continue;
+        }
+        if let TypeKind::Primitive(kind) = declaration.kind
+            && ams_gra_oms_codegen_core::patterned_integral_profile(kind, &declaration.constraints)
+                .is_some()
+        {
+            named_integral_domain(kind, &declaration.constraints, &declaration.name.local_name)?;
             continue;
         }
         reject_extra_constraints(&declaration.constraints, &declaration.name.local_name)?;
@@ -1566,6 +1573,15 @@ fn render_floating_declaration(
     )
     .expect("writing to String cannot fail");
     Ok(())
+}
+
+fn named_integral_domain(
+    kind: PrimitiveKind,
+    constraints: &ConstraintSet,
+    name: &str,
+) -> Result<Option<InclusiveIntegralDomain>, CodegenError> {
+    ams_gra_oms_codegen_core::named_integral_domain(kind, constraints)
+        .map_err(|reason| error(format!("unsupported Ada IR construct: {reason} on {name}")))
 }
 
 fn integral_domain(

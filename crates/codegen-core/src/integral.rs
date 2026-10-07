@@ -1,4 +1,67 @@
-use ams_gra_oms_ir::{ConstraintSet, NumericValue, PrimitiveKind};
+use ams_gra_oms_ir::{
+    ConstraintSet, NumericValue, PatternDialect, PrimitiveKind, WhiteSpacePolicy,
+};
+
+/// Evidence-bounded VALUE-space lowering, not arbitrary integer regex support.
+/// Every admitted value has an XML-valid unsigned decimal spelling. OMS carries
+/// an integer JSON number, not the spelling of an original XML document.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PatternedIntegralProfile {
+    DecimalDigits1To3Range1To999,
+}
+
+impl PatternedIntegralProfile {
+    #[must_use]
+    pub const fn domain(self) -> InclusiveIntegralDomain {
+        match self {
+            Self::DecimalDigits1To3Range1To999 => {
+                InclusiveIntegralDomain::Signed { min: 1, max: 999 }
+            }
+        }
+    }
+}
+
+/// Exact named declaration profile; never use this for direct field constraints.
+/// Names and XML primitive provenance are deliberately not admission criteria.
+#[must_use]
+pub fn patterned_integral_profile(
+    kind: PrimitiveKind,
+    constraints: &ConstraintSet,
+) -> Option<PatternedIntegralProfile> {
+    if kind != PrimitiveKind::SignedInteger
+        || constraints.min_inclusive != Some(NumericValue::Integer(1))
+        || constraints.max_inclusive != Some(NumericValue::Integer(999))
+        || constraints.min_exclusive.is_some()
+        || constraints.max_exclusive.is_some()
+        || constraints.length.is_some()
+        || constraints.min_length.is_some()
+        || constraints.max_length.is_some()
+        || constraints.lexical.white_space.is_some()
+        || constraints.lexical.effective_white_space(kind) != WhiteSpacePolicy::Collapse
+    {
+        return None;
+    }
+    let [group] = constraints.lexical.pattern_groups.as_slice() else {
+        return None;
+    };
+    let [pattern] = group.alternatives.as_slice() else {
+        return None;
+    };
+    (pattern.dialect == PatternDialect::XmlSchema && pattern.expression == "[0-9]{1,3}")
+        .then_some(PatternedIntegralProfile::DecimalDigits1To3Range1To999)
+}
+
+/// Shared named integral capability consumed by renderers and coverage/readiness.
+/// Task 020's stricter classifier remains authoritative for direct fields.
+pub fn named_integral_domain(
+    kind: PrimitiveKind,
+    constraints: &ConstraintSet,
+) -> Result<Option<InclusiveIntegralDomain>, &'static str> {
+    match patterned_integral_profile(kind, constraints) {
+        Some(profile) => Ok(Some(profile.domain())),
+        None => inclusive_integral_domain(kind, constraints),
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InclusiveIntegralDomain {

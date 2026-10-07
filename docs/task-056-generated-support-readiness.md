@@ -9,6 +9,15 @@ String facet profile, `EphemerisOrbitalModelType`, `EmptyType`, the Ada
 `CapabilityCommandBaseType` all remain unimplemented. Task 056 makes the
 verdict about them accurate; it does not solve them.
 
+## Superseding integrity note (Task 064)
+
+The measurements below remain historical Task 056 evidence. Task 064 adds
+closed-world plan/schema binding for the same production generated-support
+surface, without changing any selected/support counters or backend capability.
+The previously documented selected-only binding limitation is closed; open-world
+abstract-value errors remain authoritative. See
+[Task 064](task-064-generated-support-plan-binding.md).
+
 ## 1. The defect
 
 Task 032 keeps two type sets apart, on purpose:
