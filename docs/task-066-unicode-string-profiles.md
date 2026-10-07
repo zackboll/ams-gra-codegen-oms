@@ -33,6 +33,84 @@ smoke also passes without inventory, service generation or compilers.
 Historical BEFORE, isolated AFTER, readiness and 1,134-cell output evidence below
 remain immutable-parent evidence, not current-main measurements.
 
+### Current-main reconciliation (Tasks063/064/066)
+
+Normal corrective commit `6e30a43d6cf66d3fdda8b324879e6ad037b18412` was followed
+by normal merge `ff0846c9860200912e580b1f7042049c29f32041`, whose second parent
+is current integration base `5d284a346433d461f1520e599f969e82e00f3e82`.
+Task065 remains independent and was not incorporated. No rebase, amend,
+cherry-pick or force-push was used.
+
+The merged tree retains Task063's named patterned-integral exports/classifier,
+Task064's `GeneratedSupportChange` and plan binding, and Task066's Unicode
+exports/classifier. Unicode production implementation and authority tables are
+unchanged. All merged Fast and Deep gates remain, including Task064's filtered
+Task056 invocation, its separate binding test, and both release markers.
+Current-main's two-support-step Task060 wrapper and split adversarial controls
+remain intact. Task066's wrapper/environment step is now independently protected
+against removal; split adversarial tests pass **143 checks**, Task060 **57**,
+and Task063 **5 wrapper + 3 temp-root** checks.
+
+Task064 correctly rejects a stale plan after the synthetic Unicode support
+declaration is mutated. The Task066 neighbor test now checks that typed binding
+failure first, then resolves a fresh plan and retains the unsupported-profile
+readiness/codec assertions. This composes binding and classification rather than
+weakening either. Task063 Fast passes; Task064 compact Fast prints all four
+required markers. Task066 Fast passes including corpus/compiler/codec/mock-OWP.
+
+Live production CLI coverage (not inferred assertions) was measured first and
+recorded separately in `tests/fixtures/string/task066-integrated-current.tsv`:
+
+|Release|World|Backend|Kinds/total|Full declarations|Field refs/occurrences|Closures/messages|
+|---|---|---|---|---:|---|---|
+|2.5|closed|Ada|5557/5557|5536|13160/13160|643/722|
+|2.5|closed|Rust|5557/5557|5537|13160/13160|676/722|
+|2.5|closed|C++|5557/5557|5537|13160/13160|676/722|
+|2.5|open|Ada|5557/5557|5449|13160/13160|571/722|
+|2.5|open|Rust|5557/5557|5449|13160/13160|571/722|
+|2.5|open|C++|5557/5557|5449|13160/13160|571/722|
+|2.6|closed|Ada|5570/5570|5549|13198/13198|646/725|
+|2.6|closed|Rust|5570/5570|5550|13198/13198|679/725|
+|2.6|closed|C++|5570/5570|5550|13198/13198|679/725|
+|2.6|open|Ada|5570/5570|5462|13198/13198|574/725|
+|2.6|open|Rust|5570/5570|5462|13198/13198|574/725|
+|2.6|open|C++|5570/5570|5462|13198/13198|574/725|
+
+Fields total and both renderability metrics are 13160 (2.5) / 13198 (2.6).
+The current oracle composes the frozen Task062 + Task063 campaigns with only
+Task066's +3 kinds/full-declaration delta and verifies it against this new ledger.
+It does not rewrite any isolated historical fixture.
+
+The six integrated AO_CapabilityStatus service-check/generate/compiler verticals
+pass, still **64 selected + 68 support = 132** per release. Strict GNAT and C++17
+pass, and both actual generated Rust message codecs print
+`TASK066 REAL UNICODE JSON ROUNDTRIP: PASSED` with invalid lexical rejection.
+The direct full vertical also passed with TMPDIR absent (portable system temp).
+
+A NEW integrated-current output comparison uses a binary built from an archive
+of `5d284a34...` in Task066-only source/target storage, not a sibling's target.
+Across **1,146 cells** (191 fixtures × three backends × two worlds):
+Ada 191 identical successes / 2 new / 189 shared failures;
+Rust 199 / 2 / 181; C++ 200 / 2 / 180.
+There are **zero changed successful outputs and zero lost successful outputs**;
+new successes are only the Unicode synthetic fixture. Task063 outputs survive,
+and Task064's own zero-capability/source/codec-delta control passes.
+The original 1,134-cell result below remains historical isolated evidence.
+
+Rust 1.95 and stable fmt/check/all-target Clippy pass, as do isolated runtime
+MSRV checks and both GNAT-required full workspace runs. The final integrated pinned wrapper
+passes: both inventories, all six compiler verticals, both Unicode JSON markers
+and `TASK066 PINNED GATES: PASSED`. It recomputes the exact same eleven services,
+33 closed world tuples/release, **66 total world tuples and 66 unique
+release/backend/message tuples**, with AO_CapabilityStatus still smallest.
+An independently built current-main binary confirms all 66 tuples remain
+Unicode-blocked before Task066. Task063's exact live inventory/impact test also
+passes on both releases with its current UCI2.5 integral gain retained.
+Task060's live projected impact control passes with 97 READY / six topology /
+zero Unicode or integral capability blockers in each release. Fresh hosted
+certification is mandatory and no hosted success is implied at this local checkpoint.
+Logs/manifests are retained under `/tmp/task066-corrective`.
+
 ## Authorized resume — CURRENT, supersedes the historical STOP below
 
 The user explicitly authorized **Unicode Character Database 3.1.0,
