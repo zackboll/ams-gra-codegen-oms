@@ -1,5 +1,38 @@
 # Task 066 — Exact Unicode 3.1 String profiles
 
+## Hosted corrective — optional vertical environment (current checkpoint)
+
+The previous feature head was `921ea176d0d91e05941220f96fa86d31ea25db09`,
+on immutable BEFORE/original base `52e22b67b94b431d96925c41ff730749c33b3c9e`.
+Actions actually checked out synthetic merge
+`83cbee6478604851f321c7ed3e1fa37efc25af24`.
+Fast run **37256984008 succeeded**; Deep run **37256984003 failed**:
+`msrv-real-uci` job **111596138833 succeeded**, `real-sleet` job
+**111596138928 succeeded**, and `real-uci` job **111596138962 failed**.
+
+The downloaded real-uci log confirms both exact authority inventory markers
+(`UCI 2.5 TASK066 AUTHORITY INVENTORY: PASSED` and
+`UCI 2.6 TASK066 AUTHORITY INVENTORY: PASSED`) and
+`test task066_pinned_unicode_authority_inventory ... ok` **before** the failure.
+The traceback was `KeyError: 'TMPDIR'` at
+`scripts/check-task066-vertical.py` **line 11**. This was CI vertical scratch-path
+environment handling; production Unicode semantics were not implicated.
+
+The same correction removes a second latent `CARGO_TARGET_DIR` indexing defect.
+Scratch-root precedence is non-empty `TMPDIR`, non-empty `RUNNER_TEMP`, then
+portable `tempfile.gettempdir()`. Cargo storage uses a non-empty configured
+target (relative paths resolved at the repository), otherwise repository
+`target`; the nested build uses its `task066-vertical` child, never the outer
+target itself. Required `AMS_GRA_UCI_2_5_ROOT` and `AMS_GRA_UCI_2_6_ROOT` remain
+hard requirements. Importing the vertical now executes no service loop.
+
+Fast's existing Task066 wrapper step runs seven wrapper adversarial cases plus
+nine real-helper environment controls, including empty settings and a generated
+service cwd. A direct `env -u TMPDIR -u CARGO_TARGET_DIR` import/path-selection
+smoke also passes without inventory, service generation or compilers.
+Historical BEFORE, isolated AFTER, readiness and 1,134-cell output evidence below
+remain immutable-parent evidence, not current-main measurements.
+
 ## Authorized resume — CURRENT, supersedes the historical STOP below
 
 The user explicitly authorized **Unicode Character Database 3.1.0,
