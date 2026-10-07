@@ -1,0 +1,22 @@
+BEFORE 5d284a346433d461f1520e599f969e82e00f3e82
+SOURCE_TREE 43c3aef72f239e5327aab0c56f4e5de7ca67daa3
+UCI 2.5 revision 093610b7753944059360d3236770ab446d039556
+UCI 2.6 revision 78eb61b6112c8bffa40820c33124b57787fc5bd9
+ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27  /tmp/task068/uci25/03_OAC-STD-002_RevE_UCI_Schema_v2_5/UCI_MessageDefinitions_v2_5_0.xsd
+af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b  /tmp/task068/uci26.extracted/UCI_MessageDefinitions_v2_6_0.xsd
+2.5	01_OAC-VDD-001_RevJ_UCI_VersionDescriptionDocument_v2_5.docx	sha256=670cdbd35664c6cc3e2c6d02aa4e07a66724d0e7c744f29b7b42bfdd10787479
+2.5	02_OAC-STD-001_RevI_UCI_StandardDocument_v2_5.docx	sha256=a0f2e45ded1fc4b75489224ad038760d02e20d78ca73398732fbfc5fe1f4aec8
+2.5	04_OAC-SPC-001_RevE_UCI_SchemaStyleAndDesignSpecification_v2_5.docx	sha256=81ea979d013bfcf9f22bf265eb1a851ee4505225baad8601f5dcac37aaf66376
+691: ComplexTypes that are extended PET types are special types and are allowed. Legacy types that are no longer used or types defined for future use are prohibited. This CERT is checked using programmatic methods by assessing if all types (simpleTypes and complexTypes) are used with allowance for PET derived types as noted.
+988: With PETs, an alternate method for using a choice type is available through the use of Polymorphism in UCI. With a controlled set of complexTypes, defined elsewhere in the UCI XSD Schema, an element declared using a PET type allows access to all derived types. PETs have also been used in UCI to address support for multiple versions of formatting standards such as NITF or STANAG 4607 by allowing the overloading of options for different versions. Two examples are NITF_PackingPlanPET and STANAG_4607_PackingPlanPET.
+2.5	06_OAC-SPC-002_RevA_UCI_NormalizedInterfaceSpecification_v2_5.docx	sha256=9563198bde715e3c2b5c7dd9fa4baa7fcbb75d7b0fd0e69b33c8e11beeb710cc
+2.6	UCI Release Documentation - Standards Documents/01_UCI-VDD-001_Rev11_UCI_VersionDescriptionDocument_v2_6.docx	sha256=eec3ee69b7af6e900bcfd1265d9f499799d1abac6844c591a657d6b8cfb54b5c
+105: List derived type names in annotation for all PET definitions
+201: OAM-6864, List derived type names in annotation for all PET definitions, 03 December 2025
+2.6	UCI Release Documentation - Standards Documents/02_UCI-STD-001_Rev10_UCI_StandardDocument_v2_6.docx	sha256=ed086f9eea7ce80fd79e4c5443ae7cb0e0d39ce6b52ea39ccbb921b8bc2ea86b
+2.6	UCI Release Documentation - Standards Documents/04_UCI-SPC-001_Rev6_UCI_SchemaStyleAndDesignSpecification_v2_6.docx	sha256=ce15504422621192b94b17c8cbf76ed73da7b09616b277dbf2e7ad7a6ea60286
+641: ComplexTypes that are extended PET types are special types and are allowed. Legacy types that are no longer used or types defined for future use are prohibited. This CERT is checked using programmatic methods by assessing if all types (simpleTypes and complexTypes) are used with allowance for PET derived types as noted.
+946: With PETs, an alternate method for using a choice type is available through the use of Polymorphism in UCI. With a controlled set of complexTypes, defined elsewhere in the UCI XSD Schema, an element declared using a PET type allows access to all derived types. PETs have also been used in UCI to address support for multiple versions of formatting standards such as NITF or STANAG 4607 by allowing the overloading of options for different versions. Two examples are NITF_PackingPlanPET and STANAG_4607_PackingPlanPET.
+2286: OAM-6864, List derived type names in annotation for all PET definitions, 03 December 2025
+2.6	UCI Release Documentation - Standards Documents/06_UCI-SPC-002_Rev2_UCI_NormalizedInterfaceSpecification_v2_6.docx	sha256=779bac0aaea5390c349611d774ff918be000c2dc63f9d97474c94cdb9961bde9
+2.6	UCI-NSC-001_Rev1_Intro_To_3.0_NOSC-1.docx	sha256=ac86d6d3154e84187dc90c53fbe395de61c1a55e3d1381f13f34ec7865045088

@@ -1,0 +1,38 @@
+# SYNTHETIC Task 051 fixture. Authored for this repository only.
+#
+# Selects HolderReport from task068.xsd (qualified urn:shape closed abstract value).
+contract_version: "0.1"
+
+service:
+  name: task068
+  version: "0.1.0"
+  kind: service
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+  uci_extension_schemas:
+    - private
+
+functions:
+  - id: loop
+    name: Loop
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: input-notice
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: HolderReport
+        topic: shape-topic
+        timing:
+          kind: asynchronous
+      - id: output-notice
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: HolderReport
+        topic: shape-topic
+        timing:
+          kind: asynchronous

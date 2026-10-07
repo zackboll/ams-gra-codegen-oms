@@ -1,0 +1,19 @@
+GENERIC ConcreteA: Closed support/model/readiness succeeds; Open exact Base error in all backends
+overlay=false world=ClosedSchemaSet projection=Ok([QualifiedName { namespace_uri: "urn:audit", local_name: "PublicA" }])
+Ada ready=true blocker=None
+Rust ready=true blocker=None
+Cpp ready=true blocker=None
+overlay=false world=OpenExtensions projection=Err(AbstractValue(NotClosedUnderOpenExtensions(QualifiedName { namespace_uri: "urn:audit", local_name: "Base" })))
+Ada ready=false blocker=None
+Rust ready=false blocker=None
+Cpp ready=false blocker=None
+overlay=true world=ClosedSchemaSet projection=Ok([QualifiedName { namespace_uri: "urn:audit", local_name: "PublicA" }, QualifiedName { namespace_uri: "urn:audit", local_name: "PrivateB" }])
+Ada ready=true blocker=None
+Rust ready=true blocker=None
+Cpp ready=true blocker=None
+overlay=true world=OpenExtensions projection=Err(AbstractValue(NotClosedUnderOpenExtensions(QualifiedName { namespace_uri: "urn:audit", local_name: "Base" })))
+Ada ready=false blocker=None
+Rust ready=false blocker=None
+Cpp ready=false blocker=None
+ZERO ClosedSchemaSet Err(ProjectedEmissionPlan(CodegenError { message: "unsupported abstract structural value: abstract value target ExtensionBase has no concrete structural descendants" }))
+ZERO OpenExtensions Err(AbstractValue(NotClosedUnderOpenExtensions(QualifiedName { namespace_uri: "urn:audit", local_name: "ExtensionBase" })))
