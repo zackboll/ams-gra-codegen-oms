@@ -500,3 +500,129 @@ this document does not claim final hosted SUCCESS before the head/base-keyed
 collector records it. The Task065 PR must remain open, non-draft, unmerged,
 with auto-merge disabled. No Task064/066 worktree, branch or process was changed;
 read-only PR checks still showed both siblings open at their existing heads.
+
+## Final Task064-main reconciliation (Task065 corrective)
+
+The preceding publication statement describes the previous checkpoint, not
+the current base. Task064 / PR #65 subsequently merged into main. Prior Task065
+evidence remains valid historical evidence, but final merge certification
+requires a fresh Task064-main-base run. No historical measurement or identity
+above is rewritten.
+
+| Historical identity | Value |
+| --- | --- |
+| Immutable Task065 BEFORE | `52e22b67b94b431d96925c41ff730749c33b3c9e` |
+| First-phase checkpoint | `d29a27d3f1f0e869c55b04b03d4ea282cdadbe39` |
+| Task063 reconciliation | `ad2ffac9df3bd1ad8f9094c0f061e88bb1dad798` |
+| Previous reviewed Task065 head | `1885fb56d8f35d66d66f575f4fe801a41254d16f` |
+| Previous certified base | `4fd8492b3603125e6ebe11e04c43fe68d85cf231` |
+| Previous Actions synthetic checkout | `0e62c773d5a10a7218160dc200798660e40e710d` |
+| Previous Fast | [37260812966](https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/37260812966), attempt 1, SUCCESS |
+| Previous Deep | [37260812985](https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/37260812985), attempt 1, SUCCESS |
+
+All three previous Deep jobs (`real-uci`, `real-sleet`, `msrv-real-uci`)
+succeeded. That checkout merged the previous reviewed feature head into the
+previous certified base; it does not certify the subsequent Task064 base.
+
+### Normal merge and composition audit
+
+Fetched main was exactly `5d284a346433d461f1520e599f969e82e00f3e82`,
+the Task064 merge with parents `4fd8492b3603125e6ebe11e04c43fe68d85cf231`
+and `8a889b0da9df9eaf57e883c4493024ca7c39ac68`. Local HEAD, remote Task065
+branch and PR #67 head all matched the previous reviewed head; the worktree
+was clean. Status, complete decorated all-ref graph and worktree inventory
+were recorded under `/tmp/task065/reconcile/logs/pre-merge-*`.
+
+Normal reconciliation merge:
+`ba3162dc5323a7b71166b969c7cb408bb7115e2a`, with first parent the previous
+reviewed Task065 head and second parent the fetched Task064 main. Git composed
+the workflow, export and roadmap overlaps without conflicts. No rebase,
+cherry-pick, reset, squash, amend, force-push or manual Task064 copying was used.
+
+The six Task064 implementation/test files specified by the corrective and
+`scripts/check-ci-split.sh`, `scripts/test-check-ci-split.sh`, and
+`scripts/test-task060-ci-wrappers.py` are byte-identical to Task064 main.
+Task064 production semantics are unchanged. `GeneratedSupportChange` and
+`PlanBindingMismatch::GeneratedSupport` survive; the two Task065 Ada naming
+helpers remain exported. The immediate post-merge workspace/all-target check
+passed before the remaining local campaign.
+
+Both Task064 Fast and Deep command bodies are byte-identical to main, including
+listing, registration, exit-status, exact test-count and marker guards. Both
+Task065 steps remain present. All inherited gates remain present and the
+`real-uci` timeout stays 240 minutes. The final three-dot diff against main is
+Task065-only; inherited Task064 implementation and harness files do not appear.
+
+Task065 renderer, shared naming implementation, component/compiler tests,
+compact scripts and frozen coverage fixture are byte-identical to the previous
+reviewed head. Choice descendant literals still use
+`{Descendant}_Choice_Value_Kind`, discriminant types use `{Owner}_Kind`, and
+Record descendant literals retain `{Descendant}_Kind`; preflight and rendering
+share the helpers, without schema-specific exceptions or collision retries.
+The private component helper still qualifies only named subtype marks hidden
+by the component/preceding component/discriminant, anchoring an otherwise hidden
+package prefix at `Standard`. Public component and wire names, primitives and
+non-hiding output bytes remain unchanged. All compiler control categories
+remain covered.
+
+PR #66 was inspected read-only: OPEN, unmerged, head
+`921ea176d0d91e05941220f96fa86d31ea25db09`. Its feature head is not an ancestor
+of Task065. Its worktree, branch and processes were not changed.
+
+### Corrective local and hosted certification
+
+Corrective logs and isolated temporary files use `/tmp/task065/reconcile`;
+stable compilation uses `/tmp/task065/target`, and Rust 1.95 uses the separate
+`/tmp/task065/msrv-target`. Historical evidence files are not overwritten.
+The completed Task065 MSRV incremental cache was relocated (not deleted) to
+`/home/zboll/.cache/task065-reconcile/msrv-incremental` to relieve shared tmpfs
+pressure; no sibling artifact was moved or cleaned.
+
+The exact final-CI Task064 Fast command body was extracted unchanged to
+`/tmp/task065/reconcile/task064-fast.sh` and passed all four required markers.
+Task065 Fast passed all nine exact tests with GNAT required. Fmt, all-target
+check, warnings-denied Clippy, CI split, adversarial split (140 checks), wrapper
+adversarial harness (57 checks), Rust 1.95 workspace/all-target check and
+Task065 Fast under Rust 1.95 passed.
+
+The GNAT-required workspace suite passed (exit 0, 147 reported suites, 1294
+reported test passes). Tests without pinned roots retain their documented
+developer skips; these are not counted as a pinned campaign. The independent
+compact pinned campaign below supplies the real-root evidence. Final
+`git diff --check` also passed.
+
+The corrective additionally reruns the compact pinned Task065 gate once, even
+though no Task065 production/script conflict repair was necessary. This freshly
+measures current coverage before comparing it with the unchanged historical
+fixture plus the frozen Task063 delta, and recompiles Authorization's model,
+body and CLI service API for both releases. Task064's full pinned campaign is
+not redundantly rerun locally; fresh hosted Deep executes its exact gate.
+
+Fresh measured message-closure coverage (all 12 cells passed the unchanged
+integrated-current assertions):
+
+| Release | World | Ada | Rust | C++ | Peer-minus-Ada gap |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 2.5 | closed | 676 | 676 | 676 | 0 |
+| 2.5 | open | 571 | 571 | 571 | 0 |
+| 2.6 | closed | 679 | 679 | 679 | 0 |
+| 2.6 | open | 574 | 574 | 574 | 0 |
+
+Task064 has zero measured capability delta. The historical isolated Task065
+`641 -> 674` / `646 -> 679`, each gap `33 -> 0`, remains unchanged.
+
+The once-only corrective compact pinned run completed successfully (820.64
+seconds for the exact test), with 33 former-gap projections per release, both
+`UCI 2.5 TASK065 AUTHORIZATION MODEL API GNAT: PASSED` and
+`UCI 2.6 TASK065 AUTHORIZATION MODEL API GNAT: PASSED`, both naming-evidence
+markers, and `TASK065 PINNED GATES: PASSED`. Log:
+`/tmp/task065/reconcile/logs/task065-pinned.log`. Authorization remains the
+minimum compiler-clean vertical at 230 / 231 declarations. No coverage fixture
+or production file was changed for reconciliation.
+
+Final hosted certification is a separate head/base-keyed observation, recorded
+in PR #67 after the normal push. The PR checkpoint must identify the final
+feature head, `5d284a346433d461f1520e599f969e82e00f3e82` base, and the actual
+synthetic checkout read from Fast and every Deep job log. Prior successes above
+must not be used as a substitute. PR #67 remains open, non-draft, unmerged,
+with auto-merge disabled; this corrective provides no merge authorization.
