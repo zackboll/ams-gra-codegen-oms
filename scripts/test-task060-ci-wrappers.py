@@ -16,20 +16,26 @@ real_uci = deep.split("  real-uci:\n", 1)[1].split("\n  msrv-real-uci:", 1)[0]
 checks = 0
 
 
-def check(name, source, expected, diagnostic, output="", status=0, fail_target=""):
+def check(name, source, expected, diagnostic, output="", status=0, fail_target="", fail_phase=""):
     global checks
     # Override only Cargo; the extracted workflow shell is executed unchanged.
     prefix = """cargo() {
       printf '%s\\n' "$WRAPPER_OUTPUT"
       printf '%s\\n' 'DEEP_DIAGNOSTIC' >&2
       if [[ -z "$WRAPPER_FAIL_TARGET" || " $* " == *" --test $WRAPPER_FAIL_TARGET "* ]]; then
+        if [[ "$WRAPPER_FAIL_PHASE" == listing && " $* " != *" --list "* ]]; then
+          return 0
+        fi
+        if [[ "$WRAPPER_FAIL_PHASE" == execution && " $* " == *" --list "* ]]; then
+          return 0
+        fi
         return "$WRAPPER_STATUS"
       fi
       return 0
     }
     """
     env = dict(os.environ, WRAPPER_OUTPUT=output, WRAPPER_STATUS=str(status),
-               WRAPPER_FAIL_TARGET=fail_target)
+               WRAPPER_FAIL_TARGET=fail_target, WRAPPER_FAIL_PHASE=fail_phase)
     run = subprocess.run(["bash", "-c", prefix + source], cwd=repo,
                          env=env, capture_output=True, text=True)
     assert run.returncode == expected, (name, run.returncode, run.stdout, run.stderr)
@@ -59,7 +65,7 @@ category_markers = {
 }
 targets = []
 for step in real_uci.split("      - name: ")[1:]:
-    # Task061 helper/CLI steps have dedicated gates, not inline Cargo captures.
+    # Task061/062 helper/CLI steps have dedicated gates, not inline Cargo captures.
     # The exact target list below still requires every inherited Cargo gate.
     if "cargo test" not in step:
         continue
@@ -78,10 +84,25 @@ for step in real_uci.split("      - name: ")[1:]:
     assert counts, target
     summaries = [f"test result: ok. {count} passed; 0 failed" for count in counts]
     output = "\n".join(markers + summaries)
+    registration = "task064_real_uci_generated_support_binding: test"
+    task064 = "name=task064_real_uci_generated_support_binding" in block
+    if task064:
+        output = registration + "\n" + output
     check(f"{target}: failed command", block, 37, "DEEP_DIAGNOSTIC", "failure output", 37)
     check(f"{target}: failure with every success marker", block, 43, "DEEP_DIAGNOSTIC", output, 43)
     check(f"{target}: missing markers", block, 1, "missing evidence", "missing evidence")
     check(f"{target}: complete success", block, 0, "DEEP_DIAGNOSTIC", output)
+    if task064:
+        for phase in ["listing", "execution"]:
+            check(f"Task064 {phase} failure with every success marker", block, 47,
+                  "DEEP_DIAGNOSTIC", output, 47, fail_phase=phase)
+        check("Task064 missing registered name", block, 1, "DEEP_DIAGNOSTIC",
+              output.replace(registration, "some_other_test: test"))
+        check("Task064 zero executed tests", block, 1, "DEEP_DIAGNOSTIC",
+              output.replace("test result: ok. 1 passed", "test result: ok. 0 passed"))
+        for marker in markers:
+            check(f"Task064 missing {marker}", block, 1, "DEEP_DIAGNOSTIC",
+                  output.replace(marker, ""))
     if target == "uci_alternating_admission":
         check("Task060 second command failure with every success marker", block, 101,
               "DEEP_DIAGNOSTIC", output, 101, "uci_alternating_after")
@@ -101,6 +122,7 @@ for step in real_uci.split("      - name: ")[1:]:
               output.replace(f"test {test} ... {marker}", f"noise {marker} noise"))
 
 assert targets == ["uci_binary_provenance", "uci_constrained_binary", "uci_member_names",
-                   "uci_generated_support", "uci_duration", "uci_bounded_ascii_string",
+                   "uci_generated_support", "uci_generated_support", "uci_duration",
+                   "uci_bounded_ascii_string",
                    "uci_structured_ascii", "uci_alternating_admission"], targets
 print(f"test-task060-ci-wrappers: PASSED ({checks} checks)")

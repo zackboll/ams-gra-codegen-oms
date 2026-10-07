@@ -822,12 +822,11 @@ Progress (typed LA-CAL integration as a whole is **not** complete):
 - [ ] three deferred Unicode profiles.
 - [ ] `xs:time` (`TimeType`, now the first blocker of 28 messages per
       release).
-- [ ] plan binding scope: `SchemaBinding` fingerprints the contract-selected
-      closure, not generated-support descendants, so changing only a support
-      descendant between plan resolution and reuse is not detected as a
-      binding mismatch (readiness and generation still agree, because both
-      re-project the schema they are given). Separate integrity item; not
-      part of Task 056.
+- [x] plan binding scope (Task 064): selected semantic binding is retained;
+      closed-world projection also binds actual generated-support semantics
+      and membership through the one production expansion model. Open-world
+      abstract-value attribution remains unchanged. See
+      [Task 064](task-064-generated-support-plan-binding.md).
 - [ ] reconnect/backoff, TLS/auth policy, timers, service lifecycle.
 
 ```text

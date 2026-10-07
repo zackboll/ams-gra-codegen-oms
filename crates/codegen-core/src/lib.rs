@@ -88,7 +88,7 @@ pub use service_generation::{
     ServiceGenerationError, ServiceGenerationProjection, project_service_generation_schema,
 };
 pub use service_plan::{
-    CapabilityPlan, FunctionPlan, PlanBindingMismatch, ResolvedExchange,
+    CapabilityPlan, FunctionPlan, GeneratedSupportChange, PlanBindingMismatch, ResolvedExchange,
     ResolvedOmsMessageExchange, SelectedMessage, ServiceIdentity, ServicePlan, ServicePlanError,
     ServiceStandards, resolve_service_plan,
 };
