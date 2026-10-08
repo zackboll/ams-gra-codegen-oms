@@ -48,6 +48,8 @@ jobs:
           command -v gnatmake
           gnatmake --version
       - run: cargo fmt --all -- --check
+      - name: Contract route manifest and Sleet policy (Task 071)
+        run: bash scripts/check-task071-fast.sh
       - name: Exact patterned integral Fast gates (Task 063)
         env:
           AMS_GRA_REQUIRE_GNAT: "1"

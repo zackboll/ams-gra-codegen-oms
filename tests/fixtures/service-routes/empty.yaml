@@ -1,0 +1,21 @@
+contract_version: "0.1"
+service:
+  name: Empty routes
+  version: "1"
+  kind: service
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+functions:
+  - id: empty
+    name: No OMS routes
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: signal
+        kind: special_signal
+        direction: input
+        mandate: mandatory
+        name: Hardware signal
+        timing:
+          kind: asynchronous

@@ -6,6 +6,7 @@ members = [
     "crates/codegen-core",
     "crates/schema-docs",
     "crates/service-contract",
+    "crates/service-routes",
     "crates/backend-ada",
     "crates/backend-rust",
     "crates/backend-cpp",

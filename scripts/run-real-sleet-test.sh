@@ -33,9 +33,11 @@ cd "$ROOT"
 # run_one TEST_FILE TEST_NAME PASS_LINE: exactly one matching test must run,
 # pass, and print its PASSED line (a skip prints SKIPPED and fails here).
 run_one() {
+  local status=0
   output="$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test "$1" -- \
-    --exact "$2" --nocapture 2>&1)"
+    --exact "$2" --nocapture 2>&1)" || status=$?
   printf '%s\n' "$output"
+  if (( status != 0 )); then return "$status"; fi
   # Task 055: here-strings, not `printf | grep -q`. Under pipefail a grep that
   # exits on its first match can SIGPIPE a writer still emitting a large
   # output and fail an otherwise-passing check. A here-string has no writer
@@ -65,6 +67,9 @@ run_one generated_codec_sleet_hexbinary task052_hex_binary_generated_codec_round
 # length facets in CHARACTERS, not octets (see docs/task-053-*).
 run_one generated_codec_sleet_constrained_binary task053_constrained_binary_generated_codec_round_trips_through_real_sleet \
   'REAL SLEET GENERATED CONSTRAINED BINARY CODEC: PASSED'
+# Task071 reuses this same pinned checkout/build; no second server build.
+run_one service_route_policy task071_real_sleet_policy \
+  'TASK071 REAL SLEET POLICY: PASSED'
 # Task 050: the REAL UCI 2.5 PositionReport, only when the caller supplies the
 # pinned root (build.rs verifies its SHA-256 and fails on a mismatch).
 # Task 052: the REAL UCI 2.5 SubsystemStream carrying a hexBinary value.

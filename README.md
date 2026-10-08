@@ -1,5 +1,12 @@
 # ams-gra-codegen-oms
 
+Task071 adds read-only `service-routes --schema ROOT.xsd --contract SERVICE.yaml`
+TSV inventory and optional `--format sleet-toml --service-id ID --service-uuid UUID`
+preview. Every derived topic gets a nonempty message binding. Pinned Sleet
+permissions authorize both PUB and SUB, not direction-specific least privilege;
+only exact OAM messages are supported for TOML. See
+[route projection and limitations](docs/task-071-service-route-allowlists.md).
+
 Schema-driven, multi-language code generation for OMS/UCI services that preserves the existing AMS GRA / OMS Language-Agnostic CAL (LA-CAL) runtime architecture.
 
 > **Status:** the XSD frontend fully normalizes the authoritative UCI 2.5 and
