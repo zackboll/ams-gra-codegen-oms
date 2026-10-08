@@ -45,10 +45,14 @@ mod codec;
 mod config;
 mod envelope;
 mod error;
+mod retry;
 mod worker;
 
 pub use codec::{CodecError, OmsJsonCodec};
-pub use config::{DEFAULT_CONNECT_TIMEOUT, DEFAULT_OWP_VERSION, RuntimeConfig};
+pub use config::{
+    ConnectRetryPolicy, DEFAULT_CONNECT_TIMEOUT, DEFAULT_OWP_VERSION, MAX_INITIAL_CONNECT_ATTEMPTS,
+    RuntimeConfig,
+};
 pub use envelope::{
     MessageDecodeError, OAM_NAMESPACE, oms_global_element_name, unwrap_global_element,
     wrap_global_element,
@@ -343,19 +347,28 @@ fn serve(
         }
     };
     runtime.block_on(async move {
-        let connecting = CalClient::connect_with_options(
-            config.url(),
-            config.service_id(),
-            config.init_options(),
-        );
-        let client = match tokio::time::timeout(config.connect_timeout(), connecting).await {
-            Ok(Ok(client)) => client,
-            Ok(Err(error)) => {
-                let _ = ready.send(Err(error.into()));
-                return;
-            }
-            Err(_) => {
-                let _ = ready.send(Err(RuntimeError::ConnectTimeout));
+        let client = match retry::initial_connect(
+            config.initial_connect_retry(),
+            || async {
+                tokio::time::timeout(
+                    config.connect_timeout(),
+                    CalClient::connect_with_options(
+                        config.url(),
+                        config.service_id(),
+                        config.init_options(),
+                    ),
+                )
+                .await
+                .map_err(|_| RuntimeError::ConnectTimeout)?
+                .map_err(RuntimeError::from)
+            },
+            tokio::time::sleep,
+        )
+        .await
+        {
+            Ok(client) => client,
+            Err(error) => {
+                let _ = ready.send(Err(error));
                 return;
             }
         };

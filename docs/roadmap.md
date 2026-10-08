@@ -827,7 +827,10 @@ Progress (typed LA-CAL integration as a whole is **not** complete):
       and membership through the one production expansion model. Open-world
       abstract-value attribution remains unchanged. See
       [Task 064](task-064-generated-support-plan-binding.md).
-- [ ] reconnect/backoff, TLS/auth policy, timers, service lifecycle.
+- [x] Opt-in bounded initial connection-refusal retry with exponential backoff
+      (Task070); default one attempt. See [Task070](task-070-initial-connect-retry.md).
+- [ ] Automatic reconnection after a running session, subscription restoration,
+      publish replay, TLS/auth policy, timers, service lifecycle: still deferred.
 
 ```text
 Task 048:  generated type-safe operation
