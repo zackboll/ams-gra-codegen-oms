@@ -11,6 +11,7 @@ dependencies = [
  "ams-gra-oms-backend-rust",
  "ams-gra-oms-codegen-core",
  "ams-gra-oms-ir",
+ "ams-gra-oms-schema-diff",
  "ams-gra-oms-schema-docs",
  "ams-gra-oms-service-contract",
  "ams-gra-oms-xsd-frontend",
@@ -85,6 +86,13 @@ dependencies = [
  "serde_json",
  "tokio",
  "tokio-tungstenite",
+]
+
+[[package]]
+name = "ams-gra-oms-schema-diff"
+version = "0.1.0"
+dependencies = [
+ "ams-gra-oms-ir",
 ]
 
 [[package]]

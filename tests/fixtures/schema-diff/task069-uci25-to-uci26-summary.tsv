@@ -1,0 +1,36 @@
+category	namespace	declaration	member_or_property	change	before	after
+METADATA			schema_version	VALUE	"002.5.0"	"002.6.0"
+SUMMARY		TYPE	count	VALUE	5557	5570
+SUMMARY		TYPE	added	COUNT		39
+SUMMARY		TYPE	removed	COUNT		26
+SUMMARY		TYPE	changed	COUNT		162
+SUMMARY		TYPE	unchanged	COUNT		5369
+SUMMARY		MESSAGE	count	VALUE	722	725
+SUMMARY		MESSAGE	added	COUNT		3
+SUMMARY		MESSAGE	removed	COUNT		0
+SUMMARY		MESSAGE	changed	COUNT		0
+SUMMARY		MESSAGE	unchanged	COUNT		722
+TOTAL				BASE_TYPE_CHANGED		37
+TOTAL				CONSTRAINT_CHANGED		11
+TOTAL				ENUM_VALUE_ADDED		5
+TOTAL				MEMBER_ADDED		30
+TOTAL				MEMBER_CHANGED		102
+TOTAL				MEMBER_REMOVED		56
+TOTAL				MESSAGE_ADDED		3
+TOTAL				TYPE_ADDED		39
+TOTAL				TYPE_REMOVED		26
+IDENTITY	https://www.vdl.afrl.af.mil/programs/oam	SystemSchedule	presence	MESSAGE_ADDED		present
+IDENTITY	https://www.vdl.afrl.af.mil/programs/oam	SystemScheduleDataRequest	presence	MESSAGE_ADDED		present
+IDENTITY	https://www.vdl.afrl.af.mil/programs/oam	SystemScheduleDataRequestStatus	presence	MESSAGE_ADDED		present
+PROPERTY_TOTAL			base_type	BASE_TYPE_CHANGED		37
+PROPERTY_TOTAL			minLength	CONSTRAINT_CHANGED		4
+PROPERTY_TOTAL			pattern_groups	CONSTRAINT_CHANGED		5
+PROPERTY_TOTAL			whiteSpace	CONSTRAINT_CHANGED		2
+PROPERTY_TOTAL			presence	ENUM_VALUE_ADDED		5
+PROPERTY_TOTAL			presence	MEMBER_ADDED		30
+PROPERTY_TOTAL			cardinality	MEMBER_CHANGED		3
+PROPERTY_TOTAL			type_ref	MEMBER_CHANGED		99
+PROPERTY_TOTAL			presence	MEMBER_REMOVED		56
+PROPERTY_TOTAL			presence	MESSAGE_ADDED		3
+PROPERTY_TOTAL			presence	TYPE_ADDED		39
+PROPERTY_TOTAL			presence	TYPE_REMOVED		26
