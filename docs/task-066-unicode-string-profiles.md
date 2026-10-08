@@ -1,5 +1,92 @@
 # Task 066 — Exact Unicode 3.1 String profiles
 
+## Task065-main reconciliation — post-merge certification checkpoint
+
+The previous certified feature head was
+`b07cb43ca9ab03fd57e18b6e27cc22633a94dfef`, with base
+`5d284a346433d461f1520e599f969e82e00f3e82` and actual synthetic checkout
+`2f0567482083fa72c959965d2960d965a1cd7039`. Fast **37558451048**, attempt 1,
+and Deep **37558451051**, attempt 1, both succeeded. Deep real-uci
+**112590017477**, real-sleet **112590017347**, and msrv-real-uci **112590017659**
+all succeeded; all four checkout logs independently matched that feature/base.
+Those successes remain historical, not certification of the new main base.
+
+Task065 merged through PR67 into main
+`42a8f369fe4a7f733fe1b0f802f575c3ec4a7fb0`. Normal reconciliation merge
+`d46f085ca146154c6736a11ead7f5ad08277fe29` has the previous Task066 head and
+that main SHA as its parents. No history was rewritten and no unfinished sibling
+branch/worktree was incorporated. Pre-merge tracked/untracked manifests, PR
+identity, status and fixture hashes are retained under `/tmp/task066/reconcile`.
+
+Actual conflicts were `.github/workflows/ci.yml`,
+`.github/workflows/deep-ci.yml`, `docs/backend-compatibility.md`,
+`docs/roadmap.md`, and `tests/task063_integrated_coverage.rs`.
+Both workflow steps and status sections were composed. The oracle now reads
+Task065's frozen Task062-based AFTER ledger, adds Task063's independently
+measured integral delta, then Task066's +3 kinds/full declarations, verifying
+against a NEW live measurement. No historical ledger was overwritten.
+
+The automatically merged Ada production code was reviewed against main:
+`ada_kind_companion_name` / `ada_closed_sum_literal_name`, concrete Choice
+`_Choice_Value_Kind` literals, unchanged Record literals and conditional
+component/subtype qualification all remain intact. Its difference from main is
+only Unicode carrier/support rendering. Unicode helper preflight registration
+is retained. Task063 integral and Task064 binding production remain identical
+to main. Unicode production carriers and frozen authority remain unchanged.
+
+A permanent Fast regression combines a concrete Choice descendant with a
+Unicode carrier and a component hiding that carrier's subtype. Safe names pass
+preflight and strict GNAT model/body compilation; an authored case-insensitive
+companion literal conflict fails closed. No naming retry or UCI special case.
+Task065/066 Fast and Task063 Fast pass; Task064 compact Fast passes all four
+markers. Split requires both task pairs and passes **146** adversarial controls;
+Task060 wrappers pass **57**, Task063 wrappers/temp controls **5 + 3**, and
+Task066 wrappers/environment controls **7 + 9**. The no-TMPDIR/no-Cargo-target
+import/path-selection smoke still passes.
+
+Live production CoverageAnalysis CLI measurements are frozen separately in
+`tests/fixtures/string/task066-post-task065-current.tsv`, based on
+`42a8f369...`. All twelve cells match the independent composition:
+
+|Release|World|Backends (each)|Kinds/total|Full declarations|Field refs/occurrences|Closures/messages|
+|---|---|---|---|---:|---|---|
+|2.5|closed|Ada, Rust, C++|5557/5557|5537|13160/13160|676/722|
+|2.5|open|Ada, Rust, C++|5557/5557|5449|13160/13160|571/722|
+|2.6|closed|Ada, Rust, C++|5570/5570|5550|13198/13198|679/725|
+|2.6|open|Ada, Rust, C++|5570/5570|5462|13198/13198|574/725|
+
+Ada full-schema naming parity is Task065's contribution, not a Unicode closure
+gain. Task066's field/closure contribution remains zero. Historical
+`task066-before-authority.tsv`, `task066-after.tsv`,
+`task066-integrated-current.tsv` (main `5d284a34...`) and `task066-new-ready.tsv`
+are unchanged and independently hash-verified. The current TimeZulu assertion
+also keeps the Task service witness live outside the now-empty naming-gap loop.
+
+A separate FINAL-main output campaign compares a binary built from an archive
+of Task065 main with integrated Task066, using only Task066-owned storage.
+**1,152 cells**: Ada 192 identical successes / 2 new / 190 shared failures;
+Rust 200 / 2 / 182; C++ 201 / 2 / 181. **Zero changed or lost successful
+outputs**; all new successes are the intended Unicode synthetic fixture.
+The 1,134 and 1,146-cell campaigns below remain historical and untouched.
+
+Local fmt/check/all-target Clippy and isolated Rust1.95 runtime MSRV pass.
+GNAT-required workspace and the final Task066 pinned wrapper pass, including
+both inventories, all six real compiler verticals and two actual-message
+Unicode JSON roundtrip/rejection markers. Selected/support counts remain
+64 + 68 = 132 in each release. Independent Task065-main controls confirm all
+66 tuples were Unicode-blocked before this feature; the live AFTER inventory
+matches the same eleven services, 33 tuples/release and 66 unique tuples.
+Task060's current projected subset passes with 97 READY, six topology and zero
+capability blockers in each release. The affected admission, bounded-ASCII
+name-parity, structured-ASCII, TimeZulu current-name and inherited IPv6
+inventory/impact controls pass. Task065 production is semantically identical
+to main apart from compositional Unicode additions, but its compact pinned gate
+was also run once here: **both Authorization model/API/body strict GNAT
+verticals pass**, both former-gap campaigns pass, and
+`TASK065 PINNED GATES: PASSED` is present (687.97 seconds for the exact test).
+Fresh hosted certification remains mandatory; the final certified head and
+checkout will be recorded in the existing PR without mutating that head.
+
 ## Hosted corrective — optional vertical environment (current checkpoint)
 
 The previous feature head was `921ea176d0d91e05941220f96fa86d31ea25db09`,
