@@ -13,14 +13,15 @@ use ams_gra_oms_codegen_core::{
     BoundedAsciiLength, CodegenError, DirectTemporalProfile, EffectiveValueMember, FloatingDomain,
     GeneratedFile, GenerationWorld, InclusiveIntegralDomain, StringProfile, StructuredAsciiFacets,
     StructuredAsciiProfile, StructuredAsciiRepetition, StructuredAsciiSegment, TemporalProfile,
-    TypeEmission, WhitespaceVisiblePolicy, abstract_value_projection_for_ref, ada_model_file_names,
-    ada_model_package, ada_record_field_uses_optional_wrapper, backend_preflight,
-    binary_length_domain, constrains_string, direct_temporal_profile,
-    effective_choice_alternatives, effective_record_fields, emissions_emit_direct_date_time,
-    emissions_emit_direct_duration, field_storage_semantics, float32_literal, float64_literal,
-    floating_domain, generated_choice_alternative_name, generated_enum_variant_name,
-    generated_record_field_name, inclusive_integral_domain, is_temporal_primitive,
-    plan_type_emissions, schema_emits_ada_binary_vectors, schema_emits_bounded_sequence_support,
+    TypeEmission, WhitespaceVisiblePolicy, abstract_value_projection_for_ref,
+    ada_closed_sum_literal_name, ada_kind_companion_name, ada_model_file_names, ada_model_package,
+    ada_record_field_uses_optional_wrapper, backend_preflight, binary_length_domain,
+    constrains_string, direct_temporal_profile, effective_choice_alternatives,
+    effective_record_fields, emissions_emit_direct_date_time, emissions_emit_direct_duration,
+    field_storage_semantics, float32_literal, float64_literal, floating_domain,
+    generated_choice_alternative_name, generated_enum_variant_name, generated_record_field_name,
+    inclusive_integral_domain, is_temporal_primitive, plan_type_emissions,
+    schema_emits_ada_binary_vectors, schema_emits_bounded_sequence_support,
     schema_emits_direct_date_time, schema_emits_direct_duration,
     schema_emits_named_temporal_profile, schema_emits_string_profile_carrier,
     schema_emits_temporal_carrier, schema_emits_unbounded_sequence_support, string_profile,
@@ -278,16 +279,30 @@ fn render_abstract_value(
     projection: &AbstractValueProjection<'_>,
 ) -> Result<(), CodegenError> {
     let name = ada_identifier(&projection.declaration.name.local_name)?;
+    let kind_name =
+        ada_kind_companion_name(projection.declaration).expect("validated Ada owner identifier");
     let variants = projection
         .concrete_descendants
         .iter()
         .map(|descendant| ada_identifier(&descendant.name.local_name))
         .collect::<Result<Vec<_>, _>>()?;
-    writeln!(output, "   type {name}_Kind is\n     (").expect("writing to String cannot fail");
-    for (index, variant) in variants.iter().enumerate() {
+    let literals = projection
+        .concrete_descendants
+        .iter()
+        .map(|descendant| {
+            ada_closed_sum_literal_name(descendant).ok_or_else(|| CodegenError {
+                message: format!(
+                    "invalid Ada closed-sum literal: {}",
+                    descendant.name.local_name
+                ),
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    writeln!(output, "   type {kind_name} is\n     (").expect("writing to String cannot fail");
+    for (index, literal) in literals.iter().enumerate() {
         writeln!(
             output,
-            "      {variant}_Kind{}",
+            "      {literal}{}",
             if index + 1 == variants.len() {
                 ");"
             } else {
@@ -298,14 +313,14 @@ fn render_abstract_value(
     }
     writeln!(
         output,
-        "\n   type {name} (Kind : {name}_Kind := {}_Kind) is record\n      case Kind is",
-        variants[0]
+        "\n   type {name} (Kind : {kind_name} := {}) is record\n      case Kind is",
+        literals[0]
     )
     .expect("writing to String cannot fail");
-    for variant in &variants {
+    for (variant, literal) in variants.iter().zip(&literals) {
         writeln!(
             output,
-            "         when {variant}_Kind =>\n            {variant}_Value : {variant};"
+            "         when {literal} =>\n            {variant}_Value : {variant};"
         )
         .expect("writing to String cannot fail");
     }
@@ -488,17 +503,20 @@ fn render_declaration(
                     render_unbounded_helper(output, private_part, body, &name, &field_name, field)?;
                 } else if ada_record_field_uses_optional_wrapper(field) {
                     let field_name = record_field_name(&field.name)?;
-                    render_optional_helper(output, &name, &field_name, field)?;
+                    render_optional_helper(output, schema, &name, &field_name, field)?;
                 }
             }
             writeln!(output, "   type {name} is record").expect("writing to String cannot fail");
             if fields.is_empty() {
                 output.push_str("      null;\n");
             }
+            let mut preceding_components = Vec::new();
             for field in fields {
                 let field_name = record_field_name(&field.name)?;
                 let field_type = match field.cardinality {
-                    Cardinality::REQUIRED_ONE => ada_field_base(field)?,
+                    Cardinality::REQUIRED_ONE => {
+                        ada_component_type(schema, &field_name, &preceding_components, field)?
+                    }
                     Cardinality::OPTIONAL_ONE
                         if field.type_ref.target
                             == TypeRefTarget::Primitive(PrimitiveKind::String) =>
@@ -523,6 +541,7 @@ fn render_declaration(
                 };
                 writeln!(output, "      {field_name} : {field_type};")
                     .expect("writing to String cannot fail");
+                preceding_components.push(field_name);
             }
             output.push_str("   end record;\n\n");
         }
@@ -532,7 +551,8 @@ fn render_declaration(
                     error(format!("unsupported Ada IR construct: {projection_error}"))
                 },
             )?;
-            let kind_name = format!("{name}_Kind");
+            let kind_name =
+                ada_kind_companion_name(declaration).expect("validated Ada owner identifier");
             for alternative in &alternatives {
                 if let Some((min, max)) = bounded_repeated(alternative.cardinality) {
                     ensure_portable_finite_max(max)?;
@@ -585,14 +605,20 @@ fn render_declaration(
                 choice_alternative_name(&alternatives[0].name)?
             )
             .expect("writing to String cannot fail");
+            let mut preceding_components = vec!["Kind".to_owned()];
             for alternative in alternatives {
                 let alternative_name = choice_alternative_name(&alternative.name)?;
                 writeln!(
                     output,
                     "         when {alternative_name}_Kind =>\n            {alternative_name} : {};",
-                    ada_field_type(&name, alternative)?
+                    if alternative.cardinality == Cardinality::REQUIRED_ONE {
+                        ada_component_type(schema, &alternative_name, &preceding_components, alternative)?
+                    } else {
+                        ada_field_type(&name, alternative)?
+                    }
                 )
                 .expect("writing to String cannot fail");
+                preceding_components.push(alternative_name);
             }
             output.push_str("      end case;\n   end record;\n\n");
         }
@@ -865,11 +891,12 @@ fn validate_repeated_cardinality(field: &ams_gra_oms_ir::FieldDecl) -> Result<()
 /// is the scope where the component is really rendered.
 fn render_optional_helper(
     output: &mut String,
+    schema: &SchemaIr,
     owner: &str,
     field_name: &str,
     field: &ams_gra_oms_ir::FieldDecl,
 ) -> Result<(), CodegenError> {
-    let value_type = ada_field_base(field)?;
+    let value_type = ada_component_type(schema, "Value", &["Is_Present".to_owned()], field)?;
     writeln!(
         output,
         "   type {owner}_{field_name}_Optional (Is_Present : Boolean := False) is record\n\
@@ -1625,6 +1652,46 @@ fn ada_field_base(field: &ams_gra_oms_ir::FieldDecl) -> Result<String, CodegenEr
             reject_any_constraints(&field.constraints, &field.name)?;
             ada_type(&field.type_ref)
         }
+    }
+}
+
+/// Preserve the public component spelling while disambiguating a named subtype
+/// hidden by that component, a preceding component, or the discriminant in
+/// Ada's case-insensitive record scope. Primitive
+/// targets and non-hiding named targets retain their ordinary bytes. Optional
+/// helpers pass their actual internal component (`Value`), not the wire name;
+/// repeated helpers already introduce distinct item subtypes.
+fn ada_component_type(
+    schema: &SchemaIr,
+    component: &str,
+    preceding_components: &[String],
+    field: &ams_gra_oms_ir::FieldDecl,
+) -> Result<String, CodegenError> {
+    let ordinary = ada_field_base(field)?;
+    if matches!(field.type_ref.target, TypeRefTarget::Named(_))
+        && (component.eq_ignore_ascii_case(&ordinary)
+            || preceding_components
+                .iter()
+                .any(|name| name.eq_ignore_ascii_case(&ordinary)))
+    {
+        let package = package_name(schema)?;
+        let root = package.split('.').next().expect("validated model package");
+        // The expanded mark's prefix can itself be hidden (e.g. a type and
+        // component named Test inside Test.Shadow). Standard anchors that
+        // otherwise ambiguous library-unit prefix without affecting ordinary
+        // qualification bytes such as Programs.Oam.CommType.
+        let anchor = if component.eq_ignore_ascii_case(root)
+            || preceding_components
+                .iter()
+                .any(|name| name.eq_ignore_ascii_case(root))
+        {
+            "Standard."
+        } else {
+            ""
+        };
+        Ok(format!("{anchor}{package}.{ordinary}"))
+    } else {
+        Ok(ordinary)
     }
 }
 

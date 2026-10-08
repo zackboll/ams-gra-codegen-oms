@@ -1,4 +1,4 @@
-//! Task 063 integrated-current oracle; both independent ledgers remain frozen.
+//! Integrated-current oracle; the Task 062/063/065 isolated ledgers remain frozen.
 use ams_gra_oms_codegen_core::GenerationWorld;
 
 /// Compose frozen independent campaigns without rewriting either measurement.
@@ -43,7 +43,9 @@ pub fn integrated_coverage(release: &str, world: GenerationWorld, backend: &str)
         },
         "Task 063 isolated per-cell delta"
     );
-    let current = include_str!("fixtures/string/task062-after.tsv");
+    // Task 065's isolated AFTER includes Task 062 and repairs only Ada naming.
+    // Compose Task 063's measured independent capability delta on that ledger.
+    let current = include_str!("fixtures/string/task065-current-coverage.tsv");
     let rows: Vec<_> = current
         .lines()
         .filter(|line| {
@@ -52,7 +54,11 @@ pub fn integrated_coverage(release: &str, world: GenerationWorld, backend: &str)
             ))
         })
         .collect();
-    assert_eq!(rows.len(), 1, "unique Task 062 AFTER coverage cell");
+    assert_eq!(
+        rows.len(),
+        1,
+        "unique historical Task 065 AFTER coverage cell"
+    );
     [
         "declaration_kinds_renderable",
         "declarations_fully_renderable",

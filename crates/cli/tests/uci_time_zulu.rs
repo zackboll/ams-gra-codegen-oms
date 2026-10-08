@@ -92,12 +92,15 @@ fn task061_pinned_ada_full_schema_naming_attribution() {
             .renderable_message_closure_names(BackendLanguage::Cpp)
             .unwrap();
         assert_eq!(rust, cpp);
-        assert_eq!(rust.difference(&ada).count(), 33);
+        // Historical Task061/062 gaps are preserved in their frozen fixtures.
+        // Task065 supersedes the current naming attribution assertion.
+        assert_eq!(rust, ada);
         let unsafe_ada = ams_gra_oms_codegen_core::unsafe_named_declarations(
             &schema,
             BackendLanguage::Ada,
             GenerationWorld::ClosedSchemaSet,
         );
+        assert!(unsafe_ada.is_empty());
         for name in rust.difference(&ada) {
             println!("ADA-GAP\t{version}\t{}", name.local_name);
             let m = schema.messages.iter().find(|m| m.name == *name).unwrap();

@@ -1,0 +1,182 @@
+PREFLIGHT	2.5	ClosedSchemaSet	Ada	Err(Name(Collision { language: Ada, region: TopLevel, generated: "QueryType_Kind", first: "QueryType companion", second: "QueryType" }))
+DIAGNOSTIC	2.5	ClosedSchemaSet	Ada	Ada names "QueryType companion" and "QueryType" both generate "QueryType_Kind" in the generated top-level scope
+UNSAFE	2.5	ClosedSchemaSet	Ada	{QualifiedName { namespace_uri: "https://www.vdl.afrl.af.mil/programs/oam", local_name: "QueryPET" }, QualifiedName { namespace_uri: "https://www.vdl.afrl.af.mil/programs/oam", local_name: "QueryType" }}
+COVERAGE	2.5	ClosedSchemaSet	Ada	BackendCoverage { language: Ada, declarations_total: 5557, declaration_kinds_renderable: 5554, declarations_fully_renderable: 5532, fields_total: 13160, field_type_references_renderable: 13160, field_occurrences_renderable: 13160, messages_total: 722, message_closures_renderable: 641 }
+PREFLIGHT	2.5	ClosedSchemaSet	Rust	Ok(())
+UNSAFE	2.5	ClosedSchemaSet	Rust	{}
+COVERAGE	2.5	ClosedSchemaSet	Rust	BackendCoverage { language: Rust, declarations_total: 5557, declaration_kinds_renderable: 5554, declarations_fully_renderable: 5533, fields_total: 13160, field_type_references_renderable: 13160, field_occurrences_renderable: 13160, messages_total: 722, message_closures_renderable: 674 }
+PREFLIGHT	2.5	ClosedSchemaSet	Cpp	Ok(())
+UNSAFE	2.5	ClosedSchemaSet	Cpp	{}
+COVERAGE	2.5	ClosedSchemaSet	Cpp	BackendCoverage { language: Cpp, declarations_total: 5557, declaration_kinds_renderable: 5554, declarations_fully_renderable: 5533, fields_total: 13160, field_type_references_renderable: 13160, field_occurrences_renderable: 13160, messages_total: 722, message_closures_renderable: 674 }
+ADA-ONLY-UNSAFE	2.5	ClosedSchemaSet	{QualifiedName { namespace_uri: "https://www.vdl.afrl.af.mil/programs/oam", local_name: "QueryPET" }, QualifiedName { namespace_uri: "https://www.vdl.afrl.af.mil/programs/oam", local_name: "QueryType" }}
+GAP-COUNT	2.5	ClosedSchemaSet	33
+GAP	2.5	ClosedSchemaSet	Action	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	Action	578	Ok(())
+GAP	2.5	ClosedSchemaSet	ActionCommand	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	ActionCommand	560	Ok(())
+GAP	2.5	ClosedSchemaSet	ActionPlan	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	ActionPlan	956	Ok(())
+GAP	2.5	ClosedSchemaSet	ActionPlanCommand	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	ActionPlanCommand	952	Ok(())
+GAP	2.5	ClosedSchemaSet	ApprovalPolicy	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	ApprovalPolicy	633	Ok(())
+GAP	2.5	ClosedSchemaSet	Authorization	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	Authorization	230	Ok(())
+GAP	2.5	ClosedSchemaSet	AuthorizationRequest	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	AuthorizationRequest	234	Ok(())
+GAP	2.5	ClosedSchemaSet	CommSupport	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	CommSupport	581	Ok(())
+GAP	2.5	ClosedSchemaSet	CommSupportActivity	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	CommSupportActivity	258	Ok(())
+GAP	2.5	ClosedSchemaSet	CommSupportPlan	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	CommSupportPlan	962	Ok(())
+GAP	2.5	ClosedSchemaSet	CommSupportPlanCommand	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	CommSupportPlanCommand	960	Ok(())
+GAP	2.5	ClosedSchemaSet	Effect	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	Effect	578	Ok(())
+GAP	2.5	ClosedSchemaSet	EffectCommand	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	EffectCommand	560	Ok(())
+GAP	2.5	ClosedSchemaSet	EffectPlan	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	EffectPlan	956	Ok(())
+GAP	2.5	ClosedSchemaSet	EffectPlanCommand	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	EffectPlanCommand	952	Ok(())
+GAP	2.5	ClosedSchemaSet	MissionPlan	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	MissionPlan	994	Ok(())
+GAP	2.5	ClosedSchemaSet	MissionPlanCommand	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	MissionPlanCommand	982	Ok(())
+GAP	2.5	ClosedSchemaSet	PlanningFunction	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	PlanningFunction	623	Ok(())
+GAP	2.5	ClosedSchemaSet	PlanningFunctionSettingsCommand	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	PlanningFunctionSettingsCommand	632	Ok(())
+GAP	2.5	ClosedSchemaSet	PlanningFunctionStatus	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	PlanningFunctionStatus	628	Ok(())
+GAP	2.5	ClosedSchemaSet	RequirementOptions	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	RequirementOptions	949	Ok(())
+GAP	2.5	ClosedSchemaSet	RequirementOptionsCommand	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	RequirementOptionsCommand	943	Ok(())
+GAP	2.5	ClosedSchemaSet	ResponseCommand	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	ResponseCommand	560	Ok(())
+GAP	2.5	ClosedSchemaSet	ResponsePlan	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	ResponsePlan	956	Ok(())
+GAP	2.5	ClosedSchemaSet	ResponsePlanCommand	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	ResponsePlanCommand	952	Ok(())
+GAP	2.5	ClosedSchemaSet	SupportPlan	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	SupportPlan	608	Ok(())
+GAP	2.5	ClosedSchemaSet	SupportPlanRequest	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	SupportPlanRequest	601	Ok(())
+GAP	2.5	ClosedSchemaSet	SupportRequest	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	SupportRequest	592	Ok(())
+GAP	2.5	ClosedSchemaSet	SystemsNeededRequest	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	SystemsNeededRequest	579	Ok(())
+GAP	2.5	ClosedSchemaSet	Task	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	Task	1125	Ok(())
+GAP	2.5	ClosedSchemaSet	TaskCommand	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	TaskCommand	563	Ok(())
+GAP	2.5	ClosedSchemaSet	TaskPlan	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	TaskPlan	956	Ok(())
+GAP	2.5	ClosedSchemaSet	TaskPlanCommand	{"QueryPET"}
+GAP-PROJECTION	2.5	ClosedSchemaSet	TaskPlanCommand	952	Ok(())
+SMALLEST	2.5	ClosedSchemaSet	Some((230, "Authorization"))
+PREFLIGHT	2.5	OpenExtensions	Ada	Ok(())
+UNSAFE	2.5	OpenExtensions	Ada	{}
+COVERAGE	2.5	OpenExtensions	Ada	BackendCoverage { language: Ada, declarations_total: 5557, declaration_kinds_renderable: 5554, declarations_fully_renderable: 5445, fields_total: 13160, field_type_references_renderable: 13160, field_occurrences_renderable: 13160, messages_total: 722, message_closures_renderable: 570 }
+PREFLIGHT	2.5	OpenExtensions	Rust	Ok(())
+UNSAFE	2.5	OpenExtensions	Rust	{}
+COVERAGE	2.5	OpenExtensions	Rust	BackendCoverage { language: Rust, declarations_total: 5557, declaration_kinds_renderable: 5554, declarations_fully_renderable: 5445, fields_total: 13160, field_type_references_renderable: 13160, field_occurrences_renderable: 13160, messages_total: 722, message_closures_renderable: 570 }
+PREFLIGHT	2.5	OpenExtensions	Cpp	Ok(())
+UNSAFE	2.5	OpenExtensions	Cpp	{}
+COVERAGE	2.5	OpenExtensions	Cpp	BackendCoverage { language: Cpp, declarations_total: 5557, declaration_kinds_renderable: 5554, declarations_fully_renderable: 5445, fields_total: 13160, field_type_references_renderable: 13160, field_occurrences_renderable: 13160, messages_total: 722, message_closures_renderable: 570 }
+ADA-ONLY-UNSAFE	2.5	OpenExtensions	{}
+GAP-COUNT	2.5	OpenExtensions	0
+SMALLEST	2.5	OpenExtensions	None
+PREFLIGHT	2.6	ClosedSchemaSet	Ada	Err(Name(Collision { language: Ada, region: TopLevel, generated: "QueryType_Kind", first: "QueryType companion", second: "QueryType" }))
+DIAGNOSTIC	2.6	ClosedSchemaSet	Ada	Ada names "QueryType companion" and "QueryType" both generate "QueryType_Kind" in the generated top-level scope
+UNSAFE	2.6	ClosedSchemaSet	Ada	{QualifiedName { namespace_uri: "https://www.vdl.afrl.af.mil/programs/oam", local_name: "QueryPET" }, QualifiedName { namespace_uri: "https://www.vdl.afrl.af.mil/programs/oam", local_name: "QueryType" }}
+COVERAGE	2.6	ClosedSchemaSet	Ada	BackendCoverage { language: Ada, declarations_total: 5570, declaration_kinds_renderable: 5567, declarations_fully_renderable: 5546, fields_total: 13198, field_type_references_renderable: 13198, field_occurrences_renderable: 13198, messages_total: 725, message_closures_renderable: 646 }
+PREFLIGHT	2.6	ClosedSchemaSet	Rust	Ok(())
+UNSAFE	2.6	ClosedSchemaSet	Rust	{}
+COVERAGE	2.6	ClosedSchemaSet	Rust	BackendCoverage { language: Rust, declarations_total: 5570, declaration_kinds_renderable: 5567, declarations_fully_renderable: 5547, fields_total: 13198, field_type_references_renderable: 13198, field_occurrences_renderable: 13198, messages_total: 725, message_closures_renderable: 679 }
+PREFLIGHT	2.6	ClosedSchemaSet	Cpp	Ok(())
+UNSAFE	2.6	ClosedSchemaSet	Cpp	{}
+COVERAGE	2.6	ClosedSchemaSet	Cpp	BackendCoverage { language: Cpp, declarations_total: 5570, declaration_kinds_renderable: 5567, declarations_fully_renderable: 5547, fields_total: 13198, field_type_references_renderable: 13198, field_occurrences_renderable: 13198, messages_total: 725, message_closures_renderable: 679 }
+ADA-ONLY-UNSAFE	2.6	ClosedSchemaSet	{QualifiedName { namespace_uri: "https://www.vdl.afrl.af.mil/programs/oam", local_name: "QueryPET" }, QualifiedName { namespace_uri: "https://www.vdl.afrl.af.mil/programs/oam", local_name: "QueryType" }}
+GAP-COUNT	2.6	ClosedSchemaSet	33
+GAP	2.6	ClosedSchemaSet	Action	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	Action	578	Ok(())
+GAP	2.6	ClosedSchemaSet	ActionCommand	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	ActionCommand	561	Ok(())
+GAP	2.6	ClosedSchemaSet	ActionPlan	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	ActionPlan	966	Ok(())
+GAP	2.6	ClosedSchemaSet	ActionPlanCommand	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	ActionPlanCommand	962	Ok(())
+GAP	2.6	ClosedSchemaSet	ApprovalPolicy	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	ApprovalPolicy	634	Ok(())
+GAP	2.6	ClosedSchemaSet	Authorization	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	Authorization	231	Ok(())
+GAP	2.6	ClosedSchemaSet	AuthorizationRequest	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	AuthorizationRequest	235	Ok(())
+GAP	2.6	ClosedSchemaSet	CommSupport	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	CommSupport	581	Ok(())
+GAP	2.6	ClosedSchemaSet	CommSupportActivity	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	CommSupportActivity	258	Ok(())
+GAP	2.6	ClosedSchemaSet	CommSupportPlan	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	CommSupportPlan	972	Ok(())
+GAP	2.6	ClosedSchemaSet	CommSupportPlanCommand	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	CommSupportPlanCommand	970	Ok(())
+GAP	2.6	ClosedSchemaSet	Effect	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	Effect	578	Ok(())
+GAP	2.6	ClosedSchemaSet	EffectCommand	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	EffectCommand	561	Ok(())
+GAP	2.6	ClosedSchemaSet	EffectPlan	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	EffectPlan	966	Ok(())
+GAP	2.6	ClosedSchemaSet	EffectPlanCommand	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	EffectPlanCommand	962	Ok(())
+GAP	2.6	ClosedSchemaSet	MissionPlan	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	MissionPlan	1004	Ok(())
+GAP	2.6	ClosedSchemaSet	MissionPlanCommand	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	MissionPlanCommand	992	Ok(())
+GAP	2.6	ClosedSchemaSet	PlanningFunction	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	PlanningFunction	623	Ok(())
+GAP	2.6	ClosedSchemaSet	PlanningFunctionSettingsCommand	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	PlanningFunctionSettingsCommand	632	Ok(())
+GAP	2.6	ClosedSchemaSet	PlanningFunctionStatus	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	PlanningFunctionStatus	628	Ok(())
+GAP	2.6	ClosedSchemaSet	RequirementOptions	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	RequirementOptions	960	Ok(())
+GAP	2.6	ClosedSchemaSet	RequirementOptionsCommand	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	RequirementOptionsCommand	953	Ok(())
+GAP	2.6	ClosedSchemaSet	ResponseCommand	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	ResponseCommand	561	Ok(())
+GAP	2.6	ClosedSchemaSet	ResponsePlan	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	ResponsePlan	966	Ok(())
+GAP	2.6	ClosedSchemaSet	ResponsePlanCommand	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	ResponsePlanCommand	962	Ok(())
+GAP	2.6	ClosedSchemaSet	SupportPlan	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	SupportPlan	608	Ok(())
+GAP	2.6	ClosedSchemaSet	SupportPlanRequest	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	SupportPlanRequest	601	Ok(())
+GAP	2.6	ClosedSchemaSet	SupportRequest	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	SupportRequest	592	Ok(())
+GAP	2.6	ClosedSchemaSet	SystemsNeededRequest	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	SystemsNeededRequest	579	Ok(())
+GAP	2.6	ClosedSchemaSet	Task	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	Task	1126	Ok(())
+GAP	2.6	ClosedSchemaSet	TaskCommand	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	TaskCommand	555	Ok(())
+GAP	2.6	ClosedSchemaSet	TaskPlan	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	TaskPlan	966	Ok(())
+GAP	2.6	ClosedSchemaSet	TaskPlanCommand	{"QueryPET"}
+GAP-PROJECTION	2.6	ClosedSchemaSet	TaskPlanCommand	962	Ok(())
+SMALLEST	2.6	ClosedSchemaSet	Some((231, "Authorization"))
+PREFLIGHT	2.6	OpenExtensions	Ada	Ok(())
+UNSAFE	2.6	OpenExtensions	Ada	{}
+COVERAGE	2.6	OpenExtensions	Ada	BackendCoverage { language: Ada, declarations_total: 5570, declaration_kinds_renderable: 5567, declarations_fully_renderable: 5459, fields_total: 13198, field_type_references_renderable: 13198, field_occurrences_renderable: 13198, messages_total: 725, message_closures_renderable: 574 }
+PREFLIGHT	2.6	OpenExtensions	Rust	Ok(())
+UNSAFE	2.6	OpenExtensions	Rust	{}
+COVERAGE	2.6	OpenExtensions	Rust	BackendCoverage { language: Rust, declarations_total: 5570, declaration_kinds_renderable: 5567, declarations_fully_renderable: 5459, fields_total: 13198, field_type_references_renderable: 13198, field_occurrences_renderable: 13198, messages_total: 725, message_closures_renderable: 574 }
+PREFLIGHT	2.6	OpenExtensions	Cpp	Ok(())
+UNSAFE	2.6	OpenExtensions	Cpp	{}
+COVERAGE	2.6	OpenExtensions	Cpp	BackendCoverage { language: Cpp, declarations_total: 5570, declaration_kinds_renderable: 5567, declarations_fully_renderable: 5459, fields_total: 13198, field_type_references_renderable: 13198, field_occurrences_renderable: 13198, messages_total: 725, message_closures_renderable: 574 }
+ADA-ONLY-UNSAFE	2.6	OpenExtensions	{}
+GAP-COUNT	2.6	OpenExtensions	0
+SMALLEST	2.6	OpenExtensions	None
