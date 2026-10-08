@@ -109,16 +109,9 @@ fn task060_real_projected_message_impact_and_naming() {
             .unwrap();
         for language in [BackendLanguage::Rust, BackendLanguage::Cpp] {
             let other = coverage.renderable_message_closure_names(language).unwrap();
-            assert_eq!(
-                other
-                    .difference(&ada)
-                    .map(|n| n.local_name.as_str())
-                    .collect::<BTreeSet<_>>(),
-                include_str!("../../../tests/fixtures/string/task062-ada-full-schema-gap.tsv")
-                    .lines()
-                    .filter_map(|line| line.strip_prefix(&format!("{version}\t")))
-                    .collect()
-            );
+            // Task065 repairs the naming context; Task062's historical gap
+            // fixture remains immutable and is consumed by Task065 evidence.
+            assert_eq!(other, ada, "Task065 current full-schema name parity");
         }
         let mut ready = 0;
         let mut topology = 0;

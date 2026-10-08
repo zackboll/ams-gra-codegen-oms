@@ -14,6 +14,7 @@ run_exact() {
   if [[ -n "$marker" ]]; then grep -Fq "$marker" <<<"$output"; fi
 }
 export AMS_GRA_REQUIRE_GNAT=1
+run_exact ams-gra-codegen-oms unicode_string_compilers task066_unicode_and_ada_semantic_names_compose 'TASK066 ADA NAMING UNICODE COMPOSITION: PASSED'
 run_exact ams-gra-oms-codegen-core unicode_string task066_exact_classifier_and_fail_closed_neighbors ''
 run_exact ams-gra-oms-codegen-core unicode_string task066_support_names_and_renamed_profile_are_preflight_consistent ''
 run_exact ams-gra-oms-codegen-core unicode_string task066_authority_membership_and_independent_profile_corpus 'TASK066 CORE CORPUS: PASSED'

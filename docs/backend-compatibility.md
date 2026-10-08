@@ -1,5 +1,30 @@
 # Backend compatibility
 
+## Current update — Task 065 semantic Ada artifact names
+
+The concrete-Choice value literal in an abstract closed sum now uses
+`{Descendant}_Choice_Value_Kind`, avoiding its intrinsic conflict with the
+unchanged `{Descendant}_Kind` Choice companion type. Preflight and rendering
+share the naming helpers; no Query/UCI special case or occupied-name retry.
+Both pinned releases are now whole-schema Ada **name-safe**, and the measured
+historical isolated closed peer-minus-Ada gap is 33 -> 0 (Ada 674/679,
+equal to Rust/C++ on immutable base `52e22b67...`). Task063 is now composed
+through a normal main merge; integrated-current measurements are separate.
+Measured current closed Ada/Rust/C++: **676/676/676** (2.5), **679/679/679**
+(2.6); open **571/571/571**, **574/574/574**. Both peer-minus-Ada gaps are zero.
+The pre-existing component/type hiding compiler defect is repaired by
+conditionally qualifying the named subtype, preserving public schema-member
+names and Task054 remapping. Strict Record/Choice/inheritance/cardinality
+synthetics and both Authorization model/API/body probes pass locally.
+Unrelated successful fixture outputs are byte-identical. Full schema rendering
+still has unrelated abstract-value/topology blockers; Task066 now supports the
+three previously deferred Unicode profiles. Projected Authorization
+was already name-safe before this repair; this is not a projected readiness
+gain. See [Task065 evidence](task-065-ada-companion-naming.md). Historical
+Task058/060/061/062/063 measurements below are not rewritten. Task065's merged
+certification remains historical; Task066's new-base certification is recorded
+in its own evidence document and PR checkpoint.
+
 ## Current update — Task 066 exact Unicode 3.1 profiles
 
 The authorized repository policy pins XML Schema Nd membership to Unicode

@@ -61,6 +61,10 @@ jobs:
         run: |
           python3 scripts/test-task062-ci-wrappers.py
           bash scripts/check-task062-fast.sh
+      - name: Ada semantic artifact naming gates (Task 065)
+        env:
+          AMS_GRA_REQUIRE_GNAT: "1"
+        run: bash scripts/check-task065-fast.sh
       - name: Exact Unicode 3.1 profile gates (Task 066)
         run: |
           python3 scripts/test-task066-ci-wrappers.py

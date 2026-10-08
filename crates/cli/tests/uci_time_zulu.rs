@@ -92,46 +92,28 @@ fn task061_pinned_ada_full_schema_naming_attribution() {
             .renderable_message_closure_names(BackendLanguage::Cpp)
             .unwrap();
         assert_eq!(rust, cpp);
-        assert_eq!(rust.difference(&ada).count(), 33);
+        // Historical Task061/062 gaps are preserved in their frozen fixtures.
+        // Task065 supersedes the current naming attribution assertion.
+        assert_eq!(rust, ada);
         let unsafe_ada = ams_gra_oms_codegen_core::unsafe_named_declarations(
             &schema,
             BackendLanguage::Ada,
             GenerationWorld::ClosedSchemaSet,
         );
-        for name in rust.difference(&ada) {
-            println!("ADA-GAP\t{version}\t{}", name.local_name);
-            let m = schema.messages.iter().find(|m| m.name == *name).unwrap();
-            let TypeRefTarget::Named(payload) = &m.payload_type.target else {
-                panic!()
-            };
-            let closure = analysis.dependency_closure(payload).unwrap();
-            assert!(
-                closure.iter().any(|d| unsafe_ada.contains(&d.name)),
-                "{}",
-                name.local_name
-            );
-            if name.local_name == "Task" {
-                let unsafe_names: BTreeSet<_> = closure
-                    .iter()
-                    .filter(|d| unsafe_ada.contains(&d.name))
-                    .map(|d| d.name.local_name.as_str())
-                    .collect();
-                println!("TASK062 TASK ADA UNSAFE\t{version}\t{unsafe_names:?}");
-                let plan = resolve_service_plan(&contract("Task", version), &schema).unwrap();
-                let r = analyze_service_readiness(
-                    &plan,
-                    &schema,
-                    BackendLanguage::Ada,
-                    GenerationWorld::ClosedSchemaSet,
-                )
-                .unwrap();
-                assert!(r.backend_blocker.is_none());
-                // Task066 supersedes the generated-support blocker, not the
-                // unchanged whole-schema Query naming attribution above.
-                assert!(r.is_ready());
-                assert!(r.unsupported_generated_support_types.is_empty());
-            }
-        }
+        assert!(unsafe_ada.is_empty());
+        // Task065 repairs names; Task066 independently removes Unicode support
+        // blockers. Keep this service witness live, not inside an empty gap loop.
+        let plan = resolve_service_plan(&contract("Task", version), &schema).unwrap();
+        let r = analyze_service_readiness(
+            &plan,
+            &schema,
+            BackendLanguage::Ada,
+            GenerationWorld::ClosedSchemaSet,
+        )
+        .unwrap();
+        assert!(r.backend_blocker.is_none());
+        assert!(r.is_ready());
+        assert!(r.unsupported_generated_support_types.is_empty());
         println!("UCI {version} TASK061 ADA FULL-SCHEMA NAMING: PASSED");
     }
 }

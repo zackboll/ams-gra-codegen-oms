@@ -134,7 +134,7 @@ fn task066_pinned_unicode_authority_inventory() {
                     analysis.backend_coverage(language).unwrap()
                 );
                 assert!(
-                    include_str!("../../../tests/fixtures/string/task066-integrated-current.tsv")
+                    include_str!("../../../tests/fixtures/string/task066-post-task065-current.tsv")
                         .lines()
                         .any(|l| l == row),
                     "{row}"

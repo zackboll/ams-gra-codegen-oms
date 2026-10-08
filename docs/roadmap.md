@@ -1,5 +1,20 @@
 # Roadmap
 
+Task065 implements **generic semantic Ada artifact naming** for a concrete
+Choice's literal in an abstract closed sum, without renaming established
+companion types or unrelated successful outputs. Both pinned full-schema
+Ada naming preflights pass; historical isolated closed coverage equals Rust/C++
+(674/679). Current integration includes Task063 via a normal main merge.
+Measured integrated closed totals are 676/679 on every backend, with zero
+peer-minus-Ada gap; open totals are 571/574.
+The separately authorized pre-existing component/type hiding defect uses
+conditional named-subtype qualification without public field renaming; strict
+synthetic and Authorization probes pass locally. Final delivery gates remain
+explicit and are not implied by those focused results.
+Three Unicode profiles and other semantic/topology blockers remain deferred.
+See [Task065 evidence](task-065-ada-companion-naming.md) for immutable BEFORE,
+full versus projected distinctions and explicit delivery-gate status.
+
 Task066 resumes under the authorized **Unicode 3.1.0 Nd baseline** and supports
 the three exact formerly deferred String profiles across Ada/Rust/C++. UTF-8
 scalar length, checked lifecycle and JSON/mock-OWP lexical preservation are

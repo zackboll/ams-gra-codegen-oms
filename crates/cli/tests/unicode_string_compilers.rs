@@ -15,6 +15,92 @@ fn run(command: &mut Command) {
 }
 
 #[test]
+fn task066_unicode_and_ada_semantic_names_compose() {
+    use ams_gra_oms_codegen_core::{BackendLanguage, backend_preflight};
+    use ams_gra_oms_ir::{QualifiedName, TypeKind, TypeRef};
+    let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut schema =
+        load_schema_set(&repo.join("tests/fixtures/service-generate/companion-collision.xsd"))
+            .unwrap();
+    let unicode =
+        load_schema_set(&repo.join("tests/fixtures/service-generate/codec-unicode31.xsd")).unwrap();
+    let mut day = unicode
+        .types
+        .iter()
+        .find(|d| d.name.local_name == "DayValue")
+        .unwrap()
+        .clone();
+    day.name = QualifiedName::new("urn:companion", "DayValue");
+    let holder = schema
+        .types
+        .iter_mut()
+        .find(|d| d.name.local_name == "Holder")
+        .unwrap();
+    let TypeKind::Record { fields } = &mut holder.kind else {
+        panic!("record")
+    };
+    let mut field = fields[0].clone();
+    // The public component hides its Unicode subtype: Task065 must qualify it.
+    field.name = "DayValue".into();
+    field.type_ref = TypeRef::named(day.name.clone());
+    fields.push(field);
+    schema.types.push(day);
+    assert!(
+        backend_preflight(
+            &schema,
+            BackendLanguage::Ada,
+            GenerationWorld::ClosedSchemaSet
+        )
+        .is_ok()
+    );
+    let source =
+        ams_gra_oms_backend_ada::generate(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
+    let body = ams_gra_oms_backend_ada::generate_body(&schema, GenerationWorld::ClosedSchemaSet)
+        .unwrap()
+        .unwrap();
+    assert!(source.contains("Dispatch_Choice_Value_Kind"));
+    assert!(source.contains("type Dispatch_Kind is"));
+    assert!(source.contains("DayValue : Urn.Companion.DayValue;"));
+    assert_eq!(body.matches("function Unicode31_String_Valid").count(), 1);
+    if Command::new("gnatmake").arg("--version").output().is_ok() {
+        let scratch = std::env::temp_dir().join(format!("task066-naming-{}", std::process::id()));
+        std::fs::create_dir_all(&scratch).unwrap();
+        std::fs::write(scratch.join("urn.ads"), "package Urn is end Urn;\n").unwrap();
+        std::fs::write(scratch.join("urn-companion.ads"), source).unwrap();
+        std::fs::write(scratch.join("urn-companion.adb"), body).unwrap();
+        run(Command::new("gnatmake").current_dir(&scratch).args([
+            "-c",
+            "-gnat2022",
+            "-gnatwe",
+            "-gnato",
+            "urn-companion.adb",
+        ]));
+    } else {
+        assert!(
+            std::env::var_os("AMS_GRA_REQUIRE_GNAT").is_none(),
+            "GNAT required"
+        );
+    }
+    let mut occupied = schema
+        .types
+        .iter()
+        .find(|d| d.name.local_name == "Holder")
+        .unwrap()
+        .clone();
+    occupied.name.local_name = "dispatch_choice_value_kind".into();
+    schema.types.push(occupied);
+    assert!(
+        backend_preflight(
+            &schema,
+            BackendLanguage::Ada,
+            GenerationWorld::ClosedSchemaSet
+        )
+        .is_err()
+    );
+    println!("TASK066 ADA NAMING UNICODE COMPOSITION: PASSED");
+}
+
+#[test]
 fn task066_production_compiler_corpus_lifecycle_and_planted_failure() {
     let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
     let schema =

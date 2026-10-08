@@ -380,6 +380,7 @@ fn task058_closed_schema_ada_gap_evidence() {
             .renderable_message_closure_names(BackendLanguage::Cpp)
             .unwrap();
         assert_eq!(rust, cpp);
+        assert_eq!(ada, rust, "Task065 current full-schema naming parity");
         assert!(ada.is_subset(&rust), "{version}");
         let expected = [
             "Authorization",
@@ -393,23 +394,14 @@ fn task058_closed_schema_ada_gap_evidence() {
         // Task058 owns these naming-context witnesses, not moving whole-schema
         // totals or the entire gap. Later capability tests own exact current
         // coverage and naming sets; historical measurements remain unchanged.
-        for name in expected {
-            assert!(difference.contains(&name), "{version} {name}");
-        }
+        assert!(difference.is_empty(), "{version}");
         let ada_only: Vec<_> = ada_unsafe
             .difference(&rust_unsafe)
             .filter(|n| !cpp_unsafe.contains(*n))
             .map(|n| n.local_name.as_str())
             .collect();
-        assert_eq!(ada_only, ["QueryPET", "QueryType"]);
-        let error = backend_preflight(&schema, BackendLanguage::Ada, world)
-            .expect_err("full-schema Ada name conflict")
-            .to_string();
-        assert_eq!(
-            error,
-            "Ada names \"QueryType companion\" and \"QueryType\" both generate \
-             \"QueryType_Kind\" in the generated top-level scope"
-        );
+        assert!(ada_only.is_empty());
+        assert!(backend_preflight(&schema, BackendLanguage::Ada, world).is_ok());
         assert!(backend_preflight(&schema, BackendLanguage::Rust, world).is_ok());
         assert!(backend_preflight(&schema, BackendLanguage::Cpp, world).is_ok());
         for name in expected {
@@ -436,7 +428,7 @@ fn task058_closed_schema_ada_gap_evidence() {
                 .filter(|d| is_member(d))
                 .map(|d| d.name.local_name.as_str())
                 .collect();
-            assert_eq!(blockers, ["QueryPET"], "{version} {name}");
+            assert!(blockers.is_empty(), "{version} {name}");
             assert_eq!(
                 members,
                 [
