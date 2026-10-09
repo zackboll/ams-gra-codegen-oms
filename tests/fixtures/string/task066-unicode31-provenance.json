@@ -1,0 +1,14 @@
+{
+  "policy": "XML Schema 1.0 Nd compatibility baseline: Unicode 3.1.0",
+  "file": "UnicodeData-3.1.0.txt",
+  "url": "https://www.unicode.org/Public/3.1-Update/UnicodeData-3.1.0.txt",
+  "sha256": "8e57884da0da3a66782b8a6332a601fccbcae9ed0060e12501aca02fa56ffecd",
+  "category": "General_Category=Nd (third semicolon-delimited field)",
+  "derivation": "select Nd rows, sort code points, merge adjacent points; no category substitutions",
+  "code_points": 248,
+  "ranges": 21,
+  "authority_check": "python3 scripts/verify-task066-unicode-authority.py /path/to/UnicodeData-3.1.0.txt",
+  "build_network_required": false,
+  "authority_storage": "/tmp/task066/evidence/UnicodeData-3.1.0.txt",
+  "license_reference": "https://www.unicode.org/copyright.html"
+}

@@ -19,7 +19,12 @@ mod service_readiness;
 mod string_profile;
 mod structure;
 mod temporal;
+mod unicode_string;
 mod world;
+pub use unicode_string::{
+    UNICODE31_ND, UnicodeStringProfile, UnicodeStringToken, schema_emits_unicode_string,
+    unicode31_decimal_digit,
+};
 
 pub use abstract_value::{
     AbstractValueInhabitance, AbstractValueOccurrenceRenderability, AbstractValueProjection,

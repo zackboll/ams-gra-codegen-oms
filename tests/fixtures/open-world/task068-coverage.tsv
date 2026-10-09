@@ -1,0 +1,7 @@
+release	language	declarations_total	kinds_renderable	fully_renderable	fields_total	field_refs_renderable	field_occurrences_renderable	messages_total	closures_renderable
+2.5	Ada	5557	5554	5446	13160	13160	13160	722	571
+2.5	Rust	5557	5554	5446	13160	13160	13160	722	571
+2.5	Cpp	5557	5554	5446	13160	13160	13160	722	571
+2.6	Ada	5570	5567	5459	13198	13198	13198	725	574
+2.6	Rust	5570	5567	5459	13198	13198	13198	725	574
+2.6	Cpp	5570	5567	5459	13198	13198	13198	725	574

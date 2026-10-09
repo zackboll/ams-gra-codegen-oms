@@ -60,7 +60,7 @@ fn task059_real_uci_inventory_and_coverage() {
             })
             .collect();
         assert_eq!(matched.len(), 27);
-        assert_eq!(excluded.len(), 3);
+        assert!(excluded.is_empty());
         for d in &matched {
             let c = &d.constraints;
             assert!(c.lexical.white_space.is_none());
@@ -80,7 +80,9 @@ fn task059_real_uci_inventory_and_coverage() {
             "NITF_DateAndTimeType",
             "NITF_MSTGTA_TargetLocationType",
         ] {
-            assert!(names.contains(name));
+            // Still not in the structured-ASCII family; Task066 now admits
+            // these via its separate Unicode classifier.
+            assert!(!names.contains(name));
         }
         for world in [
             GenerationWorld::ClosedSchemaSet,

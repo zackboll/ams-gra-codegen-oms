@@ -150,7 +150,16 @@ fn all_frozen_release_rows_match_the_name_free_core_boundary() {
                 Ok(Some(ams_gra_oms_codegen_core::StringProfile::Ipv6Address))
             );
         } else {
-            assert!(classified.is_err(), "deferred {}", cells[1]);
+            // Task060's owned invariant is rejection from alternating ASCII,
+            // not permanent rejection by all future exact String families.
+            assert!(
+                matches!(
+                    classified,
+                    Ok(Some(ams_gra_oms_codegen_core::StringProfile::Unicode(_)))
+                ),
+                "Task066 supersedes deferred {}",
+                cells[1]
+            );
         }
         if expected {
             admitted += 1;

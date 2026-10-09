@@ -1,4 +1,4 @@
-//! Integrated-current oracle; the Task 062/063/065 isolated ledgers remain frozen.
+//! Post-Task065 integrated oracle; all independent historical ledgers stay frozen.
 use ams_gra_oms_codegen_core::GenerationWorld;
 
 /// Compose frozen independent campaigns without rewriting either measurement.
@@ -78,7 +78,32 @@ pub fn integrated_coverage(release: &str, world: GenerationWorld, backend: &str)
             .unwrap()
             .parse::<usize>()
             .unwrap();
-        value + gain
+        // Task066 adds three String kinds/full declarations, no field or
+        // full-schema closure delta. Confirm against the separately measured ledger.
+        let unicode_gain = usize::from(matches!(
+            *metric,
+            "declaration_kinds_renderable" | "declarations_fully_renderable"
+        )) * 3;
+        let composed = value + gain + unicode_gain;
+        let measured = include_str!("fixtures/string/task066-post-task065-current.tsv")
+            .lines()
+            .find(|line| {
+                line.starts_with(&format!(
+                    "COVERAGE\t{release}\t{current_world_key}\t{backend}\t"
+                ))
+            })
+            .expect("measured integrated-current cell");
+        let measured_value: usize = measured
+            .split_once(&format!("{metric}: "))
+            .unwrap()
+            .1
+            .split([',', ' '])
+            .next()
+            .unwrap()
+            .parse()
+            .unwrap();
+        assert_eq!(composed, measured_value, "composed current {metric}");
+        composed
     })
     .collect()
 }

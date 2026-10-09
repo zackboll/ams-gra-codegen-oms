@@ -2,6 +2,7 @@
 
 mod ipv6_address;
 mod service_api;
+mod unicode_string;
 
 pub use service_api::{SERVICE_API_FILE, generate_service_api};
 
@@ -251,6 +252,9 @@ pub fn generate_body(
     }
     if emits_direct_duration {
         body.push_str(&ADA_DURATION_BODY.replace("{name}", "XML_Schema_Duration"));
+    }
+    if ams_gra_oms_codegen_core::schema_emits_unicode_string(schema) {
+        body.push_str(&unicode_string::support());
     }
     for emission in emissions {
         if let TypeEmission::Declaration(declaration) = emission {
@@ -702,7 +706,8 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
                 | Ok(Some(StringProfile::BoundedAscii { .. }))
                 | Ok(Some(StringProfile::StructuredAscii(_)))
                 | Ok(Some(StringProfile::AlternatingAscii(_)))
-                | Ok(Some(StringProfile::Ipv6Address)) => {}
+                | Ok(Some(StringProfile::Ipv6Address))
+                | Ok(Some(StringProfile::Unicode(_))) => {}
                 Ok(None) => unreachable!("constrains_string gates this branch"),
                 Err(reason) => {
                     return unsupported(format!("{reason} on {}", declaration.name.local_name));
@@ -2019,6 +2024,11 @@ fn render_string_profile_declaration(
             "A validated exact pinned IPv6 lexical string.",
             "pinned IPv6 expression and both length facets (2 .. 45)".to_owned(),
         ),
+        Ok(Some(profile @ StringProfile::Unicode(_))) => (
+            profile,
+            "A validated UTF-8 Unicode 3.1 profile string.",
+            "exact authored alternatives, Nd 3.1 membership and scalar length".to_owned(),
+        ),
         Ok(None) => return unsupported(format!("unconstrained String on {name}")),
         Err(reason) => return unsupported(format!("{reason} on {name}")),
     };
@@ -2123,6 +2133,7 @@ fn render_string_profile_declaration(
             render_ada_alternating_ascii_body(name, profile)
         }
         StringProfile::Ipv6Address => ipv6_address::render(name),
+        StringProfile::Unicode(profile) => unicode_string::render(name, profile),
     };
     body.push_str(&rendered);
     Ok(())

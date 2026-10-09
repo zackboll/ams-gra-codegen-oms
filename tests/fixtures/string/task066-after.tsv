@@ -1,0 +1,98 @@
+COVERAGE	2.5	ClosedSchemaSet	Ada	BackendCoverage { language: Ada, declarations_total: 5557, declaration_kinds_renderable: 5557, declarations_fully_renderable: 5535, fields_total: 13160, field_type_references_renderable: 13160, field_occurrences_renderable: 13160, messages_total: 722, message_closures_renderable: 641 }
+COVERAGE	2.5	ClosedSchemaSet	Rust	BackendCoverage { language: Rust, declarations_total: 5557, declaration_kinds_renderable: 5557, declarations_fully_renderable: 5536, fields_total: 13160, field_type_references_renderable: 13160, field_occurrences_renderable: 13160, messages_total: 722, message_closures_renderable: 674 }
+COVERAGE	2.5	ClosedSchemaSet	Cpp	BackendCoverage { language: Cpp, declarations_total: 5557, declaration_kinds_renderable: 5557, declarations_fully_renderable: 5536, fields_total: 13160, field_type_references_renderable: 13160, field_occurrences_renderable: 13160, messages_total: 722, message_closures_renderable: 674 }
+SERVICE	2.5	ClosedSchemaSet	Ada	AO_CapabilityStatus	ready=true	selected=64	support=68	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Rust	AO_CapabilityStatus	ready=true	selected=64	support=68	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Cpp	AO_CapabilityStatus	ready=true	selected=64	support=68	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Ada	AO_SettingsCommand	ready=true	selected=64	support=68	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Rust	AO_SettingsCommand	ready=true	selected=64	support=68	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Cpp	AO_SettingsCommand	ready=true	selected=64	support=68	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Ada	PO_Activity	ready=true	selected=439	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Rust	PO_Activity	ready=true	selected=439	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Cpp	PO_Activity	ready=true	selected=439	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Ada	PO_Capability	ready=true	selected=222	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Rust	PO_Capability	ready=true	selected=222	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Cpp	PO_Capability	ready=true	selected=222	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Ada	PO_CapabilityStatus	ready=true	selected=239	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Rust	PO_CapabilityStatus	ready=true	selected=239	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Cpp	PO_CapabilityStatus	ready=true	selected=239	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Ada	PO_Command	ready=true	selected=430	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Rust	PO_Command	ready=true	selected=430	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Cpp	PO_Command	ready=true	selected=430	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Ada	PO_SettingsCommand	ready=true	selected=241	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Rust	PO_SettingsCommand	ready=true	selected=241	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Cpp	PO_SettingsCommand	ready=true	selected=241	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Ada	SAR_CapabilityStatus	ready=true	selected=105	support=67	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Rust	SAR_CapabilityStatus	ready=true	selected=105	support=67	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Cpp	SAR_CapabilityStatus	ready=true	selected=105	support=67	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Ada	SAR_Command	ready=true	selected=345	support=67	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Rust	SAR_Command	ready=true	selected=345	support=67	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Cpp	SAR_Command	ready=true	selected=345	support=67	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Ada	SAR_SettingsCommand	ready=true	selected=65	support=67	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Rust	SAR_SettingsCommand	ready=true	selected=65	support=67	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Cpp	SAR_SettingsCommand	ready=true	selected=65	support=67	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Ada	Task	ready=true	selected=1044	support=81	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Rust	Task	ready=true	selected=1044	support=81	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.5	ClosedSchemaSet	Cpp	Task	ready=true	selected=1044	support=81	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+REACH	2.5	ClosedSchemaSet	NITF_DateAndTimeType	selected=0	{}	support=11	{"AO_CapabilityStatus", "AO_SettingsCommand", "PO_Activity", "PO_Capability", "PO_CapabilityStatus", "PO_Command", "PO_SettingsCommand", "SAR_CapabilityStatus", "SAR_Command", "SAR_SettingsCommand", "Task"}
+REACH	2.5	ClosedSchemaSet	NITF_DateType	selected=0	{}	support=11	{"AO_CapabilityStatus", "AO_SettingsCommand", "PO_Activity", "PO_Capability", "PO_CapabilityStatus", "PO_Command", "PO_SettingsCommand", "SAR_CapabilityStatus", "SAR_Command", "SAR_SettingsCommand", "Task"}
+REACH	2.5	ClosedSchemaSet	NITF_MSTGTA_TargetLocationType	selected=0	{}	support=11	{"AO_CapabilityStatus", "AO_SettingsCommand", "PO_Activity", "PO_Capability", "PO_CapabilityStatus", "PO_Command", "PO_SettingsCommand", "SAR_CapabilityStatus", "SAR_Command", "SAR_SettingsCommand", "Task"}
+NEW-READY	2.5	ClosedSchemaSet	[(132, "AO_CapabilityStatus", Ada), (132, "AO_CapabilityStatus", Rust), (132, "AO_CapabilityStatus", Cpp), (132, "AO_SettingsCommand", Ada), (132, "AO_SettingsCommand", Rust), (132, "AO_SettingsCommand", Cpp), (132, "SAR_SettingsCommand", Ada), (132, "SAR_SettingsCommand", Rust), (132, "SAR_SettingsCommand", Cpp), (172, "SAR_CapabilityStatus", Ada), (172, "SAR_CapabilityStatus", Rust), (172, "SAR_CapabilityStatus", Cpp), (285, "PO_Capability", Ada), (285, "PO_Capability", Rust), (285, "PO_Capability", Cpp), (302, "PO_CapabilityStatus", Ada), (302, "PO_CapabilityStatus", Rust), (302, "PO_CapabilityStatus", Cpp), (304, "PO_SettingsCommand", Ada), (304, "PO_SettingsCommand", Rust), (304, "PO_SettingsCommand", Cpp), (412, "SAR_Command", Ada), (412, "SAR_Command", Rust), (412, "SAR_Command", Cpp), (493, "PO_Command", Ada), (493, "PO_Command", Rust), (493, "PO_Command", Cpp), (502, "PO_Activity", Ada), (502, "PO_Activity", Rust), (502, "PO_Activity", Cpp), (1125, "Task", Ada), (1125, "Task", Rust), (1125, "Task", Cpp)]
+SMALLEST	2.5	ClosedSchemaSet	Some((132, "AO_CapabilityStatus", Ada))
+COVERAGE	2.5	OpenExtensions	Ada	BackendCoverage { language: Ada, declarations_total: 5557, declaration_kinds_renderable: 5557, declarations_fully_renderable: 5448, fields_total: 13160, field_type_references_renderable: 13160, field_occurrences_renderable: 13160, messages_total: 722, message_closures_renderable: 570 }
+COVERAGE	2.5	OpenExtensions	Rust	BackendCoverage { language: Rust, declarations_total: 5557, declaration_kinds_renderable: 5557, declarations_fully_renderable: 5448, fields_total: 13160, field_type_references_renderable: 13160, field_occurrences_renderable: 13160, messages_total: 722, message_closures_renderable: 570 }
+COVERAGE	2.5	OpenExtensions	Cpp	BackendCoverage { language: Cpp, declarations_total: 5557, declaration_kinds_renderable: 5557, declarations_fully_renderable: 5448, fields_total: 13160, field_type_references_renderable: 13160, field_occurrences_renderable: 13160, messages_total: 722, message_closures_renderable: 570 }
+REACH	2.5	OpenExtensions	NITF_DateAndTimeType	selected=0	{}	support=0	{}
+REACH	2.5	OpenExtensions	NITF_DateType	selected=0	{}	support=0	{}
+REACH	2.5	OpenExtensions	NITF_MSTGTA_TargetLocationType	selected=0	{}	support=0	{}
+NEW-READY	2.5	OpenExtensions	[]
+SMALLEST	2.5	OpenExtensions	None
+COVERAGE	2.6	ClosedSchemaSet	Ada	BackendCoverage { language: Ada, declarations_total: 5570, declaration_kinds_renderable: 5570, declarations_fully_renderable: 5549, fields_total: 13198, field_type_references_renderable: 13198, field_occurrences_renderable: 13198, messages_total: 725, message_closures_renderable: 646 }
+COVERAGE	2.6	ClosedSchemaSet	Rust	BackendCoverage { language: Rust, declarations_total: 5570, declaration_kinds_renderable: 5570, declarations_fully_renderable: 5550, fields_total: 13198, field_type_references_renderable: 13198, field_occurrences_renderable: 13198, messages_total: 725, message_closures_renderable: 679 }
+COVERAGE	2.6	ClosedSchemaSet	Cpp	BackendCoverage { language: Cpp, declarations_total: 5570, declaration_kinds_renderable: 5570, declarations_fully_renderable: 5550, fields_total: 13198, field_type_references_renderable: 13198, field_occurrences_renderable: 13198, messages_total: 725, message_closures_renderable: 679 }
+SERVICE	2.6	ClosedSchemaSet	Ada	AO_CapabilityStatus	ready=true	selected=64	support=68	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Rust	AO_CapabilityStatus	ready=true	selected=64	support=68	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Cpp	AO_CapabilityStatus	ready=true	selected=64	support=68	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Ada	AO_SettingsCommand	ready=true	selected=64	support=68	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Rust	AO_SettingsCommand	ready=true	selected=64	support=68	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Cpp	AO_SettingsCommand	ready=true	selected=64	support=68	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Ada	PO_Activity	ready=true	selected=440	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Rust	PO_Activity	ready=true	selected=440	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Cpp	PO_Activity	ready=true	selected=440	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Ada	PO_Capability	ready=true	selected=223	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Rust	PO_Capability	ready=true	selected=223	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Cpp	PO_Capability	ready=true	selected=223	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Ada	PO_CapabilityStatus	ready=true	selected=240	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Rust	PO_CapabilityStatus	ready=true	selected=240	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Cpp	PO_CapabilityStatus	ready=true	selected=240	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Ada	PO_Command	ready=true	selected=432	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Rust	PO_Command	ready=true	selected=432	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Cpp	PO_Command	ready=true	selected=432	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Ada	PO_SettingsCommand	ready=true	selected=242	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Rust	PO_SettingsCommand	ready=true	selected=242	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Cpp	PO_SettingsCommand	ready=true	selected=242	support=63	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Ada	SAR_CapabilityStatus	ready=true	selected=106	support=67	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Rust	SAR_CapabilityStatus	ready=true	selected=106	support=67	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Cpp	SAR_CapabilityStatus	ready=true	selected=106	support=67	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Ada	SAR_Command	ready=true	selected=346	support=67	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Rust	SAR_Command	ready=true	selected=346	support=67	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Cpp	SAR_Command	ready=true	selected=346	support=67	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Ada	SAR_SettingsCommand	ready=true	selected=65	support=67	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Rust	SAR_SettingsCommand	ready=true	selected=65	support=67	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Cpp	SAR_SettingsCommand	ready=true	selected=65	support=67	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Ada	Task	ready=true	selected=1045	support=81	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Rust	Task	ready=true	selected=1045	support=81	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+SERVICE	2.6	ClosedSchemaSet	Cpp	Task	ready=true	selected=1045	support=81	selected_blockers=[]	support_blockers=[]	backend=None	api=None
+REACH	2.6	ClosedSchemaSet	NITF_DateAndTimeType	selected=0	{}	support=11	{"AO_CapabilityStatus", "AO_SettingsCommand", "PO_Activity", "PO_Capability", "PO_CapabilityStatus", "PO_Command", "PO_SettingsCommand", "SAR_CapabilityStatus", "SAR_Command", "SAR_SettingsCommand", "Task"}
+REACH	2.6	ClosedSchemaSet	NITF_DateType	selected=0	{}	support=11	{"AO_CapabilityStatus", "AO_SettingsCommand", "PO_Activity", "PO_Capability", "PO_CapabilityStatus", "PO_Command", "PO_SettingsCommand", "SAR_CapabilityStatus", "SAR_Command", "SAR_SettingsCommand", "Task"}
+REACH	2.6	ClosedSchemaSet	NITF_MSTGTA_TargetLocationType	selected=0	{}	support=11	{"AO_CapabilityStatus", "AO_SettingsCommand", "PO_Activity", "PO_Capability", "PO_CapabilityStatus", "PO_Command", "PO_SettingsCommand", "SAR_CapabilityStatus", "SAR_Command", "SAR_SettingsCommand", "Task"}
+NEW-READY	2.6	ClosedSchemaSet	[(132, "AO_CapabilityStatus", Ada), (132, "AO_CapabilityStatus", Rust), (132, "AO_CapabilityStatus", Cpp), (132, "AO_SettingsCommand", Ada), (132, "AO_SettingsCommand", Rust), (132, "AO_SettingsCommand", Cpp), (132, "SAR_SettingsCommand", Ada), (132, "SAR_SettingsCommand", Rust), (132, "SAR_SettingsCommand", Cpp), (173, "SAR_CapabilityStatus", Ada), (173, "SAR_CapabilityStatus", Rust), (173, "SAR_CapabilityStatus", Cpp), (286, "PO_Capability", Ada), (286, "PO_Capability", Rust), (286, "PO_Capability", Cpp), (303, "PO_CapabilityStatus", Ada), (303, "PO_CapabilityStatus", Rust), (303, "PO_CapabilityStatus", Cpp), (305, "PO_SettingsCommand", Ada), (305, "PO_SettingsCommand", Rust), (305, "PO_SettingsCommand", Cpp), (413, "SAR_Command", Ada), (413, "SAR_Command", Rust), (413, "SAR_Command", Cpp), (495, "PO_Command", Ada), (495, "PO_Command", Rust), (495, "PO_Command", Cpp), (503, "PO_Activity", Ada), (503, "PO_Activity", Rust), (503, "PO_Activity", Cpp), (1126, "Task", Ada), (1126, "Task", Rust), (1126, "Task", Cpp)]
+SMALLEST	2.6	ClosedSchemaSet	Some((132, "AO_CapabilityStatus", Ada))
+COVERAGE	2.6	OpenExtensions	Ada	BackendCoverage { language: Ada, declarations_total: 5570, declaration_kinds_renderable: 5570, declarations_fully_renderable: 5462, fields_total: 13198, field_type_references_renderable: 13198, field_occurrences_renderable: 13198, messages_total: 725, message_closures_renderable: 574 }
+COVERAGE	2.6	OpenExtensions	Rust	BackendCoverage { language: Rust, declarations_total: 5570, declaration_kinds_renderable: 5570, declarations_fully_renderable: 5462, fields_total: 13198, field_type_references_renderable: 13198, field_occurrences_renderable: 13198, messages_total: 725, message_closures_renderable: 574 }
+COVERAGE	2.6	OpenExtensions	Cpp	BackendCoverage { language: Cpp, declarations_total: 5570, declaration_kinds_renderable: 5570, declarations_fully_renderable: 5462, fields_total: 13198, field_type_references_renderable: 13198, field_occurrences_renderable: 13198, messages_total: 725, message_closures_renderable: 574 }
+REACH	2.6	OpenExtensions	NITF_DateAndTimeType	selected=0	{}	support=0	{}
+REACH	2.6	OpenExtensions	NITF_DateType	selected=0	{}	support=0	{}
+REACH	2.6	OpenExtensions	NITF_MSTGTA_TargetLocationType	selected=0	{}	support=0	{}
+NEW-READY	2.6	OpenExtensions	[]
+SMALLEST	2.6	OpenExtensions	None
