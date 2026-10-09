@@ -22,6 +22,7 @@ ams-gra-codegen-oms = { path = "../cli" }
 
 [dev-dependencies]
 ams-gra-codegen-oms = { path = "../cli" }
+sleet-client = { git = "https://github.com/open-arsenal/ams-gra-hello-world-sk-infra-sleet", rev = "e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b" }
 futures-util = "0.3"
 tokio = { version = "1", features = ["rt", "net", "macros", "sync", "time"] }
 tokio-tungstenite = "0.29"

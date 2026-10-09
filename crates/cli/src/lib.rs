@@ -33,6 +33,7 @@ pub const HELP: &str = r#"ams-gra-codegen-oms
 Schema-driven OMS/UCI multi-language code generator.
 
 USAGE:
+    ams-gra-codegen-oms schema-diff --before PATH --after PATH [--before-overlay PATH]... [--after-overlay PATH]... [--format text|tsv]
     ams-gra-codegen-oms validate --schema PATH [--overlay PATH]...
     ams-gra-codegen-oms coverage --schema PATH [--overlay PATH]... --world WORLD
     ams-gra-codegen-oms generate --schema PATH [--overlay PATH]... --language LANGUAGE --output DIR --world WORLD
@@ -43,6 +44,7 @@ USAGE:
     ams-gra-codegen-oms service-generate --schema PATH --contract PATH [--extension ID=PATH]... --language LANGUAGE --world WORLD --output DIR [--with-codec]
 
 COMMANDS:
+    schema-diff        Inventory exact normalized IR changes (no compatibility claims)
     validate           Load and validate an XSD schema set
     coverage           Report deterministic IR and backend coverage counts
     generate           Generate source files from an XSD schema set
@@ -569,6 +571,13 @@ enum Command {
         extensions: Vec<(String, PathBuf)>,
         identity: Option<(String, String)>,
     },
+    SchemaDiff {
+        before: PathBuf,
+        after: PathBuf,
+        before_overlays: Vec<PathBuf>,
+        after_overlays: Vec<PathBuf>,
+        tsv: bool,
+    },
     Help(&'static str),
     Version,
     Validate {
@@ -650,6 +659,26 @@ where
             };
             write_output(stdout, &output)
         }
+        Command::SchemaDiff {
+            before,
+            after,
+            before_overlays,
+            after_overlays,
+            tsv,
+        } => {
+            let before = load_schema_set_with_overlays(&before, &before_overlays)
+                .map_err(|e| CliError::execution(e.to_string()))?;
+            let after = load_schema_set_with_overlays(&after, &after_overlays)
+                .map_err(|e| CliError::execution(e.to_string()))?;
+            before
+                .validate()
+                .map_err(|e| CliError::execution(e.to_string()))?;
+            after
+                .validate()
+                .map_err(|e| CliError::execution(e.to_string()))?;
+            let diff = ams_gra_oms_schema_diff::compare_schemas(&before, &after);
+            write_output(stdout, &if tsv { diff.to_tsv() } else { diff.to_text() })
+        }
         Command::Help(help) => write_output(stdout, help),
         Command::Version => write_output(stdout, concat!(env!("CARGO_PKG_VERSION"), "\n")),
         Command::Validate { schema, overlays } => validate(&schema, &overlays, stdout),
@@ -720,12 +749,13 @@ where
 {
     let mut args = args.into_iter();
     let command = args.next().ok_or_else(|| {
-        CliError::usage("missing command; expected 'validate', 'coverage', 'generate', 'docs', 'service-plan', 'service-routes', 'service-check', or 'service-generate'")
+        CliError::usage("missing command; expected 'schema-diff', 'validate', 'coverage', 'generate', 'docs', 'service-plan', 'service-routes', 'service-check', or 'service-generate'")
     })?;
     match command.to_str() {
         Some("-h" | "--help") => no_trailing_args(args, Command::Help(HELP)),
         Some("-V" | "--version") => no_trailing_args(args, Command::Version),
         Some("validate") => parse_validate(args.collect()),
+        Some("schema-diff") => parse_schema_diff(args.collect()),
         Some("coverage") => parse_coverage(args.collect()),
         Some("generate") => parse_generate(args.collect()),
         Some("docs") => parse_docs(args.collect()),
@@ -734,7 +764,7 @@ where
         Some("service-check") => parse_service_check(args.collect()),
         Some("service-generate") => parse_service_generate(args.collect()),
         Some(command) => Err(CliError::usage(format!(
-            "unknown command '{command}'; expected 'validate', 'coverage', 'generate', \
+            "unknown command '{command}'; expected 'schema-diff', 'validate', 'coverage', 'generate', \
              'docs', 'service-plan', 'service-routes', 'service-check', or 'service-generate'"
         ))),
         None => Err(CliError::usage("command must be valid UTF-8")),
@@ -765,6 +795,38 @@ fn parse_validate(args: Vec<OsString>) -> Result<Command, CliError> {
     Ok(Command::Validate {
         schema: required(schema, "--schema")?.into(),
         overlays,
+    })
+}
+
+fn parse_schema_diff(args: Vec<OsString>) -> Result<Command, CliError> {
+    if is_help_request(&args) {
+        return Ok(Command::Help(HELP));
+    }
+    let mut before = None;
+    let mut after = None;
+    let mut format = None;
+    let mut before_overlays = Vec::new();
+    let mut after_overlays = Vec::new();
+    parse_options(args, |option, value| match option {
+        "--before" => set_once(&mut before, value, option),
+        "--after" => set_once(&mut after, value, option),
+        "--format" => set_once(&mut format, value, option),
+        "--before-overlay" => push_overlay(&mut before_overlays, value),
+        "--after-overlay" => push_overlay(&mut after_overlays, value),
+        _ => Err(CliError::usage(format!("unknown option '{option}'"))),
+    })?;
+    let tsv = match format.as_deref().and_then(OsStr::to_str) {
+        None if format.is_none() => false,
+        Some("text") => false,
+        Some("tsv") => true,
+        _ => return Err(CliError::usage("invalid --format; expected text or tsv")),
+    };
+    Ok(Command::SchemaDiff {
+        before: required(before, "--before")?.into(),
+        after: required(after, "--after")?.into(),
+        before_overlays,
+        after_overlays,
+        tsv,
     })
 }
 

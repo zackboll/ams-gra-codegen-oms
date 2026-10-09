@@ -7,6 +7,19 @@ permissions authorize both PUB and SUB, not direction-specific least privilege;
 only exact OAM messages are supported for TOML. See
 [route projection and limitations](docs/task-071-service-route-allowlists.md).
 
+## Semantic schema diff
+
+```sh
+ams-gra-codegen-oms schema-diff --before OLD_ROOT.xsd --after NEW_ROOT.xsd
+ams-gra-codegen-oms schema-diff --before OLD_ROOT.xsd --after NEW_ROOT.xsd --format tsv
+```
+
+Read-only, deterministic normalized-IR change inventory; differences exit successfully.
+Repeatable `--before-overlay` and `--after-overlay` options preserve caller order.
+This is **not a compatibility guarantee** or dependency-impact analysis.
+See [Task 069](docs/task-069-semantic-schema-diff.md) for the stable output contract,
+comparison boundary, and pinned UCI evidence.
+
 Schema-driven, multi-language code generation for OMS/UCI services that preserves the existing AMS GRA / OMS Language-Agnostic CAL (LA-CAL) runtime architecture.
 
 > **Status:** the XSD frontend fully normalizes the authoritative UCI 2.5 and

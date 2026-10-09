@@ -56,6 +56,8 @@ pub const INFO_FRAME: &str = concat!(
 pub enum Observed {
     Text(String),
     Closed,
+    NoConnection,
+    ExtraConnection,
 }
 
 pub enum Outgoing {
@@ -83,6 +85,14 @@ impl MockPeer {
     }
 
     pub fn start_with(init: InitReply) -> Self {
+        Self::start_observing(init, false)
+    }
+
+    pub fn start_retry_control(init: InitReply) -> Self {
+        Self::start_observing(init, true)
+    }
+
+    fn start_observing(init: InitReply, watch_connections: bool) -> Self {
         let (address_tx, address_rx) = std_mpsc::channel();
         let (protocol_tx, protocol) = std_mpsc::channel();
         let (observed_tx, observed) = std_mpsc::channel();
@@ -100,6 +110,7 @@ impl MockPeer {
                         protocol_tx,
                         observed_tx,
                         outgoing_rx,
+                        watch_connections,
                     ));
             })
             .expect("spawn mock peer");
@@ -153,6 +164,11 @@ impl MockPeer {
     /// The client must close the connection.
     pub fn expect_closed(&self) {
         assert_eq!(self.observed.recv_timeout(WAIT), Ok(Observed::Closed));
+    }
+
+    /// The still-listening peer saw no additional TCP connection after close.
+    pub fn expect_no_connection(&self) {
+        assert_eq!(self.observed.recv_timeout(WAIT), Ok(Observed::NoConnection));
     }
 
     pub fn send(&self, frame: &str) {

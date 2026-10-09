@@ -1783,6 +1783,8 @@ pub enum StringProfile {
     /// Task 062 exact pinned IPv6 lexical expression and both length facets.
     /// Original spelling is retained; this is not RFC address parsing.
     Ipv6Address,
+    /// Task066 exact Unicode 3.1 Nd-aware String profile.
+    Unicode(crate::UnicodeStringProfile),
 }
 
 /// Why a constrained `string` declaration falls outside the implemented set.
@@ -1907,6 +1909,12 @@ pub fn string_profile(
     }
     if constraints == &crate::ipv6_address_constraints() {
         return Ok(Some(StringProfile::Ipv6Address));
+    }
+    if let Some(profile) = crate::UnicodeStringProfile::ALL
+        .into_iter()
+        .find(|p| *constraints == p.constraints())
+    {
+        return Ok(Some(StringProfile::Unicode(profile)));
     }
     Err(StringProfileError::UnsupportedConstraints)
 }

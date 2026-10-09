@@ -34,6 +34,17 @@ fast_code="$(code "$fast")"
 deep_code="$(code "$deep")"
 sleet_code="$(code "$sleet")"
 
+# Task 069 must execute once in real-uci and never download in Fast.
+grep -Fq 'bash scripts/check-task069-fast.sh' <<<"$fast_code" ||
+  fail "Fast CI lost Task 069 exact semantic diff controls"
+grep -Fq 'python3 scripts/test-task069-ci-wrappers.py' <<<"$fast_code" ||
+  fail "Fast CI lost Task 069 adversarial wrapper controls"
+grep -Fq 'bash scripts/check-task069-pinned.sh' <<<"$deep_code" ||
+  fail "Deep CI lost Task 069 pinned semantic diff evidence"
+if grep -Fq 'check-task069-pinned.sh' <<<"$fast_code"; then
+  fail "Fast CI must not run Task 069 pinned work"
+fi
+
 # ---- Fast CI must stay free of external/reference work ------------------
 for forbidden in \
   fetch-pinned-uci-2.5.sh \
@@ -67,6 +78,23 @@ grep -Fq 'bash scripts/check-task062-fast.sh' <<<"$fast_code" ||
   fail "Fast CI lost Task 062 exact-profile compiler/codec gates"
 grep -Fq 'bash scripts/check-task062-pinned.sh' <<<"$deep_code" ||
   fail "Deep CI lost Task 062 pinned impact/vertical gates"
+
+if grep -Fq 'check-task066-pinned.sh' <<<"$fast_code"; then
+  fail "Fast CI must not run Task066 pinned work"
+fi
+grep -Fq 'bash scripts/check-task066-fast.sh' <<<"$fast_code" ||
+  fail "Fast CI lost Task066 Unicode conformance gates"
+grep -Fq 'python3 scripts/test-task066-ci-wrappers.py' <<<"$fast_code" ||
+  fail "Fast CI lost Task066 wrapper/environment regressions"
+grep -Fq 'bash scripts/check-task066-pinned.sh' <<<"$deep_code" ||
+  fail "Deep CI lost Task066 pinned evidence"
+grep -Fq 'bash scripts/check-task065-fast.sh' <<<"$fast_code" ||
+  fail "Fast CI lost Task065 Ada naming gates"
+grep -Fq 'bash scripts/check-task065-pinned.sh' <<<"$deep_code" ||
+  fail "Deep CI lost Task065 pinned naming evidence"
+if grep -Fq 'check-task065-pinned.sh' <<<"$fast_code"; then
+  fail "Fast CI must not run Task065 pinned work"
+fi
 
 # ---- Fast CI must keep its pre-merge floor --------------------------------
 for required in \

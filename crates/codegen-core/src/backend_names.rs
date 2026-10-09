@@ -1521,6 +1521,15 @@ fn register_support_names(
     let reserve = |top_level: &mut Region, generated: &str| -> Result<(), BackendNameError> {
         top_level.insert(NameSource::GeneratedSupport(language), generated.to_owned())
     };
+    if crate::schema_emits_unicode_string(schema) {
+        reserve(
+            top_level,
+            match language {
+                BackendLanguage::Ada => "Unicode31_String_Valid",
+                BackendLanguage::Rust | BackendLanguage::Cpp => "Unicode31StringValidator",
+            },
+        )?;
+    }
     if emits_direct_date_time {
         reserve(
             top_level,

@@ -31,6 +31,9 @@ on:
       - "scripts/check-task063-pinned.sh"
       - "scripts/check-task063-service-impact.py"
       - "scripts/check-task065-pinned.sh"
+      - "scripts/check-task066-pinned.sh"
+      - "scripts/check-task066-vertical.py"
+      - "scripts/check-task069-pinned.sh"
 
 permissions:
   contents: read
@@ -82,12 +85,16 @@ jobs:
         run: bash scripts/check-task061-pinned.sh
       - name: Real UCI route identity smoke (Task 071)
         run: bash scripts/check-task071-uci.sh
+      - name: Pinned semantic schema diff (Task 069, once for both releases)
+        run: bash scripts/check-task069-pinned.sh
       - name: Exact IPv6 pinned inventory, impact and real vertical (Task 062)
         run: bash scripts/check-task062-pinned.sh
       - name: Exact patterned integral pinned evidence (Task 063)
         run: bash scripts/check-task063-pinned.sh
       - name: Ada semantic companion naming and smallest real vertical (Task 065)
         run: bash scripts/check-task065-pinned.sh
+      - name: Unicode 3.1 pinned profiles, impact and real vertical (Task 066)
+        run: bash scripts/check-task066-pinned.sh
       - name: Confirm unique newly READY Time services (Task 061)
         run: |
           set -euo pipefail

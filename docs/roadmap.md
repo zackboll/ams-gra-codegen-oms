@@ -15,6 +15,14 @@ Three Unicode profiles and other semantic/topology blockers remain deferred.
 See [Task065 evidence](task-065-ada-companion-naming.md) for immutable BEFORE,
 full versus projected distinctions and explicit delivery-gate status.
 
+Task066 resumes under the authorized **Unicode 3.1.0 Nd baseline** and supports
+the three exact formerly deferred String profiles across Ada/Rust/C++. UTF-8
+scalar length, checked lifecycle and JSON/mock-OWP lexical preservation are
+compiler-backed. Eleven closed projected services per release/backend become
+READY; full-schema message closures do not change. See [Task066 evidence](task-066-unicode-string-profiles.md)
+for historical STOP provenance and explicit final delivery status. Historical
+Task060 measurements are unchanged.
+
 Task 063 implements the exact UCI 2.5 named patterned integral value-space
 profile without broadening direct integers. Its isolated historical evidence
 remains frozen; current integration includes the independently merged Task 062.
@@ -827,7 +835,10 @@ Progress (typed LA-CAL integration as a whole is **not** complete):
       and membership through the one production expansion model. Open-world
       abstract-value attribution remains unchanged. See
       [Task 064](task-064-generated-support-plan-binding.md).
-- [ ] reconnect/backoff, TLS/auth policy, timers, service lifecycle.
+- [x] Opt-in bounded initial connection-refusal retry with exponential backoff
+      (Task070); default one attempt. See [Task070](task-070-initial-connect-retry.md).
+- [ ] Automatic reconnection after a running session, subscription restoration,
+      publish replay, TLS/auth policy, timers, service lifecycle: still deferred.
 
 ```text
 Task 048:  generated type-safe operation
@@ -876,7 +887,11 @@ GNATprove CI was added there; that work belongs here.
 
 ## Phase 6 — Developer tooling
 
-- schema diff / compatibility report;
+- [x] Exact normalized-IR semantic schema diff (Task 069); text and stable TSV,
+      independent of backends and generation world. See
+      [comparison boundary](task-069-semantic-schema-diff.md).
+- Conservative compatibility analysis layered onto typed diffs (planned;
+  Task 069 does not claim backward, forward, wire or version-history compatibility).
 - generated API documentation;
 - [x] Contract-derived OMS route inventory and validated pinned-Sleet
       topic/message allow-list preview (Task071). Read-only, exact QName,

@@ -5,6 +5,7 @@ members = [
     "crates/xsd-frontend",
     "crates/codegen-core",
     "crates/schema-docs",
+    "crates/schema-diff",
     "crates/service-contract",
     "crates/service-routes",
     "crates/backend-ada",

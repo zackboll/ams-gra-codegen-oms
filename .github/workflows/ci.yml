@@ -50,6 +50,10 @@ jobs:
       - run: cargo fmt --all -- --check
       - name: Contract route manifest and Sleet policy (Task 071)
         run: bash scripts/check-task071-fast.sh
+      - name: Exact semantic schema diff Fast controls (Task 069)
+        run: |
+          python3 scripts/test-task069-ci-wrappers.py
+          bash scripts/check-task069-fast.sh
       - name: Exact patterned integral Fast gates (Task 063)
         env:
           AMS_GRA_REQUIRE_GNAT: "1"
@@ -67,7 +71,13 @@ jobs:
         env:
           AMS_GRA_REQUIRE_GNAT: "1"
         run: bash scripts/check-task065-fast.sh
+      - name: Exact Unicode 3.1 profile gates (Task 066)
+        run: |
+          python3 scripts/test-task066-ci-wrappers.py
+          bash scripts/check-task066-fast.sh
       - run: cargo check --workspace --all-targets
+      - name: Bounded initial LA-CAL connection retry (Task 070)
+        run: bash scripts/check-task070-fast.sh
       - run: cargo clippy --workspace --all-targets -- -D warnings
       # The four GNAT-backed Task 033 regressions are named explicitly so the
       # log proves each one executed. `require_one_test` fails the step if a

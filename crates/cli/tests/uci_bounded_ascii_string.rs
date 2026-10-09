@@ -295,9 +295,11 @@ fn bounded_inventory(label: &str, schema: &SchemaIr) {
     let expected: BTreeSet<String> = MEMBERS.iter().map(|&m| m.to_owned()).collect();
     assert_eq!(members, expected, "{label}: member set drifted");
     assert_eq!(alphabets.len(), 19, "{label}");
-    assert_eq!(unsupported.len(), 3, "{label}");
+    // Task066 removes the three historical Unicode exclusions. The bounded
+    // ASCII membership invariant above is unchanged.
+    assert!(unsupported.is_empty(), "{label}");
     for neighbour in EXCLUDED_NEIGHBOURS {
-        assert!(unsupported.contains(neighbour), "{label} {neighbour}");
+        assert!(!members.contains(neighbour), "{label} {neighbour}");
     }
     // Direct field-local constrained xs:string is out of scope: none exist.
     let direct = schema

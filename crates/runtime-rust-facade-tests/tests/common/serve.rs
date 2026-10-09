@@ -14,6 +14,7 @@ pub async fn serve(
     protocol: std_mpsc::Sender<Option<String>>,
     observed: std_mpsc::Sender<Observed>,
     mut outgoing: mpsc::UnboundedReceiver<Outgoing>,
+    watch_connections: bool,
 ) {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
         .await
@@ -87,4 +88,16 @@ pub async fn serve(
             },
         }
     }
+    if !watch_connections {
+        return;
+    }
+    let observation = if tokio::time::timeout(super::QUIET, listener.accept())
+        .await
+        .is_err()
+    {
+        Observed::NoConnection
+    } else {
+        Observed::ExtraConnection
+    };
+    let _ = observed.send(observation);
 }

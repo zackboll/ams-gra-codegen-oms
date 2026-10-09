@@ -89,7 +89,14 @@ fn task060_final_admission_boundary_matches_exact_pinned_ir() {
                     Ok(Some(ams_gra_oms_codegen_core::StringProfile::Ipv6Address))
                 );
             } else if !should_admit {
-                assert!(live.is_err());
+                // Task060 owns non-admission to its ASCII family. Task066
+                // supersedes capability without rewriting its historical rows.
+                assert!(!matches!(
+                    live,
+                    Ok(Some(
+                        ams_gra_oms_codegen_core::StringProfile::AlternatingAscii(_)
+                    ))
+                ));
             }
             if UNICODE.contains(&name) {
                 assert!(cells[5..].iter().any(|p| p.contains("\\d")));
