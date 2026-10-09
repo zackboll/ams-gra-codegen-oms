@@ -695,6 +695,12 @@ rendering question.
 
 ### What the world does *not* affect
 
+Task 073 [validation and quarantine authority research](task-073-unknown-subtype-authority.md)
+is **VALIDATION_AND_AUTHORIZATION_CONTRACT_NOT_ESTABLISHED**. Schema assessment,
+operation authorization and raw-wire preservation are distinct unresolved gates;
+no runtime support or readiness change is implied. Task 072 PR #72 is independent
+and pending, not a dependency of this evidence.
+
 Abstract declarations used only as inheritance ancestry are untouched: a
 concrete type extending an abstract base still has a known effective field
 layout, so Task 018 record flattening applies identically in both worlds. Only
