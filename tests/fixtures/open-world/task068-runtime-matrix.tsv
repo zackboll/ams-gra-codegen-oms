@@ -1,0 +1,8 @@
+case	result
+1	PrivateB semantic round trip: {"{urn:audit}Value":{"$type":"{urn:audit}PrivateB","{urn:audit}Enabled":false,"{urn:audit}Flag":true}}
+2	{urn:audit}PublicA: Holder.{urn:audit}Value: unknown member "{urn:audit}Enabled"
+3	{urn:audit}PrivateC: Holder.{urn:audit}Value: $type "{urn:audit}PrivateC" is not a known concrete Base
+4	unknown member: Holder.{urn:audit}Value: unknown member "{urn:audit}Secret"
+5	{urn:audit}PublicA: accepted {"{urn:audit}Value":{"{urn:audit}PublicFlag":true}}
+6	{urn:audit}PrivateB: Holder.{urn:audit}Value: $type "{urn:audit}PrivateB" is not "{urn:audit}PublicA"
+7	{urn:audit}PrivateC: Holder.{urn:audit}Value: $type "{urn:audit}PrivateC" is not "{urn:audit}PublicA"
