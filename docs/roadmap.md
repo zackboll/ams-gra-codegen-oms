@@ -884,7 +884,11 @@ GNATprove CI was added there; that work belongs here.
 
 ## Phase 6 — Developer tooling
 
-- schema diff / compatibility report;
+- [x] Exact normalized-IR semantic schema diff (Task 069); text and stable TSV,
+      independent of backends and generation world. See
+      [comparison boundary](task-069-semantic-schema-diff.md).
+- Conservative compatibility analysis layered onto typed diffs (planned;
+  Task 069 does not claim backward, forward, wire or version-history compatibility).
 - generated API documentation;
 - topic/message allow-list helpers;
 - cached IR artifact;

@@ -1,0 +1,5 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:t="urn:diff" xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam" targetNamespace="urn:diff" elementFormDefault="qualified">
+  <xs:simpleType name="Text"><xs:restriction base="xs:string"><xs:maxLength value="8"/></xs:restriction></xs:simpleType>
+  <xs:complexType name="Record"><xs:sequence><xs:element name="a" type="t:Text"/><xs:element name="b" type="xs:string"/></xs:sequence></xs:complexType>
+  <xs:element uci:version="1" name="Message" type="t:Record"/>
+</xs:schema>

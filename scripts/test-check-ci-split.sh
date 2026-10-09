@@ -35,6 +35,14 @@ expect_fail() {
 expect_pass "$fast" "$deep" "$sleet"
 
 # ---- 2. mutations fail --------------------------------------------------
+grep -v 'bash scripts/check-task069-fast.sh' "$fast" >"$tmp/fast-no-t069.yml"
+expect_fail "fast lost Task069 gate" "$tmp/fast-no-t069.yml" "$deep" "$sleet"
+grep -v 'python3 scripts/test-task069-ci-wrappers.py' "$fast" >"$tmp/fast-no-t069-wrapper.yml"
+expect_fail "fast lost Task069 wrapper guard" "$tmp/fast-no-t069-wrapper.yml" "$deep" "$sleet"
+grep -v 'bash scripts/check-task069-pinned.sh' "$deep" >"$tmp/deep-no-t069.yml"
+expect_fail "deep lost Task069 gate" "$fast" "$tmp/deep-no-t069.yml" "$sleet"
+{ cat "$fast"; printf '      - run: bash scripts/check-task069-pinned.sh\n'; } >"$tmp/fast-t069.yml"
+expect_fail "fast runs Task069 pinned gate" "$tmp/fast-t069.yml" "$deep" "$sleet"
 grep -Fv 'bash scripts/check-task065-fast.sh' "$fast" >"$tmp/fast-no-t065.yml"
 expect_fail "fast lost Task065 gate" "$tmp/fast-no-t065.yml" "$deep" "$sleet"
 grep -Fv 'bash scripts/check-task065-pinned.sh' "$deep" >"$tmp/deep-no-t065.yml"

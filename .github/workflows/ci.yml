@@ -48,6 +48,10 @@ jobs:
           command -v gnatmake
           gnatmake --version
       - run: cargo fmt --all -- --check
+      - name: Exact semantic schema diff Fast controls (Task 069)
+        run: |
+          python3 scripts/test-task069-ci-wrappers.py
+          bash scripts/check-task069-fast.sh
       - name: Exact patterned integral Fast gates (Task 063)
         env:
           AMS_GRA_REQUIRE_GNAT: "1"

@@ -34,6 +34,17 @@ fast_code="$(code "$fast")"
 deep_code="$(code "$deep")"
 sleet_code="$(code "$sleet")"
 
+# Task 069 must execute once in real-uci and never download in Fast.
+grep -Fq 'bash scripts/check-task069-fast.sh' <<<"$fast_code" ||
+  fail "Fast CI lost Task 069 exact semantic diff controls"
+grep -Fq 'python3 scripts/test-task069-ci-wrappers.py' <<<"$fast_code" ||
+  fail "Fast CI lost Task 069 adversarial wrapper controls"
+grep -Fq 'bash scripts/check-task069-pinned.sh' <<<"$deep_code" ||
+  fail "Deep CI lost Task 069 pinned semantic diff evidence"
+if grep -Fq 'check-task069-pinned.sh' <<<"$fast_code"; then
+  fail "Fast CI must not run Task 069 pinned work"
+fi
+
 # ---- Fast CI must stay free of external/reference work ------------------
 for forbidden in \
   fetch-pinned-uci-2.5.sh \
