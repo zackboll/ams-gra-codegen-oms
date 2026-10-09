@@ -2,6 +2,7 @@
 
 mod ipv6_address;
 mod service_api;
+mod unicode_string;
 
 pub use service_api::{SERVICE_API_FILE, generate_service_api};
 
@@ -207,6 +208,9 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     }
     if emits_direct_duration {
         output.push_str(&CPP_DURATION_CARRIER.replace("{name}", "XmlSchemaDuration"));
+    }
+    if ams_gra_oms_codegen_core::schema_emits_unicode_string(schema) {
+        output.push_str(&unicode_string::support(schema));
     }
     for emission in emissions {
         match emission {
@@ -501,7 +505,8 @@ fn validate_schema(schema: &SchemaIr, world: GenerationWorld) -> Result<(), Code
                 | Ok(Some(StringProfile::BoundedAscii { .. }))
                 | Ok(Some(StringProfile::StructuredAscii(_)))
                 | Ok(Some(StringProfile::AlternatingAscii(_)))
-                | Ok(Some(StringProfile::Ipv6Address)) => {}
+                | Ok(Some(StringProfile::Ipv6Address))
+                | Ok(Some(StringProfile::Unicode(_))) => {}
                 Ok(None) => unreachable!("constrains_string gates this branch"),
                 Err(reason) => {
                     return unsupported(format!("{reason} on {}", declaration.name.local_name));
@@ -1403,6 +1408,7 @@ fn render_string_profile_declaration(
             render_cpp_alternating_ascii(name, profile)
         }
         Ok(Some(StringProfile::Ipv6Address)) => ipv6_address::render(name),
+        Ok(Some(StringProfile::Unicode(profile))) => unicode_string::render(name, profile),
         Ok(None) => return unsupported(format!("unconstrained String on {name}")),
         Err(reason) => return unsupported(format!("{reason} on {name}")),
     };

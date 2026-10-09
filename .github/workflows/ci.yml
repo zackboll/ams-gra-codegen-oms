@@ -65,6 +65,10 @@ jobs:
         env:
           AMS_GRA_REQUIRE_GNAT: "1"
         run: bash scripts/check-task065-fast.sh
+      - name: Exact Unicode 3.1 profile gates (Task 066)
+        run: |
+          python3 scripts/test-task066-ci-wrappers.py
+          bash scripts/check-task066-fast.sh
       - run: cargo check --workspace --all-targets
       - run: cargo clippy --workspace --all-targets -- -D warnings
       # The four GNAT-backed Task 033 regressions are named explicitly so the

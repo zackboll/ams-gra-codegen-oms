@@ -101,48 +101,19 @@ fn task061_pinned_ada_full_schema_naming_attribution() {
             GenerationWorld::ClosedSchemaSet,
         );
         assert!(unsafe_ada.is_empty());
-        for name in rust.difference(&ada) {
-            println!("ADA-GAP\t{version}\t{}", name.local_name);
-            let m = schema.messages.iter().find(|m| m.name == *name).unwrap();
-            let TypeRefTarget::Named(payload) = &m.payload_type.target else {
-                panic!()
-            };
-            let closure = analysis.dependency_closure(payload).unwrap();
-            assert!(
-                closure.iter().any(|d| unsafe_ada.contains(&d.name)),
-                "{}",
-                name.local_name
-            );
-            if name.local_name == "Task" {
-                let unsafe_names: BTreeSet<_> = closure
-                    .iter()
-                    .filter(|d| unsafe_ada.contains(&d.name))
-                    .map(|d| d.name.local_name.as_str())
-                    .collect();
-                println!("TASK062 TASK ADA UNSAFE\t{version}\t{unsafe_names:?}");
-                let plan = resolve_service_plan(&contract("Task", version), &schema).unwrap();
-                let r = analyze_service_readiness(
-                    &plan,
-                    &schema,
-                    BackendLanguage::Ada,
-                    GenerationWorld::ClosedSchemaSet,
-                )
-                .unwrap();
-                assert!(r.backend_blocker.is_none());
-                assert!(!r.is_ready());
-                assert_eq!(
-                    r.unsupported_generated_support_types
-                        .iter()
-                        .map(|n| n.local_name.as_str())
-                        .collect::<BTreeSet<_>>(),
-                    BTreeSet::from([
-                        "NITF_DateAndTimeType",
-                        "NITF_DateType",
-                        "NITF_MSTGTA_TargetLocationType"
-                    ])
-                );
-            }
-        }
+        // Task065 repairs names; Task066 independently removes Unicode support
+        // blockers. Keep this service witness live, not inside an empty gap loop.
+        let plan = resolve_service_plan(&contract("Task", version), &schema).unwrap();
+        let r = analyze_service_readiness(
+            &plan,
+            &schema,
+            BackendLanguage::Ada,
+            GenerationWorld::ClosedSchemaSet,
+        )
+        .unwrap();
+        assert!(r.backend_blocker.is_none());
+        assert!(r.is_ready());
+        assert!(r.unsupported_generated_support_types.is_empty());
         println!("UCI {version} TASK061 ADA FULL-SCHEMA NAMING: PASSED");
     }
 }
@@ -345,9 +316,10 @@ fn campaign(inventory_only: bool) {
                             if task063_gain {
                                 assert_eq!(row[4], "USMTF_SerialNumberOfQualifierType");
                             }
+                            let task066_owned = world == GenerationWorld::ClosedSchemaSet && include_str!("../../../tests/fixtures/string/task062-task060-subset-current.tsv").lines().any(|l| l.starts_with(&format!("{version}\t{}\tNITF_DateAndTimeType\t",m.name.local_name)));
                             assert_eq!(
                                 r.is_ready(),
-                                row[4] == "ready" || task063_gain,
+                                row[4] == "ready" || task063_gain || task066_owned,
                                 "{expected}"
                             );
                             assert_eq!(r.selected_types_total, row[5].parse::<usize>().unwrap());

@@ -17,11 +17,25 @@ conditionally qualifying the named subtype, preserving public schema-member
 names and Task054 remapping. Strict Record/Choice/inheritance/cardinality
 synthetics and both Authorization model/API/body probes pass locally.
 Unrelated successful fixture outputs are byte-identical. Full schema rendering
-still has unrelated abstract-value/Unicode blockers. Projected Authorization
+still has unrelated abstract-value/topology blockers; Task066 now supports the
+three previously deferred Unicode profiles. Projected Authorization
 was already name-safe before this repair; this is not a projected readiness
 gain. See [Task065 evidence](task-065-ada-companion-naming.md). Historical
-Task058/060/061/062/063 measurements below are not rewritten. Delivery is not
-certified until the real former-gap campaign and final local/hosted gates pass.
+Task058/060/061/062/063 measurements below are not rewritten. Task065's merged
+certification remains historical; Task066's new-base certification is recorded
+in its own evidence document and PR checkpoint.
+
+## Current update — Task 066 exact Unicode 3.1 profiles
+
+The authorized repository policy pins XML Schema Nd membership to Unicode
+3.1.0 (248 points / 21 ranges), not host/latest Unicode. All three exact
+previously deferred profiles now have name-free facet admission and checked
+Ada/Rust/C++ UTF-8 carriers with scalar length and unchanged lexical bytes.
+Both releases gain eleven closed projected READY services per backend;
+full-schema closure counts remain unchanged. AO_CapabilityStatus is the real
+smallest three-language/Unicode JSON vertical. See [Task066 evidence](task-066-unicode-string-profiles.md)
+for the historical authority stop, authorized resume and actual delivery gates.
+Task060's historical `DEFERRED_UNICODE=3` remains unchanged.
 
 ## Current update — Task 063 exact patterned integral profile
 

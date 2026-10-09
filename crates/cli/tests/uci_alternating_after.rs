@@ -60,14 +60,7 @@ fn task060_real_uci_after_coverage_and_order_of_battle() {
             })
             .map(|d| d.name.local_name.as_str())
             .collect();
-        assert_eq!(
-            deferred,
-            BTreeSet::from([
-                "NITF_DateAndTimeType",
-                "NITF_DateType",
-                "NITF_MSTGTA_TargetLocationType"
-            ])
-        );
+        assert!(deferred.is_empty(), "Task066 supersedes Unicode deferral");
         for world in [
             GenerationWorld::ClosedSchemaSet,
             GenerationWorld::OpenExtensions,
@@ -103,7 +96,8 @@ fn task060_real_uci_after_coverage_and_order_of_battle() {
 /// and topology independently from full-schema closure coverage.
 #[test]
 fn task060_real_projected_message_impact_and_naming() {
-    // Preserve Task 062's baseline; layer only Task 063's exact closed 2.5 gain.
+    // Preserve Task062's baseline; compose Task063's integral gain and only
+    // Task066's eleven formerly Unicode-blocked closed services.
     let rows = include_str!("../../../tests/fixtures/string/task062-task060-subset-current.tsv");
     for (version, var, digest) in ROOTS {
         let Some((_, schema)) = root(var, digest) else {
@@ -157,7 +151,7 @@ fn task060_real_projected_message_impact_and_naming() {
                 );
                 assert_eq!(
                     r.is_ready(),
-                    row[2] == "ready" || task063_gain,
+                    row[2] == "ready" || task063_gain || row[2] == "NITF_DateAndTimeType",
                     "{version} {} {language:?}",
                     row[1]
                 );
@@ -184,9 +178,9 @@ fn task060_real_projected_message_impact_and_naming() {
         println!(
             "UCI {version} INTEGRATED CURRENT: ready={ready} topology={topology} blockers={blocked:?}"
         );
-        assert_eq!(ready, 86);
+        assert_eq!(ready, 97);
         assert_eq!(topology, 6);
-        let expected = std::collections::BTreeMap::from([("NITF_DateAndTimeType", 11)]);
+        let expected = std::collections::BTreeMap::new();
         assert_eq!(blocked, expected);
         println!("\nUCI {version} TASK060 PROJECTED MESSAGE IMPACT: PASSED");
     }

@@ -15,6 +15,14 @@ Three Unicode profiles and other semantic/topology blockers remain deferred.
 See [Task065 evidence](task-065-ada-companion-naming.md) for immutable BEFORE,
 full versus projected distinctions and explicit delivery-gate status.
 
+Task066 resumes under the authorized **Unicode 3.1.0 Nd baseline** and supports
+the three exact formerly deferred String profiles across Ada/Rust/C++. UTF-8
+scalar length, checked lifecycle and JSON/mock-OWP lexical preservation are
+compiler-backed. Eleven closed projected services per release/backend become
+READY; full-schema message closures do not change. See [Task066 evidence](task-066-unicode-string-profiles.md)
+for historical STOP provenance and explicit final delivery status. Historical
+Task060 measurements are unchanged.
+
 Task 063 implements the exact UCI 2.5 named patterned integral value-space
 profile without broadening direct integers. Its isolated historical evidence
 remains frozen; current integration includes the independently merged Task 062.
