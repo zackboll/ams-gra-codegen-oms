@@ -1,5 +1,14 @@
 # Roadmap
 
+Task 072: [open-world runtime ADR](task-072-open-world-runtime-contract.md)
+defines a bounded research design (known cases + owned opaque quarantine), not
+implemented support. **RUNTIME_CONTRACT_NOT_ESTABLISHED** pending private-schema
+validation authority, quarantine/relay authorization and raw codec/peer evidence.
+First proposed vertical: DataRecordListManagementRequest / ManagedListBaseType.
+OpenExtensions guards, exhaustive closed sums and all readiness claims remain
+unchanged; follow-ups require separate authorization. Dynamic registration and
+known recursive ownership are separate later gates.
+
 Task065 implements **generic semantic Ada artifact naming** for a concrete
 Choice's literal in an abstract closed sum, without renaming established
 companion types or unrelated successful outputs. Both pinned full-schema

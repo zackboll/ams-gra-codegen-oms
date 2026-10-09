@@ -1,5 +1,11 @@
 # Architecture
 
+Task 072 records the proposed owned opaque **quarantine**, identity, validation,
+resource and backend contract in [the runtime ADR](task-072-open-world-runtime-contract.md).
+Disposition: **RUNTIME_CONTRACT_NOT_ESTABLISHED**. Schema-unvalidated retention
+is not typed service support; OpenExtensions projection still fails closed.
+No generated model, codec, public API or transport lifecycle is changed.
+
 ## 1. Architectural intent
 
 Task 043 adds `schema-docs`: a separate, language-neutral offline HTML view
