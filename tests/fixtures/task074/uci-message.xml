@@ -1,0 +1,6 @@
+<!-- Synthetic XML, not OMS JSON, not operational authorization. -->
+<uci:DataRecordListManagementRequest xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <uci:SecurityInformation><uci:Classification>U</uci:Classification><uci:OwnerProducer><uci:GovernmentIdentifier>USA</uci:GovernmentIdentifier></uci:OwnerProducer></uci:SecurityInformation>
+  <uci:MessageHeader><uci:SystemID><uci:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</uci:UUID></uci:SystemID><uci:Timestamp>2026-10-08T00:00:00Z</uci:Timestamp><uci:SchemaVersion>RELEASE</uci:SchemaVersion><uci:Mode>SIMULATION</uci:Mode></uci:MessageHeader>
+  <uci:MessageData><uci:RequestID><uci:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</uci:UUID></uci:RequestID><uci:RequestState>NEW</uci:RequestState><uci:DataRecordListID><uci:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</uci:UUID></uci:DataRecordListID><uci:AddRecord xsi:type="uci:ForeignKeyMapML"/></uci:MessageData>
+</uci:DataRecordListManagementRequest>

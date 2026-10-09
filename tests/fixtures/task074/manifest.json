@@ -1,0 +1,44 @@
+{
+  "approval_provenance": {
+    "evidence": null,
+    "owner": null,
+    "scope": "research-only",
+    "status": "UNESTABLISHED"
+  },
+  "approved_concrete_qnames": [
+    "{urn:task074:public}Known",
+    "{urn:task074:private}Known"
+  ],
+  "bundle_id": "task074-synthetic-synthetic",
+  "files": [
+    {
+      "namespace": "urn:task074:public",
+      "path": "root.xsd",
+      "sha256": "035e26b29522b6a468eec1fab2edae104b41aed6781f34b87be86a9c60a9e878"
+    },
+    {
+      "namespace": "urn:task074:public",
+      "path": "public.xsd",
+      "sha256": "fd6a63b8c20ba1d69dd5c0658f2543527e94633ff31e8f39ef8f6a783a65ffdc"
+    },
+    {
+      "namespace": "urn:task074:private",
+      "path": "private.xsd",
+      "sha256": "eea407bf57a53f9057edd59ff6322f8935dff7193e5fe8db204307057bcd2fdd"
+    },
+    {
+      "namespace": "urn:task074:private",
+      "path": "facets.xsd",
+      "sha256": "561304c242f9e93c9485c552bd8a7e870aad819a6177979bd383ce37d3da75a5"
+    }
+  ],
+  "public_uci_release": "synthetic",
+  "root": "root.xsd",
+  "toolchain": {
+    "etree_sha256": "27d8b7e79e217e6946ad6871c13b6bdfbcf55a1a3f6b3ab590cb892fc3a5deca",
+    "libxml": "2.9.14",
+    "libxml_sha256": "8f2643af68a9eba917929046806dabd1848867068d0eee0f6799288a8e886963",
+    "lxml": "5.4.0"
+  },
+  "version": 1
+}
