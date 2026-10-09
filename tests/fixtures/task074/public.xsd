@@ -1,0 +1,6 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:p="urn:task074:public" targetNamespace="urn:task074:public" elementFormDefault="qualified">
+  <xs:complexType name="Base" abstract="true"><xs:sequence><xs:element name="Count" type="xs:positiveInteger"/><xs:element name="Next" type="p:Base" minOccurs="0"/></xs:sequence></xs:complexType>
+  <xs:complexType name="Known"><xs:complexContent><xs:extension base="p:Base"/></xs:complexContent></xs:complexType>
+  <xs:complexType name="Other"><xs:sequence/></xs:complexType>
+  <xs:element name="Value" type="p:Base"/>
+</xs:schema>

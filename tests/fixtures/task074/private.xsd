@@ -1,0 +1,6 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:p="urn:task074:public" xmlns:s="urn:task074:private" targetNamespace="urn:task074:private" elementFormDefault="qualified">
+  <xs:import namespace="urn:task074:public" schemaLocation="public.xsd"/>
+  <xs:include schemaLocation="facets.xsd"/>
+  <xs:complexType name="Known"><xs:complexContent><xs:extension base="p:Base"><xs:sequence><xs:element name="Secret" type="s:SecretCode"/></xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+  <xs:complexType name="Unapproved"><xs:complexContent><xs:extension base="p:Base"/></xs:complexContent></xs:complexType>
+</xs:schema>

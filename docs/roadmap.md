@@ -1,5 +1,10 @@
 # Roadmap
 
+Task 074: [offline private-schema XML qualification](task-074-offline-schema-validation.md)
+is partial research evidence, not production runtime readiness. Remaining gates
+include authenticated bundle approval, CAL JSON mapping, operation authorization
+and deployment containment; all OpenExtensions rejection stays unchanged.
+
 Task 072: [open-world runtime ADR](task-072-open-world-runtime-contract.md)
 defines a bounded research design (known cases + owned opaque quarantine), not
 implemented support. **RUNTIME_CONTRACT_NOT_ESTABLISHED** pending private-schema
