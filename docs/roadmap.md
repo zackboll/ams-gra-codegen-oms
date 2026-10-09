@@ -863,6 +863,13 @@ length-only constraints (no field-local facets, no patterns, no base64).
 
 ## Phase 4 — SPARK-oriented Ada backend
 
+Open-world implementation remains gated by
+[Task 073 validation/quarantine authority](task-073-unknown-subtype-authority.md):
+**VALIDATION_AND_AUTHORIZATION_CONTRACT_NOT_ESTABLISHED**. Select and qualify a
+deployment-approved schema authority, scoped operation policy and bounded raw
+ingress before implementation. Task 072 PR #72 remains independent and pending;
+neither research decision changes OpenExtensions readiness.
+
 Task 034's optional representation was chosen to be compatible with this phase
 without anticipating it: the discriminant alone controls whether `Value`
 exists, and there is no access type, no heap allocation from the wrapper
