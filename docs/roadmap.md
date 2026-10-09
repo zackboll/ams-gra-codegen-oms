@@ -893,7 +893,11 @@ GNATprove CI was added there; that work belongs here.
 - Conservative compatibility analysis layered onto typed diffs (planned;
   Task 069 does not claim backward, forward, wire or version-history compatibility).
 - generated API documentation;
-- topic/message allow-list helpers;
+- [x] Contract-derived OMS route inventory and validated pinned-Sleet
+      topic/message allow-list preview (Task071). Read-only, exact QName,
+      first-occurrence aggregation; OAM-only Sleet projection, not
+      direction-specific least privilege or backend readiness.
+      See [Task071](task-071-service-route-allowlists.md).
 - cached IR artifact;
 - editor/IDE schema navigation;
 - Python backend if useful.

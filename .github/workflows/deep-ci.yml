@@ -83,6 +83,8 @@ jobs:
       #
       - name: Named TimeZulu pinned inventory and impact (Task 061)
         run: bash scripts/check-task061-pinned.sh
+      - name: Real UCI route identity smoke (Task 071)
+        run: bash scripts/check-task071-uci.sh
       - name: Pinned semantic schema diff (Task 069, once for both releases)
         run: bash scripts/check-task069-pinned.sh
       - name: Exact IPv6 pinned inventory, impact and real vertical (Task 062)

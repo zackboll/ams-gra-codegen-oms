@@ -48,6 +48,8 @@ jobs:
           command -v gnatmake
           gnatmake --version
       - run: cargo fmt --all -- --check
+      - name: Contract route manifest and Sleet policy (Task 071)
+        run: bash scripts/check-task071-fast.sh
       - name: Exact semantic schema diff Fast controls (Task 069)
         run: |
           python3 scripts/test-task069-ci-wrappers.py

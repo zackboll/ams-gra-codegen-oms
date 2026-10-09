@@ -17,6 +17,9 @@ use ams_gra_oms_codegen_core::{
 use ams_gra_oms_ir::SchemaIr;
 use ams_gra_oms_schema_docs::generate as generate_docs;
 use ams_gra_oms_service_contract::load_contract;
+use ams_gra_oms_service_routes::{
+    build_route_manifest, render_route_tsv, render_sleet_toml, validate_service_identity,
+};
 use ams_gra_oms_xsd_frontend::load_schema_set_with_overlays;
 use std::collections::BTreeSet;
 use std::ffi::{OsStr, OsString};
@@ -36,6 +39,7 @@ USAGE:
     ams-gra-codegen-oms generate --schema PATH [--overlay PATH]... --language LANGUAGE --output DIR --world WORLD
     ams-gra-codegen-oms docs --schema PATH [--overlay PATH]... --output DIR
     ams-gra-codegen-oms service-plan --schema PATH --contract PATH [--extension ID=PATH]...
+    ams-gra-codegen-oms service-routes --schema PATH --contract PATH [--extension ID=PATH]... [--format tsv|sleet-toml] [--service-id ID --service-uuid UUID]
     ams-gra-codegen-oms service-check --schema PATH --contract PATH [--extension ID=PATH]... --language LANGUAGE --world WORLD [--with-codec]
     ams-gra-codegen-oms service-generate --schema PATH --contract PATH [--extension ID=PATH]... --language LANGUAGE --world WORLD --output DIR [--with-codec]
 
@@ -46,6 +50,7 @@ COMMANDS:
     generate           Generate source files from an XSD schema set
     docs               Generate an offline HTML browser for a normalized XSD schema set
     service-plan       Resolve a portable Service Contract against a schema set
+    service-routes     Report OMS routes or preview validated Sleet allow-lists
     service-check      Report backend/world readiness for a contract's selection
     service-generate   Generate a contract's selected UCI type model and typed
                        service API wrapper
@@ -560,6 +565,12 @@ fn parse_world(value: &OsStr) -> Result<GenerationWorld, CliError> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Command {
+    ServiceRoutes {
+        schema: PathBuf,
+        contract: PathBuf,
+        extensions: Vec<(String, PathBuf)>,
+        identity: Option<(String, String)>,
+    },
     SchemaDiff {
         before: PathBuf,
         after: PathBuf,
@@ -633,6 +644,21 @@ where
     W: Write,
 {
     match parse_args(args)? {
+        Command::ServiceRoutes {
+            schema,
+            contract,
+            extensions,
+            identity,
+        } => {
+            let inputs = load_service_inputs(&schema, &contract, &extensions)?;
+            let manifest = build_route_manifest(&inputs.plan);
+            let output = match identity {
+                None => render_route_tsv(&manifest),
+                Some((id, uuid)) => render_sleet_toml(&manifest, &id, &uuid)
+                    .map_err(|error| CliError::execution(error.to_string()))?,
+            };
+            write_output(stdout, &output)
+        }
         Command::SchemaDiff {
             before,
             after,
@@ -723,7 +749,7 @@ where
 {
     let mut args = args.into_iter();
     let command = args.next().ok_or_else(|| {
-        CliError::usage("missing command; expected 'schema-diff', 'validate', 'coverage', 'generate', 'docs', 'service-plan', 'service-check', or 'service-generate'")
+        CliError::usage("missing command; expected 'schema-diff', 'validate', 'coverage', 'generate', 'docs', 'service-plan', 'service-routes', 'service-check', or 'service-generate'")
     })?;
     match command.to_str() {
         Some("-h" | "--help") => no_trailing_args(args, Command::Help(HELP)),
@@ -734,11 +760,12 @@ where
         Some("generate") => parse_generate(args.collect()),
         Some("docs") => parse_docs(args.collect()),
         Some("service-plan") => parse_service_plan(args.collect()),
+        Some("service-routes") => parse_service_routes(args.collect()),
         Some("service-check") => parse_service_check(args.collect()),
         Some("service-generate") => parse_service_generate(args.collect()),
         Some(command) => Err(CliError::usage(format!(
             "unknown command '{command}'; expected 'schema-diff', 'validate', 'coverage', 'generate', \
-             'docs', 'service-plan', 'service-check', or 'service-generate'"
+             'docs', 'service-plan', 'service-routes', 'service-check', or 'service-generate'"
         ))),
         None => Err(CliError::usage("command must be valid UTF-8")),
     }
@@ -895,6 +922,60 @@ fn parse_service_plan(args: Vec<OsString>) -> Result<Command, CliError> {
         // its extensions logically, and the mapping option is the only way to
         // bind those names to local schema documents.
         extensions,
+    })
+}
+
+fn parse_service_routes(args: Vec<OsString>) -> Result<Command, CliError> {
+    if is_help_request(&args) {
+        return Ok(Command::Help(
+            "ams-gra-codegen-oms service-routes\n\nUSAGE:\n    ams-gra-codegen-oms service-routes --schema PATH --contract PATH [--extension ID=PATH]... [--format tsv|sleet-toml]\n\nDefault format: tsv. For sleet-toml, --service-id ID and --service-uuid UUID are required.\nRead-only OMS route projection; no backend/world/readiness policy.\nSleet bindings authorize BOTH PUB and SUB; groups are not policy fields.\nOnly exact OAM namespace messages are supported by the pinned Sleet target.\n",
+        ));
+    }
+    let mut schema = None;
+    let mut contract = None;
+    let mut extensions = Vec::new();
+    let mut format = None;
+    let mut id = None;
+    let mut uuid = None;
+    parse_options(args, |option, value| match option {
+        "--schema" | "-s" => set_once(&mut schema, value, "--schema"),
+        "--contract" | "-c" => set_once(&mut contract, value, "--contract"),
+        "--extension" => push_extension(&mut extensions, value),
+        "--format" => set_once(&mut format, value, "--format"),
+        "--service-id" => set_once(&mut id, value, "--service-id"),
+        "--service-uuid" => set_once(&mut uuid, value, "--service-uuid"),
+        _ => Err(CliError::usage(format!("unknown option '{option}'"))),
+    })?;
+    let identity = match format.as_deref().unwrap_or(OsStr::new("tsv")).to_str() {
+        Some("tsv") => {
+            if id.is_some() || uuid.is_some() {
+                return Err(CliError::usage(
+                    "--service-id and --service-uuid are forbidden for TSV",
+                ));
+            }
+            None
+        }
+        Some("sleet-toml") => {
+            let id = required(id, "--service-id")?
+                .into_string()
+                .map_err(|_| CliError::usage("service ID must be UTF-8"))?;
+            let uuid = required(uuid, "--service-uuid")?
+                .into_string()
+                .map_err(|_| CliError::usage("service UUID must be UTF-8"))?;
+            validate_service_identity(&id, &uuid).map_err(|e| CliError::usage(e.to_string()))?;
+            Some((id, uuid))
+        }
+        _ => {
+            return Err(CliError::usage(
+                "invalid --format; expected tsv or sleet-toml",
+            ));
+        }
+    };
+    Ok(Command::ServiceRoutes {
+        schema: required(schema, "--schema")?.into(),
+        contract: required(contract, "--contract")?.into(),
+        extensions,
+        identity,
     })
 }
 

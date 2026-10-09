@@ -14,6 +14,7 @@ dependencies = [
  "ams-gra-oms-schema-diff",
  "ams-gra-oms-schema-docs",
  "ams-gra-oms-service-contract",
+ "ams-gra-oms-service-routes",
  "ams-gra-oms-xsd-frontend",
 ]
 
@@ -113,6 +114,16 @@ dependencies = [
  "serde",
  "serde_json",
  "yaml_serde",
+]
+
+[[package]]
+name = "ams-gra-oms-service-routes"
+version = "0.1.0"
+dependencies = [
+ "ams-gra-oms-codegen-core",
+ "ams-gra-oms-ir",
+ "ams-gra-oms-service-contract",
+ "uuid",
 ]
 
 [[package]]
