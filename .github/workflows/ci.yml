@@ -74,6 +74,8 @@ jobs:
           python3 scripts/test-task066-ci-wrappers.py
           bash scripts/check-task066-fast.sh
       - run: cargo check --workspace --all-targets
+      - name: Bounded initial LA-CAL connection retry (Task 070)
+        run: bash scripts/check-task070-fast.sh
       - run: cargo clippy --workspace --all-targets -- -D warnings
       # The four GNAT-backed Task 033 regressions are named explicitly so the
       # log proves each one executed. `require_one_test` fails the step if a

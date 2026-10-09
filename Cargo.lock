@@ -84,6 +84,7 @@ dependencies = [
  "ams-gra-oms-runtime-rust",
  "futures-util",
  "serde_json",
+ "sleet-client",
  "tokio",
  "tokio-tungstenite",
 ]

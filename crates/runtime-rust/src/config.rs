@@ -11,6 +11,60 @@ pub const DEFAULT_OWP_VERSION: &str = "1.0";
 /// upgrade plus `INIT`/`INFO` by default.
 pub const DEFAULT_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 
+/// Finite upper bound on initial connection attempts, including the first.
+pub const MAX_INITIAL_CONNECT_ATTEMPTS: u8 = 8;
+
+/// Opt-in retry of refused TCP connections, never of an established session.
+/// Construct through [`RuntimeConfig::with_initial_connect_retry`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ConnectRetryPolicy {
+    pub(crate) max_attempts: u8,
+    pub(crate) initial_delay: Duration,
+    pub(crate) max_delay: Duration,
+}
+
+impl ConnectRetryPolicy {
+    /// Total attempt budget (the first attempt is included).
+    #[must_use]
+    pub const fn max_attempts(&self) -> u8 {
+        self.max_attempts
+    }
+
+    #[must_use]
+    pub const fn initial_delay(&self) -> Duration {
+        self.initial_delay
+    }
+
+    #[must_use]
+    pub const fn max_delay(&self) -> Duration {
+        self.max_delay
+    }
+
+    pub(crate) fn delay_after(&self, attempt: u8) -> Option<Duration> {
+        if attempt == 0 || attempt >= self.max_attempts {
+            return None;
+        }
+        let mut delay = self.initial_delay.min(self.max_delay);
+        for _ in 1..attempt {
+            delay = delay
+                .checked_mul(2)
+                .unwrap_or(self.max_delay)
+                .min(self.max_delay);
+        }
+        Some(delay)
+    }
+}
+
+impl Default for ConnectRetryPolicy {
+    fn default() -> Self {
+        Self {
+            max_attempts: 1,
+            initial_delay: Duration::ZERO,
+            max_delay: Duration::ZERO,
+        }
+    }
+}
+
 /// Connection settings for one LA-CAL client connection.
 ///
 /// The schema version is always caller-supplied: no UCI version is assumed.
@@ -21,6 +75,7 @@ pub struct RuntimeConfig {
     schema_version: String,
     owp_versions: Vec<String>,
     connect_timeout: Duration,
+    initial_connect_retry: ConnectRetryPolicy,
 }
 
 impl RuntimeConfig {
@@ -38,6 +93,7 @@ impl RuntimeConfig {
             schema_version: schema_version.into(),
             owp_versions: vec![DEFAULT_OWP_VERSION.to_owned()],
             connect_timeout: DEFAULT_CONNECT_TIMEOUT,
+            initial_connect_retry: ConnectRetryPolicy::default(),
         }
     }
 
@@ -48,11 +104,38 @@ impl RuntimeConfig {
         self
     }
 
-    /// Replace the connect/handshake timeout.
+    /// Replace the connect/handshake timeout, applied separately per attempt.
     #[must_use]
     pub const fn with_connect_timeout(mut self, timeout: Duration) -> Self {
         self.connect_timeout = timeout;
         self
+    }
+
+    /// Retry only initial TCP connection refusal, with deterministic exponential
+    /// backoff. `max_attempts` includes the first and must be 1..=8. With retries,
+    /// `initial_delay` must be positive; `max_delay` must be at least that delay.
+    /// Invalid settings yield [`RuntimeError::InvalidConfig`] on connect.
+    ///
+    /// The campaign's wait budget is `max_attempts * connect_timeout` plus
+    /// the retry delays, not one connect timeout. No retry/replay after INFO.
+    #[must_use]
+    pub const fn with_initial_connect_retry(
+        mut self,
+        max_attempts: u8,
+        initial_delay: Duration,
+        max_delay: Duration,
+    ) -> Self {
+        self.initial_connect_retry = ConnectRetryPolicy {
+            max_attempts,
+            initial_delay,
+            max_delay,
+        };
+        self
+    }
+
+    #[must_use]
+    pub const fn initial_connect_retry(&self) -> &ConnectRetryPolicy {
+        &self.initial_connect_retry
     }
 
     #[must_use]
@@ -99,6 +182,33 @@ impl RuntimeConfig {
         if self.connect_timeout.is_zero() {
             return Err(RuntimeError::InvalidConfig(
                 "connect_timeout is zero".to_owned(),
+            ));
+        }
+        let policy = self.initial_connect_retry;
+        if !(1..=MAX_INITIAL_CONNECT_ATTEMPTS).contains(&policy.max_attempts)
+            || (policy.max_attempts > 1 && policy.initial_delay.is_zero())
+            || policy.max_delay < policy.initial_delay
+        {
+            return Err(RuntimeError::InvalidConfig(
+                "initial retry requires 1..=8 attempts, positive retry delay, and max_delay >= initial_delay".to_owned(),
+            ));
+        }
+        // Tokio deadlines use Instant. Reject unrepresentable timer durations
+        // rather than allowing a sleep to panic, even for a single attempt.
+        let now = std::time::Instant::now();
+        let mut budget = self
+            .connect_timeout
+            .checked_mul(u32::from(policy.max_attempts));
+        for attempt in 1..policy.max_attempts {
+            budget = budget.and_then(|budget| budget.checked_add(policy.delay_after(attempt)?));
+        }
+        if now.checked_add(self.connect_timeout).is_none()
+            || now.checked_add(policy.initial_delay).is_none()
+            || now.checked_add(policy.max_delay).is_none()
+            || budget.and_then(|budget| now.checked_add(budget)).is_none()
+        {
+            return Err(RuntimeError::InvalidConfig(
+                "timer duration is not representable".to_owned(),
             ));
         }
         Ok(())
