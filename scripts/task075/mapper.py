@@ -29,6 +29,11 @@ def fail(stage, reason):
     raise Failure(stage, reason)
 
 
+def structural_children(node):
+    """Interpret element children only; inert XML nodes/annotations are metadata."""
+    return [n for n in node if isinstance(n.tag, str) and n.tag != X+'annotation']
+
+
 def qname(key):
     if type(key) is not str:
         fail('shape', 'qname-token')
@@ -123,13 +128,14 @@ class Mapper:
         for data in bundle.files.values():
             root = parse(data, schema=True).getroot()
             ns = root.get('targetNamespace', '')
-            for node in root:
+            for node in structural_children(root):
                 name = node.get('name')
                 if name and node.tag in (X+'complexType', X+'simpleType', X+'element'):
                     target = self.elements if node.tag == X+'element' else self.types
                     target['{' + ns + '}' + name] = node
-        self.namespaces = sorted({E.QName(k).namespace for k in [*self.types, *self.elements]})
-        self.nsmap = {'xsi': I[1:-1], **{f'n{i}': ns for i, ns in enumerate(self.namespaces) if ns}}
+        self.namespaces = sorted({ns for k in [*self.types, *self.elements]
+                                  if (ns := E.QName(k).namespace) is not None})
+        self.nsmap = {'xsi': I[1:-1], **{f'n{i}': ns for i, ns in enumerate(self.namespaces)}}
 
     def schema_qname(self, node, key):
         value = node.get(key)
@@ -157,14 +163,15 @@ class Mapper:
             fail('mapping', 'not-complex-type')
         if node.get('mixed') == 'true':
             fail('unsupported', 'mixed')
-        children = [n for n in node if n.tag != X+'annotation']
+        children = structural_children(node)
         if len(children) == 1 and children[0].tag == X+'complexContent':
-            ext = children[0].find(X+'extension')
-            if ext is None or len(children[0]) != 1:
+            derivations = structural_children(children[0])
+            if len(derivations) != 1 or derivations[0].tag != X+'extension':
                 fail('unsupported', 'complex-restriction')
+            ext = derivations[0]
             base = self.schema_qname(ext, 'base')
             parts = self.content(base, (*seen, name))
-            children = [n for n in ext if n.tag != X+'annotation']
+            children = structural_children(ext)
         else:
             parts = []
         if any(n.tag not in (X+'sequence', X+'choice') for n in children):
@@ -231,6 +238,8 @@ class Mapper:
         if node.get('ref') or not node.get('name'):
             fail('unsupported', 'element-ref')
         schema = node.getroottree().getroot()
+        if not schema.get('targetNamespace'):
+            fail('unsupported', 'unqualified-member')
         if node.get('form', schema.get('elementFormDefault', 'unqualified')) != 'qualified':
             fail('unsupported', 'unqualified-member')
         return '{' + schema.get('targetNamespace', '') + '}' + node.get('name')
@@ -240,22 +249,42 @@ class Mapper:
             return {self.member_name(particle)}
         if particle.tag not in (X+'sequence', X+'choice'):
             fail('unsupported', 'particle')
-        return set().union(*(self.particle_keys(n) for n in particle if n.tag != X+'annotation'))
+        return set().union(*(self.particle_keys(n) for n in structural_children(particle)))
+
+    def emptiable(self, particle, depth=0):
+        """Bounded XSD particle emptiability, only the already-supported forms.
+
+        Structures §3.9.6: minOccurs zero or empty effective total range.
+        Sequence needs all children empty; choice needs an empty alternative.
+        Inspect all children so unsupported terms cannot hide in an empty branch.
+        """
+        if depth >= self.limits['depth']:
+            fail('unsupported', 'particle-depth')
+        if particle.tag == X+'element':
+            self.member_name(particle)
+            return particle.get('minOccurs', '1') == '0'
+        if particle.tag not in (X+'sequence', X+'choice'):
+            fail('unsupported', 'particle')
+        if particle.get('maxOccurs', '1') != '1':
+            fail('unsupported', 'repeated-group')
+        empty = [self.emptiable(n, depth+1) for n in structural_children(particle)]
+        return (particle.get('minOccurs', '1') == '0' or
+                (all(empty) if particle.tag == X+'sequence' else not empty or any(empty)))
 
     def particle(self, parent, particle, values, used, path):
-        if particle.tag == X+'annotation':
+        if not isinstance(particle.tag, str) or particle.tag == X+'annotation':
             return
         if particle.tag in (X+'sequence', X+'choice'):
             if particle.get('maxOccurs', '1') != '1':
                 fail('unsupported', 'repeated-group')
             if particle.get('minOccurs', '1') == '0' and not (self.particle_keys(particle) & values.keys()):
                 return
-            children = [n for n in particle if n.tag != X+'annotation']
+            children = structural_children(particle)
             if particle.tag == X+'choice':
                 children = [n for n in children if self.particle_keys(n) & values.keys()]
                 if len(children) > 1:
                     fail('shape', 'choice-conflict')
-                if not children and particle.get('minOccurs', '1') != '0':
+                if not children and not self.emptiable(particle):
                     fail('shape', 'choice-missing')
             for child in children:
                 self.particle(parent, child, values, used, path)
@@ -338,6 +367,8 @@ class Mapper:
             fail('envelope', 'wrong-global')
         if self.expected not in self.elements:
             fail('mapping', 'undefined-global')
+        if E.QName(self.expected).namespace is None:
+            fail('unsupported', 'unqualified-member')
         root = E.Element(self.expected, nsmap=self.nsmap)
         self.output_budget = 0
         self.value(root, value[key], self.schema_qname(self.elements[self.expected], 'type'), ())

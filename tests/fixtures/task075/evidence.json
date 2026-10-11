@@ -385,6 +385,396 @@
       "xml": "<n0:Values xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075\"><n0:Text></n0:Text><n0:Integer>9007199254740993</n0:Integer><n0:Decimal>-0.125</n0:Decimal><n0:Flag>true</n0:Flag></n0:Values>",
       "xml_sha256": "8064f0b42ffd4ff84843ebd9f09d4efd0ba4bc344da158478dba7ffbdca9c97e"
     },
+    "review base Base Text": {
+      "raw": "{\"{urn:task075:review}Base\": {\"{urn:task075:review}Text\": \"ok\"}}",
+      "raw_sha256": "93b15df22aa537e6320c5bbabd67b69220209f89b61cb700a576288bbb711b75",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Base xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075:review\"><n0:Text>ok</n0:Text></n0:Base>",
+      "xml_sha256": "fd00d376eac775ccc067440bebdf1f5ade68394500d3857579f264c270be321c"
+    },
+    "review base Base Text reference": {
+      "raw": "{\"{urn:task075:review}Base\": {\"{urn:task075:review}Text\": \"ok\"}}",
+      "xml": "<ns0:Base xmlns:ns0=\"urn:task075:review\"><ns0:Text>ok</ns0:Text></ns0:Base>"
+    },
+    "review base Nested A": {
+      "raw": "{\"{urn:task075:review}Nested\": {\"{urn:task075:review}A\": \"a\"}}",
+      "raw_sha256": "b0f250f286778a7bb8b9eed411af15edd71c5d7ec3c60a04f835bb094c3bb327",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Nested xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075:review\"><n0:A>a</n0:A></n0:Nested>",
+      "xml_sha256": "6c470f120b55db89b87b6848efa985f91d2b580caf5293082c927cfecc3c721a"
+    },
+    "review base Nested A reference": {
+      "raw": "{\"{urn:task075:review}Nested\": {\"{urn:task075:review}A\": \"a\"}}",
+      "xml": "<ns0:Nested xmlns:ns0=\"urn:task075:review\"><ns0:A>a</ns0:A></ns0:Nested>"
+    },
+    "review base Nested A+B reference": {
+      "raw": "{\"{urn:task075:review}Nested\": {\"{urn:task075:review}A\": \"a\", \"{urn:task075:review}B\": \"b\"}}",
+      "xml": "<ns0:Nested xmlns:ns0=\"urn:task075:review\"><ns0:A>a</ns0:A><ns0:B>b</ns0:B></ns0:Nested>"
+    },
+    "review base Nested B": {
+      "raw": "{\"{urn:task075:review}Nested\": {\"{urn:task075:review}B\": \"b\"}}",
+      "raw_sha256": "3acb96bc42eb045af07df55518b9bedb4a822f6a9ab178b77fae1039a9d22464",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Nested xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075:review\"><n0:B>b</n0:B></n0:Nested>",
+      "xml_sha256": "8ede971ecdf2913d53a4c1d819b8a86bb9549a79ff8355d34226f5c348244c58"
+    },
+    "review base Nested B reference": {
+      "raw": "{\"{urn:task075:review}Nested\": {\"{urn:task075:review}B\": \"b\"}}",
+      "xml": "<ns0:Nested xmlns:ns0=\"urn:task075:review\"><ns0:B>b</ns0:B></ns0:Nested>"
+    },
+    "review base Nested empty": {
+      "raw": "{\"{urn:task075:review}Nested\": {}}",
+      "raw_sha256": "91fca5eff37c63ad2f220a718ac14686c6e5abcdfefd21185b521ccb42d4b710",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Nested xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075:review\"/>",
+      "xml_sha256": "71cfd6ab4b7d7ac730fc0ec9cd80e54745f2f493476ad6aed04715f7a48f1911"
+    },
+    "review base Nested empty reference": {
+      "raw": "{\"{urn:task075:review}Nested\": {}}",
+      "xml": "<ns0:Nested xmlns:ns0=\"urn:task075:review\"/>"
+    },
+    "review base Nullable A": {
+      "raw": "{\"{urn:task075:review}Nullable\": {\"{urn:task075:review}A\": \"a\"}}",
+      "raw_sha256": "8ce211e5fb469e2b607f402f542bc52a06a032e33d18c0aa32ae0b3306c12220",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Nullable xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075:review\"><n0:A>a</n0:A></n0:Nullable>",
+      "xml_sha256": "35a4a2af7ac6425c2a069921f2c2c7f6b42178d8c151e841b903d0ba248fefb8"
+    },
+    "review base Nullable A reference": {
+      "raw": "{\"{urn:task075:review}Nullable\": {\"{urn:task075:review}A\": \"a\"}}",
+      "xml": "<ns0:Nullable xmlns:ns0=\"urn:task075:review\"><ns0:A>a</ns0:A></ns0:Nullable>"
+    },
+    "review base Nullable A+B reference": {
+      "raw": "{\"{urn:task075:review}Nullable\": {\"{urn:task075:review}A\": \"a\", \"{urn:task075:review}B\": \"b\"}}",
+      "xml": "<ns0:Nullable xmlns:ns0=\"urn:task075:review\"><ns0:A>a</ns0:A><ns0:B>b</ns0:B></ns0:Nullable>"
+    },
+    "review base Nullable B": {
+      "raw": "{\"{urn:task075:review}Nullable\": {\"{urn:task075:review}B\": \"b\"}}",
+      "raw_sha256": "4c8580c7b8dd34195f7b4adcb29a168b7c157c34e101a68f1d1c253ccce82415",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Nullable xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075:review\"><n0:B>b</n0:B></n0:Nullable>",
+      "xml_sha256": "46952ec9b2a9ea96a48806a707f194363b683a097ecfc8b64833221f4084afeb"
+    },
+    "review base Nullable B reference": {
+      "raw": "{\"{urn:task075:review}Nullable\": {\"{urn:task075:review}B\": \"b\"}}",
+      "xml": "<ns0:Nullable xmlns:ns0=\"urn:task075:review\"><ns0:B>b</ns0:B></ns0:Nullable>"
+    },
+    "review base Nullable empty": {
+      "raw": "{\"{urn:task075:review}Nullable\": {}}",
+      "raw_sha256": "b12a40e5dbcdbda386c74612d6b8494dc84f4ed2a446cac9ed11b85b03c79102",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Nullable xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075:review\"/>",
+      "xml_sha256": "b11b7226502af9af8958eef9dc2bce463b71e39c790bad45f0906a2af081b900"
+    },
+    "review base Nullable empty reference": {
+      "raw": "{\"{urn:task075:review}Nullable\": {}}",
+      "xml": "<ns0:Nullable xmlns:ns0=\"urn:task075:review\"/>"
+    },
+    "review base Optional empty": {
+      "raw": "{\"{urn:task075:review}Optional\": {}}",
+      "raw_sha256": "283362a67ea59ad886c451cae0af63216c2bc71a59da6b8813e6bb7dc24af2ae",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Optional xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075:review\"/>",
+      "xml_sha256": "edaf9c11b3cba391c6d1b917e677bb134ab057873b80162b298e4e061c8a8c7f"
+    },
+    "review base Optional empty reference": {
+      "raw": "{\"{urn:task075:review}Optional\": {}}",
+      "xml": "<ns0:Optional xmlns:ns0=\"urn:task075:review\"/>"
+    },
+    "review base Record Text+Extra": {
+      "raw": "{\"{urn:task075:review}Record\": {\"{urn:task075:review}Text\": \"ok\", \"{urn:task075:review}Extra\": \"more\"}}",
+      "raw_sha256": "18d400ae17beabf94e49151f710751d79be6c3cc3ad9d7f57da205aceb3c7fc2",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Record xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075:review\"><n0:Text>ok</n0:Text><n0:Extra>more</n0:Extra></n0:Record>",
+      "xml_sha256": "ccece73b92d8667d56fce621c49912fdf1d27ff3650b590c2aed6d0e52610ce1"
+    },
+    "review base Record Text+Extra reference": {
+      "raw": "{\"{urn:task075:review}Record\": {\"{urn:task075:review}Text\": \"ok\", \"{urn:task075:review}Extra\": \"more\"}}",
+      "xml": "<ns0:Record xmlns:ns0=\"urn:task075:review\"><ns0:Text>ok</ns0:Text><ns0:Extra>more</ns0:Extra></ns0:Record>"
+    },
+    "review base Required A": {
+      "raw": "{\"{urn:task075:review}Required\": {\"{urn:task075:review}A\": \"a\"}}",
+      "raw_sha256": "6c5aea38d42379e41a002d757717474188d6666edaa37eb4a030779d5ec79b35",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Required xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075:review\"><n0:A>a</n0:A></n0:Required>",
+      "xml_sha256": "9eef30e0df6a151243618b945e4a60f6062f8d1da6e84459e2621b3ea259533f"
+    },
+    "review base Required A reference": {
+      "raw": "{\"{urn:task075:review}Required\": {\"{urn:task075:review}A\": \"a\"}}",
+      "xml": "<ns0:Required xmlns:ns0=\"urn:task075:review\"><ns0:A>a</ns0:A></ns0:Required>"
+    },
+    "review base Required A+B reference": {
+      "raw": "{\"{urn:task075:review}Required\": {\"{urn:task075:review}A\": \"a\", \"{urn:task075:review}B\": \"b\"}}",
+      "xml": "<ns0:Required xmlns:ns0=\"urn:task075:review\"><ns0:A>a</ns0:A><ns0:B>b</ns0:B></ns0:Required>"
+    },
+    "review base Required B": {
+      "raw": "{\"{urn:task075:review}Required\": {\"{urn:task075:review}B\": \"b\"}}",
+      "raw_sha256": "b1e9b8b338575e9476944a4d04b8c56b79afce540d0a6c87e94db6f7ca5331d0",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Required xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075:review\"><n0:B>b</n0:B></n0:Required>",
+      "xml_sha256": "57c0858604067e4af7cb6de3acabcb01082c2d502318b22d462e53f465351467"
+    },
+    "review base Required B reference": {
+      "raw": "{\"{urn:task075:review}Required\": {\"{urn:task075:review}B\": \"b\"}}",
+      "xml": "<ns0:Required xmlns:ns0=\"urn:task075:review\"><ns0:B>b</ns0:B></ns0:Required>"
+    },
+    "review base Required empty reference": {
+      "raw": "{\"{urn:task075:review}Required\": {}}",
+      "xml": "<ns0:Required xmlns:ns0=\"urn:task075:review\"/>"
+    },
+    "review base Unsupported empty reference": {
+      "raw": "{\"{urn:task075:review}Unsupported\": {}}",
+      "xml": "<ns0:Unsupported xmlns:ns0=\"urn:task075:review\"/>"
+    },
+    "review base bundle": {
+      "manifest": {
+        "approval_provenance": {
+          "evidence": null,
+          "owner": null,
+          "scope": "research-only",
+          "status": "UNESTABLISHED"
+        },
+        "approved_concrete_qnames": [],
+        "bundle_id": "task074-synthetic-review",
+        "files": [
+          {
+            "namespace": "urn:task075:review",
+            "path": "review-base.xsd",
+            "sha256": "ae8f1e70a128d30085a0f971d6d584ea6d58d1393965fea12b32db96ff686206"
+          }
+        ],
+        "public_uci_release": "review",
+        "root": "review-base.xsd",
+        "toolchain": {
+          "etree_sha256": "27d8b7e79e217e6946ad6871c13b6bdfbcf55a1a3f6b3ab590cb892fc3a5deca",
+          "libxml": "2.9.14",
+          "libxml_sha256": "8f2643af68a9eba917929046806dabd1848867068d0eee0f6799288a8e886963",
+          "lxml": "5.4.0"
+        },
+        "version": 1
+      },
+      "result": "compiled"
+    },
+    "review metadata Base Text": {
+      "raw": "{\"{urn:task075:review}Base\": {\"{urn:task075:review}Text\": \"ok\"}}",
+      "raw_sha256": "93b15df22aa537e6320c5bbabd67b69220209f89b61cb700a576288bbb711b75",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Base xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075:review\"><n0:Text>ok</n0:Text></n0:Base>",
+      "xml_sha256": "fd00d376eac775ccc067440bebdf1f5ade68394500d3857579f264c270be321c"
+    },
+    "review metadata Base Text reference": {
+      "raw": "{\"{urn:task075:review}Base\": {\"{urn:task075:review}Text\": \"ok\"}}",
+      "xml": "<ns0:Base xmlns:ns0=\"urn:task075:review\"><ns0:Text>ok</ns0:Text></ns0:Base>"
+    },
+    "review metadata Nested A": {
+      "raw": "{\"{urn:task075:review}Nested\": {\"{urn:task075:review}A\": \"a\"}}",
+      "raw_sha256": "b0f250f286778a7bb8b9eed411af15edd71c5d7ec3c60a04f835bb094c3bb327",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Nested xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075:review\"><n0:A>a</n0:A></n0:Nested>",
+      "xml_sha256": "6c470f120b55db89b87b6848efa985f91d2b580caf5293082c927cfecc3c721a"
+    },
+    "review metadata Nested A reference": {
+      "raw": "{\"{urn:task075:review}Nested\": {\"{urn:task075:review}A\": \"a\"}}",
+      "xml": "<ns0:Nested xmlns:ns0=\"urn:task075:review\"><ns0:A>a</ns0:A></ns0:Nested>"
+    },
+    "review metadata Nested A+B reference": {
+      "raw": "{\"{urn:task075:review}Nested\": {\"{urn:task075:review}A\": \"a\", \"{urn:task075:review}B\": \"b\"}}",
+      "xml": "<ns0:Nested xmlns:ns0=\"urn:task075:review\"><ns0:A>a</ns0:A><ns0:B>b</ns0:B></ns0:Nested>"
+    },
+    "review metadata Nested B": {
+      "raw": "{\"{urn:task075:review}Nested\": {\"{urn:task075:review}B\": \"b\"}}",
+      "raw_sha256": "3acb96bc42eb045af07df55518b9bedb4a822f6a9ab178b77fae1039a9d22464",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Nested xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075:review\"><n0:B>b</n0:B></n0:Nested>",
+      "xml_sha256": "8ede971ecdf2913d53a4c1d819b8a86bb9549a79ff8355d34226f5c348244c58"
+    },
+    "review metadata Nested B reference": {
+      "raw": "{\"{urn:task075:review}Nested\": {\"{urn:task075:review}B\": \"b\"}}",
+      "xml": "<ns0:Nested xmlns:ns0=\"urn:task075:review\"><ns0:B>b</ns0:B></ns0:Nested>"
+    },
+    "review metadata Nested empty": {
+      "raw": "{\"{urn:task075:review}Nested\": {}}",
+      "raw_sha256": "91fca5eff37c63ad2f220a718ac14686c6e5abcdfefd21185b521ccb42d4b710",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Nested xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075:review\"/>",
+      "xml_sha256": "71cfd6ab4b7d7ac730fc0ec9cd80e54745f2f493476ad6aed04715f7a48f1911"
+    },
+    "review metadata Nested empty reference": {
+      "raw": "{\"{urn:task075:review}Nested\": {}}",
+      "xml": "<ns0:Nested xmlns:ns0=\"urn:task075:review\"/>"
+    },
+    "review metadata Nullable A": {
+      "raw": "{\"{urn:task075:review}Nullable\": {\"{urn:task075:review}A\": \"a\"}}",
+      "raw_sha256": "8ce211e5fb469e2b607f402f542bc52a06a032e33d18c0aa32ae0b3306c12220",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Nullable xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075:review\"><n0:A>a</n0:A></n0:Nullable>",
+      "xml_sha256": "35a4a2af7ac6425c2a069921f2c2c7f6b42178d8c151e841b903d0ba248fefb8"
+    },
+    "review metadata Nullable A reference": {
+      "raw": "{\"{urn:task075:review}Nullable\": {\"{urn:task075:review}A\": \"a\"}}",
+      "xml": "<ns0:Nullable xmlns:ns0=\"urn:task075:review\"><ns0:A>a</ns0:A></ns0:Nullable>"
+    },
+    "review metadata Nullable A+B reference": {
+      "raw": "{\"{urn:task075:review}Nullable\": {\"{urn:task075:review}A\": \"a\", \"{urn:task075:review}B\": \"b\"}}",
+      "xml": "<ns0:Nullable xmlns:ns0=\"urn:task075:review\"><ns0:A>a</ns0:A><ns0:B>b</ns0:B></ns0:Nullable>"
+    },
+    "review metadata Nullable B": {
+      "raw": "{\"{urn:task075:review}Nullable\": {\"{urn:task075:review}B\": \"b\"}}",
+      "raw_sha256": "4c8580c7b8dd34195f7b4adcb29a168b7c157c34e101a68f1d1c253ccce82415",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Nullable xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075:review\"><n0:B>b</n0:B></n0:Nullable>",
+      "xml_sha256": "46952ec9b2a9ea96a48806a707f194363b683a097ecfc8b64833221f4084afeb"
+    },
+    "review metadata Nullable B reference": {
+      "raw": "{\"{urn:task075:review}Nullable\": {\"{urn:task075:review}B\": \"b\"}}",
+      "xml": "<ns0:Nullable xmlns:ns0=\"urn:task075:review\"><ns0:B>b</ns0:B></ns0:Nullable>"
+    },
+    "review metadata Nullable empty": {
+      "raw": "{\"{urn:task075:review}Nullable\": {}}",
+      "raw_sha256": "b12a40e5dbcdbda386c74612d6b8494dc84f4ed2a446cac9ed11b85b03c79102",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Nullable xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075:review\"/>",
+      "xml_sha256": "b11b7226502af9af8958eef9dc2bce463b71e39c790bad45f0906a2af081b900"
+    },
+    "review metadata Nullable empty reference": {
+      "raw": "{\"{urn:task075:review}Nullable\": {}}",
+      "xml": "<ns0:Nullable xmlns:ns0=\"urn:task075:review\"/>"
+    },
+    "review metadata Optional empty": {
+      "raw": "{\"{urn:task075:review}Optional\": {}}",
+      "raw_sha256": "283362a67ea59ad886c451cae0af63216c2bc71a59da6b8813e6bb7dc24af2ae",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Optional xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075:review\"/>",
+      "xml_sha256": "edaf9c11b3cba391c6d1b917e677bb134ab057873b80162b298e4e061c8a8c7f"
+    },
+    "review metadata Optional empty reference": {
+      "raw": "{\"{urn:task075:review}Optional\": {}}",
+      "xml": "<ns0:Optional xmlns:ns0=\"urn:task075:review\"/>"
+    },
+    "review metadata Record Text+Extra": {
+      "raw": "{\"{urn:task075:review}Record\": {\"{urn:task075:review}Text\": \"ok\", \"{urn:task075:review}Extra\": \"more\"}}",
+      "raw_sha256": "18d400ae17beabf94e49151f710751d79be6c3cc3ad9d7f57da205aceb3c7fc2",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Record xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075:review\"><n0:Text>ok</n0:Text><n0:Extra>more</n0:Extra></n0:Record>",
+      "xml_sha256": "ccece73b92d8667d56fce621c49912fdf1d27ff3650b590c2aed6d0e52610ce1"
+    },
+    "review metadata Record Text+Extra reference": {
+      "raw": "{\"{urn:task075:review}Record\": {\"{urn:task075:review}Text\": \"ok\", \"{urn:task075:review}Extra\": \"more\"}}",
+      "xml": "<ns0:Record xmlns:ns0=\"urn:task075:review\"><ns0:Text>ok</ns0:Text><ns0:Extra>more</ns0:Extra></ns0:Record>"
+    },
+    "review metadata Required A": {
+      "raw": "{\"{urn:task075:review}Required\": {\"{urn:task075:review}A\": \"a\"}}",
+      "raw_sha256": "6c5aea38d42379e41a002d757717474188d6666edaa37eb4a030779d5ec79b35",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Required xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075:review\"><n0:A>a</n0:A></n0:Required>",
+      "xml_sha256": "9eef30e0df6a151243618b945e4a60f6062f8d1da6e84459e2621b3ea259533f"
+    },
+    "review metadata Required A reference": {
+      "raw": "{\"{urn:task075:review}Required\": {\"{urn:task075:review}A\": \"a\"}}",
+      "xml": "<ns0:Required xmlns:ns0=\"urn:task075:review\"><ns0:A>a</ns0:A></ns0:Required>"
+    },
+    "review metadata Required A+B reference": {
+      "raw": "{\"{urn:task075:review}Required\": {\"{urn:task075:review}A\": \"a\", \"{urn:task075:review}B\": \"b\"}}",
+      "xml": "<ns0:Required xmlns:ns0=\"urn:task075:review\"><ns0:A>a</ns0:A><ns0:B>b</ns0:B></ns0:Required>"
+    },
+    "review metadata Required B": {
+      "raw": "{\"{urn:task075:review}Required\": {\"{urn:task075:review}B\": \"b\"}}",
+      "raw_sha256": "b1e9b8b338575e9476944a4d04b8c56b79afce540d0a6c87e94db6f7ca5331d0",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Required xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075:review\"><n0:B>b</n0:B></n0:Required>",
+      "xml_sha256": "57c0858604067e4af7cb6de3acabcb01082c2d502318b22d462e53f465351467"
+    },
+    "review metadata Required B reference": {
+      "raw": "{\"{urn:task075:review}Required\": {\"{urn:task075:review}B\": \"b\"}}",
+      "xml": "<ns0:Required xmlns:ns0=\"urn:task075:review\"><ns0:B>b</ns0:B></ns0:Required>"
+    },
+    "review metadata Required empty reference": {
+      "raw": "{\"{urn:task075:review}Required\": {}}",
+      "xml": "<ns0:Required xmlns:ns0=\"urn:task075:review\"/>"
+    },
+    "review metadata Unsupported empty reference": {
+      "raw": "{\"{urn:task075:review}Unsupported\": {}}",
+      "xml": "<ns0:Unsupported xmlns:ns0=\"urn:task075:review\"/>"
+    },
+    "review metadata bundle": {
+      "manifest": {
+        "approval_provenance": {
+          "evidence": null,
+          "owner": null,
+          "scope": "research-only",
+          "status": "UNESTABLISHED"
+        },
+        "approved_concrete_qnames": [],
+        "bundle_id": "task074-synthetic-review",
+        "files": [
+          {
+            "namespace": "urn:task075:review",
+            "path": "review-metadata.xsd",
+            "sha256": "dd453287e5ec99e1d283219baa1b5f510d6030d923cbe1a3c28341b5209a42e9"
+          }
+        ],
+        "public_uci_release": "review",
+        "root": "review-metadata.xsd",
+        "toolchain": {
+          "etree_sha256": "27d8b7e79e217e6946ad6871c13b6bdfbcf55a1a3f6b3ab590cb892fc3a5deca",
+          "libxml": "2.9.14",
+          "libxml_sha256": "8f2643af68a9eba917929046806dabd1848867068d0eee0f6799288a8e886963",
+          "lxml": "5.4.0"
+        },
+        "version": 1
+      },
+      "result": "compiled"
+    },
+    "review unused Record Text+Extra": {
+      "raw": "{\"{urn:task075:review}Record\": {\"{urn:task075:review}Text\": \"ok\", \"{urn:task075:review}Extra\": \"more\"}}",
+      "raw_sha256": "18d400ae17beabf94e49151f710751d79be6c3cc3ad9d7f57da205aceb3c7fc2",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Record xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075:review\"><n0:Text>ok</n0:Text><n0:Extra>more</n0:Extra></n0:Record>",
+      "xml_sha256": "ccece73b92d8667d56fce621c49912fdf1d27ff3650b590c2aed6d0e52610ce1"
+    },
+    "review unused Record Text+Extra reference": {
+      "raw": "{\"{urn:task075:review}Record\": {\"{urn:task075:review}Text\": \"ok\", \"{urn:task075:review}Extra\": \"more\"}}",
+      "xml": "<ns0:Record xmlns:ns0=\"urn:task075:review\"><ns0:Text>ok</ns0:Text><ns0:Extra>more</ns0:Extra></ns0:Record>"
+    },
+    "review unused bundle": {
+      "manifest": {
+        "approval_provenance": {
+          "evidence": null,
+          "owner": null,
+          "scope": "research-only",
+          "status": "UNESTABLISHED"
+        },
+        "approved_concrete_qnames": [],
+        "bundle_id": "task074-synthetic-review",
+        "files": [
+          {
+            "namespace": "urn:task075:review",
+            "path": "review-unused.xsd",
+            "sha256": "1c2377330f7fed63253603cd667b3ffa8d4d5dba9e5a1b4104295c3c2bfa540c"
+          },
+          {
+            "namespace": "urn:task075:review",
+            "path": "review-base.xsd",
+            "sha256": "ae8f1e70a128d30085a0f971d6d584ea6d58d1393965fea12b32db96ff686206"
+          },
+          {
+            "namespace": "",
+            "path": "review-no-namespace.xsd",
+            "sha256": "686d904211c675c8919f8aa1d5e71cc03ce849cec714a265c959a7b7b88c4029"
+          }
+        ],
+        "public_uci_release": "review",
+        "root": "review-unused.xsd",
+        "toolchain": {
+          "etree_sha256": "27d8b7e79e217e6946ad6871c13b6bdfbcf55a1a3f6b3ab590cb892fc3a5deca",
+          "libxml": "2.9.14",
+          "libxml_sha256": "8f2643af68a9eba917929046806dabd1848867068d0eee0f6799288a8e886963",
+          "lxml": "5.4.0"
+        },
+        "version": 1
+      },
+      "result": "compiled"
+    },
     "same local private identity": {
       "raw": "{\"{urn:task074:public}Value\":{\"$type\":\"{urn:task074:private}Known\",\"{urn:task074:public}Count\":1,\"{urn:task074:private}Secret\":\"AB\"}}",
       "raw_sha256": "26d6e09c3ca124b663c21144f9e9f56cb89ad2e8283c021e5f31ec2b7e792afb",
@@ -687,6 +1077,286 @@
       "result": "research-schema-valid-not-authorized"
     },
     {
+      "case": "review base bundle",
+      "result": "compiled"
+    },
+    {
+      "case": "review unused bundle",
+      "result": "compiled"
+    },
+    {
+      "case": "review metadata bundle",
+      "result": "compiled"
+    },
+    {
+      "case": "review base Record Text+Extra reference",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "review base Record Text+Extra",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "review unused Record Text+Extra reference",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "review unused Record Text+Extra",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "review metadata Record Text+Extra reference",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "review metadata Record Text+Extra",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "review selected no namespace input",
+      "result": "shape:qname"
+    },
+    {
+      "case": "review base Base Text reference",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "review base Base Text",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "review base Nullable empty reference",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "review base Nullable empty",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "review base Nested empty reference",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "review base Nested empty",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "review base Optional empty reference",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "review base Optional empty",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "review base Required empty reference",
+      "result": "invalid:SCHEMAV_ELEMENT_CONTENT"
+    },
+    {
+      "case": "review base Required empty",
+      "result": "shape:choice-missing"
+    },
+    {
+      "case": "review base Nullable A reference",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "review base Nullable A",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "review base Nullable B reference",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "review base Nullable B",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "review base Nullable A+B reference",
+      "result": "invalid:SCHEMAV_ELEMENT_CONTENT"
+    },
+    {
+      "case": "review base Nullable A+B",
+      "result": "shape:choice-conflict"
+    },
+    {
+      "case": "review base Required A reference",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "review base Required A",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "review base Required B reference",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "review base Required B",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "review base Required A+B reference",
+      "result": "invalid:SCHEMAV_ELEMENT_CONTENT"
+    },
+    {
+      "case": "review base Required A+B",
+      "result": "shape:choice-conflict"
+    },
+    {
+      "case": "review base Nested A reference",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "review base Nested A",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "review base Nested B reference",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "review base Nested B",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "review base Nested A+B reference",
+      "result": "invalid:SCHEMAV_ELEMENT_CONTENT"
+    },
+    {
+      "case": "review base Nested A+B",
+      "result": "shape:choice-conflict"
+    },
+    {
+      "case": "review base Unsupported empty reference",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "review base Unsupported empty",
+      "result": "unsupported:particle"
+    },
+    {
+      "case": "review metadata Base Text reference",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "review metadata Base Text",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "review metadata Nullable empty reference",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "review metadata Nullable empty",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "review metadata Nested empty reference",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "review metadata Nested empty",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "review metadata Optional empty reference",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "review metadata Optional empty",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "review metadata Required empty reference",
+      "result": "invalid:SCHEMAV_ELEMENT_CONTENT"
+    },
+    {
+      "case": "review metadata Required empty",
+      "result": "shape:choice-missing"
+    },
+    {
+      "case": "review metadata Nullable A reference",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "review metadata Nullable A",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "review metadata Nullable B reference",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "review metadata Nullable B",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "review metadata Nullable A+B reference",
+      "result": "invalid:SCHEMAV_ELEMENT_CONTENT"
+    },
+    {
+      "case": "review metadata Nullable A+B",
+      "result": "shape:choice-conflict"
+    },
+    {
+      "case": "review metadata Required A reference",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "review metadata Required A",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "review metadata Required B reference",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "review metadata Required B",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "review metadata Required A+B reference",
+      "result": "invalid:SCHEMAV_ELEMENT_CONTENT"
+    },
+    {
+      "case": "review metadata Required A+B",
+      "result": "shape:choice-conflict"
+    },
+    {
+      "case": "review metadata Nested A reference",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "review metadata Nested A",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "review metadata Nested B reference",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "review metadata Nested B",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "review metadata Nested A+B reference",
+      "result": "invalid:SCHEMAV_ELEMENT_CONTENT"
+    },
+    {
+      "case": "review metadata Nested A+B",
+      "result": "shape:choice-conflict"
+    },
+    {
+      "case": "review metadata Unsupported empty reference",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "review metadata Unsupported empty",
+      "result": "unsupported:particle"
+    },
+    {
       "case": "2.5 known complete",
       "result": "research-schema-valid-not-authorized"
     },
@@ -809,8 +1479,8 @@
   ],
   "source_sha256": {
     "scripts/task074/bundle.py": "06a2959481330eb844c971f08bbb1dd0fd2c04d17d668238ae73c1cca09a889d",
-    "scripts/task075/mapper.py": "c83616a88b8dcdba9df553362933c4039516c3ad9c5db968d9071b2c9be788be",
-    "scripts/task075/qualify.py": "37b12f792d172bf0df1e768fa80fbec31f25559a96a8477ac4d4472b1791050e"
+    "scripts/task075/mapper.py": "417cdead53e03f051c1e309221ea393448683e4e9da20650f3da4296a63bd173",
+    "scripts/task075/qualify.py": "47b5be93071500d95ad5c00359385c12ef5864ede14f122073b0f903a97a3095"
   },
   "toolchain": {
     "etree_sha256": "27d8b7e79e217e6946ad6871c13b6bdfbcf55a1a3f6b3ab590cb892fc3a5deca",

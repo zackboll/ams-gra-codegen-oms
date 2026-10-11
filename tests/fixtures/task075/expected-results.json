@@ -284,6 +284,286 @@
     "result": "research-schema-valid-not-authorized"
   },
   {
+    "case": "review base bundle",
+    "result": "compiled"
+  },
+  {
+    "case": "review unused bundle",
+    "result": "compiled"
+  },
+  {
+    "case": "review metadata bundle",
+    "result": "compiled"
+  },
+  {
+    "case": "review base Record Text+Extra reference",
+    "result": "valid-xml-only"
+  },
+  {
+    "case": "review base Record Text+Extra",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "review unused Record Text+Extra reference",
+    "result": "valid-xml-only"
+  },
+  {
+    "case": "review unused Record Text+Extra",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "review metadata Record Text+Extra reference",
+    "result": "valid-xml-only"
+  },
+  {
+    "case": "review metadata Record Text+Extra",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "review selected no namespace input",
+    "result": "shape:qname"
+  },
+  {
+    "case": "review base Base Text reference",
+    "result": "valid-xml-only"
+  },
+  {
+    "case": "review base Base Text",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "review base Nullable empty reference",
+    "result": "valid-xml-only"
+  },
+  {
+    "case": "review base Nullable empty",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "review base Nested empty reference",
+    "result": "valid-xml-only"
+  },
+  {
+    "case": "review base Nested empty",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "review base Optional empty reference",
+    "result": "valid-xml-only"
+  },
+  {
+    "case": "review base Optional empty",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "review base Required empty reference",
+    "result": "invalid:SCHEMAV_ELEMENT_CONTENT"
+  },
+  {
+    "case": "review base Required empty",
+    "result": "shape:choice-missing"
+  },
+  {
+    "case": "review base Nullable A reference",
+    "result": "valid-xml-only"
+  },
+  {
+    "case": "review base Nullable A",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "review base Nullable B reference",
+    "result": "valid-xml-only"
+  },
+  {
+    "case": "review base Nullable B",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "review base Nullable A+B reference",
+    "result": "invalid:SCHEMAV_ELEMENT_CONTENT"
+  },
+  {
+    "case": "review base Nullable A+B",
+    "result": "shape:choice-conflict"
+  },
+  {
+    "case": "review base Required A reference",
+    "result": "valid-xml-only"
+  },
+  {
+    "case": "review base Required A",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "review base Required B reference",
+    "result": "valid-xml-only"
+  },
+  {
+    "case": "review base Required B",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "review base Required A+B reference",
+    "result": "invalid:SCHEMAV_ELEMENT_CONTENT"
+  },
+  {
+    "case": "review base Required A+B",
+    "result": "shape:choice-conflict"
+  },
+  {
+    "case": "review base Nested A reference",
+    "result": "valid-xml-only"
+  },
+  {
+    "case": "review base Nested A",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "review base Nested B reference",
+    "result": "valid-xml-only"
+  },
+  {
+    "case": "review base Nested B",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "review base Nested A+B reference",
+    "result": "invalid:SCHEMAV_ELEMENT_CONTENT"
+  },
+  {
+    "case": "review base Nested A+B",
+    "result": "shape:choice-conflict"
+  },
+  {
+    "case": "review base Unsupported empty reference",
+    "result": "valid-xml-only"
+  },
+  {
+    "case": "review base Unsupported empty",
+    "result": "unsupported:particle"
+  },
+  {
+    "case": "review metadata Base Text reference",
+    "result": "valid-xml-only"
+  },
+  {
+    "case": "review metadata Base Text",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "review metadata Nullable empty reference",
+    "result": "valid-xml-only"
+  },
+  {
+    "case": "review metadata Nullable empty",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "review metadata Nested empty reference",
+    "result": "valid-xml-only"
+  },
+  {
+    "case": "review metadata Nested empty",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "review metadata Optional empty reference",
+    "result": "valid-xml-only"
+  },
+  {
+    "case": "review metadata Optional empty",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "review metadata Required empty reference",
+    "result": "invalid:SCHEMAV_ELEMENT_CONTENT"
+  },
+  {
+    "case": "review metadata Required empty",
+    "result": "shape:choice-missing"
+  },
+  {
+    "case": "review metadata Nullable A reference",
+    "result": "valid-xml-only"
+  },
+  {
+    "case": "review metadata Nullable A",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "review metadata Nullable B reference",
+    "result": "valid-xml-only"
+  },
+  {
+    "case": "review metadata Nullable B",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "review metadata Nullable A+B reference",
+    "result": "invalid:SCHEMAV_ELEMENT_CONTENT"
+  },
+  {
+    "case": "review metadata Nullable A+B",
+    "result": "shape:choice-conflict"
+  },
+  {
+    "case": "review metadata Required A reference",
+    "result": "valid-xml-only"
+  },
+  {
+    "case": "review metadata Required A",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "review metadata Required B reference",
+    "result": "valid-xml-only"
+  },
+  {
+    "case": "review metadata Required B",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "review metadata Required A+B reference",
+    "result": "invalid:SCHEMAV_ELEMENT_CONTENT"
+  },
+  {
+    "case": "review metadata Required A+B",
+    "result": "shape:choice-conflict"
+  },
+  {
+    "case": "review metadata Nested A reference",
+    "result": "valid-xml-only"
+  },
+  {
+    "case": "review metadata Nested A",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "review metadata Nested B reference",
+    "result": "valid-xml-only"
+  },
+  {
+    "case": "review metadata Nested B",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "review metadata Nested A+B reference",
+    "result": "invalid:SCHEMAV_ELEMENT_CONTENT"
+  },
+  {
+    "case": "review metadata Nested A+B",
+    "result": "shape:choice-conflict"
+  },
+  {
+    "case": "review metadata Unsupported empty reference",
+    "result": "valid-xml-only"
+  },
+  {
+    "case": "review metadata Unsupported empty",
+    "result": "unsupported:particle"
+  },
+  {
     "case": "2.5 known complete",
     "result": "research-schema-valid-not-authorized"
   },

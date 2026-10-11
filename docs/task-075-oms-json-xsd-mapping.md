@@ -267,3 +267,116 @@ policy checks and peer agreement. Neither set is waived by research schema valid
 Commit normally, push and open a non-draft PR with auto-merge disabled; verify
 tested local HEAD = remote HEAD = PR head and record any main advancement.
 Stop for independent review. Do not merge or begin Task 076.
+
+## Task 075A — independent-review corrections
+
+Prepared on reviewed parent `669d370704a8765688b6a88819cd5b13ba1eb741`,
+mapper Git blob `2dec3db32de22e52edd62b2412954db04505139c`.
+Fetched main remains `6dcdd2d18f068c07521a12fe84e3239c44cf43f0`; no merge,
+rebase or history rewrite. PR #75 was verified open, non-draft and unmerged,
+with auto-merge disabled. No reviewer archive or inline reproduction comments
+were available locally/on the PR; supplied minimal findings were ported into
+the unchanged pinned Bundle harness, not an alternate in-memory validator.
+
+### Root causes and before/after
+
+`tests/fixtures/task075/review-before.json` records successfully compiled,
+complete digest-bound fixture manifests, independently assessed XML, raw JSON
+and original reviewed-mapper outcomes. These diagnostic reproductions were
+rechecked using the reviewed source against the final fixture digests. The
+known TypeError was caught **only** in scratch diagnostic code and recorded as
+an exception, never credited as successful assessment. Python's set iteration
+can reverse the operands in the exception text, so its recorded diagnostic
+identity is `TypeError:mixed-absent-namespace-sort`.
+
+| Finding | Original pinned outcome | Corrected pinned outcome |
+|---|---|---|
+| Unused no-namespace import beside qualified Record | TypeError during namespace sorting | research-schema-valid-not-authorized |
+| Metadata-only Record with comments/PIs/annotations | unsupported:complex-content | research-schema-valid-not-authorized |
+| Required choice with optional A and required B, empty object | shape:choice-missing despite independently valid empty XML | research-schema-valid-not-authorized |
+| Genuinely required A/B choice, empty object (control) | shape:choice-missing; reference XML invalid | unchanged shape:choice-missing |
+
+1. Namespace preparation mixed `None` with URI strings before sorting. Absent
+   namespaces are now removed **only from prefix allocation**, before sorting;
+   `{}` declarations remain in the complete declaration index. The same-local
+   no-namespace Record/Record type cannot overwrite qualified Record identity.
+   Selecting empty-namespace JSON still gives the existing explicit QName shape
+   rejection; unsupported no-namespace members are not promoted to OAM. The
+   selected namespace profile is not broadened.
+2. Structural loops and `len()` checks counted inert XML nodes. Shared
+   `structural_children` now ignores comments, processing instructions and
+   xs:annotation consistently in indexing, complexType/complexContent/extension
+   cardinality and particle traversal. Genuine unsupported XSD nodes remain
+   visible. Hashed schema bytes are never stripped or rewritten by the mapper.
+3. Choice absence checked only its own minOccurs. `Mapper.emptiable` now
+   recognizes empty content for bounded existing element/sequence/choice forms:
+   zero minOccurs, all empty sequence children, or an empty choice alternative.
+   It inspects all children, caps nesting at the existing depth limit and rejects
+   unsupported/repeated group forms. No element/default is invented; populated
+   alternatives still use existing selection, occurrence and conflict checks.
+
+**Nullable choices are supported**, including a nested sequence/choice empty
+case, within this existing bounded profile. XSD Structures Second Edition
+§3.9.6 `Particle Emptiable` states minOccurs is zero **or** the group's minimum
+effective total range is zero. §3.8.6 `Effective Total Range (all and sequence)`
+and `Effective Total Range (choice)` supply sum/minimum rules. This is consistent
+with CAL §6.1.2 P572–573 and Table 6.1-2 P840: construct children in a
+particle-valid order; choosing an empty-capable branch need not create a child.
+Pinned independent empty-reference assessment supplies executable evidence;
+this helper is not a replacement validator or a general content-model search.
+
+### New regression accounting and corrected-source qualification
+
+New fixtures: `review-base.xsd`, `review-unused.xsd`,
+`review-no-namespace.xsd`, `review-metadata.xsd`. The metadata variant covers
+sequence/choice comments, comments between complexType children, comments/PIs
+around complexContent and extension, and legal annotation boundaries. Wildcard
+particles still return `unsupported:particle` even when optional.
+
+New normal-entry-point probe families: `review {base,unused,metadata} bundle`,
+`review {base,unused,metadata} Record Text+Extra`,
+`review {base,metadata} Base Text`, `{Nullable,Nested,Optional} empty`,
+`Required empty`, `{Nullable,Required,Nested} {A,B,A+B}`, `Unsupported empty`,
+their independent `reference` assessments, and `review selected no namespace
+input`. Baseline/unused/metadata trees are compared prefix-independently.
+Successful cases are compared to hand-reviewed reference information items;
+empty required/conflicting alternatives have independently invalid references.
+
+**70 new outcome probes**: three bundle compilation outcomes, 33 independent
+reference XML assessments and 34 mapper outcomes. Tree equivalence and distinct
+declaration-index checks are auxiliary assertions, not extra outcome probes.
+No original case was removed or changed: an explicit evidence comparison
+verified all original **101 results and every original evidence entry** unchanged.
+Only review results/evidence and the two changed source digests were added.
+
+Corrected synthetic campaign: **143 probes passed**. Corrected full campaign:
+**171 probes passed**, including the unchanged 14 complete-message probes per
+release. Repeated full output was byte-identical to the refreshed frozen evidence.
+Both UCI releases retain known/private AddRecord/DeleteRecord successes,
+ordered repeated DRLE controls, security-choice/occurrence negatives, intended
+RequestState/Task074Code XSD rejection, public-only type rejection and incomplete
+closure rejection. Default authority and both toolchain negatives execute.
+Both missing-required-real-input CLI controls again failed nonzero.
+
+Generated closed-codec control and regenerated generation-time private-overlay
+control passed. Rust 1.95 workspace formatting and focused Task 068/072/073
+wire/guard/QName tests passed: **17 tests**, zero failed, zero ignored in these
+selected suites. No Rust sources/dependencies changed, so no new workspace
+all-target/Clippy campaign was required or claimed; the original-head checks
+above remain historical. Python compilation, shell syntax and diff checks passed.
+No broad backend, full-schema or Sleet compiler campaign was repeated.
+
+Corrected mapper SHA-256:
+`417cdead53e03f051c1e309221ea393448683e4e9da20650f3da4296a63bd173`.
+Corrected campaign SHA-256:
+`47b5be93071500d95ad5c00359385c12ef5864ede14f122073b0f903a97a3095`.
+Validator/source/toolchain pins and UCI source identities above are unchanged;
+the pinned environment was available and no qualification was blocked.
+
+Disposition remains **OMS_JSON_XSD_MAPPING_PARTIALLY_QUALIFIED**. The documented
+CAL `$type`/`xsi:type` question, unsupported forms and production-adoption gates
+remain unresolved. No production behavior, safety guard, authority bypass or CI
+requirement changed. New-head hosted Rust CI is a separate status; it does not
+execute the local pinned Python campaign. Exact corrective commit/head parity
+and hosted run identity belong in the PR/final report. Stop for independent
+review, leave PR #75 open/non-draft/unmerged, and do not begin Task 076.

@@ -197,6 +197,56 @@ def synthetic():
         assert items(mapper.map(raw)['xml']) == items(expected)
 
 
+def review_regressions():
+    good = 'research-schema-valid-not-authorized'
+    namespace = 'urn:task075:review'
+    bundles = {}
+    for variant in ['base', 'unused', 'metadata']:
+        manifest = make_manifest(FIX, 'review-'+variant+'.xsd', 'review', [])
+        bundles[variant] = Bundle(FIX, manifest, research=True)
+        ARTIFACTS['review '+variant+' bundle'] = {'manifest': manifest, 'result':'compiled'}
+        RESULTS.append({'case':'review '+variant+' bundle', 'result':'compiled'})
+
+    def probe(variant, name, body, expected=good, reference_valid=True):
+        bundle = bundles[variant]
+        raw = encode({'{'+namespace+'}'+name: {'{'+namespace+'}'+k:v for k,v in body.items()}})
+        # Independent reference XML: fixed hand-reviewed order, not mapper output.
+        root = E.Element('{'+namespace+'}'+name)
+        for key in ['Text', 'Extra', 'A', 'B']:
+            if key in body:
+                E.SubElement(root, '{'+namespace+'}'+key).text = body[key]
+        reference = E.tostring(root)
+        label = 'review '+variant+' '+name+' '+('empty' if not body else '+'.join(body))
+        case(label+' reference', 'valid-xml-only' if reference_valid else 'invalid:SCHEMAV_ELEMENT_CONTENT',
+             lambda: bundle.validate(reference))
+        ARTIFACTS[label+' reference'] = {'xml':reference.decode(), 'raw':raw.decode()}
+        mapper = Mapper(bundle, '{'+namespace+'}'+name)
+        case(label, expected, lambda: mapper.assess(raw))
+        if expected == good:
+            assert items(mapper.map(raw)['xml']) == items(reference)
+            return mapper.map(raw)['xml']
+
+    baseline = probe('base', 'Record', {'Text':'ok','Extra':'more'})
+    for variant in ['unused', 'metadata']:
+        assert items(probe(variant, 'Record', {'Text':'ok','Extra':'more'})) == items(baseline)
+    # Keep no-namespace declarations indexed and distinct, not discarded/aliased.
+    mapper = Mapper(bundles['unused'], '{'+namespace+'}Record')
+    assert '{}Record' in mapper.types and '{}Record' in mapper.elements
+    assert '{'+namespace+'}Record' in mapper.types
+    case('review selected no namespace input', 'shape:qname',
+         lambda: mapper.assess(b'{"{}Record":{"Wrong":1}}'))
+    for variant in ['base','metadata']:
+        probe(variant, 'Base', {'Text':'ok'})
+        for name in ['Nullable', 'Nested', 'Optional']:
+            probe(variant, name, {})
+        probe(variant, 'Required', {}, 'shape:choice-missing', reference_valid=False)
+        for name in ['Nullable','Required','Nested']:
+            probe(variant, name, {'A':'a'})
+            probe(variant, name, {'B':'b'})
+            probe(variant, name, {'A':'a','B':'b'}, 'shape:choice-conflict', reference_valid=False)
+        probe(variant, 'Unsupported', {}, 'unsupported:particle')
+
+
 def real(path):
     path = Path(path).resolve()
     release = next((r for r, h in ROOT_HASH.items() if digest(path.read_bytes()) == h), None)
@@ -282,6 +332,7 @@ def run_worker(command, timeout=60):
 def worker(args):
     verify_toolchain()
     synthetic()
+    review_regressions()
     if args.real:
         assert len(args.uci) == 2, '--real requires exactly both pinned UCI roots'
         assert {digest(Path(p).read_bytes()) for p in args.uci} == set(ROOT_HASH.values()), 'both releases required'
