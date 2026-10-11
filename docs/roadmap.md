@@ -1,5 +1,9 @@
 # Roadmap
 
+Task 075: [bounded OMS JSON mapping research](task-075-oms-json-xsd-mapping.md)
+adds executable complete-message evidence, not production open-world readiness.
+Unsupported mapping forms and deployment/authorization gates remain separate.
+
 Task 074: [offline private-schema XML qualification](task-074-offline-schema-validation.md)
 is partial research evidence, not production runtime readiness. Remaining gates
 include authenticated bundle approval, CAL JSON mapping, operation authorization

@@ -1,0 +1,14 @@
+<!-- Hand-authored synthetic controls, not UCI. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:p="urn:task075" targetNamespace="urn:task075" elementFormDefault="qualified">
+  <xs:complexType name="Values"><xs:sequence>
+    <xs:element name="Text" type="xs:string"/>
+    <xs:element name="Integer" type="xs:integer"/>
+    <xs:element name="Decimal" type="xs:decimal"/>
+    <xs:element name="Flag" type="xs:boolean"/>
+    <xs:element name="Entry" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+    <xs:choice minOccurs="0"><xs:element name="A" type="xs:string"/><xs:element name="B" type="xs:string"/></xs:choice>
+  </xs:sequence></xs:complexType>
+  <xs:complexType name="Float"><xs:sequence><xs:element name="Value" type="xs:double"/></xs:sequence></xs:complexType>
+  <xs:element name="Values" type="p:Values"/>
+  <xs:element name="Float" type="p:Float"/>
+</xs:schema>

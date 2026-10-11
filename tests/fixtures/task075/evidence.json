@@ -1,0 +1,821 @@
+{
+  "disposition": "OMS_JSON_XSD_MAPPING_PARTIALLY_QUALIFIED",
+  "evidence": {
+    "2.5 complete permuted": {
+      "raw": "{\"DataRecordListManagementRequest\": {\"MessageData\": {\"RequestID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"RequestState\": \"NEW\", \"DataRecordListID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"AddRecord\": {\"$type\": \"ForeignKeyMapML\"}}, \"MessageHeader\": {\"SystemID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"Timestamp\": \"2026-10-08T00:00:00Z\", \"SchemaVersion\": \"002.5.0\", \"Mode\": \"SIMULATION\"}, \"SecurityInformation\": {\"Classification\": \"U\", \"OwnerProducer\": [{\"GovernmentIdentifier\": \"USA\"}]}}}",
+      "raw_sha256": "6b3ab930aa9e3587b65b9620b782d50eb67f40ee1752981ec4f43d47e156cfc8",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:DataRecordListManagementRequest xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"https://www.vdl.afrl.af.mil/programs/oam\"><n0:SecurityInformation><n0:Classification>U</n0:Classification><n0:OwnerProducer><n0:GovernmentIdentifier>USA</n0:GovernmentIdentifier></n0:OwnerProducer></n0:SecurityInformation><n0:MessageHeader><n0:SystemID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:SystemID><n0:Timestamp>2026-10-08T00:00:00Z</n0:Timestamp><n0:SchemaVersion>002.5.0</n0:SchemaVersion><n0:Mode>SIMULATION</n0:Mode></n0:MessageHeader><n0:MessageData><n0:RequestID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:RequestID><n0:RequestState>NEW</n0:RequestState><n0:DataRecordListID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:DataRecordListID><n0:AddRecord xsi:type=\"n0:ForeignKeyMapML\"/></n0:MessageData></n0:DataRecordListManagementRequest>",
+      "xml_sha256": "1d4a11b8cd5bc19fa71bb2eb7a8857addc45a6883431cf9e3940471b5c1b8a54"
+    },
+    "2.5 empty concrete managed list": {
+      "raw": "{\"DataRecordListManagementRequest\": {\"SecurityInformation\": {\"Classification\": \"U\", \"OwnerProducer\": [{\"GovernmentIdentifier\": \"USA\"}]}, \"MessageHeader\": {\"SystemID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"Timestamp\": \"2026-10-08T00:00:00Z\", \"SchemaVersion\": \"002.5.0\", \"Mode\": \"SIMULATION\"}, \"MessageData\": {\"RequestID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"RequestState\": \"NEW\", \"DataRecordListID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"DeleteRecord\": {\"$type\": \"ForeignKeyMapML\"}}}}",
+      "raw_sha256": "e6388c83cbc3c7b3e886ed7114f18e41431593dafd725b4d704ac4992449eeb1",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:DataRecordListManagementRequest xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"https://www.vdl.afrl.af.mil/programs/oam\"><n0:SecurityInformation><n0:Classification>U</n0:Classification><n0:OwnerProducer><n0:GovernmentIdentifier>USA</n0:GovernmentIdentifier></n0:OwnerProducer></n0:SecurityInformation><n0:MessageHeader><n0:SystemID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:SystemID><n0:Timestamp>2026-10-08T00:00:00Z</n0:Timestamp><n0:SchemaVersion>002.5.0</n0:SchemaVersion><n0:Mode>SIMULATION</n0:Mode></n0:MessageHeader><n0:MessageData><n0:RequestID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:RequestID><n0:RequestState>NEW</n0:RequestState><n0:DataRecordListID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:DataRecordListID><n0:DeleteRecord xsi:type=\"n0:ForeignKeyMapML\"/></n0:MessageData></n0:DataRecordListManagementRequest>",
+      "xml_sha256": "ced2b9c9626a390e63dc0c0701fbe5e56cc29b1ce331d8a74e19023419c9d818"
+    },
+    "2.5 known DeleteRecord": {
+      "raw": "{\"DataRecordListManagementRequest\": {\"SecurityInformation\": {\"Classification\": \"U\", \"OwnerProducer\": [{\"GovernmentIdentifier\": \"USA\"}]}, \"MessageHeader\": {\"SystemID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"Timestamp\": \"2026-10-08T00:00:00Z\", \"SchemaVersion\": \"002.5.0\", \"Mode\": \"SIMULATION\"}, \"MessageData\": {\"RequestID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"RequestState\": \"NEW\", \"DataRecordListID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"DeleteRecord\": {\"$type\": \"ForeignKeyMapML\", \"ForeignKeyPairListElement\": [{\"ForeignKeyPairID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}}, {\"ForeignKeyPairID\": {\"UUID\": \"539a5e3a-1c72-4c19-83c7-0024c0a15d8c\"}}]}}}}",
+      "raw_sha256": "59b8996f9dd0bd9950df667d3ebe0c585cf9c975da2ed07b3b4ca643be2aa9dc",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:DataRecordListManagementRequest xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"https://www.vdl.afrl.af.mil/programs/oam\"><n0:SecurityInformation><n0:Classification>U</n0:Classification><n0:OwnerProducer><n0:GovernmentIdentifier>USA</n0:GovernmentIdentifier></n0:OwnerProducer></n0:SecurityInformation><n0:MessageHeader><n0:SystemID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:SystemID><n0:Timestamp>2026-10-08T00:00:00Z</n0:Timestamp><n0:SchemaVersion>002.5.0</n0:SchemaVersion><n0:Mode>SIMULATION</n0:Mode></n0:MessageHeader><n0:MessageData><n0:RequestID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:RequestID><n0:RequestState>NEW</n0:RequestState><n0:DataRecordListID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:DataRecordListID><n0:DeleteRecord xsi:type=\"n0:ForeignKeyMapML\"><n0:ForeignKeyPairListElement><n0:ForeignKeyPairID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:ForeignKeyPairID></n0:ForeignKeyPairListElement><n0:ForeignKeyPairListElement><n0:ForeignKeyPairID><n0:UUID>539a5e3a-1c72-4c19-83c7-0024c0a15d8c</n0:UUID></n0:ForeignKeyPairID></n0:ForeignKeyPairListElement></n0:DeleteRecord></n0:MessageData></n0:DataRecordListManagementRequest>",
+      "xml_sha256": "d3ce55986312b85bb735c0233fbccf70fc33c042cf88eb61e0a9ca476a80f722"
+    },
+    "2.5 known complete": {
+      "raw": "{\"DataRecordListManagementRequest\": {\"SecurityInformation\": {\"Classification\": \"U\", \"OwnerProducer\": [{\"GovernmentIdentifier\": \"USA\"}]}, \"MessageHeader\": {\"SystemID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"Timestamp\": \"2026-10-08T00:00:00Z\", \"SchemaVersion\": \"002.5.0\", \"Mode\": \"SIMULATION\"}, \"MessageData\": {\"RequestID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"RequestState\": \"NEW\", \"DataRecordListID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"AddRecord\": {\"$type\": \"ForeignKeyMapML\"}}}}",
+      "raw_sha256": "5ff18fdbbd33a08269a409234903fbcbadb71b69bacf0e134184f8923e846e5f",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:DataRecordListManagementRequest xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"https://www.vdl.afrl.af.mil/programs/oam\"><n0:SecurityInformation><n0:Classification>U</n0:Classification><n0:OwnerProducer><n0:GovernmentIdentifier>USA</n0:GovernmentIdentifier></n0:OwnerProducer></n0:SecurityInformation><n0:MessageHeader><n0:SystemID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:SystemID><n0:Timestamp>2026-10-08T00:00:00Z</n0:Timestamp><n0:SchemaVersion>002.5.0</n0:SchemaVersion><n0:Mode>SIMULATION</n0:Mode></n0:MessageHeader><n0:MessageData><n0:RequestID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:RequestID><n0:RequestState>NEW</n0:RequestState><n0:DataRecordListID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:DataRecordListID><n0:AddRecord xsi:type=\"n0:ForeignKeyMapML\"/></n0:MessageData></n0:DataRecordListManagementRequest>",
+      "xml_sha256": "1d4a11b8cd5bc19fa71bb2eb7a8857addc45a6883431cf9e3940471b5c1b8a54"
+    },
+    "2.5 manifests": {
+      "private": {
+        "approval_provenance": {
+          "evidence": null,
+          "owner": null,
+          "scope": "research-only",
+          "status": "UNESTABLISHED"
+        },
+        "approved_concrete_qnames": [
+          "{https://www.vdl.afrl.af.mil/programs/oam}ForeignKeyMapML",
+          "{https://www.vdl.afrl.af.mil/programs/oam}Task074SyntheticML"
+        ],
+        "bundle_id": "task074-synthetic-2.5",
+        "files": [
+          {
+            "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+            "path": "overlay.xsd",
+            "sha256": "d1fe33d5bfb48a4144839c148956bdfc00adb87d7595dff673e90f21dba46ed3"
+          },
+          {
+            "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+            "path": "UCI_MessageDefinitions_v2_5_0.xsd",
+            "sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27"
+          },
+          {
+            "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+            "path": "UCI_SecurityMarkings_v2_5_0.xsd",
+            "sha256": "4a8056f1503234d423a0c2495844ab65387febced62bea58b87d4f343e9e7a0b"
+          },
+          {
+            "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+            "path": "private-fields.xsd",
+            "sha256": "c415286063ccf3ac63dd27d5a260aea30707c65d3884a1c7fb85d652ef15e559"
+          }
+        ],
+        "public_uci_release": "2.5",
+        "root": "overlay.xsd",
+        "toolchain": {
+          "etree_sha256": "27d8b7e79e217e6946ad6871c13b6bdfbcf55a1a3f6b3ab590cb892fc3a5deca",
+          "libxml": "2.9.14",
+          "libxml_sha256": "8f2643af68a9eba917929046806dabd1848867068d0eee0f6799288a8e886963",
+          "lxml": "5.4.0"
+        },
+        "version": 1
+      },
+      "public": {
+        "approval_provenance": {
+          "evidence": null,
+          "owner": null,
+          "scope": "research-only",
+          "status": "UNESTABLISHED"
+        },
+        "approved_concrete_qnames": [
+          "{https://www.vdl.afrl.af.mil/programs/oam}ForeignKeyMapML",
+          "{https://www.vdl.afrl.af.mil/programs/oam}Task074SyntheticML"
+        ],
+        "bundle_id": "task074-synthetic-2.5",
+        "files": [
+          {
+            "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+            "path": "UCI_MessageDefinitions_v2_5_0.xsd",
+            "sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27"
+          },
+          {
+            "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+            "path": "UCI_SecurityMarkings_v2_5_0.xsd",
+            "sha256": "4a8056f1503234d423a0c2495844ab65387febced62bea58b87d4f343e9e7a0b"
+          }
+        ],
+        "public_uci_release": "2.5",
+        "root": "UCI_MessageDefinitions_v2_5_0.xsd",
+        "toolchain": {
+          "etree_sha256": "27d8b7e79e217e6946ad6871c13b6bdfbcf55a1a3f6b3ab590cb892fc3a5deca",
+          "libxml": "2.9.14",
+          "libxml_sha256": "8f2643af68a9eba917929046806dabd1848867068d0eee0f6799288a8e886963",
+          "lxml": "5.4.0"
+        },
+        "version": 1
+      }
+    },
+    "2.5 private DeleteRecord": {
+      "raw": "{\"DataRecordListManagementRequest\": {\"SecurityInformation\": {\"Classification\": \"U\", \"OwnerProducer\": [{\"GovernmentIdentifier\": \"USA\"}]}, \"MessageHeader\": {\"SystemID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"Timestamp\": \"2026-10-08T00:00:00Z\", \"SchemaVersion\": \"002.5.0\", \"Mode\": \"SIMULATION\"}, \"MessageData\": {\"RequestID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"RequestState\": \"NEW\", \"DataRecordListID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"DeleteRecord\": {\"$type\": \"Task074SyntheticML\", \"Task074Code\": \"AB\"}}}}",
+      "raw_sha256": "251b6ac0ccea0805934527a9b35c5865a17124746724c1820928492c884948e2",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:DataRecordListManagementRequest xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"https://www.vdl.afrl.af.mil/programs/oam\"><n0:SecurityInformation><n0:Classification>U</n0:Classification><n0:OwnerProducer><n0:GovernmentIdentifier>USA</n0:GovernmentIdentifier></n0:OwnerProducer></n0:SecurityInformation><n0:MessageHeader><n0:SystemID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:SystemID><n0:Timestamp>2026-10-08T00:00:00Z</n0:Timestamp><n0:SchemaVersion>002.5.0</n0:SchemaVersion><n0:Mode>SIMULATION</n0:Mode></n0:MessageHeader><n0:MessageData><n0:RequestID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:RequestID><n0:RequestState>NEW</n0:RequestState><n0:DataRecordListID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:DataRecordListID><n0:DeleteRecord xsi:type=\"n0:Task074SyntheticML\"><n0:Task074Code>AB</n0:Task074Code></n0:DeleteRecord></n0:MessageData></n0:DataRecordListManagementRequest>",
+      "xml_sha256": "b064e2d32137e4223aea22b7ae16819e3399c7a19866a4686365958f1eea0fdb"
+    },
+    "2.5 private complete": {
+      "raw": "{\"DataRecordListManagementRequest\": {\"SecurityInformation\": {\"Classification\": \"U\", \"OwnerProducer\": [{\"GovernmentIdentifier\": \"USA\"}]}, \"MessageHeader\": {\"SystemID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"Timestamp\": \"2026-10-08T00:00:00Z\", \"SchemaVersion\": \"002.5.0\", \"Mode\": \"SIMULATION\"}, \"MessageData\": {\"RequestID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"RequestState\": \"NEW\", \"DataRecordListID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"DeleteRecord\": {\"$type\": \"ForeignKeyMapML\"}, \"AddRecord\": {\"$type\": \"Task074SyntheticML\", \"Task074Code\": \"AB\"}}}}",
+      "raw_sha256": "a2ba86ed9b2668eb3615318bafce0112c843427b8d96bcc1b9c555428c27474b",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:DataRecordListManagementRequest xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"https://www.vdl.afrl.af.mil/programs/oam\"><n0:SecurityInformation><n0:Classification>U</n0:Classification><n0:OwnerProducer><n0:GovernmentIdentifier>USA</n0:GovernmentIdentifier></n0:OwnerProducer></n0:SecurityInformation><n0:MessageHeader><n0:SystemID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:SystemID><n0:Timestamp>2026-10-08T00:00:00Z</n0:Timestamp><n0:SchemaVersion>002.5.0</n0:SchemaVersion><n0:Mode>SIMULATION</n0:Mode></n0:MessageHeader><n0:MessageData><n0:RequestID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:RequestID><n0:RequestState>NEW</n0:RequestState><n0:DataRecordListID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:DataRecordListID><n0:AddRecord xsi:type=\"n0:Task074SyntheticML\"><n0:Task074Code>AB</n0:Task074Code></n0:AddRecord><n0:DeleteRecord xsi:type=\"n0:ForeignKeyMapML\"/></n0:MessageData></n0:DataRecordListManagementRequest>",
+      "xml_sha256": "2919e82694432faf7226ae1673012ef556a8b2072f5f6de57942177552a6ade4"
+    },
+    "2.5 real repeated 0": {
+      "raw": "{\"DataRecordListManagementRequest\": {\"SecurityInformation\": {\"Classification\": \"U\", \"OwnerProducer\": [{\"GovernmentIdentifier\": \"USA\"}]}, \"MessageHeader\": {\"SystemID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"Timestamp\": \"2026-10-08T00:00:00Z\", \"SchemaVersion\": \"002.5.0\", \"Mode\": \"SIMULATION\"}, \"MessageData\": {\"RequestID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"RequestState\": \"NEW\", \"DataRecordListID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"AddRecord\": {\"$type\": \"ForeignKeyMapML\", \"ForeignKeyPairListElement\": []}}}}",
+      "raw_sha256": "bb54a891afaa70fa391c8a576ea2124a2cf4f093c8652c928420f820b4da9b3e",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:DataRecordListManagementRequest xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"https://www.vdl.afrl.af.mil/programs/oam\"><n0:SecurityInformation><n0:Classification>U</n0:Classification><n0:OwnerProducer><n0:GovernmentIdentifier>USA</n0:GovernmentIdentifier></n0:OwnerProducer></n0:SecurityInformation><n0:MessageHeader><n0:SystemID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:SystemID><n0:Timestamp>2026-10-08T00:00:00Z</n0:Timestamp><n0:SchemaVersion>002.5.0</n0:SchemaVersion><n0:Mode>SIMULATION</n0:Mode></n0:MessageHeader><n0:MessageData><n0:RequestID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:RequestID><n0:RequestState>NEW</n0:RequestState><n0:DataRecordListID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:DataRecordListID><n0:AddRecord xsi:type=\"n0:ForeignKeyMapML\"/></n0:MessageData></n0:DataRecordListManagementRequest>",
+      "xml_sha256": "1d4a11b8cd5bc19fa71bb2eb7a8857addc45a6883431cf9e3940471b5c1b8a54"
+    },
+    "2.5 real repeated 1": {
+      "raw": "{\"DataRecordListManagementRequest\": {\"SecurityInformation\": {\"Classification\": \"U\", \"OwnerProducer\": [{\"GovernmentIdentifier\": \"USA\"}]}, \"MessageHeader\": {\"SystemID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"Timestamp\": \"2026-10-08T00:00:00Z\", \"SchemaVersion\": \"002.5.0\", \"Mode\": \"SIMULATION\"}, \"MessageData\": {\"RequestID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"RequestState\": \"NEW\", \"DataRecordListID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"AddRecord\": {\"$type\": \"ForeignKeyMapML\", \"ForeignKeyPairListElement\": [{\"ForeignKeyPairID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}}]}}}}",
+      "raw_sha256": "93c221d7d3b98eeef853e323b10b1357d3fc091614c46563b19c349a556fc695",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:DataRecordListManagementRequest xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"https://www.vdl.afrl.af.mil/programs/oam\"><n0:SecurityInformation><n0:Classification>U</n0:Classification><n0:OwnerProducer><n0:GovernmentIdentifier>USA</n0:GovernmentIdentifier></n0:OwnerProducer></n0:SecurityInformation><n0:MessageHeader><n0:SystemID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:SystemID><n0:Timestamp>2026-10-08T00:00:00Z</n0:Timestamp><n0:SchemaVersion>002.5.0</n0:SchemaVersion><n0:Mode>SIMULATION</n0:Mode></n0:MessageHeader><n0:MessageData><n0:RequestID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:RequestID><n0:RequestState>NEW</n0:RequestState><n0:DataRecordListID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:DataRecordListID><n0:AddRecord xsi:type=\"n0:ForeignKeyMapML\"><n0:ForeignKeyPairListElement><n0:ForeignKeyPairID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:ForeignKeyPairID></n0:ForeignKeyPairListElement></n0:AddRecord></n0:MessageData></n0:DataRecordListManagementRequest>",
+      "xml_sha256": "910089ab452296202dae08b7b49dda843aa781778910a4ecd60559fa02340cf9"
+    },
+    "2.5 real repeated 2": {
+      "raw": "{\"DataRecordListManagementRequest\": {\"SecurityInformation\": {\"Classification\": \"U\", \"OwnerProducer\": [{\"GovernmentIdentifier\": \"USA\"}]}, \"MessageHeader\": {\"SystemID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"Timestamp\": \"2026-10-08T00:00:00Z\", \"SchemaVersion\": \"002.5.0\", \"Mode\": \"SIMULATION\"}, \"MessageData\": {\"RequestID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"RequestState\": \"NEW\", \"DataRecordListID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"AddRecord\": {\"$type\": \"ForeignKeyMapML\", \"ForeignKeyPairListElement\": [{\"ForeignKeyPairID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}}, {\"ForeignKeyPairID\": {\"UUID\": \"539a5e3a-1c72-4c19-83c7-0024c0a15d8c\"}}]}}}}",
+      "raw_sha256": "2713c429b2f28335d219c572c7c7f05a4e1c1b372c64d3a3ac764b32bac56240",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:DataRecordListManagementRequest xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"https://www.vdl.afrl.af.mil/programs/oam\"><n0:SecurityInformation><n0:Classification>U</n0:Classification><n0:OwnerProducer><n0:GovernmentIdentifier>USA</n0:GovernmentIdentifier></n0:OwnerProducer></n0:SecurityInformation><n0:MessageHeader><n0:SystemID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:SystemID><n0:Timestamp>2026-10-08T00:00:00Z</n0:Timestamp><n0:SchemaVersion>002.5.0</n0:SchemaVersion><n0:Mode>SIMULATION</n0:Mode></n0:MessageHeader><n0:MessageData><n0:RequestID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:RequestID><n0:RequestState>NEW</n0:RequestState><n0:DataRecordListID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:DataRecordListID><n0:AddRecord xsi:type=\"n0:ForeignKeyMapML\"><n0:ForeignKeyPairListElement><n0:ForeignKeyPairID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:ForeignKeyPairID></n0:ForeignKeyPairListElement><n0:ForeignKeyPairListElement><n0:ForeignKeyPairID><n0:UUID>539a5e3a-1c72-4c19-83c7-0024c0a15d8c</n0:UUID></n0:ForeignKeyPairID></n0:ForeignKeyPairListElement></n0:AddRecord></n0:MessageData></n0:DataRecordListManagementRequest>",
+      "xml_sha256": "d7b01745e0db01bbf5ae8e1f9cb3028e10aadb14cfb57b5bb8665925e7438da4"
+    },
+    "2.6 complete permuted": {
+      "raw": "{\"DataRecordListManagementRequest\": {\"MessageData\": {\"RequestID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"RequestState\": \"NEW\", \"DataRecordListID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"AddRecord\": {\"$type\": \"ForeignKeyMapML\"}}, \"MessageHeader\": {\"SystemID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"Timestamp\": \"2026-10-08T00:00:00Z\", \"SchemaVersion\": \"002.6.0\", \"Mode\": \"SIMULATION\"}, \"SecurityInformation\": {\"Classification\": \"U\", \"OwnerProducer\": [{\"GovernmentIdentifier\": \"USA\"}]}}}",
+      "raw_sha256": "d993352467167d849247c9ee3dfce9481493280e581369044d416dcaef302d67",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:DataRecordListManagementRequest xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"https://www.vdl.afrl.af.mil/programs/oam\"><n0:SecurityInformation><n0:Classification>U</n0:Classification><n0:OwnerProducer><n0:GovernmentIdentifier>USA</n0:GovernmentIdentifier></n0:OwnerProducer></n0:SecurityInformation><n0:MessageHeader><n0:SystemID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:SystemID><n0:Timestamp>2026-10-08T00:00:00Z</n0:Timestamp><n0:SchemaVersion>002.6.0</n0:SchemaVersion><n0:Mode>SIMULATION</n0:Mode></n0:MessageHeader><n0:MessageData><n0:RequestID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:RequestID><n0:RequestState>NEW</n0:RequestState><n0:DataRecordListID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:DataRecordListID><n0:AddRecord xsi:type=\"n0:ForeignKeyMapML\"/></n0:MessageData></n0:DataRecordListManagementRequest>",
+      "xml_sha256": "cf768ceed619b89745c6b900c9fb987f82bf1a36ccc11a4f03f7ab40db85a134"
+    },
+    "2.6 empty concrete managed list": {
+      "raw": "{\"DataRecordListManagementRequest\": {\"SecurityInformation\": {\"Classification\": \"U\", \"OwnerProducer\": [{\"GovernmentIdentifier\": \"USA\"}]}, \"MessageHeader\": {\"SystemID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"Timestamp\": \"2026-10-08T00:00:00Z\", \"SchemaVersion\": \"002.6.0\", \"Mode\": \"SIMULATION\"}, \"MessageData\": {\"RequestID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"RequestState\": \"NEW\", \"DataRecordListID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"DeleteRecord\": {\"$type\": \"ForeignKeyMapML\"}}}}",
+      "raw_sha256": "19321e76f203b4bea5bfee2e6ab6f324438caa8a368910a5e6fe9ae535f278e5",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:DataRecordListManagementRequest xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"https://www.vdl.afrl.af.mil/programs/oam\"><n0:SecurityInformation><n0:Classification>U</n0:Classification><n0:OwnerProducer><n0:GovernmentIdentifier>USA</n0:GovernmentIdentifier></n0:OwnerProducer></n0:SecurityInformation><n0:MessageHeader><n0:SystemID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:SystemID><n0:Timestamp>2026-10-08T00:00:00Z</n0:Timestamp><n0:SchemaVersion>002.6.0</n0:SchemaVersion><n0:Mode>SIMULATION</n0:Mode></n0:MessageHeader><n0:MessageData><n0:RequestID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:RequestID><n0:RequestState>NEW</n0:RequestState><n0:DataRecordListID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:DataRecordListID><n0:DeleteRecord xsi:type=\"n0:ForeignKeyMapML\"/></n0:MessageData></n0:DataRecordListManagementRequest>",
+      "xml_sha256": "72082b284a9938907052be451747a4f2fdabf85e477577655ad03a23dff2807b"
+    },
+    "2.6 known DeleteRecord": {
+      "raw": "{\"DataRecordListManagementRequest\": {\"SecurityInformation\": {\"Classification\": \"U\", \"OwnerProducer\": [{\"GovernmentIdentifier\": \"USA\"}]}, \"MessageHeader\": {\"SystemID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"Timestamp\": \"2026-10-08T00:00:00Z\", \"SchemaVersion\": \"002.6.0\", \"Mode\": \"SIMULATION\"}, \"MessageData\": {\"RequestID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"RequestState\": \"NEW\", \"DataRecordListID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"DeleteRecord\": {\"$type\": \"ForeignKeyMapML\", \"ForeignKeyPairListElement\": [{\"ForeignKeyPairID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}}, {\"ForeignKeyPairID\": {\"UUID\": \"539a5e3a-1c72-4c19-83c7-0024c0a15d8c\"}}]}}}}",
+      "raw_sha256": "57152fb5a78e0185b9c30f9f267b17c6f89ab3c8d5185620bfbca3848ddd05a1",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:DataRecordListManagementRequest xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"https://www.vdl.afrl.af.mil/programs/oam\"><n0:SecurityInformation><n0:Classification>U</n0:Classification><n0:OwnerProducer><n0:GovernmentIdentifier>USA</n0:GovernmentIdentifier></n0:OwnerProducer></n0:SecurityInformation><n0:MessageHeader><n0:SystemID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:SystemID><n0:Timestamp>2026-10-08T00:00:00Z</n0:Timestamp><n0:SchemaVersion>002.6.0</n0:SchemaVersion><n0:Mode>SIMULATION</n0:Mode></n0:MessageHeader><n0:MessageData><n0:RequestID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:RequestID><n0:RequestState>NEW</n0:RequestState><n0:DataRecordListID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:DataRecordListID><n0:DeleteRecord xsi:type=\"n0:ForeignKeyMapML\"><n0:ForeignKeyPairListElement><n0:ForeignKeyPairID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:ForeignKeyPairID></n0:ForeignKeyPairListElement><n0:ForeignKeyPairListElement><n0:ForeignKeyPairID><n0:UUID>539a5e3a-1c72-4c19-83c7-0024c0a15d8c</n0:UUID></n0:ForeignKeyPairID></n0:ForeignKeyPairListElement></n0:DeleteRecord></n0:MessageData></n0:DataRecordListManagementRequest>",
+      "xml_sha256": "4eb2e259ee69a9a9713184382134b3c869d32f5cddf9a5ff558f9538e6b26d1c"
+    },
+    "2.6 known complete": {
+      "raw": "{\"DataRecordListManagementRequest\": {\"SecurityInformation\": {\"Classification\": \"U\", \"OwnerProducer\": [{\"GovernmentIdentifier\": \"USA\"}]}, \"MessageHeader\": {\"SystemID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"Timestamp\": \"2026-10-08T00:00:00Z\", \"SchemaVersion\": \"002.6.0\", \"Mode\": \"SIMULATION\"}, \"MessageData\": {\"RequestID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"RequestState\": \"NEW\", \"DataRecordListID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"AddRecord\": {\"$type\": \"ForeignKeyMapML\"}}}}",
+      "raw_sha256": "57ff13cfb9ba72e7e8f5c2e340802ed8a5919c4dc144b448e5aa3328b73b6110",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:DataRecordListManagementRequest xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"https://www.vdl.afrl.af.mil/programs/oam\"><n0:SecurityInformation><n0:Classification>U</n0:Classification><n0:OwnerProducer><n0:GovernmentIdentifier>USA</n0:GovernmentIdentifier></n0:OwnerProducer></n0:SecurityInformation><n0:MessageHeader><n0:SystemID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:SystemID><n0:Timestamp>2026-10-08T00:00:00Z</n0:Timestamp><n0:SchemaVersion>002.6.0</n0:SchemaVersion><n0:Mode>SIMULATION</n0:Mode></n0:MessageHeader><n0:MessageData><n0:RequestID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:RequestID><n0:RequestState>NEW</n0:RequestState><n0:DataRecordListID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:DataRecordListID><n0:AddRecord xsi:type=\"n0:ForeignKeyMapML\"/></n0:MessageData></n0:DataRecordListManagementRequest>",
+      "xml_sha256": "cf768ceed619b89745c6b900c9fb987f82bf1a36ccc11a4f03f7ab40db85a134"
+    },
+    "2.6 manifests": {
+      "private": {
+        "approval_provenance": {
+          "evidence": null,
+          "owner": null,
+          "scope": "research-only",
+          "status": "UNESTABLISHED"
+        },
+        "approved_concrete_qnames": [
+          "{https://www.vdl.afrl.af.mil/programs/oam}ForeignKeyMapML",
+          "{https://www.vdl.afrl.af.mil/programs/oam}Task074SyntheticML"
+        ],
+        "bundle_id": "task074-synthetic-2.6",
+        "files": [
+          {
+            "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+            "path": "overlay.xsd",
+            "sha256": "140523337ea4ef579b10d0ba6abd7b797a869e47f0c703c42bf143c04ab29d86"
+          },
+          {
+            "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+            "path": "UCI_MessageDefinitions_v2_6_0.xsd",
+            "sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b"
+          },
+          {
+            "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+            "path": "UCI_SecurityMarkings_v2_6_0.xsd",
+            "sha256": "ee6e58d5db9fd80d526bc964b8244ec296d106301640d34c3cb2c5c00b710b88"
+          },
+          {
+            "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+            "path": "private-fields.xsd",
+            "sha256": "c415286063ccf3ac63dd27d5a260aea30707c65d3884a1c7fb85d652ef15e559"
+          }
+        ],
+        "public_uci_release": "2.6",
+        "root": "overlay.xsd",
+        "toolchain": {
+          "etree_sha256": "27d8b7e79e217e6946ad6871c13b6bdfbcf55a1a3f6b3ab590cb892fc3a5deca",
+          "libxml": "2.9.14",
+          "libxml_sha256": "8f2643af68a9eba917929046806dabd1848867068d0eee0f6799288a8e886963",
+          "lxml": "5.4.0"
+        },
+        "version": 1
+      },
+      "public": {
+        "approval_provenance": {
+          "evidence": null,
+          "owner": null,
+          "scope": "research-only",
+          "status": "UNESTABLISHED"
+        },
+        "approved_concrete_qnames": [
+          "{https://www.vdl.afrl.af.mil/programs/oam}ForeignKeyMapML",
+          "{https://www.vdl.afrl.af.mil/programs/oam}Task074SyntheticML"
+        ],
+        "bundle_id": "task074-synthetic-2.6",
+        "files": [
+          {
+            "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+            "path": "UCI_MessageDefinitions_v2_6_0.xsd",
+            "sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b"
+          },
+          {
+            "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+            "path": "UCI_SecurityMarkings_v2_6_0.xsd",
+            "sha256": "ee6e58d5db9fd80d526bc964b8244ec296d106301640d34c3cb2c5c00b710b88"
+          }
+        ],
+        "public_uci_release": "2.6",
+        "root": "UCI_MessageDefinitions_v2_6_0.xsd",
+        "toolchain": {
+          "etree_sha256": "27d8b7e79e217e6946ad6871c13b6bdfbcf55a1a3f6b3ab590cb892fc3a5deca",
+          "libxml": "2.9.14",
+          "libxml_sha256": "8f2643af68a9eba917929046806dabd1848867068d0eee0f6799288a8e886963",
+          "lxml": "5.4.0"
+        },
+        "version": 1
+      }
+    },
+    "2.6 private DeleteRecord": {
+      "raw": "{\"DataRecordListManagementRequest\": {\"SecurityInformation\": {\"Classification\": \"U\", \"OwnerProducer\": [{\"GovernmentIdentifier\": \"USA\"}]}, \"MessageHeader\": {\"SystemID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"Timestamp\": \"2026-10-08T00:00:00Z\", \"SchemaVersion\": \"002.6.0\", \"Mode\": \"SIMULATION\"}, \"MessageData\": {\"RequestID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"RequestState\": \"NEW\", \"DataRecordListID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"DeleteRecord\": {\"$type\": \"Task074SyntheticML\", \"Task074Code\": \"AB\"}}}}",
+      "raw_sha256": "3c60483ea824a3ee79ab75ddb9bd5322439cd5aa7358a9bbb266c0581b28152d",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:DataRecordListManagementRequest xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"https://www.vdl.afrl.af.mil/programs/oam\"><n0:SecurityInformation><n0:Classification>U</n0:Classification><n0:OwnerProducer><n0:GovernmentIdentifier>USA</n0:GovernmentIdentifier></n0:OwnerProducer></n0:SecurityInformation><n0:MessageHeader><n0:SystemID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:SystemID><n0:Timestamp>2026-10-08T00:00:00Z</n0:Timestamp><n0:SchemaVersion>002.6.0</n0:SchemaVersion><n0:Mode>SIMULATION</n0:Mode></n0:MessageHeader><n0:MessageData><n0:RequestID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:RequestID><n0:RequestState>NEW</n0:RequestState><n0:DataRecordListID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:DataRecordListID><n0:DeleteRecord xsi:type=\"n0:Task074SyntheticML\"><n0:Task074Code>AB</n0:Task074Code></n0:DeleteRecord></n0:MessageData></n0:DataRecordListManagementRequest>",
+      "xml_sha256": "674a263721a3de09d8ad9a2bb1a1fcbf7da2728e6296cc22b4c14a9edd9cdd8e"
+    },
+    "2.6 private complete": {
+      "raw": "{\"DataRecordListManagementRequest\": {\"SecurityInformation\": {\"Classification\": \"U\", \"OwnerProducer\": [{\"GovernmentIdentifier\": \"USA\"}]}, \"MessageHeader\": {\"SystemID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"Timestamp\": \"2026-10-08T00:00:00Z\", \"SchemaVersion\": \"002.6.0\", \"Mode\": \"SIMULATION\"}, \"MessageData\": {\"RequestID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"RequestState\": \"NEW\", \"DataRecordListID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"DeleteRecord\": {\"$type\": \"ForeignKeyMapML\"}, \"AddRecord\": {\"$type\": \"Task074SyntheticML\", \"Task074Code\": \"AB\"}}}}",
+      "raw_sha256": "d2265970224a7187bb0a59d0c2353590268f0d1ad3b014b6e8b5c37f9588514c",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:DataRecordListManagementRequest xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"https://www.vdl.afrl.af.mil/programs/oam\"><n0:SecurityInformation><n0:Classification>U</n0:Classification><n0:OwnerProducer><n0:GovernmentIdentifier>USA</n0:GovernmentIdentifier></n0:OwnerProducer></n0:SecurityInformation><n0:MessageHeader><n0:SystemID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:SystemID><n0:Timestamp>2026-10-08T00:00:00Z</n0:Timestamp><n0:SchemaVersion>002.6.0</n0:SchemaVersion><n0:Mode>SIMULATION</n0:Mode></n0:MessageHeader><n0:MessageData><n0:RequestID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:RequestID><n0:RequestState>NEW</n0:RequestState><n0:DataRecordListID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:DataRecordListID><n0:AddRecord xsi:type=\"n0:Task074SyntheticML\"><n0:Task074Code>AB</n0:Task074Code></n0:AddRecord><n0:DeleteRecord xsi:type=\"n0:ForeignKeyMapML\"/></n0:MessageData></n0:DataRecordListManagementRequest>",
+      "xml_sha256": "293e0576f838f3f0c01142a428e0e25c2ecd0521dd95881e3df1208fbb9afd7f"
+    },
+    "2.6 real repeated 0": {
+      "raw": "{\"DataRecordListManagementRequest\": {\"SecurityInformation\": {\"Classification\": \"U\", \"OwnerProducer\": [{\"GovernmentIdentifier\": \"USA\"}]}, \"MessageHeader\": {\"SystemID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"Timestamp\": \"2026-10-08T00:00:00Z\", \"SchemaVersion\": \"002.6.0\", \"Mode\": \"SIMULATION\"}, \"MessageData\": {\"RequestID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"RequestState\": \"NEW\", \"DataRecordListID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"AddRecord\": {\"$type\": \"ForeignKeyMapML\", \"ForeignKeyPairListElement\": []}}}}",
+      "raw_sha256": "88f71c98e75dcd2cf73e446eba0a602ed7a255112de2bb6c0b163717ab5d3dea",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:DataRecordListManagementRequest xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"https://www.vdl.afrl.af.mil/programs/oam\"><n0:SecurityInformation><n0:Classification>U</n0:Classification><n0:OwnerProducer><n0:GovernmentIdentifier>USA</n0:GovernmentIdentifier></n0:OwnerProducer></n0:SecurityInformation><n0:MessageHeader><n0:SystemID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:SystemID><n0:Timestamp>2026-10-08T00:00:00Z</n0:Timestamp><n0:SchemaVersion>002.6.0</n0:SchemaVersion><n0:Mode>SIMULATION</n0:Mode></n0:MessageHeader><n0:MessageData><n0:RequestID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:RequestID><n0:RequestState>NEW</n0:RequestState><n0:DataRecordListID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:DataRecordListID><n0:AddRecord xsi:type=\"n0:ForeignKeyMapML\"/></n0:MessageData></n0:DataRecordListManagementRequest>",
+      "xml_sha256": "cf768ceed619b89745c6b900c9fb987f82bf1a36ccc11a4f03f7ab40db85a134"
+    },
+    "2.6 real repeated 1": {
+      "raw": "{\"DataRecordListManagementRequest\": {\"SecurityInformation\": {\"Classification\": \"U\", \"OwnerProducer\": [{\"GovernmentIdentifier\": \"USA\"}]}, \"MessageHeader\": {\"SystemID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"Timestamp\": \"2026-10-08T00:00:00Z\", \"SchemaVersion\": \"002.6.0\", \"Mode\": \"SIMULATION\"}, \"MessageData\": {\"RequestID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"RequestState\": \"NEW\", \"DataRecordListID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"AddRecord\": {\"$type\": \"ForeignKeyMapML\", \"ForeignKeyPairListElement\": [{\"ForeignKeyPairID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}}]}}}}",
+      "raw_sha256": "2d031baa7c351bac45f51099da79840e5e21503574606b91260b4b32ea6d70ed",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:DataRecordListManagementRequest xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"https://www.vdl.afrl.af.mil/programs/oam\"><n0:SecurityInformation><n0:Classification>U</n0:Classification><n0:OwnerProducer><n0:GovernmentIdentifier>USA</n0:GovernmentIdentifier></n0:OwnerProducer></n0:SecurityInformation><n0:MessageHeader><n0:SystemID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:SystemID><n0:Timestamp>2026-10-08T00:00:00Z</n0:Timestamp><n0:SchemaVersion>002.6.0</n0:SchemaVersion><n0:Mode>SIMULATION</n0:Mode></n0:MessageHeader><n0:MessageData><n0:RequestID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:RequestID><n0:RequestState>NEW</n0:RequestState><n0:DataRecordListID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:DataRecordListID><n0:AddRecord xsi:type=\"n0:ForeignKeyMapML\"><n0:ForeignKeyPairListElement><n0:ForeignKeyPairID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:ForeignKeyPairID></n0:ForeignKeyPairListElement></n0:AddRecord></n0:MessageData></n0:DataRecordListManagementRequest>",
+      "xml_sha256": "109643728bf9a829a12de560e478ee90d4f8f7410bf3d98a355dba3866ad9673"
+    },
+    "2.6 real repeated 2": {
+      "raw": "{\"DataRecordListManagementRequest\": {\"SecurityInformation\": {\"Classification\": \"U\", \"OwnerProducer\": [{\"GovernmentIdentifier\": \"USA\"}]}, \"MessageHeader\": {\"SystemID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"Timestamp\": \"2026-10-08T00:00:00Z\", \"SchemaVersion\": \"002.6.0\", \"Mode\": \"SIMULATION\"}, \"MessageData\": {\"RequestID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"RequestState\": \"NEW\", \"DataRecordListID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}, \"AddRecord\": {\"$type\": \"ForeignKeyMapML\", \"ForeignKeyPairListElement\": [{\"ForeignKeyPairID\": {\"UUID\": \"697eba54-6f37-11ed-a1eb-0242ac120002\"}}, {\"ForeignKeyPairID\": {\"UUID\": \"539a5e3a-1c72-4c19-83c7-0024c0a15d8c\"}}]}}}}",
+      "raw_sha256": "44f49376dec3bf0be4e67adbbf33a27b58449d822444a7c0c13900e9a03042ca",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:DataRecordListManagementRequest xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"https://www.vdl.afrl.af.mil/programs/oam\"><n0:SecurityInformation><n0:Classification>U</n0:Classification><n0:OwnerProducer><n0:GovernmentIdentifier>USA</n0:GovernmentIdentifier></n0:OwnerProducer></n0:SecurityInformation><n0:MessageHeader><n0:SystemID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:SystemID><n0:Timestamp>2026-10-08T00:00:00Z</n0:Timestamp><n0:SchemaVersion>002.6.0</n0:SchemaVersion><n0:Mode>SIMULATION</n0:Mode></n0:MessageHeader><n0:MessageData><n0:RequestID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:RequestID><n0:RequestState>NEW</n0:RequestState><n0:DataRecordListID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:DataRecordListID><n0:AddRecord xsi:type=\"n0:ForeignKeyMapML\"><n0:ForeignKeyPairListElement><n0:ForeignKeyPairID><n0:UUID>697eba54-6f37-11ed-a1eb-0242ac120002</n0:UUID></n0:ForeignKeyPairID></n0:ForeignKeyPairListElement><n0:ForeignKeyPairListElement><n0:ForeignKeyPairID><n0:UUID>539a5e3a-1c72-4c19-83c7-0024c0a15d8c</n0:UUID></n0:ForeignKeyPairID></n0:ForeignKeyPairListElement></n0:AddRecord></n0:MessageData></n0:DataRecordListManagementRequest>",
+      "xml_sha256": "862ee8d9b0566511dcc4d1abddb3389b1867aadd979559a7daf74a1a4c6cf4ab"
+    },
+    "array 0": {
+      "raw": "{\"{urn:task075}Values\": {\"{urn:task075}Text\": \"<&\\r\\n\\t\\\"\\u00e9\\udbff\\udfff\", \"{urn:task075}Integer\": 9007199254740993, \"{urn:task075}Decimal\": -0.125, \"{urn:task075}Flag\": true, \"{urn:task075}Entry\": []}}",
+      "raw_sha256": "295e1545fdc4e61ee45ac2ab6a981b62309563d7da425818950e4e67d43e01c0",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Values xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075\"><n0:Text>&lt;&amp;&#13;\n\t\"\u00e9\udbff\udfff</n0:Text><n0:Integer>9007199254740993</n0:Integer><n0:Decimal>-0.125</n0:Decimal><n0:Flag>true</n0:Flag></n0:Values>",
+      "xml_sha256": "bf815984a94ef907ab139a4c098c5b2c9d5dba16f66fb4ed67a4a5e7ca380503"
+    },
+    "array 1": {
+      "raw": "{\"{urn:task075}Values\": {\"{urn:task075}Text\": \"<&\\r\\n\\t\\\"\\u00e9\\udbff\\udfff\", \"{urn:task075}Integer\": 9007199254740993, \"{urn:task075}Decimal\": -0.125, \"{urn:task075}Flag\": true, \"{urn:task075}Entry\": [\"one\"]}}",
+      "raw_sha256": "74c5208c800363f78d3329c73cfbbf6b44b6e55be28ff53f6135786f9a66aff9",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Values xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075\"><n0:Text>&lt;&amp;&#13;\n\t\"\u00e9\udbff\udfff</n0:Text><n0:Integer>9007199254740993</n0:Integer><n0:Decimal>-0.125</n0:Decimal><n0:Flag>true</n0:Flag><n0:Entry>one</n0:Entry></n0:Values>",
+      "xml_sha256": "e5b28f8f4d65e37f72648f4240275da8c05b49fa09cc7fb9f48efc2fb110ed67"
+    },
+    "array 2": {
+      "raw": "{\"{urn:task075}Values\": {\"{urn:task075}Text\": \"<&\\r\\n\\t\\\"\\u00e9\\udbff\\udfff\", \"{urn:task075}Integer\": 9007199254740993, \"{urn:task075}Decimal\": -0.125, \"{urn:task075}Flag\": true, \"{urn:task075}Entry\": [\"two\", \"one\"]}}",
+      "raw_sha256": "e6a6c1c64a970efbc4274937d92894102abffcd6a794369aef50838781557189",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Values xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075\"><n0:Text>&lt;&amp;&#13;\n\t\"\u00e9\udbff\udfff</n0:Text><n0:Integer>9007199254740993</n0:Integer><n0:Decimal>-0.125</n0:Decimal><n0:Flag>true</n0:Flag><n0:Entry>two</n0:Entry><n0:Entry>one</n0:Entry></n0:Values>",
+      "xml_sha256": "b6e840b5b141b5f7eed4cd197e411e672b6d5f62b0ae87398b15c9cb73fd7e7d"
+    },
+    "choice A": {
+      "raw": "{\"{urn:task075}Values\": {\"{urn:task075}Text\": \"\", \"{urn:task075}Integer\": 9007199254740993, \"{urn:task075}Decimal\": -0.125, \"{urn:task075}Flag\": true, \"{urn:task075}A\": \"A\"}}",
+      "raw_sha256": "741601b04e2b6033e2c3aa96d5af1f09753343451b26e37bc87aae4b2f9a7914",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Values xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075\"><n0:Text></n0:Text><n0:Integer>9007199254740993</n0:Integer><n0:Decimal>-0.125</n0:Decimal><n0:Flag>true</n0:Flag><n0:A>A</n0:A></n0:Values>",
+      "xml_sha256": "687b8118c99691c2145a9bff942aedac012371696c4caa074a9514571086bbc3"
+    },
+    "choice B": {
+      "raw": "{\"{urn:task075}Values\": {\"{urn:task075}Text\": \"\", \"{urn:task075}Integer\": 9007199254740993, \"{urn:task075}Decimal\": -0.125, \"{urn:task075}Flag\": true, \"{urn:task075}B\": \"B\"}}",
+      "raw_sha256": "4ccd04ea51f5da8fab257921811cf8a76dc10c985ac24a178c813f3a76f7fdb6",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Values xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075\"><n0:Text></n0:Text><n0:Integer>9007199254740993</n0:Integer><n0:Decimal>-0.125</n0:Decimal><n0:Flag>true</n0:Flag><n0:B>B</n0:B></n0:Values>",
+      "xml_sha256": "c1fd8ae66b81b48f44af0acf22a83acaa4be362bbe42864a0909590a2b8ccb21"
+    },
+    "empty string": {
+      "raw": "{\"{urn:task075}Values\": {\"{urn:task075}Text\": \"\", \"{urn:task075}Integer\": 9007199254740993, \"{urn:task075}Decimal\": -0.125, \"{urn:task075}Flag\": true}}",
+      "raw_sha256": "6473b6c329f06c8e823520fc46babc50f7fd1a071feadd11cf2588bc59e3bfd8",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Values xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075\"><n0:Text></n0:Text><n0:Integer>9007199254740993</n0:Integer><n0:Decimal>-0.125</n0:Decimal><n0:Flag>true</n0:Flag></n0:Values>",
+      "xml_sha256": "8064f0b42ffd4ff84843ebd9f09d4efd0ba4bc344da158478dba7ffbdca9c97e"
+    },
+    "exact values and preservation": {
+      "raw": "{\"{urn:task075}Values\":{\"{urn:task075}Text\":\"<&\\r\\n\\t\\\"\\u00e9\\udbff\\udfff\",\"{urn:task075}Integer\":9007199254740993,\"{urn:task075}Decimal\":-0.1250,\"{urn:task075}Flag\":true,\"{urn:task075}Entry\":[\"second\",\"first\"]}}",
+      "raw_sha256": "94e6b75d3114c1a1640353f28be81459bc61aa9a1273f65ac4b26e615b8f4069",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Values xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075\"><n0:Text>&lt;&amp;&#13;\n\t\"\u00e9\udbff\udfff</n0:Text><n0:Integer>9007199254740993</n0:Integer><n0:Decimal>-0.1250</n0:Decimal><n0:Flag>true</n0:Flag><n0:Entry>second</n0:Entry><n0:Entry>first</n0:Entry></n0:Values>",
+      "xml_sha256": "05431a7c00a4c009b22af9b1002a36e0247271463eb3955e3e599c87ddf7584e"
+    },
+    "false and negative exact integer": {
+      "raw": "{\"{urn:task075}Values\": {\"{urn:task075}Text\": \"\", \"{urn:task075}Integer\": -9007199254740993, \"{urn:task075}Decimal\": -0.125, \"{urn:task075}Flag\": false}}",
+      "raw_sha256": "03fb735bb79c1b34902fe0be9d2b713a0409d74246b33e9c9398475a2ff8dd20",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Values xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075\"><n0:Text></n0:Text><n0:Integer>-9007199254740993</n0:Integer><n0:Decimal>-0.125</n0:Decimal><n0:Flag>false</n0:Flag></n0:Values>",
+      "xml_sha256": "534eb90398f3378d9e12f29223222c4feef3d37203ddc18d3da584661f5be005"
+    },
+    "generated-codec closed vector": {
+      "raw": "{\"{urn:test}MessageB\":{\"{urn:test}Count\":7}}",
+      "raw_sha256": "9940826ac6a94bb49a0a38e0f7c3cd67e0245b68129d238d4d41af3c17b20b33",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:MessageB xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:test\"><n0:Count>7</n0:Count></n0:MessageB>",
+      "xml_sha256": "d2e40a599c5705066982568e3076dabc6e58ae053b2fc77cc5775673328f6010"
+    },
+    "generated-codec private overlay vector": {
+      "raw": "{\"{urn:audit}HolderReport\":{\"{urn:audit}Value\":{\"$type\":\"{urn:audit}PrivateB\",\"{urn:audit}Flag\":true,\"{urn:audit}Enabled\":false}}}",
+      "raw_sha256": "983a1b089eab6971668dc489f3fdfaa2dc1dff997a29adda56e2cb30a6ad2109",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:HolderReport xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:audit\"><n0:Value xsi:type=\"n0:PrivateB\"><n0:Flag>true</n0:Flag><n0:Enabled>false</n0:Enabled></n0:Value></n0:HolderReport>",
+      "xml_sha256": "f2ce5e237885931b00f68ccff9abc3af21efc4189fa6538f96ddc8182000d2ec"
+    },
+    "known": {
+      "raw": "{\"{urn:task074:public}Value\":{\"$type\":\"{urn:task074:public}Known\",\"{urn:task074:public}Count\":1}}",
+      "raw_sha256": "a7e8276eae20e908748f186bd6324d9d7be37378a41ae9b657e6e70109befa39",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n1:Value xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task074:private\" xmlns:n1=\"urn:task074:public\" xsi:type=\"n1:Known\"><n1:Count>1</n1:Count></n1:Value>",
+      "xml_sha256": "03d8ab26aabbe807f356e8f476fdb884d7fd8c0868b342fbd8289cd406c3e7e5"
+    },
+    "large inherited integer": {
+      "raw": "{\"{urn:task074:public}Value\":{\"$type\":\"{urn:task074:public}Known\",\"{urn:task074:public}Count\":9007199254740993}}",
+      "raw_sha256": "2f6ad9e46204b232d8e30845e4113fd0f82164998d71736712c3e0087a3101af",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n1:Value xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task074:private\" xmlns:n1=\"urn:task074:public\" xsi:type=\"n1:Known\"><n1:Count>9007199254740993</n1:Count></n1:Value>",
+      "xml_sha256": "97c13f95742fe4f7b52f3bb9ae2c7c9d0a381ce6fcf2808381fbbfc6f5f84f50"
+    },
+    "optional absent": {
+      "raw": "{\"{urn:task075}Values\": {\"{urn:task075}Text\": \"<&\\r\\n\\t\\\"\\u00e9\\udbff\\udfff\", \"{urn:task075}Integer\": 9007199254740993, \"{urn:task075}Decimal\": -0.125, \"{urn:task075}Flag\": true}}",
+      "raw_sha256": "84cb13cb4a3b827eeb4c3e963e4c893eaa7b5738223afe06e67b3b05c32705d9",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Values xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075\"><n0:Text>&lt;&amp;&#13;\n\t\"\u00e9\udbff\udfff</n0:Text><n0:Integer>9007199254740993</n0:Integer><n0:Decimal>-0.125</n0:Decimal><n0:Flag>true</n0:Flag></n0:Values>",
+      "xml_sha256": "bf815984a94ef907ab139a4c098c5b2c9d5dba16f66fb4ed67a4a5e7ca380503"
+    },
+    "permuted members": {
+      "raw": "{\"{urn:task075}Values\": {\"{urn:task075}Flag\": true, \"{urn:task075}Decimal\": -0.125, \"{urn:task075}Integer\": 9007199254740993, \"{urn:task075}Text\": \"\"}}",
+      "raw_sha256": "3e190da36de6a618d3ef3a9be350c847f6e0aef73cda7198982e2ddc4e0eb154",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n0:Values xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task075\"><n0:Text></n0:Text><n0:Integer>9007199254740993</n0:Integer><n0:Decimal>-0.125</n0:Decimal><n0:Flag>true</n0:Flag></n0:Values>",
+      "xml_sha256": "8064f0b42ffd4ff84843ebd9f09d4efd0ba4bc344da158478dba7ffbdca9c97e"
+    },
+    "same local private identity": {
+      "raw": "{\"{urn:task074:public}Value\":{\"$type\":\"{urn:task074:private}Known\",\"{urn:task074:public}Count\":1,\"{urn:task074:private}Secret\":\"AB\"}}",
+      "raw_sha256": "26d6e09c3ca124b663c21144f9e9f56cb89ad2e8283c021e5f31ec2b7e792afb",
+      "result": "research-schema-valid-not-authorized",
+      "xml": "<n1:Value xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:n0=\"urn:task074:private\" xmlns:n1=\"urn:task074:public\" xsi:type=\"n0:Known\"><n1:Count>1</n1:Count><n0:Secret>AB</n0:Secret></n1:Value>",
+      "xml_sha256": "2595430f2bbb078c00eab7ac27aad3e34f7651fae228489b11ccf78b8ae4f59d"
+    }
+  },
+  "limits": {
+    "array": 256,
+    "bytes": 65536,
+    "depth": 32,
+    "members": 2048,
+    "number": 128,
+    "output": 65536
+  },
+  "results": [
+    {
+      "case": "known",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "same local private identity",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "defined unapproved type",
+      "result": "assessment-policy:unapproved-type"
+    },
+    {
+      "case": "syntax",
+      "result": "syntax:json"
+    },
+    {
+      "case": "utf8",
+      "result": "syntax:utf8"
+    },
+    {
+      "case": "duplicate escaped type",
+      "result": "policy:duplicate-name"
+    },
+    {
+      "case": "nested duplicate",
+      "result": "policy:duplicate-name"
+    },
+    {
+      "case": "multiple envelope",
+      "result": "envelope:one-member-object"
+    },
+    {
+      "case": "wrong envelope",
+      "result": "envelope:wrong-global"
+    },
+    {
+      "case": "nonobject envelope",
+      "result": "envelope:one-member-object"
+    },
+    {
+      "case": "missing type",
+      "result": "mapping:missing-type"
+    },
+    {
+      "case": "abstract",
+      "result": "mapping:abstract-type"
+    },
+    {
+      "case": "unrelated",
+      "result": "mapping:unrelated-type"
+    },
+    {
+      "case": "unresolved",
+      "result": "mapping:unresolved-type"
+    },
+    {
+      "case": "malformed type",
+      "result": "unsupported:non-profile-qname"
+    },
+    {
+      "case": "type number",
+      "result": "shape:qname-token"
+    },
+    {
+      "case": "wrong namespace type",
+      "result": "mapping:unresolved-type"
+    },
+    {
+      "case": "brace malformed",
+      "result": "shape:qname"
+    },
+    {
+      "case": "number string",
+      "result": "shape:number-token"
+    },
+    {
+      "case": "number boolean",
+      "result": "shape:number-token"
+    },
+    {
+      "case": "null",
+      "result": "shape:null"
+    },
+    {
+      "case": "missing member",
+      "result": "shape:missing-member"
+    },
+    {
+      "case": "unknown member",
+      "result": "shape:unknown-member"
+    },
+    {
+      "case": "inherited facet",
+      "result": "xsd:invalid:SCHEMAV_CVC_DATATYPE_VALID_1_2_1"
+    },
+    {
+      "case": "private facet",
+      "result": "xsd:invalid:SCHEMAV_CVC_PATTERN_VALID"
+    },
+    {
+      "case": "recursive value",
+      "result": "unsupported:recursive-value"
+    },
+    {
+      "case": "large inherited integer",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "default authority",
+      "result": "authority-not-established"
+    },
+    {
+      "case": "toolchain mismatch",
+      "result": "toolchain-manifest"
+    },
+    {
+      "case": "binary version mismatch",
+      "result": "toolchain-pin"
+    },
+    {
+      "case": "missing closure",
+      "result": "closure"
+    },
+    {
+      "case": "altered closure",
+      "result": "digest"
+    },
+    {
+      "case": "missing file",
+      "result": "missing-file"
+    },
+    {
+      "case": "exact values and preservation",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "array 0",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "array 1",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "array 2",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "optional absent",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "empty string",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "false and negative exact integer",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "permuted members",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "token/shape 0",
+      "result": "shape:array-required"
+    },
+    {
+      "case": "token/shape 1",
+      "result": "shape:scalar-required"
+    },
+    {
+      "case": "token/shape 2",
+      "result": "shape:string-token"
+    },
+    {
+      "case": "token/shape 3",
+      "result": "shape:string-token"
+    },
+    {
+      "case": "token/shape 4",
+      "result": "shape:null"
+    },
+    {
+      "case": "token/shape 5",
+      "result": "shape:boolean-token"
+    },
+    {
+      "case": "token/shape 6",
+      "result": "shape:boolean-token"
+    },
+    {
+      "case": "token/shape 7",
+      "result": "mapping:xml-character"
+    },
+    {
+      "case": "token/shape 8",
+      "result": "mapping:xml-character"
+    },
+    {
+      "case": "exponent",
+      "result": "unsupported:decimal-exponent"
+    },
+    {
+      "case": "fraction integer lexical",
+      "result": "xsd:invalid:SCHEMAV_CVC_DATATYPE_VALID_1_2_1"
+    },
+    {
+      "case": "choice A",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "choice B",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "choice conflict",
+      "result": "shape:choice-conflict"
+    },
+    {
+      "case": "float unsupported",
+      "result": "unsupported:simple-primitive"
+    },
+    {
+      "case": "expanded duplicate",
+      "result": "policy:duplicate-expanded-qname"
+    },
+    {
+      "case": "resource bytes",
+      "result": "policy:byte-limit"
+    },
+    {
+      "case": "resource depth",
+      "result": "policy:depth-limit"
+    },
+    {
+      "case": "resource members",
+      "result": "policy:member-limit"
+    },
+    {
+      "case": "resource array",
+      "result": "policy:array-limit"
+    },
+    {
+      "case": "resource number",
+      "result": "policy:number-limit"
+    },
+    {
+      "case": "resource output",
+      "result": "policy:output-limit"
+    },
+    {
+      "case": "non-JSON NaN",
+      "result": "syntax:non-json-number"
+    },
+    {
+      "case": "boundary bytes",
+      "result": "policy-boundary-accepted"
+    },
+    {
+      "case": "boundary depth",
+      "result": "policy-boundary-accepted"
+    },
+    {
+      "case": "boundary members",
+      "result": "policy-boundary-accepted"
+    },
+    {
+      "case": "boundary array",
+      "result": "policy-boundary-accepted"
+    },
+    {
+      "case": "boundary number",
+      "result": "policy-boundary-accepted"
+    },
+    {
+      "case": "generated-codec closed vector",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "generated-codec private overlay vector",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "2.5 known complete",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "2.5 complete permuted",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "2.5 security choice conflict",
+      "result": "shape:choice-conflict"
+    },
+    {
+      "case": "2.5 real repeated 0",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "2.5 real repeated 1",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "2.5 real repeated 2",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "2.5 known DeleteRecord",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "2.5 empty concrete managed list",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "2.5 private complete",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "2.5 private public-only",
+      "result": "mapping:unresolved-type"
+    },
+    {
+      "case": "2.5 private incomplete closure",
+      "result": "closure"
+    },
+    {
+      "case": "2.5 inherited RequestState",
+      "result": "xsd:invalid:SCHEMAV_CVC_ENUMERATION_VALID"
+    },
+    {
+      "case": "2.5 private Task074Code",
+      "result": "xsd:invalid:SCHEMAV_CVC_PATTERN_VALID"
+    },
+    {
+      "case": "2.5 private DeleteRecord",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "2.6 known complete",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "2.6 complete permuted",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "2.6 security choice conflict",
+      "result": "shape:choice-conflict"
+    },
+    {
+      "case": "2.6 real repeated 0",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "2.6 real repeated 1",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "2.6 real repeated 2",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "2.6 known DeleteRecord",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "2.6 empty concrete managed list",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "2.6 private complete",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "2.6 private public-only",
+      "result": "mapping:unresolved-type"
+    },
+    {
+      "case": "2.6 private incomplete closure",
+      "result": "closure"
+    },
+    {
+      "case": "2.6 inherited RequestState",
+      "result": "xsd:invalid:SCHEMAV_CVC_ENUMERATION_VALID"
+    },
+    {
+      "case": "2.6 private Task074Code",
+      "result": "xsd:invalid:SCHEMAV_CVC_PATTERN_VALID"
+    },
+    {
+      "case": "2.6 private DeleteRecord",
+      "result": "research-schema-valid-not-authorized"
+    },
+    {
+      "case": "worker failure",
+      "result": "resource:worker-failure"
+    },
+    {
+      "case": "worker timeout",
+      "result": "resource:worker-timeout"
+    }
+  ],
+  "source_sha256": {
+    "scripts/task074/bundle.py": "06a2959481330eb844c971f08bbb1dd0fd2c04d17d668238ae73c1cca09a889d",
+    "scripts/task075/mapper.py": "c83616a88b8dcdba9df553362933c4039516c3ad9c5db968d9071b2c9be788be",
+    "scripts/task075/qualify.py": "37b12f792d172bf0df1e768fa80fbec31f25559a96a8477ac4d4472b1791050e"
+  },
+  "toolchain": {
+    "etree_sha256": "27d8b7e79e217e6946ad6871c13b6bdfbcf55a1a3f6b3ab590cb892fc3a5deca",
+    "libxml": "2.9.14",
+    "libxml_sha256": "8f2643af68a9eba917929046806dabd1848867068d0eee0f6799288a8e886963",
+    "lxml": "5.4.0"
+  }
+}

@@ -1,0 +1,406 @@
+[
+  {
+    "case": "known",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "same local private identity",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "defined unapproved type",
+    "result": "assessment-policy:unapproved-type"
+  },
+  {
+    "case": "syntax",
+    "result": "syntax:json"
+  },
+  {
+    "case": "utf8",
+    "result": "syntax:utf8"
+  },
+  {
+    "case": "duplicate escaped type",
+    "result": "policy:duplicate-name"
+  },
+  {
+    "case": "nested duplicate",
+    "result": "policy:duplicate-name"
+  },
+  {
+    "case": "multiple envelope",
+    "result": "envelope:one-member-object"
+  },
+  {
+    "case": "wrong envelope",
+    "result": "envelope:wrong-global"
+  },
+  {
+    "case": "nonobject envelope",
+    "result": "envelope:one-member-object"
+  },
+  {
+    "case": "missing type",
+    "result": "mapping:missing-type"
+  },
+  {
+    "case": "abstract",
+    "result": "mapping:abstract-type"
+  },
+  {
+    "case": "unrelated",
+    "result": "mapping:unrelated-type"
+  },
+  {
+    "case": "unresolved",
+    "result": "mapping:unresolved-type"
+  },
+  {
+    "case": "malformed type",
+    "result": "unsupported:non-profile-qname"
+  },
+  {
+    "case": "type number",
+    "result": "shape:qname-token"
+  },
+  {
+    "case": "wrong namespace type",
+    "result": "mapping:unresolved-type"
+  },
+  {
+    "case": "brace malformed",
+    "result": "shape:qname"
+  },
+  {
+    "case": "number string",
+    "result": "shape:number-token"
+  },
+  {
+    "case": "number boolean",
+    "result": "shape:number-token"
+  },
+  {
+    "case": "null",
+    "result": "shape:null"
+  },
+  {
+    "case": "missing member",
+    "result": "shape:missing-member"
+  },
+  {
+    "case": "unknown member",
+    "result": "shape:unknown-member"
+  },
+  {
+    "case": "inherited facet",
+    "result": "xsd:invalid:SCHEMAV_CVC_DATATYPE_VALID_1_2_1"
+  },
+  {
+    "case": "private facet",
+    "result": "xsd:invalid:SCHEMAV_CVC_PATTERN_VALID"
+  },
+  {
+    "case": "recursive value",
+    "result": "unsupported:recursive-value"
+  },
+  {
+    "case": "large inherited integer",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "default authority",
+    "result": "authority-not-established"
+  },
+  {
+    "case": "toolchain mismatch",
+    "result": "toolchain-manifest"
+  },
+  {
+    "case": "binary version mismatch",
+    "result": "toolchain-pin"
+  },
+  {
+    "case": "missing closure",
+    "result": "closure"
+  },
+  {
+    "case": "altered closure",
+    "result": "digest"
+  },
+  {
+    "case": "missing file",
+    "result": "missing-file"
+  },
+  {
+    "case": "exact values and preservation",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "array 0",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "array 1",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "array 2",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "optional absent",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "empty string",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "false and negative exact integer",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "permuted members",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "token/shape 0",
+    "result": "shape:array-required"
+  },
+  {
+    "case": "token/shape 1",
+    "result": "shape:scalar-required"
+  },
+  {
+    "case": "token/shape 2",
+    "result": "shape:string-token"
+  },
+  {
+    "case": "token/shape 3",
+    "result": "shape:string-token"
+  },
+  {
+    "case": "token/shape 4",
+    "result": "shape:null"
+  },
+  {
+    "case": "token/shape 5",
+    "result": "shape:boolean-token"
+  },
+  {
+    "case": "token/shape 6",
+    "result": "shape:boolean-token"
+  },
+  {
+    "case": "token/shape 7",
+    "result": "mapping:xml-character"
+  },
+  {
+    "case": "token/shape 8",
+    "result": "mapping:xml-character"
+  },
+  {
+    "case": "exponent",
+    "result": "unsupported:decimal-exponent"
+  },
+  {
+    "case": "fraction integer lexical",
+    "result": "xsd:invalid:SCHEMAV_CVC_DATATYPE_VALID_1_2_1"
+  },
+  {
+    "case": "choice A",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "choice B",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "choice conflict",
+    "result": "shape:choice-conflict"
+  },
+  {
+    "case": "float unsupported",
+    "result": "unsupported:simple-primitive"
+  },
+  {
+    "case": "expanded duplicate",
+    "result": "policy:duplicate-expanded-qname"
+  },
+  {
+    "case": "resource bytes",
+    "result": "policy:byte-limit"
+  },
+  {
+    "case": "resource depth",
+    "result": "policy:depth-limit"
+  },
+  {
+    "case": "resource members",
+    "result": "policy:member-limit"
+  },
+  {
+    "case": "resource array",
+    "result": "policy:array-limit"
+  },
+  {
+    "case": "resource number",
+    "result": "policy:number-limit"
+  },
+  {
+    "case": "resource output",
+    "result": "policy:output-limit"
+  },
+  {
+    "case": "non-JSON NaN",
+    "result": "syntax:non-json-number"
+  },
+  {
+    "case": "boundary bytes",
+    "result": "policy-boundary-accepted"
+  },
+  {
+    "case": "boundary depth",
+    "result": "policy-boundary-accepted"
+  },
+  {
+    "case": "boundary members",
+    "result": "policy-boundary-accepted"
+  },
+  {
+    "case": "boundary array",
+    "result": "policy-boundary-accepted"
+  },
+  {
+    "case": "boundary number",
+    "result": "policy-boundary-accepted"
+  },
+  {
+    "case": "generated-codec closed vector",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "generated-codec private overlay vector",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "2.5 known complete",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "2.5 complete permuted",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "2.5 security choice conflict",
+    "result": "shape:choice-conflict"
+  },
+  {
+    "case": "2.5 real repeated 0",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "2.5 real repeated 1",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "2.5 real repeated 2",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "2.5 known DeleteRecord",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "2.5 empty concrete managed list",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "2.5 private complete",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "2.5 private public-only",
+    "result": "mapping:unresolved-type"
+  },
+  {
+    "case": "2.5 private incomplete closure",
+    "result": "closure"
+  },
+  {
+    "case": "2.5 inherited RequestState",
+    "result": "xsd:invalid:SCHEMAV_CVC_ENUMERATION_VALID"
+  },
+  {
+    "case": "2.5 private Task074Code",
+    "result": "xsd:invalid:SCHEMAV_CVC_PATTERN_VALID"
+  },
+  {
+    "case": "2.5 private DeleteRecord",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "2.6 known complete",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "2.6 complete permuted",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "2.6 security choice conflict",
+    "result": "shape:choice-conflict"
+  },
+  {
+    "case": "2.6 real repeated 0",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "2.6 real repeated 1",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "2.6 real repeated 2",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "2.6 known DeleteRecord",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "2.6 empty concrete managed list",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "2.6 private complete",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "2.6 private public-only",
+    "result": "mapping:unresolved-type"
+  },
+  {
+    "case": "2.6 private incomplete closure",
+    "result": "closure"
+  },
+  {
+    "case": "2.6 inherited RequestState",
+    "result": "xsd:invalid:SCHEMAV_CVC_ENUMERATION_VALID"
+  },
+  {
+    "case": "2.6 private Task074Code",
+    "result": "xsd:invalid:SCHEMAV_CVC_PATTERN_VALID"
+  },
+  {
+    "case": "2.6 private DeleteRecord",
+    "result": "research-schema-valid-not-authorized"
+  },
+  {
+    "case": "worker failure",
+    "result": "resource:worker-failure"
+  },
+  {
+    "case": "worker timeout",
+    "result": "resource:worker-timeout"
+  }
+]
