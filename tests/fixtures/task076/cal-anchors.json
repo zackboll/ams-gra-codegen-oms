@@ -1,0 +1,491 @@
+{
+  "docx_sha256": "b1c3c07872570fb4f2c84fd819076b1b588148ef28225f5a8e23433efe94b1a7",
+  "anchor_definition": "one-based ordered direct w:body children restricted to w:p and w:tbl in word/document.xml",
+  "anchors": [
+    {
+      "body_anchor": 390,
+      "kind": "p",
+      "text": "Particles"
+    },
+    {
+      "body_anchor": 391,
+      "kind": "p",
+      "text": "For the text of a  particle , the appropriate  case  among the following must be true:"
+    },
+    {
+      "body_anchor": 392,
+      "kind": "p",
+      "text": "If   {term}  is a  model group ,  then  the appropriate  case  among the following:"
+    },
+    {
+      "body_anchor": 393,
+      "kind": "p",
+      "text": "If  {compositor} is  sequence ,  then  the text  prescribed  by Section 6.1.2, Particles, for each of the {particles} in any order."
+    },
+    {
+      "body_anchor": 394,
+      "kind": "p",
+      "text": "If   {compositor}  is  choice ,  then  the text prescribed by Section 6.1.2, Particles, for  one  of the  {particles} ."
+    },
+    {
+      "body_anchor": 395,
+      "kind": "p",
+      "text": "If   {term}  is an  Element Declaration ,  then   all  of  the following must be true:"
+    },
+    {
+      "body_anchor": 396,
+      "kind": "p",
+      "text": "It is a  member ."
+    },
+    {
+      "body_anchor": 397,
+      "kind": "p",
+      "text": "The  string  is given by the appropriate  case  among the following:"
+    },
+    {
+      "body_anchor": 398,
+      "kind": "p",
+      "text": "If   {target namespace}  is  https://www.vdl.afrl.af.mil/programs/oam ,  then  \" {name} \"."
+    },
+    {
+      "body_anchor": 399,
+      "kind": "p",
+      "text": "Otherwise  \"{ {target namespace } } { name} \"."
+    },
+    {
+      "body_anchor": 400,
+      "kind": "p",
+      "text": "The  value  is given by the appropriate  case  among the following:"
+    },
+    {
+      "body_anchor": 401,
+      "kind": "p",
+      "text": "If   {max occurs}  is  greater than one  or  unbounded ,  then   array   whose  each  value  is prescribed per the clause below."
+    },
+    {
+      "body_anchor": 402,
+      "kind": "p",
+      "text": "Otherwise  the appropriate  case  among the following:"
+    },
+    {
+      "body_anchor": 403,
+      "kind": "p",
+      "text": "If   {type definition}  is a  Simple Type Definition ,  then  the text prescribed by Section 6.1.4, Simple Type Definitions."
+    },
+    {
+      "body_anchor": 404,
+      "kind": "p",
+      "text": "If   {type definition}  is a  Complex Type Definition ,  then  the appropriate case among the following:"
+    },
+    {
+      "body_anchor": 405,
+      "kind": "p",
+      "text": "If   {type definition}  can be validly derived as defined in  Type Derivation OK (Complex) (\u00a73.4.6) ,  then   all  of  the following:"
+    },
+    {
+      "body_anchor": 406,
+      "kind": "p",
+      "text": "If  a type is used in a context where another type was expected,  then  the  member  whose  string  is \"$type\" and whose  value  is the appropriate  case  among the following:"
+    },
+    {
+      "body_anchor": 407,
+      "kind": "p",
+      "text": "If   { complexType  target namespace}   is  https://www.vdl.afrl.af.mil/programs/oam ,  then  \" { complexType  name} .\""
+    },
+    {
+      "body_anchor": 408,
+      "kind": "p",
+      "text": "Otherwise  \"{ { complexType  target namespace } } { complexType  name} .\""
+    },
+    {
+      "body_anchor": 409,
+      "kind": "p",
+      "text": "The text prescribed by Section 6.1.3, Complex Type Definitions."
+    },
+    {
+      "body_anchor": 410,
+      "kind": "p",
+      "text": "Otherwise  the text prescribed by Section 6.1.3, Complex Type Definitions."
+    },
+    {
+      "body_anchor": 411,
+      "kind": "p",
+      "text": "Complex Type Definitions"
+    },
+    {
+      "body_anchor": 412,
+      "kind": "p",
+      "text": "For the text of a  Complex Type Definition ,  all  of  the following must be true:"
+    },
+    {
+      "body_anchor": 413,
+      "kind": "p",
+      "text": "It is an  object ."
+    },
+    {
+      "body_anchor": 414,
+      "kind": "p",
+      "text": "Its  member s are prescribed by the appropriate  case  among the following:"
+    },
+    {
+      "body_anchor": 415,
+      "kind": "p",
+      "text": "If   {content type}  is  empty ,  then  none."
+    },
+    {
+      "body_anchor": 416,
+      "kind": "p",
+      "text": "If   {content type}  is a pair consisting of a  \u00b7content model\u00b7  (I.e. a  Particle (\u00a72.2.3.2) ) and  elementOnly ,  then  the text prescribed by Section 6.1.2, Particles, for the  \u00b7content model\u00b7 ."
+    },
+    {
+      "body_anchor": 417,
+      "kind": "p",
+      "text": "Examples"
+    },
+    {
+      "body_anchor": 418,
+      "kind": "p",
+      "text": "Representation of a  Complex Type Definition  whose  {content type}  is  empty , e.g.  MyEmptyType"
+    },
+    {
+      "body_anchor": 419,
+      "kind": "p",
+      "text": "< xs:complexType  name=\" MyEmptyType \"/>"
+    },
+    {
+      "body_anchor": 420,
+      "kind": "p",
+      "text": "may result in the following JSON text:"
+    },
+    {
+      "body_anchor": 495,
+      "kind": "p",
+      "text": "</ xs:complexType >"
+    },
+    {
+      "body_anchor": 496,
+      "kind": "p",
+      "text": "may result in the following JSON text:"
+    },
+    {
+      "body_anchor": 497,
+      "kind": "p",
+      "text": "{"
+    },
+    {
+      "body_anchor": 498,
+      "kind": "p",
+      "text": "  \"C\": ["
+    },
+    {
+      "body_anchor": 499,
+      "kind": "p",
+      "text": "    {"
+    },
+    {
+      "body_anchor": 500,
+      "kind": "p",
+      "text": "      \"A\": \"From the base type\","
+    },
+    {
+      "body_anchor": 501,
+      "kind": "p",
+      "text": "      \"$type\": \" MyConcreteType \","
+    },
+    {
+      "body_anchor": 502,
+      "kind": "p",
+      "text": "      \"B\":  [ 1 , 2, 3,  4 ]"
+    },
+    {
+      "body_anchor": 503,
+      "kind": "p",
+      "text": "    },"
+    },
+    {
+      "body_anchor": 504,
+      "kind": "p",
+      "text": "    {"
+    },
+    {
+      "body_anchor": 505,
+      "kind": "p",
+      "text": "      \"$type\": \" MyOtherType \","
+    },
+    {
+      "body_anchor": 506,
+      "kind": "p",
+      "text": "      \"A\": \"Not completely empty\""
+    },
+    {
+      "body_anchor": 507,
+      "kind": "p",
+      "text": "    }"
+    },
+    {
+      "body_anchor": 508,
+      "kind": "p",
+      "text": "  ]"
+    },
+    {
+      "body_anchor": 509,
+      "kind": "p",
+      "text": "}"
+    },
+    {
+      "body_anchor": 510,
+      "kind": "p",
+      "text": "Representation of a  Complex Type Definition  whose  \u00b7effective content\u00b7  is empty and the  {content type}  is the  type  definition  \u00b7resolved\u00b7  to by the  \u00b7actual value\u00b7  of the  base   [attribute] , e.g.  MyImplType"
+    },
+    {
+      "body_anchor": 511,
+      "kind": "p",
+      "text": "< xs:complexType  name=\" MyBaseType \">"
+    },
+    {
+      "body_anchor": 512,
+      "kind": "p",
+      "text": "  < xs:sequence >"
+    },
+    {
+      "body_anchor": 513,
+      "kind": "p",
+      "text": "    < xs:element  name=\"MyField1\" type=\"string\"/>"
+    },
+    {
+      "body_anchor": 514,
+      "kind": "p",
+      "text": "    < xs:element  name=\"MyField2\" type=\"string\" minOccurs=\"0\"/>"
+    },
+    {
+      "body_anchor": 515,
+      "kind": "p",
+      "text": "  </ xs:sequence >"
+    },
+    {
+      "body_anchor": 516,
+      "kind": "p",
+      "text": "</ xs:complexType >"
+    },
+    {
+      "body_anchor": 517,
+      "kind": "p",
+      "text": ""
+    },
+    {
+      "body_anchor": 518,
+      "kind": "p",
+      "text": "< xs:complexType  name=\" MyImplType \">"
+    },
+    {
+      "body_anchor": 519,
+      "kind": "p",
+      "text": "  < xs:complexContent >"
+    },
+    {
+      "body_anchor": 520,
+      "kind": "p",
+      "text": "    < xs:extension  base=\" MyBaseType \"/>"
+    },
+    {
+      "body_anchor": 521,
+      "kind": "p",
+      "text": "  </ xs:complexContent >"
+    },
+    {
+      "body_anchor": 522,
+      "kind": "p",
+      "text": "</ xs:complexType >"
+    },
+    {
+      "body_anchor": 523,
+      "kind": "p",
+      "text": "may result in any of the following JSON texts:"
+    },
+    {
+      "body_anchor": 524,
+      "kind": "p",
+      "text": "{"
+    },
+    {
+      "body_anchor": 525,
+      "kind": "p",
+      "text": "  \"MyField1\": \"My Field 1\""
+    },
+    {
+      "body_anchor": 526,
+      "kind": "p",
+      "text": "}"
+    },
+    {
+      "body_anchor": 527,
+      "kind": "p",
+      "text": "{"
+    },
+    {
+      "body_anchor": 528,
+      "kind": "p",
+      "text": "  \"MyField1\": \"My Field 1\","
+    },
+    {
+      "body_anchor": 529,
+      "kind": "p",
+      "text": "  \"MyField2\": \"My Field 2\","
+    },
+    {
+      "body_anchor": 530,
+      "kind": "p",
+      "text": "  \"$type\": \" MyImplType \""
+    },
+    {
+      "body_anchor": 531,
+      "kind": "p",
+      "text": "}"
+    },
+    {
+      "body_anchor": 532,
+      "kind": "p",
+      "text": "Representation of a  Complex Type Definition  whose  {content type}  is the pair of  elementOnly  and a particle whose  {term}  is a model group whose  {compositor}  is  choice , e.g.  MyChoiceType"
+    },
+    {
+      "body_anchor": 533,
+      "kind": "p",
+      "text": "< xs:complexType  name=\" MyFirstType \">"
+    },
+    {
+      "body_anchor": 534,
+      "kind": "p",
+      "text": "  < xs:sequence >"
+    },
+    {
+      "body_anchor": 535,
+      "kind": "p",
+      "text": "    < xs:element  name=\"C\" type=\" xs:unsignedInt \"/>"
+    },
+    {
+      "body_anchor": 617,
+      "kind": "p",
+      "text": "Validation"
+    },
+    {
+      "body_anchor": 618,
+      "kind": "p",
+      "text": "An OMS JSON message is valid if and only if its schema-validity assessment is valid with respect to its XML Schema. This determination relies on an associated document information item for the message as prescribed by Section 6.1.5.1, Document Information Item, and its descendant element information items."
+    },
+    {
+      "body_anchor": 619,
+      "kind": "p",
+      "text": "Document Information Item"
+    },
+    {
+      "body_anchor": 620,
+      "kind": "p",
+      "text": "Table 6.1-1 Document Information Item"
+    },
+    {
+      "body_anchor": 621,
+      "kind": "tbl",
+      "text": "Property Name Property Value [children] A list of exactly one element information item, the [document element]. [document element] The element information item for the single member prescribed by Section 6.1.5.3, Element Information Items of a Member. [notations] empty set [unparsed entities] empty set [base URI] absent [character encoding scheme] UTF-8 [standalone] No value [version] \"1.0\" [all declarations processed] false"
+    },
+    {
+      "body_anchor": 622,
+      "kind": "p",
+      "text": "Namespace Name and Local Name of a Member"
+    },
+    {
+      "body_anchor": 623,
+      "kind": "p",
+      "text": "The namespace name of a member is given by the appropriate  case  among the following:"
+    },
+    {
+      "body_anchor": 624,
+      "kind": "p",
+      "text": "If  the string starts  with \"{ \" ( 0x7B ),  then  the characters between  braces \"{ \"  and \"} \" ( 0x7D )."
+    },
+    {
+      "body_anchor": 625,
+      "kind": "p",
+      "text": "Otherwise ,  https://www.vdl.afrl.af.mil/programs/oam ."
+    },
+    {
+      "body_anchor": 626,
+      "kind": "p",
+      "text": "The local name of a member is given by the appropriate  case  among the following:"
+    },
+    {
+      "body_anchor": 627,
+      "kind": "p",
+      "text": "If  the string starts  with \"{ \",  then  all the characters after the closing  brace \"} \"."
+    },
+    {
+      "body_anchor": 628,
+      "kind": "p",
+      "text": "Otherwise , the entire string."
+    },
+    {
+      "body_anchor": 629,
+      "kind": "p",
+      "text": "Element Information Items of a Member"
+    },
+    {
+      "body_anchor": 630,
+      "kind": "p",
+      "text": "The  element information items  of a  member  are prescribed by Table 6.1-2, Element Information Items of a Member."
+    },
+    {
+      "body_anchor": 631,
+      "kind": "p",
+      "text": "Table 6.1-2 Element Information Items of a Member"
+    },
+    {
+      "body_anchor": 632,
+      "kind": "tbl",
+      "text": "Property Name Property Value [namespace name] The namespace name  as  defined by Section 6.1.5.2, Namespace Name and Local Name of a Member. [local name] The local name  as  defined by Section 6.1.5.2, Namespace Name and Local Name of a Member. [prefix] No value [children] A list given by the appropriate case among the following: 1.  If  value is an object,  then  the element information items given by mapping each member according to Section 6.1.5.3, Element Information Items of a Member, in an order \u00b7valid\u00b7 with respect to its associated {content type}'s particle, as defined in Element Sequence Locally Valid (Particle) (\u00a73.9.4). 2.  If  value is an array,  then , for each value in the array, the element information item prescribed by Section 6.1.5.3, Element Information Items of a Member, except [namespace name] is the [parent]'s [namespace name] and [local name] is the [parent]'s [local name]. 3.  Otherwise , the character information items prescribed by Section 6.1.5.4, Character Information Items of Values. [attributes] empty set [namespace attributes] empty set [in-scope namespaces] empty set [base URI] No value [parent] The document information item or element information items which contains this information item in its [children] property."
+    },
+    {
+      "body_anchor": 633,
+      "kind": "p",
+      "text": "Character Information Items of Values"
+    },
+    {
+      "body_anchor": 634,
+      "kind": "p",
+      "text": "The character information items of  a value   is  given by the appropriate case among the following:"
+    },
+    {
+      "body_anchor": 635,
+      "kind": "p",
+      "text": "If  value is string,  then  the list of character information items from each char production of the string (i.e., without leading and trailing quotation marks)  as  prescribed by Table 6.1-3, Character Information Items of Values."
+    },
+    {
+      "body_anchor": 636,
+      "kind": "p",
+      "text": "If  value is number, true, or false,  then  the list of character information items from each character of the value as prescribed by Table 6.1-3, Character Information Items of Values."
+    },
+    {
+      "body_anchor": 637,
+      "kind": "p",
+      "text": "Otherwise , none."
+    },
+    {
+      "body_anchor": 638,
+      "kind": "p",
+      "text": "Table 6.1-3 Character Information Items of Values"
+    },
+    {
+      "body_anchor": 639,
+      "kind": "tbl",
+      "text": "Property Name Property Value [character code] The ISO  10646 character  code of the character. [element content whitespace] true [parent] The element information item which contains this information item in its [children] property."
+    },
+    {
+      "body_anchor": 640,
+      "kind": "p",
+      "text": "OMS JSON External References"
+    },
+    {
+      "body_anchor": 641,
+      "kind": "p",
+      "text": "Table 6.1-4 OMS JSON External References"
+    }
+  ]
+}

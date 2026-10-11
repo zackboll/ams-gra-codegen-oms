@@ -1,0 +1,4 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:o="https://www.vdl.afrl.af.mil/programs/oam" targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified" version="000.1.0">
+<xs:include schemaLocation="public.xsd"/><xs:import namespace="urn:task076:private" schemaLocation="foreign.xsd"/>
+<xs:complexType name="Private"><xs:complexContent><xs:extension base="o:Base"><xs:sequence><xs:element name="Secret" type="o:Code"/></xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+</xs:schema>

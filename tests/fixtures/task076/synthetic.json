@@ -1,0 +1,142 @@
+[
+  {
+    "id": "concrete-implicit",
+    "bundle": "public",
+    "element": "ConcreteMessage",
+    "declared": "Concrete",
+    "expected": "research-schema-valid-not-authorized"
+  },
+  {
+    "id": "concrete-explicit",
+    "bundle": "public",
+    "element": "ConcreteMessage",
+    "declared": "Concrete",
+    "expected": "research-schema-valid-not-authorized"
+  },
+  {
+    "id": "known",
+    "bundle": "public",
+    "element": "Message",
+    "declared": "Base",
+    "expected": "research-schema-valid-not-authorized"
+  },
+  {
+    "id": "private",
+    "bundle": "private",
+    "element": "Message",
+    "declared": "Base",
+    "expected": "research-schema-valid-not-authorized"
+  },
+  {
+    "id": "private-public",
+    "bundle": "public",
+    "element": "Message",
+    "declared": "Base",
+    "expected": "mapping:unresolved-type"
+  },
+  {
+    "id": "missing",
+    "bundle": "public",
+    "element": "Message",
+    "declared": "Base",
+    "expected": "mapping:missing-type"
+  },
+  {
+    "id": "unknown",
+    "bundle": "public",
+    "element": "Message",
+    "declared": "Base",
+    "expected": "mapping:unresolved-type"
+  },
+  {
+    "id": "abstract",
+    "bundle": "public",
+    "element": "Message",
+    "declared": "Base",
+    "expected": "mapping:abstract-type"
+  },
+  {
+    "id": "unrelated",
+    "bundle": "public",
+    "element": "Message",
+    "declared": "Base",
+    "expected": "mapping:unrelated-type"
+  },
+  {
+    "id": "malformed",
+    "bundle": "public",
+    "element": "Message",
+    "declared": "Base",
+    "expected": "shape:qname"
+  },
+  {
+    "id": "nonstring",
+    "bundle": "public",
+    "element": "Message",
+    "declared": "Base",
+    "expected": "shape:qname-token"
+  },
+  {
+    "id": "bad-inherited",
+    "bundle": "public",
+    "element": "Message",
+    "declared": "Base",
+    "expected": "shape:number-token"
+  },
+  {
+    "id": "bad-private",
+    "bundle": "private",
+    "element": "Message",
+    "declared": "Base",
+    "expected": "xsd:invalid:SCHEMAV_CVC_PATTERN_VALID"
+  },
+  {
+    "id": "unexpected",
+    "bundle": "public",
+    "element": "Message",
+    "declared": "Base",
+    "expected": "shape:unknown-member"
+  },
+  {
+    "id": "foreign-same-local",
+    "bundle": "private",
+    "element": "Message",
+    "declared": "Base",
+    "expected": "research-schema-valid-not-authorized"
+  },
+  {
+    "id": "blocked",
+    "bundle": "public",
+    "element": "Blocked",
+    "declared": "Concrete",
+    "expected": "xsd:invalid:SCHEMAV_CVC_ELT_4_3"
+  },
+  {
+    "id": "blocked-missing",
+    "bundle": "public",
+    "element": "Blocked",
+    "declared": "Concrete",
+    "expected": "research-schema-valid-not-authorized"
+  },
+  {
+    "id": "duplicate",
+    "bundle": "public",
+    "element": "Message",
+    "declared": "Base",
+    "expected": "policy:duplicate-name"
+  },
+  {
+    "id": "duplicate-escaped",
+    "bundle": "public",
+    "element": "Message",
+    "declared": "Base",
+    "expected": "policy:duplicate-name"
+  },
+  {
+    "id": "erased-diagnostic",
+    "bundle": "public",
+    "element": "Message",
+    "declared": "Base",
+    "expected": "mapping:missing-type"
+  }
+]

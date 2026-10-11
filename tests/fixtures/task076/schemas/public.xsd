@@ -1,0 +1,11 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:o="https://www.vdl.afrl.af.mil/programs/oam" targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified" version="000.1.0">
+<xs:simpleType name="Code"><xs:restriction base="xs:string"><xs:pattern value="[A-Z]{2}"/></xs:restriction></xs:simpleType>
+<xs:complexType name="Base" abstract="true"><xs:sequence><xs:element name="Count" type="xs:int"/></xs:sequence></xs:complexType>
+<xs:complexType name="Concrete"><xs:sequence><xs:element name="Count" type="xs:int"/></xs:sequence></xs:complexType>
+<xs:complexType name="Known"><xs:complexContent><xs:extension base="o:Base"><xs:sequence><xs:element name="Code" type="o:Code"/></xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+<xs:complexType name="Other"><xs:sequence><xs:element name="Count" type="xs:int"/></xs:sequence></xs:complexType>
+<xs:element name="ConcreteMessage" type="o:Concrete"/>
+<xs:element name="Message" type="o:Base"/>
+<xs:complexType name="DerivedConcrete"><xs:complexContent><xs:extension base="o:Concrete"><xs:sequence><xs:element name="Code" type="o:Code"/></xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+<xs:element name="Blocked" type="o:Concrete" block="extension"/>
+</xs:schema>
