@@ -1,5 +1,9 @@
 # Architecture
 
+Task 075 [implements a bounded research OMS JSON-to-XSD mapping](task-075-oms-json-xsd-mapping.md)
+for complete managed-list requests. This partial mapping qualification does not
+enable OpenExtensions or confer deployment/publication authority.
+
 Task 074 [qualifies the offline XML/XSD layer](task-074-offline-schema-validation.md)
 with pinned research-only private bundles. Authenticated owner approval, applicable
 OMS JSON mapping and production safety remain unestablished; XML validity does

@@ -1,0 +1,187 @@
+[
+  {
+    "schema": "review-base.xsd",
+    "element": "Record",
+    "manifest": {
+      "bundle_id": "task074-synthetic-review",
+      "version": 1,
+      "root": "review-base.xsd",
+      "files": [
+        {
+          "path": "review-base.xsd",
+          "sha256": "ae8f1e70a128d30085a0f971d6d584ea6d58d1393965fea12b32db96ff686206",
+          "namespace": "urn:task075:review"
+        }
+      ],
+      "public_uci_release": "review",
+      "approved_concrete_qnames": [],
+      "toolchain": {
+        "lxml": "5.4.0",
+        "libxml": "2.9.14",
+        "etree_sha256": "27d8b7e79e217e6946ad6871c13b6bdfbcf55a1a3f6b3ab590cb892fc3a5deca",
+        "libxml_sha256": "8f2643af68a9eba917929046806dabd1848867068d0eee0f6799288a8e886963"
+      },
+      "approval_provenance": {
+        "status": "UNESTABLISHED",
+        "owner": null,
+        "evidence": null,
+        "scope": "research-only"
+      }
+    },
+    "bundle": "compiled",
+    "reference_xml": "<p:Record xmlns:p=\"urn:task075:review\"><p:Text>ok</p:Text></p:Record>",
+    "reference_result": "valid-xml-only",
+    "raw": "{\"{urn:task075:review}Record\": {\"{urn:task075:review}Text\": \"ok\"}}",
+    "original_outcome": "research-schema-valid-not-authorized"
+  },
+  {
+    "schema": "review-unused.xsd",
+    "element": "Record",
+    "manifest": {
+      "bundle_id": "task074-synthetic-review",
+      "version": 1,
+      "root": "review-unused.xsd",
+      "files": [
+        {
+          "path": "review-unused.xsd",
+          "sha256": "1c2377330f7fed63253603cd667b3ffa8d4d5dba9e5a1b4104295c3c2bfa540c",
+          "namespace": "urn:task075:review"
+        },
+        {
+          "path": "review-base.xsd",
+          "sha256": "ae8f1e70a128d30085a0f971d6d584ea6d58d1393965fea12b32db96ff686206",
+          "namespace": "urn:task075:review"
+        },
+        {
+          "path": "review-no-namespace.xsd",
+          "sha256": "686d904211c675c8919f8aa1d5e71cc03ce849cec714a265c959a7b7b88c4029",
+          "namespace": ""
+        }
+      ],
+      "public_uci_release": "review",
+      "approved_concrete_qnames": [],
+      "toolchain": {
+        "lxml": "5.4.0",
+        "libxml": "2.9.14",
+        "etree_sha256": "27d8b7e79e217e6946ad6871c13b6bdfbcf55a1a3f6b3ab590cb892fc3a5deca",
+        "libxml_sha256": "8f2643af68a9eba917929046806dabd1848867068d0eee0f6799288a8e886963"
+      },
+      "approval_provenance": {
+        "status": "UNESTABLISHED",
+        "owner": null,
+        "evidence": null,
+        "scope": "research-only"
+      }
+    },
+    "bundle": "compiled",
+    "reference_xml": "<p:Record xmlns:p=\"urn:task075:review\"><p:Text>ok</p:Text></p:Record>",
+    "reference_result": "valid-xml-only",
+    "raw": "{\"{urn:task075:review}Record\": {\"{urn:task075:review}Text\": \"ok\"}}",
+    "original_outcome": "diagnostic-only:TypeError:mixed-absent-namespace-sort"
+  },
+  {
+    "schema": "review-metadata.xsd",
+    "element": "Record",
+    "manifest": {
+      "bundle_id": "task074-synthetic-review",
+      "version": 1,
+      "root": "review-metadata.xsd",
+      "files": [
+        {
+          "path": "review-metadata.xsd",
+          "sha256": "dd453287e5ec99e1d283219baa1b5f510d6030d923cbe1a3c28341b5209a42e9",
+          "namespace": "urn:task075:review"
+        }
+      ],
+      "public_uci_release": "review",
+      "approved_concrete_qnames": [],
+      "toolchain": {
+        "lxml": "5.4.0",
+        "libxml": "2.9.14",
+        "etree_sha256": "27d8b7e79e217e6946ad6871c13b6bdfbcf55a1a3f6b3ab590cb892fc3a5deca",
+        "libxml_sha256": "8f2643af68a9eba917929046806dabd1848867068d0eee0f6799288a8e886963"
+      },
+      "approval_provenance": {
+        "status": "UNESTABLISHED",
+        "owner": null,
+        "evidence": null,
+        "scope": "research-only"
+      }
+    },
+    "bundle": "compiled",
+    "reference_xml": "<p:Record xmlns:p=\"urn:task075:review\"><p:Text>ok</p:Text></p:Record>",
+    "reference_result": "valid-xml-only",
+    "raw": "{\"{urn:task075:review}Record\": {\"{urn:task075:review}Text\": \"ok\"}}",
+    "original_outcome": "unsupported:complex-content"
+  },
+  {
+    "schema": "review-base.xsd",
+    "element": "Nullable",
+    "manifest": {
+      "bundle_id": "task074-synthetic-review",
+      "version": 1,
+      "root": "review-base.xsd",
+      "files": [
+        {
+          "path": "review-base.xsd",
+          "sha256": "ae8f1e70a128d30085a0f971d6d584ea6d58d1393965fea12b32db96ff686206",
+          "namespace": "urn:task075:review"
+        }
+      ],
+      "public_uci_release": "review",
+      "approved_concrete_qnames": [],
+      "toolchain": {
+        "lxml": "5.4.0",
+        "libxml": "2.9.14",
+        "etree_sha256": "27d8b7e79e217e6946ad6871c13b6bdfbcf55a1a3f6b3ab590cb892fc3a5deca",
+        "libxml_sha256": "8f2643af68a9eba917929046806dabd1848867068d0eee0f6799288a8e886963"
+      },
+      "approval_provenance": {
+        "status": "UNESTABLISHED",
+        "owner": null,
+        "evidence": null,
+        "scope": "research-only"
+      }
+    },
+    "bundle": "compiled",
+    "reference_xml": "<p:Nullable xmlns:p=\"urn:task075:review\"></p:Nullable>",
+    "reference_result": "valid-xml-only",
+    "raw": "{\"{urn:task075:review}Nullable\": {}}",
+    "original_outcome": "shape:choice-missing"
+  },
+  {
+    "schema": "review-base.xsd",
+    "element": "Required",
+    "manifest": {
+      "bundle_id": "task074-synthetic-review",
+      "version": 1,
+      "root": "review-base.xsd",
+      "files": [
+        {
+          "path": "review-base.xsd",
+          "sha256": "ae8f1e70a128d30085a0f971d6d584ea6d58d1393965fea12b32db96ff686206",
+          "namespace": "urn:task075:review"
+        }
+      ],
+      "public_uci_release": "review",
+      "approved_concrete_qnames": [],
+      "toolchain": {
+        "lxml": "5.4.0",
+        "libxml": "2.9.14",
+        "etree_sha256": "27d8b7e79e217e6946ad6871c13b6bdfbcf55a1a3f6b3ab590cb892fc3a5deca",
+        "libxml_sha256": "8f2643af68a9eba917929046806dabd1848867068d0eee0f6799288a8e886963"
+      },
+      "approval_provenance": {
+        "status": "UNESTABLISHED",
+        "owner": null,
+        "evidence": null,
+        "scope": "research-only"
+      }
+    },
+    "bundle": "compiled",
+    "reference_xml": "<p:Required xmlns:p=\"urn:task075:review\"></p:Required>",
+    "reference_result": "invalid:SCHEMAV_ELEMENT_CONTENT",
+    "raw": "{\"{urn:task075:review}Required\": {}}",
+    "original_outcome": "shape:choice-missing"
+  }
+]

@@ -1,0 +1,16 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:p="urn:task075:review" targetNamespace="urn:task075:review" elementFormDefault="qualified">
+  <xs:complexType name="Base"><!-- content boundary --><?review base?><xs:annotation><xs:documentation>Metadata only.</xs:documentation></xs:annotation><xs:sequence><!-- sequence --><?review sequence?><xs:element name="Text" type="xs:string"/></xs:sequence></xs:complexType>
+  <xs:complexType name="Record"><!-- before complexContent --><?review outer?><xs:complexContent><xs:annotation/><!----><?review inner?><xs:extension base="p:Base"><xs:annotation/><!----><?review extension?><xs:sequence><!----><xs:element name="Extra" type="xs:string" minOccurs="0"/></xs:sequence></xs:extension><!----></xs:complexContent><!----></xs:complexType>
+  <xs:complexType name="Nullable"><xs:choice><xs:annotation/><!----><?review choice?><xs:element name="A" type="xs:string" minOccurs="0"/><xs:element name="B" type="xs:string"/></xs:choice></xs:complexType>
+  <xs:complexType name="Required"><xs:choice><!----><xs:element name="A" type="xs:string"/><xs:element name="B" type="xs:string"/></xs:choice></xs:complexType>
+  <xs:complexType name="Optional"><xs:choice minOccurs="0"><!----><xs:element name="A" type="xs:string"/><xs:element name="B" type="xs:string"/></xs:choice></xs:complexType>
+  <xs:complexType name="Nested"><xs:sequence><xs:annotation/><!----><xs:choice><!----><xs:sequence><!----><xs:element name="A" type="xs:string" minOccurs="0"/></xs:sequence><xs:element name="B" type="xs:string"/></xs:choice></xs:sequence></xs:complexType>
+  <xs:complexType name="Unsupported"><xs:sequence><!----><xs:any minOccurs="0"/></xs:sequence></xs:complexType>
+  <xs:element name="Record" type="p:Record"/>
+  <xs:element name="Base" type="p:Base"/>
+  <xs:element name="Nullable" type="p:Nullable"/>
+  <xs:element name="Required" type="p:Required"/>
+  <xs:element name="Optional" type="p:Optional"/>
+  <xs:element name="Nested" type="p:Nested"/>
+  <xs:element name="Unsupported" type="p:Unsupported"/>
+</xs:schema>

@@ -1,0 +1,5 @@
+<!-- Unused same-local-name declarations must remain distinct. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:complexType name="Record"><xs:sequence><xs:element name="Wrong" type="xs:integer"/></xs:sequence></xs:complexType>
+  <xs:element name="Record" type="Record"/>
+</xs:schema>

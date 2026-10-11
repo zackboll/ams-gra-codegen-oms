@@ -1,0 +1,4 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:task075:review">
+  <xs:include schemaLocation="review-base.xsd"/>
+  <xs:import schemaLocation="review-no-namespace.xsd"/>
+</xs:schema>
