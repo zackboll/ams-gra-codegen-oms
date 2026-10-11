@@ -1,5 +1,10 @@
 # Architecture
 
+Task 074 [qualifies the offline XML/XSD layer](task-074-offline-schema-validation.md)
+with pinned research-only private bundles. Authenticated owner approval, applicable
+OMS JSON mapping and production safety remain unestablished; XML validity does
+not authorize publication or change OpenExtensions readiness.
+
 Task 072 records the proposed owned opaque **quarantine**, identity, validation,
 resource and backend contract in [the runtime ADR](task-072-open-world-runtime-contract.md).
 Disposition: **RUNTIME_CONTRACT_NOT_ESTABLISHED**. Schema-unvalidated retention

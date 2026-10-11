@@ -1,0 +1,317 @@
+{
+  "disposition": "OFFLINE_SCHEMA_VALIDATION_PARTIALLY_QUALIFIED",
+  "results": [
+    {
+      "case": "authority gate",
+      "result": "authority-not-established"
+    },
+    {
+      "case": "known concrete",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "approved private / same local name different namespace",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "defined but unapproved",
+      "result": "unapproved-type"
+    },
+    {
+      "case": "unknown type",
+      "result": "invalid:SCHEMAV_CVC_ELT_4_2"
+    },
+    {
+      "case": "wrong namespace",
+      "result": "invalid:SCHEMAV_CVC_ELT_4_2"
+    },
+    {
+      "case": "malformed xsi:type",
+      "result": "invalid:SCHEMAV_CVC_DATATYPE_VALID_1_2_1"
+    },
+    {
+      "case": "incompatible xsi:type",
+      "result": "invalid:SCHEMAV_CVC_ELT_4_3"
+    },
+    {
+      "case": "abstract xsi:type",
+      "result": "invalid:SCHEMAV_CVC_TYPE_2"
+    },
+    {
+      "case": "inherited constraint",
+      "result": "invalid:SCHEMAV_CVC_DATATYPE_VALID_1_2_1"
+    },
+    {
+      "case": "private restriction",
+      "result": "invalid:SCHEMAV_CVC_PATTERN_VALID"
+    },
+    {
+      "case": "missing private dependency",
+      "result": "missing-file"
+    },
+    {
+      "case": "omitted closure member",
+      "result": "closure"
+    },
+    {
+      "case": "modified schema unchanged digest",
+      "result": "digest"
+    },
+    {
+      "case": "manifest path traversal",
+      "result": "path"
+    },
+    {
+      "case": "symlink",
+      "result": "symlink"
+    },
+    {
+      "case": "duplicate declarations",
+      "result": "schema:SCHEMAP_REDEFINED_TYPE"
+    },
+    {
+      "case": "network import",
+      "result": "path"
+    },
+    {
+      "case": "external file include",
+      "result": "path"
+    },
+    {
+      "case": "include traversal",
+      "result": "path"
+    },
+    {
+      "case": "namespace mismatch in manifest",
+      "result": "namespace"
+    },
+    {
+      "case": "closure order",
+      "result": "closure-order"
+    },
+    {
+      "case": "schema version substitution",
+      "result": "digest"
+    },
+    {
+      "case": "schema-location override",
+      "result": "schema-location"
+    },
+    {
+      "case": "external entity",
+      "result": "dtd"
+    },
+    {
+      "case": "entity expansion",
+      "result": "dtd"
+    },
+    {
+      "case": "oversize",
+      "result": "size"
+    },
+    {
+      "case": "depth",
+      "result": "depth"
+    },
+    {
+      "case": "excessive recursive value",
+      "result": "depth"
+    },
+    {
+      "case": "malformed UTF-8",
+      "result": "utf8"
+    },
+    {
+      "case": "alternate encoding declaration",
+      "result": "encoding"
+    },
+    {
+      "case": "malformed XML",
+      "result": "xml"
+    },
+    {
+      "case": "finite recursion",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "resolver direct network denial",
+      "result": "resolution"
+    },
+    {
+      "case": "resolver direct file denial",
+      "result": "resolution"
+    },
+    {
+      "case": "immutable compiled snapshot",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "resolver transcript",
+      "result": [
+        "file:///task074-approved/public.xsd",
+        "file:///task074-approved/private.xsd",
+        "file:///task074-approved/facets.xsd"
+      ]
+    },
+    {
+      "case": "CPU hard limit hostile worker",
+      "result": "SIGKILL at 1 CPU second"
+    },
+    {
+      "case": "address-space limit hostile worker",
+      "result": "MemoryError under 256 MiB"
+    },
+    {
+      "case": "wall timeout hostile worker",
+      "result": "killed/reaped at 0.1 second"
+    },
+    {
+      "case": "2.5 known ForeignKeyMapML full message",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "2.5 synthetic private full closure",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "2.5 synthetic absent from public closure",
+      "result": "invalid:SCHEMAV_CVC_ELT_4_2"
+    },
+    {
+      "case": "2.5 inherited request field",
+      "result": "invalid:SCHEMAV_CVC_ENUMERATION_VALID"
+    },
+    {
+      "case": "2.5 extension field",
+      "result": "invalid:SCHEMAV_CVC_PATTERN_VALID"
+    },
+    {
+      "case": "2.5 incomplete private closure",
+      "result": "closure"
+    },
+    {
+      "case": "2.5 source/closure manifest",
+      "result": {
+        "approval_provenance": {
+          "evidence": null,
+          "owner": null,
+          "scope": "research-only",
+          "status": "UNESTABLISHED"
+        },
+        "approved_concrete_qnames": [
+          "{https://www.vdl.afrl.af.mil/programs/oam}ForeignKeyMapML",
+          "{https://www.vdl.afrl.af.mil/programs/oam}Task074SyntheticML"
+        ],
+        "bundle_id": "task074-synthetic-2.5",
+        "files": [
+          {
+            "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+            "path": "overlay.xsd",
+            "sha256": "d1fe33d5bfb48a4144839c148956bdfc00adb87d7595dff673e90f21dba46ed3"
+          },
+          {
+            "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+            "path": "UCI_MessageDefinitions_v2_5_0.xsd",
+            "sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27"
+          },
+          {
+            "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+            "path": "UCI_SecurityMarkings_v2_5_0.xsd",
+            "sha256": "4a8056f1503234d423a0c2495844ab65387febced62bea58b87d4f343e9e7a0b"
+          },
+          {
+            "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+            "path": "private-fields.xsd",
+            "sha256": "c415286063ccf3ac63dd27d5a260aea30707c65d3884a1c7fb85d652ef15e559"
+          }
+        ],
+        "public_uci_release": "2.5",
+        "root": "overlay.xsd",
+        "toolchain": {
+          "etree_sha256": "27d8b7e79e217e6946ad6871c13b6bdfbcf55a1a3f6b3ab590cb892fc3a5deca",
+          "libxml": "2.9.14",
+          "libxml_sha256": "8f2643af68a9eba917929046806dabd1848867068d0eee0f6799288a8e886963",
+          "lxml": "5.4.0"
+        },
+        "version": 1
+      }
+    },
+    {
+      "case": "2.6 known ForeignKeyMapML full message",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "2.6 synthetic private full closure",
+      "result": "valid-xml-only"
+    },
+    {
+      "case": "2.6 synthetic absent from public closure",
+      "result": "invalid:SCHEMAV_CVC_ELT_4_2"
+    },
+    {
+      "case": "2.6 inherited request field",
+      "result": "invalid:SCHEMAV_CVC_ENUMERATION_VALID"
+    },
+    {
+      "case": "2.6 extension field",
+      "result": "invalid:SCHEMAV_CVC_PATTERN_VALID"
+    },
+    {
+      "case": "2.6 incomplete private closure",
+      "result": "closure"
+    },
+    {
+      "case": "2.6 source/closure manifest",
+      "result": {
+        "approval_provenance": {
+          "evidence": null,
+          "owner": null,
+          "scope": "research-only",
+          "status": "UNESTABLISHED"
+        },
+        "approved_concrete_qnames": [
+          "{https://www.vdl.afrl.af.mil/programs/oam}ForeignKeyMapML",
+          "{https://www.vdl.afrl.af.mil/programs/oam}Task074SyntheticML"
+        ],
+        "bundle_id": "task074-synthetic-2.6",
+        "files": [
+          {
+            "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+            "path": "overlay.xsd",
+            "sha256": "140523337ea4ef579b10d0ba6abd7b797a869e47f0c703c42bf143c04ab29d86"
+          },
+          {
+            "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+            "path": "UCI_MessageDefinitions_v2_6_0.xsd",
+            "sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b"
+          },
+          {
+            "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+            "path": "UCI_SecurityMarkings_v2_6_0.xsd",
+            "sha256": "ee6e58d5db9fd80d526bc964b8244ec296d106301640d34c3cb2c5c00b710b88"
+          },
+          {
+            "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+            "path": "private-fields.xsd",
+            "sha256": "c415286063ccf3ac63dd27d5a260aea30707c65d3884a1c7fb85d652ef15e559"
+          }
+        ],
+        "public_uci_release": "2.6",
+        "root": "overlay.xsd",
+        "toolchain": {
+          "etree_sha256": "27d8b7e79e217e6946ad6871c13b6bdfbcf55a1a3f6b3ab590cb892fc3a5deca",
+          "libxml": "2.9.14",
+          "libxml_sha256": "8f2643af68a9eba917929046806dabd1848867068d0eee0f6799288a8e886963",
+          "lxml": "5.4.0"
+        },
+        "version": 1
+      }
+    }
+  ],
+  "toolchain": {
+    "etree_sha256": "27d8b7e79e217e6946ad6871c13b6bdfbcf55a1a3f6b3ab590cb892fc3a5deca",
+    "libxml": "2.9.14",
+    "libxml_sha256": "8f2643af68a9eba917929046806dabd1848867068d0eee0f6799288a8e886963",
+    "lxml": "5.4.0"
+  }
+}

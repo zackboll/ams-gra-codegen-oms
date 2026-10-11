@@ -1,0 +1,4 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:task074:public">
+  <xs:include schemaLocation="public.xsd"/>
+  <xs:import namespace="urn:task074:private" schemaLocation="private.xsd"/>
+</xs:schema>

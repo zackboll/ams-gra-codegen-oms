@@ -1,0 +1,6 @@
+<!-- SYNTHETIC RESEARCH ONLY: not an authoritative UCI declaration. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam" targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified">
+  <xs:include schemaLocation="PUBLIC_ROOT"/>
+  <xs:include schemaLocation="private-fields.xsd"/>
+  <xs:complexType name="Task074SyntheticML"><xs:complexContent><xs:extension base="uci:ManagedListBaseType"><xs:sequence><xs:element name="Task074Code" type="uci:Task074CodeType"/></xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+</xs:schema>

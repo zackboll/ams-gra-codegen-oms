@@ -1,0 +1,4 @@
+<!-- SYNTHETIC RESEARCH ONLY. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="https://www.vdl.afrl.af.mil/programs/oam">
+  <xs:simpleType name="Task074CodeType"><xs:restriction base="xs:string"><xs:pattern value="[A-Z]{2}"/><xs:length value="2"/></xs:restriction></xs:simpleType>
+</xs:schema>
