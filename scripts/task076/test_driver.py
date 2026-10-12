@@ -15,12 +15,12 @@ from bundle import digest
 
 
 class DriverTests(unittest.TestCase):
-    def fault(self, kind):
+    def fault(self, kind, action='scenario'):
         # Caller-side watchdog and identity-bound finally cleanup independent of SUT.
         ctypes.CDLL(None).prctl(36,1,0,0,0)
         with tempfile.TemporaryDirectory(prefix='task076a-test-') as directory:
             process = subprocess.Popen([sys.executable,str(Path(__file__).with_name('fault_probe.py')),
-                'scenario',kind,directory],stdout=subprocess.PIPE,stderr=subprocess.PIPE,
+                action,kind,directory],stdout=subprocess.PIPE,stderr=subprocess.PIPE,
                 start_new_session=True,text=True)
             try:
                 stdout,stderr=process.communicate(timeout=12)
@@ -62,6 +62,21 @@ class DriverTests(unittest.TestCase):
     def test_interrupted_leader_cleanup(self): self.fault('interrupt')
     def test_parent_interruption_cleanup(self): self.fault('parent-interrupt')
     def test_parent_term_cleanup(self): self.fault('parent-term')
+
+    def test_setup_selector(self): self.fault('selector','lifecycle')
+    def test_setup_nonblocking_first(self): self.fault('nonblocking-first','lifecycle')
+    def test_setup_nonblocking_second(self): self.fault('nonblocking-second','lifecycle')
+    def test_setup_registration(self): self.fault('register','lifecycle')
+    def test_setup_sigint_default(self): self.fault('setup-int-default','lifecycle')
+    def test_setup_sigterm_default(self): self.fault('setup-term-default','lifecycle')
+    def test_setup_sigint_custom(self): self.fault('setup-int-custom','lifecycle')
+    def test_setup_sigterm_custom(self): self.fault('setup-term-custom','lifecycle')
+    def test_launch_failure(self): self.fault('launch','lifecycle')
+    def test_launch_cancellation_handoff(self): self.fault('handoff','lifecycle')
+    def test_finalize_selector_failure(self): self.fault('selector-close','lifecycle')
+    def test_finalize_stream_failure(self): self.fault('stream-close','lifecycle')
+    def test_finalize_log_failure(self): self.fault('log','lifecycle')
+    def test_finalize_sigterm(self): self.fault('cleanup-term','lifecycle')
 
     def test_successful_child(self):
         run_checked([sys.executable,'-c','print("TASK076 BROKER: EXECUTED")'],os.environ)

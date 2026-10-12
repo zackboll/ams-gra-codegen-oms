@@ -5,6 +5,7 @@ import signal
 import subprocess
 import time
 import threading
+import selectors
 from pathlib import Path
 
 
@@ -64,28 +65,45 @@ def run_checked(command, env, *, phase='broker', timeout=300,
         raise OSError(ctypes.get_errno(), 'subreaper unavailable')
     if threading.current_thread() is not threading.main_thread():
         raise RuntimeError('owned supervisor requires main thread')
-    previous_term = signal.getsignal(signal.SIGTERM)
+    # All ownership state exists before any acquisition. Caught handlers (unlike
+    # signal masks/ignored dispositions) reset at exec in the child.
+    process = None
+    selector = None
+    streams = {}
+    reason = None
+    failures = []
+    pending = []
+    deferred = True
+    saved = {sig: signal.getsignal(sig) for sig in (signal.SIGINT, signal.SIGTERM)}
+    changed = []
     def interrupted(signum, frame):
-        raise KeyboardInterrupt('supervisor interrupted by SIGTERM')
-    signal.signal(signal.SIGTERM, interrupted)
+        if deferred:
+            if not pending:
+                pending.append(signum)
+        else:
+            raise KeyboardInterrupt('supervisor interrupted by '+signal.Signals(signum).name)
+    def attempt(label, action):
+        try:
+            action()
+        except BaseException as exc:
+            failures.append(label+': '+type(exc).__name__+': '+str(exc)[:2000])
     try:
+        for sig in saved:
+            signal.signal(sig, interrupted)
+            changed.append(sig)
         process = subprocess.Popen(command, env=env, stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE, text=True, start_new_session=True)
-    except BaseException:
-        signal.signal(signal.SIGTERM, previous_term)
-        raise
-    # waitid WNOWAIT keeps leader PID reserved until group cleanup; no communicate
-    # polling/reaping of a leader while its descendants can still survive.
-    import selectors
-    selector = selectors.DefaultSelector()
-    streams = {process.stdout: bytearray(), process.stderr: bytearray()}
-    for stream in streams:
-        os.set_blocking(stream.fileno(), False)
-        selector.register(stream, selectors.EVENT_READ)
-    reason = None
-    cleanup_error = None
-    deadline = time.monotonic()+timeout
-    try:
+        # Startup deferral covers Popen return -> ownership assignment. No early
+        # poll/wait/context exit may reap the identity before group signaling.
+        deferred = False
+        if pending:
+            raise KeyboardInterrupt('supervisor interrupted during launch: '+signal.Signals(pending[0]).name)
+        selector = selectors.DefaultSelector()
+        for stream in (process.stdout, process.stderr):
+            streams[stream] = bytearray()
+            os.set_blocking(stream.fileno(), False)
+            selector.register(stream, selectors.EVENT_READ)
+        deadline = time.monotonic()+timeout
         while True:
             for key, _ in selector.select(min(0.05, max(0, deadline-time.monotonic()))):
                 data = os.read(key.fileobj.fileno(), 65536)
@@ -108,23 +126,27 @@ def run_checked(command, env, *, phase='broker', timeout=300,
     except BaseException as exc:
         reason = exc
     finally:
-        # Defer repeated ordinary interruptions during bounded cleanup.
-        previous_int = signal.signal(signal.SIGINT, signal.SIG_IGN)
-        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        # Deferral records ordinary cleanup cancellation rather than dropping it.
+        deferred = True
         try:
-            terminate(process, grace=grace)
-        except BaseException as exc:
-            cleanup_error = exc
-        selector.close()
-        for stream in streams:
-            stream.close()
-        try:
+            if process is not None:
+                attempt('group cleanup', lambda: terminate(process, grace=grace))
+            if selector is not None:
+                attempt('selector close', selector.close)
+            # Pipes are owned by Popen, not by successful buffer/selector setup.
+            if process is not None:
+                for stream in (process.stdout, process.stderr):
+                    if stream is not None:
+                        attempt('stream close', stream.close)
             if log:
-                Path(log).write_bytes(b''.join(streams.values()))
+                attempt('diagnostic log', lambda: Path(log).write_bytes(b''.join(streams.values())))
         finally:
-            signal.signal(signal.SIGINT, previous_int)
-            signal.signal(signal.SIGTERM, previous_term)
-    if cleanup_error:
-        raise RuntimeError(str(reason or phase+' completed')+'; cleanup failure: '+str(cleanup_error)) from cleanup_error
+            for sig in reversed(changed):
+                attempt('signal restore '+signal.Signals(sig).name,
+                        lambda sig=sig: signal.signal(sig, saved[sig]))
+    if pending and reason is None:
+        reason = KeyboardInterrupt('supervisor interrupted during lifecycle: '+signal.Signals(pending[0]).name)
+    if failures:
+        raise RuntimeError(str(reason or phase+' completed')+'; cleanup failure: '+ '; '.join(failures)) from reason
     if reason:
         raise reason

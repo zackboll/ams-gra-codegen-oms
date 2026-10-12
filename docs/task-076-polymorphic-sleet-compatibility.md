@@ -369,3 +369,79 @@ same qualification CLI, with that scratch path, is the corrected reproduction.
 
 Corrective commit and exact head parity belong to the PR handoff. **Independent
 review required**, not merge authorization. No PR merge or Task 077.
+
+## Task 076B — setup and finalization lifetime correction
+
+Reviewed parent `1f21962decca0d98ce74cfc812f7571e46f5c796`, supervisor Git blob
+`5920dc8472fb2f72dba457ec393827aaf4d3d053`. Local/remote/PR head parity and
+clean worktree were verified before editing. PR #76 remained open, non-draft,
+unmerged, auto-merge disabled. Main remained
+`15aa0aa431732de6efbc1eb4412ba94fa9158a33`; siblings/caches preserved.
+
+Before editing, selector-construction OSError and real setup-time SIGTERM/SIGINT
+were injected **after descendant readiness** into the unchanged supervisor. All
+three raised before its monitoring-loop cleanup: leader and TERM-resistant
+independent-pipe descendant remained live, and the original SIGTERM handler was
+not restored. Actual exceptions were OSError (selector), KeyboardInterrupt with
+the supervisor SIGTERM message, and default KeyboardInterrupt (SIGINT). A separate
+outer watchdog, identity-bound cleanup and test subreaper killed/reaped survivors.
+Raw records are in `/home/zboll/task076b-research/logs/before.jsonl`. These are
+synthetic containment diagnostics, not XML/broker qualification.
+
+`run_checked` now initializes process/selector/buffer/error/signal ownership state
+before acquisition and encloses handler installation, Popen, selector construction,
+buffer allocation, nonblocking setup, registration, monitoring and result checks
+in the same cleanup lifecycle. Popen owns both pipes independently of whether a
+buffer or selector registration succeeded. No process handle means no group
+signal; a returned handle always reaches the existing identity-safe termination
+protocol. No early leader poll/wait/reap was introduced. The accepted WNOWAIT,
+TERM/KILL, 0.2-second grace and bounded final waits are unchanged.
+
+Caught SIGINT/SIGTERM handlers narrowly **record cancellation during launch and
+cleanup**, then report it; normal setup/monitoring cancellation raises immediately.
+Launch deferral covers the returned-process-to-ownership handoff. Unlike blocked
+signal masks or ignored dispositions, caught handlers reset at child exec, so
+worker/broker cancellation signals are not inherited blocked/ignored. No masks
+are changed. Original caller SIGINT/SIGTERM handlers are restored on every exit,
+including custom-handler callers. Ordinary cleanup cancellation cannot interrupt
+the cleanup protocol and is not discarded. If an original failure already exists,
+it remains the primary failure rather than being replaced by later cancellation.
+
+Each group termination, selector close, individual pipe close and bounded log
+write is independently attempted. An outer restoration guarantee runs despite
+those operations failing. Additional cleanup/log errors are labeled separately
+and retain the original failure as their cause; failed finalization never returns
+success. Error text and pending-cancellation storage are bounded. No unbounded
+pipe drain/wait was added. Linux main-thread, /proc, WNOWAIT/subreaper assumptions
+remain; this does not recover from SIGKILL or contain deliberately detached groups.
+
+**39 driver tests passed: all previous 25 plus 14 lifecycle regressions.** New
+groups cover selector construction, first/second nonblocking configuration,
+partial registration, setup SIGINT/SIGTERM with default and custom handlers,
+launch failure, launch-handoff cancellation, selector/stream/log finalization
+failures, and cleanup-time SIGTERM. Real isolated leader/descendant processes,
+explicit readiness, dependency injection (not rewritten source), independent
+watchdog/finally protection and unrelated sentinels are used. Assertions verify
+original error/cancellation, no live or unreaped owned descendants, partial resource
+closure, caller handlers/masks restored, sentinel survival, and a **subsequent
+successful invocation in the same supervisor process**, including child exec mask
+checks. Auxiliary assertions are not extra compatibility cases.
+
+The corrected full pinned campaign and repeat retain **34 mapper outcomes (14
+valid/20 rejected), 30 XML assessments (14 valid/16 invalid), 34 actual Sleet
+outcomes (16 delivered/18 explicit rejections)** and every matched delivered
+control. Normalized outputs are byte-identical. Both UCI releases, six bundles,
+raw/reference/dependency hashes, payloads and extension-block/duplicate/QName
+findings are unchanged. Only the supervisor source hash is refreshed in frozen
+compatibility evidence; lifecycle-test evidence is separately appended. Prior runs
+are not retroactively assigned this setup-lifetime guarantee.
+
+Task 075's 143 probes, 17 guard/QName tests, generated closed-codec broker control,
+private-overlay generated-codec control, Python compilation, relevant shell syntax,
+Rust 1.95 formatting and diff checks passed again. No worker, driver qualification
+semantics, Rust source/dependency, production API, Task 074/075 behavior or CI gate
+changed. Broker binary/build/lock identity and validator pins remain as above.
+Disposition stays **POLYMORPHIC_COMPATIBILITY_PARTIALLY_CHARACTERIZED**, with CAL
+interpretation unresolved. Hosted corrective-head Rust CI is separate from these
+local Python and pinned campaign results. One normal corrective commit; leave
+PR #76 open for independent review, without auto-merge, merger or Task 077.

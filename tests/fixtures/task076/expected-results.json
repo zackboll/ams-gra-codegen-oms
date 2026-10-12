@@ -1446,7 +1446,7 @@
     "scripts/task075/mapper.py": "417cdead53e03f051c1e309221ea393448683e4e9da20650f3da4296a63bd173",
     "scripts/task076/corpus.py": "2a3cc6e90973529393ffdabf6e1318de61b5302b4bf270dd76626db9f3cb9df3",
     "scripts/task076/qualify.py": "4b7de88770a8fc1c60716779a874366e51973225dfacc42dfaaa8f68f35129af",
-    "scripts/task076/supervisor.py": "c85797e1b963da92691859af7c0497cd11dcdf8589d619167c65e989279f09b7",
+    "scripts/task076/supervisor.py": "2c31b746990449e4dc691f9fc737d92a188ceb8f340d469cd6b6611c7b4c3ec0",
     "scripts/task076/validator_worker.py": "cbbec267d97b3f66e09194d48aabcc6efe3bacdd4bb256c0891a075a64267fac"
   },
   "supervision": {
