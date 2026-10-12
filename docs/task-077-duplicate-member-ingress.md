@@ -233,3 +233,181 @@ opaque carrier, quarantine, broker modification or JSON-to-XSD runtime bridge.
 generator semantics, service traits, checked construction, pinned Sleet/wire
 protocol and Tasks 074–076 implementations/frozen findings remain unchanged.
 The sole production behavioral difference requires explicit Reject selection.
+
+## Task 077B — bounded complete real-UCI qualification
+
+The reviewed parent is `cf132afc4d4cd45d0511912f5f1d3c18066357ce`.
+At inspection, remote feature and PR #77 head matched it; current main was
+`a9378b31608a38dd5eb0601e57a8cfd50ace76b0`. PR #77 was open, non-draft,
+mergeable, with auto-merge disabled. Main had no branch protection, repository
+rulesets or applicable branch rules/required checks; no aggregate check is
+needed to preserve a required-check contract.
+
+### Cancellation evidence
+
+Deep run **38194131529**, attempt **1**, job **114633024377** (`real-uci`),
+at the reviewed parent, started **2026-10-12T02:01:58Z** and completed
+**06:02:13Z**: **4h00m15s**, configured limit **240 minutes**. Retrieved GitHub
+check annotation: **"The job has exceeded the maximum execution time of
+4h0m0s"**. This is a confirmed whole-job timeout, not an inferred assertion
+failure, manual/concurrency cancellation, or infrastructure failure.
+
+Task 060 ran from **05:44:06Z** to cancellation at **06:02:11Z**. The complete
+job log shows `uci_alternating_admission` finished at **05:44:27Z**, both final
+admission markers present, **2 passed / 0 failed / 0 ignored**. The runner
+terminated `uci_alternating_after` and a child CLI during cleanup. Its output
+was still captured in command substitution, so no last completed AFTER
+subcommand can be identified. No independent assertion failure appears in
+this log; that is not proof that AFTER passed. The cancelled campaign remains
+**incomplete**. No old combined job was rerun.
+
+All preceding qualification steps succeeded. Original-head Fast run
+**38194131482**, `real-sleet` and `msrv-real-uci` succeeded; none certify the
+corrected workflow revision.
+
+### Before/after gate inventory
+
+Before: all **17** rows belonged to `real-uci`. After: rows 1–7 remain in
+`real-uci`, rows 8–17 belong to `real-uci-regressions`, in their original order.
+Every row executes once, not once per job. The comparison checks entire step
+dictionaries (including commands, markers and environment), not only names.
+
+Common inputs: verified pinned **UCI 2.5 and 2.6** roots, except Task 071 uses
+only 2.5. Both jobs use the existing **stable** Rust toolchain, runner GNAT and
+C++ compiler; generated Rust probes use the same checkout and dependency cache.
+Task 069 retains its existing debug profile; all other Cargo inventory payloads
+retain release profile. Script-specific required-pinned and GNAT variables are
+unchanged. Task 054's explicit `AMS_GRA_REQUIRE_GNAT: "1"` remains attached to
+its step. Compiler verticals retain their direct GNAT/C++ and Rust commands.
+
+| # / task | Exact script or Cargo command/filter | Execution/count and marker contract | New owner |
+| --- | --- | --- | --- |
+| 1 / 061 | `bash scripts/check-task061-pinned.sh` | 2 exact tests, 1 pass each; both inventory/impact and DLZ compiler/codec markers | `real-uci` |
+| 2 / 071 | `bash scripts/check-task071-uci.sh` | 1 script; two route outputs compare equal, three TSV rows and exact TOML; REAL UCI ROUTES marker | `real-uci` |
+| 3 / 069 | `bash scripts/check-task069-pinned.sh` | 1 ignored exact test explicitly executed; 1 passed/0 failed/0 ignored; REAL UCI SEMANTIC DIFF marker | `real-uci` |
+| 4 / 062 | `bash scripts/check-task062-pinned.sh` | 1 exact listed test, 1 passed; 4 release/world markers, service impact and vertical script checks | `real-uci` |
+| 5 / 063 | `bash scripts/check-task063-pinned.sh` | 2 exact tests, 1 pass each; both-release inventory/impact and smallest vertical markers; service impact script | `real-uci` |
+| 6 / 065 | `bash scripts/check-task065-pinned.sh` | 1 exact listed test, 1 passed; 4 marker families per release, 33 projection rows and 2 zero gap counts per release | `real-uci` |
+| 7 / 066 | `bash scripts/check-task066-pinned.sh` | 1 exact listed test, 1 passed; both authority markers and complete vertical script | `real-uci` |
+| 8 / 061 | `python3 scripts/check-task061-service-impact.py target/release/ams-gra-codegen-oms` | 609 unique production service-check rows (444 release/backend/message tuples), all exit 0; final inventory marker | `real-uci-regressions` |
+| 9 / 052 | `cargo test --release -p ams-gra-oms-xsd-frontend --test uci_binary_provenance --`; `--nocapture --test-threads 1` | 2 passed; both Binary provenance inventory markers | `real-uci-regressions` |
+| 10 / 053 | `cargo test --release -p ams-gra-codegen-oms --test uci_constrained_binary --`; `--nocapture --test-threads 1` | 3 passed; both inventory and message-impact markers | `real-uci-regressions` |
+| 11 / 054 | `cargo test --release -p ams-gra-codegen-oms --test uci_member_names --`; `--nocapture --test-threads 1` | 4 passed; both member inventory and whole-schema blocker markers plus category-A compiler marker | `real-uci-regressions` |
+| 12 / 056 | `cargo test --release -p ams-gra-codegen-oms --test uci_generated_support task056_real_uci --`; `--nocapture --test-threads 1` | 2 passed; both OrderOfBattle parity and category-A parity markers | `real-uci-regressions` |
+| 13 / 064 | `cargo test --release -p ams-gra-codegen-oms --test uci_generated_support -- --list`; `cargo test --release -p ams-gra-codegen-oms --test uci_generated_support "$name" --`; `name=task064_real_uci_generated_support_binding; execution --exact --nocapture --test-threads 1` | 1 exact listed binding test, 1 passed; both binding markers | `real-uci-regressions` |
+| 14 / 057 | `cargo test --release -p ams-gra-codegen-oms --test uci_duration --`; `--nocapture --test-threads 1` | 4 passed; both inventory and message-impact markers plus category-A compiler marker | `real-uci-regressions` |
+| 15 / 058 | `cargo test --release -p ams-gra-codegen-oms --test uci_bounded_ascii_string --`; `--nocapture --test-threads 1` | 5 passed; both inventory and message-impact markers plus newly-READY compiler/codec marker | `real-uci-regressions` |
+| 16 / 059 | `cargo test --release -p ams-gra-codegen-oms --test uci_structured_ascii --`; `--nocapture --test-threads 1` | 2 passed; both structured inventory and message-impact markers | `real-uci-regressions` |
+| 17 / 060 | `cargo test --release -p ams-gra-codegen-oms --test uci_alternating_admission -- --nocapture --test-threads 1`; `cargo test --release -p ams-gra-codegen-oms --test uci_alternating_after -- --nocapture --test-threads 1` | Admission: 2 passed and both exact baseline=19/admitted=15/Unicode=3/complex=1 markers; AFTER: 3 passed and all 6 projected-impact/OrderOfBattle/SMTI compiler-codec markers | `real-uci-regressions` |
+
+Exact script-target expansion (same package `ams-gra-codegen-oms` and
+`--release`, unless noted):
+
+- Task 061: `--test uci_time_zulu task061_pinned_time_inventory_and_impact`
+  and `task061_smallest_real_service_compilers_and_time_codec`, each
+  `-- --exact --nocapture`.
+- Task 062: `--test uci_ipv6_address -- --list`, then
+  `-- --exact task062_pinned_ipv6_inventory_coverage_and_impact --nocapture`;
+  `check-task062-service-impact.py` and `check-task062-vertical.py` consume
+  the locally built release CLI.
+- Task 063: `--test uci_patterned_integral` with exact filters
+  `task063_pinned_inventory_coverage_and_service_impact` and
+  `task063_smallest_real_service_compiler_codec_vertical`, each
+  `-- --exact --nocapture`; `check-task063-service-impact.py` consumes the CLI.
+- Task 065: `--test ada_companion_naming -- --list`, then
+  `-- --exact task065_pinned_naming_evidence --nocapture`.
+- Task 066: `--test unicode_string_authority -- --list`, then
+  `-- --exact task066_pinned_unicode_authority_inventory --nocapture`;
+  `check-task066-vertical.py` consumes the CLI.
+- Task 069: debug `--test schema_diff_pinned -- --ignored --exact
+  task069_real_uci_semantic_diff --nocapture`.
+- Task 071: release CLI build and the unchanged PositionReport route fixture,
+  `service-routes` twice plus `--format sleet-toml` (no Cargo test target).
+
+The per-row marker inventory includes **every** inherited `grep` assertion;
+the payload comparison and normalized guard digests cover their exact strings,
+anchors, pass counts and command-exit propagation. Script bodies and all their
+additional markers/counts remain unchanged. No coverage campaign or service
+confirmation is replicated by repeating runner setup.
+
+Each independent job checks out the same intended revision, installs stable
+Rust, installs/verifies GNAT and fetches each release once through unchanged
+revision/SHA-256 scripts. Root variables are exported through `GITHUB_ENV`.
+Runner-local paths are under `RUNNER_TEMP`; Task 061 confirmations export
+`TMPDIR="$RUNNER_TEMP"`. Job B explicitly checks both roots, seeds the locked
+workspace dependencies with `cargo fetch --locked`, and builds its own input:
+
+```sh
+cargo build --release --locked -p ams-gra-codegen-oms
+```
+
+That executable is required **before** the unchanged Task 061 Python invocation.
+No binary, artifact, environment or test result is borrowed from Job A. Other
+moved Cargo targets build their own required CLI/test executables. No broker
+build or runtime campaign is added to these schema-only jobs.
+
+Both jobs have **240-minute** budgets and no `needs` dependency. Observed first
+portion including setup was **98m57s**; observed second portion **141m18s**
+before cancellation is an incomplete duration, not a prediction. Splitting adds
+one runner's checkout/toolchain/GNAT/dependency/CLI setup and pinned downloads;
+it does **not** claim lower total CPU consumption. It shortens the combined
+critical path and provides separate bounded budgets.
+
+Fetch accounting is now exact per owner: real-uci **1/1**, regressions **1/1**,
+MSRV **1/0**, Sleet **1/0** (2.5/2.6). It counts executable invocations, not
+comments or PR paths. Missing fetches cannot compensate for duplicate fetches
+in another job. All previous Fast/Deep, marker, Task 077 and Sleet guards remain.
+
+`scripts/check-task077b-ci-layout.py` is the only additional path: a stdlib-only,
+task-specific structural helper invoked by the existing shell checker and test
+suite. It pins normalized inherited qualification command/check digests (not
+test results), enforcing exact once-only ownership and intact Task 060 commands,
+exit propagation, counts and markers. Comments/indentation are ignored. These
+payload hashes intentionally require review if qualification commands change;
+this is not a general YAML framework. The helper's disposable mutations require
+their specific diagnostic, rather than arbitrary unrelated checker failure.
+
+### Focused local versus hosted evidence
+
+Local: actionlint **1.7.7** passes Fast and Deep YAML; shell syntax and
+`git diff --check` pass. Existing CI-split suite: **155** checks before;
+updated suite: **209** checks (**54** additional: one disposable healthy and
+53 attributed negatives). Coverage includes both missing/duplicate release
+fetches per job, missing Job B/build/dependency preparation, deletion/duplication
+of every moved gate, either Task 060 command and every marker/count assertion,
+disabled jobs/Task 060, soft failures, missing budgets and serialization.
+The before/after inventory confirms **17 = 7 + 10** identical step dictionaries;
+MSRV/Sleet and workflow-level settings compare equal.
+
+Task 077A wrapper and mutation suite passes (healthy 6 registrations/executions,
+14 primary negatives, 3 mutants / 4 faulty passes detected). The unchanged real
+Task 077 Fast gate passes all six controls with locked Cargo in fresh task-owned
+build output. Fake Cargo is not used for that run. Local stable Cargo/rustc were **1.98.1**;
+the existing toolchain choice is unchanged.
+
+Job B inputs were fetched with both original pin-verification scripts in
+`/tmp/ams-task077b/scratch`; GNAT **14.2.0** and G++ **14.2.0** verified. The
+explicit locked release build from this worktree passes in its fresh target
+root; CLI `--help` succeeds. This does not rerun the 609-row sweep locally.
+Complete Task 060 local result and exact-head hosted run IDs are recorded below
+when available, separately from original-run evidence.
+
+No production sources, runtime APIs/defaults, schema generation, dependencies,
+Cargo.lock, pinned sources or qualification scripts/targets were changed.
+DuplicateMemberPolicy, typed rejection, codec/handler ordering, subscription
+recovery, GenerationWorld/readiness and NotClosedUnderOpenExtensions are intact.
+
+Fresh complete Task 060 local execution: **PASS**, 2026-10-12
+**23:32:11Z–23:49:09Z**, exact extracted workflow shell step, wall time
+**16m57.458s**. Admission: **2 passed / 0 failed / 0 ignored**, **11.81s**;
+AFTER: **3 passed / 0 failed / 0 ignored**, **1004.63s**. Both admission
+markers, both projected-impact markers and all four release/service
+compiler-codec markers were checked by the original shell assertions and passed.
+Full output: `/tmp/ams-task077b/task060.log`. This is separate local evidence,
+not complete hosted certification of the new four-job workflow.
+
+At commit time, corrected hosted checks have not yet run. The single normal
+push will automatically trigger Fast and Deep; exact corrective SHA, head
+parity, new run IDs/status and mergeability are reported in PR #77's follow-up
+comment. Pending hosted certification is not merge readiness. No duplicate
+workflow dispatch, merge or new task is performed.

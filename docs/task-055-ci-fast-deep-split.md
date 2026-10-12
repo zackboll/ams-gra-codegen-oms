@@ -1,5 +1,33 @@
 # Task 055 — Split fast PR CI from deep post-merge validation
 
+## Current bounded layout (Task 077B)
+
+The historical three-job layout below is superseded by four Deep jobs:
+`real-uci`, `real-uci-regressions`, `msrv-real-uci`, and `real-sleet`.
+The first two run independently with **240 minutes each**. All 17 inherited
+real-UCI qualification steps are retained exactly once: seven through Task 066
+in `real-uci`, then ten from Task 061's 609 service confirmations through both
+Task 060 targets in `real-uci-regressions`. The two other jobs are unchanged.
+
+Each real-UCI runner independently checks out the revision, installs stable
+Rust and verified GNAT, and fetches both pinned releases once. The regressions
+runner also seeds locked dependencies and explicitly builds its release CLI
+before the service-impact script; it cannot depend on Job A's executable.
+The guard now enforces exact per-job fetch ownership (2.5/2.6): **1/1, 1/1,
+1/0, 1/0**, instead of global maxima of three/one. The task-specific stdlib
+helper preserves all inherited payload commands/checks and tests targeted
+mutations on disposable workflows; the suite grew from **155 to 209** checks.
+
+Splitting adds runner/setup/download cost, not a reduction in total CPU use.
+It gives each portion a finite independent opportunity rather than exhausting
+one combined four-hour budget. Run 38194131529/job 114633024377 at `cf132afc`
+was explicitly annotated as exceeding four hours; Task 060 admission completed
+but AFTER was terminated and remains incomplete historical evidence. Full
+diagnosis, prerequisite and before/after gate inventory, local validation and
+hosted evidence are in [Task 077B](task-077-duplicate-member-ingress.md#task-077b--bounded-complete-real-uci-qualification).
+Triggers, permissions, per-ref concurrency and all qualification expectations
+remain unchanged. YAML/guard success is not end-to-end hosted certification.
+
 Branch `feature/055-ci-fast-deep-split`, from `main` at
 `e1810ce4b8ddb1ab89727b6ecada88999b4dcb49` (merge of PR #55, Task 054).
 

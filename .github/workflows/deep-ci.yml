@@ -52,9 +52,8 @@ jobs:
   # generated Ada (gnatmake -gnatc) and AMS_GRA_REQUIRE_GNAT forbids a skip.
   real-uci:
     runs-on: ubuntu-latest
-    # Task 061 inventory/impact and all 609 CLI confirmations precede the full
-    # inherited Tasks 052-060 evidence sequence. Keep every test and marker gate
-    # with a finite four-hour budget for the complete combined campaign.
+    # Task 077B: first seven qualification gates; regressions have their own
+    # independent four-hour budget. No payload gate is repeated.
     timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
@@ -96,6 +95,40 @@ jobs:
         run: bash scripts/check-task065-pinned.sh
       - name: Unicode 3.1 pinned profiles, impact and real vertical (Task 066)
         run: bash scripts/check-task066-pinned.sh
+
+  # Independent runner: no artifacts or environment inherited from real-uci.
+  real-uci-regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install GNAT
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnat
+      # Hard gate, as in Fast CI: no `|| true`.
+      - name: Verify GNAT availability
+        run: |
+          command -v gnatmake
+          gnatmake --version
+      # Fetch each pinned release ONCE for the whole job. Both scripts verify
+      # the tag revision and root SHA-256 and fail hard on any mismatch; the
+      # tests verify the root SHA-256 again before using it.
+      - name: Fetch pinned UCI 2.5 and 2.6 (once)
+        run: |
+          set -euo pipefail
+          UCI25="$(scripts/fetch-pinned-uci-2.5.sh "$RUNNER_TEMP/uci-2.5")"
+          UCI26="$(scripts/fetch-pinned-uci-2.6.sh "$RUNNER_TEMP/uci-2.6")"
+          echo "AMS_GRA_UCI_2_5_ROOT=$UCI25" >> "$GITHUB_ENV"
+          echo "AMS_GRA_UCI_2_6_ROOT=$UCI26" >> "$GITHUB_ENV"
+      - name: Prepare regression inputs and release CLI
+        run: |
+          set -euo pipefail
+          test -n "$AMS_GRA_UCI_2_5_ROOT"
+          test -n "$AMS_GRA_UCI_2_6_ROOT"
+          cargo fetch --locked
+          cargo build --release --locked -p ams-gra-codegen-oms
       - name: Confirm unique newly READY Time services (Task 061)
         run: |
           set -euo pipefail
