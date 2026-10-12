@@ -8,6 +8,10 @@ mod backend_names;
 mod backend_preflight;
 mod binary;
 mod coverage;
+mod dependency_impact;
+pub use dependency_impact::{
+    DependencyExposure, DependencyImpactError, static_dependency_exposures,
+};
 mod floating;
 mod integral;
 mod ipv6_address;

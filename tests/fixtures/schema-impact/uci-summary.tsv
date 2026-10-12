@@ -1,0 +1,8 @@
+scope	STATIC_NAMED_REFERENCES
+direct_unique_messages	3
+BEFORE	unique_messages	722
+pairs	BEFORE	3000
+WITNESS	BEFORE	OrderOfBattle	SecurityInformationType	{https://www.vdl.afrl.af.mil/programs/oam}OrderOfBattleMT -> {https://www.vdl.afrl.af.mil/programs/oam}MessageType -> {https://www.vdl.afrl.af.mil/programs/oam}SecurityInformationType
+AFTER	unique_messages	725
+pairs	AFTER	3475
+WITNESS	AFTER	OrderOfBattle	SecurityInformationType	{https://www.vdl.afrl.af.mil/programs/oam}OrderOfBattleMT -> {https://www.vdl.afrl.af.mil/programs/oam}MessageType -> {https://www.vdl.afrl.af.mil/programs/oam}SecurityInformationType
