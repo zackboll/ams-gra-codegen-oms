@@ -266,3 +266,106 @@ Task 074 protections and Task 075 behavior/history are unchanged. No opaque
 carrier, general mapper, trust registry, validator service or production API.
 Non-draft PR, auto-merge disabled, independent review required. Do not merge or
 begin Task 077.
+
+## Task 076A — corrective bounded qualification (separate from original run)
+
+Reviewed parent `35ec513e5ee4b8705ec3346caa645e156d165d92`; reviewed driver blob
+`932b1dc46251b307342c2f546f9fad4464b0ed31`. PR #76 was open, non-draft,
+unmerged, auto-merge disabled; local/remote/PR heads matched. Main remained
+`15aa0aa431732de6efbc1eb4412ba94fa9158a33`. No sibling, production, mapper,
+validator, Rust test, dependency or CI change.
+
+Both review findings were reproduced **before editing**, under an independent
+15-second outer watchdog with finally cleanup and a test subreaper. Injected
+Bundle construction reached the old driver PID before broker supervision, with
+CPU/address space `(-1,-1)` and core `(0,-1)`. Separately, a same-group descendant
+ignored TERM and used independent output handles: the old wrapper returned
+`broker process timeout; observation inconclusive` while that descendant remained
+live (state S). Both reproductions were synthetic fault injection, not pinned
+qualification. Volatile PID-bearing records are retained only in task scratch;
+normalized observations are in `tests/fixtures/task076/containment-evidence.json`.
+
+### Corrected phase boundaries
+
+`qualify.py` is now a standard-library-only supervisor. It never imports the
+mapper, corpus preparation or native XML modules. It validates invocation and
+broker provenance, creates a **fresh invocation-owned directory**, then launches
+`validator_worker.py` in an owned session. The worker sets CPU **30 seconds**,
+address space **768 MiB**, core **zero**, **before native XML imports**. Its
+parent-enforced **60-second wall deadline** includes imports, pin checks, closure
+preparation/copy/parsing, all six Bundle compilations, all mapping and reference
+assessment, and information-item comparisons. The full 34/30 campaign fits this
+unchanged profile, without partitioning or a larger budget.
+
+Zero worker exit **and** a completion marker **and** a size-bounded structured
+artifact bound to the current invocation token are required. Expected case order,
+complete bundle set, outcomes, normalized corpus and pins are checked before the
+broker starts. Missing/malformed/truncated/oversized/partial/stale artifacts fail.
+Exceptions/signals/allocation/pin/schema failures are **validator phase failures**,
+not invalid-payload outcomes. No final qualification marker precedes completion.
+Logs survive failure in the fresh invocation directory. Broker Cargo execution
+has its separate **300-second wall deadline**, without XML resource limits.
+Thus validator plus broker work has a finite 360-second deadline budget, plus
+bounded group cleanup (0.2-second grace and at most two 3-second final waits per
+phase) and small bounded artifact/provenance operations.
+Fresh broker.json paths cannot reuse an earlier run's success. Broker marker,
+exit, artifact size, exact case identities and historical observations are checked.
+
+### Owned process cleanup guarantee and limitations
+
+`supervisor.py` requires Linux `/proc`, `waitid(WNOWAIT)` and
+`PR_SET_CHILD_SUBREAPER`; unsupported process-control capabilities fail explicitly.
+Workloads are sequential, launched in new sessions/groups. The leader stays
+unreaped while group signals are possible, reserving PID/PGID identity and
+avoiding signaling a reused group. TERM is sent, a bounded 0.2-second grace period
+elapses, and KILL is sent **even when the leader exited or closed its pipes**.
+Direct child waits and adopted descendant reaping each have bounded deadlines.
+`/proc` start identities distinguish tracked descendants; live and zombie members
+are separately visible, and an incomplete cleanup raises a separate failure
+alongside the original reason. No waitpid assumption about arbitrary grandchildren.
+
+The same cleanup runs on normal success, nonzero/signal exit, missing marker,
+timeout and ordinary parent SIGINT/SIGTERM. Repeated ordinary interruption is
+deferred during cleanup. Captured output uses nonblocking bounded-size reads,
+not an unbounded communicate/wait. Rust server RAII is unchanged; forced broker
+termination does not rely on destructors. No broad process-name kill is used.
+The unrelated sentinel remains alive. This guarantee is for the tested **owned
+same-session/process-group topology**, not processes that deliberately detach,
+SIGKILL of the supervisor, a general sandbox, or operational services.
+
+### Corrective tests and unchanged semantic evidence
+
+**25 driver tests passed**: the original five plus **20 corrective containment/
+contract controls**. Fault scenarios have explicit readiness records/pipe
+handshakes, caller-side outer deadlines, an independent scenario alarm and finally
+cleanup. Limits are observed at the actual worker's injected dependency boundary.
+Executable CPU/memory probes use explicit test-only smaller limits after recording
+the production defaults. Injected adapters are solely supervision tests and never
+used by the real campaign. Artifact contract controls include missing, truncated,
+malformed, stale, partial, oversized and successful complete results. Race control
+exits during TERM grace; independent-pipe and captured-pipe descendants ignore TERM;
+failed/missing-marker/interrupted paths leave no live owned descendants.
+
+Corrected real campaign and deterministic repeat: **34 mapper outcomes (14 valid,
+20 rejected), 30 XML assessments (14 valid, 16 invalid), 34 pinned Sleet outcomes
+(16 delivered, 18 explicit rejection)**. Every broker case still has its matched
+delivered control. All corpus/raw/reference digests, six bundles/dependency
+identities, results, payload evidence and broker/validator pins are unchanged;
+only driver/helper source identities and explicitly new supervision metadata are
+refreshed. The original run is **not retroactively described as bounded**.
+Both UCI releases and all measured block/duplicate/QName disagreements are intact.
+Disposition stays **POLYMORPHIC_COMPATIBILITY_PARTIALLY_CHARACTERIZED**; the CAL
+interpretation remains unresolved.
+
+Task 075's **143** synthetic probes, the **17** guard/QName controls, actual
+generated closed codec through the reused pinned binary, and regenerated private
+overlay control passed again. Python compilation, relevant shell syntax, Rust
+1.95 formatting and diff checks passed. No Rust source/dependency changed, so no
+new all-target/Clippy claim is needed for this Python-only correction. Hosted
+Rust CI is separately reported at the corrective head; it does not execute these
+Python containment or pinned local differential campaigns. Source/build/toolchain
+identities above remain unchanged. Scratch: `/home/zboll/task076a-research`;
+same qualification CLI, with that scratch path, is the corrected reproduction.
+
+Corrective commit and exact head parity belong to the PR handoff. **Independent
+review required**, not merge authorization. No PR merge or Task 077.

@@ -1445,7 +1445,18 @@
     "scripts/task074/bundle.py": "06a2959481330eb844c971f08bbb1dd0fd2c04d17d668238ae73c1cca09a889d",
     "scripts/task075/mapper.py": "417cdead53e03f051c1e309221ea393448683e4e9da20650f3da4296a63bd173",
     "scripts/task076/corpus.py": "2a3cc6e90973529393ffdabf6e1318de61b5302b4bf270dd76626db9f3cb9df3",
-    "scripts/task076/qualify.py": "103f897a82dab7559c92492d880a9123a472264df67047b441f1ee57b2ed4743"
+    "scripts/task076/qualify.py": "4b7de88770a8fc1c60716779a874366e51973225dfacc42dfaaa8f68f35129af",
+    "scripts/task076/supervisor.py": "c85797e1b963da92691859af7c0497cd11dcdf8589d619167c65e989279f09b7",
+    "scripts/task076/validator_worker.py": "cbbec267d97b3f66e09194d48aabcc6efe3bacdd4bb256c0891a075a64267fac"
+  },
+  "supervision": {
+    "artifact_binding": "fresh-invocation-token",
+    "broker_wall_seconds": 300,
+    "cleanup": "linux-owned-session-subreaper",
+    "validator_as_bytes": 805306368,
+    "validator_core_bytes": 0,
+    "validator_cpu_seconds": 30,
+    "validator_wall_seconds": 60
   },
   "validator": {
     "etree_sha256": "27d8b7e79e217e6946ad6871c13b6bdfbcf55a1a3f6b3ab590cb892fc3a5deca",
