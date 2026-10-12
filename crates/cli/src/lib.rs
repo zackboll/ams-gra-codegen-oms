@@ -1,5 +1,6 @@
 //! Command-line orchestration for the OMS/UCI code-generation pipeline.
 pub mod schema_impact;
+pub mod service_impact;
 
 use ams_gra_oms_backend_ada::AdaBackend;
 use ams_gra_oms_backend_cpp::CppBackend;
@@ -577,6 +578,14 @@ fn parse_world(value: &OsStr) -> Result<GenerationWorld, CliError> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Command {
+    ServiceImpact {
+        contract: PathBuf,
+        before: PathBuf,
+        after: PathBuf,
+        before_extensions: Vec<(String, PathBuf)>,
+        after_extensions: Vec<(String, PathBuf)>,
+        tsv: bool,
+    },
     SchemaImpact {
         comparison: Box<Command>,
     },
@@ -659,6 +668,37 @@ where
     W: Write,
 {
     match parse_args(args)? {
+        Command::ServiceImpact {
+            contract,
+            before,
+            after,
+            before_extensions,
+            after_extensions,
+            tsv,
+        } => {
+            let contract =
+                load_contract(&contract).map_err(|e| CliError::execution(e.to_string()))?;
+            let maps = |values: &[(String, PathBuf)], side: &str| {
+                contract_overlay_order(&contract.standards.uci_extension_schemas, values)
+                    .map_err(|e| CliError::usage(format!("{side} extension mappings: {e}")))
+            };
+            let before_overlays = maps(&before_extensions, "BEFORE")?;
+            let after_overlays = maps(&after_extensions, "AFTER")?;
+            let before = load_schema_set_with_overlays(&before, &before_overlays)
+                .map_err(|e| CliError::execution(e.to_string()))?;
+            let after = load_schema_set_with_overlays(&after, &after_overlays)
+                .map_err(|e| CliError::execution(e.to_string()))?;
+            let report = service_impact::ServiceImpact::analyze(&contract, &before, &after)
+                .map_err(CliError::execution)?;
+            write_output(
+                stdout,
+                &if tsv {
+                    report.to_tsv()
+                } else {
+                    report.to_text()
+                },
+            )
+        }
         Command::SchemaImpact { comparison } => {
             let Command::SchemaDiff {
                 before,
@@ -797,6 +837,7 @@ where
         Some("-V" | "--version") => no_trailing_args(args, Command::Version),
         Some("validate") => parse_validate(args.collect()),
         Some("schema-diff") => parse_schema_diff(args.collect()),
+        Some("service-impact") => parse_service_impact(args.collect()),
         Some("schema-impact") => {
             let inputs = parse_schema_diff(args.collect())?;
             if matches!(inputs, Command::Help(_)) {
@@ -877,6 +918,36 @@ fn parse_schema_diff(args: Vec<OsString>) -> Result<Command, CliError> {
         after: required(after, "--after")?.into(),
         before_overlays,
         after_overlays,
+        tsv,
+    })
+}
+
+fn parse_service_impact(args: Vec<OsString>) -> Result<Command, CliError> {
+    if is_help_request(&args) {
+        return Ok(Command::Help(service_impact::HELP));
+    }
+    let (mut contract, mut before, mut after, mut format) = (None, None, None, None);
+    let (mut before_extensions, mut after_extensions) = (Vec::new(), Vec::new());
+    parse_options(args, |option, value| match option {
+        "--contract" => set_once(&mut contract, value, option),
+        "--before" => set_once(&mut before, value, option),
+        "--after" => set_once(&mut after, value, option),
+        "--format" => set_once(&mut format, value, option),
+        "--before-extension" => push_extension(&mut before_extensions, value),
+        "--after-extension" => push_extension(&mut after_extensions, value),
+        _ => Err(CliError::usage(format!("unknown option '{option}'"))),
+    })?;
+    let tsv = match format.as_deref().unwrap_or(OsStr::new("text")).to_str() {
+        Some("text") => false,
+        Some("tsv") => true,
+        _ => return Err(CliError::usage("invalid --format; expected text or tsv")),
+    };
+    Ok(Command::ServiceImpact {
+        contract: required(contract, "--contract")?.into(),
+        before: required(before, "--before")?.into(),
+        after: required(after, "--after")?.into(),
+        before_extensions,
+        after_extensions,
         tsv,
     })
 }

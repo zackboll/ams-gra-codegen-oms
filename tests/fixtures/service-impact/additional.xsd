@@ -1,0 +1,4 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:impact" version="additional-root">
+  <xs:include schemaLocation="before.xsd"/>
+  <xs:import namespace="urn:other" schemaLocation="other.xsd"/>
+</xs:schema>

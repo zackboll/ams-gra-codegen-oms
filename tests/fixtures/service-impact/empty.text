@@ -1,0 +1,31 @@
+service-impact v1
+record=META key=format has_value=true value=service-impact-v1
+record=META key=analysis_scope has_value=true value=STATIC_NAMED_REFERENCES
+record=META key=selection_basis has_value=true value=BEFORE_CONTRACT
+record=META key=limitations has_value=true value=Static named references only; no compatibility, wire compatibility, safe-upgrade or service-readiness verdict. No AFTER contract planning: the unmodified contract may resolve ambiguously against AFTER. No reverse inheritance/closed-sum descendant expansion or runtime/backend analysis. Non-OMS occurrences are excluded and not assessed against UCI.
+record=META key=service_name has_value=true value=Empty routes
+record=META key=service_version has_value=true value=1
+record=META key=service_kind has_value=true value=service
+record=META key=contract_version has_value=true value=0.1
+record=META key=oms_version has_value=true value=2.5
+record=META key=uci_schema_version has_value=true value=2.5
+record=META key=ams_gra_version has_value=false
+record=META side=BEFORE key=schema_root_version has_value=true value=old-root
+record=COUNT side=BEFORE key=whole_schema_types has_value=true value=3
+record=COUNT side=BEFORE key=whole_schema_messages has_value=true value=2
+record=META side=AFTER key=schema_root_version has_value=true value=old-root
+record=COUNT side=AFTER key=whole_schema_types has_value=true value=3
+record=COUNT side=AFTER key=whole_schema_messages has_value=true value=2
+record=COUNT key=total_exchange_occurrences has_value=true value=1
+record=COUNT key=oms_exchange_occurrences has_value=true value=0
+record=COUNT key=excluded_non_oms_occurrences has_value=true value=1
+record=COUNT key=selected_unique_messages has_value=true value=0
+record=COUNT key=selected_present_in_after has_value=true value=0
+record=COUNT key=selected_missing_in_after has_value=true value=0
+record=COUNT key=direct_changed_selected_unique_messages has_value=true value=0
+record=COUNT side=BEFORE key=exposed_selected_unique_messages has_value=true value=0
+record=COUNT side=BEFORE key=selected_message_type_pairs has_value=true value=0
+record=COUNT side=AFTER key=exposed_selected_unique_messages has_value=true value=0
+record=COUNT side=AFTER key=selected_message_type_pairs has_value=true value=0
+record=EMPTY_SELECTION key=selection has_value=true value=No baseline-selected OMS messages; required inputs validated. Non-OMS exchanges were not assessed against UCI.
+record=EMPTY_IMPACT key=result has_value=true value=No service-selected static dependency impact found; this is not a compatibility or readiness verdict.

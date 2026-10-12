@@ -1,0 +1,4 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:o="urn:other" xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam" targetNamespace="urn:other" version="other-root">
+  <xs:simpleType name="OtherPayload"><xs:restriction base="xs:string"/></xs:simpleType>
+  <xs:element name="Selected" type="o:OtherPayload" uci:version="1"/>
+</xs:schema>
