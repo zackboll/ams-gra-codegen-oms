@@ -345,7 +345,11 @@ impl ServiceImpact {
 
     pub fn to_tsv(&self) -> String {
         let mut out = HEADER.to_owned();
-        for r in self.rows() {
+        for mut r in self.rows() {
+            // Explicit empty final cell keeps all columns without trailing tabs.
+            if r[20].is_empty() {
+                r[20] = "\"\"".into();
+            }
             out.push_str(&r.iter().map(|v| escape(v)).collect::<Vec<_>>().join("\t"));
             out.push('\n');
         }

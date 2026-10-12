@@ -99,7 +99,8 @@ step. `EMPTY_SELECTION` and `EMPTY_IMPACT` retain qualified wording.
 Function and exchange IDs and QName components are separate fields, never a
 concatenated identity. Presence booleans distinguish None from authored empty
 values/groups. TSV escapes backslash, tab, LF and CR as `\\`, `\t`, `\n`, `\r`,
-and other controls as `\u{hex}`. Every row has 21 physical columns. Text uses
+and other controls as `\u{hex}`. An empty final cell is encoded as `""`, avoiding
+trailing whitespace while retaining all 21 physical columns. Text uses
 labeled fields in the same record order with the same control escaping; explicit
 present-empty metadata renders `value=`. No timestamps or filesystem paths.
 Task 069 and Task 078 rendering code and frozen outputs remain unchanged.
