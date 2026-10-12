@@ -109,8 +109,8 @@ Fast controls need no Python, UCI fetch or live broker: config/default/clone/ret
 duplicates, nonduplicates/value parity, syntax/trailing/depth/precedence,
 counter-based dispatch/recovery/independent policies, and generated-codec
 comparisons. The exact-registration gate requires one executed nonignored test
-and its marker for each control. Shell fake-cargo negatives cover zero matches,
-failed listing, failed execution, missing marker and ignored-only results.
+and its marker for each control. The corrected Task 077A shell mock checks
+targeted registration, exit-status, marker and execution-count failures (see below).
 Fast CI runs both scripts; split guards require both and the focused live check.
 
 Actual-broker evidence is separate: `task077_real_sleet_client_policy` uses the
@@ -145,11 +145,82 @@ facade suite 98 libtest passes (including 12 existing environment-skip stubs:
 Task 073 pinned vertical 1 ignored; generated-support binding 12 passes.
 The facade run includes codec/QName, Task 072/073 wire/authority, fairness,
 retry, dispatch and lifecycle tests. Task 077's gate executed all 6 controls;
-Task 070's exact gate executed 10 controls. Wrapper negatives passed all 5
-failure cases; split mutation controls passed 155 checks. The focused Task 077
+Task 070's exact gate executed 10 controls. The original wrapper suite reported
+5 passing negative cases, but Task 077A reproduced their masking defect; those
+results do not establish the corrected protections. Split mutation controls
+passed 155 checks. The focused Task 077
 live test separately executed successfully, so its offline ignored result is
 not substituted for live evidence. Explicit live execution without a binary
 was also verified to fail. No unrelated UCI/XML/backend campaign was repeated.
+
+### Task 077A — wrapper false-pass correction
+
+Reviewed parent: `ac70eb5ce89686652f1664fb67136ca91ed22f3c`.
+The real Fast gate remains byte-identical, blob
+`fc25a82a012f58337f16a9c71684f0b39f946d8d`. Runtime sources, tests, manifests,
+lockfile, workflows and CI-split protections are unchanged by this correction.
+
+Before editing, the committed negative suite (blob
+`104708db502b4a7b9eb6f380d5e75c08e1850dae`) exited **0** against the original
+gate and disposable marker-only, count-only and both-assertions-removed mutants.
+Its mock advertised only the config test. Even a fault-free mock run exited
+**1** at invocation 3: the second registration listed only the config test.
+Missing-marker and ignored-only faults against the corresponding weakened gates
+also passed their intended invocation 2 and failed at unrelated invocation 3.
+Thus the original suite's success was not proof of marker/count protection.
+
+The revised driver uses `task077-mock-cargo.sh`, a small shell-only helper which
+validates exact Cargo argv, package, lib/integration suite, phase and requested
+name against an independently specified six-control inventory. Healthy listings
+advertise the applicable suite's tests; exact executions emit the matching
+marker, test name and passing summary. Unknown/malformed invocations are explicit
+mock-contract failures, never credited as an intended negative. Fresh scenario
+traces and fault logs are compared with an independent expected sequence. Faults
+are injected only at a selected control/phase. No real gate file is mutated.
+
+The healthy control uses this same infrastructure: exit **0**, all six
+registrations and six exact executions in order (**12 Cargo invocations**), no
+injection, and the final `TASK077 FAST: PASSED` marker. Fourteen targeted negatives
+exercise seven categories at both control 0 (config) and control 5 (facade codec
+comparison): missing registration, failed listing, failed execution, absent
+marker, ignored-only summary, zero-executed summary, duplicate registration.
+Listing faults stop at invocation **1/11**, without executing the target;
+execution faults stop at **2/12**, after successful target registration. Exact
+trace prefixes prohibit later invocations. Injection identity and absent final
+success marker are required. Nonzero commands emit plausible success output but
+return **7/9**, and those statuses must propagate. Marker faults alone omit the
+marker; ignored/zero faults alone change the summary and keep the marker.
+
+The no-argument CI entry point and final wrapper marker are preserved. Internal
+`--check-only GATE` runs the same healthy/negative checker against a supplied
+disposable gate. Each mutant's diff must contain only its selected exact
+assertion line(s); all other bytes, including EOF, are preserved.
+
+| Disposable mutant | Healthy path | Targeted faulty path (control 5) | Revised checker |
+| --- | --- | --- | --- |
+| Remove marker assertion only | 0, all 12 invocations | Missing marker incorrectly exits 0 | Nonzero at missing-marker control 0 |
+| Remove count assertion only | 0, all 12 invocations | Ignored-only incorrectly exits 0 | Nonzero at ignored-only control 0 |
+| Remove both assertions | 0, all 12 invocations | Missing marker and ignored-only each incorrectly exit 0 | Nonzero at missing-marker control 0 |
+
+The outer mutation qualification requires these checker failures with the exact
+regression diagnostic, not arbitrary failure. It demonstrates execution of each
+supplied mutant, rather than merely searching for deleted source checks.
+
+Per complete suite: **1 primary healthy + 14 attributed negatives**, **3 mutant
+healthy paths + 4 direct faulty passes**, and **3 recursive checker runs**. The
+recursive checkers execute 16 gate scenarios before the expected regression
+failures, giving **38 total synthetic gate executions**. The complete suite ran
+twice with byte-identical normalized output. All 14 primary rejection points and
+all 3 mutation qualifications passed. These mock invocations execute no Rust.
+
+Focused actual qualification separately runs the unchanged six-control Fast gate
+with real Cargo `1.95.0 (f2d3ce0bd 2026-03-21)` and rustc `1.95.0
+(59807616e 2026-04-14)`, locked dependencies and task-specific build output.
+Fake Cargo PATH and injection variables are scoped to child processes and cleared
+before the real run. Shell syntax, existing CI-split guard/155 mutation checks,
+and `git diff --check` pass. No live Sleet, UCI, XML or broad backend campaign is
+repeated for this shell correction. Corrective SHA and exact-head hosted status
+are recorded in PR #77's follow-up report, separately from original-head evidence.
 
 ## Non-goals and preserved boundaries
 
