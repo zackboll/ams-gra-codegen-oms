@@ -25,6 +25,7 @@ on:
       - "scripts/fetch-pinned-uci-2.5.sh"
       - "scripts/fetch-pinned-uci-2.6.sh"
       - "scripts/run-real-sleet-test.sh"
+      - "crates/runtime-rust-facade-tests/tests/task077_sleet.rs"
       - "scripts/check-task062-pinned.sh"
       - "scripts/check-task062-service-impact.py"
       - "scripts/check-task062-vertical.py"

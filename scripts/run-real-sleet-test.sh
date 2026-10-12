@@ -70,6 +70,12 @@ run_one generated_codec_sleet_constrained_binary task053_constrained_binary_gene
 # Task071 reuses this same pinned checkout/build; no second server build.
 run_one service_route_policy task071_real_sleet_policy \
   'TASK071 REAL SLEET POLICY: PASSED'
+# Task 077 is ordinarily ignored; requested execution must run exactly once.
+output="$(cargo test --locked -p ams-gra-oms-runtime-rust-facade-tests --test task077_sleet -- \
+  --ignored --exact task077_real_sleet_client_policy --nocapture 2>&1)"
+printf '%s\n' "$output"
+grep -Fqx 'TASK077 REAL SLEET CLIENT POLICY: PASSED' <<<"$output"
+grep -qE '^test result: ok\. 1 passed; 0 failed; 0 ignored;' <<<"$output"
 # Task 050: the REAL UCI 2.5 PositionReport, only when the caller supplies the
 # pinned root (build.rs verifies its SHA-256 and fails on a mismatch).
 # Task 052: the REAL UCI 2.5 SubsystemStream carrying a hexBinary value.

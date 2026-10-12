@@ -99,7 +99,8 @@ pub enum RuntimeEvent {
         details: Option<String>,
     },
     /// A `MSG` for an active subscription was not delivered: its JSON is
-    /// not exactly the subscribed global element, or the codec rejected it.
+    /// rejected by the duplicate-member policy, not exactly the subscribed
+    /// global element, or rejected by the codec.
     /// The subscription stays active.
     SubscriptionDecodeError {
         sid: String,

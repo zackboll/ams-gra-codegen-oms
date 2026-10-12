@@ -34,6 +34,13 @@ fast_code="$(code "$fast")"
 deep_code="$(code "$deep")"
 sleet_code="$(code "$sleet")"
 
+for required in 'bash scripts/check-task077-fast.sh' 'bash scripts/test-task077-ci-wrappers.sh'; do
+  grep -Fq "$required" <<<"$fast_code" || fail "Fast CI lost Task 077 gate: $required"
+done
+for required in '--test task077_sleet' '--ignored --exact task077_real_sleet_client_policy' 'TASK077 REAL SLEET CLIENT POLICY: PASSED'; do
+  grep -Fq -- "$required" <<<"$sleet_code" || fail "Sleet harness lost Task 077 check: $required"
+done
+
 # Task 069 must execute once in real-uci and never download in Fast.
 grep -Fq 'bash scripts/check-task069-fast.sh' <<<"$fast_code" ||
   fail "Fast CI lost Task 069 exact semantic diff controls"

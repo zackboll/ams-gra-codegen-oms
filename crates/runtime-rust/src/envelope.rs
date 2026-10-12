@@ -48,6 +48,9 @@ pub fn wrap_global_element(element_name: String, payload: Value) -> Value {
 /// The text must be a JSON object with **exactly one** member whose key
 /// equals `expected_element_name`. Anything else is rejected; the message
 /// identity is never inferred from the JSON shape.
+/// This public helper preserves legacy last-member-wins parsing. Connected
+/// runtimes can opt into [`crate::DuplicateMemberPolicy::Reject`] before this
+/// envelope validation; that policy is not schema validation.
 ///
 /// # Errors
 ///
@@ -57,6 +60,21 @@ pub fn unwrap_global_element(
     expected_element_name: &str,
     raw: &str,
 ) -> Result<Value, MessageDecodeError> {
+    unwrap_with_policy(
+        expected_element_name,
+        raw,
+        crate::DuplicateMemberPolicy::LegacyLastWins,
+    )
+}
+
+pub(crate) fn unwrap_with_policy(
+    expected_element_name: &str,
+    raw: &str,
+    policy: crate::DuplicateMemberPolicy,
+) -> Result<Value, MessageDecodeError> {
+    if policy == crate::DuplicateMemberPolicy::Reject {
+        crate::duplicate::check(raw)?;
+    }
     let value: Value = serde_json::from_str(raw).map_err(MessageDecodeError::InvalidJson)?;
     let Value::Object(object) = value else {
         return Err(MessageDecodeError::NotAnObject);
@@ -83,6 +101,8 @@ pub fn unwrap_global_element(
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum MessageDecodeError {
+    /// The selected ingress policy rejected a repeated decoded object key.
+    DuplicateMember,
     /// The `MSG` text is not JSON.
     InvalidJson(serde_json::Error),
     /// The JSON text is not an object.
@@ -98,6 +118,7 @@ pub enum MessageDecodeError {
 impl fmt::Display for MessageDecodeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::DuplicateMember => f.write_str("OMS JSON contains a duplicate object member"),
             Self::InvalidJson(error) => write!(f, "MSG payload is not JSON: {error}"),
             Self::NotAnObject => f.write_str("OMS JSON text is not an object"),
             Self::MemberCount { found } => write!(

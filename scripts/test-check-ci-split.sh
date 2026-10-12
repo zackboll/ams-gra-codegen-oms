@@ -35,6 +35,14 @@ expect_fail() {
 expect_pass "$fast" "$deep" "$sleet"
 
 # ---- 2. mutations fail --------------------------------------------------
+for gate in 'bash scripts/check-task077-fast.sh' 'bash scripts/test-task077-ci-wrappers.sh'; do
+  grep -Fv "$gate" "$fast" >"$tmp/fast-no-t077.yml"
+  expect_fail "fast lost $gate" "$tmp/fast-no-t077.yml" "$deep" "$sleet"
+done
+for gate in '--test task077_sleet' '--ignored --exact task077_real_sleet_client_policy' 'TASK077 REAL SLEET CLIENT POLICY: PASSED'; do
+  grep -Fv -- "$gate" "$sleet" >"$tmp/sleet-no-t077.sh"
+  expect_fail "sleet lost $gate" "$fast" "$deep" "$tmp/sleet-no-t077.sh"
+done
 grep -v 'bash scripts/check-task069-fast.sh' "$fast" >"$tmp/fast-no-t069.yml"
 expect_fail "fast lost Task069 gate" "$tmp/fast-no-t069.yml" "$deep" "$sleet"
 grep -v 'python3 scripts/test-task069-ci-wrappers.py' "$fast" >"$tmp/fast-no-t069-wrapper.yml"

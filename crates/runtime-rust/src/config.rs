@@ -3,6 +3,17 @@
 use crate::RuntimeError;
 use std::time::Duration;
 
+/// Compatibility policy for repeated decoded JSON member names at OMS ingress.
+/// This is receiver policy, not complete CAL/XSD validation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum DuplicateMemberPolicy {
+    /// Preserve the existing serde_json last-member-wins behavior.
+    #[default]
+    LegacyLastWins,
+    /// Reject repeated names within any object before codec or handler dispatch.
+    Reject,
+}
+
 /// The OWP protocol version requested by default (OMSC-SPC-013 Rev B
 /// describes "version 1.0 of the OMS WebSocket Protocol").
 pub const DEFAULT_OWP_VERSION: &str = "1.0";
@@ -76,9 +87,31 @@ pub struct RuntimeConfig {
     owp_versions: Vec<String>,
     connect_timeout: Duration,
     initial_connect_retry: ConnectRetryPolicy,
+    duplicate_member_policy: DuplicateMemberPolicy,
 }
 
 impl RuntimeConfig {
+    /// Select the immutable ingress policy for this connection's subscriptions.
+    ///
+    /// ```
+    /// use ams_gra_oms_runtime_rust::{DuplicateMemberPolicy, RuntimeConfig};
+    /// use std::time::Duration;
+    /// let config = RuntimeConfig::new("ws://127.0.0.1:9000", "my-service", "002.5.0")
+    ///     .with_initial_connect_retry(3, Duration::from_millis(50), Duration::from_millis(100))
+    ///     .with_duplicate_member_policy(DuplicateMemberPolicy::Reject);
+    /// assert_eq!(config.duplicate_member_policy(), DuplicateMemberPolicy::Reject);
+    /// ```
+    #[must_use]
+    pub fn with_duplicate_member_policy(mut self, policy: DuplicateMemberPolicy) -> Self {
+        self.duplicate_member_policy = policy;
+        self
+    }
+
+    #[must_use]
+    pub const fn duplicate_member_policy(&self) -> DuplicateMemberPolicy {
+        self.duplicate_member_policy
+    }
+
     /// Settings for `url` (e.g. `ws://127.0.0.1:9000`), the OWP `service_id`
     /// sent in `INIT`, and the `schema` version sent in `INIT`.
     #[must_use]
@@ -94,6 +127,7 @@ impl RuntimeConfig {
             owp_versions: vec![DEFAULT_OWP_VERSION.to_owned()],
             connect_timeout: DEFAULT_CONNECT_TIMEOUT,
             initial_connect_retry: ConnectRetryPolicy::default(),
+            duplicate_member_policy: DuplicateMemberPolicy::LegacyLastWins,
         }
     }
 
@@ -229,6 +263,37 @@ impl RuntimeConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn task077_configuration() {
+        let default = RuntimeConfig::new("ws://h:1", "svc", "1");
+        let legacy = default
+            .clone()
+            .with_duplicate_member_policy(DuplicateMemberPolicy::LegacyLastWins);
+        assert_eq!(default, legacy);
+        assert_eq!(
+            default.duplicate_member_policy(),
+            DuplicateMemberPolicy::LegacyLastWins
+        );
+        let reject = default
+            .clone()
+            .with_duplicate_member_policy(DuplicateMemberPolicy::Reject)
+            .with_initial_connect_retry(3, Duration::from_millis(1), Duration::from_millis(2));
+        assert_eq!(reject.clone(), reject);
+        assert_eq!(
+            reject.duplicate_member_policy(),
+            DuplicateMemberPolicy::Reject
+        );
+        assert_eq!(reject.initial_connect_retry().max_attempts(), 3);
+        reject.validate().unwrap();
+        assert_eq!(
+            default.init_options().versions,
+            reject.init_options().versions
+        );
+        assert_eq!(default.init_options().schema, reject.init_options().schema);
+        assert!(!reject.init_options().verbose);
+        println!("TASK077 CONFIGURATION: PASSED");
+    }
 
     #[test]
     fn defaults_and_init_options() {

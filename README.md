@@ -838,6 +838,15 @@ non-verbose connection means `Ok` indicates the frame was sent, and a server
 `-ERR` arrives later as an event. There are no Ada or C++ runtimes yet. See
 [Task 049](docs/task-049-rust-la-cal-runtime.md).
 
+**Duplicate-member ingress policy (Task 077).** `RuntimeConfig::new` keeps
+legacy last-member-wins JSON parsing. Opt in per connection with
+`.with_duplicate_member_policy(DuplicateMemberPolicy::Reject)` to reject repeated
+decoded names within any object before codec/handler dispatch. Rejection emits
+`SubscriptionDecodeError` with `MessageDecodeError::DuplicateMember`, while the
+subscription stays active. This receiver policy is not CAL/XSD validation or
+expanded-QName collision detection. See
+[Task 077](docs/task-077-duplicate-member-ingress.md).
+
 **Generated Rust OMS JSON codecs (Task 050).** Add `--with-codec` to
 `service-check` and `service-generate` (Rust) and the generator also emits
 `service_codec.rs`, mounted by `service_api.rs` as `service_codec`, with one
