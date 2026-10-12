@@ -1,0 +1,41 @@
+service-impact v1
+record=META key=format has_value=true value=service-impact-v1
+record=META key=analysis_scope has_value=true value=STATIC_NAMED_REFERENCES
+record=META key=selection_basis has_value=true value=BEFORE_CONTRACT
+record=META key=limitations has_value=true value=Static named references only; no compatibility, wire compatibility, safe-upgrade or service-readiness verdict. No AFTER contract planning: the unmodified contract may resolve ambiguously against AFTER. No reverse inheritance/closed-sum descendant expansion or runtime/backend analysis. Non-OMS occurrences are excluded and not assessed against UCI.
+record=META key=service_name has_value=true value=Baseline impact test
+record=META key=service_version has_value=true value=1
+record=META key=service_kind has_value=true value=service
+record=META key=contract_version has_value=true value=0.1
+record=META key=oms_version has_value=true value=logical-oms
+record=META key=uci_schema_version has_value=true value=logical-uci
+record=META key=ams_gra_version has_value=false
+record=META side=BEFORE key=schema_root_version has_value=true value=old-root
+record=COUNT side=BEFORE key=whole_schema_types has_value=true value=3
+record=COUNT side=BEFORE key=whole_schema_messages has_value=true value=2
+record=META side=AFTER key=schema_root_version has_value=true value=new-root
+record=COUNT side=AFTER key=whole_schema_types has_value=true value=3
+record=COUNT side=AFTER key=whole_schema_messages has_value=true value=2
+record=COUNT key=total_exchange_occurrences has_value=true value=4
+record=COUNT key=oms_exchange_occurrences has_value=true value=3
+record=COUNT key=excluded_non_oms_occurrences has_value=true value=1
+record=COUNT key=selected_unique_messages has_value=true value=1
+record=COUNT key=selected_present_in_after has_value=true value=1
+record=COUNT key=selected_missing_in_after has_value=true value=0
+record=COUNT key=direct_changed_selected_unique_messages has_value=true value=0
+record=COUNT side=BEFORE key=exposed_selected_unique_messages has_value=true value=1
+record=COUNT side=BEFORE key=selected_message_type_pairs has_value=true value=1
+record=COUNT side=AFTER key=exposed_selected_unique_messages has_value=true value=1
+record=COUNT side=AFTER key=selected_message_type_pairs has_value=true value=1
+record=OCCURRENCE side=BEFORE function_id=z-first exchange_id=input direction=input mandate=mandatory topic=first.topic has_subscription_group=false message_namespace=urn:impact message_local=Selected
+record=OCCURRENCE side=BEFORE function_id=z-first exchange_id=output direction=output mandate=optional topic=second.topic has_subscription_group=false message_namespace=urn:impact message_local=Selected
+record=OCCURRENCE side=BEFORE function_id=a-second exchange_id=input direction=input mandate=optional topic=third.topic has_subscription_group=true subscription_group=authored-group message_namespace=urn:impact message_local=Selected
+record=SELECTED_STATUS side=AFTER message_namespace=urn:impact message_local=Selected key=direct_payload_status has_value=true value=SAME_PAYLOAD
+record=SELECTED_PAYLOAD side=BEFORE message_namespace=urn:impact message_local=Selected type_namespace=urn:impact type_local=Payload key=NAMED has_value=true value= has_after_value=false
+record=SELECTED_PAYLOAD side=AFTER message_namespace=urn:impact message_local=Selected type_namespace=urn:impact type_local=Payload key=NAMED has_value=true value= has_after_value=false
+record=EXPOSURE side=BEFORE message_namespace=urn:impact message_local=Selected seed_namespace=urn:impact seed_local=Nested key=payload_to_seed has_value=true value=CHANGED
+record=WITNESS side=BEFORE message_namespace=urn:impact message_local=Selected seed_namespace=urn:impact seed_local=Nested step=0 type_namespace=urn:impact type_local=Payload
+record=WITNESS side=BEFORE message_namespace=urn:impact message_local=Selected seed_namespace=urn:impact seed_local=Nested step=1 type_namespace=urn:impact type_local=Nested
+record=EXPOSURE side=AFTER message_namespace=urn:impact message_local=Selected seed_namespace=urn:impact seed_local=Nested key=payload_to_seed has_value=true value=CHANGED
+record=WITNESS side=AFTER message_namespace=urn:impact message_local=Selected seed_namespace=urn:impact seed_local=Nested step=0 type_namespace=urn:impact type_local=Payload
+record=WITNESS side=AFTER message_namespace=urn:impact message_local=Selected seed_namespace=urn:impact seed_local=Nested step=1 type_namespace=urn:impact type_local=Nested

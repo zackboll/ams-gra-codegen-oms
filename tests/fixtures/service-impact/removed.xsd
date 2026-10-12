@@ -1,0 +1,7 @@
+<!-- Valid AFTER closure: the message was removed, not its referenced type. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:t="urn:impact" xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam" targetNamespace="urn:impact" version="removed-root">
+  <xs:simpleType name="Nested"><xs:restriction base="xs:string"><xs:maxLength value="8"/></xs:restriction></xs:simpleType>
+  <xs:complexType name="Payload"><xs:sequence><xs:element name="nested" type="t:Nested" minOccurs="0" maxOccurs="unbounded"/></xs:sequence></xs:complexType>
+  <xs:simpleType name="UnselectedType"><xs:restriction base="xs:string"><xs:maxLength value="8"/></xs:restriction></xs:simpleType>
+  <xs:element name="Unselected" type="t:UnselectedType" uci:version="1"/>
+</xs:schema>

@@ -1,0 +1,48 @@
+# Synthetic Task 079 contract, not a deployment authority.
+contract_version: "0.1"
+service:
+  name: Baseline impact test
+  version: "1"
+  kind: service
+standards:
+  oms_version: "logical-oms"
+  uci_schema_version: "logical-uci"
+functions:
+  - id: z-first
+    name: First authored
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: input
+        kind: oms_message
+        message: Selected
+        direction: input
+        mandate: mandatory
+        topic: first.topic
+        timing: {kind: asynchronous}
+      - id: signal
+        kind: special_signal
+        name: Outside UCI
+        direction: input
+        mandate: mandatory
+        timing: {kind: asynchronous}
+      - id: output
+        kind: oms_message
+        message: Selected
+        direction: output
+        mandate: optional
+        topic: second.topic
+        timing: {kind: asynchronous}
+  - id: a-second
+    name: Second authored
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: input
+        kind: oms_message
+        message: Selected
+        direction: input
+        mandate: optional
+        topic: third.topic
+        subscription_group: authored-group
+        timing: {kind: asynchronous}

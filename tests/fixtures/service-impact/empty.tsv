@@ -1,0 +1,31 @@
+record	side	function_id	exchange_id	direction	mandate	topic	has_subscription_group	subscription_group	message_namespace	message_local	seed_namespace	seed_local	step	type_namespace	type_local	key	has_value	value	has_after_value	after_value
+META																format	true	service-impact-v1		
+META																analysis_scope	true	STATIC_NAMED_REFERENCES		
+META																selection_basis	true	BEFORE_CONTRACT		
+META																limitations	true	Static named references only; no compatibility, wire compatibility, safe-upgrade or service-readiness verdict. No AFTER contract planning: the unmodified contract may resolve ambiguously against AFTER. No reverse inheritance/closed-sum descendant expansion or runtime/backend analysis. Non-OMS occurrences are excluded and not assessed against UCI.		
+META																service_name	true	Empty routes		
+META																service_version	true	1		
+META																service_kind	true	service		
+META																contract_version	true	0.1		
+META																oms_version	true	2.5		
+META																uci_schema_version	true	2.5		
+META																ams_gra_version	false			
+META	BEFORE															schema_root_version	true	old-root		
+COUNT	BEFORE															whole_schema_types	true	3		
+COUNT	BEFORE															whole_schema_messages	true	2		
+META	AFTER															schema_root_version	true	old-root		
+COUNT	AFTER															whole_schema_types	true	3		
+COUNT	AFTER															whole_schema_messages	true	2		
+COUNT																total_exchange_occurrences	true	1		
+COUNT																oms_exchange_occurrences	true	0		
+COUNT																excluded_non_oms_occurrences	true	1		
+COUNT																selected_unique_messages	true	0		
+COUNT																selected_present_in_after	true	0		
+COUNT																selected_missing_in_after	true	0		
+COUNT																direct_changed_selected_unique_messages	true	0		
+COUNT	BEFORE															exposed_selected_unique_messages	true	0		
+COUNT	BEFORE															selected_message_type_pairs	true	0		
+COUNT	AFTER															exposed_selected_unique_messages	true	0		
+COUNT	AFTER															selected_message_type_pairs	true	0		
+EMPTY_SELECTION																selection	true	No baseline-selected OMS messages; required inputs validated. Non-OMS exchanges were not assessed against UCI.		
+EMPTY_IMPACT																result	true	No service-selected static dependency impact found; this is not a compatibility or readiness verdict.		

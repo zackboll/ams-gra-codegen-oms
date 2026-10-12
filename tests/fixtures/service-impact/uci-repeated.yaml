@@ -1,0 +1,41 @@
+# Synthetic qualification selection, NOT an authoritative deployment contract.
+contract_version: "0.1"
+service:
+  name: Task 079 two-message repeated qualification
+  version: "1"
+  kind: service
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+functions:
+  - id: position
+    name: Position selection
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: receive
+        kind: oms_message
+        message: PositionReport
+        direction: input
+        mandate: mandatory
+        topic: qualification.position
+        timing: {kind: asynchronous}
+      - id: send
+        kind: oms_message
+        message: PositionReport
+        direction: output
+        mandate: optional
+        topic: qualification.position.output
+        timing: {kind: asynchronous}
+  - id: order
+    name: Order selection
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: receive
+        kind: oms_message
+        message: OrderOfBattle
+        direction: input
+        mandate: mandatory
+        topic: qualification.order
+        timing: {kind: asynchronous}
