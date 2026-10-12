@@ -1,0 +1,1467 @@
+{
+  "broker": {
+    "binary_sha256": "4a2e9ee872d1deaa1a6ce1a1494a2f601660eb57c0df28a447b28a08eba21c94",
+    "lock_sha256": "744f8610779d47502092d08e2cfe3e59b72deeb36199042b990db36195f090ac",
+    "source_sha": "e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b",
+    "toolchain": "[toolchain]\nchannel = \"1.95.0\"\ncomponents = [\"rustfmt\", \"clippy\"]\n"
+  },
+  "corpus": {
+    "bundles": {
+      "2.5-private": {
+        "manifest": {
+          "approval_provenance": {
+            "evidence": null,
+            "owner": null,
+            "scope": "research-only",
+            "status": "UNESTABLISHED"
+          },
+          "approved_concrete_qnames": [
+            "{https://www.vdl.afrl.af.mil/programs/oam}ForeignKeyMapML",
+            "{https://www.vdl.afrl.af.mil/programs/oam}Task074SyntheticML"
+          ],
+          "bundle_id": "task076-2.5-private",
+          "files": [
+            {
+              "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+              "path": "overlay.xsd",
+              "sha256": "d1fe33d5bfb48a4144839c148956bdfc00adb87d7595dff673e90f21dba46ed3"
+            },
+            {
+              "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+              "path": "UCI_MessageDefinitions_v2_5_0.xsd",
+              "sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27"
+            },
+            {
+              "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+              "path": "UCI_SecurityMarkings_v2_5_0.xsd",
+              "sha256": "4a8056f1503234d423a0c2495844ab65387febced62bea58b87d4f343e9e7a0b"
+            },
+            {
+              "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+              "path": "private-fields.xsd",
+              "sha256": "c415286063ccf3ac63dd27d5a260aea30707c65d3884a1c7fb85d652ef15e559"
+            }
+          ],
+          "public_uci_release": "2.5-private",
+          "root": "overlay.xsd",
+          "toolchain": {
+            "etree_sha256": "27d8b7e79e217e6946ad6871c13b6bdfbcf55a1a3f6b3ab590cb892fc3a5deca",
+            "libxml": "2.9.14",
+            "libxml_sha256": "8f2643af68a9eba917929046806dabd1848867068d0eee0f6799288a8e886963",
+            "lxml": "5.4.0"
+          },
+          "version": 1
+        }
+      },
+      "2.5-public": {
+        "manifest": {
+          "approval_provenance": {
+            "evidence": null,
+            "owner": null,
+            "scope": "research-only",
+            "status": "UNESTABLISHED"
+          },
+          "approved_concrete_qnames": [
+            "{https://www.vdl.afrl.af.mil/programs/oam}ForeignKeyMapML",
+            "{https://www.vdl.afrl.af.mil/programs/oam}Task074SyntheticML"
+          ],
+          "bundle_id": "task076-2.5-public",
+          "files": [
+            {
+              "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+              "path": "UCI_MessageDefinitions_v2_5_0.xsd",
+              "sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27"
+            },
+            {
+              "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+              "path": "UCI_SecurityMarkings_v2_5_0.xsd",
+              "sha256": "4a8056f1503234d423a0c2495844ab65387febced62bea58b87d4f343e9e7a0b"
+            }
+          ],
+          "public_uci_release": "2.5-public",
+          "root": "UCI_MessageDefinitions_v2_5_0.xsd",
+          "toolchain": {
+            "etree_sha256": "27d8b7e79e217e6946ad6871c13b6bdfbcf55a1a3f6b3ab590cb892fc3a5deca",
+            "libxml": "2.9.14",
+            "libxml_sha256": "8f2643af68a9eba917929046806dabd1848867068d0eee0f6799288a8e886963",
+            "lxml": "5.4.0"
+          },
+          "version": 1
+        }
+      },
+      "2.6-private": {
+        "manifest": {
+          "approval_provenance": {
+            "evidence": null,
+            "owner": null,
+            "scope": "research-only",
+            "status": "UNESTABLISHED"
+          },
+          "approved_concrete_qnames": [
+            "{https://www.vdl.afrl.af.mil/programs/oam}ForeignKeyMapML",
+            "{https://www.vdl.afrl.af.mil/programs/oam}Task074SyntheticML"
+          ],
+          "bundle_id": "task076-2.6-private",
+          "files": [
+            {
+              "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+              "path": "overlay.xsd",
+              "sha256": "140523337ea4ef579b10d0ba6abd7b797a869e47f0c703c42bf143c04ab29d86"
+            },
+            {
+              "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+              "path": "UCI_MessageDefinitions_v2_6_0.xsd",
+              "sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b"
+            },
+            {
+              "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+              "path": "UCI_SecurityMarkings_v2_6_0.xsd",
+              "sha256": "ee6e58d5db9fd80d526bc964b8244ec296d106301640d34c3cb2c5c00b710b88"
+            },
+            {
+              "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+              "path": "private-fields.xsd",
+              "sha256": "c415286063ccf3ac63dd27d5a260aea30707c65d3884a1c7fb85d652ef15e559"
+            }
+          ],
+          "public_uci_release": "2.6-private",
+          "root": "overlay.xsd",
+          "toolchain": {
+            "etree_sha256": "27d8b7e79e217e6946ad6871c13b6bdfbcf55a1a3f6b3ab590cb892fc3a5deca",
+            "libxml": "2.9.14",
+            "libxml_sha256": "8f2643af68a9eba917929046806dabd1848867068d0eee0f6799288a8e886963",
+            "lxml": "5.4.0"
+          },
+          "version": 1
+        }
+      },
+      "2.6-public": {
+        "manifest": {
+          "approval_provenance": {
+            "evidence": null,
+            "owner": null,
+            "scope": "research-only",
+            "status": "UNESTABLISHED"
+          },
+          "approved_concrete_qnames": [
+            "{https://www.vdl.afrl.af.mil/programs/oam}ForeignKeyMapML",
+            "{https://www.vdl.afrl.af.mil/programs/oam}Task074SyntheticML"
+          ],
+          "bundle_id": "task076-2.6-public",
+          "files": [
+            {
+              "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+              "path": "UCI_MessageDefinitions_v2_6_0.xsd",
+              "sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b"
+            },
+            {
+              "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+              "path": "UCI_SecurityMarkings_v2_6_0.xsd",
+              "sha256": "ee6e58d5db9fd80d526bc964b8244ec296d106301640d34c3cb2c5c00b710b88"
+            }
+          ],
+          "public_uci_release": "2.6-public",
+          "root": "UCI_MessageDefinitions_v2_6_0.xsd",
+          "toolchain": {
+            "etree_sha256": "27d8b7e79e217e6946ad6871c13b6bdfbcf55a1a3f6b3ab590cb892fc3a5deca",
+            "libxml": "2.9.14",
+            "libxml_sha256": "8f2643af68a9eba917929046806dabd1848867068d0eee0f6799288a8e886963",
+            "lxml": "5.4.0"
+          },
+          "version": 1
+        }
+      },
+      "private": {
+        "manifest": {
+          "approval_provenance": {
+            "evidence": null,
+            "owner": null,
+            "scope": "research-only",
+            "status": "UNESTABLISHED"
+          },
+          "approved_concrete_qnames": [
+            "{https://www.vdl.afrl.af.mil/programs/oam}Concrete",
+            "{https://www.vdl.afrl.af.mil/programs/oam}DerivedConcrete",
+            "{https://www.vdl.afrl.af.mil/programs/oam}Known",
+            "{https://www.vdl.afrl.af.mil/programs/oam}Private",
+            "{https://www.vdl.afrl.af.mil/programs/oam}Other",
+            "{urn:task076:private}Known"
+          ],
+          "bundle_id": "task076-private",
+          "files": [
+            {
+              "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+              "path": "private.xsd",
+              "sha256": "48ff016b140357dfa4a86a0161e5d068d8933229eaefb5e56fbee7521ea3b4ee"
+            },
+            {
+              "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+              "path": "public.xsd",
+              "sha256": "d070e3578a2543e54e6a993567c1c1a2c1d2699f41bda44cd9ab674865dcb3c0"
+            },
+            {
+              "namespace": "urn:task076:private",
+              "path": "foreign.xsd",
+              "sha256": "644f569f4908ec0d633662ed36fbbb9ba4a01c5197b1fcd8293082c2219fcb5d"
+            }
+          ],
+          "public_uci_release": "private",
+          "root": "private.xsd",
+          "toolchain": {
+            "etree_sha256": "27d8b7e79e217e6946ad6871c13b6bdfbcf55a1a3f6b3ab590cb892fc3a5deca",
+            "libxml": "2.9.14",
+            "libxml_sha256": "8f2643af68a9eba917929046806dabd1848867068d0eee0f6799288a8e886963",
+            "lxml": "5.4.0"
+          },
+          "version": 1
+        }
+      },
+      "public": {
+        "manifest": {
+          "approval_provenance": {
+            "evidence": null,
+            "owner": null,
+            "scope": "research-only",
+            "status": "UNESTABLISHED"
+          },
+          "approved_concrete_qnames": [
+            "{https://www.vdl.afrl.af.mil/programs/oam}Concrete",
+            "{https://www.vdl.afrl.af.mil/programs/oam}DerivedConcrete",
+            "{https://www.vdl.afrl.af.mil/programs/oam}Known",
+            "{https://www.vdl.afrl.af.mil/programs/oam}Private",
+            "{https://www.vdl.afrl.af.mil/programs/oam}Other",
+            "{urn:task076:private}Known"
+          ],
+          "bundle_id": "task076-public",
+          "files": [
+            {
+              "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+              "path": "public.xsd",
+              "sha256": "d070e3578a2543e54e6a993567c1c1a2c1d2699f41bda44cd9ab674865dcb3c0"
+            }
+          ],
+          "public_uci_release": "public",
+          "root": "public.xsd",
+          "toolchain": {
+            "etree_sha256": "27d8b7e79e217e6946ad6871c13b6bdfbcf55a1a3f6b3ab590cb892fc3a5deca",
+            "libxml": "2.9.14",
+            "libxml_sha256": "8f2643af68a9eba917929046806dabd1848867068d0eee0f6799288a8e886963",
+            "lxml": "5.4.0"
+          },
+          "version": 1
+        }
+      }
+    },
+    "cases": [
+      {
+        "asserted_concrete_qname": null,
+        "asserted_type": null,
+        "bundle": "public",
+        "bundle_sha256": "3326cfcdf513223c53636f3d1308e944bb2f0e1c70bc13f79516530716fde48a",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}Concrete",
+        "expected": "research-schema-valid-not-authorized",
+        "id": "concrete-implicit",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}ConcreteMessage",
+        "raw_path": "concrete-implicit.json",
+        "raw_sha256": "d7fab53c7cffcc2daa0346793285af639d2765591aaa5da6edc58b964120fbea",
+        "reference_expected": "valid-xml-only",
+        "reference_path": "concrete-implicit.xml",
+        "reference_sha256": "9b853b19ceb61295dfb8fa008277d8f1db32d7a1a0b738da8fcd30928f3b368c"
+      },
+      {
+        "asserted_concrete_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Concrete",
+        "asserted_type": "Concrete",
+        "bundle": "public",
+        "bundle_sha256": "3326cfcdf513223c53636f3d1308e944bb2f0e1c70bc13f79516530716fde48a",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}Concrete",
+        "expected": "research-schema-valid-not-authorized",
+        "id": "concrete-explicit",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}ConcreteMessage",
+        "raw_path": "concrete-explicit.json",
+        "raw_sha256": "0c09916c57d6209c339ef9c77a7881bcbc821c83d43f6ff60e243331c00e7b24",
+        "reference_expected": "valid-xml-only",
+        "reference_path": "concrete-explicit.xml",
+        "reference_sha256": "6b7baf7ff61712ac510da5a3a4530bc1f6be964e1a630dd68f43a41a74b77170"
+      },
+      {
+        "asserted_concrete_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Known",
+        "asserted_type": "Known",
+        "bundle": "public",
+        "bundle_sha256": "3326cfcdf513223c53636f3d1308e944bb2f0e1c70bc13f79516530716fde48a",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}Base",
+        "expected": "research-schema-valid-not-authorized",
+        "id": "known",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Message",
+        "raw_path": "known.json",
+        "raw_sha256": "488ec01079a8082581add2519c4ae344cc550bce339bba8835235f00eb4995c6",
+        "reference_expected": "valid-xml-only",
+        "reference_path": "known.xml",
+        "reference_sha256": "36fb6ac3821d621291fb079187cbefef659c6792ac7908798a0780d099f0e105"
+      },
+      {
+        "asserted_concrete_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Private",
+        "asserted_type": "Private",
+        "bundle": "private",
+        "bundle_sha256": "e12707c357855b1ef80ac95a663685b12f6fd50203c8026a49aa9473a2f42115",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}Base",
+        "expected": "research-schema-valid-not-authorized",
+        "id": "private",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Message",
+        "raw_path": "private.json",
+        "raw_sha256": "1b23414321060757850d5c4af52de729083759082d737f7f10918424c3eff49a",
+        "reference_expected": "valid-xml-only",
+        "reference_path": "private.xml",
+        "reference_sha256": "d4a3e07d4df6bbdc98257dbcf68d29bbbf20f887faf4e725a077521eeb3d5579"
+      },
+      {
+        "asserted_concrete_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Private",
+        "asserted_type": "Private",
+        "bundle": "public",
+        "bundle_sha256": "3326cfcdf513223c53636f3d1308e944bb2f0e1c70bc13f79516530716fde48a",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}Base",
+        "expected": "mapping:unresolved-type",
+        "id": "private-public",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Message",
+        "raw_path": "private-public.json",
+        "raw_sha256": "1b23414321060757850d5c4af52de729083759082d737f7f10918424c3eff49a",
+        "reference_expected": "invalid:SCHEMAV_CVC_ELT_4_2",
+        "reference_path": "private-public.xml",
+        "reference_sha256": "d4a3e07d4df6bbdc98257dbcf68d29bbbf20f887faf4e725a077521eeb3d5579"
+      },
+      {
+        "asserted_concrete_qname": null,
+        "asserted_type": null,
+        "bundle": "public",
+        "bundle_sha256": "3326cfcdf513223c53636f3d1308e944bb2f0e1c70bc13f79516530716fde48a",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}Base",
+        "expected": "mapping:missing-type",
+        "id": "missing",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Message",
+        "raw_path": "missing.json",
+        "raw_sha256": "08ec77c17e05e2139ab2128c43e2038f8f500b9de9bd52c6e7a7b7bc0f456d28",
+        "reference_expected": "invalid:SCHEMAV_CVC_TYPE_2",
+        "reference_path": "missing.xml",
+        "reference_sha256": "992022abf0a404e2d06d6c45fc89a24241a0a130856e3fc46fd7f6d932aa0ba4"
+      },
+      {
+        "asserted_concrete_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Missing",
+        "asserted_type": "Missing",
+        "bundle": "public",
+        "bundle_sha256": "3326cfcdf513223c53636f3d1308e944bb2f0e1c70bc13f79516530716fde48a",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}Base",
+        "expected": "mapping:unresolved-type",
+        "id": "unknown",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Message",
+        "raw_path": "unknown.json",
+        "raw_sha256": "b963000e85d60b9a8b10a2bd66b0ce36b713d34897603c796e464cdf562fa524",
+        "reference_expected": "invalid:SCHEMAV_CVC_ELT_4_2",
+        "reference_path": "unknown.xml",
+        "reference_sha256": "3a8e15b73fd0f9015fcc1a7b89f352f527e008224c011fc269e3c746b9721fec"
+      },
+      {
+        "asserted_concrete_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Base",
+        "asserted_type": "Base",
+        "bundle": "public",
+        "bundle_sha256": "3326cfcdf513223c53636f3d1308e944bb2f0e1c70bc13f79516530716fde48a",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}Base",
+        "expected": "mapping:abstract-type",
+        "id": "abstract",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Message",
+        "raw_path": "abstract.json",
+        "raw_sha256": "7984666cf71719b990f3793b6832e884ed0919431ee4bac573e86ecf2f9c2328",
+        "reference_expected": "invalid:SCHEMAV_CVC_TYPE_2",
+        "reference_path": "abstract.xml",
+        "reference_sha256": "ff16928f713b3a5684726693b42baa936acdb0c86e435f8ee7db578931855eb3"
+      },
+      {
+        "asserted_concrete_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Other",
+        "asserted_type": "Other",
+        "bundle": "public",
+        "bundle_sha256": "3326cfcdf513223c53636f3d1308e944bb2f0e1c70bc13f79516530716fde48a",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}Base",
+        "expected": "mapping:unrelated-type",
+        "id": "unrelated",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Message",
+        "raw_path": "unrelated.json",
+        "raw_sha256": "ab28f258e7800db903ddcf1ec419c15a90d56cbd625ee6eb79c6d14afad55033",
+        "reference_expected": "invalid:SCHEMAV_CVC_ELT_4_3",
+        "reference_path": "unrelated.xml",
+        "reference_sha256": "42c43cc23bce6b2f3294fda6e32c706b0c2a84e439ea295e06669798fb44ae4f"
+      },
+      {
+        "asserted_concrete_qname": null,
+        "asserted_type": "{bad",
+        "bundle": "public",
+        "bundle_sha256": "3326cfcdf513223c53636f3d1308e944bb2f0e1c70bc13f79516530716fde48a",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}Base",
+        "expected": "shape:qname",
+        "id": "malformed",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Message",
+        "raw_path": "malformed.json",
+        "raw_sha256": "38d4d2fb76b0ccc287089594dd28c1910ea85795ccf145d532ad64636f1fdb47",
+        "reference_expected": null,
+        "reference_path": null,
+        "reference_sha256": null
+      },
+      {
+        "asserted_concrete_qname": null,
+        "asserted_type": 17,
+        "bundle": "public",
+        "bundle_sha256": "3326cfcdf513223c53636f3d1308e944bb2f0e1c70bc13f79516530716fde48a",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}Base",
+        "expected": "shape:qname-token",
+        "id": "nonstring",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Message",
+        "raw_path": "nonstring.json",
+        "raw_sha256": "ba10653bc8f099ef08baf2941fcf638043f64a8c6ed1d458aca3bccff4d79697",
+        "reference_expected": null,
+        "reference_path": null,
+        "reference_sha256": null
+      },
+      {
+        "asserted_concrete_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Known",
+        "asserted_type": "Known",
+        "bundle": "public",
+        "bundle_sha256": "3326cfcdf513223c53636f3d1308e944bb2f0e1c70bc13f79516530716fde48a",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}Base",
+        "expected": "shape:number-token",
+        "id": "bad-inherited",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Message",
+        "raw_path": "bad-inherited.json",
+        "raw_sha256": "e3ea3df6348b96c505b370c33e2f91e847ef9c6d7fd26b98a3b3efdbbd3f11c5",
+        "reference_expected": "invalid:SCHEMAV_CVC_DATATYPE_VALID_1_2_1",
+        "reference_path": "bad-inherited.xml",
+        "reference_sha256": "a6e1e8c2ef021204215f42b220a4724719e951f1e256124484af6cb0365b9489"
+      },
+      {
+        "asserted_concrete_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Private",
+        "asserted_type": "Private",
+        "bundle": "private",
+        "bundle_sha256": "e12707c357855b1ef80ac95a663685b12f6fd50203c8026a49aa9473a2f42115",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}Base",
+        "expected": "xsd:invalid:SCHEMAV_CVC_PATTERN_VALID",
+        "id": "bad-private",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Message",
+        "raw_path": "bad-private.json",
+        "raw_sha256": "7e53fbd31ddcc3e6e6771f9765cb55124417afacd837fff99592c7a65be05f9b",
+        "reference_expected": "invalid:SCHEMAV_CVC_PATTERN_VALID",
+        "reference_path": "bad-private.xml",
+        "reference_sha256": "0e068cfa4980ca2fb1315a0a05614403a43c0c1a02541b415b04e0dd1cdfefac"
+      },
+      {
+        "asserted_concrete_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Known",
+        "asserted_type": "Known",
+        "bundle": "public",
+        "bundle_sha256": "3326cfcdf513223c53636f3d1308e944bb2f0e1c70bc13f79516530716fde48a",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}Base",
+        "expected": "shape:unknown-member",
+        "id": "unexpected",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Message",
+        "raw_path": "unexpected.json",
+        "raw_sha256": "e9e95f2c2b3a738bfa8ef327d9c2393fdc65ae88a3a5eade24ea34791fd02188",
+        "reference_expected": "invalid:SCHEMAV_ELEMENT_CONTENT",
+        "reference_path": "unexpected.xml",
+        "reference_sha256": "438ee7ee6f89b17c03be5001212878333a373324c5d249f724b207a1e6660047"
+      },
+      {
+        "asserted_concrete_qname": "{urn:task076:private}Known",
+        "asserted_type": "{urn:task076:private}Known",
+        "bundle": "private",
+        "bundle_sha256": "e12707c357855b1ef80ac95a663685b12f6fd50203c8026a49aa9473a2f42115",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}Base",
+        "expected": "research-schema-valid-not-authorized",
+        "id": "foreign-same-local",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Message",
+        "raw_path": "foreign-same-local.json",
+        "raw_sha256": "5b55fafcfe4f412d60bcd653c33ce5d3b853a345588f3c77aa03ccfc0b92aec5",
+        "reference_expected": "valid-xml-only",
+        "reference_path": "foreign-same-local.xml",
+        "reference_sha256": "670154d08f8510d70932fc63736668c65e0e058589240544d6477cb15a1ef5fc"
+      },
+      {
+        "asserted_concrete_qname": "{https://www.vdl.afrl.af.mil/programs/oam}DerivedConcrete",
+        "asserted_type": "DerivedConcrete",
+        "bundle": "public",
+        "bundle_sha256": "3326cfcdf513223c53636f3d1308e944bb2f0e1c70bc13f79516530716fde48a",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}Concrete",
+        "expected": "xsd:invalid:SCHEMAV_CVC_ELT_4_3",
+        "id": "blocked",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Blocked",
+        "raw_path": "blocked.json",
+        "raw_sha256": "55238a9ee0c7121ebcf064c3bcd07b76c0d28ea7cd7e43dca9933cbc15074878",
+        "reference_expected": "invalid:SCHEMAV_CVC_ELT_4_3",
+        "reference_path": "blocked.xml",
+        "reference_sha256": "18fa6ab73c4db71a79297206fef86abeb39cb316d6f4993162990a4220806c05"
+      },
+      {
+        "asserted_concrete_qname": null,
+        "asserted_type": null,
+        "bundle": "public",
+        "bundle_sha256": "3326cfcdf513223c53636f3d1308e944bb2f0e1c70bc13f79516530716fde48a",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}Concrete",
+        "expected": "research-schema-valid-not-authorized",
+        "id": "blocked-missing",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Blocked",
+        "raw_path": "blocked-missing.json",
+        "raw_sha256": "c050f2a827c73e4b98c9f1195794eb49663e9631fd65e63dc9b525a7248cfab1",
+        "reference_expected": "valid-xml-only",
+        "reference_path": "blocked-missing.xml",
+        "reference_sha256": "338319eacb69097c0ef7ce536688fc3f31040ac9a961288ffb2b61e5aca566e3"
+      },
+      {
+        "asserted_concrete_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Known",
+        "asserted_type": "Known",
+        "bundle": "public",
+        "bundle_sha256": "3326cfcdf513223c53636f3d1308e944bb2f0e1c70bc13f79516530716fde48a",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}Base",
+        "discriminator_tokens_in_order": [
+          "Other",
+          "Known"
+        ],
+        "expected": "policy:duplicate-name",
+        "id": "duplicate",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Message",
+        "raw_path": "duplicate.json",
+        "raw_sha256": "8bba423ad459790d95cc393fd07db7f0af8ea5569d190298413afa255a47320d",
+        "reference_expected": null,
+        "reference_path": null,
+        "reference_sha256": null
+      },
+      {
+        "asserted_concrete_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Known",
+        "asserted_type": "Known",
+        "bundle": "public",
+        "bundle_sha256": "3326cfcdf513223c53636f3d1308e944bb2f0e1c70bc13f79516530716fde48a",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}Base",
+        "discriminator_tokens_in_order": [
+          "Other",
+          "Known"
+        ],
+        "expected": "policy:duplicate-name",
+        "id": "duplicate-escaped",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Message",
+        "raw_path": "duplicate-escaped.json",
+        "raw_sha256": "27606be7580a021f38fd7a1de4aed74f81dc940eeb6614c701cbfe87b2581939",
+        "reference_expected": null,
+        "reference_path": null,
+        "reference_sha256": null
+      },
+      {
+        "asserted_concrete_qname": null,
+        "asserted_type": null,
+        "bundle": "public",
+        "bundle_sha256": "3326cfcdf513223c53636f3d1308e944bb2f0e1c70bc13f79516530716fde48a",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}Base",
+        "expected": "mapping:missing-type",
+        "id": "erased-diagnostic",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Message",
+        "raw_path": "erased-diagnostic.json",
+        "raw_sha256": "f4a70c9b467c2c7ebfa8859bcc32b99660c4b61a82116ccf954847a37ccc7dd6",
+        "reference_expected": "invalid:SCHEMAV_CVC_TYPE_2",
+        "reference_path": "erased-diagnostic.xml",
+        "reference_sha256": "543dabf62a21409557d1e451a39070a0c237777c1e096593f1e85443321b709e"
+      },
+      {
+        "asserted_concrete_qname": "{https://www.vdl.afrl.af.mil/programs/oam}ForeignKeyMapML",
+        "asserted_type": "ForeignKeyMapML",
+        "bundle": "2.5-public",
+        "bundle_sha256": "99be4591041fdc5e8cb121823e59d09b619b43fe636155c1e4e6324bd7c60ed0",
+        "declared_position_type": "{https://www.vdl.afrl.af.mil/programs/oam}ManagedListBaseType",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}DataRecordListManagementRequestMT",
+        "discriminator_position": "MessageData.AddRecord",
+        "expected": "research-schema-valid-not-authorized",
+        "id": "uci-2.5-known-add",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}DataRecordListManagementRequest",
+        "raw_path": "uci-2.5-known-add.json",
+        "raw_sha256": "341e1501af235652b23b468ea285982ed244d06ef131169459632a05494ebd03",
+        "reference_expected": "valid-xml-only",
+        "reference_path": "uci-2.5-known-add.xml",
+        "reference_sha256": "b106a00aef3d2a2e94e14e7a83d979e3caaffefc2d855fb6b293d8bec1bebc29"
+      },
+      {
+        "asserted_concrete_qname": "{https://www.vdl.afrl.af.mil/programs/oam}ForeignKeyMapML",
+        "asserted_type": "ForeignKeyMapML",
+        "bundle": "2.5-public",
+        "bundle_sha256": "99be4591041fdc5e8cb121823e59d09b619b43fe636155c1e4e6324bd7c60ed0",
+        "declared_position_type": "{https://www.vdl.afrl.af.mil/programs/oam}ManagedListBaseType",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}DataRecordListManagementRequestMT",
+        "discriminator_position": "MessageData.DeleteRecord",
+        "expected": "research-schema-valid-not-authorized",
+        "id": "uci-2.5-known-delete",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}DataRecordListManagementRequest",
+        "raw_path": "uci-2.5-known-delete.json",
+        "raw_sha256": "00a3a98be987be93fc963ff6e337974ebe9da5daf64b51d0c8e73879bdfd19ed",
+        "reference_expected": "valid-xml-only",
+        "reference_path": "uci-2.5-known-delete.xml",
+        "reference_sha256": "b5ef6d069454ebf59c551953ec0d69e38e41a19bb808fd4111b8a7bc90a799b2"
+      },
+      {
+        "asserted_concrete_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Task074SyntheticML",
+        "asserted_type": "Task074SyntheticML",
+        "bundle": "2.5-private",
+        "bundle_sha256": "20f700ff9ed3379d49641a513e23d6dc929ad66126a89336f6c7b4196f44e570",
+        "declared_position_type": "{https://www.vdl.afrl.af.mil/programs/oam}ManagedListBaseType",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}DataRecordListManagementRequestMT",
+        "discriminator_position": "MessageData.AddRecord",
+        "expected": "research-schema-valid-not-authorized",
+        "id": "uci-2.5-private-add",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}DataRecordListManagementRequest",
+        "raw_path": "uci-2.5-private-add.json",
+        "raw_sha256": "8d855ff0ddfff7c8c95b64019eac99c0efff0769e005ec4a2e533387db773592",
+        "reference_expected": "valid-xml-only",
+        "reference_path": "uci-2.5-private-add.xml",
+        "reference_sha256": "e7d8cef9fa139e0aaa31706b136deddee30425baf5340aa1415971018610c260"
+      },
+      {
+        "asserted_concrete_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Task074SyntheticML",
+        "asserted_type": "Task074SyntheticML",
+        "bundle": "2.5-private",
+        "bundle_sha256": "20f700ff9ed3379d49641a513e23d6dc929ad66126a89336f6c7b4196f44e570",
+        "declared_position_type": "{https://www.vdl.afrl.af.mil/programs/oam}ManagedListBaseType",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}DataRecordListManagementRequestMT",
+        "discriminator_position": "MessageData.DeleteRecord",
+        "expected": "research-schema-valid-not-authorized",
+        "id": "uci-2.5-private-delete",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}DataRecordListManagementRequest",
+        "raw_path": "uci-2.5-private-delete.json",
+        "raw_sha256": "c75dbda5f8e7389e00389ac79a368cd8f45ada72ab90ef766eb44a9786cdddab",
+        "reference_expected": "valid-xml-only",
+        "reference_path": "uci-2.5-private-delete.xml",
+        "reference_sha256": "3d43a013060d40f9f84818de4bf6d338988b83f034c003d78e958b7e714d203c"
+      },
+      {
+        "asserted_concrete_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Task074SyntheticML",
+        "asserted_type": "Task074SyntheticML",
+        "bundle": "2.5-public",
+        "bundle_sha256": "99be4591041fdc5e8cb121823e59d09b619b43fe636155c1e4e6324bd7c60ed0",
+        "declared_position_type": "{https://www.vdl.afrl.af.mil/programs/oam}ManagedListBaseType",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}DataRecordListManagementRequestMT",
+        "discriminator_position": "MessageData.AddRecord",
+        "expected": "mapping:unresolved-type",
+        "id": "uci-2.5-private-public",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}DataRecordListManagementRequest",
+        "raw_path": "uci-2.5-private-public.json",
+        "raw_sha256": "8d855ff0ddfff7c8c95b64019eac99c0efff0769e005ec4a2e533387db773592",
+        "reference_expected": "invalid:SCHEMAV_CVC_ELT_4_2",
+        "reference_path": "uci-2.5-private-public.xml",
+        "reference_sha256": "e7d8cef9fa139e0aaa31706b136deddee30425baf5340aa1415971018610c260"
+      },
+      {
+        "asserted_concrete_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Task074SyntheticML",
+        "asserted_type": "Task074SyntheticML",
+        "bundle": "2.5-private",
+        "bundle_sha256": "20f700ff9ed3379d49641a513e23d6dc929ad66126a89336f6c7b4196f44e570",
+        "declared_position_type": "{https://www.vdl.afrl.af.mil/programs/oam}ManagedListBaseType",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}DataRecordListManagementRequestMT",
+        "discriminator_position": "MessageData.AddRecord",
+        "expected": "xsd:invalid:SCHEMAV_CVC_ENUMERATION_VALID",
+        "id": "uci-2.5-bad-state",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}DataRecordListManagementRequest",
+        "raw_path": "uci-2.5-bad-state.json",
+        "raw_sha256": "65c1ec99b0a53f559c9b77700d0568a3bb055f26a18b453856d87b98b43badf5",
+        "reference_expected": "invalid:SCHEMAV_CVC_ENUMERATION_VALID",
+        "reference_path": "uci-2.5-bad-state.xml",
+        "reference_sha256": "15e3bf3042ee70064a51b17d2a5983ef8283f3fdbc6ce7160d8f4a6eae9ea5ca"
+      },
+      {
+        "asserted_concrete_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Task074SyntheticML",
+        "asserted_type": "Task074SyntheticML",
+        "bundle": "2.5-private",
+        "bundle_sha256": "20f700ff9ed3379d49641a513e23d6dc929ad66126a89336f6c7b4196f44e570",
+        "declared_position_type": "{https://www.vdl.afrl.af.mil/programs/oam}ManagedListBaseType",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}DataRecordListManagementRequestMT",
+        "discriminator_position": "MessageData.AddRecord",
+        "expected": "xsd:invalid:SCHEMAV_CVC_PATTERN_VALID",
+        "id": "uci-2.5-bad-code",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}DataRecordListManagementRequest",
+        "raw_path": "uci-2.5-bad-code.json",
+        "raw_sha256": "4a906152a5290e64919f851cbc3a19723e04dd4d0edc274d5a3e6875b102fccb",
+        "reference_expected": "invalid:SCHEMAV_CVC_PATTERN_VALID",
+        "reference_path": "uci-2.5-bad-code.xml",
+        "reference_sha256": "a8ca1f711194480a2000a7bd3a6fe095cb0a5d1a2dd34a10f995f4d74a731dfc"
+      },
+      {
+        "asserted_concrete_qname": "{https://www.vdl.afrl.af.mil/programs/oam}ForeignKeyMapML",
+        "asserted_type": "ForeignKeyMapML",
+        "bundle": "2.6-public",
+        "bundle_sha256": "3dec55b56e3dc44217bd8f0aff669782bb8464c27dfc98cf990db53c4057f734",
+        "declared_position_type": "{https://www.vdl.afrl.af.mil/programs/oam}ManagedListBaseType",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}DataRecordListManagementRequestMT",
+        "discriminator_position": "MessageData.AddRecord",
+        "expected": "research-schema-valid-not-authorized",
+        "id": "uci-2.6-known-add",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}DataRecordListManagementRequest",
+        "raw_path": "uci-2.6-known-add.json",
+        "raw_sha256": "08149bafe7792a4ae158fe415bde174e85985ef35708157d72a922b8c9c1e1f8",
+        "reference_expected": "valid-xml-only",
+        "reference_path": "uci-2.6-known-add.xml",
+        "reference_sha256": "ab460f43e3b5aeafb30d8e8f2fd97b158503d1138c8a7aba82ef9d238444e02e"
+      },
+      {
+        "asserted_concrete_qname": "{https://www.vdl.afrl.af.mil/programs/oam}ForeignKeyMapML",
+        "asserted_type": "ForeignKeyMapML",
+        "bundle": "2.6-public",
+        "bundle_sha256": "3dec55b56e3dc44217bd8f0aff669782bb8464c27dfc98cf990db53c4057f734",
+        "declared_position_type": "{https://www.vdl.afrl.af.mil/programs/oam}ManagedListBaseType",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}DataRecordListManagementRequestMT",
+        "discriminator_position": "MessageData.DeleteRecord",
+        "expected": "research-schema-valid-not-authorized",
+        "id": "uci-2.6-known-delete",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}DataRecordListManagementRequest",
+        "raw_path": "uci-2.6-known-delete.json",
+        "raw_sha256": "b05e49ce990f3a6578c54085d6a3e293c419ca47e1f94c49da33fceb336f6569",
+        "reference_expected": "valid-xml-only",
+        "reference_path": "uci-2.6-known-delete.xml",
+        "reference_sha256": "b7071943868a559eab38e15f437c7ae6f29dd17bcc8e8c350d918b27ac77fc44"
+      },
+      {
+        "asserted_concrete_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Task074SyntheticML",
+        "asserted_type": "Task074SyntheticML",
+        "bundle": "2.6-private",
+        "bundle_sha256": "f969b08bd53f8f7ba4d25500cad5b695090cbb156d0103b4ca899f06fee31729",
+        "declared_position_type": "{https://www.vdl.afrl.af.mil/programs/oam}ManagedListBaseType",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}DataRecordListManagementRequestMT",
+        "discriminator_position": "MessageData.AddRecord",
+        "expected": "research-schema-valid-not-authorized",
+        "id": "uci-2.6-private-add",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}DataRecordListManagementRequest",
+        "raw_path": "uci-2.6-private-add.json",
+        "raw_sha256": "429b946ea479bb2fd9eb69efef22154b1f86273d941438ff29d01f1016dc28a6",
+        "reference_expected": "valid-xml-only",
+        "reference_path": "uci-2.6-private-add.xml",
+        "reference_sha256": "adebcaf95e1aee538844532a575d3350c6cb23bb3ad5354c4259fa3deedcf2be"
+      },
+      {
+        "asserted_concrete_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Task074SyntheticML",
+        "asserted_type": "Task074SyntheticML",
+        "bundle": "2.6-private",
+        "bundle_sha256": "f969b08bd53f8f7ba4d25500cad5b695090cbb156d0103b4ca899f06fee31729",
+        "declared_position_type": "{https://www.vdl.afrl.af.mil/programs/oam}ManagedListBaseType",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}DataRecordListManagementRequestMT",
+        "discriminator_position": "MessageData.DeleteRecord",
+        "expected": "research-schema-valid-not-authorized",
+        "id": "uci-2.6-private-delete",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}DataRecordListManagementRequest",
+        "raw_path": "uci-2.6-private-delete.json",
+        "raw_sha256": "ad546fff1ac13aaae9fc1bd6c040d01cf1b9cefcc8a8711c9a82de9ffa0bb5b1",
+        "reference_expected": "valid-xml-only",
+        "reference_path": "uci-2.6-private-delete.xml",
+        "reference_sha256": "a2033cc6a82aa8f7e534c1515b87046dcd04fb33779b7ccf74b17cab7ac04d6b"
+      },
+      {
+        "asserted_concrete_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Task074SyntheticML",
+        "asserted_type": "Task074SyntheticML",
+        "bundle": "2.6-public",
+        "bundle_sha256": "3dec55b56e3dc44217bd8f0aff669782bb8464c27dfc98cf990db53c4057f734",
+        "declared_position_type": "{https://www.vdl.afrl.af.mil/programs/oam}ManagedListBaseType",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}DataRecordListManagementRequestMT",
+        "discriminator_position": "MessageData.AddRecord",
+        "expected": "mapping:unresolved-type",
+        "id": "uci-2.6-private-public",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}DataRecordListManagementRequest",
+        "raw_path": "uci-2.6-private-public.json",
+        "raw_sha256": "429b946ea479bb2fd9eb69efef22154b1f86273d941438ff29d01f1016dc28a6",
+        "reference_expected": "invalid:SCHEMAV_CVC_ELT_4_2",
+        "reference_path": "uci-2.6-private-public.xml",
+        "reference_sha256": "adebcaf95e1aee538844532a575d3350c6cb23bb3ad5354c4259fa3deedcf2be"
+      },
+      {
+        "asserted_concrete_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Task074SyntheticML",
+        "asserted_type": "Task074SyntheticML",
+        "bundle": "2.6-private",
+        "bundle_sha256": "f969b08bd53f8f7ba4d25500cad5b695090cbb156d0103b4ca899f06fee31729",
+        "declared_position_type": "{https://www.vdl.afrl.af.mil/programs/oam}ManagedListBaseType",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}DataRecordListManagementRequestMT",
+        "discriminator_position": "MessageData.AddRecord",
+        "expected": "xsd:invalid:SCHEMAV_CVC_ENUMERATION_VALID",
+        "id": "uci-2.6-bad-state",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}DataRecordListManagementRequest",
+        "raw_path": "uci-2.6-bad-state.json",
+        "raw_sha256": "6062a3e204b5e417130c99ca47b90753bc7625689b85133e7be21759c9801e42",
+        "reference_expected": "invalid:SCHEMAV_CVC_ENUMERATION_VALID",
+        "reference_path": "uci-2.6-bad-state.xml",
+        "reference_sha256": "2858c1680634c8d1ccf62a7b89febc7301692fd92b7d1c9e4a4cfb7758b2ef89"
+      },
+      {
+        "asserted_concrete_qname": "{https://www.vdl.afrl.af.mil/programs/oam}Task074SyntheticML",
+        "asserted_type": "Task074SyntheticML",
+        "bundle": "2.6-private",
+        "bundle_sha256": "f969b08bd53f8f7ba4d25500cad5b695090cbb156d0103b4ca899f06fee31729",
+        "declared_position_type": "{https://www.vdl.afrl.af.mil/programs/oam}ManagedListBaseType",
+        "declared_type": "{https://www.vdl.afrl.af.mil/programs/oam}DataRecordListManagementRequestMT",
+        "discriminator_position": "MessageData.AddRecord",
+        "expected": "xsd:invalid:SCHEMAV_CVC_PATTERN_VALID",
+        "id": "uci-2.6-bad-code",
+        "message_qname": "{https://www.vdl.afrl.af.mil/programs/oam}DataRecordListManagementRequest",
+        "raw_path": "uci-2.6-bad-code.json",
+        "raw_sha256": "69d970791c1202014a7319fa9c263e367d33571b616e67e31b1330067b6b3fa8",
+        "reference_expected": "invalid:SCHEMAV_CVC_PATTERN_VALID",
+        "reference_path": "uci-2.6-bad-code.xml",
+        "reference_sha256": "9235f58370541716c7313deb8fcc41f3100022ec78ba7842c2d887ca21d71d9e"
+      }
+    ],
+    "version": 1
+  },
+  "disposition": "POLYMORPHIC_COMPATIBILITY_PARTIALLY_CHARACTERIZED",
+  "results": [
+    {
+      "id": "concrete-implicit",
+      "mapper": "research-schema-valid-not-authorized",
+      "reference": "valid-xml-only",
+      "sleet": {
+        "control_delivered": true,
+        "payload": {
+          "ConcreteMessage": {
+            "Count": 1
+          }
+        },
+        "stage": "delivered"
+      }
+    },
+    {
+      "id": "concrete-explicit",
+      "mapper": "research-schema-valid-not-authorized",
+      "reference": "valid-xml-only",
+      "sleet": {
+        "control_delivered": true,
+        "payload": {
+          "ConcreteMessage": {
+            "$type": "Concrete",
+            "Count": 1
+          }
+        },
+        "stage": "delivered"
+      }
+    },
+    {
+      "id": "known",
+      "mapper": "research-schema-valid-not-authorized",
+      "reference": "valid-xml-only",
+      "sleet": {
+        "control_delivered": true,
+        "payload": {
+          "Message": {
+            "$type": "Known",
+            "Code": "AB",
+            "Count": 1
+          }
+        },
+        "stage": "delivered"
+      }
+    },
+    {
+      "id": "private",
+      "mapper": "research-schema-valid-not-authorized",
+      "reference": "valid-xml-only",
+      "sleet": {
+        "control_delivered": true,
+        "payload": {
+          "Message": {
+            "$type": "Private",
+            "Count": 1,
+            "Secret": "AB"
+          }
+        },
+        "stage": "delivered"
+      }
+    },
+    {
+      "id": "private-public",
+      "mapper": "mapping:unresolved-type",
+      "reference": "invalid:SCHEMAV_CVC_ELT_4_2",
+      "sleet": {
+        "control_delivered": true,
+        "details": "-ERR Invalid-Message schema validation failed: InvalidPolymorphicType { path: \"Message\", type_name: \"Private\" }",
+        "stage": "broker-message-validation"
+      }
+    },
+    {
+      "id": "missing",
+      "mapper": "mapping:missing-type",
+      "reference": "invalid:SCHEMAV_CVC_TYPE_2",
+      "sleet": {
+        "control_delivered": true,
+        "details": "-ERR Invalid-Message schema validation failed: AbstractTypeInstantiation { path: \"Message\", type_name: \"Base\" }",
+        "stage": "broker-message-validation"
+      }
+    },
+    {
+      "id": "unknown",
+      "mapper": "mapping:unresolved-type",
+      "reference": "invalid:SCHEMAV_CVC_ELT_4_2",
+      "sleet": {
+        "control_delivered": true,
+        "details": "-ERR Invalid-Message schema validation failed: InvalidPolymorphicType { path: \"Message\", type_name: \"Missing\" }",
+        "stage": "broker-message-validation"
+      }
+    },
+    {
+      "id": "abstract",
+      "mapper": "mapping:abstract-type",
+      "reference": "invalid:SCHEMAV_CVC_TYPE_2",
+      "sleet": {
+        "control_delivered": true,
+        "details": "-ERR Invalid-Message schema validation failed: AbstractTypeInstantiation { path: \"Message\", type_name: \"Base\" }",
+        "stage": "broker-message-validation"
+      }
+    },
+    {
+      "id": "unrelated",
+      "mapper": "mapping:unrelated-type",
+      "reference": "invalid:SCHEMAV_CVC_ELT_4_3",
+      "sleet": {
+        "control_delivered": true,
+        "details": "-ERR Invalid-Message schema validation failed: NotDerivedType { path: \"Message\", base: \"Base\", actual: \"Other\" }",
+        "stage": "broker-message-validation"
+      }
+    },
+    {
+      "id": "malformed",
+      "mapper": "shape:qname",
+      "reference": null,
+      "sleet": {
+        "control_delivered": true,
+        "details": "-ERR Invalid-Message schema validation failed: InvalidPolymorphicType { path: \"Message\", type_name: \"{bad\" }",
+        "stage": "broker-message-validation"
+      }
+    },
+    {
+      "id": "nonstring",
+      "mapper": "shape:qname-token",
+      "reference": null,
+      "sleet": {
+        "control_delivered": true,
+        "details": "-ERR Invalid-Message schema validation failed: InvalidPolymorphicType { path: \"Message\", type_name: \"$type\" }",
+        "stage": "broker-message-validation"
+      }
+    },
+    {
+      "id": "bad-inherited",
+      "mapper": "shape:number-token",
+      "reference": "invalid:SCHEMAV_CVC_DATATYPE_VALID_1_2_1",
+      "sleet": {
+        "control_delivered": true,
+        "details": "-ERR Invalid-Message schema validation failed: TypeMismatch { path: \"Message.Count\", expected: \"integer\", found: \"string\" }",
+        "stage": "broker-message-validation"
+      }
+    },
+    {
+      "id": "bad-private",
+      "mapper": "xsd:invalid:SCHEMAV_CVC_PATTERN_VALID",
+      "reference": "invalid:SCHEMAV_CVC_PATTERN_VALID",
+      "sleet": {
+        "control_delivered": true,
+        "details": "-ERR Invalid-Message schema validation failed: FacetViolation { path: \"Message.Secret\", facet: \"pattern\", detail: \"value '12' does not match pattern(s): [A-Z]{2}\" }",
+        "stage": "broker-message-validation"
+      }
+    },
+    {
+      "id": "unexpected",
+      "mapper": "shape:unknown-member",
+      "reference": "invalid:SCHEMAV_ELEMENT_CONTENT",
+      "sleet": {
+        "control_delivered": true,
+        "details": "-ERR Invalid-Message schema validation failed: UnknownMember { path: \"Message\", member: \"Extra\" }",
+        "stage": "broker-message-validation"
+      }
+    },
+    {
+      "id": "foreign-same-local",
+      "mapper": "research-schema-valid-not-authorized",
+      "reference": "valid-xml-only",
+      "sleet": {
+        "control_delivered": true,
+        "details": "-ERR Invalid-Message schema validation failed: InvalidPolymorphicType { path: \"Message\", type_name: \"{urn:task076:private}Known\" }",
+        "stage": "broker-message-validation"
+      }
+    },
+    {
+      "id": "blocked",
+      "mapper": "xsd:invalid:SCHEMAV_CVC_ELT_4_3",
+      "reference": "invalid:SCHEMAV_CVC_ELT_4_3",
+      "sleet": {
+        "control_delivered": true,
+        "payload": {
+          "Blocked": {
+            "$type": "DerivedConcrete",
+            "Code": "AB",
+            "Count": 1
+          }
+        },
+        "stage": "delivered"
+      }
+    },
+    {
+      "id": "blocked-missing",
+      "mapper": "research-schema-valid-not-authorized",
+      "reference": "valid-xml-only",
+      "sleet": {
+        "control_delivered": true,
+        "payload": {
+          "Blocked": {
+            "Count": 1
+          }
+        },
+        "stage": "delivered"
+      }
+    },
+    {
+      "id": "duplicate",
+      "mapper": "policy:duplicate-name",
+      "reference": null,
+      "sleet": {
+        "control_delivered": true,
+        "payload": {
+          "Message": {
+            "$type": "Known",
+            "Code": "AB",
+            "Count": 1
+          }
+        },
+        "stage": "delivered"
+      }
+    },
+    {
+      "id": "duplicate-escaped",
+      "mapper": "policy:duplicate-name",
+      "reference": null,
+      "sleet": {
+        "control_delivered": true,
+        "payload": {
+          "Message": {
+            "$type": "Known",
+            "Code": "AB",
+            "Count": 1
+          }
+        },
+        "stage": "delivered"
+      }
+    },
+    {
+      "id": "erased-diagnostic",
+      "mapper": "mapping:missing-type",
+      "reference": "invalid:SCHEMAV_CVC_TYPE_2",
+      "sleet": {
+        "control_delivered": true,
+        "details": "-ERR Invalid-Message schema validation failed: AbstractTypeInstantiation { path: \"Message\", type_name: \"Base\" }",
+        "stage": "broker-message-validation"
+      }
+    },
+    {
+      "id": "uci-2.5-known-add",
+      "mapper": "research-schema-valid-not-authorized",
+      "reference": "valid-xml-only",
+      "sleet": {
+        "control_delivered": true,
+        "payload": {
+          "DataRecordListManagementRequest": {
+            "MessageData": {
+              "AddRecord": {
+                "$type": "ForeignKeyMapML"
+              },
+              "DataRecordListID": {
+                "UUID": "697eba54-6f37-11ed-a1eb-0242ac120002"
+              },
+              "RequestID": {
+                "UUID": "697eba54-6f37-11ed-a1eb-0242ac120002"
+              },
+              "RequestState": "NEW"
+            },
+            "MessageHeader": {
+              "Mode": "SIMULATION",
+              "SchemaVersion": "002.5.0",
+              "SystemID": {
+                "UUID": "697eba54-6f37-11ed-a1eb-0242ac120002"
+              },
+              "Timestamp": "2026-10-08T00:00:00Z"
+            },
+            "SecurityInformation": {
+              "Classification": "U",
+              "OwnerProducer": [
+                {
+                  "GovernmentIdentifier": "USA"
+                }
+              ]
+            }
+          }
+        },
+        "stage": "delivered"
+      }
+    },
+    {
+      "id": "uci-2.5-known-delete",
+      "mapper": "research-schema-valid-not-authorized",
+      "reference": "valid-xml-only",
+      "sleet": {
+        "control_delivered": true,
+        "payload": {
+          "DataRecordListManagementRequest": {
+            "MessageData": {
+              "DataRecordListID": {
+                "UUID": "697eba54-6f37-11ed-a1eb-0242ac120002"
+              },
+              "DeleteRecord": {
+                "$type": "ForeignKeyMapML"
+              },
+              "RequestID": {
+                "UUID": "697eba54-6f37-11ed-a1eb-0242ac120002"
+              },
+              "RequestState": "NEW"
+            },
+            "MessageHeader": {
+              "Mode": "SIMULATION",
+              "SchemaVersion": "002.5.0",
+              "SystemID": {
+                "UUID": "697eba54-6f37-11ed-a1eb-0242ac120002"
+              },
+              "Timestamp": "2026-10-08T00:00:00Z"
+            },
+            "SecurityInformation": {
+              "Classification": "U",
+              "OwnerProducer": [
+                {
+                  "GovernmentIdentifier": "USA"
+                }
+              ]
+            }
+          }
+        },
+        "stage": "delivered"
+      }
+    },
+    {
+      "id": "uci-2.5-private-add",
+      "mapper": "research-schema-valid-not-authorized",
+      "reference": "valid-xml-only",
+      "sleet": {
+        "control_delivered": true,
+        "payload": {
+          "DataRecordListManagementRequest": {
+            "MessageData": {
+              "AddRecord": {
+                "$type": "Task074SyntheticML",
+                "Task074Code": "AB"
+              },
+              "DataRecordListID": {
+                "UUID": "697eba54-6f37-11ed-a1eb-0242ac120002"
+              },
+              "RequestID": {
+                "UUID": "697eba54-6f37-11ed-a1eb-0242ac120002"
+              },
+              "RequestState": "NEW"
+            },
+            "MessageHeader": {
+              "Mode": "SIMULATION",
+              "SchemaVersion": "002.5.0",
+              "SystemID": {
+                "UUID": "697eba54-6f37-11ed-a1eb-0242ac120002"
+              },
+              "Timestamp": "2026-10-08T00:00:00Z"
+            },
+            "SecurityInformation": {
+              "Classification": "U",
+              "OwnerProducer": [
+                {
+                  "GovernmentIdentifier": "USA"
+                }
+              ]
+            }
+          }
+        },
+        "stage": "delivered"
+      }
+    },
+    {
+      "id": "uci-2.5-private-delete",
+      "mapper": "research-schema-valid-not-authorized",
+      "reference": "valid-xml-only",
+      "sleet": {
+        "control_delivered": true,
+        "payload": {
+          "DataRecordListManagementRequest": {
+            "MessageData": {
+              "DataRecordListID": {
+                "UUID": "697eba54-6f37-11ed-a1eb-0242ac120002"
+              },
+              "DeleteRecord": {
+                "$type": "Task074SyntheticML",
+                "Task074Code": "AB"
+              },
+              "RequestID": {
+                "UUID": "697eba54-6f37-11ed-a1eb-0242ac120002"
+              },
+              "RequestState": "NEW"
+            },
+            "MessageHeader": {
+              "Mode": "SIMULATION",
+              "SchemaVersion": "002.5.0",
+              "SystemID": {
+                "UUID": "697eba54-6f37-11ed-a1eb-0242ac120002"
+              },
+              "Timestamp": "2026-10-08T00:00:00Z"
+            },
+            "SecurityInformation": {
+              "Classification": "U",
+              "OwnerProducer": [
+                {
+                  "GovernmentIdentifier": "USA"
+                }
+              ]
+            }
+          }
+        },
+        "stage": "delivered"
+      }
+    },
+    {
+      "id": "uci-2.5-private-public",
+      "mapper": "mapping:unresolved-type",
+      "reference": "invalid:SCHEMAV_CVC_ELT_4_2",
+      "sleet": {
+        "control_delivered": true,
+        "details": "-ERR Invalid-Message schema validation failed: InvalidPolymorphicType { path: \"DataRecordListManagementRequest.MessageData.AddRecord\", type_name: \"Task074SyntheticML\" }",
+        "stage": "broker-message-validation"
+      }
+    },
+    {
+      "id": "uci-2.5-bad-state",
+      "mapper": "xsd:invalid:SCHEMAV_CVC_ENUMERATION_VALID",
+      "reference": "invalid:SCHEMAV_CVC_ENUMERATION_VALID",
+      "sleet": {
+        "control_delivered": true,
+        "details": "-ERR Invalid-Message schema validation failed: FacetViolation { path: \"DataRecordListManagementRequest.MessageData.RequestState\", facet: \"enumeration\", detail: \"value 'INVALID' not in [NEW, UPDATE, CANCEL]\" }",
+        "stage": "broker-message-validation"
+      }
+    },
+    {
+      "id": "uci-2.5-bad-code",
+      "mapper": "xsd:invalid:SCHEMAV_CVC_PATTERN_VALID",
+      "reference": "invalid:SCHEMAV_CVC_PATTERN_VALID",
+      "sleet": {
+        "control_delivered": true,
+        "details": "-ERR Invalid-Message schema validation failed: FacetViolation { path: \"DataRecordListManagementRequest.MessageData.AddRecord.Task074Code\", facet: \"pattern\", detail: \"value '12' does not match pattern(s): [A-Z]{2}\" }",
+        "stage": "broker-message-validation"
+      }
+    },
+    {
+      "id": "uci-2.6-known-add",
+      "mapper": "research-schema-valid-not-authorized",
+      "reference": "valid-xml-only",
+      "sleet": {
+        "control_delivered": true,
+        "payload": {
+          "DataRecordListManagementRequest": {
+            "MessageData": {
+              "AddRecord": {
+                "$type": "ForeignKeyMapML"
+              },
+              "DataRecordListID": {
+                "UUID": "697eba54-6f37-11ed-a1eb-0242ac120002"
+              },
+              "RequestID": {
+                "UUID": "697eba54-6f37-11ed-a1eb-0242ac120002"
+              },
+              "RequestState": "NEW"
+            },
+            "MessageHeader": {
+              "Mode": "SIMULATION",
+              "SchemaVersion": "002.6.0",
+              "SystemID": {
+                "UUID": "697eba54-6f37-11ed-a1eb-0242ac120002"
+              },
+              "Timestamp": "2026-10-08T00:00:00Z"
+            },
+            "SecurityInformation": {
+              "Classification": "U",
+              "OwnerProducer": [
+                {
+                  "GovernmentIdentifier": "USA"
+                }
+              ]
+            }
+          }
+        },
+        "stage": "delivered"
+      }
+    },
+    {
+      "id": "uci-2.6-known-delete",
+      "mapper": "research-schema-valid-not-authorized",
+      "reference": "valid-xml-only",
+      "sleet": {
+        "control_delivered": true,
+        "payload": {
+          "DataRecordListManagementRequest": {
+            "MessageData": {
+              "DataRecordListID": {
+                "UUID": "697eba54-6f37-11ed-a1eb-0242ac120002"
+              },
+              "DeleteRecord": {
+                "$type": "ForeignKeyMapML"
+              },
+              "RequestID": {
+                "UUID": "697eba54-6f37-11ed-a1eb-0242ac120002"
+              },
+              "RequestState": "NEW"
+            },
+            "MessageHeader": {
+              "Mode": "SIMULATION",
+              "SchemaVersion": "002.6.0",
+              "SystemID": {
+                "UUID": "697eba54-6f37-11ed-a1eb-0242ac120002"
+              },
+              "Timestamp": "2026-10-08T00:00:00Z"
+            },
+            "SecurityInformation": {
+              "Classification": "U",
+              "OwnerProducer": [
+                {
+                  "GovernmentIdentifier": "USA"
+                }
+              ]
+            }
+          }
+        },
+        "stage": "delivered"
+      }
+    },
+    {
+      "id": "uci-2.6-private-add",
+      "mapper": "research-schema-valid-not-authorized",
+      "reference": "valid-xml-only",
+      "sleet": {
+        "control_delivered": true,
+        "payload": {
+          "DataRecordListManagementRequest": {
+            "MessageData": {
+              "AddRecord": {
+                "$type": "Task074SyntheticML",
+                "Task074Code": "AB"
+              },
+              "DataRecordListID": {
+                "UUID": "697eba54-6f37-11ed-a1eb-0242ac120002"
+              },
+              "RequestID": {
+                "UUID": "697eba54-6f37-11ed-a1eb-0242ac120002"
+              },
+              "RequestState": "NEW"
+            },
+            "MessageHeader": {
+              "Mode": "SIMULATION",
+              "SchemaVersion": "002.6.0",
+              "SystemID": {
+                "UUID": "697eba54-6f37-11ed-a1eb-0242ac120002"
+              },
+              "Timestamp": "2026-10-08T00:00:00Z"
+            },
+            "SecurityInformation": {
+              "Classification": "U",
+              "OwnerProducer": [
+                {
+                  "GovernmentIdentifier": "USA"
+                }
+              ]
+            }
+          }
+        },
+        "stage": "delivered"
+      }
+    },
+    {
+      "id": "uci-2.6-private-delete",
+      "mapper": "research-schema-valid-not-authorized",
+      "reference": "valid-xml-only",
+      "sleet": {
+        "control_delivered": true,
+        "payload": {
+          "DataRecordListManagementRequest": {
+            "MessageData": {
+              "DataRecordListID": {
+                "UUID": "697eba54-6f37-11ed-a1eb-0242ac120002"
+              },
+              "DeleteRecord": {
+                "$type": "Task074SyntheticML",
+                "Task074Code": "AB"
+              },
+              "RequestID": {
+                "UUID": "697eba54-6f37-11ed-a1eb-0242ac120002"
+              },
+              "RequestState": "NEW"
+            },
+            "MessageHeader": {
+              "Mode": "SIMULATION",
+              "SchemaVersion": "002.6.0",
+              "SystemID": {
+                "UUID": "697eba54-6f37-11ed-a1eb-0242ac120002"
+              },
+              "Timestamp": "2026-10-08T00:00:00Z"
+            },
+            "SecurityInformation": {
+              "Classification": "U",
+              "OwnerProducer": [
+                {
+                  "GovernmentIdentifier": "USA"
+                }
+              ]
+            }
+          }
+        },
+        "stage": "delivered"
+      }
+    },
+    {
+      "id": "uci-2.6-private-public",
+      "mapper": "mapping:unresolved-type",
+      "reference": "invalid:SCHEMAV_CVC_ELT_4_2",
+      "sleet": {
+        "control_delivered": true,
+        "details": "-ERR Invalid-Message schema validation failed: InvalidPolymorphicType { path: \"DataRecordListManagementRequest.MessageData.AddRecord\", type_name: \"Task074SyntheticML\" }",
+        "stage": "broker-message-validation"
+      }
+    },
+    {
+      "id": "uci-2.6-bad-state",
+      "mapper": "xsd:invalid:SCHEMAV_CVC_ENUMERATION_VALID",
+      "reference": "invalid:SCHEMAV_CVC_ENUMERATION_VALID",
+      "sleet": {
+        "control_delivered": true,
+        "details": "-ERR Invalid-Message schema validation failed: FacetViolation { path: \"DataRecordListManagementRequest.MessageData.RequestState\", facet: \"enumeration\", detail: \"value 'INVALID' not in [NEW, UPDATE, CANCEL]\" }",
+        "stage": "broker-message-validation"
+      }
+    },
+    {
+      "id": "uci-2.6-bad-code",
+      "mapper": "xsd:invalid:SCHEMAV_CVC_PATTERN_VALID",
+      "reference": "invalid:SCHEMAV_CVC_PATTERN_VALID",
+      "sleet": {
+        "control_delivered": true,
+        "details": "-ERR Invalid-Message schema validation failed: FacetViolation { path: \"DataRecordListManagementRequest.MessageData.AddRecord.Task074Code\", facet: \"pattern\", detail: \"value '12' does not match pattern(s): [A-Z]{2}\" }",
+        "stage": "broker-message-validation"
+      }
+    }
+  ],
+  "source_sha256": {
+    "crates/runtime-rust-facade-tests/tests/task076_sleet.rs": "24290ceed9b1527c4b66119ef83de7b2b2eebb9b19e9c07bdba7b2c2d99375f6",
+    "scripts/task074/bundle.py": "06a2959481330eb844c971f08bbb1dd0fd2c04d17d668238ae73c1cca09a889d",
+    "scripts/task075/mapper.py": "417cdead53e03f051c1e309221ea393448683e4e9da20650f3da4296a63bd173",
+    "scripts/task076/corpus.py": "2a3cc6e90973529393ffdabf6e1318de61b5302b4bf270dd76626db9f3cb9df3",
+    "scripts/task076/qualify.py": "4b7de88770a8fc1c60716779a874366e51973225dfacc42dfaaa8f68f35129af",
+    "scripts/task076/supervisor.py": "2c31b746990449e4dc691f9fc737d92a188ceb8f340d469cd6b6611c7b4c3ec0",
+    "scripts/task076/validator_worker.py": "cbbec267d97b3f66e09194d48aabcc6efe3bacdd4bb256c0891a075a64267fac"
+  },
+  "supervision": {
+    "artifact_binding": "fresh-invocation-token",
+    "broker_wall_seconds": 300,
+    "cleanup": "linux-owned-session-subreaper",
+    "validator_as_bytes": 805306368,
+    "validator_core_bytes": 0,
+    "validator_cpu_seconds": 30,
+    "validator_wall_seconds": 60
+  },
+  "validator": {
+    "etree_sha256": "27d8b7e79e217e6946ad6871c13b6bdfbcf55a1a3f6b3ab590cb892fc3a5deca",
+    "libxml": "2.9.14",
+    "libxml_sha256": "8f2643af68a9eba917929046806dabd1848867068d0eee0f6799288a8e886963",
+    "lxml": "5.4.0"
+  }
+}

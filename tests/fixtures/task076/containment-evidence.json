@@ -1,0 +1,67 @@
+{
+  "after": {
+    "artifact_rejections": [
+      "missing",
+      "truncated",
+      "malformed",
+      "stale",
+      "partial",
+      "oversized"
+    ],
+    "corrective_controls": 20,
+    "full_campaign_repeated_identically": true,
+    "original_tests": 5,
+    "owned_descendants_live_after_cleanup": 0,
+    "platform": "linux-proc-waitid-subreaper",
+    "tests_passed": 25,
+    "unrelated_sentinel_preserved": true,
+    "validator_limits_before_native_imports": {
+      "as_bytes": 805306368,
+      "core_bytes": 0,
+      "cpu_seconds": 30,
+      "wall_seconds": 60
+    }
+  },
+  "before": {
+    "as_unlimited": true,
+    "constructor_in_driver_pid": true,
+    "cpu_unlimited": true,
+    "term_resistant_independent_pipe_descendant_survived": true
+  },
+  "boundary": "synthetic supervision evidence is not XML or broker qualification",
+  "reviewed_driver_blob": "932b1dc46251b307342c2f546f9fad4464b0ed31",
+  "reviewed_parent": "35ec513e5ee4b8705ec3346caa645e156d165d92",
+  "task076b": {
+    "after": {
+      "caller_handlers_and_masks_restored": true,
+      "new_lifecycle_tests_passed": 14,
+      "owned_survivors": 0,
+      "previous_tests_passed": 25,
+      "resources_closed": true,
+      "sentinels_preserved": true,
+      "startup_cancellation": "caught-handler deferral; no inherited mask change",
+      "subsequent_same_process_invocation_success": true,
+      "total_tests_passed": 39
+    },
+    "before": {
+      "selector-construction": {
+        "descendant_live": true,
+        "leader_live": true,
+        "term_handler_restored": false
+      },
+      "setup-sigint": {
+        "descendant_live": true,
+        "leader_live": true,
+        "term_handler_restored": false
+      },
+      "setup-sigterm": {
+        "descendant_live": true,
+        "leader_live": true,
+        "term_handler_restored": false
+      }
+    },
+    "qualification": "same 34/30/34 corpus; byte-identical repeat; only supervisor source hash changed",
+    "reviewed_parent": "1f21962decca0d98ce74cfc812f7571e46f5c796",
+    "reviewed_supervisor_blob": "5920dc8472fb2f72dba457ec393827aaf4d3d053"
+  }
+}
