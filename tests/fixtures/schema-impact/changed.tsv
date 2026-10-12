@@ -1,0 +1,27 @@
+record	side	message_namespace	message_local	seed_namespace	seed_local	change	step	type_namespace	type_local	value
+FORMAT										schema-impact-v1
+SCOPE										STATIC_NAMED_REFERENCES
+SCHEMA	BEFORE					version				
+COUNT	BEFORE					types				2
+COUNT	BEFORE					messages				1
+COUNT	BEFORE					exposed_unique_messages				1
+COUNT	BEFORE					exposure_pairs				2
+SCHEMA	AFTER					version				
+COUNT	AFTER					types				2
+COUNT	AFTER					messages				2
+COUNT	AFTER					exposed_unique_messages				2
+COUNT	AFTER					exposure_pairs				3
+COUNT						direct_unique_messages				1
+DIRECT		urn:diff	NewMessage			MESSAGE_ADDED				None -> Some(Reference(TypeRef { target: Named(QualifiedName { namespace_uri: "urn:diff", local_name: "Text" }), binary_encoding: None }))
+EXPOSURE	BEFORE	urn:diff	Message	urn:diff	Record	CHANGED				message payload -> witness step 0
+WITNESS	BEFORE	urn:diff	Message	urn:diff	Record		0	urn:diff	Record	
+EXPOSURE	BEFORE	urn:diff	Message	urn:diff	Text	CHANGED				message payload -> witness step 0
+WITNESS	BEFORE	urn:diff	Message	urn:diff	Text		0	urn:diff	Record	
+WITNESS	BEFORE	urn:diff	Message	urn:diff	Text		1	urn:diff	Text	
+EXPOSURE	AFTER	urn:diff	Message	urn:diff	Record	CHANGED				message payload -> witness step 0
+WITNESS	AFTER	urn:diff	Message	urn:diff	Record		0	urn:diff	Record	
+EXPOSURE	AFTER	urn:diff	Message	urn:diff	Text	CHANGED				message payload -> witness step 0
+WITNESS	AFTER	urn:diff	Message	urn:diff	Text		0	urn:diff	Record	
+WITNESS	AFTER	urn:diff	Message	urn:diff	Text		1	urn:diff	Text	
+EXPOSURE	AFTER	urn:diff	NewMessage	urn:diff	Text	CHANGED				message payload -> witness step 0
+WITNESS	AFTER	urn:diff	NewMessage	urn:diff	Text		0	urn:diff	Text	

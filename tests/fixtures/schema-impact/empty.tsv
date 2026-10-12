@@ -1,0 +1,14 @@
+record	side	message_namespace	message_local	seed_namespace	seed_local	change	step	type_namespace	type_local	value
+FORMAT										schema-impact-v1
+SCOPE										STATIC_NAMED_REFERENCES
+SCHEMA	BEFORE					version				
+COUNT	BEFORE					types				2
+COUNT	BEFORE					messages				1
+COUNT	BEFORE					exposed_unique_messages				0
+COUNT	BEFORE					exposure_pairs				0
+SCHEMA	AFTER					version				
+COUNT	AFTER					types				2
+COUNT	AFTER					messages				1
+COUNT	AFTER					exposed_unique_messages				0
+COUNT	AFTER					exposure_pairs				0
+COUNT						direct_unique_messages				0

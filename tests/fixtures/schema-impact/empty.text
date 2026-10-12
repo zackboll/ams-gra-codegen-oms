@@ -1,0 +1,9 @@
+schema-impact v1
+Scope: STATIC_NAMED_REFERENCES
+Not a compatibility or safe-upgrade verdict.
+BEFORE: version=None, types=2, messages=1
+BEFORE: exposed unique messages=0, message/type pairs=0
+AFTER: version=None, types=2, messages=1
+AFTER: exposed unique messages=0, message/type pairs=0
+Directly changed unique messages: 0
+No static dependency impact found.

@@ -1,4 +1,5 @@
 //! Command-line orchestration for the OMS/UCI code-generation pipeline.
+pub mod schema_impact;
 
 use ams_gra_oms_backend_ada::AdaBackend;
 use ams_gra_oms_backend_cpp::CppBackend;
@@ -33,6 +34,7 @@ pub const HELP: &str = r#"ams-gra-codegen-oms
 Schema-driven OMS/UCI multi-language code generator.
 
 USAGE:
+    ams-gra-codegen-oms schema-impact --before PATH --after PATH [--before-overlay PATH]... [--after-overlay PATH]... [--format text|tsv]
     ams-gra-codegen-oms schema-diff --before PATH --after PATH [--before-overlay PATH]... [--after-overlay PATH]... [--format text|tsv]
     ams-gra-codegen-oms validate --schema PATH [--overlay PATH]...
     ams-gra-codegen-oms coverage --schema PATH [--overlay PATH]... --world WORLD
@@ -44,6 +46,7 @@ USAGE:
     ams-gra-codegen-oms service-generate --schema PATH --contract PATH [--extension ID=PATH]... --language LANGUAGE --world WORLD --output DIR [--with-codec]
 
 COMMANDS:
+    schema-impact      Report STATIC_NAMED_REFERENCES exposure (not compatibility)
     schema-diff        Inventory exact normalized IR changes (no compatibility claims)
     validate           Load and validate an XSD schema set
     coverage           Report deterministic IR and backend coverage counts
@@ -54,6 +57,15 @@ COMMANDS:
     service-check      Report backend/world readiness for a contract's selection
     service-generate   Generate a contract's selected UCI type model and typed
                        service API wrapper
+
+STATIC SCHEMA IMPACT:
+    'schema-impact' is read-only STATIC_NAMED_REFERENCES analysis. It reports
+    direct message changes and separate BEFORE/AFTER changed-type exposure,
+    with shortest deterministic witnesses. It does not expand abstract bases
+    into descendants or assess generated support, service readiness, wire,
+    runtime, backward/forward compatibility, or safe upgrades.
+    --format text|tsv defaults to text. Overlay options repeat in caller order.
+    Completed analysis exits 0 (including findings); failures exit 1; usage 2.
 
 SERVICE CONTRACT PLANNING:
     'service-plan' joins a portable AMS GRA Service Contract (v0.1 YAML or
@@ -565,6 +577,9 @@ fn parse_world(value: &OsStr) -> Result<GenerationWorld, CliError> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Command {
+    SchemaImpact {
+        comparison: Box<Command>,
+    },
     ServiceRoutes {
         schema: PathBuf,
         contract: PathBuf,
@@ -644,6 +659,32 @@ where
     W: Write,
 {
     match parse_args(args)? {
+        Command::SchemaImpact { comparison } => {
+            let Command::SchemaDiff {
+                before,
+                after,
+                before_overlays,
+                after_overlays,
+                tsv,
+            } = *comparison
+            else {
+                unreachable!("impact parser produces comparison inputs")
+            };
+            let before = load_schema_set_with_overlays(&before, &before_overlays)
+                .map_err(|e| CliError::execution(e.to_string()))?;
+            let after = load_schema_set_with_overlays(&after, &after_overlays)
+                .map_err(|e| CliError::execution(e.to_string()))?;
+            let report = schema_impact::SchemaImpact::analyze(&before, &after)
+                .map_err(|e| CliError::execution(e.to_string()))?;
+            write_output(
+                stdout,
+                &if tsv {
+                    report.to_tsv()
+                } else {
+                    report.to_text()
+                },
+            )
+        }
         Command::ServiceRoutes {
             schema,
             contract,
@@ -756,6 +797,16 @@ where
         Some("-V" | "--version") => no_trailing_args(args, Command::Version),
         Some("validate") => parse_validate(args.collect()),
         Some("schema-diff") => parse_schema_diff(args.collect()),
+        Some("schema-impact") => {
+            let inputs = parse_schema_diff(args.collect())?;
+            if matches!(inputs, Command::Help(_)) {
+                Ok(inputs)
+            } else {
+                Ok(Command::SchemaImpact {
+                    comparison: Box::new(inputs),
+                })
+            }
+        }
         Some("coverage") => parse_coverage(args.collect()),
         Some("generate") => parse_generate(args.collect()),
         Some("docs") => parse_docs(args.collect()),

@@ -1,0 +1,14 @@
+schema-impact v1
+Scope: STATIC_NAMED_REFERENCES
+Not a compatibility or safe-upgrade verdict.
+BEFORE: version=None, types=2, messages=1
+BEFORE: exposed unique messages=1, message/type pairs=2
+AFTER: version=None, types=2, messages=2
+AFTER: exposed unique messages=2, message/type pairs=3
+Directly changed unique messages: 1
+DIRECT MESSAGE_ADDED {urn:diff}NewMessage: None -> Some(Reference(TypeRef { target: Named(QualifiedName { namespace_uri: "urn:diff", local_name: "Text" }), binary_encoding: None }))
+BEFORE {urn:diff}Message payload -> {urn:diff}Record (CHANGED seed {urn:diff}Record)
+BEFORE {urn:diff}Message payload -> {urn:diff}Record -> {urn:diff}Text (CHANGED seed {urn:diff}Text)
+AFTER {urn:diff}Message payload -> {urn:diff}Record (CHANGED seed {urn:diff}Record)
+AFTER {urn:diff}Message payload -> {urn:diff}Record -> {urn:diff}Text (CHANGED seed {urn:diff}Text)
+AFTER {urn:diff}NewMessage payload -> {urn:diff}Text (CHANGED seed {urn:diff}Text)
