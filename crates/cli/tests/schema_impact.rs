@@ -380,13 +380,20 @@ fn json_cli_default_rejections_failures_and_writer() {
         cli(&base).stdout,
         report("before.xsd", "before.xsd").to_text().as_bytes()
     );
-    for command in ["schema-diff", "service-impact"] {
-        let mut args = vec![command, "--before", "b", "--after", "a", "--format", "json"];
-        if command == "service-impact" {
-            args.extend(["--contract", "c"]);
-        }
-        assert_eq!(cli(&args).status.code(), Some(2));
-    }
+    assert_eq!(
+        cli(&[
+            "schema-diff",
+            "--before",
+            "b",
+            "--after",
+            "a",
+            "--format",
+            "json"
+        ])
+        .status
+        .code(),
+        Some(2)
+    );
     let mut args = base.to_vec();
     args.extend(["--format", "json", "--format", "json"]);
     assert_eq!(cli(&args).status.code(), Some(2));

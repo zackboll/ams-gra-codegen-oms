@@ -64,7 +64,7 @@ impl SchemaImpact {
             .len()
     }
 
-    fn seed_change(&self, seed: &QualifiedName) -> &'static str {
+    pub(crate) fn seed_change(&self, seed: &QualifiedName) -> &'static str {
         for c in &self.diff.changes {
             if c.category == Category::Type && &c.name == seed {
                 match c.kind {
@@ -340,7 +340,7 @@ impl SchemaImpact {
     }
 }
 
-fn json_payload(
+pub(crate) fn json_payload(
     value: &Option<ams_gra_oms_schema_diff::Value>,
 ) -> Result<Option<JsonReference<'_>>, serde_json::Error> {
     match value {
@@ -352,7 +352,7 @@ fn json_payload(
     }
 }
 
-fn qname(name: &QualifiedName) -> [&str; 2] {
+pub(crate) fn qname(name: &QualifiedName) -> [&str; 2] {
     [&name.namespace_uri, &name.local_name]
 }
 
@@ -398,7 +398,7 @@ struct JsonDirect<'a> {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct JsonReference<'a> {
+pub(crate) struct JsonReference<'a> {
     kind: &'static str,
     #[serde(skip_serializing_if = "Option::is_none")]
     qname: Option<[&'a str; 2]>,
