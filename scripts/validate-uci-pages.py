@@ -75,13 +75,24 @@ def comparison(root, explorers):
             require(state == dict(v=1, kind=cat.lower(), root=list(q), path=[]), 'comparison explorer identity mismatch')
         records = set()
         for c in changes:
-            require(set(c) == {'property', 'kind', 'before', 'after'}, 'invalid comparison property record')
+            require(set(c) in ({'property', 'kind', 'before', 'after'},
+                              {'property', 'kind', 'before', 'after', 'memberDestinations'}), 'invalid comparison property record')
             require(c['kind'] in kinds and isinstance(c['property'], str) and c['property'].rsplit('/', 1)[-1] in properties,
                     'invalid comparison property labels')
             require((cat == 'Message' and c['kind'].startswith('MESSAGE_') and c['property'] in ('presence', 'payload')) or
                     (cat == 'Type' and not c['kind'].startswith('MESSAGE_')), 'comparison property category mismatch')
             require(all(c[v] is None or isinstance(c[v], str) for v in ('before', 'after')) and c['before'] != c['after'], 'invalid comparison values')
-            signature = json.dumps(c, sort_keys=True)
+            if 'memberDestinations' in c:
+                require(cat == 'Type' and c['kind'] in ('MEMBER_ADDED', 'MEMBER_REMOVED', 'MEMBER_CHANGED'),
+                        'invalid member destination kind')
+                require(isinstance(c['memberDestinations'], list) and len(c['memberDestinations']) == 2,
+                        'invalid member destinations')
+                for i, version in enumerate(('2.5', '2.6')):
+                    url = c['memberDestinations'][i]
+                    if url is not None:
+                        member_destination(url, version, list(q), c, i,
+                                           explorers[root / version / 'explorer.html'])
+            signature = json.dumps({k: c[k] for k in ('property', 'kind', 'before', 'after')}, sort_keys=True)
             require(signature not in records, 'duplicate comparison property')
             records.add(signature)
         if expected_status in ('Added', 'Removed'):
@@ -94,6 +105,37 @@ def comparison(root, explorers):
         require({q for c, q in seen if c == cat} == set(inventories[0][cat]) | set(inventories[1][cat]), 'comparison incomplete inventory')
         expected_summary = dict(before=len(inventories[0][cat]), after=len(inventories[1][cat]), **counts[cat])
         require(model['summaries'][cat] == expected_summary, 'comparison summary mismatch')
+
+
+def member_destination(url, version, qname, record, side, indexes):
+    """Independent semantic-label/declaring-owner proof, beyond path validity."""
+    require(isinstance(url, str), 'invalid member destination URL')
+    parsed = urllib.parse.urlsplit(url)
+    require(not parsed.scheme and not parsed.netloc and not parsed.query and
+            parsed.path == '../' + version + '/explorer.html', 'unsafe member destination release/path')
+    # Match explorer.js LIMIT.fragment without changing historical generic links.
+    require(len('#' + parsed.fragment) <= 16384, 'oversized member destination hash')
+    explorer_state(parsed.fragment, indexes)
+    state = json.loads(urllib.parse.unquote(parsed.fragment[4:]))
+    declaration = indexes[1].get(qkey(qname))
+    require(declaration is not None and declaration['kind'] in ('Record', 'Choice'), 'missing member declaration')
+    require(record['kind'] in ('MEMBER_ADDED', 'MEMBER_REMOVED', 'MEMBER_CHANGED') and
+            record['kind'] != ('MEMBER_ADDED' if side == 0 else 'MEMBER_REMOVED'), 'absent member side')
+    allowed = ('presence',) if record['kind'] != 'MEMBER_CHANGED' else ('type_ref', 'cardinality', 'wire_namespace', 'nillable')
+    candidates = []
+    for index, member in enumerate(declaration['members']):
+        name = member['name']
+        if all(32 <= ord(char) <= 126 for char in name):
+            debug_name = '"' + name.replace('\\', '\\\\').replace('"', '\\"') + '"'
+            if record['property'] in [debug_name + '/' + suffix for suffix in allowed]:
+                candidates.append((index, member))
+    require(len(candidates) == 1, 'unjustified or ambiguous member association')
+    index, member = candidates[0]
+    require(type(member.get('index')) is int and member['index'] == index, 'invalid local member index')
+    segment = dict(owner=qname, compositor=declaration['kind'])
+    require(declaration['segments'].count(segment) == 1, 'missing local declaring segment')
+    require(state == dict(v=1, kind='type', root=qname, path=[segment, dict(member=index)]),
+            'member destination identity mismatch')
 
 
 def require(condition, message):

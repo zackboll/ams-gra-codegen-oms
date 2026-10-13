@@ -53,11 +53,76 @@ async function main() {
           assert.equal(await page.locator("#details article").count(), d.changes.length);
           assert.deepEqual(await page.locator("#details pre").allTextContents(), d.changes.flatMap(c => [c.before, c.after].map(v => v === null ? "Absent (missing value)" : v)));
           const hrefs = await page.locator("#details a").evaluateAll(nodes => nodes.map(n => n.getAttribute("href")));
-          assert.deepEqual(hrefs, d.destinations.filter(Boolean).flatMap(dest => [dest.reference, dest.explorer]));
+          assert.deepEqual(hrefs, [...d.destinations.filter(Boolean).flatMap(dest => [dest.reference, dest.explorer]),
+            ...d.changes.flatMap(c => (c.memberDestinations || []).filter(Boolean))]);
           const share = await page.locator(".share").inputValue(); assert.equal(share, page.url());
           if (previous && previous !== share) { await page.goBack(); assert.equal(page.url(), previous); await page.goForward(); assert.equal(page.url(), share); }
           previous = share;
           await page.reload(); await page.waitForSelector("#details h2");
+        }
+        // Click shipped actions, verifying identity against that release's graph.
+        const fieldCases = data.declarations.filter(d => d.changes.some(c => c.memberDestinations?.some(Boolean)));
+        const measured = fieldCases.filter(d => d.qname[1] === "ADS_B_KinematicsContributionType" || d.qname[1] === "Record");
+        if (data.declarations.length < 20) for (const d of fieldCases) if (!measured.includes(d)) measured.push(d);
+        for (const kind of ["MEMBER_CHANGED", "MEMBER_ADDED", "MEMBER_REMOVED"]) {
+          const d = fieldCases.find(d => d.changes.some(c => c.kind === kind && c.memberDestinations?.some(Boolean)));
+          if (d && !measured.includes(d)) measured.push(d);
+        }
+        const graphs = ["2.5", "2.6"].map(v => JSON.parse(fs.readFileSync(path.join(root, v, "assets/explorer-data.js"), "utf8").replace(/^window.schemaExplorerData = /, "").replace(/;\n$/, "")));
+        const choice = fieldCases.find(d => graphs.some(g => g.types.find(t => JSON.stringify(t.qname) === JSON.stringify(d.qname))?.kind === "Choice"));
+        if (choice && !measured.includes(choice)) measured.push(choice);
+        let reveals = 0;
+        for (const d of measured) {
+          const compareURL = url + "#compare=" + encodeURIComponent(JSON.stringify({ v: 1, category: d.category, qname: d.qname }));
+          for (const c of d.changes) for (const [side, destination] of (c.memberDestinations || []).entries()) {
+            if (!destination) continue;
+            await page.goto(compareURL); await page.waitForSelector("#details h2");
+            const exact = page.locator(`#details article a[href=${JSON.stringify(destination)}]`).first();
+            await exact.focus(); await page.keyboard.press("Enter");
+            await page.waitForSelector('body[data-ready="true"]');
+            const state = JSON.parse(decodeURIComponent(new URL(page.url()).hash.slice(5)));
+            assert.deepEqual(state.root, d.qname); assert.equal(state.path.length, 2);
+            const owner = graphs[side].types.find(t => JSON.stringify(t.qname) === JSON.stringify(d.qname));
+            assert.deepEqual(state.path[0], { owner: owner.qname, compositor: owner.kind });
+            const member = owner.members[state.path[1].member];
+            assert.equal(await page.locator('.selected > .row > .select').textContent(), member.name);
+            assert((await page.locator("#detail-content").innerText()).includes(`{${owner.qname[0]}}${owner.qname[1]}`));
+            const target = member.type.named ? graphs[side].types.find(t => JSON.stringify(t.qname) === JSON.stringify(member.type.named)) : owner;
+            assert.equal(await page.locator("#detail-content a").first().getAttribute("href"), target.url);
+            const details = await page.locator("#detail-content").innerText();
+            assert(details.includes(`Local cardinality: ${member.count.min}..${member.count.max === null ? "*" : member.count.max}`));
+            // Exercise normal Back before reload (Firefox reload can restore a
+            // separate persisted document history entry). Then re-enter the
+            // actual action and qualify reload independently.
+            await page.goBack();
+            await page.waitForSelector("#details h2");
+            assert.deepEqual(JSON.parse(decodeURIComponent(new URL(page.url()).hash.slice(9))),
+              { v: 1, category: d.category, qname: d.qname });
+            assert.equal(new URL(page.url()).pathname, new URL(compareURL).pathname);
+            await page.locator(`#details article a[href=${JSON.stringify(destination)}]`).first().click();
+            await page.waitForSelector(".selected");
+            await page.reload(); await page.waitForSelector(".selected");
+            assert.equal(await page.locator("#detail-content").innerText(), details);
+            await page.setViewportSize({ width: 375, height: 800 });
+            assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+            await page.setViewportSize({ width: 1100, height: 900 });
+            reveals++;
+          }
+        }
+        console.log(name, mode, "exact field reveals", reveals, "Choice present:", Boolean(choice));
+        const linked = fieldCases[0];
+        if (linked) {
+          const destination = linked.changes.flatMap(c => c.memberDestinations || []).find(Boolean);
+          const resolved = new URL(destination, url);
+          const state = JSON.parse(decodeURIComponent(resolved.hash.slice(5)));
+          for (const bad of [{ ...state, path: [state.path[0], { member: 999999 }] },
+            { ...state, path: [{ ...state.path[0], compositor: "Wrong" }, state.path[1]] },
+            { ...state, path: [...state.path, { member: 0 }] }]) {
+            resolved.hash = "uci=" + encodeURIComponent(JSON.stringify(bad));
+            await page.goto(resolved.href); await page.waitForSelector('body[data-ready="true"]');
+            assert.match(await page.locator("#status").innerText(), /Explorer state error/);
+            assert.equal(await page.locator(".selected").count(), 0);
+          }
         }
         for (const fragment of ["#compare=%7B", "#compare=" + "x".repeat(16385), "#compare=" + encodeURIComponent(JSON.stringify({ v: 1, category: "Type", qname: ["urn:missing", "Missing"] })), "#compare=" + encodeURIComponent(JSON.stringify({ v: 1, category: "Type", qname: ["javascript:alert(1)", "<script>bad</script>"], path: "evil" }))]) {
           await page.goto(url + fragment); await page.waitForSelector("#details p");

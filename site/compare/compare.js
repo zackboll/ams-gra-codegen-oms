@@ -49,6 +49,13 @@
         const split = c.property.lastIndexOf("/");
         if (split >= 0) article.append(el("p", `Member / enumeration value: ${c.property.slice(0, split)}`));
         article.append(el("h3", `Property: ${c.property.slice(split + 1)}`), el("p", `Task 069 property label: ${c.property}`), el("p", `Task 069 change: ${c.kind}`));
+        const fieldActions = el("p");
+        (c.memberDestinations || []).forEach((url, i) => {
+          if (!url) return;
+          const a = el("a", `Reveal field in UCI ${data.releases[i].release}`);
+          a.href = url; fieldActions.append(a);
+        });
+        if (fieldActions.childElementCount) article.append(fieldActions);
         const table = el("table"), head = el("tr"), row = el("tr");
         for (const release of data.releases) { const th = el("th", `UCI ${release.release}`); th.scope = "col"; head.append(th); }
         for (const value of [c.before, c.after]) { const td = el("td"), pre = el("pre", value === null ? "Absent (missing value)" : value); pre.tabIndex = 0; td.append(pre); row.append(td); }

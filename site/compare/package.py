@@ -41,6 +41,42 @@ def destination(version, category, declaration):
             urllib.parse.quote(json.dumps(state, ensure_ascii=False, separators=(',', ':')), safe='')}
 
 
+def member_destination(version, declaration, record, side):
+    """Associate only exact supported Debug names, never parse arbitrary Debug text.
+
+    Printable ASCII (including quotes/backslashes/hostile markup) has a known
+    Rust Debug representation. Unusual Unicode/control escaping is deliberately
+    unsupported. The graph, not the label, supplies owner, compositor and index.
+    """
+    suffixes = {'MEMBER_ADDED': ('presence',), 'MEMBER_REMOVED': ('presence',),
+                'MEMBER_CHANGED': ('type_ref', 'cardinality', 'wire_namespace', 'nillable')}
+    if (declaration is None or declaration.get('kind') not in ('Record', 'Choice') or
+            record['kind'] not in suffixes or
+            record['kind'] == ('MEMBER_ADDED' if side == 0 else 'MEMBER_REMOVED')):
+        return None
+    segment = dict(owner=declaration['qname'], compositor=declaration['kind'])
+    if declaration.get('segments', []).count(segment) != 1:
+        return None
+    matches = []
+    for i, member in enumerate(declaration.get('members', [])):
+        name = member['name']
+        if not all(' ' <= c <= '~' for c in name):
+            continue
+        formatted = json.dumps(name, ensure_ascii=True)
+        if any(record['property'] == formatted + '/' + suffix for suffix in suffixes[record['kind']]):
+            matches.append((i, member))
+    if len(matches) != 1:
+        return None
+    index, member = matches[0]
+    if type(member.get('index')) is not int or member['index'] != index:
+        return None
+    state = dict(v=1, kind='type', root=declaration['qname'],
+                 path=[segment, dict(member=member['index'])])
+    fragment = 'uci=' + urllib.parse.quote(json.dumps(state, ensure_ascii=False, separators=(',', ':')), safe='')
+    # explorer.js LIMIT.fragment measures location.hash, including its leading #.
+    return '../' + version + '/explorer.html#' + fragment if len('#' + fragment) <= 16384 else None
+
+
 def package(tsv, graphs):
     # Task 069 records use LF only. U+2028/U+2029 belong to their cells.
     lines = tsv.split('\n')
@@ -84,6 +120,11 @@ def package(tsv, graphs):
             counts[status] += 1
             for r in records:
                 observed[r['kind']] += 1
+                if category == 'Type' and r['kind'] in ('MEMBER_ADDED', 'MEMBER_REMOVED', 'MEMBER_CHANGED'):
+                    links = [member_destination(v, index.get(q), r, i)
+                             for i, (v, index) in enumerate(zip(PINS, indexes))]
+                    if any(links):
+                        r['memberDestinations'] = links
             result['declarations'].append(dict(category=category, qname=list(q), status=status, changes=records,
                 destinations=[destination(v, category, index[q]) if q in index else None for v, index in zip(PINS, indexes)]))
         summary = dict(before=len(indexes[0]), after=len(indexes[1]), **{s.lower(): counts[s] for s in STATUSES})

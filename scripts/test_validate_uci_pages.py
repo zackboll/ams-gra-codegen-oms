@@ -18,6 +18,134 @@ pages = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(pages)
 
 
+class MemberDestinationTests(unittest.TestCase):
+    def test_browser_hash_length_boundary(self):
+        for name_length, index, hash_length in [(4084, 0, 16383), (4084, 10, 16384), (4085, 0, 16385)]:
+            with self.subTest(hash_length=hash_length), tempfile.TemporaryDirectory() as tmp:
+                q = ['n' * 4004, 'T' * name_length]
+                segment = dict(owner=q, compositor='Record')
+                d = dict(qname=q, kind='Record', url='types/000000.html', segments=[segment],
+                    members=[dict(index=i, name='Field' if i == index else 'Other' + str(i), type={'primitive': 'String'}) for i in range(index + 1)])
+                indexes = ({}, {tuple(q): d}, {})
+                state = dict(v=1, kind='type', root=q, path=[segment, dict(member=index)])
+                fragment = 'uci=' + urllib.parse.quote(json.dumps(state, separators=(',', ':')), safe='')
+                self.assertEqual(len('#' + fragment), hash_length)
+                # Generic historical validation accepts this valid-shaped state,
+                # proving the first rejected hash previously passed validation.
+                pages.explorer_state(fragment, indexes)
+                c = dict(kind='MEMBER_CHANGED', property='"Field"/type_ref', before='old', after='new')
+                root = pathlib.Path(tmp)
+                (root / 'compare/assets').mkdir(parents=True)
+                (root / 'compare/index.html').write_text('')
+                for asset in ('compare.js', 'compare.css'):
+                    (root / 'compare/assets' / asset).write_text('')
+                explorers = {}
+                for version in ('2.5', '2.6'):
+                    (root / version / 'assets').mkdir(parents=True)
+                    graph = dict(schema=dict(version=None), types=[d], messages=[])
+                    (root / version / 'assets/explorer-data.js').write_text('window.schemaExplorerData = ' + json.dumps(graph) + ';\n')
+                    explorers[root / version / 'explorer.html'] = indexes
+                model = dict(version=1, scope='Direct normalized SchemaIr changes — not a compatibility verdict.',
+                    releases=[dict(release=v, revision=pin, schemaVersion='absent') for v, pin in zip(('2.5', '2.6'), pages.PINS)],
+                    summaries=dict(Type=dict(before=1, after=1, added=0, removed=0, changed=1, unchanged=0), Message=dict(before=0, after=0, added=0, removed=0, changed=0, unchanged=0)),
+                    declarations=[dict(category='Type', qname=q, status='Changed', changes=[c], destinations=[dict(reference='../' + v + '/' + d['url'], explorer='../' + v + '/explorer.html#uci=' + urllib.parse.quote(json.dumps(dict(state, path=[])), safe='')) for v in ('2.5', '2.6')])])
+                def validate():
+                    (root / 'compare/assets/compare-data.js').write_text('window.schemaCompareData = ' + json.dumps(model) + ';\n')
+                    pages.comparison(root, explorers)
+                validate()  # Historical record without the optional property.
+                c['memberDestinations'] = ['../' + v + '/explorer.html#' + fragment for v in ('2.5', '2.6')]
+                if hash_length > 16384:
+                    with self.assertRaisesRegex(ValueError, 'oversized member destination hash'):
+                        validate()
+                else:
+                    validate()
+
+    def test_optional_contract_and_independent_escaping(self):
+        q = ['urn:a', 'Choice']
+        segment = dict(owner=q, compositor='Choice')
+        name = 'quote"\\</script>'
+        d = dict(qname=q, kind='Choice', segments=[segment], members=[
+            dict(index=0, name=name, type={'primitive': 'String'})], url='types/000000.html')
+        indexes = ({}, {tuple(q): d}, {})
+        state = dict(v=1, kind='type', root=q, path=[segment, dict(member=0)])
+        link = '../2.6/explorer.html#uci=' + urllib.parse.quote(json.dumps(state))
+        record = dict(kind='MEMBER_ADDED', property='"quote\\"\\\\</script>"/presence', before=None, after='true')
+        pages.member_destination(link, '2.6', q, record, 1, indexes)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            (root / 'compare/assets').mkdir(parents=True)
+            for asset in ('compare.js', 'compare.css'):
+                (root / 'compare/assets' / asset).write_text('')
+            (root / 'compare/index.html').write_text('')
+            explorers = {}
+            for version in ('2.5', '2.6'):
+                (root / version / 'assets').mkdir(parents=True)
+                graph = dict(schema=dict(version=None), types=[d], messages=[])
+                (root / version / 'assets/explorer-data.js').write_text('window.schemaExplorerData = ' + json.dumps(graph) + ';\n')
+                explorers[root / version / 'explorer.html'] = indexes
+            model = dict(version=1, scope='Direct normalized SchemaIr changes — not a compatibility verdict.',
+                releases=[dict(release=v, revision=pin, schemaVersion='absent') for v, pin in zip(('2.5', '2.6'), pages.PINS)],
+                summaries=dict(Type=dict(before=1, after=1, added=0, removed=0, changed=1, unchanged=0),
+                               Message=dict(before=0, after=0, added=0, removed=0, changed=0, unchanged=0)),
+                declarations=[dict(category='Type', qname=q, status='Changed', changes=[record], destinations=[
+                    dict(reference='../' + v + '/types/000000.html', explorer='../' + v + '/explorer.html#uci=' +
+                         urllib.parse.quote(json.dumps(dict(state, path=[])))) for v in ('2.5', '2.6')])])
+            def validate():
+                (root / 'compare/assets/compare-data.js').write_text('window.schemaCompareData = ' + json.dumps(model) + ';\n')
+                pages.comparison(root, explorers)
+            validate()  # Historical records need no optional property.
+            record['memberDestinations'] = [None, link]
+            validate()
+            for bad in ([], [None], 'bad', [None, 12], [None, ''], [link, link]):
+                record['memberDestinations'] = bad
+                with self.subTest(destinations=bad), self.assertRaises(ValueError):
+                    validate()
+            record['memberDestinations'] = [None, link]
+            record['kind'] = 'ENUM_VALUE_ADDED'
+            with self.assertRaisesRegex(ValueError, 'destination kind'):
+                validate()
+
+    def test_independent_identity_proof(self):
+        import copy
+        q = ['urn:a', 'Derived']
+        segment = dict(owner=q, compositor='Record')
+        d = dict(qname=q, kind='Record', segments=[dict(owner=['urn:a', 'Base'], compositor='Record'), segment],
+                 members=[dict(index=0, name='Field', type={'primitive': 'String'}), dict(index=1, name='Other', type={'primitive': 'String'})])
+        base = dict(qname=['urn:a', 'Base'], kind='Record', segments=[dict(owner=['urn:a', 'Base'], compositor='Record')],
+                    members=[dict(index=0, name='Field', type={'primitive': 'String'})])
+        indexes = ({}, {tuple(q): d, ('urn:a', 'Base'): base}, {})
+        c = dict(kind='MEMBER_CHANGED', property='"Field"/cardinality')
+        state = dict(v=1, kind='type', root=q, path=[segment, dict(member=0)])
+        def url(s, version='2.5'):
+            return '../' + version + '/explorer.html#uci=' + urllib.parse.quote(json.dumps(s))
+        pages.member_destination(url(state), '2.5', q, c, 0, indexes)
+        mutations = [(dict(state, root=['urn:a', 'Missing']), 'unknown explorer root'),
+            (dict(state, root=['urn:wrong', 'Derived']), 'unknown explorer root'),
+            (dict(state, path=[dict(owner=q, compositor='Choice'), dict(member=0)]), 'unknown explorer segment'),
+            (dict(state, path=[segment, dict(member=9)]), 'unknown explorer member'),
+            (dict(state, path=[segment, dict(member=1)]), 'identity mismatch'),
+            (dict(state, path=[dict(owner=['urn:a', 'Base'], compositor='Record'), dict(member=0)]), 'identity mismatch'),
+            (dict(state, path=state['path'] + [dict(member=0)]), 'terminal or recursive'),
+            (dict(state, extra=True), 'invalid explorer state')]
+        for s, reason in mutations:
+            with self.subTest(state=s), self.assertRaisesRegex(ValueError, reason):
+                pages.member_destination(url(s), '2.5', q, c, 0, indexes)
+        for bad in (url(state, '2.6'), 'https://evil.example/' + url(state), '/' + url(state)):
+            with self.subTest(url=bad), self.assertRaisesRegex(ValueError, 'release/path'):
+                pages.member_destination(bad, '2.5', q, c, 0, indexes)
+        for prop in ('Field/cardinality', '"Field"/unknown', '"Field"/cardinality/extra'):
+            with self.subTest(prop=prop), self.assertRaisesRegex(ValueError, 'association'):
+                pages.member_destination(url(state), '2.5', q, dict(c, property=prop), 0, indexes)
+        with self.assertRaisesRegex(ValueError, 'absent member side'):
+            pages.member_destination(url(state), '2.5', q, dict(c, kind='MEMBER_ADDED'), 0, indexes)
+        for names, reason in ((['Other', 'Field'], 'identity mismatch'),
+                              (['Other'], 'association'), (['Field', 'Field'], 'association')):
+            modified = copy.deepcopy(indexes)
+            modified[1][tuple(q)]['members'] = [dict(index=i, name=n, type={'primitive': 'String'}) for i, n in enumerate(names)]
+            with self.subTest(names=names), self.assertRaisesRegex(ValueError, reason):
+                pages.member_destination(url(state), '2.5', q, c, 0, modified)
+
+
 class ArchiveTests(unittest.TestCase):
     def test_exactly_one_safe_root(self):
         for members, valid in [
