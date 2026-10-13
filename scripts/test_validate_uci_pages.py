@@ -113,8 +113,57 @@ class SiteTests(unittest.TestCase):
                     (directory / 'assets/explorer-data.js').write_text('window.schemaExplorerData = ' + json.dumps(graph) + ';\n')
                     search = directory / 'assets/search-index.js'
                     search.write_text('window.schemaSearchIndex = ' + json.dumps(records) + ';\n')
+                compare = root / 'compare'
+                (compare / 'assets').mkdir(parents=True)
+                (compare / 'index.html').write_text('<p>Comparison</p>')
+                for name in ('compare.js', 'compare.css'):
+                    (compare / 'assets' / name).write_text('')
+                declarations = []
+                for cat, name, url in [('Type', 'Type', 'types/000000.html'), ('Message', 'Message', 'index.html#message-000000')]:
+                    q = ['urn:test', name]
+                    declarations.append(dict(category=cat, qname=q, status='Unchanged', changes=[], destinations=[
+                        dict(reference='../' + v + '/' + url, explorer='../' + v + '/explorer.html#uci=' + urllib.parse.quote(json.dumps(dict(v=1, kind=cat.lower(), root=q, path=[])))) for v in ('2.5', '2.6')]))
+                model = dict(version=1, scope='Direct normalized SchemaIr changes — not a compatibility verdict.',
+                    releases=[dict(release=v, revision=pin, schemaVersion='absent') for v, pin in zip(('2.5', '2.6'), pages.PINS)],
+                    summaries={cat: dict(before=1, after=1, added=0, removed=0, changed=0, unchanged=1) for cat in ('Type', 'Message')}, declarations=declarations)
+                comparison_data = compare / 'assets/compare-data.js'
+                good_comparison = 'window.schemaCompareData = ' + json.dumps(model) + ';\n'
+                comparison_data.write_text(good_comparison)
                 with contextlib.redirect_stdout(io.StringIO()):
                     pages.validate(root)
+                import copy
+                mutations = [
+                    ('duplicate comparison identity', lambda m: m['declarations'].append(copy.deepcopy(m['declarations'][0]))),
+                    ('pinned releases mismatch', lambda m: m['releases'].reverse()),
+                    ('summary mismatch', lambda m: m['summaries']['Type'].update(changed=1)),
+                    ('reference mismatch', lambda m: m['declarations'][0]['destinations'][0].update(reference='../2.5/types/missing.html')),
+                    ('unsafe comparison explorer path', lambda m: m['declarations'][0]['destinations'][0].update(explorer='../../private.html')),
+                    ('status mismatch', lambda m: m['declarations'][0].update(status='Added')),
+                    ('invalid comparison values', lambda m: (m['declarations'][0].update(status='Changed'), m['declarations'][0]['changes'].append(dict(property='abstract', kind='ABSTRACT_CHANGED', before=123, after='true')))),
+                    ('unknown comparison declaration', lambda m: m['declarations'][0].update(qname=['urn:missing', 'Type'])),
+                ]
+                for expected, mutate in mutations:
+                    broken = copy.deepcopy(model)
+                    mutate(broken)
+                    comparison_data.write_text('window.schemaCompareData = ' + json.dumps(broken) + ';\n')
+                    with self.assertRaisesRegex(ValueError, expected), contextlib.redirect_stdout(io.StringIO()):
+                        pages.validate(root)
+                comparison_data.write_text('window.schemaCompareData = {}; alert(1);\n')
+                with self.assertRaisesRegex(ValueError, 'invalid comparison wrapper'), contextlib.redirect_stdout(io.StringIO()):
+                    pages.validate(root)
+                comparison_data.write_text(good_comparison)
+                extra_comparison = compare / 'assets/unexplained.js'
+                extra_comparison.write_text('')
+                with self.assertRaisesRegex(ValueError, 'comparison unexpected files'), contextlib.redirect_stdout(io.StringIO()):
+                    pages.validate(root)
+                extra_comparison.unlink()
+                for name in ('compare.js', 'compare.css', 'compare-data.js'):
+                    asset = compare / 'assets' / name
+                    text = asset.read_text()
+                    asset.unlink()
+                    with self.assertRaisesRegex(ValueError, 'comparison missing assets'), contextlib.redirect_stdout(io.StringIO()):
+                        pages.validate(root)
+                    asset.write_text(text)
                 explorer_data = root / '2.6/assets/explorer-data.js'
                 good_data = explorer_data.read_text()
                 for mutation, expected in [
@@ -137,7 +186,6 @@ class SiteTests(unittest.TestCase):
                     explorer_data.write_text(good_data)
                 target_page = root / '2.6/types/000000.html'
                 good_page = target_page.read_text()
-                import urllib.parse
                 state = {'v': 1, 'kind': 'type', 'root': ['urn:test', 'Type'], 'path': []}
                 target_page.write_text('<a href="../explorer.html#uci=' + urllib.parse.quote(json.dumps(state)) + '">Explore</a>')
                 with contextlib.redirect_stdout(io.StringIO()):

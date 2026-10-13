@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compare UCI 2.5 and 2.6</title><link rel="stylesheet" href="assets/compare.css"></head>
+<body><main>
+<a href="../index.html">UCI browsers</a><h1>Compare UCI 2.5 and 2.6</h1>
+<p><strong>Direct normalized SchemaIr changes — not a compatibility verdict.</strong></p>
+<p>Unchanged messages retain their direct payload reference; their referenced types may still have changed. Transitive dependency exposure is a separate Task 078 analysis.</p>
+<p id="summary"></p>
+<div class="controls">
+<label>Declarations <select id="category"><option>Type</option><option>Message</option></select></label>
+<label>Status <select id="filter"><option value="">All</option><option>Added</option><option>Removed</option><option>Changed</option><option>Unchanged</option></select></label>
+<label>Search name or full QName <input id="search" type="search" maxlength="1024"></label>
+</div><p id="status" role="status" aria-live="polite"></p>
+<div class="panels"><section aria-label="Declarations"><ul id="results"></ul>
+<button id="previous" type="button">Previous 50</button> <button id="next" type="button">Next 50</button></section>
+<section id="details" aria-label="Selected declaration"><p>Choose a declaration.</p></section></div>
+</main><script src="assets/compare-data.js"></script><script src="assets/compare.js"></script></body></html>

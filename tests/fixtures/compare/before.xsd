@@ -1,0 +1,16 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:t="urn:compare" xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam" targetNamespace="urn:compare" elementFormDefault="qualified">
+  <xs:import namespace="urn:other" schemaLocation="other.xsd"/>
+  <xs:import namespace="urn:old" schemaLocation="old.xsd"/>
+  <xs:complexType name="Same"><xs:annotation><xs:documentation>Before documentation</xs:documentation></xs:annotation><xs:sequence/></xs:complexType>
+  <xs:complexType name="Gone"><xs:sequence/></xs:complexType>
+  <xs:complexType name="Base"><xs:sequence/></xs:complexType>
+  <xs:complexType name="OtherBase"><xs:sequence/></xs:complexType>
+  <xs:complexType name="Record" abstract="true"><xs:complexContent><xs:extension base="t:Base"><xs:sequence>
+    <xs:element name="GoneField" type="xs:string"/>
+    <xs:element name="Field" type="xs:boolean" minOccurs="0" maxOccurs="18446744073709551615"/>
+  </xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+  <xs:simpleType name="Enum"><xs:restriction base="xs:string"><xs:enumeration value="A"/><xs:enumeration value="B"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Pattern"><xs:restriction base="xs:string"><xs:minLength value="1"/><xs:pattern value="a&quot;\雪&amp;lt;script&amp;gt;"/></xs:restriction></xs:simpleType>
+  <xs:element uci:version="1" name="GoneMessage" type="t:Same"/>
+  <xs:element uci:version="1" name="CommonMessage" type="t:Record"/>
+</xs:schema>
