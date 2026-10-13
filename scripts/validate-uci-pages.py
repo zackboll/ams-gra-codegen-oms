@@ -11,6 +11,89 @@ import zipfile
 ROOT26 = 'UCI_MessageDefinitions_v2_6_0.xsd'
 RELEASES = {'2.5': (5557, 722, 'UCI_MessageDefinitions_v2_5_0.xsd'),
             '2.6': (5570, 725, ROOT26)}
+PINS = ['093610b7753944059360d3236770ab446d039556', '78eb61b6112c8bffa40820c33124b57787fc5bd9']
+
+
+def comparison(root, explorers):
+    directory = root / 'compare'
+    expected = {directory / 'index.html'} | {directory / 'assets' / name for name in
+        ('compare.css', 'compare.js', 'compare-data.js')}
+    require(all(p.is_file() for p in expected), 'comparison missing assets')
+    require(set(p for p in directory.rglob('*') if p.is_file()) == expected, 'comparison unexpected files')
+    match = re.fullmatch(r'window\.schemaCompareData = (.*);\n', (directory / 'assets/compare-data.js').read_text(), re.DOTALL)
+    require(match is not None, 'invalid comparison wrapper')
+    try:
+        model = json.loads(match[1])
+    except json.JSONDecodeError as error:
+        raise ValueError('invalid comparison wrapper JSON') from error
+    require(model.get('version') == 1, 'invalid comparison version')
+    require(model.get('scope') == 'Direct normalized SchemaIr changes — not a compatibility verdict.', 'invalid comparison scope')
+    require([r['release'] for r in model['releases']] == ['2.5', '2.6'] and
+            [r['revision'] for r in model['releases']] == PINS, 'comparison pinned releases mismatch')
+    inventories = []
+    for i, version in enumerate(('2.5', '2.6')):
+        graph = json.loads(re.fullmatch(r'window\.schemaExplorerData = (.*);\n',
+            (root / version / 'assets/explorer-data.js').read_text(), re.DOTALL)[1])
+        # Task 069 metadata retains its quoted text formatting.
+        schema_version = graph['schema']['version']
+        require(model['releases'][i]['schemaVersion'] == ('absent' if schema_version is None else json.dumps(schema_version)),
+                'comparison schema version mismatch')
+        inventories.append({cat: {qkey(d['qname']): d for d in graph[key]}
+                            for cat, key in [('Type', 'types'), ('Message', 'messages')]})
+    seen = set()
+    counts = {cat: dict(added=0, removed=0, changed=0, unchanged=0) for cat in ('Type', 'Message')}
+    kinds = {'TYPE_ADDED', 'TYPE_REMOVED', 'TYPE_CHANGED', 'MESSAGE_ADDED', 'MESSAGE_REMOVED', 'MESSAGE_CHANGED',
+             'MEMBER_ADDED', 'MEMBER_REMOVED', 'MEMBER_CHANGED', 'MEMBER_ORDER_CHANGED', 'ENUM_VALUE_ADDED',
+             'ENUM_VALUE_REMOVED', 'ENUM_ORDER_CHANGED', 'CONSTRAINT_CHANGED', 'BASE_TYPE_CHANGED', 'ABSTRACT_CHANGED'}
+    properties = {'presence', 'abstract', 'base_type', 'kind', 'primitive', 'type_ref', 'payload', 'item_type',
+                  'cardinality', 'wire_namespace', 'nillable', 'order', 'minInclusive', 'maxInclusive',
+                  'minExclusive', 'maxExclusive', 'length', 'minLength', 'maxLength', 'whiteSpace', 'pattern_groups'}
+    for d in model['declarations']:
+        cat = d['category']
+        require(cat in counts, 'invalid comparison category')
+        q = qkey(d['qname'])
+        require((cat, q) not in seen, 'duplicate comparison identity')
+        seen.add((cat, q))
+        present = [q in inventory[cat] for inventory in inventories]
+        require(any(present), 'unknown comparison declaration')
+        changes = d['changes']
+        expected_status = 'Added' if not present[0] else 'Removed' if not present[1] else 'Changed' if changes else 'Unchanged'
+        require(d['status'] == expected_status, 'comparison status mismatch')
+        counts[cat][expected_status.lower()] += 1
+        require(len(d['destinations']) == 2, 'invalid comparison destinations')
+        for i, version in enumerate(('2.5', '2.6')):
+            dest = d['destinations'][i]
+            if not present[i]:
+                require(dest is None, 'absent comparison destination')
+                continue
+            require(isinstance(dest, dict) and set(dest) == {'reference', 'explorer'}, 'missing comparison destination')
+            require(dest['reference'] == '../' + version + '/' + inventories[i][cat][q]['url'], 'comparison reference mismatch')
+            parsed = urllib.parse.urlsplit(dest['explorer'])
+            require(not parsed.scheme and not parsed.netloc and not parsed.query and parsed.path == '../' + version + '/explorer.html', 'unsafe comparison explorer path')
+            explorer_state(parsed.fragment, explorers[root / version / 'explorer.html'])
+            state = json.loads(urllib.parse.unquote(parsed.fragment[4:]))
+            require(state == dict(v=1, kind=cat.lower(), root=list(q), path=[]), 'comparison explorer identity mismatch')
+        records = set()
+        for c in changes:
+            require(set(c) == {'property', 'kind', 'before', 'after'}, 'invalid comparison property record')
+            require(c['kind'] in kinds and isinstance(c['property'], str) and c['property'].rsplit('/', 1)[-1] in properties,
+                    'invalid comparison property labels')
+            require((cat == 'Message' and c['kind'].startswith('MESSAGE_') and c['property'] in ('presence', 'payload')) or
+                    (cat == 'Type' and not c['kind'].startswith('MESSAGE_')), 'comparison property category mismatch')
+            require(all(c[v] is None or isinstance(c[v], str) for v in ('before', 'after')) and c['before'] != c['after'], 'invalid comparison values')
+            signature = json.dumps(c, sort_keys=True)
+            require(signature not in records, 'duplicate comparison property')
+            records.add(signature)
+        if expected_status in ('Added', 'Removed'):
+            require(len(changes) == 1 and changes[0]['kind'] == cat.upper() + '_' + expected_status.upper() and
+                    changes[0]['property'] == 'presence' and changes[0]['before' if expected_status == 'Added' else 'after'] is None,
+                    'invalid declaration presence record')
+        else:
+            require(not any(c['kind'] in {'TYPE_ADDED', 'TYPE_REMOVED', 'MESSAGE_ADDED', 'MESSAGE_REMOVED'} for c in changes), 'common declaration presence record')
+    for cat in counts:
+        require({q for c, q in seen if c == cat} == set(inventories[0][cat]) | set(inventories[1][cat]), 'comparison incomplete inventory')
+        expected_summary = dict(before=len(inventories[0][cat]), after=len(inventories[1][cat]), **counts[cat])
+        require(model['summaries'][cat] == expected_summary, 'comparison summary mismatch')
 
 
 def require(condition, message):
@@ -179,7 +262,7 @@ def validate(root):
             'non-file or symlink in artifact')
     files = [p for p in entries if p.is_file()]
     require((root / 'index.html').is_file(), 'missing landing page')
-    require(set(root.iterdir()) == {root / 'index.html', root / '2.5', root / '2.6'}, 'unexpected top-level material')
+    require(set(root.iterdir()) == {root / 'index.html', root / '2.5', root / '2.6', root / 'compare'}, 'unexpected top-level material')
     require('UCI 2.5' in (root / 'index.html').read_text() and
             'UCI 2.6' in (root / 'index.html').read_text(), 'missing release selector')
     search_urls = {}
@@ -209,6 +292,7 @@ def validate(root):
         explorers[directory / 'explorer.html'] = explorer_graph(directory, records, types, messages, schema)
         require(set(p for p in directory.rglob('*') if p.is_file()) == expected | set(pages), f'{version}: unexpected files')
         print(f'{version}: {types} types, {messages} messages, {types + 9} files')
+    comparison(root, explorers)
     parsed_pages = {}
     for path in files:
         require(path.suffix.lower() not in ('.xsd', '.zip') and
@@ -258,5 +342,5 @@ if __name__ == '__main__':
             validate(pathlib.Path(sys.argv[2]))
         else:
             raise ValueError('unknown command')
-    except (ValueError, OSError, zipfile.BadZipFile) as error:
+    except (ValueError, OSError, KeyError, TypeError, IndexError, zipfile.BadZipFile) as error:
         sys.exit(f'Pages validation failed: {error}')

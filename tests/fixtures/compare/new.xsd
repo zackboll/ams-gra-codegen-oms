@@ -1,0 +1,3 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:new">
+  <xs:complexType name="Moved"><xs:sequence/></xs:complexType>
+</xs:schema>

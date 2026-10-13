@@ -1,0 +1,24 @@
+:root { color-scheme: light dark; font: 1rem/1.5 system-ui, sans-serif; }
+body { margin: auto; max-width: 100rem; padding: 1rem; }
+.controls { display: flex; flex-wrap: wrap; gap: 1rem; }
+label { display: flex; flex-direction: column; }
+input, select, button { font: inherit; padding: .4rem; }
+.panels { display: grid; grid-template-columns: minmax(16rem, 1fr) minmax(0, 2fr); gap: 1.5rem; }
+section { min-width: 0; }
+ul { list-style: none; padding: 0; }
+li { margin: .4rem 0; }
+li button { text-align: left; width: 100%; overflow-wrap: anywhere; }
+.Added { border-left: .4rem solid #27834b; }
+.Removed { border-left: .4rem solid #c54b4b; }
+.Changed { border-left: .4rem solid #bd8b21; }
+.Unchanged { border-left: .4rem solid #888; }
+a { color: #2878ba; margin-right: 1rem; }
+@media (prefers-color-scheme: dark) { a { color: #9dccff; } }
+:focus-visible { outline: 3px solid #488df0; outline-offset: 3px; }
+article { margin: 1rem 0; padding: .8rem; border: 1px solid #888; border-radius: .3rem; }
+h2, h3, p { overflow-wrap: anywhere; }
+table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+th, td { text-align: left; vertical-align: top; border: 1px solid #888; padding: .5rem; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 15rem; overflow: auto; margin: 0; }
+input.share { width: 100%; box-sizing: border-box; }
+@media (max-width: 700px) { .panels { grid-template-columns: 1fr; } }

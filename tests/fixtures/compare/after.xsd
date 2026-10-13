@@ -1,0 +1,16 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:t="urn:compare" xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam" targetNamespace="urn:compare" elementFormDefault="qualified">
+  <xs:import namespace="urn:other" schemaLocation="other.xsd"/>
+  <xs:import namespace="urn:new" schemaLocation="new.xsd"/>
+  <xs:complexType name="Same"><xs:annotation><xs:documentation>After documentation only</xs:documentation></xs:annotation><xs:sequence/></xs:complexType>
+  <xs:complexType name="New"><xs:sequence/></xs:complexType>
+  <xs:complexType name="Base"><xs:sequence/></xs:complexType>
+  <xs:complexType name="OtherBase"><xs:sequence/></xs:complexType>
+  <xs:complexType name="Record"><xs:complexContent><xs:extension base="t:OtherBase"><xs:sequence>
+    <xs:element name="NewField" type="xs:string"/>
+    <xs:element name="Field" type="xs:string" minOccurs="1" maxOccurs="unbounded"/>
+  </xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+  <xs:simpleType name="Enum"><xs:restriction base="xs:string"><xs:enumeration value="B"/><xs:enumeration value="A"/><xs:enumeration value="&lt;script&gt;window.hostile=true&lt;/script&gt;雪&quot;\&#9;&#10;"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Pattern"><xs:restriction base="xs:string"><xs:minLength value="2"/><xs:pattern value="b&quot;\雪&amp;lt;script&amp;gt;"/></xs:restriction></xs:simpleType>
+  <xs:element uci:version="1" name="NewMessage" type="t:Same"/>
+  <xs:element uci:version="1" name="CommonMessage" type="t:Record"/>
+</xs:schema>
