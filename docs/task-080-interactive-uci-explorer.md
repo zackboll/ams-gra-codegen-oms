@@ -203,7 +203,120 @@ All required local gates passed: **READY_FOR_INDEPENDENT_REVIEW**. Hosted CI is
 reported separately in the PR, not substituted for local browser qualification.
 Do not merge or deploy before independent review.
 
-## Hosted coverage and scope
+## Task 080A — history and structural-state correction
+
+Corrective parent: `74136e306788853c95677562837dec10f2fcb093`;
+reviewed JS blob: `9c233ab16740e7bf0e30647ea2b92c3ac26bd9cf`.
+The clean existing worktree, remote feature head and open/non-draft/unmerged PR
+were reconciled before editing. Remote main was
+`a9378b31608a38dd5eb0601e57a8cfd50ace76b0`; no merge/rebase or sibling changes.
+
+Both findings were reproduced before source changes in Chromium and Firefox
+against the generated fixture. Returning to a fragmentless entry gave the choose
+prompt but retained `Message: Report`, one selected root row, details and stale
+share text (also after Back through nested selection). Canonical multilevel
+owner/member links selected `constructor`; reversing only owner/compositor object
+property order gave an explicit structural-path error. Python accepted both.
+The earlier Task 080 suite did **not** test these specific cases.
+
+The fragmentless restoration branch now invokes one complete exploration reset:
+state, selected/root references, node map, row counter, rows, title, details and
+share text are cleared. Loaded data, registries, navigator query/filter and
+reference navigation remain available. Copy/Collapse safely do nothing without
+a selection. Focus moves to root search only when reset removes the focused
+structure/details control; navigator focus is preserved. Restoration writes no
+history entries. Invalid input remains an explicit error and is validated before
+changing the current exploration, not treated as a valid empty selection.
+
+A small strict version-1 normalizer validates exact state/step fields and types,
+then constructs canonical owner/compositor, member and alias/item objects before
+both traversal and registry lookup. It preserves path order, full QName tuple
+identity, member occurrence and edge/compositor kinds; it rejects extra fields and
+does not coerce values. Share URLs use canonical state without rewriting the
+incoming history entry. Graph format, exporter, limits, cardinalities, HTML/CSS,
+runtime and legacy reference content are unchanged. Production Python validator
+code is unchanged.
+
+`state-cases.json` is consumed independently by browser regressions and Python
+tests: **11 accepted / 31 rejected** cases. Accepted cases include message/type
+roots, canonical/reversed/mixed multilevel paths, top-level key permutations,
+inherited and duplicate-owner fields, independent siblings, same local type name
+in another namespace and alias/list edges. Equivalent cases compare final field,
+details, reference target and canonical share state, then reload and copy/restore.
+Rejected cases cover shape/type errors, all invalid member-index categories,
+unknown/swapped owner/compositor/QNames, reordered path steps, invalid edge tags,
+terminal/recursive extension, malformed encoding/JSON, depth and fragment limits.
+
+The task-local `generate-fixture.rs` driver mirrors the existing IR-only Rust
+fixture forms and renders through the production exporter, not injected DOM/data.
+`generate-fixture.py` selects exact Rust 1.95 libraries from Cargo JSON output
+(not arbitrary cached rlibs), with no manifest/dependency changes. From repo root:
+
+```sh
+python3 tests/task080-browser/generate-fixture.py
+cd tests/task080-browser
+TASK080_ARTIFACT=../../target/task080a-fixture \
+TASK080_EVIDENCE=../../target/task080a-scratch/evidence node qualify.cjs
+```
+
+Chromium **149.0.7827.55** / Firefox **151.0**, Playwright **1.61.1**, Node
+**20.19.2** passed the updated fixture suite over project-prefix HTTP and ordinary
+file navigation with normal security: **4 combinations**, each with all 42 corpus
+cases plus history A–H and existing positive interactions. Actual Back/Forward
+cycles restore 0-row empty state, the exact root and nested field; three repeated
+cycles preserve row counts/history length. Direct fragment clearing, empty
+controls, fresh selection/expansion and removed/preserved focus also pass. No
+unexpected external requests or uncaught browser errors. Local evidence is under
+ignored `target/task080a-scratch`; no screenshots/output are committed.
+
+Rust 1.95 schema-docs tests (10), CLI docs tests (2), Python tests (3), JS syntax,
+Rust formatting, shell syntax and diff checks passed. A newly built current CLI
+generated `assets/explorer.js` byte-identical to source and the IR fixture:
+SHA-256 `9562f4e61a6d80931b7c5e753fa5c9aaf1692098bf1aefef78c17950ca2af9bf`.
+Earlier two-build reproducibility is historical evidence for the reviewed
+implementation, not a corrective-head execution claim.
+
+The unmodified `scripts/build-uci-pages.sh` completed one fresh pinned two-release
+production build into `target/task080a-pages` (exit 0), using the current
+worktree CLI. Tag verification, safe archive extraction and the full Pages
+validator all passed. No cached-input override was added. Corrected inventory:
+
+| Release | Files | Graph bytes (unchanged) | Release bytes |
+| --- | ---: | ---: | ---: |
+| 2.5 | 5,565 | 11,115,091 | 48,996,327 |
+| 2.6 | 5,578 | 11,142,756 | 47,831,199 |
+
+Total: **11,144 files, 96,828,972 bytes**. Complete file-set/byte comparison to
+`target/task080-pages-final-a` found exactly two differences:
+`2.5/assets/explorer.js` and `2.6/assets/explorer.js`, each source-identical and
+**17,170 bytes** versus the reviewed **15,811 bytes** (+1,359 each). Every graph,
+legacy reference page and unrelated publication asset is byte-identical.
+
+The corrected full **8-case** Chromium/Firefox × 2.5/2.6 × HTTP/file matrix
+passed (exit 0). Every case includes actual empty-state Back/Forward cycles,
+direct clearing and the inherited `MessageType` → `SecurityInformation` member
+in both canonical and reordered spellings, with reload/copy/restoration and
+identical details/reference/share identity. PositionReport, OrderOfBattle and
+EntityPositionType checks remain intact (53/53/32 materialized rows after 14
+disclosures; SecurityInformation 1..1 and FixedPositionType 0..1). No external
+requests or uncaught errors. Representative before/after empty-state and restored
+fixture/release screenshots were inspected; old stale root/details are visible
+before, while corrected empty views have no rows/share/selection and restored
+views show the intended field without panel overlap. An initial foreground run
+was interrupted by the tool's 30-second command ceiling; only the complete
+background run's exit-0 result is credited as eight-case evidence.
+
+The final fixture matrix and complete release matrix were repeated successfully
+(4 and 8 combinations respectively, exit 0), including the three history cycles
+per case. Task 077 is the only other open parallel PR; corrective changed-file
+overlap is empty. Original and Task 077 worktrees remain clean and untouched.
+All focused local gates are complete: **READY_FOR_INDEPENDENT_REVIEW**.
+Corrective SHA/head parity and exact-head hosted status are reported separately
+in PR #80 after the normal push; local browser results do not certify hosted CI,
+and hosted Rust results do not substitute for browser evidence. No merge,
+deployment, manual CI dispatch or Task 081 work.
+
+## Hosted coverage and scope (unchanged)
 
 Existing Fast CI runs Rust workspace tests/check/Clippy/fmt (including the new
 renderer/data and CLI tests). Pages runs the Python validator tests and pinned

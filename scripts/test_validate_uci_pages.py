@@ -9,6 +9,7 @@ import tempfile
 import unittest
 import warnings
 import zipfile
+import urllib.parse
 
 
 spec = importlib.util.spec_from_file_location(
@@ -40,6 +41,42 @@ class ArchiveTests(unittest.TestCase):
                 else:
                     with self.assertRaises(ValueError):
                         pages.extract(archive, pathlib.Path(tmp) / 'extracted')
+
+
+class ExplorerStateTests(unittest.TestCase):
+    def test_common_state_corpus(self):
+        directory = pathlib.Path(__file__).resolve().parents[1] / 'tests/task080-browser'
+        cases = json.loads((directory / 'state-cases.json').read_text())
+        # Independently authored structural registry, matching the generated
+        # fixture identities; no browser normalizer is reused here.
+        q = lambda name: ['urn:explorer', name]
+        member = lambda name, target=None: {'name': name, 'type': {'named': q(target)} if target else {'primitive': 'String'}}
+        types = {}
+        for name, kind, members, segments, edge in [
+            ('Root', 'Record', [member('First', 'Child'), member('Second', 'Child'), member('Bounded', 'Enum'), member('Zero'), member('Huge'), member('List', 'Items'), member('Inherited', 'Child'), {'name': 'Other', 'type': {'named': ['urn:other', 'Child']}}], ['Base', 'Root'], {}),
+            ('Base', 'Record', [member('Inherited')], ['Base'], {}),
+            ('Child', 'Record', [member('constructor'), member('__proto__', 'Child'), member('Pick', 'Choice')], ['Child'], {}),
+            ('Choice', 'Choice', [member('Left'), member('Right', 'Enum')], ['Choice'], {}),
+            ('Enum', 'Enumeration', [], [], {}),
+            ('Alias', 'Alias', [], [], {'target': {'named': q('Enum')}}),
+            ('Items', 'List', [], [], {'item': {'named': q('Alias')}}),
+        ]:
+            types[tuple(q(name))] = dict(qname=q(name), kind=kind, members=members,
+                segments=[{'owner': q(owner), 'compositor': kind} for owner in segments], **edge)
+        types[('urn:other', 'Child')] = dict(qname=['urn:other', 'Child'], kind='Record',
+            members=types[tuple(q('Child'))]['members'], segments=[{'owner': ['urn:other', 'Child'], 'compositor': 'Record'}])
+        indexes = ({}, types, {tuple(q('Report')): {'type': {'named': q('Root')}}})
+        encode = lambda state: 'uci=' + urllib.parse.quote(json.dumps(state))
+        for case in cases['accepted']:
+            with self.subTest(accepted=case['name']):
+                pages.explorer_state(encode(case['state']), indexes)
+        for case in cases['rejected']:
+            state = case.get('state', {'v': 1, 'kind': 'message', 'root': q('Report'),
+                'path': case.get('path', ([{'member': 0}] * case['depth'] if 'depth' in case else
+                    [{'owner': q('Root'), 'compositor': 'Record'}, {'member': case.get('member')}]))})
+            fragment = case.get('fragment', 'uci=' + 'x' * case['size'] if 'size' in case else encode(state))
+            with self.subTest(rejected=case['name']), self.assertRaises(ValueError):
+                pages.explorer_state(fragment, indexes)
 
 
 class SiteTests(unittest.TestCase):

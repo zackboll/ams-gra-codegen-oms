@@ -22,6 +22,25 @@
   const refType = r => r && r.named ? types.get(key(r.named)) : null;
   const refLabel = r => r ? (r.named ? r.named[1] : r.primitive) : "—";
   const pathKey = path => JSON.stringify(path);
+  const fields = (value, names) => value !== null && typeof value === "object" && !Array.isArray(value) && Object.keys(value).length === names.length && names.every(name => Object.hasOwn(value, name));
+  function normalizeState(s) {
+    if (!fields(s, ["v", "kind", "root", "path"]) || s.v !== 1 || !["message", "type"].includes(s.kind) || !validQ(s.root) || !Array.isArray(s.path) || s.path.length > LIMIT.depth) throw Error("Invalid explorer state.");
+    const path = s.path.map(step => {
+      if (fields(step, ["owner", "compositor"]) && validQ(step.owner) && ["Record", "Choice"].includes(step.compositor)) return { owner: [...step.owner], compositor: step.compositor };
+      if (fields(step, ["member"]) && Number.isSafeInteger(step.member) && step.member >= 0) return { member: step.member };
+      if (fields(step, ["step"]) && ["alias", "item"].includes(step.step)) return { step: step.step };
+      throw Error("Invalid explorer path step.");
+    });
+    return { v: 1, kind: s.kind, root: [...s.root], path };
+  }
+  function resetExploration() {
+    const removedFocus = $("rows").contains(document.activeElement) || $("detail-content").contains(document.activeElement);
+    state = selected = rootNode = null; nodes.clear(); total = 0;
+    $("rows").replaceChildren(); $("root-title").textContent = "Structure";
+    $("detail-content").textContent = "Select a root or field."; $("share").value = "";
+    status("Choose a message or type to begin.");
+    if (removedFocus) $("root-search").focus();
+  }
   function validateData() {
     data = window.schemaExplorerData;
     if (!data || data.version !== 1 || !data.schema || !Array.isArray(data.schema.roots) || !Array.isArray(data.types) || !Array.isArray(data.messages)) throw Error("Missing or invalid explorer data (version 1 required).");
@@ -60,7 +79,7 @@
     selected = node; node.li.classList.add("selected");
     state = { ...state, path: node.path };
     if (history && location.hash !== encoded(state)) window.history.pushState(null, "", encoded(state));
-    $("share").value = `${full(state.root)} / ${node.path.map(p => JSON.stringify(p)).join(" / ")}\n${location.href}`;
+    $("share").value = `${full(state.root)} / ${node.path.map(p => JSON.stringify(p)).join(" / ")}\n${location.href.split("#")[0]}${encoded(state)}`;
     details(node);
   }
   function boundedList(parent, label, values, render) {
@@ -163,10 +182,9 @@
   }
   function restore() {
     try {
-      if (!location.hash) { status("Choose a message or type to begin."); return; }
+      if (!location.hash) { resetExploration(); return; }
       if (!location.hash.startsWith("#uci=") || location.hash.length > LIMIT.fragment) throw Error("Malformed or oversized explorer state.");
-      const s = JSON.parse(decodeURIComponent(location.hash.slice(5)));
-      if (s.v !== 1 || !["message", "type"].includes(s.kind) || !validQ(s.root) || !Array.isArray(s.path) || s.path.length > LIMIT.depth) throw Error("Invalid explorer state.");
+      const s = normalizeState(JSON.parse(decodeURIComponent(location.hash.slice(5))));
       const record = (s.kind === "message" ? messages : types).get(key(s.root));
       if (!record) throw Error("Unknown or stale root identity.");
       // Validate the entire path without changing the displayed exploration.

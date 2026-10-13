@@ -5,7 +5,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 const http = require("node:http");
 const { pathToFileURL } = require("node:url");
-const root = path.resolve(process.env.TASK080_ARTIFACT || "../../target/task080-fixture");
+const { historyChecks, pathChecks } = require("./navigation.cjs");
+const cases = require("./state-cases.json");
+const root = path.resolve(process.env.TASK080_ARTIFACT || "../../target/task080a-fixture");
 const evidence = path.resolve(process.env.TASK080_EVIDENCE || "evidence");
 fs.mkdirSync(evidence, { recursive: true });
 const prefix = "/ams-gra-codegen-oms/";
@@ -22,6 +24,8 @@ async function ready(page) { await page.waitForSelector('body[data-ready="true"]
 async function select(page, name) { await page.locator(".select").filter({ hasText: new RegExp("^" + name + "$") }).first().click(); }
 async function expand(page, name) { await page.getByRole("button", { name: "Expand " + name, exact: true }).first().click(); }
 async function fixture(page, url, label) {
+  await historyChecks(page, url, "Report", cases.accepted.find(c => c.name === "deep"), evidence, label);
+  await pathChecks(page, url, label);
   await page.goto(url); await ready(page);
   await page.locator("#root-search").fill("Report"); await page.locator("#root-results button").click();
   await page.locator(".selected").waitFor();
@@ -87,12 +91,15 @@ async function main() {
       for (const mode of ["http", "file"]) {
         const context = await browser.newContext({ viewport: { width: 1500, height: 1000 } });
         const unexpected = [];
+        const errors = []; context.on("page", p => p.on("pageerror", e => errors.push(e.message)));
         await context.route("**/*", route => { const u = route.request().url(); if (u.startsWith(base) || u.startsWith("file:")) route.continue(); else { unexpected.push(u); route.abort(); } });
         const page = await context.newPage();
         const url = mode === "http" ? base + "explorer.html" : pathToFileURL(path.join(root, "explorer.html")).href;
-        await fixture(page, url, name + "-" + mode);
-        assert.deepEqual(unexpected, []);
-        await context.close(); console.log(name, mode, "PASS");
+        try {
+          await fixture(page, url, name + "-" + mode);
+          assert.deepEqual(unexpected, []); assert.deepEqual(errors, []);
+          console.log(name, mode, "PASS");
+        } finally { await context.close(); }
       }
       const nojs = await browser.newContext({ javaScriptEnabled: false }); const p = await nojs.newPage();
       await p.goto(base + "explorer.html"); assert.match(await p.locator("noscript").innerText(), /reference browser/); await p.getByRole("link", { name: "Reference browser", exact: true }).first().click(); await p.waitForURL("**/index.html"); await nojs.close();
