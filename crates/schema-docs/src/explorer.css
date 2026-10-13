@@ -2,6 +2,17 @@
 body { margin: 0; padding: 1rem; overflow-wrap: anywhere; }
 header h1 { margin: 0; }
 main { display: grid; grid-template-columns: minmax(13rem, 1fr) minmax(25rem, 3fr) minmax(17rem, 1.4fr); gap: 1rem; }
+#field-search { grid-column: 1 / -1; }
+@media (min-width: 1001px) {
+  #navigator { grid-column: 1; grid-row: 1; }
+  #structure { grid-column: 2; grid-row: 1; }
+  #details { grid-column: 3; grid-row: 1; }
+  #field-search { grid-row: 2; }
+}
+#field-controls input[type="checkbox"] { width: auto; }
+#field-controls label { display: block; }
+#field-results { padding: 0; max-height: 32rem; overflow: auto; }
+#field-results li { border-bottom: 1px solid #888; padding: .5rem 0; }
 section { min-width: 0; border: 1px solid #888; border-radius: .4rem; padding: .8rem; }
 input, select, textarea { box-sizing: border-box; width: 100%; font: inherit; margin: .3rem 0; }
 button { font: inherit; cursor: pointer; margin: .15rem; }

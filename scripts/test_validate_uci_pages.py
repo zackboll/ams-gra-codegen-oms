@@ -102,6 +102,7 @@ class SiteTests(unittest.TestCase):
                     (directory / 'explorer.html').write_text('<a href="index.html">Reference browser</a>')
                     (directory / 'assets/explorer.css').write_text('body {}')
                     (directory / 'assets/explorer.js').write_text('void 0;')
+                    (directory / 'assets/explorer-search.js').write_text('void 0;')
                     graph = {'version': 1, 'schema': {'roots': [schema], 'version': None},
                              'types': [{'qname': ['urn:test', 'Type'], 'kind': 'Record', 'abstract': False,
                                         'url': 'types/000000.html', 'base': None, 'target': None, 'item': None,
@@ -159,12 +160,13 @@ class SiteTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'unexpected files'), contextlib.redirect_stdout(io.StringIO()):
                     pages.validate(root)
                 extra.unlink()
-                asset = root / '2.6/assets/explorer.js'
-                asset_text = asset.read_text()
-                asset.unlink()
-                with self.assertRaisesRegex(ValueError, 'missing assets'), contextlib.redirect_stdout(io.StringIO()):
-                    pages.validate(root)
-                asset.write_text(asset_text)
+                for filename in ['explorer.js', 'explorer-search.js']:
+                    asset = root / '2.6/assets' / filename
+                    asset_text = asset.read_text()
+                    asset.unlink()
+                    with self.assertRaisesRegex(ValueError, 'missing assets'), contextlib.redirect_stdout(io.StringIO()):
+                        pages.validate(root)
+                    asset.write_text(asset_text)
                 search.write_text('window.schemaSearchIndex = ' + json.dumps(
                     [{'url': 'types/missing.html', 'label': '{urn:test}Type'}, {'url': 'index.html#message-000000', 'label': '{urn:test}Message'}]) + ';\n')
                 with self.assertRaisesRegex(ValueError, 'inventory mismatch'):
