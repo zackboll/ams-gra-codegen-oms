@@ -171,19 +171,37 @@ Pinned inputs remain `093610b7753944059360d3236770ab446d039556` (2.5) and
 are committed. Preliminary artifacts made before final asset changes are not
 used for final-source reproducibility evidence.
 
-Real-release browser results are recorded in the PR qualification report.
+Completed-artifact qualification passed all eight Chromium **149.0.7827.55** /
+Firefox **151.0** × release **2.5 / 2.6** × project-prefix HTTP / ordinary
+`file://` cases, with browser security unchanged and no unexpected external
+requests. The final qualification command exited **0**; earlier incomplete-artifact
+timeouts are not qualification evidence. Desktop and 390px screenshots for both
+engines/releases were visually inspected: no panel overlap or page-level overflow;
+horizontal scrolling inside the narrow structure pane is intentional. Screenshots
+remain ignored and uncommitted.
 The bounded script inspects PositionReport, OrderOfBattle and EntityPositionType,
 compares selected field names/ranges/docs to graph data and independently rendered
 reference pages, and opens reference navigation. Initial structure has **0 rows**
 before root selection. Representative exploration after 14 disclosures has
 **53 rows** (PositionReport/OrderOfBattle) and **32 rows** (EntityPositionType),
-not the whole graph. Chromium initial readiness observed around 242–260 ms in
+not the whole graph. Chromium initial readiness observed around 242–641 ms and
+Firefox around 275–504 ms in
 the completed-artifact run; timings are observations, not performance guarantees.
 Actual EntityPositionType fields FixedPositionType, RelativePosition and Zone
 are each 0..1 in both releases. PositionReportMT inherits MessageType and locally
 declares MessageData 1..1; OrderOfBattleMT additionally has ObjectState 0..1.
 Inherited SecurityInformation is 1..1. Expanded security content visibly includes
 OwnerProducer 1..*, SCI_Controls 0..20 and explicit OwnerProducer choice alternatives.
+
+Qualification applies to implementation commit
+`800ab55c9c3508084f16f52adf7d06429ebbcd42`; subsequent commits only record evidence
+in this document and do not change build inputs or browser tooling. Focused Rust
+and Python validator tests and JS syntax were rechecked after production evidence.
+Remote main remains at the starting SHA; the original workspace is on a separate
+Task 059 branch and was left untouched. Task 077 changed-file overlap is empty.
+All required local gates passed: **READY_FOR_INDEPENDENT_REVIEW**. Hosted CI is
+reported separately in the PR, not substituted for local browser qualification.
+Do not merge or deploy before independent review.
 
 ## Hosted coverage and scope
 
