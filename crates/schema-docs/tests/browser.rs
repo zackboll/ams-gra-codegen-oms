@@ -93,7 +93,7 @@ fn deterministic_pages_and_navigation() {
     let schema = fixture();
     let first = generate(&schema).unwrap();
     assert_eq!(first, generate(&schema).unwrap());
-    assert_eq!(first.len(), schema.types.len() + 4);
+    assert_eq!(first.len(), schema.types.len() + 8);
     let pages: Vec<_> = first
         .iter()
         .filter(|f| f.relative_path.starts_with("types"))
@@ -202,7 +202,7 @@ fn distinct_namespaces_cannot_collide() {
     other.name = QualifiedName::new("urn:other", name);
     schema.types.push(other);
     let files = generate(&schema).unwrap();
-    assert_eq!(files.len(), schema.types.len() + 4);
+    assert_eq!(files.len(), schema.types.len() + 8);
 }
 
 #[test]

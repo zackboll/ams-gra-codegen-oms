@@ -50,6 +50,127 @@ class Links(html.parser.HTMLParser):
         self.anchors.update(value for key, value in attrs if key == 'id' and value is not None)
 
 
+def qkey(q):
+    require(isinstance(q, list) and len(q) == 2 and all(isinstance(v, str) for v in q), 'invalid QName')
+    return tuple(q)
+
+
+def explorer_graph(directory, records, types, messages, schema):
+    wrapper = (directory / 'assets/explorer-data.js').read_text()
+    match = re.fullmatch(r'window\.schemaExplorerData = (.*);\n', wrapper, re.DOTALL)
+    require(match is not None, 'invalid explorer data wrapper')
+    graph = json.loads(match.group(1))
+    require(graph.get('version') == 1, 'invalid explorer data version')
+    require(len(graph['types']) == types and len(graph['messages']) == messages, 'explorer inventory mismatch')
+    registry = {}
+    message_registry = {}
+    for declarations, index in [(graph['types'], registry), (graph['messages'], message_registry)]:
+        for declaration in declarations:
+            identity = qkey(declaration['qname'])
+            require(identity not in index, 'duplicate explorer identity')
+            index[identity] = declaration
+    require(set(t['url'] for t in graph['types']) == set(r['url'] for r in records if r['url'].startswith('types/')),
+            'explorer type URL inventory mismatch')
+    require(set(m['url'] for m in graph['messages']) == set(r['url'] for r in records if r['url'].startswith('index.html#message-')),
+            'explorer message URL inventory mismatch')
+    for declaration in graph['types'] + graph['messages']:
+        matching = [r for r in records if r['url'] == declaration['url']]
+        require(len(matching) == 1 and matching[0].get('label') == '{' + declaration['qname'][0] + '}' + declaration['qname'][1],
+                'explorer identity/search mismatch')
+    roots = graph['schema']['roots']
+    require(isinstance(roots, list) and any(pathlib.PurePosixPath(r).name == schema for r in roots), 'explorer schema identity mismatch')
+    other = RELEASES['2.6' if directory.name == '2.5' else '2.5'][2]
+    require(not any(other in r for r in roots), 'mixed explorer release metadata')
+    if schema in ('UCI_MessageDefinitions_v2_5_0.xsd', ROOT26):
+        require(graph['schema']['version'] == ('002.5.0' if directory.name == '2.5' else '002.6.0'),
+                'swapped explorer schema version')
+
+    def reference(r):
+        require(isinstance(r, dict), 'invalid explorer reference')
+        if 'named' in r:
+            require(set(r) == {'named'} and qkey(r['named']) in registry, 'unresolved explorer reference')
+        else:
+            require(set(r) == {'primitive'} and r['primitive'] in ('Boolean', 'SignedInteger', 'UnsignedInteger', 'Decimal', 'Float32', 'Float64', 'String', 'Binary', 'DateTime', 'Time', 'Duration'), 'invalid primitive reference')
+
+    def count(c):
+        require(isinstance(c, dict) and set(c) == {'min', 'max'}, 'invalid occurrence range')
+        require(isinstance(c['min'], str) and re.fullmatch(r'0|[1-9][0-9]*', c['min']), 'invalid occurrence minimum')
+        require(c['max'] is None or isinstance(c['max'], str) and re.fullmatch(r'0|[1-9][0-9]*', c['max']) and int(c['max']) >= int(c['min']), 'invalid occurrence maximum')
+
+    def constraints(c):
+        require(isinstance(c, dict) and set(c) == {'facets', 'patternGroups'}, 'invalid explorer constraints')
+        require(isinstance(c['facets'], list) and isinstance(c['patternGroups'], list), 'invalid constraint lists')
+        for facet in c['facets']:
+            require(set(facet) == {'name', 'value'} and isinstance(facet['name'], str) and isinstance(facet['value'], str), 'invalid constraint facet')
+        for group in c['patternGroups']:
+            require(isinstance(group, list), 'invalid pattern group')
+            for pattern in group:
+                require(set(pattern) == {'dialect', 'expression'} and pattern['dialect'] == 'XmlSchema' and isinstance(pattern['expression'], str), 'invalid pattern expression')
+
+    for t in graph['types']:
+        require(re.fullmatch(r'types/[0-9]{6}\.html', t['url']), 'invalid explorer reference URL')
+        require(t['kind'] in ('Primitive', 'Alias', 'Enumeration', 'Record', 'Choice', 'List'), 'invalid explorer kind')
+        require(isinstance(t['abstract'], bool), 'invalid abstractness')
+        constraints(t['constraints'])
+        require(isinstance(t['enumeration'], list), 'invalid enumeration')
+        for variant in t['enumeration']:
+            require(isinstance(variant['value'], str) and (variant['documentation'] is None or isinstance(variant['documentation'], str)), 'invalid enumeration value')
+        for name in ('base', 'target', 'item'):
+            if t[name] is not None:
+                reference(t[name])
+        if t['item'] is not None:
+            count(t['itemCount'])
+        for i, m in enumerate(t['members']):
+            require(m['index'] == i and isinstance(m['name'], str) and (m['namespace'] is None or isinstance(m['namespace'], str)) and isinstance(m['nillable'], bool), 'invalid explorer member')
+            reference(m['type'])
+            count(m['count'])
+            constraints(m['constraints'])
+        for owner in t['ancestry']:
+            require(qkey(owner) in registry, 'unresolved ancestry owner')
+        for segment in t['segments']:
+            owner = registry.get(qkey(segment['owner']))
+            require(owner is not None and segment['compositor'] == owner['kind'] and owner['kind'] in ('Record', 'Choice'), 'invalid structural owner/compositor')
+    for m in graph['messages']:
+        reference(m['type'])
+        require(re.fullmatch(r'index\.html#message-[0-9]{6}', m['url']), 'invalid explorer message URL')
+    return graph, registry, message_registry
+
+
+def explorer_state(fragment, indexes):
+    require(fragment.startswith('uci=') and len(fragment) <= 16384 and not re.search(r'%(?![0-9A-Fa-f]{2})', fragment), 'invalid explorer fragment')
+    try:
+        state = json.loads(urllib.parse.unquote(fragment[4:], errors='strict'))
+    except (ValueError, UnicodeError) as error:
+        raise ValueError('malformed explorer state') from error
+    graph, types, messages = indexes
+    require(set(state) == {'v', 'kind', 'root', 'path'} and state['v'] == 1 and state['kind'] in ('message', 'type'), 'invalid explorer state')
+    root = (messages if state['kind'] == 'message' else types).get(qkey(state['root']))
+    require(root is not None, 'unknown explorer root')
+    require(isinstance(state['path'], list) and len(state['path']) <= 24, 'excessive explorer path')
+    ref = root['type'] if state['kind'] == 'message' else {'named': root['qname']}
+    current = types.get(qkey(ref['named'])) if 'named' in ref else None
+    owner = None
+    ancestors = set()
+    for step in state['path']:
+        require(isinstance(step, dict), 'invalid explorer path step')
+        if owner is not None:
+            require(set(step) == {'member'} and type(step['member']) is int and 0 <= step['member'] < len(owner['members']), 'unknown explorer member')
+            ref = owner['members'][step['member']]['type']
+            current = types.get(qkey(ref['named'])) if 'named' in ref else None
+            owner = None
+            continue
+        require(current is not None and qkey(current['qname']) not in ancestors, 'terminal or recursive explorer path')
+        ancestors.add(qkey(current['qname']))
+        if current['kind'] in ('Record', 'Choice'):
+            require(set(step) == {'owner', 'compositor'} and step in current['segments'], 'unknown explorer segment')
+            owner = types[qkey(step['owner'])]
+        else:
+            name = 'alias' if current['kind'] == 'Alias' else 'item'
+            require(step == {'step': name} and current['kind'] in ('Alias', 'List'), 'unknown explorer reference step')
+            ref = current['target'] if name == 'alias' else current['item']
+            current = types.get(qkey(ref['named'])) if 'named' in ref else None
+
+
 def validate(root):
     require(root.is_dir() and not root.is_symlink(), 'missing site root')
     root = root.resolve()
@@ -62,10 +183,13 @@ def validate(root):
     require('UCI 2.5' in (root / 'index.html').read_text() and
             'UCI 2.6' in (root / 'index.html').read_text(), 'missing release selector')
     search_urls = {}
+    explorers = {}
     for version, (types, messages, schema) in RELEASES.items():
         directory = root / version
         expected = {directory / 'index.html', directory / 'assets/style.css',
-                    directory / 'assets/search.js', directory / 'assets/search-index.js'}
+                    directory / 'assets/search.js', directory / 'assets/search-index.js',
+                    directory / 'explorer.html', directory / 'assets/explorer.css',
+                    directory / 'assets/explorer.js', directory / 'assets/explorer-data.js'}
         require(all(p.is_file() for p in expected), f'{version}: missing assets')
         pages = sorted((directory / 'types').glob('*.html'))
         require(len(pages) == types and pages[0].name == '000000.html' and
@@ -82,12 +206,13 @@ def validate(root):
                 sum(r['url'].startswith('index.html#message-') for r in records) == messages,
                 f'{version}: search inventory mismatch')
         search_urls[version] = [r['url'] for r in records]
-        require(len([p for p in directory.rglob('*') if p.is_file()]) == types + 4, f'{version}: unexpected files')
-        print(f'{version}: {types} types, {messages} messages, {types + 4} files')
+        explorers[directory / 'explorer.html'] = explorer_graph(directory, records, types, messages, schema)
+        require(set(p for p in directory.rglob('*') if p.is_file()) == expected | set(pages), f'{version}: unexpected files')
+        print(f'{version}: {types} types, {messages} messages, {types + 8} files')
     parsed_pages = {}
     for path in files:
         require(path.suffix.lower() not in ('.xsd', '.zip') and
-                not any(part in ('.git', 'target', 'standard', 'extracted') for part in path.parts),
+                not any(part in ('.git', 'target', 'standard', 'extracted') for part in path.relative_to(root).parts),
                 f'non-publication material: {path}')
         require(path.suffix in ('.html', '.css', '.js'), f'unexpected file type: {path}')
         if path.suffix in ('.html', '.css', '.js'):
@@ -114,8 +239,11 @@ def validate(root):
             require(target.is_relative_to(root) and target.is_file(),
                     f'broken link: {path}: {link}')
             if parsed.fragment:
-                require(target in parsed_pages and urllib.parse.unquote(parsed.fragment) in parsed_pages[target].anchors,
-                        f'broken anchor: {path}: {link}')
+                if target in explorers:
+                    explorer_state(parsed.fragment, explorers[target])
+                else:
+                    require(target in parsed_pages and urllib.parse.unquote(parsed.fragment) in parsed_pages[target].anchors,
+                            f'broken anchor: {path}: {link}')
     size = sum(p.stat().st_size for p in files)
     require(size < 1_000_000_000, 'Pages artifact exceeds 1 GB')
     print(f'link scan: OK; artifact: {len(files)} files, {size} bytes (< 1 GB)')

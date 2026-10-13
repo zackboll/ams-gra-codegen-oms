@@ -1,0 +1,17 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:t="urn:explorer" xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam" targetNamespace="urn:explorer" elementFormDefault="qualified" version="080.1">
+  <xs:simpleType name="Enum"><xs:restriction base="xs:string"><xs:enumeration value="constructor"/><xs:enumeration value="__proto__"/><xs:enumeration value="&lt;/script&gt;☃"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Alias"><xs:restriction base="xs:string"/></xs:simpleType>
+  <xs:simpleType name="Items"><xs:restriction base="xs:string"/></xs:simpleType>
+  <xs:complexType name="Base" abstract="true"><xs:sequence><xs:element name="Inherited" type="xs:string"/></xs:sequence></xs:complexType>
+  <xs:complexType name="Choice"><xs:choice><xs:element name="Left" type="xs:string"/><xs:element name="Right" type="t:Enum"/></xs:choice></xs:complexType>
+  <xs:complexType name="Child"><xs:sequence><xs:element name="constructor" type="xs:string"><xs:annotation><xs:documentation>&lt;img src="https://evil.invalid/" onerror="window.hostile=true"&gt; &lt;/script&gt; quotes " '\ ☃</xs:documentation></xs:annotation></xs:element><xs:element name="__proto__" type="t:Child" minOccurs="0"/><xs:element name="Pick" type="t:Choice"/></xs:sequence></xs:complexType>
+  <xs:complexType name="Root"><xs:complexContent><xs:extension base="t:Base"><xs:sequence>
+    <xs:element name="First" type="t:Child" minOccurs="0" nillable="true"/>
+    <xs:element name="Second" type="t:Child" minOccurs="0" maxOccurs="unbounded"/>
+    <xs:element name="Bounded" type="t:Enum" minOccurs="2" maxOccurs="8"/>
+    <xs:element name="Zero" type="xs:string" minOccurs="0" maxOccurs="0"/>
+    <xs:element name="Huge" type="xs:string" minOccurs="9007199254740993" maxOccurs="18446744073709551615"/>
+    <xs:element name="List" type="t:Items"/>
+  </xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+  <xs:element name="Report" type="t:Root" uci:version="080.1"/>
+</xs:schema>

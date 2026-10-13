@@ -1,0 +1,329 @@
+# Task 080 — Interactive UCI structure explorer
+
+## Isolation and authority
+
+Started directly from `origin/main` at
+`a9378b31608a38dd5eb0601e57a8cfd50ace76b0` in the isolated worktree
+`/home/zboll/git/ams-gra-codegen-oms-task080`, branch
+`feature/080-uci-structure-explorer`. No Task 080 predecessor existed.
+Task 077 and its Deep CI correction were inspected read-only; no runtime,
+workflow, guard, README, roadmap, Cargo.lock or Sleet harness changes are needed.
+
+The existing frontend → validated normalized `SchemaIr` → schema-docs pipeline
+is the only schema authority. Documentation does not require backend readiness.
+Structural export uses `lossless_structural_with_index`, preserving ancestry,
+declaring owners, duplicate inherited member names and Record/Choice boundaries.
+It does not flatten effective fields or interpret XSD in the browser.
+
+## Navigation and semantics
+
+Every release index links to its explorer. Each type and message has a
+root-specific exploration link. The assembled Pages selector has Reference and
+Explorer choices for each known release; generic CLI output has no assumed
+release parent directory. Existing ordinal type URLs, search and message anchors
+are preserved. Explorer assets are not loaded by reference pages.
+
+Choose Messages or Types and refine the root search. Select a name to inspect it;
+use the separate `+`/`−` disclosure button to expand/collapse. Tab reaches native
+buttons and links; Enter/Space activates them. There are no ARIA tree roles or
+custom arrow-key model. Collapsing an ancestor of the selected node selects that
+ancestor and focuses its disclosure. Collapse exploration resets the root and
+materialized-row budget. Explore as root starts a distinct history entry;
+Back/Forward restores root and selected path. Copy supplies the structured path
+and URL, with a selectable textarea when clipboard access is unavailable.
+
+Cardinalities are exact **local** `min..max` ranges; `*` means unbounded.
+Optional means min=0; Repeated independently means finite max>1 or unbounded.
+`0..0` also says Not occurring. Nillability is separate. Required local members
+under optional ancestors are conditionally present; the details panel explains
+this without multiplying ranges. Choice/Alternatives sections distinguish
+alternative selection from local cardinality. No missing compositor occurrence
+information is invented. Repeated branches show the structure of one item, never
+instance entries, defaults or fabricated values. This is not runtime validation
+or payload-construction advice.
+
+Inheritance segments are base-to-derived and independently collapsible. Alias
+identity and target remain distinct. Lists have explicit item steps. Abstractness
+is visible; immediate known derived types are listed separately as “Known derived
+types in this schema”, not inserted as fields. This does not claim exhaustive
+runtime extension knowledge.
+
+## Data and link contracts
+
+Four additive files: `explorer.html`, `assets/explorer.css`,
+`assets/explorer.js`, `assets/explorer-data.js`. The classic external data script
+is exactly `window.schemaExplorerData = <JSON>;\n`, parsed as JSON (never executed)
+by the artifact validator. Graph version 1 contains schema metadata, namespaces,
+type and message record arrays. A QName is `[namespace_uri, local_name]`, not a
+display prefix or concatenated lookup name. Browser lookup uses `Map` keyed by
+JSON-encoded QName tuples. Each type is declared once, with local member arrays;
+effective segments reference their declaring owner and compositor. Ancestry
+retains empty owners. References are `{named: QName}` or `{primitive: kind}`.
+Absent wire namespace is JSON null, distinct from a present empty string.
+Occurrence min/max are decimal strings; max null means unbounded. Numeric and
+length constraint display values are strings, retaining large integers exactly.
+Pattern groups preserve AND between restriction groups, OR within each group,
+and dialect. Enumeration wire values and docs are retained separately.
+
+Reference URLs come from the existing deterministic page registry. Message
+anchors retain schema order. Schema metadata includes normalized schema version,
+namespace/prefix metadata and the deterministic set of message source documents
+as root provenance; it does not invent release names from directory layout.
+No timestamps, random IDs or transient explorer checkout paths are generated.
+
+State is `#uci=` followed by percent-encoded JSON:
+
+```json
+{"v":1,"kind":"message","root":["urn:example","Report"],"path":[{"owner":["urn:example","Root"],"compositor":"Record"},{"member":0}]}
+```
+
+`kind` is message/type. Structural steps select an exact owner/compositor,
+then a local member occurrence index. Alias/list edges use `{step:"alias"}` or
+`{step:"item"}`. Owner and occurrence index disambiguate inherited duplicate
+names. The release is the explorer page URL. Paths do not contain executable
+URLs or the expanded DOM. Restoration validates the complete path before
+changing the display; malformed, unknown, stale, terminal and recursive paths
+show errors rather than selecting a similarly named member. Reordering members
+can make occurrence-index links stale; this format is release-specific, not a
+cross-version semantic link contract.
+
+## Limits, safety and compatibility
+
+Expansion state belongs to a structural path. Recursion is detected only on that
+ancestor path; sibling occurrences expand independently. Recursive edges expose
+Explore as root, not unlimited expansion. Maximum path/expansion depth is 24
+steps, materialized rows 2,000, rendered root search results 50, fragment length
+16,384 characters. Search reports full counts and asks for refinement. Details
+lists initially render 50 entries per list, with explicit next-50 controls;
+pattern sublists use the same bound. Expansion limits show feedback; no Expand
+everything operation is offered. Collapse exploration resets the row budget.
+
+Schema and URL display text uses text nodes/textContent only. No HTML recovery,
+innerHTML, eval, inline event handlers, prototype-derived lookup or arbitrary
+fragment navigation URLs are used. Registry-generated reference URLs are checked
+before UI initialization. Hostile markup, script-closing text, Unicode,
+`constructor` and `__proto__` are fixture-tested.
+
+There is no fetch, XHR, module, service worker, CDN, telemetry or runtime package
+download. External classic local scripts support both file opening and project
+prefix hosting. A persistent reference link and noscript explanation remain
+usable without JS; missing/invalid data is an explicit error. The explorer
+requires modern browsers supporting Map, replaceChildren, optional modern DOM
+APIs and Array.at; Chromium/Firefox are qualified below, not historical engines.
+Legacy reference HTML remains available as fallback.
+
+Responsive panels stack below 1,000px. Wide structures intentionally scroll
+inside their pane; body text wraps at narrow widths and increased text sizing.
+Badges use words and ranges as well as color; forced-colors selection has a border.
+
+## Local qualification
+
+Rust 1.95.0: schema-docs integration/data tests (10), CLI docs tests (2), enum
+remapping regressions (4), affected all-target check and Clippy `-D warnings`,
+fmt, shell syntax and diff checks passed during implementation.
+Python Pages tests pass positive artifact controls and isolated negative controls
+for wrapper/version, inventory/reference, metadata and fragment failures, while
+retaining ordinary anchor, provenance, archive and inventory protections.
+The material-purity check now examines paths relative to the artifact root,
+not the checkout's absolute parents: an artifact may be staged beneath `target`
+without allowing a `target` directory inside the published artifact. The exact
+file-set check is strengthened to set equality, not merely a file count.
+
+Opt-in browser package: `tests/task080-browser`, exact Playwright 1.61.1 with npm
+lockfile. `npm ci`, `npx --no-install playwright install chromium firefox`, then
+`npm test` against `target/task080-fixture`. Generate it with the task worktree's
+CLI using `crates/schema-docs/tests/explorer.xsd`. `node real.cjs` uses
+`TASK080_PAGES` for a complete Pages artifact. Browser/server resources are closed
+in finally handlers; the HTTP server binds an ephemeral loopback port and mounts
+the artifact under `/ams-gra-codegen-oms/`. Unexpected external requests are
+blocked and asserted absent. Screenshots are ignored local evidence, never part
+of the publication artifact or commit.
+
+Fixture tests passed Chromium **149.0.7827.55**, Firefox **151.0**, Node **20.19.2**,
+Playwright **1.61.1**, HTTP project prefix and ordinary file:// with no disabled
+browser security. Coverage includes root message/type search, multilevel and
+independent sibling expansion, optional/repeated/zero/large ranges, owner labels,
+choices, recursion, constraints/enums/docs and reference-link targets, copy
+fallback/deep-link reload, Back/Forward, malformed/oversized state, native keyboard
+disclosures, hostile text, 390px width at 200% text sizing, JS-disabled reference
+navigation, and missing/invalid data. Desktop/narrow screenshots were visually
+inspected: no panel overlap or page-level clipping after the wrapping fix;
+structure-pane horizontal scrolling at narrow widths is intentional.
+
+### Production artifact evidence
+
+Two independent production builder executions fetched and verified the existing
+public pinned tags, built the task worktree's `target/debug` CLI with Rust 1.95.0,
+and generated into empty task-owned destinations. They took **495 s** and
+**494 s**, including acquisition and full validation. Both passed the strengthened
+validator. Complete paths and bytes compare identically: **11,144 files**,
+**96,826,254 bytes**; independent Python byte comparison took **0.604 s**, and
+the full `diff -qr` also passed without exclusions.
+
+| Release | Types | Messages | Files | Graph bytes | Release bytes |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2.5 | 5,557 | 722 | 5,565 | 11,115,091 | 48,994,968 |
+| 2.6 | 5,570 | 725 | 5,578 | 11,142,756 | 47,829,840 |
+
+Pinned inputs remain `093610b7753944059360d3236770ab446d039556` (2.5) and
+`78eb61b6112c8bffa40820c33124b57787fc5bd9` (2.6). Loaded normalized versions are
+`002.5.0` and `002.6.0`. No source trees, output, browser binaries or screenshots
+are committed. Preliminary artifacts made before final asset changes are not
+used for final-source reproducibility evidence.
+
+Completed-artifact qualification passed all eight Chromium **149.0.7827.55** /
+Firefox **151.0** × release **2.5 / 2.6** × project-prefix HTTP / ordinary
+`file://` cases, with browser security unchanged and no unexpected external
+requests. The final qualification command exited **0**; earlier incomplete-artifact
+timeouts are not qualification evidence. Desktop and 390px screenshots for both
+engines/releases were visually inspected: no panel overlap or page-level overflow;
+horizontal scrolling inside the narrow structure pane is intentional. Screenshots
+remain ignored and uncommitted.
+The bounded script inspects PositionReport, OrderOfBattle and EntityPositionType,
+compares selected field names/ranges/docs to graph data and independently rendered
+reference pages, and opens reference navigation. Initial structure has **0 rows**
+before root selection. Representative exploration after 14 disclosures has
+**53 rows** (PositionReport/OrderOfBattle) and **32 rows** (EntityPositionType),
+not the whole graph. Chromium initial readiness observed around 242–641 ms and
+Firefox around 275–504 ms in
+the completed-artifact run; timings are observations, not performance guarantees.
+Actual EntityPositionType fields FixedPositionType, RelativePosition and Zone
+are each 0..1 in both releases. PositionReportMT inherits MessageType and locally
+declares MessageData 1..1; OrderOfBattleMT additionally has ObjectState 0..1.
+Inherited SecurityInformation is 1..1. Expanded security content visibly includes
+OwnerProducer 1..*, SCI_Controls 0..20 and explicit OwnerProducer choice alternatives.
+
+Qualification applies to implementation commit
+`800ab55c9c3508084f16f52adf7d06429ebbcd42`; subsequent commits only record evidence
+in this document and do not change build inputs or browser tooling. Focused Rust
+and Python validator tests and JS syntax were rechecked after production evidence.
+Remote main remains at the starting SHA; the original workspace is on a separate
+Task 059 branch and was left untouched. Task 077 changed-file overlap is empty.
+All required local gates passed: **READY_FOR_INDEPENDENT_REVIEW**. Hosted CI is
+reported separately in the PR, not substituted for local browser qualification.
+Do not merge or deploy before independent review.
+
+## Task 080A — history and structural-state correction
+
+Corrective parent: `74136e306788853c95677562837dec10f2fcb093`;
+reviewed JS blob: `9c233ab16740e7bf0e30647ea2b92c3ac26bd9cf`.
+The clean existing worktree, remote feature head and open/non-draft/unmerged PR
+were reconciled before editing. Remote main was
+`a9378b31608a38dd5eb0601e57a8cfd50ace76b0`; no merge/rebase or sibling changes.
+
+Both findings were reproduced before source changes in Chromium and Firefox
+against the generated fixture. Returning to a fragmentless entry gave the choose
+prompt but retained `Message: Report`, one selected root row, details and stale
+share text (also after Back through nested selection). Canonical multilevel
+owner/member links selected `constructor`; reversing only owner/compositor object
+property order gave an explicit structural-path error. Python accepted both.
+The earlier Task 080 suite did **not** test these specific cases.
+
+The fragmentless restoration branch now invokes one complete exploration reset:
+state, selected/root references, node map, row counter, rows, title, details and
+share text are cleared. Loaded data, registries, navigator query/filter and
+reference navigation remain available. Copy/Collapse safely do nothing without
+a selection. Focus moves to root search only when reset removes the focused
+structure/details control; navigator focus is preserved. Restoration writes no
+history entries. Invalid input remains an explicit error and is validated before
+changing the current exploration, not treated as a valid empty selection.
+
+A small strict version-1 normalizer validates exact state/step fields and types,
+then constructs canonical owner/compositor, member and alias/item objects before
+both traversal and registry lookup. It preserves path order, full QName tuple
+identity, member occurrence and edge/compositor kinds; it rejects extra fields and
+does not coerce values. Share URLs use canonical state without rewriting the
+incoming history entry. Graph format, exporter, limits, cardinalities, HTML/CSS,
+runtime and legacy reference content are unchanged. Production Python validator
+code is unchanged.
+
+`state-cases.json` is consumed independently by browser regressions and Python
+tests: **11 accepted / 31 rejected** cases. Accepted cases include message/type
+roots, canonical/reversed/mixed multilevel paths, top-level key permutations,
+inherited and duplicate-owner fields, independent siblings, same local type name
+in another namespace and alias/list edges. Equivalent cases compare final field,
+details, reference target and canonical share state, then reload and copy/restore.
+Rejected cases cover shape/type errors, all invalid member-index categories,
+unknown/swapped owner/compositor/QNames, reordered path steps, invalid edge tags,
+terminal/recursive extension, malformed encoding/JSON, depth and fragment limits.
+
+The task-local `generate-fixture.rs` driver mirrors the existing IR-only Rust
+fixture forms and renders through the production exporter, not injected DOM/data.
+`generate-fixture.py` selects exact Rust 1.95 libraries from Cargo JSON output
+(not arbitrary cached rlibs), with no manifest/dependency changes. From repo root:
+
+```sh
+python3 tests/task080-browser/generate-fixture.py
+cd tests/task080-browser
+TASK080_ARTIFACT=../../target/task080a-fixture \
+TASK080_EVIDENCE=../../target/task080a-scratch/evidence node qualify.cjs
+```
+
+Chromium **149.0.7827.55** / Firefox **151.0**, Playwright **1.61.1**, Node
+**20.19.2** passed the updated fixture suite over project-prefix HTTP and ordinary
+file navigation with normal security: **4 combinations**, each with all 42 corpus
+cases plus history A–H and existing positive interactions. Actual Back/Forward
+cycles restore 0-row empty state, the exact root and nested field; three repeated
+cycles preserve row counts/history length. Direct fragment clearing, empty
+controls, fresh selection/expansion and removed/preserved focus also pass. No
+unexpected external requests or uncaught browser errors. Local evidence is under
+ignored `target/task080a-scratch`; no screenshots/output are committed.
+
+Rust 1.95 schema-docs tests (10), CLI docs tests (2), Python tests (3), JS syntax,
+Rust formatting, shell syntax and diff checks passed. A newly built current CLI
+generated `assets/explorer.js` byte-identical to source and the IR fixture:
+SHA-256 `9562f4e61a6d80931b7c5e753fa5c9aaf1692098bf1aefef78c17950ca2af9bf`.
+Earlier two-build reproducibility is historical evidence for the reviewed
+implementation, not a corrective-head execution claim.
+
+The unmodified `scripts/build-uci-pages.sh` completed one fresh pinned two-release
+production build into `target/task080a-pages` (exit 0), using the current
+worktree CLI. Tag verification, safe archive extraction and the full Pages
+validator all passed. No cached-input override was added. Corrected inventory:
+
+| Release | Files | Graph bytes (unchanged) | Release bytes |
+| --- | ---: | ---: | ---: |
+| 2.5 | 5,565 | 11,115,091 | 48,996,327 |
+| 2.6 | 5,578 | 11,142,756 | 47,831,199 |
+
+Total: **11,144 files, 96,828,972 bytes**. Complete file-set/byte comparison to
+`target/task080-pages-final-a` found exactly two differences:
+`2.5/assets/explorer.js` and `2.6/assets/explorer.js`, each source-identical and
+**17,170 bytes** versus the reviewed **15,811 bytes** (+1,359 each). Every graph,
+legacy reference page and unrelated publication asset is byte-identical.
+
+The corrected full **8-case** Chromium/Firefox × 2.5/2.6 × HTTP/file matrix
+passed (exit 0). Every case includes actual empty-state Back/Forward cycles,
+direct clearing and the inherited `MessageType` → `SecurityInformation` member
+in both canonical and reordered spellings, with reload/copy/restoration and
+identical details/reference/share identity. PositionReport, OrderOfBattle and
+EntityPositionType checks remain intact (53/53/32 materialized rows after 14
+disclosures; SecurityInformation 1..1 and FixedPositionType 0..1). No external
+requests or uncaught errors. Representative before/after empty-state and restored
+fixture/release screenshots were inspected; old stale root/details are visible
+before, while corrected empty views have no rows/share/selection and restored
+views show the intended field without panel overlap. An initial foreground run
+was interrupted by the tool's 30-second command ceiling; only the complete
+background run's exit-0 result is credited as eight-case evidence.
+
+The final fixture matrix and complete release matrix were repeated successfully
+(4 and 8 combinations respectively, exit 0), including the three history cycles
+per case. Task 077 is the only other open parallel PR; corrective changed-file
+overlap is empty. Original and Task 077 worktrees remain clean and untouched.
+All focused local gates are complete: **READY_FOR_INDEPENDENT_REVIEW**.
+Corrective SHA/head parity and exact-head hosted status are reported separately
+in PR #80 after the normal push; local browser results do not certify hosted CI,
+and hosted Rust results do not substitute for browser evidence. No merge,
+deployment, manual CI dispatch or Task 081 work.
+
+## Hosted coverage and scope (unchanged)
+
+Existing Fast CI runs Rust workspace tests/check/Clippy/fmt (including the new
+renderer/data and CLI tests). Pages runs the Python validator tests and pinned
+production build on applicable main pushes, then publishes post-merge. Browser
+tests are opt-in/local; green Rust CI is **not** browser evidence. No workflow or
+CI guard changes, manual production dispatch or feature-branch deployment.
+
+Deferred: cross-version visual diff, service filtering, exhaustive all-path
+search, editable instances, samples, whole-schema graphs and production schema
+validation. No server service, runtime codec/model change or compatibility verdict.
