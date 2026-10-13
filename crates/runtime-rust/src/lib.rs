@@ -16,6 +16,10 @@
 //!   subscription IDs, `PUB`/`SUB`/`UNSUB`, `MSG` dispatch by SID, the
 //!   connection, and runtime events.
 //! * **Codec ([`OmsJsonCodec`])**: payload fields and values only.
+//! * **Ingress compatibility**: [`RuntimeConfig::new`] retains last-member-wins
+//!   parsing. [`RuntimeConfig::with_duplicate_member_policy`] can select
+//!   [`DuplicateMemberPolicy::Reject`] for every subscription on that connection,
+//!   before envelope validation and payload decoding. This is not XSD validation.
 //! * **`sleet-client`**: WebSocket upgrade (`Sec-WebSocket-Protocol: owp`),
 //!   `INIT`/`INFO`, OWP framing, and authoritative OWP lexical validation of
 //!   topics, groups, service and subscription IDs. Not copied or forked.
@@ -43,6 +47,7 @@
 
 mod codec;
 mod config;
+mod duplicate;
 mod envelope;
 mod error;
 mod retry;
@@ -50,8 +55,8 @@ mod worker;
 
 pub use codec::{CodecError, OmsJsonCodec};
 pub use config::{
-    ConnectRetryPolicy, DEFAULT_CONNECT_TIMEOUT, DEFAULT_OWP_VERSION, MAX_INITIAL_CONNECT_ATTEMPTS,
-    RuntimeConfig,
+    ConnectRetryPolicy, DEFAULT_CONNECT_TIMEOUT, DEFAULT_OWP_VERSION, DuplicateMemberPolicy,
+    MAX_INITIAL_CONNECT_ATTEMPTS, RuntimeConfig,
 };
 pub use envelope::{
     MessageDecodeError, OAM_NAMESPACE, oms_global_element_name, unwrap_global_element,
@@ -77,6 +82,7 @@ pub const WORKER_THREAD_NAME: &str = "ams-gra-oms-lacal";
 /// for every payload type `P` the application publishes or subscribes.
 pub struct SleetRuntime<C> {
     codec: Arc<C>,
+    duplicate_member_policy: DuplicateMemberPolicy,
     commands: mpsc::Sender<Command>,
     events: std_mpsc::Receiver<RuntimeEvent>,
     shutdown: Option<oneshot::Sender<()>>,
@@ -97,6 +103,7 @@ impl<C: Send + Sync + 'static> SleetRuntime<C> {
     pub fn connect(config: RuntimeConfig, codec: C) -> Result<Self, RuntimeError> {
         config.validate()?;
         refuse_async_context()?;
+        let duplicate_member_policy = config.duplicate_member_policy();
         let (commands, command_rx) = mpsc::channel(COMMAND_CAPACITY);
         let (shutdown, shutdown_rx) = oneshot::channel();
         let (event_tx, events) = std_mpsc::channel();
@@ -108,6 +115,7 @@ impl<C: Send + Sync + 'static> SleetRuntime<C> {
         match ready_rx.recv() {
             Ok(Ok(())) => Ok(Self {
                 codec: Arc::new(codec),
+                duplicate_member_policy,
                 commands,
                 events,
                 shutdown: Some(shutdown),
@@ -247,8 +255,9 @@ where
         let element = oms_global_element_name(message_namespace, message_name);
         let codec = Arc::clone(&self.codec);
         let expected = element.clone();
+        let policy = self.duplicate_member_policy;
         let dispatch: Dispatch = Box::new(move |raw: &str| {
-            let body = unwrap_global_element(&expected, raw)?;
+            let body = envelope::unwrap_with_policy(&expected, raw, policy)?;
             let payload = codec
                 .decode_payload(&body)
                 .map_err(MessageDecodeError::Codec)?;

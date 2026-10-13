@@ -1,5 +1,10 @@
 # Roadmap
 
+Task 077: [opt-in Rust duplicate-member ingress rejection](task-077-duplicate-member-ingress.md)
+adds a per-connection receiver policy before Value construction. Defaults and
+all production open-extension/readiness guards remain unchanged; this is not
+schema validation or open-world support.
+
 Task 075: [bounded OMS JSON mapping research](task-075-oms-json-xsd-mapping.md)
 adds executable complete-message evidence, not production open-world readiness.
 Unsupported mapping forms and deployment/authorization gates remain separate.

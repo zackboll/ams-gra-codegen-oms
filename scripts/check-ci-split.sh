@@ -34,6 +34,13 @@ fast_code="$(code "$fast")"
 deep_code="$(code "$deep")"
 sleet_code="$(code "$sleet")"
 
+for required in 'bash scripts/check-task077-fast.sh' 'bash scripts/test-task077-ci-wrappers.sh'; do
+  grep -Fq "$required" <<<"$fast_code" || fail "Fast CI lost Task 077 gate: $required"
+done
+for required in '--test task077_sleet' '--ignored --exact task077_real_sleet_client_policy' 'TASK077 REAL SLEET CLIENT POLICY: PASSED'; do
+  grep -Fq -- "$required" <<<"$sleet_code" || fail "Sleet harness lost Task 077 check: $required"
+done
+
 # Task 069 must execute once in real-uci and never download in Fast.
 grep -Fq 'bash scripts/check-task069-fast.sh' <<<"$fast_code" ||
   fail "Fast CI lost Task 069 exact semantic diff controls"
@@ -201,14 +208,9 @@ for required in \
   fi
 done
 
-# Each real-UCI release is fetched at most once per job: no fetch script may
-# appear more often than the number of jobs that use it (real-uci,
-# msrv-real-uci, real-sleet for 2.5; real-uci for 2.6).
-count() { grep -Fc -- "$1" <<<"$2" || true; }
-[[ "$(count "$fetch25" "$deep_code")" -le 3 ]] ||
-  fail "Deep CI fetches UCI 2.5 more than once per job"
-[[ "$(count "$fetch26" "$deep_code")" -le 1 ]] ||
-  fail "Deep CI fetches UCI 2.6 more than once"
+# Per-job release ownership and complete inherited qualification payloads.
+python3 "$repo/scripts/check-task077b-ci-layout.py" "$deep" ||
+  fail "Deep CI bounded real-UCI layout failed"
 
 # ---- No `printf | grep -q` marker checks (SIGPIPE under pipefail) ---------
 pipe_hazard='printf .*\| *grep +(-[A-Za-z]*q|.* -[A-Za-z]*q)'
