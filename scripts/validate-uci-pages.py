@@ -189,7 +189,7 @@ def validate(root):
         expected = {directory / 'index.html', directory / 'assets/style.css',
                     directory / 'assets/search.js', directory / 'assets/search-index.js',
                     directory / 'explorer.html', directory / 'assets/explorer.css',
-                    directory / 'assets/explorer.js', directory / 'assets/explorer-data.js'}
+                    directory / 'assets/explorer.js', directory / 'assets/explorer-search.js', directory / 'assets/explorer-data.js'}
         require(all(p.is_file() for p in expected), f'{version}: missing assets')
         pages = sorted((directory / 'types').glob('*.html'))
         require(len(pages) == types and pages[0].name == '000000.html' and
@@ -208,7 +208,7 @@ def validate(root):
         search_urls[version] = [r['url'] for r in records]
         explorers[directory / 'explorer.html'] = explorer_graph(directory, records, types, messages, schema)
         require(set(p for p in directory.rglob('*') if p.is_file()) == expected | set(pages), f'{version}: unexpected files')
-        print(f'{version}: {types} types, {messages} messages, {types + 8} files')
+        print(f'{version}: {types} types, {messages} messages, {types + 9} files')
     parsed_pages = {}
     for path in files:
         require(path.suffix.lower() not in ('.xsd', '.zip') and

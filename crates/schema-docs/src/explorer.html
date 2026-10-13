@@ -8,10 +8,21 @@
 <label for="root-search">Search roots</label><input id="root-search" type="search">
 <label for="root-filter">Root kind</label><select id="root-filter"><option value="message">Messages</option><option value="type">Types</option></select>
 <p id="result-count"></p><ul id="root-results"></ul></section>
+<section id="field-search" aria-label="Field search"><h2>Find fields in this root</h2>
+<p id="field-scope">Choose a root to search.</p>
+<p>Field definitions reachable from this root. One representative path per definition; repeated occurrences are not counted.</p>
+<fieldset id="field-controls" disabled><legend>Search field definitions</legend>
+<label for="field-query">Search text (maximum 256 characters)</label><input id="field-query" type="search" maxlength="256">
+<label for="field-mode">Match</label><select id="field-mode"><option value="all">All three</option><option value="name">Field name</option><option value="type">Referenced type</option><option value="documentation">Field documentation</option></select>
+<label><input id="field-optional" type="checkbox"> Optional (local min = 0)</label>
+<label><input id="field-repeated" type="checkbox"> Repeated (local max &gt; 1 or unbounded)</label>
+<button id="field-clear" type="button">Clear search</button></fieldset>
+<p id="field-status" role="status" aria-live="polite">Choose a root to search.</p>
+<ul id="field-results"></ul><button id="field-more" type="button" hidden>Next 50 results</button></section>
 <section id="structure" aria-label="Schema structure"><h2 id="root-title">Structure</h2>
 <p>Repeated branches show the structure of one item, not instance values.</p>
 <button id="collapse" type="button">Collapse exploration</button><button id="copy" type="button">Copy selected path and link</button>
 <label for="share">Selected path / selectable link fallback</label><textarea id="share" readonly rows="3"></textarea>
 <div class="structure-scroll"><ul id="rows"></ul></div></section>
 <section id="details" aria-label="Selected node details"><h2>Details</h2><div id="detail-content">Select a root or field.</div></section></main>
-<script src="assets/explorer-data.js"></script><script src="assets/explorer.js"></script></body></html>
+<script src="assets/explorer-data.js"></script><script src="assets/explorer-search.js"></script><script src="assets/explorer.js"></script></body></html>

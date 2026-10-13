@@ -546,6 +546,10 @@ pub fn generate(schema: &SchemaIr) -> Result<Vec<GeneratedFile>, String> {
             include_str!("explorer.css").to_owned(),
         ),
         file("assets/explorer.js", include_str!("explorer.js").to_owned()),
+        file(
+            "assets/explorer-search.js",
+            include_str!("explorer-search.js").to_owned(),
+        ),
         file("assets/explorer-data.js", explorer::data(&index)?),
     ];
     for name in index.pages.keys() {

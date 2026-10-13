@@ -60,6 +60,7 @@ fn overlays_and_failure_paths() {
     for asset in [
         "explorer.html",
         "assets/explorer.js",
+        "assets/explorer-search.js",
         "assets/explorer.css",
         "assets/explorer-data.js",
     ] {
