@@ -10,6 +10,70 @@ package = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(package)
 
 
+class MemberDestinationTests(unittest.TestCase):
+    def declaration(self, kind='Record', names=('Other', 'Field'), namespace='urn:a'):
+        q = [namespace, 'Derived']
+        return dict(qname=q, kind=kind, segments=[dict(owner=['urn:a', 'Base'], compositor='Record'),
+            dict(owner=q, compositor=kind)], members=[dict(index=i, name=n,
+            count=dict(min='0', max=None)) for i, n in enumerate(names)])
+
+    def record(self, kind='MEMBER_CHANGED', prop='"Field"/type_ref'):
+        return dict(kind=kind, property=prop, before='old', after='new')
+
+    def test_exact_positive_destinations(self):
+        for kind in ('Record', 'Choice'):
+            for ns in ('urn:a', 'urn:b'):
+                for suffix in ('type_ref', 'cardinality', 'wire_namespace', 'nillable'):
+                    for side, names, expected in [(0, ('Other', 'Field'), 1), (1, ('Field', 'Other'), 0)]:
+                        with self.subTest(kind=kind, ns=ns, suffix=suffix, side=side):
+                            d = self.declaration(kind, names, ns)
+                            url = package.member_destination(('2.5', '2.6')[side], d,
+                                self.record(prop='"Field"/' + suffix), side)
+                            import urllib.parse
+                            state = json.loads(urllib.parse.unquote(url.split('#uci=')[1]))
+                            self.assertEqual(state, dict(v=1, kind='type', root=[ns, 'Derived'],
+                                path=[dict(owner=[ns, 'Derived'], compositor=kind), dict(member=expected)]))
+        for kind, present in [('MEMBER_ADDED', 1), ('MEMBER_REMOVED', 0)]:
+            for side in (0, 1):
+                self.assertEqual(package.member_destination('2.5', self.declaration(),
+                    self.record(kind, '"Field"/presence'), side) is not None, side == present)
+        name = 'quote"\\</script>'
+        self.assertIsNotNone(package.member_destination('2.5', self.declaration(names=(name,)),
+            self.record(prop=json.dumps(name) + '/type_ref'), 0))
+
+    def test_conservative_omissions(self):
+        import copy
+        d = self.declaration()
+        cases = [(None, self.record()), (dict(d, kind='Enumeration'), self.record()),
+            (dict(d, segments=[]), self.record()),
+            (self.declaration(names=('Field', 'Field')), self.record()),
+            (self.declaration(names=('Different',)), self.record()),
+            (self.declaration(names=('雪',)), self.record(prop='"雪"/type_ref')),
+            (self.declaration(names=('a\n',)), self.record(prop='"a\\n"/type_ref'))]
+        for prop in ('Field/type_ref', '"Field"/type_ref/extra', '"Field"/unknown', 'order', 'base_type'):
+            cases.append((d, self.record(prop=prop)))
+        for kind in ('MEMBER_ORDER_CHANGED', 'BASE_TYPE_CHANGED', 'TYPE_ADDED', 'CONSTRAINT_CHANGED'):
+            cases.append((d, self.record(kind)))
+        stale = copy.deepcopy(d); stale['members'][1]['index'] = 0
+        cases.append((stale, self.record()))
+        for declaration, record in cases:
+            with self.subTest(declaration=declaration, record=record):
+                self.assertIsNone(package.member_destination('2.5', declaration, record, 0))
+
+    def test_full_qname_lookup_never_substitutes(self):
+        prefix, records, graph = TransportTests().record_fixture(['urn:a'])
+        graph['types'][0].update(self.declaration(namespace='urn:a'), qname=['urn:a', 'Same'])
+        graph['types'][0]['segments'][-1]['owner'] = ['urn:a', 'Same']
+        model = package.package(prefix + ''.join(records), [graph, graph])
+        self.assertTrue(all(c['memberDestinations'] for c in model['declarations'][0]['changes']))
+        for namespace, name in [('urn:wrong', 'Same'), ('urn:a', 'Unknown')]:
+            changed = ''.join(records).replace('TYPE\turn:a\tSame\t', f'TYPE\t{namespace}\t{name}\t')
+            unmatched_prefix = prefix.replace('TYPE\tchanged\tCOUNT\t\t1', 'TYPE\tchanged\tCOUNT\t\t0').replace(
+                'TYPE\tunchanged\tCOUNT\t\t0', 'TYPE\tunchanged\tCOUNT\t\t1')
+            with self.subTest(namespace=namespace, name=name), self.assertRaisesRegex(ValueError, 'unknown changed declaration'):
+                package.package(unmatched_prefix + changed, [graph, graph])
+
+
 class TransportTests(unittest.TestCase):
     def record_fixture(self, namespaces, before='"before"', after='"after"'):
         """Independent inventories/counts and literal transport records."""
