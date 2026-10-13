@@ -150,10 +150,40 @@ navigation, and missing/invalid data. Desktop/narrow screenshots were visually
 inspected: no panel overlap or page-level clipping after the wrapping fix;
 structure-pane horizontal scrolling at narrow widths is intentional.
 
-Full two-release final-source qualification is recorded separately after the
-production builder, inventory/link validation, browser runs and byte comparison
-finish. Preliminary builds made before final asset changes are not final-head
-reproducibility evidence.
+### Production artifact evidence
+
+Two independent production builder executions fetched and verified the existing
+public pinned tags, built the task worktree's `target/debug` CLI with Rust 1.95.0,
+and generated into empty task-owned destinations. They took **495 s** and
+**494 s**, including acquisition and full validation. Both passed the strengthened
+validator. Complete paths and bytes compare identically: **11,144 files**,
+**96,826,254 bytes**; independent Python byte comparison took **0.604 s**, and
+the full `diff -qr` also passed without exclusions.
+
+| Release | Types | Messages | Files | Graph bytes | Release bytes |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2.5 | 5,557 | 722 | 5,565 | 11,115,091 | 48,994,968 |
+| 2.6 | 5,570 | 725 | 5,578 | 11,142,756 | 47,829,840 |
+
+Pinned inputs remain `093610b7753944059360d3236770ab446d039556` (2.5) and
+`78eb61b6112c8bffa40820c33124b57787fc5bd9` (2.6). Loaded normalized versions are
+`002.5.0` and `002.6.0`. No source trees, output, browser binaries or screenshots
+are committed. Preliminary artifacts made before final asset changes are not
+used for final-source reproducibility evidence.
+
+Real-release browser results are recorded in the PR qualification report.
+The bounded script inspects PositionReport, OrderOfBattle and EntityPositionType,
+compares selected field names/ranges/docs to graph data and independently rendered
+reference pages, and opens reference navigation. Initial structure has **0 rows**
+before root selection. Representative exploration after 14 disclosures has
+**53 rows** (PositionReport/OrderOfBattle) and **32 rows** (EntityPositionType),
+not the whole graph. Chromium initial readiness observed around 242–260 ms in
+the completed-artifact run; timings are observations, not performance guarantees.
+Actual EntityPositionType fields FixedPositionType, RelativePosition and Zone
+are each 0..1 in both releases. PositionReportMT inherits MessageType and locally
+declares MessageData 1..1; OrderOfBattleMT additionally has ObjectState 0..1.
+Inherited SecurityInformation is 1..1. Expanded security content visibly includes
+OwnerProducer 1..*, SCI_Controls 0..20 and explicit OwnerProducer choice alternatives.
 
 ## Hosted coverage and scope
 
