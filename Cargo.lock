@@ -16,6 +16,8 @@ dependencies = [
  "ams-gra-oms-service-contract",
  "ams-gra-oms-service-routes",
  "ams-gra-oms-xsd-frontend",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

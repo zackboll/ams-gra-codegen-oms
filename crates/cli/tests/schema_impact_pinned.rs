@@ -154,6 +154,61 @@ fn task078_pinned_static_impact() {
             .collect();
         check(schema, rows, &seeds);
     }
+    let json = forward.to_json().unwrap();
+    assert_eq!(json, forward.to_json().unwrap());
+    let j: serde_json::Value = serde_json::from_str(&json).unwrap();
+    assert_eq!(j["directUniqueMessages"], 3);
+    assert_eq!(
+        j["directMessageChanges"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|c| c["message"][1].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        [
+            "SystemSchedule",
+            "SystemScheduleDataRequest",
+            "SystemScheduleDataRequestStatus"
+        ]
+    );
+    for c in j["directMessageChanges"].as_array().unwrap() {
+        assert_eq!(c["message"][0], "https://www.vdl.afrl.af.mil/programs/oam");
+        assert_eq!(c["change"], "MESSAGE_ADDED");
+        assert!(c["before"].is_null());
+    }
+    for (side, rows, unique, pairs, types, messages) in [
+        ("before", &forward.before, 722, 3000, 5557, 722),
+        ("after", &forward.after, 725, 3475, 5570, 725),
+    ] {
+        assert_eq!(j[side]["exposedUniqueMessages"], unique);
+        assert_eq!(j[side]["exposurePairs"], pairs);
+        assert_eq!(j[side]["types"], types);
+        assert_eq!(j[side]["messages"], messages);
+        let exposures = j[side]["exposures"].as_array().unwrap();
+        assert_eq!(exposures.len(), rows.len());
+        for (e, row) in exposures.iter().zip(rows) {
+            let q = |n: &QualifiedName| serde_json::json!([n.namespace_uri, n.local_name]);
+            assert_eq!(e["message"], q(&row.message));
+            assert_eq!(e["seed"], q(&row.seed));
+            assert_eq!(
+                e["witness"],
+                serde_json::Value::Array(row.witness.iter().map(q).collect())
+            );
+        }
+        assert!(exposures.iter().any(|e| e["message"][1] == "OrderOfBattle"
+            && e["witness"]
+                == serde_json::json!([
+                    [
+                        "https://www.vdl.afrl.af.mil/programs/oam",
+                        "OrderOfBattleMT"
+                    ],
+                    ["https://www.vdl.afrl.af.mil/programs/oam", "MessageType"],
+                    [
+                        "https://www.vdl.afrl.af.mil/programs/oam",
+                        "SecurityInformationType"
+                    ]
+                ])));
+    }
     let forward_tsv = forward.to_tsv();
     let reverse_text = reverse.to_text();
     assert_eq!(forward_tsv, forward.clone().to_tsv());

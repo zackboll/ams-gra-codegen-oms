@@ -1,0 +1,1 @@
+{"format":"schema-impact-json-v1","scope":"STATIC_NAMED_REFERENCES","compatibility":"NOT_ASSESSED","before":{"schemaVersion":null,"types":2,"messages":1,"exposedUniqueMessages":0,"exposurePairs":0,"exposures":[]},"after":{"schemaVersion":null,"types":2,"messages":1,"exposedUniqueMessages":0,"exposurePairs":0,"exposures":[]},"directUniqueMessages":0,"directMessageChanges":[]}

@@ -16,6 +16,8 @@ ams-gra-oms-service-routes = { path = "../service-routes" }
 ams-gra-oms-backend-ada = { path = "../backend-ada" }
 ams-gra-oms-backend-rust = { path = "../backend-rust" }
 ams-gra-oms-backend-cpp = { path = "../backend-cpp" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 
 [lints]
 workspace = true
