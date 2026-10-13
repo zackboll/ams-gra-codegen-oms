@@ -161,3 +161,72 @@ covers Rust; Pages tests/build run post-merge on main; Playwright and repeated
 pinned artifact qualification above are local. No hosted workflow is dispatched.
 The PR must remain open, non-draft, unmerged, with auto-merge disabled. No deployment
 or Task 083 work.
+
+## Task 082A — LF-only TSV record correction
+
+Corrective parent / reviewed PR #82 head:
+`59a5e080be0f0f07b7eb6b5a4855a23580f72d3a`. Fetched remote feature head
+matched this SHA; origin/main remained
+`051a634fa7a69f87a9c4d6330b6edee1bcc5c0bf`. Existing task worktree was clean.
+No branch reconciliation or history rewriting was needed.
+
+Root cause: Python `splitlines()` treated actual Unicode U+2028 LINE SEPARATOR
+and U+2029 PARAGRAPH SEPARATOR inside a TSV namespace/value as record boundaries.
+Task 069 emits LF-separated records and preserves these non-control characters.
+Before editing, a temporary copy of the reviewed packager reproduced:
+
+| Input | Reviewed implementation | Corrected implementation |
+| --- | --- | --- |
+| Ordinary Unicode 雪 | PASS | PASS |
+| Actual U+2028 namespace/reference | FAIL: invalid TSV columns | PASS |
+| Actual U+2029 namespace/reference | FAIL: invalid TSV columns | PASS |
+
+The same independently authored inputs were used before and after. Exact QName
+and formatted reference code points survive packaging; no literal `\u2028` or
+`\u2029` text was substituted for the actual separators in these inputs.
+Local reproduction source/logs and reviewed-source copy are under `/tmp/task082a`.
+
+The production fix splits only on LF, removes only the single terminal empty
+element, and retains header/seven-column validation. Additional terminal or
+interior empty records still fail. A small pre-unescape C0/C1 raw-control check
+matches Rust `char::is_control()`'s transport boundary: Task 069 always escapes
+these controls. In particular CR/VT/FF/NEL, formerly rejected through incorrect
+record splitting, must not become accepted raw cell text. U+2028/U+2029 are not
+C0/C1 controls and remain valid. Escaped controls decode exactly as before.
+
+Focused packager qualification: **4 test methods passed**, including **8 new
+positive cases** (ordinary Unicode, each separator in namespaces, both in one
+record, both in semantic values, multiple LF-separated declarations, escaped
+tab/LF/CR/backslash/control values, absent versus quoted empty) and **15 new
+negative cases** (unexpected LF, missing/extra columns, invalid escape, duplicate
+property, terminal/interior empty record, eight raw-control cases). Each negative
+asserts its intended boundary error using otherwise consistent inventories.
+Positive checks assert complete QNames, exact ordered records/values/counts,
+repeatable JSON bytes and preservation with or without the final LF.
+
+Existing Python Pages validator: **3 test methods passed**. Existing synthetic
+Task 082 qualification rerun with the current worktree production executable:
+**PASS, 16 independently expected semantic records**. Python in-memory syntax
+compilation, Pages builder shell syntax and `git diff --check` passed.
+
+Verified cached TSV SHA256 (unchanged comparator output):
+`c58fbca0f0958d063ec156dfca065f6826f5a1c0088cd2f688947644a433d09c`.
+Corrected packaging against cached release graphs produces the complete
+`compare-data.js` **byte-identical** to the qualified Task 082 baseline. Both
+outputs' SHA256:
+`902456cd9e3b7cc4baa84fab902837c71c6cbf1aa4ba6ac43065dd4824427b03`.
+The existing comparison model validator passes on the corrected output and cached
+release inventories in an isolated task-owned validation directory.
+
+Only `site/compare/package.py`, `scripts/test_compare_package.py`, and this report
+change. Task 069 semantics/serialization/golden files, all Rust/JavaScript/CSS/HTML,
+builder/validator/workflows/guards, dependencies, model version 1 and share links
+remain unchanged. All cached artifacts and browser installations are preserved.
+The full publication timings/determinism and browser matrices above are historical
+Task 082 evidence, **not** new corrective-head executions. No new browser run,
+reinstall, full pinned build, Sleet, Deep/backend campaign or deployment occurred.
+
+Corrective local qualification: **READY_FOR_INDEPENDENT_REVIEW**. Final corrective
+SHA/head parity and the once-queried exact-head hosted status are reported in the
+existing PR #82 corrective comment and handoff; hosted CI is separate from these
+local results. Leave that PR open, non-draft, unmerged and auto-merge disabled.

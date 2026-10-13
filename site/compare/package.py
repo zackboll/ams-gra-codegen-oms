@@ -24,6 +24,9 @@ def read_data(path, name):
 
 
 def unescape(cell):
+    # Rust char::is_control() covers C0/C1; these must be escaped on the wire.
+    # Unicode line/paragraph separators are text, not control characters.
+    require(not re.search(r'[\x00-\x1f\x7f-\x9f]', cell), 'raw TSV control character')
     def decode(m):
         s = m[1]
         return {'\\': '\\', 't': '\t', 'n': '\n', 'r': '\r'}.get(s) if not s.startswith('u{') else chr(int(s[2:-1], 16))
@@ -39,7 +42,10 @@ def destination(version, category, declaration):
 
 
 def package(tsv, graphs):
-    lines = tsv.splitlines()
+    # Task 069 records use LF only. U+2028/U+2029 belong to their cells.
+    lines = tsv.split('\n')
+    if lines and lines[-1] == '':
+        lines.pop()
     require(lines.pop(0) == 'category\tnamespace\tdeclaration\tmember_or_property\tchange\tbefore\tafter', 'invalid TSV header')
     summaries, totals, changes, versions = {}, {}, collections.defaultdict(list), None
     for line in lines:
