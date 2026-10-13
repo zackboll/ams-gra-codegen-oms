@@ -171,3 +171,74 @@ Final normal commit, PR URL, local/remote/PR head parity and the once-queried
 exact-head hosted status are supplied in the PR handoff/final report rather than
 invented here before commit. Leave the PR open, non-draft, unmerged, with
 auto-merge disabled. No manual workflow dispatch, merge, deployment or Task 085.
+
+## Task 084A — Browser hash-length boundary correction
+
+Corrective parent/reviewed PR head:
+`c8c418538906c980334074eebcdbec35c6e1966a`. Fresh fetch verified the existing
+feature branch and PR #84 still had that head, with a clean task worktree.
+Current main was `e5ff70ce20867bbe7a4a3f67a3f440802c06746f`; it was not merged
+or rebased. Existing evidence and sibling worktrees are preserved.
+
+The reviewed packager and generic validator measured the fragment without `#`.
+A fragment of 16,384 characters therefore produced a browser hash of 16,385,
+which the unchanged explorer rejects. Both `restore()` and `preflight()` use
+the established 16,384-character complete-hash limit; `encoded()` includes `#`.
+The packager now requires `len('#' + fragment) <= 16384`, otherwise returning
+None. The independent member-destination validator requires
+`len('#' + parsed.fragment) <= 16384`, failing with
+`oversized member destination hash`. Generic `explorer_state()` remains unchanged.
+
+| Complete browser hash | Reviewed producer/validator | Corrected producer/validator | Explorer |
+| ---: | --- | --- | --- |
+| 16,383 | accept | accept | accept |
+| 16,384 | accept | accept | accept |
+| 16,385 | incorrectly accept | omit / reject | reject |
+
+New tests use actual compact encoded Record states with QName component lengths
+within 4096: namespace 4004, type name 4084/index 0; 4084/index 10; or
+4085/index 0. Exact encoded lengths are asserted. The first rejected hash has
+fragment length exactly 16,384; the maximum accepted hash has fragment length
+16,383. Before production edits both new test methods reproduced failure only
+at the first rejected size. Independently injected, structurally correct oversized
+URLs in comparison data now fail validation. Historical records without field
+destinations remain valid. No shorter substitute, namespace, field or index is
+selected. Oversized-link omission preserves ordered semantic records and both
+declaration-level destination objects; if both sides are omitted, the optional
+property stays absent.
+
+Newly executed focused campaign: **8 packager test methods** (7 existing + 1 new),
+**6 validator methods** (5 existing + 1 new), including original Unicode
+U+2028/U+2029 transport and exact identity/index regressions. Synthetic production
+CLI packaging passed the original 16-record expectations and supplemental
+Choice/inherited Record 0 → 1 expectations. Python compilation, JavaScript and
+shell syntax checks and `git diff --check` passed.
+
+A task-owned focused Chromium **149.0.7827.55** file probe used unchanged production
+explorer assets and valid-shaped synthetic graphs: hashes 16,383 and 16,384 select
+the intended Field, while 16,385 reports the oversized-state error on a fresh
+document. The long comparison declaration remains selectable with two original
+semantic records, four declaration actions and zero invalid field actions. An
+initial same-document probe retained an earlier selection after rejection; the
+final probe isolates each document instead of claiming the explorer clears prior
+selection. No explorer/UI production source was changed.
+
+Corrected packaging on cached verified TSV/release graphs is byte-identical to
+the qualified Task 084 output, SHA256
+`97cb5c90d3847f3d6d242602a997f0e333fb73fd36836e3685ea19f8d9a4a60c`.
+All **309 semantic records**, **188 linked member-change records**, **290 exact
+destinations**, and **zero unlinked pinned member changes** are preserved. The
+corrected full Pages validator passes on the existing publication:
+**11,150 files, 101,220,161 bytes**. No pinned acquisition/full build or browser
+matrix was repeated; earlier full-build/matrix results above are historical.
+New evidence is under `/tmp/task084a`, without overwriting Task 084 evidence.
+
+Exactly five files change: `site/compare/package.py`,
+`scripts/validate-uci-pages.py`, `scripts/test_compare_package.py`,
+`scripts/test_validate_uci_pages.py`, and this report. No generic explorer-link
+contract, URL format, state version, comparator, dependency or workflow change.
+Local focused gate: **READY_FOR_INDEPENDENT_REVIEW**. Corrective commit/head
+parity and the once-queried actual corrective-head hosted CI status are recorded
+in the PR #84 corrective comment and final handoff after push; they cannot be
+known in this pre-commit report. Leave PR #84 open, non-draft, unmerged, with
+auto-merge disabled. No deployment or Task 085.

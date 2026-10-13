@@ -73,7 +73,8 @@ def member_destination(version, declaration, record, side):
     state = dict(v=1, kind='type', root=declaration['qname'],
                  path=[segment, dict(member=member['index'])])
     fragment = 'uci=' + urllib.parse.quote(json.dumps(state, ensure_ascii=False, separators=(',', ':')), safe='')
-    return '../' + version + '/explorer.html#' + fragment if len(fragment) <= 16384 else None
+    # explorer.js LIMIT.fragment measures location.hash, including its leading #.
+    return '../' + version + '/explorer.html#' + fragment if len('#' + fragment) <= 16384 else None
 
 
 def package(tsv, graphs):

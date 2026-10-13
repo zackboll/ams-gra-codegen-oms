@@ -11,6 +11,42 @@ spec.loader.exec_module(package)
 
 
 class MemberDestinationTests(unittest.TestCase):
+    def test_browser_hash_length_boundary(self):
+        import urllib.parse
+        for name_length, index, hash_length in [(4084, 0, 16383), (4084, 10, 16384), (4085, 0, 16385)]:
+            with self.subTest(hash_length=hash_length):
+                q = ['n' * 4004, 'T' * name_length]
+                segment = dict(owner=q, compositor='Record')
+                d = dict(qname=q, kind='Record', url='types/000000.html', segments=[segment],
+                    members=[dict(index=i, name='Field' if i == index else 'Other' + str(i)) for i in range(index + 1)])
+                state = dict(v=1, kind='type', root=q, path=[segment, dict(member=index)])
+                fragment = 'uci=' + urllib.parse.quote(json.dumps(state, separators=(',', ':')), safe='')
+                self.assertEqual(len('#' + fragment), hash_length)
+                self.assertTrue(all(len(c) <= 4096 for c in q))
+                # All three were admitted by the reviewed fragment-only rule.
+                self.assertLessEqual(len(fragment), 16384)
+                for side, version in enumerate(('2.5', '2.6')):
+                    link = package.member_destination(version, d, self.record(), side)
+                    if hash_length > 16384:
+                        self.assertIsNone(link)
+                    else:
+                        self.assertEqual(link, '../' + version + '/explorer.html#' + fragment)
+                        self.assertLessEqual(len('#' + urllib.parse.urlsplit(link).fragment), 16384)
+                prefix, records, _ = TransportTests().record_fixture([q[0]])
+                tsv = (prefix + ''.join(records)).replace('\tSame\t', '\t' + q[1] + '\t')
+                graph = dict(schema=dict(version=None), types=[d], messages=[])
+                model = package.package(tsv, [graph, graph])
+                declaration = model['declarations'][0]
+                self.assertEqual(declaration['qname'], q)
+                self.assertEqual(declaration['status'], 'Changed')
+                self.assertEqual(len(declaration['changes']), 2)
+                for c in declaration['changes']:
+                    self.assertEqual((c['before'], c['after']), ('"before"', '"after"') if c['property'].endswith('/wire_namespace') else ('false', 'true'))
+                    self.assertEqual('memberDestinations' in c, hash_length <= 16384)
+                self.assertEqual(declaration['destinations'], [package.destination(v, 'Type', d) for v in ('2.5', '2.6')])
+                share = '#compare=' + urllib.parse.quote(json.dumps(dict(v=1, category='Type', qname=q), separators=(',', ':')), safe='')
+                self.assertLessEqual(len(share), 16384)
+
     def declaration(self, kind='Record', names=('Other', 'Field'), namespace='urn:a'):
         q = [namespace, 'Derived']
         return dict(qname=q, kind=kind, segments=[dict(owner=['urn:a', 'Base'], compositor='Record'),

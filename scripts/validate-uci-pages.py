@@ -113,6 +113,8 @@ def member_destination(url, version, qname, record, side, indexes):
     parsed = urllib.parse.urlsplit(url)
     require(not parsed.scheme and not parsed.netloc and not parsed.query and
             parsed.path == '../' + version + '/explorer.html', 'unsafe member destination release/path')
+    # Match explorer.js LIMIT.fragment without changing historical generic links.
+    require(len('#' + parsed.fragment) <= 16384, 'oversized member destination hash')
     explorer_state(parsed.fragment, indexes)
     state = json.loads(urllib.parse.unquote(parsed.fragment[4:]))
     declaration = indexes[1].get(qkey(qname))

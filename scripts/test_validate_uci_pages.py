@@ -19,6 +19,47 @@ spec.loader.exec_module(pages)
 
 
 class MemberDestinationTests(unittest.TestCase):
+    def test_browser_hash_length_boundary(self):
+        for name_length, index, hash_length in [(4084, 0, 16383), (4084, 10, 16384), (4085, 0, 16385)]:
+            with self.subTest(hash_length=hash_length), tempfile.TemporaryDirectory() as tmp:
+                q = ['n' * 4004, 'T' * name_length]
+                segment = dict(owner=q, compositor='Record')
+                d = dict(qname=q, kind='Record', url='types/000000.html', segments=[segment],
+                    members=[dict(index=i, name='Field' if i == index else 'Other' + str(i), type={'primitive': 'String'}) for i in range(index + 1)])
+                indexes = ({}, {tuple(q): d}, {})
+                state = dict(v=1, kind='type', root=q, path=[segment, dict(member=index)])
+                fragment = 'uci=' + urllib.parse.quote(json.dumps(state, separators=(',', ':')), safe='')
+                self.assertEqual(len('#' + fragment), hash_length)
+                # Generic historical validation accepts this valid-shaped state,
+                # proving the first rejected hash previously passed validation.
+                pages.explorer_state(fragment, indexes)
+                c = dict(kind='MEMBER_CHANGED', property='"Field"/type_ref', before='old', after='new')
+                root = pathlib.Path(tmp)
+                (root / 'compare/assets').mkdir(parents=True)
+                (root / 'compare/index.html').write_text('')
+                for asset in ('compare.js', 'compare.css'):
+                    (root / 'compare/assets' / asset).write_text('')
+                explorers = {}
+                for version in ('2.5', '2.6'):
+                    (root / version / 'assets').mkdir(parents=True)
+                    graph = dict(schema=dict(version=None), types=[d], messages=[])
+                    (root / version / 'assets/explorer-data.js').write_text('window.schemaExplorerData = ' + json.dumps(graph) + ';\n')
+                    explorers[root / version / 'explorer.html'] = indexes
+                model = dict(version=1, scope='Direct normalized SchemaIr changes — not a compatibility verdict.',
+                    releases=[dict(release=v, revision=pin, schemaVersion='absent') for v, pin in zip(('2.5', '2.6'), pages.PINS)],
+                    summaries=dict(Type=dict(before=1, after=1, added=0, removed=0, changed=1, unchanged=0), Message=dict(before=0, after=0, added=0, removed=0, changed=0, unchanged=0)),
+                    declarations=[dict(category='Type', qname=q, status='Changed', changes=[c], destinations=[dict(reference='../' + v + '/' + d['url'], explorer='../' + v + '/explorer.html#uci=' + urllib.parse.quote(json.dumps(dict(state, path=[])), safe='')) for v in ('2.5', '2.6')])])
+                def validate():
+                    (root / 'compare/assets/compare-data.js').write_text('window.schemaCompareData = ' + json.dumps(model) + ';\n')
+                    pages.comparison(root, explorers)
+                validate()  # Historical record without the optional property.
+                c['memberDestinations'] = ['../' + v + '/explorer.html#' + fragment for v in ('2.5', '2.6')]
+                if hash_length > 16384:
+                    with self.assertRaisesRegex(ValueError, 'oversized member destination hash'):
+                        validate()
+                else:
+                    validate()
+
     def test_optional_contract_and_independent_escaping(self):
         q = ['urn:a', 'Choice']
         segment = dict(owner=q, compositor='Choice')
