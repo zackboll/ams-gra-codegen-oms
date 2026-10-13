@@ -585,7 +585,7 @@ enum Command {
         after: PathBuf,
         before_extensions: Vec<(String, PathBuf)>,
         after_extensions: Vec<(String, PathBuf)>,
-        tsv: bool,
+        format: ServiceImpactFormat,
     },
     SchemaImpact {
         before: PathBuf,
@@ -679,7 +679,7 @@ where
             after,
             before_extensions,
             after_extensions,
-            tsv,
+            format,
         } => {
             let contract =
                 load_contract(&contract).map_err(|e| CliError::execution(e.to_string()))?;
@@ -695,14 +695,14 @@ where
                 .map_err(|e| CliError::execution(e.to_string()))?;
             let report = service_impact::ServiceImpact::analyze(&contract, &before, &after)
                 .map_err(CliError::execution)?;
-            write_output(
-                stdout,
-                &if tsv {
-                    report.to_tsv()
-                } else {
-                    report.to_text()
-                },
-            )
+            let output = match format {
+                ServiceImpactFormat::Text => report.to_text(),
+                ServiceImpactFormat::Tsv => report.to_tsv(),
+                ServiceImpactFormat::Json => report
+                    .to_json()
+                    .map_err(|e| CliError::execution(e.to_string()))?,
+            };
+            write_output(stdout, &output)
         }
         Command::SchemaImpact {
             before,
@@ -889,6 +889,13 @@ enum SchemaImpactFormat {
     Json,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ServiceImpactFormat {
+    Text,
+    Tsv,
+    Json,
+}
+
 fn parse_schema_impact(args: Vec<OsString>) -> Result<Command, CliError> {
     if is_help_request(&args) {
         return Ok(Command::Help(schema_impact::HELP));
@@ -969,10 +976,15 @@ fn parse_service_impact(args: Vec<OsString>) -> Result<Command, CliError> {
         "--after-extension" => push_extension(&mut after_extensions, value),
         _ => Err(CliError::usage(format!("unknown option '{option}'"))),
     })?;
-    let tsv = match format.as_deref().unwrap_or(OsStr::new("text")).to_str() {
-        Some("text") => false,
-        Some("tsv") => true,
-        _ => return Err(CliError::usage("invalid --format; expected text or tsv")),
+    let format = match format.as_deref().unwrap_or(OsStr::new("text")).to_str() {
+        Some("text") => ServiceImpactFormat::Text,
+        Some("tsv") => ServiceImpactFormat::Tsv,
+        Some("json") => ServiceImpactFormat::Json,
+        _ => {
+            return Err(CliError::usage(
+                "invalid --format; expected text, tsv or json",
+            ));
+        }
     };
     Ok(Command::ServiceImpact {
         contract: required(contract, "--contract")?.into(),
@@ -980,7 +992,7 @@ fn parse_service_impact(args: Vec<OsString>) -> Result<Command, CliError> {
         after: required(after, "--after")?.into(),
         before_extensions,
         after_extensions,
-        tsv,
+        format,
     })
 }
 

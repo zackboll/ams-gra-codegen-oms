@@ -1,13 +1,15 @@
 //! Baseline-contract join of the unchanged Task 078 analysis.
+use crate::schema_impact::{JsonReference, json_payload, qname as json_qname};
 use crate::schema_impact::{SCOPE, SchemaImpact};
 use ams_gra_oms_codegen_core::{DependencyExposure, ServicePlan, resolve_service_plan};
 use ams_gra_oms_ir::{QualifiedName, SchemaIr, TypeRef, TypeRefTarget};
 use ams_gra_oms_schema_diff::{Category, Change, ChangeKind};
 use ams_gra_oms_service_contract::Contract;
+use serde::Serialize;
 use std::collections::BTreeSet;
 
 pub const BASIS: &str = "BEFORE_CONTRACT";
-pub const HELP: &str = "ams-gra-codegen-oms service-impact\n\nUSAGE:\n    ams-gra-codegen-oms service-impact --contract SERVICE.yaml --before OLD_ROOT.xsd --after NEW_ROOT.xsd [--before-extension ID=PATH]... [--after-extension ID=PATH]... [--format text|tsv]\n\nDefault format: text. Read-only STATIC_NAMED_REFERENCES analysis.\nBEFORE_CONTRACT: resolve exactly once against BEFORE; track full QNames in AFTER.\nRemoved baseline messages are findings, not resolution failures.\nEvery declared extension requires an explicit mapping on EACH side, in contract order.\nNo AFTER planning, readiness, compatibility, wire compatibility or safe-upgrade certification.\n";
+pub const HELP: &str = "ams-gra-codegen-oms service-impact\n\nUSAGE:\n    ams-gra-codegen-oms service-impact --contract SERVICE.yaml --before OLD_ROOT.xsd --after NEW_ROOT.xsd [--before-extension ID=PATH]... [--after-extension ID=PATH]... [--format text|tsv|json]\n\nDefault format: text. Read-only STATIC_NAMED_REFERENCES analysis.\nBEFORE_CONTRACT: resolve exactly once against BEFORE; track full QNames in AFTER.\nRemoved baseline messages are findings, not resolution failures.\nEvery declared extension requires an explicit mapping on EACH side, in contract order.\nNo AFTER planning, readiness, compatibility, wire compatibility or safe-upgrade certification.\n";
 pub const LIMITATION: &str = "Static named references only; no compatibility, wire compatibility, safe-upgrade or service-readiness verdict. No AFTER contract planning: the unmodified contract may resolve ambiguously against AFTER. No reverse inheritance/closed-sum descendant expansion or runtime/backend analysis. Non-OMS occurrences are excluded and not assessed against UCI.";
 pub const EMPTY: &str = "No service-selected static dependency impact found; this is not a compatibility or readiness verdict.";
 pub const HEADER: &str = "record\tside\tfunction_id\texchange_id\tdirection\tmandate\ttopic\thas_subscription_group\tsubscription_group\tmessage_namespace\tmessage_local\tseed_namespace\tseed_local\tstep\ttype_namespace\ttype_local\tkey\thas_value\tvalue\thas_after_value\tafter_value\n";
@@ -127,6 +129,119 @@ impl ServiceImpact {
             .map(|c| &c.name)
             .collect::<BTreeSet<_>>()
             .len()
+    }
+
+    /// Serialize existing baseline selection and snapshot facts before any write.
+    pub fn to_json(&self) -> Result<String, serde_json::Error> {
+        let missing = self
+            .selected
+            .iter()
+            .filter(|s| s.status == "MISSING")
+            .count();
+        let diff = &self.schema_impact.diff;
+        let side = |version, types, messages, exposures: &[DependencyExposure]| JsonSide {
+            schema_version: version,
+            whole_schema_types: types,
+            whole_schema_messages: messages,
+            exposed_selected_unique_messages: SchemaImpact::unique_messages(exposures),
+            selected_message_type_pairs: exposures.len(),
+            exposures: exposures
+                .iter()
+                .map(|e| JsonExposure {
+                    message: json_qname(&e.message).map(str::to_owned),
+                    seed: json_qname(&e.seed).map(str::to_owned),
+                    seed_change: self.schema_impact.seed_change(&e.seed),
+                    witness: e
+                        .witness
+                        .iter()
+                        .map(|n| json_qname(n).map(str::to_owned))
+                        .collect(),
+                })
+                .collect(),
+        };
+        let report = JsonReport {
+            format: "service-impact-json-v1",
+            scope: SCOPE,
+            selection_basis: BASIS,
+            compatibility: "NOT_ASSESSED",
+            limitations: LIMITATION,
+            contract: JsonContract {
+                contract_version: &self.plan.contract_version,
+                service_name: &self.plan.service.name,
+                service_version: &self.plan.service.version,
+                service_kind: self.plan.service.kind.as_str(),
+                oms_version: &self.plan.standards.oms_version,
+                uci_schema_version: &self.plan.standards.uci_schema_version,
+                ams_gra_version: self.plan.standards.ams_gra_version.as_deref(),
+                uci_extension_ids: &self.plan.standards.uci_extension_schemas,
+            },
+            before: side(
+                diff.before_version.as_deref(),
+                diff.types.before,
+                diff.messages.before,
+                &self.before,
+            ),
+            after: side(
+                diff.after_version.as_deref(),
+                diff.types.after,
+                diff.messages.after,
+                &self.after,
+            ),
+            counts: JsonCounts {
+                total_exchange_occurrences: self.total_occurrences(),
+                oms_exchange_occurrences: self.oms_occurrences(),
+                excluded_non_oms_occurrences: self.total_occurrences() - self.oms_occurrences(),
+                selected_unique_messages: self.selected.len(),
+                selected_present_in_after: self.selected.len() - missing,
+                selected_missing_in_after: missing,
+                direct_changed_selected_unique_messages: self.direct_unique_messages(),
+            },
+            occurrences: self
+                .plan
+                .functions
+                .iter()
+                .flat_map(|f| {
+                    f.exchanges.iter().filter_map(|e| {
+                        e.as_oms_message().map(|e| JsonOccurrence {
+                            function_id: &f.id,
+                            exchange_id: &e.id,
+                            direction: e.direction.to_string(),
+                            mandate: e.mandate.to_string(),
+                            topic: &e.topic,
+                            subscription_group: e.subscription_group.as_deref(),
+                            message: json_qname(&e.message_name),
+                        })
+                    })
+                })
+                .collect(),
+            selected_messages: self
+                .selected
+                .iter()
+                .map(|s| JsonSelected {
+                    message: json_qname(&s.message),
+                    status: s.status,
+                    before_payload: JsonReference::from(&s.before_payload),
+                    after_payload: s.after_payload.as_ref().map(JsonReference::from),
+                })
+                .collect(),
+            direct_message_changes: self
+                .direct
+                .iter()
+                .map(|c| {
+                    Ok(JsonDirect {
+                        message: json_qname(&c.name),
+                        change: c.kind.label(),
+                        before: json_payload(&c.before)?,
+                        after: json_payload(&c.after)?,
+                    })
+                })
+                .collect::<Result<_, serde_json::Error>>()?,
+            empty_selection: self.selected.is_empty(),
+            empty_impact: self.direct.is_empty() && self.before.is_empty() && self.after.is_empty(),
+        };
+        let mut output = serde_json::to_string(&report)?;
+        output.push('\n');
+        Ok(output)
     }
 
     fn rows(&self) -> Vec<Vec<String>> {
@@ -376,6 +491,91 @@ impl ServiceImpact {
         }
         out
     }
+}
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct JsonReport<'a> {
+    format: &'static str,
+    scope: &'static str,
+    selection_basis: &'static str,
+    compatibility: &'static str,
+    limitations: &'static str,
+    contract: JsonContract<'a>,
+    before: JsonSide<'a>,
+    after: JsonSide<'a>,
+    counts: JsonCounts,
+    occurrences: Vec<JsonOccurrence<'a>>,
+    selected_messages: Vec<JsonSelected<'a>>,
+    direct_message_changes: Vec<JsonDirect<'a>>,
+    empty_selection: bool,
+    empty_impact: bool,
+}
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct JsonContract<'a> {
+    contract_version: &'a str,
+    service_name: &'a str,
+    service_version: &'a str,
+    service_kind: &'static str,
+    oms_version: &'a str,
+    uci_schema_version: &'a str,
+    ams_gra_version: Option<&'a str>,
+    uci_extension_ids: &'a [String],
+}
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct JsonSide<'a> {
+    schema_version: Option<&'a str>,
+    whole_schema_types: usize,
+    whole_schema_messages: usize,
+    exposed_selected_unique_messages: usize,
+    selected_message_type_pairs: usize,
+    exposures: Vec<JsonExposure>,
+}
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct JsonExposure {
+    message: [String; 2],
+    seed: [String; 2],
+    seed_change: &'static str,
+    witness: Vec<[String; 2]>,
+}
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct JsonCounts {
+    total_exchange_occurrences: usize,
+    oms_exchange_occurrences: usize,
+    excluded_non_oms_occurrences: usize,
+    selected_unique_messages: usize,
+    selected_present_in_after: usize,
+    selected_missing_in_after: usize,
+    direct_changed_selected_unique_messages: usize,
+}
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct JsonOccurrence<'a> {
+    function_id: &'a str,
+    exchange_id: &'a str,
+    direction: String,
+    mandate: String,
+    topic: &'a str,
+    subscription_group: Option<&'a str>,
+    message: [&'a str; 2],
+}
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct JsonSelected<'a> {
+    message: [&'a str; 2],
+    status: &'static str,
+    before_payload: JsonReference<'a>,
+    after_payload: Option<JsonReference<'a>>,
+}
+#[derive(Serialize)]
+struct JsonDirect<'a> {
+    message: [&'a str; 2],
+    change: &'static str,
+    before: Option<JsonReference<'a>>,
+    after: Option<JsonReference<'a>>,
 }
 fn row(record: &str, side: &str) -> Vec<String> {
     let mut r = vec![String::new(); 21];

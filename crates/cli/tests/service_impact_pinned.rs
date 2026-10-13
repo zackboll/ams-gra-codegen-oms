@@ -81,6 +81,7 @@ fn evidence() -> String {
         assert!(r.selected.iter().all(|s| s.status == "SAME_PAYLOAD"));
         assert_eq!(r.to_text(), r.to_text());
         assert_eq!(r.to_tsv(), r.to_tsv());
+        assert_json_evidence(r, case);
         let text = r.to_text();
         assert!(text.contains("2.5") && text.contains("002.5.0") && text.contains("002.6.0"));
         summary.push_str(&format!(
@@ -181,6 +182,99 @@ fn evidence() -> String {
         );
     }
     summary
+}
+
+fn assert_json_evidence(r: &ServiceImpact, case: &str) {
+    use serde_json::json;
+    let bytes = r.to_json().unwrap();
+    assert_eq!(bytes, r.to_json().unwrap());
+    let j: serde_json::Value = serde_json::from_str(&bytes).unwrap();
+    let ns = "https://www.vdl.afrl.af.mil/programs/oam";
+    let names = if case == "single" {
+        vec!["PositionReport"]
+    } else {
+        vec!["PositionReport", "OrderOfBattle"]
+    };
+    let occurrences = if case == "single" {
+        vec!["PositionReport"]
+    } else {
+        vec!["PositionReport", "PositionReport", "OrderOfBattle"]
+    };
+    assert_eq!(j["counts"]["selectedUniqueMessages"], names.len());
+    assert_eq!(j["counts"]["omsExchangeOccurrences"], occurrences.len());
+    assert_eq!(j["counts"]["excludedNonOmsOccurrences"], 0);
+    assert_eq!(j["contract"]["uciSchemaVersion"], "2.5");
+    assert_eq!(j["before"]["schemaVersion"], "002.5.0");
+    assert_eq!(j["after"]["schemaVersion"], "002.6.0");
+    assert_eq!(j["before"]["wholeSchemaTypes"], 5557);
+    assert_eq!(j["after"]["wholeSchemaTypes"], 5570);
+    assert_eq!(j["before"]["wholeSchemaMessages"], 722);
+    assert_eq!(j["after"]["wholeSchemaMessages"], 725);
+    for (s, name) in j["selectedMessages"].as_array().unwrap().iter().zip(&names) {
+        assert_eq!(s["message"], json!([ns, name]));
+        assert_eq!(s["status"], "SAME_PAYLOAD");
+        assert_eq!(
+            s["beforePayload"]["qname"],
+            json!([ns, format!("{name}MT")])
+        );
+        assert_eq!(s["afterPayload"], s["beforePayload"]);
+    }
+    assert_eq!(j["selectedMessages"].as_array().unwrap().len(), names.len());
+    assert_eq!(
+        j["occurrences"].as_array().unwrap().len(),
+        occurrences.len()
+    );
+    for (o, name) in j["occurrences"].as_array().unwrap().iter().zip(occurrences) {
+        assert_eq!(o["message"], json!([ns, name]));
+    }
+    // Independent old TSV records compare every occurrence field and every
+    // exposure pair/witness, including paths not in the historical summary.
+    let tsv = r.to_tsv();
+    let rows: Vec<Vec<&str>> = tsv
+        .lines()
+        .skip(1)
+        .map(|l| l.split('\t').collect())
+        .collect();
+    let expected_occurrences: Vec<_> = rows.iter().filter(|v| v[0] == "OCCURRENCE").map(|v| json!({
+        "functionId":v[2],"exchangeId":v[3],"direction":v[4],"mandate":v[5],"topic":v[6],
+        "subscriptionGroup":if v[7] == "true" {Some(v[8])} else {None},"message":[v[9],v[10]]
+    })).collect();
+    assert_eq!(j["occurrences"], json!(expected_occurrences));
+    for (side, key) in [("BEFORE", "before"), ("AFTER", "after")] {
+        assert_eq!(
+            j[key]["selectedMessageTypePairs"],
+            if case == "single" { 3 } else { 7 }
+        );
+        assert_eq!(j[key]["exposedSelectedUniqueMessages"], names.len());
+        let expected: Vec<_> = rows.iter().filter(|v| v[0] == "EXPOSURE" && v[1] == side).map(|e| {
+            let witness: Vec<_> = rows.iter().filter(|w| w[0] == "WITNESS" && w[1] == side && w[9..13] == e[9..13])
+                .enumerate().map(|(step,w)| {assert_eq!(w[13],step.to_string()); [w[14],w[15]]}).collect();
+            json!({"message":[e[9],e[10]],"seed":[e[11],e[12]],"seedChange":e[18],"witness":witness})
+        }).collect();
+        assert_eq!(j[key]["exposures"], json!(expected));
+        for name in &names {
+            let exposure = j[key]["exposures"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|e| {
+                    e["message"] == json!([ns, name])
+                        && e["seed"] == json!([ns, "SecurityInformationType"])
+                })
+                .unwrap();
+            assert_eq!(
+                exposure["witness"],
+                json!([
+                    [ns, format!("{name}MT")],
+                    [ns, "MessageType"],
+                    [ns, "SecurityInformationType"]
+                ])
+            );
+        }
+    }
+    assert_eq!(j["directMessageChanges"], json!([]));
+    assert_eq!(j["emptySelection"], false);
+    assert_eq!(j["emptyImpact"], false);
 }
 
 #[test]
