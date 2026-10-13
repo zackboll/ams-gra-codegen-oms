@@ -35,7 +35,7 @@ pub const HELP: &str = r#"ams-gra-codegen-oms
 Schema-driven OMS/UCI multi-language code generator.
 
 USAGE:
-    ams-gra-codegen-oms schema-impact --before PATH --after PATH [--before-overlay PATH]... [--after-overlay PATH]... [--format text|tsv]
+    ams-gra-codegen-oms schema-impact --before PATH --after PATH [--before-overlay PATH]... [--after-overlay PATH]... [--format text|tsv|json]
     ams-gra-codegen-oms schema-diff --before PATH --after PATH [--before-overlay PATH]... [--after-overlay PATH]... [--format text|tsv]
     ams-gra-codegen-oms validate --schema PATH [--overlay PATH]...
     ams-gra-codegen-oms coverage --schema PATH [--overlay PATH]... --world WORLD
@@ -65,7 +65,8 @@ STATIC SCHEMA IMPACT:
     with shortest deterministic witnesses. It does not expand abstract bases
     into descendants or assess generated support, service readiness, wire,
     runtime, backward/forward compatibility, or safe upgrades.
-    --format text|tsv defaults to text. Overlay options repeat in caller order.
+    --format text|tsv|json defaults to text. JSON: schema-impact-json-v1.
+    Overlay options repeat in caller order.
     Completed analysis exits 0 (including findings); failures exit 1; usage 2.
 
 SERVICE CONTRACT PLANNING:
@@ -587,7 +588,11 @@ enum Command {
         tsv: bool,
     },
     SchemaImpact {
-        comparison: Box<Command>,
+        before: PathBuf,
+        after: PathBuf,
+        before_overlays: Vec<PathBuf>,
+        after_overlays: Vec<PathBuf>,
+        format: SchemaImpactFormat,
     },
     ServiceRoutes {
         schema: PathBuf,
@@ -699,31 +704,27 @@ where
                 },
             )
         }
-        Command::SchemaImpact { comparison } => {
-            let Command::SchemaDiff {
-                before,
-                after,
-                before_overlays,
-                after_overlays,
-                tsv,
-            } = *comparison
-            else {
-                unreachable!("impact parser produces comparison inputs")
-            };
+        Command::SchemaImpact {
+            before,
+            after,
+            before_overlays,
+            after_overlays,
+            format,
+        } => {
             let before = load_schema_set_with_overlays(&before, &before_overlays)
                 .map_err(|e| CliError::execution(e.to_string()))?;
             let after = load_schema_set_with_overlays(&after, &after_overlays)
                 .map_err(|e| CliError::execution(e.to_string()))?;
             let report = schema_impact::SchemaImpact::analyze(&before, &after)
                 .map_err(|e| CliError::execution(e.to_string()))?;
-            write_output(
-                stdout,
-                &if tsv {
-                    report.to_tsv()
-                } else {
-                    report.to_text()
-                },
-            )
+            let output = match format {
+                SchemaImpactFormat::Text => report.to_text(),
+                SchemaImpactFormat::Tsv => report.to_tsv(),
+                SchemaImpactFormat::Json => report
+                    .to_json()
+                    .map_err(|e| CliError::execution(e.to_string()))?,
+            };
+            write_output(stdout, &output)
         }
         Command::ServiceRoutes {
             schema,
@@ -838,16 +839,7 @@ where
         Some("validate") => parse_validate(args.collect()),
         Some("schema-diff") => parse_schema_diff(args.collect()),
         Some("service-impact") => parse_service_impact(args.collect()),
-        Some("schema-impact") => {
-            let inputs = parse_schema_diff(args.collect())?;
-            if matches!(inputs, Command::Help(_)) {
-                Ok(inputs)
-            } else {
-                Ok(Command::SchemaImpact {
-                    comparison: Box::new(inputs),
-                })
-            }
-        }
+        Some("schema-impact") => parse_schema_impact(args.collect()),
         Some("coverage") => parse_coverage(args.collect()),
         Some("generate") => parse_generate(args.collect()),
         Some("docs") => parse_docs(args.collect()),
@@ -887,6 +879,46 @@ fn parse_validate(args: Vec<OsString>) -> Result<Command, CliError> {
     Ok(Command::Validate {
         schema: required(schema, "--schema")?.into(),
         overlays,
+    })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum SchemaImpactFormat {
+    Text,
+    Tsv,
+    Json,
+}
+
+fn parse_schema_impact(args: Vec<OsString>) -> Result<Command, CliError> {
+    if is_help_request(&args) {
+        return Ok(Command::Help(schema_impact::HELP));
+    }
+    let (mut before, mut after, mut format) = (None, None, None);
+    let (mut before_overlays, mut after_overlays) = (Vec::new(), Vec::new());
+    parse_options(args, |option, value| match option {
+        "--before" => set_once(&mut before, value, option),
+        "--after" => set_once(&mut after, value, option),
+        "--format" => set_once(&mut format, value, option),
+        "--before-overlay" => push_overlay(&mut before_overlays, value),
+        "--after-overlay" => push_overlay(&mut after_overlays, value),
+        _ => Err(CliError::usage(format!("unknown option '{option}'"))),
+    })?;
+    let format = match format.as_deref().unwrap_or(OsStr::new("text")).to_str() {
+        Some("text") => SchemaImpactFormat::Text,
+        Some("tsv") => SchemaImpactFormat::Tsv,
+        Some("json") => SchemaImpactFormat::Json,
+        _ => {
+            return Err(CliError::usage(
+                "invalid --format; expected text, tsv or json",
+            ));
+        }
+    };
+    Ok(Command::SchemaImpact {
+        before: required(before, "--before")?.into(),
+        after: required(after, "--after")?.into(),
+        before_overlays,
+        after_overlays,
+        format,
     })
 }
 
