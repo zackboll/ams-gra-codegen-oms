@@ -12,6 +12,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write;
 use std::path::PathBuf;
 
+mod explorer;
+
 struct Index<'a> {
     schema: &'a SchemaIr,
     pages: BTreeMap<QualifiedName, String>,
@@ -258,6 +260,7 @@ fn header(title: &str, depth: &str) -> String {
 
 fn type_page(index: &Index<'_>, t: &TypeDecl) -> Result<String, String> {
     let mut out = header(&t.name.local_name, "../");
+    out.push_str(&explorer::link("type", &t.name, "../", "Explore this type"));
     let _ = write!(
         out,
         "<dl><dt>Qualified name</dt><dd>{}</dd><dt>Namespace URI</dt><dd>{}</dd><dt>Kind</dt><dd>{}</dd><dt>Abstract</dt><dd>{}</dd><dt>Source</dt><dd>{}</dd></dl>",
@@ -390,6 +393,7 @@ fn type_page(index: &Index<'_>, t: &TypeDecl) -> Result<String, String> {
 fn landing(index: &Index<'_>) -> String {
     let schema = index.schema;
     let mut out = header("Schema browser", "");
+    out.push_str("<p><a href=\"explorer.html\">Interactive explorer</a></p>");
     let _ = write!(
         out,
         "<section><h2>Schema summary</h2><p>Schema version: {} · Namespaces: {} · Types: {} · Messages: {}</p>",
@@ -448,6 +452,12 @@ fn landing(index: &Index<'_>) -> String {
             source(&m.source),
             documentation(&m.documentation)
         );
+        out.push_str(&explorer::link(
+            "message",
+            &m.name,
+            "",
+            "Explore this message",
+        ));
     }
     out.push_str("</ul></section></main><script src=\"assets/search-index.js\"></script><script src=\"assets/search.js\"></script></body></html>");
     out
@@ -530,6 +540,13 @@ pub fn generate(schema: &SchemaIr) -> Result<Vec<GeneratedFile>, String> {
         file("assets/style.css", include_str!("style.css").to_owned()),
         file("assets/search.js", include_str!("search.js").to_owned()),
         file("assets/search-index.js", search(&index)),
+        file("explorer.html", include_str!("explorer.html").to_owned()),
+        file(
+            "assets/explorer.css",
+            include_str!("explorer.css").to_owned(),
+        ),
+        file("assets/explorer.js", include_str!("explorer.js").to_owned()),
+        file("assets/explorer-data.js", explorer::data(&index)?),
     ];
     for name in index.pages.keys() {
         files.push(file(

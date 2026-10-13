@@ -1,0 +1,6 @@
+{
+  "name": "task080-explorer-qualification",
+  "private": true,
+  "scripts": { "test": "node qualify.cjs" },
+  "devDependencies": { "playwright": "1.61.1" }
+}

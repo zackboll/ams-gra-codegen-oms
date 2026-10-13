@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Interactive schema explorer</title><link rel="stylesheet" href="assets/explorer.css"></head>
+<body><header><h1>Interactive schema explorer</h1><a href="index.html">Reference browser</a><p id="identity"></p></header>
+<noscript><p>JavaScript is required for interactive exploration. The <a href="index.html">reference browser</a> remains available.</p></noscript>
+<p id="status" role="status" aria-live="polite">Loading explorer data…</p>
+<main><section id="navigator" aria-label="Root navigator"><h2>Choose a root</h2>
+<label for="root-search">Search roots</label><input id="root-search" type="search">
+<label for="root-filter">Root kind</label><select id="root-filter"><option value="message">Messages</option><option value="type">Types</option></select>
+<p id="result-count"></p><ul id="root-results"></ul></section>
+<section id="structure" aria-label="Schema structure"><h2 id="root-title">Structure</h2>
+<p>Repeated branches show the structure of one item, not instance values.</p>
+<button id="collapse" type="button">Collapse exploration</button><button id="copy" type="button">Copy selected path and link</button>
+<label for="share">Selected path / selectable link fallback</label><textarea id="share" readonly rows="3"></textarea>
+<div class="structure-scroll"><ul id="rows"></ul></div></section>
+<section id="details" aria-label="Selected node details"><h2>Details</h2><div id="detail-content">Select a root or field.</div></section></main>
+<script src="assets/explorer-data.js"></script><script src="assets/explorer.js"></script></body></html>

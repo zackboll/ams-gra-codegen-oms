@@ -56,6 +56,15 @@ fn overlays_and_failure_paths() {
     let index = std::fs::read_to_string(destination.join("index.html")).unwrap();
     assert!(index.contains("PrivateReportType"));
     assert!(index.contains("PrivateReport"));
+    assert!(index.contains("Interactive explorer"));
+    for asset in [
+        "explorer.html",
+        "assets/explorer.js",
+        "assets/explorer.css",
+        "assets/explorer-data.js",
+    ] {
+        assert!(destination.join(asset).is_file(), "missing {asset}");
+    }
     let bad = destination.join("invalid");
     let bad_path = bad.to_string_lossy().into_owned();
     assert!(run(&["docs", "-s", "missing.xsd", "-o", &bad_path]).is_err());
