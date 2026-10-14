@@ -116,3 +116,76 @@ Production CLI byte comparisons against the exact upstream generator pass for
 `codec-ada-minimal` and `codec-oam` model/API outputs in Ada, Rust, and C++.
 Evidence directories are `equality-parity-*`. Codec implementation and remaining
 certification/publication gates are still pending; status remains NOT_READY.
+
+## Repeated codec implementation and qualification continuation
+
+Corrective commit: `6ccda2fd06771bd47913fe405bc2c3ff860b4bb0`.
+The preserved fixture-first commit remains an ancestor.
+
+Readiness supports bounded repeated Record members within the portable index
+limit and unbounded members with portable required prefixes. It preserves
+single/optional behavior and checks every effective inherited member. A visited
+worklist checks the complete named repeated-element closure without exponential
+recursive traversal. Choices, abstract values, temporal/Binary/float values,
+nillability, unqualified members, unsupported facets and recursive planning
+remain rejected. Rust/C++ readiness is unchanged. Task 088 is not incorporated.
+
+Encoding uses the shared sequence operation constants and published model API,
+never private Count/Items slots. Zero-length members are omitted. Positive-minimum
+unbounded encoding emits Required then Additional and checks combined length.
+Decoding requires arrays, validates count before construction, and uses existing
+scalar and named decoders. Bounded Values and unbounded Required use Ada 2022
+iterated aggregates, constructing each live checked element directly. Bounded
+construction calls To_Sequence; its Constraint_Error translation covers only
+that call, not aggregate initialization. Zero-minimum vectors and Additional
+use Append in input order. A failing later element rejects the whole Record.
+Member/index errors catch only Codec_Error; unexpected defects propagate.
+
+The committed execution wrapper builds actual CLI-generated sources through a
+clean Alire consumer with unchanged Task 087A support, validates Alire 2.1.1,
+GNATCOLL 26.0.0 provider hash, GPRBUILD 26.0.1 release and compiler versions,
+records exit statuses, generated hashes and policy-specific locks, and requires
+exact `TASK089_CODEC_COMPLETE cases= 121` and `TASK089_MODEL_BASELINE_PASS`.
+GNAT 14.2.0 and 16.1.0 each pass all three policies: 726 codec checks total.
+Evidence: `/home/zboll/task089-scratch/qualify14-121` and `qualify16-121`.
+The 121 checks include typed comparisons for every field, independent populated
+and zero-count goldens, round trips, each bounded minimum/maximum and adjacent
+invalid counts, required unbounded 0/1/2/3/4/12 counts, missing/null/scalar members,
+null and wrong-kind items, numeric ranges, enum wire spelling, checked String
+rejection, malformed later nested Records and Unicode, and unknown members.
+Expected-invalid tests catch only Codec_Error. An initial structural comparison
+failure was in the test oracle: provider programmatic String creation differs
+from parsed String representation; comparing both through guarded write/read
+fixed the oracle. Initial failure logs remain preserved, not certified.
+
+The focused readiness suite passes 12/12; CLI codec tests pass 15/15, including
+zero-OMS, payload deduplication, model/API parity and repeated unsupported-output
+atomicity. Focused repeated-storage backend tests pass 3/3. Original Task 087B
+41 main plus 7 subset cases pass with both compilers/all policies; original
+Task 087A 199 guarded cases plus four boundaries retain frozen hashes and pass
+both compilers/all policies. Evidence directories: `regression087{a,b}{14,16}`.
+Eight original wrapper adversarial controls and Task 089 nonzero-exit control pass.
+
+Byte comparisons against the upstream production generator pass for checked
+String repeated storage, bounded storage, unsigned/floating/Binary unbounded
+storage and unchanged naming. Ada/Rust/C++ representative model/API output,
+Rust codec-oam model/API/codec and Ada codec-ada-minimal complete outputs are
+byte-identical. Task 089 model/API is byte-identical with/without codec. Evidence:
+`byte-parity-evidence.json`, `equality-parity-*`, `model-parity-*`, `codec-parity-*`
+and `vector-parity-*`. Only direct String unbounded equality output changes.
+
+A separate mandatory `ada-repeated-codec` hosted job depends on ada-json-guard,
+checks out exact PR source head, builds the generator and runs the full corpus
+with GNAT 16 under all policies. It uploads logs, exit statuses, source hashes
+and Alire locks. Existing Task 087A/087B jobs remain intact. Hosted execution is
+not claimed merely from registration. Fast/Deep CI split guard passes.
+
+Rust 1.95 formatting, locked workspace all-target check, warnings-denied Clippy,
+Python syntax, workflow YAML parsing and whitespace checks pass. Runtime
+regression completed exit 0 with 119 passes and two existing real-input ignores.
+The broad affected backend/core/CLI campaign is still running at this checkpoint;
+its completion must be recorded before READY. Real UCI roots match the original
+2.5/2.6 SHA-256 hashes. 2.5 currently measures 41/49 with DateTimeType first
+blocker and remains NOT READY. Endpoint is a repeated NetworkEndpointType Choice,
+so it is deliberately not newly supported on this sibling branch. The 2.6
+measurement and publication/final-HEAD certification are pending at checkpoint.
