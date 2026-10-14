@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic Task 088 Choice qualification, not UCI. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+ xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+ targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified">
+ <xs:simpleType name="Code"><xs:restriction base="xs:string">
+  <xs:enumeration value="ACTIVE"/><xs:enumeration value="5G"/>
+ </xs:restriction></xs:simpleType>
+ <xs:simpleType name="Label"><xs:restriction base="xs:string">
+  <xs:minLength value="1"/><xs:maxLength value="32"/>
+  <xs:pattern value="[&#x20;-&#x7E;]{1,32}"/>
+ </xs:restriction></xs:simpleType>
+ <xs:complexType name="Details"><xs:sequence>
+  <xs:element name="Text" type="xs:string"/>
+ </xs:sequence></xs:complexType>
+ <xs:complexType name="Inner"><xs:choice>
+  <xs:element name="Flag" type="xs:boolean"/>
+  <xs:element name="Text" type="xs:string"/>
+ </xs:choice></xs:complexType>
+ <xs:complexType name="Selection"><xs:choice>
+  <xs:element name="Enabled" type="xs:boolean"/>
+  <xs:element name="Number" type="xs:int"/>
+  <xs:element name="begin" type="xs:string"/>
+  <xs:element name="Signal" type="uci:Code"/>
+  <xs:element name="Checked" type="uci:Label"/>
+  <xs:element name="Nested" type="uci:Details"/>
+  <xs:element name="Other" type="uci:Inner"/>
+ </xs:choice></xs:complexType>
+ <xs:complexType name="ChoicePayload"><xs:sequence>
+  <xs:element name="Pick" type="uci:Selection"/>
+  <xs:element name="Maybe" type="uci:Selection" minOccurs="0"/>
+ </xs:sequence></xs:complexType>
+ <xs:element name="ChoiceNotice" type="uci:ChoicePayload" uci:version="001.000.000.000"/>
+ <xs:element name="DirectNotice" type="uci:Selection" uci:version="001.000.000.000"/>
+</xs:schema>

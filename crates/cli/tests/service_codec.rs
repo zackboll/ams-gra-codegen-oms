@@ -773,6 +773,76 @@ fn task087b_ada_codec_unsupported_and_collision_preflight_is_atomic() {
 }
 
 #[test]
+fn task089r_combined_choice_repetition_ready_and_rejections_atomic() {
+    let (code, report) = check(
+        "codec-ada-combined.xsd",
+        "codec-ada-combined.yaml",
+        "ada",
+        true,
+    );
+    assert_eq!(code, Some(0), "{report}");
+    assert!(report.contains("codec renderable emitted declarations: 4/4\n"));
+    let source = std::fs::read_to_string(fixture("codec-ada-combined.xsd")).unwrap();
+    for (label, schema, expected) in [
+        (
+            "choice-member",
+            source.replace(
+                "name=\"Pick\" type=\"uci:Selection\"",
+                "name=\"Pick\" type=\"uci:Selection\" maxOccurs=\"2\"",
+            ),
+            "Choice/alias/list repeated element",
+        ),
+        (
+            "choice-alternative",
+            source.replace(
+                "name=\"Nested\" type=\"uci:Details\"",
+                "name=\"Nested\" type=\"uci:Details\" maxOccurs=\"2\"",
+            ),
+            "Choice alternative must be required-single",
+        ),
+        (
+            "nested",
+            source.replace("type=\"xs:byte\"", "type=\"xs:dateTime\""),
+            "unsupported Ada codec primitive",
+        ),
+    ] {
+        let scratch = output_dir(&format!("089r-{label}"));
+        std::fs::create_dir(&scratch).unwrap();
+        let path = scratch.join("schema.xsd");
+        std::fs::write(&path, schema).unwrap();
+        for action in ["service-check", "service-generate"] {
+            let output_path = scratch.join("output");
+            let mut command = Command::new(env!("CARGO_BIN_EXE_ams-gra-codegen-oms"));
+            command
+                .arg(action)
+                .arg("--schema")
+                .arg(&path)
+                .arg("--contract")
+                .arg(fixture("codec-ada-combined.yaml"))
+                .args([
+                    "--language",
+                    "ada",
+                    "--world",
+                    "closed-schema",
+                    "--with-codec",
+                ]);
+            if action == "service-generate" {
+                command.arg("--output").arg(&output_path);
+            }
+            let output = command.output().unwrap();
+            assert_eq!(output.status.code(), Some(1), "{label}");
+            let diagnostic = format!(
+                "{}{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+            assert!(diagnostic.contains(expected), "{label}: {diagnostic}");
+            assert!(!output_path.exists());
+        }
+    }
+}
+
+#[test]
 fn task089_repeated_ada_codec_ready_and_model_api_unchanged() {
     let (code, report) = check(
         "codec-ada-repeated.xsd",

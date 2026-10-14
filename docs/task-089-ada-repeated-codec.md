@@ -225,3 +225,134 @@ Production source is unchanged by this evidence-only documentation update.
 All mandatory local categories are complete; publication and final published
 HEAD parity still determine independent-review readiness. Hosted status remains
 separate and must be observed on the published PR.
+
+## Task 089R — integration with merged Task 088
+
+Original reviewed Task 089 head: `8cac92d65e5a22a19672be68b918d44178771e90`.
+Actual starting and accepted main: `37d3dc4f77e73d8218f2f53b6032d23c34573a9d`.
+PR #88 and PR #89 were verified merged; main contains Choice commit
+`722a99e06bcf059a52cf491450c587c482963163`. PR #90 was open, non-draft,
+targeting main, with auto-merge disabled. The existing Task 089 worktree and
+the primary worktree were clean. No reset, rebase, amend, squash or force-push
+was used. This section supplements, rather than replaces, the historical
+failure evidence and sibling-branch measurements above.
+
+### Source reconciliation
+
+The normal `git merge --no-ff --no-commit origin/main` produced a textual
+conflict only in `crates/codegen-core/src/service_codec.rs`. The overlapping
+Ada renderer and Fast workflow merged automatically and were inspected.
+`AdaCodecAnalysis`, its emitted lookup, capability and Record-value caches,
+cycle sentinels, and original dependency-visitation tests are retained.
+Record fields admit the original portable bounded/unbounded cardinalities,
+with unchanged local facets, qualification, nillability and abstract-value
+checks. Repeated named values use the existing emitted lookup, `support` and
+`record_support`; the independent repeated-element worklist is removed.
+Choice remains forbidden as the immediate element of repetition, while a
+concrete repeated Record may contain a supported required-single Choice.
+Choice alternatives remain required-single.
+
+The original Choice renderer and repeated Record renderer are both retained.
+No private sequence storage is accessed. The public model and API remain
+unchanged, including the authorized direct String equality association;
+Binary and Interfaces equality mappings are unchanged. Rust/C++ renderers
+are untouched. Fast CI retains Task 088 then Task 087B in
+`ada-generated-codec`, including exact-head checkout and Choice artifacts,
+and the separate `ada-repeated-codec` gate depending on `ada-json-guard`.
+The latter also executes the focused combined qualification.
+
+### Local completed qualification
+
+Evidence root: `/home/zboll/task089r-scratch` (full logs, exit files, compiler
+identities, dependency locks and generated-source hashes). Rust target,
+temporary files, Alire settings, cache, toolchains and sandboxed dependencies
+are task-owned. The initial symlinked toolchain cache was rejected by Alire
+before compilation; copying the toolchains corrected environment setup.
+Failed attempts remain preserved. Original qualification scripts and frozen
+Task 087A hashes were not changed.
+
+All ten Ada campaign/compiler combinations completed exit zero:
+
+| Campaign | GNAT 14.2.0 | GNAT 16.1.0 |
+| --- | --- | --- |
+| Task 087A: 199 cases + four boundaries, frozen evidence | normal/Check/Ignore pass | normal/Check/Ignore pass |
+| Task 087B: 41 main + seven subset checks | all policies pass | all policies pass |
+| Task 088: 172 OAM + two qualified Choice checks | all policies pass | all policies pass |
+| Task 089: 121 repeated checks + model baseline | all policies pass | all policies pass |
+| Task 089R: generated combined-feature consumer | all policies pass | all policies pass |
+
+Original campaigns: `isolated-{087a,087b,088,089}-{14,16}`. Combined execution:
+`combined-retry-14` and `isolated-089r-16`. The first combined consumer build
+exposed a handwritten test import typo (`Programs_OAM` versus `Programs.OAM`);
+only the consumer import was corrected. No generator capability was broadened.
+Both direct String unbounded shapes remain in the original model/codec corpus.
+
+The combined fixture covers bounded scalar values, positive-minimum unbounded
+checked Strings, a Choice containing the repeated Record, a Record containing
+Choice alongside repeated values, and repeated named Records. Executed round
+trips verify discriminants, order and semantic JSON equality. Negative controls
+cover too few/many elements, invalid later scalar/String elements, missing and
+unknown alternatives and multiple Choice members. CLI checks reject repeated
+Choice members, repeated alternatives and unsupported nested values before
+output publication. The new CLI codec suite passes 16/16.
+
+The original Task 088 shared-DAG tests pass unchanged. The new 18-level,
+two-edges-per-level repeated-Record DAG checks both successful and malformed
+nested values, re-queries cached errors, and asserts each capability and
+Record-value cache visit occurs at most once per declaration. Focused readiness
+tests pass 17/17; the complete core campaign passes (353 library tests plus all
+integration/doc tests).
+
+Rust 1.95 formatting, locked workspace all-target check, warnings-denied
+Clippy, complete workspace tests, and the separate complete Rust/C++/CLI/runtime
+campaign all completed exit zero. The workspace includes the complete Ada
+backend and generated model/codec regressions. Existing explicitly ignored
+external-input tests retain their original configuration; no ignore was added.
+Wrapper negative controls pass 8/8; Fast/Deep structural controls pass 209/209;
+`git diff --check`, conflict-marker checks and Python syntax checks pass.
+
+### Output compatibility
+
+`byte-comparisons.json` records 25 production-generator comparisons against an
+actual build of accepted main and the original Task 089 generator. They match
+exit status and every generated file hash. These cover Ada/Rust/C++ model/API
+and supported codec outputs for the Choice, qualified Choice, Task 087B,
+codec-oam and repeated fixtures. Unsupported combinations remain unsupported.
+All eleven generated Task 088 files from each compiler campaign independently
+match the accepted-main generator byte for byte. Task 089 generated output is
+unchanged; no integration output exception or frozen expectation update was
+needed.
+
+### Combined real UCI measurements
+
+Both roots match the pinned SHA-256 values in the unchanged fetch scripts:
+2.5 `ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27`,
+2.6 `af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b`.
+Production `service-check --with-codec` completed with expected exit 1 for
+both releases: **46/49** renderable emitted declarations, **NOT READY**.
+First blocker: 2.5 `DateTimeType`; 2.6
+`RDMA_InitializeSetupMDT.Endpoint` (repeated Choice). These measurements are
+recomputed, not sums of the sibling results. Neither complete message closure
+is codec-ready, so no real compiled round-trip success is claimed.
+
+The 2.5 declaration-level diagnostic reports exactly `DateTimeType`,
+`RDMA_InitializeSetupMDT`, and `SecurityInformationType` unsupported; the latter
+first fails at repeated `OwnerProducer`. The diagnostic uses a scratch copy of
+the integrated production analysis without changing its checks. The 2.6
+declaration-level diagnostic is recorded separately when completed.
+Inspection of all repeated complex members in this selected closure finds only
+immediate Choice elements (Endpoint, OwnerProducer, DisplayOnlyTo,
+FGI_SourceOpen, FGI_SourceProtected, ReleasableTo), in both releases. Thus no
+repeated Record element in this real closure becomes newly supported because
+its value closure contains a Choice. Existing repeated scalar/enumeration
+members remain supported; no schema was modified to remove blockers.
+
+### Publication tracking
+
+The corrective merge commit is identified by the normal two-parent commit
+with subject `Merge Task 088 Choice codecs into Task 089 repeated codecs`;
+its exact SHA and publication/hosted status are appended after commit creation
+(a commit cannot contain its own hash). Fresh Fast and Deep results are
+required on the published corrective head. Historical CI on `8cac92d` is not
+certification of this integration. Auto-merge remains disabled, and PR #90
+must remain open for independent review.
