@@ -339,7 +339,9 @@ The 2.5 declaration-level diagnostic reports exactly `DateTimeType`,
 `RDMA_InitializeSetupMDT`, and `SecurityInformationType` unsupported; the latter
 first fails at repeated `OwnerProducer`. The diagnostic uses a scratch copy of
 the integrated production analysis without changing its checks. The 2.6
-declaration-level diagnostic is recorded separately when completed.
+diagnostic also completed exit zero and reports the same three unsupported
+declarations (with Endpoint first in its emission order). Both independently
+enumerate 49 declarations, 46 supported; see `declarations{25,26}-final.log`.
 Inspection of all repeated complex members in this selected closure finds only
 immediate Choice elements (Endpoint, OwnerProducer, DisplayOnlyTo,
 FGI_SourceOpen, FGI_SourceProtected, ReleasableTo), in both releases. Thus no
@@ -356,3 +358,30 @@ its exact SHA and publication/hosted status are appended after commit creation
 required on the published corrective head. Historical CI on `8cac92d` is not
 certification of this integration. Auto-merge remains disabled, and PR #90
 must remain open for independent review.
+
+Corrective merge SHA: `116db2576bfb49e944fe5859a7071af6b61b9d6b`.
+Parents: `8cac92d65e5a22a19672be68b918d44178771e90` and
+`37d3dc4f77e73d8218f2f53b6032d23c34573a9d`. All original Task 089 commits
+and merged Task 088 remain ancestors. After normal push and fetch, local HEAD,
+remote feature HEAD and PR #90 head matched this SHA. GitHub reported
+MERGEABLE, open, non-draft, unmerged, main-targeted, auto-merge null. The PR
+diff contains only Task 089 and integration files, not duplicate Task 088
+fixture/script/document changes. Main was re-fetched and had not advanced.
+
+Fresh Fast run `38652840155` and Deep run `38652840106` were observed in
+progress on that exact corrective SHA, not the historical head. Fast guard
+and Rust were executing; the two dependent codec gates awaited the guard.
+All four required Deep jobs were executing. The default PR checkout uses
+GitHub's test-merge ref: observed `8d33554d9fb1897c260d793d2cdbbcd057b18330`,
+parents accepted main and corrective head, with tree
+`1dc1d0da299c48ba1d05a69e509ca34968613ee9`, identical to corrective HEAD.
+The generated-codec and repeated-codec jobs explicitly check out PR head.
+Completed job logs are still required to certify actual hosted checkouts;
+run metadata alone is not hosted certification.
+
+Local status: **READY_FOR_INDEPENDENT_REVIEW**. Hosted status:
+**HOSTED_CI_PENDING**, not merge approval. This evidence-only follow-up commit
+records the merge SHA without changing any qualified production or test source;
+its new published head must likewise receive fresh hosted execution and parity
+verification. Final head, CI links and any subsequent observations are also
+recorded in the PR handoff. Stop for independent review; do not merge PR #90.
