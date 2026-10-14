@@ -347,8 +347,8 @@ WITH CODEC (--with-codec, Task 050):
     payload codec, and a 'codec renderable emitted declarations: X/Y' line
     is added (Y counts every emitted model type, including generated support
     types). A codec failure is reported on its own 'service codec boundary:'
-    line, never as an unsupported UCI type. Only Rust has a generated codec;
-    Ada and C++ services with OMS exchanges are NOT READY with --with-codec.
+    line, never as an unsupported UCI type. Rust and the initial Ada scalar /
+    concrete Record subset have generated codecs; C++ remains NOT READY.
     Member keys use each local element's own QName (bare for the OAM
     namespace, {namespace}local otherwise); an unqualified local element has
     no specified OMS JSON member name and fails closed. A Binary value is
@@ -452,6 +452,10 @@ WITH CODEC (--with-codec, Task 050):
     'service_codec.rs', mounted by 'service_api.rs' as the module
     'service_codec'. It defines 'ServiceCodec', implementing
     ams_gra_oms_runtime_rust::OmsJsonCodec<P> once per unique payload type.
+    A supported Ada service also gets 'service_codec.ads' and '.adb', package
+    Service_Codec, with typed Encode_<Payload> and Decode_<Payload> functions.
+    It depends on AMS_GRA_OMS_JSON_Guard and GNATCOLL JSON 26.0.0. Invalid
+    payloads raise Codec_Error; unexpected internal exceptions remain distinct.
     A service with no OMS exchange needs no codec and gets no codec file.
     Binary values with xs:hexBinary provenance (Task 052) are encoded as
     canonical uppercase hex strings and decoded with XML Schema hexBinary
@@ -1606,9 +1610,17 @@ fn service_generate<W: Write>(
     let emit_codec = codec
         .as_ref()
         .is_some_and(ServiceCodecReadiness::emits_codec_file);
-    let api_files = if emit_codec {
-        // Only Rust reaches here: codec readiness reports every other
-        // language with OMS exchanges as NOT READY.
+    let api_files = if emit_codec && matches!(language, Language::Ada) {
+        let mut files = backend
+            .generate_service_api(&api_model, projection.schema())
+            .map_err(|error| CliError::execution(error.to_string()))?;
+        files.extend(
+            ams_gra_oms_backend_ada::generate_service_codec(&api_model, projection.schema(), world)
+                .map_err(|error| CliError::execution(error.to_string()))?,
+        );
+        files
+    } else if emit_codec {
+        // Ada was handled above; C++ codec readiness remains NOT READY.
         vec![
             GeneratedFile {
                 relative_path: PathBuf::from(RUST_SERVICE_API_FILE),
@@ -1631,7 +1643,11 @@ fn service_generate<W: Write>(
     // output directory touched. A wrapper failure above leaves nothing behind.
     let mut files = model_files;
     let model_file_count = files.len();
-    let codec_file_count = usize::from(emit_codec);
+    let codec_file_count = if emit_codec && matches!(language, Language::Ada) {
+        2
+    } else {
+        usize::from(emit_codec)
+    };
     files.extend(api_files);
     write_generated_files(&files, output_dir)?;
     let mut summary = render_service_generation(

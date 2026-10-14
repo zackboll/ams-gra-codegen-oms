@@ -222,6 +222,75 @@ pub fn analyze_service_codec(
     if !has_oms_exchanges {
         return Ok(readiness);
     }
+    if language == BackendLanguage::Ada {
+        let package = crate::ada_model_package(schema)
+            .map_err(|error| ServiceCodecError::EmissionPlan(error.message))?;
+        if package.iter().any(|part| {
+            [
+                "Service_Codec",
+                "AMS_GRA_OMS_JSON_Guard",
+                "GNATCOLL",
+                "Interfaces",
+                "Ada",
+            ]
+            .iter()
+            .any(|fixed| part.eq_ignore_ascii_case(fixed))
+        }) {
+            readiness.blocker = Some(unsupported(
+                "Service_Codec",
+                "model package collision".into(),
+            ));
+            return Ok(readiness);
+        }
+        let files = crate::ada_model_file_names(&package);
+        for artifact in [files.parent_spec, files.spec, files.body] {
+            if ["service_codec.ads", "service_codec.adb"]
+                .iter()
+                .any(|codec| artifact.eq_ignore_ascii_case(codec))
+            {
+                readiness.blocker = Some(unsupported(
+                    "Service_Codec",
+                    format!("artifact collision: {artifact}"),
+                ));
+                return Ok(readiness);
+            }
+        }
+        // Names in the codec live in a separate library package, not the model
+        // or wrapper scope. Reserve the fixed local names and both public/private
+        // operation families case-insensitively before rendering any artifact.
+        let mut names = std::collections::BTreeSet::new();
+        for fixed in [
+            "Model",
+            "Codec_Error",
+            "Require_Kind",
+            "Scalar_Boolean",
+            "Scalar_String",
+            "Scalar_Integer",
+            "Member",
+        ] {
+            names.insert(fixed.to_ascii_lowercase());
+        }
+        for emission in &emitted {
+            if let TypeEmission::Declaration(declaration) = emission {
+                for prefix in ["To_JSON_", "From_JSON_", "Encode_", "Decode_"] {
+                    let name = format!("{prefix}{}", declaration.name.local_name);
+                    if !names.insert(name.to_ascii_lowercase()) {
+                        readiness.blocker =
+                            Some(unsupported(&name, "codec identifier collision".into()));
+                        return Ok(readiness);
+                    }
+                }
+            }
+        }
+        for emission in emitted {
+            match ada_codec_support(schema, emission, world) {
+                Ok(()) => readiness.renderable_emitted_declarations += 1,
+                Err(error) if readiness.blocker.is_none() => readiness.blocker = Some(error),
+                Err(_) => {}
+            }
+        }
+        return Ok(readiness);
+    }
     if language != BackendLanguage::Rust {
         readiness.blocker = Some(ServiceCodecError::LanguageNotImplemented(language));
         return Ok(readiness);
@@ -420,6 +489,116 @@ fn unsupported(location: &str, reason: String) -> ServiceCodecError {
     ServiceCodecError::UnsupportedConstruct {
         location: location.to_owned(),
         reason,
+    }
+}
+
+fn ada_scalar_support(
+    kind: PrimitiveKind,
+    constraints: &ams_gra_oms_ir::ConstraintSet,
+    named: bool,
+    location: &str,
+) -> Result<(), ServiceCodecError> {
+    use crate::InclusiveIntegralDomain;
+    match kind {
+        PrimitiveKind::SignedInteger | PrimitiveKind::UnsignedInteger => {
+            let domain = if named {
+                crate::named_integral_domain(kind, constraints)
+            } else {
+                crate::inclusive_integral_domain(kind, constraints)
+            }
+            .map_err(|reason| unsupported(location, reason.into()))?;
+            match (kind, domain) {
+                (
+                    PrimitiveKind::SignedInteger,
+                    None | Some(InclusiveIntegralDomain::Signed { .. }),
+                ) => Ok(()),
+                (_, Some(InclusiveIntegralDomain::Unsigned { max, .. }))
+                    if max <= i64::MAX as u64 =>
+                {
+                    Ok(())
+                }
+                _ => Err(unsupported(
+                    location,
+                    "integer domain exceeds signed-64 JSON boundary".into(),
+                )),
+            }
+        }
+        PrimitiveKind::String if named => crate::string_profile(kind, constraints)
+            .map(|_| ())
+            .map_err(|reason| unsupported(location, reason.to_string())),
+        PrimitiveKind::String | PrimitiveKind::Boolean if *constraints == Default::default() => {
+            Ok(())
+        }
+        _ => Err(unsupported(
+            location,
+            format!("unsupported Ada codec primitive or facets: {kind:?}"),
+        )),
+    }
+}
+
+fn ada_codec_support(
+    schema: &SchemaIr,
+    emission: &TypeEmission<'_>,
+    world: GenerationWorld,
+) -> Result<(), ServiceCodecError> {
+    let TypeEmission::Declaration(declaration) = emission else {
+        return Err(unsupported(
+            "abstract value",
+            "polymorphic Ada codec is unsupported".into(),
+        ));
+    };
+    let owner = &declaration.name.local_name;
+    if declaration.is_abstract {
+        return Err(unsupported(
+            owner,
+            "abstract Ada codec is unsupported".into(),
+        ));
+    }
+    match &declaration.kind {
+        TypeKind::Primitive(kind) => {
+            ada_scalar_support(*kind, &declaration.constraints, true, owner)
+        }
+        TypeKind::Enumeration { .. } => Ok(()),
+        TypeKind::Record { .. } => {
+            let fields = effective_record_fields(schema, &declaration.name)
+                .map_err(|error| unsupported(owner, format!("{error:?}")))?;
+            for field in fields {
+                let location = format!("{owner}.{}", field.name);
+                if field.wire_name().namespace_uri.is_none() {
+                    return Err(ServiceCodecError::UnqualifiedMember { location });
+                }
+                if field.nillable {
+                    return Err(unsupported(&location, "nillable member".into()));
+                }
+                if !matches!(
+                    field.cardinality.shape(),
+                    OccurrenceShape::RequiredOne | OccurrenceShape::OptionalOne
+                ) {
+                    return Err(unsupported(&location, "repeated member".into()));
+                }
+                if !matches!(
+                    field_storage_semantics(schema, field, world)
+                        .map_err(|error| unsupported(&location, error.to_string()))?,
+                    EffectiveValueMember::Stored(_)
+                ) {
+                    return Err(unsupported(&location, "abstract member".into()));
+                }
+                match field.type_ref.target {
+                    TypeRefTarget::Primitive(kind) => {
+                        ada_scalar_support(kind, &field.constraints, false, &location)?
+                    }
+                    TypeRefTarget::Named(_) if field.constraints != Default::default() => {
+                        return Err(unsupported(&location, "field-local named facets".into()));
+                    }
+                    TypeRefTarget::Named(_) => {}
+                }
+            }
+            Ok(())
+        }
+        _ => Err(unsupported(
+            owner,
+            "Choice/alias/list Ada codec is unsupported".into(),
+        )),
     }
 }
 
@@ -663,5 +842,78 @@ mod tests {
             check(&schema).map_err(|error| error.to_string()),
             Err("P.F: nillable member".to_owned())
         );
+    }
+
+    #[test]
+    fn task087b_ada_scalar_domains_and_feature_boundaries() {
+        use ams_gra_oms_ir::NumericValue;
+        let empty = ConstraintSet::default();
+        for kind in [
+            PrimitiveKind::Boolean,
+            PrimitiveKind::String,
+            PrimitiveKind::SignedInteger,
+        ] {
+            assert!(ada_scalar_support(kind, &empty, false, "P.F").is_ok());
+        }
+        for kind in [
+            PrimitiveKind::UnsignedInteger,
+            PrimitiveKind::Float32,
+            PrimitiveKind::Float64,
+            PrimitiveKind::Decimal,
+            PrimitiveKind::Binary,
+            PrimitiveKind::DateTime,
+            PrimitiveKind::Time,
+            PrimitiveKind::Duration,
+        ] {
+            assert!(
+                ada_scalar_support(kind, &empty, false, "P.F").is_err(),
+                "{kind:?}"
+            );
+        }
+        let mut bounded = ConstraintSet {
+            min_inclusive: Some(NumericValue::Integer(0)),
+            max_inclusive: Some(NumericValue::Integer(i128::from(i64::MAX))),
+            ..Default::default()
+        };
+        assert!(ada_scalar_support(PrimitiveKind::UnsignedInteger, &bounded, false, "P.F").is_ok());
+        bounded.max_inclusive = Some(NumericValue::Integer(i128::from(i64::MAX) + 1));
+        assert!(
+            ada_scalar_support(PrimitiveKind::UnsignedInteger, &bounded, false, "P.F")
+                .unwrap_err()
+                .to_string()
+                .contains("signed-64")
+        );
+        bounded.max_inclusive = Some(NumericValue::Integer(i128::from(i64::MAX) + 1));
+        assert!(ada_scalar_support(PrimitiveKind::SignedInteger, &bounded, true, "P.F").is_err());
+    }
+
+    #[test]
+    fn task087b_ada_checks_every_member_not_only_authored_json() {
+        let mut schema = record(
+            OAM_NAMESPACE,
+            vec![
+                field("First", TypeRef::primitive(PrimitiveKind::Boolean)),
+                field("Second", TypeRef::primitive(PrimitiveKind::Float64)),
+            ],
+        );
+        let emission = TypeEmission::Declaration(&schema.types[0]);
+        let error =
+            ada_codec_support(&schema, &emission, GenerationWorld::ClosedSchemaSet).unwrap_err();
+        assert!(error.to_string().starts_with("P.Second:"));
+        let TypeKind::Record { fields } = &mut schema.types[0].kind else {
+            unreachable!()
+        };
+        fields[1].type_ref = TypeRef::primitive(PrimitiveKind::String);
+        fields[1].cardinality = Cardinality {
+            min_occurs: 0,
+            max_occurs: Some(3),
+        };
+        let error = ada_codec_support(
+            &schema,
+            &TypeEmission::Declaration(&schema.types[0]),
+            GenerationWorld::ClosedSchemaSet,
+        )
+        .unwrap_err();
+        assert_eq!(error.to_string(), "P.Second: repeated member");
     }
 }
