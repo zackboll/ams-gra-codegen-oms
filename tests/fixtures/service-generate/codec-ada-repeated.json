@@ -1,0 +1,13 @@
+{
+  "Inherited": ["base first", "base second"],
+  "begin": ["one", "two", "three"],
+  "Span": ["span first", "span second", "span third"],
+  "Pair": [{"Label": "pair first"}, {"Label": "pair second"}],
+  "Words": ["", "one", "two", "three", "four"],
+  "RequiredLabels": ["required first", "required second", "additional third", "additional fourth"],
+  "Signals": ["5G", "NORMAL"],
+  "Signed": [-128, 0, 127],
+  "Unsigned": [0, 255],
+  "Flags": [true, false, true],
+  "Details": [{"Label": "nested first"}, {"Label": "nested second"}]
+}
