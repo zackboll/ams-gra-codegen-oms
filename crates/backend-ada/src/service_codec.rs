@@ -2,8 +2,9 @@
 use crate::{ada_identifier, ada_type, error, package_name, record_field_name};
 use ams_gra_oms_codegen_core::{
     BackendLanguage, CodegenError, GeneratedFile, GenerationWorld, ServiceApiModel, TypeEmission,
-    analyze_service_codec, effective_record_fields, generated_enum_variant_name,
-    oms_json_member_name, plan_type_emissions, string_profile,
+    analyze_service_codec, effective_choice_alternatives, effective_record_fields,
+    generated_choice_alternative_name, generated_enum_variant_name, oms_json_member_name,
+    plan_type_emissions, string_profile,
 };
 use ams_gra_oms_ir::{OccurrenceShape, PrimitiveKind, SchemaIr, TypeKind, TypeRefTarget};
 use std::{collections::BTreeSet, fmt::Write as _, path::PathBuf};
@@ -253,6 +254,73 @@ pub fn generate_service_codec(
                     }
                 )
                 .unwrap();
+                (enc, dec)
+            }
+            TypeKind::Choice { .. } => {
+                let alternatives = effective_choice_alternatives(schema, &d.name)
+                    .map_err(|e| error(e.to_string()))?;
+                let mut enc = "      declare\n         Result : constant JSON_Value := Create_Object;\n      begin\n         case Item.Kind is\n".to_owned();
+                let mut helpers = String::new();
+                let mut branches = String::new();
+                for (index, f) in alternatives.iter().enumerate() {
+                    let field = generated_choice_alternative_name(BackendLanguage::Ada, &f.name)
+                        .ok_or_else(|| error("invalid Choice alternative identifier"))?;
+                    let key = literal(&oms_json_member_name(
+                        f.wire_name().namespace_uri.unwrap(),
+                        &f.name,
+                    ));
+                    let item = format!("Item.{field}");
+                    let input = format!("Member (Value, {key})");
+                    let (encode, decode) = match &f.type_ref.target {
+                        TypeRefTarget::Named(q) => {
+                            let name = ada_identifier(&q.local_name)?;
+                            (
+                                format!("To_JSON_{name} ({item})"),
+                                format!("From_JSON_{name} ({input})"),
+                            )
+                        }
+                        TypeRefTarget::Primitive(PrimitiveKind::String) => (
+                            format!("Create (To_String ({item}))"),
+                            format!("To_Unbounded_String (Scalar_String ({input}))"),
+                        ),
+                        TypeRefTarget::Primitive(PrimitiveKind::Boolean) => (
+                            format!("Create ({item})"),
+                            format!("Scalar_Boolean ({input})"),
+                        ),
+                        TypeRefTarget::Primitive(kind) => {
+                            let ty = ada_type(&f.type_ref)?;
+                            let helper = format!("Number_{index}");
+                            let mut check = String::new();
+                            if let Some(domain) =
+                                ams_gra_oms_codegen_core::inclusive_integral_domain(
+                                    *kind,
+                                    &f.constraints,
+                                )
+                                .map_err(error)?
+                            {
+                                let (min, max) = match domain {
+                                    ams_gra_oms_codegen_core::InclusiveIntegralDomain::Signed { min, max } => (min.to_string(), max.to_string()),
+                                    ams_gra_oms_codegen_core::InclusiveIntegralDomain::Unsigned { min, max } => (min.to_string(), max.to_string()),
+                                };
+                                check = format!(
+                                    "if Number < {min} or else Number > {max} then raise Codec_Error with \"integer range\"; end if;"
+                                );
+                            }
+                            writeln!(helpers, "         function {helper} return {ty} is\n            Number : constant Long_Long_Integer := Scalar_Integer ({input});\n         begin\n            {check}\n            return {ty} (Number);\n         end {helper};").unwrap();
+                            (format!("Create (Long_Long_Integer ({item}))"), helper)
+                        }
+                    };
+                    writeln!(
+                        enc,
+                        "            when Model.{field}_Kind => Result.Set_Field ({key}, {encode});"
+                    )
+                    .unwrap();
+                    writeln!(branches, "         if Value.Has_Field ({key}) then\n            return Model.{n}'(Kind => Model.{field}_Kind, {field} => {decode});\n         end if;").unwrap();
+                }
+                enc.push_str("         end case;\n         return Result;\n      end;");
+                let dec = format!(
+                    "      declare\n         Count : Natural := 0;\n         procedure Count_Member (Name : String; Child : JSON_Value) is\n            pragma Unreferenced (Name, Child);\n         begin\n            Count := Count + 1;\n         end Count_Member;\n{helpers}      begin\n         Require_Kind (Value, JSON_Object_Type);\n         Map_JSON_Object (Value, Count_Member'Access);\n         if Count /= 1 then raise Codec_Error with \"Choice requires exactly one member\"; end if;\n{branches}         raise Codec_Error with \"unknown Choice alternative\";\n      end;"
+                );
                 (enc, dec)
             }
             _ => return Err(error("unsupported codec passed readiness")),
