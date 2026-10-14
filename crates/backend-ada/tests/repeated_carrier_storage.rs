@@ -55,6 +55,89 @@ const CLOSED: GenerationWorld = GenerationWorld::ClosedSchemaSet;
 /// The repository fixture whose repeated fields reach validated carriers.
 const FIXTURE: &str = "backend-ada-repeated-carrier.xsd";
 
+/// Direct String equality must be supplied in both opaque vector shapes.
+#[test]
+fn task089_direct_string_unbounded_storage_compiles_and_preserves_values() {
+    use ams_gra_oms_ir::{Cardinality, PrimitiveKind, TypeKind, TypeRef};
+    let mut schema = fixture(FIXTURE);
+    for declaration in &mut schema.types {
+        if let TypeKind::Record { fields } = &mut declaration.kind {
+            for field in fields {
+                if field.name == "Any" || field.name == "Required" {
+                    field.type_ref = TypeRef::primitive(PrimitiveKind::String);
+                    field.constraints = Default::default();
+                    field.cardinality = Cardinality {
+                        min_occurs: if field.name == "Any" { 0 } else { 2 },
+                        max_occurs: None,
+                    };
+                }
+            }
+        }
+    }
+    let spec = generate(&schema, CLOSED).unwrap();
+    assert_eq!(
+        spec.matches("\"=\" => Standard.Ada.Strings.Unbounded.\"=\"")
+            .count(),
+        2
+    );
+    if !gnat_available() {
+        return;
+    }
+    let directory = stage("task089-string");
+    std::fs::write(directory.join("test-carriers.ads"), spec).unwrap();
+    std::fs::write(
+        directory.join("test-carriers.adb"),
+        generate_body(&schema, CLOSED).unwrap().unwrap(),
+    )
+    .unwrap();
+    let probe = r#"with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
+with Ada.Text_IO; with Test.Carriers; use Test.Carriers;
+procedure Probe is
+   Empty : Payload_Any_Sequence;
+   Required : Payload_Required_Sequence :=
+     (Required => (To_Unbounded_String ("first"), To_Unbounded_String ("second")),
+      Additional => <>);
+begin
+   if Length (Empty) /= 0 or else Length (Required.Additional) /= 0 then
+      raise Program_Error;
+   end if;
+   Append (Empty, To_Unbounded_String (""));
+   Append (Empty, To_Unbounded_String ("retained"));
+   Append (Required.Additional, To_Unbounded_String ("third"));
+   declare
+      Copy : Payload_Any_Sequence := Empty;
+      Prefix_Copy : Payload_Required_Sequence := Required;
+   begin
+      Empty := Copy; Required := Prefix_Copy;
+      Append (Copy, To_Unbounded_String ("fourth"));
+      Append (Prefix_Copy.Additional, To_Unbounded_String ("fourth"));
+      if Length (Empty) /= 2 or else Length (Copy) /= 3
+        or else To_String (Element (Empty, 1)) /= ""
+        or else To_String (Element (Empty, 2)) /= "retained"
+        or else To_String (Required.Required (1)) /= "first"
+        or else To_String (Required.Required (2)) /= "second"
+        or else Length (Required.Additional) /= 1
+        or else To_String (Element (Required.Additional, 1)) /= "third"
+        or else Length (Prefix_Copy.Additional) /= 2
+      then raise Program_Error; end if;
+   end;
+   Ada.Text_IO.Put_Line ("TASK089_STRING_STORAGE_PASS");
+end Probe;
+"#;
+    for policy in ["normal", "Check", "Ignore"] {
+        let adc = directory.join("policy.adc");
+        let switch = format!("-gnatec={}", adc.display());
+        let mut extra = vec!["-gnat2022", "-gnato"];
+        if policy != "normal" {
+            std::fs::write(&adc, format!("pragma Assertion_Policy ({policy});\n")).unwrap();
+            extra.push(&switch);
+        }
+        let (built, ran, output) = build_and_run(&directory, probe, &extra);
+        assert!(built && ran, "{policy}: {output}");
+        assert_eq!(output, "TASK089_STRING_STORAGE_PASS\n");
+    }
+}
+
 fn fixture(name: &str) -> ams_gra_oms_ir::SchemaIr {
     ams_gra_oms_xsd_frontend::load_schema_document(
         &Path::new(env!("CARGO_MANIFEST_DIR"))

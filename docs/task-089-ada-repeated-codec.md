@@ -94,3 +94,25 @@ complete. No codec READY claim, real-UCI improvement claim, or hosted success
 claim is made. Task 087A sources, prior fixtures, model representation, Rust/C++
 renderers, and Task 088 implementation remain untouched. Stop for review of the
 model-first blocker; do not begin Task 090.
+## Authorized correction continuation
+
+The user authorized a narrowly scoped direct String equality correction in the
+Ada model renderer. Equality selection now uses a match: direct String supplies
+`Standard.Ada.Strings.Unbounded."="`; Binary and Interfaces associations are
+unchanged and other types retain default equality. Public storage is unchanged.
+The original failure evidence remains preserved.
+
+The rebuilt production CLI generated the unmodified Task 089 fixture under
+`/home/zboll/task089-scratch/corrected-model`. All six production model builds
+and executions pass on GNAT 14.2.0/16.1.0 under normal/Check/Ignore, with exact
+`TASK089_MODEL_BASELINE_PASS` markers. Evidence is in `corrected-model-*` and
+`corrected-model-evidence.json`. No scratch source correction was used.
+The new focused backend regression tests both zero- and positive-minimum direct
+String sequences under all three policies on both compilers, including empty
+storage, complete required prefix, append, length, element, assignment, copy
+independence, and value preservation; all six executions pass.
+
+Production CLI byte comparisons against the exact upstream generator pass for
+`codec-ada-minimal` and `codec-oam` model/API outputs in Ada, Rust, and C++.
+Evidence directories are `equality-parity-*`. Codec implementation and remaining
+certification/publication gates are still pending; status remains NOT_READY.

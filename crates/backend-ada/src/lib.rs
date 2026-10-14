@@ -1318,25 +1318,15 @@ fn render_unbounded_helper(
             "unbounded minimum {min} exceeds portable Positive bound {ADA_PORTABLE_POSITIVE_INDEX_MAX}"
         ));
     }
-    let equality = if matches!(
-        field.type_ref.target,
-        TypeRefTarget::Primitive(
-            PrimitiveKind::UnsignedInteger
-                | PrimitiveKind::Float32
-                | PrimitiveKind::Float64
-                | PrimitiveKind::Binary
-        )
-    ) {
-        if matches!(
-            field.type_ref.target,
-            TypeRefTarget::Primitive(PrimitiveKind::Binary)
-        ) {
-            ", \"=\" => Binary_Vectors.\"=\""
-        } else {
-            ", \"=\" => Interfaces.\"=\""
+    let equality = match field.type_ref.target {
+        TypeRefTarget::Primitive(PrimitiveKind::String) => {
+            ", \"=\" => Standard.Ada.Strings.Unbounded.\"=\""
         }
-    } else {
-        ""
+        TypeRefTarget::Primitive(PrimitiveKind::Binary) => ", \"=\" => Binary_Vectors.\"=\"",
+        TypeRefTarget::Primitive(
+            PrimitiveKind::UnsignedInteger | PrimitiveKind::Float32 | PrimitiveKind::Float64,
+        ) => ", \"=\" => Interfaces.\"=\"",
+        _ => "",
     };
     writeln!(output, "   subtype {helper_name}_Item is {item_type};\n")
         .expect("writing to String cannot fail");
