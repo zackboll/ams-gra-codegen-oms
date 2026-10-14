@@ -1,0 +1,11 @@
+name = "task086_json_probe"
+description = "Independent Task 086 JSON dependency evidence (not a codec)"
+version = "0.1.0-dev"
+licenses = "MIT"
+executables = ["json_probe"]
+project-files = ["json_probe.gpr"]
+
+[[depends-on]]
+gnatcoll = "=26.0.0"
+gnatcoll_minimal = "=26.0.0"
+gnat_external = "=14.2.0"
