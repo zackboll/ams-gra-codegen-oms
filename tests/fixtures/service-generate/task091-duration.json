@@ -1,0 +1,10 @@
+{
+  "Named": "P12M",
+  "OtherNamed": "P1Y",
+  "OptionalNamed": "-P0D",
+  "DirectDuration": "PT6.2500S",
+  "OptionalDirect": "-PT0.0S",
+  "Details": {"NestedDuration": "P3DT4H5M6S", "NestedDirect": "PT0S"},
+  "InheritedDuration": "P999999999999999999999999Y",
+  "Label": "duration control"
+}

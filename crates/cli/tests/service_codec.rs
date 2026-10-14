@@ -95,6 +95,38 @@ fn listing(dir: &Path) -> Vec<String> {
 
 /// A. The OAM codec-safe service is READY with the codec and generates it.
 #[test]
+fn task091_ada_duration_readiness_and_model_preservation() {
+    let schema = "codec-ada-duration.xsd";
+    let contract = "codec-ada-duration.yaml";
+    let (code, report) = check(schema, contract, "ada", true);
+    assert_eq!(code, Some(0), "{report}");
+    assert!(report.contains("codec renderable emitted declarations: 5/5"));
+    assert!(report.contains("codec status: READY"));
+    let (plain, plain_dir) = generate(schema, contract, "ada", false, "091-model");
+    let (coded, coded_dir) = generate(schema, contract, "ada", true, "091-codec");
+    assert!(plain.status.success() && coded.status.success());
+    for name in listing(&plain_dir) {
+        assert_eq!(
+            std::fs::read(plain_dir.join(&name)).unwrap(),
+            std::fs::read(coded_dir.join(&name)).unwrap(),
+            "{name}"
+        );
+    }
+    let body = std::fs::read_to_string(coded_dir.join("service_codec.adb")).unwrap();
+    assert_eq!(body.matches("function Scalar_Duration").count(), 1);
+    assert!(body.contains("return Model.Create (Text);"));
+    assert!(!body.contains("Is_Duration"));
+    let spec = std::fs::read_to_string(coded_dir.join("service_codec.ads")).unwrap();
+    assert_eq!(spec.matches("function Encode_DurationPayload").count(), 1);
+    let (code, report) = check("codec-duration.xsd", "codec-duration.yaml", "ada", true);
+    assert_eq!(code, Some(1));
+    assert!(
+        report.contains("Choice/alias/list") || report.contains("repeated member"),
+        "{report}"
+    );
+}
+
+#[test]
 fn task050_oam_codec_service_is_ready_and_generates_the_codec() {
     let (code, report) = check("codec-oam.xsd", "codec-oam.yaml", "rust", true);
     assert_eq!(code, Some(0), "{report}");

@@ -2,8 +2,8 @@
 use crate::{ada_identifier, ada_type, error, package_name, record_field_name};
 use ams_gra_oms_codegen_core::{
     BackendLanguage, CodegenError, GeneratedFile, GenerationWorld, ServiceApiModel, TypeEmission,
-    analyze_service_codec, effective_record_fields, generated_enum_variant_name,
-    oms_json_member_name, plan_type_emissions, string_profile,
+    analyze_service_codec, effective_record_fields, emissions_emit_direct_duration,
+    generated_enum_variant_name, oms_json_member_name, plan_type_emissions, string_profile,
 };
 use ams_gra_oms_ir::{OccurrenceShape, PrimitiveKind, SchemaIr, TypeKind, TypeRefTarget};
 use std::{collections::BTreeSet, fmt::Write as _, path::PathBuf};
@@ -97,6 +97,11 @@ pub fn generate_service_codec(
 "#,
     );
     let emissions = plan_type_emissions(schema, world)?;
+    if emissions_emit_direct_duration(schema, &emissions, world) {
+        body.push_str(
+            "   function Scalar_Duration (Value : JSON_Value) return Model.XML_Schema_Duration is\n      Text : constant String := Scalar_String (Value);\n   begin\n      begin\n         return Model.Create (Text);\n      exception\n         when Constraint_Error => raise Codec_Error with \"invalid Duration\";\n      end;\n   end Scalar_Duration;\n",
+        );
+    }
     for emission in &emissions {
         if let TypeEmission::Declaration(d) = emission {
             if !emission.emits_own_top_level_name() {
@@ -121,12 +126,16 @@ pub fn generate_service_codec(
                         .map_err(|e| error(e.to_string()))?
                         .is_some();
                 let enc: String = match k {
+                    PrimitiveKind::Duration => "Create (Model.Value (Item))".into(),
                     PrimitiveKind::String if checked => "Create (Model.Value (Item))".into(),
                     PrimitiveKind::String => "Create (To_String (Unbounded_String (Item)))".into(),
                     PrimitiveKind::Boolean => "Create (Boolean (Item))".into(),
                     _ => "Create (Long_Long_Integer (Item))".into(),
                 };
                 let dec = match k {
+                    PrimitiveKind::Duration => String::from(
+                        "      declare\n         Text : constant String := Scalar_String (Value);\n      begin\n         begin\n            return Model.Create (Text);\n         exception\n            when Constraint_Error => raise Codec_Error with \"invalid Duration\";\n         end;\n      end;",
+                    ),
                     PrimitiveKind::String if checked => String::from(
                         "      declare\n         Text : constant String := Scalar_String (Value);\n      begin\n         return Model.Create (Text);\n      exception\n         when Constraint_Error => raise Codec_Error with \"invalid checked String\";\n      end;",
                     ),
@@ -208,6 +217,10 @@ pub fn generate_service_codec(
                         TypeRefTarget::Primitive(PrimitiveKind::Boolean) => (
                             format!("Create ({item})"),
                             format!("Scalar_Boolean ({input})"),
+                        ),
+                        TypeRefTarget::Primitive(PrimitiveKind::Duration) => (
+                            format!("Create (Model.Value ({item}))"),
+                            format!("Scalar_Duration ({input})"),
                         ),
                         TypeRefTarget::Primitive(_) => {
                             let ty = ada_type(&f.type_ref)?;

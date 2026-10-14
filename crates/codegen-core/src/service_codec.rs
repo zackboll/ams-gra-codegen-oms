@@ -265,6 +265,7 @@ pub fn analyze_service_codec(
             "Require_Kind",
             "Scalar_Boolean",
             "Scalar_String",
+            "Scalar_Duration",
             "Scalar_Integer",
             "Member",
         ] {
@@ -500,6 +501,22 @@ fn ada_scalar_support(
 ) -> Result<(), ServiceCodecError> {
     use crate::InclusiveIntegralDomain;
     match kind {
+        PrimitiveKind::Duration if named => match crate::temporal_profile(kind, constraints) {
+            Ok(Some(crate::TemporalProfile::Duration)) => Ok(()),
+            Ok(_) => Err(unsupported(
+                location,
+                "unsupported named Duration profile".into(),
+            )),
+            Err(reason) => Err(unsupported(location, reason.to_string())),
+        },
+        PrimitiveKind::Duration => match crate::direct_temporal_profile(kind, constraints) {
+            Ok(Some(crate::DirectTemporalProfile::Duration)) => Ok(()),
+            Ok(_) => Err(unsupported(
+                location,
+                "unsupported direct Duration profile".into(),
+            )),
+            Err(reason) => Err(unsupported(location, format!("{reason:?}"))),
+        },
         PrimitiveKind::SignedInteger | PrimitiveKind::UnsignedInteger => {
             let domain = if named {
                 crate::named_integral_domain(kind, constraints)
@@ -845,6 +862,68 @@ mod tests {
     }
 
     #[test]
+    fn task091_duration_uses_only_zero_facet_profiles() {
+        use ams_gra_oms_ir::{
+            LexicalConstraintSet, NumericValue, PatternExpression, PatternGroup, WhiteSpacePolicy,
+        };
+        for named in [false, true] {
+            assert!(
+                ada_scalar_support(
+                    PrimitiveKind::Duration,
+                    &ConstraintSet::default(),
+                    named,
+                    "Renamed.Span"
+                )
+                .is_ok()
+            );
+            for constraints in [
+                ConstraintSet {
+                    min_inclusive: Some(NumericValue::Integer(0)),
+                    ..Default::default()
+                },
+                ConstraintSet {
+                    max_length: Some(20),
+                    ..Default::default()
+                },
+                ConstraintSet {
+                    lexical: LexicalConstraintSet {
+                        white_space: Some(WhiteSpacePolicy::Collapse),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                ConstraintSet {
+                    lexical: LexicalConstraintSet {
+                        pattern_groups: vec![PatternGroup {
+                            alternatives: vec![PatternExpression::xml_schema("P.*")],
+                        }],
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+            ] {
+                assert!(
+                    ada_scalar_support(
+                        PrimitiveKind::Duration,
+                        &constraints,
+                        named,
+                        "Renamed.Span"
+                    )
+                    .is_err()
+                );
+            }
+            for kind in [
+                PrimitiveKind::Time,
+                PrimitiveKind::DateTime,
+                PrimitiveKind::Binary,
+                PrimitiveKind::Float64,
+            ] {
+                assert!(ada_scalar_support(kind, &ConstraintSet::default(), named, "P.F").is_err());
+            }
+        }
+    }
+
+    #[test]
     fn task087b_ada_scalar_domains_and_feature_boundaries() {
         use ams_gra_oms_ir::NumericValue;
         let empty = ConstraintSet::default();
@@ -852,6 +931,7 @@ mod tests {
             PrimitiveKind::Boolean,
             PrimitiveKind::String,
             PrimitiveKind::SignedInteger,
+            PrimitiveKind::Duration,
         ] {
             assert!(ada_scalar_support(kind, &empty, false, "P.F").is_ok());
         }
@@ -863,7 +943,6 @@ mod tests {
             PrimitiveKind::Binary,
             PrimitiveKind::DateTime,
             PrimitiveKind::Time,
-            PrimitiveKind::Duration,
         ] {
             assert!(
                 ada_scalar_support(kind, &empty, false, "P.F").is_err(),
