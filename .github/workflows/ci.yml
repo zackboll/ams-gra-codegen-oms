@@ -90,6 +90,10 @@ jobs:
           path: |
             ${{ runner.temp }}/task087b-codec/*.log
             ${{ runner.temp }}/task087b-codec/qualified-alire.lock
+            ${{ runner.temp }}/task087b-codec/**/alire.lock
+            ${{ runner.temp }}/task088-choice/*.log
+            ${{ runner.temp }}/task088-choice/source-hashes.txt
+            ${{ runner.temp }}/task088-choice/**/alire.lock
           if-no-files-found: error
   rust:
     runs-on: ubuntu-latest

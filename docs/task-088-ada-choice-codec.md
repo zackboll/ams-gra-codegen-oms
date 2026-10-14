@@ -119,3 +119,43 @@ workflow dispatch was added. Hosted execution must be reported independently.
 Final broad-suite completion, publication SHA/head parity and hosted state are
 recorded in the handoff, not inferred from focused local passes. Until all
 mandatory gates have completed the status is **NOT_READY**.
+
+## Additive readiness scalability correction
+
+The preserved initial commit is
+`a63d1f2473bee1e7e3dc6c8deba07eaf08448773`. Its previously unfinished broad
+campaigns subsequently completed successfully (both exit 0). The correction
+does not amend that commit or change the Ada renderer/support/model API.
+
+A planner-accepted ten-declaration layered acyclic DAG contains eight Records,
+each with two fields pointing to the same preceding Record, a shared leaf,
+and a Choice pointing to the top Record. Test-only qualified-name counters
+measured **512 capability evaluations, including 256 leaf evaluations**, before
+the correction. The same regression now measures **10 capability evaluations,
+including one leaf evaluation**, and exactly **nine** transitive Record-value
+checks. These are operation counts, not wall-clock assertions. Scanning all
+declarations twice in one shared context also evaluates each capability once.
+Evidence: `/tmp/task088/dag-before.log` and `/tmp/task088/dag-after.log`.
+
+The production top-level scan reuses its single emission plan and one analysis
+context. Capability and reachable Record-value results (success and failure)
+are memoized by full qualified type identity. Referenced emissions are indexed
+once. In-progress sentinels fail closed on accidental re-entry; existing
+planning still rejects missing and cyclic dependencies. Declaration scan order
+and alternative/field order are unchanged, preserving deterministic blockers
+and Choice-free readiness counts. Rust/C++ capability paths are unchanged.
+
+A second regression exercises shared outer Choices referencing a Record whose
+named Choice selects a concrete Record. An invalid shared leaf fails both
+parents with the same deterministic nested error, is evaluated only once,
+and remains the first top-level blocker; fixing that leaf makes the whole
+emitted scan supported. Missing/cyclic references remain planner errors.
+Existing abstract and unsupported alternative regressions are retained.
+Focused readiness tests now pass **14/14**.
+
+Hosted artifact collection retains Task 087A/087B paths and additionally
+collects Task 088 logs, `source-hashes.txt`, and actual per-consumer
+`alire.lock` files; Task 087B actual lock files are also retained. Timeout,
+required executable markers, dependency validation and failure behavior are
+unchanged. Local corrected qualification and exact-head hosted state are
+reported in the final handoff separately. No workflow is manually dispatched.

@@ -282,8 +282,9 @@ pub fn analyze_service_codec(
                 }
             }
         }
+        let mut analysis = AdaCodecAnalysis::new(&emissions);
         for emission in emitted {
-            match ada_codec_support(schema, emission, world) {
+            match analysis.support(schema, emission, world) {
                 Ok(()) => readiness.renderable_emitted_declarations += 1,
                 Err(error) if readiness.blocker.is_none() => readiness.blocker = Some(error),
                 Err(_) => {}
@@ -536,162 +537,251 @@ fn ada_scalar_support(
     }
 }
 
+#[cfg(test)]
 fn ada_codec_support(
     schema: &SchemaIr,
     emission: &TypeEmission<'_>,
     world: GenerationWorld,
 ) -> Result<(), ServiceCodecError> {
-    let TypeEmission::Declaration(declaration) = emission else {
-        return Err(unsupported(
-            "abstract value",
-            "polymorphic Ada codec is unsupported".into(),
-        ));
-    };
-    let owner = &declaration.name.local_name;
-    if declaration.is_abstract {
-        return Err(unsupported(
-            owner,
-            "abstract Ada codec is unsupported".into(),
-        ));
+    let emissions = plan_type_emissions(schema, world)
+        .map_err(|error| ServiceCodecError::EmissionPlan(error.message))?;
+    AdaCodecAnalysis::new(&emissions).support(schema, emission, world)
+}
+
+struct AdaCodecAnalysis<'a, 's> {
+    emitted: std::collections::BTreeMap<ams_gra_oms_ir::QualifiedName, &'a TypeEmission<'s>>,
+    capability:
+        std::collections::BTreeMap<ams_gra_oms_ir::QualifiedName, Result<(), ServiceCodecError>>,
+    record_values:
+        std::collections::BTreeMap<ams_gra_oms_ir::QualifiedName, Result<(), ServiceCodecError>>,
+}
+
+impl<'a, 's> AdaCodecAnalysis<'a, 's> {
+    fn new(emissions: &'a [TypeEmission<'s>]) -> Self {
+        Self {
+            emitted: emissions
+                .iter()
+                .filter(|item| item.emits_own_top_level_name())
+                .map(|item| (item.name().clone(), item))
+                .collect(),
+            capability: Default::default(),
+            record_values: Default::default(),
+        }
     }
-    match &declaration.kind {
-        TypeKind::Primitive(kind) => {
-            ada_scalar_support(*kind, &declaration.constraints, true, owner)
+
+    fn support(
+        &mut self,
+        schema: &SchemaIr,
+        emission: &TypeEmission<'_>,
+        world: GenerationWorld,
+    ) -> Result<(), ServiceCodecError> {
+        if let Some(result) = self.capability.get(emission.name()) {
+            return result.clone();
         }
-        TypeKind::Enumeration { .. } => Ok(()),
-        TypeKind::Record { .. } => {
-            let fields = effective_record_fields(schema, &declaration.name)
-                .map_err(|error| unsupported(owner, format!("{error:?}")))?;
-            for field in fields {
-                let location = format!("{owner}.{}", field.name);
-                if field.wire_name().namespace_uri.is_none() {
-                    return Err(ServiceCodecError::UnqualifiedMember { location });
-                }
-                if field.nillable {
-                    return Err(unsupported(&location, "nillable member".into()));
-                }
-                if !matches!(
-                    field.cardinality.shape(),
-                    OccurrenceShape::RequiredOne | OccurrenceShape::OptionalOne
-                ) {
-                    return Err(unsupported(&location, "repeated member".into()));
-                }
-                if !matches!(
-                    field_storage_semantics(schema, field, world)
-                        .map_err(|error| unsupported(&location, error.to_string()))?,
-                    EffectiveValueMember::Stored(_)
-                ) {
-                    return Err(unsupported(&location, "abstract member".into()));
-                }
-                match field.type_ref.target {
-                    TypeRefTarget::Primitive(kind) => {
-                        ada_scalar_support(kind, &field.constraints, false, &location)?
-                    }
-                    TypeRefTarget::Named(_) if field.constraints != Default::default() => {
-                        return Err(unsupported(&location, "field-local named facets".into()));
-                    }
-                    TypeRefTarget::Named(_) => {}
-                }
+        // The planner rejects cycles. Keep a fail-closed in-progress sentinel
+        // as well, rather than allowing an accidental re-entry to recurse.
+        self.capability.insert(
+            emission.name().clone(),
+            Err(unsupported(
+                &emission.name().local_name,
+                "cyclic codec dependency".into(),
+            )),
+        );
+        #[cfg(test)]
+        ADA_CAPABILITY_VISITS.with(|visits| {
+            *visits
+                .borrow_mut()
+                .entry(emission.name().clone())
+                .or_default() += 1;
+        });
+        let result = self.support_uncached(schema, emission, world);
+        self.capability
+            .insert(emission.name().clone(), result.clone());
+        result
+    }
+
+    fn support_uncached(
+        &mut self,
+        schema: &SchemaIr,
+        emission: &TypeEmission<'_>,
+        world: GenerationWorld,
+    ) -> Result<(), ServiceCodecError> {
+        let TypeEmission::Declaration(declaration) = emission else {
+            return Err(unsupported(
+                "abstract value",
+                "polymorphic Ada codec is unsupported".into(),
+            ));
+        };
+        let owner = &declaration.name.local_name;
+        if declaration.is_abstract {
+            return Err(unsupported(
+                owner,
+                "abstract Ada codec is unsupported".into(),
+            ));
+        }
+        match &declaration.kind {
+            TypeKind::Primitive(kind) => {
+                ada_scalar_support(*kind, &declaration.constraints, true, owner)
             }
-            Ok(())
-        }
-        TypeKind::Choice { .. } => {
-            let alternatives = effective_choice_alternatives(schema, &declaration.name)
-                .map_err(|error| unsupported(owner, error.to_string()))?;
-            let emissions = plan_type_emissions(schema, world)
-                .map_err(|error| unsupported(owner, error.to_string()))?;
-            let mut keys = std::collections::BTreeSet::new();
-            for field in alternatives {
-                let location = format!("{owner}.{}", field.name);
-                if field.cardinality.shape() != OccurrenceShape::RequiredOne {
-                    return Err(unsupported(
-                        &location,
-                        "Choice alternative must be required-single".into(),
-                    ));
-                }
-                let Some(namespace) = field.wire_name().namespace_uri else {
-                    return Err(ServiceCodecError::UnqualifiedMember { location });
-                };
-                if !keys.insert(oms_json_member_name(namespace, &field.name)) {
-                    return Err(unsupported(
-                        &location,
-                        "duplicate effective Choice JSON key".into(),
-                    ));
-                }
-                if field.nillable {
-                    return Err(unsupported(&location, "nillable Choice alternative".into()));
-                }
-                if !matches!(
-                    field_storage_semantics(schema, field, world)
-                        .map_err(|error| unsupported(&location, error.to_string()))?,
-                    EffectiveValueMember::Stored(_)
-                ) {
-                    return Err(unsupported(&location, "abstract Choice alternative".into()));
-                }
-                match &field.type_ref.target {
-                    TypeRefTarget::Primitive(kind) => {
-                        ada_scalar_support(*kind, &field.constraints, false, &location)?
+            TypeKind::Enumeration { .. } => Ok(()),
+            TypeKind::Record { .. } => {
+                let fields = effective_record_fields(schema, &declaration.name)
+                    .map_err(|error| unsupported(owner, format!("{error:?}")))?;
+                for field in fields {
+                    let location = format!("{owner}.{}", field.name);
+                    if field.wire_name().namespace_uri.is_none() {
+                        return Err(ServiceCodecError::UnqualifiedMember { location });
                     }
-                    TypeRefTarget::Named(_) if field.constraints != Default::default() => {
-                        return Err(unsupported(&location, "field-local named facets".into()));
+                    if field.nillable {
+                        return Err(unsupported(&location, "nillable member".into()));
                     }
-                    TypeRefTarget::Named(name) => {
-                        let referenced = emissions
-                            .iter()
-                            .find(|emission| {
-                                emission.name() == name && emission.emits_own_top_level_name()
-                            })
-                            .ok_or_else(|| {
+                    if !matches!(
+                        field.cardinality.shape(),
+                        OccurrenceShape::RequiredOne | OccurrenceShape::OptionalOne
+                    ) {
+                        return Err(unsupported(&location, "repeated member".into()));
+                    }
+                    if !matches!(
+                        field_storage_semantics(schema, field, world)
+                            .map_err(|error| unsupported(&location, error.to_string()))?,
+                        EffectiveValueMember::Stored(_)
+                    ) {
+                        return Err(unsupported(&location, "abstract member".into()));
+                    }
+                    match field.type_ref.target {
+                        TypeRefTarget::Primitive(kind) => {
+                            ada_scalar_support(kind, &field.constraints, false, &location)?
+                        }
+                        TypeRefTarget::Named(_) if field.constraints != Default::default() => {
+                            return Err(unsupported(&location, "field-local named facets".into()));
+                        }
+                        TypeRefTarget::Named(_) => {}
+                    }
+                }
+                Ok(())
+            }
+            TypeKind::Choice { .. } => {
+                let alternatives = effective_choice_alternatives(schema, &declaration.name)
+                    .map_err(|error| unsupported(owner, error.to_string()))?;
+                let mut keys = std::collections::BTreeSet::new();
+                for field in alternatives {
+                    let location = format!("{owner}.{}", field.name);
+                    if field.cardinality.shape() != OccurrenceShape::RequiredOne {
+                        return Err(unsupported(
+                            &location,
+                            "Choice alternative must be required-single".into(),
+                        ));
+                    }
+                    let Some(namespace) = field.wire_name().namespace_uri else {
+                        return Err(ServiceCodecError::UnqualifiedMember { location });
+                    };
+                    if !keys.insert(oms_json_member_name(namespace, &field.name)) {
+                        return Err(unsupported(
+                            &location,
+                            "duplicate effective Choice JSON key".into(),
+                        ));
+                    }
+                    if field.nillable {
+                        return Err(unsupported(&location, "nillable Choice alternative".into()));
+                    }
+                    if !matches!(
+                        field_storage_semantics(schema, field, world)
+                            .map_err(|error| unsupported(&location, error.to_string()))?,
+                        EffectiveValueMember::Stored(_)
+                    ) {
+                        return Err(unsupported(&location, "abstract Choice alternative".into()));
+                    }
+                    match &field.type_ref.target {
+                        TypeRefTarget::Primitive(kind) => {
+                            ada_scalar_support(*kind, &field.constraints, false, &location)?
+                        }
+                        TypeRefTarget::Named(_) if field.constraints != Default::default() => {
+                            return Err(unsupported(&location, "field-local named facets".into()));
+                        }
+                        TypeRefTarget::Named(name) => {
+                            let referenced = self.emitted.get(name).copied().ok_or_else(|| {
                                 unsupported(&location, "named Choice value is not emitted".into())
                             })?;
-                        ada_codec_support(schema, referenced, world)
-                            .map_err(|error| unsupported(&location, error.to_string()))?;
-                        // Record analysis historically counts local capability.
-                        // A Choice must additionally cover every reachable value
-                        // without changing Choice-free readiness counts.
-                        ada_choice_record_values(schema, referenced, world)
-                            .map_err(|error| unsupported(&location, error.to_string()))?;
+                            self.support(schema, referenced, world)
+                                .map_err(|error| unsupported(&location, error.to_string()))?;
+                            // Record analysis historically counts local capability.
+                            // A Choice must additionally cover every reachable value
+                            // without changing Choice-free readiness counts.
+                            self.record_support(schema, referenced, world)
+                                .map_err(|error| unsupported(&location, error.to_string()))?;
+                        }
                     }
                 }
+                Ok(())
             }
-            Ok(())
+            _ => Err(unsupported(
+                owner,
+                "alias/list Ada codec is unsupported".into(),
+            )),
         }
-        _ => Err(unsupported(
-            owner,
-            "alias/list Ada codec is unsupported".into(),
-        )),
+    }
+
+    fn record_support(
+        &mut self,
+        schema: &SchemaIr,
+        emission: &TypeEmission<'_>,
+        world: GenerationWorld,
+    ) -> Result<(), ServiceCodecError> {
+        if let Some(result) = self.record_values.get(emission.name()) {
+            return result.clone();
+        }
+        self.record_values.insert(
+            emission.name().clone(),
+            Err(unsupported(
+                &emission.name().local_name,
+                "cyclic codec dependency".into(),
+            )),
+        );
+        #[cfg(test)]
+        ADA_RECORD_VISITS.with(|visits| {
+            *visits
+                .borrow_mut()
+                .entry(emission.name().clone())
+                .or_default() += 1;
+        });
+        let result = self.record_support_uncached(schema, emission, world);
+        self.record_values
+            .insert(emission.name().clone(), result.clone());
+        result
+    }
+
+    fn record_support_uncached(
+        &mut self,
+        schema: &SchemaIr,
+        emission: &TypeEmission<'_>,
+        world: GenerationWorld,
+    ) -> Result<(), ServiceCodecError> {
+        let TypeEmission::Declaration(declaration) = emission else {
+            return Ok(()); // Already rejected by ada_codec_support.
+        };
+        if !matches!(declaration.kind, TypeKind::Record { .. }) {
+            return Ok(());
+        }
+        let fields = effective_record_fields(schema, &declaration.name)
+            .map_err(|error| unsupported(&declaration.name.local_name, error.to_string()))?;
+        for field in fields {
+            if let TypeRefTarget::Named(name) = &field.type_ref.target {
+                let location = format!("{}.{}", declaration.name.local_name, field.name);
+                let referenced = self.emitted.get(name).copied().ok_or_else(|| {
+                    unsupported(&location, "named Choice value is not emitted".into())
+                })?;
+                self.support(schema, referenced, world)?;
+                self.record_support(schema, referenced, world)?;
+            }
+        }
+        Ok(())
     }
 }
 
-fn ada_choice_record_values(
-    schema: &SchemaIr,
-    emission: &TypeEmission<'_>,
-    world: GenerationWorld,
-) -> Result<(), ServiceCodecError> {
-    let TypeEmission::Declaration(declaration) = emission else {
-        return Ok(()); // Already rejected by ada_codec_support.
-    };
-    if !matches!(declaration.kind, TypeKind::Record { .. }) {
-        return Ok(());
-    }
-    let fields = effective_record_fields(schema, &declaration.name)
-        .map_err(|error| unsupported(&declaration.name.local_name, error.to_string()))?;
-    let emissions = plan_type_emissions(schema, world)
-        .map_err(|error| unsupported(&declaration.name.local_name, error.to_string()))?;
-    for field in fields {
-        if let TypeRefTarget::Named(name) = &field.type_ref.target {
-            let location = format!("{}.{}", declaration.name.local_name, field.name);
-            let referenced = emissions
-                .iter()
-                .find(|item| item.name() == name && item.emits_own_top_level_name())
-                .ok_or_else(|| {
-                    unsupported(&location, "named Choice value is not emitted".into())
-                })?;
-            ada_codec_support(schema, referenced, world)?;
-            ada_choice_record_values(schema, referenced, world)?;
-        }
-    }
-    Ok(())
+#[cfg(test)]
+thread_local! {
+    static ADA_CAPABILITY_VISITS: std::cell::RefCell<std::collections::BTreeMap<ams_gra_oms_ir::QualifiedName, usize>> = const { std::cell::RefCell::new(std::collections::BTreeMap::new()) };
+    static ADA_RECORD_VISITS: std::cell::RefCell<std::collections::BTreeMap<ams_gra_oms_ir::QualifiedName, usize>> = const { std::cell::RefCell::new(std::collections::BTreeMap::new()) };
 }
 
 #[cfg(test)]
@@ -934,6 +1024,182 @@ mod tests {
             check(&schema).map_err(|error| error.to_string()),
             Err("P.F: nillable member".to_owned())
         );
+    }
+
+    #[test]
+    fn task088_shared_dependency_dag_has_bounded_capability_visits() {
+        let mut schema = record(
+            OAM_NAMESPACE,
+            vec![field("Text", TypeRef::primitive(PrimitiveKind::String))],
+        );
+        schema.types[0].name = QualifiedName::new(OAM_NAMESPACE, "Layer0");
+        for layer in 1..=8 {
+            let mut declaration = schema.types[0].clone();
+            declaration.name = QualifiedName::new(OAM_NAMESPACE, format!("Layer{layer}"));
+            declaration.kind = TypeKind::Record {
+                fields: vec![
+                    field(
+                        "Left",
+                        TypeRef::named(QualifiedName::new(
+                            OAM_NAMESPACE,
+                            format!("Layer{}", layer - 1),
+                        )),
+                    ),
+                    field(
+                        "Right",
+                        TypeRef::named(QualifiedName::new(
+                            OAM_NAMESPACE,
+                            format!("Layer{}", layer - 1),
+                        )),
+                    ),
+                ],
+            };
+            schema.types.push(declaration);
+        }
+        let mut choice = schema.types[0].clone();
+        choice.name = QualifiedName::new(OAM_NAMESPACE, "Selection");
+        choice.kind = TypeKind::Choice {
+            alternatives: vec![field(
+                "Value",
+                TypeRef::named(QualifiedName::new(OAM_NAMESPACE, "Layer8")),
+            )],
+        };
+        schema.types.push(choice);
+        let emissions = plan_type_emissions(&schema, GenerationWorld::ClosedSchemaSet)
+            .expect("valid acyclic shared DAG");
+        assert_eq!(emissions.len(), 10);
+        ADA_CAPABILITY_VISITS.with(|visits| visits.borrow_mut().clear());
+        ADA_RECORD_VISITS.with(|visits| visits.borrow_mut().clear());
+        assert!(
+            ada_codec_support(
+                &schema,
+                emissions.last().unwrap(),
+                GenerationWorld::ClosedSchemaSet
+            )
+            .is_ok()
+        );
+        ADA_CAPABILITY_VISITS.with(|visits| {
+            let visits = visits.borrow();
+            println!(
+                "TASK088_DAG declarations={} evaluations={} leaf_evaluations={}",
+                emissions.len(),
+                visits.values().sum::<usize>(),
+                visits[&schema.types[0].name]
+            );
+            assert_eq!(visits.values().sum::<usize>(), 10);
+            assert_eq!(visits[&schema.types[0].name], 1);
+        });
+        ADA_RECORD_VISITS.with(|visits| {
+            assert_eq!(visits.borrow().values().sum::<usize>(), 9);
+            assert!(visits.borrow().values().all(|count| *count == 1));
+        });
+        // Exercise the shared context used by the production top-level scan,
+        // including a cache primed by the Choice before scanning its children.
+        let mut analysis = AdaCodecAnalysis::new(&emissions);
+        ADA_CAPABILITY_VISITS.with(|visits| visits.borrow_mut().clear());
+        for emission in emissions.iter().rev().chain(emissions.iter()) {
+            assert!(
+                analysis
+                    .support(&schema, emission, GenerationWorld::ClosedSchemaSet)
+                    .is_ok()
+            );
+        }
+        ADA_CAPABILITY_VISITS.with(|visits| {
+            assert_eq!(visits.borrow().values().sum::<usize>(), emissions.len());
+        });
+    }
+
+    #[test]
+    fn task088_shared_nested_record_choice_dependencies_fail_closed() {
+        let mut schema = record(
+            OAM_NAMESPACE,
+            vec![field("Bad", TypeRef::primitive(PrimitiveKind::Float64))],
+        );
+        schema.types[0].name = QualifiedName::new(OAM_NAMESPACE, "Leaf");
+        let mut nested = schema.types[0].clone();
+        nested.name = QualifiedName::new(OAM_NAMESPACE, "NestedChoice");
+        nested.kind = TypeKind::Choice {
+            alternatives: vec![field(
+                "Selected",
+                TypeRef::named(schema.types[0].name.clone()),
+            )],
+        };
+        schema.types.push(nested);
+        let mut parent = schema.types[0].clone();
+        parent.name = QualifiedName::new(OAM_NAMESPACE, "Parent");
+        parent.kind = TypeKind::Record {
+            fields: vec![field("Pick", TypeRef::named(schema.types[1].name.clone()))],
+        };
+        schema.types.push(parent);
+        for name in ["FirstChoice", "SecondChoice"] {
+            let mut choice = schema.types[1].clone();
+            choice.name = QualifiedName::new(OAM_NAMESPACE, name);
+            choice.kind = TypeKind::Choice {
+                alternatives: vec![field("Value", TypeRef::named(schema.types[2].name.clone()))],
+            };
+            schema.types.push(choice);
+        }
+        let emissions = plan_type_emissions(&schema, GenerationWorld::ClosedSchemaSet)
+            .expect("nested acyclic DAG");
+        let mut analysis = AdaCodecAnalysis::new(&emissions);
+        ADA_CAPABILITY_VISITS.with(|visits| visits.borrow_mut().clear());
+        for name in ["FirstChoice", "SecondChoice"] {
+            let emission = emissions
+                .iter()
+                .find(|item| item.name().local_name == name)
+                .unwrap();
+            assert_eq!(
+                analysis
+                    .support(&schema, emission, GenerationWorld::ClosedSchemaSet)
+                    .unwrap_err()
+                    .to_string(),
+                format!(
+                    "{name}.Value: NestedChoice.Selected: Leaf.Bad: unsupported Ada codec primitive or facets: Float64"
+                )
+            );
+        }
+        let mut first = None;
+        for emission in &emissions {
+            if let Err(error) =
+                analysis.support(&schema, emission, GenerationWorld::ClosedSchemaSet)
+            {
+                first.get_or_insert(error);
+            }
+        }
+        assert_eq!(
+            first.unwrap().to_string(),
+            "Leaf.Bad: unsupported Ada codec primitive or facets: Float64"
+        );
+        ADA_CAPABILITY_VISITS.with(|visits| {
+            assert_eq!(visits.borrow().len(), emissions.len());
+            assert!(visits.borrow().values().all(|count| *count == 1));
+        });
+        let TypeKind::Record { fields } = &mut schema.types[0].kind else {
+            unreachable!()
+        };
+        fields[0].type_ref = TypeRef::primitive(PrimitiveKind::String);
+        let emissions = plan_type_emissions(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
+        let mut analysis = AdaCodecAnalysis::new(&emissions);
+        assert!(emissions.iter().all(|item| {
+            analysis
+                .support(&schema, item, GenerationWorld::ClosedSchemaSet)
+                .is_ok()
+        }));
+        // Missing and cyclic named dependencies remain planner errors.
+        let TypeKind::Record { fields } = &mut schema.types[0].kind else {
+            unreachable!()
+        };
+        fields[0].type_ref = TypeRef::named(QualifiedName::new(OAM_NAMESPACE, "Missing"));
+        assert!(plan_type_emissions(&schema, GenerationWorld::ClosedSchemaSet).is_err());
+        fields_retarget_cycle(&mut schema);
+        assert!(plan_type_emissions(&schema, GenerationWorld::ClosedSchemaSet).is_err());
+    }
+
+    fn fields_retarget_cycle(schema: &mut SchemaIr) {
+        let TypeKind::Record { fields } = &mut schema.types[0].kind else {
+            unreachable!()
+        };
+        fields[0].type_ref = TypeRef::named(QualifiedName::new(OAM_NAMESPACE, "Parent"));
     }
 
     #[test]
