@@ -30,8 +30,6 @@ procedure Json_Probe is
       else
          Put_Line ("REJECT " & Text & " => " & Format_Parsing_Error (Result.Error));
       end if;
-   exception
-      when others => Put_Line ("EXCEPTION " & Text);
    end Observe;
    Object_Value : constant JSON_Value := Create_Object;
    Text_Value : constant String := "quote""slash\" & Character'Val (195) & Character'Val (169);

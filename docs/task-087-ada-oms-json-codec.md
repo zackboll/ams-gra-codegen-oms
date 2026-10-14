@@ -1,6 +1,6 @@
 # Task 087 — incomplete production codec work
 
-**Disposition: NOT_READY.** This increment establishes and locally tests the
+**Original Task 087 disposition: NOT_READY.** This increment establishes and locally tests the
 reusable guard only. It does not implement generated Ada codecs, change Ada
 codec readiness, or qualify a generated codec executable. It is not a claim
 of complete OMS JSON conformance or runtime readiness.
@@ -125,3 +125,154 @@ Model readiness remains distinct from codec readiness. The production Ada
 codec verdict still uses its original LanguageNotImplemented boundary. No
 runtime/LA-CAL/WebSocket changes, Rust codec changes, C++ changes or dependency
 upgrades were made. No merge, deployment or Task 088 work was performed.
+
+## Task 087A — independently mergeable support-library delivery
+
+**Task 087A delivers the reusable JSON support boundary only.** Production
+Ada OMS JSON codec generation remains unimplemented. `service-check --language
+ada --with-codec` continues to report NOT READY for OMS-message services; no
+`service_codec.ads` or `service_codec.adb` artifacts are produced. Task 087B
+will consume this independently reviewed support library after it merges.
+The original Task 087 generator gates above are not Task 087A requirements.
+
+### Commit chain and strict scope
+
+The immutable starting main remains
+`89702ef09c5966b54dc43222da5823e8abd05fb2`. On fetching origin for Task 087A,
+main had not advanced. The existing support commit
+`30c514fb6f6a585a0d6ee9b0a5f9e8027c0989ea` was verified as HEAD and preserved
+without reset, amendment or rebase. The Task 087A commit is its normal additive
+child (`Qualify reusable Ada JSON guard in hosted CI`); exact published child
+SHA and PR head parity are recorded in the PR and delivery report, avoiding a
+self-referential commit hash in this document.
+
+Only the support library, probe integration, this document, two focused
+qualification scripts and the isolated Fast CI job are changed. Cargo
+manifests/lock, codegen-core, backends, CLI, schemas, runtime and Deep CI are
+unchanged. Original Task 086A records and `/tmp/task087` evidence are preserved.
+
+### Library contract and audit
+
+Library version: `ams_gra_oms_json=0.1.0-dev`. Public API:
+
+```ada
+Validation_Error : exception;
+function Read (Text : String) return GNATCOLL.JSON.JSON_Value;
+function Write (Value : GNATCOLL.JSON.JSON_Value) return String;
+```
+
+The manifest fixes GNATCOLL and GNATCOLL minimal to **26.0.0**. Qualified
+upstream source remains `8e270f83719d4284782a965edd80246be15b949b`. The wrapper
+checks the resolved provider archive SHA-512 against the Task 086 evidence;
+the provider is neither patched nor upgraded. Support sources are MIT;
+GNATCOLL is `GPL-3.0-or-later WITH GCC-exception-3.1`. The README describes the
+provider's GPL and GCC Runtime Library Exception texts and distribution
+boundary without claiming the exception replaces source-license obligations.
+
+Comparison with the reviewed guard confirmed unchanged UTF-8 lead/continuation
+and scalar-range validation, surrogate pairing, control/escape checks,
+pre-read validation, pre-write key/string validation, and post-write lexical
+validation. Accepted Unicode is not normalized or substituted. Integer tokens
+retain the exact signed-64-bit boundary; overflowing tokens never fall back to
+floating point. `-0` normalizes as a value. Fraction/exponent and floating
+overflow qualification is outside this integer slice. Duplicates retain the
+provider's last-value-wins, including escaped-equivalent names.
+
+Resource limits remain 1,048,576 input bytes before provider read, 128
+simultaneous structural openings before parsing, and traversal depth 128 /
+100,000 nodes. This is not complete memory containment. The byte scanner uses
+offsets bounded by remaining String length, checks each lookahead before
+indexing, and advances only after validating the consumed width. Incoming
+offsets are additionally bounded by the byte limit. The 16-bit accumulator
+never exceeds 65,535. Nesting is checked before incrementing and decremented
+only above zero. Traversal rejects before the node-limit increment; depth
+advances only from an admitted depth, so at most 129 reaches the next check.
+No assertion policy controls these bounds. Unexpected internal exceptions
+are observable, not converted into malformed-input success.
+
+The probe's former catch-all `Observe` handler was removed: unexpected
+provider exceptions now exit nonzero, while both authored unguarded defect
+reproductions remain. The original output does not change because that
+handler was never triggered in the qualified corpus. All validation is still
+in one production implementation via `package JSON_Guard renames ...`.
+
+### Reproducible local and hosted qualification
+
+From the repository root, with Alire 2.1.1 and Python 3.11+:
+
+```sh
+python3 scripts/test-task087a-wrapper.py
+python3 scripts/check-task087a.py --compiler 14 --scratch /tmp/task087a-new14
+python3 scripts/check-task087a.py --compiler 16 --scratch /tmp/task087a-new16
+```
+
+Scratch destinations must be new. Run campaigns sequentially with a shared
+Alire cache. The wrapper selects exact compiler and GPRBUILD releases locally,
+checks solution metadata/provider hash, prints actual compiler versions,
+records each subprocess exit and output, builds an independent path-dependent
+consumer, and executes normal/Check/Ignore campaigns. It does not run Rust or
+copy support Ada sources into the consumer. A library-only `alr -n build`
+also succeeds using the README's scratch-copy commands.
+
+Toolchains: GNAT external **14.2.0** and native **16.1.0**, Alire **2.1.1**,
+GPRBUILD Alire release **26.0.1** (binary identifies **26.0.0, 2026-04-15**).
+Alire's compatibility heuristic needs explicit force-selection for the local
+external-14/GPRBUILD pair; no failures are suppressed. Hosted native-16 needs
+no override. Both clean consumers execute their exact PASS marker with exit 0.
+
+Frozen original 199-case prefix SHA-256:
+`ba61ad1bf1cd12253655cb6495104874f5a61bf6f7f4b06fe8a84f154cfcf64e`.
+Complete 199-case-plus-four-boundary output SHA-256:
+`67a60d687e5fa1ad660a9b0322a4f9588f0107925e6abd4fe15353f8777c3036`.
+The wrapper requires both hashes and exactly one of each actual completion
+marker. A bare PASS word is not evidence. The eight wrapper controls reject
+nonzero command status, zero cases, incorrect counts, missing completion,
+skips, invented PASS output, unexpected exceptions and wrong dependency
+versions/archive hashes. Fake probe commands are actual subprocesses.
+
+Fast CI adds mandatory job **`ada-json-guard`**, Ubuntu 24.04, 30-minute
+budget, separate from the existing Rust job. It downloads Alire 2.1.1's
+x86-64 Linux archive and verifies SHA-256
+`09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7`.
+The archive installation was reproduced locally. Alire resolves explicitly
+selected GNAT native 16.1.0 and GPRBUILD 26.0.1 with archive integrity checks;
+the wrapper verifies the resolved exact versions. The job runs all three
+policies, not just normal and Ignore, plus the clean consumer. It uploads
+logs and the exact solution lock as evidence even on failure. Missing tools,
+resolution/build failures, nonzero executable status, wrong hashes, absent
+markers or skipped cases fail the job; there is no allowed-to-skip path.
+No real-UCI fetch, Sleet build, duplicate workflow dispatch or runtime campaign
+is added. Existing split guard and its 209 adversarial checks pass unchanged.
+
+An initial local native-16 campaign overlapped a library-only forced build
+using the same Alire cache and failed linking against a concurrently rebuilt
+archive. It was not certified. Qualification was repeated sequentially; the
+failed log is preserved. This is why shared-cache campaigns must be serialized.
+
+Final recorded local results (all command exit codes **0**):
+
+| Gate | Result |
+| --- | --- |
+| GNAT 14.2.0 normal / Check / Ignore | 199 corpus cases + 4 boundary checks in each run; both frozen hashes match |
+| GNAT 16.1.0 normal / Check / Ignore | 199 corpus cases + 4 boundary checks in each run; both frozen hashes match |
+| Independent path-dependent consumer, each compiler | Builds and executes exact consumer PASS marker |
+| Independent support project build | Passes with native 16.1.0 |
+| Verified downloaded Alire binary, hosted command reproduction | All three native-16 policies and consumer pass |
+| Qualification wrapper controls | 8 tests pass, including required adverse cases |
+| Rust 1.95.0 fmt / locked workspace all-target check / warnings-denied Clippy | Pass |
+| Ada backend + codegen-core regression command | 34 completed target summaries; 587 passed, 0 failed, 0 ignored |
+| Existing CLI service codec regressions | 11 passed, 0 failed, 0 ignored |
+| Fast/Deep split and adversarial split controls | Pass; 209 controls |
+| Workflow YAML parse and protected-file scope checks | Pass |
+
+The original unfinished Ada/core log was found completed (same 587 passing
+tests), but had no separately recorded launcher exit status. A full rerun
+records exit 0 in `/tmp/task087/task087a-ada-core-tests.exit` and its final
+summaries in the adjacent log; only that rerun is certified here. Final support
+logs/locks are in `/tmp/task087/task087a-qualified14` and
+`/tmp/task087/task087a-certified16`, with additional hosted-command reproduction
+under `/tmp/task087/task087a-hosted-reproduction`.
+
+Hosted CI status is reported independently at publication; local success does
+not assert hosted success. The branch is submitted for independent review,
+not merged or deployed. No Task 087B or Task 088 work is included.
