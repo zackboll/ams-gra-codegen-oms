@@ -1,0 +1,9 @@
+[
+ {"Enabled":true},
+ {"Number":-7},
+ {"begin":"text"},
+ {"Signal":"5G"},
+ {"Checked":"checked"},
+ {"Nested":{"Text":"nested"}},
+ {"Other":{"Flag":false}}
+]

@@ -595,11 +595,103 @@ fn ada_codec_support(
             }
             Ok(())
         }
+        TypeKind::Choice { .. } => {
+            let alternatives = effective_choice_alternatives(schema, &declaration.name)
+                .map_err(|error| unsupported(owner, error.to_string()))?;
+            let emissions = plan_type_emissions(schema, world)
+                .map_err(|error| unsupported(owner, error.to_string()))?;
+            let mut keys = std::collections::BTreeSet::new();
+            for field in alternatives {
+                let location = format!("{owner}.{}", field.name);
+                if field.cardinality.shape() != OccurrenceShape::RequiredOne {
+                    return Err(unsupported(
+                        &location,
+                        "Choice alternative must be required-single".into(),
+                    ));
+                }
+                let Some(namespace) = field.wire_name().namespace_uri else {
+                    return Err(ServiceCodecError::UnqualifiedMember { location });
+                };
+                if !keys.insert(oms_json_member_name(namespace, &field.name)) {
+                    return Err(unsupported(
+                        &location,
+                        "duplicate effective Choice JSON key".into(),
+                    ));
+                }
+                if field.nillable {
+                    return Err(unsupported(&location, "nillable Choice alternative".into()));
+                }
+                if !matches!(
+                    field_storage_semantics(schema, field, world)
+                        .map_err(|error| unsupported(&location, error.to_string()))?,
+                    EffectiveValueMember::Stored(_)
+                ) {
+                    return Err(unsupported(&location, "abstract Choice alternative".into()));
+                }
+                match &field.type_ref.target {
+                    TypeRefTarget::Primitive(kind) => {
+                        ada_scalar_support(*kind, &field.constraints, false, &location)?
+                    }
+                    TypeRefTarget::Named(_) if field.constraints != Default::default() => {
+                        return Err(unsupported(&location, "field-local named facets".into()));
+                    }
+                    TypeRefTarget::Named(name) => {
+                        let referenced = emissions
+                            .iter()
+                            .find(|emission| {
+                                emission.name() == name && emission.emits_own_top_level_name()
+                            })
+                            .ok_or_else(|| {
+                                unsupported(&location, "named Choice value is not emitted".into())
+                            })?;
+                        ada_codec_support(schema, referenced, world)
+                            .map_err(|error| unsupported(&location, error.to_string()))?;
+                        // Record analysis historically counts local capability.
+                        // A Choice must additionally cover every reachable value
+                        // without changing Choice-free readiness counts.
+                        ada_choice_record_values(schema, referenced, world)
+                            .map_err(|error| unsupported(&location, error.to_string()))?;
+                    }
+                }
+            }
+            Ok(())
+        }
         _ => Err(unsupported(
             owner,
-            "Choice/alias/list Ada codec is unsupported".into(),
+            "alias/list Ada codec is unsupported".into(),
         )),
     }
+}
+
+fn ada_choice_record_values(
+    schema: &SchemaIr,
+    emission: &TypeEmission<'_>,
+    world: GenerationWorld,
+) -> Result<(), ServiceCodecError> {
+    let TypeEmission::Declaration(declaration) = emission else {
+        return Ok(()); // Already rejected by ada_codec_support.
+    };
+    if !matches!(declaration.kind, TypeKind::Record { .. }) {
+        return Ok(());
+    }
+    let fields = effective_record_fields(schema, &declaration.name)
+        .map_err(|error| unsupported(&declaration.name.local_name, error.to_string()))?;
+    let emissions = plan_type_emissions(schema, world)
+        .map_err(|error| unsupported(&declaration.name.local_name, error.to_string()))?;
+    for field in fields {
+        if let TypeRefTarget::Named(name) = &field.type_ref.target {
+            let location = format!("{}.{}", declaration.name.local_name, field.name);
+            let referenced = emissions
+                .iter()
+                .find(|item| item.name() == name && item.emits_own_top_level_name())
+                .ok_or_else(|| {
+                    unsupported(&location, "named Choice value is not emitted".into())
+                })?;
+            ada_codec_support(schema, referenced, world)?;
+            ada_choice_record_values(schema, referenced, world)?;
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -841,6 +933,154 @@ mod tests {
         assert_eq!(
             check(&schema).map_err(|error| error.to_string()),
             Err("P.F: nillable member".to_owned())
+        );
+    }
+
+    #[test]
+    fn task088_ada_choice_checks_all_alternatives_and_wire_identity() {
+        let mut schema = record(OAM_NAMESPACE, Vec::new());
+        let mut alternatives = vec![
+            field("Flag", TypeRef::primitive(PrimitiveKind::Boolean)),
+            field("Text", TypeRef::primitive(PrimitiveKind::String)),
+        ];
+        schema.types[0].kind = TypeKind::Choice {
+            alternatives: alternatives.clone(),
+        };
+        let check = |schema: &SchemaIr| {
+            ada_codec_support(
+                schema,
+                &TypeEmission::Declaration(&schema.types[0]),
+                GenerationWorld::ClosedSchemaSet,
+            )
+        };
+        assert!(check(&schema).is_ok());
+        for cardinality in [
+            Cardinality {
+                min_occurs: 0,
+                max_occurs: Some(1),
+            },
+            Cardinality {
+                min_occurs: 1,
+                max_occurs: Some(2),
+            },
+            Cardinality {
+                min_occurs: 1,
+                max_occurs: None,
+            },
+        ] {
+            alternatives[1].cardinality = cardinality;
+            schema.types[0].kind = TypeKind::Choice {
+                alternatives: alternatives.clone(),
+            };
+            assert_eq!(
+                check(&schema).unwrap_err().to_string(),
+                "P.Text: Choice alternative must be required-single"
+            );
+        }
+        alternatives[1].cardinality = Cardinality::REQUIRED_ONE;
+        alternatives[1].wire_namespace_uri = None;
+        schema.types[0].kind = TypeKind::Choice {
+            alternatives: alternatives.clone(),
+        };
+        assert!(matches!(
+            check(&schema),
+            Err(ServiceCodecError::UnqualifiedMember { .. })
+        ));
+        alternatives[1].wire_namespace_uri = Some(OAM_NAMESPACE.into());
+        alternatives[1].nillable = true;
+        schema.types[0].kind = TypeKind::Choice {
+            alternatives: alternatives.clone(),
+        };
+        assert_eq!(
+            check(&schema).unwrap_err().to_string(),
+            "P.Text: nillable Choice alternative"
+        );
+        alternatives[1].nillable = false;
+        alternatives[1].type_ref = TypeRef::primitive(PrimitiveKind::Float64);
+        schema.types[0].kind = TypeKind::Choice {
+            alternatives: alternatives.clone(),
+        };
+        assert!(
+            check(&schema)
+                .unwrap_err()
+                .to_string()
+                .starts_with("P.Text:")
+        );
+        alternatives[1].type_ref = TypeRef::primitive(PrimitiveKind::String);
+        alternatives[1].name = "Flag".into();
+        schema.types[0].kind = TypeKind::Choice {
+            alternatives: alternatives.clone(),
+        };
+        // Existing structural/model validation may reject duplicate source
+        // identifiers before codec wire-key validation; do not loosen it.
+        assert!(check(&schema).is_err());
+        alternatives[1].wire_namespace_uri = Some("urn:other".into());
+        schema.types[0].kind = TypeKind::Choice { alternatives };
+        assert!(
+            check(&schema).is_err(),
+            "model name collision remains unsupported"
+        );
+        assert_ne!(
+            oms_json_member_name(OAM_NAMESPACE, "Flag"),
+            oms_json_member_name("urn:other", "Flag")
+        );
+    }
+
+    #[test]
+    fn task088_ada_choice_named_values_require_renderable_closure() {
+        let mut schema = record(OAM_NAMESPACE, Vec::new());
+        schema.types[0].kind = TypeKind::Choice {
+            alternatives: vec![field(
+                "Value",
+                TypeRef::named(QualifiedName::new(OAM_NAMESPACE, "Missing")),
+            )],
+        };
+        assert!(
+            ada_codec_support(
+                &schema,
+                &TypeEmission::Declaration(&schema.types[0]),
+                GenerationWorld::ClosedSchemaSet
+            )
+            .is_err()
+        );
+        let mut value = schema.types[0].clone();
+        value.name = QualifiedName::new(OAM_NAMESPACE, "ValueType");
+        value.kind = TypeKind::Primitive(PrimitiveKind::Float64);
+        schema.types.push(value);
+        schema.types[0].kind = TypeKind::Choice {
+            alternatives: vec![field(
+                "Value",
+                TypeRef::named(QualifiedName::new(OAM_NAMESPACE, "ValueType")),
+            )],
+        };
+        assert!(
+            ada_codec_support(
+                &schema,
+                &TypeEmission::Declaration(&schema.types[0]),
+                GenerationWorld::ClosedSchemaSet
+            )
+            .unwrap_err()
+            .to_string()
+            .starts_with("P.Value:")
+        );
+        schema.types[1].kind = TypeKind::Record { fields: Vec::new() };
+        schema.types[1].is_abstract = true;
+        assert!(
+            ada_codec_support(
+                &schema,
+                &TypeEmission::Declaration(&schema.types[0]),
+                GenerationWorld::ClosedSchemaSet
+            )
+            .is_err()
+        );
+        schema.types[1].is_abstract = false;
+        assert!(
+            ada_codec_support(
+                &schema,
+                &TypeEmission::Declaration(&schema.types[0]),
+                GenerationWorld::ClosedSchemaSet
+            )
+            .is_ok()
         );
     }
 

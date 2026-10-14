@@ -61,6 +61,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: dtolnay/rust-toolchain@1.95.0
       - name: Install verified Alire 2.1.1
         shell: bash
@@ -76,6 +78,8 @@ jobs:
           echo "$PWD/bin" >> "$GITHUB_PATH"
       - name: Build production generator
         run: cargo build --locked -p ams-gra-codegen-oms
+      - name: Task 088 generated Ada Choice execution (GNAT 16.1.0, all policies)
+        run: python3 scripts/check-task088.py --compiler 16 --scratch "$RUNNER_TEMP/task088-choice" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
       - name: Execute generated Ada codec, all assertion policies
         run: python3 scripts/check-task087b.py --compiler 16 --scratch "$RUNNER_TEMP/task087b-codec" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
       - name: Preserve qualification evidence
