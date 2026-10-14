@@ -189,3 +189,39 @@ its completion must be recorded before READY. Real UCI roots match the original
 blocker and remains NOT READY. Endpoint is a repeated NetworkEndpointType Choice,
 so it is deliberately not newly supported on this sibling branch. The 2.6
 measurement and publication/final-HEAD certification are pending at checkpoint.
+
+## Completed real UCI measurement
+
+Both hash-verified roots completed production service-check. On this PR #88
+sibling baseline, both releases remain **41/49 codec-renderable declarations**
+and NOT READY (expected CLI exit 1). First remaining blocker is DateTimeType
+for 2.5 and NetworkEndpointType Choice for 2.6. Task 088's 46/49 measurement
+includes independently developed Choice support; it is not the baseline here.
+Endpoint remains a repeated Choice-valued Record member and is intentionally
+rejected, even though the repeated storage shape itself is supported.
+No complete real message becomes READY and no real compiled round-trip claim
+is made. Logs: `rdma2_5.log`, `rdma2_6.log`, `rdma26-parallel.log`.
+
+The exact newly supported non-Choice repeated members in this closure, on
+SecurityInformationType in both releases, are SCI_Controls (0..20),
+SAR_Identifier (0..unbounded checked String), AtomicEnergyMarkings (0..14),
+DisseminationControls (0..22), NonIC_Markings (0..9), NonUS_Controls (0..3),
+DeclassException (0..25), HighWaterNATO (0..5), CUI_Basic (0..93),
+CUI_Specified (0..57), and SecondBannerLine (0..6). The finite members are
+enumerations. All eleven per release passed isolated production readiness using
+actual copied declarations and their complete named dependency closures.
+Evidence: `uci-new-repeated-members.json` and `uci-member-*`. Isolated readiness
+does not qualify the full SecurityInformationType containing unsupported Choices
+and temporal members; hence whole-declaration renderability does not increase.
+
+## Local completion checkpoint
+
+The broad affected backend/core/CLI campaign completed with actual exit 0.
+Runtime regression also completed exit 0. The final committed implementation
+`ed9daecc2251c5dfa72326f879bdd27d86158c6d` was re-executed through clean consumers
+on both compilers/all policies under `final14` and `final16`, each with exact
+121-check marker, verified generated-source hashes and model baseline marker.
+Production source is unchanged by this evidence-only documentation update.
+All mandatory local categories are complete; publication and final published
+HEAD parity still determine independent-review readiness. Hosted status remains
+separate and must be observed on the published PR.
