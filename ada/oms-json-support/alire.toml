@@ -1,0 +1,9 @@
+name = "ams_gra_oms_json"
+description = "Guarded GNATCOLL JSON boundary for generated OMS payload consumers"
+version = "0.1.0-dev"
+licenses = "MIT"
+project-files = ["ams_gra_oms_json.gpr"]
+
+[[depends-on]]
+gnatcoll = "=26.0.0"
+gnatcoll_minimal = "=26.0.0"
