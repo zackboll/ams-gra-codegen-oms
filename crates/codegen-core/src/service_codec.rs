@@ -267,6 +267,7 @@ pub fn analyze_service_codec(
             "Scalar_String",
             "Scalar_Integer",
             "Member",
+            "Scalar_Date_Time",
         ] {
             names.insert(fixed.to_ascii_lowercase());
         }
@@ -500,6 +501,22 @@ fn ada_scalar_support(
 ) -> Result<(), ServiceCodecError> {
     use crate::InclusiveIntegralDomain;
     match kind {
+        PrimitiveKind::DateTime if named => match crate::temporal_profile(kind, constraints) {
+            Ok(Some(crate::TemporalProfile::DateTimeZulu)) => Ok(()),
+            Err(reason) => Err(unsupported(location, reason.to_string())),
+            _ => Err(unsupported(
+                location,
+                "unsupported named DateTime profile".into(),
+            )),
+        },
+        PrimitiveKind::DateTime => match crate::direct_temporal_profile(kind, constraints) {
+            Ok(Some(crate::DirectTemporalProfile::DateTime)) => Ok(()),
+            Err(reason) => Err(unsupported(location, format!("{reason:?}"))),
+            _ => Err(unsupported(
+                location,
+                "unsupported direct DateTime profile".into(),
+            )),
+        },
         PrimitiveKind::SignedInteger | PrimitiveKind::UnsignedInteger => {
             let domain = if named {
                 crate::named_integral_domain(kind, constraints)
@@ -845,6 +862,35 @@ mod tests {
     }
 
     #[test]
+    fn task090_ada_datetime_domains_remain_distinct() {
+        use ams_gra_oms_ir::{PatternExpression, PatternGroup};
+        let empty = ConstraintSet::default();
+        let mut zulu = empty.clone();
+        zulu.lexical.pattern_groups.push(PatternGroup {
+            alternatives: vec![PatternExpression::xml_schema(".+Z")],
+        });
+        assert!(ada_scalar_support(PrimitiveKind::DateTime, &zulu, true, "Instant").is_ok());
+        assert!(ada_scalar_support(PrimitiveKind::DateTime, &empty, false, "P.F").is_ok());
+        assert!(ada_scalar_support(PrimitiveKind::DateTime, &empty, true, "Instant").is_err());
+        assert!(ada_scalar_support(PrimitiveKind::DateTime, &zulu, false, "P.F").is_err());
+        for kind in [
+            PrimitiveKind::Time,
+            PrimitiveKind::Duration,
+            PrimitiveKind::Decimal,
+            PrimitiveKind::Float32,
+            PrimitiveKind::Float64,
+            PrimitiveKind::Binary,
+        ] {
+            for named in [false, true] {
+                assert!(ada_scalar_support(kind, &empty, named, "P.F").is_err());
+                assert!(ada_scalar_support(kind, &zulu, named, "P.F").is_err());
+            }
+        }
+        zulu.max_length = Some(100);
+        assert!(ada_scalar_support(PrimitiveKind::DateTime, &zulu, true, "Instant").is_err());
+    }
+
+    #[test]
     fn task087b_ada_scalar_domains_and_feature_boundaries() {
         use ams_gra_oms_ir::NumericValue;
         let empty = ConstraintSet::default();
@@ -861,7 +907,6 @@ mod tests {
             PrimitiveKind::Float64,
             PrimitiveKind::Decimal,
             PrimitiveKind::Binary,
-            PrimitiveKind::DateTime,
             PrimitiveKind::Time,
             PrimitiveKind::Duration,
         ] {
