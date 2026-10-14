@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic Task 087B payload-body fixture; no transport envelope. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="https://www.vdl.afrl.af.mil/programs/oam"
+           elementFormDefault="qualified">
+  <xs:simpleType name="Level">
+    <xs:restriction base="xs:int">
+      <xs:minInclusive value="-10"/>
+      <xs:maxInclusive value="10"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Label">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+      <xs:maxLength value="32"/>
+      <xs:pattern value="[&#x20;-&#x7E;]{1,32}"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="SignalCode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="NORMAL"/>
+      <xs:enumeration value="5G"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:complexType name="Details">
+    <xs:sequence>
+      <xs:element name="Text" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="AdaPayload">
+    <xs:sequence>
+      <xs:element name="Enabled" type="xs:boolean"/>
+      <xs:element name="Level" type="uci:Level"/>
+      <xs:element name="Name" type="xs:string"/>
+      <xs:element name="Signal" type="uci:SignalCode"/>
+      <xs:element name="Label" type="uci:Label"/>
+      <xs:element name="Details" type="uci:Details"/>
+      <xs:element name="begin" type="xs:string"/>
+      <xs:element name="Note" type="xs:string" minOccurs="0"/>
+      <xs:element name="OptionalLabel" type="uci:Label" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="AdaNotice" type="uci:AdaPayload" uci:version="001.000.000.000"/>
+  <xs:element name="AdaEcho" type="uci:AdaPayload" uci:version="001.000.000.000"/>
+</xs:schema>

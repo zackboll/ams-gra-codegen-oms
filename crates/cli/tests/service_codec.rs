@@ -553,9 +553,24 @@ fn task050_ada_and_cpp_have_no_generated_codec() {
             report.contains("status: READY\n"),
             "model stays READY: {report}"
         );
-        assert!(report.contains(&format!(
-            "service codec boundary: generated OMS JSON codec is not implemented for {name}\n"
-        )));
+        if language == "cpp" {
+            assert!(report.contains(&format!(
+                "service codec boundary: generated OMS JSON codec is not implemented for {name}\n"
+            )));
+        } else {
+            assert!(report.contains("service codec boundary:"), "{report}");
+            assert!(
+                !report.contains("codec is not implemented for Ada"),
+                "{report}"
+            );
+            assert!(
+                report.contains("unsupported Ada codec primitive")
+                    || report.contains("repeated member")
+                    || report.contains("Choice/alias/list")
+                    || report.contains("polymorphic"),
+                "{report}"
+            );
+        }
         let (output, dir) = generate(
             "codec-oam.xsd",
             "codec-oam.yaml",
@@ -606,5 +621,153 @@ fn task050_with_codec_is_a_singular_flag() {
             text.contains("[--with-codec]") && text.contains("WITH CODEC"),
             "{command}"
         );
+    }
+}
+
+#[test]
+fn task087b_ada_codec_ready_deduplicated_and_preserves_model_api() {
+    let (code, report) = check(
+        "codec-ada-minimal.xsd",
+        "codec-ada-minimal.yaml",
+        "ada",
+        true,
+    );
+    assert_eq!(code, Some(0), "{report}");
+    assert!(report.contains("codec renderable emitted declarations: 5/5\n"));
+    assert!(report.contains("codec status: READY\n"));
+    let (output, coded) = generate(
+        "codec-ada-minimal.xsd",
+        "codec-ada-minimal.yaml",
+        "ada",
+        true,
+        "087b-coded",
+    );
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(String::from_utf8_lossy(&output.stdout).contains("generated service codec files: 2\n"));
+    let (output, plain) = generate(
+        "codec-ada-minimal.xsd",
+        "codec-ada-minimal.yaml",
+        "ada",
+        false,
+        "087b-plain",
+    );
+    assert!(output.status.success());
+    assert_eq!(listing(&coded).len(), listing(&plain).len() + 2);
+    for name in listing(&plain) {
+        assert_eq!(
+            std::fs::read(plain.join(&name)).unwrap(),
+            std::fs::read(coded.join(&name)).unwrap(),
+            "{name}"
+        );
+    }
+    let spec = std::fs::read_to_string(coded.join("service_codec.ads")).unwrap();
+    assert_eq!(spec.matches("function Encode_AdaPayload").count(), 1);
+    assert_eq!(spec.matches("function Decode_AdaPayload").count(), 1);
+    let body = std::fs::read_to_string(coded.join("service_codec.adb")).unwrap();
+    assert!(body.contains("AMS_GRA_OMS_JSON_Guard.Read"));
+    assert!(body.contains("AMS_GRA_OMS_JSON_Guard.Write"));
+    assert!(!body.contains("GNATCOLL.JSON.Read"));
+    assert!(!body.contains("GNATCOLL.JSON.Write"));
+}
+
+#[test]
+fn task087b_ada_codec_unsupported_and_collision_preflight_is_atomic() {
+    let source = std::fs::read_to_string(fixture("codec-ada-minimal.xsd")).unwrap();
+    for (label, schema, expected) in [
+        (
+            "float",
+            source.replace(
+                "name=\"Enabled\" type=\"xs:boolean\"",
+                "name=\"Enabled\" type=\"xs:double\"",
+            ),
+            "unsupported Ada codec primitive",
+        ),
+        (
+            "unsigned64",
+            source.replace(
+                "name=\"Enabled\" type=\"xs:boolean\"",
+                "name=\"Enabled\" type=\"xs:unsignedLong\"",
+            ),
+            "integer domain exceeds signed-64 JSON boundary",
+        ),
+        (
+            "repeated",
+            source.replace(
+                "name=\"Note\" type=\"xs:string\" minOccurs=\"0\"",
+                "name=\"Note\" type=\"xs:string\" minOccurs=\"0\" maxOccurs=\"3\"",
+            ),
+            "repeated member",
+        ),
+        (
+            "unqualified",
+            source.replace(
+                "name=\"Note\" type=\"xs:string\"",
+                "name=\"Note\" type=\"xs:string\" form=\"unqualified\"",
+            ),
+            "unqualified local element",
+        ),
+        (
+            "package-collision",
+            source
+                .replace("xmlns:uci=\"https://www.vdl.afrl.af.mil/programs/oam\"", "xmlns:version=\"https://www.vdl.afrl.af.mil/programs/oam\" xmlns:uci=\"urn:Interfaces:model\"")
+                .replace(
+                    "https://www.vdl.afrl.af.mil/programs/oam",
+                    "urn:Interfaces:model",
+                )
+                .replace("xmlns:version=\"urn:Interfaces:model\"", "xmlns:version=\"https://www.vdl.afrl.af.mil/programs/oam\"")
+                .replace(" uci:version=", " version:version="),
+            "model package collision",
+        ),
+    ] {
+        let scratch = output_dir(&format!("087b-{label}-input"));
+        std::fs::create_dir(&scratch).unwrap();
+        let schema_path = scratch.join("schema.xsd");
+        std::fs::write(&schema_path, schema).unwrap();
+        let output_path = scratch.join("output");
+        for action in ["service-check", "service-generate"] {
+            let mut command = Command::new(env!("CARGO_BIN_EXE_ams-gra-codegen-oms"));
+            command
+                .arg(action)
+                .arg("--schema")
+                .arg(&schema_path)
+                .arg("--contract")
+                .arg(fixture("codec-ada-minimal.yaml"))
+                .args([
+                    "--language",
+                    "ada",
+                    "--world",
+                    "closed-schema",
+                    "--with-codec",
+                ]);
+            if action == "service-generate" {
+                command.arg("--output").arg(&output_path);
+            }
+            let output = command.output().unwrap();
+            assert_eq!(
+                output.status.code(),
+                Some(1),
+                "{label}: {}",
+                String::from_utf8_lossy(&output.stdout)
+            );
+            let combined = format!(
+                "{}{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+            assert!(
+                combined.contains(if label == "unsigned64" {
+                    "unsupported XSD construct: xs:unsignedLong"
+                } else {
+                    expected
+                }),
+                "{label}: {}",
+                String::from_utf8_lossy(&output.stdout)
+            );
+            assert!(!output_path.exists());
+        }
     }
 }

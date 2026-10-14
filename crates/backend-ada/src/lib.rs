@@ -2,9 +2,11 @@
 
 mod ipv6_address;
 mod service_api;
+mod service_codec;
 mod unicode_string;
 
 pub use service_api::{SERVICE_API_FILE, generate_service_api};
+pub use service_codec::generate_service_codec;
 
 use ams_gra_oms_codegen_core::ServiceApiModel;
 use ams_gra_oms_codegen_core::{

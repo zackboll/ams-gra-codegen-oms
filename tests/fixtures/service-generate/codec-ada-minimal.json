@@ -1,0 +1,11 @@
+{
+  "Enabled": true,
+  "Level": -7,
+  "Name": "Unicode é 😀",
+  "Signal": "5G",
+  "Label": "checked label",
+  "Details": {"Text": "nested record"},
+  "begin": "wire name",
+  "Note": "present note",
+  "OptionalLabel": "present label"
+}
