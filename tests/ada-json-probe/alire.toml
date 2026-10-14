@@ -9,3 +9,8 @@ project-files = ["json_probe.gpr"]
 gnatcoll = "=26.0.0"
 gnatcoll_minimal = "=26.0.0"
 gnat_external = "=14.2.0"
+
+ams_gra_oms_json = "=0.1.0-dev"
+
+[[pins]]
+ams_gra_oms_json = { path = "../../ada/oms-json-support" }

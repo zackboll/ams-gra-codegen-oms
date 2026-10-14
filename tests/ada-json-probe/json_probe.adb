@@ -1,4 +1,5 @@
 with Ada.Text_IO; use Ada.Text_IO;
+with Ada.Exceptions;
 with GNATCOLL.JSON; use GNATCOLL.JSON;
 with GNATCOLL.Buffer;
 with JSON_Guard;
@@ -246,6 +247,51 @@ procedure Json_Probe is
       SAX_Keys;
       Bounds_And_Limits;
       Put_Line ("GUARDED CORPUS PASSED cases=" & Passed'Image);
+      --  Task 087 additions run AFTER the unchanged 199-case corpus.
+      declare
+         Limit : constant Standard.Positive := JSON_Guard.Max_Document_Bytes;
+         Exact : String (1 .. Limit) := (others => ' ');
+         Too_Large : String (1 .. Limit + 1) := (others => ' ');
+         Openings : constant String (1 .. JSON_Guard.Max_Depth) :=
+           (others => '[');
+         Closings : constant String (1 .. JSON_Guard.Max_Depth) :=
+           (others => ']');
+      begin
+         Exact (1 .. 2) := "{}";
+         Too_Large (1 .. 2) := "{}";
+         Check (JSON_Guard.Read (Exact).Kind = JSON_Object_Type,
+                "exact document byte limit");
+         begin
+            declare
+               Value : constant JSON_Value := JSON_Guard.Read (Too_Large);
+            begin
+               raise Program_Error with "accepted oversized document" &
+                 Value.Kind'Image;
+            end;
+         exception
+            when E : JSON_Guard.Validation_Error =>
+               Check (Ada.Exceptions.Exception_Message (E) =
+                        "JSON input document size limit",
+                      "oversized document actual error source");
+         end;
+         Check (JSON_Guard.Read (Openings & "0" & Closings).Kind =
+                  JSON_Array_Type, "exact pre-parse depth limit");
+         begin
+            declare
+               Value : constant JSON_Value := JSON_Guard.Read
+                 ("[" & Openings & "0" & Closings & "]");
+            begin
+               raise Program_Error with "accepted excessive nesting" &
+                 Value.Kind'Image;
+            end;
+         exception
+            when E : JSON_Guard.Validation_Error =>
+               Check (Ada.Exceptions.Exception_Message (E) =
+                        "byte offset 128: JSON pre-parse nesting limit",
+                      "excessive nesting actual error source");
+         end;
+      end;
+      Put_Line ("TASK087 SUPPORT BOUNDARIES: PASSED");
    end Guarded_Corpus;
 begin
    declare

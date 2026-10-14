@@ -1,4 +1,5 @@
 with "gnatcoll_core";
+with "ams_gra_oms_json";
 project Json_Probe is
    for Source_Dirs use (".");
    for Object_Dir use "obj";

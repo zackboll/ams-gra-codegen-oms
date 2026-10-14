@@ -1,12 +1,12 @@
-with Ada.Exceptions;
 with GNATCOLL.JSON; use GNATCOLL.JSON;
 
-package body JSON_Guard is
+package body AMS_GRA_OMS_JSON_Guard is
    --  Offsets, rather than Text'Last + 1, also handle non-one-based strings
    --  without overflowing at Integer'Last. Every lookahead is length-checked.
    procedure Validate (Text : String; Document : Boolean) is
       Position : Natural := 0;
       In_String : Boolean := False;
+      Nesting : Natural := 0;
 
       procedure Fail (Reason : String) is
       begin
@@ -83,6 +83,16 @@ package body JSON_Guard is
          elsif not In_String then
             if Byte = 34 then
                In_String := True;
+            elsif Byte = 123 or else Byte = 91 then
+               if Nesting = Max_Depth then
+                  Fail ("JSON pre-parse nesting limit");
+               end if;
+               Nesting := Nesting + 1;
+            elsif Byte = 125 or else Byte = 93 then
+               --  Matching delimiters and JSON grammar remain the parser's job.
+               if Nesting > 0 then
+                  Nesting := Nesting - 1;
+               end if;
             end if;
             Position := Position + 1;
          elsif Byte = 34 then
@@ -132,7 +142,7 @@ package body JSON_Guard is
             Visit (Child, Depth + 1);
          end Member;
       begin
-         if Depth > 128 or else Nodes = 100_000 then
+         if Depth > Max_Depth or else Nodes = Max_Nodes then
             raise Validation_Error with "JSON tree traversal limit";
          end if;
          Nodes := Nodes + 1;
@@ -158,6 +168,9 @@ package body JSON_Guard is
 
    function Read (Text : String) return JSON_Value is
    begin
+      if Text'Length > Max_Document_Bytes then
+         raise Validation_Error with "JSON input document size limit";
+      end if;
       Validate (Text, Document => True);
       declare
          Result : constant Read_Result := GNATCOLL.JSON.Read (Text);
@@ -168,9 +181,6 @@ package body JSON_Guard is
          Validate_Tree (Result.Value);
          return Result.Value;
       end;
-   exception
-      when E : Invalid_JSON_Stream | Constraint_Error =>
-         raise Validation_Error with Ada.Exceptions.Exception_Message (E);
    end Read;
 
    function Write (Value : JSON_Value) return String is
@@ -183,4 +193,4 @@ package body JSON_Guard is
          return Text;
       end;
    end Write;
-end JSON_Guard;
+end AMS_GRA_OMS_JSON_Guard;
