@@ -1,9 +1,11 @@
 //! Guarded OMS payload-body codecs over the existing public Ada model API.
 use crate::{ada_identifier, ada_type, error, package_name, record_field_name};
 use ams_gra_oms_codegen_core::{
+    ADA_SEQUENCE_APPEND, ADA_SEQUENCE_ELEMENT, ADA_SEQUENCE_LENGTH, ADA_SEQUENCE_TO_SEQUENCE,
     BackendLanguage, CodegenError, GeneratedFile, GenerationWorld, ServiceApiModel, TypeEmission,
-    analyze_service_codec, effective_record_fields, generated_enum_variant_name,
-    oms_json_member_name, plan_type_emissions, string_profile,
+    analyze_service_codec, effective_choice_alternatives, effective_record_fields,
+    generated_choice_alternative_name, generated_enum_variant_name, oms_json_member_name,
+    plan_type_emissions, string_profile,
 };
 use ams_gra_oms_ir::{OccurrenceShape, PrimitiveKind, SchemaIr, TypeKind, TypeRefTarget};
 use std::{collections::BTreeSet, fmt::Write as _, path::PathBuf};
@@ -200,6 +202,16 @@ pub fn generate_service_codec(
                 let mut aggregates = Vec::new();
                 for (f, key) in fields.iter().zip(keys) {
                     let field = record_field_name(&f.name)?;
+                    if matches!(f.cardinality.shape(), OccurrenceShape::Bounded { max, .. } if max > 1)
+                        || matches!(f.cardinality.shape(), OccurrenceShape::Unbounded { .. })
+                    {
+                        let (statements, helper) = repeated_member(f, &n, &field, &key)?;
+                        enc.push_str(&statements);
+                        let at = dec.find("         procedure Check_Member").unwrap();
+                        dec.insert_str(at, &helper);
+                        aggregates.push(format!("{field} => Sequence_{field}"));
+                        continue;
+                    }
                     let optional = f.cardinality.shape() == OccurrenceShape::OptionalOne;
                     let item = format!("Item.{field}{}", if optional { ".Value" } else { "" });
                     let input = format!("Member (Value, {key})");
@@ -266,6 +278,73 @@ pub fn generate_service_codec(
                 .unwrap();
                 (enc, dec)
             }
+            TypeKind::Choice { .. } => {
+                let alternatives = effective_choice_alternatives(schema, &d.name)
+                    .map_err(|e| error(e.to_string()))?;
+                let mut enc = "      declare\n         Result : constant JSON_Value := Create_Object;\n      begin\n         case Item.Kind is\n".to_owned();
+                let mut helpers = String::new();
+                let mut branches = String::new();
+                for (index, f) in alternatives.iter().enumerate() {
+                    let field = generated_choice_alternative_name(BackendLanguage::Ada, &f.name)
+                        .ok_or_else(|| error("invalid Choice alternative identifier"))?;
+                    let key = literal(&oms_json_member_name(
+                        f.wire_name().namespace_uri.unwrap(),
+                        &f.name,
+                    ));
+                    let item = format!("Item.{field}");
+                    let input = format!("Member (Value, {key})");
+                    let (encode, decode) = match &f.type_ref.target {
+                        TypeRefTarget::Named(q) => {
+                            let name = ada_identifier(&q.local_name)?;
+                            (
+                                format!("To_JSON_{name} ({item})"),
+                                format!("From_JSON_{name} ({input})"),
+                            )
+                        }
+                        TypeRefTarget::Primitive(PrimitiveKind::String) => (
+                            format!("Create (To_String ({item}))"),
+                            format!("To_Unbounded_String (Scalar_String ({input}))"),
+                        ),
+                        TypeRefTarget::Primitive(PrimitiveKind::Boolean) => (
+                            format!("Create ({item})"),
+                            format!("Scalar_Boolean ({input})"),
+                        ),
+                        TypeRefTarget::Primitive(kind) => {
+                            let ty = ada_type(&f.type_ref)?;
+                            let helper = format!("Number_{index}");
+                            let mut check = String::new();
+                            if let Some(domain) =
+                                ams_gra_oms_codegen_core::inclusive_integral_domain(
+                                    *kind,
+                                    &f.constraints,
+                                )
+                                .map_err(error)?
+                            {
+                                let (min, max) = match domain {
+                                    ams_gra_oms_codegen_core::InclusiveIntegralDomain::Signed { min, max } => (min.to_string(), max.to_string()),
+                                    ams_gra_oms_codegen_core::InclusiveIntegralDomain::Unsigned { min, max } => (min.to_string(), max.to_string()),
+                                };
+                                check = format!(
+                                    "if Number < {min} or else Number > {max} then raise Codec_Error with \"integer range\"; end if;"
+                                );
+                            }
+                            writeln!(helpers, "         function {helper} return {ty} is\n            Number : constant Long_Long_Integer := Scalar_Integer ({input});\n         begin\n            {check}\n            return {ty} (Number);\n         end {helper};").unwrap();
+                            (format!("Create (Long_Long_Integer ({item}))"), helper)
+                        }
+                    };
+                    writeln!(
+                        enc,
+                        "            when Model.{field}_Kind => Result.Set_Field ({key}, {encode});"
+                    )
+                    .unwrap();
+                    writeln!(branches, "         if Value.Has_Field ({key}) then\n            return Model.{n}'(Kind => Model.{field}_Kind, {field} => {decode});\n         end if;").unwrap();
+                }
+                enc.push_str("         end case;\n         return Result;\n      end;");
+                let dec = format!(
+                    "      declare\n         Count : Natural := 0;\n         procedure Count_Member (Name : String; Child : JSON_Value) is\n            pragma Unreferenced (Name, Child);\n         begin\n            Count := Count + 1;\n         end Count_Member;\n{helpers}      begin\n         Require_Kind (Value, JSON_Object_Type);\n         Map_JSON_Object (Value, Count_Member'Access);\n         if Count /= 1 then raise Codec_Error with \"Choice requires exactly one member\"; end if;\n{branches}         raise Codec_Error with \"unknown Choice alternative\";\n      end;"
+                );
+                (enc, dec)
+            }
             _ => return Err(error("unsupported codec passed readiness")),
         };
         writeln!(body, "   function To_JSON_{n} (Item : Model.{n}) return JSON_Value is\n   begin\n{enc}\n   end To_JSON_{n};\n   function From_JSON_{n} (Value : JSON_Value) return Model.{n} is\n   begin\n{dec}\n   end From_JSON_{n};").unwrap();
@@ -287,4 +366,135 @@ pub fn generate_service_codec(
             contents: body,
         },
     ])
+}
+
+/// Repeated members use the model's published owner-specific storage API.
+fn repeated_member(
+    field: &ams_gra_oms_ir::FieldDecl,
+    owner: &str,
+    name: &str,
+    key: &str,
+) -> Result<(String, String), CodegenError> {
+    let stem = format!("{owner}_{name}");
+    let min = field.cardinality.min_occurs;
+    let positive_unbounded = field.cardinality.max_occurs.is_none() && min > 0;
+    let (encode, decode) = match &field.type_ref.target {
+        TypeRefTarget::Named(q) => {
+            let ty = ada_identifier(&q.local_name)?;
+            (
+                format!("To_JSON_{ty} (Element_Item)"),
+                format!("From_JSON_{ty} (Child)"),
+            )
+        }
+        TypeRefTarget::Primitive(PrimitiveKind::String) => (
+            "Create (To_String (Element_Item))".into(),
+            "To_Unbounded_String (Scalar_String (Child))".into(),
+        ),
+        TypeRefTarget::Primitive(PrimitiveKind::Boolean) => (
+            "Create (Element_Item)".into(),
+            "Scalar_Boolean (Child)".into(),
+        ),
+        TypeRefTarget::Primitive(kind) => {
+            let ty = ada_type(&field.type_ref)?;
+            let check = match ams_gra_oms_codegen_core::inclusive_integral_domain(
+                *kind,
+                &field.constraints,
+            )
+            .map_err(error)?
+            {
+                Some(ams_gra_oms_codegen_core::InclusiveIntegralDomain::Signed { min, max }) => {
+                    format!(
+                        "if Number < {min} or else Number > {max} then raise Codec_Error with \"integer range\"; end if;"
+                    )
+                }
+                Some(ams_gra_oms_codegen_core::InclusiveIntegralDomain::Unsigned { min, max }) => {
+                    format!(
+                        "if Number < {min} or else Number > {max} then raise Codec_Error with \"integer range\"; end if;"
+                    )
+                }
+                None => String::new(),
+            };
+            let decode = format!(
+                "declare\n                  Number : constant Long_Long_Integer := Scalar_Integer (Child);\n               begin\n                  {check}\n                  return {ty} (Number);\n               end;"
+            );
+            return repeated_member_render(
+                field,
+                &stem,
+                name,
+                key,
+                positive_unbounded,
+                "Create (Long_Long_Integer (Element_Item))",
+                &decode,
+                true,
+            );
+        }
+    };
+    repeated_member_render(
+        field,
+        &stem,
+        name,
+        key,
+        positive_unbounded,
+        &encode,
+        &decode,
+        false,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn repeated_member_render(
+    field: &ams_gra_oms_ir::FieldDecl,
+    stem: &str,
+    name: &str,
+    key: &str,
+    positive_unbounded: bool,
+    encode: &str,
+    decode: &str,
+    decode_statement: bool,
+) -> Result<(String, String), CodegenError> {
+    let min = field.cardinality.min_occurs;
+    let length = ADA_SEQUENCE_LENGTH;
+    let element = ADA_SEQUENCE_ELEMENT;
+    let append = ADA_SEQUENCE_APPEND;
+    let constructor = ADA_SEQUENCE_TO_SEQUENCE;
+    let mut enc = format!(
+        "         declare\n            JSON_Items : JSON_Array;\n            procedure Add_Item (Element_Item : Model.{stem}_Item) is\n            begin\n               Append (JSON_Items, {encode});\n            end Add_Item;\n         begin\n"
+    );
+    if positive_unbounded {
+        writeln!(enc, "            if Model.{length} (Item.{name}.Additional) > Natural'Last - {min} then raise Codec_Error with \"sequence length overflow\"; end if;\n            for Index in Item.{name}.Required'Range loop\n               Add_Item (Item.{name}.Required (Index));\n            end loop;\n            for Index in 1 .. Model.{length} (Item.{name}.Additional) loop\n               Add_Item (Model.{element} (Item.{name}.Additional, Index));\n            end loop;\n            Result.Set_Field ({key}, Create (JSON_Items));").unwrap();
+    } else {
+        writeln!(enc, "            for Index in 1 .. Model.{length} (Item.{name}) loop\n               Add_Item (Model.{element} (Item.{name}, Index));\n            end loop;\n            if Model.{length} (Item.{name}) > 0 then Result.Set_Field ({key}, Create (JSON_Items)); end if;").unwrap();
+    }
+    enc.push_str("         end;\n");
+    let value_body = if decode_statement {
+        decode.to_owned()
+    } else {
+        format!("return {decode};")
+    };
+    let mut dec = format!(
+        "         function Sequence_{name} return Model.{stem}_Sequence is\n            JSON_Items : JSON_Array;\n            function Decode_Item (Index : Positive) return Model.{stem}_Item is\n               Child : constant JSON_Value := Get (JSON_Items, Index);\n            begin\n               {value_body}\n            exception\n               when Codec_Error => raise Codec_Error with {} & Index'Image;\n            end Decode_Item;\n         begin\n            if Value.Has_Field ({key}) then\n               Require_Kind (Value.Get ({key}), JSON_Array_Type);\n               JSON_Items := Get (Value.Get ({key}));\n            end if;\n",
+        literal(&format!("{} item", field.name))
+    );
+    writeln!(
+        dec,
+        "            if Length (JSON_Items) < {min}{} then raise Codec_Error with {} ; end if;",
+        field
+            .cardinality
+            .max_occurs
+            .map_or(String::new(), |max| format!(
+                " or else Length (JSON_Items) > {max}"
+            )),
+        literal(&format!("{} cardinality", field.name))
+    )
+    .unwrap();
+    if field.cardinality.max_occurs.is_some() {
+        // The aggregate creates live checked elements directly; no invalid defaults.
+        writeln!(dec, "            declare\n               Values : constant Model.{stem}_Values :=\n                 (for Index in 1 .. Length (JSON_Items) => Decode_Item (Index));\n               function Construct return Model.{stem}_Sequence is\n               begin\n                  return Model.{constructor} (Values);\n               exception\n                  when Constraint_Error => raise Codec_Error with {} ;\n               end Construct;\n            begin\n               return Construct;\n            end;", literal(&format!("{} cardinality", field.name))).unwrap();
+    } else if positive_unbounded {
+        writeln!(dec, "            declare\n               Required : constant Model.{stem}_Required_Array :=\n                 (for Index in 1 .. {min} => Decode_Item (Index));\n               Additional : Model.{stem}_Additional;\n            begin\n               for Index in {} .. Length (JSON_Items) loop\n                  Model.{append} (Additional, Decode_Item (Index));\n               end loop;\n               return (Required => Required, Additional => Additional);\n            end;", min + 1).unwrap();
+    } else {
+        writeln!(dec, "            return Result : Model.{stem}_Sequence do\n               for Index in 1 .. Length (JSON_Items) loop\n                  Model.{append} (Result, Decode_Item (Index));\n               end loop;\n            end return;").unwrap();
+    }
+    writeln!(dec, "         end Sequence_{name};\n").unwrap();
+    Ok((enc, dec))
 }

@@ -129,3 +129,152 @@ DateTime case was introduced. Final Python/JSON/workflow syntax, formatting and
 
 Publication and exact tested/local/remote/PR head parity are recorded in the
 final handoff. Hosted CI status is reported separately and is not claimed here.
+
+## Task 090R — corrective Choice/repeated integration
+
+### Starting state and history
+
+The verified original Task 090 head is
+`701919c14e9f00673ca80212315670c7a78d54d0`. Actual fetched main is
+`5f1100e20ec6dbb3bd39d2e6a23de979c3783306`, the accepted PR #90 merge,
+including PR #89's Choice implementation. PR #88, #89 and #90 were verified
+merged. PR #91 was open, non-draft, based on main, with auto-merge disabled;
+PR #92 was inspected read-only and not modified. The original worktree was
+clean. Integration uses a normal, two-parent merge, not a rebase or squash.
+
+Evidence is isolated under `/home/zboll/task090r-scratch`, including compiler
+campaign directories, command logs, exit files, generated-source hashes,
+dependency locks, isolated Alire settings/cache/indexes, Rust target directories
+and temporary storage. Failed development attempts are retained separately
+from completed qualification campaigns.
+
+### Source reconciliation and safety
+
+The four overlapping files were reviewed. Only the core codec test section
+produced textual conflict markers; both sides' tests were retained. The workflow,
+Ada renderer and CLI tests auto-merged and were reviewed semantically.
+
+`AdaCodecAnalysis` remains the main-branch memoized implementation: emitted
+lookup map, capability and Record-value caches, in-progress cycle sentinels,
+shared dependency traversal and first-blocker ordering are preserved. DateTime
+scalar classification uses the original `temporal_profile` and
+`direct_temporal_profile`, not declaration names or a new validator.
+
+Named DateTime requires exactly `DateTimeZulu` (`.+Z`); ordinary direct DateTime
+requires the unconstrained direct profile. Encoding uses `Model.Value` and
+decoding uses checked `Model.Create`. The existing JSON guard remains the sole
+document boundary. No model/API representation or lexical/timezone conversion
+was changed. `Scalar_Date_Time` is emitted using the existing emission plan;
+its case-insensitive fixed-name reservation has a focused unit test.
+
+Direct DateTime Choice alternatives fail closed with
+`direct DateTime Choice alternative is unsupported`. Bounded and unbounded
+direct repeated DateTime fail closed with
+`direct DateTime repeated element is unsupported`. Neither can reach a numeric
+renderer fallback. Named DateTime used directly as a Choice value or repeated
+scalar element remains conservatively NOT READY with `is not qualified`
+diagnostics. These restrictions do not disable non-DateTime Choice/repetition.
+
+Concrete Records with ordinary named/direct DateTime fields are exercised in
+the production-generated combined fixture, including nested Records, inherited
+members, a required-single Choice selecting a Record, bounded repeated Records,
+zero-minimum unbounded Records, and positive-minimum unbounded Records using
+the public Required/Additional construction. Named/direct optional values are
+tested present and absent. No private sequence storage is accessed.
+
+The independent JSON golden and Ada consumer check exact structural equality,
+lexical preservation, legal offsets, Zulu restrictions, Choice discriminants,
+element ordering, unknown members, malformed nested/Choice DateTimes and bad
+later repeated elements. Failure controls prove no typed value is published.
+`scripts/check-task090r.py` requires both service commands to reject unsupported
+schemas atomically; it also checks compiler identities and qualified locks under
+Normal, Check and Ignore. Anonymous direct field restrictions are rejected at
+the existing XSD ingress boundary; nonempty direct constraints are additionally
+tested against the shared scalar classifier in core.
+
+### Negative-control rationale
+
+The Task 089R invalid repeated-Record DAG leaf and Task 089 invalid nested child
+previously used DateTime merely as an unsupported primitive. They now use
+Float64, preserving the DAG shape, reference counts, at-most-once visitation
+assertions and invalid-dependency purpose. The CLI combined invalid nested-value
+control and the 089R executable wrapper use `xs:double` for the same reason.
+The original repeated-temporal atomicity control still uses direct DateTime and
+now requires the specific repeated-DateTime diagnostic. No golden for previously
+supported repeated values was changed; no new ignore or skip was introduced.
+
+### Compatibility and qualification evidence
+
+The accepted main Ada model renderer is byte-identical, including the corrected
+direct String vector equality association. The original 087A/087B/088/089/090
+qualification scripts and frozen temporal corpora are unchanged. The only 089R
+wrapper change is its unsupported primitive substitution described above.
+
+Thirty-five generator-output comparisons against the accepted 089 generator
+and original 090 generator completed with byte identity (`byte-comparisons.json`;
+`logs/parity-final.log`). They cover Choice, repeated, combined, minimal and OAM
+fixtures across Ada/Rust/C++, plus named/direct DateTime output against 090.
+Rejected historical combinations are compared as rejected, not as byte evidence
+for an artifact that was never generated. Successful comparisons include model,
+service API and applicable codec files. No protected golden output was edited.
+
+Final publication, complete local gate results, real-UCI declaration inventory
+and corrective-head hosted certification are recorded below only after their
+commands complete. Until then, this section is progress evidence, not merge
+approval.
+
+Completed local gates (exit-zero logs in the evidence directory): Rust 1.95.0
+formatting, locked workspace all-target check, warnings-denied workspace Clippy,
+complete workspace tests (**1,409 passed, zero failed, eight pre-existing
+ignored**, 176 summaries), final core rerun (**356 passed**), and the independent
+Rust/C++/CLI/runtime campaign (**612 passed**, overlapping the workspace run).
+The complete workspace run includes Ada backend and generated model tests;
+generated Rust codec/runtime regressions and CLI readiness/generation tests are
+also included. No additional ignore was introduced. Eight guard adversarial
+wrapper controls, CI split controls, Python/JSON/workflow parsing, four distinct
+Ada job structural controls, whitespace and source conflict-marker checks pass.
+
+| Campaign | GNAT 14.2.0 Normal/Check/Ignore | GNAT 16.1.0 Normal/Check/Ignore |
+|---|---|---|
+| 087A guard | PASS: 199 cases + four boundaries | PASS: 199 cases + four boundaries |
+| 087B original codec | PASS: 41 + seven subset checks | PASS: 41 + seven subset checks |
+| 088 Choice | PASS: 174 checks per policy | PASS: 174 checks per policy |
+| 089 repeated | PASS: 121 checks per policy | PASS: 121 checks per policy |
+| 089R combined | PASS | PASS |
+| 090 named/direct | PASS: 161 / 205 checks per policy | PASS: 161 / 205 checks per policy |
+| 090R combined DateTime | PASS: seven negative schema controls | PASS: seven negative schema controls |
+
+Original campaign logs are `logs/campaign-<task>-<compiler>.log` with matching
+exit files. Final combined evidence is `certified-combined14` and
+`certified-combined16`; every assertion-policy run records actual compiler and
+GPRBUILD identities, locks and generated-source hashes. Early new-consumer
+syntax/overload errors were corrected; the final complete reruns pass. The
+intentionally unsupported anonymous direct facets fail at the original XSD
+boundary before model publication. Unsupported named facets report model NOT
+READY before codec analysis. Classifier unit tests independently cover direct
+nonempty constraints.
+
+The accepted UCI roots were SHA-256 verified against the original hashes above.
+The integrated production CLI's UCI 2.5 RDMA result is **47/49** codec-renderable
+emitted declarations (50/50 selected model types, one renderable selected
+message). `DateTimeType` is newly codec-renderable relative to accepted Task 089.
+The service codec is **NOT READY**. The complete 2.5 unsupported declaration
+inventory is `RDMA_InitializeSetupMDT` (`Endpoint`, repeated Choice) and
+`SecurityInformationType` (`OwnerProducer`, repeated Choice). The first blocker
+is `RDMA_InitializeSetupMDT.Endpoint: Choice/alias/list repeated element is
+unsupported`. No real-message typed round-trip claim is made for a NOT READY
+service. Per-declaration diagnostics use a scratch-only copy of the integrated
+analysis, with a public-name adapter solely for diagnostic access; the
+production CLI remains the readiness authority.
+
+The integrated production CLI also completed UCI 2.6 RDMA at **47/49**, with
+the same 50/50 selected model readiness and the same first repeated-Choice
+`Endpoint` blocker. Both production CLI NOT READY measurements completed with
+the expected exit 1; neither is a failed qualification execution. No fully
+codec-ready real UCI message was demonstrated by these measurements.
+
+All mandatory local source/execution gates above have completed. Publication
+must retain the original 090 and accepted 088/089 ancestors. Hosted results from
+`701919c` do not certify this integration: fresh Fast and Deep CI are required
+on the published corrective head. Auto-merge remains disabled and PR #91 must
+remain open for independent review.

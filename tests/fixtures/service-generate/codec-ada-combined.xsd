@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+ xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+ targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified">
+ <xs:simpleType name="Label"><xs:restriction base="xs:string">
+  <xs:minLength value="1"/><xs:maxLength value="32"/>
+  <xs:pattern value="[&#x20;-&#x7E;]{1,32}"/>
+ </xs:restriction></xs:simpleType>
+ <xs:complexType name="Details"><xs:sequence>
+  <xs:element name="Numbers" type="xs:byte" minOccurs="2" maxOccurs="3"/>
+  <xs:element name="Labels" type="uci:Label" minOccurs="1" maxOccurs="unbounded"/>
+ </xs:sequence></xs:complexType>
+ <xs:complexType name="Selection"><xs:choice>
+  <xs:element name="Nested" type="uci:Details"/>
+  <xs:element name="Enabled" type="xs:boolean"/>
+ </xs:choice></xs:complexType>
+ <xs:complexType name="CombinedPayload"><xs:sequence>
+  <xs:element name="Pick" type="uci:Selection"/>
+  <xs:element name="Values" type="xs:int" minOccurs="0" maxOccurs="3"/>
+  <xs:element name="Rows" type="uci:Details" minOccurs="0" maxOccurs="unbounded"/>
+ </xs:sequence></xs:complexType>
+ <xs:element name="CombinedNotice" type="uci:CombinedPayload" uci:version="001.000.000.000"/>
+</xs:schema>
