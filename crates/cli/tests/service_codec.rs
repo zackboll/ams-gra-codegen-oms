@@ -625,6 +625,48 @@ fn task050_with_codec_is_a_singular_flag() {
 }
 
 #[test]
+fn task090_ada_datetime_selected_closures_and_model_bytes() {
+    for (fixture, count) in [("temporal", "3/3"), ("direct-datetime", "1/1")] {
+        let schema = format!("{fixture}.xsd");
+        let contract = format!("{fixture}.yaml");
+        let (code, report) = check(&schema, &contract, "ada", true);
+        assert_eq!(code, Some(0), "{report}");
+        assert!(report.contains(&format!("codec renderable emitted declarations: {count}\n")));
+        assert!(report.contains("codec status: READY\n"));
+        let (output, coded) = generate(
+            &schema,
+            &contract,
+            "ada",
+            true,
+            &format!("090-{fixture}-coded"),
+        );
+        assert!(output.status.success(), "{output:?}");
+        let (output, plain) = generate(
+            &schema,
+            &contract,
+            "ada",
+            false,
+            &format!("090-{fixture}-plain"),
+        );
+        assert!(output.status.success(), "{output:?}");
+        for name in listing(&plain) {
+            assert_eq!(
+                std::fs::read(plain.join(&name)).unwrap(),
+                std::fs::read(coded.join(&name)).unwrap()
+            );
+        }
+        let model = std::fs::read_to_string(coded.join("urn-test.ads")).unwrap();
+        assert!(!model.contains("UnselectedTemporalPayload"));
+        assert!(!model.contains("WallClock"));
+        let body = std::fs::read_to_string(coded.join("service_codec.adb")).unwrap();
+        assert!(body.contains("Model.Value"));
+        assert!(body.contains("Model.Create (Text)"));
+        assert!(!body.contains("Is_Date_Time"));
+        assert!(!body.contains("Is_Zulu_Date_Time"));
+    }
+}
+
+#[test]
 fn task087b_ada_codec_ready_deduplicated_and_preserves_model_api() {
     let (code, report) = check(
         "codec-ada-minimal.xsd",
@@ -700,7 +742,7 @@ fn task087b_ada_codec_unsupported_and_collision_preflight_is_atomic() {
                 "name=\"Note\" type=\"xs:string\" minOccurs=\"0\"",
                 "name=\"Note\" type=\"xs:dateTime\" minOccurs=\"0\" maxOccurs=\"3\"",
             ),
-            "unsupported Ada codec primitive",
+            "direct DateTime repeated element is unsupported",
         ),
         (
             "unqualified",
@@ -802,7 +844,7 @@ fn task089r_combined_choice_repetition_ready_and_rejections_atomic() {
         ),
         (
             "nested",
-            source.replace("type=\"xs:byte\"", "type=\"xs:dateTime\""),
+            source.replace("type=\"xs:byte\"", "type=\"xs:double\""),
             "unsupported Ada codec primitive",
         ),
     ] {
@@ -928,10 +970,10 @@ fn task089_repeated_unsupported_elements_fail_atomically() {
                 ),
         ),
         (
-            "nested-temporal",
+            "nested-unsupported-primitive",
             source.replace(
                 "<xs:element name=\"Label\" type=\"uci:Label\"/>",
-                "<xs:element name=\"Label\" type=\"xs:dateTime\"/>",
+                "<xs:element name=\"Label\" type=\"xs:double\"/>",
             ),
         ),
     ] {

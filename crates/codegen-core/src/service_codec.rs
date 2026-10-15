@@ -39,6 +39,17 @@ use ams_gra_oms_ir::{
 };
 use std::fmt;
 
+const ADA_CODEC_FIXED_NAMES: &[&str] = &[
+    "Model",
+    "Codec_Error",
+    "Require_Kind",
+    "Scalar_Boolean",
+    "Scalar_String",
+    "Scalar_Integer",
+    "Member",
+    "Scalar_Date_Time",
+];
+
 /// The OAM namespace (OMSC-SPC-013 Rev B section 6.1): members of element
 /// declarations in this namespace are keyed by their bare local name.
 pub const OAM_NAMESPACE: &str = "https://www.vdl.afrl.af.mil/programs/oam";
@@ -259,15 +270,7 @@ pub fn analyze_service_codec(
         // or wrapper scope. Reserve the fixed local names and both public/private
         // operation families case-insensitively before rendering any artifact.
         let mut names = std::collections::BTreeSet::new();
-        for fixed in [
-            "Model",
-            "Codec_Error",
-            "Require_Kind",
-            "Scalar_Boolean",
-            "Scalar_String",
-            "Scalar_Integer",
-            "Member",
-        ] {
+        for fixed in ADA_CODEC_FIXED_NAMES {
             names.insert(fixed.to_ascii_lowercase());
         }
         for emission in &emitted {
@@ -501,6 +504,22 @@ fn ada_scalar_support(
 ) -> Result<(), ServiceCodecError> {
     use crate::InclusiveIntegralDomain;
     match kind {
+        PrimitiveKind::DateTime if named => match crate::temporal_profile(kind, constraints) {
+            Ok(Some(crate::TemporalProfile::DateTimeZulu)) => Ok(()),
+            Err(reason) => Err(unsupported(location, reason.to_string())),
+            _ => Err(unsupported(
+                location,
+                "unsupported named DateTime profile".into(),
+            )),
+        },
+        PrimitiveKind::DateTime => match crate::direct_temporal_profile(kind, constraints) {
+            Ok(Some(crate::DirectTemporalProfile::DateTime)) => Ok(()),
+            Err(reason) => Err(unsupported(location, format!("{reason:?}"))),
+            _ => Err(unsupported(
+                location,
+                "unsupported direct DateTime profile".into(),
+            )),
+        },
         PrimitiveKind::SignedInteger | PrimitiveKind::UnsignedInteger => {
             let domain = if named {
                 crate::named_integral_domain(kind, constraints)
@@ -664,6 +683,12 @@ impl<'a, 's> AdaCodecAnalysis<'a, 's> {
                         return Err(unsupported(&location, "abstract member".into()));
                     }
                     match field.type_ref.target {
+                        TypeRefTarget::Primitive(PrimitiveKind::DateTime) if repeated => {
+                            return Err(unsupported(
+                                &location,
+                                "direct DateTime repeated element is unsupported".into(),
+                            ));
+                        }
                         TypeRefTarget::Primitive(kind) => {
                             ada_scalar_support(kind, &field.constraints, false, &location)?
                         }
@@ -680,6 +705,13 @@ impl<'a, 's> AdaCodecAnalysis<'a, 's> {
                                 return Err(unsupported(
                                     &location,
                                     "Choice/alias/list repeated element is unsupported".into(),
+                                ));
+                            }
+                            if matches!(referenced, TypeEmission::Declaration(d) if matches!(d.kind, TypeKind::Primitive(PrimitiveKind::DateTime)))
+                            {
+                                return Err(unsupported(
+                                    &location,
+                                    "named DateTime repeated element is not qualified".into(),
                                 ));
                             }
                             self.support(schema, referenced, world)?;
@@ -722,6 +754,12 @@ impl<'a, 's> AdaCodecAnalysis<'a, 's> {
                         return Err(unsupported(&location, "abstract Choice alternative".into()));
                     }
                     match &field.type_ref.target {
+                        TypeRefTarget::Primitive(PrimitiveKind::DateTime) => {
+                            return Err(unsupported(
+                                &location,
+                                "direct DateTime Choice alternative is unsupported".into(),
+                            ));
+                        }
                         TypeRefTarget::Primitive(kind) => {
                             ada_scalar_support(*kind, &field.constraints, false, &location)?
                         }
@@ -732,6 +770,13 @@ impl<'a, 's> AdaCodecAnalysis<'a, 's> {
                             let referenced = self.emitted.get(name).copied().ok_or_else(|| {
                                 unsupported(&location, "named Choice value is not emitted".into())
                             })?;
+                            if matches!(referenced, TypeEmission::Declaration(d) if matches!(d.kind, TypeKind::Primitive(PrimitiveKind::DateTime)))
+                            {
+                                return Err(unsupported(
+                                    &location,
+                                    "named DateTime Choice alternative is not qualified".into(),
+                                ));
+                            }
                             self.support(schema, referenced, world)
                                 .map_err(|error| unsupported(&location, error.to_string()))?;
                             // Record analysis historically counts local capability.
@@ -1054,6 +1099,83 @@ mod tests {
             check(&schema).map_err(|error| error.to_string()),
             Err("P.F: nillable member".to_owned())
         );
+    }
+
+    #[test]
+    fn task090_ada_datetime_domains_remain_distinct() {
+        use ams_gra_oms_ir::{PatternExpression, PatternGroup};
+        let empty = ConstraintSet::default();
+        let mut zulu = empty.clone();
+        zulu.lexical.pattern_groups.push(PatternGroup {
+            alternatives: vec![PatternExpression::xml_schema(".+Z")],
+        });
+        assert!(ada_scalar_support(PrimitiveKind::DateTime, &zulu, true, "Instant").is_ok());
+        assert!(ada_scalar_support(PrimitiveKind::DateTime, &empty, false, "P.F").is_ok());
+        assert!(ada_scalar_support(PrimitiveKind::DateTime, &empty, true, "Instant").is_err());
+        assert!(ada_scalar_support(PrimitiveKind::DateTime, &zulu, false, "P.F").is_err());
+        for kind in [
+            PrimitiveKind::Time,
+            PrimitiveKind::Duration,
+            PrimitiveKind::Decimal,
+            PrimitiveKind::Float32,
+            PrimitiveKind::Float64,
+            PrimitiveKind::Binary,
+        ] {
+            for named in [false, true] {
+                assert!(ada_scalar_support(kind, &empty, named, "P.F").is_err());
+                assert!(ada_scalar_support(kind, &zulu, named, "P.F").is_err());
+            }
+        }
+        zulu.max_length = Some(100);
+        assert!(ada_scalar_support(PrimitiveKind::DateTime, &zulu, true, "Instant").is_err());
+    }
+
+    #[test]
+    fn task090r_direct_datetime_contexts_fail_closed() {
+        for max_occurs in [Some(3), None] {
+            let mut member = field("Dates", TypeRef::primitive(PrimitiveKind::DateTime));
+            member.cardinality = Cardinality {
+                min_occurs: 0,
+                max_occurs,
+            };
+            let schema = record(OAM_NAMESPACE, vec![member]);
+            assert_eq!(
+                ada_codec_support(
+                    &schema,
+                    &TypeEmission::Declaration(&schema.types[0]),
+                    GenerationWorld::ClosedSchemaSet,
+                )
+                .unwrap_err()
+                .to_string(),
+                "P.Dates: direct DateTime repeated element is unsupported"
+            );
+        }
+        let mut schema = record(OAM_NAMESPACE, Vec::new());
+        schema.types[0].kind = TypeKind::Choice {
+            alternatives: vec![field("Date", TypeRef::primitive(PrimitiveKind::DateTime))],
+        };
+        assert_eq!(
+            ada_codec_support(
+                &schema,
+                &TypeEmission::Declaration(&schema.types[0]),
+                GenerationWorld::ClosedSchemaSet,
+            )
+            .unwrap_err()
+            .to_string(),
+            "P.Date: direct DateTime Choice alternative is unsupported"
+        );
+    }
+
+    #[test]
+    fn task090r_datetime_helper_uses_case_insensitive_fixed_name_reservation() {
+        let names: std::collections::BTreeSet<_> = ADA_CODEC_FIXED_NAMES
+            .iter()
+            .map(|name| name.to_ascii_lowercase())
+            .collect();
+        for spelling in ["Scalar_Date_Time", "SCALAR_DATE_TIME", "scalar_date_time"] {
+            assert!(names.contains(&spelling.to_ascii_lowercase()));
+        }
+        assert_eq!(names.len(), ADA_CODEC_FIXED_NAMES.len());
     }
 
     #[test]
@@ -1397,7 +1519,6 @@ mod tests {
             PrimitiveKind::Float64,
             PrimitiveKind::Decimal,
             PrimitiveKind::Binary,
-            PrimitiveKind::DateTime,
             PrimitiveKind::Time,
             PrimitiveKind::Duration,
         ] {
@@ -1557,7 +1678,7 @@ mod tests {
                 vec![field(
                     "Value",
                     TypeRef::primitive(if malformed {
-                        PrimitiveKind::DateTime
+                        PrimitiveKind::Float64
                     } else {
                         PrimitiveKind::String
                     }),
@@ -1605,7 +1726,7 @@ mod tests {
     fn task089_repeated_named_record_checks_complete_closure() {
         let mut schema = record(
             OAM_NAMESPACE,
-            vec![field("Bad", TypeRef::primitive(PrimitiveKind::DateTime))],
+            vec![field("Bad", TypeRef::primitive(PrimitiveKind::Float64))],
         );
         schema.types[0].name = QualifiedName::new(OAM_NAMESPACE, "Child");
         let mut repeated = field("Children", TypeRef::named(schema.types[0].name.clone()));

@@ -99,6 +99,9 @@ pub fn generate_service_codec(
 "#,
     );
     let emissions = plan_type_emissions(schema, world)?;
+    if ams_gra_oms_codegen_core::emissions_emit_direct_date_time(schema, &emissions, world) {
+        body.push_str("   function Scalar_Date_Time (Value : JSON_Value) return Model.XML_Schema_Date_Time is\n      Text : constant String := Scalar_String (Value);\n   begin\n      return Model.Create (Text);\n   exception\n      when Constraint_Error => raise Codec_Error with \"invalid direct DateTime\";\n   end Scalar_Date_Time;\n");
+    }
     for emission in &emissions {
         if let TypeEmission::Declaration(d) = emission {
             if !emission.emits_own_top_level_name() {
@@ -123,12 +126,16 @@ pub fn generate_service_codec(
                         .map_err(|e| error(e.to_string()))?
                         .is_some();
                 let enc: String = match k {
+                    PrimitiveKind::DateTime => "Create (Model.Value (Item))".into(),
                     PrimitiveKind::String if checked => "Create (Model.Value (Item))".into(),
                     PrimitiveKind::String => "Create (To_String (Unbounded_String (Item)))".into(),
                     PrimitiveKind::Boolean => "Create (Boolean (Item))".into(),
                     _ => "Create (Long_Long_Integer (Item))".into(),
                 };
                 let dec = match k {
+                    PrimitiveKind::DateTime => String::from(
+                        "      declare\n         Text : constant String := Scalar_String (Value);\n      begin\n         return Model.Create (Text);\n      exception\n         when Constraint_Error => raise Codec_Error with \"invalid named DateTime\";\n      end;",
+                    ),
                     PrimitiveKind::String if checked => String::from(
                         "      declare\n         Text : constant String := Scalar_String (Value);\n      begin\n         return Model.Create (Text);\n      exception\n         when Constraint_Error => raise Codec_Error with \"invalid checked String\";\n      end;",
                     ),
@@ -220,6 +227,10 @@ pub fn generate_service_codec(
                         TypeRefTarget::Primitive(PrimitiveKind::Boolean) => (
                             format!("Create ({item})"),
                             format!("Scalar_Boolean ({input})"),
+                        ),
+                        TypeRefTarget::Primitive(PrimitiveKind::DateTime) => (
+                            format!("Create (Model.Value ({item}))"),
+                            format!("Scalar_Date_Time ({input})"),
                         ),
                         TypeRefTarget::Primitive(_) => {
                             let ty = ada_type(&f.type_ref)?;

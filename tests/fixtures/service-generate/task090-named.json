@@ -1,0 +1,6 @@
+{
+  "{urn:test}Label": "independent golden",
+  "{urn:test}Expires": "2000-02-29T23:59:60Z",
+  "{urn:test}Timestamp": "2026-10-13T24:00:00.000Z",
+  "{urn:test}Observed": "2026-10-13T12:34:56.12300Z"
+}

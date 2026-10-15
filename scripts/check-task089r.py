@@ -41,7 +41,7 @@ def main():
                                                'name="Pick" type="uci:Selection" maxOccurs="2"')),
         ("repeated-choice-alternative", text.replace('name="Nested" type="uci:Details"',
                                                     'name="Nested" type="uci:Details" maxOccurs="2"')),
-        ("unsupported-nested", text.replace('type="xs:byte"', 'type="xs:dateTime"')),
+        ("unsupported-nested", text.replace('type="xs:byte"', 'type="xs:double"')),
     ]:
         path = scratch / (name + ".xsd")
         path.write_text(bad)
