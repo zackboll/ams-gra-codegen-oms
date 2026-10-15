@@ -278,3 +278,39 @@ must retain the original 090 and accepted 088/089 ancestors. Hosted results from
 `701919c` do not certify this integration: fresh Fast and Deep CI are required
 on the published corrective head. Auto-merge remains disabled and PR #91 must
 remain open for independent review.
+
+### Corrective publication and independent-review handoff
+
+The qualified normal merge commit is
+`c0ff9cdc07807a78f23c389abf53ee4051327708`, with parents `701919c14e9f00673ca80212315670c7a78d54d0`
+and `5f1100e20ec6dbb3bd39d2e6a23de979c3783306`. Original 090, accepted 089 and
+accepted 088 ancestry checks pass. The merge was committed only after all local
+source/execution gates completed, then pushed normally to the existing branch.
+Committed-head core and CLI codec reruns passed. The accompanying documentation
+handoff commit changes no qualified source or executable fixture.
+
+Both release inventories completed successfully: **49 emitted declarations,
+47 codec-renderable**, `DateTimeType` newly supported, and exactly two remaining
+unsupported declarations in each release: `RDMA_InitializeSetupMDT` at repeated
+Choice-valued `Endpoint`, and `SecurityInformationType` at repeated Choice-valued
+`OwnerProducer`. Selected model readiness is 50/50 in each release; full generated
+codec support is NOT READY. No full real-UCI codec READY claim is made.
+
+Fresh Fast run `38671778140` and Deep run `38671778163` were started on the
+corrective merge SHA, not on historical 090. At inspection, Fast guard/Rust and
+all four Deep jobs were in progress. GitHub's synthetic merge
+`aaf45b9cf1dab5f975939eccb26e517820b50b36` has parents accepted main and the
+corrective merge; its tree `82a469bf44c1a0ea32e1622c50424558747a6a09` is identical
+to the corrective merge tree. Completed per-job checkout certification is still
+pending. A documentation-only handoff publication requires fresh hosted runs
+for its exact SHA as well; earlier runs cannot substitute for those results.
+
+PR #91 remains open, non-draft, targets main, is mergeable, and has no auto-merge
+request. PR #92 remains untouched at `ead6e7e905e434b9c29e7517bba991768d13006d`.
+Final documentation-head SHA, exact local/remote/PR parity, fresh run IDs and
+status are recorded in the external handoff evidence and final response (a
+commit cannot contain its own SHA). No PR was created or merged.
+
+Disposition: **READY_FOR_INDEPENDENT_REVIEW — HOSTED_CI_PENDING**.
+This is not merge approval. Stop for independent review; do not enable
+auto-merge or proceed to another capability task.
