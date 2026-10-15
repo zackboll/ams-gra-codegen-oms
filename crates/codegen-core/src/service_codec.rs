@@ -635,12 +635,27 @@ impl<'a, 's> AdaCodecAnalysis<'a, 's> {
                     if field.nillable {
                         return Err(unsupported(&location, "nillable member".into()));
                     }
-                    if !matches!(
-                        field.cardinality.shape(),
-                        OccurrenceShape::RequiredOne | OccurrenceShape::OptionalOne
-                    ) {
-                        return Err(unsupported(&location, "repeated member".into()));
-                    }
+                    let repeated = match field.cardinality.shape() {
+                        OccurrenceShape::RequiredOne | OccurrenceShape::OptionalOne => false,
+                        OccurrenceShape::Bounded { min, max }
+                            if max > 1
+                                && min <= max
+                                && max <= crate::ADA_PORTABLE_POSITIVE_INDEX_MAX =>
+                        {
+                            true
+                        }
+                        OccurrenceShape::Unbounded { min }
+                            if min <= crate::ADA_PORTABLE_POSITIVE_INDEX_MAX =>
+                        {
+                            true
+                        }
+                        _ => {
+                            return Err(unsupported(
+                                &location,
+                                "unsupported repeated cardinality".into(),
+                            ));
+                        }
+                    };
                     if !matches!(
                         field_storage_semantics(schema, field, world)
                             .map_err(|error| unsupported(&location, error.to_string()))?,
@@ -654,6 +669,21 @@ impl<'a, 's> AdaCodecAnalysis<'a, 's> {
                         }
                         TypeRefTarget::Named(_) if field.constraints != Default::default() => {
                             return Err(unsupported(&location, "field-local named facets".into()));
+                        }
+                        TypeRefTarget::Named(ref name) if repeated => {
+                            let referenced = self.emitted.get(name).copied().ok_or_else(|| {
+                                unsupported(&location, "named repeated value is not emitted".into())
+                            })?;
+                            if !matches!(referenced, TypeEmission::Declaration(d) if matches!(d.kind,
+                                TypeKind::Primitive(_) | TypeKind::Enumeration { .. } | TypeKind::Record { .. }))
+                            {
+                                return Err(unsupported(
+                                    &location,
+                                    "Choice/alias/list repeated element is unsupported".into(),
+                                ));
+                            }
+                            self.support(schema, referenced, world)?;
+                            self.record_support(schema, referenced, world)?;
                         }
                         TypeRefTarget::Named(_) => {}
                     }
@@ -1414,12 +1444,196 @@ mod tests {
             min_occurs: 0,
             max_occurs: Some(3),
         };
+        assert!(
+            ada_codec_support(
+                &schema,
+                &TypeEmission::Declaration(&schema.types[0]),
+                GenerationWorld::ClosedSchemaSet,
+            )
+            .is_ok()
+        );
+    }
+
+    #[test]
+    fn task089_repeated_cardinalities_and_element_boundaries() {
+        for cardinality in [
+            Cardinality {
+                min_occurs: 0,
+                max_occurs: Some(3),
+            },
+            Cardinality {
+                min_occurs: 2,
+                max_occurs: Some(3),
+            },
+            Cardinality {
+                min_occurs: 2,
+                max_occurs: Some(2),
+            },
+            Cardinality {
+                min_occurs: 0,
+                max_occurs: None,
+            },
+            Cardinality {
+                min_occurs: 2,
+                max_occurs: None,
+            },
+        ] {
+            for kind in [
+                PrimitiveKind::String,
+                PrimitiveKind::Boolean,
+                PrimitiveKind::SignedInteger,
+            ] {
+                let mut member = field("Repeated", TypeRef::primitive(kind));
+                member.cardinality = cardinality;
+                let schema = record(OAM_NAMESPACE, vec![member]);
+                assert!(
+                    ada_codec_support(
+                        &schema,
+                        &TypeEmission::Declaration(&schema.types[0]),
+                        GenerationWorld::ClosedSchemaSet
+                    )
+                    .is_ok()
+                );
+            }
+        }
+        for cardinality in [
+            Cardinality {
+                min_occurs: 4,
+                max_occurs: Some(3),
+            },
+            Cardinality {
+                min_occurs: 0,
+                max_occurs: Some(32_768),
+            },
+            Cardinality {
+                min_occurs: 32_768,
+                max_occurs: None,
+            },
+        ] {
+            let mut member = field("Repeated", TypeRef::primitive(PrimitiveKind::String));
+            member.cardinality = cardinality;
+            let schema = record(OAM_NAMESPACE, vec![member]);
+            assert!(
+                ada_codec_support(
+                    &schema,
+                    &TypeEmission::Declaration(&schema.types[0]),
+                    GenerationWorld::ClosedSchemaSet
+                )
+                .is_err()
+            );
+        }
+        for kind in [
+            PrimitiveKind::Float32,
+            PrimitiveKind::Float64,
+            PrimitiveKind::Decimal,
+            PrimitiveKind::DateTime,
+            PrimitiveKind::Time,
+            PrimitiveKind::Duration,
+            PrimitiveKind::Binary,
+            PrimitiveKind::UnsignedInteger,
+        ] {
+            let mut member = field("Repeated", TypeRef::primitive(kind));
+            member.cardinality = Cardinality {
+                min_occurs: 0,
+                max_occurs: None,
+            };
+            let schema = record(OAM_NAMESPACE, vec![member]);
+            assert!(
+                ada_codec_support(
+                    &schema,
+                    &TypeEmission::Declaration(&schema.types[0]),
+                    GenerationWorld::ClosedSchemaSet
+                )
+                .is_err()
+            );
+        }
+    }
+
+    #[test]
+    fn task089r_shared_repeated_record_dependencies_are_cached() {
+        for malformed in [false, true] {
+            let mut schema = record(
+                OAM_NAMESPACE,
+                vec![field(
+                    "Value",
+                    TypeRef::primitive(if malformed {
+                        PrimitiveKind::DateTime
+                    } else {
+                        PrimitiveKind::String
+                    }),
+                )],
+            );
+            schema.types[0].name = QualifiedName::new(OAM_NAMESPACE, "Leaf");
+            for level in 0..18 {
+                let previous = schema.types.last().unwrap().name.clone();
+                let mut members = Vec::new();
+                for name in ["Left", "Right"] {
+                    let mut member = field(name, TypeRef::named(previous.clone()));
+                    member.cardinality = Cardinality {
+                        min_occurs: 0,
+                        max_occurs: Some(3),
+                    };
+                    members.push(member);
+                }
+                let mut parent = record(OAM_NAMESPACE, members).types.remove(0);
+                parent.name = QualifiedName::new(OAM_NAMESPACE, format!("Level{level}"));
+                schema.types.push(parent);
+            }
+            let emissions = plan_type_emissions(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
+            let mut analysis = AdaCodecAnalysis::new(&emissions);
+            ADA_CAPABILITY_VISITS.with(|visits| visits.borrow_mut().clear());
+            ADA_RECORD_VISITS.with(|visits| visits.borrow_mut().clear());
+            for emission in emissions.iter().rev().chain(emissions.iter()) {
+                let result = analysis.support(&schema, emission, GenerationWorld::ClosedSchemaSet);
+                assert_eq!(result.is_err(), malformed);
+                if let Err(error) = result {
+                    assert!(error.to_string().contains("Leaf.Value"));
+                }
+            }
+            ADA_CAPABILITY_VISITS.with(|visits| {
+                assert_eq!(visits.borrow().len(), emissions.len());
+                assert!(visits.borrow().values().all(|count| *count == 1));
+            });
+            ADA_RECORD_VISITS.with(|visits| {
+                assert!(visits.borrow().len() <= emissions.len());
+                assert!(visits.borrow().values().all(|count| *count == 1));
+            });
+        }
+    }
+
+    #[test]
+    fn task089_repeated_named_record_checks_complete_closure() {
+        let mut schema = record(
+            OAM_NAMESPACE,
+            vec![field("Bad", TypeRef::primitive(PrimitiveKind::DateTime))],
+        );
+        schema.types[0].name = QualifiedName::new(OAM_NAMESPACE, "Child");
+        let mut repeated = field("Children", TypeRef::named(schema.types[0].name.clone()));
+        repeated.cardinality = Cardinality {
+            min_occurs: 0,
+            max_occurs: None,
+        };
+        let parent = record(OAM_NAMESPACE, vec![repeated]).types.remove(0);
+        schema.types.push(parent);
         let error = ada_codec_support(
             &schema,
-            &TypeEmission::Declaration(&schema.types[0]),
+            &TypeEmission::Declaration(&schema.types[1]),
             GenerationWorld::ClosedSchemaSet,
         )
         .unwrap_err();
-        assert_eq!(error.to_string(), "P.Second: repeated member");
+        assert!(error.to_string().contains("Child.Bad"));
+        schema.types[0].kind = TypeKind::Choice {
+            alternatives: vec![field("Value", TypeRef::primitive(PrimitiveKind::String))],
+        };
+        assert!(
+            ada_codec_support(
+                &schema,
+                &TypeEmission::Declaration(&schema.types[1]),
+                GenerationWorld::ClosedSchemaSet
+            )
+            .unwrap_err()
+            .to_string()
+            .contains("Choice/alias/list")
+        );
     }
 }

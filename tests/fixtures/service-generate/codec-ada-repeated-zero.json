@@ -1,0 +1,5 @@
+{
+  "Span": ["span first", "span second"],
+  "Pair": [{"Label": "pair first"}, {"Label": "pair second"}],
+  "RequiredLabels": ["required first", "required second"]
+}
