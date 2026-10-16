@@ -48,6 +48,7 @@ const ADA_CODEC_FIXED_NAMES: &[&str] = &[
     "Scalar_Integer",
     "Member",
     "Scalar_Date_Time",
+    "Scalar_Duration",
 ];
 
 /// The OAM namespace (OMSC-SPC-013 Rev B section 6.1): members of element
@@ -504,6 +505,22 @@ fn ada_scalar_support(
 ) -> Result<(), ServiceCodecError> {
     use crate::InclusiveIntegralDomain;
     match kind {
+        PrimitiveKind::Duration if named => match crate::temporal_profile(kind, constraints) {
+            Ok(Some(crate::TemporalProfile::Duration)) => Ok(()),
+            Ok(_) => Err(unsupported(
+                location,
+                "unsupported named Duration profile".into(),
+            )),
+            Err(reason) => Err(unsupported(location, reason.to_string())),
+        },
+        PrimitiveKind::Duration => match crate::direct_temporal_profile(kind, constraints) {
+            Ok(Some(crate::DirectTemporalProfile::Duration)) => Ok(()),
+            Ok(_) => Err(unsupported(
+                location,
+                "unsupported direct Duration profile".into(),
+            )),
+            Err(reason) => Err(unsupported(location, format!("{reason:?}"))),
+        },
         PrimitiveKind::DateTime if named => match crate::temporal_profile(kind, constraints) {
             Ok(Some(crate::TemporalProfile::DateTimeZulu)) => Ok(()),
             Err(reason) => Err(unsupported(location, reason.to_string())),
@@ -683,6 +700,12 @@ impl<'a, 's> AdaCodecAnalysis<'a, 's> {
                         return Err(unsupported(&location, "abstract member".into()));
                     }
                     match field.type_ref.target {
+                        TypeRefTarget::Primitive(PrimitiveKind::Duration) if repeated => {
+                            return Err(unsupported(
+                                &location,
+                                "direct Duration repeated element is not qualified".into(),
+                            ));
+                        }
                         TypeRefTarget::Primitive(PrimitiveKind::DateTime) if repeated => {
                             return Err(unsupported(
                                 &location,
@@ -712,6 +735,13 @@ impl<'a, 's> AdaCodecAnalysis<'a, 's> {
                                 return Err(unsupported(
                                     &location,
                                     "named DateTime repeated element is not qualified".into(),
+                                ));
+                            }
+                            if matches!(referenced, TypeEmission::Declaration(d) if matches!(d.kind, TypeKind::Primitive(PrimitiveKind::Duration)))
+                            {
+                                return Err(unsupported(
+                                    &location,
+                                    "named Duration repeated element is not qualified".into(),
                                 ));
                             }
                             self.support(schema, referenced, world)?;
@@ -760,6 +790,12 @@ impl<'a, 's> AdaCodecAnalysis<'a, 's> {
                                 "direct DateTime Choice alternative is unsupported".into(),
                             ));
                         }
+                        TypeRefTarget::Primitive(PrimitiveKind::Duration) => {
+                            return Err(unsupported(
+                                &location,
+                                "direct Duration Choice alternative is not qualified".into(),
+                            ));
+                        }
                         TypeRefTarget::Primitive(kind) => {
                             ada_scalar_support(*kind, &field.constraints, false, &location)?
                         }
@@ -775,6 +811,13 @@ impl<'a, 's> AdaCodecAnalysis<'a, 's> {
                                 return Err(unsupported(
                                     &location,
                                     "named DateTime Choice alternative is not qualified".into(),
+                                ));
+                            }
+                            if matches!(referenced, TypeEmission::Declaration(d) if matches!(d.kind, TypeKind::Primitive(PrimitiveKind::Duration)))
+                            {
+                                return Err(unsupported(
+                                    &location,
+                                    "named Duration Choice alternative is not qualified".into(),
                                 ));
                             }
                             self.support(schema, referenced, world)
@@ -1102,6 +1145,67 @@ mod tests {
     }
 
     #[test]
+    fn task091_duration_uses_only_zero_facet_profiles() {
+        use ams_gra_oms_ir::{
+            LexicalConstraintSet, NumericValue, PatternExpression, PatternGroup, WhiteSpacePolicy,
+        };
+        for named in [false, true] {
+            assert!(
+                ada_scalar_support(
+                    PrimitiveKind::Duration,
+                    &ConstraintSet::default(),
+                    named,
+                    "Renamed.Span"
+                )
+                .is_ok()
+            );
+            for constraints in [
+                ConstraintSet {
+                    min_inclusive: Some(NumericValue::Integer(0)),
+                    ..Default::default()
+                },
+                ConstraintSet {
+                    max_length: Some(20),
+                    ..Default::default()
+                },
+                ConstraintSet {
+                    lexical: LexicalConstraintSet {
+                        white_space: Some(WhiteSpacePolicy::Collapse),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                ConstraintSet {
+                    lexical: LexicalConstraintSet {
+                        pattern_groups: vec![PatternGroup {
+                            alternatives: vec![PatternExpression::xml_schema("P.*")],
+                        }],
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+            ] {
+                assert!(
+                    ada_scalar_support(
+                        PrimitiveKind::Duration,
+                        &constraints,
+                        named,
+                        "Renamed.Span"
+                    )
+                    .is_err()
+                );
+            }
+            for kind in [
+                PrimitiveKind::Time,
+                PrimitiveKind::Binary,
+                PrimitiveKind::Float64,
+            ] {
+                assert!(ada_scalar_support(kind, &ConstraintSet::default(), named, "P.F").is_err());
+            }
+        }
+    }
+
+    #[test]
     fn task090_ada_datetime_domains_remain_distinct() {
         use ams_gra_oms_ir::{PatternExpression, PatternGroup};
         let empty = ConstraintSet::default();
@@ -1115,7 +1219,6 @@ mod tests {
         assert!(ada_scalar_support(PrimitiveKind::DateTime, &zulu, false, "P.F").is_err());
         for kind in [
             PrimitiveKind::Time,
-            PrimitiveKind::Duration,
             PrimitiveKind::Decimal,
             PrimitiveKind::Float32,
             PrimitiveKind::Float64,
@@ -1510,6 +1613,7 @@ mod tests {
             PrimitiveKind::Boolean,
             PrimitiveKind::String,
             PrimitiveKind::SignedInteger,
+            PrimitiveKind::Duration,
         ] {
             assert!(ada_scalar_support(kind, &empty, false, "P.F").is_ok());
         }
@@ -1520,7 +1624,6 @@ mod tests {
             PrimitiveKind::Decimal,
             PrimitiveKind::Binary,
             PrimitiveKind::Time,
-            PrimitiveKind::Duration,
         ] {
             assert!(
                 ada_scalar_support(kind, &empty, false, "P.F").is_err(),

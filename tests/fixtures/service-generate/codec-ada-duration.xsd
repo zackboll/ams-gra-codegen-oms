@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Task 091 synthetic fixture: no Choice or repeated members. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="https://www.vdl.afrl.af.mil/programs/oam"
+           elementFormDefault="qualified">
+  <xs:simpleType name="SpanType"><xs:restriction base="xs:duration"/></xs:simpleType>
+  <xs:simpleType name="IntervalType"><xs:restriction base="xs:duration"/></xs:simpleType>
+  <xs:complexType name="DurationBase"><xs:sequence>
+    <xs:element name="InheritedDuration" type="xs:duration"/>
+  </xs:sequence></xs:complexType>
+  <xs:complexType name="DurationDetails"><xs:sequence>
+    <xs:element name="NestedDuration" type="uci:SpanType"/>
+    <xs:element name="NestedDirect" type="xs:duration"/>
+  </xs:sequence></xs:complexType>
+  <xs:complexType name="DurationPayload"><xs:complexContent><xs:extension base="uci:DurationBase"><xs:sequence>
+    <xs:element name="Named" type="uci:SpanType"/>
+    <xs:element name="OtherNamed" type="uci:IntervalType"/>
+    <xs:element name="OptionalNamed" type="uci:SpanType" minOccurs="0"/>
+    <xs:element name="DirectDuration" type="xs:duration"/>
+    <xs:element name="OptionalDirect" type="xs:duration" minOccurs="0"/>
+    <xs:element name="Details" type="uci:DurationDetails"/>
+    <xs:element name="Label" type="xs:string"/>
+  </xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+  <xs:element name="DurationNotice" type="uci:DurationPayload" uci:version="001.000.000.000"/>
+  <xs:element name="DurationReply" type="uci:DurationPayload" uci:version="001.000.000.000"/>
+</xs:schema>
