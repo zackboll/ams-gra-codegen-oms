@@ -121,7 +121,7 @@ fn task091_ada_duration_readiness_and_model_preservation() {
     let (code, report) = check("codec-duration.xsd", "codec-duration.yaml", "ada", true);
     assert_eq!(code, Some(1));
     assert!(
-        report.contains("Choice/alias/list") || report.contains("repeated member"),
+        report.contains("service codec boundary: IntervalChoice.Every: direct Duration Choice alternative is not qualified"),
         "{report}"
     );
 }

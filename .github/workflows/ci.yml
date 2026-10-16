@@ -207,12 +207,15 @@ jobs:
         run: cargo build --locked -p ams-gra-codegen-oms
       - name: Execute generated Duration consumers, all policies
         run: python3 scripts/check-task091.py --compiler 16 --scratch "$RUNNER_TEMP/task091-duration" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
+      - name: Execute combined Choice repeated DateTime Duration qualification
+        run: python3 scripts/check-task091r.py --compiler 16 --scratch "$RUNNER_TEMP/task091r-integrated" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
       - name: Preserve qualification evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: task091-ada-duration-codec
           path: |
+            ${{ runner.temp }}/task091r-integrated/**
             ${{ runner.temp }}/task091-duration/*.log
             ${{ runner.temp }}/task091-duration/*.command.json
             ${{ runner.temp }}/task091-duration/*.lock

@@ -1,0 +1,65 @@
+{
+  "Inherited": "2026-09-20T12:34:56.1200Z",
+  "Direct": "2026-09-20T12:34:56+05:30",
+  "Optional": "2026-09-20T12:34:56-13:30",
+  "NamedOptional": "2026-09-20T12:34:56Z",
+  "Child": {
+    "Observed": "2024-02-29T23:59:60Z",
+    "Local": "2026-09-20T12:34:56",
+    "Span": "P02M",
+    "DirectSpan": "PT00.1200S"
+  },
+  "Pick": {
+    "Nested": {
+      "Observed": "2026-09-20T12:34:56Z",
+      "Local": "2026-09-20T12:34:56+14:00",
+      "Span": "P02M",
+      "DirectSpan": "PT00.1200S"
+    }
+  },
+  "Values": [
+    9,
+    -2,
+    8
+  ],
+  "Rows": [
+    {
+      "Observed": "2026-09-20T12:34:56Z",
+      "Local": "2026-09-20T12:34:56-00:00",
+      "Span": "P02M",
+      "DirectSpan": "PT00.1200S"
+    },
+    {
+      "Observed": "2026-09-21T00:00:00Z",
+      "Local": "2026-09-21T01:00:00+01:00",
+      "Span": "-P3D",
+      "DirectSpan": "P0Y"
+    }
+  ],
+  "BoundedRows": [
+    {
+      "Observed": "2026-09-20T12:34:56Z",
+      "Local": "2026-09-20T12:34:56Z",
+      "Span": "P02M",
+      "DirectSpan": "PT00.1200S"
+    }
+  ],
+  "RequiredRows": [
+    {
+      "Observed": "2026-09-20T12:34:56Z",
+      "Local": "2026-09-20T12:34:56Z",
+      "Span": "P02M",
+      "DirectSpan": "PT00.1200S"
+    },
+    {
+      "Observed": "2026-09-21T12:34:56Z",
+      "Local": "2026-09-21T12:34:56+01:00",
+      "Span": "P02M",
+      "DirectSpan": "PT00.1200S"
+    }
+  ],
+  "InheritedSpan": "P001Y02M",
+  "DirectSpan": "-PT0.000S",
+  "OptionalSpan": "P1DT02H",
+  "OptionalDirectSpan": "PT01.2300S"
+}
