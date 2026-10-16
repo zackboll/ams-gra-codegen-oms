@@ -1,0 +1,54 @@
+{
+  "{urn:task092}RepeatedNotice": {
+    "{urn:task092}Bounded": [
+      {
+        "{urn:task092}Enabled": true
+      },
+      {
+        "{urn:task092}Nested": {
+          "{urn:task092}Observed": "2026-01-02T03:04:05Z",
+          "{urn:task092}Elapsed": "PT2S"
+        }
+      },
+      {
+        "{urn:task092}State": "online"
+      }
+    ],
+    "{urn:task092}PositiveBounded": [
+      {
+        "{urn:task092}State": "offline"
+      },
+      {
+        "{urn:task092}Enabled": false
+      },
+      {
+        "{urn:task092}Enabled": true
+      }
+    ],
+    "{urn:task092}Unbounded": [
+      {
+        "{urn:task092}State": "online"
+      },
+      {
+        "{urn:task092}Enabled": false
+      },
+      {
+        "{urn:task092}State": "offline"
+      }
+    ],
+    "{urn:task092}PositiveUnbounded": [
+      {
+        "{urn:task092}Enabled": true
+      },
+      {
+        "{urn:task092}State": "online"
+      },
+      {
+        "{urn:task092}Enabled": false
+      }
+    ],
+    "{urn:task092}Single": {
+      "{urn:task092}Enabled": false
+    }
+  }
+}

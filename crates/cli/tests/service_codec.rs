@@ -859,12 +859,12 @@ fn task089r_combined_choice_repetition_ready_and_rejections_atomic() {
     let source = std::fs::read_to_string(fixture("codec-ada-combined.xsd")).unwrap();
     for (label, schema, expected) in [
         (
-            "choice-member",
+            "nillable-choice-member",
             source.replace(
                 "name=\"Pick\" type=\"uci:Selection\"",
-                "name=\"Pick\" type=\"uci:Selection\" maxOccurs=\"2\"",
+                "name=\"Pick\" type=\"uci:Selection\" maxOccurs=\"2\" nillable=\"true\"",
             ),
-            "Choice/alias/list repeated element",
+            "unsupported selected types:",
         ),
         (
             "choice-alternative",
@@ -990,7 +990,7 @@ fn task089_repeated_unsupported_elements_fail_atomically() {
             ),
         ),
         (
-            "choice",
+            "optional-choice-alternative",
             source
                 .replace(
                     "<xs:complexType name=\"Details\"><xs:sequence>",
@@ -999,6 +999,10 @@ fn task089_repeated_unsupported_elements_fail_atomically() {
                 .replace(
                     "</xs:sequence></xs:complexType>\n  <xs:complexType name=\"Base\">",
                     "</xs:choice></xs:complexType>\n  <xs:complexType name=\"Base\">",
+                )
+                .replace(
+                    "name=\"Label\" type=\"uci:Label\"",
+                    "name=\"Label\" type=\"uci:Label\" minOccurs=\"0\"",
                 ),
         ),
         (
