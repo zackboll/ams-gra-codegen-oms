@@ -356,3 +356,50 @@ until dependency merge; final main integration and retarget remain a second gate
 Hosted exact-head checks must be reported separately, never inferred from local
 success. The qualification commit is identified by the PR HEAD, not a
 self-referential SHA embedded in that commit.
+
+## C2 — job-local CI-layout mutation correction
+
+Published C1 HEAD: `1d2b6ee775393b4bc671ac4362c464f3ce51372b`, PR #93 targeting
+`feature/091-ada-duration-codec`. Fast CI run 38840254742 failed in rust / Fast/Deep
+CI split guard with `AssertionError: real-uci missing 2.5`. Complete original
+failure is preserved at `/home/zboll/task092-scratch/c2/original-fast-failure.log`.
+
+Cause: self_test selected the first fetch command globally, now from Task 092's
+independent preceding Deep job, and tried to remove its differently spelled
+scratch-path line from real-uci. That mutation was a no-op. CLI-build and dependency
+preparation mutations had the same global first-match risk.
+
+The correction extracts exactly one explicitly named job, selects exactly one
+executable target line inside that job, and asserts one replacement. All step,
+timeout, enabled-gate, and serialization mutations now use the declared job owner.
+CLI build and cargo-fetch mutations explicitly target real-uci-regressions.
+The existing unchanged-negative assertion and expected attributed diagnostics
+remain. Production check(), pinned GATES command hashes, and every required gate
+are unchanged; only self-test mutation generation is corrected.
+
+New test-task077b-ci-layout.py runs all 54 healthy/negative cases on the actual
+Task 092 workflow and again with a prepended independent job containing both UCI
+fetches, release CLI build, and cargo fetch. It asserts unrelated job bytes remain
+unchanged in every mutation and exactly one unchanged case (healthy). Every
+fetch deletion/duplication still requires its exact job/release ownership error;
+missing inherited CLI build and dependency preparation retain original errors.
+The regression is invoked by the existing split self-test; no workflow was edited.
+
+Local results, all exit 0 (`c2/final-qualification-commands.json`):
+- Python layout guard on actual Deep workflow: PASS.
+- check-ci-split.sh: PASS.
+- test-check-ci-split.sh: **210 checks PASS**.
+- test-task060-ci-wrappers.py: **57 checks PASS**.
+- test-task061-ci-wrappers.py: **4 checks PASS**.
+- New regression: **1 unittest, 2 workflow profiles × 54 cases PASS**.
+- Python AST / Bash syntax and git diff --check: PASS.
+
+Byte-preservation scope evidence is in c2/unchanged-scope.json: production
+readiness, Ada renderer/model, both workflows and Task 092 JSON fixtures equal
+C1 HEAD. Pinned UCI 2.5/2.6 root hashes are unchanged (c2/pinned-root-hashes.json).
+Existing Task 092 generated Ada evidence and C1 logs remain untouched. No new
+compiler qualification is substituted for those preserved codec results.
+Task 091 branch/worktree and PR #92 remain untouched. C2 only modifies test
+infrastructure and this documentation. Corrected exact-head hosted status and
+publication parity are recorded in PR #93 and c2 evidence after push; local
+success alone does not assert hosted success or final main integration.
