@@ -657,6 +657,48 @@ fn task050_with_codec_is_a_singular_flag() {
 }
 
 #[test]
+fn task090_ada_datetime_selected_closures_and_model_bytes() {
+    for (fixture, count) in [("temporal", "3/3"), ("direct-datetime", "1/1")] {
+        let schema = format!("{fixture}.xsd");
+        let contract = format!("{fixture}.yaml");
+        let (code, report) = check(&schema, &contract, "ada", true);
+        assert_eq!(code, Some(0), "{report}");
+        assert!(report.contains(&format!("codec renderable emitted declarations: {count}\n")));
+        assert!(report.contains("codec status: READY\n"));
+        let (output, coded) = generate(
+            &schema,
+            &contract,
+            "ada",
+            true,
+            &format!("090-{fixture}-coded"),
+        );
+        assert!(output.status.success(), "{output:?}");
+        let (output, plain) = generate(
+            &schema,
+            &contract,
+            "ada",
+            false,
+            &format!("090-{fixture}-plain"),
+        );
+        assert!(output.status.success(), "{output:?}");
+        for name in listing(&plain) {
+            assert_eq!(
+                std::fs::read(plain.join(&name)).unwrap(),
+                std::fs::read(coded.join(&name)).unwrap()
+            );
+        }
+        let model = std::fs::read_to_string(coded.join("urn-test.ads")).unwrap();
+        assert!(!model.contains("UnselectedTemporalPayload"));
+        assert!(!model.contains("WallClock"));
+        let body = std::fs::read_to_string(coded.join("service_codec.adb")).unwrap();
+        assert!(body.contains("Model.Value"));
+        assert!(body.contains("Model.Create (Text)"));
+        assert!(!body.contains("Is_Date_Time"));
+        assert!(!body.contains("Is_Zulu_Date_Time"));
+    }
+}
+
+#[test]
 fn task087b_ada_codec_ready_deduplicated_and_preserves_model_api() {
     let (code, report) = check(
         "codec-ada-minimal.xsd",
@@ -727,12 +769,12 @@ fn task087b_ada_codec_unsupported_and_collision_preflight_is_atomic() {
             "integer domain exceeds signed-64 JSON boundary",
         ),
         (
-            "repeated",
+            "repeated-temporal",
             source.replace(
                 "name=\"Note\" type=\"xs:string\" minOccurs=\"0\"",
-                "name=\"Note\" type=\"xs:string\" minOccurs=\"0\" maxOccurs=\"3\"",
+                "name=\"Note\" type=\"xs:dateTime\" minOccurs=\"0\" maxOccurs=\"3\"",
             ),
-            "repeated member",
+            "direct DateTime repeated element is unsupported",
         ),
         (
             "unqualified",
@@ -801,5 +843,195 @@ fn task087b_ada_codec_unsupported_and_collision_preflight_is_atomic() {
             );
             assert!(!output_path.exists());
         }
+    }
+}
+
+#[test]
+fn task089r_combined_choice_repetition_ready_and_rejections_atomic() {
+    let (code, report) = check(
+        "codec-ada-combined.xsd",
+        "codec-ada-combined.yaml",
+        "ada",
+        true,
+    );
+    assert_eq!(code, Some(0), "{report}");
+    assert!(report.contains("codec renderable emitted declarations: 4/4\n"));
+    let source = std::fs::read_to_string(fixture("codec-ada-combined.xsd")).unwrap();
+    for (label, schema, expected) in [
+        (
+            "choice-member",
+            source.replace(
+                "name=\"Pick\" type=\"uci:Selection\"",
+                "name=\"Pick\" type=\"uci:Selection\" maxOccurs=\"2\"",
+            ),
+            "Choice/alias/list repeated element",
+        ),
+        (
+            "choice-alternative",
+            source.replace(
+                "name=\"Nested\" type=\"uci:Details\"",
+                "name=\"Nested\" type=\"uci:Details\" maxOccurs=\"2\"",
+            ),
+            "Choice alternative must be required-single",
+        ),
+        (
+            "nested",
+            source.replace("type=\"xs:byte\"", "type=\"xs:double\""),
+            "unsupported Ada codec primitive",
+        ),
+    ] {
+        let scratch = output_dir(&format!("089r-{label}"));
+        std::fs::create_dir(&scratch).unwrap();
+        let path = scratch.join("schema.xsd");
+        std::fs::write(&path, schema).unwrap();
+        for action in ["service-check", "service-generate"] {
+            let output_path = scratch.join("output");
+            let mut command = Command::new(env!("CARGO_BIN_EXE_ams-gra-codegen-oms"));
+            command
+                .arg(action)
+                .arg("--schema")
+                .arg(&path)
+                .arg("--contract")
+                .arg(fixture("codec-ada-combined.yaml"))
+                .args([
+                    "--language",
+                    "ada",
+                    "--world",
+                    "closed-schema",
+                    "--with-codec",
+                ]);
+            if action == "service-generate" {
+                command.arg("--output").arg(&output_path);
+            }
+            let output = command.output().unwrap();
+            assert_eq!(output.status.code(), Some(1), "{label}");
+            let diagnostic = format!(
+                "{}{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+            assert!(diagnostic.contains(expected), "{label}: {diagnostic}");
+            assert!(!output_path.exists());
+        }
+    }
+}
+
+#[test]
+fn task089_repeated_ada_codec_ready_and_model_api_unchanged() {
+    let (code, report) = check(
+        "codec-ada-repeated.xsd",
+        "codec-ada-repeated.yaml",
+        "ada",
+        true,
+    );
+    assert_eq!(code, Some(0), "{report}");
+    assert!(report.contains("codec renderable emitted declarations: 5/5\n"));
+    let (output, coded) = generate(
+        "codec-ada-repeated.xsd",
+        "codec-ada-repeated.yaml",
+        "ada",
+        true,
+        "089-coded",
+    );
+    assert!(output.status.success(), "{output:?}");
+    let (output, plain) = generate(
+        "codec-ada-repeated.xsd",
+        "codec-ada-repeated.yaml",
+        "ada",
+        false,
+        "089-plain",
+    );
+    assert!(output.status.success());
+    for name in listing(&plain) {
+        assert_eq!(
+            std::fs::read(plain.join(&name)).unwrap(),
+            std::fs::read(coded.join(&name)).unwrap()
+        );
+    }
+    let spec = std::fs::read_to_string(coded.join("service_codec.ads")).unwrap();
+    assert_eq!(spec.matches("function Encode_RepeatedPayload").count(), 1);
+    let body = std::fs::read_to_string(coded.join("service_codec.adb")).unwrap();
+    assert!(body.contains("Model.To_Sequence (Values)"));
+    assert!(body.contains("Required => Required, Additional => Additional"));
+    assert!(!body.contains(".Count"));
+    assert!(!body.contains(".Items"));
+}
+
+#[test]
+fn task089_repeated_unsupported_elements_fail_atomically() {
+    let source = std::fs::read_to_string(fixture("codec-ada-repeated.xsd")).unwrap();
+    for (label, schema) in [
+        (
+            "float",
+            source.replace(
+                "name=\"Words\" type=\"xs:string\"",
+                "name=\"Words\" type=\"xs:double\"",
+            ),
+        ),
+        (
+            "binary",
+            source.replace(
+                "name=\"Words\" type=\"xs:string\"",
+                "name=\"Words\" type=\"xs:hexBinary\"",
+            ),
+        ),
+        (
+            "unqualified",
+            source.replace(
+                "name=\"Words\" type=\"xs:string\"",
+                "name=\"Words\" type=\"xs:string\" form=\"unqualified\"",
+            ),
+        ),
+        (
+            "nillable",
+            source.replace(
+                "name=\"Words\" type=\"xs:string\"",
+                "name=\"Words\" type=\"xs:string\" nillable=\"true\"",
+            ),
+        ),
+        (
+            "choice",
+            source
+                .replace(
+                    "<xs:complexType name=\"Details\"><xs:sequence>",
+                    "<xs:complexType name=\"Details\"><xs:choice>",
+                )
+                .replace(
+                    "</xs:sequence></xs:complexType>\n  <xs:complexType name=\"Base\">",
+                    "</xs:choice></xs:complexType>\n  <xs:complexType name=\"Base\">",
+                ),
+        ),
+        (
+            "nested-unsupported-primitive",
+            source.replace(
+                "<xs:element name=\"Label\" type=\"uci:Label\"/>",
+                "<xs:element name=\"Label\" type=\"xs:double\"/>",
+            ),
+        ),
+    ] {
+        let scratch = output_dir(&format!("089-{label}"));
+        std::fs::create_dir(&scratch).unwrap();
+        let schema_path = scratch.join("schema.xsd");
+        std::fs::write(&schema_path, schema).unwrap();
+        let output_path = scratch.join("output");
+        let output = Command::new(env!("CARGO_BIN_EXE_ams-gra-codegen-oms"))
+            .arg("service-generate")
+            .arg("--schema")
+            .arg(schema_path)
+            .arg("--contract")
+            .arg(fixture("codec-ada-repeated.yaml"))
+            .args([
+                "--language",
+                "ada",
+                "--world",
+                "closed-schema",
+                "--with-codec",
+            ])
+            .arg("--output")
+            .arg(&output_path)
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(1), "{label}: {output:?}");
+        assert!(!output_path.exists(), "{label} left partial output");
     }
 }
