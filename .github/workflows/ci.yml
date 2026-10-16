@@ -225,6 +225,58 @@ jobs:
             ${{ runner.temp }}/task091-duration/qualified/*.ad?
             ${{ runner.temp }}/task091-duration/named/*.ad?
           if-no-files-found: error
+  ada-hexbinary-codec:
+    needs: ada-json-guard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: dtolnay/rust-toolchain@1.95.0
+      - name: Install verified Alire 2.1.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/task093-tools"
+          cd "$RUNNER_TEMP/task093-tools"
+          curl --fail --location --retry 3 --output alire.zip \
+            https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
+          echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  alire.zip' | sha256sum --check --strict
+          unzip -q alire.zip
+          test "$(bin/alr --version)" = 'alr 2.1.1'
+          echo "$PWD/bin" >> "$GITHUB_PATH"
+      - name: Build production generator
+        run: cargo build --locked -p ams-gra-codegen-oms
+      - name: Execute generated hexBinary consumer, all policies
+        run: python3 scripts/check-task093.py --compiler 16 --scratch "$RUNNER_TEMP/task093-hexbinary" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
+      - name: Execute qualified non-OAM hexBinary consumer, all policies
+        run: python3 scripts/check-task093.py --compiler 16 --qualified --scratch "$RUNNER_TEMP/task093-qualified" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
+      - name: Validate mandatory evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/task093-hexbinary"
+          test -s "$root/sources.json"
+          test -s "$root/model-byte-parity.json"
+          for policy in normal Check Ignore; do
+            test -s "$root/$policy-alire.lock"
+            test -s "$root/$policy-build.command.json"
+            test -s "$root/$policy-gnat.log"
+            grep -Fx 'TASK093_CODEC_COMPLETE cases= 33' "$root/$policy-run.log"
+            grep -Fx 'TASK093_MODEL_COMPLETE cases= 6' "$root/$policy-model-run.log"
+            grep -Fx 'TASK093_CODEC_COMPLETE cases= 33' "$RUNNER_TEMP/task093-qualified/$policy-run.log"
+            grep -Fx 'TASK093_MODEL_COMPLETE cases= 6' "$RUNNER_TEMP/task093-qualified/$policy-model-run.log"
+          done
+      - name: Preserve qualification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: task093-ada-hexbinary-codec
+          path: |
+            ${{ runner.temp }}/task093-hexbinary/**
+            ${{ runner.temp }}/task093-qualified/**
+          if-no-files-found: error
   rust:
     runs-on: ubuntu-latest
     steps:

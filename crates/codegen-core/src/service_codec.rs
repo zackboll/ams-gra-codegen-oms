@@ -49,6 +49,8 @@ const ADA_CODEC_FIXED_NAMES: &[&str] = &[
     "Member",
     "Scalar_Date_Time",
     "Scalar_Duration",
+    "Encode_Hex_Binary",
+    "Decode_Hex_Binary",
 ];
 
 /// The OAM namespace (OMSC-SPC-013 Rev B section 6.1): members of element
@@ -656,6 +658,12 @@ impl<'a, 's> AdaCodecAnalysis<'a, 's> {
             ));
         }
         match &declaration.kind {
+            TypeKind::Primitive(PrimitiveKind::Binary) => {
+                binary_support(declaration_binary_encoding(schema, declaration), owner)?;
+                crate::binary_length_domain(PrimitiveKind::Binary, &declaration.constraints)
+                    .map(|_| ())
+                    .map_err(|reason| unsupported(owner, reason.to_string()))
+            }
             TypeKind::Primitive(kind) => {
                 ada_scalar_support(*kind, &declaration.constraints, true, owner)
             }
@@ -700,6 +708,24 @@ impl<'a, 's> AdaCodecAnalysis<'a, 's> {
                         return Err(unsupported(&location, "abstract member".into()));
                     }
                     match field.type_ref.target {
+                        TypeRefTarget::Primitive(PrimitiveKind::Binary) => {
+                            if repeated {
+                                return Err(unsupported(
+                                    &location,
+                                    "direct Binary repeated element is not qualified".into(),
+                                ));
+                            }
+                            if field.constraints != Default::default() {
+                                return Err(unsupported(
+                                    &location,
+                                    "field-local Binary facets are unsupported".into(),
+                                ));
+                            }
+                            binary_support(
+                                resolve_binary_encoding(schema, &field.type_ref),
+                                &location,
+                            )?;
+                        }
                         TypeRefTarget::Primitive(PrimitiveKind::Duration) if repeated => {
                             return Err(unsupported(
                                 &location,
@@ -744,6 +770,13 @@ impl<'a, 's> AdaCodecAnalysis<'a, 's> {
                                     "named Duration repeated element is not qualified".into(),
                                 ));
                             }
+                            if matches!(referenced, TypeEmission::Declaration(d) if matches!(d.kind, TypeKind::Primitive(PrimitiveKind::Binary)))
+                            {
+                                return Err(unsupported(
+                                    &location,
+                                    "named Binary repeated element is not qualified".into(),
+                                ));
+                            }
                             self.support(schema, referenced, world)?;
                             self.record_support(schema, referenced, world)?;
                         }
@@ -784,6 +817,12 @@ impl<'a, 's> AdaCodecAnalysis<'a, 's> {
                         return Err(unsupported(&location, "abstract Choice alternative".into()));
                     }
                     match &field.type_ref.target {
+                        TypeRefTarget::Primitive(PrimitiveKind::Binary) => {
+                            return Err(unsupported(
+                                &location,
+                                "direct Binary Choice alternative is not qualified".into(),
+                            ));
+                        }
                         TypeRefTarget::Primitive(PrimitiveKind::DateTime) => {
                             return Err(unsupported(
                                 &location,
@@ -818,6 +857,13 @@ impl<'a, 's> AdaCodecAnalysis<'a, 's> {
                                 return Err(unsupported(
                                     &location,
                                     "named Duration Choice alternative is not qualified".into(),
+                                ));
+                            }
+                            if matches!(referenced, TypeEmission::Declaration(d) if matches!(d.kind, TypeKind::Primitive(PrimitiveKind::Binary)))
+                            {
+                                return Err(unsupported(
+                                    &location,
+                                    "named Binary Choice alternative is not qualified".into(),
                                 ));
                             }
                             self.support(schema, referenced, world)
@@ -1279,6 +1325,112 @@ mod tests {
             assert!(names.contains(&spelling.to_ascii_lowercase()));
         }
         assert_eq!(names.len(), ADA_CODEC_FIXED_NAMES.len());
+    }
+
+    #[test]
+    fn task093_binary_provenance_and_context_fail_closed() {
+        for encoding in [
+            None,
+            Some(BinaryLexicalEncoding::Base64Binary),
+            Some(BinaryLexicalEncoding::HexBinary),
+        ] {
+            for optional in [false, true] {
+                let mut reference = TypeRef::primitive(PrimitiveKind::Binary);
+                reference.binary_encoding = encoding;
+                let mut member = field("Data", reference);
+                if optional {
+                    member.cardinality.min_occurs = 0;
+                }
+                let mut schema = record(OAM_NAMESPACE, vec![member]);
+                let support = |schema: &SchemaIr| {
+                    ada_codec_support(
+                        schema,
+                        &TypeEmission::Declaration(&schema.types[0]),
+                        GenerationWorld::ClosedSchemaSet,
+                    )
+                };
+                assert_eq!(
+                    support(&schema).is_ok(),
+                    encoding == Some(BinaryLexicalEncoding::HexBinary)
+                );
+                match encoding {
+                    None => assert_eq!(
+                        support(&schema).unwrap_err().to_string(),
+                        "P.Data is Binary but its XSD lexical encoding provenance is unknown"
+                    ),
+                    Some(BinaryLexicalEncoding::Base64Binary) => assert!(matches!(
+                        support(&schema),
+                        Err(ServiceCodecError::UnsupportedBinaryEncoding { .. })
+                    )),
+                    Some(BinaryLexicalEncoding::HexBinary) => {}
+                }
+                if let TypeKind::Record { fields } = &mut schema.types[0].kind {
+                    fields[0].cardinality.max_occurs = None;
+                }
+                assert_eq!(
+                    support(&schema).unwrap_err().to_string(),
+                    "P.Data: direct Binary repeated element is not qualified"
+                );
+                if let TypeKind::Record { fields } = &mut schema.types[0].kind {
+                    fields[0].cardinality.max_occurs = Some(1);
+                    fields[0].constraints.length = Some(2);
+                }
+                assert_eq!(
+                    support(&schema).unwrap_err().to_string(),
+                    "P.Data: field-local Binary facets are unsupported"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn task093_named_binary_uses_own_provenance_and_domain() {
+        let mut schema = record(OAM_NAMESPACE, vec![]);
+        schema.types[0].kind = TypeKind::Primitive(PrimitiveKind::Binary);
+        let support = |schema: &SchemaIr| {
+            ada_codec_support(
+                schema,
+                &TypeEmission::Declaration(&schema.types[0]),
+                GenerationWorld::ClosedSchemaSet,
+            )
+        };
+        assert!(support(&schema).is_err());
+        schema.types[0].base_type = Some(TypeRef::binary(BinaryLexicalEncoding::Base64Binary));
+        assert!(support(&schema).is_err());
+        schema.types[0].base_type = Some(TypeRef::binary(BinaryLexicalEncoding::HexBinary));
+        assert!(support(&schema).is_ok());
+        schema.types[0].constraints.length = Some(0);
+        assert!(support(&schema).is_ok());
+        schema.types[0].constraints.length = None;
+        schema.types[0].constraints.min_length = Some(1);
+        schema.types[0].constraints.max_length = Some(4);
+        assert!(support(&schema).is_ok());
+        schema.types[0]
+            .constraints
+            .lexical
+            .pattern_groups
+            .push(ams_gra_oms_ir::PatternGroup {
+                alternatives: vec![ams_gra_oms_ir::PatternExpression::xml_schema("[0-9A-F]*")],
+            });
+        assert_eq!(
+            support(&schema).unwrap_err().to_string(),
+            "P: Binary pattern constraints"
+        );
+        schema.types[0].constraints.lexical.pattern_groups.clear();
+        schema.types[0].constraints.lexical.white_space =
+            Some(ams_gra_oms_ir::WhiteSpacePolicy::Preserve);
+        assert!(support(&schema).is_err());
+    }
+
+    #[test]
+    fn task093_binary_helpers_are_case_insensitively_reserved() {
+        for name in ["Encode_Hex_Binary", "Decode_Hex_Binary"] {
+            assert!(
+                ADA_CODEC_FIXED_NAMES
+                    .iter()
+                    .any(|reserved| reserved.eq_ignore_ascii_case(name))
+            );
+        }
     }
 
     #[test]

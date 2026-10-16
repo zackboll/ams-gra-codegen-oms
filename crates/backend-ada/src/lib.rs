@@ -4761,6 +4761,32 @@ end Probe;
         );
     }
 
+    /// The frontend rejects anonymous local types before Binary analysis.
+    /// Exercise the independent model boundary with explicit HexBinary IR.
+    #[test]
+    fn task093_field_local_binary_facets_fail_at_model_preflight() {
+        for optional in [false, true] {
+            let mut schema = floating_schema();
+            let TypeKind::Record { fields } = &mut schema.types[0].kind else {
+                panic!("floating fixture should contain a record");
+            };
+            fields.truncate(1);
+            fields[0].name = "Data".into();
+            fields[0].type_ref = TypeRef::binary(ams_gra_oms_ir::BinaryLexicalEncoding::HexBinary);
+            fields[0].cardinality.min_occurs = u64::from(!optional);
+            fields[0].constraints = ConstraintSet {
+                length: Some(4),
+                ..ConstraintSet::default()
+            };
+            let error =
+                generate(&schema, CLOSED).expect_err("field facets must fail before output");
+            assert_eq!(
+                error.message,
+                "unsupported Ada IR construct: field constraints on Data"
+            );
+        }
+    }
+
     /// Task 035 supersedes the Task 025 control that asserted optional direct
     /// Binary was unsupported: an unconstrained optional Binary now renders in
     /// the shared per-field wrapper over `Binary_Vectors.Vector`.
