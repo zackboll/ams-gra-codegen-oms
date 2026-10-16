@@ -1,0 +1,9 @@
+{
+  "RepeatedNotice": {
+    "Bounded": [{"Enabled": true}, {"Nested": {"Observed": "2026-01-02T03:04:05Z", "Elapsed": "PT2S"}}, {"State": "online"}],
+    "PositiveBounded": [{"State": "offline"}, {"Enabled": false}, {"Enabled": true}],
+    "Unbounded": [{"State": "online"}, {"Enabled": false}, {"State": "offline"}],
+    "PositiveUnbounded": [{"Enabled": true}, {"State": "online"}, {"Enabled": false}],
+    "Single": {"Enabled": false}
+  }
+}

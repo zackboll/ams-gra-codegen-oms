@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+ xmlns:t="urn:task092" xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+ targetNamespace="urn:task092" elementFormDefault="qualified">
+ <xs:complexType name="Details"><xs:sequence>
+  <xs:element name="Observed" type="xs:dateTime"/>
+  <xs:element name="Elapsed" type="xs:duration"/>
+ </xs:sequence></xs:complexType>
+ <xs:simpleType name="Mode"><xs:restriction base="xs:string">
+  <xs:enumeration value="online"/><xs:enumeration value="offline"/>
+ </xs:restriction></xs:simpleType>
+ <xs:complexType name="Selection"><xs:choice>
+  <xs:element name="Enabled" type="xs:boolean"/>
+  <xs:element name="Nested" type="t:Details"/>
+  <xs:element name="State" type="t:Mode"/>
+ </xs:choice></xs:complexType>
+ <xs:complexType name="RepeatedPayload"><xs:sequence>
+  <xs:element name="Bounded" type="t:Selection" minOccurs="0" maxOccurs="3"/>
+  <xs:element name="PositiveBounded" type="t:Selection" minOccurs="1" maxOccurs="3"/>
+  <xs:element name="Unbounded" type="t:Selection" minOccurs="0" maxOccurs="unbounded"/>
+  <xs:element name="PositiveUnbounded" type="t:Selection" minOccurs="2" maxOccurs="unbounded"/>
+  <xs:element name="Single" type="t:Selection"/>
+ </xs:sequence></xs:complexType>
+ <xs:element name="RepeatedNotice" type="t:RepeatedPayload" uci:version="001.000.000.000"/>
+</xs:schema>

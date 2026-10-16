@@ -723,11 +723,11 @@ impl<'a, 's> AdaCodecAnalysis<'a, 's> {
                                 unsupported(&location, "named repeated value is not emitted".into())
                             })?;
                             if !matches!(referenced, TypeEmission::Declaration(d) if matches!(d.kind,
-                                TypeKind::Primitive(_) | TypeKind::Enumeration { .. } | TypeKind::Record { .. }))
+                                TypeKind::Primitive(_) | TypeKind::Enumeration { .. } | TypeKind::Record { .. } | TypeKind::Choice { .. }))
                             {
                                 return Err(unsupported(
                                     &location,
-                                    "Choice/alias/list repeated element is unsupported".into(),
+                                    "alias/list repeated element is unsupported".into(),
                                 ));
                             }
                             if matches!(referenced, TypeEmission::Declaration(d) if matches!(d.kind, TypeKind::Primitive(PrimitiveKind::DateTime)))
@@ -1826,6 +1826,99 @@ mod tests {
     }
 
     #[test]
+    fn task092_missing_and_cyclic_repeated_choice_dependencies_fail_closed() {
+        let mut schema = record(OAM_NAMESPACE, vec![]);
+        let parent = schema.types[0].name.clone();
+        let choice_name = QualifiedName::new(OAM_NAMESPACE, "Selection");
+        let mut member = field("Items", TypeRef::named(choice_name.clone()));
+        member.cardinality.max_occurs = None;
+        schema.types[0].kind = TypeKind::Record {
+            fields: vec![member],
+        };
+        let mut choice = schema.types[0].clone();
+        choice.name = choice_name;
+        choice.kind = TypeKind::Choice {
+            alternatives: vec![field("Back", TypeRef::named(parent))],
+        };
+        schema.types.push(choice);
+        assert!(plan_type_emissions(&schema, GenerationWorld::ClosedSchemaSet).is_err());
+        // Exercise the analyzer's fail-closed sentinels even if a future caller
+        // supplies a hand-built emission list instead of the rejecting planner.
+        let emissions: Vec<_> = schema.types.iter().map(TypeEmission::Declaration).collect();
+        let mut analysis = AdaCodecAnalysis::new(&emissions);
+        let error = analysis
+            .support(&schema, &emissions[0], GenerationWorld::ClosedSchemaSet)
+            .unwrap_err();
+        assert!(error.to_string().contains("cyclic codec dependency"));
+        let projected = vec![TypeEmission::Declaration(&schema.types[0])];
+        let mut analysis = AdaCodecAnalysis::new(&projected);
+        let error = analysis
+            .support(&schema, &projected[0], GenerationWorld::ClosedSchemaSet)
+            .unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("named repeated value is not emitted")
+        );
+    }
+
+    #[test]
+    fn task092_shared_repeated_choice_closure_is_cached() {
+        for malformed in [false, true] {
+            let mut schema = record(
+                OAM_NAMESPACE,
+                vec![field(
+                    "Value",
+                    TypeRef::primitive(if malformed {
+                        PrimitiveKind::Float64
+                    } else {
+                        PrimitiveKind::Boolean
+                    }),
+                )],
+            );
+            schema.types[0].name = QualifiedName::new(OAM_NAMESPACE, "Leaf");
+            for level in 0..12 {
+                let previous = schema.types.last().unwrap().name.clone();
+                let mut choice = record(OAM_NAMESPACE, vec![]).types.remove(0);
+                choice.name = QualifiedName::new(OAM_NAMESPACE, format!("Choice{level}"));
+                choice.kind = TypeKind::Choice {
+                    alternatives: vec![field("Selected", TypeRef::named(previous))],
+                };
+                schema.types.push(choice);
+                let name = schema.types.last().unwrap().name.clone();
+                let mut members = Vec::new();
+                for member_name in ["First", "Second"] {
+                    let mut member = field(member_name, TypeRef::named(name.clone()));
+                    member.cardinality.max_occurs = None;
+                    members.push(member);
+                }
+                let mut parent = record(OAM_NAMESPACE, members).types.remove(0);
+                parent.name = QualifiedName::new(OAM_NAMESPACE, format!("Parent{level}"));
+                schema.types.push(parent);
+            }
+            let emissions = plan_type_emissions(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
+            let mut analysis = AdaCodecAnalysis::new(&emissions);
+            ADA_CAPABILITY_VISITS.with(|visits| visits.borrow_mut().clear());
+            ADA_RECORD_VISITS.with(|visits| visits.borrow_mut().clear());
+            for emission in emissions.iter().rev().chain(emissions.iter()) {
+                let result = analysis.support(&schema, emission, GenerationWorld::ClosedSchemaSet);
+                assert_eq!(result.is_err(), malformed);
+                if let Err(error) = result {
+                    assert!(error.to_string().contains("Leaf.Value"));
+                    assert!(!error.to_string().contains("Second"));
+                }
+            }
+            ADA_CAPABILITY_VISITS.with(|visits| {
+                assert_eq!(visits.borrow().len(), emissions.len());
+                assert!(visits.borrow().values().all(|count| *count == 1));
+            });
+            ADA_RECORD_VISITS.with(|visits| {
+                assert!(visits.borrow().values().all(|count| *count == 1));
+            });
+        }
+    }
+
+    #[test]
     fn task089_repeated_named_record_checks_complete_closure() {
         let mut schema = record(
             OAM_NAMESPACE,
@@ -1849,6 +1942,19 @@ mod tests {
         schema.types[0].kind = TypeKind::Choice {
             alternatives: vec![field("Value", TypeRef::primitive(PrimitiveKind::String))],
         };
+        // Task 092 qualifies repeated named Choices through the same closure.
+        ada_codec_support(
+            &schema,
+            &TypeEmission::Declaration(&schema.types[1]),
+            GenerationWorld::ClosedSchemaSet,
+        )
+        .unwrap();
+        // Preserve the historical fail-closed purpose with an unsupported
+        // repeated alternative, rather than rejecting the now-qualified member.
+        let TypeKind::Choice { alternatives } = &mut schema.types[0].kind else {
+            unreachable!();
+        };
+        alternatives[0].cardinality.max_occurs = Some(2);
         assert!(
             ada_codec_support(
                 &schema,
@@ -1857,7 +1963,7 @@ mod tests {
             )
             .unwrap_err()
             .to_string()
-            .contains("Choice/alias/list")
+            .contains("Choice alternative must be required-single")
         );
     }
 }
