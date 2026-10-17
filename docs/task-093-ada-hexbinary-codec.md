@@ -1,5 +1,219 @@
 # Task 093 — Ada OMS JSON hexBinary codecs
 
+## C2 — Integrate merged Choice/temporal codecs and requalify
+
+### Repository identity and semantic merge
+
+Starting feature HEAD: `99f8b65273f4e7b46aeb2c0bba839adfe1c31941`.
+Exact current-main baseline: `d6d5b01747be562e7c86a21d8df8deeaaff8bbc9`,
+including PR #93 (Task 092) and PR #95 (Task 094). `git worktree list`
+identified the clean original Task 093 checkout at
+`/home/zboll/git/ams-gra-codegen-oms-task093`; no sibling worktree was edited.
+PR #94 was freshly verified OPEN, non-draft, targeting main, at the expected
+head, with auto-merge disabled. Historical C1 reports/manifests were reviewed
+before integration and remain untouched.
+
+Ordinary two-parent merge: `983147e2fd9e3efac73683a82d2de14679f49407`.
+No rebase, reset, clean, stash, force-push, replacement PR, or Task 095 work.
+The only textual conflicts were:
+
+- Core `service_codec.rs`: retained the Binary-specific required/optional
+  branch and repeated direct/named Binary guards, removed obsolete repeated
+  DateTime/Duration rejection branches, and retained main's repeated Choice
+  allowlist, named scalar profile checks and cached dependency analysis.
+- Fast CI: reconstructed the two independently owned jobs side by side,
+  preserving both `ada-hexbinary-codec` and `ada-repeated-choice-codec` plus
+  every existing job, including `ada-repeated-temporal-codec`.
+
+The Ada backend auto-merged Task 094's explicit `Scalar_Date_Time` and
+`Scalar_Duration` repeated conversion branches with Task 093's helpers. Binary
+does not use integer conversion; temporal values do not use numeric fallback.
+The Deep CI and mutation-script merges retain the executable duplicate-fetch
+mutation inside `real-uci` and Task 092's job-local Task 077B hardening.
+Task 089R/090R/091R, CLI service-codec tests, and frozen Task 092/094 fixtures
+and runners are byte-identical to the new main.
+
+Qualified production/fixture/runner source commit:
+`9dc4e15e0596bdc9dbe52ff1f82dfc6c6f1c00ad` (the authoritative exact value is
+also in `c2/qualified-source-commit.txt`). New evidence is isolated under
+`/home/zboll/task093-scratch/c2`; no C1 result is relabeled against new main.
+
+### Focused analyzer and actual combined executable
+
+The updated core codec suite passes **27 tests**, including bounded/unbounded
+repeated Choice containing a concrete Record with single Binary, repeated
+direct DateTime and named Duration. Separate mutations reject repeated Binary
+and Binary Choice alternatives. Existing tests retain temporal Choice
+restrictions, named/direct temporal profile checks, invalid facets/cardinality,
+unknown/Base64 provenance, nillable/unqualified, missing/cyclic dependencies,
+case-insensitive helper reservation, cached closure and first-blocker checks.
+Complete Ada backend tests pass **99 tests across 17 summaries** (64 library
+tests); CLI service-codec tests pass **18/18**. GNAT 16 focused capability
+campaigns 089/090/091/092/093/094 all pass before full campaigns launch.
+
+Task 093 owns `codec-ada-hexbinary-combined.{xsd,yaml}`,
+`task093-combined.json`, `hexbinary_combined_consumer.adb`, and
+`check-task093-combined.py`; frozen sibling fixtures were not repurposed.
+The schema contains repeated named Choice, a concrete Record alternative,
+repeated direct DateTime, repeated named Duration, direct required Binary, and
+optional named length-two-octet Binary. Binary itself is never repeated or
+used as a Choice alternative. The non-OAM transformation reuses Task 094's
+structural/reversible checks, preserving message version metadata in OAM.
+
+All **12 combined cells** pass: GNAT 14.2.0/16.1.0 × OAM/qualified ×
+Normal/Check/Ignore. Every cell compiles production-generated Ada and reports
+`TASK093_COMBINED_COMPLETE checks= 49 rejections= 9`. Independent golden JSON
+checks outer discriminants/length, nested temporal lengths/order/exact lexical
+values, exact Binary octets including 0x80/0xFF, lowercase and XML whitespace,
+canonical uppercase, empty unconstrained Binary, optional absent/present,
+named length validation, and decode/encode/decode. Later temporal and Binary
+errors reject without publishing a typed result and report `Picks item 3`.
+Runner gates enforce model/API parity and one copy of each required Binary
+helper, one direct DateTime helper and no unnecessary direct Duration helper.
+Four independent generator controls (both CLI actions in both namespaces)
+retain repeated direct/named Binary and direct/named Binary-alternative
+rejection. Fast CI executes this additional corpus with separate evidence
+and exact completion-marker checks, not instead of the original corpus.
+
+### Preserved unsuccessful development evidence
+
+`production-core.log` records an initial **test-only** incorrect expectation:
+the established deterministic blocker includes `Selection.Nested:` before
+`Details.Data`. The new test was corrected to assert that existing full path;
+`production-corrected-core.log` passes 27/27. No production behavior changed.
+`combined-smoke/` records an over-specific nested-index expectation failure:
+the existing outer repeated decoder intentionally replaces inner diagnostics
+with its own item index. An attempted direct nested decoder check then failed
+to compile because only selected payload decoders are public
+(`combined-smoke-corrected/`). The final independent corpus checks the supported
+outer index without changing historical codec bytes; `combined-smoke-final/`
+passes both namespaces, and `matrix-{14,16}-binary-combined/` passes all cells.
+The new corpus's 49/9 marker reflects its actual authored assertions, not any
+alteration to historical 093/092/094 markers. Scratch inventory harness compile
+errors (`&Path` and a private method) are preserved separately; corrected
+public-API harnesses both build and complete with atomic exit zero.
+A first foreground debug readiness invocation exceeded the tool timeout;
+fresh detached release measurements completed all eight required selections.
+The redundant detached debug-only repeat was subsequently stopped at its
+child command, after the release/inventory/full-service gates completed;
+`redundant-debug-cancellation.json` and its atomic nonzero worker record retain
+the reason and actual exit. It is not used as mandatory qualification evidence.
+Neither the incomplete foreground log nor old hosted results certify C2.
+
+### Fresh real UCI Log impact, against exact Task 094 main
+
+Unchanged real root SHA-256 values:
+
+- 2.5: `ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27`
+- 2.6: `af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b`
+
+The actual unchanged `real-duration-log.yaml` contract is used throughout.
+`readiness-release/` preserves all eight baseline/integrated model/codec
+commands, exits, reports and generator hashes. The independently built
+`inventory-{baseline,current}.json` records every selected/emitted identity,
+unsupported declaration and first blocker, plus temporal owner controls.
+
+| Log | Selected / model renderable | Main codec | Integrated codec | Main first blocker |
+|---|---:|---:|---:|---|
+| 2.5 | 42/42 (both) | 40/41 NOT READY | 41/41 READY | `LogMDT.Data: unsupported Ada codec primitive or facets: Binary` |
+| 2.6 | 44/44 (both) | 42/43 NOT READY | 43/43 READY | `HexBinaryType: unsupported Ada codec primitive or facets: Binary` |
+
+Selected and emitted declaration lists are identical before/after. The sole
+newly qualified declaration is `LogMDT` (2.5) or `HexBinaryType` (2.6); the
+integrated codec has no unsupported declaration and no blocker. This delta is
+against merged Choice/temporal main, not Task 091 or historical Task 093 alone.
+Both full real Log services now require actual typed execution, separately
+from the unchanged extracted Binary qualification.
+
+`check-task093-log.py` generates the complete real model/API/codec, compares
+model/API bytes with codec disabled, compiles actual generated sources, and
+executes independently authored `task093-real-log{25,26}.json`. Checks cover
+required/additional OwnerProducer Choice discriminants and value, timestamp,
+Duration spelling, exact Binary bytes, absent/present/empty optional data,
+lowercase/whitespace to uppercase canonicalization and typed round trips.
+Nine invalid Binary lexical/kind/odd-length cases verify failure atomicity.
+Real `LogMDT.Data`/`HexBinaryType` has **no octet length facet**: empty and
+three-octet inputs are valid, odd lexical lengths reject; no invented maximum
+or modified contract is imposed. Named octet length rejection is independently
+qualified by original/extracted/combined Task 093 consumers, not falsely
+attributed to full Log. Deep CI retains extracted evidence and adds full Log
+execution/evidence with explicit markers.
+
+### Qualification status
+
+All mandatory local gates completed with atomic exit zero. Final audit:
+`c2/local-qualification.json`, produced by `c2/audit.py`, checks the actual
+completion markers, commands/exits, source hashes and locks, without relying
+on historical hosted results. No detached C2 workers remain running.
+
+| Campaign | Final C2 result |
+|---|---|
+| Original Task 093 OAM/qualified | 12/12 cells; 33 codec + 6 model checks per cell; original markers unchanged |
+| New Binary/Choice/temporal | 12/12; 49 checks including 9 rejection cases per cell |
+| Task 092 OAM/qualified | 12/12; 63 checks including 17 rejection cases per cell; missing/cyclic controls retained |
+| Task 094 expanded temporal | 12/12; 54 checks including 17 rejections per cell |
+| Task 094 composition | 12/12; 19 checks including 3 rejection cases per cell |
+| Task 094 Choice/temporal | 12/12; 26 checks including 2 rejection cases per cell |
+| Task 094 model-only | 6/6; 24 checks per cell |
+| Task 093 extracted UCI 2.5/2.6 Binary | 12/12; `TASK093_REAL_COMPLETE cases= 14` |
+| Newly READY full UCI 2.5/2.6 Log | 12/12; `TASK093_LOG_COMPLETE checks= 29 rejections= 9` |
+| Task 092 real RDMA 2.5/2.6 and Survivability 2.5 | 18/18; original 12/12/8-check markers |
+| Inherited 087A/B, 088, 089/089R, 090/090R, 091/091R | All 18 campaigns pass on both compilers, Normal/Check/Ignore |
+| Rust 1.95 fmt / locked workspace all-target check / warnings-denied Clippy | All exit zero |
+| Rust 1.95 locked workspace all-target tests | **1,419 passed, 0 failed, 8 pre-existing ignored**, 162 summaries; ignored tests not counted as passed |
+| Task 087A guard wrapper | 8/8 pass |
+| CI split / mutation / Task 077B layout | All pass; **210** checks, both **54-case** profiles; no expected count changes |
+
+The primary new/regression matrices total **120 compiler/policy cells**, in
+addition to the 18 inherited campaigns. Each two-profile codec corpus uses
+GNAT 14.2.0/16.1.0 × OAM/qualified × Normal/Check/Ignore. Real services and
+extracted real Binary use both releases × both compilers × all three policies.
+Model-only uses both compilers × all three policies. Alire 2.1.1, GNAT
+14.2.0/16.1.0, GPRBUILD package 26.0.1 (executable 26.0.0), and the established
+GNATCOLL/minimal 26.0.0 hash-pinned solution are checked by the runners.
+
+### Exact-main output preservation and final identities
+
+`preservation/comparison.json` records **58 byte-identical successful
+generations**, **two permitted hexBinary codec additions**, and **nine matching
+atomic rejections**. Ada model/API, Binary-free codecs, Task 092 Choice codecs,
+Task 094 repeated-temporal codecs, Rust model/API/codecs and C++ model/API
+bytes match exact new main. Five helper controls retain absence of Binary
+helpers from Binary-free output and unchanged temporal helper cardinalities.
+New combined consumers separately verify required Binary helpers occur once.
+The full real Log model/API additionally matches exact main for both releases
+(`real-preservation/comparison.json`). Before/after manifests preserve every
+generated file hash and exact command; no unexpected rename/removal is allowed.
+
+`qualified-input-hashes.json` binds **897** production, support, runner,
+fixture, test and workflow files; SHA-256:
+`b136eff39af76be38153ade0060c34a662dfb985810fe33bb83e3deaa0cb415e`.
+Qualified generator SHA-256 values:
+
+- Debug: `f0a31e00021a8fcbf3f6cff13e8c7f77135c65722556f06c82e4807efc1d02b9`
+- Release: `5704638d503f6c6cc69a4433cb8a5865b08f0792ff88c7d5a2405b752eacfb84`
+- Exact-main Git archive:
+  `b44188112e1d4bfb14cd912514801def97dbb601184b337aea7a83f4a1054a46`
+
+Generated Ada source hashes, independent goldens, actual roots, generators,
+command results, tool banners and dependency locks are retained beside each
+campaign. All final input hashes match qualification. Focused checks and
+preservation measurements preceded only workflow additions (not production,
+fixture or runner changes); the final CI lane independently binds the final
+workflow bytes. Those earlier source manifests are retained, not rewritten.
+Fresh real temporal owner controls remain identical: PRI_DataBaseType 6/6
+READY; ScanDataBaseType 10/13 with its existing Float64 blocker, both releases.
+All non-Task093 worktree identities match initial discovery.
+
+Final pre-publication fetch still reports main
+`d6d5b01747be562e7c86a21d8df8deeaaff8bbc9`. The PR diff contains only original
+Task 093 and its owned integration qualification/CI/documentation additions.
+Publication targets existing PR #94 only, via normal push, leaving it open,
+non-draft and unmerged with auto-merge disabled. Fresh exact-head Fast and Deep
+CI must be checked after publication; local success is not hosted certification.
+Final commit/head parity, mergeability and hosted status are recorded in the
+publication evidence and final report, not predicted here.
+
 ## C1 correction and qualification (current work)
 
 C1 evidence is isolated under `/home/zboll/task093-scratch/c1`; all original
