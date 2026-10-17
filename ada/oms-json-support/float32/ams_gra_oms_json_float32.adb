@@ -19,7 +19,7 @@ package body AMS_GRA_OMS_JSON_Float32 is
    begin
       case Status is
          when 0 => null;
-         when 1 => raise Unsupported_Platform with "requires Linux x86-64 glibc 2.41 binary32 ABI and FE_TONEAREST";
+         when 1 => raise Unsupported_Platform with "requires Linux x86-64 glibc 2.41 binary32 ABI, FE_TONEAREST, DAZ off and FTZ off";
          when 2 => raise Validation_Error with "invalid or overflowing Float32";
          when 3 => raise Resource_Error with "Float32 locale resource failure";
          when others => raise Program_Error with "invalid Float32 bridge status";

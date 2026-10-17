@@ -64,16 +64,24 @@ jobs:
           gcc -std=c11 -O0 -Wall -Wextra -Werror ada/oms-json-support/float32/ams_gra_float32.c tests/ada-float32-probe/bridge_controls.c -Wl,--wrap=newlocale -Wl,--wrap=gnu_get_libc_version -lm -o /tmp/task095-evidence/bridge-controls
           /tmp/task095-evidence/bridge-controls > /tmp/task095-evidence/bridge.log
           grep -Fx 'TASK095_BRIDGE_CONTROLS_COMPLETE checks=20' /tmp/task095-evidence/bridge.log
+          gcc -std=c11 -O2 -Wall -Wextra -Werror ada/oms-json-support/float32/ams_gra_float32.c tests/ada-float32-probe/environment_controls.c tests/ada-float32-probe/environment_harness.c -lm -o /tmp/task095-evidence/environment-controls
+          for mode in 0 1 2 3; do
+            /tmp/task095-evidence/environment-controls "$mode" > "/tmp/task095-evidence/environment-$mode.log"
+            count=35; if test "$mode" = 0; then count=32; fi
+            grep -Fx "TASK095_C2_C_ENVIRONMENT_COMPLETE mode=$mode checks=$count" "/tmp/task095-evidence/environment-$mode.log"
+          done
       - name: Execute both compilers profiles and assertion policies
         shell: bash
         run: |
           set -euo pipefail
           for compiler in 14 16; do
             for profile in oam qualified; do
-              python3 scripts/check-task095.py --compiler "$compiler" --profile "$profile" --numeric-corpus --scratch "/tmp/task095-evidence/$compiler-$profile" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
+              python3 scripts/check-task095.py --compiler "$compiler" --profile "$profile" --numeric-corpus --environment --scratch "/tmp/task095-evidence/$compiler-$profile" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
               sha256sum --check --quiet "/tmp/task095-evidence/$compiler-$profile/sources.sha256"
               test -s "/tmp/task095-evidence/$compiler-$profile/result.json"
+              python3 scripts/check-task095.py --compiler "$compiler" --profile "$profile" --identifiers --scratch "/tmp/task095-evidence/identifiers-$compiler-$profile" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
             done
+            python3 scripts/check-task095.py --compiler "$compiler" --profile oam --environment --optimized --scratch "/tmp/task095-evidence/optimized-$compiler" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
           done
       - name: Preserve qualification evidence
         if: always()
@@ -88,6 +96,9 @@ jobs:
             /tmp/task095-evidence/*/*.lock
             /tmp/task095-evidence/*/*.sha256
             /tmp/task095-evidence/*/result.json
+            /tmp/task095-evidence/*/consumer/*.ads
+            /tmp/task095-evidence/*/consumer/*.adb
+            /tmp/task095-evidence/*/consumer/*.c
           if-no-files-found: error
   ada-repeated-temporal-codec:
     needs: ada-json-guard

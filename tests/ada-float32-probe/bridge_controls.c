@@ -19,7 +19,8 @@ const char *__wrap_gnu_get_libc_version(void) {
     return unsupported ? "2.39" : __real_gnu_get_libc_version();
 }
 
-#define REQUIRE(test) do { if (!(test)) { fprintf(stderr, "failed line %d\n", __LINE__); return 1; } } while (0)
+static unsigned checks;
+#define REQUIRE(test) do { ++checks; if (!(test)) { fprintf(stderr, "failed line %d\n", __LINE__); return 1; } } while (0)
 int main(void) {
     float output = 123.0f, negative_zero;
     REQUIRE(ams_gra_float32_platform() == 0);
@@ -47,6 +48,7 @@ int main(void) {
     REQUIRE(ams_gra_float32_parse("0", 1, 2, &output) == 1 && output == 123.0f);
     REQUIRE(fegetround() == FE_UPWARD);
     REQUIRE(fesetround(FE_TONEAREST) == 0);
-    puts("TASK095_BRIDGE_CONTROLS_COMPLETE checks=20");
+    if (checks != 20) return 1;
+    printf("TASK095_BRIDGE_CONTROLS_COMPLETE checks=%u\n", checks);
     return 0;
 }

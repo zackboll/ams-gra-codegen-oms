@@ -142,6 +142,58 @@ fn task095_target_opt_in_agrees_between_check_generate_and_atomic_rejection() {
     std::fs::remove_dir_all(dir).unwrap();
 }
 
+#[test]
+fn task095_c2_occurrence_decoder_preserves_adversarial_identifiers() {
+    let schema = "codec-ada-float32-identifiers.xsd";
+    let contract = "codec-ada-float32-identifiers.yaml";
+    let args = [
+        "service-generate",
+        "--language",
+        "ada",
+        "--world",
+        "closed-schema",
+        "--with-codec",
+        "--ada-codec-runtime",
+        "linux-x86_64-glibc-2.41",
+    ];
+    let dir = output_dir("095-c2-identifiers");
+    let result = run(&args, schema, contract, Some(&dir));
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    let body = std::fs::read_to_string(dir.join("service_codec.adb")).unwrap();
+    for name in ["PathLength", "TargetGet", "ArraySample"] {
+        assert!(body.contains(&format!(
+            "function From_JSON_{name} (Value : Ingress.Value)"
+        )));
+        assert!(body.contains(&format!("end From_JSON_{name};")));
+        assert!(body.contains(&format!(
+            "function To_JSON_{name} (Item : Model.{name}) return JSON_Value"
+        )));
+        assert!(!body.contains(&format!("From_JSON_{name}Ingress")));
+    }
+    assert!(body.contains("From_JSON_PathLength (Child)"));
+    assert!(body.contains("Ingress.Length (JSON_Items)"));
+    assert!(!body.contains("From_JSON_Ingress."));
+    let portable = run(
+        &[
+            "service-check",
+            "--language",
+            "ada",
+            "--world",
+            "closed-schema",
+            "--with-codec",
+        ],
+        schema,
+        contract,
+        None,
+    );
+    assert!(!portable.status.success());
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
 /// A. The OAM codec-safe service is READY with the codec and generates it.
 #[test]
 fn task091_ada_duration_readiness_and_model_preservation() {

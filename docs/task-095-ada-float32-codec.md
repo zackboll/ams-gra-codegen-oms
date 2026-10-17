@@ -158,3 +158,94 @@ readiness, and no new real-service executable claim is made.
 
 Hosted exact-head Fast/Deep results, mergeability and PR identity are recorded
 separately at publication; local completion is not a hosted success claim.
+
+## C2 corrective review
+
+Reviewed source: `8783fd73912851b6bd0f4bd455226d83d9d51f79`.
+Fresh evidence: `/home/zboll/task095-scratch/c2/`; original stage-zero/R1/C1
+evidence remains immutable. The optional review archive was not locally found
+and was not consumed. Its reported glibc -u3 C reproduction is not presented
+as C1/C2 evidence. C2 reproduced against the inspected Debian -u4 environment.
+
+### Identifier corruption
+
+The reviewed post-render `occurrence_ingress` replaced unrestricted substrings
+inside complete Ada source. `PathLength`, `TargetGet` and `ArraySample` passed
+model generation, qualified service-check and codec generation, but actual
+GNAT 14.2.0 compilation rejected the generated dotted decoder names with
+"child unit allowed only at library level". The intentional red preserves
+declarations, calls, bodies and end identifiers; it is not merely a Python
+replacement demonstration.
+
+The correction removes post-render rewriting. An explicit `Decoder` context
+selects value/array types, extraction/index/length/traversal functions, reader,
+error translation and public-operation environment checks at each emission
+site. Encoder JSON types, schema names, model calls and strings never undergo
+rewriting. No schema names are newly forbidden. DOM/portable rendering remains
+the default and Float32-free output has no new runtime dependency.
+
+### Floating environment
+
+Reviewed bridge platform/ABI checks accepted all four DAZ/FTZ combinations.
+The original generated Ada encoder lost subnormal values under DAZ; FTZ-only
+preserved the observed widening values and is not claimed to exhibit identical
+loss. The C probe initially allowed optimizer reuse of an earlier widening;
+that observation is retained, and a separate runtime cross-translation-unit
+widening demonstrates the DAZ loss without assuming constant folding behavior.
+
+The runtime now requires **FE_TONEAREST, DAZ off and FTZ off**. Guarded x86
+intrinsic `_mm_getcsr` inspects named SDM-documented bits on every bridge call,
+before data-dependent floating operations. No approval is cached, no controls
+are cleared and no exception masks are changed. Existing status ABI and Ada
+unsupported/validation/resource exception separation remain unchanged.
+
+Tests run each DAZ/FTZ combination in its own process, record control state
+before logging, and restore the harness's saved MXCSR on success/failure.
+Supported conversion may change ordinary arithmetic sticky status flags;
+control-state preservation is tested separately rather than asserting a new
+sticky-flag contract. Rejected bridge outputs retain sentinel bits, Ada support
+raises Unsupported_Platform, and generated encode/decode publishes no result.
+Restoration and a subsequent successful operation prevent startup-only checks.
+
+Task 095-owned identifier and environment consumers supplement the unchanged
+96-check/14-rejection generated corpus, 15,710 conversion vectors, 5,552
+encoding vectors and 27 occurrence controls. Both compilers, both namespaces
+and all assertion policies are mandatory, with an additional optimized
+environment campaign. Exact final results, corrective SHA, per-command exits,
+source manifests and preservation records are recorded in C2 evidence and the
+existing PR; no historical UCI inventory is relabeled as corrective execution.
+Analyzer, schema, projection, eligibility and UCI-selection rules are unchanged.
+
+### C2 final local results
+
+The final frozen-source audit passed: 12 existing compiler/profile/policy
+cells (96 checks/14 rejections unchanged), 12 adversarial-identifier cells
+(12 typed/string checks each), and 6 additional optimized environment cells.
+Each environment cell executes all four independent DAZ/FTZ modes: supported
+mode has 49 checks; each unsupported mode has 43 checks/16 encode/decode
+rejections. Every existing cell also passes all 15,710 conversions, 5,552
+encodings and 27 occurrence controls. C environment modes pass 32 supported
+or 35 unsupported checks, alongside the original 20 bridge controls.
+
+All 28 inherited synthetic campaigns and 18 Task 092 real-UCI executable cells
+pass. Rust 1.95 fmt/check/warnings-denied Clippy/workspace passes with 162 test
+summaries: **1,418 passed, 0 failed, 8 ignored**. Ignored tests are not claimed
+executed. Three-way reviewed/main/corrected generation preservation completes
+150 comparisons: 139 byte-identical, 11 matching atomic rejections; the existing
+qualified Float32 fixture is also byte-identical. The malformed identifier
+fixture is intentionally corrected, not subjected to malformed-byte parity.
+CI split/layout/mutation checks pass, including 210 split controls. Existing
+Fast/Deep jobs are retained; the Float32 job now runs identifier/environment
+and optimized regressions in addition to the original full corpus.
+
+Old/new renderer SHA-256:
+`8783fd7:crates/backend-ada/src/service_codec.rs` is retained in
+`/home/zboll/task095-scratch/c2/reviewed-identities.sha256`; corrected renderer
+is `59733955b6c1f8de417794249020fc1a37b6081f1fcb1ada63f2b8962f70018c`.
+Corrected C bridge is
+`12dab58c5914ebcd0a108b9ab10f35667ea70d5bef71140f3781089b01f14efe`.
+Final per-command records, compiler/runtime identities, locks, source hashes
+and atomic results are in `final-matrix-02`, `local-qualification.json` and
+the C2 final evidence manifest. The initial marker-variable runner failure and
+missing-HOME launcher failure are preserved as failed development attempts,
+not passing qualification. No production sources changed during final runs.

@@ -8,12 +8,14 @@ import pathlib
 import shutil
 import subprocess
 import tomllib
+import xml.etree.ElementTree as ET
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 PROFILE = "linux-x86_64-glibc-2.41"
 
 
 def checked(command, cwd, log):
+    log.with_suffix(log.suffix + ".command.json").write_text(json.dumps({"command": command, "cwd": str(cwd)}, indent=2) + "\n")
     with log.open("wb") as output:
         result = subprocess.run(command, cwd=cwd, stdout=output, stderr=subprocess.STDOUT)
     log.with_suffix(log.suffix + ".exit").write_text(f"{result.returncode}\n")
@@ -29,6 +31,9 @@ def main():
     parser.add_argument("--generator", type=pathlib.Path, required=True)
     parser.add_argument("--profile", choices=["oam", "qualified"], required=True)
     parser.add_argument("--numeric-corpus", action="store_true")
+    parser.add_argument("--environment", action="store_true", help="generated C2 floating-environment controls")
+    parser.add_argument("--identifiers", action="store_true", help="generated C2 adversarial type names")
+    parser.add_argument("--optimized", action="store_true", help="additional -O2 environment execution")
     args = parser.parse_args()
     scratch = args.scratch.resolve()
     scratch.mkdir(parents=True, exist_ok=False)
@@ -49,11 +54,21 @@ def main():
         raise RuntimeError("unqualified architecture")
     if subprocess.check_output(["getconf", "GNU_LIBC_VERSION"]).strip() != b"glibc 2.41":
         raise RuntimeError("unqualified libc")
+    checked(["sh", "-ec", "uname -m; getconf GNU_LIBC_VERSION; dpkg-query -W libc6; sha256sum /usr/lib/x86_64-linux-gnu/libc.so.6"], ROOT, scratch / "runtime.log")
     fixtures = ROOT / "tests/fixtures/service-generate"
     schema = fixtures / "codec-ada-float32.xsd"
     golden = fixtures / "task095-populated.json"
     contract = fixtures / "codec-ada-float32.yaml"
     source = (ROOT / "tests/ada-generated-codec/float32_consumer.adb").read_text()
+    main_name = "float32_consumer"
+    marker = b"TASK095_GENERATED_COMPLETE checks= 96 rejections= 14\n"
+    if args.identifiers:
+        schema = fixtures / "codec-ada-float32-identifiers.xsd"
+        contract = fixtures / "codec-ada-float32-identifiers.yaml"
+        golden = fixtures / "task095-identifiers.json"
+        main_name = "float32_identifiers"
+        source = (ROOT / f"tests/ada-generated-codec/{main_name}.adb").read_text()
+        marker = b"TASK095_C2_IDENTIFIERS_COMPLETE checks= 12\n"
     if args.profile == "qualified":
         oam = "https://www.vdl.afrl.af.mil/programs/oam"
         qualified = "urn:task095"
@@ -61,12 +76,24 @@ def main():
         schema_text = schema_text.replace(f'targetNamespace="{oam}"', f'targetNamespace="{qualified}"')
         schema_text = schema_text.replace('elementFormDefault="qualified"', f'xmlns:oam="{oam}" elementFormDefault="qualified"')
         schema_text = schema_text.replace("uci:version=", "oam:version=")
+        original_tree = ET.fromstring(schema.read_text())
+        qualified_tree = ET.fromstring(schema_text)
+        elements = "{http://www.w3.org/2001/XMLSchema}element"
+        version_key = f"{{{oam}}}version"
+        old_messages = original_tree.findall(elements)
+        new_messages = qualified_tree.findall(elements)
+        if not old_messages or len(old_messages) != len(new_messages):
+            raise RuntimeError("qualified message annotation mismatch")
+        for old, new in zip(old_messages, new_messages, strict=True):
+            if old.attrib[version_key] != new.attrib[version_key] or [key for key in new.attrib if key.endswith("}version")] != [version_key]:
+                raise RuntimeError("non-OAM version annotation changed")
         schema = scratch / "qualified.xsd"
         schema.write_text(schema_text)
         text = golden.read_text()
         keys = ["Required", "Optional", "Named", "Closed", "Open", "Lower", "Bounded",
                 "Unbounded", "NamedRepeated", "Nested", "Value", "Choice", "Record", "Count",
                 "Enabled", "Observed", "Elapsed", "Unknown", "Requ\\u0069red"]
+        keys += ["Reading", "Detail", "Measurement", "Content", "More"]
         for key in keys:
             text = text.replace(f'"{key}"', f'"{{{qualified}}}{key}"')
             source = source.replace(f'""{key}""', f'""{{{qualified}}}{key}""')
@@ -80,11 +107,26 @@ def main():
             ROOT, scratch / "generate.log")
     model = scratch / "model"
     checked([*command, "--output", str(model)], ROOT, scratch / "model.log")
+    readiness = command.copy()
+    readiness[1] = "service-check"
+    checked([*readiness, "--with-codec", "--ada-codec-runtime", PROFILE], ROOT, scratch / "readiness.log")
+    portable = subprocess.run([*readiness, "--with-codec"], cwd=ROOT, capture_output=True)
+    (scratch / "portable.log").write_bytes(portable.stdout + portable.stderr)
+    (scratch / "portable.exit").write_text(f"{portable.returncode}\n")
+    if portable.returncode == 0 or b"Float32" not in portable.stdout + portable.stderr:
+        raise RuntimeError("portable Float32 boundary changed")
     for path in model.iterdir():
         if path.read_bytes() != (consumer / path.name).read_bytes():
             raise RuntimeError(f"model/API differs: {path.name}")
-    (consumer / "float32_consumer.adb").write_text(source)
-    mains = '"float32_consumer.adb"'
+    (consumer / f"{main_name}.adb").write_text(source)
+    mains = f'"{main_name}.adb"'
+    if args.environment:
+        environment = (ROOT / "tests/ada-generated-codec/float32_environment.adb").read_text()
+        if args.profile == "qualified":
+            environment = environment.replace("Programs.Oam", "Urn.Task095")
+        (consumer / "float32_environment.adb").write_text(environment)
+        shutil.copy2(ROOT / "tests/ada-float32-probe/environment_harness.c", consumer)
+        mains += ', "float32_environment.adb"'
     if args.numeric_corpus:
         shutil.copy2(ROOT / "tests/ada-float32-probe/numeric_probe.adb", consumer)
         shutil.copy2(ROOT / "tests/ada-float32-probe/occurrence_controls.adb", consumer)
@@ -101,9 +143,10 @@ def main():
         'ams_gra_oms_json = { path = "../support" }\n')
     (consumer / "consumer.gpr").write_text(
         'with "../support/ams_gra_oms_json_float32";\nproject Consumer is\n'
-        'for Source_Dirs use ("."); for Object_Dir use "obj"; for Exec_Dir use "bin";\n'
+        'for Languages use ("Ada", "C");\nfor Source_Dirs use ("."); for Object_Dir use "obj"; for Exec_Dir use "bin";\n'
         f'for Main use ({mains});\npackage Compiler is\n'
-        'for Default_Switches ("Ada") use ("-gnat2022", "-gnato", "-O0");\n'
+        f'for Default_Switches ("Ada") use ("-gnat2022", "-gnato", "{"-O2" if args.optimized else "-O0"}");\n'
+        'for Default_Switches ("C") use ("-O2", "-Wall", "-Wextra", "-Werror");\n'
         'end Compiler; end Consumer;\n')
     checked(["alr", "-n", "settings", "--set", "dependencies.shared", "false"], consumer, scratch / "isolation.log")
     checked(["alr", "-n", "--force", "toolchain", "--select", "--local",
@@ -130,9 +173,15 @@ def main():
         if not provider_sources or any(hashlib.sha256(p.read_bytes()).hexdigest() != "7e07277731a44ea08716fd61a6462ebe7a7ce0722adc6dc787cbbaafd3099063" for p in provider_sources):
             raise RuntimeError("provider source hash mismatch")
         shutil.copy2(lock, scratch / f"{policy}-alire.lock")
-        output = checked([str(consumer / "bin/float32_consumer"), str(golden)], consumer, scratch / f"{policy}-run.log")
-        if output != b"TASK095_GENERATED_COMPLETE checks= 96 rejections= 14\n":
+        output = checked([str(consumer / f"bin/{main_name}"), str(golden)], consumer, scratch / f"{policy}-run.log")
+        if output != marker:
             raise RuntimeError(f"incomplete generated execution: {output!r}")
+        if args.environment:
+            for mode in range(4):
+                environment_output = checked([str(consumer / "bin/float32_environment"), str(golden), str(mode)], consumer, scratch / f"{policy}-environment-{mode}.log")
+                expected = f"TASK095_C2_ENVIRONMENT_COMPLETE mode= {mode} checks= {49 if mode == 0 else 43} rejections= {0 if mode == 0 else 16}\n".encode()
+                if environment_output != expected:
+                    raise RuntimeError("incomplete generated environment controls")
         if args.numeric_corpus:
             controls = checked([str(consumer / "bin/occurrence_controls")], consumer, scratch / f"{policy}-occurrences.log")
             if controls != b"TASK095_OCCURRENCE_CONTROLS_COMPLETE checks= 27\n":
@@ -147,8 +196,8 @@ def main():
                     raise RuntimeError("changed R1 corpus")
                 numeric = checked([str(consumer / "bin/numeric_probe"), mode, str(corpus)], consumer, scratch / f"{policy}-{mode}.log")
                 ada_fail = 1972 if mode == "convert" else 0
-                marker = f"R1_NUMERIC_COMPLETE mode={mode} count= {count} ieee_fail= {ada_fail} float_fail= {ada_fail} c_fail= 0 write_fail= 0"
-                if numeric.splitlines()[-1] != marker.encode():
+                numeric_marker = f"R1_NUMERIC_COMPLETE mode={mode} count= {count} ieee_fail= {ada_fail} float_fail= {ada_fail} c_fail= 0 write_fail= 0"
+                if numeric.splitlines()[-1] != numeric_marker.encode():
                     raise RuntimeError("numeric corpus incomplete or failed")
                 if b"MISMATCH\tstrtof_l" in numeric:
                     raise RuntimeError("production numeric mismatch")
@@ -161,7 +210,10 @@ def main():
                             raise RuntimeError("writer changed Float32 value")
         cells.append({"compiler": version, "profile": args.profile, "policy": policy, "marker": output.decode().strip()})
     paths = [p for p in scratch.rglob("*") if p.is_file() and p.suffix in [".ads", ".adb", ".c", ".lock", ".gpr"]]
-    paths += [args.generator.resolve(), schema, contract, golden, pathlib.Path(__file__).resolve()]
+    paths += [args.generator.resolve(), schema, contract, golden, pathlib.Path(__file__).resolve(),
+              ROOT / f"tests/ada-generated-codec/{main_name}.adb"]
+    if args.environment:
+        paths += [ROOT / "tests/ada-generated-codec/float32_environment.adb", ROOT / "tests/ada-float32-probe/environment_harness.c"]
     (scratch / "sources.sha256").write_text("".join(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p}\n" for p in sorted(paths)))
     temporary = scratch / "result.json.tmp"
     temporary.write_text(json.dumps({"completed": True, "cells": cells}, indent=2) + "\n")
