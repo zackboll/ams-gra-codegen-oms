@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+ xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+ targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified">
+ <xs:simpleType name="PathLength"><xs:restriction base="xs:float"/></xs:simpleType>
+ <xs:complexType name="TargetGet"><xs:sequence>
+  <xs:element name="Measurement" type="uci:PathLength"/>
+  <xs:element name="Content" type="xs:string"/>
+ </xs:sequence></xs:complexType>
+ <xs:complexType name="ArraySample"><xs:sequence>
+  <xs:element name="Reading" type="xs:float"/>
+  <xs:element name="Detail" type="uci:TargetGet"/>
+  <xs:element name="More" type="uci:PathLength" minOccurs="0" maxOccurs="3"/>
+ </xs:sequence></xs:complexType>
+ <xs:element name="IdentifierNotice" type="uci:ArraySample" uci:version="001.000.000.000"/>
+</xs:schema>
