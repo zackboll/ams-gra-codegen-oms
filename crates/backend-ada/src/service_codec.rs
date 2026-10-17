@@ -2,10 +2,11 @@
 use crate::{ada_identifier, ada_type, error, package_name, record_field_name};
 use ams_gra_oms_codegen_core::{
     ADA_SEQUENCE_APPEND, ADA_SEQUENCE_ELEMENT, ADA_SEQUENCE_LENGTH, ADA_SEQUENCE_TO_SEQUENCE,
-    BackendLanguage, CodegenError, GeneratedFile, GenerationWorld, ServiceApiModel, TypeEmission,
-    analyze_service_codec, effective_choice_alternatives, effective_record_fields,
-    emissions_emit_direct_duration, generated_choice_alternative_name, generated_enum_variant_name,
-    oms_json_member_name, plan_type_emissions, string_profile,
+    AdaCodecRuntime, BackendLanguage, CodegenError, GeneratedFile, GenerationWorld,
+    ServiceApiModel, TypeEmission, analyze_service_codec_with_runtime,
+    effective_choice_alternatives, effective_record_fields, emissions_emit_direct_duration,
+    generated_choice_alternative_name, generated_enum_variant_name, oms_json_member_name,
+    plan_type_emissions, string_profile,
 };
 use ams_gra_oms_ir::{OccurrenceShape, PrimitiveKind, SchemaIr, TypeKind, TypeRefTarget};
 use std::{collections::BTreeSet, fmt::Write as _, path::PathBuf};
@@ -39,13 +40,27 @@ pub fn generate_service_codec(
     schema: &SchemaIr,
     world: GenerationWorld,
 ) -> Result<Vec<GeneratedFile>, CodegenError> {
+    generate_service_codec_with_runtime(model, schema, world, AdaCodecRuntime::Portable)
+}
+
+/// Render against an explicit deployment runtime; portable calls stay unchanged.
+///
+/// # Errors
+/// Returns the first codec boundary or model naming error.
+pub fn generate_service_codec_with_runtime(
+    model: &ServiceApiModel,
+    schema: &SchemaIr,
+    world: GenerationWorld,
+    runtime: AdaCodecRuntime,
+) -> Result<Vec<GeneratedFile>, CodegenError> {
     crate::validate_schema(schema, world)?;
     ams_gra_oms_codegen_core::validate_service_api_names(model, BackendLanguage::Ada)
         .map_err(|e| error(e.to_string()))?;
     ams_gra_oms_codegen_core::validate_service_api_artifacts(model, schema, BackendLanguage::Ada)
         .map_err(|e| error(e.to_string()))?;
-    let readiness = analyze_service_codec(model, schema, BackendLanguage::Ada, world)
-        .map_err(|e| error(e.to_string()))?;
+    let readiness =
+        analyze_service_codec_with_runtime(model, schema, BackendLanguage::Ada, world, runtime)
+            .map_err(|e| error(e.to_string()))?;
     if let Some(blocker) = readiness.blocker {
         return Err(error(blocker.to_string()));
     }
@@ -53,6 +68,16 @@ pub fn generate_service_codec(
         return Ok(Vec::new());
     }
     let package = package_name(schema)?;
+    let float32 = schema.types.iter().any(|d| match &d.kind {
+        TypeKind::Primitive(PrimitiveKind::Float32) => true,
+        TypeKind::Record { fields, .. } => fields.iter().any(|f| {
+            matches!(
+                f.type_ref.target,
+                TypeRefTarget::Primitive(PrimitiveKind::Float32)
+            )
+        }),
+        _ => false,
+    });
     let payloads: BTreeSet<_> = model
         .functions()
         .iter()
@@ -131,6 +156,17 @@ pub fn generate_service_codec(
                         .map_err(|e| error(e.to_string()))?
                         .is_some();
                 let enc: String = match k {
+                    PrimitiveKind::Float32 => {
+                        let value = if ams_gra_oms_codegen_core::floating_domain(*k, &d.constraints)
+                            .map_err(|e| error(e.to_string()))?
+                            .is_some()
+                        {
+                            "Model.Value (Item)".to_owned()
+                        } else {
+                            "Interfaces.IEEE_Float_32 (Item)".to_owned()
+                        };
+                        format!("AMS_GRA_OMS_JSON_Float32.Encode ({value})")
+                    }
                     PrimitiveKind::Duration => "Create (Model.Value (Item))".into(),
                     PrimitiveKind::DateTime => "Create (Model.Value (Item))".into(),
                     PrimitiveKind::String if checked => "Create (Model.Value (Item))".into(),
@@ -139,6 +175,16 @@ pub fn generate_service_codec(
                     _ => "Create (Long_Long_Integer (Item))".into(),
                 };
                 let dec = match k {
+                    PrimitiveKind::Float32 => {
+                        if ams_gra_oms_codegen_core::floating_domain(*k, &d.constraints)
+                            .map_err(|e| error(e.to_string()))?
+                            .is_some()
+                        {
+                            "      declare\n         Number : constant Interfaces.IEEE_Float_32 := Scalar_Float32 (Value);\n      begin\n         return Model.Create (Number);\n      exception\n         when Ada.Assertions.Assertion_Error => raise Codec_Error with \"invalid checked Float32\";\n      end;".to_owned()
+                        } else {
+                            format!("      return Model.{n} (Scalar_Float32 (Value));")
+                        }
+                    }
                     PrimitiveKind::Duration => String::from(
                         "      declare\n         Text : constant String := Scalar_String (Value);\n      begin\n         begin\n            return Model.Create (Text);\n         exception\n            when Constraint_Error => raise Codec_Error with \"invalid Duration\";\n         end;\n      end;",
                     ),
@@ -236,6 +282,10 @@ pub fn generate_service_codec(
                         TypeRefTarget::Primitive(PrimitiveKind::Boolean) => (
                             format!("Create ({item})"),
                             format!("Scalar_Boolean ({input})"),
+                        ),
+                        TypeRefTarget::Primitive(PrimitiveKind::Float32) => (
+                            format!("AMS_GRA_OMS_JSON_Float32.Encode ({item})"),
+                            format!("Scalar_Float32 ({input})"),
                         ),
                         TypeRefTarget::Primitive(PrimitiveKind::Duration) => (
                             format!("Create (Model.Value ({item}))"),
@@ -369,6 +419,12 @@ pub fn generate_service_codec(
     }
     spec.push_str("end Service_Codec;\n");
     body.push_str("end Service_Codec;\n");
+    if float32 {
+        body = occurrence_ingress(&body);
+        if body.contains("Ada.Assertions.Assertion_Error") {
+            body = format!("with Ada.Assertions;\n{body}");
+        }
+    }
     Ok(vec![
         GeneratedFile {
             relative_path: PathBuf::from("service_codec.ads"),
@@ -379,6 +435,60 @@ pub fn generate_service_codec(
             contents: body,
         },
     ])
+}
+
+/// Adapt only decoding units to the occurrence API. Encoders retain the
+/// provider writer and JSON_Value. No token/DOM correlation is generated.
+fn occurrence_ingress(body: &str) -> String {
+    let mut output = String::new();
+    let mut decoding = false;
+    let mut public_operation = false;
+    for line in body.lines() {
+        if line.starts_with("package body Service_Codec") {
+            output.push_str("with AMS_GRA_OMS_JSON_Float32;\nwith AMS_GRA_OMS_JSON_Occurrences;\n");
+        }
+        if line.starts_with("   function ") || line.starts_with("   procedure ") {
+            public_operation =
+                line.starts_with("   function Encode_") || line.starts_with("   function Decode_");
+            decoding = line.starts_with("   function From_JSON_")
+                || line.starts_with("   function Decode_")
+                || line.starts_with("   function Scalar_")
+                || line.starts_with("   procedure Require_Kind ")
+                || line.starts_with("   function Member ");
+        }
+        let mut rendered = line.to_owned();
+        if decoding {
+            rendered = rendered
+                .replace("JSON_Value;", "Ingress.Value;")
+                .replace("JSON_Value)", "Ingress.Value)")
+                .replace("JSON_Value is", "Ingress.Value is")
+                .replace("constant JSON_Value :=", "constant Ingress.Value :=")
+                .replace("JSON_Value;", "Ingress.Value;")
+                .replace("JSON_Array", "Ingress.Value_Array")
+                .replace("Ingress.Value_Array_Type", "JSON_Array_Type")
+                .replace("Map_JSON_Object (", "Ingress.Map_JSON_Object (")
+                .replace("Get (", "Ingress.Get (")
+                .replace("Length (", "Ingress.Length (")
+                .replace("AMS_GRA_OMS_JSON_Guard.Read", "Ingress.Read");
+            rendered = rendered.replace("Value.Ingress.Get (", "Value.Get (");
+            if line.contains("when AMS_GRA_OMS_JSON_Guard.Validation_Error") {
+                rendered = rendered.replace(
+                    "AMS_GRA_OMS_JSON_Guard.Validation_Error",
+                    "Ingress.Validation_Error | AMS_GRA_OMS_JSON_Float32.Validation_Error",
+                );
+            }
+        }
+        output.push_str(&rendered);
+        output.push('\n');
+        if public_operation && line == "   begin" {
+            output.push_str("      AMS_GRA_OMS_JSON_Float32.Require_Platform;\n");
+        }
+        if line.starts_with("   package Model renames") {
+            output.push_str("   package Ingress renames AMS_GRA_OMS_JSON_Occurrences;\n");
+            output.push_str("   function Scalar_Float32 (Value : Ingress.Value) return Interfaces.IEEE_Float_32 is\n   begin\n      return Ingress.Floating (Value);\n   exception\n      when Ingress.Validation_Error | AMS_GRA_OMS_JSON_Float32.Validation_Error => raise Codec_Error with \"invalid Float32\";\n   end Scalar_Float32;\n");
+        }
+    }
+    output
 }
 
 /// Repeated members use the model's published owner-specific storage API.
@@ -406,6 +516,10 @@ fn repeated_member(
         TypeRefTarget::Primitive(PrimitiveKind::Boolean) => (
             "Create (Element_Item)".into(),
             "Scalar_Boolean (Child)".into(),
+        ),
+        TypeRefTarget::Primitive(PrimitiveKind::Float32) => (
+            "AMS_GRA_OMS_JSON_Float32.Encode (Element_Item)".into(),
+            "Scalar_Float32 (Child)".into(),
         ),
         TypeRefTarget::Primitive(PrimitiveKind::DateTime) => (
             "Create (Model.Value (Element_Item))".into(),

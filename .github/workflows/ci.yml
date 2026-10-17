@@ -24,6 +24,71 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  ada-float32-codec:
+    runs-on: ubuntu-24.04
+    container:
+      image: debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5
+    timeout-minutes: 90
+    steps:
+      - name: Provision and verify qualified target
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update
+          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14 locales
+          test "$(uname -m)" = x86_64
+          test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.41'
+          localedef -i de_DE -f UTF-8 de_DE.UTF-8
+          mkdir -p /tmp/task095-evidence
+          dpkg-query -W libc6 gnat-14 > /tmp/task095-evidence/platform.txt
+          sha256sum /usr/lib/x86_64-linux-gnu/libc.so.6 >> /tmp/task095-evidence/platform.txt
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: dtolnay/rust-toolchain@1.95.0
+      - name: Install verified Alire 2.1.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
+          echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  /tmp/alire.zip' | sha256sum --check --strict
+          unzip -q /tmp/alire.zip -d /opt/alire
+          test "$(/opt/alire/bin/alr --version)" = 'alr 2.1.1'
+          echo /opt/alire/bin >> "$GITHUB_PATH"
+      - name: Build exact-head production generator
+        run: cargo +1.95.0 build --locked -p ams-gra-codegen-oms
+      - name: Verify ABI environment and bridge failures
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcc -std=c11 -O0 -Wall -Wextra -Werror ada/oms-json-support/float32/ams_gra_float32.c tests/ada-float32-probe/bridge_controls.c -Wl,--wrap=newlocale -Wl,--wrap=gnu_get_libc_version -lm -o /tmp/task095-evidence/bridge-controls
+          /tmp/task095-evidence/bridge-controls > /tmp/task095-evidence/bridge.log
+          grep -Fx 'TASK095_BRIDGE_CONTROLS_COMPLETE checks=20' /tmp/task095-evidence/bridge.log
+      - name: Execute both compilers profiles and assertion policies
+        shell: bash
+        run: |
+          set -euo pipefail
+          for compiler in 14 16; do
+            for profile in oam qualified; do
+              python3 scripts/check-task095.py --compiler "$compiler" --profile "$profile" --numeric-corpus --scratch "/tmp/task095-evidence/$compiler-$profile" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
+              sha256sum --check --quiet "/tmp/task095-evidence/$compiler-$profile/sources.sha256"
+              test -s "/tmp/task095-evidence/$compiler-$profile/result.json"
+            done
+          done
+      - name: Preserve qualification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: task095-platform-qualified-float32
+          path: |
+            /tmp/task095-evidence/*.txt
+            /tmp/task095-evidence/*.log
+            /tmp/task095-evidence/*/*.log
+            /tmp/task095-evidence/*/*.exit
+            /tmp/task095-evidence/*/*.lock
+            /tmp/task095-evidence/*/*.sha256
+            /tmp/task095-evidence/*/result.json
+          if-no-files-found: error
   ada-repeated-temporal-codec:
     needs: ada-json-guard
     runs-on: ubuntu-24.04

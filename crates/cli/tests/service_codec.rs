@@ -93,6 +93,55 @@ fn listing(dir: &Path) -> Vec<String> {
     names
 }
 
+#[test]
+fn task095_target_opt_in_agrees_between_check_generate_and_atomic_rejection() {
+    let schema = "codec-ada-float32.xsd";
+    let contract = "codec-ada-float32.yaml";
+    let (code, report) = check(schema, contract, "ada", true);
+    assert_ne!(code, Some(0));
+    assert!(report.contains("Float32"), "{report}");
+    let (blocked, blocked_dir) = generate(schema, contract, "ada", true, "095-portable");
+    assert!(!blocked.status.success());
+    assert!(!blocked_dir.exists());
+    let args = [
+        "service-check",
+        "--language",
+        "ada",
+        "--world",
+        "closed-schema",
+        "--with-codec",
+        "--ada-codec-runtime",
+        "linux-x86_64-glibc-2.41",
+    ];
+    let ready = run(&args, schema, contract, None);
+    assert!(
+        ready.status.success(),
+        "{}",
+        String::from_utf8_lossy(&ready.stderr)
+    );
+    assert!(String::from_utf8_lossy(&ready.stdout).contains("codec status: READY"));
+    let mut args = args;
+    args[0] = "service-generate";
+    let dir = output_dir("095-qualified");
+    let generated = run(&args, schema, contract, Some(&dir));
+    assert!(
+        generated.status.success(),
+        "{}",
+        String::from_utf8_lossy(&generated.stderr)
+    );
+    let body = std::fs::read_to_string(dir.join("service_codec.adb")).unwrap();
+    assert!(body.contains("Ingress.Read (Text)"));
+    assert!(body.contains("Model.Create (Number)"));
+    assert!(!body.contains("Get_Long_Float"));
+    for wrong in ["windows", "linux-x86_64-glibc-2.39", "musl", ""] {
+        args[7] = wrong;
+        let invalid = run(&args, schema, contract, None);
+        assert!(!invalid.status.success());
+        assert!(String::from_utf8_lossy(&invalid.stderr).contains("--ada-codec-runtime"));
+    }
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
 /// A. The OAM codec-safe service is READY with the codec and generates it.
 #[test]
 fn task091_ada_duration_readiness_and_model_preservation() {
