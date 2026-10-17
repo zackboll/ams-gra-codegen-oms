@@ -39,6 +39,8 @@ expect_pass "$fast" "$deep" "$sleet"
 layout_checks="$(python3 "$repo/scripts/check-task077b-ci-layout.py" \
   --self-test "$deep" "$guard" "$fast" "$sleet")"
 passed=$((passed + layout_checks))
+python3 "$repo/scripts/test-task077b-ci-layout.py"
+ok
 
 # ---- 2. mutations fail --------------------------------------------------
 for gate in 'bash scripts/check-task077-fast.sh' 'bash scripts/test-task077-ci-wrappers.sh'; do

@@ -37,8 +37,10 @@ def main():
     (scratch / "source-hashes.json").write_text(json.dumps(hashes, indent=2) + "\n")
     text = schema.read_text()
     for name, bad in [
-        ("repeated-choice-member", text.replace('name="Pick" type="uci:Selection"',
-                                               'name="Pick" type="uci:Selection" maxOccurs="2"')),
+        # Task 092 compiler-qualifies repeated Choice members. Keep this atomic
+        # rejection control by combining that shape with a nillable member.
+        ("nillable-repeated-choice-member", text.replace('name="Pick" type="uci:Selection"',
+                                               'name="Pick" type="uci:Selection" maxOccurs="2" nillable="true"')),
         ("repeated-choice-alternative", text.replace('name="Nested" type="uci:Details"',
                                                     'name="Nested" type="uci:Details" maxOccurs="2"')),
         ("unsupported-nested", text.replace('type="xs:byte"', 'type="xs:double"')),

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+ xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+ targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified">
+ <xs:simpleType name="Instant"><xs:restriction base="xs:dateTime">
+  <xs:pattern value=".+Z"/>
+ </xs:restriction></xs:simpleType>
+ <xs:simpleType name="Span"><xs:restriction base="xs:duration"/></xs:simpleType>
+ <xs:complexType name="TemporalPayload"><xs:sequence>
+  <xs:element name="DirectDates" type="xs:dateTime" minOccurs="0" maxOccurs="3"/>
+  <xs:element name="MoreDirectDates" type="xs:dateTime" minOccurs="0" maxOccurs="unbounded"/>
+  <xs:element name="NamedDates" type="uci:Instant" minOccurs="1" maxOccurs="3"/>
+  <xs:element name="MoreNamedDates" type="uci:Instant" minOccurs="2" maxOccurs="unbounded"/>
+  <xs:element name="DirectSpans" type="xs:duration" minOccurs="1" maxOccurs="3"/>
+  <xs:element name="MoreDirectSpans" type="xs:duration" minOccurs="2" maxOccurs="unbounded"/>
+  <xs:element name="NamedSpans" type="uci:Span" minOccurs="0" maxOccurs="3"/>
+  <xs:element name="MoreNamedSpans" type="uci:Span" minOccurs="0" maxOccurs="unbounded"/>
+ </xs:sequence></xs:complexType>
+ <xs:element name="TemporalNotice" type="uci:TemporalPayload" uci:version="001.000.000.000"/>
+</xs:schema>

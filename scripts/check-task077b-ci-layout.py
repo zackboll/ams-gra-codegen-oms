@@ -137,11 +137,29 @@ def self_test(path, guard, fast, sleet):
     """Disposable single-defect mutations must produce their own diagnostic."""
     original = Path(path).read_text()
     cases = []
+    def job_match(job):
+        matches = list(re.finditer(
+            r"^  " + re.escape(job) + r":\n(.*?)(?=^  [\w-]+:|\Z)",
+            original, re.M | re.S))
+        assert len(matches) == 1, job
+        return matches[0]
     def job_mutation(job, change):
-        match = re.search(r"^  " + re.escape(job) + r":\n(.*?)(?=^  [\w-]+:|\Z)",
-                          original, re.M | re.S)
-        assert match
+        match = job_match(job)
         return original[:match.start()] + change(match[0]) + original[match.end():]
+    def replace_once(body, target, replacement):
+        assert body.count(target) == 1, target
+        return body.replace(target, replacement, 1)
+    def command_line(job, command):
+        lines = [line for line in job_match(job)[0].splitlines(True)
+                 if command in line and not line.lstrip().startswith('#')]
+        assert len(lines) == 1, (job, command)
+        assert lines[0].count(command) == 1, (job, command)
+        return lines[0]
+    def step_match(body, name):
+        matches = list(re.finditer(r'^      - name: ' + re.escape(name)
+                                  + r'\n.*?(?=^      - |\Z)', body, re.M | re.S))
+        assert len(matches) == 1, name
+        return matches[0]
     def add(label, text, diagnostic):
         assert text != original, label
         cases.append((label, text, 'Task077B ' + diagnostic))
@@ -149,51 +167,53 @@ def self_test(path, guard, fast, sleet):
         'missing job: real-uci-regressions')
     for job in ('real-uci', 'real-uci-regressions'):
         for release in ('2.5', '2.6'):
-            # Select the executable fetch, not its comment or PR path entry.
-            line = next(l for l in original.splitlines(True)
-                        if f'scripts/fetch-pinned-uci-{release}.sh "$' in l)
+            # Select the executable fetch in its owner, never another job's
+            # command (which may use a different scratch directory).
+            line = command_line(job, f'scripts/fetch-pinned-uci-{release}.sh "$')
             add(f'{job} missing {release}',
-                job_mutation(job, lambda b: b.replace(line, '', 1)),
+                job_mutation(job, lambda b: replace_once(b, line, '')),
                 f'fetch ownership: {job} {release}')
             add(f'{job} duplicate {release}',
-                job_mutation(job, lambda b: b.replace(line, line + line, 1)),
+                job_mutation(job, lambda b: replace_once(b, line, line + line)),
                 f'fetch ownership: {job} {release}')
         for field in ('if: false', 'continue-on-error: true'):
-            add(f'{job} {field}', job_mutation(job, lambda b: b.replace(
-                '    runs-on:', f'    {field}\n    runs-on:', 1)),
+            add(f'{job} {field}', job_mutation(job, lambda b: replace_once(
+                b, '    runs-on:', f'    {field}\n    runs-on:')),
                 f'enabled hard gate: {job}')
-        add(f'{job} missing timeout', job_mutation(job, lambda b: b.replace(
-            '    timeout-minutes: 240\n', '', 1)), f'finite timeout: {job}')
-        add(f'{job} serialized', job_mutation(job, lambda b: b.replace(
-            '    runs-on:', '    needs: real-sleet\n    runs-on:', 1)),
+        add(f'{job} missing timeout', job_mutation(job, lambda b: replace_once(
+            b, '    timeout-minutes: 240\n', '')), f'finite timeout: {job}')
+        add(f'{job} serialized', job_mutation(job, lambda b: replace_once(
+            b, '    runs-on:', '    needs: real-sleet\n    runs-on:')),
             f'independent job: {job}')
-    add('missing CLI build', original.replace(
-        '          cargo build --release --locked -p ams-gra-codegen-oms\n', '', 1),
-        'release CLI build before service confirmations')
-    add('missing dependency preparation', original.replace(
-        '          cargo fetch --locked\n', '', 1), 'regression input: cargo fetch --locked')
+    for label, command, diagnostic in (
+        ('missing CLI build', 'cargo build --release --locked -p ams-gra-codegen-oms',
+         'release CLI build before service confirmations'),
+        ('missing dependency preparation', 'cargo fetch --locked',
+         'regression input: cargo fetch --locked'),
+    ):
+        line = command_line('real-uci-regressions', command)
+        add(label, job_mutation('real-uci-regressions',
+                                lambda b: replace_once(b, line, '')), diagnostic)
     for name, owner, _ in GATES[7:]:
-        match = re.search(r'^      - name: ' + re.escape(name)
-                          + r'\n.*?(?=^      - |^  [\w-]+:|\Z)', original, re.M | re.S)
-        assert match
+        match = step_match(job_match(owner)[0], name)
         step = match[0]
-        add('delete ' + name, original[:match.start()] + original[match.end():],
+        add('delete ' + name, job_mutation(owner, lambda b: replace_once(b, step, '')),
             'gate ownership: ' + name)
-        add('duplicate ' + name, original[:match.start()] + step + original[match.start():],
+        add('duplicate ' + name, job_mutation(owner, lambda b: replace_once(b, step, step + step)),
             'gate ownership: ' + name)
-    name = GATES[-1][0]
-    match = re.search(r'^      - name: ' + re.escape(name)
-                      + r'\n.*?(?=^  [\w-]+:|\Z)', original, re.M | re.S)
+    name, owner, _ = GATES[-1]
+    match = step_match(job_match(owner)[0], name)
     step = match[0]
     for line in step.splitlines(True):
         if 'cargo test ' in line or 'grep ' in line:
             add('Task060 assertion/command ' + line.strip(),
-                original[:match.start()] + step.replace(line, '', 1) + original[match.end():],
+                job_mutation(owner, lambda b: replace_once(
+                    b, step, replace_once(step, line, ''))),
                 'payload changed: ' + name)
     for field in ('if: false', 'continue-on-error: true'):
-        add('disabled Task060 ' + field, original.replace(
-            '      - name: ' + name + '\n',
-            '      - name: ' + name + '\n        ' + field + '\n', 1),
+        add('disabled Task060 ' + field, job_mutation(owner, lambda b: replace_once(
+            b, '      - name: ' + name + '\n',
+            '      - name: ' + name + '\n        ' + field + '\n')),
             'enabled hard gate: ' + name)
     with tempfile.TemporaryDirectory(prefix='task077b-layout-') as tmp:
         fixture = Path(tmp) / 'deep.yml'

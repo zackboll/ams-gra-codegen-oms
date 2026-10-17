@@ -10,6 +10,9 @@ import subprocess
 import sys
 import tomllib
 
+sys.dont_write_bytecode = True
+from task094_stage_controls import validate_control
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location("datetime", ROOT / "scripts/check-task090.py")
@@ -42,12 +45,12 @@ def main():
         ("direct-choice", text.replace('name="Enabled" type="xs:boolean"',
                                        'name="Enabled" type="xs:dateTime"'),
          "direct DateTime Choice alternative is unsupported"),
-        ("direct-bounded", text.replace('name="Values" type="xs:byte"',
-                                        'name="Values" type="xs:dateTime"'),
-         "direct DateTime repeated element is unsupported"),
-        ("direct-unbounded", text.replace('name="Values" type="xs:byte" minOccurs="0" maxOccurs="3"',
-                                          'name="Values" type="xs:dateTime" minOccurs="0" maxOccurs="unbounded"'),
-         "direct DateTime repeated element is unsupported"),
+        ("model-direct-bounded-time", text.replace('name="Values" type="xs:byte"',
+                                        'name="Values" type="xs:time"'),
+         "codec: not measured (selected model is NOT READY)"),
+        ("model-direct-unbounded-time", text.replace('name="Values" type="xs:byte" minOccurs="0" maxOccurs="3"',
+                                          'name="Values" type="xs:time" minOccurs="0" maxOccurs="unbounded"'),
+         "codec: not measured (selected model is NOT READY)"),
         ("named-facets", text.replace('value=".+Z"', 'value=".*Z"'), "unsupported selected types:"),
         ("direct-facets", text.replace('<xs:element name="Direct" type="xs:dateTime"/>',
                                        '<xs:element name="Direct"><xs:simpleType><xs:restriction base="xs:dateTime"><xs:pattern value=".+Z"/></xs:restriction></xs:simpleType></xs:element>'),
@@ -55,27 +58,33 @@ def main():
         ("named-choice", text.replace('name="Enabled" type="xs:boolean"',
                                       'name="Enabled" type="uci:Instant"'),
          "named DateTime Choice alternative is not qualified"),
-        ("named-repeated", text.replace('name="Values" type="xs:byte"',
-                                        'name="Values" type="uci:Instant"'),
-         "named DateTime repeated element is not qualified"),
+        ("named-repeated-unsupported-profile", text.replace('name="Values" type="xs:byte"',
+                                        'name="Values" type="uci:Instant"').replace('value=".+Z"', 'value=".*Z"'),
+         "unsupported selected types:"),
     ]
+    controls.append(("repeated-float64-codec", text.replace(
+        'name="Values" type="xs:byte"', 'name="Values" type="xs:double"'),
+        "CombinedPayload.Values: unsupported Ada codec primitive or facets: Float64"))
+    stages = {
+        "direct-choice": "codec-readiness",
+        "model-direct-bounded-time": "model-preflight",
+        "model-direct-unbounded-time": "model-preflight",
+        "named-facets": "model-preflight",
+        "direct-facets": "frontend",
+        "named-choice": "codec-readiness",
+        "named-repeated-unsupported-profile": "model-preflight",
+        "repeated-float64-codec": "codec-readiness",
+        "duration-direct-choice": "codec-readiness",
+        "duration-named-choice": "codec-readiness",
+        "duration-named-facets": "frontend",
+    }
+    for kind in ["direct", "named"]:
+        stages[f"duration-{kind}-repeated-invalid-minimum-3"] = "frontend"
+        stages[f"duration-{kind}-repeated-invalid-minimum-unbounded"] = "model-preflight"
     for name, bad, diagnostic in controls:
         if bad == text:
             raise RuntimeError(f"ineffective control: {name}")
-        path = scratch / (name + ".xsd")
-        path.write_text(bad)
-        output = scratch / (name + "-output")
-        for action in ["service-check", "service-generate"]:
-            command = [generator, action, *common, "--schema", str(path)]
-            if action == "service-generate":
-                command += ["--output", str(output)]
-            result = subprocess.run(command, cwd=ROOT, capture_output=True, check=False)
-            stem = scratch / f"{name}-{action}"
-            stem.with_suffix(".command.json").write_text(json.dumps(command) + "\n")
-            stem.with_suffix(".log").write_bytes(result.stdout + result.stderr)
-            stem.with_suffix(".exit").write_text(str(result.returncode) + "\n")
-            if result.returncode != 1 or output.exists() or diagnostic.lower().encode() not in (result.stdout + result.stderr).lower():
-                raise RuntimeError(f"{name}: {action} did not reject atomically with {diagnostic}")
+        validate_control(generator, common, ROOT, scratch, name, bad, stages[name], diagnostic)
     shutil.copy2(ROOT / "tests/ada-generated-codec/datetime_combined_consumer.adb", consumer)
     shutil.copytree(ROOT / "ada/oms-json-support", scratch / "support")
     compiler = "gnat_external" if args.compiler == "14" else "gnat_native"
