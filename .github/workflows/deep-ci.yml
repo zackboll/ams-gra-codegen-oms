@@ -453,6 +453,8 @@ jobs:
           set -euo pipefail
           uci25="$(scripts/fetch-pinned-uci-2.5.sh "$RUNNER_TEMP/task093-uci25")"
           uci26="$(scripts/fetch-pinned-uci-2.6.sh "$RUNNER_TEMP/task093-uci26")"
+          echo "TASK093_UCI25=$uci25" >> "$GITHUB_ENV"
+          echo "TASK093_UCI26=$uci26" >> "$GITHUB_ENV"
           python3 scripts/check-task093-real.py --compiler 16 --version 2.5 --schema "$uci25" --scratch "$RUNNER_TEMP/task093-real25" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
           python3 scripts/check-task093-real.py --compiler 16 --version 2.6 --schema "$uci26" --scratch "$RUNNER_TEMP/task093-real26" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
           for version in 25 26; do
@@ -465,6 +467,20 @@ jobs:
               grep -Fx 'TASK093_REAL_COMPLETE cases= 14' "$root/$policy-run.log"
             done
           done
+      - name: Execute newly READY complete real Log services, all policies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/check-task093-log.py --compiler 16 --version 2.5 --schema "$TASK093_UCI25" --scratch "$RUNNER_TEMP/task093-log25" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
+          python3 scripts/check-task093-log.py --compiler 16 --version 2.6 --schema "$TASK093_UCI26" --scratch "$RUNNER_TEMP/task093-log26" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
+          for version in 25 26; do
+            root="$RUNNER_TEMP/task093-log$version"
+            test -s "$root/sources.json"
+            test -s "$root/qualification.json"
+            for policy in normal Check Ignore; do
+              grep -Fx 'TASK093_LOG_COMPLETE checks= 29 rejections= 9' "$root/$policy-run.log"
+            done
+          done
       - name: Preserve real Binary qualification evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -473,4 +489,6 @@ jobs:
           path: |
             ${{ runner.temp }}/task093-real25/**
             ${{ runner.temp }}/task093-real26/**
+            ${{ runner.temp }}/task093-log25/**
+            ${{ runner.temp }}/task093-log26/**
           if-no-files-found: error

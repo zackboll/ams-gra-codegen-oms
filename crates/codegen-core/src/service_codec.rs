@@ -1411,6 +1411,77 @@ mod tests {
     }
 
     #[test]
+    fn task093_combined_choice_temporal_binary_boundaries() {
+        for outer_max in [Some(3), None] {
+            let mut schema = record(
+                OAM_NAMESPACE,
+                vec![
+                    field("Data", TypeRef::binary(BinaryLexicalEncoding::HexBinary)),
+                    field("Dates", TypeRef::primitive(PrimitiveKind::DateTime)),
+                    field(
+                        "Spans",
+                        TypeRef::named(QualifiedName::new(OAM_NAMESPACE, "Span")),
+                    ),
+                ],
+            );
+            schema.types[0].name = QualifiedName::new(OAM_NAMESPACE, "Details");
+            let TypeKind::Record { fields } = &mut schema.types[0].kind else {
+                unreachable!()
+            };
+            fields[1].cardinality.max_occurs = Some(3);
+            fields[2].cardinality.max_occurs = None;
+            let mut span = schema.types[0].clone();
+            span.name = QualifiedName::new(OAM_NAMESPACE, "Span");
+            span.kind = TypeKind::Primitive(PrimitiveKind::Duration);
+            schema.types.push(span);
+            let mut choice = schema.types[0].clone();
+            choice.name = QualifiedName::new(OAM_NAMESPACE, "Selection");
+            choice.kind = TypeKind::Choice {
+                alternatives: vec![field(
+                    "Nested",
+                    TypeRef::named(schema.types[0].name.clone()),
+                )],
+            };
+            schema.types.push(choice);
+            let mut picks = field("Picks", TypeRef::named(schema.types[2].name.clone()));
+            picks.cardinality.max_occurs = outer_max;
+            let mut parent = record(OAM_NAMESPACE, vec![picks]).types.remove(0);
+            parent.name = QualifiedName::new(OAM_NAMESPACE, "Combined");
+            schema.types.push(parent);
+            let support = |schema: &SchemaIr| {
+                let emissions =
+                    plan_type_emissions(schema, GenerationWorld::ClosedSchemaSet).unwrap();
+                let mut analysis = AdaCodecAnalysis::new(&emissions);
+                let parent = emissions.iter().find(|emission| {
+                    matches!(emission, TypeEmission::Declaration(d) if d.name.local_name == "Combined")
+                }).unwrap();
+                analysis.support(schema, parent, GenerationWorld::ClosedSchemaSet)
+            };
+            assert!(support(&schema).is_ok());
+            let TypeKind::Record { fields } = &mut schema.types[0].kind else {
+                unreachable!()
+            };
+            fields[0].cardinality.max_occurs = Some(2);
+            assert_eq!(
+                support(&schema).unwrap_err().to_string(),
+                "Selection.Nested: Details.Data: direct Binary repeated element is not qualified"
+            );
+            let TypeKind::Record { fields } = &mut schema.types[0].kind else {
+                unreachable!()
+            };
+            fields[0].cardinality.max_occurs = Some(1);
+            let TypeKind::Choice { alternatives } = &mut schema.types[2].kind else {
+                unreachable!()
+            };
+            alternatives[0].type_ref = TypeRef::binary(BinaryLexicalEncoding::HexBinary);
+            assert_eq!(
+                support(&schema).unwrap_err().to_string(),
+                "Selection.Nested: direct Binary Choice alternative is not qualified"
+            );
+        }
+    }
+
+    #[test]
     fn task093_binary_helpers_are_case_insensitively_reserved() {
         for name in ["Encode_Hex_Binary", "Decode_Hex_Binary"] {
             assert!(

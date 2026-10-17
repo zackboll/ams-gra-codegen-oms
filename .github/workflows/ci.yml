@@ -301,6 +301,8 @@ jobs:
         run: python3 scripts/check-task093.py --compiler 16 --scratch "$RUNNER_TEMP/task093-hexbinary" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
       - name: Execute qualified non-OAM hexBinary consumer, all policies
         run: python3 scripts/check-task093.py --compiler 16 --qualified --scratch "$RUNNER_TEMP/task093-qualified" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
+      - name: Execute combined Binary Choice temporal consumers, both namespaces and all policies
+        run: python3 scripts/check-task093-combined.py --compiler 16 --scratch "$RUNNER_TEMP/task093-combined" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
       - name: Validate mandatory evidence
         shell: bash
         run: |
@@ -317,6 +319,13 @@ jobs:
             grep -Fx 'TASK093_CODEC_COMPLETE cases= 33' "$RUNNER_TEMP/task093-qualified/$policy-run.log"
             grep -Fx 'TASK093_MODEL_COMPLETE cases= 6' "$RUNNER_TEMP/task093-qualified/$policy-model-run.log"
           done
+          test -s "$RUNNER_TEMP/task093-combined/sources.json"
+          test -s "$RUNNER_TEMP/task093-combined/qualification.json"
+          for profile in oam qualified; do
+            for policy in normal Check Ignore; do
+              grep -Fx 'TASK093_COMBINED_COMPLETE checks= 49 rejections= 9' "$RUNNER_TEMP/task093-combined/$profile-$policy-run.log"
+            done
+          done
       - name: Preserve qualification evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -325,6 +334,7 @@ jobs:
           path: |
             ${{ runner.temp }}/task093-hexbinary/**
             ${{ runner.temp }}/task093-qualified/**
+            ${{ runner.temp }}/task093-combined/**
           if-no-files-found: error
   ada-repeated-choice-codec:
     needs: ada-json-guard
