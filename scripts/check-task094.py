@@ -101,7 +101,9 @@ def main():
     parser.add_argument("--compiler", choices=["14", "16"], default="16")
     parser.add_argument("--scratch", type=pathlib.Path, required=True)
     parser.add_argument("--generator", type=pathlib.Path, required=True)
-    parser.add_argument("--composition", action="store_true")
+    campaigns = parser.add_mutually_exclusive_group()
+    campaigns.add_argument("--composition", action="store_true")
+    campaigns.add_argument("--combined", action="store_true")
     parser.add_argument("--profiles", nargs="+", choices=["oam", "qualified"], default=["oam", "qualified"])
     parser.add_argument("--policies", nargs="+", choices=["normal", "Check", "Ignore"], default=["normal", "Check", "Ignore"])
     args = parser.parse_args()
@@ -111,6 +113,21 @@ def main():
     compiler = "gnat_external" if args.compiler == "14" else "gnat_native"
     version = "14.2.0" if args.compiler == "14" else "16.1.0"
     options = ["--force"] if args.compiler == "14" else []
+    if args.combined:
+        fixture = "codec-ada-choice-temporal.xsd"
+        golden_name = "task094-choice-temporal.json"
+        name = "repeated_choice_temporal_consumer"
+        marker = b"TASK094_COMBINED_COMPLETE checks= 26 rejections= 2\n"
+    elif args.composition:
+        fixture = "codec-ada-repeated-temporal-composition.xsd"
+        golden_name = "task094-composition.json"
+        name = "repeated_temporal_composition_consumer"
+        marker = b"TASK094_COMPOSITION_COMPLETE checks= 19 rejections= 3\n"
+    else:
+        fixture = "codec-ada-repeated-temporal.xsd"
+        golden_name = "task094-temporal.json"
+        name = "repeated_temporal_codec_consumer"
+        marker = b"TASK094_CODEC_COMPLETE checks= 54 rejections= 17\n"
     if checked(["alr", "--version"], scratch, scratch / "alire").strip() != b"alr 2.1.1":
         raise RuntimeError("wrong Alire version")
     shutil.copytree(ROOT / "ada/oms-json-support", scratch / "support")
@@ -118,9 +135,6 @@ def main():
         prefix = f"{profile}-gnat{version}"
         schema = scratch / f"{profile}.xsd"
         namespace = QUALIFIED
-        fixture = "codec-ada-repeated-temporal-composition.xsd" if args.composition else "codec-ada-repeated-temporal.xsd"
-        golden_name = "task094-composition.json" if args.composition else "task094-temporal.json"
-        name = "repeated_temporal_composition_consumer" if args.composition else "repeated_temporal_codec_consumer"
         text = (fixtures / fixture).read_text()
         golden = (fixtures / golden_name).read_text()
         minimum = (fixtures / "task094-temporal-minimum.json").read_text()
@@ -130,11 +144,13 @@ def main():
             def qualify(value):
                 if isinstance(value, dict):
                     return {f"{{{namespace}}}{key}": qualify(child) for key, child in value.items()}
+                if isinstance(value, list):
+                    return [qualify(child) for child in value]
                 return value
             golden = json.dumps(qualify(json.loads(golden)))
             minimum = json.dumps({f"{{{namespace}}}{k}": v for k, v in json.loads(minimum).items()})
             consumer_text = consumer_text.replace("Programs.Oam", "Programs.Task094")
-            keys = [*json.loads((fixtures / golden_name).read_text()), "Unknown", "Dates", "Spans", "Nested"]
+            keys = [*json.loads((fixtures / golden_name).read_text()), "Unknown", "Dates", "Spans", "Nested", "Enabled"]
             for key in keys:
                 consumer_text = consumer_text.replace(f'"{key}"', f'"{{{namespace}}}{key}"')
         schema.write_text(text)
@@ -158,7 +174,10 @@ def main():
         (scratch / (prefix + "-model-parity.json")).write_text(json.dumps(parity, indent=2))
         body = (directory / "service_codec.adb").read_text()
         for helper in ["Scalar_Date_Time", "Scalar_Duration"]:
-            if body.count("function " + helper + " (") != 1:
+            # The combined fixture uses named Duration only: no direct scalar
+            # helper should be emitted for that carrier.
+            expected = 0 if args.combined and helper == "Scalar_Duration" else 1
+            if body.count("function " + helper + " (") != expected:
                 raise RuntimeError(f"missing/duplicated repeated-only helper: {helper}")
         (directory / (name + ".adb")).write_text(consumer_text)
         (directory / "alire.toml").write_text(
@@ -196,14 +215,13 @@ def main():
                     raise RuntimeError(f"wrong {tool} identity")
             output = checked([str(directory / "bin" / name), str(golden_path), str(minimum_path)], directory,
                              scratch / (identity + "-execute"))
-            marker = b"TASK094_COMPOSITION_COMPLETE checks= 19 rejections= 3\n" if args.composition else b"TASK094_CODEC_COMPLETE checks= 54 rejections= 17\n"
             if output != marker:
                 raise RuntimeError(f"wrong marker/counts: {output!r}")
     paths = [p for p in scratch.rglob("*") if p.is_file() and p.suffix in [".ads", ".adb", ".lock"]]
     paths.append(args.generator.resolve())
     (scratch / "sources.sha256").write_text("".join(
         f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p}\n" for p in sorted(paths)))
-    print(f"TASK094 QUALIFICATION PASSED compiler={version} profiles={len(args.profiles)} policies={len(args.policies)} checks=54 rejections=17")
+    print(f"TASK094 QUALIFICATION PASSED compiler={version} profiles={len(args.profiles)} policies={len(args.policies)} {marker.decode().strip()}")
 
 
 if __name__ == "__main__":

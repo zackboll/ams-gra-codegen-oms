@@ -51,14 +51,18 @@ jobs:
         run: python3 scripts/check-task094.py --compiler 16 --scratch "$RUNNER_TEMP/task094" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
       - name: Execute inherited nested and Choice temporal composition
         run: python3 scripts/check-task094.py --composition --compiler 16 --scratch "$RUNNER_TEMP/task094-composition" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
+      - name: Execute combined repeated Choice and temporal codecs
+        run: python3 scripts/check-task094.py --combined --compiler 16 --scratch "$RUNNER_TEMP/task094-combined" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
       - name: Verify completed execution evidence
         shell: bash
         run: |
           set -euo pipefail
           test -s "$RUNNER_TEMP/task094/sources.sha256"
           test -s "$RUNNER_TEMP/task094-composition/sources.sha256"
+          test -s "$RUNNER_TEMP/task094-combined/sources.sha256"
           test "$(grep -lFx 'TASK094_CODEC_COMPLETE checks= 54 rejections= 17' "$RUNNER_TEMP/task094/"*-execute.log | wc -l)" -eq 6
           test "$(grep -lFx 'TASK094_COMPOSITION_COMPLETE checks= 19 rejections= 3' "$RUNNER_TEMP/task094-composition/"*-execute.log | wc -l)" -eq 6
+          test "$(grep -lFx 'TASK094_COMBINED_COMPLETE checks= 26 rejections= 2' "$RUNNER_TEMP/task094-combined/"*-execute.log | wc -l)" -eq 6
       - name: Preserve repeated temporal qualification evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -67,6 +71,7 @@ jobs:
           path: |
             ${{ runner.temp }}/task094/**
             ${{ runner.temp }}/task094-composition/**
+            ${{ runner.temp }}/task094-combined/**
           if-no-files-found: error
   ada-datetime-codec:
     needs: ada-json-guard

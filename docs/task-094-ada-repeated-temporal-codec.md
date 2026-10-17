@@ -1,5 +1,97 @@
 # Task 094 — Ada repeated temporal OMS JSON codecs
 
+## C7 — Task 092 integration and fresh qualification
+
+Original-baseline feature commit:
+`b493bd514166043e72275d80c929f1a3725202b2`.
+Fetched main: `a3a1047767160dea944174152bb47d22adae795f` (PR #93 merged;
+PR #94 independently rechecked OPEN/unmerged). Ordinary merge:
+`86d52514f9ac400f2537b74d6c74b6164f27cdd1`. There were **no textual conflicts**.
+The shared analyzer retains Task 092's repeated named Choice allowlist and
+memoized closure checks alongside Task 094's checked repeated temporal scalar
+classification. No side was taken wholesale; direct/named temporal Choice
+alternative exclusions, cardinality, missing/cyclic dependencies, facets,
+unqualified/nillable members, and naming guards remain. Task 092's 089R,
+Task 077B scripts, and Deep CI remain byte-identical to integrated main.
+
+### Actual combined generated-Ada test
+
+`codec-ada-choice-temporal.xsd` defines a concrete Details Record with repeated
+direct DateTime and repeated zero-facet named Duration, a required-single Nested
+Choice alternative referencing that Record, and a Combined message Record with
+a repeated named Choice. The Choice alternative itself is not repeated.
+The qualified profile changes model identity only; message-version metadata
+remains in the OAM namespace, checked structurally by the runner.
+
+The production generator's actual Ada compiles and executes in all **12 cells**:
+GNAT 14.2.0/16.1.0 × OAM/qualified × Normal/Check/Ignore. Each cell reports
+`TASK094_COMBINED_COMPLETE checks= 26 rejections= 2`. Checks cover all temporal
+values and ordering, nested access, discriminants, sequence lengths, independent
+canonical JSON, decode/encode/decode, absent/explicit-empty sequences, later
+DateTime and Duration failure inside the third Choice item, indexed error
+attribution, and no typed result publication. The runner also checks model/API
+parity, one direct DateTime helper, and no unnecessary direct Duration helper
+(the fixture uses named Duration). No generated sources or frozen goldens were
+patched. The composition aggregate summary now reports its actual 19/3 counts.
+
+### Completed integrated measurements
+
+Fresh evidence is under `/home/zboll/task094-scratch/c7`; each detached job has
+its own command, input/final source hashes, output, tool identities and atomic
+exit result. Focused gates passed before full matrices were launched.
+
+| Gate | Integrated result |
+|---|---|
+| Expanded temporal | 12/12, 54 checks including 17 rejections per cell |
+| Temporal composition | 12/12, 19 checks including 3 rejection cases per cell |
+| Repeated Choice / temporal | 12/12, 26 checks including 2 rejection cases per cell |
+| Model-only | 6/6, 24 checks per cell |
+| Task 092 synthetic OAM/qualified | 12/12, 63 checks including 17 rejections per cell |
+| Task 092 real UCI typed consumers | 18/18; RDMA 2.5/2.6: 12 checks; Survivability 2.5: 8 checks per cell |
+| Inherited Task 087A/B, 088, 089/089R, 090/090R, 091/091R | 18/18 campaigns |
+| Focused core / CLI / Ada backend unit suites | 23 / 18 / 63 passed |
+| Rust 1.95 workspace | 1,414 passed, 8 pre-existing ignored; 162 summaries; exit 0 |
+| Rust formatting / locked check / warnings-denied Clippy | All exit 0 |
+| CI integrity | 210 mutation checks, both 54-case layout profiles, exit 0 |
+| Output preservation | 47 identical generations; 3 permitted new temporal codecs; 9 atomic rejections; 5 helper controls |
+
+The Task 092 real-UCI generated-Ada compiler/policy matrix completed with atomic
+exit-zero results on both compilers. All three selections passed all policies,
+including independent invalid UUID/version regressions and failure atomicity.
+The final evidence/source audit is recorded in
+`/home/zboll/task094-scratch/c7/integrated-local-qualification.json`.
+No hosted CI result or merge-readiness is implied by local qualification.
+
+### Fresh UCI delta against merged Task 092 main
+
+This is **not** reuse or relabeling of C6R-C4's Task 091-baseline measurement.
+Separate optimized, independently built production analyzers compare exact
+main `a3a1047767160dea944174152bb47d22adae795f` against integrated Task 094.
+All 80 message pairs were freshly evaluated (160 calls, zero candidate reuse),
+with atomic attempt/results, exact source maps, typed error handling and the
+validated generated-value cycle classifier. The unchanged schema's historical
+40-message/80-owner exposure inventories and 722/725 closure checks are retained
+as historical inventory evidence, not recomputed readiness measurements.
+
+Both releases and both variants again measure **36 NOT_READY, 4 known
+PROJECTION_ERROR, zero READY and zero unexpected errors** among reaching
+messages. Every ordinary candidate has unchanged model readiness, total emitted
+counts and first blocker, and exactly one additional codec-renderable declaration.
+PRI_DataBaseType's attribution-only owner closure improves 5/6 to 6/6; Scan's
+10/13 closure remains blocked by Float64. Query diagnostics and canonical directed
+cycles match exactly; projection outcomes have null codec counts. No additional
+whole real service becomes READY. RDMA 2.5/2.6 and Survivability 2.5 independently
+remain READY in both analyzer variants; actual typed execution is a separate gate.
+
+Evidence: `integrated-uci-comparison.json`, `integrated-uci-summary.json`,
+`uci-{baseline,current}-source-identity.json`, per-candidate artifacts, and
+`impact-{baseline,current}.json`. The matching-main preservation comparison
+retains Ada model/API and old single/repeated-Choice codecs, Rust model/API/codec,
+and C++ model/API bytes with identical generated file sets. Only newly admitted
+Task 094 Ada codec files are permitted additions. Deep CI is unchanged; Fast CI
+retains both repeated-Choice and repeated-temporal jobs and additionally requires
+all six combined GNAT 16 execution markers and uploads their evidence.
+
 ## C7 — original-baseline certification
 
 The preserved original-baseline qualification is certified against starting main
