@@ -174,8 +174,22 @@ for line in \
   grep -Fv -- "$line" "$deep" >"$tmp/deep-drop.yml"
   expect_fail "deep dropped: $line" "$fast" "$tmp/deep-drop.yml" "$sleet"
 done
-# UCI 2.6 fetched twice in one workflow.
-{ cat "$deep"; printf '          scripts/fetch-pinned-uci-2.6.sh "$RUNNER_TEMP/again"\n'; } >"$tmp/deep-refetch.yml"
+# Duplicate a fetch inside its owning inherited job. Appending at EOF is
+# not an executable run command once the last job ends with artifact metadata.
+python3 - "$deep" "$tmp/deep-refetch.yml" <<'PY'
+import re
+import sys
+from pathlib import Path
+text = Path(sys.argv[1]).read_text()
+job = re.search(r'^  real-uci:\n.*?(?=^  [\w-]+:|\Z)', text, re.M | re.S)
+assert job
+body = job[0]
+line = next(line for line in body.splitlines(True)
+            if 'scripts/fetch-pinned-uci-2.6.sh "$' in line)
+mutated = body.replace(line, line + line, 1)
+assert mutated != body
+Path(sys.argv[2]).write_text(text[:job.start()] + mutated + text[job.end():])
+PY
 expect_fail "deep refetches UCI 2.6" "$fast" "$tmp/deep-refetch.yml" "$sleet"
 for target in uci_alternating_admission uci_alternating_after; do
   { cat "$fast"; printf '      - run: cargo test -p ams-gra-codegen-oms --test %s\n' "$target"; } >"$tmp/fast-task060.yml"
