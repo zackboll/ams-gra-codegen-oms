@@ -407,6 +407,14 @@ fn repeated_member(
             "Create (Element_Item)".into(),
             "Scalar_Boolean (Child)".into(),
         ),
+        TypeRefTarget::Primitive(PrimitiveKind::DateTime) => (
+            "Create (Model.Value (Element_Item))".into(),
+            "Scalar_Date_Time (Child)".into(),
+        ),
+        TypeRefTarget::Primitive(PrimitiveKind::Duration) => (
+            "Create (Model.Value (Element_Item))".into(),
+            "Scalar_Duration (Child)".into(),
+        ),
         TypeRefTarget::Primitive(kind) => {
             let ty = ada_type(&field.type_ref)?;
             let check = match ams_gra_oms_codegen_core::inclusive_integral_domain(

@@ -700,19 +700,9 @@ impl<'a, 's> AdaCodecAnalysis<'a, 's> {
                         return Err(unsupported(&location, "abstract member".into()));
                     }
                     match field.type_ref.target {
-                        TypeRefTarget::Primitive(PrimitiveKind::Duration) if repeated => {
-                            return Err(unsupported(
-                                &location,
-                                "direct Duration repeated element is not qualified".into(),
-                            ));
-                        }
-                        TypeRefTarget::Primitive(PrimitiveKind::DateTime) if repeated => {
-                            return Err(unsupported(
-                                &location,
-                                "direct DateTime repeated element is unsupported".into(),
-                            ));
-                        }
                         TypeRefTarget::Primitive(kind) => {
+                            // Repeated temporal storage uses the same checked carrier as
+                            // single values; retain the full direct-profile facet check.
                             ada_scalar_support(kind, &field.constraints, false, &location)?
                         }
                         TypeRefTarget::Named(_) if field.constraints != Default::default() => {
@@ -730,20 +720,8 @@ impl<'a, 's> AdaCodecAnalysis<'a, 's> {
                                     "Choice/alias/list repeated element is unsupported".into(),
                                 ));
                             }
-                            if matches!(referenced, TypeEmission::Declaration(d) if matches!(d.kind, TypeKind::Primitive(PrimitiveKind::DateTime)))
-                            {
-                                return Err(unsupported(
-                                    &location,
-                                    "named DateTime repeated element is not qualified".into(),
-                                ));
-                            }
-                            if matches!(referenced, TypeEmission::Declaration(d) if matches!(d.kind, TypeKind::Primitive(PrimitiveKind::Duration)))
-                            {
-                                return Err(unsupported(
-                                    &location,
-                                    "named Duration repeated element is not qualified".into(),
-                                ));
-                            }
+                            // The emitted declaration must pass its existing named
+                            // scalar classifier, including temporal profile constraints.
                             self.support(schema, referenced, world)?;
                             self.record_support(schema, referenced, world)?;
                         }
@@ -1241,16 +1219,26 @@ mod tests {
                 min_occurs: 0,
                 max_occurs,
             };
-            let schema = record(OAM_NAMESPACE, vec![member]);
-            assert_eq!(
+            let schema = record(OAM_NAMESPACE, vec![member.clone()]);
+            assert!(
                 ada_codec_support(
                     &schema,
                     &TypeEmission::Declaration(&schema.types[0]),
                     GenerationWorld::ClosedSchemaSet,
                 )
-                .unwrap_err()
-                .to_string(),
-                "P.Dates: direct DateTime repeated element is unsupported"
+                .is_ok()
+            );
+            // Preserve the rejection purpose with an unsupported neighboring
+            // direct temporal profile, not the now-qualified repeated shape.
+            member.constraints.max_length = Some(100);
+            let schema = record(OAM_NAMESPACE, vec![member]);
+            assert!(
+                ada_codec_support(
+                    &schema,
+                    &TypeEmission::Declaration(&schema.types[0]),
+                    GenerationWorld::ClosedSchemaSet,
+                )
+                .is_err()
             );
         }
         let mut schema = record(OAM_NAMESPACE, Vec::new());
@@ -1706,6 +1694,8 @@ mod tests {
                 PrimitiveKind::String,
                 PrimitiveKind::Boolean,
                 PrimitiveKind::SignedInteger,
+                PrimitiveKind::DateTime,
+                PrimitiveKind::Duration,
             ] {
                 let mut member = field("Repeated", TypeRef::primitive(kind));
                 member.cardinality = cardinality;
@@ -1718,6 +1708,21 @@ mod tests {
                     )
                     .is_ok()
                 );
+                if matches!(kind, PrimitiveKind::DateTime | PrimitiveKind::Duration) {
+                    let mut constrained = field("Repeated", TypeRef::primitive(kind));
+                    constrained.cardinality = cardinality;
+                    constrained.constraints.max_length = Some(100);
+                    let schema = record(OAM_NAMESPACE, vec![constrained]);
+                    assert!(
+                        ada_codec_support(
+                            &schema,
+                            &TypeEmission::Declaration(&schema.types[0]),
+                            GenerationWorld::ClosedSchemaSet
+                        )
+                        .is_err(),
+                        "{kind:?} must reject local length facets at {cardinality:?}"
+                    );
+                }
             }
         }
         for cardinality in [
@@ -1734,25 +1739,30 @@ mod tests {
                 max_occurs: None,
             },
         ] {
-            let mut member = field("Repeated", TypeRef::primitive(PrimitiveKind::String));
-            member.cardinality = cardinality;
-            let schema = record(OAM_NAMESPACE, vec![member]);
-            assert!(
-                ada_codec_support(
-                    &schema,
-                    &TypeEmission::Declaration(&schema.types[0]),
-                    GenerationWorld::ClosedSchemaSet
-                )
-                .is_err()
-            );
+            for kind in [
+                PrimitiveKind::String,
+                PrimitiveKind::DateTime,
+                PrimitiveKind::Duration,
+            ] {
+                let mut member = field("Repeated", TypeRef::primitive(kind));
+                member.cardinality = cardinality;
+                let schema = record(OAM_NAMESPACE, vec![member]);
+                assert!(
+                    ada_codec_support(
+                        &schema,
+                        &TypeEmission::Declaration(&schema.types[0]),
+                        GenerationWorld::ClosedSchemaSet
+                    )
+                    .is_err(),
+                    "{kind:?} must reject invalid cardinality {cardinality:?}"
+                );
+            }
         }
         for kind in [
             PrimitiveKind::Float32,
             PrimitiveKind::Float64,
             PrimitiveKind::Decimal,
-            PrimitiveKind::DateTime,
             PrimitiveKind::Time,
-            PrimitiveKind::Duration,
             PrimitiveKind::Binary,
             PrimitiveKind::UnsignedInteger,
         ] {
