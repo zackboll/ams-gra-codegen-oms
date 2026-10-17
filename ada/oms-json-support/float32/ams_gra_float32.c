@@ -16,7 +16,10 @@
 /* Intel 64 and IA-32 Architectures SDM, Vol. 1, MXCSR register:
    bit 6 = Denormals-Are-Zero; bit 15 = Flush-To-Zero. This profile was
    qualified only with gradual underflow. Inspect controls on every call;
-   never normalize caller controls, rounding, masks or status flags. */
+   never normalize caller controls, rounding, masks or status flags.
+   xmmintrin.h _MM_ROUND_MASK/_MM_ROUND_NEAREST describe MXCSR RC bits
+   13..14; FE_* values describe a different interface. Validate both MXCSR
+   and fegetround (x87 on this ABI), even when independently mismatched. */
 enum { AMS_GRA_MXCSR_DAZ = 1u << 6, AMS_GRA_MXCSR_FTZ = 1u << 15 };
 #endif
 
@@ -25,7 +28,9 @@ enum { AMS_GRA_MXCSR_DAZ = 1u << 6, AMS_GRA_MXCSR_FTZ = 1u << 15 };
 int ams_gra_float32_platform(void) {
 #if defined(__linux__) && defined(__x86_64__) && defined(__GLIBC__) && \
     !defined(__FAST_MATH__)
-    if ((_mm_getcsr() & (AMS_GRA_MXCSR_DAZ | AMS_GRA_MXCSR_FTZ)) != 0)
+    const unsigned mxcsr = _mm_getcsr();
+    if ((mxcsr & (AMS_GRA_MXCSR_DAZ | AMS_GRA_MXCSR_FTZ)) != 0 ||
+        (mxcsr & _MM_ROUND_MASK) != _MM_ROUND_NEAREST)
         return 1;
     if (strcmp(gnu_get_libc_version(), "2.41") != 0 || CHAR_BIT != 8 ||
         sizeof(float) != 4 || FLT_RADIX != 2 || FLT_MANT_DIG != 24 ||

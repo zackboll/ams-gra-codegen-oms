@@ -249,3 +249,91 @@ and atomic results are in `final-matrix-02`, `local-qualification.json` and
 the C2 final evidence manifest. The initial marker-variable runner failure and
 missing-HOME launcher failure are preserved as failed development attempts,
 not passing qualification. No production sources changed during final runs.
+
+## C3 independent rounding-control correction
+
+Reviewed head: `9c07eddc86658a84f3dce44645c5d447c4be6f9a`.
+Fresh evidence is `/home/zboll/task095-scratch/c3/`. The optional
+`pr96_c2_rounding_review.zip` was not locally available and was not consumed.
+Original stage-zero/R1/C1/C2 records remain immutable.
+
+The reviewed bridge accepted three independently mismatched environments:
+x87 nearest with MXCSR downward/upward/toward-zero. On the inspected local
+glibc `2.41-12+deb13u4` runtime, `fegetround()` reports x87 nearest while
+platform/ABI/parse/special return success. O0 and O2 observations preserve
+both raw controls and midpoint/signed-zero results. These sampled conversions
+did **not** demonstrate numerical corruption. The defect is acceptance outside
+the declared nearest-only contract, not a manufactured numerical expectation.
+The supplied review's -u3 runtime is not conflated with this -u4 binary.
+
+The minimal production change reads MXCSR once per platform invocation and
+checks `_MM_ROUND_MASK` against `_MM_ROUND_NEAREST`, in addition to DAZ/FTZ
+rejection and the existing `fegetround() == FE_TONEAREST` requirement. Intrinsic
+constants describe MXCSR bits and are not compared to FE_* encodings. Both
+**x87 and MXCSR must be nearest**, DAZ/FTZ must be disabled. Existing width,
+ABI, libc and compiler checks remain; production never changes controls or
+caches approval. Conversion and serialization algorithms are unchanged.
+
+Test-only helpers use full `fegetenv`/`fesetenv` save/restore plus explicit
+MXCSR restoration, verified even from an initially mismatched pair. x87 RC
+and MXCSR RC are selected independently through explicit encoding maps;
+unrelated precision, flushing and mask bits are preserved. Each pair runs in
+an isolated process. Controls are measured before logging; successful numeric
+operations may set normal sticky exception flags, which are not asserted to
+be preserved. Unsupported outputs use byte/integer sentinel checks and no
+typed or serialized value is published. The harness restores both environments
+on controlled failure/exception and proves subsequent supported calls succeed.
+
+The full pair policy is the same in C O0/O2 and generated Ada:
+
+| x87 / MXCSR | nearest | downward | upward | toward zero |
+| --- | --- | --- | --- | --- |
+| nearest | accept | reject | reject | reject |
+| downward | reject | reject | reject | reject |
+| upward | reject | reject | reject | reject |
+| toward zero | reject | reject | reject | reject |
+
+Separate C3 markers retain C2's existing 96/14, 27-occurrence, identifier and
+DAZ/FTZ assertions unchanged. The runner requires all 16 distinct pairs for
+each compiler/profile/policy cell, plus optimized OAM cells for both compilers.
+The C runner requires both optimization levels and all 32 pair executions,
+then reruns C2's bridge and independent flushing controls. Final counts,
+commands, source hashes and atomic results are recorded in C3 evidence and
+the existing PR after qualification; pending execution is not a pass.
+
+The renderer, occurrence ownership, shadow validation, model/APIs, numerical
+oracle, eligibility, schema/projection and UCI-selection sources are unchanged.
+Historical C1 UCI findings and C2 unrelated inherited campaigns remain reused
+historical results with that source-identity basis, not fresh C3 measurements.
+
+### C3 completed local qualification
+
+The frozen-source audit passed. C O0/O2 each execute all 16 pairs (32 isolated
+processes), with 57 counted checks per process. Generated Ada executes all 16
+pairs in 12 compiler/profile/policy cells plus 6 optimized OAM cells: 288
+isolated processes. Nearest/nearest has 218 assertions and no rejections;
+each other pair has 290 assertions and 45 expected unsupported-operation
+rejections. All cells match the table above and pass control/output atomicity
+and supported post-restoration execution. No numerical corruption is claimed
+for the original sampled red conversions.
+
+All existing 12 generated cells retain the exact 96/14 marker and pass all
+15,710 conversions, 5,552 encodings and 27 occurrence controls; C2 identifiers,
+DAZ/FTZ, locale, libc, ABI, buffer and allocation-failure controls pass unchanged.
+Rust 1.95 fmt/check/warnings-denied Clippy/workspace passes: 162 summaries,
+1,418 passed, 0 failed, 8 ignored (ignored is not executed qualification).
+Fresh generation preservation against C2 completes 150 comparisons with the
+same 139 byte-identical/11 atomic-rejection outcomes, and the original qualified
+Float32 output is unchanged. CI split/layout/mutation checks pass, including
+210 split controls. C2's 28 unrelated inherited synthetic campaigns, 18 real-UCI
+cells and C1 UCI inventory are explicitly reused historical evidence, not rerun
+or relabeled; their unchanged-input basis is recorded in reuse-accounting.json.
+
+Reviewed C bridge SHA-256:
+`12dab58c5914ebcd0a108b9ab10f35667ea70d5bef71140f3781089b01f14efe`.
+Corrected C bridge SHA-256:
+`ec7217befcf053dfd133d836c983c0153f82099caaa273fffd34553b4c8b5320`.
+Runtime remains actual glibc 2.41-12+deb13u4, libc binary
+`9792e3cbb541c8f44c7acf5f14f4022ea62998ecc787d326bed4d8b6547dfd92`.
+Exact command/source/compiler/lock/pair records, final source/evidence manifests
+and atomic local result reside under `/home/zboll/task095-scratch/c3/`.

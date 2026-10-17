@@ -76,13 +76,15 @@ jobs:
           set -euo pipefail
           for compiler in 14 16; do
             for profile in oam qualified; do
-              python3 scripts/check-task095.py --compiler "$compiler" --profile "$profile" --numeric-corpus --environment --scratch "/tmp/task095-evidence/$compiler-$profile" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
+              python3 scripts/check-task095.py --compiler "$compiler" --profile "$profile" --numeric-corpus --environment --rounding --scratch "/tmp/task095-evidence/$compiler-$profile" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
               sha256sum --check --quiet "/tmp/task095-evidence/$compiler-$profile/sources.sha256"
               test -s "/tmp/task095-evidence/$compiler-$profile/result.json"
               python3 scripts/check-task095.py --compiler "$compiler" --profile "$profile" --identifiers --scratch "/tmp/task095-evidence/identifiers-$compiler-$profile" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
             done
-            python3 scripts/check-task095.py --compiler "$compiler" --profile oam --environment --optimized --scratch "/tmp/task095-evidence/optimized-$compiler" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
+            python3 scripts/check-task095.py --compiler "$compiler" --profile oam --environment --rounding --optimized --scratch "/tmp/task095-evidence/optimized-$compiler" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
           done
+      - name: Independent x87 MXCSR C rounding matrix O0 and O2
+        run: python3 scripts/check-task095-rounding.py --scratch /tmp/task095-evidence/c-rounding
       - name: Preserve qualification evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -96,6 +98,8 @@ jobs:
             /tmp/task095-evidence/*/*.lock
             /tmp/task095-evidence/*/*.sha256
             /tmp/task095-evidence/*/result.json
+            /tmp/task095-evidence/*/*-rounding-pairs.json
+            /tmp/task095-evidence/*/*.command.json
             /tmp/task095-evidence/*/consumer/*.ads
             /tmp/task095-evidence/*/consumer/*.adb
             /tmp/task095-evidence/*/consumer/*.c

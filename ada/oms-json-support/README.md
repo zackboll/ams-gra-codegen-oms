@@ -26,8 +26,10 @@ Task 095's explicitly target-qualified Float32 codecs use the separate
 `ams_gra_oms_json_float32.gpr` project. The ordinary project and guard are
 unchanged. See `docs/task-095-ada-float32-codec.md` for the Linux/x86-64 glibc
 2.41 runtime opt-in, deployment checks and additional C/libc boundary.
-The supported floating environment requires nearest rounding with MXCSR DAZ
-and FTZ disabled. Unsupported controls raise `Unsupported_Platform`; production
+The supported floating environment requires **both x87 and MXCSR rounding
+controls to be nearest**, with MXCSR DAZ and FTZ disabled. Independently
+mismatched rounding controls are unsupported even if `fegetround()` reports
+nearest. Unsupported controls raise `Unsupported_Platform`; production
 code never changes the caller's rounding, MXCSR controls or exception masks.
 
 Add to an application's Alire manifest (adjust the local path):

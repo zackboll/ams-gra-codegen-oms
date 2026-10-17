@@ -32,6 +32,7 @@ def main():
     parser.add_argument("--profile", choices=["oam", "qualified"], required=True)
     parser.add_argument("--numeric-corpus", action="store_true")
     parser.add_argument("--environment", action="store_true", help="generated C2 floating-environment controls")
+    parser.add_argument("--rounding", action="store_true", help="generated C3 independent x87/MXCSR pairs")
     parser.add_argument("--identifiers", action="store_true", help="generated C2 adversarial type names")
     parser.add_argument("--optimized", action="store_true", help="additional -O2 environment execution")
     args = parser.parse_args()
@@ -127,6 +128,14 @@ def main():
         (consumer / "float32_environment.adb").write_text(environment)
         shutil.copy2(ROOT / "tests/ada-float32-probe/environment_harness.c", consumer)
         mains += ', "float32_environment.adb"'
+    if args.rounding:
+        rounding = (ROOT / "tests/ada-generated-codec/float32_rounding.adb").read_text()
+        if args.profile == "qualified":
+            rounding = rounding.replace("Programs.Oam", "Urn.Task095")
+        (consumer / "float32_rounding.adb").write_text(rounding)
+        shutil.copy2(ROOT / "tests/ada-float32-probe/rounding_harness.c", consumer)
+        shutil.copy2(ROOT / "tests/ada-float32-probe/environment_harness.c", consumer)
+        mains += ', "float32_rounding.adb"'
     if args.numeric_corpus:
         shutil.copy2(ROOT / "tests/ada-float32-probe/numeric_probe.adb", consumer)
         shutil.copy2(ROOT / "tests/ada-float32-probe/occurrence_controls.adb", consumer)
@@ -182,6 +191,17 @@ def main():
                 expected = f"TASK095_C2_ENVIRONMENT_COMPLETE mode= {mode} checks= {49 if mode == 0 else 43} rejections= {0 if mode == 0 else 16}\n".encode()
                 if environment_output != expected:
                     raise RuntimeError("incomplete generated environment controls")
+        if args.rounding:
+            pair_results = []
+            for x87 in range(4):
+                for mxcsr in range(4):
+                    rounding_output = checked([str(consumer / "bin/float32_rounding"), str(golden), str(x87), str(mxcsr)], consumer, scratch / f"{policy}-rounding-{x87}-{mxcsr}.log")
+                    supported = x87 == 0 and mxcsr == 0
+                    expected = f"TASK095_C3_ADA_ROUNDING_COMPLETE x87= {x87} mxcsr= {mxcsr} checks= {218 if supported else 290} rejections= {0 if supported else 45}\n".encode()
+                    if rounding_output != expected:
+                        raise RuntimeError(f"incomplete rounding pair {x87}/{mxcsr}: {rounding_output!r}")
+                    pair_results.append({"x87": x87, "mxcsr": mxcsr, "supported": supported})
+            (scratch / f"{policy}-rounding-pairs.json").write_text(json.dumps(pair_results, indent=2) + "\n")
         if args.numeric_corpus:
             controls = checked([str(consumer / "bin/occurrence_controls")], consumer, scratch / f"{policy}-occurrences.log")
             if controls != b"TASK095_OCCURRENCE_CONTROLS_COMPLETE checks= 27\n":
@@ -214,6 +234,8 @@ def main():
               ROOT / f"tests/ada-generated-codec/{main_name}.adb"]
     if args.environment:
         paths += [ROOT / "tests/ada-generated-codec/float32_environment.adb", ROOT / "tests/ada-float32-probe/environment_harness.c"]
+    if args.rounding:
+        paths += [ROOT / "tests/ada-generated-codec/float32_rounding.adb", ROOT / "tests/ada-float32-probe/rounding_harness.c"]
     (scratch / "sources.sha256").write_text("".join(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p}\n" for p in sorted(paths)))
     temporary = scratch / "result.json.tmp"
     temporary.write_text(json.dumps({"completed": True, "cells": cells}, indent=2) + "\n")
