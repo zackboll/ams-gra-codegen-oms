@@ -1,0 +1,6 @@
+{
+  "NamedDates": ["2024-02-29T12:34:56Z"],
+  "MoreNamedDates": ["2024-02-29T12:34:56Z", "2026-10-15T01:02:03Z"],
+  "DirectSpans": ["P1D"],
+  "MoreDirectSpans": ["P1D", "PT2S"]
+}

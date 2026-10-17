@@ -769,12 +769,20 @@ fn task087b_ada_codec_unsupported_and_collision_preflight_is_atomic() {
             "integer domain exceeds signed-64 JSON boundary",
         ),
         (
-            "repeated-temporal",
+            "repeated-time-model-preflight",
             source.replace(
                 "name=\"Note\" type=\"xs:string\" minOccurs=\"0\"",
-                "name=\"Note\" type=\"xs:dateTime\" minOccurs=\"0\" maxOccurs=\"3\"",
+                "name=\"Note\" type=\"xs:time\" minOccurs=\"0\" maxOccurs=\"3\"",
             ),
-            "direct DateTime repeated element is unsupported",
+            "codec: not measured (selected model is NOT READY)",
+        ),
+        (
+            "repeated-float64-codec-readiness",
+            source.replace(
+                "name=\"Note\" type=\"xs:string\" minOccurs=\"0\"",
+                "name=\"Note\" type=\"xs:double\" minOccurs=\"0\" maxOccurs=\"3\"",
+            ),
+            "AdaPayload.Note: unsupported Ada codec primitive or facets: Float64",
         ),
         (
             "unqualified",
@@ -802,6 +810,21 @@ fn task087b_ada_codec_unsupported_and_collision_preflight_is_atomic() {
         let schema_path = scratch.join("schema.xsd");
         std::fs::write(&schema_path, schema).unwrap();
         let output_path = scratch.join("output");
+        if label == "repeated-float64-codec-readiness" {
+            let model_path = scratch.join("model");
+            for action in ["service-check", "service-generate"] {
+                let mut command = Command::new(env!("CARGO_BIN_EXE_ams-gra-codegen-oms"));
+                command.arg(action).arg("--schema").arg(&schema_path)
+                    .arg("--contract").arg(fixture("codec-ada-minimal.yaml"))
+                    .args(["--language", "ada", "--world", "closed-schema"]);
+                if action == "service-generate" {
+                    command.arg("--output").arg(&model_path);
+                }
+                let output = command.output().unwrap();
+                assert!(output.status.success(), "model-ready Float64: {output:?}");
+            }
+            assert!(model_path.join("programs-oam.ads").is_file());
+        }
         for action in ["service-check", "service-generate"] {
             let mut command = Command::new(env!("CARGO_BIN_EXE_ams-gra-codegen-oms"));
             command
@@ -842,6 +865,15 @@ fn task087b_ada_codec_unsupported_and_collision_preflight_is_atomic() {
                 String::from_utf8_lossy(&output.stdout)
             );
             assert!(!output_path.exists());
+            if label == "repeated-time-model-preflight" {
+                assert!(combined.contains("status: NOT READY"));
+                assert!(combined.contains("unsupported selected types:"));
+                assert!(!combined.contains("codec status:"));
+            }
+            if label == "repeated-float64-codec-readiness" {
+                assert!(combined.contains("\nstatus: READY\n"));
+                assert!(combined.contains("codec status: NOT READY"));
+            }
         }
     }
 }
