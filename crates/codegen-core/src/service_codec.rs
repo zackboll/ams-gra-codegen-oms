@@ -51,6 +51,15 @@ const ADA_CODEC_FIXED_NAMES: &[&str] = &[
     "Scalar_Duration",
 ];
 
+/// Explicit deployment contract for Ada codecs. The default never admits
+/// Float32; the qualified profile must also be enforced by the target runtime.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum AdaCodecRuntime {
+    #[default]
+    Portable,
+    LinuxX86_64Glibc241,
+}
+
 /// The OAM namespace (OMSC-SPC-013 Rev B section 6.1): members of element
 /// declarations in this namespace are keyed by their bare local name.
 pub const OAM_NAMESPACE: &str = "https://www.vdl.afrl.af.mil/programs/oam";
@@ -213,6 +222,20 @@ pub fn analyze_service_codec(
     language: BackendLanguage,
     world: GenerationWorld,
 ) -> Result<ServiceCodecReadiness, ServiceCodecError> {
+    analyze_service_codec_with_runtime(model, schema, language, world, AdaCodecRuntime::Portable)
+}
+
+/// Analyze codecs against an explicitly selected deployment runtime.
+///
+/// # Errors
+/// Returns emission-plan errors exactly as the portable analyzer does.
+pub fn analyze_service_codec_with_runtime(
+    model: &ServiceApiModel,
+    schema: &SchemaIr,
+    language: BackendLanguage,
+    world: GenerationWorld,
+    runtime: AdaCodecRuntime,
+) -> Result<ServiceCodecReadiness, ServiceCodecError> {
     let emissions = if schema.types.is_empty() {
         Vec::new()
     } else {
@@ -237,6 +260,19 @@ pub fn analyze_service_codec(
     if language == BackendLanguage::Ada {
         let package = crate::ada_model_package(schema)
             .map_err(|error| ServiceCodecError::EmissionPlan(error.message))?;
+        if runtime != AdaCodecRuntime::Portable
+            && package.iter().any(|part| {
+                ["AMS_GRA_OMS_JSON_Float32", "AMS_GRA_OMS_JSON_Occurrences"]
+                    .iter()
+                    .any(|fixed| part.eq_ignore_ascii_case(fixed))
+            })
+        {
+            readiness.blocker = Some(unsupported(
+                "Service_Codec",
+                "model package collision".into(),
+            ));
+            return Ok(readiness);
+        }
         if package.iter().any(|part| {
             [
                 "Service_Codec",
@@ -274,6 +310,11 @@ pub fn analyze_service_codec(
         for fixed in ADA_CODEC_FIXED_NAMES {
             names.insert(fixed.to_ascii_lowercase());
         }
+        if runtime != AdaCodecRuntime::Portable {
+            for fixed in ["Scalar_Float32", "Ingress"] {
+                names.insert(fixed.to_ascii_lowercase());
+            }
+        }
         for emission in &emitted {
             if let TypeEmission::Declaration(declaration) = emission {
                 for prefix in ["To_JSON_", "From_JSON_", "Encode_", "Decode_"] {
@@ -287,6 +328,7 @@ pub fn analyze_service_codec(
             }
         }
         let mut analysis = AdaCodecAnalysis::new(&emissions);
+        analysis.runtime = runtime;
         for emission in emitted {
             match analysis.support(schema, emission, world) {
                 Ok(()) => readiness.renderable_emitted_declarations += 1,
@@ -573,6 +615,24 @@ fn ada_scalar_support(
     }
 }
 
+fn ada_runtime_scalar_support(
+    kind: PrimitiveKind,
+    constraints: &ams_gra_oms_ir::ConstraintSet,
+    named: bool,
+    location: &str,
+    runtime: AdaCodecRuntime,
+) -> Result<(), ServiceCodecError> {
+    if kind != PrimitiveKind::Float32 || runtime == AdaCodecRuntime::Portable {
+        return ada_scalar_support(kind, constraints, named, location);
+    }
+    if !named && *constraints != Default::default() {
+        return Err(unsupported(location, "field-local Float32 facets".into()));
+    }
+    crate::floating_domain(kind, constraints)
+        .map(|_| ())
+        .map_err(|reason| unsupported(location, reason.to_string()))
+}
+
 #[cfg(test)]
 fn ada_codec_support(
     schema: &SchemaIr,
@@ -585,6 +645,7 @@ fn ada_codec_support(
 }
 
 struct AdaCodecAnalysis<'a, 's> {
+    runtime: AdaCodecRuntime,
     emitted: std::collections::BTreeMap<ams_gra_oms_ir::QualifiedName, &'a TypeEmission<'s>>,
     capability:
         std::collections::BTreeMap<ams_gra_oms_ir::QualifiedName, Result<(), ServiceCodecError>>,
@@ -595,6 +656,7 @@ struct AdaCodecAnalysis<'a, 's> {
 impl<'a, 's> AdaCodecAnalysis<'a, 's> {
     fn new(emissions: &'a [TypeEmission<'s>]) -> Self {
         Self {
+            runtime: AdaCodecRuntime::Portable,
             emitted: emissions
                 .iter()
                 .filter(|item| item.emits_own_top_level_name())
@@ -656,9 +718,13 @@ impl<'a, 's> AdaCodecAnalysis<'a, 's> {
             ));
         }
         match &declaration.kind {
-            TypeKind::Primitive(kind) => {
-                ada_scalar_support(*kind, &declaration.constraints, true, owner)
-            }
+            TypeKind::Primitive(kind) => ada_runtime_scalar_support(
+                *kind,
+                &declaration.constraints,
+                true,
+                owner,
+                self.runtime,
+            ),
             TypeKind::Enumeration { .. } => Ok(()),
             TypeKind::Record { .. } => {
                 let fields = effective_record_fields(schema, &declaration.name)
@@ -703,7 +769,13 @@ impl<'a, 's> AdaCodecAnalysis<'a, 's> {
                         TypeRefTarget::Primitive(kind) => {
                             // Repeated temporal storage uses the same checked carrier as
                             // single values; retain the full direct-profile facet check.
-                            ada_scalar_support(kind, &field.constraints, false, &location)?
+                            ada_runtime_scalar_support(
+                                kind,
+                                &field.constraints,
+                                false,
+                                &location,
+                                self.runtime,
+                            )?
                         }
                         TypeRefTarget::Named(_) if field.constraints != Default::default() => {
                             return Err(unsupported(&location, "field-local named facets".into()));
@@ -762,6 +834,14 @@ impl<'a, 's> AdaCodecAnalysis<'a, 's> {
                         return Err(unsupported(&location, "abstract Choice alternative".into()));
                     }
                     match &field.type_ref.target {
+                        TypeRefTarget::Primitive(PrimitiveKind::Float32)
+                            if self.runtime != AdaCodecRuntime::Portable =>
+                        {
+                            return Err(unsupported(
+                                &location,
+                                "direct Float32 Choice alternative is not qualified".into(),
+                            ));
+                        }
                         TypeRefTarget::Primitive(PrimitiveKind::DateTime) => {
                             return Err(unsupported(
                                 &location,
@@ -784,6 +864,14 @@ impl<'a, 's> AdaCodecAnalysis<'a, 's> {
                             let referenced = self.emitted.get(name).copied().ok_or_else(|| {
                                 unsupported(&location, "named Choice value is not emitted".into())
                             })?;
+                            if self.runtime != AdaCodecRuntime::Portable
+                                && matches!(referenced, TypeEmission::Declaration(d) if matches!(d.kind, TypeKind::Primitive(PrimitiveKind::Float32)))
+                            {
+                                return Err(unsupported(
+                                    &location,
+                                    "named Float32 Choice alternative is not qualified".into(),
+                                ));
+                            }
                             if matches!(referenced, TypeEmission::Declaration(d) if matches!(d.kind, TypeKind::Primitive(PrimitiveKind::DateTime)))
                             {
                                 return Err(unsupported(
@@ -971,6 +1059,97 @@ mod tests {
                 "{kind:?}"
             );
         }
+    }
+
+    #[test]
+    fn task095_float32_requires_explicit_runtime_and_rejects_facets() {
+        let empty = ConstraintSet::default();
+        assert!(
+            ada_runtime_scalar_support(
+                PrimitiveKind::Float32,
+                &empty,
+                false,
+                "P.F",
+                AdaCodecRuntime::Portable
+            )
+            .is_err()
+        );
+        for named in [false, true] {
+            assert!(
+                ada_runtime_scalar_support(
+                    PrimitiveKind::Float32,
+                    &empty,
+                    named,
+                    "P.F",
+                    AdaCodecRuntime::LinuxX86_64Glibc241
+                )
+                .is_ok()
+            );
+            for kind in [PrimitiveKind::Float64, PrimitiveKind::Decimal] {
+                assert!(
+                    ada_runtime_scalar_support(
+                        kind,
+                        &empty,
+                        named,
+                        "P.F",
+                        AdaCodecRuntime::LinuxX86_64Glibc241
+                    )
+                    .is_err()
+                );
+            }
+        }
+        let mut restricted = empty;
+        restricted.length = Some(1);
+        for named in [false, true] {
+            assert!(
+                ada_runtime_scalar_support(
+                    PrimitiveKind::Float32,
+                    &restricted,
+                    named,
+                    "P.F",
+                    AdaCodecRuntime::LinuxX86_64Glibc241
+                )
+                .is_err()
+            );
+        }
+    }
+
+    #[test]
+    fn task095_qualified_record_admits_float32_but_direct_choice_does_not() {
+        let mut f = field("F", TypeRef::primitive(PrimitiveKind::Float32));
+        f.cardinality = Cardinality {
+            min_occurs: 0,
+            max_occurs: None,
+        };
+        let schema = record(OAM_NAMESPACE, vec![f]);
+        let emissions = plan_type_emissions(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
+        let mut analysis = AdaCodecAnalysis::new(&emissions);
+        analysis.runtime = AdaCodecRuntime::LinuxX86_64Glibc241;
+        assert!(
+            analysis
+                .support(&schema, &emissions[0], GenerationWorld::ClosedSchemaSet)
+                .is_ok()
+        );
+        assert!(
+            ada_codec_support(&schema, &emissions[0], GenerationWorld::ClosedSchemaSet).is_err()
+        );
+        let mut choice = record(OAM_NAMESPACE, vec![]);
+        choice.types[0].kind = TypeKind::Choice {
+            alternatives: vec![field("F", TypeRef::primitive(PrimitiveKind::Float32))],
+        };
+        let emissions = plan_type_emissions(&choice, GenerationWorld::ClosedSchemaSet).unwrap();
+        let mut analysis = AdaCodecAnalysis::new(&emissions);
+        analysis.runtime = AdaCodecRuntime::LinuxX86_64Glibc241;
+        let error = analysis
+            .support(&choice, &emissions[0], GenerationWorld::ClosedSchemaSet)
+            .unwrap_err();
+        assert_eq!(
+            error,
+            unsupported(
+                "P.F",
+                "direct Float32 Choice alternative is not qualified".into()
+            )
+        );
     }
 
     /// Task 051: one semantic formatter for member keys, one for `$type`;
