@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+ xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+ targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified">
+ <xs:simpleType name="UnselectedBinary"><xs:restriction base="xs:hexBinary"/></xs:simpleType>
+ <xs:complexType name="ArraySample"><xs:sequence>
+  <xs:element name="Number" type="xs:float"/>
+  <xs:element name="Text" type="xs:string"/>
+ </xs:sequence></xs:complexType>
+ <xs:element name="HelperNotice" type="uci:ArraySample" uci:version="001.000.000.000"/>
+</xs:schema>

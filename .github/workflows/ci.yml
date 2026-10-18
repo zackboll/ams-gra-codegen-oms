@@ -94,6 +94,14 @@ jobs:
             sha256sum --check --quiet "/tmp/task095-evidence/task093-mixed-$compiler/sources.sha256"
             test -s "/tmp/task095-evidence/task093-mixed-$compiler/result.json"
           done
+      - name: Float32-only helper-demand naming regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          for compiler in 14 16; do
+            python3 scripts/check-task093-helper-demand.py --family float32 --compiler "$compiler" --scratch "/tmp/task095-evidence/task093-c4-$compiler" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
+            sha256sum --check --quiet "/tmp/task095-evidence/task093-c4-$compiler/sources.sha256"
+          done
       - name: Preserve qualification evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -113,6 +121,7 @@ jobs:
             /tmp/task095-evidence/*/consumer/*.adb
             /tmp/task095-evidence/*/consumer/*.c
             /tmp/task095-evidence/task093-mixed-*/**
+            /tmp/task095-evidence/task093-c4-*/**
           if-no-files-found: error
   ada-repeated-temporal-codec:
     needs: ada-json-guard
@@ -393,6 +402,14 @@ jobs:
         run: python3 scripts/check-task093.py --compiler 16 --qualified --scratch "$RUNNER_TEMP/task093-qualified" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
       - name: Execute combined Binary Choice temporal consumers, both namespaces and all policies
         run: python3 scripts/check-task093-combined.py --compiler 16 --scratch "$RUNNER_TEMP/task093-combined" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
+      - name: Portable helper-demand naming regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          for compiler in 14 16; do
+            python3 scripts/check-task093-helper-demand.py --family portable --compiler "$compiler" --scratch "$RUNNER_TEMP/task093-c4-$compiler" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
+            sha256sum --check --quiet "$RUNNER_TEMP/task093-c4-$compiler/sources.sha256"
+          done
       - name: Validate mandatory evidence
         shell: bash
         run: |
@@ -422,6 +439,7 @@ jobs:
         with:
           name: task093-ada-hexbinary-codec
           path: |
+            ${{ runner.temp }}/task093-c4-*/**
             ${{ runner.temp }}/task093-hexbinary/**
             ${{ runner.temp }}/task093-qualified/**
             ${{ runner.temp }}/task093-combined/**

@@ -273,6 +273,10 @@ pub fn generate_service_codec_with_runtime(
     if ams_gra_oms_codegen_core::emissions_emit_direct_date_time(schema, &emissions, world) {
         body.push_str(&format!("   function Scalar_Date_Time (Value : {value}) return Model.XML_Schema_Date_Time is\n      Text : constant String := Scalar_String (Value);\n   begin\n      return Model.Create (Text);\n   exception\n      when Constraint_Error => raise Codec_Error with \"invalid direct DateTime\";\n   end Scalar_Date_Time;\n"));
     }
+    // Helpers depend on scalar readers above and precede every model operation.
+    // Record this assembly boundary before schema-derived names are rendered.
+    let binary_helpers_at = body.len();
+    let mut needs_binary_helpers = false;
     for emission in &emissions {
         if let TypeEmission::Declaration(d) = emission {
             if !emission.emits_own_top_level_name() {
@@ -298,6 +302,7 @@ pub fn generate_service_codec_with_runtime(
                         .is_some();
                 let enc: String = match k {
                     PrimitiveKind::Binary => {
+                        needs_binary_helpers = true;
                         if ams_gra_oms_codegen_core::binary_length_domain(*k, &d.constraints)
                             .map_err(|e| error(e.to_string()))?
                             .is_some()
@@ -456,10 +461,13 @@ pub fn generate_service_codec_with_runtime(
                             format!("Create (Model.Value ({item}))"),
                             format!("Scalar_Duration ({input})"),
                         ),
-                        TypeRefTarget::Primitive(PrimitiveKind::Binary) => (
-                            format!("Encode_Hex_Binary ({item})"),
-                            format!("Decode_Hex_Binary ({input})"),
-                        ),
+                        TypeRefTarget::Primitive(PrimitiveKind::Binary) => {
+                            needs_binary_helpers = true;
+                            (
+                                format!("Encode_Hex_Binary ({item})"),
+                                format!("Decode_Hex_Binary ({input})"),
+                            )
+                        }
                         TypeRefTarget::Primitive(PrimitiveKind::DateTime) => (
                             format!("Create (Model.Value ({item}))"),
                             format!("Scalar_Date_Time ({input})"),
@@ -586,10 +594,9 @@ pub fn generate_service_codec_with_runtime(
         writeln!(spec, "   function Encode_{n} (Item : {package}.{n}) return String;\n   function Decode_{n} (Text : String) return {package}.{n};").unwrap();
         writeln!(body, "   function Encode_{n} (Item : {package}.{n}) return String is\n   begin\n{runtime_check}      return AMS_GRA_OMS_JSON_Guard.Write (To_JSON_{n} (Item));\n   exception\n      when AMS_GRA_OMS_JSON_Guard.Validation_Error => raise Codec_Error with \"invalid JSON output\";\n   end Encode_{n};\n   function Decode_{n} (Text : String) return {package}.{n} is\n   begin\n{runtime_check}      return From_JSON_{n} ({reader} (Text));\n   exception\n      when {errors} => raise Codec_Error with \"invalid JSON document\";\n   end Decode_{n};").unwrap();
     }
-    if body.contains("Encode_Hex_Binary (") {
+    if needs_binary_helpers {
+        body.insert_str(binary_helpers_at, &hex_binary_helpers(decoder));
         body.insert_str(0, "with Ada.Containers;\n");
-        let at = body.find("   function To_JSON_").unwrap();
-        body.insert_str(at, &hex_binary_helpers(decoder));
     }
     spec.push_str("end Service_Codec;\n");
     body.push_str("end Service_Codec;\n");
