@@ -1,5 +1,185 @@
 # Task 097 — production-generated lossless Ada Float64 codecs
 
+## C1 investigation — resource boundary remains blocked
+
+The Task 097-C1 continuation verifies checkpoint
+`b1e5d2d4545c2ce809456316f54ca0b04ef50dc6`, tree
+`68eb935fee07a00ab0a428e073b34b9ba2df3464`, on the existing branch/worktree.
+Main remains `5f6800d505c6501638c322d20b23cfc36b09d7d6` after fetch.
+New evidence is isolated under `/home/zboll/task097-scratch/c1/`.
+The earlier section is historical; its inference that the unescape problem was
+an allocating controlled copy is superseded by the first-failure trace below.
+
+**C1 disposition: RESOURCE_BOUNDARY_BLOCKED. No production dependency patch,
+exception translation, final qualification, push, or PR is authorized by these
+diagnostic results.** The narrow provider candidate repairs the localized
+unescape transition, but does not establish the complete recoverable resource
+contract. The model's allocating value-return copies remain a separate issue.
+
+### Checkpoint/evidence ledger
+
+Both supplied manifest SHA-256 values match; every one of the 14,666 entries
+of the historical evidence manifest verifies. All checkpoint source-manifest
+entries match. `c1/ledger.json` and `ledger-02.json` preserve actual per-campaign
+`sources.json` records and completion states, separately from checkpoint hashes.
+The preceding numerical matrices consumed pre-semantic-refactor generated
+sources. They are historical successes, not qualification of the checkpoint
+or a repaired dependency. Failed allocation attempts, interrupted inherited and
+real-service campaigns, and unexecuted final-source gates remain distinct.
+
+`c1/real-service-ledger.json` enumerates selections from actual preserved
+analysis records, not guessed names. Both compilers finished historical 2.5
+EntityLost and EntityConfirmation cells in all policies; 2.5
+EarthOrientationParameters finished all policies on 14, Normal only on 16.
+The other selected cells and all selected 2.6 real executions remain incomplete.
+None is relabeled C1-qualified.
+
+### First failure, not the final exception location
+
+Fresh isolated `pristine{14,16}-01` builds use the unchanged generated model,
+codec, input and original allocator wrapper. Compiler/provider source identities
+are recorded, and C1 links no research boundary. Exact provider hashes:
+
+| Pristine GNATCOLL 26.0.0 file | SHA-256 |
+|---|---|
+| `gnatcoll-strings_impl.adb` | `e9c95ad6b0899821852a787c586bb772017fabee1a2a852d5edf21f026687e3b` |
+| `gnatcoll-strings_impl.ads` | `b1c3f51b54c10c154b80c75d9d258fce1629ffaa5a4da154f8e82a5409b8463d` |
+| `gnatcoll-json.adb` | `7e07277731a44ea08716fd61a6462ebe7a7ce0722adc6dc787cbbaafd3099063` |
+| `gnatcoll-json.ads` | `811dec0c8a9a4da7b32ca92d0b066c3fbbac1cd2794374a2eb294952bb369339` |
+| `gnatcoll-json-utility.adb` | `6217658e47a8a2a0bb6e32eaa24928852d311b8aa129b437db5336b7491ac6ae` |
+
+GNAT 16's original generated decode budget 33 first requests **28 bytes** in
+`Convert_To_Big_String`, called by `Reserve`/`Append` while unescaping the BMP /
+non-BMP string in guard validation of the occurrence shadow. This is ordinary
+construction, **not `Clone` or `Adjust`**. The `UTF8_XString` is a local owned
+by `Un_Escape_String`; it still contains inline bytes when conversion starts.
+The original code changes its tag/capacity to the big representation **before**
+`System.Memory.Alloc` succeeds. At the failed call the apparent pointer is
+`0x8fb8efb09b9ff020`, inline Unicode bytes, not aliased allocated storage.
+
+The injector disarms and raises `Storage_Error`. Unwinding then finalizes the
+inconsistent string. `Finalize` dereferences that bogus refcount pointer and
+SIGSEGV occurs. Passing that signal in GDB yields the runtime's
+`__gnat_rcheck_PE_Finalize_Raised_Exception`, with utility line 152 as its
+location. Thus a **second cleanup exception replaces the original resource
+exception**. The complete first failure, signal, finalizer stack and runtime
+transformation are recorded in `trace-*` and `complete-chain-*-provider-01-job`.
+No successful allocation or source/result pointer sharing preceded this failed
+small-to-big transition.
+
+The provider-only `C1_Provider_Probe` reproduces the same 28-byte path under
+both compilers, independent of generated codecs. GNAT 14's original generated
+campaign stops earlier at **encode budget 4**: `Binary_Vectors.Adjust` allocates
+8 bytes while the model's bounded-sequence `Element` returns a Choice/Record.
+That failure is discussed separately below, not substituted for budget 33.
+
+### Injector validation and causal candidate
+
+The old wrapper exports `__wrap___gnat_malloc` and calls the original Ada
+`System.Memory.Alloc` entrypoint when not injecting. Its intentional raise is
+at an Ada runtime allocation interface called directly from Ada; no intervening
+C allocation frame must unwind. Input/logging/expected-value construction are
+outside the armed region. C1 also tests the stronger real allocation path:
+the wrapper arms a thread-local C interposer, which **returns NULL**, sets
+ENOMEM and disarms first; the pristine runtime itself raises heap exhaustion.
+No Ada exception is raised inside the C interposer. Its `__libc_malloc` /
+`__libc_realloc` forwarding is explicitly test-only glibc instrumentation,
+without allocating `dlsym`, diagnostics, or process-shared failure state.
+Counters are read after disarming. Every targeted observed attempt fails one
+allocation; no other thread/process consumes the budget.
+
+Candidate `tests/ada-float64-codec/c1_provider-transition.patch` moves allocation
+before changing `Self`'s tag/capacity/pointer. Fallible ordinary construction
+leaves the old inline state intact; cleanup neither allocates nor throws on
+this path. The new pointer is published only after allocation succeeds. Original
+provider notices remain. Both copied source archives are pristine-hash checked,
+patched with zero fuzz and clean-rebuilt in independent C1 directories; caches
+and production GPR/Alire resolution are **not** modified. Only one resolved
+provider is linked in each consumer. Patched source SHA-256:
+`16c41f5872c280723425f1d1236b0dafced227f4a526285cdbbea35db09cb99d`.
+Patch SHA-256:
+`98b525b6b49d85545bbacf1ecff73a288794d69a32b62c627127fda500ce83fe`.
+That is the patch consumed by candidate campaigns. The final committed patch
+uses reduced context to avoid a whitespace-only final context line:
+`b689134b5a67b62054a54dbf49b51fa0f1f5430502eedeac797d71e0c72a6c70`.
+`c1/patch-context-verification-02/result.json` proves zero-fuzz application to
+the pristine source produces exactly the same patched source bytes/hash.
+The original consumed patch is preserved as `c1/provider-candidate-tested.patch`.
+
+`candidate{14,16}-02` shows the localized provider case and generated decode
+budget 33 propagating `Storage_Error`, preserving published state and succeeding
+after recovery, both with the old wrapper and with real NULL returns. These are
+**diagnostic candidate successes**, not a complete allocation sweep or pristine
+provider certification. Later counter-enabled rebuilds show that ordinal 33
+can move (GNAT 14 reaches a 16-byte site); size/call-stack attribution is retained
+instead of assuming a repeated ordinal identifies the same allocation.
+
+### Remaining boundary: model controlled copies
+
+`C1_Model_Probe` invokes no JSON/parser/emitter operation. It constructs a
+bounded repeated Choice of Record containing two Binary octets, then calls
+the existing public `Model.Element`. A failed real 8-byte allocation in
+`Binary_Vectors.Adjust` reaches a compiler-generated Record/Choice adjustment
+and becomes `Program_Error`. Unlike the unescape bug, the runtime vector Adjust
+has already detached its result pointer and reset its length, so this case is
+not the same invalid-pointer cleanup defect. Original retained storage remains
+usable and post-failure model execution succeeds in observed diagnostic cases.
+The failure is **inside a value-returning model function used by Encode**; it
+is not excluded as an unrelated caller copy.
+
+The published bounded sequence is private and provides `Element` by value,
+`Length`, `Append` and `To_Sequence`; it has no borrowing/query procedure.
+The existing `Decode_As_String` API similarly has no caller-owned output form.
+No public API avoids the original unescape state transition, and its narrow
+candidate repair does not solve the model copy boundary. Eliminating fallible
+controlled copies would require a separately designed model/runtime ownership
+or traversal change, with model/API byte-preservation implications. An extended
+return or optimizer-dependent copy removal is not a demonstrated fix.
+No typed provider resource-origin mechanism exists for the model's converted
+exception. Message matching or a test latch would be unsound. These remaining
+design requirements are unresolved; C1 does not publish nominal support.
+
+The required exception/resource contract is recorded before production changes
+in `docs/task-097-c1-resource-contract.md`. Explicit negative controls keep
+ordinary and lookalike `Program_Error`, unrelated controlled exceptions,
+validation `Constraint_Error` and unrelated `Storage_Error` distinct. They are
+test observations, not production exception-translation code. No classification
+is driven by their diagnostic text.
+
+`pristine-null{14,16}-01` independently confirms the unpatched failure with real
+NULL returns: one reached 28-byte failure, `Program_Error`, and preserved output.
+`scope16-03` and `scope14-04` test the candidate with counters, no-fault allocation
+traces, post-failure recovery, model-only copies and negative controls across
+Normal/Check/Ignore. The model-only failed copy remains `Program_Error` in all
+observed policy cells, so the diagnostic runner's completion is explicitly not
+a corrected resource pass. These are focused traces, **not exhaustive ordinal
+sweeps**. `allocator-controls-01` separately verifies one-shot behavior and
+cross-thread isolation (other-thread allocation cannot consume the armed
+thread's failure) plus failed-realloc ownership preservation under GCC 14/16,
+O0/O2. Its four cells pass.
+
+One evidence-lifetime defect is explicit: `c1_scope.py` was extended for a
+separate pristine-NULL diagnostic while `scope16-03` had already loaded its
+runner code. No runtime/provider/consumer source was changed. The exact original
+loaded runner is reconstructed in `c1/scope03-loaded-runner.py` and its hash
+matches **both** scope03 launch `inputs.json` records. The later manifest's hash
+of the on-disk runner is not the consumed-runner identity. This exception is
+documented in `c1/runner-lifetime-note.json`, not silently treated as a frozen
+final campaign. `scope14-04` uses the later runner without live edits.
+
+### Qualification limits
+
+The comprehensive allocation sweep, leak/invalid-access campaign, corrected
+small generated gate, final-source numerical matrices, real-service completion,
+full final workspace campaign and hosted execution have **not** been certified.
+No final-source freeze for production qualification is claimed. Earlier Task 097
+output preservation and numerical passes remain their actual historical results.
+No expensive final campaigns were relaunched after identifying the unresolved
+model boundary. Setup failures (patch hunk generation and Ada diagnostic fixture
+declarations) have separate failed attempts and were corrected without deleting
+evidence or changing original fixtures. C1's experiment completion records mark
+diagnostic completion, never `production_qualified: true`.
+
 ## Status and ownership
 
 **Disposition: QUALIFICATION_FAILED — local checkpoint only, no PR.** Passing numerical sampling
