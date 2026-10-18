@@ -1,0 +1,12 @@
+{
+  "Inherited": "",
+  "Direct": "00A1FF",
+  "OptionalDirect": "80",
+  "Named": "DEADBEEF",
+  "OptionalNamed": "00A1FF",
+  "ExactValue": "0080FF",
+  "BoundedValue": "00",
+  "Empty": "",
+  "Details": {"Nested": "A1"},
+  "LaterDetails": {"Nested": "FF"}
+}

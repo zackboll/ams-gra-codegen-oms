@@ -1,0 +1,22 @@
+contract_version: "0.1"
+service:
+  name: task093-hexbinary
+  version: "0.1.0"
+  kind: service
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+functions:
+  - id: binary
+    name: Binary
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: notice
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: BinaryNotice
+        topic: task093.notice
+        timing:
+          kind: asynchronous

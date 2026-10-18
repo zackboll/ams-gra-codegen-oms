@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+ xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+ targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified">
+ <xs:simpleType name="Bytes"><xs:restriction base="xs:hexBinary"/></xs:simpleType>
+ <xs:simpleType name="Exact"><xs:restriction base="uci:Bytes"><xs:length value="3"/></xs:restriction></xs:simpleType>
+ <xs:simpleType name="Bounded"><xs:restriction base="uci:Bytes"><xs:minLength value="1"/><xs:maxLength value="4"/></xs:restriction></xs:simpleType>
+ <xs:simpleType name="Leaf"><xs:restriction base="uci:Bounded"><xs:maxLength value="3"/></xs:restriction></xs:simpleType>
+ <xs:simpleType name="Zero"><xs:restriction base="uci:Bytes"><xs:length value="0"/></xs:restriction></xs:simpleType>
+ <xs:complexType name="BinaryBase"><xs:sequence>
+  <xs:element name="Inherited" type="xs:hexBinary"/>
+ </xs:sequence></xs:complexType>
+ <xs:complexType name="BinaryDetails"><xs:sequence>
+  <xs:element name="Nested" type="uci:Leaf"/>
+ </xs:sequence></xs:complexType>
+ <xs:complexType name="BinaryPayload"><xs:complexContent><xs:extension base="uci:BinaryBase"><xs:sequence>
+  <xs:element name="Direct" type="xs:hexBinary"/>
+  <xs:element name="OptionalDirect" type="xs:hexBinary" minOccurs="0"/>
+  <xs:element name="Named" type="uci:Bytes"/>
+  <xs:element name="OptionalNamed" type="uci:Exact" minOccurs="0"/>
+  <xs:element name="ExactValue" type="uci:Exact"/>
+  <xs:element name="BoundedValue" type="uci:Bounded"/>
+  <xs:element name="Empty" type="uci:Zero"/>
+  <xs:element name="Details" type="uci:BinaryDetails"/>
+  <xs:element name="LaterDetails" type="uci:BinaryDetails"/>
+ </xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+ <xs:element name="BinaryNotice" type="uci:BinaryPayload" uci:version="001.000.000.000"/>
+</xs:schema>

@@ -73,6 +73,87 @@ fn literal(text: &str) -> String {
     }
 }
 
+// Emitted only when an operation in the projected output uses Binary.
+fn hex_binary_helpers(decoder: Decoder) -> String {
+    let mut helpers = String::from(
+        r#"
+   function Encode_Hex_Binary (Item : Model.Binary_Vectors.Vector) return JSON_Value is
+      use type Ada.Containers.Count_Type;
+      Hex_Digits : constant String := "0123456789ABCDEF";
+   begin
+      if Item.Length > Ada.Containers.Count_Type (Natural'Last / 2) then
+         raise Codec_Error with "hexBinary too large";
+      end if;
+      declare
+         Text : String (1 .. Natural (Item.Length) * 2);
+         Offset : Natural := 0;
+      begin
+         for Octet of Item loop
+            Text (Offset + 1) := Hex_Digits (Natural (Octet) / 16 + 1);
+            Text (Offset + 2) := Hex_Digits (Natural (Octet) mod 16 + 1);
+            Offset := Offset + 2;
+         end loop;
+         return Create (Text);
+      end;
+   end Encode_Hex_Binary;
+
+"#,
+    );
+    writeln!(
+        helpers,
+        "   function Decode_Hex_Binary (Value : {}) return Model.Binary_Vectors.Vector is",
+        decoder.value
+    )
+    .unwrap();
+    helpers.push_str(
+        r#"      Text : constant String := Scalar_String (Value);
+      First : Natural := Text'First;
+      Last : Natural := Text'Last;
+      Result : Model.Binary_Vectors.Vector;
+      function XML_Space (C : Character) return Boolean is
+        (C = ' ' or else C = Character'Val (9) or else
+         C = Character'Val (10) or else C = Character'Val (13));
+      function Nibble (C : Character) return Natural is
+      begin
+         case C is
+            when '0' .. '9' => return Character'Pos (C) - Character'Pos ('0');
+            when 'A' .. 'F' => return Character'Pos (C) - Character'Pos ('A') + 10;
+            when 'a' .. 'f' => return Character'Pos (C) - Character'Pos ('a') + 10;
+            when others => raise Codec_Error with "invalid hexBinary digit";
+         end case;
+      end Nibble;
+   begin
+      -- Trim XML whitespace. Any internal whitespace survives collapse and
+      -- is rejected by Nibble, without an intermediate lexical allocation.
+      while First <= Last and then XML_Space (Text (Last)) loop
+         Last := Last - 1;
+      end loop;
+      while First <= Last and then XML_Space (Text (First)) loop
+         First := First + 1;
+      end loop;
+      declare
+         Count : constant Natural := (if First > Last then 0 else Last - First + 1);
+      begin
+         if Count mod 2 /= 0 then
+            raise Codec_Error with "odd hexBinary digit count";
+         end if;
+         Result.Reserve_Capacity (Ada.Containers.Count_Type (Count / 2));
+         for Pair in 1 .. Count / 2 loop
+            declare
+               Offset : constant Natural := First + (Pair - 1) * 2;
+            begin
+               Result.Append (Interfaces.Unsigned_8
+                 (Nibble (Text (Offset)) * 16 + Nibble (Text (Offset + 1))));
+            end;
+         end loop;
+      end;
+      return Result;
+   end Decode_Hex_Binary;
+"#,
+    );
+    helpers
+}
+
 /// Render both artifacts in memory after the shared capability preflight.
 ///
 /// # Errors
@@ -192,6 +273,10 @@ pub fn generate_service_codec_with_runtime(
     if ams_gra_oms_codegen_core::emissions_emit_direct_date_time(schema, &emissions, world) {
         body.push_str(&format!("   function Scalar_Date_Time (Value : {value}) return Model.XML_Schema_Date_Time is\n      Text : constant String := Scalar_String (Value);\n   begin\n      return Model.Create (Text);\n   exception\n      when Constraint_Error => raise Codec_Error with \"invalid direct DateTime\";\n   end Scalar_Date_Time;\n"));
     }
+    // Helpers depend on scalar readers above and precede every model operation.
+    // Record this assembly boundary before schema-derived names are rendered.
+    let binary_helpers_at = body.len();
+    let mut needs_binary_helpers = false;
     for emission in &emissions {
         if let TypeEmission::Declaration(d) = emission {
             if !emission.emits_own_top_level_name() {
@@ -216,6 +301,17 @@ pub fn generate_service_codec_with_runtime(
                         .map_err(|e| error(e.to_string()))?
                         .is_some();
                 let enc: String = match k {
+                    PrimitiveKind::Binary => {
+                        needs_binary_helpers = true;
+                        if ams_gra_oms_codegen_core::binary_length_domain(*k, &d.constraints)
+                            .map_err(|e| error(e.to_string()))?
+                            .is_some()
+                        {
+                            "Encode_Hex_Binary (Model.Value (Item))".into()
+                        } else {
+                            "Encode_Hex_Binary (Item.Value)".into()
+                        }
+                    }
                     PrimitiveKind::Float32 => {
                         let value = if ams_gra_oms_codegen_core::floating_domain(*k, &d.constraints)
                             .map_err(|e| error(e.to_string()))?
@@ -235,6 +331,18 @@ pub fn generate_service_codec_with_runtime(
                     _ => "Create (Long_Long_Integer (Item))".into(),
                 };
                 let dec = match k {
+                    PrimitiveKind::Binary => {
+                        if ams_gra_oms_codegen_core::binary_length_domain(*k, &d.constraints)
+                            .map_err(|e| error(e.to_string()))?
+                            .is_some()
+                        {
+                            String::from(
+                                "      declare\n         Octets : constant Model.Binary_Vectors.Vector := Decode_Hex_Binary (Value);\n      begin\n         begin\n            return Model.Create (Octets);\n         exception\n            when Constraint_Error => raise Codec_Error with \"invalid Binary length\";\n         end;\n      end;",
+                            )
+                        } else {
+                            format!("      return Model.{n}'(Value => Decode_Hex_Binary (Value));")
+                        }
+                    }
                     PrimitiveKind::Float32 => {
                         if ams_gra_oms_codegen_core::floating_domain(*k, &d.constraints)
                             .map_err(|e| error(e.to_string()))?
@@ -353,6 +461,13 @@ pub fn generate_service_codec_with_runtime(
                             format!("Create (Model.Value ({item}))"),
                             format!("Scalar_Duration ({input})"),
                         ),
+                        TypeRefTarget::Primitive(PrimitiveKind::Binary) => {
+                            needs_binary_helpers = true;
+                            (
+                                format!("Encode_Hex_Binary ({item})"),
+                                format!("Decode_Hex_Binary ({input})"),
+                            )
+                        }
                         TypeRefTarget::Primitive(PrimitiveKind::DateTime) => (
                             format!("Create (Model.Value ({item}))"),
                             format!("Scalar_Date_Time ({input})"),
@@ -478,6 +593,10 @@ pub fn generate_service_codec_with_runtime(
         let n = ada_identifier(&q.local_name)?;
         writeln!(spec, "   function Encode_{n} (Item : {package}.{n}) return String;\n   function Decode_{n} (Text : String) return {package}.{n};").unwrap();
         writeln!(body, "   function Encode_{n} (Item : {package}.{n}) return String is\n   begin\n{runtime_check}      return AMS_GRA_OMS_JSON_Guard.Write (To_JSON_{n} (Item));\n   exception\n      when AMS_GRA_OMS_JSON_Guard.Validation_Error => raise Codec_Error with \"invalid JSON output\";\n   end Encode_{n};\n   function Decode_{n} (Text : String) return {package}.{n} is\n   begin\n{runtime_check}      return From_JSON_{n} ({reader} (Text));\n   exception\n      when {errors} => raise Codec_Error with \"invalid JSON document\";\n   end Decode_{n};").unwrap();
+    }
+    if needs_binary_helpers {
+        body.insert_str(binary_helpers_at, &hex_binary_helpers(decoder));
+        body.insert_str(0, "with Ada.Containers;\n");
     }
     spec.push_str("end Service_Codec;\n");
     body.push_str("end Service_Codec;\n");

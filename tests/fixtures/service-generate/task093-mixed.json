@@ -1,0 +1,1 @@
+{"Picks":[{"Nested":{"Dates":["2024-02-29T12:34:56Z","2026-10-15T01:02:03+05:30"],"Spans":["P1D","-PT0.5S"],"Data":"0080ff","Optional":"","Hash":"a1fe","Blob":"","Required":1.000000059604644775390626,"Checked":1,"Samples":[-0,1e-45,1.000000059604644775390624]}},{"Enabled":false},{"Nested":{"Data":"","Blob":"ff00","Required":-0,"Checked":-1}}]}

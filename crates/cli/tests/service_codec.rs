@@ -94,6 +94,234 @@ fn listing(dir: &Path) -> Vec<String> {
 }
 
 #[test]
+fn task093_c4_helper_demand_uses_operations_not_schema_names() {
+    for floating in [false, true] {
+        for (index, name) in [
+            "ArraySample",
+            "Array_Encode_Hex_Binary",
+            "Encode_Hex_Binary",
+            "Array_encode_hex_binary",
+            "Array_Decode_Hex_Binary",
+        ]
+        .iter()
+        .enumerate()
+        {
+            let scratch = output_dir(&format!("093-c4-{floating}-{index}"));
+            std::fs::create_dir_all(&scratch).unwrap();
+            let original = fixture(if floating {
+                "codec-ada-helper-demand-float32.xsd"
+            } else {
+                "codec-ada-helper-demand.xsd"
+            });
+            let schema = scratch.join("schema.xsd");
+            std::fs::write(
+                &schema,
+                std::fs::read_to_string(original)
+                    .unwrap()
+                    .replace("ArraySample", name),
+            )
+            .unwrap();
+            let contract = fixture("codec-ada-helper-demand.yaml");
+            let run_case = |action: &str, codec: bool, output: Option<&Path>| {
+                let mut command = Command::new(env!("CARGO_BIN_EXE_ams-gra-codegen-oms"));
+                command.args([action, "--schema"]).arg(&schema);
+                command.arg("--contract").arg(&contract);
+                command.args(["--language", "ada", "--world", "closed-schema"]);
+                if codec {
+                    command.arg("--with-codec");
+                    if floating {
+                        command.args(["--ada-codec-runtime", "linux-x86_64-glibc-2.41"]);
+                    }
+                }
+                if let Some(output) = output {
+                    command.arg("--output").arg(output);
+                }
+                let result = command.output().unwrap();
+                assert!(
+                    result.status.success(),
+                    "{name}: {}{}",
+                    String::from_utf8_lossy(&result.stdout),
+                    String::from_utf8_lossy(&result.stderr)
+                );
+            };
+            run_case("service-check", false, None);
+            run_case("service-check", true, None);
+            let plain = scratch.join("plain");
+            let codec = scratch.join("codec");
+            run_case("service-generate", false, Some(&plain));
+            run_case("service-generate", true, Some(&codec));
+            for path in std::fs::read_dir(&plain).unwrap() {
+                let path = path.unwrap().path();
+                assert_eq!(
+                    std::fs::read(&path).unwrap(),
+                    std::fs::read(codec.join(path.file_name().unwrap())).unwrap()
+                );
+            }
+            let body = std::fs::read_to_string(codec.join("service_codec.adb")).unwrap();
+            for helper in ["Encode_Hex_Binary", "Decode_Hex_Binary"] {
+                assert!(
+                    !body.lines().any(|line| line
+                        .trim_start()
+                        .starts_with(&format!("function {helper} ("))),
+                    "actual helper declaration must be absent"
+                );
+            }
+            assert!(!body.contains("Model.Binary_Vectors"));
+            assert!(!body.contains("with Ada.Containers;"));
+            assert!(!body.contains("UnselectedBinary"));
+            for prefix in ["To_JSON_", "From_JSON_", "Encode_", "Decode_"] {
+                assert!(body.contains(&format!("function {prefix}{name} (")));
+                assert!(body.contains(&format!("end {prefix}{name};")));
+            }
+            assert_eq!(body.contains("Require_Platform"), floating);
+            std::fs::remove_dir_all(scratch).unwrap();
+        }
+    }
+}
+
+#[test]
+fn task093_c4_each_binary_operation_path_demands_one_helper_pair() {
+    for (label, reference, extra) in [
+        ("direct", "xs:hexBinary", ""),
+        ("optional", "xs:hexBinary", " minOccurs=\"0\""),
+        ("named", "uci:UnselectedBinary", ""),
+    ] {
+        let scratch = output_dir(&format!("093-c4-binary-{label}"));
+        std::fs::create_dir_all(&scratch).unwrap();
+        let schema = scratch.join("schema.xsd");
+        let source = std::fs::read_to_string(fixture("codec-ada-helper-demand.xsd"))
+            .unwrap()
+            .replace(
+                "name=\"Number\" type=\"xs:int\"",
+                &format!("name=\"Number\" type=\"{reference}\"{extra}"),
+            );
+        std::fs::write(&schema, source).unwrap();
+        let destination = scratch.join("generated");
+        let result = Command::new(env!("CARGO_BIN_EXE_ams-gra-codegen-oms"))
+            .args(["service-generate", "--schema"])
+            .arg(&schema)
+            .arg("--contract")
+            .arg(fixture("codec-ada-helper-demand.yaml"))
+            .args([
+                "--language",
+                "ada",
+                "--world",
+                "closed-schema",
+                "--with-codec",
+                "--output",
+            ])
+            .arg(&destination)
+            .output()
+            .unwrap();
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        let body = std::fs::read_to_string(destination.join("service_codec.adb")).unwrap();
+        for helper in ["Encode_Hex_Binary", "Decode_Hex_Binary"] {
+            assert_eq!(
+                body.lines()
+                    .filter(|line| line
+                        .trim_start()
+                        .starts_with(&format!("function {helper} (")))
+                    .count(),
+                1
+            );
+        }
+        assert!(body.contains("Decode_Hex_Binary (Value : JSON_Value)"));
+        assert!(
+            body.contains(
+                "Encode_Hex_Binary (Item : Model.Binary_Vectors.Vector) return JSON_Value"
+            )
+        );
+        assert!(
+            body.find("end Scalar_String;").unwrap()
+                < body.find("   function Encode_Hex_Binary (").unwrap()
+        );
+        assert!(
+            body.find("end Decode_Hex_Binary;").unwrap()
+                < body.find("   function To_JSON_").unwrap()
+        );
+        std::fs::remove_dir_all(scratch).unwrap();
+    }
+}
+
+#[test]
+fn task093_c3_runtime_matrix_and_decoder_helpers() {
+    for (schema, contract, mixed) in [
+        (
+            "codec-ada-hexbinary-combined.xsd",
+            "codec-ada-hexbinary-combined.yaml",
+            false,
+        ),
+        (
+            "codec-ada-hexbinary-float32.xsd",
+            "codec-ada-hexbinary-float32.yaml",
+            true,
+        ),
+    ] {
+        let mut portable = None;
+        for qualified in [false, true] {
+            let mut args = vec![
+                "service-check",
+                "--language",
+                "ada",
+                "--world",
+                "closed-schema",
+                "--with-codec",
+            ];
+            if qualified {
+                args.extend(["--ada-codec-runtime", "linux-x86_64-glibc-2.41"]);
+            }
+            let ready = run(&args, schema, contract, None);
+            let expected = !mixed || qualified;
+            assert_eq!(
+                ready.status.success(),
+                expected,
+                "{}{}",
+                String::from_utf8_lossy(&ready.stdout),
+                String::from_utf8_lossy(&ready.stderr)
+            );
+            args[0] = "service-generate";
+            let dir = output_dir(&format!("093-c3-{mixed}-{qualified}"));
+            let generated = run(&args, schema, contract, Some(&dir));
+            assert_eq!(
+                generated.status.success(),
+                expected,
+                "{}",
+                String::from_utf8_lossy(&generated.stderr)
+            );
+            if !expected {
+                assert!(!dir.exists(), "atomic runtime rejection");
+                continue;
+            }
+            let body = std::fs::read_to_string(dir.join("service_codec.adb")).unwrap();
+            assert!(body.contains(
+                "Encode_Hex_Binary (Item : Model.Binary_Vectors.Vector) return JSON_Value"
+            ));
+            assert!(body.contains(&format!(
+                "Decode_Hex_Binary (Value : {})",
+                if mixed { "Ingress.Value" } else { "JSON_Value" }
+            )));
+            assert_eq!(body.contains("Require_Platform"), mixed);
+            assert_eq!(body.contains("with AMS_GRA_OMS_JSON_Occurrences;"), mixed);
+            if !mixed {
+                if let Some(ref bytes) = portable {
+                    assert_eq!(
+                        &body, bytes,
+                        "runtime option must not restrict portable Binary"
+                    );
+                } else {
+                    portable = Some(body);
+                }
+            }
+            std::fs::remove_dir_all(dir).unwrap();
+        }
+    }
+}
+
+#[test]
 fn task095_target_opt_in_agrees_between_check_generate_and_atomic_rejection() {
     let schema = "codec-ada-float32.xsd";
     let contract = "codec-ada-float32.yaml";
