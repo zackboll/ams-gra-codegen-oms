@@ -1,0 +1,20 @@
+{
+  "conversion_rows": 27167,
+  "encoding_rows": 20474,
+  "finite_exponent_bands": 2047,
+  "groups": {
+    "all-exponent-exact": 20474,
+    "explicit": 12,
+    "integer-boundary": 27,
+    "midpoint-even": 1338,
+    "midpoint-odd": 1512,
+    "overflow-midpoint": 6,
+    "power-ten": 1266,
+    "power-ten-neighbor": 2532
+  },
+  "hashes": {
+    "conversions.tsv": "14c86c5fa674d279d198947dad03f71f517a40b583729df1184bbf6596a6451b",
+    "encoding.tsv": "b1ad323c7d5d88c465bf966dc2edc1249c68982ad817044fa5579ce65e9abc82"
+  },
+  "seed": 9601
+}
