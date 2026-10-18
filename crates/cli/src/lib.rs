@@ -11,7 +11,7 @@ use ams_gra_oms_backend_rust::{
 use ams_gra_oms_codegen_core::{
     Backend, BackendLanguage, CoverageAnalysis, GeneratedFile, GenerationWorld,
     RUST_SERVICE_CODEC_FILE, ResolvedExchange, ServiceBackendReadiness, ServiceCodecReadiness,
-    ServiceGenerationProjection, ServicePlan, analyze_service_codec, analyze_service_readiness,
+    ServiceGenerationProjection, ServicePlan, analyze_service_readiness,
     project_service_generation_schema, resolve_service_plan, service_api_preflight,
 };
 // Only the CLI's own loading path touches contract files; no backend parses
@@ -306,6 +306,10 @@ OPTIONS:
     -w, --world WORLD          Required generation world policy
         --with-codec           Also require the generated OMS JSON payload
                                codec (Task 050); see WITH CODEC below
+        --ada-codec-runtime PROFILE
+                               Explicit target opt-in: linux-x86_64-glibc-2.41
+                               requires --language ada --with-codec; deployment
+                               validates libc/ABI/rounding, not the generator host
     -h, --help                 Print help
 
 NO OUTPUT FILES:
@@ -397,6 +401,10 @@ OPTIONS:
     -o, --output DIR           Required output directory
         --with-codec           Also emit the generated OMS JSON payload codec
                                (Task 050); see WITH CODEC below
+        --ada-codec-runtime PROFILE
+                               Explicit target opt-in: linux-x86_64-glibc-2.41
+                               requires --language ada --with-codec; generated
+                               Float32 code needs ams_gra_oms_json_float32.gpr
     -h, --help                 Print help
 
 EXTENSIONS USE EXACT CONTRACT MAPPING:
@@ -652,6 +660,7 @@ enum Command {
         world: GenerationWorld,
         /// Task 050: also require the generated OMS JSON codec.
         with_codec: bool,
+        ada_codec_runtime: ams_gra_oms_codegen_core::AdaCodecRuntime,
     },
     ServiceGenerate {
         schema: PathBuf,
@@ -664,6 +673,7 @@ enum Command {
         output: PathBuf,
         /// Task 050: also emit the generated OMS JSON codec.
         with_codec: bool,
+        ada_codec_runtime: ams_gra_oms_codegen_core::AdaCodecRuntime,
     },
 }
 
@@ -797,13 +807,17 @@ where
             language,
             world,
             with_codec,
+            ada_codec_runtime,
         } => service_check(
             &schema,
             &contract,
             &extensions,
-            language,
-            world,
-            with_codec,
+            GenerationTarget {
+                language,
+                world,
+                with_codec,
+                ada_codec_runtime,
+            },
             stdout,
         ),
         Command::ServiceGenerate {
@@ -814,6 +828,7 @@ where
             world,
             output,
             with_codec,
+            ada_codec_runtime,
         } => service_generate(
             &schema,
             &contract,
@@ -822,6 +837,7 @@ where
                 language,
                 world,
                 with_codec,
+                ada_codec_runtime,
             },
             &output,
             stdout,
@@ -1154,6 +1170,7 @@ fn parse_service_check(args: Vec<OsString>) -> Result<Command, CliError> {
         return Ok(Command::Help(SERVICE_CHECK_HELP));
     }
     let (args, with_codec) = take_flag(args, "--with-codec")?;
+    let mut ada_codec_runtime = None;
     let mut schema = None;
     let mut contract = None;
     let mut extensions = Vec::new();
@@ -1165,11 +1182,14 @@ fn parse_service_check(args: Vec<OsString>) -> Result<Command, CliError> {
         "--extension" => push_extension(&mut extensions, value),
         "-l" | "--language" => set_once(&mut language, value, "--language"),
         "-w" | "--world" => set_once(&mut world, value, "--world"),
+        "--ada-codec-runtime" => set_once(&mut ada_codec_runtime, value, "--ada-codec-runtime"),
         // `--output` and `--overlay` are rejected by this arm on purpose.
         // `service-check` generates nothing, and a contract's extensions are
         // logical identifiers whose set must stay exactly matchable.
         _ => Err(CliError::usage(format!("unknown option '{option}'"))),
     })?;
+    let ada_codec_runtime =
+        parse_ada_codec_runtime(ada_codec_runtime, language.as_deref(), with_codec)?;
     Ok(Command::ServiceCheck {
         schema: required(schema, "--schema")?.into(),
         contract: required(contract, "--contract")?.into(),
@@ -1179,6 +1199,7 @@ fn parse_service_check(args: Vec<OsString>) -> Result<Command, CliError> {
         language: Language::parse(&required(language, "--language")?)?,
         world: parse_world(&required(world, "--world")?)?,
         with_codec,
+        ada_codec_runtime,
     })
 }
 
@@ -1187,6 +1208,7 @@ fn parse_service_generate(args: Vec<OsString>) -> Result<Command, CliError> {
         return Ok(Command::Help(SERVICE_GENERATE_HELP));
     }
     let (args, with_codec) = take_flag(args, "--with-codec")?;
+    let mut ada_codec_runtime = None;
     let mut schema = None;
     let mut contract = None;
     let mut extensions = Vec::new();
@@ -1199,12 +1221,15 @@ fn parse_service_generate(args: Vec<OsString>) -> Result<Command, CliError> {
         "--extension" => push_extension(&mut extensions, value),
         "-l" | "--language" => set_once(&mut language, value, "--language"),
         "-w" | "--world" => set_once(&mut world, value, "--world"),
+        "--ada-codec-runtime" => set_once(&mut ada_codec_runtime, value, "--ada-codec-runtime"),
         "-o" | "--output" => set_once(&mut output, value, "--output"),
         // `--overlay` is rejected here exactly as it is for `service-plan`
         // and `service-check`: the contract's declared extension identifiers
         // are the authoritative statement of what composes the schema set.
         _ => Err(CliError::usage(format!("unknown option '{option}'"))),
     })?;
+    let ada_codec_runtime =
+        parse_ada_codec_runtime(ada_codec_runtime, language.as_deref(), with_codec)?;
     Ok(Command::ServiceGenerate {
         schema: required(schema, "--schema")?.into(),
         contract: required(contract, "--contract")?.into(),
@@ -1215,7 +1240,27 @@ fn parse_service_generate(args: Vec<OsString>) -> Result<Command, CliError> {
         world: parse_world(&required(world, "--world")?)?,
         output: required(output, "--output")?.into(),
         with_codec,
+        ada_codec_runtime,
     })
+}
+
+fn parse_ada_codec_runtime(
+    value: Option<OsString>,
+    language: Option<&OsStr>,
+    with_codec: bool,
+) -> Result<ams_gra_oms_codegen_core::AdaCodecRuntime, CliError> {
+    use ams_gra_oms_codegen_core::AdaCodecRuntime;
+    let Some(value) = value else {
+        return Ok(AdaCodecRuntime::Portable);
+    };
+    match value.to_str() {
+        Some("linux-x86_64-glibc-2.41") if language == Some(OsStr::new("ada")) && with_codec => {
+            Ok(AdaCodecRuntime::LinuxX86_64Glibc241)
+        }
+        _ => Err(CliError::usage(
+            "--ada-codec-runtime requires --language ada --with-codec and value linux-x86_64-glibc-2.41",
+        )),
+    }
 }
 
 /// Remove every occurrence of a value-less boolean `flag` from `args`.
@@ -1479,11 +1524,15 @@ fn service_check<W: Write>(
     schema_path: &Path,
     contract_path: &Path,
     extensions: &[(String, PathBuf)],
-    language: Language,
-    world: GenerationWorld,
-    with_codec: bool,
+    target: GenerationTarget,
     stdout: &mut W,
 ) -> Result<(), CliError> {
+    let GenerationTarget {
+        language,
+        world,
+        with_codec,
+        ada_codec_runtime,
+    } = target;
     let inputs = load_service_inputs(schema_path, contract_path, extensions)?;
     let readiness = analyze_service_readiness(
         &inputs.plan,
@@ -1493,7 +1542,13 @@ fn service_check<W: Write>(
     )
     .map_err(|error| CliError::execution(error.to_string()))?;
     let codec = if with_codec {
-        Some(codec_readiness(&inputs, &readiness, language, world)?)
+        Some(codec_readiness(
+            &inputs,
+            &readiness,
+            language,
+            world,
+            ada_codec_runtime,
+        )?)
     } else {
         None
     };
@@ -1520,6 +1575,7 @@ struct GenerationTarget {
     language: Language,
     world: GenerationWorld,
     with_codec: bool,
+    ada_codec_runtime: ams_gra_oms_codegen_core::AdaCodecRuntime,
 }
 
 /// Generate the UCI type model a contract selects, after readiness succeeds.
@@ -1542,6 +1598,7 @@ fn service_generate<W: Write>(
         language,
         world,
         with_codec,
+        ada_codec_runtime,
     } = target;
     let inputs = load_service_inputs(schema_path, contract_path, extensions)?;
     let readiness = analyze_service_readiness(
@@ -1554,7 +1611,13 @@ fn service_generate<W: Write>(
     // Task 050: codec readiness joins the SAME pre-generation verdict, so an
     // unsupported codec construct stops here, before any backend call.
     let codec = if with_codec {
-        Some(codec_readiness(&inputs, &readiness, language, world)?)
+        Some(codec_readiness(
+            &inputs,
+            &readiness,
+            language,
+            world,
+            ada_codec_runtime,
+        )?)
     } else {
         None
     };
@@ -1615,8 +1678,13 @@ fn service_generate<W: Write>(
             .generate_service_api(&api_model, projection.schema())
             .map_err(|error| CliError::execution(error.to_string()))?;
         files.extend(
-            ams_gra_oms_backend_ada::generate_service_codec(&api_model, projection.schema(), world)
-                .map_err(|error| CliError::execution(error.to_string()))?,
+            ams_gra_oms_backend_ada::generate_service_codec_with_runtime(
+                &api_model,
+                projection.schema(),
+                world,
+                ada_codec_runtime,
+            )
+            .map_err(|error| CliError::execution(error.to_string()))?,
         );
         files
     } else if emit_codec {
@@ -1683,6 +1751,7 @@ fn codec_readiness(
     readiness: &ServiceBackendReadiness,
     language: Language,
     world: GenerationWorld,
+    ada_codec_runtime: ams_gra_oms_codegen_core::AdaCodecRuntime,
 ) -> Result<ServiceCodecReadiness, CliError> {
     let execution = |error: &dyn fmt::Display| CliError::execution(error.to_string());
     if !readiness.is_ready() {
@@ -1703,11 +1772,12 @@ fn codec_readiness(
         world,
     )
     .map_err(|error| execution(&error))?;
-    analyze_service_codec(
+    ams_gra_oms_codegen_core::analyze_service_codec_with_runtime(
         &api_model,
         projection.schema(),
         language.backend_language(),
         world,
+        ada_codec_runtime,
     )
     .map_err(|error| execution(&error))
 }

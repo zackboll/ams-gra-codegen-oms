@@ -6,7 +6,7 @@ mod service_codec;
 mod unicode_string;
 
 pub use service_api::{SERVICE_API_FILE, generate_service_api};
-pub use service_codec::generate_service_codec;
+pub use service_codec::{generate_service_codec, generate_service_codec_with_runtime};
 
 use ams_gra_oms_codegen_core::ServiceApiModel;
 use ams_gra_oms_codegen_core::{

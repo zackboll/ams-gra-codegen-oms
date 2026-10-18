@@ -1,5 +1,168 @@
 # Task 093 — Ada OMS JSON hexBinary codecs
 
+## C3 — Integrate merged Float32 without restricting portable Binary
+
+Starting feature `31bdccf635008415434a5112cd443570abe6fb47`; exact integrated
+main `0e4d25718915496a7e01de4c4a689a8f739cd7a7`, containing merged PR #96 and
+reviewed Float32 C2/C3 head `5aff250117d1bf219480e8ef0bc4a74f411f3957`.
+Ownership verification identified the clean original Task 093 worktree at
+`/home/zboll/git/ams-gra-codegen-oms-task093`; local, fetched remote and PR #94
+heads agreed. PR remained OPEN, non-draft, unmerged, base main, auto-merge off.
+No sibling worktree was changed. Main/feature baselines are immutable source
+archives with independent build areas, not source-worktree switches.
+
+### Semantic reconciliation
+
+The controlled `git merge --no-ff --no-commit origin/main` conflicted only in
+the core analyzer and Ada codec renderer. Resolution keeps Binary provenance
+and length-domain classification before generic runtime-aware scalar dispatch,
+retains runtime context and memoized deterministic analysis, and retains both
+Binary and Float32 Choice-scalar rejection. Repeated Choice of a concrete
+Record containing single Binary stays supported, not repeated scalar Binary.
+Main's occurrence ownership, decoded duplicate keys, original numeric lexemes,
+guarded validation, helper reservations, and explicit Decoder rendering remain.
+No production floating-environment source was modified.
+
+`hex_binary_helpers(Decoder)` explicitly renders only the decoder parameter
+type: `JSON_Value` for portable DOM, `Ingress.Value` for occurrence ingress.
+Both call the correctly typed `Scalar_String`. The encoder remains
+`Encode_Hex_Binary (...) return JSON_Value` in both modes. No completed Ada,
+schema-derived identifier, or whole-body template rewriting is used. Existing
+uppercase encoding, mixed-case input, XML whitespace, octet bounds, checked
+constructors, imports, atomicity and public interfaces remain unchanged.
+Portable output matches the original feature bytes; Float32-only output
+matches current main. Binary data never enters numeric token replacement.
+
+| Selection | Portable | Explicit qualified runtime |
+|---|---|---|
+| Admitted hexBinary, no Float32 | READY; ordinary guard GPR | Same portable bytes; no platform restriction |
+| Admitted Float32, no Binary | Rejected atomically | READY for established supported shapes |
+| Admitted Binary + Float32 | Rejected atomically | READY with occurrence ingress and Float32 GPR |
+| Unsupported Binary provenance/shapes/facets | Rejected | Rejected |
+
+Unknown/Base64 provenance, named/field-local unsupported facets, direct/named
+repeated Binary, Binary scalar Choice alternatives, Float32 scalar Choice and
+unsupported facets/targets, Float64/Decimal, invalid cardinalities,
+nillable/unqualified values, missing emissions and cycles remain fail-closed.
+Core module: 30 tests. Complete CLI service-codec suite: 21 tests. Ada backend:
+99 passed in 17 summaries (64 library). Portable actual generated-Ada smoke
+runs outside the Float32 container with GNAT 16.1.0; host runtime identity is
+recorded, not inferred from the container.
+
+### New C3-owned composition
+
+`codec-ada-hexbinary-float32.{xsd,yaml}`, `task093-mixed*.json`,
+`hexbinary_float32_{consumer,environment}.adb`, and `check-task093-mixed.py`
+are new Task 093 fixtures; frozen Task 092–095 fixtures/corpora are untouched.
+The schema composes repeated named Choice, required-single Record alternative,
+direct/optional/unconstrained named/checked named Binary, direct/checked/repeated
+Float32, and repeated DateTime/Duration. PathLength, TargetGet and ArraySample
+exercise identifier safety. Namespace transformation is structural/reversible,
+retains version metadata in OAM, and changes only JSON keys without reparsing
+numeric input lexemes.
+
+All 12 compiler/profile/policy cells generate, compile and execute: GNAT
+14.2.0/16.1.0 × OAM/non-OAM × Normal/Check/Ignore. Each reports
+`TASK093_C3_MIXED_COMPLETE checks= 95 rejections= 26`, checking independent
+canonical JSON, exact octets including zero/high-bit, empty/optional absence,
+checked length boundaries, exact midpoint/signed-zero/subnormal bits, checked
+Float32 ranges, ordering/nested access, invalid later values, escaped decoded
+key and whole-subtree duplicates, malformed overwritten JSON, Unicode/depth/
+document limits, 100,000-octet unconstrained Binary and failure atomicity.
+
+Each cell also reports `TASK093_C3_ENVIRONMENT_COMPLETE checks= 770
+rejections= 126`: all 64 independent DAZ/FTZ/x87/MXCSR combinations, generated
+encode/decode operations, unchanged typed and serialized outputs on rejection,
+unchanged control state, restoration and subsequent successful operations.
+These consumers reuse merged test-only C harnesses; no new production floating
+environment implementation or exception suppression was introduced.
+
+Qualified container base:
+`debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5`.
+Actual provisioned image ID:
+`3be2d67b84bc116c44fa08d25714359dfd5aff95fddc3c8a270dd359633e03ab`.
+Actual libc package `2.41-12+deb13u4`, binary SHA-256
+`9792e3cbb541c8f44c7acf5f14f4022ea62998ecc787d326bed4d8b6547dfd92`;
+GNAT external 14.2.0 (`gnat-14 14.2.0-19`) and native 16.1.0; Alire 2.1.1;
+gprbuild release 26.0.1 (banner 26.0.0); GNATCOLL/minimal 26.0.0,
+`gnatcoll-json.adb` SHA-256
+`7e07277731a44ea08716fd61a6462ebe7a7ce0722adc6dc787cbbaafd3099063`.
+C/Ada ABI, C locale and allocation/capacity controls execute in the inherited
+Float32 bridge/Require_Platform corpus; nearest x87/MXCSR, DAZ off and FTZ off
+remain mandatory. Digest alone is not asserted to identify installed packages.
+
+### Integrated qualification and preservation
+
+The manifest enumerates 162 primary compiler/profile/policy cells plus 18
+inherited campaigns and separate C bridge/rounding controls; counts are derived
+from runners, not assumed. All synthetic lanes and the 18 real Task 092 cells
+have definitive successful completion. Task 093 original, Binary/Choice/temporal
+and extracted real Binary, Task 092 synthetic, Task 094 expanded/composition/
+Choice-temporal/model-only, and inherited 087A/B–091R were reexecuted against
+integrated source. The original completion markers remain unchanged.
+
+Task 095 executes 12 original generated/numeric cells (96 checks/14 rejections,
+15,710 conversions, 5,552 encodings, 27 occurrence controls each), 12 identifier
+cells, six optimized environment/rounding cells, all DAZ/FTZ modes and 16
+independent x87/MXCSR pairs. Separate C execution covers 32 O0/O2 rounding
+pairs, four environment modes and 20 bridge controls. No production numeric
+or writer mismatches. Known rejected Ada Value candidates retain their 1,972
+conversion mismatches and are not the production parser. Corpus hashes remain
+`a1b0a2a6f0a9c8f11371391930b716e04ca64c5072ef8b0fb12ce273f4d6c140`
+and `a2b9a9c043e218c2e1cadf5118bb698c7e413ea66ef14fc0036ade8f3f682ccc`.
+No Task 095 325-message impact campaign was rerun or relabeled.
+
+Three-way preservation uses A original PR head, B exact merged main, C pending
+integrated source. 156 successful byte-identical generations are separated
+from nine matching atomic rejections. Binary outputs compare to A, Float32 and
+existing non-Binary output to B; Rust/C++, models/APIs, Choice/temporal retained.
+Full Log model/API parity and default/explicit runtime-option byte parity are
+separately measured. Mixed output is newly qualified composition, not an old
+baseline. All full Log codecs use the default portable profile and have no
+occurrence imports, C bridge or Require_Platform dependency.
+
+Rust 1.95 locked all-target workspace fmt/check/Clippy/test commands exit 0:
+1,425 passed, zero failed, eight pre-existing ignored, 162 summaries. Ignored
+is not passed. CI split guard and 210 mutation checks pass; Task 077B layout
+check and both 54-case profiles pass. Existing Binary Fast/Deep, Float32,
+Choice, temporal, guard, Rust and Deep jobs remain. The mixed matrix is an
+additional step inside the existing digest-pinned Float32 job; portable Binary
+jobs remain outside. Main's C2/C3 Float32 regressions are unchanged.
+
+### Fresh complete real Log
+
+Unchanged contracts and pinned UCI roots:
+2.5 `ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27`;
+2.6 `af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b`.
+
+| Selection | Selected/model | Main before | Integrated after | First blocker after |
+|---|---|---|---|---|
+| Log 2.5 | 42/42 | 40/41 NOT READY, LogMDT.Data Binary | 41/41 READY | none |
+| Log 2.6 | 44/44 | 42/43 NOT READY, HexBinaryType Binary | 43/43 READY | none |
+
+All 12 full Log compiler/release/policy cells generate, compile and execute with
+`TASK093_LOG_COMPLETE checks= 29 rejections= 9`, unchanged from C2. Both
+compiler/release qualification records and source manifests pass.
+No deployed-service, transport-interoperability or broader UCI readiness claim.
+
+### Evidence and publication
+
+Fresh evidence is `/home/zboll/task093-scratch/c3/attempt-01`, including
+ownership/merge records, qualification manifest, expected cells, immutable
+baseline identities, qualified-input hashes, detached worker final records,
+pre-fix correction classifications and final audit. Historical C1/C2 sections
+below certify their recorded baselines only. Pre-fix test/golden/manifest
+expectation errors are preserved and followed by fresh completed reruns.
+No old green CI is represented as certification of this integration.
+
+Final local audit: `TASK093_C3_LOCAL_AUDIT_PASS 1425 passed 8 ignored`.
+All mandatory local lanes completed with exit zero; no active workers or
+unresolved merge entries remain. The final source manifest binds 1,016 files;
+SHA-256 `d826c400e4a07dc23f7bbede2066f3f489480237e8b8fd0c9a23c7352e777439`.
+Merge identity, publication parity and hosted disposition are recorded in the
+C3 publication evidence and existing PR #94. Leave open/unmerged; hosted
+qualification must complete before independent merge-readiness claims.
+
 ## C2 — Integrate merged Choice/temporal codecs and requalify
 
 ### Repository identity and semantic merge

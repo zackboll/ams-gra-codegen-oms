@@ -93,6 +93,181 @@ fn listing(dir: &Path) -> Vec<String> {
     names
 }
 
+#[test]
+fn task093_c3_runtime_matrix_and_decoder_helpers() {
+    for (schema, contract, mixed) in [
+        (
+            "codec-ada-hexbinary-combined.xsd",
+            "codec-ada-hexbinary-combined.yaml",
+            false,
+        ),
+        (
+            "codec-ada-hexbinary-float32.xsd",
+            "codec-ada-hexbinary-float32.yaml",
+            true,
+        ),
+    ] {
+        let mut portable = None;
+        for qualified in [false, true] {
+            let mut args = vec![
+                "service-check",
+                "--language",
+                "ada",
+                "--world",
+                "closed-schema",
+                "--with-codec",
+            ];
+            if qualified {
+                args.extend(["--ada-codec-runtime", "linux-x86_64-glibc-2.41"]);
+            }
+            let ready = run(&args, schema, contract, None);
+            let expected = !mixed || qualified;
+            assert_eq!(
+                ready.status.success(),
+                expected,
+                "{}{}",
+                String::from_utf8_lossy(&ready.stdout),
+                String::from_utf8_lossy(&ready.stderr)
+            );
+            args[0] = "service-generate";
+            let dir = output_dir(&format!("093-c3-{mixed}-{qualified}"));
+            let generated = run(&args, schema, contract, Some(&dir));
+            assert_eq!(
+                generated.status.success(),
+                expected,
+                "{}",
+                String::from_utf8_lossy(&generated.stderr)
+            );
+            if !expected {
+                assert!(!dir.exists(), "atomic runtime rejection");
+                continue;
+            }
+            let body = std::fs::read_to_string(dir.join("service_codec.adb")).unwrap();
+            assert!(body.contains(
+                "Encode_Hex_Binary (Item : Model.Binary_Vectors.Vector) return JSON_Value"
+            ));
+            assert!(body.contains(&format!(
+                "Decode_Hex_Binary (Value : {})",
+                if mixed { "Ingress.Value" } else { "JSON_Value" }
+            )));
+            assert_eq!(body.contains("Require_Platform"), mixed);
+            assert_eq!(body.contains("with AMS_GRA_OMS_JSON_Occurrences;"), mixed);
+            if !mixed {
+                if let Some(ref bytes) = portable {
+                    assert_eq!(
+                        &body, bytes,
+                        "runtime option must not restrict portable Binary"
+                    );
+                } else {
+                    portable = Some(body);
+                }
+            }
+            std::fs::remove_dir_all(dir).unwrap();
+        }
+    }
+}
+
+#[test]
+fn task095_target_opt_in_agrees_between_check_generate_and_atomic_rejection() {
+    let schema = "codec-ada-float32.xsd";
+    let contract = "codec-ada-float32.yaml";
+    let (code, report) = check(schema, contract, "ada", true);
+    assert_ne!(code, Some(0));
+    assert!(report.contains("Float32"), "{report}");
+    let (blocked, blocked_dir) = generate(schema, contract, "ada", true, "095-portable");
+    assert!(!blocked.status.success());
+    assert!(!blocked_dir.exists());
+    let args = [
+        "service-check",
+        "--language",
+        "ada",
+        "--world",
+        "closed-schema",
+        "--with-codec",
+        "--ada-codec-runtime",
+        "linux-x86_64-glibc-2.41",
+    ];
+    let ready = run(&args, schema, contract, None);
+    assert!(
+        ready.status.success(),
+        "{}",
+        String::from_utf8_lossy(&ready.stderr)
+    );
+    assert!(String::from_utf8_lossy(&ready.stdout).contains("codec status: READY"));
+    let mut args = args;
+    args[0] = "service-generate";
+    let dir = output_dir("095-qualified");
+    let generated = run(&args, schema, contract, Some(&dir));
+    assert!(
+        generated.status.success(),
+        "{}",
+        String::from_utf8_lossy(&generated.stderr)
+    );
+    let body = std::fs::read_to_string(dir.join("service_codec.adb")).unwrap();
+    assert!(body.contains("Ingress.Read (Text)"));
+    assert!(body.contains("Model.Create (Number)"));
+    assert!(!body.contains("Get_Long_Float"));
+    for wrong in ["windows", "linux-x86_64-glibc-2.39", "musl", ""] {
+        args[7] = wrong;
+        let invalid = run(&args, schema, contract, None);
+        assert!(!invalid.status.success());
+        assert!(String::from_utf8_lossy(&invalid.stderr).contains("--ada-codec-runtime"));
+    }
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn task095_c2_occurrence_decoder_preserves_adversarial_identifiers() {
+    let schema = "codec-ada-float32-identifiers.xsd";
+    let contract = "codec-ada-float32-identifiers.yaml";
+    let args = [
+        "service-generate",
+        "--language",
+        "ada",
+        "--world",
+        "closed-schema",
+        "--with-codec",
+        "--ada-codec-runtime",
+        "linux-x86_64-glibc-2.41",
+    ];
+    let dir = output_dir("095-c2-identifiers");
+    let result = run(&args, schema, contract, Some(&dir));
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    let body = std::fs::read_to_string(dir.join("service_codec.adb")).unwrap();
+    for name in ["PathLength", "TargetGet", "ArraySample"] {
+        assert!(body.contains(&format!(
+            "function From_JSON_{name} (Value : Ingress.Value)"
+        )));
+        assert!(body.contains(&format!("end From_JSON_{name};")));
+        assert!(body.contains(&format!(
+            "function To_JSON_{name} (Item : Model.{name}) return JSON_Value"
+        )));
+        assert!(!body.contains(&format!("From_JSON_{name}Ingress")));
+    }
+    assert!(body.contains("From_JSON_PathLength (Child)"));
+    assert!(body.contains("Ingress.Length (JSON_Items)"));
+    assert!(!body.contains("From_JSON_Ingress."));
+    let portable = run(
+        &[
+            "service-check",
+            "--language",
+            "ada",
+            "--world",
+            "closed-schema",
+            "--with-codec",
+        ],
+        schema,
+        contract,
+        None,
+    );
+    assert!(!portable.status.success());
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
 /// A. The OAM codec-safe service is READY with the codec and generates it.
 #[test]
 fn task091_ada_duration_readiness_and_model_preservation() {
