@@ -9,6 +9,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,6 +26,19 @@ RUNTIME = "linux-x86_64-glibc-2.41"
 def helper_definitions(body, identifier):
     """Match the complete Ada identifier, not a suffix in a model operation."""
     return re.findall(r"(?im)^\s*function\s+" + re.escape(identifier) + r"\s*\([^;]*?\)\s*return\s+[^;\n]+\s+is\s*$", body)
+
+
+def checked(command, cwd, stem, expected=0):
+    started = time.time()
+    with stem.with_suffix(".log").open("xb") as output:
+        result = subprocess.run(command, cwd=cwd, stdin=subprocess.DEVNULL, stdout=output, stderr=subprocess.STDOUT)
+    stem.with_suffix(".command.json").write_text(json.dumps(dict(command=command, cwd=str(cwd), exit=result.returncode, expected=expected, started=started, elapsed_seconds=time.time() - started), indent=2) + "\n")
+    text = stem.with_suffix(".log").read_bytes()
+    if expected is not None and result.returncode != expected:
+        # Preserve the complete subprocess log and expose its diagnostic in CI.
+        print(text.decode("utf-8", errors="replace"), file=sys.stderr, flush=True)
+        raise RuntimeError(f"exit {result.returncode}, expected {expected}: {stem}")
+    return result.returncode, text
 
 
 def main():
@@ -47,16 +61,26 @@ def main():
     records = []
 
     def run(command, cwd, label, expected=0):
-        stem = scratch / label
-        with stem.with_suffix(".log").open("xb") as output:
-            result = subprocess.run(command, cwd=cwd, stdin=subprocess.DEVNULL, stdout=output, stderr=subprocess.STDOUT)
-        stem.with_suffix(".command.json").write_text(json.dumps(dict(command=command, cwd=str(cwd), exit=result.returncode, expected=expected), indent=2) + "\n")
-        text = stem.with_suffix(".log").read_bytes()
-        if expected is not None and result.returncode != expected:
-            raise RuntimeError(f"exit {result.returncode}, expected {expected}: {stem}")
-        return result.returncode, text
+        return checked(command, cwd, scratch / label, expected)
 
     run(["sh", "-ec", "uname -m; getconf GNU_LIBC_VERSION; dpkg-query -W libc6; sha256sum /usr/lib/x86_64-linux-gnu/libc.so.6; alr --version"], ROOT, "runtime")
+    # Fail before any long naming campaign if this environment cannot supply
+    # the requested release. This task-local probe never changes global setup.
+    probe = scratch / "toolchain-probe"
+    probe.mkdir()
+    (probe / "alire.toml").write_text(
+        'name = "task093_probe"\nversion = "0.1.0-dev"\ndescription = "Compiler availability"\nlicenses = "MIT"\n[[depends-on]]\n'
+        f'{compiler} = "={version}"\ngprbuild = "=26.0.1"\n')
+    run(["alr", "-n", "--force", "toolchain", "--select", "--local", f"{compiler}={version}", "gprbuild=26.0.1"], probe, "toolchain-preflight")
+    _, identity = run(["alr", "-n", "exec", "--", "sh", "-ec", "command -v gnat; gnat --version"], probe, "compiler-preflight")
+    if f"GNAT {version}".encode() not in identity:
+        raise RuntimeError("compiler preflight identity mismatch")
+    probe_lock = probe / "alire/alire.lock"
+    releases = [state.get("release", {}) for state in tomllib.loads(probe_lock.read_text())["solution"]["state"]]
+    for name, required in [(compiler, version), ("gprbuild", "26.0.1")]:
+        if not any(release.get("name") == name and release.get("version") == required for release in releases):
+            raise RuntimeError(f"compiler preflight solution mismatch: {name}={required}")
+    shutil.copy2(probe_lock, scratch / "toolchain-preflight.lock")
     fixtures = ROOT / "tests/fixtures/service-generate"
     suffix = "-float32" if floating else ""
     original = (fixtures / f"codec-ada-helper-demand{suffix}.xsd").read_text()
@@ -145,7 +169,7 @@ def main():
                 lock = directory / "alire/alire.lock"
                 temporal.guard.validate_solution(tomllib.loads(lock.read_text()), compiler)
                 shutil.copy2(lock, scratch / f"{cell}-alire.lock")
-                _, identity = run(["alr", "-n", "exec", "--", "gnat", "--version"], directory, f"{cell}-gnat")
+                _, identity = run(["alr", "-n", "exec", "--", "sh", "-ec", "command -v gnat; gnat --version"], directory, f"{cell}-gnat")
                 if f"GNAT {version}".encode() not in identity:
                     raise RuntimeError("compiler identity mismatch")
                 if args.red:

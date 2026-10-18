@@ -826,3 +826,125 @@ workers remained and no unresolved entries existed. Corrective commit/head
 parity and single-inspection exact-head hosted disposition are recorded in
 C4 `publication.json` and existing PR #94. Leave PR open and unmerged for
 independent review; old green CI does not certify the new correction.
+
+
+## C5 — Hosted compiler provisioning placement
+
+Starting corrective HEAD: `9b5b29b257f74e59f00c932b2a7218d359c4c4f1`;
+main: `0e4d25718915496a7e01de4c4a689a8f739cd7a7`. The clean existing
+Task 093 worktree, fetched feature and PR head agreed before editing.
+PR #94 remained open, non-draft, unmerged, auto-merge disabled.
+
+### Original hosted failure and classification
+
+Fast workflow `39095510236`, job `ada-hexbinary-codec` / `117581602952`,
+step `Portable helper-demand naming regression`, artifact
+`task093-ada-hexbinary-codec` / `12124419016` failed at Alire selection:
+
+```
+Warning:    gnat_external=14.2.0
+Warning: They should be made available in the environment by the user.
+ERROR: Release within requested versions not found: gnat_external=14.2.0
+```
+
+The preserved command requested `alr -n --force toolchain --select --local
+ gnat_external=14.2.0 gprbuild=26.0.1`; exit 1.
+The original exact command JSON is authoritative. Ubuntu runtime was glibc
+2.39 (`libc6 2.39-0ubuntu8.9`). The generated consumer manifest required
+external 14.2.0, unavailable there. Selection failed before the first naming
+consumer compiled; this is not an Ada compilation/runtime failure. C4 local
+GNAT14 success did not establish hosted Ubuntu provisioning. The full original
+ZIP plus `oam-ArraySample-toolchain.log`, command/exit, `runtime.log`, consumer
+manifest and generated files are preserved under C5 `hosted-failure`.
+
+### Corrected job assignment and strict early verification
+
+| Family | Compiler | Hosted job/environment | Executions |
+|---|---|---|---:|
+| portable | external GNAT 14.2.0 | provisioned digest-pinned Debian `ada-float32-codec` | 30 |
+| portable | native GNAT 16.1.0 | ordinary Ubuntu `ada-hexbinary-codec` | 30 |
+| Float32-only | external GNAT 14.2.0 | qualified Debian `ada-float32-codec` | 30 |
+| Float32-only | native GNAT 16.1.0 | qualified Debian `ada-float32-codec` | 30 |
+
+Each invocation retains both namespaces, Normal/Check/Ignore, and all five
+names: **120 executions total**. The relocated portable invocation uses
+`--family portable --compiler 14` and the unique scratch path
+`/tmp/task095-evidence/task093-c5-portable-14`. It has no Float32 CLI option
+and keeps the ordinary JSON GPR. Artifact upload includes that entire path.
+Existing Binary, combined, mixed and numerical/environment jobs remain.
+
+Provisioning verifies actual `gnat --version` is 14.2.0. Before naming work,
+the runner selects exact releases in a task-local probe, records compiler
+path/version and verifies the solution lock. Existing per-consumer exact
+compiler/provider solution checks remain. Failed subprocess output is echoed
+to CI stderr as well as preserved in logs; exit expectations are unchanged.
+Every command now records elapsed time. No alias/substitution/skip/continue-
+on-error or global toolchain mutation is introduced.
+
+The new narrow `test-task093-compiler-placement.py` passes **11 tests**,
+including placement/coverage mutations, exact setup/artifact requirements,
+full name/marker preservation, probe ordering and real subprocess diagnostic/
+command/exit preservation. It is registered in the portable job.
+
+### Fresh-environment execution, not developer cache reuse
+
+Fresh root filesystems and empty task-owned Alire homes/settings/caches were
+used without mounting developer Alire state. Ubuntu 24.04 initially has no
+system GNAT. The original C4 runner reproduces the missing-external diagnostic
+and fails before compilation. The improved runner also reproduces it in a
+separate fresh home, echoes the diagnostic and fails at preflight before
+naming generation. Both are intentional expected-negative evidence.
+
+All four corrected full invocations pass actual generation, compilation and
+execution: **120 naming executions**, each retaining
+`TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7`. All build/execute command exits,
+30 solution locks per invocation, paths/versions, runtime logs and generated/
+input/source hashes verify. Portable output remains guard-only; Float32 runs
+retain their qualified runtime and GPR without weakening platform checks.
+
+Measured fresh times: Ubuntu portable16 **365.09 s**; Debian portable14
+**266.78 s**; Debian Float32-14 **257.86 s**; Debian Float32-16 **276.99 s**.
+The original Ubuntu job's pre-naming steps took 351 s. The qualified job's
+completed pre-naming prefix took 1,610 s (including 1,124 s full numerical
+campaign and 437 s mixed campaign); its then-incomplete naming step is not
+claimed passed. A conservative sizing check doubles completed historical
+prefix time and adds all three measured Debian naming invocations: 4,021.64 s,
+within the unchanged 5,400 s qualified timeout. Doubling the Ubuntu prefix and
+fresh naming time gives 1,432.18 s within its unchanged 1,800 s timeout. These
+are sizing observations, not a guarantee of hosted timing. No work was skipped.
+
+Actual Ubuntu libc is `2.39-0ubuntu8.9`, binary SHA-256
+`3a15d66867d83762c7f2f1e37359cb8f6c5743edb369c65285cb0b1c4f7498bf`;
+Debian libc is `2.41-12+deb13u4`, SHA-256
+`9792e3cbb541c8f44c7acf5f14f4022ea62998ecc787d326bed4d8b6547dfd92`.
+Debian external compiler path `/usr/bin/gnat` reports 14.2.0; native compiler
+paths in each new home's `gnat_native_16.1.0_9f74f58a/bin/gnat` report 16.1.0.
+Alire is 2.1.1, gprbuild release 26.0.1, GNATCOLL/minimal 26.0.0. Container
+image IDs and base digests plus provider locks/source hashes are recorded;
+base digest alone is not treated as installed-package identity.
+
+### Scope, integrity and publication
+
+All **845 files under crates/ada/tests** remain byte-identical to C4;
+production helper-demand code, support, models, fixtures and numerical oracles
+are unchanged. The generator is the exact C4 qualified binary (hash recorded).
+C4 broad executable/numerical results retain their original attribution;
+only compiler-placement/name campaigns and relevant runner/CI checks are fresh.
+No broad real-UCI or numerical research campaign was repeated.
+
+Both workflow YAML files and **111 Bash run blocks** pass syntax checks.
+Existing split/layout checks pass, including **210 mutation checks** and both
+**54-case** layout profiles. New **11 placement/runner tests** pass. Final
+source hashes match tested inputs and all workers completed before commit.
+
+Fresh evidence: `/home/zboll/task093-scratch/c5/attempt-01`, notably original
+hosted artifact, fresh red/probe reproductions, four full invocation directories,
+`timeout-budget.json`, `preserved-input-hashes.json`, source/command/solution
+records and `local-qualification.json`. Final audit:
+`TASK093_C5_LOCAL_AUDIT_PASS naming_executions=120 placement_tests=11 production_changes=0`.
+Qualified source manifest SHA-256:
+`90e301d5f2b0a3f7e3a57846d03d4cd61e6ad32623c20acdb87f933be72bfc19`.
+Corrective commit and exact-head hosted disposition are in C5 publication
+records/PR #94. Old C4 Fast failure remains a failure regardless of sibling
+jobs; only fresh corrected-head hosted results certify this placement.
+Leave PR open/unmerged and auto-merge disabled for independent review.

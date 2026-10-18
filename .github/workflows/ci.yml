@@ -42,6 +42,9 @@ jobs:
           mkdir -p /tmp/task095-evidence
           dpkg-query -W libc6 gnat-14 > /tmp/task095-evidence/platform.txt
           sha256sum /usr/lib/x86_64-linux-gnu/libc.so.6 >> /tmp/task095-evidence/platform.txt
+          command -v gnat | tee -a /tmp/task095-evidence/platform.txt
+          gnat --version | tee -a /tmp/task095-evidence/platform.txt
+          gnat --version | grep -E '^GNAT 14\.2\.0([[:space:]]|$)'
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -102,6 +105,12 @@ jobs:
             python3 scripts/check-task093-helper-demand.py --family float32 --compiler "$compiler" --scratch "/tmp/task095-evidence/task093-c4-$compiler" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
             sha256sum --check --quiet "/tmp/task095-evidence/task093-c4-$compiler/sources.sha256"
           done
+      - name: Portable GNAT 14 helper-demand naming regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/check-task093-helper-demand.py --family portable --compiler 14 --scratch /tmp/task095-evidence/task093-c5-portable-14 --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
+          sha256sum --check --quiet /tmp/task095-evidence/task093-c5-portable-14/sources.sha256
       - name: Preserve qualification evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -122,6 +131,7 @@ jobs:
             /tmp/task095-evidence/*/consumer/*.c
             /tmp/task095-evidence/task093-mixed-*/**
             /tmp/task095-evidence/task093-c4-*/**
+            /tmp/task095-evidence/task093-c5-portable-14/**
           if-no-files-found: error
   ada-repeated-temporal-codec:
     needs: ada-json-guard
@@ -406,10 +416,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for compiler in 14 16; do
-            python3 scripts/check-task093-helper-demand.py --family portable --compiler "$compiler" --scratch "$RUNNER_TEMP/task093-c4-$compiler" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
-            sha256sum --check --quiet "$RUNNER_TEMP/task093-c4-$compiler/sources.sha256"
-          done
+          python3 scripts/test-task093-compiler-placement.py
+          python3 scripts/check-task093-helper-demand.py --family portable --compiler 16 --scratch "$RUNNER_TEMP/task093-c4-16" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
+          sha256sum --check --quiet "$RUNNER_TEMP/task093-c4-16/sources.sha256"
       - name: Validate mandatory evidence
         shell: bash
         run: |
