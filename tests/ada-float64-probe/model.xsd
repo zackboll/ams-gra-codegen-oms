@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+ xmlns:o="https://www.vdl.afrl.af.mil/programs/oam"
+ targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified">
+ <xs:simpleType name="Unconstrained"><xs:restriction base="xs:double"/></xs:simpleType>
+ <xs:simpleType name="ClosedRange"><xs:restriction base="xs:double">
+  <xs:minInclusive value="-1"/><xs:maxInclusive value="1"/>
+ </xs:restriction></xs:simpleType>
+ <xs:simpleType name="OpenRange"><xs:restriction base="xs:double">
+  <xs:minExclusive value="0"/><xs:maxExclusive value="2"/>
+ </xs:restriction></xs:simpleType>
+ <xs:complexType name="Nested"><xs:sequence>
+  <xs:element name="Value" type="xs:double"/>
+ </xs:sequence></xs:complexType>
+ <xs:complexType name="Selection"><xs:choice>
+  <xs:element name="Record" type="o:Nested"/>
+  <xs:element name="Integer" type="xs:int"/>
+ </xs:choice></xs:complexType>
+ <xs:complexType name="FloatPayload"><xs:sequence>
+  <xs:element name="Required" type="xs:double"/>
+  <xs:element name="Optional" type="xs:double" minOccurs="0"/>
+  <xs:element name="Named" type="o:Unconstrained"/>
+  <xs:element name="Closed" type="o:ClosedRange"/>
+  <xs:element name="Open" type="o:OpenRange"/>
+  <xs:element name="Bounded" type="xs:double" minOccurs="0" maxOccurs="3"/>
+  <xs:element name="Unbounded" type="xs:double" minOccurs="2" maxOccurs="unbounded"/>
+  <xs:element name="NamedRepeated" type="o:ClosedRange" minOccurs="1" maxOccurs="3"/>
+  <xs:element name="Nested" type="o:Nested"/>
+  <xs:element name="Choice" type="o:Selection"/>
+  <xs:element name="Small" type="xs:float"/>
+  <xs:element name="Count" type="xs:int"/>
+  <xs:element name="Enabled" type="xs:boolean"/>
+  <xs:element name="Text" type="xs:string"/>
+ </xs:sequence></xs:complexType>
+ <xs:element name="FloatNotice" type="o:FloatPayload" o:version="001.000.000.000"/>
+</xs:schema>

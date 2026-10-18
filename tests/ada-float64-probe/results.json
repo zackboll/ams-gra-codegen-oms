@@ -1,0 +1,406 @@
+{
+  "ada_environment_executions": 768,
+  "baseline_main": "0e4d25718915496a7e01de4c4a689a8f739cd7a7",
+  "baseline_tree": "3ea6909a114e12d114246f676d06e2dd38ad3125",
+  "binary_sha256": {
+    "/usr/bin/gcc": "a23ecab8ff08f09ad8c80602c2c5df7f49e09c25905cb8975902e101bf72635f",
+    "/usr/bin/gnat": "67082a9217f83ff443253d5d02973615b3f2cc01d47e527d857d87229f7c2c4f",
+    "/usr/lib/x86_64-linux-gnu/libc.so.6": "9792e3cbb541c8f44c7acf5f14f4022ea62998ecc787d326bed4d8b6547dfd92",
+    "/usr/local/bin/alr": "2e2b8de009b793ad2aed10096e162649bbcc5b0711e3c21785ebe8a1261c5d64",
+    "cargo-target/debug/ams-gra-codegen-oms": "210e9144138d9ccefdaf927b6c59d97ba97d9cd003a2074adb68e4725feb74aa",
+    "document14-oam/consumer/bin/document_probe": "1913050ad3983ea046f80fe2cb8de582ad51827cb1ca6ce27bced8c61624e725",
+    "document14-qualified/consumer/bin/document_probe": "cae8225c081b2fd6203c987cfee2c3ad80ec31b1219697feccbe1c29446a5003",
+    "document16-oam/consumer/bin/document_probe": "a0b5502aba3e9911586aced18d367da6130927745fdf16766bd78a96498f8eec",
+    "document16-qualified/consumer/bin/document_probe": "a0e2ea2a52c988abeec28c5eb40204018b1981d6ea42aeef8b2b09b2123e1116",
+    "environment14-oam/consumer/bin/document_probe": "1913050ad3983ea046f80fe2cb8de582ad51827cb1ca6ce27bced8c61624e725",
+    "environment14-oam/consumer/bin/environment_probe": "c46c1b7695107eb800c6913fc34e17db178938bb0300f467295484133da92a0b",
+    "environment14-qualified/consumer/bin/document_probe": "cae8225c081b2fd6203c987cfee2c3ad80ec31b1219697feccbe1c29446a5003",
+    "environment14-qualified/consumer/bin/environment_probe": "eab2729a5f5528fe955107f9a44b4f4b63649181360502ae31667a6af8af8f07",
+    "environment16-oam/consumer/bin/document_probe": "a0b5502aba3e9911586aced18d367da6130927745fdf16766bd78a96498f8eec",
+    "environment16-oam/consumer/bin/environment_probe": "1b7d5c569317f97ef646e9193398e8c9e32514990eeaf6f5e9a026c32feb8de6",
+    "environment16-qualified/consumer/bin/document_probe": "a0e2ea2a52c988abeec28c5eb40204018b1981d6ea42aeef8b2b09b2123e1116",
+    "environment16-qualified/consumer/bin/environment_probe": "98c28b0633ea97f069aa46ff64b8db8116031d7eb6c40e1add7275a7c4133c1f",
+    "model14-oam/consumer/bin/model_consumer": "e5be00fe6f0971792b7b6382d96e0ce30a1685556f269a7028521098a43dbeaa",
+    "model14-qualified/consumer/bin/model_consumer": "25737380528161e738f81c5c6d9743bde2357b6e3089c3a5a5e8b6b7487f890c",
+    "model16-oam/consumer/bin/model_consumer": "8c312b0653b4a0872d9e5b6b8132cf99c766622ea4596e0744eb6f5c12af8c65",
+    "model16-qualified/consumer/bin/model_consumer": "c8692309d6bc4d4b26ceb5f7f6cadee56e7711db1ab07e5a94711ea8c52e8671",
+    "setup14/cache/toolchains/gprbuild_26.0.1_e3f27f25/bin/gprbuild": "aff9fde5ca766d5497da9dec185cb8b96878206a0d02512aa5685e1e56d0a4d3",
+    "setup14/cache/toolchains/gprbuild_26.0.1_e3f27f25/share/gpr/manifests/gprbuild": "e3923e5841fd84de519cfb1f445afc383658710ab62ebc07fcab93d6df99cd08",
+    "setup14/consumer/bin/numeric_probe": "7314dc595a16fd747efde025aa183f56fe0add06b0293760c6e39836294008d0",
+    "setup16/cache/toolchains/gnat_native_16.1.0_9f74f58a/bin/gcc": "238f4adafcb1425c84da6519068fdfcf33e57e406fc793e2958a9238789900de",
+    "setup16/cache/toolchains/gnat_native_16.1.0_9f74f58a/bin/gnat": "fa15577ec622065f1e80d18f14d315d8b3d9a6ff17cf195ffe4fe3895c1f84d9",
+    "setup16/cache/toolchains/gprbuild_26.0.1_e3f27f25/bin/gprbuild": "aff9fde5ca766d5497da9dec185cb8b96878206a0d02512aa5685e1e56d0a4d3",
+    "setup16/cache/toolchains/gprbuild_26.0.1_e3f27f25/share/gpr/manifests/gprbuild": "e3923e5841fd84de519cfb1f445afc383658710ab62ebc07fcab93d6df99cd08",
+    "setup16/consumer/bin/numeric_probe": "2e22126e778f81365adb667ddd0266bbc9a64ab336d20be9f7010e2fcf11bd55"
+  },
+  "bridge_checks_per_optimization": 81,
+  "c_corpus_cells": [
+    {
+      "count": 27167,
+      "failures": 0,
+      "locale": "C",
+      "mode": "convert",
+      "optimization": "0"
+    },
+    {
+      "count": 20474,
+      "failures": 0,
+      "locale": "C",
+      "mode": "encode",
+      "optimization": "0"
+    },
+    {
+      "count": 27167,
+      "failures": 0,
+      "locale": "de_DE.UTF-8",
+      "mode": "convert",
+      "optimization": "0"
+    },
+    {
+      "count": 20474,
+      "failures": 0,
+      "locale": "de_DE.UTF-8",
+      "mode": "encode",
+      "optimization": "0"
+    },
+    {
+      "count": 27167,
+      "failures": 0,
+      "locale": "C",
+      "mode": "convert",
+      "optimization": "2"
+    },
+    {
+      "count": 20474,
+      "failures": 0,
+      "locale": "C",
+      "mode": "encode",
+      "optimization": "2"
+    },
+    {
+      "count": 27167,
+      "failures": 0,
+      "locale": "de_DE.UTF-8",
+      "mode": "convert",
+      "optimization": "2"
+    },
+    {
+      "count": 20474,
+      "failures": 0,
+      "locale": "de_DE.UTF-8",
+      "mode": "encode",
+      "optimization": "2"
+    }
+  ],
+  "c_environment_executions": 128,
+  "corpus": {
+    "conversion_rows": 27167,
+    "encoding_rows": 20474,
+    "finite_exponent_bands": 2047,
+    "groups": {
+      "all-exponent-exact": 20474,
+      "explicit": 12,
+      "integer-boundary": 27,
+      "midpoint-even": 1338,
+      "midpoint-odd": 1512,
+      "overflow-midpoint": 6,
+      "power-ten": 1266,
+      "power-ten-neighbor": 2532
+    },
+    "hashes": {
+      "conversions.tsv": "14c86c5fa674d279d198947dad03f71f517a40b583729df1184bbf6596a6451b",
+      "encoding.tsv": "b1ad323c7d5d88c465bf966dc2edc1249c68982ad817044fa5579ce65e9abc82"
+    },
+    "seed": 9601
+  },
+  "document_cells": [
+    {
+      "accepted": 7,
+      "atomic_rejections": 17,
+      "compiler": "14",
+      "full_document_encoding_patterns": 20474,
+      "numeric_positions_per_pattern": 8,
+      "policy": "Normal",
+      "profile": "oam"
+    },
+    {
+      "accepted": 7,
+      "atomic_rejections": 17,
+      "compiler": "14",
+      "full_document_encoding_patterns": 20474,
+      "numeric_positions_per_pattern": 8,
+      "policy": "Check",
+      "profile": "oam"
+    },
+    {
+      "accepted": 7,
+      "atomic_rejections": 17,
+      "compiler": "14",
+      "full_document_encoding_patterns": 20474,
+      "numeric_positions_per_pattern": 8,
+      "policy": "Ignore",
+      "profile": "oam"
+    },
+    {
+      "accepted": 7,
+      "atomic_rejections": 17,
+      "compiler": "14",
+      "full_document_encoding_patterns": 20474,
+      "numeric_positions_per_pattern": 8,
+      "policy": "Normal",
+      "profile": "qualified"
+    },
+    {
+      "accepted": 7,
+      "atomic_rejections": 17,
+      "compiler": "14",
+      "full_document_encoding_patterns": 20474,
+      "numeric_positions_per_pattern": 8,
+      "policy": "Check",
+      "profile": "qualified"
+    },
+    {
+      "accepted": 7,
+      "atomic_rejections": 17,
+      "compiler": "14",
+      "full_document_encoding_patterns": 20474,
+      "numeric_positions_per_pattern": 8,
+      "policy": "Ignore",
+      "profile": "qualified"
+    },
+    {
+      "accepted": 7,
+      "atomic_rejections": 17,
+      "compiler": "16",
+      "full_document_encoding_patterns": 20474,
+      "numeric_positions_per_pattern": 8,
+      "policy": "Normal",
+      "profile": "oam"
+    },
+    {
+      "accepted": 7,
+      "atomic_rejections": 17,
+      "compiler": "16",
+      "full_document_encoding_patterns": 20474,
+      "numeric_positions_per_pattern": 8,
+      "policy": "Check",
+      "profile": "oam"
+    },
+    {
+      "accepted": 7,
+      "atomic_rejections": 17,
+      "compiler": "16",
+      "full_document_encoding_patterns": 20474,
+      "numeric_positions_per_pattern": 8,
+      "policy": "Ignore",
+      "profile": "oam"
+    },
+    {
+      "accepted": 7,
+      "atomic_rejections": 17,
+      "compiler": "16",
+      "full_document_encoding_patterns": 20474,
+      "numeric_positions_per_pattern": 8,
+      "policy": "Normal",
+      "profile": "qualified"
+    },
+    {
+      "accepted": 7,
+      "atomic_rejections": 17,
+      "compiler": "16",
+      "full_document_encoding_patterns": 20474,
+      "numeric_positions_per_pattern": 8,
+      "policy": "Check",
+      "profile": "qualified"
+    },
+    {
+      "accepted": 7,
+      "atomic_rejections": 17,
+      "compiler": "16",
+      "full_document_encoding_patterns": 20474,
+      "numeric_positions_per_pattern": 8,
+      "policy": "Ignore",
+      "profile": "qualified"
+    }
+  ],
+  "immutable_evidence": {
+    "manifest": "evidence.sha256",
+    "manifest_sha256": "52ebe2fe19dcc16a12261253b601f5366a19045c80958e31e0adac0c910c640c",
+    "path": "/home/zboll/task096-scratch/r1/immutable-01"
+  },
+  "model_only_cells": 12,
+  "numerical_cells": [
+    {
+      "compiler": "14",
+      "input_discrepancies": {
+        "DOM": 12382,
+        "IEEE_Value": 1362
+      },
+      "locale": "default",
+      "output_discrepancies": {
+        "writer": 19168
+      },
+      "policy": "Normal"
+    },
+    {
+      "compiler": "14",
+      "input_discrepancies": {
+        "DOM": 12382,
+        "IEEE_Value": 1362
+      },
+      "locale": "german",
+      "output_discrepancies": {
+        "writer": 19168
+      },
+      "policy": "Normal"
+    },
+    {
+      "compiler": "14",
+      "input_discrepancies": {
+        "DOM": 12382,
+        "IEEE_Value": 1362
+      },
+      "locale": "default",
+      "output_discrepancies": {
+        "writer": 19168
+      },
+      "policy": "Check"
+    },
+    {
+      "compiler": "14",
+      "input_discrepancies": {
+        "DOM": 12382,
+        "IEEE_Value": 1362
+      },
+      "locale": "german",
+      "output_discrepancies": {
+        "writer": 19168
+      },
+      "policy": "Check"
+    },
+    {
+      "compiler": "14",
+      "input_discrepancies": {
+        "DOM": 12382,
+        "IEEE_Value": 1362
+      },
+      "locale": "default",
+      "output_discrepancies": {
+        "writer": 19168
+      },
+      "policy": "Ignore"
+    },
+    {
+      "compiler": "14",
+      "input_discrepancies": {
+        "DOM": 12382,
+        "IEEE_Value": 1362
+      },
+      "locale": "german",
+      "output_discrepancies": {
+        "writer": 19168
+      },
+      "policy": "Ignore"
+    },
+    {
+      "compiler": "16",
+      "input_discrepancies": {
+        "DOM": 12382,
+        "IEEE_Value": 1362
+      },
+      "locale": "default",
+      "output_discrepancies": {
+        "writer": 19168
+      },
+      "policy": "Normal"
+    },
+    {
+      "compiler": "16",
+      "input_discrepancies": {
+        "DOM": 12382,
+        "IEEE_Value": 1362
+      },
+      "locale": "german",
+      "output_discrepancies": {
+        "writer": 19168
+      },
+      "policy": "Normal"
+    },
+    {
+      "compiler": "16",
+      "input_discrepancies": {
+        "DOM": 12382,
+        "IEEE_Value": 1362
+      },
+      "locale": "default",
+      "output_discrepancies": {
+        "writer": 19168
+      },
+      "policy": "Check"
+    },
+    {
+      "compiler": "16",
+      "input_discrepancies": {
+        "DOM": 12382,
+        "IEEE_Value": 1362
+      },
+      "locale": "german",
+      "output_discrepancies": {
+        "writer": 19168
+      },
+      "policy": "Check"
+    },
+    {
+      "compiler": "16",
+      "input_discrepancies": {
+        "DOM": 12382,
+        "IEEE_Value": 1362
+      },
+      "locale": "default",
+      "output_discrepancies": {
+        "writer": 19168
+      },
+      "policy": "Ignore"
+    },
+    {
+      "compiler": "16",
+      "input_discrepancies": {
+        "DOM": 12382,
+        "IEEE_Value": 1362
+      },
+      "locale": "german",
+      "output_discrepancies": {
+        "writer": 19168
+      },
+      "policy": "Ignore"
+    }
+  ],
+  "production_float64_support": false,
+  "publication_status": "LOCAL_ONLY",
+  "qualified_platform": "Linux/x86-64 Debian 13 glibc 2.41-12+deb13u4; x87/MXCSR nearest; DAZ/FTZ off",
+  "raw_candidate_environment": {
+    "executions_per_compiler": 192,
+    "input_changed_executions_per_compiler": 168,
+    "observational_only": true,
+    "union_changed_executions_per_compiler": 180,
+    "writer_changed_executions_per_compiler": 96
+  },
+  "regression": {
+    "cargo_fmt": "passed",
+    "cargo_packages": [
+      "ams-gra-oms-codegen-core",
+      "ams-gra-oms-backend-ada"
+    ],
+    "ci_layout": "passed",
+    "ci_split": "passed",
+    "ci_split_mutation_checks": 210,
+    "failed": 0,
+    "ignored": 0,
+    "passed": 605,
+    "protected_files_unchanged": 460,
+    "summaries": 34,
+    "unit_tests_passed": 8
+  },
+  "research_outcome": "FLOAT64_BOUNDARY_QUALIFIED",
+  "sampling_not_exhaustive": true
+}
