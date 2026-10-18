@@ -90,9 +90,10 @@ pub use service_api::{
     validate_service_api_artifacts, validate_service_api_names, validate_service_plan_api_names,
 };
 pub use service_codec::{
-    AdaCodecRuntime, OAM_NAMESPACE, RUST_SERVICE_CODEC_FILE, RUST_SERVICE_CODEC_MODULE,
-    ServiceCodecError, ServiceCodecReadiness, analyze_service_codec,
-    analyze_service_codec_with_runtime, oms_json_member_name, oms_json_type_name,
+    AdaCodecFloatingRequirements, AdaCodecRuntime, OAM_NAMESPACE, RUST_SERVICE_CODEC_FILE,
+    RUST_SERVICE_CODEC_MODULE, ServiceCodecError, ServiceCodecReadiness,
+    ada_codec_floating_requirements, analyze_service_codec, analyze_service_codec_with_runtime,
+    oms_json_member_name, oms_json_type_name,
 };
 pub use service_generation::{
     ServiceGenerationError, ServiceGenerationProjection, project_service_generation_schema,

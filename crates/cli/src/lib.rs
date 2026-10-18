@@ -310,6 +310,8 @@ OPTIONS:
                                Explicit target opt-in: linux-x86_64-glibc-2.41
                                requires --language ada --with-codec; deployment
                                validates libc/ABI/rounding, not the generator host
+                               linux-x86_64-glibc-2.41-lossless-v1 additionally
+                               admits qualified Float64 Record operations
     -h, --help                 Print help
 
 NO OUTPUT FILES:
@@ -405,6 +407,8 @@ OPTIONS:
                                Explicit target opt-in: linux-x86_64-glibc-2.41
                                requires --language ada --with-codec; generated
                                Float32 code needs ams_gra_oms_json_float32.gpr
+                               linux-x86_64-glibc-2.41-lossless-v1 additionally
+                               admits Float64; needs ams_gra_oms_json_lossless.gpr
     -h, --help                 Print help
 
 EXTENSIONS USE EXACT CONTRACT MAPPING:
@@ -1257,8 +1261,13 @@ fn parse_ada_codec_runtime(
         Some("linux-x86_64-glibc-2.41") if language == Some(OsStr::new("ada")) && with_codec => {
             Ok(AdaCodecRuntime::LinuxX86_64Glibc241)
         }
+        Some("linux-x86_64-glibc-2.41-lossless-v1")
+            if language == Some(OsStr::new("ada")) && with_codec =>
+        {
+            Ok(AdaCodecRuntime::LinuxX86_64Glibc241LosslessV1)
+        }
         _ => Err(CliError::usage(
-            "--ada-codec-runtime requires --language ada --with-codec and value linux-x86_64-glibc-2.41",
+            "--ada-codec-runtime requires --language ada --with-codec and value linux-x86_64-glibc-2.41 or linux-x86_64-glibc-2.41-lossless-v1",
         )),
     }
 }

@@ -17,6 +17,9 @@ package AMS_GRA_OMS_JSON_Occurrences is
    function Get (Items : Value_Array; Index : Positive) return Value;
    function Length (Items : Value_Array) return Natural;
    function Floating (Item : Value) return AMS_GRA_OMS_JSON_Float32.Float32;
+   --  Width-neutral access to the original SAX-certified numeric occurrence.
+   --  Strings (including quoted finite decimals) are never numeric lexemes.
+   function Numeric_Lexeme (Item : Value) return String;
    procedure Map_JSON_Object
      (Item : Value; Process : not null access procedure (Name : String; Child : Value));
 private

@@ -12,7 +12,7 @@ use ams_gra_oms_ir::{OccurrenceShape, PrimitiveKind, SchemaIr, TypeKind, TypeRef
 use std::{collections::BTreeSet, fmt::Write as _, path::PathBuf};
 
 /// Select decoder operations at emission time. Schema names and completed
-/// source never pass through textual substitutions. Encoders always use DOM.
+/// source never pass through textual substitutions.
 #[derive(Clone, Copy)]
 struct Decoder {
     value: &'static str,
@@ -26,8 +26,14 @@ struct Decoder {
 }
 
 impl Decoder {
-    fn new(occurrences: bool) -> Self {
-        if occurrences {
+    fn new(float32: bool, float64: bool) -> Self {
+        if float64 {
+            Self {
+                errors: "Ingress.Validation_Error | AMS_GRA_OMS_JSON_Float32.Validation_Error | AMS_GRA_OMS_JSON_Float64.Validation_Error",
+                runtime_check: "      AMS_GRA_OMS_JSON_Float64.Require_Platform;\n",
+                ..Self::new(true, false)
+            }
+        } else if float32 {
             Self {
                 value: "Ingress.Value",
                 array: "Ingress.Value_Array",
@@ -48,6 +54,48 @@ impl Decoder {
                 reader: "AMS_GRA_OMS_JSON_Guard.Read",
                 errors: "AMS_GRA_OMS_JSON_Guard.Validation_Error",
                 runtime_check: "",
+            }
+        }
+    }
+}
+
+/// Explicit typed output operations, selected from emitted semantic operations.
+/// The legacy context preserves its original source bytes.
+#[derive(Clone, Copy)]
+struct Encoder {
+    value: &'static str,
+    array: &'static str,
+    create: &'static str,
+    object: &'static str,
+    append: &'static str,
+    float32: &'static str,
+    writer: &'static str,
+    errors: &'static str,
+}
+
+impl Encoder {
+    fn new(lossless: bool) -> Self {
+        if lossless {
+            Self {
+                value: "Output.Value",
+                array: "Output.Value_Array",
+                create: "Output.Create",
+                object: "Output.Create_Object",
+                append: "Output.Append",
+                float32: "Output.Floating_32",
+                writer: "Output.Write",
+                errors: "Output.Validation_Error | AMS_GRA_OMS_JSON_Guard.Validation_Error | AMS_GRA_OMS_JSON_Float64.Validation_Error | AMS_GRA_OMS_JSON_Float32.Validation_Error",
+            }
+        } else {
+            Self {
+                value: "JSON_Value",
+                array: "JSON_Array",
+                create: "Create",
+                object: "Create_Object",
+                append: "Append",
+                float32: "AMS_GRA_OMS_JSON_Float32.Encode",
+                writer: "AMS_GRA_OMS_JSON_Guard.Write",
+                errors: "AMS_GRA_OMS_JSON_Guard.Validation_Error",
             }
         }
     }
@@ -74,14 +122,20 @@ fn literal(text: &str) -> String {
 }
 
 // Emitted only when an operation in the projected output uses Binary.
-fn hex_binary_helpers(decoder: Decoder) -> String {
-    let mut helpers = String::from(
+fn hex_binary_helpers(decoder: Decoder, encoder: Encoder) -> String {
+    let Encoder { value, create, .. } = encoder;
+    let limit = if value == "Output.Value" {
+        "AMS_GRA_OMS_JSON_Guard.Max_Document_Bytes / 2 - 1"
+    } else {
+        "Natural'Last / 2"
+    };
+    let mut helpers = format!(
         r#"
-   function Encode_Hex_Binary (Item : Model.Binary_Vectors.Vector) return JSON_Value is
+   function Encode_Hex_Binary (Item : Model.Binary_Vectors.Vector) return {value} is
       use type Ada.Containers.Count_Type;
       Hex_Digits : constant String := "0123456789ABCDEF";
    begin
-      if Item.Length > Ada.Containers.Count_Type (Natural'Last / 2) then
+      if Item.Length > Ada.Containers.Count_Type ({limit}) then
          raise Codec_Error with "hexBinary too large";
       end if;
       declare
@@ -93,7 +147,7 @@ fn hex_binary_helpers(decoder: Decoder) -> String {
             Text (Offset + 2) := Hex_Digits (Natural (Octet) mod 16 + 1);
             Offset := Offset + 2;
          end loop;
-         return Create (Text);
+         return {create} (Text);
       end;
    end Encode_Hex_Binary;
 
@@ -191,17 +245,23 @@ pub fn generate_service_codec_with_runtime(
         return Ok(Vec::new());
     }
     let package = package_name(schema)?;
-    let float32 = schema.types.iter().any(|d| match &d.kind {
-        TypeKind::Primitive(PrimitiveKind::Float32) => true,
-        TypeKind::Record { fields, .. } => fields.iter().any(|f| {
-            matches!(
-                f.type_ref.target,
-                TypeRefTarget::Primitive(PrimitiveKind::Float32)
-            )
-        }),
-        _ => false,
-    });
-    let decoder = Decoder::new(float32);
+    let emissions = plan_type_emissions(schema, world)?;
+    let requirements =
+        ams_gra_oms_codegen_core::ada_codec_floating_requirements(schema, &emissions)
+            .map_err(|e| error(e.to_string()))?;
+    let float32 = requirements.float32;
+    let float64 = requirements.float64;
+    let encoder = Encoder::new(float64);
+    let Encoder {
+        value: output_value,
+        create,
+        object,
+        float32: encode_float32,
+        writer,
+        errors: output_errors,
+        ..
+    } = encoder;
+    let decoder = Decoder::new(float32, float64);
     let Decoder {
         value,
         get,
@@ -223,14 +283,19 @@ pub fn generate_service_codec_with_runtime(
     );
     let mut body = format!(
         "with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;\nwith Interfaces;\nwith GNATCOLL.JSON; use GNATCOLL.JSON;\nwith AMS_GRA_OMS_JSON_Guard;\n{}package body Service_Codec is\n   package Model renames {package};\n",
-        if float32 {
+        if float64 {
+            "with AMS_GRA_OMS_JSON_Float32;\nwith AMS_GRA_OMS_JSON_Occurrences;\nwith AMS_GRA_OMS_JSON_Float64;\nwith AMS_GRA_OMS_JSON_Emitter;\n"
+        } else if float32 {
             "with AMS_GRA_OMS_JSON_Float32;\nwith AMS_GRA_OMS_JSON_Occurrences;\n"
         } else {
             ""
         }
     );
-    if float32 {
+    if float32 || float64 {
         body.push_str("   package Ingress renames AMS_GRA_OMS_JSON_Occurrences;\n   function Scalar_Float32 (Value : Ingress.Value) return Interfaces.IEEE_Float_32 is\n   begin\n      return Ingress.Floating (Value);\n   exception\n      when Ingress.Validation_Error | AMS_GRA_OMS_JSON_Float32.Validation_Error => raise Codec_Error with \"invalid Float32\";\n   end Scalar_Float32;\n");
+    }
+    if float64 {
+        body.push_str("   package Output renames AMS_GRA_OMS_JSON_Emitter;\n   function Scalar_Float64 (Value : Ingress.Value) return Interfaces.IEEE_Float_64 is\n   begin\n      if Value.Kind = JSON_String_Type then\n         return AMS_GRA_OMS_JSON_Float64.Special (Ingress.Get (Value));\n      end if;\n      return AMS_GRA_OMS_JSON_Float64.Number (Ingress.Numeric_Lexeme (Value));\n   exception\n      when Ingress.Validation_Error | AMS_GRA_OMS_JSON_Float64.Validation_Error => raise Codec_Error with \"invalid Float64\";\n   end Scalar_Float64;\n");
     }
     body.push_str(&format!(
         r#"
@@ -264,7 +329,6 @@ pub fn generate_service_codec_with_runtime(
    end Member;
 "#,
     ));
-    let emissions = plan_type_emissions(schema, world)?;
     if emissions_emit_direct_duration(schema, &emissions, world) {
         body.push_str(&format!(
             "   function Scalar_Duration (Value : {value}) return Model.XML_Schema_Duration is\n      Text : constant String := Scalar_String (Value);\n   begin\n      begin\n         return Model.Create (Text);\n      exception\n         when Constraint_Error => raise Codec_Error with \"invalid Duration\";\n      end;\n   end Scalar_Duration;\n",
@@ -277,13 +341,14 @@ pub fn generate_service_codec_with_runtime(
     // Record this assembly boundary before schema-derived names are rendered.
     let binary_helpers_at = body.len();
     let mut needs_binary_helpers = false;
+    let mut needs_assertions = false;
     for emission in &emissions {
         if let TypeEmission::Declaration(d) = emission {
             if !emission.emits_own_top_level_name() {
                 continue;
             }
             let n = ada_identifier(&d.name.local_name)?;
-            writeln!(body, "   function To_JSON_{n} (Item : Model.{n}) return JSON_Value;\n   function From_JSON_{n} (Value : {value}) return Model.{n};").unwrap();
+            writeln!(body, "   function To_JSON_{n} (Item : Model.{n}) return {output_value};\n   function From_JSON_{n} (Value : {value}) return Model.{n};").unwrap();
         }
     }
     for emission in &emissions {
@@ -312,23 +377,34 @@ pub fn generate_service_codec_with_runtime(
                             "Encode_Hex_Binary (Item.Value)".into()
                         }
                     }
-                    PrimitiveKind::Float32 => {
+                    PrimitiveKind::Float32 | PrimitiveKind::Float64 => {
                         let value = if ams_gra_oms_codegen_core::floating_domain(*k, &d.constraints)
                             .map_err(|e| error(e.to_string()))?
                             .is_some()
                         {
                             "Model.Value (Item)".to_owned()
                         } else {
-                            "Interfaces.IEEE_Float_32 (Item)".to_owned()
+                            format!(
+                                "Interfaces.IEEE_Float_{} (Item)",
+                                if *k == PrimitiveKind::Float64 { 64 } else { 32 }
+                            )
                         };
-                        format!("AMS_GRA_OMS_JSON_Float32.Encode ({value})")
+                        let operation = if *k == PrimitiveKind::Float64 {
+                            "Output.Floating_64"
+                        } else {
+                            encode_float32
+                        };
+                        format!("{operation} ({value})")
                     }
-                    PrimitiveKind::Duration => "Create (Model.Value (Item))".into(),
-                    PrimitiveKind::DateTime => "Create (Model.Value (Item))".into(),
-                    PrimitiveKind::String if checked => "Create (Model.Value (Item))".into(),
-                    PrimitiveKind::String => "Create (To_String (Unbounded_String (Item)))".into(),
-                    PrimitiveKind::Boolean => "Create (Boolean (Item))".into(),
-                    _ => "Create (Long_Long_Integer (Item))".into(),
+                    PrimitiveKind::Duration | PrimitiveKind::DateTime => {
+                        format!("{create} (Model.Value (Item))")
+                    }
+                    PrimitiveKind::String if checked => format!("{create} (Model.Value (Item))"),
+                    PrimitiveKind::String => {
+                        format!("{create} (To_String (Unbounded_String (Item)))")
+                    }
+                    PrimitiveKind::Boolean => format!("{create} (Boolean (Item))"),
+                    _ => format!("{create} (Long_Long_Integer (Item))"),
                 };
                 let dec = match k {
                     PrimitiveKind::Binary => {
@@ -348,9 +424,21 @@ pub fn generate_service_codec_with_runtime(
                             .map_err(|e| error(e.to_string()))?
                             .is_some()
                         {
+                            needs_assertions = true;
                             "      declare\n         Number : constant Interfaces.IEEE_Float_32 := Scalar_Float32 (Value);\n      begin\n         return Model.Create (Number);\n      exception\n         when Ada.Assertions.Assertion_Error => raise Codec_Error with \"invalid checked Float32\";\n      end;".to_owned()
                         } else {
                             format!("      return Model.{n} (Scalar_Float32 (Value));")
+                        }
+                    }
+                    PrimitiveKind::Float64 => {
+                        if ams_gra_oms_codegen_core::floating_domain(*k, &d.constraints)
+                            .map_err(|e| error(e.to_string()))?
+                            .is_some()
+                        {
+                            needs_assertions = true;
+                            "      declare\n         Number : constant Interfaces.IEEE_Float_64 := Scalar_Float64 (Value);\n      begin\n         return Model.Create (Number);\n      exception\n         when Ada.Assertions.Assertion_Error => raise Codec_Error with \"invalid checked Float64\";\n      end;".to_owned()
+                        } else {
+                            format!("      return Model.{n} (Scalar_Float64 (Value));")
                         }
                     }
                     PrimitiveKind::Duration => String::from(
@@ -382,7 +470,7 @@ pub fn generate_service_codec_with_runtime(
                         .ok_or_else(|| error("invalid enum"))?;
                     writeln!(
                         enc,
-                        "         when Model.{id} => return Create ({});",
+                        "         when Model.{id} => return {create} ({});",
                         literal(&v.wire_value)
                     )
                     .unwrap();
@@ -402,7 +490,10 @@ pub fn generate_service_codec_with_runtime(
             TypeKind::Record { .. } => {
                 let fields = effective_record_fields(schema, &d.name)
                     .map_err(|e| error(format!("{e:?}")))?;
-                let mut enc = "      declare\n         Result : constant JSON_Value := Create_Object;\n      begin\n".to_owned();
+                let mut enc = format!(
+                    "      declare\n         Result : {}{output_value} := {object};\n      begin\n",
+                    if float64 { "" } else { "constant " }
+                );
                 let mut dec = format!(
                     "      declare\n         procedure Check_Member (Name : String; Child : {value}) is\n            pragma Unreferenced (Child);\n         begin\n"
                 );
@@ -430,7 +521,8 @@ pub fn generate_service_codec_with_runtime(
                     if matches!(f.cardinality.shape(), OccurrenceShape::Bounded { max, .. } if max > 1)
                         || matches!(f.cardinality.shape(), OccurrenceShape::Unbounded { .. })
                     {
-                        let (statements, helper) = repeated_member(f, &n, &field, &key, decoder)?;
+                        let (statements, helper) =
+                            repeated_member(f, &n, &field, &key, decoder, encoder)?;
                         enc.push_str(&statements);
                         let at = dec.find("         procedure Check_Member").unwrap();
                         dec.insert_str(at, &helper);
@@ -446,19 +538,23 @@ pub fn generate_service_codec_with_runtime(
                             format!("From_JSON_{} ({input})", q.local_name),
                         ),
                         TypeRefTarget::Primitive(PrimitiveKind::String) => (
-                            format!("Create (To_String ({item}))"),
+                            format!("{create} (To_String ({item}))"),
                             format!("To_Unbounded_String (Scalar_String ({input}))"),
                         ),
                         TypeRefTarget::Primitive(PrimitiveKind::Boolean) => (
-                            format!("Create ({item})"),
+                            format!("{create} ({item})"),
                             format!("Scalar_Boolean ({input})"),
                         ),
                         TypeRefTarget::Primitive(PrimitiveKind::Float32) => (
-                            format!("AMS_GRA_OMS_JSON_Float32.Encode ({item})"),
+                            format!("{encode_float32} ({item})"),
                             format!("Scalar_Float32 ({input})"),
                         ),
+                        TypeRefTarget::Primitive(PrimitiveKind::Float64) => (
+                            format!("Output.Floating_64 ({item})"),
+                            format!("Scalar_Float64 ({input})"),
+                        ),
                         TypeRefTarget::Primitive(PrimitiveKind::Duration) => (
-                            format!("Create (Model.Value ({item}))"),
+                            format!("{create} (Model.Value ({item}))"),
                             format!("Scalar_Duration ({input})"),
                         ),
                         TypeRefTarget::Primitive(PrimitiveKind::Binary) => {
@@ -469,7 +565,7 @@ pub fn generate_service_codec_with_runtime(
                             )
                         }
                         TypeRefTarget::Primitive(PrimitiveKind::DateTime) => (
-                            format!("Create (Model.Value ({item}))"),
+                            format!("{create} (Model.Value ({item}))"),
                             format!("Scalar_Date_Time ({input})"),
                         ),
                         TypeRefTarget::Primitive(_) => {
@@ -495,7 +591,7 @@ pub fn generate_service_codec_with_runtime(
                             // Local helper goes into this Record's declarative part.
                             let at = dec.find("         procedure Check_Member").unwrap();
                             dec.insert_str(at, &format!("         function {helper} return {ty} is\n            Number : constant Long_Long_Integer := Scalar_Integer ({input});\n         begin\n            {check}\n            return {ty} (Number);\n         end {helper};\n"));
-                            (format!("Create (Long_Long_Integer ({item}))"), helper)
+                            (format!("{create} (Long_Long_Integer ({item}))"), helper)
                         }
                     };
                     if optional {
@@ -521,7 +617,10 @@ pub fn generate_service_codec_with_runtime(
             TypeKind::Choice { .. } => {
                 let alternatives = effective_choice_alternatives(schema, &d.name)
                     .map_err(|e| error(e.to_string()))?;
-                let mut enc = "      declare\n         Result : constant JSON_Value := Create_Object;\n      begin\n         case Item.Kind is\n".to_owned();
+                let mut enc = format!(
+                    "      declare\n         Result : {}{output_value} := {object};\n      begin\n         case Item.Kind is\n",
+                    if float64 { "" } else { "constant " }
+                );
                 let mut helpers = String::new();
                 let mut branches = String::new();
                 for (index, f) in alternatives.iter().enumerate() {
@@ -542,11 +641,11 @@ pub fn generate_service_codec_with_runtime(
                             )
                         }
                         TypeRefTarget::Primitive(PrimitiveKind::String) => (
-                            format!("Create (To_String ({item}))"),
+                            format!("{create} (To_String ({item}))"),
                             format!("To_Unbounded_String (Scalar_String ({input}))"),
                         ),
                         TypeRefTarget::Primitive(PrimitiveKind::Boolean) => (
-                            format!("Create ({item})"),
+                            format!("{create} ({item})"),
                             format!("Scalar_Boolean ({input})"),
                         ),
                         TypeRefTarget::Primitive(kind) => {
@@ -569,7 +668,7 @@ pub fn generate_service_codec_with_runtime(
                                 );
                             }
                             writeln!(helpers, "         function {helper} return {ty} is\n            Number : constant Long_Long_Integer := Scalar_Integer ({input});\n         begin\n            {check}\n            return {ty} (Number);\n         end {helper};").unwrap();
-                            (format!("Create (Long_Long_Integer ({item}))"), helper)
+                            (format!("{create} (Long_Long_Integer ({item}))"), helper)
                         }
                     };
                     writeln!(
@@ -587,20 +686,20 @@ pub fn generate_service_codec_with_runtime(
             }
             _ => return Err(error("unsupported codec passed readiness")),
         };
-        writeln!(body, "   function To_JSON_{n} (Item : Model.{n}) return JSON_Value is\n   begin\n{enc}\n   end To_JSON_{n};\n   function From_JSON_{n} (Value : {value}) return Model.{n} is\n   begin\n{dec}\n   end From_JSON_{n};").unwrap();
+        writeln!(body, "   function To_JSON_{n} (Item : Model.{n}) return {output_value} is\n   begin\n{enc}\n   end To_JSON_{n};\n   function From_JSON_{n} (Value : {value}) return Model.{n} is\n   begin\n{dec}\n   end From_JSON_{n};").unwrap();
     }
     for q in payloads {
         let n = ada_identifier(&q.local_name)?;
         writeln!(spec, "   function Encode_{n} (Item : {package}.{n}) return String;\n   function Decode_{n} (Text : String) return {package}.{n};").unwrap();
-        writeln!(body, "   function Encode_{n} (Item : {package}.{n}) return String is\n   begin\n{runtime_check}      return AMS_GRA_OMS_JSON_Guard.Write (To_JSON_{n} (Item));\n   exception\n      when AMS_GRA_OMS_JSON_Guard.Validation_Error => raise Codec_Error with \"invalid JSON output\";\n   end Encode_{n};\n   function Decode_{n} (Text : String) return {package}.{n} is\n   begin\n{runtime_check}      return From_JSON_{n} ({reader} (Text));\n   exception\n      when {errors} => raise Codec_Error with \"invalid JSON document\";\n   end Decode_{n};").unwrap();
+        writeln!(body, "   function Encode_{n} (Item : {package}.{n}) return String is\n   begin\n{runtime_check}      return {writer} (To_JSON_{n} (Item));\n   exception\n      when {output_errors} => raise Codec_Error with \"invalid JSON output\";\n   end Encode_{n};\n   function Decode_{n} (Text : String) return {package}.{n} is\n   begin\n{runtime_check}      return From_JSON_{n} ({reader} (Text));\n   exception\n      when {errors} => raise Codec_Error with \"invalid JSON document\";\n   end Decode_{n};").unwrap();
     }
     if needs_binary_helpers {
-        body.insert_str(binary_helpers_at, &hex_binary_helpers(decoder));
+        body.insert_str(binary_helpers_at, &hex_binary_helpers(decoder, encoder));
         body.insert_str(0, "with Ada.Containers;\n");
     }
     spec.push_str("end Service_Codec;\n");
     body.push_str("end Service_Codec;\n");
-    if float32 && body.contains("Ada.Assertions.Assertion_Error") {
+    if needs_assertions {
         body = format!("with Ada.Assertions;\n{body}");
     }
     Ok(vec![
@@ -622,7 +721,11 @@ fn repeated_member(
     name: &str,
     key: &str,
     decoder: Decoder,
+    encoder: Encoder,
 ) -> Result<(String, String), CodegenError> {
+    let Encoder {
+        create, float32, ..
+    } = encoder;
     let stem = format!("{owner}_{name}");
     let min = field.cardinality.min_occurs;
     let positive_unbounded = field.cardinality.max_occurs.is_none() && min > 0;
@@ -635,23 +738,27 @@ fn repeated_member(
             )
         }
         TypeRefTarget::Primitive(PrimitiveKind::String) => (
-            "Create (To_String (Element_Item))".into(),
+            format!("{create} (To_String (Element_Item))"),
             "To_Unbounded_String (Scalar_String (Child))".into(),
         ),
         TypeRefTarget::Primitive(PrimitiveKind::Boolean) => (
-            "Create (Element_Item)".into(),
+            format!("{create} (Element_Item)"),
             "Scalar_Boolean (Child)".into(),
         ),
         TypeRefTarget::Primitive(PrimitiveKind::Float32) => (
-            "AMS_GRA_OMS_JSON_Float32.Encode (Element_Item)".into(),
+            format!("{float32} (Element_Item)"),
             "Scalar_Float32 (Child)".into(),
         ),
+        TypeRefTarget::Primitive(PrimitiveKind::Float64) => (
+            "Output.Floating_64 (Element_Item)".into(),
+            "Scalar_Float64 (Child)".into(),
+        ),
         TypeRefTarget::Primitive(PrimitiveKind::DateTime) => (
-            "Create (Model.Value (Element_Item))".into(),
+            format!("{create} (Model.Value (Element_Item))"),
             "Scalar_Date_Time (Child)".into(),
         ),
         TypeRefTarget::Primitive(PrimitiveKind::Duration) => (
-            "Create (Model.Value (Element_Item))".into(),
+            format!("{create} (Model.Value (Element_Item))"),
             "Scalar_Duration (Child)".into(),
         ),
         TypeRefTarget::Primitive(kind) => {
@@ -683,10 +790,11 @@ fn repeated_member(
                 name,
                 key,
                 positive_unbounded,
-                "Create (Long_Long_Integer (Element_Item))",
+                &format!("{create} (Long_Long_Integer (Element_Item))"),
                 &decode,
                 true,
                 decoder,
+                encoder,
             );
         }
     };
@@ -700,6 +808,7 @@ fn repeated_member(
         &decode,
         false,
         decoder,
+        encoder,
     )
 }
 
@@ -714,7 +823,14 @@ fn repeated_member_render(
     decode: &str,
     decode_statement: bool,
     decoder: Decoder,
+    encoder: Encoder,
 ) -> Result<(String, String), CodegenError> {
+    let Encoder {
+        array: output_array,
+        append: output_append,
+        create,
+        ..
+    } = encoder;
     let Decoder {
         value,
         array,
@@ -728,12 +844,12 @@ fn repeated_member_render(
     let append = ADA_SEQUENCE_APPEND;
     let constructor = ADA_SEQUENCE_TO_SEQUENCE;
     let mut enc = format!(
-        "         declare\n            JSON_Items : JSON_Array;\n            procedure Add_Item (Element_Item : Model.{stem}_Item) is\n            begin\n               Append (JSON_Items, {encode});\n            end Add_Item;\n         begin\n"
+        "         declare\n            JSON_Items : {output_array};\n            procedure Add_Item (Element_Item : Model.{stem}_Item) is\n            begin\n               {output_append} (JSON_Items, {encode});\n            end Add_Item;\n         begin\n"
     );
     if positive_unbounded {
-        writeln!(enc, "            if Model.{length} (Item.{name}.Additional) > Natural'Last - {min} then raise Codec_Error with \"sequence length overflow\"; end if;\n            for Index in Item.{name}.Required'Range loop\n               Add_Item (Item.{name}.Required (Index));\n            end loop;\n            for Index in 1 .. Model.{length} (Item.{name}.Additional) loop\n               Add_Item (Model.{element} (Item.{name}.Additional, Index));\n            end loop;\n            Result.Set_Field ({key}, Create (JSON_Items));").unwrap();
+        writeln!(enc, "            if Model.{length} (Item.{name}.Additional) > Natural'Last - {min} then raise Codec_Error with \"sequence length overflow\"; end if;\n            for Index in Item.{name}.Required'Range loop\n               Add_Item (Item.{name}.Required (Index));\n            end loop;\n            for Index in 1 .. Model.{length} (Item.{name}.Additional) loop\n               Add_Item (Model.{element} (Item.{name}.Additional, Index));\n            end loop;\n            Result.Set_Field ({key}, {create} (JSON_Items));").unwrap();
     } else {
-        writeln!(enc, "            for Index in 1 .. Model.{length} (Item.{name}) loop\n               Add_Item (Model.{element} (Item.{name}, Index));\n            end loop;\n            if Model.{length} (Item.{name}) > 0 then Result.Set_Field ({key}, Create (JSON_Items)); end if;").unwrap();
+        writeln!(enc, "            for Index in 1 .. Model.{length} (Item.{name}) loop\n               Add_Item (Model.{element} (Item.{name}, Index));\n            end loop;\n            if Model.{length} (Item.{name}) > 0 then Result.Set_Field ({key}, {create} (JSON_Items)); end if;").unwrap();
     }
     enc.push_str("         end;\n");
     let value_body = if decode_statement {

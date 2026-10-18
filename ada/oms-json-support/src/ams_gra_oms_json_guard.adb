@@ -133,6 +133,11 @@ package body AMS_GRA_OMS_JSON_Guard is
       end if;
    end Validate;
 
+   procedure Validate_String (Text : String) is
+   begin
+      Validate (Text, Document => False);
+   end Validate_String;
+
    procedure Validate_Tree (Value : JSON_Value) is
       Nodes : Natural := 0;
       procedure Visit (Item : JSON_Value; Depth : Natural) is

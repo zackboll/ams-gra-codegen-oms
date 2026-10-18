@@ -322,6 +322,128 @@ fn task093_c3_runtime_matrix_and_decoder_helpers() {
 }
 
 #[test]
+fn task097_lossless_profile_matrix_and_legacy_bytes() {
+    let lossless = "linux-x86_64-glibc-2.41-lossless-v1";
+    let old = "linux-x86_64-glibc-2.41";
+    for (index, profile) in [None, Some(old), Some(lossless)].into_iter().enumerate() {
+        let mut args = vec![
+            "service-check",
+            "--language",
+            "ada",
+            "--world",
+            "closed-schema",
+            "--with-codec",
+        ];
+        if let Some(profile) = profile {
+            args.extend(["--ada-codec-runtime", profile]);
+        }
+        let result = run(
+            &args,
+            "codec-ada-float64.xsd",
+            "codec-ada-float64.yaml",
+            None,
+        );
+        assert_eq!(
+            result.status.success(),
+            profile == Some(lossless),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        args[0] = "service-generate";
+        let dir = output_dir(&format!("097-profile-{index}"));
+        let result = run(
+            &args,
+            "codec-ada-float64.xsd",
+            "codec-ada-float64.yaml",
+            Some(&dir),
+        );
+        assert_eq!(result.status.success(), profile == Some(lossless));
+        if profile == Some(lossless) {
+            let body = std::fs::read_to_string(dir.join("service_codec.adb")).unwrap();
+            assert!(body.contains("Output.Floating_64"));
+            assert!(body.contains("Ingress.Numeric_Lexeme"));
+            assert!(body.contains("Output.Write (To_JSON_"));
+            assert!(!body.contains("return JSON_Value"));
+            std::fs::remove_dir_all(dir).unwrap();
+        } else {
+            assert!(!dir.exists());
+        }
+    }
+    for (index, (schema, contract)) in [
+        (
+            "codec-ada-hexbinary-combined.xsd",
+            "codec-ada-hexbinary-combined.yaml",
+        ),
+        ("codec-ada-float32.xsd", "codec-ada-float32.yaml"),
+        (
+            "codec-ada-hexbinary-float32.xsd",
+            "codec-ada-hexbinary-float32.yaml",
+        ),
+        (
+            "codec-ada-helper-demand.xsd",
+            "codec-ada-helper-demand.yaml",
+        ),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let dirs = [
+            output_dir(&format!("097-old-{index}")),
+            output_dir(&format!("097-new-{index}")),
+        ];
+        for (dir, profile) in dirs.iter().zip([old, lossless]) {
+            let args = [
+                "service-generate",
+                "--language",
+                "ada",
+                "--world",
+                "closed-schema",
+                "--with-codec",
+                "--ada-codec-runtime",
+                profile,
+            ];
+            let result = run(&args, schema, contract, Some(dir));
+            assert!(
+                result.status.success(),
+                "{schema}: {}",
+                String::from_utf8_lossy(&result.stderr)
+            );
+        }
+        assert_eq!(listing(&dirs[0]), listing(&dirs[1]));
+        for file in listing(&dirs[0]) {
+            assert_eq!(
+                std::fs::read(dirs[0].join(&file)).unwrap(),
+                std::fs::read(dirs[1].join(&file)).unwrap(),
+                "{schema}: {file}"
+            );
+        }
+        for dir in dirs {
+            std::fs::remove_dir_all(dir).unwrap();
+        }
+    }
+    for language in ["rust", "cpp"] {
+        let dir = output_dir(&format!("097-wrong-language-{language}"));
+        let result = run(
+            &[
+                "service-generate",
+                "--language",
+                language,
+                "--world",
+                "closed-schema",
+                "--with-codec",
+                "--ada-codec-runtime",
+                lossless,
+            ],
+            "codec-ada-float64.xsd",
+            "codec-ada-float64.yaml",
+            Some(&dir),
+        );
+        assert!(!result.status.success());
+        assert!(!dir.exists());
+    }
+}
+
+#[test]
 fn task095_target_opt_in_agrees_between_check_generate_and_atomic_rejection() {
     let schema = "codec-ada-float32.xsd";
     let contract = "codec-ada-float32.yaml";

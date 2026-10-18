@@ -24,6 +24,83 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  ada-float64-codec:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: ['14', '16']
+    container:
+      image: debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5
+    timeout-minutes: 90
+    steps:
+      - name: Fresh target preflight and external GNAT verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update
+          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14 locales
+          test "$(uname -m)" = x86_64
+          test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.41'
+          localedef -i de_DE -f UTF-8 de_DE.UTF-8
+          mkdir -p /tmp/task097-evidence
+          dpkg-query -W libc6 libc6-dev gnat-14 gcc-14 | tee /tmp/task097-evidence/platform.txt
+          sha256sum /usr/lib/x86_64-linux-gnu/libc.so.6 /usr/bin/gnat /usr/bin/gcc | tee -a /tmp/task097-evidence/platform.txt
+          gnat --version | tee -a /tmp/task097-evidence/platform.txt
+          gnat --version | grep -E '^GNAT 14\.2\.0([[:space:]]|$)'
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Record exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task097-evidence/source.txt
+          test "$(git rev-parse HEAD)" = '${{ github.event.pull_request.head.sha || github.sha }}'
+          test -z "$(git status --porcelain)"
+      - uses: dtolnay/rust-toolchain@1.95.0
+      - name: Install verified Alire 2.1.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
+          echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  /tmp/alire.zip' | sha256sum --check --strict
+          unzip -q /tmp/alire.zip -d /opt/alire
+          test "$(/opt/alire/bin/alr --version)" = 'alr 2.1.1'
+          sha256sum /opt/alire/bin/alr | tee -a /tmp/task097-evidence/platform.txt
+          echo /opt/alire/bin >> "$GITHUB_PATH"
+      - name: Build exact-head production generator
+        run: cargo +1.95.0 build --locked -p ams-gra-codegen-oms
+      - name: Production binary64 generated-code qualification
+        shell: bash
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          set -euo pipefail
+          python3 scripts/task097/job.py /tmp/task097-evidence/job -- python3 scripts/task097/qualify.py --scratch /tmp/task097-evidence/campaign --compiler '${{ matrix.compiler }}' --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
+          test -s /tmp/task097-evidence/campaign/result.json
+      - name: Preserve complete textual qualification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: task097-platform-qualified-float64-${{ matrix.compiler }}
+          path: |
+            /tmp/task097-evidence/**/*.json
+            /tmp/task097-evidence/**/*.stdout
+            /tmp/task097-evidence/**/*.stderr
+            /tmp/task097-evidence/**/*.log
+            /tmp/task097-evidence/**/*.exit
+            /tmp/task097-evidence/**/*.txt
+            /tmp/task097-evidence/**/*.tsv
+            /tmp/task097-evidence/**/*.lock
+            /tmp/task097-evidence/**/*.toml
+            /tmp/task097-evidence/**/consumer/*.adb
+            /tmp/task097-evidence/**/consumer/*.ads
+            /tmp/task097-evidence/**/support/**/*.adb
+            /tmp/task097-evidence/**/support/**/*.ads
+            /tmp/task097-evidence/**/support/**/*.c
+            /tmp/task097-evidence/**/support/**/*.h
+          if-no-files-found: error
   ada-float32-codec:
     runs-on: ubuntu-24.04
     container:

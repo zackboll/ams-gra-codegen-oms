@@ -1,0 +1,13 @@
+with "ams_gra_oms_json_float32";
+project AMS_GRA_OMS_JSON_Lossless is
+   for Languages use ("Ada", "C");
+   for Source_Dirs use ("lossless");
+   for Object_Dir use "obj-lossless";
+   package Compiler is
+      for Default_Switches ("Ada") use ("-gnat2022", "-gnato", "-O0");
+      for Default_Switches ("C") use ("-std=c11", "-O2", "-Wall", "-Wextra", "-Werror");
+   end Compiler;
+   package Linker is
+      for Linker_Options use ("-lm");
+   end Linker;
+end AMS_GRA_OMS_JSON_Lossless;
