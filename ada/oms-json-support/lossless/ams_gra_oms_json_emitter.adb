@@ -1,6 +1,5 @@
 with Ada.Strings.Fixed;
 with AMS_GRA_OMS_JSON_Guard;
-with AMS_GRA_OMS_JSON_Occurrences;
 with AMS_GRA_OMS_JSON_Float32;
 with AMS_GRA_OMS_JSON_Float64;
 with GNATCOLL.JSON;
@@ -99,13 +98,11 @@ package body AMS_GRA_OMS_JSON_Emitter is
    end Append;
    function Write (Item : Value) return String is
       Text : constant String := To_String (Item.Text);
-      Checked : constant AMS_GRA_OMS_JSON_Occurrences.Value :=
-        AMS_GRA_OMS_JSON_Occurrences.Read (Text);
-      pragma Unreferenced (Checked);
    begin
+      Guard.Validate_Encoded_Document (Text);
       return Text;
    exception
-      when AMS_GRA_OMS_JSON_Occurrences.Validation_Error =>
+      when Guard.Validation_Error =>
          raise Validation_Error with "invalid completed JSON output";
    end Write;
 end AMS_GRA_OMS_JSON_Emitter;

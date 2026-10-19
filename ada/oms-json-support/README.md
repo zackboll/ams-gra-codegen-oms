@@ -117,6 +117,24 @@ renaming of the production package.
   translated: an indexing or programming defect must remain distinguishable.
   No production caller may bypass this boundary for document read/write.
 
+### Task 097-C4 additive validation-only output boundary
+
+`Validate_Encoded_Document (Text : String)` checks UTF-8/escapes/surrogates with
+the existing scanner, and complete grammar with pinned GNATCOLL SAX events. It
+does not build a JSON DOM/occurrence tree, decode strings, or convert numbers.
+It enforces 1,048,576 bytes, 128 simultaneous collections, and 100,000 value
+nodes (keys and collection-end events are not nodes). Duplicate keys remain legal
+JSON; every lexical value occurrence counts toward this output limit. Generated
+emitters do not emit duplicate keys. Ordinary Read/Write remain unchanged.
+
+The lossless emitter alone uses this new procedure before returning completed
+output. Finite numeric syntax is not restricted by the DOM's signed-64 storage.
+The SAX reader makes an explicit input-size copy, bounded to 1 MiB; scalar parser
+state grows with capped nesting, and a fixed 128-frame tracker distinguishes keys
+from values. Allocation failures propagate as resource exceptions without generic
+exception rewriting. This is a local corrective boundary, not full codec or
+provider resource qualification.
+
 Task 087A delivers the reusable JSON support boundary only. The mandatory
 `ada-json-guard` Fast CI job executes the same qualification command using a
 SHA-256-verified Alire release archive and the native GNAT 16.1.0 provider

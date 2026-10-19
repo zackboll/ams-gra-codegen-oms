@@ -1,4 +1,5 @@
 with GNATCOLL.JSON; use GNATCOLL.JSON;
+with GNATCOLL.Buffer;
 
 package body AMS_GRA_OMS_JSON_Guard is
    --  Offsets, rather than Text'Last + 1, also handle non-one-based strings
@@ -137,6 +138,85 @@ package body AMS_GRA_OMS_JSON_Guard is
    begin
       Validate (Text, Document => False);
    end Validate_String;
+
+   procedure Validate_Encoded_Document (Text : String) is
+      --  This is event bookkeeping, not a second grammar parser. Parse_Next
+      --  checks punctuation, token grammar, matching delimiters and DOC_END.
+      --  STRING_VALUE also denotes object keys, which must not count as nodes.
+      type Frame is record
+         Is_Object : Boolean;
+         Expect_Key : Boolean;
+      end record;
+      type Frames is array (Positive range 1 .. Max_Depth) of Frame;
+      Stack : Frames := (others => (Is_Object => False, Expect_Key => False));
+      Level : Natural range 0 .. Max_Depth := 0;
+      Nodes : Natural range 0 .. Max_Nodes := 0;
+   begin
+      if Text'Length > Max_Document_Bytes then
+         raise Validation_Error with "JSON output document size limit";
+      end if;
+      --  Keep the established UTF-8, escape, surrogate, control and lexical
+      --  nesting checks. Its offset arithmetic accepts arbitrary String bounds.
+      Validate (Text, Document => True);
+      declare
+         --  Open_String normalizes bounds and explicitly copies at most 1 MiB.
+         --  Both limited-controlled objects own their storage for this scope;
+         --  no controlled value-result adjustment is involved.
+         Data : GNATCOLL.Buffer.Reader := GNATCOLL.Buffer.Open_String (Text);
+         Parser : JSON_Parser;
+         Event : JSON_Parser_Event;
+      begin
+         loop
+            Event := Parse_Next (Parser, Data);
+            case Event.Kind is
+               when DOC_END =>
+                  if Nodes = 0 or else Level /= 0 then
+                     raise Validation_Error with "incomplete JSON output";
+                  end if;
+                  exit;
+               when ARRAY_END | OBJECT_END =>
+                  if Level = 0 then
+                     raise Validation_Error with "unmatched JSON output end";
+                  end if;
+                  Level := Level - 1;
+               when STRING_VALUE .. OBJECT_START =>
+                  if Level > 0 and then Stack (Level).Is_Object
+                    and then Stack (Level).Expect_Key
+                  then
+                     --  The parser guarantees that an object key is a string.
+                     if Event.Kind /= STRING_VALUE then
+                        raise Validation_Error with "expected JSON output key";
+                     end if;
+                     Stack (Level).Expect_Key := False;
+                  else
+                     if Nodes = Max_Nodes then
+                        raise Validation_Error with "JSON output node limit";
+                     end if;
+                     Nodes := Nodes + 1;
+                     if Level > 0 and then Stack (Level).Is_Object then
+                        Stack (Level).Expect_Key := True;
+                     end if;
+                     if Event.Kind in ARRAY_START | OBJECT_START then
+                        if Level = Max_Depth then
+                           raise Validation_Error with "JSON output nesting limit";
+                        end if;
+                        Level := Level + 1;
+                        Stack (Level) :=
+                          (Is_Object => Event.Kind = OBJECT_START,
+                           Expect_Key => Event.Kind = OBJECT_START);
+                     end if;
+                  end if;
+               when VALUE_SEP | NAME_SEP =>
+                  --  These events are internal to the pinned SAX parser and
+                  --  must never be returned through its public interface.
+                  raise Program_Error with "unexpected SAX separator event";
+            end case;
+         end loop;
+      end;
+   exception
+      when Invalid_JSON_Stream =>
+         raise Validation_Error with "invalid encoded JSON document";
+   end Validate_Encoded_Document;
 
    procedure Validate_Tree (Value : JSON_Value) is
       Nodes : Natural := 0;
