@@ -1212,6 +1212,164 @@ pub const ADA_SEQUENCE_RESERVE_CAPACITY: &str = "Reserve_Capacity";
 /// that is the *sole* way to obtain a bounded sequence of a given occupancy.
 pub const ADA_SEQUENCE_TO_SEQUENCE: &str = "To_Sequence";
 
+/// Additional lossless-codec child unit; never part of model-only output.
+pub const ADA_CODEC_VIEWS_CHILD: &str = "Codec_Views";
+pub const ADA_CODEC_VISIT_ELEMENT: &str = "Visit_Element";
+pub const ADA_CODEC_VISIT_BINARY: &str = "Visit_Binary";
+
+/// One opaque model sequence read by the lossless encoder. The required prefix
+/// of a positive-minimum unbounded sequence is public and needs no accessor.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AdaCodecSequenceView {
+    pub container: String,
+    pub item: String,
+    pub vectors: Option<String>,
+}
+
+/// Semantic view demand shared by codec rendering and codec name preflight.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct AdaCodecViews {
+    pub sequences: Vec<AdaCodecSequenceView>,
+    pub binary_carriers: Vec<String>,
+}
+
+impl AdaCodecViews {
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.sequences.is_empty() && self.binary_carriers.is_empty()
+    }
+}
+
+/// Plan codec views from actual emitted declarations, never source text or
+/// excluded schema declarations. Call only for the effective lossless profile.
+///
+/// # Errors
+/// Propagates effective-field, storage, and Binary-domain errors.
+pub fn ada_codec_views(
+    schema: &SchemaIr,
+    emissions: &[TypeEmission<'_>],
+    world: GenerationWorld,
+) -> Result<AdaCodecViews, crate::CodegenError> {
+    let error = |e: String| crate::CodegenError { message: e };
+    let mut result = AdaCodecViews::default();
+    for emission in emissions.iter().filter(|e| e.emits_own_top_level_name()) {
+        let TypeEmission::Declaration(d) = emission else {
+            continue;
+        };
+        if matches!(d.kind, TypeKind::Primitive(PrimitiveKind::Binary))
+            && crate::binary_length_domain(PrimitiveKind::Binary, &d.constraints)
+                .map_err(|e| error(e.to_string()))?
+                .is_some()
+        {
+            result.binary_carriers.push(d.name.local_name.clone());
+        }
+        let fields = match &d.kind {
+            TypeKind::Record { .. } => {
+                effective_record_fields(schema, &d.name).map_err(|e| error(e.to_string()))?
+            }
+            TypeKind::Choice { .. } => {
+                effective_choice_alternatives(schema, &d.name).map_err(|e| error(e.to_string()))?
+            }
+            _ => continue,
+        };
+        for field in fields {
+            if matches!(d.kind, TypeKind::Record { .. })
+                && matches!(
+                    field_storage_semantics(schema, field, world)
+                        .map_err(|e| error(e.to_string()))?,
+                    EffectiveValueMember::AbsentOnly(_)
+                )
+            {
+                continue;
+            }
+            let member = if matches!(d.kind, TypeKind::Record { .. }) {
+                generated_record_field_name(BackendLanguage::Ada, &field.name)
+            } else {
+                generated_choice_alternative_name(BackendLanguage::Ada, &field.name)
+            }
+            .ok_or_else(|| error(format!("invalid Ada member {}", field.name)))?;
+            let stem = format!("{}_{member}", d.name.local_name);
+            let (container, vectors) = match field.cardinality.shape() {
+                OccurrenceShape::Bounded { .. } => (format!("{stem}_Sequence"), None),
+                OccurrenceShape::Unbounded { min } if min > 0 => (
+                    format!("{stem}_Additional"),
+                    Some(format!("{stem}_Additional_Vectors")),
+                ),
+                OccurrenceShape::Unbounded { .. } => {
+                    (format!("{stem}_Sequence"), Some(format!("{stem}_Vectors")))
+                }
+                _ => continue,
+            };
+            result.sequences.push(AdaCodecSequenceView {
+                container,
+                item: format!("{stem}_Item"),
+                vectors,
+            });
+        }
+    }
+    Ok(result)
+}
+
+/// Validate the additional child's identifier against the *complete* parent
+/// declarative region (including private helpers and enumeration literals).
+/// Visit names live in the child and deliberately do not reserve parent names.
+/// All child profiles qualify parent types to avoid hiding legal parent names.
+///
+/// # Errors
+/// Returns the same case-insensitive name conflicts as model preflight.
+pub fn validate_ada_codec_views_name(
+    schema: &SchemaIr,
+    emissions: &[TypeEmission<'_>],
+    world: GenerationWorld,
+) -> Result<(), BackendNameError> {
+    let language = BackendLanguage::Ada;
+    let direct = DirectTemporalSupport::of(schema, emissions, world);
+    let mut top = Region::new(language, NameRegion::TopLevel);
+    register_support_names(&mut top, schema, language, direct)?;
+    register_emitted_declaration_names(&mut top, emissions, language)?;
+    register_ada_kind_companions(&mut top, emissions)?;
+    for emission in emissions {
+        let mut members = Region::new(language, NameRegion::Members(emission.name().clone()));
+        register_emission_names(schema, emission, language, world, &mut members, &mut top)?;
+    }
+    validate_ada_enumeration_literals(&top, schema, emissions)?;
+    // Enumeration literals are checked separately by the existing model policy.
+    // Include their actual emitted spellings in this additional-child collision.
+    for emission in emissions.iter().filter(|e| e.emits_own_top_level_name()) {
+        if let TypeEmission::Declaration(d) = emission
+            && let TypeKind::Enumeration { variants } = &d.kind
+        {
+            for variant in variants {
+                let identifier = generated_enum_variant_name(language, &variant.wire_value);
+                if !identifier
+                    .as_ref()
+                    .is_some_and(|id| id.eq_ignore_ascii_case(ADA_CODEC_VIEWS_CHILD))
+                {
+                    continue;
+                }
+                top.insert_transformed(
+                    NameSource::EnumLiteral {
+                        owner: d.name.clone(),
+                        literal: variant.wire_value.clone(),
+                    },
+                    identifier,
+                )?;
+            }
+        }
+    }
+    top.insert(
+        NameSource::GeneratedSupport(language),
+        ADA_CODEC_VIEWS_CHILD.to_owned(),
+    )
+}
+
+/// Conventional GNAT child-unit paths, shared with pre-render artifact checks.
+#[must_use]
+pub fn ada_codec_views_files(package: &[String; 2]) -> [String; 2] {
+    let stem = format!("{}-{ADA_CODEC_VIEWS_CHILD}", package.join("-")).to_ascii_lowercase();
+    [format!("{stem}.ads"), format!("{stem}.adb")]
+}
+
 /// Operations an **unbounded** sequence's opaque storage publishes.
 pub const ADA_UNBOUNDED_SEQUENCE_CALLABLES: &[&str] = &[
     ADA_SEQUENCE_LENGTH,

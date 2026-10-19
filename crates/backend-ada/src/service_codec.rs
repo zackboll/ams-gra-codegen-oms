@@ -63,6 +63,7 @@ impl Decoder {
 /// The legacy context preserves its original source bytes.
 #[derive(Clone, Copy)]
 struct Encoder {
+    views: bool,
     value: &'static str,
     array: &'static str,
     create: &'static str,
@@ -77,6 +78,7 @@ impl Encoder {
     fn new(lossless: bool) -> Self {
         if lossless {
             Self {
+                views: true,
                 value: "Output.Value",
                 array: "Output.Value_Array",
                 create: "Output.Create",
@@ -88,6 +90,7 @@ impl Encoder {
             }
         } else {
             Self {
+                views: false,
                 value: "JSON_Value",
                 array: "JSON_Array",
                 create: "Create",
@@ -252,6 +255,11 @@ pub fn generate_service_codec_with_runtime(
     let float32 = requirements.float32;
     let float64 = requirements.float64;
     let encoder = Encoder::new(float64);
+    let views = if float64 {
+        ams_gra_oms_codegen_core::ada_codec_views(schema, &emissions, world)?
+    } else {
+        ams_gra_oms_codegen_core::AdaCodecViews::default()
+    };
     let Encoder {
         value: output_value,
         create,
@@ -293,6 +301,12 @@ pub fn generate_service_codec_with_runtime(
     );
     if float32 || float64 {
         body.push_str("   package Ingress renames AMS_GRA_OMS_JSON_Occurrences;\n   function Scalar_Float32 (Value : Ingress.Value) return Interfaces.IEEE_Float_32 is\n   begin\n      return Ingress.Floating (Value);\n   exception\n      when Ingress.Validation_Error | AMS_GRA_OMS_JSON_Float32.Validation_Error => raise Codec_Error with \"invalid Float32\";\n   end Scalar_Float32;\n");
+    }
+    if !views.is_empty() {
+        body.insert_str(0, &format!("with {package}.Codec_Views;\n"));
+        body.push_str(&format!(
+            "   package Codec_Views renames {package}.Codec_Views;\n"
+        ));
     }
     if float64 {
         body.push_str("   package Output renames AMS_GRA_OMS_JSON_Emitter;\n   function Scalar_Float64 (Value : Ingress.Value) return Interfaces.IEEE_Float_64 is\n   begin\n      if Value.Kind = JSON_String_Type then\n         return AMS_GRA_OMS_JSON_Float64.Special (Ingress.Get (Value));\n      end if;\n      return AMS_GRA_OMS_JSON_Float64.Number (Ingress.Numeric_Lexeme (Value));\n   exception\n      when Ingress.Validation_Error | AMS_GRA_OMS_JSON_Float64.Validation_Error => raise Codec_Error with \"invalid Float64\";\n   end Scalar_Float64;\n");
@@ -372,6 +386,8 @@ pub fn generate_service_codec_with_runtime(
                             .map_err(|e| error(e.to_string()))?
                             .is_some()
                         {
+                            // Lossless replaces this value expression with the
+                            // scoped carrier visitor below; legacy bytes stay exact.
                             "Encode_Hex_Binary (Model.Value (Item))".into()
                         } else {
                             "Encode_Hex_Binary (Item.Value)".into()
@@ -460,7 +476,14 @@ pub fn generate_service_codec_with_runtime(
                         "      declare\n         Number : constant Long_Long_Integer := Scalar_Integer (Value);\n      begin\n         return Model.{n} (Number);\n      exception\n         when Constraint_Error => raise Codec_Error with \"integer outside model range\";\n      end;"
                     ),
                 };
-                (format!("      return {enc};"), dec)
+                let enc = if views.binary_carriers.contains(&n) {
+                    format!(
+                        "      declare\n         Result : {output_value};\n         procedure Encode_Octets (Octets : in Model.Binary_Vectors.Vector) is\n         begin\n            Result := Encode_Hex_Binary (Octets);\n         end Encode_Octets;\n      begin\n         Codec_Views.Visit_Binary (Item, Encode_Octets'Access);\n         return Result;\n      end;"
+                    )
+                } else {
+                    format!("      return {enc};")
+                };
+                (enc, dec)
             }
             TypeKind::Enumeration { variants } => {
                 let mut enc = "      case Item is\n".to_owned();
@@ -702,7 +725,7 @@ pub fn generate_service_codec_with_runtime(
     if needs_assertions {
         body = format!("with Ada.Assertions;\n{body}");
     }
-    Ok(vec![
+    let mut files = vec![
         GeneratedFile {
             relative_path: PathBuf::from("service_codec.ads"),
             contents: spec,
@@ -711,7 +734,12 @@ pub fn generate_service_codec_with_runtime(
             relative_path: PathBuf::from("service_codec.adb"),
             contents: body,
         },
-    ])
+    ];
+    files.extend(crate::codec_views::generate(
+        &ams_gra_oms_codegen_core::ada_model_package(schema)?,
+        &views,
+    ));
+    Ok(files)
 }
 
 /// Repeated members use the model's published owner-specific storage API.
@@ -846,10 +874,19 @@ fn repeated_member_render(
     let mut enc = format!(
         "         declare\n            JSON_Items : {output_array};\n            procedure Add_Item (Element_Item : Model.{stem}_Item) is\n            begin\n               {output_append} (JSON_Items, {encode});\n            end Add_Item;\n         begin\n"
     );
+    let visit = |container: &str| {
+        if encoder.views {
+            format!("Codec_Views.Visit_Element ({container}, Index, Add_Item'Access);")
+        } else {
+            format!("Add_Item (Model.{element} ({container}, Index));")
+        }
+    };
     if positive_unbounded {
-        writeln!(enc, "            if Model.{length} (Item.{name}.Additional) > Natural'Last - {min} then raise Codec_Error with \"sequence length overflow\"; end if;\n            for Index in Item.{name}.Required'Range loop\n               Add_Item (Item.{name}.Required (Index));\n            end loop;\n            for Index in 1 .. Model.{length} (Item.{name}.Additional) loop\n               Add_Item (Model.{element} (Item.{name}.Additional, Index));\n            end loop;\n            Result.Set_Field ({key}, {create} (JSON_Items));").unwrap();
+        let add = visit(&format!("Item.{name}.Additional"));
+        writeln!(enc, "            if Model.{length} (Item.{name}.Additional) > Natural'Last - {min} then raise Codec_Error with \"sequence length overflow\"; end if;\n            for Index in Item.{name}.Required'Range loop\n               Add_Item (Item.{name}.Required (Index));\n            end loop;\n            for Index in 1 .. Model.{length} (Item.{name}.Additional) loop\n               {add}\n            end loop;\n            Result.Set_Field ({key}, {create} (JSON_Items));").unwrap();
     } else {
-        writeln!(enc, "            for Index in 1 .. Model.{length} (Item.{name}) loop\n               Add_Item (Model.{element} (Item.{name}, Index));\n            end loop;\n            if Model.{length} (Item.{name}) > 0 then Result.Set_Field ({key}, {create} (JSON_Items)); end if;").unwrap();
+        let add = visit(&format!("Item.{name}"));
+        writeln!(enc, "            for Index in 1 .. Model.{length} (Item.{name}) loop\n               {add}\n            end loop;\n            if Model.{length} (Item.{name}) > 0 then Result.Set_Field ({key}, {create} (JSON_Items)); end if;").unwrap();
     }
     enc.push_str("         end;\n");
     let value_body = if decode_statement {

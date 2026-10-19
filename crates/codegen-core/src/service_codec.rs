@@ -369,6 +369,39 @@ pub fn analyze_service_codec_with_runtime(
             return Ok(readiness);
         }
         let files = crate::ada_model_file_names(&package);
+        if runtime == AdaCodecRuntime::LinuxX86_64Glibc241LosslessV1 {
+            let views = crate::ada_codec_views(schema, &emissions, world)
+                .map_err(|e| ServiceCodecError::EmissionPlan(e.message))?;
+            if !views.is_empty() {
+                if let Err(e) = crate::validate_ada_codec_views_name(schema, &emissions, world) {
+                    readiness.blocker = Some(unsupported("Service_Codec", e.to_string()));
+                    return Ok(readiness);
+                }
+                let child_files = crate::ada_codec_views_files(&package);
+                let paths = [
+                    files.parent_spec.as_str(),
+                    files.spec.as_str(),
+                    files.body.as_str(),
+                    "service_api.ads",
+                    "service_codec.ads",
+                    "service_codec.adb",
+                    child_files[0].as_str(),
+                    child_files[1].as_str(),
+                ];
+                for (index, path) in paths.iter().enumerate() {
+                    if paths[..index]
+                        .iter()
+                        .any(|other| path.eq_ignore_ascii_case(other))
+                    {
+                        readiness.blocker = Some(unsupported(
+                            "Service_Codec",
+                            format!("artifact collision: {path}"),
+                        ));
+                        return Ok(readiness);
+                    }
+                }
+            }
+        }
         for artifact in [files.parent_spec, files.spec, files.body] {
             if ["service_codec.ads", "service_codec.adb"]
                 .iter()
@@ -908,6 +941,8 @@ impl<'a, 's> AdaCodecAnalysis<'a, 's> {
                                 ));
                             }
                             if matches!(referenced, TypeEmission::Declaration(d) if matches!(d.kind, TypeKind::Primitive(PrimitiveKind::Binary)))
+                                && !(self.runtime == AdaCodecRuntime::LinuxX86_64Glibc241LosslessV1
+                                    && matches!(referenced, TypeEmission::Declaration(d) if crate::binary_length_domain(PrimitiveKind::Binary, &d.constraints).is_ok_and(|domain| domain.is_some())))
                             {
                                 return Err(unsupported(
                                     &location,
