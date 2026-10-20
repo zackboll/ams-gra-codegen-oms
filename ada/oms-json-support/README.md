@@ -135,6 +135,41 @@ from values. Allocation failures propagate as resource exceptions without generi
 exception rewriting. This is a local corrective boundary, not full codec or
 provider resource qualification.
 
+### Task 097-C5 lossless-only ingress
+
+`AMS_GRA_OMS_JSON_Lossless_Ingress` is selected semantically only for a codec
+that emits Float64 under the lossless profile. Existing portable/Float32
+occurrence readers are unchanged. The new reader first invokes C4's complete
+validator, then interprets the pinned SAX events into an immutable owned arena.
+
+Handles and array views retain a nonallocating atomic reference count. Nodes
+contain scalar indices/spans only, with no provider JSON values or per-node
+controlled strings. An owner has separately allocated input bytes, decoded UTF-8
+bytes, nodes and array indices; partially constructed owners are safe to destroy.
+Last-owner cleanup deallocates these ordinary arrays without recursive tree
+finalization. No access value or mutable arena is exposed to callers.
+
+JSON strings are decoded only after the exact original token passed strict
+UTF-8/escape/surrogate validation. The decoder writes into preallocated owned
+bytes, without the provider XString transition. Decoded keys use an AVL index;
+duplicate keys select the last complete subtree, including original numeric
+spans. All original value occurrences still count toward the resource cap.
+Arrays have contiguous integer indices for constant-time element lookup.
+
+The arena reserves at most `min (Max_Nodes, Text'Length)` noncontrolled node and
+array-index slots, plus document-length input/decoded byte buffers. The SAX
+reader owns another bounded input copy, and its scalar parser stack grows only
+to the capped depth. There are no per-key/string/node heap allocations and no
+incremental arena growth. Object lookup is logarithmic in distinct members;
+insertion recursion is AVL-height bounded (not JSON-depth or member-count stack
+growth). Handles can outlive a parent handle, but not the retained owner. Sharing
+independent immutable handles is safe; concurrent mutation/assignment of the same
+Ada handle requires caller synchronization.
+
+This removes ingress DOM/array/XString hazards, not downstream typed-model
+construction/controlled-copy defects. It does not change numerical conversion,
+the floating environment contract, readiness, or publication status.
+
 Task 087A delivers the reusable JSON support boundary only. The mandatory
 `ada-json-guard` Fast CI job executes the same qualification command using a
 SHA-256-verified Alire release archive and the native GNAT 16.1.0 provider

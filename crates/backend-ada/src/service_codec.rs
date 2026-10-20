@@ -292,7 +292,7 @@ pub fn generate_service_codec_with_runtime(
     let mut body = format!(
         "with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;\nwith Interfaces;\nwith GNATCOLL.JSON; use GNATCOLL.JSON;\nwith AMS_GRA_OMS_JSON_Guard;\n{}package body Service_Codec is\n   package Model renames {package};\n",
         if float64 {
-            "with AMS_GRA_OMS_JSON_Float32;\nwith AMS_GRA_OMS_JSON_Occurrences;\nwith AMS_GRA_OMS_JSON_Float64;\nwith AMS_GRA_OMS_JSON_Emitter;\n"
+            "with AMS_GRA_OMS_JSON_Float32;\nwith AMS_GRA_OMS_JSON_Lossless_Ingress;\nwith AMS_GRA_OMS_JSON_Float64;\nwith AMS_GRA_OMS_JSON_Emitter;\n"
         } else if float32 {
             "with AMS_GRA_OMS_JSON_Float32;\nwith AMS_GRA_OMS_JSON_Occurrences;\n"
         } else {
@@ -300,7 +300,13 @@ pub fn generate_service_codec_with_runtime(
         }
     );
     if float32 || float64 {
-        body.push_str("   package Ingress renames AMS_GRA_OMS_JSON_Occurrences;\n   function Scalar_Float32 (Value : Ingress.Value) return Interfaces.IEEE_Float_32 is\n   begin\n      return Ingress.Floating (Value);\n   exception\n      when Ingress.Validation_Error | AMS_GRA_OMS_JSON_Float32.Validation_Error => raise Codec_Error with \"invalid Float32\";\n   end Scalar_Float32;\n");
+        let ingress = if float64 {
+            "AMS_GRA_OMS_JSON_Lossless_Ingress"
+        } else {
+            "AMS_GRA_OMS_JSON_Occurrences"
+        };
+        writeln!(body, "   package Ingress renames {ingress};").unwrap();
+        body.push_str("   function Scalar_Float32 (Value : Ingress.Value) return Interfaces.IEEE_Float_32 is\n   begin\n      return Ingress.Floating (Value);\n   exception\n      when Ingress.Validation_Error | AMS_GRA_OMS_JSON_Float32.Validation_Error => raise Codec_Error with \"invalid Float32\";\n   end Scalar_Float32;\n");
     }
     if !views.is_empty() {
         body.insert_str(0, &format!("with {package}.Codec_Views;\n"));

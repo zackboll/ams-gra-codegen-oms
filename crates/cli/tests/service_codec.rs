@@ -520,6 +520,8 @@ fn task097_lossless_profile_matrix_and_legacy_bytes() {
             let body = std::fs::read_to_string(dir.join("service_codec.adb")).unwrap();
             assert!(body.contains("Output.Floating_64"));
             assert!(body.contains("Ingress.Numeric_Lexeme"));
+            assert!(body.contains("package Ingress renames AMS_GRA_OMS_JSON_Lossless_Ingress;"));
+            assert!(!body.contains("AMS_GRA_OMS_JSON_Occurrences"));
             assert!(body.contains("Output.Write (To_JSON_"));
             assert!(!body.contains("return JSON_Value"));
             std::fs::remove_dir_all(dir).unwrap();
