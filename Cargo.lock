@@ -8,6 +8,7 @@ version = "0.1.0"
 dependencies = [
  "ams-gra-oms-backend-ada",
  "ams-gra-oms-backend-cpp",
+ "ams-gra-oms-backend-python",
  "ams-gra-oms-backend-rust",
  "ams-gra-oms-codegen-core",
  "ams-gra-oms-ir",

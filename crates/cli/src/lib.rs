@@ -4,6 +4,7 @@ pub mod service_impact;
 
 use ams_gra_oms_backend_ada::AdaBackend;
 use ams_gra_oms_backend_cpp::CppBackend;
+use ams_gra_oms_backend_python::PythonBackend;
 use ams_gra_oms_backend_rust::{
     RustBackend, SERVICE_API_FILE as RUST_SERVICE_API_FILE, generate_service_api_with_codec,
     generate_service_codec,
@@ -122,6 +123,11 @@ LANGUAGES:
     ada
     rust
     cpp
+    python              Model generation only (Python 3.11+).
+
+    Python service-check and service-generate are unsupported: service wrapper
+    generation and authoritative Python readiness analysis are not implemented.
+    Coverage continues to inventory Ada, Rust, and C++ only.
 
 GENERATION WORLDS:
     'generate' and 'coverage' require --world. There is no default: the
@@ -197,6 +203,7 @@ LANGUAGES:
     ada
     rust
     cpp
+    python              Standalone Python 3.11+ models; no service or codec.
 
 WORLDS:
     closed-schema       You assert the supplied schema set is the complete
@@ -288,6 +295,9 @@ LANGUAGES:
     rust
     cpp
 
+    Python is unsupported: service wrapper generation and authoritative Python
+    readiness analysis are not implemented. No readiness verdict is reported.
+
 WORLDS:
     closed-schema       Measure readiness assuming the supplied schema set is
                         the complete value-type universe.
@@ -378,6 +388,9 @@ LANGUAGES:
     ada
     rust
     cpp
+
+    Python is unsupported: service wrapper generation and authoritative Python
+    readiness analysis are not implemented. No files are generated.
 
 WORLDS:
     closed-schema       You assert the supplied schema set is the complete
@@ -527,6 +540,7 @@ enum Language {
     Ada,
     Rust,
     Cpp,
+    Python,
 }
 
 impl Language {
@@ -535,11 +549,12 @@ impl Language {
             Some("ada") => Ok(Self::Ada),
             Some("rust") => Ok(Self::Rust),
             Some("cpp") => Ok(Self::Cpp),
+            Some("python") => Ok(Self::Python),
             Some(value) => Err(CliError::usage(format!(
-                "unsupported language '{value}'; expected one of: ada, rust, cpp"
+                "unsupported language '{value}'; expected one of: ada, rust, cpp, python"
             ))),
             None => Err(CliError::usage(
-                "language must be valid UTF-8; expected one of: ada, rust, cpp",
+                "language must be valid UTF-8; expected one of: ada, rust, cpp, python",
             )),
         }
     }
@@ -549,24 +564,32 @@ impl Language {
             Self::Ada => Box::new(AdaBackend),
             Self::Rust => Box::new(RustBackend),
             Self::Cpp => Box::new(CppBackend),
+            Self::Python => Box::new(PythonBackend),
         }
     }
 
-    /// The language-neutral codegen-core identity for this CLI spelling.
-    ///
-    /// There is deliberately one spelling table (`Language::parse`) and one
-    /// mapping into the core enum, shared by `generate` and `service-check`.
-    const fn backend_language(self) -> BackendLanguage {
+    /// Only independently qualified service backends have a core identity.
+    /// Never substitute another backend's readiness for Python model support.
+    fn backend_language(self) -> Result<BackendLanguage, CliError> {
         match self {
-            Self::Ada => BackendLanguage::Ada,
-            Self::Rust => BackendLanguage::Rust,
-            Self::Cpp => BackendLanguage::Cpp,
+            Self::Ada => Ok(BackendLanguage::Ada),
+            Self::Rust => Ok(BackendLanguage::Rust),
+            Self::Cpp => Ok(BackendLanguage::Cpp),
+            Self::Python => Err(CliError::execution(
+                "Python service commands are unsupported: service wrapper generation and \
+                 authoritative Python readiness analysis are not implemented; no files were generated",
+            )),
         }
     }
 
     /// The stable public spelling, as accepted by `--language`.
     const fn label(self) -> &'static str {
-        language_label(self.backend_language())
+        match self {
+            Self::Ada => "ada",
+            Self::Rust => "rust",
+            Self::Cpp => "cpp",
+            Self::Python => "python",
+        }
     }
 }
 
@@ -1533,14 +1556,11 @@ fn service_check<W: Write>(
         with_codec,
         ada_codec_runtime,
     } = target;
+    let backend_language = language.backend_language()?;
     let inputs = load_service_inputs(schema_path, contract_path, extensions)?;
-    let readiness = analyze_service_readiness(
-        &inputs.plan,
-        &inputs.schema,
-        language.backend_language(),
-        world,
-    )
-    .map_err(|error| CliError::execution(error.to_string()))?;
+    let readiness =
+        analyze_service_readiness(&inputs.plan, &inputs.schema, backend_language, world)
+            .map_err(|error| CliError::execution(error.to_string()))?;
     let codec = if with_codec {
         Some(codec_readiness(
             &inputs,
@@ -1600,14 +1620,11 @@ fn service_generate<W: Write>(
         with_codec,
         ada_codec_runtime,
     } = target;
+    let backend_language = language.backend_language()?;
     let inputs = load_service_inputs(schema_path, contract_path, extensions)?;
-    let readiness = analyze_service_readiness(
-        &inputs.plan,
-        &inputs.schema,
-        language.backend_language(),
-        world,
-    )
-    .map_err(|error| CliError::execution(error.to_string()))?;
+    let readiness =
+        analyze_service_readiness(&inputs.plan, &inputs.schema, backend_language, world)
+            .map_err(|error| CliError::execution(error.to_string()))?;
     // Task 050: codec readiness joins the SAME pre-generation verdict, so an
     // unsupported codec construct stops here, before any backend call.
     let codec = if with_codec {
@@ -1647,13 +1664,9 @@ fn service_generate<W: Write>(
     // already stopped at readiness above, before any backend call or
     // directory creation. `write_generated_files` still validates the combined
     // file list as defence in depth.
-    let api_model = service_api_preflight(
-        &inputs.plan,
-        projection.schema(),
-        language.backend_language(),
-        world,
-    )
-    .map_err(|error| CliError::execution(error.to_string()))?;
+    let api_model =
+        service_api_preflight(&inputs.plan, projection.schema(), backend_language, world)
+            .map_err(|error| CliError::execution(error.to_string()))?;
     let backend = language.backend();
     // A contract may legitimately select zero OMS messages (a service whose
     // exchanges are all data transfer, special signal, security, or non-OMS).
@@ -1756,7 +1769,7 @@ fn codec_readiness(
     let execution = |error: &dyn fmt::Display| CliError::execution(error.to_string());
     if !readiness.is_ready() {
         return Ok(ServiceCodecReadiness {
-            language: language.backend_language(),
+            language: language.backend_language()?,
             has_oms_exchanges: inputs.plan.oms_message_exchange_count() > 0,
             emitted_declarations: 0,
             renderable_emitted_declarations: 0,
@@ -1768,14 +1781,14 @@ fn codec_readiness(
     let api_model = service_api_preflight(
         &inputs.plan,
         projection.schema(),
-        language.backend_language(),
+        language.backend_language()?,
         world,
     )
     .map_err(|error| execution(&error))?;
     ams_gra_oms_codegen_core::analyze_service_codec_with_runtime(
         &api_model,
         projection.schema(),
-        language.backend_language(),
+        language.backend_language()?,
         world,
         ada_codec_runtime,
     )
@@ -2388,6 +2401,7 @@ mod tests {
             ("ada", Language::Ada),
             ("rust", Language::Rust),
             ("cpp", Language::Cpp),
+            ("python", Language::Python),
         ] {
             for (text, world) in [
                 ("closed-schema", GenerationWorld::ClosedSchemaSet),
@@ -2829,11 +2843,11 @@ mod tests {
                 "--schema",
                 "root.xsd",
                 "--language",
-                "python",
+                "java",
                 "--output",
                 "out",
             ],
-            "unsupported language 'python'",
+            "unsupported language 'java'",
         );
     }
 

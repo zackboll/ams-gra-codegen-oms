@@ -92,7 +92,26 @@ cargo run -p ams-gra-codegen-oms -- \
 
 See [Additive schema overlays](#additive-schema-overlays).
 
-The accepted language values are `ada`, `rust`, and `cpp`. Run
+The accepted model-generation language values are `ada`, `rust`, `cpp`, and
+`python`. For standalone Python 3.11+ models:
+
+```bash
+cargo run --locked -p ams-gra-codegen-oms -- generate \
+  --schema crates/xsd-frontend/tests/fixtures/track.xsd \
+  --language python --world closed-schema --output generated/python
+python3 -m py_compile generated/python/model.py
+```
+
+Python reuses the [PY-001 model backend](docs/task-py-001-python-model-backend.md)
+and its bounded subset validation. Both explicit worlds are accepted without
+changing their semantics; unsupported constructs (including abstract values)
+fail before output files are written. Python model support is **not service
+readiness**: `service-check` and `service-generate --language python` fail
+explicitly, with no readiness verdict or generated files. Python service wrapper
+generation and authoritative readiness analysis are not implemented. The shared
+`coverage` inventory remains Ada/Rust/C++ only.
+
+Run
 `ams-gra-codegen-oms --help` or a command followed by `--help` for complete
 usage. Exit status `0` means success, `2` means invalid command-line usage, and
 `1` means schema, code-generation, or filesystem execution failed.
