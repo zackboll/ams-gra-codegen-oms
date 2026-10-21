@@ -25,6 +25,9 @@ on:
       - "scripts/fetch-pinned-uci-2.5.sh"
       - "scripts/fetch-pinned-uci-2.6.sh"
       - "scripts/run-real-sleet-test.sh"
+      - "python/oms-lacal-runtime/**"
+      - "scripts/check-py005-sleet.sh"
+      - "tests/fixtures/python-runtime/**"
       - "crates/runtime-rust-facade-tests/tests/task077_sleet.rs"
       - "scripts/check-task062-pinned.sh"
       - "scripts/check-task062-service-impact.py"
@@ -383,6 +386,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pinned Python LA-CAL runtime
+        run: python -m pip install ./python/oms-lacal-runtime
       - name: Fetch pinned UCI 2.5 (once)
         run: |
           set -euo pipefail

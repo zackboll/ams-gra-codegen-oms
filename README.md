@@ -111,8 +111,13 @@ generation beside `model.py`, with injected publish/subscribe adapters.
 [PY-004](docs/task-py-004-python-oms-json-codecs.md) adds opt-in `service_codec.py`
 for the qualified Boolean/integer/String/enum/concrete Record subset. Codec
 readiness is separate from model/API readiness; unqualified members and other
-unsupported mappings fail before output. No transport is implemented. The
+unsupported mappings fail before output. Generated files contain no transport. The
 existing three-language coverage inventory remains unchanged.
+
+[PY-005](docs/task-py-005-python-lacal-runtime.md) adds a separate, optional
+Python LA-CAL runtime under `python/oms-lacal-runtime`: async OWP/WebSocket
+publish/subscribe through explicit generated-codec registrations, with pinned
+`websockets==17.2`. Generated files remain transport-independent.
 
 Run
 `ams-gra-codegen-oms --help` or a command followed by `--help` for complete

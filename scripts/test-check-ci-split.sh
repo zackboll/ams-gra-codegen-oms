@@ -34,6 +34,15 @@ expect_fail() {
 # ---- 1. committed files pass --------------------------------------------
 expect_pass "$fast" "$deep" "$sleet"
 
+grep -Fv 'bash scripts/check-py005-mock.sh' "$fast" >"$tmp/fast-no-py005.yml"
+expect_fail "Fast lost Python mock" "$tmp/fast-no-py005.yml" "$deep" "$sleet"
+grep -Fv 'Install pinned Python LA-CAL runtime' "$deep" >"$tmp/deep-no-py005.yml"
+expect_fail "Deep lost Python install" "$fast" "$tmp/deep-no-py005.yml" "$sleet"
+grep -Fv 'scripts/check-py005-sleet.sh' "$sleet" >"$tmp/sleet-no-py005.sh"
+expect_fail "Deep lost Python campaign" "$fast" "$deep" "$tmp/sleet-no-py005.sh"
+{ cat "$fast"; printf '      - run: bash scripts/check-py005-sleet.sh\n'; } >"$tmp/fast-py005-real.yml"
+expect_fail "Fast runs Python broker" "$tmp/fast-py005-real.yml" "$deep" "$sleet"
+
 # Task 077B: healthy disposable split plus attributed single-defect negatives.
 # Each negative must contain its targeted diagnostic, not just fail elsewhere.
 layout_checks="$(python3 "$repo/scripts/check-task077b-ci-layout.py" \
