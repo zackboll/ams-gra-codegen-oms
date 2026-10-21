@@ -107,9 +107,12 @@ and its bounded subset validation. Both explicit worlds are accepted without
 changing their semantics; unsupported constructs (including abstract values)
 fail before output files are written. [PY-003](docs/task-py-003-python-service-api.md)
 adds authoritative selected-service readiness and typed `service_api.py`
-generation beside `model.py`, with injected publish/subscribe adapters. Python
-OMS JSON codecs remain unavailable: OMS `--with-codec` requests fail before
-output. The existing three-language coverage inventory remains unchanged.
+generation beside `model.py`, with injected publish/subscribe adapters.
+[PY-004](docs/task-py-004-python-oms-json-codecs.md) adds opt-in `service_codec.py`
+for the qualified Boolean/integer/String/enum/concrete Record subset. Codec
+readiness is separate from model/API readiness; unqualified members and other
+unsupported mappings fail before output. No transport is implemented. The
+existing three-language coverage inventory remains unchanged.
 
 Run
 `ams-gra-codegen-oms --help` or a command followed by `--help` for complete

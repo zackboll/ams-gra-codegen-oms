@@ -21,7 +21,10 @@ mod service_codec;
 mod service_generation;
 mod service_plan;
 mod service_readiness;
-pub use rendered_service::{RenderedServiceReadiness, analyze_rendered_service_readiness};
+pub use rendered_service::{
+    RenderedServiceReadiness, ServiceCodecRenderer, analyze_rendered_service_readiness,
+    analyze_rendered_service_with_codec,
+};
 mod string_profile;
 mod structure;
 mod temporal;

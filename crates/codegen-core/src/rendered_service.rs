@@ -2,20 +2,25 @@
 //! inventory. The actual Backend identity and renderers are authoritative; no
 //! language is substituted and no parallel capability/naming table is needed.
 use crate::{
-    Backend, GeneratedFile, GenerationWorld, ServiceGenerationError, ServiceGenerationProjection,
-    ServicePlan, build_service_api_model, project_service_generation_schema,
+    Backend, CodegenError, GeneratedFile, GenerationWorld, ServiceApiModel, ServiceGenerationError,
+    ServiceGenerationProjection, ServicePlan, build_service_api_model,
+    project_service_generation_schema,
 };
 use ams_gra_oms_ir::SchemaIr;
 
 /// An in-memory qualification of the exact files selected generation will write.
 /// Model, API and projection boundaries remain distinct. Files are returned only
-/// when every boundary succeeds. This says nothing about wire codecs.
+/// when every boundary succeeds. Optional codec qualification uses the actual
+/// renderer and the very same once-lowered ServiceApiModel.
 #[derive(Debug)]
 pub struct RenderedServiceReadiness {
     pub language: &'static str,
     pub projection: Option<ServiceGenerationProjection>,
     pub model_blocker: Option<String>,
     pub service_api_blocker: Option<String>,
+    pub codec_blocker: Option<String>,
+    pub codec_measured: bool,
+    pub codec_file_count: usize,
     pub model_file_count: usize,
     pub files: Vec<GeneratedFile>,
 }
@@ -26,6 +31,7 @@ impl RenderedServiceReadiness {
         self.projection.is_some()
             && self.model_blocker.is_none()
             && self.service_api_blocker.is_none()
+            && self.codec_blocker.is_none()
     }
 }
 
@@ -41,11 +47,43 @@ pub fn analyze_rendered_service_readiness(
     world: GenerationWorld,
     backend: &dyn Backend,
 ) -> Result<RenderedServiceReadiness, ServiceGenerationError> {
+    analyze(plan, schema, world, backend, None)
+}
+
+/// Codec renderer signature: syntax rendering of already authoritative inputs.
+pub type ServiceCodecRenderer =
+    fn(&ServiceApiModel, &SchemaIr) -> Result<Vec<GeneratedFile>, CodegenError>;
+
+/// The same selected-service pipeline with opt-in actual codec qualification.
+/// Model/API failures prevent codec measurement; no partial files are returned.
+///
+/// # Errors
+/// Returns the same integrity/binding defects as model/API-only readiness.
+pub fn analyze_rendered_service_with_codec(
+    plan: &ServicePlan,
+    schema: &SchemaIr,
+    world: GenerationWorld,
+    backend: &dyn Backend,
+    codec: ServiceCodecRenderer,
+) -> Result<RenderedServiceReadiness, ServiceGenerationError> {
+    analyze(plan, schema, world, backend, Some(codec))
+}
+
+fn analyze(
+    plan: &ServicePlan,
+    schema: &SchemaIr,
+    world: GenerationWorld,
+    backend: &dyn Backend,
+    codec: Option<ServiceCodecRenderer>,
+) -> Result<RenderedServiceReadiness, ServiceGenerationError> {
     let mut result = RenderedServiceReadiness {
         language: backend.name(),
         projection: None,
         model_blocker: None,
         service_api_blocker: None,
+        codec_blocker: None,
+        codec_measured: false,
+        codec_file_count: 0,
         model_file_count: 0,
         files: Vec::new(),
     };
@@ -73,11 +111,13 @@ pub fn analyze_rendered_service_readiness(
             }
         }
     };
-    let api_files = build_service_api_model(plan, projection.schema(), world)
+    let api_model = build_service_api_model(plan, projection.schema(), world);
+    let api_files = api_model
+        .as_ref()
         .map_err(|error| error.to_string())
         .and_then(|model| {
             backend
-                .generate_service_api(&model, projection.schema())
+                .generate_service_api(model, projection.schema())
                 .map_err(|error| error.to_string())
         });
     match api_files {
@@ -88,6 +128,24 @@ pub fn analyze_rendered_service_readiness(
         }
         Err(error) => result.service_api_blocker = Some(error),
         Ok(_) => {}
+    }
+    if result.model_blocker.is_none() && result.service_api_blocker.is_none() {
+        if let Some(codec) = codec {
+            result.codec_measured = true;
+            match codec(
+                api_model.as_ref().expect("qualified API"),
+                projection.schema(),
+            ) {
+                Ok(files) => {
+                    result.codec_file_count = files.len();
+                    result.files.extend(files);
+                }
+                Err(error) => {
+                    result.codec_blocker = Some(error.to_string());
+                    result.files.clear();
+                }
+            }
+        }
     }
     result.projection = Some(projection);
     Ok(result)

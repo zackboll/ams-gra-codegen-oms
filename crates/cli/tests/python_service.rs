@@ -162,6 +162,15 @@ fn blocked(schema: &Path, contract: &Path, world: &str, codec: bool, diagnostic:
 #[test]
 fn unsupported_selected_types_and_oms_codecs_fail_atomically() {
     let temp = Temp::new();
+    let unqualified = temp.0.join("unqualified.xsd");
+    fs::write(
+        &unqualified,
+        fs::read_to_string(fixture("root.xsd")).unwrap().replace(
+            "elementFormDefault=\"qualified\"",
+            "elementFormDefault=\"unqualified\"",
+        ),
+    )
+    .unwrap();
     let unsupported = temp.0.join("unsupported.yaml");
     fs::write(
         &unsupported,
@@ -179,11 +188,11 @@ fn unsupported_selected_types_and_oms_codecs_fail_atomically() {
             "Choice / List",
         );
         blocked(
-            &fixture("root.xsd"),
+            &unqualified,
             &fixture("service.yaml"),
             world,
             true,
-            "Python OMS JSON codecs are not implemented",
+            "unqualified element member",
         );
     }
 }

@@ -285,7 +285,7 @@ fn help_separates_python_models_from_service_support_and_coverage() {
         let output = cli().args([command, "--help"]).output().unwrap();
         assert!(output.status.success());
         assert!(String::from_utf8_lossy(&output.stdout).contains("Python 3.11+"));
-        assert!(String::from_utf8_lossy(&output.stdout).contains("no OMS codec"));
+        assert!(String::from_utf8_lossy(&output.stdout).contains("codec"));
     }
     assert_eq!(
         BackendLanguage::ALL,
