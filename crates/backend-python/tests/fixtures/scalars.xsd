@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:t="urn:test:python"
+           targetNamespace="urn:test:python" elementFormDefault="qualified">
+  <xs:simpleType name="Flag"><xs:restriction base="xs:boolean"/></xs:simpleType>
+  <xs:simpleType name="Text"><xs:restriction base="xs:string"/></xs:simpleType>
+  <xs:simpleType name="Signed"><xs:restriction base="xs:byte"/></xs:simpleType>
+  <xs:simpleType name="Unsigned"><xs:restriction base="xs:unsignedInt"/></xs:simpleType>
+  <xs:simpleType name="State"><xs:restriction base="xs:string">
+    <xs:enumeration value="3-D"/>
+    <xs:enumeration value="class"/>
+    <xs:enumeration value="a&quot;b\c"/>
+    <xs:enumeration value="café"/>
+  </xs:restriction></xs:simpleType>
+  <xs:complexType name="Sample"><xs:sequence>
+    <xs:element name="class" type="xs:boolean"/>
+    <xs:element name="Title" type="t:Text"/>
+    <xs:element name="State" type="t:State"/>
+    <xs:element name="Count" type="xs:unsignedByte"/>
+    <xs:element name="Child" type="t:Empty" minOccurs="0"/>
+    <xs:element name="Values" type="t:Signed" minOccurs="2" maxOccurs="3"/>
+  </xs:sequence></xs:complexType>
+  <xs:complexType name="Empty"><xs:sequence/></xs:complexType>
+</xs:schema>
