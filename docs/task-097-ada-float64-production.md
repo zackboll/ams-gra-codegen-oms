@@ -317,19 +317,178 @@ configuration projects.
 
 ## 9. Final qualification results
 
-QUALIFICATION_RESULTS
+Qualified implementation source: `9828c33566c91598cadeaf03aebbbdda208d52e7`
+(immutable `git archive` snapshot, own release generator). Every value below
+comes from an atomic `result.json` or per-step `.exit` record; a step counts
+only with exit 0 and its expected counts.
+
+### Runtime and toolchains
+
+| Item | Identity |
+|---|---|
+| libc | Debian `libc6 2.41-12+deb13u4`; `libc.so.6` `9792e3cb…6547dfd92` |
+| GNAT 14 | external Debian `gnat-14 14.2.0-19` / `gcc-14 14.2.0-19` (`GNAT 14.2.0`); `/usr/bin/gnat` SHA-256 `67082a9217f83ff443253d5d02973615b3f2cc01d47e527d857d87229f7c2c4f` |
+| GNAT 16 | Alire `gnat_native 16.1.0` (`GNAT 16.1.0`); `gnat` SHA-256 `fa15577ec622065f1e80d18f14d315d8b3d9a6ff17cf195ffe4fe3895c1f84d9` |
+| GPRbuild / Alire | `gprbuild 26.0.1`; `alr 2.1.1`; fresh task-owned Alire home per compiler |
+| Provider | GNATCOLL / GNATCOLL minimal 26.0.0, unpatched |
+| Rust (gates) | `cargo +1.95.0` |
+
+### `qualify.py` (per compiler)
+
+GNAT 14 ran 17 steps and GNAT 16 ran 16 steps; all exited 0
+(`qualify14-01`, `qualify16-01`). The production C boundary step runs only
+under GNAT 14.
+
+| Step | GNAT 14.2.0 | GNAT 16.1.0 |
+|---|---|---|
+| Runtime identity (glibc 2.41, x86-64) | pass | pass |
+| Oracle unit tests; frozen corpus regeneration + hash check | pass | pass |
+| Independent exact-rational review of every conversion row | pass | pass |
+| Production C boundary: 2 locales (C, `de_DE.UTF-8`) × convert/encode × O0/O2; 128 environment processes | 8/8 cells, 27,167 / 20,474 rows each | — |
+| Fresh provisioning + small checkpoint (3 record positions, 6 negative cases) | pass | pass |
+| Composition gate, `oam` namespace (Normal/Check/Ignore × O0/O2; 16 checks per cell) | 98 rows, 0 unexpected | 98 rows, 0 unexpected |
+| Composition gate, qualified namespace | 98 rows, 0 unexpected | 98 rows, 0 unexpected |
+| Generated numerical corpus, `oam`, O0, 3 policies | 27,167 conversions + 20,474 encodings per policy | same |
+| Generated numerical corpus, qualified namespace, O0, 3 policies | same | same |
+| Generated numerical corpus, `oam`, **O2**, 3 policies | same | same |
+| Floating environment, `oam` (4 x87 × 4 MXCSR × 4 DAZ/FTZ × 3 policies) | 192/192 | 192/192 |
+| Floating environment, qualified namespace | 192/192 | 192/192 |
+| Conformance `oam` O0 / qualified O0 / `oam` O2 (3 policies each) | 8 accepted, 23 rejected per cell; German thread locale | same |
+
+All numerical rows go through **production-generated** `Encode_*`/`Decode_*`
+operations on generated models. Each numeric result is compared with the
+frozen Task096 oracle for exact binary64 bits, and must be a JSON number (not
+a string) for finite values. Specials must be the exact strings `"NaN"`,
+`"Infinity"` and `"-Infinity"`. The environment matrix requires success only
+for (nearest, nearest, no DAZ/FTZ). For every other combination it requires
+`Unsupported_Platform` on both encode and decode. In every cell it checks that
+the x87 control word and the MXCSR control bits are unchanged by the codec;
+sticky status flags (MXCSR bits 0–5) are excluded, as documented in Section 2.
+The harness then restores the original environment exactly. Generated Ada sources
+are byte-identical between the two compiler campaigns, per namespace.
+
+### Rust workspace and CI-integrity gates
+
+Final attempt `local-gates-02` on the final source snapshot. All steps exited 0: `format`, `check`, `clippy`, `test`, `ci-split`, `ci-split-mutations`, `ci-layout`, `ci-layout-tests`, `oracle-tests`.
+Workspace tests: 1435 passed, 0 failed, 8 ignored across 163 test-binary summaries.
+
+Earlier attempts are kept as evidence: `local-gates-01`: format=0, check=0, clippy=0, test=101.
+
+**Historical intermittent observation.** In `local-gates-01`, `task070_terminal_refusal_preserves_error_and_joins_worker` (`crates/runtime-rust-facade-tests/tests/runtime_initial_retry.rs`) failed once: `runtime worker outlived joined connect/close` (named worker threads 1, expected 0). At the time, the machine was heavily loaded by the Ada qualification campaigns and unrelated builds. Task 097 changes no runtime crate. The same test binary then passed six isolated reruns, and the fresh full workspace run `local-gates-02` passed. The root cause is **not established**, and load is not claimed as the cause. The test was neither modified, skipped nor relaxed.
 
 ## 10. Preservation
 
-PRESERVATION_RESULTS
+`preservation.py` runs the frozen baseline generator against the
+final-source generator over every `tests/fixtures/service-generate` fixture
+and language, plus the Task 095 Float32 runtime. With `--include-lossless`,
+it also covers the new profile on every Float64-free Ada codec fixture.
+
+| Baseline | Legacy byte-identical | Legacy matching atomic rejections | Lossless profile byte-identical (Float64-free) |
+|---|---|---|---|
+| merged main `5f6800d505c6501638c322d20b23cfc36b09d7d6` | 86 | 19 | not applicable (main has no lossless option) |
+| C5 `9f0c7417b002909819353b2c9562d0f3758fdd33` | 86 | 19 | 15 / 15 |
+
+The 86 legacy comparisons are 30 Rust, 15 C++, 26 portable Ada and 15 Task 095
+Float32 Ada outputs. The 19 matching atomic rejections are 15 C++ and 4 Ada.
+Rust and C++ output is unchanged.
+
+The Float64 fixtures (`codec-ada-float64`, `codec-ada-copy-views`) were also
+regenerated by main, C5 and the qualified source. Without the runtime option,
+the output is identical in all three. With the lossless option, C5 and the
+qualified source match byte for byte, and main rejects the option atomically
+before writing output, as expected.
 
 ## 11. Real-UCI coverage
 
-REAL_UCI_RESULTS
+The UCI 2.5 and 2.6 roots are pinned by SHA-256
+(`ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27`,
+`af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b`).
+The `uci.py` inventory finds 40 named Float64 declarations per release, used
+by 1,393 of 1,395 fields and 393 of 395 static messages. These match the
+historical baseline inventory byte for byte. `real.py` selects every
+inventoried message that is READY under the lossless profile but **not** under
+the Float32 profile, i.e. services this feature newly makes generatable:
+
+| Release | Message | Payload | Type closure | Lossless renderable/emitted | Baseline first blocker | Valid+boundary accepted | Invalid rejected | GNAT 14 cells | GNAT 16 cells |
+|---|---|---|---|---|---|---|---|---|---|
+| 2.5 | EarthOrientationParameters | `EarthOrientationParametersMT` | 44 | 43/43 | `ArcSecondsType: unsupported Ada codec primitive or facets: Float64` | 1 | 5 | 3/3 | 3/3 |
+| 2.5 | EntityConfirmation | `EntityConfirmationMT` | 42 | 41/41 | `DoubleNonNegativeType: unsupported Ada codec primitive or facets: Float64` | 2 | 5 | 3/3 | 3/3 |
+| 2.5 | EntityLost | `EntityLostMT` | 40 | 39/39 | `EntityLostMDT.Probability: unsupported Ada codec primitive or facets: Float64` | 3 | 7 | 3/3 | 3/3 |
+| 2.5 | LAR_Report | `LAR_ReportMT` | 46 | 45/45 | `AltitudeType: unsupported Ada codec primitive or facets: Float64` | 2 | 5 | 3/3 | 3/3 |
+| 2.5 | SpectralDensityReport | `SpectralDensityReportMT` | 45 | 44/44 | `DoublePositiveType: unsupported Ada codec primitive or facets: Float64` | 1 | 5 | 3/3 | 3/3 |
+| 2.5 | SubsystemCalibrationStatus | `SubsystemCalibrationStatusMT` | 45 | 44/44 | `DoubleNonNegativeType: unsupported Ada codec primitive or facets: Float64` | 2 | 4 | 3/3 | 3/3 |
+| 2.6 | EarthOrientationParameters | `EarthOrientationParametersMT` | 44 | 43/43 | `ArcSecondsType: unsupported Ada codec primitive or facets: Float64` | 1 | 5 | 3/3 | 3/3 |
+| 2.6 | EntityConfirmation | `EntityConfirmationMT` | 42 | 41/41 | `DoubleNonNegativeType: unsupported Ada codec primitive or facets: Float64` | 2 | 5 | 3/3 | 3/3 |
+| 2.6 | EntityLost | `EntityLostMT` | 40 | 39/39 | `EntityLostMDT.Probability: unsupported Ada codec primitive or facets: Float64` | 3 | 7 | 3/3 | 3/3 |
+| 2.6 | LAR_Report | `LAR_ReportMT` | 46 | 45/45 | `AltitudeType: unsupported Ada codec primitive or facets: Float64` | 2 | 5 | 3/3 | 3/3 |
+| 2.6 | RF_Profile | `RF_ProfileMT` | 46 | 45/45 | `DoubleNonNegativeType: unsupported Ada codec primitive or facets: Float64` | 2 | 5 | 3/3 | 3/3 |
+| 2.6 | SubsystemCalibrationStatus | `SubsystemCalibrationStatusMT` | 45 | 44/44 | `DoubleNonNegativeType: unsupported Ada codec primitive or facets: Float64` | 2 | 4 | 3/3 | 3/3 |
+
+12 services × 3 policies × 2 compilers = 72 executed cells (`real14-01`: 36, `real16-01`: 36).
+
+For each selected service, the baseline generator rejects both the portable
+and Task 095 Float32 profiles atomically in `service-check` and
+`service-generate`, with no output. The first blocker is the Float64 primitive.
+The final generator then produces the closure with the lossless profile, and
+each consumer is built and run under GNAT 14.2.0 and 16.1.0 with
+Normal/Check/Ignore. Valid and boundary documents must round-trip with JSON
+number kind and exact binary64 bits. The real-schema boundary values are `-0`
+(EntityConfirmation), `5e-324` (SubsystemCalibrationStatus, RF_Profile), the
+largest finite value (LAR_Report), and `"Infinity"`/`"-Infinity"`
+(EntityLost). `"NaN"` and the other specials are covered by the conformance
+corpus (Section 9). Invalid documents, including independently written Float64
+value violations, malformed truncations and wrong kinds, must be rejected
+atomically. All other field types in these closures, including temporal and
+Binary fields, go through the existing unchanged codecs (Section 6), and the
+same valid documents exercise them.
+
+**Not READY and not claimed:**
+
+* **DLZ** (2.5, 2.6). Float64 is no longer the blocker. Under the lossless
+  profile, the first remaining blocker is
+  `TimeType: unsupported Ada codec primitive or facets: Time`, unchanged.
+* **ScanDataBaseType** is a synthetic owner-only projection used for
+  inventory. It is not a message or service selection and makes no readiness
+  claim.
+* Log, RDMA_InitializeSetup and SurvivabilityRiskLevel were already READY
+  without Float64, so they are covered by preservation, not by this matrix.
+
+A selected service being READY means only that its closure can be generated
+and that it passed the documents above. No provider, transport or deployed
+interoperability claim is made.
 
 ## 12. Evidence identities
 
-EVIDENCE_IDENTITIES
+| Identity | Value |
+|---|---|
+| Qualified implementation commit (Ada/UCI campaigns) | `9828c33566c91598cadeaf03aebbbdda208d52e7` |
+| Final source commit (Rust/CI gates) | `c3c7d56ea383f33f6fdaa2b9b883f443d25a9276` |
+| Qualified source manifest (`src-01/source.sha256`) | `bc3d9224856d72641eed2ceaebb7d2d7a2dda946a4f66c0a13a600d17682f8a7` |
+| Final source manifest (`src-03/source.sha256`) | `2767810150f2df3fd1b3bf4479809a012715c9b36b8ff19d5212a3f6fc8f3e29` |
+| Files differing between the two manifests | `.github/workflows/ci.yml`, `ada/oms-json-support/README.md`, `docs/task-097-ada-float64-codec.md`, `docs/task-097-ada-float64-production.md` (docs/CI only) |
+| Release generator (qualified = final, byte-identical) | `eeca5d517630c98949b66c445578f38b551198fa27abc16a754eadb7499358c4` |
+| Baseline generator (merged main) | `ecfebaa2f6fdfba6aaa746c398b8d758eaa9f93fc717d07f04088b74ffd952f1` |
+| Frozen corpus `conversions.tsv` (identical under both compilers) | `14c86c5fa674d279d198947dad03f71f517a40b583729df1184bbf6596a6451b` |
+| Frozen corpus `encoding.tsv` (identical under both compilers) | `b1ad323c7d5d88c465bf966dc2edc1249c68982ad817044fa5579ce65e9abc82` |
+| Frozen corpus `manifest.json` (identical under both compilers) | `e33d3ef9e51635bb0ece91d27a72f4809b49b279586e4693377759473b04d4b3` |
+| Generated `oam` `programs-oam-codec_views.adb` (identical under both compilers) | `5795a99819b078637e35f25c29bde983fa048d7c5c609b39e239a5f527a1b7bc` |
+| Generated `oam` `programs-oam-codec_views.ads` (identical under both compilers) | `fbb3e390ea9c2ecdbb860311433badce789ea78280f2be6fd70aa7cb20db2405` |
+| Generated `oam` `programs-oam.adb` (identical under both compilers) | `cb5bf33002369098e0658b4e34d52645eadab568dc15651dfd130b80a526ce48` |
+| Generated `oam` `programs-oam.ads` (identical under both compilers) | `482c1f0dba400c8037a6372058b1afb19d9d8c490b074f6c47c8e4360c711876` |
+| Generated `oam` `programs.ads` (identical under both compilers) | `a5d92d26a18c03999588818e68c5a8b3426ff1c780a7582bf21121727b4a0d16` |
+| Generated `oam` `service_api.ads` (identical under both compilers) | `1ebbfed03e87015b33c128222bd67c0c10ad4cec906522b4e79d738853c19ad7` |
+| Generated `oam` `service_codec.adb` (identical under both compilers) | `46427ab09f02499af3ee95ff1344f7054014b661e3c9c4a9a0077bcd044adfe3` |
+| Generated `oam` `service_codec.ads` (identical under both compilers) | `9089d3c1edeee524e7b77f1c00e7173cac43555dd2cbf539acb4ba5e35bea71a` |
+| Generated qualified-namespace `service_api.ads` (identical under both compilers) | `6df296915f9f9465f9b9c4cb6ba3ec2afdd16a8756e4f40cf31cfc77dfe7b377` |
+| Generated qualified-namespace `service_codec.adb` (identical under both compilers) | `c637a75c863e1df661bd49114639c2c6827e49898fe4febbdb1dc121ca640f0e` |
+| Generated qualified-namespace `service_codec.ads` (identical under both compilers) | `af5f3e46a48f6b349daf3898eda8a063d47bd7ebfb72f479ec7fa97a3bc3c1c8` |
+| Generated qualified-namespace `urn-task097-codec_views.adb` (identical under both compilers) | `748b296aadfe4d6a25662acae21d820d5d5eb9891a42f0145d15d1dccc550ee3` |
+| Generated qualified-namespace `urn-task097-codec_views.ads` (identical under both compilers) | `1cbf416fc493589954b560233e4e21431b5d4209d374f046f7df91e0d90d1b3c` |
+| Generated qualified-namespace `urn-task097.adb` (identical under both compilers) | `f178974bd65eea450e7bb563700823b050625a6bb36f07960cd0b8a4dba3aba6` |
+| Generated qualified-namespace `urn-task097.ads` (identical under both compilers) | `bd6844b0c26a59f460d68205cb97d5601b6d00fc597a7e53d1ce8f299b79a352` |
+| Generated qualified-namespace `urn.ads` (identical under both compilers) | `a570571230ee7f3b7e29252e195d265275f36a23f265eb374ace3eca72a8bfb5` |
+
+The complete machine-generated ledger (`ledger-01.json`) and every per-step command, stdout, stderr and exit record are kept in the task evidence directory (`/home/zboll/task097-scratch/float64-production/`). Failed or superseded attempts (`local-gates-01`, snapshot `src-02` after `/tmp` inode exhaustion) are preserved, not deleted.
 
 ## Historical evidence (C1–C7)
 
