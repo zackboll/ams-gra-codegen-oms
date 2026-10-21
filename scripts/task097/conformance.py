@@ -1,7 +1,13 @@
-"""Generated composition/atomicity/resource/facet controls beyond the numerical corpus."""
+"""Generated composition/atomicity/facet/locale controls beyond the numerical corpus.
+
+Ordinary resources only. Forced allocator exhaustion is not part of the
+qualified production scope; historical C1-C7 allocation evidence is retained
+separately and is not rerun or relabeled here.
+"""
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import shlex
 import shutil
@@ -14,15 +20,25 @@ ROOT = Path(__file__).resolve().parents[2]
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--scratch", type=Path, required=True)
-    parser.add_argument("--generated", type=Path, required=True)
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--generated", type=Path, help="reuse a completed generated.py tree's provider copy")
+    source.add_argument("--setup", type=Path, help="fresh scripts/task096/setup.py provisioning (first smoke gate)")
+    parser.add_argument("--namespace", choices=["oam", "qualified"], help="required with --setup")
     parser.add_argument("--generator", type=Path, required=True)
+    parser.add_argument("--optimization", choices=["0", "2"], default="0")
     args = parser.parse_args()
-    scratch, generated = args.scratch.resolve(), args.generated.resolve()
-    prior = json.loads((generated / "result.json").read_text())
-    if not prior.get("completed"):
-        raise RuntimeError("numerical generated matrix not complete")
+    scratch = args.scratch.resolve()
+    if args.generated:
+        generated = args.generated.resolve()
+        prior = json.loads((generated / "result.json").read_text())
+        if not prior.get("completed"):
+            raise RuntimeError("numerical generated matrix not complete")
+        namespace = prior["namespace"]
+    else:
+        if not args.namespace:
+            parser.error("--setup requires --namespace")
+        namespace = args.namespace
     scratch.mkdir(parents=True, exist_ok=False)
-    namespace = prior["namespace"]
     schema = (ROOT / "tests/fixtures/service-generate/codec-ada-float64.xsd").read_text()
     schema = schema.replace(' <xs:complexType name="PathLength"><xs:sequence>', '''
  <xs:simpleType name="ExclusiveNumber"><xs:restriction base="xs:double"><xs:minExclusive value="0"/><xs:maxInclusive value="1"/></xs:restriction></xs:simpleType>
@@ -50,11 +66,11 @@ def main():
     schema_path.write_text(schema)
     consumer = scratch / "consumer"
 
-    def run(label, command, cwd=ROOT):
+    def run(label, command, cwd=ROOT, env=None):
         prefix = scratch / label
         prefix.with_suffix(".command.json").write_text(json.dumps({"argv": command, "cwd": str(cwd)}, indent=2) + "\n")
         with prefix.with_suffix(".stdout").open("wb") as out, prefix.with_suffix(".stderr").open("wb") as err:
-            process = subprocess.run(command, cwd=cwd, stdout=out, stderr=err)
+            process = subprocess.run(command, cwd=cwd, env=env, stdout=out, stderr=err)
         prefix.with_suffix(".exit").write_text(str(process.returncode) + "\n")
         if process.returncode:
             raise RuntimeError(f"failed {label}")
@@ -63,21 +79,34 @@ def main():
     run("generate", [str(args.generator.resolve()), "service-generate", "--schema", str(schema_path),
         "--contract", str(ROOT / "tests/fixtures/service-generate/codec-ada-float64.yaml"), "--language", "ada",
         "--world", "closed-schema", "--with-codec", "--ada-codec-runtime", "linux-x86_64-glibc-2.41-lossless-v1", "--output", str(consumer)])
-    for name in ["conformance.adb", "allocation_faults.ads", "allocation_faults.adb"]:
-        source = (ROOT / "tests/ada-float64-codec" / name).read_text()
-        if namespace == "qualified":
-            source = source.replace("Programs.Oam", "Urn.Task097")
-        (consumer / name).write_text(source)
-    for directory in ["support", "provider"]:
-        shutil.copytree(generated / directory, scratch / directory)
+    source = (ROOT / "tests/ada-float64-codec/conformance.adb").read_text()
+    if namespace == "qualified":
+        source = source.replace("Programs.Oam", "Urn.Task097")
+    (consumer / "conformance.adb").write_text(source)
+    # Test-only per-thread German numeric locale controls (never setlocale).
+    shutil.copy2(ROOT / "tests/ada-float64-probe/locale_controls.c", consumer)
     environment = scratch / "environment.sh"
-    environment.write_text((generated / "environment.sh").read_text().replace(str(generated / "provider"), str(scratch / "provider")))
+    if args.generated:
+        for directory in ["support", "provider"]:
+            shutil.copytree(generated / directory, scratch / directory)
+        environment.write_text((generated / "environment.sh").read_text().replace(str(generated / "provider"), str(scratch / "provider")))
+    else:
+        # Exact current support sources and a private provider build tree.
+        setup = args.setup.resolve()
+        env = dict(os.environ, HOME=str(setup / "home"), XDG_CONFIG_HOME=str(setup / "home/.config"),
+                   XDG_CACHE_HOME=str(setup / "home/.cache"), XDG_DATA_HOME=str(setup / "home/.local/share"))
+        printed = run("printenv", ["alr", "-s", str(setup / "settings"), "-n", "printenv"], setup / "consumer", env)
+        provider = setup / "consumer/alire/cache/dependencies"
+        shutil.copytree(provider, scratch / "provider")
+        shutil.copytree(ROOT / "ada/oms-json-support", scratch / "support")
+        environment.write_text(printed.replace(str(provider), str(scratch / "provider")))
     (consumer / "consumer.gpr").write_text(
         'with "../support/ams_gra_oms_json_lossless";\nproject Consumer is\n'
+        'for Languages use ("Ada", "C");\n'
         'for Source_Dirs use ("."); for Object_Dir use "obj"; for Exec_Dir use "bin";\n'
         'for Main use ("conformance.adb");\npackage Compiler is\n'
-        'for Default_Switches ("Ada") use ("-gnat2022", "-gnato", "-O0"); end Compiler;\n'
-        'package Linker is for Default_Switches ("Ada") use ("-Wl,--wrap=__gnat_malloc"); end Linker;\nend Consumer;\n')
+        'for Default_Switches ("Ada") use ("-gnat2022", "-gnato", "-O' + args.optimization + '");\n'
+        'for Default_Switches ("C") use ("-std=c11", "-O' + args.optimization + '"); end Compiler;\nend Consumer;\n')
     prefix = "" if namespace == "oam" else "{urn:task097}"
 
     def key(name):
@@ -140,15 +169,23 @@ def main():
         path.write_text(text + "\n")
         paths[name] = path
     cells = []
-    def equivalent(actual, expected):
+
+    class Number(str):
+        """Explicit JSON-number kind tag; a quoted numeral stays a plain str."""
+
+    def equivalent(actual, expected, width="!d"):
         if isinstance(expected, dict):
-            return actual.keys() == expected.keys() and all(
-                struct.pack("!f", actual[k]) == struct.pack("!f", v)
-                if k == key("Single") else equivalent(actual[k], v)
-                for k, v in expected.items())
+            return isinstance(actual, dict) and list(actual) == list(expected) and all(
+                equivalent(actual[k], v, "!f" if k == key("Single") else "!d") for k, v in expected.items())
         if isinstance(expected, list):
-            return len(actual) == len(expected) and all(equivalent(a, b) for a, b in zip(actual, expected, strict=True))
-        return actual == expected
+            return isinstance(actual, list) and len(actual) == len(expected) and all(
+                equivalent(a, b, width) for a, b in zip(actual, expected, strict=True))
+        if isinstance(expected, bool) or expected is None:
+            return actual is expected
+        if isinstance(expected, (int, float)):
+            # Kind, signed zero and exact width-specific bits, not Python ==.
+            return type(actual) is Number and struct.pack(width, float(actual)) == struct.pack(width, float(expected))
+        return type(actual) is str and actual == expected
     for policy in ["Normal", "Check", "Ignore"]:
         command = ["gprbuild", "-P", "consumer.gpr", "-p", "-f"]
         if policy != "Normal":
@@ -161,11 +198,19 @@ def main():
             lines = output.splitlines()
             if len(lines) != 2 or lines[-1] != "TASK097_CONFORMANCE_ACCEPT_COMPLETE":
                 raise RuntimeError("incomplete accepted case")
-            tree = json.loads(lines[0])
+            tree = json.loads(lines[0], parse_float=Number, parse_int=Number)
             if name in ["base", "duplicate-leaf", "subtree-replacement"] and not equivalent(tree, original):
                 raise RuntimeError("duplicate/Unicode/typed representation mismatch")
-            if name in ["nan", "infinity", "negative-infinity"] and tree[key("Record")][key("Direct")] != json.loads(accepted[name])[key("Record")][key("Direct")]:
-                raise RuntimeError("special mapping")
+            if name in ["nan", "infinity", "negative-infinity"]:
+                special = json.loads(accepted[name])[key("Record")][key("Direct")]
+                if type(tree[key("Record")][key("Direct")]) is not str or tree[key("Record")][key("Direct")] != special:
+                    raise RuntimeError("special mapping")
+            if name == "absent" and any(key(n) in tree[key("Record")] for n in ["Optional", "Unbounded", "NamedBounded"]):
+                raise RuntimeError("absent optional/repeated emitted")
+            # Established repeated-codec convention: an empty minOccurs=0
+            # sequence is omitted, never emitted as [] or as a scalar.
+            if name == "empty" and any(key(n) in tree[key("Record")] for n in ["Samples", "Unbounded", "NamedBounded"]):
+                raise RuntimeError("empty repeated representation")
         for name in rejected:
             output = run(f"{policy}-{name}", [binary, "reject", str(valid), str(paths[name])], consumer)
             if not output.startswith("TASK097_REJECT_ATOMIC "):
@@ -175,17 +220,19 @@ def main():
         output = run(f"{policy}-encode-invalid", [binary, "encode-invalid", str(valid)], consumer)
         if output != "TASK097_ENCODE_REJECT_ATOMIC\n":
             raise RuntimeError("invalid output not atomic")
-        output = run(f"{policy}-allocation", [binary, "allocation", str(valid)], consumer)
-        if not output.startswith("TASK097_ALLOCATION_ATOMIC_COMPLETE "):
-            raise RuntimeError("missing allocation fault evidence")
-        cells.append({"policy": policy, "accepted": len(accepted), "rejected": len(rejected), "allocation_budgets": 101})
+        output = run(f"{policy}-locale", [binary, "locale", str(valid)], consumer)
+        if not output.startswith("TASK097_LOCALE_COMPLETE "):
+            raise RuntimeError("missing German thread-locale evidence")
+        cells.append({"policy": policy, "optimization": args.optimization, "accepted": len(accepted),
+                      "rejected": len(rejected), "german_thread_locale": True})
         print("COMPLETE", policy, namespace, flush=True)
     files = [p for parent in [consumer, scratch / "support"] for p in parent.rglob("*")
              if p.is_file() and p.suffix in [".ads", ".adb", ".c", ".h", ".gpr"]]
     files += [Path(__file__), schema_path, args.generator.resolve()]
     (scratch / "sources.json").write_text(json.dumps({str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in files}, indent=2) + "\n")
     temporary = scratch / "result.json.tmp"
-    temporary.write_text(json.dumps({"completed": True, "production_generated": True, "namespace": namespace, "cells": cells}, indent=2) + "\n")
+    temporary.write_text(json.dumps({"completed": True, "production_generated": True, "namespace": namespace,
+                                     "optimization": args.optimization, "cells": cells}, indent=2) + "\n")
     temporary.replace(scratch / "result.json")
     print("TASK097_CONFORMANCE_MATRIX_COMPLETE cells=3", flush=True)
 

@@ -3,6 +3,7 @@ import argparse
 import copy
 import hashlib
 import json
+import os
 from pathlib import Path
 import shlex
 import shutil
@@ -26,6 +27,7 @@ def main():
     parser.add_argument("--namespace", choices=["oam", "qualified"], required=True)
     parser.add_argument("--policies", nargs="+", default=["Normal", "Check", "Ignore"])
     parser.add_argument("--optimizations", nargs="+", choices=["0", "2"], default=["0", "2"])
+    parser.add_argument("--setup", type=Path, help="fresh scripts/task096/setup.py provisioning (production gate)")
     args = parser.parse_args()
     scratch = args.scratch.resolve()
     scratch.mkdir(parents=True, exist_ok=False)
@@ -41,12 +43,26 @@ def main():
             raise RuntimeError(f"{label}: exit {result.returncode}")
         return (scratch / (label + ".stdout")).read_text()
 
-    c1 = Path(f"/home/zboll/task097-scratch/c1/pristine{args.compiler}-01")
     ignore = shutil.ignore_patterns("obj", "obj-*", "lib", "bin", "*.o", "*.ali", "*.a", "*.so", "*.lexch", "*.bexch")
-    for directory in ["support", "provider"]:
-        shutil.copytree(c1 / directory, scratch / directory, ignore=ignore)
     environment = scratch / "environment.sh"
-    environment.write_text((c1 / "environment.sh").read_text().replace(str(c1 / "provider"), str(scratch / "provider")))
+    if args.setup:
+        # Production qualification: exact current support sources plus a
+        # private copy of the freshly provisioned task-owned provider.
+        setup = args.setup.resolve()
+        env = dict(os.environ, HOME=str(setup / "home"), XDG_CONFIG_HOME=str(setup / "home/.config"),
+                   XDG_CACHE_HOME=str(setup / "home/.cache"), XDG_DATA_HOME=str(setup / "home/.local/share"))
+        printed = subprocess.run(["alr", "-s", str(setup / "settings"), "-n", "printenv"], cwd=setup / "consumer",
+                                 env=env, check=True, capture_output=True, text=True).stdout
+        provider = setup / "consumer/alire/cache/dependencies"
+        shutil.copytree(provider, scratch / "provider", ignore=ignore)
+        shutil.copytree(ROOT / "ada/oms-json-support", scratch / "support", ignore=ignore)
+        environment.write_text(printed.replace(str(provider), str(scratch / "provider")))
+    else:
+        # Historical C3 reproduction only (pristine C1 provider/support copies).
+        c1 = Path(f"/home/zboll/task097-scratch/c1/pristine{args.compiler}-01")
+        for directory in ["support", "provider"]:
+            shutil.copytree(c1 / directory, scratch / directory, ignore=ignore)
+        environment.write_text((c1 / "environment.sh").read_text().replace(str(c1 / "provider"), str(scratch / "provider")))
     shell = lambda command: ["sh", "-ec", f". {shlex.quote(str(environment))}; exec " + shlex.join(command)]
     run("compiler", shell(["gnatls", "-v"]))
     namespace = "https://www.vdl.afrl.af.mil/programs/oam"

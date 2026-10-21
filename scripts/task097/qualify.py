@@ -66,6 +66,13 @@ def main():
     run("setup", [py, str(ROOT / "scripts/task096/setup.py"), "--scratch", str(setup), "--compiler", args.compiler])
     common = ["--setup", str(setup), "--generator", str(args.generator.resolve())]
     run("checkpoint", [py, str(scripts / "checkpoint.py"), "--scratch", str(scratch / "small-checkpoint"), *common])
+    # First complete generated-code gate: representative Float64/Float32/
+    # Binary/checked/nested/repeated/Choice/temporal codec, both namespaces,
+    # Normal/Check/Ignore at O0 and O2, current support + fresh provider.
+    for namespace in ["oam", "qualified"]:
+        run(f"composition-{namespace}", [py, str(scripts / "c3_matrix.py"), "--scratch", str(scratch / f"composition-{namespace}"),
+            "--generator", str(args.generator.resolve()), "--compiler", args.compiler, "--namespace", namespace,
+            "--setup", str(setup)])
     for namespace in ["oam", "qualified"]:
         generated = scratch / f"generated-{namespace}"
         run(f"generated-{namespace}", [py, str(scripts / "generated.py"), "--scratch", str(generated), *common,
@@ -75,6 +82,8 @@ def main():
     optimized = scratch / "generated-oam-O2"
     run("generated-oam-O2", [py, str(scripts / "generated.py"), "--scratch", str(optimized), *common,
         "--corpus", str(corpus), "--namespace", "oam", "--optimization", "2"])
+    run("conformance-oam-O2", [py, str(scripts / "conformance.py"), "--scratch", str(scratch / "conformance-oam-O2"),
+        "--generated", str(optimized), "--generator", str(args.generator.resolve()), "--optimization", "2"])
     paths = [*scripts.glob("*.py"), *probes.glob("*.py"), ROOT / "scripts/task096/setup.py", args.generator.resolve()]
     temporary = scratch / "result.json.tmp"
     temporary.write_text(json.dumps({"completed": True, "compiler": args.compiler, "production_generated": True, "steps": steps,

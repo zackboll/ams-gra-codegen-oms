@@ -1,10 +1,12 @@
 """Complete unchanged newly READY UCI services, independently authored JSON."""
 import argparse
+import copy
 import hashlib
 import json
 from pathlib import Path
 import shlex
 import shutil
+import struct
 import subprocess
 import xml.etree.ElementTree as ET
 
@@ -62,6 +64,60 @@ def main():
         "RF_Profile": {"RF_ProfileID": identity, "ProfileBand": [{"Frequency": frequency, "ReceiveAllowed": True,
             "TransmitAllowed": False, "MaximumTransmitPower": 1.0000000000000002, "DutyCycle": 0.5}]},
     }
+    # Independently authored invalid values, by actual schema facet:
+    # (path into MessageData, replacement, reason). Paths use list indices.
+    class Raw(str):
+        """Unquoted JSON numeric token substituted after serialization."""
+
+    invalid_values = {
+        "EntityLost": [(["Probability"], "0.5", "quoted finite Float64"),
+                       (["PreviousProbability"], Raw("1e999"), "binary64 overflow number token"),
+                       (["Probability"], Raw("01"), "leading-zero JSON grammar"),
+                       (["Probability"], "nan", "case-sensitive special")],
+        "EntityConfirmation": [(["ConfirmationProbability"], -1e-300, "DoubleNonNegativeType minInclusive 0"),
+                               (["ConfirmationProbability"], "1", "quoted finite Float64")],
+        "EarthOrientationParameters": [(["Parameters", 0, "UT1_Rate"], "-0", "quoted finite Float64"),
+                                       (["Parameters", 0, "PolarMotion", "X"], True, "wrong JSON kind")],
+        "SpectralDensityReport": [(["SpectralBand", 0, "Frequency", "Min"], -0.0, "DoublePositiveType minExclusive 0"),
+                                  (["SpectralBand", 0, "SpectralDensity", 1], "2", "quoted repeated Float64")],
+        "SubsystemCalibrationStatus": [(["ActiveCalibration", 0, "EstimatedPercentComplete"], -0.5, "DoubleNonNegativeType minInclusive 0")],
+        "LAR_Report": [(["LAR_Analysis", "DistanceToEnterLAR"], -1, "DoubleNonNegativeType minInclusive 0"),
+                       (["ReleaseConditions", "AltitudeDelta"], "Inf", "invalid special spelling")],
+        "RF_Profile": [(["ProfileBand", 0, "DutyCycle"], -5e-324, "DoubleNonNegativeType minInclusive 0"),
+                       (["ProfileBand", 0, "Frequency", "Max"], 0, "DoublePositiveType minExclusive 0")],
+    }
+    # Boundary values that MUST be accepted (signed zero satisfies minInclusive 0).
+    boundary_values = {
+        "EntityConfirmation": [(["ConfirmationProbability"], -0.0)],
+        "SubsystemCalibrationStatus": [(["ActiveCalibration", 0, "EstimatedPercentComplete"], 5e-324)],
+        "LAR_Report": [(["LAR_Analysis", "DistanceToExitLAR"], 1.7976931348623157e308)],
+        "RF_Profile": [(["ProfileBand", 0, "Frequency", "Min"], 5e-324)],
+        "EntityLost": [(["Probability"], "Infinity"), (["PreviousProbability"], "-Infinity")],
+    }
+
+    class Number(str):
+        """Explicit JSON-number kind tag; quoted numerals remain plain str."""
+
+    def same(actual, expected):
+        if isinstance(expected, dict):
+            return isinstance(actual, dict) and actual.keys() == expected.keys() and all(same(actual[k], v) for k, v in expected.items())
+        if isinstance(expected, list):
+            return isinstance(actual, list) and len(actual) == len(expected) and all(same(a, b) for a, b in zip(actual, expected, strict=True))
+        if isinstance(expected, bool):
+            return actual is expected
+        if isinstance(expected, (int, float)):
+            # JSON-number kind plus exact binary64 bits, including signed zero.
+            return type(actual) is Number and struct.pack("!d", float(actual)) == struct.pack("!d", float(expected))
+        return type(actual) is str and actual == expected
+
+    def replaced(data, path, value):
+        result = copy.deepcopy(data)
+        target = result
+        for part in path[:-1]:
+            target = target[part]
+        target[path[-1]] = value
+        return result
+
     cells = []
     for release, schema in [("25", args.uci25.resolve()), ("26", args.uci26.resolve())]:
         expected = {"25": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27", "26": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b"}[release]
@@ -108,6 +164,27 @@ def main():
             invalid.write_text(json.dumps(document | {"Unknown": 0}) + "\n")
             nested = consumer.parent / "nested-invalid.json"
             nested.write_text(json.dumps(document | {"MessageData": data[name] | {"Unknown": 0}}) + "\n")
+            malformed = consumer.parent / "malformed.json"
+            malformed.write_text(json.dumps(document)[:-7] + "\n")
+            rejects = [invalid, nested, malformed]
+            for index, (path, value, _reason) in enumerate(invalid_values.get(name, [])):
+                target = consumer.parent / f"invalid-value-{index}.json"
+                marker = "TASK097_RAW_TOKEN"
+                text = json.dumps(document | {"MessageData": replaced(data[name], path, marker if isinstance(value, Raw) else value)})
+                if isinstance(value, Raw):
+                    if text.count(json.dumps(marker)) != 1:
+                        raise RuntimeError("raw token substitution")
+                    text = text.replace(json.dumps(marker), str(value))
+                target.write_text(text + "\n")
+                rejects.append(target)
+            accepts = [(valid, document)]
+            for index, (path, value) in enumerate(boundary_values.get(name, [])):
+                target = consumer.parent / f"boundary-{index}.json"
+                variant = document | {"MessageData": replaced(data[name], path, value)}
+                target.write_text(json.dumps(variant) + "\n")
+                accepts.append((target, variant))
+            if not invalid_values.get(name):
+                raise RuntimeError(f"no independently authored invalid values for {name}")
             for policy in ["Normal", "Check", "Ignore"]:
                 command = ["gprbuild", "-P", "consumer.gpr", "-p", "-f"]
                 if policy != "Normal":
@@ -115,20 +192,26 @@ def main():
                     adc.write_text(f"pragma Assertion_Policy ({policy});\n")
                     command += ["-cargs:Ada", f"-gnatec={adc}"]
                 run(f"{label}-{policy}-build", ["sh", "-ec", f". {shlex.quote(str(environment_file))}; exec " + shlex.join(command)], consumer)
-                output = run(f"{label}-{policy}-valid", [str(consumer / "bin/real_consumer"), "accept", str(valid)], consumer)
-                lines = output.splitlines()
-                if len(lines) != 2 or lines[-1] != "TASK097_REAL_ACCEPT_COMPLETE":
-                    raise RuntimeError("incomplete real valid execution")
-                # Ordinary JSON decoding preserves kind: quoted numerals are str,
-                # finite model numbers remain float/int. Also compare every leaf.
-                decoded = json.loads(lines[0])
-                if decoded != document:
-                    raise RuntimeError(f"real semantic mismatch {label}")
-                for index, path in enumerate([invalid, nested]):
+                for index, (path, expected) in enumerate(accepts):
+                    output = run(f"{label}-{policy}-valid-{index}", [str(consumer / "bin/real_consumer"), "accept", str(path)], consumer)
+                    lines = output.splitlines()
+                    if len(lines) != 2 or lines[-1] != "TASK097_REAL_ACCEPT_COMPLETE":
+                        raise RuntimeError("incomplete real valid execution")
+                    # Explicit kind tags: a finite Float64 must be a JSON number
+                    # with exact bits; specials remain exact strings.
+                    decoded = json.loads(lines[0], parse_float=Number, parse_int=Number)
+                    if not same(decoded, expected):
+                        raise RuntimeError(f"real semantic/kind mismatch {label} {path.name}")
+                for index, path in enumerate(rejects):
                     output = run(f"{label}-{policy}-invalid-{index}", [str(consumer / "bin/real_consumer"), "reject", str(path)], consumer)
                     if output != "TASK097_REAL_REJECT_ATOMIC\n":
                         raise RuntimeError("real invalid document publication")
-                cells.append({"release": release, "message": name, "payload": payload, "policy": policy})
+                cells.append({"release": release, "message": name, "payload": payload, "policy": policy,
+                              "selected_type_closure": row["outcome"].get("selected_count"),
+                              "lossless_renderable_emitted": [profiles["lossless-v1"]["renderable"], profiles["lossless-v1"]["emitted"]],
+                              "portable_first_blocker": profiles.get("portable", {}).get("first_blocker"),
+                              "accepted": len(accepts), "rejected": len(rejects),
+                              "invalid_values": [reason for _, _, reason in invalid_values[name]]})
             print("TASK097_REAL_SERVICE_COMPLETE", release, name, flush=True)
     temporary = scratch / "result.json.tmp"
     temporary.write_text(json.dumps({"completed": True, "production_generated": True, "cells": cells}, indent=2) + "\n")

@@ -6,6 +6,7 @@ from pathlib import Path
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
+LOSSLESS = "linux-x86_64-glibc-2.41-lossless-v1"
 
 
 def main():
@@ -13,6 +14,9 @@ def main():
     parser.add_argument("--scratch", type=Path, required=True)
     parser.add_argument("--baseline", type=Path, required=True)
     parser.add_argument("--generator", type=Path, required=True)
+    parser.add_argument("--baseline-sha", required=True, help="exact source commit of --baseline")
+    parser.add_argument("--include-lossless", action="store_true",
+                        help="also compare lossless-profile Float64 output (baseline must support the profile)")
     args = parser.parse_args()
     scratch = args.scratch.resolve()
     scratch.mkdir(parents=True, exist_ok=False)
@@ -36,6 +40,8 @@ def main():
         for language in ["ada", "rust", "cpp"]:
             for codec in [False, True]:
                 profiles = [None, "linux-x86_64-glibc-2.41"] if codec and language == "ada" else [None]
+                if args.include_lossless and codec and language == "ada":
+                    profiles.append(LOSSLESS)
                 for profile in profiles:
                     label = f"{stem}-{language}-{codec}-{profile}"
                     variants = {}
@@ -61,10 +67,17 @@ def main():
                     rows.append({"fixture": stem, "language": language, "codec": codec, "runtime": profile,
                                  "outcome": "byte-identical" if variants["current"]["exit"] == 0 else "atomic-rejection",
                                  "result": variants["current"]})
+    summary = {
+        "legacy_byte_identical": sum(r["outcome"] == "byte-identical" and r["runtime"] != LOSSLESS for r in rows),
+        "legacy_atomic_rejection": sum(r["outcome"] == "atomic-rejection" and r["runtime"] != LOSSLESS for r in rows),
+        "lossless_byte_identical": sum(r["outcome"] == "byte-identical" and r["runtime"] == LOSSLESS for r in rows),
+        "lossless_atomic_rejection": sum(r["outcome"] == "atomic-rejection" and r["runtime"] == LOSSLESS for r in rows),
+    }
     temporary = scratch / "result.json.tmp"
-    temporary.write_text(json.dumps({"completed": True, "baseline_sha": "5f6800d505c6501638c322d20b23cfc36b09d7d6", "comparisons": rows}, indent=2) + "\n")
+    temporary.write_text(json.dumps({"completed": True, "baseline_sha": args.baseline_sha, "summary": summary,
+                                     "comparisons": rows}, indent=2) + "\n")
     temporary.replace(scratch / "result.json")
-    print("TASK097_PRESERVATION_COMPLETE comparisons=" + str(len(rows)), flush=True)
+    print("TASK097_PRESERVATION_COMPLETE comparisons=" + str(len(rows)) + " " + json.dumps(summary, sort_keys=True), flush=True)
 
 
 if __name__ == "__main__":

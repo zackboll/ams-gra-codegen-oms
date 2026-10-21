@@ -1,12 +1,21 @@
+--  Task 097 production gate consumer, shared by every generated fixture.
+--  Ordinary resources only: forced allocator exhaustion is outside the
+--  qualified production scope (docs/task-097-ada-float64-production.md).
 with Ada.Command_Line;
 with Ada.Exceptions;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Text_IO; use Ada.Text_IO;
-with Allocation_Faults;
+with Interfaces.C;
 with Programs.Oam;
 with Service_Codec;
 procedure Conformance is
+   use type Interfaces.C.int;
    package Model renames Programs.Oam;
+   --  Test-only per-thread German numeric locale (tests/ada-float64-probe).
+   function Locale_Enter return Interfaces.C.int
+     with Import, Convention => C, External_Name => "task096_locale_enter";
+   function Locale_Leave return Interfaces.C.int
+     with Import, Convention => C, External_Name => "task096_locale_leave";
    function Read_File (Name : String) return String is
       Input : File_Type;
       Text : Unbounded_String;
@@ -28,40 +37,25 @@ procedure Conformance is
       Checks := Checks + 1;
    end Check;
 begin
-   if Mode = "allocation" then
+   if Mode = "locale" then
+      --  The production C boundary must use its own C numeric locale and
+      --  restore this thread's exact German handle after every operation.
+      Check (Locale_Enter = 0);
       declare
-         Encode_Failures, Decode_Failures : Natural := 0;
+         Decoded : constant Model.LosslessEnvelope := Service_Codec.Decode_LosslessEnvelope (Valid);
       begin
-         for Budget in 0 .. 100 loop
-            Put_Line (Standard_Error, "TASK097_FAULT_BUDGET encode" & Budget'Image);
-            Output := To_Unbounded_String ("sentinel");
-            Allocation_Faults.Arm (Budget);
-            begin
-               Output := To_Unbounded_String (Service_Codec.Encode_LosslessEnvelope (Item));
-               Allocation_Faults.Disarm;
-               Check (To_String (Output) = Before);
-            exception
-               when Storage_Error =>
-                  Allocation_Faults.Disarm;
-                  Check (Output = "sentinel");
-                  Encode_Failures := Encode_Failures + 1;
-            end;
-            Put_Line (Standard_Error, "TASK097_FAULT_BUDGET decode" & Budget'Image);
-            Allocation_Faults.Arm (Budget);
-            begin
-               Item := Service_Codec.Decode_LosslessEnvelope (Valid);
-               Allocation_Faults.Disarm;
-            exception
-               when Storage_Error =>
-                  Allocation_Faults.Disarm;
-                  Decode_Failures := Decode_Failures + 1;
-            end;
-            Check (Service_Codec.Encode_LosslessEnvelope (Item) = Before);
-         end loop;
-         Check (Encode_Failures > 0 and Decode_Failures > 0);
-         Put_Line ("TASK097_ALLOCATION_ATOMIC_COMPLETE encode_failures=" & Encode_Failures'Image &
-                   " decode_failures=" & Decode_Failures'Image & " checks=" & Checks'Image);
+         Check (Service_Codec.Encode_LosslessEnvelope (Decoded) = Before);
+         begin
+            Item := Service_Codec.Decode_LosslessEnvelope ("{""malformed""");
+            raise Program_Error with "malformed document accepted in German locale";
+         exception
+            when Service_Codec.Codec_Error =>
+               Check (Service_Codec.Encode_LosslessEnvelope (Item) = Before);
+         end;
       end;
+      Check (Locale_Leave = 0);
+      Check (Service_Codec.Encode_LosslessEnvelope (Service_Codec.Decode_LosslessEnvelope (Valid)) = Before);
+      Put_Line ("TASK097_LOCALE_COMPLETE checks=" & Checks'Image);
    elsif Mode = "reject" then
       begin
          Item := Service_Codec.Decode_LosslessEnvelope (Read_File (Ada.Command_Line.Argument (3)));
@@ -81,11 +75,19 @@ begin
             Check (Output = "sentinel");
             Put_Line ("TASK097_ENCODE_REJECT_ATOMIC");
       end;
-   else
+   elsif Mode = "accept" then
       Item := Service_Codec.Decode_LosslessEnvelope (Read_File (Ada.Command_Line.Argument (3)));
-      Put_Line (Service_Codec.Encode_LosslessEnvelope (Item));
+      declare
+         First : constant String := Service_Codec.Encode_LosslessEnvelope (Item);
+         Roundtrip : constant Model.LosslessEnvelope := Service_Codec.Decode_LosslessEnvelope (First);
+      begin
+         --  Deterministic repeated output and typed round trip.
+         Check (Service_Codec.Encode_LosslessEnvelope (Item) = First);
+         Check (Service_Codec.Encode_LosslessEnvelope (Roundtrip) = First);
+         Put_Line (First);
+      end;
       Put_Line ("TASK097_CONFORMANCE_ACCEPT_COMPLETE");
+   else
+      raise Program_Error with "unknown conformance mode";
    end if;
-exception
-   when others => Allocation_Faults.Disarm; raise;
 end Conformance;
