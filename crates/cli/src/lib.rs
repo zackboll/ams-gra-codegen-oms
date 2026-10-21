@@ -123,10 +123,7 @@ LANGUAGES:
     ada
     rust
     cpp
-    python              Model generation only (Python 3.11+).
-
-    Python service-check and service-generate are unsupported: service wrapper
-    generation and authoritative Python readiness analysis are not implemented.
+    python              Python 3.11+ models and typed service APIs; no OMS codec.
     Coverage continues to inventory Ada, Rust, and C++ only.
 
 GENERATION WORLDS:
@@ -203,7 +200,7 @@ LANGUAGES:
     ada
     rust
     cpp
-    python              Standalone Python 3.11+ models; no service or codec.
+    python              Standalone Python 3.11+ dataclass models; no OMS codec.
 
 WORLDS:
     closed-schema       You assert the supplied schema set is the complete
@@ -295,8 +292,7 @@ LANGUAGES:
     rust
     cpp
 
-    Python is unsupported: service wrapper generation and authoritative Python
-    readiness analysis are not implemented. No readiness verdict is reported.
+    python              Python 3.11+; actual model/API readiness, no OMS codec.
 
 WORLDS:
     closed-schema       Measure readiness assuming the supplied schema set is
@@ -389,8 +385,7 @@ LANGUAGES:
     rust
     cpp
 
-    Python is unsupported: service wrapper generation and authoritative Python
-    readiness analysis are not implemented. No files are generated.
+    python              Python 3.11+ model and typed API; no OMS codec.
 
 WORLDS:
     closed-schema       You assert the supplied schema set is the complete
@@ -568,16 +563,15 @@ impl Language {
         }
     }
 
-    /// Only independently qualified service backends have a core identity.
-    /// Never substitute another backend's readiness for Python model support.
+    /// Identity in the established three-language coverage inventory only.
+    /// Python services use Backend::name and render-backed readiness instead.
     fn backend_language(self) -> Result<BackendLanguage, CliError> {
         match self {
             Self::Ada => Ok(BackendLanguage::Ada),
             Self::Rust => Ok(BackendLanguage::Rust),
             Self::Cpp => Ok(BackendLanguage::Cpp),
             Self::Python => Err(CliError::execution(
-                "Python service commands are unsupported: service wrapper generation and \
-                 authoritative Python readiness analysis are not implemented; no files were generated",
+                "Python is outside the three-language coverage inventory; use render-backed service readiness",
             )),
         }
     }
@@ -1550,6 +1544,10 @@ fn service_check<W: Write>(
     target: GenerationTarget,
     stdout: &mut W,
 ) -> Result<(), CliError> {
+    if language_is_python(target) {
+        let inputs = load_service_inputs(schema_path, contract_path, extensions)?;
+        return python_service(&inputs, target, None, stdout);
+    }
     let GenerationTarget {
         language,
         world,
@@ -1598,6 +1596,90 @@ struct GenerationTarget {
     ada_codec_runtime: ams_gra_oms_codegen_core::AdaCodecRuntime,
 }
 
+fn language_is_python(target: GenerationTarget) -> bool {
+    target.language == Language::Python
+}
+
+/// Python uses render-backed qualification, not another language's coverage.
+/// Both commands consume this exact in-memory result, including path preflight.
+fn python_service<W: Write>(
+    inputs: &ServiceInputs,
+    target: GenerationTarget,
+    output_dir: Option<&Path>,
+    stdout: &mut W,
+) -> Result<(), CliError> {
+    let readiness = ams_gra_oms_codegen_core::analyze_rendered_service_readiness(
+        &inputs.plan,
+        &inputs.schema,
+        target.world,
+        &PythonBackend,
+    )
+    .map_err(|error| CliError::execution(error.to_string()))?;
+    validate_generated_files(&readiness.files)?;
+    let codec_required = inputs.plan.oms_message_exchange_count() > 0;
+    let codec_blocked = target.with_codec && codec_required;
+    let ready = readiness.is_ready() && !codec_blocked;
+    let state = |value| if value { "READY" } else { "NOT READY" };
+    let mut report = format!(
+        "service contract valid\nservice: {}\nlanguage: {}\ngeneration world: {}\n\nselected oms messages: {}\nmodel status: {}\nservice api status: {}\nstatus: {}\n",
+        inputs.plan.service.name,
+        readiness.language,
+        target.world.label(),
+        inputs.plan.selected_messages().len(),
+        state(readiness.model_blocker.is_none()),
+        state(readiness.service_api_blocker.is_none() && readiness.projection.is_some()),
+        state(ready),
+    );
+    if let Some(projection) = &readiness.projection {
+        report.push_str(&format!(
+            "selected type closure: {}\ngenerated support types: {}\n",
+            projection.selected_type_names().len(),
+            projection.generated_support_type_names().len()
+        ));
+    }
+    if let Some(blocker) = &readiness.model_blocker {
+        report.push_str(&format!("\nmodel boundary: {blocker}\n"));
+    }
+    if let Some(blocker) = &readiness.service_api_blocker {
+        report.push_str(&format!("\nservice api boundary: {blocker}\n"));
+    }
+    if target.with_codec {
+        report.push_str(if codec_required {
+            "\ncodec status: NOT READY\nservice codec boundary: Python OMS JSON codecs are not implemented\n"
+        } else {
+            "\ncodec: not required (no OMS message exchange)\n"
+        });
+    }
+    if !ready {
+        write_output(stdout, &report)?;
+        return Err(CliError::execution(format!(
+            "service selection is not renderable for python under {}; no files were generated",
+            target.world.label(),
+        )));
+    }
+    if let Some(output_dir) = output_dir {
+        write_generated_files(&readiness.files, output_dir)?;
+        let projection = readiness.projection.as_ref().expect("ready projection");
+        let mut summary = render_service_generation(
+            &inputs.plan,
+            projection,
+            target.language,
+            target.world,
+            readiness.model_file_count,
+            readiness.files.len() - readiness.model_file_count,
+            output_dir,
+        );
+        if target.with_codec {
+            summary.push_str(
+                "generated service codec files: 0\ncodec: not required (no OMS message exchange)\n",
+            );
+        }
+        write_output(stdout, &summary)
+    } else {
+        write_output(stdout, &report)
+    }
+}
+
 /// Generate the UCI type model a contract selects, after readiness succeeds.
 ///
 /// Ordering is the whole point of this function. Readiness is consulted
@@ -1614,6 +1696,10 @@ fn service_generate<W: Write>(
     output_dir: &Path,
     stdout: &mut W,
 ) -> Result<(), CliError> {
+    if language_is_python(target) {
+        let inputs = load_service_inputs(schema_path, contract_path, extensions)?;
+        return python_service(&inputs, target, Some(output_dir), stdout);
+    }
     let GenerationTarget {
         language,
         world,

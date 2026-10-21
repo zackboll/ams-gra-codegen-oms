@@ -227,14 +227,13 @@ fn invalid_language_and_world_are_usage_errors_without_output() {
 }
 
 #[test]
-fn python_services_are_explicitly_unsupported_even_for_ready_or_empty_selections() {
+fn unsupported_python_selected_models_fail_without_writing() {
     let temp = Temp::new();
     for (world, _) in WORLDS {
         for command in ["service-check", "service-generate"] {
             for codec in [false, true] {
                 for contract in [
                     "../../tests/fixtures/service-check/ready.yaml",
-                    "../../tests/fixtures/service-generate/non-uci.yaml",
                     "missing-contract.yaml",
                 ] {
                     let dest = temp.0.join("absent");
@@ -255,15 +254,17 @@ fn python_services_are_explicitly_unsupported_even_for_ready_or_empty_selections
                         cmd.output().unwrap()
                     };
                     let output = invoke();
-                    failed(&output, 1, "Python service commands are unsupported");
-                    let diagnostic = String::from_utf8_lossy(&output.stderr);
-                    assert!(diagnostic.contains("service wrapper generation"));
-                    assert!(diagnostic.contains("authoritative Python readiness analysis"));
-                    assert!(!diagnostic.contains("READY"));
+                    assert_eq!(output.status.code(), Some(1), "{output:?}");
+                    if !contract.starts_with("missing") {
+                        assert!(
+                            String::from_utf8_lossy(&output.stdout).contains("status: NOT READY")
+                        );
+                        assert!(String::from_utf8_lossy(&output.stdout).contains("Float64"));
+                    }
                     assert!(!dest.exists());
                     fs::create_dir(&dest).unwrap();
                     fs::write(dest.join("model.py"), b"existing model").unwrap();
-                    failed(&invoke(), 1, "Python service commands are unsupported");
+                    assert_eq!(invoke().status.code(), Some(1));
                     assert_eq!(fs::read_dir(&dest).unwrap().count(), 1);
                     assert_eq!(fs::read(dest.join("model.py")).unwrap(), b"existing model");
                     fs::remove_dir_all(dest).unwrap();
@@ -283,7 +284,8 @@ fn help_separates_python_models_from_service_support_and_coverage() {
     for command in ["service-check", "service-generate"] {
         let output = cli().args([command, "--help"]).output().unwrap();
         assert!(output.status.success());
-        assert!(String::from_utf8_lossy(&output.stdout).contains("Python is unsupported"));
+        assert!(String::from_utf8_lossy(&output.stdout).contains("Python 3.11+"));
+        assert!(String::from_utf8_lossy(&output.stdout).contains("no OMS codec"));
     }
     assert_eq!(
         BackendLanguage::ALL,

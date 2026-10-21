@@ -42,6 +42,7 @@ jobs:
           python -c 'import sys; assert sys.version_info >= (3, 11); print(sys.version)'
           cargo test --locked -p ams-gra-oms-backend-python --all-targets -- --nocapture
           cargo test --locked -p ams-gra-codegen-oms --test python_cli -- --nocapture
+          cargo test --locked -p ams-gra-codegen-oms --test python_service -- --nocapture
           cargo fmt --all -- --check
           cargo clippy --locked -p ams-gra-oms-backend-python -p ams-gra-codegen-oms --all-targets -- -D warnings
           cargo build --locked -p ams-gra-oms-backend-python -p ams-gra-codegen-oms --all-targets
