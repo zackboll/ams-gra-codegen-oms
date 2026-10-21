@@ -117,6 +117,15 @@ renaming of the production package.
   translated: an indexing or programming defect must remain distinguishable.
   No production caller may bypass this boundary for document read/write.
 
+### Task 097 production lossless Float64 profile
+
+Codecs generated with `--ada-codec-runtime linux-x86_64-glibc-2.41-lossless-v1`
+use the separate `ams_gra_oms_json_lossless.gpr` project (it imports the
+Float32 project). See `docs/task-097-ada-float64-production.md` for the
+supported deployment predicate, numerical guarantees, composition, limits and
+the documented resource-exhaustion limitations of the existing model profile.
+The C4 and C5 subsections below describe the two lossless-only boundaries.
+
 ### Task 097-C4 additive validation-only output boundary
 
 `Validate_Encoded_Document (Text : String)` checks UTF-8/escapes/surrogates with

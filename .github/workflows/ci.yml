@@ -77,8 +77,22 @@ jobs:
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
           set -euo pipefail
+          mkdir -p /tmp/task097-evidence/tmp
+          export TMPDIR=/tmp/task097-evidence/tmp
           python3 scripts/task097/job.py /tmp/task097-evidence/job -- python3 scripts/task097/qualify.py --scratch /tmp/task097-evidence/campaign --compiler '${{ matrix.compiler }}' --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
           test -s /tmp/task097-evidence/campaign/result.json
+          python3 - <<'EOF'
+          import json
+          result = json.load(open("/tmp/task097-evidence/campaign/result.json"))
+          labels = {step["label"]: step["exit"] for step in result["steps"]}
+          required = ["oracle-independent-review", "checkpoint", "composition-oam", "composition-qualified",
+                      "generated-oam", "generated-qualified", "environment-oam", "environment-qualified",
+                      "conformance-oam", "conformance-qualified", "generated-oam-O2", "conformance-oam-O2"]
+          missing = [label for label in required if labels.get(label) != 0]
+          if not result.get("completed") or not result.get("production_generated") or missing:
+              raise SystemExit(f"incomplete production Float64 qualification: {missing}")
+          print("TASK097_HOSTED_REQUIRED_STEPS", len(required))
+          EOF
       - name: Preserve complete textual qualification evidence
         if: always()
         uses: actions/upload-artifact@v4

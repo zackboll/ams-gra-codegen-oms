@@ -1,5 +1,13 @@
 # Task 097 — production-generated lossless Ada Float64 codecs
 
+> **Scope note (Task 097-F64, added; nothing below is rewritten).** This file
+> is the historical checkpoint and research record. Its dispositions apply to
+> the recoverable-resource contract it pursued. The production feature,
+> its deliberately restated qualification scope (Float64 correctness and
+> ordinary input handling with the existing model representation, not recovery
+> after memory exhaustion), its known limitations and final results are in
+> `docs/task-097-ada-float64-production.md`.
+
 ## C1 investigation — resource boundary remains blocked
 
 The Task 097-C1 continuation verifies checkpoint
