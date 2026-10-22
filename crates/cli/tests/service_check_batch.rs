@@ -207,3 +207,54 @@ fn malformed_json_missing_manifest_and_schema_fail() {
     assert!(!output.status.success());
     assert!(output.stdout.is_empty());
 }
+
+#[test]
+fn batch_command_help_and_required_options() {
+    for options in [
+        vec![],
+        vec!["--schema", "root.xsd"],
+        vec!["--manifest", "requests.json"],
+        vec![
+            "--schema",
+            "root.xsd",
+            "--manifest",
+            "requests.json",
+            "--world",
+            "closed-schema",
+        ],
+        vec![
+            "--schema",
+            "a.xsd",
+            "--schema",
+            "b.xsd",
+            "--manifest",
+            "requests.json",
+        ],
+        vec![
+            "--schema",
+            "a.xsd",
+            "--manifest",
+            "a.json",
+            "--manifest",
+            "b.json",
+        ],
+    ] {
+        let output = Command::new(env!("CARGO_BIN_EXE_ams-gra-codegen-oms"))
+            .arg("service-check-batch")
+            .args(options)
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(2));
+        assert!(output.stdout.is_empty());
+    }
+    let output = Command::new(env!("CARGO_BIN_EXE_ams-gra-codegen-oms"))
+        .args(["service-check-batch", "--help"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert!(
+        String::from_utf8(output.stdout)
+            .unwrap()
+            .contains("002.5.0")
+    );
+}

@@ -2,125 +2,62 @@ diff --git a/crates/cli/src/lib.rs b/crates/cli/src/lib.rs
 index 22b9cbd..89df2f2 100644
 --- a/crates/cli/src/lib.rs
 +++ b/crates/cli/src/lib.rs
-@@ -1498,22 +1498,36 @@ fn load_service_inputs(
-     contract_path: &Path,
-     extensions: &[(String, PathBuf)],
- ) -> Result<ServiceInputs, CliError> {
+@@ -1500,0 +1501 @@ fn load_service_inputs(
 +    let profile = std::time::Instant::now();
-     let contract =
-         load_contract(contract_path).map_err(|error| CliError::execution(error.to_string()))?;
-     // Contract order is authoritative for overlay composition, so the loader
-     // argument list is built from the contract's declared extension order and
-     // never from the command line's option order.
-     let overlays = contract_overlay_order(&contract.standards.uci_extension_schemas, extensions)?;
+@@ -1506,0 +1508,2 @@ fn load_service_inputs(
 +    profile_phase("contract_load", profile.elapsed());
 +    let profile = std::time::Instant::now();
-     let schema = load_schema_set_with_overlays(schema_path, &overlays)
-         .map_err(|error| CliError::execution(error.to_string()))?;
+@@ -1508,0 +1512,2 @@ fn load_service_inputs(
 +    profile_phase("frontend_including_ir_validation", profile.elapsed());
 +    let profile = std::time::Instant::now();
-     schema
-         .validate()
-         .map_err(|error| CliError::execution(format!("invalid schema IR: {error}")))?;
+@@ -1511,0 +1517,2 @@ fn load_service_inputs(
 +    profile_phase("cli_ir_validation", profile.elapsed());
 +    let profile = std::time::Instant::now();
-     let plan = resolve_service_plan(&contract, &schema)
-         .map_err(|error| CliError::execution(error.to_string()))?;
+@@ -1513,0 +1521 @@ fn load_service_inputs(
 +    profile_phase("resolve_service_plan", profile.elapsed());
-     Ok(ServiceInputs { schema, plan })
- }
- 
+@@ -1516,0 +1525,6 @@ fn load_service_inputs(
 +fn profile_phase(phase: &str, duration: std::time::Duration) {
 +    let path = std::env::var_os("PERF001_PHASE_LOG").expect("explicit profiling only");
 +    let mut file = fs::OpenOptions::new().create(true).append(true).open(path).unwrap();
 +    writeln!(file, "{phase}\t{}", duration.as_secs_f64()).unwrap();
 +}
 +
- /// Report whether one backend can render a contract's selected UCI type model
- /// under one asserted generation world.
- ///
-@@ -1534,6 +1548,7 @@ fn service_check<W: Write>(
-         ada_codec_runtime,
-     } = target;
-     let inputs = load_service_inputs(schema_path, contract_path, extensions)?;
+@@ -1536,0 +1551 @@ fn service_check<W: Write>(
 +    let profile = std::time::Instant::now();
-     let readiness = analyze_service_readiness(
-         &inputs.plan,
-         &inputs.schema,
-@@ -1541,6 +1556,7 @@ fn service_check<W: Write>(
-         world,
-     )
-     .map_err(|error| CliError::execution(error.to_string()))?;
+@@ -1543,0 +1559 @@ fn service_check<W: Write>(
 +    profile_phase("analyze_service_readiness", profile.elapsed());
-     let codec = if with_codec {
-         Some(codec_readiness(
-             &inputs,
-@@ -1554,10 +1570,12 @@ fn service_check<W: Write>(
-     };
-     // The full deterministic report goes to stdout even when the verdict is
-     // NOT READY: a CI failure that hides the blockers is useless.
+@@ -1556,0 +1573 @@ fn service_check<W: Write>(
 +    let profile = std::time::Instant::now();
-     write_output(
-         stdout,
-         &render_service_check_with_codec(&inputs.plan, &readiness, codec.as_ref()),
-     )?;
+@@ -1560,0 +1578 @@ fn service_check<W: Write>(
 +    profile_phase("render_and_write_report", profile.elapsed());
-     if readiness.is_ready() && codec.as_ref().is_none_or(ServiceCodecReadiness::is_ready) {
-         return Ok(());
-     }
 diff --git a/crates/xsd-frontend/src/lib.rs b/crates/xsd-frontend/src/lib.rs
 index c289119..d28b384 100644
 --- a/crates/xsd-frontend/src/lib.rs
 +++ b/crates/xsd-frontend/src/lib.rs
-@@ -239,6 +239,7 @@ pub fn load_schema_set_with_overlays(
-     root: &Path,
-     overlays: &[PathBuf],
- ) -> Result<SchemaIr, FrontendError> {
+@@ -241,0 +242 @@ pub fn load_schema_set_with_overlays(
 +    let profile = std::time::Instant::now();
-     let mut loader = SchemaSetLoader::default();
-     loader.load(root, None, None)?;
-     // The root closure fixes the primary namespace; every top-level overlay is
-@@ -255,6 +256,12 @@ pub fn load_schema_set_with_overlays(
-             None,
-         )?;
-     }
+@@ -257,0 +259,6 @@ pub fn load_schema_set_with_overlays(
 +    {
 +        use std::io::Write;
 +        let path = std::env::var_os("PERF001_PHASE_LOG").expect("explicit profiling only");
 +        let mut file = fs::OpenOptions::new().create(true).append(true).open(path).unwrap();
 +        writeln!(file, "xml_load_and_parse\t{}", profile.elapsed().as_secs_f64()).unwrap();
 +    }
-     documents_into_ir(loader.documents)
- }
- 
-@@ -438,16 +445,30 @@ fn documents_into_ir(documents: Vec<ParsedSchemaDocument>) -> Result<SchemaIr, F
-         messages.extend(document.messages);
-     }
- 
+@@ -440,0 +448 @@ fn documents_into_ir(documents: Vec<ParsedSchemaDocument>) -> Result<SchemaIr, F
 +    let profile = std::time::Instant::now();
-     let types = resolve_pending_restrictions(types)?;
+@@ -441,0 +450,6 @@ fn documents_into_ir(documents: Vec<ParsedSchemaDocument>) -> Result<SchemaIr, F
 +    {
 +        use std::io::Write;
 +        let path = std::env::var_os("PERF001_PHASE_LOG").expect("explicit profiling only");
 +        let mut file = fs::OpenOptions::new().create(true).append(true).open(path).unwrap();
 +        writeln!(file, "normalize_restrictions\t{}", profile.elapsed().as_secs_f64()).unwrap();
 +    }
-     let schema = SchemaIr {
-         schema_version,
-         namespaces,
-         types,
-         messages,
-     };
+@@ -447,0 +462 @@ fn documents_into_ir(documents: Vec<ParsedSchemaDocument>) -> Result<SchemaIr, F
 +    let profile = std::time::Instant::now();
-     schema
-         .validate()
-         .map_err(|error| FrontendError::InvalidInput(error.to_string()))?;
+@@ -450,0 +466,6 @@ fn documents_into_ir(documents: Vec<ParsedSchemaDocument>) -> Result<SchemaIr, F
 +    {
 +        use std::io::Write;
 +        let path = std::env::var_os("PERF001_PHASE_LOG").expect("explicit profiling only");
 +        let mut file = fs::OpenOptions::new().create(true).append(true).open(path).unwrap();
 +        writeln!(file, "frontend_ir_validation\t{}", profile.elapsed().as_secs_f64()).unwrap();
 +    }
-     Ok(schema)
- }
- 

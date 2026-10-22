@@ -168,6 +168,9 @@ that total to its subphases. Raw TSV measurements are retained beside the
 patch. Representative AMTI_CapabilityStatus reports were compared byte for
 byte with uninstrumented starting-main production output. Sample timings
 describe that selection only, not estimates of every selection's cost.
+The patch uses zero context to avoid whitespace-only diff context; apply with
+`git apply --unidiff-zero /absolute/path/to/docs/perf-001/profile.patch` in a
+disposable checkout of the starting commit.
 
 Three detailed samples per release (AMTI_CapabilityStatus, Ada, closed world,
 single CPU affinity 4; shared-host interference present) gave these **measured
@@ -231,7 +234,7 @@ local passing tests alone do not establish independent-review readiness.
 - `cargo clippy --workspace --all-targets -- -D warnings`: pass.
 - `cargo +1.95.0 check --locked -p ams-gra-codegen-oms --all-targets`: pass.
 - Production CLI tests (`service_check`, `service_check_batch`, `service_codec`):
-  21 + 3 + 23 passed. Batch equivalence executes actual production CLI calls
+  21 + 4 + 23 passed. Batch equivalence executes actual production CLI calls
   for 24 backend/world/codec/ready-or-blocked combinations plus missing input,
   unmapped extensions and a succeeding final request. Negative controls reject
   malformed JSON, duplicate IDs, missing fields/files, wrong schema versions,
