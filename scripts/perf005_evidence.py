@@ -164,7 +164,7 @@ def validate_cell(root, label, policy, data=None):
             qualified_backend = Path("/usr/libexec/gcc/x86_64-linux-gnu/14") / backend_name
         else:
             qualified_backend = Path(compiler).parent.parent / "libexec/gcc/x86_64-pc-linux-gnu/16.1.0" / backend_name
-        if backend != qualified_backend:
+        if backend.resolve() != qualified_backend.resolve():
             raise RuntimeError("compiler backend differs from qualified toolchain")
         seen.add(source.resolve())
         effective_args(data, argv[1:], root, source=source)  # require every indirect input
