@@ -2,11 +2,12 @@
 
 ## Scope and disposition
 
-**PROVIDER_REUSE_PILOT_INCOMPLETE (R1)**: complete consumer compilation,
-execution and isolation controls pass, but strict provider effective-input
-equivalence is rejected for GNAT mapping inputs. Controlled repeatable
-performance is also unavailable. The R1 reconciliation below supersedes earlier
-claims that only the performance gate remained.
+**PROVIDER_REUSE_PILOT_INCOMPLETE (R2)**: mapping-specific disposition is now
+**PROVIDER_MAPPING_EQUIVALENCE_QUALIFIED** using complete source-read identity,
+versioned compiler semantics and unfiltered genuine-compiler replays. Consumer
+compilation, execution and isolation controls pass. Controlled repeatable
+performance remains unavailable. R1's rejection is preserved below as history;
+the appended R2 section records its resolution without relaxing correctness.
 This experiment is not production rollout, qualification of the complete
 132-build job, or an assessment that PR #106 is ready to merge. Ordinary
 qualification scripts, workflow allocation, generator, providers, algorithms,
@@ -590,3 +591,276 @@ The environment must have the qualified compiler/runtime paths or retained
 identity evidence and unchanged source paths. Run actual compilation and
 Landlock controls in the qualified task-owned container; Landlock tests require
 a supported Linux x86_64 host and do not silently skip enforcement failures.
+
+## PERF-005-R2 — GNAT mapping equivalence
+
+**Mapping disposition: PROVIDER_MAPPING_EQUIVALENCE_QUALIFIED.** This supersedes
+the R1 mapping rejection, not the historical R1 results. Overall disposition
+remains **PROVIDER_REUSE_PILOT_INCOMPLETE** pending controlled performance.
+
+### Source reconciliation and scope
+
+The existing worktree `/home/zboll/git/ams-gra-codegen-oms-perf-005` was clean on
+`feature/perf-005-float32-provider-reuse-pilot` at
+`7d001e3988517bd227a420d1e0b8c7702d499ba7`. `git fetch origin` succeeded; local,
+remote-tracking, and hosted PR #109 heads agreed (zero ahead/behind). No reset,
+replacement worktree, or new PR was needed. PRs #106–108 and their worktrees
+were not modified. R1 raw evidence was only read. New evidence is entirely in
+`/home/zboll/perf-005-evidence/r2`.
+
+The final implementation identity is the commit introducing this R2 section;
+`r2/implementation-source.txt` records its full commit/tree, and
+`r2/tooling.sha256` records the exact final scripts/document. The new tools are
+`scripts/perf005_mapping.py`, `scripts/perf005-mapping-experiments.py`,
+`scripts/perf005-mapping-controls.py`, `scripts/perf005-mapping-report.py`, and
+`scripts/test_perf005_mapping.py` under the worktree above. Only the opt-in
+evidence comparator changes; provider preparation, production compilation,
+assertion options, numerical expectations, diagnostics, and CI allocation do
+not change. No permanent or temporary production serialization was introduced.
+
+### Versioned compiler and builder semantics
+
+Retained copies, manuals, build recipe, Debian patch bundle, URLs and SHA-256
+identities are in `r2/upstream` and `r2/upstream/source-references.json`.
+References are the actual release sources, not an older illustrative compiler:
+
+- [GCC 14.2.0](https://github.com/gcc-mirror/gcc/tree/releases/gcc-14.2.0/gcc/ada),
+  release commit `04696df09633baf97cdbbdd6e9929b9d472161d3`.
+  Installed Debian `gcc-14`/`gnat-14` is `14.2.0-19`. Its retained Debian source
+  bundle includes branch updates through `f8504e361c895b13d00e5c6a52a6cbb47fcc2a9d`.
+  Neither those updates nor Debian patches change Fmap or the relevant
+  Fname.UF/Osint source-resolution logic. Osint patches concern executable
+  suffixes and reproducible ALI timestamps, not mapping precedence.
+- [GCC 16.1.0](https://github.com/gcc-mirror/gcc/tree/releases/gcc-16.1.0/gcc/ada),
+  release commit `6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea`, matching the pinned
+  GNAT-FSF-builds 16.1.0 toolchain. Both compiler identities remain checked by
+  the pre-existing pinned driver SHA-256/version gate.
+- [GNAT 14.2 manual](https://gcc.gnu.org/onlinedocs/gcc-14.2.0/gnat_ugn.pdf) and
+  [GNAT 16.1 manual](https://gcc.gnu.org/onlinedocs/gcc-16.1.0/gnat_ugn.pdf),
+  “Units to Sources Mapping Files”. They describe two maps and path-search
+  short-circuiting, `%s`/`%b`, and only the last `-gnatem` taking effect.
+- [GPRbuild v26.0.0](https://github.com/AdaCore/gprbuild/tree/v26.0.0),
+  `bdfb879cf03643ec8e48a09ce07b08c4a6ff0263`. The retained GNAT-FSF build recipe
+  at `023abf5cf000b83fa5076ae7ff349625cf970c05` explicitly downloads this tag;
+  it updates the date banner, explaining the installed **2026-04-15** date.
+  The Linux recipe does not apply the macOS-only static-link patch.
+
+Established behavior (line references below use retained GCC 16.1 sources;
+the matching GCC 14.2 routines were also inspected):
+
+1. `gnat1drv.adb:1039–1040` calls `Fmap.Initialize` before target parameters
+   and `system.ads` resolution. `fmap.adb:162–359` reads the entire map and
+   requires a unit line ending in `%s`/`%b`, followed by filename and path.
+   CR/LF/EOF separators are skipped. Missing/unreadable input warns; malformed
+   or truncated input warns and clears tables. `/` is a suppression sentinel,
+   not an ordinary source directory. The validator deliberately rejects these
+   cases, even if GNAT could continue by falling back to search paths.
+2. **Documentation discrepancy:** the manuals and `fmap.ads` say duplicate
+   entries invalidate a map. The implementations of `Initialize` call
+   `Add_To_File_Map` (`fmap.adb:112–137`), which replace existing unit→filename
+   and filename→path hash-table values. Conflicting duplicates are therefore
+   order-dependent; successful compilation does not establish validity or
+   equivalence. The live negative controls confirm last-entry behavior under
+   both versions. R2 rejects duplicate units **and duplicate filenames**, even
+   identical duplicates. Only collision-free map order is abstracted.
+3. `fname-uf.adb:236–244` returns a mapped filename before naming pragmas or
+   conventional naming. `osint.adb:1263` checks filename→path before primary
+   source and include-directory searches. Thus an entry for another unit can
+   still change resolution through a colliding filename. Additional entries
+   are **not generally harmless**. Previously inserted mappings can be
+   superseded; there is no global monotonic-map assumption.
+4. With no mapping, `Fname.UF.Get_File_Name` uses naming patterns and GNAT
+   krunching, then `Find_File`. A successful search adds the discovered unit,
+   filename and full path (`fname-uf.adb:359–371`). `Osint.Add_Default_Search_Dirs`
+   adds project path-file and Ada environment paths before the default runtime
+   (`osint.adb:475–545`). `Frontend` updates the mapping after processing
+   (`frontend.adb:550–552`); `Fmap.Update_Mapping_File` appends discoveries after
+   the initialization boundary (`fmap.adb:460–475`).
+5. GPRbuild `gpr/src/gpr-env.adb:785–1025` initializes a map from the source
+   project's imported project closure, with source kind and suppression rules.
+   `src/gprbuild-compile.adb:2694–2725` checks out an available per-language map
+   or creates one for `Source_Project`; it removes the checked-out file from
+   the available pool **until that compilation terminates**. Completion returns
+   the now-extended map to the pool (`:341–350`). These are mutable recycled
+   files, not a single file concurrently appended by all compiler processes.
+   Which completed compiler's map becomes available is scheduling-dependent.
+
+This explains the observed differences: identical provider project inventories
+plus different accumulated default-runtime discoveries in recycled map files.
+There are no normalized provider/consumer source-map additions or removals,
+no conflicting unit/filename resolutions, and no duplicate keys. Changing to a
+direct-provider preparation context was investigated through the actual source
+inventories and builder algorithm; the observed deltas do not require a
+preparation correction. Serializing builds would only alter cache history, not
+fix an incorrect source-resolution input.
+
+### Complete six-way inventory
+
+Each comparison contains **106 provider compiler invocations**, of which **89
+Ada invocations** have maps. The remaining 17 C/assembly invocations still
+require exact effective-option equality. The table counts map-entry occurrences
+across individual Ada compilations (not just unique global entries):
+
+| Compiler | Policy | Differing / 89 maps | Original-only | Pilot-only | Unique differing triples |
+|---|---|---:|---:|---:|---:|
+| 14.2.0 | Normal | 40 | 638 | 747 | 186 |
+| 14.2.0 | Check | 41 | 666 | 800 | 194 |
+| 14.2.0 | Ignore | 46 | 858 | 798 | 184 |
+| 16.1.0 | Normal | 45 | 840 | 893 | 186 |
+| 16.1.0 | Check | 40 | 797 | 714 | 188 |
+| 16.1.0 | Ignore | 43 | 781 | 724 | 172 |
+
+`r2/final/mapping-{14,16}-{normal,Check,Ignore}.json` is the deterministic full
+inventory, including **every common entry**, each side-only entry, actual
+compilation unit/kind, compiler version, policy, mapping filename/read-time
+SHA-256, normalized and resolved paths, counterpart path, SHA-256 of source
+bytes, actual-read relevance and supported classification. Units are never
+merged by basename. Only exact campaign root → `<CAMPAIGN>` and campaign-state
+root → `<STATE>` relocation is abstracted; runtime and provider relative paths
+remain intact. All six have **zero conflicts, ambiguities, invalid entries or
+unresolved differences**. A runtime entry read by that compiler is classified
+as **Proven equivalent source relocation**; an extra entry not read during that
+concrete compilation is **Proven irrelevant mapping difference**, supported by
+the paired complete source reads. This does not approve that entry for an
+arbitrary future compilation. Summary counts are in `r2/final/summary.json`.
+
+### Narrow equivalence rule and genuine-compiler evidence
+
+`effective_args` still retains every mapping. Its raw-map parser is stricter
+than R1: valid unit kinds, absolute non-suppression paths and both collision
+keys are required. The opt-in provider comparison additionally requires:
+
+- Exact source inventory, pinned compiler identity, successful actual driver
+  and backend evidence and every non-map effective option/indirect input.
+- Raw-trace agreement with the retained read-time maps. Missing raw traces or
+  invented/replaced mapping snapshots fail.
+- Complete source-read bytes for each actual GNAT backend, including resumed
+  syscalls; they must equal retained file bytes and paired normalized
+  path→SHA-256 inventories. Byte parsing preserves C octal escapes correctly,
+  including non-UTF-8 bytes. Partial reads and changed hashes fail.
+- Exact common unit/filename/path relationships and matching source hashes.
+  Every extra must be a direct file in the qualified runtime, have the correct
+  `%s`/`%b` extension and declared unit, and match that compiler's **actual
+  `gnatkr` conventional filename**, plus matching counterpart runtime content.
+  Each extra also needs a complete historical source-read witness somewhere
+  in that policy's actual provider compilation. An unobserved file cannot be
+  approved merely by hashing two current copies.
+
+Only after these checks can the map for that particular invocation be treated
+as semantically equivalent. No filtered map is generated or compiled as proof.
+The reports preserve all raw mappings and source reads; unresolved cases raise
+errors rather than receiving a permissive default classification.
+
+All **534 paired invocations / 1,068 isolated genuine compilations** passed,
+89 pairs per version/policy. Each uses identical original source paths and the
+original compiler options, copying retained ADCs and relocating only pilot
+campaign/state roots in its **entire unfiltered mapping**. All project sources
+are mapped; the unmapped discoveries use the pinned compiler's default runtime.
+Fresh output directories prevent ALI/object reuse. The replays match original
+R1 read-time source identities as well as each other, not just successful exit
+codes. Both sides have identical diagnostics, complete resolved source bytes,
+full normalized ALI information (including dependency checksums and settings),
+and **byte-identical object hashes**. Raw traces additionally retain `openat`.
+
+Copied identical ADCs get the same fixed mtime; their output directory paths
+are represented as `<OUTPUT>` in ALI comparisons. This avoids comparing the
+time of copying a temporary ADC rather than compiler behavior. No object,
+dependency, policy or source difference was normalized away. The initial
+`r2/replay` attempt demonstrates the ADC-copy timestamp mismatch and is retained;
+the corrected run is `r2/replay-v2`. Initial exploratory parser runs and host
+tests are also retained, not substituted for final passing evidence.
+
+`r2/negative-final` contains **48 passing rejection controls**: eight per
+version/policy, including redirected same-basename source, changed source hash,
+spec/body substitution, both orders of conflicting unit entries, missing and
+malformed maps, and changed actual dependency resolution. Redirected maps
+compile successfully but resolve a different dependency and produce a different
+object; this is explicitly rejected. Conflicting entries produce the object
+selected by the last entry, confirming why general unordered comparison is
+unsafe. Malformed/missing maps are rejected regardless of compiler fallback.
+Separate genuine assertion probes exit **0 / 1 / 0** for Normal / Check /
+Ignore under each compiler; Check reports
+`ADA.ASSERTIONS.ASSERTION_ERROR`. Both original ADCs remain active in replay.
+
+### Functional regression and limits
+
+Because preparation and generated code do not change, the R1 complete campaign
+outputs remain valid: both namespace profiles, all five naming cases and all
+three policies, **30 positive cells and 20 negative CLI cases per compiler**.
+R2 reruns the full comparator with attribution against this retained evidence:
+both pass, including all **480 actual generated/support compilations**, driver,
+backend, ownership and policy gates. Thus broad regeneration was unnecessary;
+the affected semantic gate was rerun, with fresh provider compiler replays.
+
+R2 also reruns 18 genuine generated/Ada-support/C-support compiler-failure
+controls across both versions/policies, including immutable provider artifact
+checks. All pass. The 17 Python tests include complete-campaign mutations and
+Landlock/provider-isolation checks; all pass in the qualified container. Host
+Python tests initially lacked `strace`; that is not counted as a pass. Final
+compiler-placement checks (11), CI split guard, CI layout tests, CI split/layout
+mutation suite (218 checks), `cargo fmt --all -- --check` and `git diff --check`
+pass. No Rust source changed and no new full workspace-test claim is made.
+
+Mapping equivalence is now closed **for these pinned compiler versions,
+sources, options and concrete invocations**. Other toolchains, new closure
+entries, missing byte evidence, changed hashes or collisions must requalify or
+fail. The raw evidence is local, not a hosted CI artifact; hosted CI status is
+recorded separately in `r2/final-head-hosted.json` and the PR handoff.
+
+No eight controlled performance campaigns were launched. The historical
+381.858/102.744 s (GNAT14) and 480.263/113.808 s (GNAT16) observations remain
+single contended pairs, **not qualified performance results**. This workstation
+still cannot guarantee exclusive four-core allocation including SMT siblings.
+PR #109 stays open, non-draft, unmerged, auto-merge disabled. It is ready for the
+separate controlled-performance task on a runner with verifiable exclusivity,
+not production rollout or an overall pilot-complete disposition.
+
+### R2 reproduction and evidence
+
+Run in the existing pinned `perf-005` container, which mounts the worktree and
+evidence at their identical absolute paths. Commands below must use **new output
+directories**; never overwrite historical evidence:
+
+```sh
+R=/home/zboll/git/ams-gra-codegen-oms-perf-005
+E=/home/zboll/perf-005-evidence
+export PYTHONDONTWRITEBYTECODE=1 TMPDIR="$E/tmp"
+python3 -m unittest discover -s "$R/scripts" -p 'test_perf005*.py'
+python3 "$R/scripts/perf005-mapping-experiments.py" "$E" "$E/r2/reproduce-replay"
+python3 "$R/scripts/perf005-mapping-controls.py" "$E" "$E/r2/reproduce-negative"
+python3 "$R/scripts/perf005-mapping-report.py" \
+  "$E" "$E/r2/reproduce-replay" "$E/r2/reproduce-final"
+for c in 14 16; do
+  python3 "$R/scripts/perf005-compare.py" "$E/baseline$c" "$E/candidate$c" \
+    --traced "$E/r1/pilot$c" --attribution "$E/r1/original-v2$c"
+  HOME="$E/r1/pilot$c-state/home" PATH="$E/r1/pilot$c-state/bin:$PATH" \
+    python3 "$R/scripts/perf005-controls.py" \
+      "$E/r1/pilot$c" "$E/r2/reproduce-failure$c"
+done
+python3 "$R/scripts/test-task093-compiler-placement.py"
+bash "$R/scripts/check-ci-split.sh"
+bash "$R/scripts/test-check-ci-split.sh"
+python3 "$R/scripts/test-task077b-ci-layout.py"
+git -C "$R" diff --check
+(cd "$R" && cargo fmt --all -- --check)
+```
+
+Evidence index, all relative to `/home/zboll/perf-005-evidence/r2`:
+
+- `final/`: final deterministic six-way inventories and summary; final report
+  validates the raw replay inputs/outputs against R1 and final comparator.
+- `replay-v2/`: all 1,068 fresh compilation directories, full raw mapping
+  inputs as read in `compiler.strace`, in/out map files, ADCs, commands, source
+  hashes, diagnostics, objects, ALIs and per-compilation results.
+- `negative-final/`, `negative-final.log/status`: all mapping negative controls
+  and executed assertion probes. Earlier exploratory attempts remain separate.
+- `comparison14/16.json`, `*.error/status`: complete original/pilot gate.
+- `failure-controls14/16`, `*.log/status`: 18 rerun real failure controls.
+- `tests-final.log/status`, `placement.log`, `ci-split.log`, `layout.log`,
+  `ci-split-mutations-v2.log/status`, `fmt.log`: regression evidence.
+- `upstream/`: versioned compiler/builder sources, manuals, build recipe and
+  Debian patch analysis. `source-references.json` and `evidence.sha256` retain
+  identities; `inputs.sha256` inventories the reused R1 traces/profiles/seed
+  records. `reconciliation-start.txt` and `starting-pr.json` record source/PR
+  reconciliation. `implementation-source.txt`, `tooling.sha256`, and
+  `final-head-hosted.json` record final source and hosted state separately.

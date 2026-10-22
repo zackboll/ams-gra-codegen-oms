@@ -69,15 +69,10 @@ def effective_args(data, argv, root, active=(), source=None):
                     effective_args(data, ["@" + m[1]], root, (*active, name), source)), text)
                 value = canonical(value, root)
             elif prefix == "-gnatem=":
-                # GNAT mapping files are unordered unit/kind, filename, path
-                # triples. GPR's concurrent completion order is not semantic.
-                lines = canonical(text, root).splitlines()
-                if len(lines) % 3:
-                    raise RuntimeError("invalid GNAT source mapping input")
-                triples = [lines[i:i + 3] for i in range(0, len(lines), 3)]
-                if len({row[0] for row in triples}) != len(triples):
-                    raise RuntimeError("ambiguous GNAT source mapping input")
-                value = sorted(triples)
+                from perf005_mapping import parse_mapping
+                # Fmap has TWO replaceable keys. Order is immaterial only for
+                # validated collision-free inputs, not arbitrary GNAT maps.
+                value = sorted([[canonical(s, root) for s in row] for row in parse_mapping(text)])
             else:
                 value = canonical(text, root)
             result.append([prefix, value])

@@ -7,7 +7,8 @@ from pathlib import Path
 import re
 
 from perf005_provider import source_identity, sources, verify_variant
-from perf005_evidence import provider_inputs, validate_cell
+from perf005_evidence import validate_cell
+from perf005_mapping import provider_equivalence
 
 NAMES = ["ArraySample", "Array_Encode_Hex_Binary", "Encode_Hex_Binary",
          "Array_encode_hex_binary", "Array_Decode_Hex_Binary"]
@@ -99,10 +100,7 @@ def compare(baseline, candidate, traced=None, attribution=None):
         if not traced:
             raise RuntimeError("provider command equivalence requires traced preparation")
         for policy in POLICIES:
-            original = provider_inputs(attribution / f"oam-ArraySample-{policy}-build.profile.json", attribution)
-            prepared = provider_inputs(traced / f"provider-{policy}-build.profile.json", traced)
-            if len(original) != 106 or original != prepared:
-                raise RuntimeError(f"actual provider compiler options/source inventory differ: {policy}")
+            provider_equivalence(attribution, traced, policy)
     for policy in POLICIES:
         text = (candidate / f"provider-{policy}-build.log").read_text()
         if "libgnatcoll_minimal.a" not in text or "libgnatcoll_core.a" not in text:
