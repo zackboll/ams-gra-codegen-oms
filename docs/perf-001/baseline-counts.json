@@ -1,0 +1,36 @@
+{
+  "commit": "23c8b2e4f7ebd600b8856b0e0e85d1c6eca25c39",
+  "completed": 609,
+  "successes": 609,
+  "failures": 0,
+  "production_invocations": 609,
+  "schema_loads": 609,
+  "exact_original_main_report_matches": 609,
+  "per_release": {
+    "2.5": 294,
+    "2.6": 315
+  },
+  "per_backend": {
+    "Ada": 203,
+    "Rust": 203,
+    "Cpp": 203
+  },
+  "per_world": {
+    "ClosedSchemaSet": 444,
+    "OpenExtensions": 165
+  },
+  "per_cell": {
+    "2.5/ClosedSchemaSet/Ada": 72,
+    "2.5/ClosedSchemaSet/Rust": 72,
+    "2.5/ClosedSchemaSet/Cpp": 72,
+    "2.5/OpenExtensions/Ada": 26,
+    "2.5/OpenExtensions/Rust": 26,
+    "2.5/OpenExtensions/Cpp": 26,
+    "2.6/ClosedSchemaSet/Ada": 76,
+    "2.6/ClosedSchemaSet/Rust": 76,
+    "2.6/ClosedSchemaSet/Cpp": 76,
+    "2.6/OpenExtensions/Ada": 29,
+    "2.6/OpenExtensions/Rust": 29,
+    "2.6/OpenExtensions/Cpp": 29
+  }
+}

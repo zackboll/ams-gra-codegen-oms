@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic OAM, independently validated by pinned Sleet; no real UCI claim. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+ xmlns:t="https://www.vdl.afrl.af.mil/programs/oam"
+ targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified"
+ version="000.1.0">
+ <xs:simpleType name="Count"><xs:restriction base="xs:byte"/></xs:simpleType>
+ <xs:complexType name="Payload"><xs:sequence>
+  <xs:element name="Count" type="t:Count"/>
+  <xs:element name="Flag" type="xs:boolean"/>
+  <xs:element name="Text" type="xs:string" minOccurs="0"/>
+ </xs:sequence></xs:complexType>
+ <xs:element name="RuntimeNotice" type="t:Payload" t:version="001.000.000.000"/>
+ <xs:element name="RuntimeOther" type="t:Payload" t:version="001.000.000.000"/>
+</xs:schema>

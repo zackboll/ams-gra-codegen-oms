@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic PY-003 subset, deliberately not a real UCI schema. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="urn:test:python-service"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="urn:test:python-service" elementFormDefault="qualified">
+  <xs:simpleType name="Identifier"><xs:restriction base="xs:integer">
+    <xs:minInclusive value="1"/><xs:maxInclusive value="100"/>
+  </xs:restriction></xs:simpleType>
+  <xs:simpleType name="State"><xs:restriction base="xs:string">
+    <xs:enumeration value="active"/><xs:enumeration value="class"/>
+  </xs:restriction></xs:simpleType>
+  <xs:complexType name="Payload"><xs:sequence>
+    <xs:element name="Id" type="t:Identifier"/>
+    <xs:element name="State" type="t:State"/>
+    <xs:element name="Label" type="xs:string" minOccurs="0"/>
+    <xs:element name="Flags" type="xs:boolean" minOccurs="0" maxOccurs="3"/>
+  </xs:sequence></xs:complexType>
+  <xs:complexType name="Unsupported"><xs:choice>
+    <xs:element name="Text" type="xs:string"/>
+    <xs:element name="Flag" type="xs:boolean"/>
+  </xs:choice></xs:complexType>
+  <xs:element name="SelectedReport" type="t:Payload" uci:version="001.000.000.000"/>
+  <xs:element name="OtherReport" type="t:Payload" uci:version="001.000.000.000"/>
+  <xs:element name="UnsupportedReport" type="t:Unsupported" uci:version="001.000.000.000"/>
+</xs:schema>

@@ -1,0 +1,13 @@
+{
+  "{urn:python:codec}class": true,
+  "{urn:python:codec}Signed": -9223372036854775808,
+  "{urn:python:codec}Unsigned": 4294967295,
+  "{urn:python:codec}Big": 12345678901234567890123456789012345678901234567890,
+  "{urn:python:codec}State": "café",
+  "{urn:python:codec}Child": {"{urn:python:codec}Label": "λ 😀 \"\\\n", "{urn:python:codec}Count": 255},
+  "{urn:python:codec}Empty": {},
+  "{urn:python:codec}Note": "",
+  "{urn:python:codec}Values": [-9223372036854775808, 9223372036854775807],
+  "{urn:python:codec}Flags": [true, false],
+  "{urn:python:codec}Children": [{"{urn:python:codec}Label":"first","{urn:python:codec}Count":0},{"{urn:python:codec}Label":"second","{urn:python:codec}Count":1}]
+}

@@ -1,0 +1,57 @@
+# Synthetic PY-003 fixture; exchange IDs intentionally contradict direction.
+contract_version: "0.1"
+service:
+  name: 'Python "Demo" λ'
+  version: "0.3.0"
+  kind: service
+  description: Synthetic supported Python selected service.
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+functions:
+  - id: class
+    name: 'Mission "Data" λ'
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: input
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: SelectedReport
+        topic: common.topic
+        timing: {kind: asynchronous}
+      - id: output
+        kind: oms_message
+        direction: input
+        mandate: optional
+        message: SelectedReport
+        topic: incoming.topic
+        subscription_group: workers-λ
+        timing: {kind: asynchronous}
+      - id: repeated
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: SelectedReport
+        topic: second.topic
+        timing: {kind: asynchronous}
+      - id: same-payload
+        kind: oms_message
+        direction: output
+        mandate: optional
+        message: OtherReport
+        topic: common.topic
+        timing: {kind: asynchronous}
+  - id: final
+    name: Final Function
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: SelectedReport
+        topic: final.topic
+        timing: {kind: asynchronous}

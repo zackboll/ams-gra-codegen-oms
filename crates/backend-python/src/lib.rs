@@ -1,9 +1,13 @@
 //! Standalone Python 3.11+ models for a deliberately bounded Schema IR subset.
 //!
-//! Model support is not OMS JSON codec or service readiness. Python-specific
-//! preflight stays here; the shared three-language coverage inventory is unchanged.
+//! Model and service API preflight live with the renderers. Readiness exercises
+//! these same renderers; the shared three-language coverage inventory is unchanged.
 
 mod names;
+mod service_api;
+mod service_codec;
+pub use service_api::{SERVICE_API_FILE, generate_service_api};
+pub use service_codec::{SERVICE_CODEC_FILE, generate_service_codec};
 
 use ams_gra_oms_codegen_core::{
     Backend, CodegenError, GeneratedFile, GenerationWorld, InclusiveIntegralDomain,
@@ -40,10 +44,13 @@ impl Backend for PythonBackend {
 
     fn generate_service_api(
         &self,
-        _model: &ServiceApiModel,
-        _schema: &SchemaIr,
+        model: &ServiceApiModel,
+        schema: &SchemaIr,
     ) -> Result<Vec<GeneratedFile>, CodegenError> {
-        Err(error("service API generation is unsupported in PY-001"))
+        Ok(vec![GeneratedFile {
+            relative_path: PathBuf::from(SERVICE_API_FILE),
+            contents: generate_service_api(model, schema)?,
+        }])
     }
 }
 

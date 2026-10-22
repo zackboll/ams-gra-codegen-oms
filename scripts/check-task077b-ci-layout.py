@@ -88,7 +88,18 @@ def check(path):
         limit = re.search(r"^    timeout-minutes: ([0-9]+)$", body, re.M)
         require(limit is not None and int(limit[1]) == 240, "finite timeout: " + job)
         require(not re.search(r"^    needs:", body, re.M), "independent job: " + job)
-        require(not re.search(r"^\s+(if:|continue-on-error:)", body, re.M), "enabled hard gate: " + job)
+        # PERF-001: only the exact evidence-only upload may run after failure.
+        # Do not exempt arbitrary named steps, commands or conditional gates.
+        evidence = '''      - name: Preserve Task 061 per-selection evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: task061-service-check
+          path: ${{ runner.temp }}/task061-service-check-*/**
+          if-no-files-found: error
+'''
+        gate_body = body.replace(evidence, '') if job == 'real-uci-regressions' else body
+        require(not re.search(r"^\s+(if:|continue-on-error:)", gate_body, re.M), "enabled hard gate: " + job)
         for setup in ('uses: actions/checkout@v4', 'uses: dtolnay/rust-toolchain@stable',
                       'sudo apt-get install -y gnat', 'command -v gnatmake', 'gnatmake --version',
                       'AMS_GRA_UCI_2_5_ROOT=$UCI25', 'AMS_GRA_UCI_2_6_ROOT=$UCI26'):
