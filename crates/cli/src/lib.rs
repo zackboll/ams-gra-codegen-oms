@@ -1,5 +1,6 @@
 //! Command-line orchestration for the OMS/UCI code-generation pipeline.
 pub mod schema_impact;
+mod service_check_batch;
 pub mod service_impact;
 
 use ams_gra_oms_backend_ada::AdaBackend;
@@ -45,6 +46,7 @@ USAGE:
     ams-gra-codegen-oms service-plan --schema PATH --contract PATH [--extension ID=PATH]...
     ams-gra-codegen-oms service-routes --schema PATH --contract PATH [--extension ID=PATH]... [--format tsv|sleet-toml] [--service-id ID --service-uuid UUID]
     ams-gra-codegen-oms service-check --schema PATH --contract PATH [--extension ID=PATH]... --language LANGUAGE --world WORLD [--with-codec]
+    ams-gra-codegen-oms service-check-batch --schema PATH --manifest PATH
     ams-gra-codegen-oms service-generate --schema PATH --contract PATH [--extension ID=PATH]... --language LANGUAGE --world WORLD --output DIR [--with-codec]
 
 COMMANDS:
@@ -57,6 +59,7 @@ COMMANDS:
     service-plan       Resolve a portable Service Contract against a schema set
     service-routes     Report OMS routes or preview validated Sleet allow-lists
     service-check      Report backend/world readiness for a contract's selection
+    service-check-batch Reuse one schema for independent service-check requests
     service-generate   Generate a contract's selected UCI type model and typed
                        service API wrapper
 
@@ -614,6 +617,10 @@ fn parse_world(value: &OsStr) -> Result<GenerationWorld, CliError> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Command {
+    ServiceCheckBatch {
+        schema: PathBuf,
+        manifest: PathBuf,
+    },
     ServiceImpact {
         contract: PathBuf,
         before: PathBuf,
@@ -710,6 +717,9 @@ where
     W: Write,
 {
     match parse_args(args)? {
+        Command::ServiceCheckBatch { schema, manifest } => {
+            service_check_batch::execute(&schema, &manifest, stdout)
+        }
         Command::ServiceImpact {
             contract,
             before,
@@ -889,6 +899,7 @@ where
         Some("service-plan") => parse_service_plan(args.collect()),
         Some("service-routes") => parse_service_routes(args.collect()),
         Some("service-check") => parse_service_check(args.collect()),
+        Some("service-check-batch") => service_check_batch::parse(args.collect()),
         Some("service-generate") => parse_service_generate(args.collect()),
         Some(command) => Err(CliError::usage(format!(
             "unknown command '{command}'; expected 'schema-diff', 'validate', 'coverage', 'generate', \
@@ -1527,14 +1538,22 @@ fn load_service_inputs(
     // argument list is built from the contract's declared extension order and
     // never from the command line's option order.
     let overlays = contract_overlay_order(&contract.standards.uci_extension_schemas, extensions)?;
-    let schema = load_schema_set_with_overlays(schema_path, &overlays)
+    let schema = load_validated_service_schema(schema_path, &overlays)?;
+    let plan = resolve_service_plan(&contract, &schema)
+        .map_err(|error| CliError::execution(error.to_string()))?;
+    Ok(ServiceInputs { schema, plan })
+}
+
+fn load_validated_service_schema(
+    schema_path: &Path,
+    overlays: &[PathBuf],
+) -> Result<SchemaIr, CliError> {
+    let schema = load_schema_set_with_overlays(schema_path, overlays)
         .map_err(|error| CliError::execution(error.to_string()))?;
     schema
         .validate()
         .map_err(|error| CliError::execution(format!("invalid schema IR: {error}")))?;
-    let plan = resolve_service_plan(&contract, &schema)
-        .map_err(|error| CliError::execution(error.to_string()))?;
-    Ok(ServiceInputs { schema, plan })
+    Ok(schema)
 }
 
 /// Report whether one backend can render a contract's selected UCI type model
@@ -1550,10 +1569,21 @@ fn service_check<W: Write>(
     target: GenerationTarget,
     stdout: &mut W,
 ) -> Result<(), CliError> {
+    let inputs = load_service_inputs(schema_path, contract_path, extensions)?;
     if language_is_python(target) {
-        let inputs = load_service_inputs(schema_path, contract_path, extensions)?;
         return python_service(&inputs, target, None, stdout);
     }
+    evaluate_service_check(&inputs.schema, &inputs.plan, target, stdout)
+}
+
+/// The production Ada/Rust/C++ evaluator, shared by standalone and batch checks.
+/// Schema ownership/loading is deliberately separate from selection evaluation.
+fn evaluate_service_check<W: Write>(
+    schema: &SchemaIr,
+    plan: &ServicePlan,
+    target: GenerationTarget,
+    stdout: &mut W,
+) -> Result<(), CliError> {
     let GenerationTarget {
         language,
         world,
@@ -1561,13 +1591,12 @@ fn service_check<W: Write>(
         ada_codec_runtime,
     } = target;
     let backend_language = language.backend_language()?;
-    let inputs = load_service_inputs(schema_path, contract_path, extensions)?;
-    let readiness =
-        analyze_service_readiness(&inputs.plan, &inputs.schema, backend_language, world)
-            .map_err(|error| CliError::execution(error.to_string()))?;
+    let readiness = analyze_service_readiness(plan, schema, backend_language, world)
+        .map_err(|error| CliError::execution(error.to_string()))?;
     let codec = if with_codec {
         Some(codec_readiness(
-            &inputs,
+            schema,
+            plan,
             &readiness,
             language,
             world,
@@ -1580,7 +1609,7 @@ fn service_check<W: Write>(
     // NOT READY: a CI failure that hides the blockers is useless.
     write_output(
         stdout,
-        &render_service_check_with_codec(&inputs.plan, &readiness, codec.as_ref()),
+        &render_service_check_with_codec(plan, &readiness, codec.as_ref()),
     )?;
     if readiness.is_ready() && codec.as_ref().is_none_or(ServiceCodecReadiness::is_ready) {
         return Ok(());
@@ -1743,7 +1772,8 @@ fn service_generate<W: Write>(
     // unsupported codec construct stops here, before any backend call.
     let codec = if with_codec {
         Some(codec_readiness(
-            &inputs,
+            &inputs.schema,
+            &inputs.plan,
             &readiness,
             language,
             world,
@@ -1874,7 +1904,8 @@ fn service_generate<W: Write>(
 /// codec for, and reporting a codec blocker too would double-report one
 /// cause. In that case the codec is reported as not measured.
 fn codec_readiness(
-    inputs: &ServiceInputs,
+    schema: &SchemaIr,
+    plan: &ServicePlan,
     readiness: &ServiceBackendReadiness,
     language: Language,
     world: GenerationWorld,
@@ -1884,16 +1915,16 @@ fn codec_readiness(
     if !readiness.is_ready() {
         return Ok(ServiceCodecReadiness {
             language: language.backend_language()?,
-            has_oms_exchanges: inputs.plan.oms_message_exchange_count() > 0,
+            has_oms_exchanges: plan.oms_message_exchange_count() > 0,
             emitted_declarations: 0,
             renderable_emitted_declarations: 0,
             blocker: None,
         });
     }
-    let projection = project_service_generation_schema(&inputs.plan, &inputs.schema, world)
+    let projection = project_service_generation_schema(plan, schema, world)
         .map_err(|error| execution(&error))?;
     let api_model = service_api_preflight(
-        &inputs.plan,
+        plan,
         projection.schema(),
         language.backend_language()?,
         world,

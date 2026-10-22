@@ -30,6 +30,8 @@ on:
       - "tests/fixtures/python-runtime/**"
       - "crates/runtime-rust-facade-tests/tests/task077_sleet.rs"
       - "scripts/check-task062-pinned.sh"
+      - "scripts/check-task061-service-impact.py"
+      - "scripts/test-task061-service-impact.py"
       - "scripts/check-task062-service-impact.py"
       - "scripts/check-task062-vertical.py"
       - "scripts/check-task063-pinned.sh"
@@ -182,11 +184,23 @@ jobs:
           test -n "$AMS_GRA_UCI_2_6_ROOT"
           cargo fetch --locked
           cargo build --release --locked -p ams-gra-codegen-oms
+      - name: Qualify batch transport and production equivalence controls
+        run: |
+          set -euo pipefail
+          python3 scripts/test-task061-service-impact.py
+          cargo test --release --locked -p ams-gra-codegen-oms --test service_check_batch
       - name: Confirm unique newly READY Time services (Task 061)
         run: |
           set -euo pipefail
           export TMPDIR="$RUNNER_TEMP"
           python3 scripts/check-task061-service-impact.py target/release/ams-gra-codegen-oms
+      - name: Preserve Task 061 per-selection evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: task061-service-check
+          path: ${{ runner.temp }}/task061-service-check-*/**
+          if-no-files-found: error
       # Task 052: every Binary must resolve to HexBinary through the shared IR
       # query, with exact counts.
       - name: Real UCI Binary provenance inventory (Task 052, must execute)

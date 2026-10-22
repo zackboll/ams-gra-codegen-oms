@@ -52,6 +52,14 @@ python3 "$repo/scripts/test-task077b-ci-layout.py"
 ok
 
 # ---- 2. mutations fail --------------------------------------------------
+for required in \
+  '      - "scripts/check-task061-service-impact.py"' \
+  '      - "scripts/test-task061-service-impact.py"' \
+  'python3 scripts/test-task061-service-impact.py' \
+  'cargo test --release --locked -p ams-gra-codegen-oms --test service_check_batch'; do
+  grep -Fv "$required" "$deep" >"$tmp/deep-no-perf001.yml"
+  expect_fail "Deep CI lost $required" "$fast" "$tmp/deep-no-perf001.yml" "$sleet"
+done
 for gate in 'bash scripts/check-task077-fast.sh' 'bash scripts/test-task077-ci-wrappers.sh'; do
   grep -Fv "$gate" "$fast" >"$tmp/fast-no-t077.yml"
   expect_fail "fast lost $gate" "$tmp/fast-no-t077.yml" "$deep" "$sleet"
