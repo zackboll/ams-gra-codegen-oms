@@ -1,0 +1,13 @@
+{
+  "class": true,
+  "Signed": -9223372036854775808,
+  "Unsigned": 4294967295,
+  "Big": 12345678901234567890123456789012345678901234567890,
+  "State": "café",
+  "Child": {"Label": "λ 😀 \"\\\n", "Count": 255},
+  "Empty": {},
+  "Note": "",
+  "Values": [-9223372036854775808, 9223372036854775807],
+  "Flags": [true, false],
+  "Children": [{"Label":"first","Count":0},{"Label":"second","Count":1}]
+}

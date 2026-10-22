@@ -92,7 +92,29 @@ cargo run -p ams-gra-codegen-oms -- \
 
 See [Additive schema overlays](#additive-schema-overlays).
 
-The accepted language values are `ada`, `rust`, and `cpp`. Run
+The accepted model-generation language values are `ada`, `rust`, `cpp`, and
+`python`. For standalone Python 3.11+ models:
+
+```bash
+cargo run --locked -p ams-gra-codegen-oms -- generate \
+  --schema crates/xsd-frontend/tests/fixtures/track.xsd \
+  --language python --world closed-schema --output generated/python
+python3 -m py_compile generated/python/model.py
+```
+
+Python reuses the [PY-001 model backend](docs/task-py-001-python-model-backend.md)
+and its bounded subset validation. Both explicit worlds are accepted without
+changing their semantics; unsupported constructs (including abstract values)
+fail before output files are written. [PY-003](docs/task-py-003-python-service-api.md)
+adds authoritative selected-service readiness and typed `service_api.py`
+generation beside `model.py`, with injected publish/subscribe adapters.
+[PY-004](docs/task-py-004-python-oms-json-codecs.md) adds opt-in `service_codec.py`
+for the qualified Boolean/integer/String/enum/concrete Record subset. Codec
+readiness is separate from model/API readiness; unqualified members and other
+unsupported mappings fail before output. No transport is implemented. The
+existing three-language coverage inventory remains unchanged.
+
+Run
 `ams-gra-codegen-oms --help` or a command followed by `--help` for complete
 usage. Exit status `0` means success, `2` means invalid command-line usage, and
 `1` means schema, code-generation, or filesystem execution failed.
@@ -287,7 +309,7 @@ Schema IR
     +----> Ada/SPARK backend
     +----> Rust backend
     +----> C++ backend
-    +----> Python backend (planned)
+    +----> Python backend (bounded model + typed service API)
     +----> offline HTML type browser (docs)
     +----> schema-diff / lint tools (planned)
 ```

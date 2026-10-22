@@ -14,6 +14,8 @@ Manifest JSON (unknown fields rejected):
     ]}
 
 Each request optionally accepts ada_codec_runtime as in service-check.
+Only independently qualified Ada, Rust and C++ requests are supported.
+Python requests are rejected before execution; use standalone service-check.
 Contract paths must be absolute. Empty batches and duplicate IDs are errors.
 This interface accepts a single schema set without extension overlays; contracts
 declaring extensions fail exact mapping validation, never silently ignore them.
@@ -108,6 +110,14 @@ fn target(request: &Request, schema: &Path) -> Result<GenerationTarget, CliError
     else {
         unreachable!("not a help request")
     };
+    // Standalone Python readiness is render-backed and is not qualified by
+    // this batch protocol. Validate the whole manifest before loading/evaluating
+    // anything, rather than publishing partial or cross-language verdicts.
+    if !matches!(language, Language::Ada | Language::Rust | Language::Cpp) {
+        return Err(CliError::usage(
+            "service-check-batch supports only Ada, Rust and C++; Python batch requests are not qualified; use standalone service-check",
+        ));
+    }
     Ok(GenerationTarget {
         language,
         world,

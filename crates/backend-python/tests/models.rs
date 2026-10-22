@@ -327,7 +327,7 @@ fn python_specific_name_collisions_fail_closed() {
 }
 
 #[test]
-fn service_api_is_explicitly_unsupported() {
+fn zero_oms_service_api_is_generated_without_a_model() {
     let schema = SchemaIr::empty();
     let contract = ams_gra_oms_service_contract::parse_yaml(
         "contract_version: '0.1'\nservice:\n  name: Python\n  version: '1.0'\n  kind: isolator\nstandards:\n  oms_version: '2.5'\n  uci_schema_version: '2.5'\nfunctions:\n  - id: f\n    name: Function\n    category: specific\n    applicability: applicable\n    exchanges:\n      - id: signal\n        kind: special_signal\n        direction: output\n        mandate: mandatory\n        name: Signal\n        timing:\n          kind: asynchronous\n"
@@ -335,12 +335,10 @@ fn service_api_is_explicitly_unsupported() {
     let plan = resolve_service_plan(&contract, &schema).unwrap();
     let projection = project_service_generation_schema(&plan, &schema, CLOSED).unwrap();
     let model = build_service_api_model(&plan, projection.schema(), CLOSED).unwrap();
-    let error = PythonBackend
-        .generate_service_api(&model, &schema)
-        .unwrap_err();
-    assert!(
-        error
-            .message
-            .contains("service API generation is unsupported")
-    );
+    let files = PythonBackend.generate_service_api(&model, &schema).unwrap();
+    assert_eq!(files.len(), 1);
+    assert_eq!(files[0].relative_path, Path::new("service_api.py"));
+    assert!(files[0].contents.contains("SERVICE_KIND = \"isolator\""));
+    assert!(!files[0].contents.contains("Payload"));
+    assert!(!files[0].contents.contains("import model"));
 }

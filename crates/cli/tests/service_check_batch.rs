@@ -131,6 +131,29 @@ fn exact_production_equivalence_including_failure_and_codec() {
 }
 
 #[test]
+fn python_batches_fail_atomically_in_both_worlds_with_and_without_codec() {
+    let qualified = request("qualified", "ready.yaml", "rust", "closed-schema", false);
+    for world in ["closed-schema", "open-extensions"] {
+        for codec in [false, true] {
+            let python = request("python", "ready.yaml", "python", world, codec);
+            for requests in [
+                json!([python.clone()]),
+                json!([qualified.clone(), python.clone()]),
+                json!([python, qualified.clone()]),
+            ] {
+                let output = batch(&manifest(requests));
+                assert_eq!(output.status.code(), Some(2));
+                assert!(output.stdout.is_empty(), "published partial results");
+                assert_eq!(
+                    String::from_utf8(output.stderr).unwrap(),
+                    "error: service-check-batch supports only Ada, Rust and C++; Python batch requests are not qualified; use standalone service-check\n"
+                );
+            }
+        }
+    }
+}
+
+#[test]
 fn malformed_duplicate_and_wrong_identity_fail_before_execution() {
     let good = request("id", "ready.yaml", "rust", "closed-schema", false);
     let mut wrong = manifest(json!([good.clone()]));
