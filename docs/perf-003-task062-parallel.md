@@ -278,3 +278,146 @@ both Rust codec round trips, and all original success markers are preserved.
 Hosted speedup and sub-15-minute full qualification remain **targets**, not
 guarantees. Local affinity measurements must not be substituted for final-head
 hosted checks or described as hosted observations.
+
+## PERF-003-R1 — reconcile with current main
+
+### Source identity and historical hosted evidence
+
+PR: <https://github.com/zackboll/ams-gra-codegen-oms/pull/107>. Refreshed starting
+local, remote-branch and PR heads all matched
+`9f3d211209fe25ab05d2ba11c78f91af3af628bf`, tree
+`e0f0bdadaa0a408b86e44c58fed9bfd486e74711`. The existing clean worktree is
+`/home/zboll/git/ams-gra-codegen-oms-perf-003`; its Git common directory belongs
+to the separate `ams-gra-codegen-oms-ci-improvements` checkout, not the initial
+main checkout. No unrelated work was reset, cleaned or stashed.
+
+Fetched main was `401d336ecfe88992e5afabf44e8833986e398cc4`, tree
+`88d5cef07013137404f947cfd6bf35a858329c28`. Normal merge commit
+`9e46b42fb905ef46c729c94b12f1e91da868ca66`, tree
+`66729ea087a8e1eef15fd93ee9907b2eea8d9a88`, has the starting PR head and that
+main commit as its parents. There were no conflicts or overlapping PERF-003
+paths. The merge incorporates merged PERF-001 #105's schema reuse, batch
+transport/equivalence gates, Python CLI/service/codec/runtime work, and main's
+current Fast/Deep coverage. It does not incorporate open PR #106 or #108.
+
+Historical results on the **starting head**, both attempt 1:
+
+- [CI 39719269313](https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/39719269313):
+  cancelled; across both workflows there were 16 successful checks and one
+  cancelled check.
+- [Deep CI 39719269303](https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/39719269303):
+  success, not qualification of the reconciled head.
+- [Ada job 119630040072](https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/39719269313/job/119630040072):
+  generated and qualified non-OAM hexBinary consumers and combined consumers
+  succeeded. Portable helper-demand naming was cancelled after **29/30** cases;
+  `qualified-Array_Decode_Hex_Binary-Ignore` did not complete. Mandatory evidence
+  validation was skipped. The refreshed check annotation explicitly says
+  **"The job has exceeded the maximum execution time of 30m0s"**; the log also
+  reports "The operation was canceled." Evidence upload succeeded, but does not
+  turn the incomplete qualification into a pass.
+
+Main already contains `09e01917921844e713fd4063f81644e796393b75`, which changes
+only this job's timeout from 30 to **60 minutes**. R1 inherits it through the
+normal merge, without another timeout fix or workflow edit. Historical corrected
+main [run 39722343996, job 119639637129](https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/39722343996/job/119639637129),
+attempt 1, source `07384e5407bd0d048c18fe45ba41aeca2f89ee33`, succeeded,
+including naming, mandatory validation and evidence preservation (approximately
+30m44s total). This is corroboration only. The larger budget permits existing
+coverage to finish; it is **not a performance improvement**.
+
+### New local integration evidence
+
+Campaign: `/home/zboll/perf-003-r1-evidence`, separate from the original benchmark
+campaign. The original measurements above and portable
+`docs/perf-003-task062-evidence.json` remain unchanged historical evidence.
+R1 is a correctness qualification, not a new worker optimization study.
+
+Production sources and workflows after the merge match fetched main exactly;
+the four PERF-003 scripts and historical evidence JSON match the starting PR
+exactly. Inspection confirms that Task 062 still constructs standalone
+`service-check --schema ... --contract ... --language ... --world ...` commands.
+`service_check` loads validated inputs, retains Python's render-backed dispatch,
+and calls PERF-001's shared Ada/Rust/C++ evaluator. That evaluator retains the
+full READY grammar, backend/world labels, and nonzero NOT-READY status. Batch
+loading shares validation/evaluation but is **not** substituted for Task 062's
+standalone production calls. No concrete integration defect or production-code
+correction was found.
+
+The release executable was built into a fresh campaign-owned target directory
+from the merge source, not reused from the old base. SHA-256:
+`4bdde41124bffc0e3ef4142eb6c64db7c451a8279a7686414a651ffbc4ab54a9`.
+Compiler environment: Rust 1.98.1, Python 3.13.5, GNAT/GCC/G++ 14.2.0;
+`AMS_GRA_REQUIRE_GNAT=1`, `CARGO_BUILD_JOBS=4`. Because global `/tmp` still has
+exhausted inodes, temporary files use the campaign's home-backed `tmp`; the broad
+workspace suite uses a private user/mount namespace with campaign-owned `/tmp`.
+No coverage, assertion policies or GNAT requirements are disabled.
+
+Commands and results are recorded in campaign `*.command`, `*.log`, `*.exit`,
+`source-identities.json`, `build-source.txt` and `binary.sha256`. Focused results:
+
+| Command | R1 result |
+|---|---|
+| `cargo fmt --all -- --check` | PASS |
+| `cargo check --workspace --all-targets` | PASS |
+| `cargo clippy --workspace --all-targets -- -D warnings` | PASS |
+| `cargo build --release --locked -p ams-gra-codegen-oms` | PASS, fresh campaign target |
+| `cargo test --release --locked -p ams-gra-codegen-oms --test service_check --test service_check_batch` | PASS, 21 standalone + 5 batch tests |
+| `python3 scripts/test-task062-ci-wrappers.py` | PASS, 6 wrapper controls + 13 scheduler tests |
+| `python3 scripts/test-task062-service-impact.py` | PASS, 13 tests |
+| `python3 -O scripts/test-task062-service-impact.py` | PASS, 13 tests |
+| `python3 scripts/test-task093-compiler-placement.py` | PASS, 11 tests; complete 120-execution placement matrix retained |
+| `bash scripts/check-ci-split.sh` | PASS |
+| `bash scripts/test-check-ci-split.sh` | PASS, 218 checks, including prescribed layout mutations |
+| `python3 scripts/test-task060-ci-wrappers.py` | PASS |
+| `python3 scripts/test-task061-ci-wrappers.py` | PASS, 4 controls |
+| `python3 scripts/test-task061-service-impact.py` | PASS, 6 tests |
+| `bash scripts/check-task062-fast.sh` | PASS, GNAT required, exact final marker |
+| `AMS_GRA_GENERATOR=<R1-release-binary> PYTHON=<campaign-venv>/bin/python bash scripts/check-py005-mock.sh` | PASS, 19 actual-network tests in each of normal and optimized modes |
+| `AMS_GRA_REQUIRE_GNAT=1 cargo test --workspace` | PASS, 1,462 passed, zero failed, 8 inherited ignored, 184 result summaries |
+| `AMS_GRA_TASK062_WORKERS=1 bash scripts/check-task062-pinned.sh` | PASS, 677 s functional run; all selection/inventory/compiler/codec markers |
+| `AMS_GRA_TASK062_WORKERS=4 bash scripts/check-task062-pinned.sh` | PASS, 440 s functional run; all selection/inventory/compiler/codec markers |
+| Existing `--compare` mode against completed manifests | PASS, all 54 comparisons, 30 identities |
+
+Both roots were freshly fetched with `scripts/fetch-pinned-uci-2.5.sh` and
+`scripts/fetch-pinned-uci-2.6.sh` into campaign-owned directories. Fetches passed
+the established tag/commit and root-hash verification; both checkouts were clean.
+Root SHA-256 values match the unchanged pins in the provenance table above.
+The same executable and roots are used for both worker settings, with separate
+`pinned-1-tmp` and `pinned-4-tmp` evidence directories. These are full inherited
+wrappers, retaining inventories and all Ada/Rust/C++ compiler/codec verticals,
+not just scheduler probes.
+
+Both complete manifests preserve all 54 selections in fixture order and all 30
+unique release/backend/message identities. The existing strict comparison passed
+matching contracts, statuses, full stdout/stderr and production arguments, with
+only its documented scratch-contract-path normalization. Exact markers:
+
+```text
+TASK062 ALL 54 NEWLY READY CLI TUPLES: PASSED
+TASK062 PINNED GATES: PASSED
+TASK062 SERIAL/PARALLEL EQUIVALENCE: PASSED (54 selections, 30 identities)
+```
+
+Each full campaign also passed all four release/world inventory markers, all six
+Ada/Rust/C++ compiler verticals and both real RDMA Rust codec runs. The 677/440 s
+full-wrapper durations are functional observations on a shared host, **not** new
+controlled benchmarks. Manifest checksums and exact paths are retained in
+`pinned-summary.json`; the binary checksum was verified before and after both
+runs. The merge's production source remains unchanged by this documentation-only
+qualification commit.
+
+An extra Python mock probe initially selected the worktree's inherited old debug
+binary by default and failed before executing tests (usage exit 2). This is not
+counted as a source defect or a pass: the failed log is retained as
+`python-mock.log`. Selecting the freshly built reconciled production executable
+through the existing `AMS_GRA_GENERATOR` option passes both complete 19-test
+campaigns (`python-mock-reconciled.log`). The isolated venv installs the repository
+runtime and its pinned `websockets==17.2`; no global Python packages are changed.
+
+### New hosted qualification
+
+Status: **HOSTED_CI_PENDING**. No starting-head or historical-main result is
+counted as a final-head pass. Final run IDs, attempts, source/checkout identities,
+job conclusions, Ada naming/evidence completion and Task 062 pinned markers will
+be recorded in the PR qualification handoff after the normal push. PR #107 must
+remain open, non-draft, unmerged, with auto-merge disabled.
