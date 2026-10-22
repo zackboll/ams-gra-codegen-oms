@@ -41,9 +41,10 @@ jobs:
         run: |
           python -c 'import sys; assert sys.version_info >= (3, 11); print(sys.version)'
           cargo test --locked -p ams-gra-oms-backend-python --all-targets -- --nocapture
+          cargo test --locked -p ams-gra-codegen-oms --test python_cli -- --nocapture
           cargo fmt --all -- --check
-          cargo clippy --locked -p ams-gra-oms-backend-python --all-targets -- -D warnings
-          cargo build --locked -p ams-gra-oms-backend-python --all-targets
+          cargo clippy --locked -p ams-gra-oms-backend-python -p ams-gra-codegen-oms --all-targets -- -D warnings
+          cargo build --locked -p ams-gra-oms-backend-python -p ams-gra-codegen-oms --all-targets
 
   ada-float32-codec:
     runs-on: ubuntu-24.04
@@ -407,7 +408,7 @@ jobs:
   ada-hexbinary-codec:
     needs: ada-json-guard
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:
