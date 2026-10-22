@@ -13,6 +13,8 @@ const CLOSED: GenerationWorld = GenerationWorld::ClosedSchemaSet;
 #[path = "../../../tests/task063_integrated_coverage.rs"]
 mod task063_integrated_coverage;
 
+mod task065_support;
+
 fn hiding_inventory(schema: &ams_gra_oms_ir::SchemaIr, release: &str, reach: &str) -> Vec<String> {
     use ams_gra_oms_codegen_core::{
         StructuralMemberKind, effective_choice_alternatives, effective_record_fields,
@@ -271,6 +273,76 @@ fn contract(name: &str, version: &str) -> ams_gra_oms_service_contract::Contract
     )).unwrap()
 }
 
+struct FormerGapEvidence {
+    cost: usize,
+    ready: bool,
+}
+
+fn evaluate_former_gap(
+    schema: &ams_gra_oms_ir::SchemaIr,
+    analysis: &CoverageAnalysis<'_>,
+    profile: &task065_support::profile::Profile,
+    release: &str,
+    message: &str,
+) -> FormerGapEvidence {
+    let _candidate = profile.span(release, message, "candidate");
+    let dependency = profile.span(release, message, "dependency");
+    let m = schema
+        .messages
+        .iter()
+        .find(|m| m.name.local_name == message)
+        .unwrap();
+    let TypeRefTarget::Named(payload) = &m.payload_type.target else {
+        panic!("{release} {message}: named payload required")
+    };
+    assert!(
+        analysis
+            .dependency_closure(payload)
+            .unwrap()
+            .iter()
+            .any(|d| d.name.local_name == "QueryPET"),
+        "{release} {message}: QueryPET dependency required"
+    );
+    drop(dependency);
+    let resolve = profile.span(release, message, "resolve");
+    let plan = resolve_service_plan(&contract(message, release), schema)
+        .unwrap_or_else(|e| panic!("{release} {message}: {e}"));
+    drop(resolve);
+    let projection = profile.span(release, message, "projection");
+    let p = project_service_generation_schema(&plan, schema, CLOSED)
+        .unwrap_or_else(|e| panic!("{release} {message}: {e}"));
+    let cost = p.selected_type_names().len() + p.generated_support_type_names().len();
+    drop(projection);
+    let readiness_span = profile.span(release, message, "readiness");
+    let readiness = ams_gra_oms_codegen_core::analyze_service_readiness(
+        &plan,
+        schema,
+        BackendLanguage::Ada,
+        CLOSED,
+    )
+    .unwrap_or_else(|e| panic!("{release} {message}: {e}"));
+    drop(readiness_span);
+    let preflight = profile.span(release, message, "preflight");
+    let result = backend_preflight(p.schema(), BackendLanguage::Ada, CLOSED);
+    assert!(result.is_ok(), "{release} {message}: {result:?}");
+    drop(preflight);
+    if readiness.is_ready() {
+        // Every READY candidate still executes the actual production backend.
+        // Only the minimum-cost candidates are object-compiled, as before.
+        use ams_gra_oms_codegen_core::Backend;
+        let generate = profile.span(release, message, "generate");
+        let files = ams_gra_oms_backend_ada::AdaBackend
+            .generate(p.schema(), CLOSED)
+            .unwrap_or_else(|e| panic!("{release} {message}: {e}"));
+        drop(generate);
+        profile.sources(release, message, &files);
+    }
+    FormerGapEvidence {
+        cost,
+        ready: readiness.is_ready(),
+    }
+}
+
 #[test]
 fn task065_pinned_naming_evidence() {
     let roots = [
@@ -296,7 +368,17 @@ fn task065_pinned_naming_evidence() {
         eprintln!("SKIPPED Task065: both pinned roots required");
         return;
     }
+    let workers_value = std::env::var("AMS_GRA_TASK065_WORKERS");
+    let workers = task065_support::worker_count(match &workers_value {
+        Ok(value) => Some(value.as_str()),
+        Err(std::env::VarError::NotPresent) => None,
+        Err(error) => panic!("invalid AMS_GRA_TASK065_WORKERS: {error}"),
+    })
+    .unwrap();
+    let profile = task065_support::profile::Profile::from_env();
     for (release, variable, digest) in roots {
+        let _release = profile.span(release, "", "release");
+        let integrity = profile.span(release, "", "integrity");
         let root = PathBuf::from(std::env::var_os(variable).unwrap());
         let hash = Command::new("sha256sum").arg(&root).output().unwrap();
         assert!(hash.status.success());
@@ -306,7 +388,11 @@ fn task065_pinned_naming_evidence() {
                 .next(),
             Some(digest)
         );
+        drop(integrity);
+        let load = profile.span(release, "", "load");
         let schema = load_schema_set(&root).unwrap();
+        drop(load);
+        let inventory = profile.span(release, "", "inventory");
         let hiding = hiding_inventory(&schema, release, "full-schema");
         assert_eq!(
             hiding,
@@ -385,42 +471,76 @@ fn task065_pinned_naming_evidence() {
             }
             Err(e) => println!("EMISSION-PLAN\t{release}\t{e}"),
         }
+        drop(inventory);
+        let coverage_span = profile.span(release, "", "coverage_preflight");
+        // The later former-gap dependency checks use this exact schema/world.
+        // Keep the validated immutable index rather than constructing it twice.
+        let closed_analysis = CoverageAnalysis::new(&schema, CLOSED).unwrap();
         for world in [CLOSED, GenerationWorld::OpenExtensions] {
-            let coverage = CoverageAnalysis::new(&schema, world).unwrap();
+            let open_analysis;
+            let coverage = if world == CLOSED {
+                &closed_analysis
+            } else {
+                open_analysis = CoverageAnalysis::new(&schema, world).unwrap();
+                &open_analysis
+            };
             let mut names = Vec::new();
             let mut unsafe_names = Vec::new();
-            for language in BackendLanguage::ALL {
-                let result = backend_preflight(&schema, language, world);
-                assert!(
-                    result.is_ok(),
-                    "{release} {world:?} {language:?}: {result:?}"
-                );
-                println!("PREFLIGHT\t{release}\t{world:?}\t{language:?}\t{result:?}");
-                if let Err(e) = result {
-                    println!("DIAGNOSTIC\t{release}\t{world:?}\t{language:?}\t{e}");
+            let cells = task065_support::ordered_candidates(
+                &["Ada", "Rust", "Cpp"],
+                workers,
+                |index, label| {
+                    let _cell = profile.span(release, label, "coverage_cell");
+                    let language = BackendLanguage::ALL[index];
+                    let result = backend_preflight(&schema, language, world);
+                    assert!(
+                        result.is_ok(),
+                        "{release} {world:?} {language:?}: {result:?}"
+                    );
+                    let mut rows = vec![format!(
+                        "PREFLIGHT\t{release}\t{world:?}\t{language:?}\t{result:?}"
+                    )];
+                    if let Err(e) = result {
+                        rows.push(format!(
+                            "DIAGNOSTIC\t{release}\t{world:?}\t{language:?}\t{e}"
+                        ));
+                    }
+                    let unsafe_set = unsafe_named_declarations(&schema, language, world);
+                    assert!(unsafe_set.is_empty());
+                    rows.push(format!(
+                        "UNSAFE\t{release}\t{world:?}\t{language:?}\t{unsafe_set:?}"
+                    ));
+                    let actual = coverage.backend_coverage(language).unwrap();
+                    let row = format!("COVERAGE\t{release}\t{world:?}\t{language:?}\t{:?}", actual);
+                    assert_eq!(
+                        vec![
+                            actual.declaration_kinds_renderable,
+                            actual.declarations_fully_renderable,
+                            actual.field_type_references_renderable,
+                            actual.field_occurrences_renderable,
+                            actual.message_closures_renderable
+                        ],
+                        task063_integrated_coverage::integrated_coverage(
+                            release,
+                            world,
+                            &format!("{language:?}")
+                        ),
+                        "{row}"
+                    );
+                    rows.push(row);
+                    Ok((
+                        rows,
+                        coverage.renderable_message_closure_names(language).unwrap(),
+                        unsafe_set,
+                    ))
+                },
+            )
+            .unwrap();
+            for (rows, closure_names, unsafe_set) in cells {
+                for row in rows {
+                    println!("{row}");
                 }
-                let unsafe_set = unsafe_named_declarations(&schema, language, world);
-                assert!(unsafe_set.is_empty());
-                println!("UNSAFE\t{release}\t{world:?}\t{language:?}\t{unsafe_set:?}");
-                let actual = coverage.backend_coverage(language).unwrap();
-                let row = format!("COVERAGE\t{release}\t{world:?}\t{language:?}\t{:?}", actual);
-                assert_eq!(
-                    vec![
-                        actual.declaration_kinds_renderable,
-                        actual.declarations_fully_renderable,
-                        actual.field_type_references_renderable,
-                        actual.field_occurrences_renderable,
-                        actual.message_closures_renderable
-                    ],
-                    task063_integrated_coverage::integrated_coverage(
-                        release,
-                        world,
-                        &format!("{language:?}")
-                    ),
-                    "{row}"
-                );
-                println!("{row}");
-                names.push(coverage.renderable_message_closure_names(language).unwrap());
+                names.push(closure_names);
                 unsafe_names.push(unsafe_set);
             }
             assert_eq!(names[1], names[2]);
@@ -471,9 +591,10 @@ fn task065_pinned_naming_evidence() {
             sizes.sort();
             println!("SMALLEST\t{release}\t{world:?}\t{:?}", sizes.first());
         }
+        drop(coverage_span);
         // A former full-schema gap witness was already projected-name-safe.
         // Do not present this service as a newly READY projected service.
-        let analysis = CoverageAnalysis::new(&schema, CLOSED).unwrap();
+        let analysis = &closed_analysis;
         let former: Vec<_> =
             include_str!("../../../tests/fixtures/string/task062-ada-full-schema-gap.tsv")
                 .lines()
@@ -481,51 +602,26 @@ fn task065_pinned_naming_evidence() {
                 .collect();
         let mut sizes = Vec::new();
         assert_eq!(former.len(), 33);
-        for message in former {
-            let m = schema
-                .messages
-                .iter()
-                .find(|m| m.name.local_name == message)
-                .unwrap();
-            let TypeRefTarget::Named(payload) = &m.payload_type.target else {
-                panic!("named payload")
-            };
-            assert!(
-                analysis
-                    .dependency_closure(payload)
-                    .unwrap()
-                    .iter()
-                    .any(|d| d.name.local_name == "QueryPET")
-            );
-            let plan = resolve_service_plan(&contract(message, release), &schema).unwrap();
-            let p = project_service_generation_schema(&plan, &schema, CLOSED).unwrap();
-            let cost = p.selected_type_names().len() + p.generated_support_type_names().len();
-            let readiness = ams_gra_oms_codegen_core::analyze_service_readiness(
-                &plan,
-                &schema,
-                BackendLanguage::Ada,
-                CLOSED,
-            )
-            .unwrap();
-            assert!(backend_preflight(p.schema(), BackendLanguage::Ada, CLOSED).is_ok());
-            println!(
-                "FORMER-GAP-PROJECTION\t{release}\t{message}\t{cost}\tready={}",
-                readiness.is_ready()
-            );
-            if !readiness.is_ready() {
+        let campaign = profile.span(release, "", "campaign");
+        let results = task065_support::ordered_candidates(&former, workers, |_, message| {
+            Ok(evaluate_former_gap(
+                &schema, analysis, &profile, release, message,
+            ))
+        })
+        .unwrap();
+        assert_eq!(results.len(), 33);
+        drop(campaign);
+        for (message, result) in former.into_iter().zip(results) {
+            let FormerGapEvidence { cost, ready } = result;
+            println!("FORMER-GAP-PROJECTION\t{release}\t{message}\t{cost}\tready={ready}");
+            if !ready {
                 continue;
             }
-            // Check generation feasibility for every READY former-gap message.
-            // Strict object compilation of every large schema would duplicate
-            // historical campaigns. Rank first, then compile the smallest below;
-            // no larger candidate can defeat its declaration-count ordering.
-            use ams_gra_oms_codegen_core::Backend;
-            ams_gra_oms_backend_ada::AdaBackend
-                .generate(p.schema(), CLOSED)
-                .unwrap();
             println!("FORMER-GAP-GENERATE\t{release}\t{message}\t{cost}\tPASSED");
             sizes.push((cost, message));
         }
+        assert_eq!(sizes.len(), 33, "every former-gap candidate must generate");
+        let minimum_gnat = profile.span(release, "", "minimum_gnat");
         sizes.sort();
         let (count, message) = sizes[0];
         assert_eq!(
@@ -572,6 +668,8 @@ fn task065_pinned_naming_evidence() {
             );
             println!("FORMER-GAP-COMPILE\t{release}\t{message}\t{cost}\tPASSED");
         }
+        drop(minimum_gnat);
+        let vertical = profile.span(release, "", "vertical_analysis");
         println!("FORMER-GAP-SMALLEST\t{release}\t{message}\t{count}");
         let plan = resolve_service_plan(&contract(message, release), &schema).unwrap();
         let p = project_service_generation_schema(&plan, &schema, CLOSED).unwrap();
@@ -621,6 +719,8 @@ fn task065_pinned_naming_evidence() {
             "contract_version: \"0.1\"\nservice:\n  name: task065\n  version: \"0.1.0\"\n  kind: service\nstandards:\n  oms_version: \"{release}\"\n  uci_schema_version: \"{release}\"\nfunctions:\n  - id: f\n    name: F\n    category: specific\n    applicability: applicable\n    exchanges:\n      - id: e\n        kind: oms_message\n        direction: output\n        mandate: mandatory\n        message: {message}\n        topic: t\n        timing:\n          kind: asynchronous\n"
         );
         std::fs::write(out.with_extension("yaml"), yaml).unwrap();
+        drop(vertical);
+        let service_check = profile.span(release, "", "service_check");
         for language in ["ada", "rust", "cpp"] {
             let check_args: Vec<std::ffi::OsString> = vec![
                 "service-check".into(),
@@ -642,9 +742,13 @@ fn task065_pinned_naming_evidence() {
             );
             println!("SERVICE-CHECK\t{release}\t{language}\tREADY");
         }
+        drop(service_check);
+        let service_generate = profile.span(release, "", "service_generate");
         let mut stdout = Vec::new();
         ams_gra_codegen_oms::run(args, &mut stdout).unwrap();
         println!("{}", String::from_utf8_lossy(&stdout));
+        drop(service_generate);
+        let _api_gnat = profile.span(release, "", "api_gnat");
         if Command::new("gnatmake").arg("--version").output().is_ok() {
             let result = Command::new("gnatmake")
                 .current_dir(&out)
