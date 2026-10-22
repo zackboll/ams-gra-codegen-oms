@@ -120,6 +120,28 @@ jobs:
             /tmp/task097-evidence/**/support/**/*.c
             /tmp/task097-evidence/**/support/**/*.h
           if-no-files-found: error
+
+  python-model-backend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Qualify Python model generation (runtime probes must execute)
+        env:
+          PYTHON: python
+        run: |
+          python -c 'import sys; assert sys.version_info >= (3, 11); print(sys.version)'
+          cargo test --locked -p ams-gra-oms-backend-python --all-targets -- --nocapture
+          cargo fmt --all -- --check
+          cargo clippy --locked -p ams-gra-oms-backend-python --all-targets -- -D warnings
+          cargo build --locked -p ams-gra-oms-backend-python --all-targets
+
   ada-float32-codec:
     runs-on: ubuntu-24.04
     container:
