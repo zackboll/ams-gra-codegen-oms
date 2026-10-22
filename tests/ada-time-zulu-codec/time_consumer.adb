@@ -16,6 +16,7 @@ with Ada.Exceptions;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Text_IO; use Ada.Text_IO;
 with TASK098_PACKAGE;
+with Service_API;  --  Compile the generated service API as well as the codec.
 with Service_Codec;
 
 procedure Time_Consumer is

@@ -162,8 +162,11 @@ Provisioning is fresh and task-owned (`scripts/task096/setup.py`): Alire 2.1.1,
 GPRBUILD 26.0.1 and GNATCOLL 26.0.0 (`gnatcoll-json.adb` SHA-256
 `7e07277731a44ea08716fd61a6462ebe7a7ce0722adc6dc787cbbaafd3099063`). Each
 worker builds against its own private copy of the provider tree. The
-qualifying evidence is in `qualify14-02/` and `qualify16-02/` (`result.json`,
-plus every command, stream and exit file). `qualify14-01/` also completed all
+qualification evidence is in `qualify14-02/` and `qualify16-02/` (`result.json`,
+plus every command, stream and exit file). The follow-up `qualify14-03/` and
+`qualify16-03/` runs additionally make the consumer depend explicitly on
+`Service_API`, so the generated service API is compiled, not merely generated.
+`qualify14-01/` also completed all
 18 cells; `qualify16-01/` is the preserved environmental failure described
 under *Tests, gates and hosted CI*.
 
@@ -251,7 +254,9 @@ JSON numbers.
 | 2.5 | 10 accepted, 16 rejected in each policy | 10 accepted, 16 rejected in each policy |
 | 2.6 | 10 accepted, 16 rejected in each policy | 10 accepted, 16 rejected in each policy |
 
-Evidence is in `real14-01/` and `real16-01/`. A service that generates and
+Initial execution evidence is in `real14-01/` and `real16-01/`; follow-up
+`real14-02/` and `real16-02/` explicitly compile `Service_API` as well.
+A service that generates and
 executes successfully here is **not** a claim of interoperability with any
 actual provider.
 
@@ -308,12 +313,40 @@ actual provider.
   2. provisions the compiler freshly;
   3. builds the exact-head generator;
   4. runs the 18-cell matrix;
-  5. requires the exact cell set with nondegenerate accept and reject counts;
+  5. requires exactly 18 cells, each with 156 documents, 38 accepted and
+     118 rejected;
   6. always uploads the textual evidence.
 
-  Existing jobs are unchanged. The real-UCI DLZ vertical needs the pinned UCI
+  The inherited Float64 job receives only the container Git trust correction
+  described below; no existing compilation or execution gate is removed or
+  relaxed. The real-UCI DLZ vertical needs the pinned UCI
   roots, so it remains a local qualification step; Fast CI must not fetch UCI
   (enforced by `check-ci-split.sh`).
+
+### Initial hosted attempt (preserved)
+
+At head `a05a5dea42d8746b4f835b5887539e439280ba72`, Deep CI run
+`39555024896` passed. Fast CI run `39555024887` failed:
+
+* Both TimeZulu jobs and both inherited Float64 jobs stopped before building
+  the generator, at `Record exact source identity`: Git reported dubious
+  ownership of the container-mounted checkout. Checkout's temporary `HOME`
+  did not supply the trust configuration to the subsequent shell. The
+  follow-up configures `safe.directory` for **only** `$GITHUB_WORKSPACE` in
+  the shell's global config, keeps the exact-SHA check, and makes a failing
+  `git status` propagate before testing cleanliness. It does not trust `*`
+  or bypass source verification. PR #102 and its worktree are untouched.
+* The existing hexBinary job hit its 30-minute timeout. Its log records
+  completed cells before cancellation; no codec assertion failure was
+  reported at cancellation. Its timeout and qualification gates are not
+  changed by this task.
+* Rust, Float32, DateTime, Duration, repeated temporal, generated codec,
+  repeated codec and repeated Choice jobs passed.
+
+The failed job logs, run metadata and TimeZulu artifacts are preserved in
+`/home/zboll/task098-scratch/hosted-a05a5de/`. This initial hosted attempt is
+not a successful qualification of TimeZulu; a subsequent exact-head run is
+required.
 
 ## Remaining unsupported
 

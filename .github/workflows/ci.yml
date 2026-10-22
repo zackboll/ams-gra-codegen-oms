@@ -55,9 +55,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Checkout uses a temporary HOME; trust only this runner checkout
+          # in the shell HOME as well, without bypassing the identity checks.
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task097-evidence/source.txt
           test "$(git rev-parse HEAD)" = '${{ github.event.pull_request.head.sha || github.sha }}'
-          test -z "$(git status --porcelain)"
+          status="$(git status --porcelain)"
+          test -z "$status"
       - uses: dtolnay/rust-toolchain@1.95.0
       - name: Install verified Alire 2.1.1
         shell: bash
@@ -149,9 +153,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Checkout uses a temporary HOME; trust only this runner checkout
+          # in the shell HOME as well, without bypassing the identity checks.
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task098-evidence/source.txt
           test "$(git rev-parse HEAD)" = '${{ github.event.pull_request.head.sha || github.sha }}'
-          test -z "$(git status --porcelain)"
+          status="$(git status --porcelain)"
+          test -z "$status"
       - uses: dtolnay/rust-toolchain@1.95.0
       - name: Install verified Alire 2.1.1
         shell: bash
@@ -184,8 +192,11 @@ jobs:
                       for q in ["Normal", "Check", "Ignore"]}
           if not result.get("completed") or not result.get("production_generated") or cells != expected:
               raise SystemExit(f"incomplete Task 098 qualification: {sorted(expected - cells)}")
-          if any(c["accepted"] == 0 or c["rejected"] == 0 for c in result["cells"]):
-              raise SystemExit("degenerate Task 098 cell")
+          if len(result["cells"]) != 18 or any(
+              (c["documents"], c["accepted"], c["rejected"]) != (156, 38, 118)
+              for c in result["cells"]
+          ):
+              raise SystemExit("wrong Task 098 cell counts")
           print("TASK098_HOSTED_REQUIRED_CELLS", len(cells))
           EOF
       - name: Preserve complete textual qualification evidence
