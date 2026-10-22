@@ -55,9 +55,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test -n "${GITHUB_WORKSPACE:-}"
+          test "$(pwd -P)" = "$(realpath "$GITHUB_WORKSPACE")"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task097-evidence/source.txt
-          test "$(git rev-parse HEAD)" = '${{ github.event.pull_request.head.sha || github.sha }}'
-          test -z "$(git status --porcelain)"
+          actual_sha="$(git rev-parse HEAD)"
+          test "$actual_sha" = '${{ github.event.pull_request.head.sha || github.sha }}'
+          porcelain="$(git status --porcelain)"
+          test -z "$porcelain"
       - uses: dtolnay/rust-toolchain@1.95.0
       - name: Install verified Alire 2.1.1
         shell: bash
