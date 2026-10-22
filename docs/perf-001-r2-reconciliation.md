@@ -18,7 +18,7 @@ inherited unchanged; R2 does not change workflows, gates, assertions or timeouts
 
 ## Conflict resolution
 
-Only `crates/cli/src/lib.rs` conflicted. Its resolution:
+Only `crates/cli/src/lib.rs` conflicted in the initial merge. Its resolution:
 
 1. Loads and resolves standalone service inputs with the existing validation.
 2. Dispatches Python to main's unchanged `python_service`, preserving actual
@@ -90,3 +90,28 @@ ordered results SHA-256 is
 New raw timing/accounting is retained in the separate task-owned evidence;
 this shared-host qualification is not a replacement for the historical benchmark.
 
+### Main advanced during qualification
+
+PR #103 merged Python LA-CAL runtime support into main as
+`07384e5407bd0d048c18fe45ba41aeca2f89ee33` while R2 was running. After qualifying
+the initial integration, a second normal merge incorporates that newer tip before
+the single push. No Rust source, Cargo input, or qualified generator code changes
+between those main tips. The second merge's sole conflict is adjacent additions
+in `scripts/check-ci-split.sh`: both PERF-001's mandatory batch checks and PY-005's
+mandatory runtime checks are retained verbatim. Automatically merged workflow
+and adversarial-control additions retain both sets of requirements.
+
+The final integration is requalified before committing and pushing. PY-005's
+mock and existing pinned-Sleet campaigns use the actual generated Python APIs
+and codecs on Python 3.11 and 3.13, without rebuilding the existing clean pinned
+broker unnecessarily. Runtime source is inherited unchanged from current main.
+
+The final-tree focused qualification passes the same formatting, locked check,
+Clippy, CLI/all-target, Rust 1.95.0 and Python 3.11/3.13 targets listed above.
+Both sets of CI requirements pass together, including 218 CI split adversarial
+checks. Each Python interpreter passes all 19 actual-network mock tests in both
+normal and optimized modes, and the pinned-Sleet receipt/typed-delivery campaign
+in both modes. The final release binary remains byte-identical to the executable
+that passed the full 609-selection equivalence campaign above.
+The repeated GNAT-required full workspace regression on the completed integration
+also passes: 1,462 tests, zero failures, eight pre-existing ignored tests.

@@ -44,6 +44,14 @@ for required in \
   grep -Fq "$required" <<<"$deep_code" || fail "Deep CI lost batch qualification: $required"
 done
 
+# PY-005: Fast uses an actual mock, Deep reuses the existing pinned build.
+grep -Fq 'bash scripts/check-py005-mock.sh' <<<"$fast_code" || fail "Fast CI lost Python OWP mock gate"
+grep -Fq 'Install pinned Python LA-CAL runtime' <<<"$deep_code" || fail "Deep CI lost Python runtime installation"
+grep -Fq 'scripts/check-py005-sleet.sh' <<<"$sleet_code" || fail "Sleet harness lost Python runtime campaign"
+if grep -Fq 'scripts/check-py005-sleet.sh' <<<"$fast_code"; then
+  fail "Fast CI must not run Python pinned Sleet"
+fi
+
 for required in 'bash scripts/check-task077-fast.sh' 'bash scripts/test-task077-ci-wrappers.sh'; do
   grep -Fq "$required" <<<"$fast_code" || fail "Fast CI lost Task 077 gate: $required"
 done
