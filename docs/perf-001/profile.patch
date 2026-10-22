@@ -1,0 +1,63 @@
+diff --git a/crates/cli/src/lib.rs b/crates/cli/src/lib.rs
+index 22b9cbd..89df2f2 100644
+--- a/crates/cli/src/lib.rs
++++ b/crates/cli/src/lib.rs
+@@ -1500,0 +1501 @@ fn load_service_inputs(
++    let profile = std::time::Instant::now();
+@@ -1506,0 +1508,2 @@ fn load_service_inputs(
++    profile_phase("contract_load", profile.elapsed());
++    let profile = std::time::Instant::now();
+@@ -1508,0 +1512,2 @@ fn load_service_inputs(
++    profile_phase("frontend_including_ir_validation", profile.elapsed());
++    let profile = std::time::Instant::now();
+@@ -1511,0 +1517,2 @@ fn load_service_inputs(
++    profile_phase("cli_ir_validation", profile.elapsed());
++    let profile = std::time::Instant::now();
+@@ -1513,0 +1521 @@ fn load_service_inputs(
++    profile_phase("resolve_service_plan", profile.elapsed());
+@@ -1516,0 +1525,6 @@ fn load_service_inputs(
++fn profile_phase(phase: &str, duration: std::time::Duration) {
++    let path = std::env::var_os("PERF001_PHASE_LOG").expect("explicit profiling only");
++    let mut file = fs::OpenOptions::new().create(true).append(true).open(path).unwrap();
++    writeln!(file, "{phase}\t{}", duration.as_secs_f64()).unwrap();
++}
++
+@@ -1536,0 +1551 @@ fn service_check<W: Write>(
++    let profile = std::time::Instant::now();
+@@ -1543,0 +1559 @@ fn service_check<W: Write>(
++    profile_phase("analyze_service_readiness", profile.elapsed());
+@@ -1556,0 +1573 @@ fn service_check<W: Write>(
++    let profile = std::time::Instant::now();
+@@ -1560,0 +1578 @@ fn service_check<W: Write>(
++    profile_phase("render_and_write_report", profile.elapsed());
+diff --git a/crates/xsd-frontend/src/lib.rs b/crates/xsd-frontend/src/lib.rs
+index c289119..d28b384 100644
+--- a/crates/xsd-frontend/src/lib.rs
++++ b/crates/xsd-frontend/src/lib.rs
+@@ -241,0 +242 @@ pub fn load_schema_set_with_overlays(
++    let profile = std::time::Instant::now();
+@@ -257,0 +259,6 @@ pub fn load_schema_set_with_overlays(
++    {
++        use std::io::Write;
++        let path = std::env::var_os("PERF001_PHASE_LOG").expect("explicit profiling only");
++        let mut file = fs::OpenOptions::new().create(true).append(true).open(path).unwrap();
++        writeln!(file, "xml_load_and_parse\t{}", profile.elapsed().as_secs_f64()).unwrap();
++    }
+@@ -440,0 +448 @@ fn documents_into_ir(documents: Vec<ParsedSchemaDocument>) -> Result<SchemaIr, F
++    let profile = std::time::Instant::now();
+@@ -441,0 +450,6 @@ fn documents_into_ir(documents: Vec<ParsedSchemaDocument>) -> Result<SchemaIr, F
++    {
++        use std::io::Write;
++        let path = std::env::var_os("PERF001_PHASE_LOG").expect("explicit profiling only");
++        let mut file = fs::OpenOptions::new().create(true).append(true).open(path).unwrap();
++        writeln!(file, "normalize_restrictions\t{}", profile.elapsed().as_secs_f64()).unwrap();
++    }
+@@ -447,0 +462 @@ fn documents_into_ir(documents: Vec<ParsedSchemaDocument>) -> Result<SchemaIr, F
++    let profile = std::time::Instant::now();
+@@ -450,0 +466,6 @@ fn documents_into_ir(documents: Vec<ParsedSchemaDocument>) -> Result<SchemaIr, F
++    {
++        use std::io::Write;
++        let path = std::env::var_os("PERF001_PHASE_LOG").expect("explicit profiling only");
++        let mut file = fs::OpenOptions::new().create(true).append(true).open(path).unwrap();
++        writeln!(file, "frontend_ir_validation\t{}", profile.elapsed().as_secs_f64()).unwrap();
++    }

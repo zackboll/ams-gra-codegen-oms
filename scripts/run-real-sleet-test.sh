@@ -29,6 +29,10 @@ test -z "$(git -C "$CHECKOUT" status --porcelain)"
 (cd "$CHECKOUT" && cargo build --release --locked -p sleet)
 export AMS_GRA_SLEET_BIN="$CHECKOUT/target/release/sleet"
 
+# PY-005 reuses this exact unmodified broker build; no second broker checkout
+# or build. Python package with websockets==17.2 is installed by Deep CI.
+bash "$ROOT/scripts/check-py005-sleet.sh"
+
 cd "$ROOT"
 # run_one TEST_FILE TEST_NAME PASS_LINE: exactly one matching test must run,
 # pass, and print its PASSED line (a skip prints SKIPPED and fails here).

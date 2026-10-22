@@ -1,0 +1,42 @@
+{
+  "mode": "legacy",
+  "workers": 8,
+  "wall_seconds": 820.2264210650001,
+  "cpu_seconds": 5873.072363,
+  "user_seconds": 5841.339706000001,
+  "system_seconds": 31.732656999999996,
+  "cpu_percent": 716.0306242481525,
+  "max_child_rss_kib": 60504,
+  "production_invocations": 609,
+  "schema_loads": 609,
+  "completed": 609,
+  "successes": 609,
+  "failures": 0,
+  "per_release": {
+    "2.5": 294,
+    "2.6": 315
+  },
+  "per_backend": {
+    "Ada": 203,
+    "Rust": 203,
+    "Cpp": 203
+  },
+  "per_world": {
+    "ClosedSchemaSet": 444,
+    "OpenExtensions": 165
+  },
+  "per_cell": {
+    "2.5/ClosedSchemaSet/Ada": 72,
+    "2.5/ClosedSchemaSet/Rust": 72,
+    "2.5/ClosedSchemaSet/Cpp": 72,
+    "2.5/OpenExtensions/Ada": 26,
+    "2.5/OpenExtensions/Rust": 26,
+    "2.5/OpenExtensions/Cpp": 26,
+    "2.6/ClosedSchemaSet/Ada": 76,
+    "2.6/ClosedSchemaSet/Rust": 76,
+    "2.6/ClosedSchemaSet/Cpp": 76,
+    "2.6/OpenExtensions/Ada": 29,
+    "2.6/OpenExtensions/Rust": 29,
+    "2.6/OpenExtensions/Cpp": 29
+  }
+}

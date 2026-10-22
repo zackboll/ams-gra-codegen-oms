@@ -1,0 +1,51 @@
+{
+  "workspace": {
+    "exit_code": 0,
+    "local_log": "/tmp/perf-001-evidence/final-validation/workspace.log",
+    "sha256": "9f2725fa0ba28b3a7d33e6728107e13006d47bb8a057e178e6cb5075aea5695e",
+    "passed": 1442,
+    "failed": 0,
+    "preexisting_ignored": 8,
+    "gnat_required": true
+  },
+  "fmt": {
+    "exit_code": 0,
+    "local_log": "/tmp/perf-001-evidence/final-fmt.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "check": {
+    "exit_code": 0,
+    "local_log": "/tmp/perf-001-evidence/final-check.log",
+    "sha256": "4ebd9ded788e7d6493410039dc41ec5190af2804d4d07a91fb2eab3d9ab406df"
+  },
+  "clippy": {
+    "exit_code": 0,
+    "local_log": "/tmp/perf-001-evidence/final-clippy.log",
+    "sha256": "6fa67c1177a933ad16a7dffd60551dd8d304597eeda13f0ef1da13e026a0e29f"
+  },
+  "production_cli": {
+    "exit_code": 0,
+    "local_log": "/tmp/perf-001-evidence/final-cli-tests.log",
+    "sha256": "3c32ba82b1393ca01cf3a8d49b3e1eec3a4a4c6af75c054c3565e86444e86789"
+  },
+  "ci_split": {
+    "exit_code": 0,
+    "local_log": "/tmp/perf-001-evidence/final-guard.log",
+    "sha256": "8ee665de3cc3befa382d2922a6bbb54a343f3bb07c5d454f177ca9e42b3bfd67"
+  },
+  "ci_split_negatives": {
+    "exit_code": 0,
+    "local_log": "/tmp/perf-001-evidence/final-guard-tests.log",
+    "sha256": "aaae754e80e7fb37c6f34e8bd80f4806f5441e1043642c773748eeb513f1fbdd"
+  },
+  "pinned_task061": {
+    "exit_code": 0,
+    "local_log": "/tmp/perf-001-evidence/task061-pinned.log",
+    "sha256": "d43df5db6b9072224a7c8a52226709e5af477f2349cfe5abf0b1d1252087dc87"
+  },
+  "binary_provenance": {
+    "exit_code": 0,
+    "local_log": "/tmp/perf-001-evidence/binary-provenance.log",
+    "sha256": "be550974cb01cf73597c9e971ad83bf0041045386b70f0f54bdaadfccd7ec59f"
+  }
+}

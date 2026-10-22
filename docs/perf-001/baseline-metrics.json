@@ -1,0 +1,16 @@
+{
+  "command": [
+    "taskset",
+    "-c",
+    "0-3",
+    "python3",
+    "scripts/check-task061-service-impact.py",
+    "/tmp/perf-001-evidence/legacy-cli"
+  ],
+  "wall_seconds": 1494.738840526,
+  "user_seconds": 5912.311153,
+  "system_seconds": 32.777425,
+  "cpu_percent": 397.73426747296656,
+  "max_process_rss_kib": 60436,
+  "exit_code": 0
+}

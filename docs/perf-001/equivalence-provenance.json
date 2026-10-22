@@ -1,0 +1,26 @@
+{
+  "source_commit": "23c8b2e4f7ebd600b8856b0e0e85d1c6eca25c39",
+  "source_diff_sha256": "e62eaca17ede499d5a13de17d72540036abcadd95601bb1b350657637638b537",
+  "binary_sha256": "39d31b52e98e3655083244df1706ac96e2b1e18e8cac9ff44f860ffcf2c46e07",
+  "fixture_sha256": "351d418883ce73e3339bfe2b4af349ff901bf37788b1747d4544dff8082b960b",
+  "schema_roots": {
+    "2.5": "/tmp/perf-001-uci25/03_OAC-STD-002_RevE_UCI_Schema_v2_5/UCI_MessageDefinitions_v2_5_0.xsd",
+    "2.6": "/tmp/perf-001-uci26.extracted/UCI_MessageDefinitions_v2_6_0.xsd"
+  },
+  "schema_sha256": {
+    "2.5": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+    "2.6": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b"
+  },
+  "workers": 8,
+  "mode": "equivalence",
+  "cpu_affinity": [
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23
+  ]
+}
