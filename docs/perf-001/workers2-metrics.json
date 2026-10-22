@@ -1,0 +1,18 @@
+{
+  "command": [
+    "taskset",
+    "-c",
+    "0-3",
+    "python3",
+    "scripts/check-task061-service-impact.py",
+    "target/release/ams-gra-codegen-oms"
+  ],
+  "wall_seconds": 137.93360109600007,
+  "user_seconds": 268.81205,
+  "system_seconds": 0.257447,
+  "cpu_percent": 195.07175544030855,
+  "max_process_rss_kib": 59880,
+  "sampled_peak_tree_rss_kib": 143416,
+  "rss_samples": 2735,
+  "exit_code": 0
+}

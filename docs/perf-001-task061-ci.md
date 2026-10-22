@@ -274,6 +274,29 @@ self-hosted machines but must be justified by wall/CPU/memory measurements;
 oversubscription adds schema loads and memory and can increase total CPU cost.
 Eight workers on four CPUs is a measurement experiment, not the new default.
 
+### Worker-count experiment (all runs affinity 0–3)
+
+All four batch configurations completed **609 successes, zero failures**;
+normalized identities, exits and full streams matched the default run exactly
+(only the intentionally independent absolute scratch contract paths differ).
+
+| Workers | Wall s | User s | System s | CPU s | CPU % | Max process RSS KiB | Sampled tree RSS KiB | Schema loads |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 347.915279 | 346.804887 | 0.304240 | 347.109127 | 99.768 | 59,576 | 88,556 | 2 |
+| 2 | 137.933601 | 268.812050 | 0.257447 | 269.069497 | 195.072 | 59,880 | 143,416 | 2 |
+| 4 | 134.177588 | 484.175008 | 0.678860 | 484.853868 | 361.352 | 59,752 | 258,120 | 4 |
+| 8 | 85.550385 | 303.740629 | 0.657926 | 304.398555 | 355.812 | 59,532 | 479,804 | 8 |
+
+These are **single observations on a shared host**, not a scaling law: CPU
+cost was non-monotonic despite the same inputs/binary, and other validation
+load/SMT siblings and thermal conditions changed during the serial experiment.
+In particular the later eight-worker result must not be used to promise a
+hosted speedup or to raise the default. Eight workers approximately doubled
+sampled tree RSS versus four. Four remains the requested conservative default;
+two deserves follow-up on an otherwise idle hosted-equivalent machine because
+it achieved similar wall time with fewer schema loads and less measured CPU.
+Raw outer metrics and per-mode counts are retained as `workers{1,2,8}-*.json`.
+
 ## CI and qualification policy
 
 Deep CI retains all six jobs, per-ref cancellation, 240-minute real-UCI
@@ -316,7 +339,8 @@ local passing tests alone do not establish independent-review readiness.
   control/path-filter mutations and the narrow-upload
   negative controls.
 - `AMS_GRA_REQUIRE_GNAT=1 cargo test --workspace`: pass, 180 libtest summaries,
-  1,441 passed, zero failed, eight pre-existing ignored external campaigns.
+  final repeat **1,442 passed**, zero failed, eight pre-existing ignored external
+  campaigns (the earlier run before the extra batch usage test passed 1,441).
   No pinned roots were supplied to this Fast-CI-equivalent invocation. Those
   ignored campaigns are not counted as real-UCI evidence. Relevant pinned
   regressions are run separately with both roots and GNAT required.
@@ -335,6 +359,36 @@ uses the frozen production executable SHA-256
 `39d31b52e98e3655083244df1706ac96e2b1e18e8cac9ff44f860ffcf2c46e07`
 for both modes. The driver now freezes its own private copy to prevent this
 measurement-provenance hazard in future comparisons.
+
+### PR and hosted qualification status
+
+Non-draft PR: <https://github.com/zackboll/ams-gra-codegen-oms/pull/105>.
+No merge, auto-merge, release or Alire-index action is authorized or performed.
+
+**HOSTED_CI_PENDING**, not `READY_FOR_INDEPENDENT_REVIEW`.
+The initial PR head `2bf19946b1c9afe18366cc6ec931b9d28ecd7f2c` triggered:
+
+- Fast CI: <https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/39703630032>
+- Deep CI: <https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/39703630315>
+
+At 2026-10-22T01:12:51Z both workflows and all ten jobs were **queued**;
+no job or step had a success/failure conclusion. They are not evidence of
+hosted completion, and subsequent documentation pushes require inspection of
+the replacement exact-head runs. The final handoff records the latest head
+and observed runs rather than treating an older run as qualification.
+
+The separate local inherited pinned-regression command was still running at
+that observation. It had passed both Task 060 admission tests, all three
+Task 060 AFTER tests (including both message-impact markers, all four real
+generated compiler/codec vertical markers and whole-schema coverage), then
+started Task 058. The full command also includes constrained Binary, member
+names, generated support, duration and structured ASCII with both pinned roots
+and GNAT required. **Those later results are pending, not passing evidence.**
+Logs and exit status are preserved at
+`/tmp/perf-001-evidence/real-regressions-corrected.{log,status}` (status appears
+only when the complete command exits). Hosted Deep retains every one of these
+gates unchanged. A nonzero exit requires `LOCAL_VALIDATION_FAILED`; semantic
+equivalence failure would require `QUALIFICATION_FAILED`, never a weakened gate.
 
 ## Remaining optimization opportunities
 
