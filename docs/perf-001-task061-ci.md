@@ -195,6 +195,71 @@ process wall-time baseline. The evidence supports targeting repeated parsing;
 long runtime alone would not establish CPU saturation. Full-run CPU accounting
 is the independent evidence for utilization.
 
+### Measured four-CPU comparison
+
+On 2026-10-22 UTC (local evening 2026-10-21), using affinity 0–3 and the same
+pinned roots and original 609-row fixture:
+
+| Metric | Unmodified starting-main legacy | Optimized batch, workers=4 |
+| --- | --- | --- |
+| Total wall seconds (outer wrapper) | 1,494.738841 | 134.177588 |
+| Aggregate user CPU seconds | 5,912.311153 | 484.175008 |
+| Aggregate system CPU seconds | 32.777425 | 0.678860 |
+| Total CPU seconds | 5,945.088578 | 484.853868 |
+| Effective CPU utilization | 397.734% | 361.352% |
+| Peak individual-process RSS, KiB | 60,436 | 59,752 |
+| Sampled peak summed process-tree RSS, KiB | not sampled | 258,120 |
+| Production CLI invocations / schema loads | 609 / 609 | 4 / 4 |
+| Completed / successful / failed checks | 609 / 609 / 0 | 609 / 609 / 0 |
+
+Measured wall speedup: **11.1400×**. Total CPU reduction: **91.8445%**
+(12.2616× CPU-time ratio). No extrapolation to hosted minutes is asserted.
+The production-readiness algorithm has not been made more concurrent inside
+a worker: the principal saving is avoiding 605 redundant schema loads/parses.
+Scheduling is still bounded at four active subprocesses. Lower system time
+also reflects avoiding 605 process startups and repeated file loading.
+
+Raw `baseline-metrics.json`, `baseline-counts.json`, `batch4-metrics.json`,
+`batch4-counts.json` and `batch4-provenance.json` are retained under
+`docs/perf-001`. The optimized driver's inner evaluation time was 134.061132 s;
+the outer 134.177588 s includes startup, pin checks, scratch/provenance and
+reporting. Do not mix inner/outer definitions when calculating the ratio.
+
+The original baseline ran the untouched original driver against a binary built
+at starting main; the optimized run used the frozen final production binary.
+All **609 original-main stdout+stderr logs matched optimized reports byte for
+byte**, with all original standalone exits zero. Ordered per-selection identity,
+exit status and stream hashes are retained in `original-main-output-proof.json`.
+This is additional evidence, not a replacement for same-revision standalone
+versus batch evaluation.
+
+### Mandatory same-executable equivalence: PASSED
+
+The frozen final production binary
+`39d31b52e98e3655083244df1706ac96e2b1e18e8cac9ff44f860ffcf2c46e07`
+evaluated all **609** requests in both modes against identical contract files
+and pinned roots. Full ordered result objects were exactly equal: release,
+world, backend, message (encoded in the independently checked tuple ID), exit
+status, entire stdout report and entire stderr diagnostic. Both modes completed
+609 successes and zero failures. Therefore the READY verdicts and deterministic
+reports are byte-identical, not just equal counts or snapshots.
+
+`same-head-equivalence.json` retains full ordered stream hashes, exit statuses,
+the frozen binary hash and identical complete-result-file hashes. Raw per-mode
+metrics and source/input provenance are retained as `equivalence-*-metrics.json`
+and `equivalence-provenance.json`; full reports remain in the local evidence
+directory `/tmp/perf-001-evidence/final-equivalence/task061-service-check-42td0g9k`.
+That command printed
+`TASK061 EXACT STANDALONE/BATCH EQUIVALENCE: PASSED (609 selections)` and exited 0.
+The executable was built before the final documentation/test-only commits;
+its hash still matches the production executable built from those commits.
+
+This separate qualification used affinity 16–23 and eight workers. It measured
+77.897920 s / 412.661810 CPU-s for batch and
+820.226421 s / 5,873.072363 CPU-s for standalone. It ran concurrently with
+other validation, including SMT sibling activity, so these numbers are **not**
+substituted for the controlled-affinity four-worker headline comparison.
+
 ## Worker configuration and operational guidance
 
 `AMS_GRA_TASK061_WORKERS` defaults to **4**, validated as an ASCII integer
@@ -255,6 +320,13 @@ local passing tests alone do not establish independent-review readiness.
   No pinned roots were supplied to this Fast-CI-equivalent invocation. Those
   ignored campaigns are not counted as real-UCI evidence. Relevant pinned
   regressions are run separately with both roots and GNAT required.
+- `scripts/check-task061-pinned.sh` with both verified roots and
+  `AMS_GRA_REQUIRE_GNAT=1`: pass. Both release inventory/impact markers and both
+  DLZ generated compiler/codec vertical markers were observed, followed by
+  `TASK061 PINNED GATES: PASSED`. Inventory test measured 627.22 s and the real
+  generated-code vertical 142.80 s on the shared local host; these are separate
+  unchanged gates, not the optimized service-impact-driver benchmark.
+- Frontend real `uci_binary_provenance`: pass, two tests, both release markers.
 
 The exploratory equivalence run was explicitly stopped (exit 143) after a
 help-only rebuild changed the executable on disk while standalone subprocesses

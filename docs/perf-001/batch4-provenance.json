@@ -1,0 +1,23 @@
+{
+  "source_commit": "cdf814c151335221ce62d4f08dbb6d9a16ed8495",
+  "source_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "binary_sha256": "39d31b52e98e3655083244df1706ac96e2b1e18e8cac9ff44f860ffcf2c46e07",
+  "source_binary": "/home/zboll/git/ams-gra-codegen-oms-ci-improvements/target/release/ams-gra-codegen-oms",
+  "fixture_sha256": "351d418883ce73e3339bfe2b4af349ff901bf37788b1747d4544dff8082b960b",
+  "schema_roots": {
+    "2.5": "/tmp/perf-001-uci25/03_OAC-STD-002_RevE_UCI_Schema_v2_5/UCI_MessageDefinitions_v2_5_0.xsd",
+    "2.6": "/tmp/perf-001-uci26.extracted/UCI_MessageDefinitions_v2_6_0.xsd"
+  },
+  "schema_sha256": {
+    "2.5": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+    "2.6": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b"
+  },
+  "workers": 4,
+  "mode": "batch",
+  "cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ]
+}
