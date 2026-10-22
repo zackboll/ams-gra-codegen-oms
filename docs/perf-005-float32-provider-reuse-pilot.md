@@ -2,8 +2,11 @@
 
 ## Scope and disposition
 
-**PROVIDER_REUSE_PILOT_INCOMPLETE**: functional pilot evidence is established,
-but repeatable performance on an uncontended four-CPU allocation is missing.
+**PROVIDER_REUSE_PILOT_INCOMPLETE (R1)**: complete consumer compilation,
+execution and isolation controls pass, but strict provider effective-input
+equivalence is rejected for GNAT mapping inputs. Controlled repeatable
+performance is also unavailable. The R1 reconciliation below supersedes earlier
+claims that only the performance gate remained.
 This experiment is not production rollout, qualification of the complete
 132-build job, or an assessment that PR #106 is ready to merge. Ordinary
 qualification scripts, workflow allocation, generator, providers, algorithms,
@@ -280,7 +283,7 @@ The remaining qualification blocker is controlled, repeatable performance.
 | GNAT16 pilot, including all provider preparation | 113.808 | 213.170 | 301940 |
 
 RSS here is kernel largest-child high-water RSS, **not simultaneous process-tree
-memory**. Detailed traces additionally sample peak sum-of-process RSS, which
+Complete traces additionally sample peak sum-of-process RSS, which
 double-counts shared pages and can miss short peaks. Neither is unique physical
 memory. The nominal GNAT14/GNAT16 elapsed ratios are 3.717x / 4.220x, but there
 is only one ordered local pair per compiler and host contention is not excluded.
@@ -407,3 +410,183 @@ Large source/object/toolchain trees are deliberately outside Git. Failed
 disposable exploratory controls remain labeled separately and are not counted
 as passes. No new CI wiring is introduced. Hosted CI status is reported on the
 PR head separately; local passes are not a hosted-check conclusion.
+
+## PERF-005-R1 reconciliation (supersedes earlier qualification claims)
+
+### Source, boundaries and evidence history
+
+R1 starts at `3fef1dd83fde608029c025a48dfce558daf5ac2d`, tree
+`bd952b10b0557a2252be0614a04045fea2b6dbf0`, on the same branch/worktree and
+PR #109. Corrected executable/tooling implementation commit:
+`4107429acc11e9567e2fcbb9b1f5dd8b7ce6bc62`, tree
+`adbfce5f2188381bd349d4823cc82e3125c28b04`
+(full identities in `r1/implementation-source.txt`). Subsequent report
+changes are documentation-only. **No R1 controlled measurement commit exists**:
+none of the requested eight clean campaigns was launched. Production source,
+generator, providers, fixtures, toolchain seeds and ordinary workflow remain
+unchanged. PR #106 and its unfinished corrections remain untouched.
+
+Original evidence is retained under `/home/zboll/perf-005-evidence`. R1 evidence
+is the fresh `r1/` subdirectory there; earlier data is historical, not upgraded
+to controlled performance. Generator SHA-256 remains
+`a6797b3ea64e5bca24960fa2e20aab7d8b9fdb2021ae11804e234181cc3c3760`.
+Platform, GNAT14/16 identities, index commit and immutable seed identities are
+the ones above. Fresh state seed manifests record copied toolchain file hashes.
+
+### Compiler evidence checks and focused controls
+
+The comparator now derives the complete inventory from owned generated bodies,
+bodyless `programs*.ads` namespaces, support bodies and Float32 C sources. It
+requires each absolute owned source exactly once with its retained source hash,
+the qualified compiler path/hash/version, a successful completed driver and
+matching successful `gnat1`/`cc1` backend. Binder-generated source is separate;
+provider/unrelated compilation is rejected rather than matched by basename.
+Every Ada driver **and backend** must receive the exact expected policy contents
+from its ADCs; normal must not receive an assertion-policy ADC. Compiler options
+and indirect inputs are checked too. Specs/API dependencies are not falsely
+counted as independent compiler-driver inputs.
+
+A complete synthetic 30-positive/20-negative campaign fixture passes the real
+comparator. Removing namespace compilation, substituting Ignore in a Check cell,
+redirecting to an unrelated same-basename file, failed/incomplete drivers and
+failed backends all reject. Response/config/specs content mutations reject;
+Check/Ignore never collapse into a normalized filename. Missing indirect inputs
+fail closed. Thirteen focused tests pass, including resumed trace reads.
+
+### Effective provider inputs: a remaining functional gate, not a pass
+
+The old command comparison **dropped** response/specs/configuration/source-map
+arguments and normalized ADC filenames without checking contents. Its earlier
+“command equivalence” success is withdrawn. The corrected representation keeps
+all switches and recursively includes response, GCC specs, generated config,
+ADC and mapping contents. Only campaign/state roots and expanded temporary
+filenames are abstracted. Unit/kind/name/path triples in GNAT mapping files are
+sorted only after checking for duplicate/ambiguous unit entries. No semantic
+compiler input is excluded on the basis of a temporary filename.
+
+The first regenerated originals retained post-build mapping files and exposed
+differences. GCC's `gcc/ada/fmap.adb` confirms `Update_Mapping_File` appends new
+entries. Post-build mapping contents are therefore **insufficient input evidence**.
+The profiler now additionally records `strace -yy` read-time bytes for each
+`gnat1` mapping file, keyed by source and mapping path; absent input bytes cause
+incomplete evidence, never fallback to the mutated output. These verbose traces
+are functional evidence only and are excluded from clean timings.
+
+Even the read-time maps differ: GPR recycles these in/out files between concurrent
+compiler invocations, so later files contain scheduling-dependent accumulated
+entries. Strict per-source effective-input comparison rejects these differences.
+This report does **not** assert they are harmless or silently union/drop them.
+Resolving that semantic question (or using a validated equivalent provider build
+preparation context) is required before pilot qualification. All other compared
+provider compiler options/response/config/specs/ADC inputs match after documented
+root mapping. See `r1/reconciliation.json` for policy/source differences.
+
+The final implementation additionally resolves `bin/../libexec` backend paths
+before comparing qualified identities. This is a validation-only correction;
+no compiler invocation or provider/consumer build behavior changed after the
+refreshed traces. Raw traces were rechecked, not relabeled as measured runs.
+
+### Isolation correction and environment requirements
+
+The pilot and disposable controls now share `consumer_layout`. After resolving
+paths, it rejects a writable ancestor of any protected provider and any writable
+subtree inside it, including symlink aliases. `run` validates the final allowlist
+including trace output before launch. Pilot startup rejects unsafe state/HOME/
+`/tmp`/`/dev` overlap before preparation. Providers beneath `/tmp` are unsupported
+with this allowlist and are explicitly rejected; a regression uses the actual
+adapter list rather than a hand-selected narrower test sandbox.
+
+The supported Linux x86_64 host test demonstrates that a chmod-capable owning
+consumer still cannot overwrite provider bytes, while private writes work.
+Landlock ABI <3, disabled Landlock, wrong architecture or failed enforcement
+are fatal—there is no permission-only fallback. This remains an experimental
+host requirement, not a production portability claim.
+
+### Reuse versus regeneration
+
+| Evidence | R1 handling |
+|---|---|
+| Clean baseline14/16 and candidate14/16 | Retained unchanged; ordered outcomes, bytes, locks, diagnostics, atomic rejection and runtime markers still pass |
+| Initial original three-policy traces | Retained historically; insufficient temporary/read-time inputs, not accepted for effective-input equivalence |
+| Original `traced14/16` complete pilots | Preserved; complete source/driver/backend/policy evidence reconciled, but no read-time mapping capture; stricter indirect-input gate rejects them as incomplete |
+| `r1/original14/16` | First bounded refresh; exposed mutable mapping output limitation; not substituted for valid effective-input evidence |
+| `r1/original-v214/16` | Bounded three-policy originals regenerated with read-time input tracing; parser-only re-extraction from unchanged raw trace is recorded, with old JSON copies preserved |
+| `r1/pilot14/16` | Complete traces refreshed because original candidate traces cannot supply read-time mapping inputs; uses corrected overlap validation |
+| `r1/final-controls14/16` | Disposable generated/support Ada/C failure controls under corrected shared allowlist; nine per compiler |
+
+Each complete refreshed compiler campaign preserves **30 positive cells and 20
+negative CLI cases**, 120 generated and 120 support compiler drivers plus 30
+binder compilations. Provider preparations remain three × 106 drivers (318),
+not 30 × 106 (3180). These counts and executions are not a substitute for the
+remaining provider effective-input equivalence gate.
+
+### Controlled repetitions: unavailable, not run
+
+`r1/resource-allocation.txt` records topology, SMT siblings, process activity,
+CPU counters, boot options and privilege/controller availability. Four logical
+CPUs 4,6,8,10 are distinct cores, but their siblings 20,22,24,26 are unreserved.
+There are no isolated/nohz-full CPUs, no cpuset controller delegated to this
+session (only cpu/memory/pids), and `sudo -n` requires a password. Desktop,
+browser and unrelated development activity is free to migrate across all CPUs.
+Affinity cannot establish those cores/siblings remain free of competing work.
+No unrelated process/worktree was changed to manufacture a reservation.
+
+| Compiler | Required order | Baseline A elapsed/CPU | Pilot A elapsed/CPU | Pilot B elapsed/CPU | Baseline B elapsed/CPU |
+|---|---|---|---|---|---|
+| GNAT14 | baseline A → pilot A → pilot B → baseline B | unavailable | unavailable | unavailable | unavailable |
+| GNAT16 | baseline A → pilot A → pilot B → baseline B | unavailable | unavailable | unavailable | unavailable |
+
+Pair improvement, CPU reduction and repeat spread are **not available**.
+The previous 381.858/102.744 s and 480.263/113.808 s observations remain single
+contended pairs only. No observation was discarded as a slow controlled run;
+there were zero controlled attempts. Refreshed tracing is not timing evidence.
+
+**Disposition: PROVIDER_REUSE_PILOT_INCOMPLETE.** Missing gates are now explicit:
+(1) substantiate semantic equivalence of differing read-time GNAT mapping inputs;
+(2) obtain an exclusive four-distinct-core allocation including SMT siblings and
+run the requested eight fresh-output campaigns under independent outer time.
+The smallest next task is the mapping-input analysis/preparation correction,
+then controlled pairs on a suitable host. Production integration is premature.
+
+### R1 evidence index and reproduction
+
+All paths below are within `/home/zboll/perf-005-evidence/r1`:
+
+- `implementation-source.txt`, `tooling.sha256`: corrected implementation
+  commit/tree and script identities; `evidence.sha256`: selected R1 raw evidence.
+- `resource-allocation.txt`: allocation blocker, topology and activity.
+- `original-v214/16`: refreshed original representative traces and read-time
+  mapping bytes. `reparse16.log` / preserved `*.pre-parser-fix.json` identify
+  parser-only extraction corrections; raw trace bytes were not changed.
+- `pilot14/16`: refreshed complete positive/negative campaigns and provider
+  preparation, with source/seed/artifact manifests and mapping-read capture.
+- `reconciliation.json`, `reconcile-final.log`: complete source compilation
+  counts/outcomes plus strict provider-input rejection details.
+- `final-controls14/16`, `final-controls*.log`, `final-controls.status`: affected
+  compiler-failure controls rerun using the corrected shared isolation path.
+- `tests-final.log`: 13 tests, with all complete-fixture mutations and isolation
+  controls; `placement.log`, `ci-split.log`, `layout-mutations.log`, `fmt.log`:
+  existing relevant gates. No Rust source changed; no full workspace rerun claim.
+- `starting-head-hosted.txt`, `final-head-hosted.txt`: hosted checks, separate
+  from opt-in qualification.
+
+```sh
+R=/home/zboll/git/ams-gra-codegen-oms-perf-005
+E=/home/zboll/perf-005-evidence
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s "$R/scripts" -p 'test_perf005*.py'
+for c in 14 16; do
+  # Consumer equivalence and full actual driver/backend/policy/source evidence:
+  PYTHONDONTWRITEBYTECODE=1 python3 "$R/scripts/perf005-compare.py" \
+    "$E/baseline$c" "$E/candidate$c" --traced "$E/r1/pilot$c"
+  # Strict provider effective-input gate: currently EXPECTED TO REJECT,
+  # not an intentional-failure qualification pass:
+  PYTHONDONTWRITEBYTECODE=1 python3 "$R/scripts/perf005-compare.py" \
+    "$E/baseline$c" "$E/candidate$c" --traced "$E/r1/pilot$c" \
+    --attribution "$E/r1/original-v2$c"
+done
+```
+
+The environment must have the qualified compiler/runtime paths or retained
+identity evidence and unchanged source paths. Run actual compilation and
+Landlock controls in the qualified task-owned container; Landlock tests require
+a supported Linux x86_64 host and do not silently skip enforcement failures.
