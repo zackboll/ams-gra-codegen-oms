@@ -34,6 +34,16 @@ fast_code="$(code "$fast")"
 deep_code="$(code "$deep")"
 sleet_code="$(code "$sleet")"
 
+# PERF-001: the batch driver is itself a mandatory qualification surface.
+for path in 'scripts/check-task061-service-impact.py' 'scripts/test-task061-service-impact.py'; do
+  grep -Fqx "      - \"$path\"" <<<"$deep_code" || fail "Deep CI lost Task 061 PR path: $path"
+done
+for required in \
+  'python3 scripts/test-task061-service-impact.py' \
+  'cargo test --release --locked -p ams-gra-codegen-oms --test service_check_batch'; do
+  grep -Fq "$required" <<<"$deep_code" || fail "Deep CI lost batch qualification: $required"
+done
+
 for required in 'bash scripts/check-task077-fast.sh' 'bash scripts/test-task077-ci-wrappers.sh'; do
   grep -Fq "$required" <<<"$fast_code" || fail "Fast CI lost Task 077 gate: $required"
 done

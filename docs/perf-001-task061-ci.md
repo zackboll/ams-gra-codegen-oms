@@ -247,7 +247,8 @@ local passing tests alone do not establish independent-review readiness.
   Fault injection exercises **transport only**, not a substitute readiness
   algorithm.
 - `scripts/check-ci-split.sh`: pass;
-  `scripts/test-check-ci-split.sh`: pass, 210 checks including the narrow-upload
+  `scripts/test-check-ci-split.sh`: pass, 214 checks including required batch
+  control/path-filter mutations and the narrow-upload
   negative controls.
 - `AMS_GRA_REQUIRE_GNAT=1 cargo test --workspace`: pass, 180 libtest summaries,
   1,441 passed, zero failed, eight pre-existing ignored external campaigns.
