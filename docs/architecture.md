@@ -28,7 +28,7 @@ The repository deliberately separates four concerns:
 
 1. **Authoritative schema input** — UCI/OMS XSD documents.
 2. **Semantic normalization** — one language-neutral schema IR.
-3. **Language generation** — Ada/SPARK, Rust, C++, and later Python backends.
+3. **Language generation** — Ada/SPARK, Rust, C++, and the bounded Python backend.
 4. **Runtime transport/protocol** — small handwritten language runtimes that speak the existing OWP/WebSocket/JSON interface to Sleet.
 
 ## 2. Before this project
@@ -74,7 +74,7 @@ flowchart TD
     PLAN --> ADA[Ada/SPARK backend]
     PLAN --> RUST[Rust backend]
     PLAN --> CPP[C++ backend]
-    IR -. planned .-> PY[Python backend]
+    IR --> PY[Python backend: bounded model and typed service API]
 
     ADA --> AG[Generated Ada/SPARK schema bindings]
     RUST --> RG[Generated Rust schema bindings]

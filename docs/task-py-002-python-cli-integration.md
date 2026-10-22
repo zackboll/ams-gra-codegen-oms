@@ -33,6 +33,10 @@ meaning. The established additive `--overlay` path is unchanged.
 
 ## Deliberate service boundary
 
+Historical PY-002 boundary: superseded for service commands by
+[PY-003](task-py-003-python-service-api.md). The three-language coverage
+inventory remains unchanged.
+
 Python is not added to `BackendLanguage` or `BackendLanguage::ALL`. Shared
 coverage, schema impact, and authoritative service readiness continue to cover
 the independently qualified Ada/Rust/C++ backends only.

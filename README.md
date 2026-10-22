@@ -105,11 +105,11 @@ python3 -m py_compile generated/python/model.py
 Python reuses the [PY-001 model backend](docs/task-py-001-python-model-backend.md)
 and its bounded subset validation. Both explicit worlds are accepted without
 changing their semantics; unsupported constructs (including abstract values)
-fail before output files are written. Python model support is **not service
-readiness**: `service-check` and `service-generate --language python` fail
-explicitly, with no readiness verdict or generated files. Python service wrapper
-generation and authoritative readiness analysis are not implemented. The shared
-`coverage` inventory remains Ada/Rust/C++ only.
+fail before output files are written. [PY-003](docs/task-py-003-python-service-api.md)
+adds authoritative selected-service readiness and typed `service_api.py`
+generation beside `model.py`, with injected publish/subscribe adapters. Python
+OMS JSON codecs remain unavailable: OMS `--with-codec` requests fail before
+output. The existing three-language coverage inventory remains unchanged.
 
 Run
 `ams-gra-codegen-oms --help` or a command followed by `--help` for complete
@@ -306,7 +306,7 @@ Schema IR
     +----> Ada/SPARK backend
     +----> Rust backend
     +----> C++ backend
-    +----> Python backend (planned)
+    +----> Python backend (bounded model + typed service API)
     +----> offline HTML type browser (docs)
     +----> schema-diff / lint tools (planned)
 ```
