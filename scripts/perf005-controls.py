@@ -11,6 +11,7 @@ import shutil
 
 from perf005_profile import run
 from perf005_provider import verify_variant
+from perf005_sandbox import consumer_layout
 
 
 def main():
@@ -45,9 +46,11 @@ def main():
                        f"-XGNATCOLL_OBJECT_ROOT={provider}/artifacts/"]
             if policy != "normal":
                 command += ["-cargs:Ada", f"-gnatec={provider}/policy.adc"]
+            writable, protected = consumer_layout(command, consumer,
+                                                    Path(shutil.which("alr")).parent.parent,
+                                                    Path(os.environ["HOME"]))
             code, output = run(command, consumer, root / "failure", trace=True,
-                               writable=[consumer, support, Path(os.environ["HOME"]),
-                                         Path(shutil.which("alr")).parent.parent, Path("/tmp"), Path("/dev")])
+                               writable=writable, protected=protected)
             if code == 0 or b"PERF005_REQUIRED_COMPILE" not in output:
                 raise RuntimeError(f"required compiler failure did not propagate: {policy}/{kind}")
             trace = json.loads((root / "failure.profile.json").read_text())

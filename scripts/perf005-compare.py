@@ -7,7 +7,7 @@ from pathlib import Path
 import re
 
 from perf005_provider import source_identity, sources, verify_variant
-from perf005_profile import executions
+from perf005_evidence import provider_inputs, validate_cell
 
 NAMES = ["ArraySample", "Array_Encode_Hex_Binary", "Encode_Hex_Binary",
          "Array_encode_hex_binary", "Array_Decode_Hex_Binary"]
@@ -19,27 +19,6 @@ REQUIRED = {"helper_demand_consumer.adb", "service_codec.adb", "programs.ads",
 
 def normalized(text, root):
     return text.replace(str(root) + "-state", "<STATE>").replace(str(root), "<CAMPAIGN>")
-
-
-def provider_commands(trace):
-    result = []
-    for record in executions(trace):
-        argv = record["argv"]
-        if "-c" not in argv or not re.search(r"(?:^|-)gcc(?:-\d+)?$", Path(record["executable"]).name):
-            continue
-        if not any("gnatcoll_" in arg and arg.endswith((".adb", ".ads", ".c", ".s", ".S")) for arg in argv):
-            continue
-        options = []
-        for arg in argv[1:]:
-            if arg.startswith(("-gnatem=", "-specs=/tmp/", "@/tmp/", "-gnatec=/tmp/")):
-                continue
-            if arg.startswith("-gnatec="):
-                arg = "-gnatec=<POLICY>"
-            if "/alire/cache/dependencies/" in arg:
-                arg = "<DEPENDENCIES>/" + arg.split("/alire/cache/dependencies/", 1)[1]
-            options.append(arg)
-        result.append(options)
-    return sorted(result)
 
 
 def compare(baseline, candidate, traced=None, attribution=None):
@@ -111,19 +90,7 @@ def compare(baseline, candidate, traced=None, attribution=None):
         if hashlib.sha256((variant / "complete.json").read_bytes()).hexdigest() != item["manifest_sha256"]:
             raise RuntimeError("provider provenance corrupt")
         if traced:
-            trace_record = json.loads((traced / f"{cell}-build.profile.json").read_text())
-            invocations = [v["argv"] for v in trace_record["executions"]
-                           if "-c" in v["argv"] and re.search(r"(?:^|-)gcc(?:-\d+)?$", Path(v["executable"]).name)]
-            compiled = {Path(arg).name for cmd in invocations for arg in cmd if arg.endswith((".adb", ".ads", ".c"))}
-            if not REQUIRED <= compiled or any("gnatcoll" in unit for unit in compiled):
-                raise RuntimeError(f"executed compiler coverage differs: {cell}")
-            for cmd in invocations:
-                if any(Path(arg).name in REQUIRED for arg in cmd):
-                    policies = [arg for arg in cmd if arg.startswith("-gnatec=") and arg.endswith(".adc")]
-                    if (policy == "normal" and policies) or (policy != "normal" and not policies):
-                        # C is intentionally unaffected by Ada policy switches.
-                        if not any(arg.endswith(".c") for arg in cmd):
-                            raise RuntimeError("compiler policy propagation missing")
+            validate_cell(traced, label, policy)
     if traced:
         if json.loads((traced / "result.json").read_text()) != right:
             raise RuntimeError("traced positive outcomes differ")
@@ -132,8 +99,8 @@ def compare(baseline, candidate, traced=None, attribution=None):
         if not traced:
             raise RuntimeError("provider command equivalence requires traced preparation")
         for policy in POLICIES:
-            original = provider_commands(attribution / f"oam-ArraySample-{policy}-build.strace")
-            prepared = provider_commands(traced / f"provider-{policy}-build.strace")
+            original = provider_inputs(attribution / f"oam-ArraySample-{policy}-build.profile.json", attribution)
+            prepared = provider_inputs(traced / f"provider-{policy}-build.profile.json", traced)
             if len(original) != 106 or original != prepared:
                 raise RuntimeError(f"actual provider compiler options/source inventory differ: {policy}")
     for policy in POLICIES:

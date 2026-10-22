@@ -7,10 +7,22 @@ import sys
 import tempfile
 import unittest
 
-from perf005_profile import executions, phase, run
+from perf005_profile import executions, mapping_reads, phase, run
 
 
 class Accounting(unittest.TestCase):
+    def test_mapping_read_reassembles_unfinished_record(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "trace"
+            path.write_text('12 100.0 execve("/tool/gnat1", ["gnat1", "-gnatem=/tmp/map", "/case/unit.ads"], 0x1) = 0\n'
+                            '12 100.1 read(6</tmp/map>,  <unfinished ...>\n'
+                            '12 100.2 <... read resumed>"unit%s\\nunit.ads\\n/case/unit.ads\\n", 4096) = 31\n'
+                            '12 101.0 +++ exited with 0 +++\n')
+            text = "unit%s\nunit.ads\n/case/unit.ads\n"
+            # Set byte count from actual fixture content, not a guessed length.
+            path.write_text(path.read_text().replace("= 31", f"= {len(text)}"))
+            self.assertEqual(mapping_reads(path), {"/case/unit.ads\n/tmp/map": text})
+
     def test_ownership(self):
         cases = [(["/tool/bin/gcc", "-c", "/deps/gnatcoll_minimal_26/minimal/src/gnatcoll.ads"], "gnatcoll-minimal"),
                  (["/tool/bin/gcc", "-c", "/deps/gnatcoll_26/core/src/gnatcoll-json.adb"], "gnatcoll-core"),

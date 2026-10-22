@@ -8,10 +8,22 @@ import tempfile
 import unittest
 
 from perf005_provider import manifest, verify_variant
-from perf005_sandbox import restrict_writes
+from perf005_sandbox import consumer_layout, restrict_writes, validate_layout
 
 
 class Provider(unittest.TestCase):
+    def test_actual_allowlist_rejects_provider_under_tmp(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            command = [f"-XGNATCOLL_OBJECT_ROOT=/tmp/perf005/providers/Check/artifacts/"]
+            with self.assertRaisesRegex(RuntimeError, "overlap"):
+                consumer_layout(command, root / "consumer", root / "state", root / "home")
+            with self.assertRaisesRegex(RuntimeError, "overlap"):
+                validate_layout([root / "provider/subtree"], [root / "provider"])
+            (root / "alias").symlink_to(root / "provider")
+            with self.assertRaisesRegex(RuntimeError, "overlap"):
+                validate_layout([root / "alias"], [root / "provider"])
+
     def fixture(self, root):
         artifacts = root / "artifacts"
         artifacts.mkdir()
@@ -55,7 +67,8 @@ class Provider(unittest.TestCase):
                     verify_variant(root, dict(identity, **{field: wrong}))
 
     def test_sandbox_denies_provider_mutation_even_by_owner(self):
-        with tempfile.TemporaryDirectory() as directory:
+        # The actual allowlist intentionally rejects shared providers in /tmp.
+        with tempfile.TemporaryDirectory(dir=Path.home()) as directory:
             root = Path(directory)
             private = root / "private"
             private.mkdir()
@@ -74,8 +87,12 @@ except PermissionError:
 else:
     raise SystemExit('shared provider was writable')
 """
+            writable, _ = consumer_layout([f"-XGNATCOLL_OBJECT_ROOT={provider}/Check/artifacts/"],
+                                           private, root / "state", root / "home")
+            for p in writable:
+                p.mkdir(parents=True, exist_ok=True)
             result = subprocess.run([sys.executable, "-c", script, str(artifact), str(private)],
-                                    preexec_fn=lambda: restrict_writes([private]), capture_output=True)
+                                    preexec_fn=lambda: restrict_writes(writable), capture_output=True)
             self.assertEqual(result.returncode, 0, result.stderr.decode())
             self.assertEqual(artifact.read_bytes(), b"immutable")
             self.assertTrue((private / "success").is_file())

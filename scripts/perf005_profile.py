@@ -94,7 +94,49 @@ def executions(path):
     return commands
 
 
-def run(command, cwd, stem, trace=False, interval=0.02, writable=None):
+def mapping_reads(path):
+    """Capture GNAT's mapping bytes as read, before its in/out file is updated.
+
+    strace -yy names read descriptors. Match the gnat1 execution's source to
+    its read (gcc driver and gnat1 use the same source and mapping arguments).
+    An absent/truncated/partial record is not synthesized from post-build data.
+    """
+    commands = {r["pid"]: r for r in executions(path) if Path(r["executable"]).name == "gnat1"}
+    result = {}
+    pending = {}
+    for line in path.read_text().splitlines():
+        head = re.match(r'(\d+)\s+(\d+\.\d+)\s+(.*)', line)
+        if not head:
+            continue
+        pid, event = int(head[1]), head[3]
+        if event.startswith("read(") and event.endswith("<unfinished ...>"):
+            pending[pid] = event.removesuffix("<unfinished ...>")
+            continue
+        if event.startswith("<... read resumed>") and pid in pending:
+            line = f"{pid} {head[2]} " + pending.pop(pid) + event.removeprefix("<... read resumed>")
+        match = re.match(r'(\d+)\s+\d+\.\d+\s+read\(\d+<([^>]+)>,\s*("(?:[^"\\]|\\.)*"), \d+\)\s+= (\d+)', line)
+        if not match or int(match[1]) not in commands:
+            continue
+        record = commands[int(match[1])]
+        argv = record["argv"]
+        names = [a.split("=", 1)[1] for a in argv if a.startswith("-gnatem=")]
+        if match[2] not in names:
+            continue
+        sources = [a for a in argv if a.endswith((".adb", ".ads")) and Path(a).is_absolute()]
+        if len(sources) != 1:
+            continue
+        content = ast.literal_eval(match[3])
+        if len(content.encode()) != int(match[4]):
+            raise RuntimeError("truncated mapping read evidence")
+        key = sources[0] + "\n" + match[2]
+        result[key] = result.get(key, "") + content
+    return result
+
+
+def run(command, cwd, stem, trace=False, interval=0.02, writable=None, protected=()):
+    if writable:
+        from perf005_sandbox import validate_layout
+        writable = validate_layout(writable, protected)
     before = resource.getrusage(resource.RUSAGE_CHILDREN)
     started = time.monotonic()
     actual = command
@@ -107,9 +149,10 @@ def run(command, cwd, stem, trace=False, interval=0.02, writable=None):
             position = actual.index("-cargs:Ada") if "-cargs:Ada" in actual else len(actual)
             actual.insert(position, "--keep-temp-files")
         if writable:
+            validate_layout([trace_path], protected)
             trace_path.touch(exist_ok=False)
             writable = [*writable, trace_path]
-        actual = ["strace", "-f", "-ttt", "-s", "65535", "-e", "trace=execve",
+        actual = ["strace", "-f", "-ttt", "-yy", "-s", "1048576", "-e", "trace=execve,read",
                   "-o", str(trace_path), "--", *actual]
     totals = {}
     observed = {}
@@ -163,6 +206,7 @@ def run(command, cwd, stem, trace=False, interval=0.02, writable=None):
                   sampling_interval_seconds=interval if trace else None)
     if trace:
         record["executions"] = executions(trace_path)
+        record["pre_execution_mapping_inputs"] = mapping_reads(trace_path)
         record["observed_processes"] = observed
         temporary_inputs = {}
         for execution in record["executions"]:
@@ -171,6 +215,20 @@ def run(command, cwd, stem, trace=False, interval=0.02, writable=None):
                 path = Path(value)
                 if value.startswith("/tmp/GPR.") and path.is_file():
                     temporary_inputs[value] = path.read_text(errors="replace")
+        # Preserve nested response files referenced only from GCC specs as well
+        # as policy ADCs. Refuse missing inputs during later validation.
+        todo = list(temporary_inputs.values())
+        while todo:
+            text = todo.pop()
+            for name in re.findall(r"@(/[^\s]+)", text):
+                if name not in temporary_inputs and Path(name).is_file():
+                    temporary_inputs[name] = Path(name).read_text()
+                    todo.append(temporary_inputs[name])
+        for execution in record["executions"]:
+            for arg in execution["argv"]:
+                if arg.startswith("-gnatec=") and Path(arg.split("=", 1)[1]).is_file():
+                    name = arg.split("=", 1)[1]
+                    temporary_inputs[name] = Path(name).read_text()
         record["gpr_temporary_inputs"] = temporary_inputs
     Path(str(stem) + ".profile.json").write_text(json.dumps(record, indent=2) + "\n")
     return code, stem.with_suffix(".log").read_bytes()

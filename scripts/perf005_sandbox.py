@@ -8,9 +8,34 @@ Requires Landlock ABI >= 3 (Linux >= 6.2); not used by ordinary qualification.
 import ctypes
 import os
 from pathlib import Path
+import platform
+
+
+def validate_layout(writable, protected):
+    """Reject overlap in either direction, including symlink-resolved ancestors."""
+    allowed = [Path(p).resolve() for p in writable]
+    guarded = [Path(p).resolve() for p in protected]
+    for write in allowed:
+        for provider in guarded:
+            if write == provider or write in provider.parents or provider in write.parents:
+                raise RuntimeError(f"writable/provider overlap: {write} / {provider}")
+    return allowed
+
+
+def consumer_layout(command, consumer, state, home):
+    """The actual adapter/control allowlist; protect the whole provider set."""
+    roots = [arg.split("=", 1)[1] for arg in command if arg.startswith("-XGNATCOLL_OBJECT_ROOT=")]
+    if len(roots) != 1:
+        raise RuntimeError("one protected provider object root required")
+    protected = [Path(roots[0]).resolve().parent.parent]
+    writable = [consumer, consumer.parent / (consumer.name + "-support"),
+                state, home, Path("/tmp"), Path("/dev")]
+    return validate_layout(writable, protected), protected
 
 
 def restrict_writes(writable):
+    if platform.system() != "Linux" or platform.machine() != "x86_64":
+        raise RuntimeError("PERF-005 Landlock syscall adapter requires Linux x86_64")
     libc = ctypes.CDLL(None, use_errno=True)
     # x86_64 Linux syscall numbers; this pilot already requires this target.
     create, add, enforce = 444, 445, 446

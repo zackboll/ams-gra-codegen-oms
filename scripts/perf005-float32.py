@@ -12,6 +12,7 @@ import time
 
 from perf005_profile import run
 from perf005_provider import Pilot
+from perf005_sandbox import consumer_layout, validate_layout
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.dont_write_bytecode = True
@@ -50,14 +51,18 @@ def main():
         parser.error("private PERF-005 Alire state/HOME required; use perf005-state.py")
     if scratch == state or state in scratch.parents or scratch in state.parents:
         parser.error("consumer output and Alire state roots must be separate")
+    if args.reuse_provider:
+        validate_layout([state, Path(os.environ["HOME"]), Path("/tmp"), Path("/dev")],
+                        [scratch / "perf005-providers"])
 
     def checked(command, cwd, stem, expected=0):
         writable = None
+        protected = ()
         if "-XEXTERNALLY_BUILT=true" in command:
-            writable = [cwd, cwd.parent / (cwd.name + "-support"),
-                        Path(shutil.which("alr")).parent.parent, Path(os.environ["HOME"]), Path("/tmp"), Path("/dev")]
+            writable, protected = consumer_layout(command, cwd, state, Path(os.environ["HOME"]))
         code, text = run(command, cwd, stem,
-                         trace=args.trace and ("build" in command or "gprbuild" in command), writable=writable)
+                         trace=args.trace and ("build" in command or "gprbuild" in command),
+                         writable=writable, protected=protected)
         if expected is not None and code != expected:
             print(text.decode(errors="replace"), file=sys.stderr)
             raise RuntimeError(f"exit {code}, expected {expected}: {stem}")
