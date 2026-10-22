@@ -100,6 +100,9 @@ socket, serializes, or interprets an OWP frame.
 
 ## Codec and failure boundaries
 
+Historical PY-003 codec boundary below; [PY-004](task-py-004-python-oms-json-codecs.md)
+adds qualified, opt-in payload codecs without changing model/API output.
+
 There is **no Python OMS JSON codec**. For any OMS selection, `--with-codec`
 sets aggregate status and codec status to NOT READY and emits no files, even
 if model and API status are READY. Zero-OMS `--with-codec` remains successful,

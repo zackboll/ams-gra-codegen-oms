@@ -5,7 +5,9 @@
 
 mod names;
 mod service_api;
+mod service_codec;
 pub use service_api::{SERVICE_API_FILE, generate_service_api};
+pub use service_codec::{SERVICE_CODEC_FILE, generate_service_codec};
 
 use ams_gra_oms_codegen_core::{
     Backend, CodegenError, GeneratedFile, GenerationWorld, InclusiveIntegralDomain,

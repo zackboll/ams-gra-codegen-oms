@@ -1,0 +1,36 @@
+# Synthetic PY-004; repeated message occurrences and shared payloads.
+contract_version: "0.1"
+service:
+  name: Python Codec
+  version: "0.4.0"
+  kind: service
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+functions:
+  - id: codec
+    name: Codec Function
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: SelectedReport
+        topic: codec.in
+        timing: {kind: asynchronous}
+      - id: output
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: OtherReport
+        topic: codec.out
+        timing: {kind: asynchronous}
+      - id: repeat
+        kind: oms_message
+        direction: input
+        mandate: optional
+        message: SelectedReport
+        topic: codec.repeat
+        timing: {kind: asynchronous}

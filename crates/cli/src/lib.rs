@@ -123,7 +123,7 @@ LANGUAGES:
     ada
     rust
     cpp
-    python              Python 3.11+ models and typed service APIs; no OMS codec.
+    python              Python 3.11+ models, typed service APIs, bounded OMS codecs.
     Coverage continues to inventory Ada, Rust, and C++ only.
 
 GENERATION WORLDS:
@@ -200,7 +200,7 @@ LANGUAGES:
     ada
     rust
     cpp
-    python              Standalone Python 3.11+ dataclass models; no OMS codec.
+    python              Standalone Python 3.11+ dataclass models.
 
 WORLDS:
     closed-schema       You assert the supplied schema set is the complete
@@ -292,7 +292,7 @@ LANGUAGES:
     rust
     cpp
 
-    python              Python 3.11+; actual model/API readiness, no OMS codec.
+    python              Python 3.11+; actual model/API/opt-in codec readiness.
 
 WORLDS:
     closed-schema       Measure readiness assuming the supplied schema set is
@@ -359,6 +359,9 @@ WITH CODEC (--with-codec, Task 050):
     types). A codec failure is reported on its own 'service codec boundary:'
     line, never as an unsupported UCI type. Rust and the initial Ada scalar /
     concrete Record subset have generated codecs; C++ remains NOT READY.
+    Python 3.11+ supports its qualified Boolean/integer/String/enum/concrete
+    Record subset, reported as separate model, API and codec status lines.
+    Python has no Binary, temporal, floating, polymorphic or transport support.
     Member keys use each local element's own QName (bare for the OAM
     namespace, {namespace}local otherwise); an unqualified local element has
     no specified OMS JSON member name and fails closed. A Binary value is
@@ -385,7 +388,7 @@ LANGUAGES:
     rust
     cpp
 
-    python              Python 3.11+ model and typed API; no OMS codec.
+    python              Python 3.11+ model, typed API and opt-in OMS payload codec.
 
 WORLDS:
     closed-schema       You assert the supplied schema set is the complete
@@ -472,6 +475,9 @@ WITH CODEC (--with-codec, Task 050):
     Service_Codec, with typed Encode_<Payload> and Decode_<Payload> functions.
     It depends on AMS_GRA_OMS_JSON_Guard and GNATCOLL JSON 26.0.0. Invalid
     payloads raise Codec_Error; unexpected internal exceptions remain distinct.
+    A supported Python service gets standalone 'service_codec.py' with typed
+    encode_<Payload> / decode_<Payload> JSON-text entrypoints and CodecError.
+    Python model.py and service_api.py remain byte-identical with this flag.
     A service with no OMS exchange needs no codec and gets no codec file.
     Binary values with xs:hexBinary provenance (Task 052) are encoded as
     canonical uppercase hex strings and decoded with XML Schema hexBinary
@@ -1608,17 +1614,26 @@ fn python_service<W: Write>(
     output_dir: Option<&Path>,
     stdout: &mut W,
 ) -> Result<(), CliError> {
-    let readiness = ams_gra_oms_codegen_core::analyze_rendered_service_readiness(
-        &inputs.plan,
-        &inputs.schema,
-        target.world,
-        &PythonBackend,
-    )
+    let readiness = if target.with_codec {
+        ams_gra_oms_codegen_core::analyze_rendered_service_with_codec(
+            &inputs.plan,
+            &inputs.schema,
+            target.world,
+            &PythonBackend,
+            ams_gra_oms_backend_python::generate_service_codec,
+        )
+    } else {
+        ams_gra_oms_codegen_core::analyze_rendered_service_readiness(
+            &inputs.plan,
+            &inputs.schema,
+            target.world,
+            &PythonBackend,
+        )
+    }
     .map_err(|error| CliError::execution(error.to_string()))?;
     validate_generated_files(&readiness.files)?;
     let codec_required = inputs.plan.oms_message_exchange_count() > 0;
-    let codec_blocked = target.with_codec && codec_required;
-    let ready = readiness.is_ready() && !codec_blocked;
+    let ready = readiness.is_ready();
     let state = |value| if value { "READY" } else { "NOT READY" };
     let mut report = format!(
         "service contract valid\nservice: {}\nlanguage: {}\ngeneration world: {}\n\nselected oms messages: {}\nmodel status: {}\nservice api status: {}\nstatus: {}\n",
@@ -1644,11 +1659,19 @@ fn python_service<W: Write>(
         report.push_str(&format!("\nservice api boundary: {blocker}\n"));
     }
     if target.with_codec {
-        report.push_str(if codec_required {
-            "\ncodec status: NOT READY\nservice codec boundary: Python OMS JSON codecs are not implemented\n"
+        if !codec_required {
+            report.push_str("\ncodec: not required (no OMS message exchange)\n");
+        } else if !readiness.codec_measured {
+            report.push_str("\ncodec: not measured (selected model or service API is NOT READY)\n");
         } else {
-            "\ncodec: not required (no OMS message exchange)\n"
-        });
+            report.push_str(&format!(
+                "\ncodec status: {}\n",
+                state(readiness.codec_blocker.is_none())
+            ));
+            if let Some(blocker) = &readiness.codec_blocker {
+                report.push_str(&format!("service codec boundary: {blocker}\n"));
+            }
+        }
     }
     if !ready {
         write_output(stdout, &report)?;
@@ -1666,13 +1689,18 @@ fn python_service<W: Write>(
             target.language,
             target.world,
             readiness.model_file_count,
-            readiness.files.len() - readiness.model_file_count,
+            readiness.files.len() - readiness.model_file_count - readiness.codec_file_count,
             output_dir,
         );
         if target.with_codec {
-            summary.push_str(
-                "generated service codec files: 0\ncodec: not required (no OMS message exchange)\n",
-            );
+            summary.push_str(&format!(
+                "generated service codec files: {}\ngenerated {} file(s) including the codec\n",
+                readiness.codec_file_count,
+                readiness.files.len()
+            ));
+            if !codec_required {
+                summary.push_str("codec: not required (no OMS message exchange)\n");
+            }
         }
         write_output(stdout, &summary)
     } else {

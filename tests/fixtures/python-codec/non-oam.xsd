@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Independent extension-namespace case; local qualified form overrides an
+     unqualified document default, including nested Record fields. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:t="urn:python:codec"
+ xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam" targetNamespace="urn:python:codec">
+ <xs:simpleType name="Flag"><xs:restriction base="xs:boolean"/></xs:simpleType>
+ <xs:simpleType name="Text"><xs:restriction base="xs:string"/></xs:simpleType>
+ <xs:simpleType name="Signed"><xs:restriction base="xs:long"/></xs:simpleType>
+ <xs:simpleType name="Unsigned"><xs:restriction base="xs:unsignedInt"/></xs:simpleType>
+ <xs:simpleType name="Big"><xs:restriction base="xs:integer"/></xs:simpleType>
+ <xs:simpleType name="State"><xs:restriction base="xs:string">
+  <xs:enumeration value="3-D"/><xs:enumeration value="class"/><xs:enumeration value="café"/>
+ </xs:restriction></xs:simpleType>
+ <xs:complexType name="Child"><xs:sequence>
+  <xs:element name="Label" type="t:Text" form="qualified"/>
+  <xs:element name="Count" type="xs:unsignedByte" form="qualified"/>
+ </xs:sequence></xs:complexType>
+ <xs:complexType name="Empty"><xs:sequence/></xs:complexType>
+ <xs:complexType name="Payload"><xs:sequence>
+  <xs:element name="class" type="t:Flag" form="qualified"/>
+  <xs:element name="Signed" type="t:Signed" form="qualified"/>
+  <xs:element name="Unsigned" type="t:Unsigned" form="qualified"/>
+  <xs:element name="Big" type="t:Big" form="qualified"/>
+  <xs:element name="State" type="t:State" form="qualified"/>
+  <xs:element name="Child" type="t:Child" form="qualified"/>
+  <xs:element name="Empty" type="t:Empty" minOccurs="0" form="qualified"/>
+  <xs:element name="Note" type="xs:string" minOccurs="0" form="qualified"/>
+  <xs:element name="Values" type="t:Signed" minOccurs="2" maxOccurs="3" form="qualified"/>
+  <xs:element name="Flags" type="xs:boolean" minOccurs="0" maxOccurs="3" form="qualified"/>
+  <xs:element name="Children" type="t:Child" minOccurs="0" maxOccurs="2" form="qualified"/>
+ </xs:sequence></xs:complexType>
+ <xs:complexType name="UnusedUnsupported"><xs:choice>
+  <xs:element name="A" type="xs:double"/><xs:element name="B" type="xs:string"/>
+ </xs:choice></xs:complexType>
+ <xs:element name="SelectedReport" type="t:Payload" uci:version="001.000.000.000"/>
+ <xs:element name="OtherReport" type="t:Payload" uci:version="001.000.000.000"/>
+</xs:schema>
