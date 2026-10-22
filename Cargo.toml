@@ -11,6 +11,7 @@ members = [
     "crates/backend-ada",
     "crates/backend-rust",
     "crates/backend-cpp",
+    "crates/backend-python",
     "crates/cli",
     "crates/runtime-api-rust",
     "crates/runtime-rust",

@@ -39,6 +39,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ams-gra-oms-backend-python"
+version = "0.1.0"
+dependencies = [
+ "ams-gra-oms-codegen-core",
+ "ams-gra-oms-ir",
+ "ams-gra-oms-service-contract",
+ "ams-gra-oms-xsd-frontend",
+]
+
+[[package]]
 name = "ams-gra-oms-backend-rust"
 version = "0.1.0"
 dependencies = [
