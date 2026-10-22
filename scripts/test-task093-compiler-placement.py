@@ -149,4 +149,7 @@ class SubprocessDiagnostics(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    # Existing Fast CI entry point also exercises bounded scheduler controls;
+    # no workflow edits or additional hosted jobs are required.
+    from test_task093_parallel import EquivalenceControls, SchedulerControls
     unittest.main()
