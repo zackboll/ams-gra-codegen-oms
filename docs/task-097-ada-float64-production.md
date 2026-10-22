@@ -6,6 +6,9 @@ qualification results. Historical research and checkpoint records are kept
 unchanged in the other `docs/task-097-*.md` files; see
 [Historical evidence](#historical-evidence-c1c7).
 
+For the hosted Git ownership correction and ordinary PY-001 main reconciliation,
+see the [Task 097-CI-R1 corrective appendix](task-097-ci-r1.md).
+
 ## 1. Scope decision
 
 > **Deliberate scope decision (Task 097-F64).** The release qualification scope
