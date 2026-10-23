@@ -949,7 +949,7 @@ including unchanged tests, provisioning, upload and teardown.
 
 ### Local validation and hosted baseline
 
-Focused local validation passes: 24 PERF-005 Python tests, 11 placement tests,
+Focused local validation passes: 25 PERF-005 Python tests, 11 placement tests,
 CI split/layout and 218 mutation checks, Python syntax, Rust formatting and
 diff checks. A real isolated consumer smoke build using `/opt/alire/bin/alr`,
 the new `/var/tmp` state, bounded concurrency and unchanged Landlock protection
@@ -987,3 +987,13 @@ differences will be reported; a single hosted comparison is an observation, not
 a statistically controlled speedup. Numeric/environment, mixed Binary/Float32
 and portable helper steps remain byte-for-byte unchanged. Further sharding is
 not introduced here; its potential depends on the remaining hosted step times.
+
+The first integration run (`34568e29b6cfd8840c6ee0fc19a1f951f249d1d2`,
+Actions run `39895881966`) passed both optimized compiler campaigns and all
+60/40 cells with six providers, but then failed the wrapper's final Git identity
+query: container checkout ownership triggered Git's dubious-ownership check.
+The portable step was skipped, so this is **not** a qualified job/performance
+result. The correction queries source identity before campaigns using a
+command-local `safe.directory` for the exact checkout only; no global/wildcard
+Git trust is added. A focused test guards both this scope and early ordering.
+Raw failed-attempt logs and artifacts remain under `r3`, not overwritten.

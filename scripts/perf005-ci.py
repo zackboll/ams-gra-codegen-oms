@@ -24,6 +24,15 @@ from perf005_sandbox import validate_layout
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def source_identity(root):
+    # Container checkout ownership may differ from the process user. Trust only
+    # this exact caller-selected checkout for these read-only queries, not '*'
+    # or a persistent global exception. Query before expensive qualification.
+    command = ["git", "-c", f"safe.directory={root}", "rev-parse"]
+    return tuple(subprocess.check_output([*command, ref], cwd=root, text=True).strip()
+                 for ref in ("HEAD", "HEAD^{tree}"))
+
+
 def alire_locations(alr):
     text = subprocess.check_output([str(alr), "version"], text=True)
     locations = {}
@@ -53,6 +62,7 @@ def main():
     args = parser.parse_args()
     if args.compilers != ["14", "16"]:
         parser.error("CI requires both compilers, in order: --compilers 14 16")
+    commit, tree = source_identity(ROOT)
     runtime = args.runtime_root.resolve()
     evidence = args.evidence.resolve()
     state = runtime / "state"
@@ -92,9 +102,7 @@ def main():
         for campaign in sorted(campaigns.glob("task093-c4-*")):
             archive_campaign(campaign, evidence / f"{campaign.name}.tar.gz")
     after = resource.getrusage(resource.RUSAGE_CHILDREN)
-    summary = dict(completed=True, implementation_commit=subprocess.check_output(
-        ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(), source_tree=subprocess.check_output(
-        ["git", "rev-parse", "HEAD^{tree}"], cwd=ROOT, text=True).strip(),
+    summary = dict(completed=True, implementation_commit=commit, source_tree=tree,
         runner=dict(name=os.environ.get("RUNNER_NAME"), os=platform.platform(),
                     cpu_affinity=sorted(os.sched_getaffinity(0)), jobs=available_jobs(),
                     cpu_model=next((s for s in Path("/proc/cpuinfo").read_text().splitlines() if s.startswith("model name")), None)),

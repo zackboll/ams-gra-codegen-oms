@@ -22,6 +22,17 @@ def load(name):
 
 
 class CI(unittest.TestCase):
+    def test_container_git_ownership_trust_is_exact_and_nonpersistent(self):
+        module = load("perf005-ci")
+        root = Path("/exact/checkout")
+        with patch.object(module.subprocess, "check_output", side_effect=["commit\n", "tree\n"]) as run:
+            self.assertEqual(module.source_identity(root), ("commit", "tree"))
+            self.assertEqual(run.call_args_list[0].args[0],
+                             ["git", "-c", "safe.directory=/exact/checkout", "rev-parse", "HEAD"])
+            self.assertEqual(run.call_args_list[1].args[0][-1], "HEAD^{tree}")
+        source = Path(module.__file__).read_text()
+        self.assertLess(source.index("commit, tree = source_identity(ROOT)"), source.index("helper.create_state("))
+
     def test_workflow_selects_reuse_and_cannot_revert(self):
         placement = load("test-task093-compiler-placement")
         text = (ROOT / ".github/workflows/ci.yml").read_text()
