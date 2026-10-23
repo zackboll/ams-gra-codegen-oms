@@ -1,6 +1,5 @@
 """Focused production selection, fresh compilation, identity and layout gates."""
 import importlib.util
-import hashlib
 from pathlib import Path
 import subprocess
 import sys
@@ -41,11 +40,79 @@ class CI(unittest.TestCase):
                     "--alr /opt/alire/bin/alr", "test -s /tmp/task095-evidence/perf005-ci/summary.json"):
             with self.subTest(old=old), self.assertRaises(ValueError):
                 placement.placement(text.replace(old, "removed"))
-        # All steps before/after the selected helper step remain byte-for-byte.
-        # Pin R2 content, without requiring git history in shallow CI checkouts.
-        start, end = "      - name: Float32-only helper-demand naming regression", "      - name: Portable GNAT 14 helper-demand naming regression"
-        self.assertEqual(hashlib.sha256(text.split(start)[0].encode()).hexdigest(), "16e82776626a21435e9af02fb95b38402893b8516359bdefbbe9a31cd7806f24")
-        self.assertEqual(hashlib.sha256(text.split(end)[1].replace("            /tmp/task095-evidence/perf005-ci/**\n", "").encode()).hexdigest(), "b6e8e88c53b6a61073e3b3625472bcba657da16a25f6ae370381f5eb45d497fd")
+
+    def test_unrelated_workflow_maintenance_is_accepted(self):
+        placement = load("test-task093-compiler-placement")
+        text = (ROOT / ".github/workflows/ci.yml").read_text()
+        optimized = placement.job(text, "ada-float32-codec")
+        mutations = {
+            "comment": text.replace("# Task 055: Fast CI.", "# Harmless maintenance: Fast CI."),
+            "description": text.replace("Qualify Python model generation (runtime probes must execute)",
+                                        "Qualify Python model generation and runtime probes"),
+            "step": text.replace(
+                "      - name: Qualify Python model generation", "      - name: Describe Python runner\n"
+                "        run: echo 'Python qualification runner'\n      - name: Qualify Python model generation", 1),
+        }
+        for label, changed in mutations.items():
+            with self.subTest(mutation=label):
+                self.assertNotEqual(changed, text)
+                self.assertEqual(placement.job(changed, "ada-float32-codec"), optimized)
+                self.assertEqual(placement.placement(changed), placement.placement(text))
+
+    def test_float32_qualification_mutations_are_rejected(self):
+        placement = load("test-task093-compiler-placement")
+        text = (ROOT / ".github/workflows/ci.yml").read_text()
+        body = placement.job(text, "ada-float32-codec")
+        replacements = [
+            ("wrapper", "python3 scripts/perf005-ci.py", "echo removed"),
+            ("GNAT14", "--compilers 14 16", "--compilers 16"),
+            ("GNAT16", "--compilers 14 16", "--compilers 14"),
+            ("compiler order", "--compilers 14 16", "--compilers 16 14"),
+            ("partial profiles", "--compilers 14 16", "--compilers 14 16 --profiles oam"),
+            ("partial policies", "--compilers 14 16", "--compilers 14 16 --policies normal"),
+            ("Alire selection", "--alr /opt/alire/bin/alr", ""),
+            ("Alire verification", "sha256sum --check --strict", "cat"),
+            ("unsafe layout", "--runtime-root /var/tmp/perf005-float32", "--runtime-root /tmp/perf005-float32"),
+            ("overlapping evidence", "--evidence /tmp/task095-evidence/perf005-ci", "--evidence /var/tmp/perf005-float32"),
+            ("summary", "test -s /tmp/task095-evidence/perf005-ci/summary.json", "echo removed"),
+            ("manifest", "sha256sum --check --quiet /tmp/task095-evidence/perf005-ci/evidence.sha256", "echo removed"),
+            ("case-preserving upload", "            /tmp/task095-evidence/perf005-ci/**\n", ""),
+            ("upload failure", "if-no-files-found: error", "if-no-files-found: warn"),
+            ("portable GNAT14", "python3 scripts/check-task093-helper-demand.py --family portable --compiler 14", "echo removed"),
+            ("numeric corpus", "--numeric-corpus", ""),
+            ("environment", "--environment", ""),
+            ("mixed", "python3 scripts/check-task093-mixed.py", "echo removed"),
+            ("job ignored", "    runs-on:", "    continue-on-error: true\n    runs-on:"),
+            ("job skipped", "    runs-on:", "    if: false\n    runs-on:"),
+            ("step ignored", "        shell: bash", "        continue-on-error: true\n        shell: bash"),
+            ("step skipped", "        shell: bash", "        if: false\n        shell: bash"),
+            ("shell failure swallowed", "--numeric-corpus", "--numeric-corpus || true"),
+            ("errexit disabled", "          set -euo pipefail", "          set -euo pipefail\n          set +e"),
+            ("early success", "          set -euo pipefail", "          set -euo pipefail\n          exit 0"),
+        ]
+        for label, old, new in replacements:
+            with self.subTest(mutation=label):
+                self.assertIn(old, body)
+                changed = text.replace(body, body.replace(old, new))
+                self.assertNotEqual(changed, text)
+                with self.assertRaises(ValueError):
+                    placement.placement(changed)
+        for name in ("Float32-only helper-demand naming regression",
+                     "Portable GNAT 14 helper-demand naming regression",
+                     "Execute both compilers profiles and assertion policies",
+                     "Binary Float32 composition in the qualified runtime"):
+            start = body.index("      - name: " + name + "\n")
+            end = body.index("      - ", start + 1)
+            with self.subTest(removed_step=name), self.assertRaises(ValueError):
+                placement.placement(text.replace(body, body[:start] + body[end:]))
+
+    def test_wrapper_retains_provider_selection_and_complete_evidence(self):
+        source = (ROOT / "scripts/perf005-ci.py").read_text()
+        for required in ('"--ci", "--reuse-provider", "--"',
+                         'check=True', 'archive_campaign(campaign, evidence / f"{campaign.name}.tar.gz")',
+                         '(6, 60, 40, 480, 60)', '"evidence.sha256"', 'validate_layout('):
+            with self.subTest(required=required):
+                self.assertIn(required, source)
 
     def test_ci_rejects_partial_or_traced_selection_before_running(self):
         script = ROOT / "scripts/perf005-float32.py"
