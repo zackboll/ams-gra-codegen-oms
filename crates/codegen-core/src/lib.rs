@@ -15,11 +15,16 @@ pub use dependency_impact::{
 mod floating;
 mod integral;
 mod ipv6_address;
+mod rendered_service;
 mod service_api;
 mod service_codec;
 mod service_generation;
 mod service_plan;
 mod service_readiness;
+pub use rendered_service::{
+    RenderedServiceReadiness, ServiceCodecRenderer, analyze_rendered_service_readiness,
+    analyze_rendered_service_with_codec,
+};
 mod string_profile;
 mod structure;
 mod temporal;

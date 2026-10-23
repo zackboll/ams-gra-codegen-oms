@@ -1,5 +1,11 @@
 # Service Contract Integration
 
+Python selected-service generation now follows the same shared plan/projection
+and `ServiceApiModel` authority boundaries. Its readiness exercises the actual
+Python model/API renderers without extending or reordering the existing
+Ada/Rust/C++ coverage inventory. See [PY-003](task-py-003-python-service-api.md)
+for its typed adapter facade and explicit unavailable OMS codec boundary.
+
 This document records how `ams-gra-codegen-oms` consumes a **portable Service
 Contract** as a first-class code-generation input, and where the authority
 boundaries sit.

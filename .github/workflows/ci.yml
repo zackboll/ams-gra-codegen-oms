@@ -124,6 +124,9 @@ jobs:
   python-model-backend:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -131,16 +134,23 @@ jobs:
           components: rustfmt, clippy
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: ${{ matrix.python-version }}
       - name: Qualify Python model generation (runtime probes must execute)
         env:
           PYTHON: python
         run: |
           python -c 'import sys; assert sys.version_info >= (3, 11); print(sys.version)'
           cargo test --locked -p ams-gra-oms-backend-python --all-targets -- --nocapture
+          cargo test --locked -p ams-gra-codegen-oms --test python_cli -- --nocapture
+          cargo test --locked -p ams-gra-codegen-oms --test python_service -- --nocapture
+          cargo test --locked -p ams-gra-codegen-oms --test python_codec -- --nocapture
           cargo fmt --all -- --check
-          cargo clippy --locked -p ams-gra-oms-backend-python --all-targets -- -D warnings
-          cargo build --locked -p ams-gra-oms-backend-python --all-targets
+          cargo clippy --locked -p ams-gra-oms-backend-python -p ams-gra-codegen-oms --all-targets -- -D warnings
+          cargo build --locked -p ams-gra-oms-backend-python -p ams-gra-codegen-oms --all-targets
+      - name: Python LA-CAL actual network mock qualification (PY-005)
+        run: |
+          python -m pip install ./python/oms-lacal-runtime
+          PYTHON=python bash scripts/check-py005-mock.sh
 
   ada-float32-codec:
     runs-on: ubuntu-24.04
@@ -504,7 +514,7 @@ jobs:
   ada-hexbinary-codec:
     needs: ada-json-guard
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:

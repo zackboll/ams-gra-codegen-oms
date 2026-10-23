@@ -16,6 +16,19 @@ spec.loader.exec_module(layout)
 
 
 class MutationOwnership(unittest.TestCase):
+    def test_only_exact_evidence_upload_is_exempt(self):
+        original = (ROOT / ".github/workflows/deep-ci.yml").read_text()
+        for changed in [
+                original.replace('if: always()', 'if: false'),
+                original.replace('name: Preserve Task 061 per-selection evidence', 'name: Some gate'),
+                original.replace('name: Preserve Task 061 per-selection evidence\n',
+                                 'name: Preserve Task 061 per-selection evidence\n        continue-on-error: true\n'),
+                original.replace('name: task061-service-check\n', 'name: foreign-artifact\n')]:
+            with tempfile.TemporaryDirectory() as tmp:
+                path = pathlib.Path(tmp) / 'deep.yml'
+                path.write_text(changed)
+                self.assertIn('Task077B enabled hard gate: real-uci-regressions', layout.check(path))
+
     def test_actual_task092_and_overlapping_predecessor(self):
         original = (ROOT / ".github/workflows/deep-ci.yml").read_text()
         self.assertLess(original.index("  ada-repeated-choice-real-uci:"),
