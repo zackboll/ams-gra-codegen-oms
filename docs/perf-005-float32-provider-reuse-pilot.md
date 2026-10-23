@@ -2,14 +2,20 @@
 
 ## Scope and disposition
 
-**PROVIDER_REUSE_PILOT_INCOMPLETE (R2)**: mapping-specific disposition is now
+**CI_INTEGRATION_QUALIFIED (R3 implementation; final documentation-head CI
+pending)**: the hosted integration at `2fc151e99e5a7b4bab72b82d70c6073ecd3fe56d`
+passes all 12 required checks and observes a 36.1% complete-job elapsed reduction.
+This is not controlled statistical evidence. Earlier
+**PROVIDER_REUSE_PILOT_INCOMPLETE (R2)** was the pre-integration disposition:
+mapping-specific disposition is
 **PROVIDER_MAPPING_EQUIVALENCE_QUALIFIED** using complete source-read identity,
 versioned compiler semantics and unfiltered genuine-compiler replays. Consumer
 compilation, execution and isolation controls pass. Controlled repeatable
 performance remains unavailable. R1's rejection is preserved below as history;
 the appended R2 section records its resolution without relaxing correctness.
-This experiment is not production rollout, qualification of the complete
-132-build job, or an assessment that PR #106 is ready to merge. Ordinary
+R3 enables the selected hosted helper workload only; this is not broader
+provider rollout, optimization of the complete 132-build job, or an assessment
+that PR #106 is ready to merge. Ordinary
 qualification scripts, workflow allocation, generator, providers, algorithms,
 corpora, expected diagnostics and numerical checks are unchanged.
 
@@ -867,7 +873,9 @@ Evidence index, all relative to `/home/zboll/perf-005-evidence/r2`:
 
 ## PERF-005-R3 — production Float32 CI integration
 
-**Disposition: HOSTED_CI_PENDING.** This section supersedes R2's rollout scope,
+**Disposition: CI_INTEGRATION_QUALIFIED for the implementation head below;
+HOSTED_CI_PENDING for the final documentation head until its exact-head workflow
+finishes.** This section supersedes R2's rollout scope,
 not its historical measurements or mapping qualification. R3 explicitly selects
 provider reuse in the real `ada-float32-codec` job; ordinary local Task093
 qualification remains unchanged. No standalone benchmarking or eight-run
@@ -997,3 +1005,91 @@ result. The correction queries source identity before campaigns using a
 command-local `safe.directory` for the exact checkout only; no global/wildcard
 Git trust is added. A focused test guards both this scope and early ordering.
 Raw failed-attempt logs and artifacts remain under `r3`, not overwritten.
+
+### Hosted integration qualification and measured result
+
+The corrected implementation is
+`2fc151e99e5a7b4bab72b82d70c6073ecd3fe56d`, tree
+`de76005632af0785463f14ee606ed1b4a5c4b4b4`. Its complete ordinary PR CI run
+[39898354382](https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/39898354382)
+passed **all 12 existing required checks**. Every Float32 step, including the
+unchanged portable campaign, succeeded; nothing was skipped to obtain success.
+The final documentation commit does not alter implementation inputs, but its
+own exact-head hosted run must still be checked before final handoff.
+
+| Measurement | R2 hosted baseline | R3 implementation | Elapsed reduction |
+|---|---:|---:|---:|
+| Complete `ada-float32-codec` job, including upload/teardown | 78m27s (4,707 s) | **50m09s (3,009 s)** | **36.07%** |
+| Float32 helper-demand step, including setup/verification/archive | 34m34s (2,074 s) | **7m20s (440 s)** | **78.78%** |
+| Portable helper-demand, unchanged | 14m16s (856 s) | 14m32s (872 s) | -1.87% |
+| Numeric/environment/profile/policy step, unchanged | 18m23s (1,103 s) | 18m31s (1,111 s) | -0.73% |
+| Mixed Binary/Float32, unchanged | 7m07s (427 s) | 7m12s (432 s) | -1.17% |
+| Evidence upload | 3m08s (188 s) | 1m31s (91 s) | 51.60% |
+
+The complete-job reduction exceeds the **15% target** by 21.07 percentage
+points. The helper alone saves 27m14s; complete-job savings are 28m18s. Compact
+case-preserving helper archives also reduce upload/file-enumeration overhead;
+that is included in the actual job-level result, not hidden from it.
+
+The uploaded `perf005-ci/summary.json` reports:
+
+| Compiler | Campaign elapsed | Provider preparation elapsed (three variants) | Preparation child CPU |
+|---|---:|---:|---:|
+| GNAT 14.2.0 | 184.858 s | 82.248 s | 315.255 s |
+| GNAT 16.1.0 | 224.010 s | 118.417 s | 460.562 s |
+
+Combined compiler campaigns take 408.868 s. Private index/toolchain setup takes
+3.058 s (self CPU approximately 3.082 s, child CPU 0.025 s). Setup, campaigns,
+verification and archive generation take 438.560 s; the hosted step is 440 s
+including wrapper tests/shell overhead. Wrapper largest-child RSS is
+**311,616 KiB**, self RSS **220,780 KiB**; no simultaneous-tree peak claim.
+There is no matching baseline memory instrument, so no memory reduction claim.
+The uploaded artifact is **758,729,004 bytes** for all Float32 job evidence,
+including unchanged campaigns and full helper archives.
+
+Counts independently audited in uploaded archives: **six fresh provider
+constructions** (three per compiler, previously 30), **60 positive/build/bind/
+link/execution cells**, **40 negative CLI cases**, **480 forced generated/support
+compilations**. Per-consumer publication hashes and every archived provider
+artifact hash/mode are verified; all provider artifacts remain read-only.
+The original `TASK093_C4_HELPER_QUALIFICATION_COMPLETE` markers are present for
+both versions, followed by
+`PERF005_CI_COMPLETE providers=6 positive=60 negative=40 compiled=480 executed=60`.
+The portable marker also records all 30 original cells.
+
+Both observations use runner image **ubuntu-24.04 20261012.334.1**, agent
+**2.338.0**, and the same pinned Debian container/toolchain identities. They
+use different Azure instances and regions (**eastus → westus**). R3 exposes
+four CPUs, `-j4`, AMD EPYC 7763, kernel `6.17.0-1022-azure`, glibc 2.41. The
+baseline did not record CPU affinity/model, so hardware equivalence is not
+asserted. The private index snapshot is
+`fb3245c6b74b982f4e5f66bd3ee953addd61f418`; exact dependency/archive/toolchain
+pins are still enforced. Unchanged numeric/mixed/portable timings vary by
+roughly 0.7–1.9%, illustrating the limit of single-run attribution. The first
+failed attempt is not included as a passing or complete performance result.
+
+**Independent review is recommended.** The implementation is ready for review
+once final-head CI is green; no tag/release/index change is authorized.
+Further sharding could materially reduce wall time: the unchanged numeric
+step (18m31s), portable helper (14m32s) and mixed step (7m12s) now dominate.
+Separating those workloads could approach the longest shard plus repeated
+setup/upload overhead instead of their sum, but requires separate coverage,
+resource/cost and artifact-layout review. It is not part of R3, and the new
+7m20s helper is no longer the primary critical path.
+
+Additional raw evidence, relative to `/home/zboll/perf-005-evidence/r3`:
+
+- `qualified-run.json`, `qualified-jobs.json`, `qualified-float32-job.json`,
+  `qualified-float32.log`: exact implementation-head hosted results.
+- `qualified-artifact.zip`, `qualified-artifacts.json`, `qualified-artifact/`:
+  uploaded compact summary/manifest, per-compiler full archives and independent
+  coverage/provider-artifact audit.
+- `hosted-comparison.json`: machine-readable before/after complete job and
+  selected step elapsed times.
+- `hosted-integration-first.log`, `first-hosted-failed-job.json`,
+  `first-hosted-artifact-complete.zip`: retained failed integration attempt.
+- `python-tests-correction.log/status`, `placement.log/status`,
+  `ci-integrity.log/status`, `ci-split.log/status`, `fmt.log`,
+  `state-smoke.*`, `consumer-smoke*`: focused local evidence.
+- `implementation-source.txt`, `tooling.sha256`: source identities; final-head
+  snapshots and handoff record the subsequent documentation commit separately.
