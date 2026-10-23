@@ -32,3 +32,5 @@ exit {status}
         checks += 1
         print(f"PASS {label}: exit {expected}, diagnostics visible")
 print(f"TASK062 CI WRAPPER ADVERSARIAL: PASSED ({checks} checks)")
+# Scheduler-only fake subprocesses run in Fast CI; pinned production work stays Deep.
+subprocess.run(["python3", str(repo / "scripts/test-task062-service-impact.py")], check=True)
