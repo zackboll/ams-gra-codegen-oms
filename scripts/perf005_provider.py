@@ -51,11 +51,12 @@ def verify_variant(root, expected):
 
 
 class Pilot:
-    def __init__(self, scratch, compiler, checked):
+    def __init__(self, scratch, compiler, checked, jobs=0):
         self.root = scratch / "perf005-providers"
         self.scratch = scratch
         self.compiler = compiler
         self.checked = checked
+        self.jobs = jobs
         self.identity = None
         self.provenance = []
         self.validated_directories = set()
@@ -92,7 +93,7 @@ class Pilot:
             adc = variant / "policy.adc"
             contents = "" if policy == "normal" else f"pragma Assertion_Policy ({policy});\n"
             adc.write_text(contents)
-            command = ["alr", "-n", "exec", "--", "gprbuild", "-p", "-f", "-j0",
+            command = ["alr", "-n", "exec", "--", "gprbuild", "-p", "-f", f"-j{self.jobs}",
                        "-P", str(roots["gnatcoll"] / "core/gnatcoll_core.gpr"),
                        f"-XGNATCOLL_OBJECT_ROOT={artifacts}/", "-XEXTERNALLY_BUILT=false"]
             if contents:

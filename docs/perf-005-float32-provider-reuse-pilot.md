@@ -864,3 +864,126 @@ Evidence index, all relative to `/home/zboll/perf-005-evidence/r2`:
   records. `reconciliation-start.txt` and `starting-pr.json` record source/PR
   reconciliation. `implementation-source.txt`, `tooling.sha256`, and
   `final-head-hosted.json` record final source and hosted state separately.
+
+## PERF-005-R3 — production Float32 CI integration
+
+**Disposition: HOSTED_CI_PENDING.** This section supersedes R2's rollout scope,
+not its historical measurements or mapping qualification. R3 explicitly selects
+provider reuse in the real `ada-float32-codec` job; ordinary local Task093
+qualification remains unchanged. No standalone benchmarking or eight-run
+campaign is part of this integration.
+
+Starting source is qualified R2 commit
+`9f3ab383a043885ee483ad04043d84aad677d71e` (tree
+`bc8ce9c05a9b1df5084f159362ee46e32db9ea03`). Fetch confirmed a clean matching
+local/remote PR branch. Earlier evidence and other PR worktrees are preserved.
+R3 raw evidence is `/home/zboll/perf-005-evidence/r3`.
+
+### Implementation and selected workload
+
+Changed files under `/home/zboll/git/ams-gra-codegen-oms-perf-005`:
+
+- `.github/workflows/ci.yml`: only the Float32 helper step and its evidence
+  upload selection change. Both compiler campaigns execute through the new
+  explicit wrapper, with required summary/manifest checks.
+- `scripts/perf005-ci.py`: supported CI orchestration, one private Alire state,
+  lightweight setup/campaign timing, source/tree identities, case-preserving
+  archives and GitHub Actions summary. It requires both compilers in order.
+- `scripts/perf005_ci.py`: pinned toolchain/runtime identities, available CPU
+  count/quota bound, per-cell fresh forced object/ALI/bind/link verification,
+  complete coverage and immutable-provider publication checks.
+- `scripts/perf005-float32.py`: CI mode reuses the existing adapter/runner,
+  prohibits partial or traced campaigns and separates the old four-CPU
+  experiment precondition from ordinary hosted qualification.
+- `scripts/perf005-state.py`: accepts the workflow's verified Alire executable
+  instead of hard-coding `/usr/local/bin/alr`; checks its exact release hash.
+- `scripts/perf005_provider.py`: bounded CI `-jN` instead of experiment `-j0`;
+  same project, source inventory, three-variant preparation and consumption.
+- `scripts/perf005_profile.py`: records kernel child RSS even without tracing.
+- `scripts/test_perf005_ci.py` and
+  `scripts/test-task093-compiler-placement.py`: positive/negative CI selection,
+  full-matrix placement, fresh compilation, identity and layout regression gates.
+
+The actual invocation is:
+
+```sh
+python3 scripts/perf005-ci.py --compilers 14 16 --alr /opt/alire/bin/alr \
+  --runtime-root /var/tmp/perf005-float32 \
+  --evidence /tmp/task095-evidence/perf005-ci \
+  --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
+```
+
+Each compiler still covers both namespaces, five names and Normal/Check/Ignore:
+30 forced compile/bind/link/execute cells plus 20 negative CLI cases. Target
+combined counts remain **60 positive, 40 negative, 480 generated/support
+compilations, 60 executions**, with **60 → 6 provider constructions**.
+No `-f`, numerical expectation, assertion policy or diagnostic is removed.
+Provider preparation/consumption errors and missing verification artifacts fail
+the step; there is no unverified fallback.
+
+The private state and campaign outputs are disjoint beneath
+`/var/tmp/perf005-float32`. `/tmp` remains writable for compiler temporaries but
+is not an ancestor of protected providers. The existing Landlock allowlist and
+overlap checks are unchanged. Provider output modes remain read-only and full
+artifact hashes are checked before/after every consumption. A single private
+index/toolchain-only copy is reused sequentially across both compilers; no
+compiled provider artifact is seeded. Immutable toolchains already installed
+by the unchanged earlier job steps are not downloaded again.
+
+Compilation concurrency is bounded by the process affinity and any exposed
+cgroup CPU quota. No exclusive-core allocation is required for CI. R2's
+source-backed mapping semantics remain valid: concurrency can change recycled
+runtime-cache map histories but not the required verified sources. No compiler
+option/source/preparation-project change requires replaying 1,068 compilations;
+the CI instrumentation does not filter or rewrite mapping inputs.
+
+Full campaign evidence, including logs, commands, source manifests, provider
+publication records, generated sources and objects, is retained in per-compiler
+`.tar.gz` files so upload-artifact cannot merge case-distinct naming cases.
+Compact JSON records include provider preparation elapsed/CPU, compiler campaign
+elapsed/CPU, setup/archival-inclusive helper duration, peak child/self RSS,
+allocation, index/Alire and final source identities. Peak child RSS is the
+kernel largest-child high-water mark, not simultaneous process-tree memory.
+The complete job duration is measured from the hosted Jobs API after completion,
+including unchanged tests, provisioning, upload and teardown.
+
+### Local validation and hosted baseline
+
+Focused local validation passes: 24 PERF-005 Python tests, 11 placement tests,
+CI split/layout and 218 mutation checks, Python syntax, Rust formatting and
+diff checks. A real isolated consumer smoke build using `/opt/alire/bin/alr`,
+the new `/var/tmp` state, bounded concurrency and unchanged Landlock protection
+compiled all eight generated/support sources freshly and bound/linked normally.
+No full local campaign or standalone performance run was repeated.
+
+Reproduction (within the pinned task container where Landlock/strace are
+available; host `/tmp` has no free inodes so tests use task-owned temporary space):
+
+```sh
+R=/home/zboll/git/ams-gra-codegen-oms-perf-005
+export PYTHONDONTWRITEBYTECODE=1 TMPDIR=/home/zboll/perf-005-evidence/tmp
+python3 -m unittest discover -s "$R/scripts" -p 'test_perf005*.py'
+python3 "$R/scripts/test-task093-compiler-placement.py"
+bash "$R/scripts/check-ci-split.sh"
+bash "$R/scripts/test-check-ci-split.sh"
+(cd "$R" && cargo fmt --all -- --check && git diff --check)
+```
+
+Baseline hosted run:
+https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/39833762447
+at the R2 head, all 12 checks successful. Retained Jobs API and full job log:
+`r3/hosted-baseline-job.json`, `r3/hosted-baseline.log`.
+
+| Hosted measurement | Before integration |
+|---|---:|
+| Complete Float32 job | 4,707 s (78m 27s) |
+| Float32 helper-demand step | 2,074 s (34m 34s) |
+| Portable helper-demand step (unchanged) | 856 s (14m 16s) |
+
+The target is at least 15% less **complete job** elapsed time (at most 4,000.95
+seconds). Final-head hosted coverage and actual elapsed results must be observed
+before upgrading this section's integration disposition. Runner/provisioning
+differences will be reported; a single hosted comparison is an observation, not
+a statistically controlled speedup. Numeric/environment, mixed Binary/Float32
+and portable helper steps remain byte-for-byte unchanged. Further sharding is
+not introduced here; its potential depends on the remaining hosted step times.

@@ -132,10 +132,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for compiler in 14 16; do
-            python3 scripts/check-task093-helper-demand.py --family float32 --compiler "$compiler" --scratch "/tmp/task095-evidence/task093-c4-$compiler" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
-            sha256sum --check --quiet "/tmp/task095-evidence/task093-c4-$compiler/sources.sha256"
-          done
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts -p 'test_perf005_ci.py'
+          python3 scripts/perf005-ci.py --compilers 14 16 --alr /opt/alire/bin/alr --runtime-root /var/tmp/perf005-float32 --evidence /tmp/task095-evidence/perf005-ci --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
+          test -s /tmp/task095-evidence/perf005-ci/summary.json
+          sha256sum --check --quiet /tmp/task095-evidence/perf005-ci/evidence.sha256
       - name: Portable GNAT 14 helper-demand naming regression
         shell: bash
         run: |
@@ -162,6 +162,7 @@ jobs:
             /tmp/task095-evidence/*/consumer/*.c
             /tmp/task095-evidence/task093-mixed-*/**
             /tmp/task095-evidence/task093-c4-*/**
+            /tmp/task095-evidence/perf005-ci/**
             /tmp/task095-evidence/task093-c5-portable-14/**
           if-no-files-found: error
   ada-repeated-temporal-codec:

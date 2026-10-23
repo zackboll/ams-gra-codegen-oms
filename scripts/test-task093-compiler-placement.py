@@ -42,6 +42,17 @@ def placement(text):
                 if required not in body:
                     raise ValueError("missing qualified setup/evidence: " + required)
         for step in re.split(r"(?m)^      - ", body)[1:]:
+            if "Float32-only helper-demand naming regression" in step:
+                required = ("python3 scripts/perf005-ci.py --compilers 14 16", "--alr /opt/alire/bin/alr",
+                            "--runtime-root /var/tmp/perf005-float32", "--evidence /tmp/task095-evidence/perf005-ci",
+                            "test -s /tmp/task095-evidence/perf005-ci/summary.json",
+                            "sha256sum --check --quiet /tmp/task095-evidence/perf005-ci/evidence.sha256")
+                if (name != "ada-float32-codec" or any(s not in step for s in required)
+                        or any(s in step for s in ("continue-on-error", "--profiles", "--policies", "--red",
+                                                   "scripts/check-task093-helper-demand.py"))):
+                    raise ValueError("qualified optimized Float32 CI selection missing/weakened")
+                actual.extend((name, "float32", c) for c in ("14", "16"))
+                continue
             if "scripts/check-task093-helper-demand.py" not in step:
                 continue
             if "continue-on-error" in step or "--profiles" in step or "--policies" in step or "--red" in step:
@@ -92,7 +103,7 @@ class CompilerPlacement(unittest.TestCase):
 
     def test_float32_compilers_cannot_disappear(self):
         for compiler in ["14", "16"]:
-            text = self.text.replace("for compiler in 14 16; do", f"for compiler in {compiler}; do")
+            text = self.text.replace("--compilers 14 16", f"--compilers {compiler}")
             with self.subTest(compiler=compiler), self.assertRaises(ValueError):
                 placement(text)
 

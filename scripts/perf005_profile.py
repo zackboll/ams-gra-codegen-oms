@@ -200,6 +200,7 @@ def run(command, cwd, stem, trace=False, interval=0.02, writable=None, protected
     cpu = after.ru_utime + after.ru_stime - before.ru_utime - before.ru_stime
     record = dict(command=command, cwd=str(cwd), exit=code,
                   elapsed_seconds=time.monotonic() - started, cpu_seconds=cpu,
+                  child_maxrss_kib=after.ru_maxrss,
                   sampled_self_cpu_seconds=totals,
                   residual_cpu_seconds=cpu - sum(totals.values()),
                   sampled_peak_tree_rss_kib=peak if trace else None,
