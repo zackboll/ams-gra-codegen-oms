@@ -1093,3 +1093,107 @@ Additional raw evidence, relative to `/home/zboll/perf-005-evidence/r3`:
   `state-smoke.*`, `consumer-smoke*`: focused local evidence.
 - `implementation-source.txt`, `tooling.sha256`: source identities; final-head
   snapshots and handoff record the subsequent documentation commit separately.
+
+## PERF-005-R4 independent-review correction
+
+### Source reconciliation and focused correction
+
+PR #109 was verified open, unmerged, with auto-merge disabled and a clean
+existing worktree. Local, remote and PR heads agreed before changes. No other
+work had addressed [the P2 finding](https://github.com/zackboll/ams-gra-codegen-oms/pull/109#discussion_r4356639222).
+Earlier R1/R2/R3 reports and raw evidence remain intact; new evidence is under
+`/home/zboll/perf-005-evidence/r4`.
+
+| Identity | Commit | Tree |
+|---|---|---|
+| Starting PR | `fce503a4ef55fa1c3d87f133831e8245b9c36567` | `5a6b228434c77725e7bf05848d20a697edd44b9a` |
+| Corrective implementation | `4b92364ae853c1de2f8d52b4b16ca719977fc628` | `af926190c033df85f910b454edec26f264d7d496` |
+| Latest incorporated main | `73b555843dff36c1364674b558241823cfb76375` | `38f790f0c02fc8992a060dc3274edabcb7a7212d` |
+| Merged-main integration | `72670f82d0694893edb4311234d46a0b6ce2f3da` | `b5e318e61f11a5edc3bb87fb4cb938a67b59e1b2` |
+
+The normal, conflict-free merge retains both parents and the entire prior
+PERF-005 implementation ancestry. All 11 files changed by PERF-003/PERF-004
+relative to the previous base are byte-identical to incorporated main.
+`r4/integrated-scope.json` records ancestry, preservation and the complete
+intended PERF-005 PR file inventory.
+
+Corrective code changes are **only**:
+
+- `scripts/test_perf005_ci.py`: remove both opaque whole-workflow SHA-256
+  assertions and add focused acceptance/rejection controls.
+- `scripts/test-task093-compiler-placement.py`: extend the existing bounded,
+  standard-library workflow reader with named Float32 qualification checks.
+
+This appended report is the only additional R4 repository file change. The
+actual workflow, production generator/runtime, provider compilation, mapping
+equivalence, identity checks, Landlock, policies and forced compilation remain
+unchanged from the starting qualified PR. No dependency was added.
+
+Targeted checks protect Float32 placement, pinned Debian/GNAT setup, verified
+Alire installation/selection, explicit ordered GNAT14/16 wrapper execution,
+disjoint runtime/evidence roots, summary/manifest checks, provider-reuse
+selection and the complete count contract. They preserve portable GNAT14,
+numeric/environment/profile/rounding/identifier and mixed Binary/Float32
+campaigns, plus required case-preserving evidence uploads. Conditions,
+continue-on-error, swallowed failures, disabled errexit and early successful
+exits are rejected. These are bounded layout checks, not a general YAML/shell
+interpreter. Unrelated jobs and comments are no longer hashed or frozen.
+
+### Local qualification and mutation controls
+
+The correction and the merged tree each pass:
+
+- All **28** `test_perf005*.py` tests in the existing qualified `perf-005`
+  container, including actual Landlock controls.
+- All **11** compiler-placement tests, retaining the 120-execution matrix.
+- CI split guard and full `test-check-ci-split.sh` inventory (**218 checks**).
+- Both layout ownership regressions and the separately invoked documented
+  `check-task077b-ci-layout.py --self-test deep guard fast sleet` (**54 cases**,
+  including healthy control). Existing placement/layout mutations remain.
+- `cargo fmt --all -- --check` and `git diff --check`.
+
+Three positive workflow mutations pass: unrelated comment, unrelated Python
+qualification description, and unrelated Python-job step. Each asserts that
+the optimized Float32 job is byte-for-byte unchanged. **29 negative workflow
+mutations** reject wrapper/portable/numeric/mixed step deletion; either compiler
+or reversed order; partial profiles/policies; missing Alire selection/hash
+verification; unsafe/overlapping roots; missing summary/manifest; removed archive
+upload or weakened upload error handling; numeric/environment/mixed removal;
+job/step conditions or continue-on-error; swallowed shell errors, disabled
+errexit and early success. The previous five selection rejection controls remain.
+
+Merged-source checks also pass Task062's six wrapper controls and 13 scheduler
+tests (also 13 under `python3 -O`), Task060's 96 workflow controls, Task061's four
+wrapper and six batch-transport tests, and both GNAT-required Task062/Task065
+Fast wrappers. Rust **1.95.0** workspace all-target checking, Clippy with warnings
+denied and the full GNAT-required workspace suite pass using a fresh R4 target
+directory. Logs and individual exit statuses are retained as `r4/integrated-*`;
+the broad suite is `r4/integrated-workspace-test.log`.
+
+The first host-only PERF-005 test attempt failed two existing trace tests
+because host `strace` is absent; it is retained, not counted as a pass. The
+complete suite passes in the existing container with `strace`. No tests were
+skipped or weakened. Local pinned UCI/Sleet/complete dual-compiler Float32
+campaigns are not claimed anew; exact-head hosted CI owns those gates. No new
+mapping research or controlled timing campaign was performed.
+
+### Exact-head hosted gate and handoff
+
+Status at preparation: **HOSTED_CI_PENDING**. The documentation-only follow-up
+commit is identified by `r4/final-source.txt`; its own commit/tree cannot be
+self-embedded in this file. Exact-final-head run IDs and conclusions are
+recorded in the existing PR description/handoff and `r4/final-head-runs.json`,
+not inferred from historical success. A later documentation commit must itself
+receive exact-head qualification.
+
+Historical runs **39903862338** (12/12 ordinary CI) and **39903862285** (Deep CI)
+remain successful observations on the starting head only. Its complete Float32
+job was **39m06s**, versus **78m27s** baseline (**50.16%** reduction); six fresh
+providers, 60 positive cells, 40 negative CLI cases and 480 forced compilations
+were verified. These do **not** qualify the R4 combined tree.
+
+The original independent-review thread is left unresolved for the reviewer,
+with correction evidence and an explicit re-review request. No approval, merge,
+auto-merge, tag, release or Alire-index change is part of R4. Until all 12
+ordinary jobs, complete Float32 evidence and Deep CI pass on the exact final
+head, this PR is not declared ready to merge.
