@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import os
 import pathlib
 import shutil
 import subprocess
@@ -36,6 +37,9 @@ def main():
     parser.add_argument("--identifiers", action="store_true", help="generated C2 adversarial type names")
     parser.add_argument("--optimized", action="store_true", help="additional -O2 environment execution")
     args = parser.parse_args()
+    build_jobs = int(os.environ.get("OMS_CI_ADA_BUILD_JOBS", "1"))
+    if not 1 <= build_jobs <= 4:
+        parser.error("OMS_CI_ADA_BUILD_JOBS must be between 1 and 4")
     scratch = args.scratch.resolve()
     scratch.mkdir(parents=True, exist_ok=False)
     oracle = None
@@ -162,7 +166,7 @@ def main():
              f"{compiler}={version}", "gprbuild=26.0.1"], consumer, scratch / "toolchain.log")
     cells = []
     for policy in ["Normal", "Check", "Ignore"]:
-        build = ["alr", "-n", "build", "--", "-f"]
+        build = ["alr", "-n", "build", "--", "-f", f"-j{build_jobs}"]
         if policy != "Normal":
             adc = scratch / f"{policy}.adc"
             adc.write_text(f"pragma Assertion_Policy ({policy});\n")

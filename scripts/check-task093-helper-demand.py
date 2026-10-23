@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -51,6 +52,9 @@ def main():
     parser.add_argument("--policies", nargs="+", choices=["normal", "Check", "Ignore"], default=["normal", "Check", "Ignore"])
     parser.add_argument("--red", action="store_true", help="record intentional reviewed-head compile failures for the trigger")
     args = parser.parse_args()
+    build_jobs = int(os.environ.get("OMS_CI_ADA_BUILD_JOBS", "1"))
+    if not 1 <= build_jobs <= 4:
+        parser.error("OMS_CI_ADA_BUILD_JOBS must be between 1 and 4")
     scratch = args.scratch.resolve()
     scratch.mkdir(parents=True, exist_ok=False)
     compiler = "gnat_external" if args.compiler == "14" else "gnat_native"
@@ -160,7 +164,7 @@ def main():
             run(["alr", "-n", "--force", "toolchain", "--select", "--local", f"{compiler}={version}", "gprbuild=26.0.1"], directory, f"{label}-toolchain")
             for policy in args.policies:
                 cell = f"{label}-{policy}"
-                command = ["alr", "-n", "build", "--", "-f"]
+                command = ["alr", "-n", "build", "--", "-f", f"-j{build_jobs}"]
                 if policy != "normal":
                     adc = scratch / f"{cell}.adc"
                     adc.write_text(f"pragma Assertion_Policy ({policy});\n")

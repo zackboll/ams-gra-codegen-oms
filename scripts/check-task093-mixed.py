@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import os
 import pathlib
 import shutil
 import subprocess
@@ -28,6 +29,9 @@ def main():
     parser.add_argument("--profiles", nargs="+", choices=["oam", "qualified"], default=["oam", "qualified"])
     parser.add_argument("--policies", nargs="+", choices=["normal", "Check", "Ignore"], default=["normal", "Check", "Ignore"])
     args = parser.parse_args()
+    build_jobs = int(os.environ.get("OMS_CI_ADA_BUILD_JOBS", "1"))
+    if not 1 <= build_jobs <= 4:
+        parser.error("OMS_CI_ADA_BUILD_JOBS must be between 1 and 4")
     scratch = args.scratch.resolve()
     scratch.mkdir(parents=True, exist_ok=False)
     if subprocess.check_output(["getconf", "GNU_LIBC_VERSION"]).strip() != b"glibc 2.41" or subprocess.check_output(["uname", "-m"]).strip() != b"x86_64":
@@ -115,7 +119,7 @@ def main():
         checked(["alr", "-n", "--force", "toolchain", "--select", "--local", f"{compiler}={version}", "gprbuild=26.0.1"], directory, scratch / f"{profile}-toolchain")
         for policy in args.policies:
             label = f"{profile}-{policy}"
-            command = ["alr", "-n", "build", "--", "-f"]
+            command = ["alr", "-n", "build", "--", "-f", f"-j{build_jobs}"]
             if policy != "normal":
                 adc = scratch / f"{label}.adc"
                 adc.write_text(f"pragma Assertion_Policy ({policy});\n")

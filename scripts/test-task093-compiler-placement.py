@@ -16,6 +16,9 @@ sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location("helper_demand", ROOT / "scripts/check-task093-helper-demand.py")
 runner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(runner)
+ci_spec = importlib.util.spec_from_file_location("runner_ci", ROOT / "scripts/test-ci-runner001.py")
+runner_ci = importlib.util.module_from_spec(ci_spec)
+ci_spec.loader.exec_module(runner_ci)
 
 
 def job(text, name):
@@ -29,7 +32,13 @@ def placement(text):
     actual = []
     for name in ["ada-hexbinary-codec", "ada-float32-codec"]:
         body = job(text, name)
-        if "runs-on: ubuntu-24.04" not in body:
+        if name == "ada-float32-codec":
+            # Permit only the exact manual-only contract; the pinned container
+            # remains mandatory below, regardless of runner selection.
+            for event in ["pull_request", "push", "workflow_dispatch"]:
+                if runner_ci.route(text, event, False, "true") != ["ubuntu-24.04"]:
+                    raise ValueError("unexpected runner")
+        elif "runs-on: ubuntu-24.04" not in body:
             raise ValueError("unexpected runner")
         if name == "ada-hexbinary-codec" and "container:" in body:
             raise ValueError("portable compiler 16 must remain on Ubuntu")

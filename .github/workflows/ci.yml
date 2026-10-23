@@ -12,6 +12,11 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      ryzen_qualification:
+        description: 'Operator-only full Float32 qualification; requires approved isolation and OMS_RYZEN_MANUAL_APPROVED=true'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -56,9 +61,19 @@ jobs:
           PYTHON=python bash scripts/check-py005-mock.sh
 
   ada-float32-codec:
-    runs-on: ubuntu-24.04
+    # This is NOT a security boundary against a PR that edits workflows.
+    # Do not register a persistent public-repo runner without approved isolation.
+    # All PRs (including same-repository PRs), pushes and ordinary dispatches
+    # stay hosted. The operator arms the variable only for an online runner.
+    runs-on: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.ryzen_qualification == true && vars.OMS_RYZEN_MANUAL_APPROVED == 'true' && '["self-hosted","linux","x64","ryzen7945hx-test","oms-ci-trusted"]' || '["ubuntu-24.04"]') }}
     container:
       image: debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5
+    env:
+      CARGO_BUILD_JOBS: '4'
+      OMS_CI_ADA_BUILD_JOBS: '4'
+    defaults:
+      run:
+        shell: bash scripts/ci-runner001-measure.sh {0}
     timeout-minutes: 90
     steps:
       - name: Provision and verify qualified target
@@ -66,7 +81,7 @@ jobs:
         run: |
           set -euo pipefail
           apt-get update
-          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14 locales
+          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14 locales time
           test "$(uname -m)" = x86_64
           test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.41'
           localedef -i de_DE -f UTF-8 de_DE.UTF-8
@@ -79,9 +94,33 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Verify exact source and runner smoke test
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          QUALIFICATION_REQUESTED: ${{ github.event_name == 'workflow_dispatch' && inputs.ryzen_qualification == true && vars.OMS_RYZEN_MANUAL_APPROVED == 'true' }}
+          SELECTED_RUNNER: ${{ runner.name }}
+        run: |
+          set -euo pipefail
+          test "$(git -c safe.directory="$GITHUB_WORKSPACE" rev-parse HEAD)" = "$EXPECTED_SHA"
+          if test "$QUALIFICATION_REQUESTED" = true; then
+            test "$SELECTED_RUNNER" = ryzen7945hx-01
+          fi
+          python3 - <<'PY'
+          import json, os, pathlib, platform
+          evidence = pathlib.Path('/tmp/task095-evidence/ci-runner001')
+          evidence.mkdir(parents=True, exist_ok=True)
+          (evidence / 'identity.json').write_text(json.dumps({
+              'source_sha': os.environ['EXPECTED_SHA'],
+              'workflow_sha': os.environ['GITHUB_SHA'],
+              'runner': os.environ['SELECTED_RUNNER'],
+              'machine': platform.machine(),
+              'cargo_build_jobs': os.environ['CARGO_BUILD_JOBS'],
+              'run_url': f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
+          }, indent=2) + '\n')
+          PY
       - uses: dtolnay/rust-toolchain@1.95.0
       - name: Install verified Alire 2.1.1
-        shell: bash
         run: |
           set -euo pipefail
           curl --fail --location --retry 3 --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
@@ -92,7 +131,6 @@ jobs:
       - name: Build exact-head production generator
         run: cargo +1.95.0 build --locked -p ams-gra-codegen-oms
       - name: Verify ABI environment and bridge failures
-        shell: bash
         run: |
           set -euo pipefail
           gcc -std=c11 -O0 -Wall -Wextra -Werror ada/oms-json-support/float32/ams_gra_float32.c tests/ada-float32-probe/bridge_controls.c -Wl,--wrap=newlocale -Wl,--wrap=gnu_get_libc_version -lm -o /tmp/task095-evidence/bridge-controls
@@ -105,7 +143,6 @@ jobs:
             grep -Fx "TASK095_C2_C_ENVIRONMENT_COMPLETE mode=$mode checks=$count" "/tmp/task095-evidence/environment-$mode.log"
           done
       - name: Execute both compilers profiles and assertion policies
-        shell: bash
         run: |
           set -euo pipefail
           for compiler in 14 16; do
@@ -120,7 +157,6 @@ jobs:
       - name: Independent x87 MXCSR C rounding matrix O0 and O2
         run: python3 scripts/check-task095-rounding.py --scratch /tmp/task095-evidence/c-rounding
       - name: Binary Float32 composition in the qualified runtime
-        shell: bash
         run: |
           set -euo pipefail
           for compiler in 14 16; do
@@ -129,7 +165,6 @@ jobs:
             test -s "/tmp/task095-evidence/task093-mixed-$compiler/result.json"
           done
       - name: Float32-only helper-demand naming regression
-        shell: bash
         run: |
           set -euo pipefail
           for compiler in 14 16; do
@@ -137,7 +172,6 @@ jobs:
             sha256sum --check --quiet "/tmp/task095-evidence/task093-c4-$compiler/sources.sha256"
           done
       - name: Portable GNAT 14 helper-demand naming regression
-        shell: bash
         run: |
           set -euo pipefail
           python3 scripts/check-task093-helper-demand.py --family portable --compiler 14 --scratch /tmp/task095-evidence/task093-c5-portable-14 --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
@@ -163,6 +197,7 @@ jobs:
             /tmp/task095-evidence/task093-mixed-*/**
             /tmp/task095-evidence/task093-c4-*/**
             /tmp/task095-evidence/task093-c5-portable-14/**
+            /tmp/task095-evidence/ci-runner001/**
           if-no-files-found: error
   ada-repeated-temporal-codec:
     needs: ada-json-guard
@@ -546,7 +581,7 @@ jobs:
       - name: Install GNAT
         run: |
           sudo apt-get update
-          sudo apt-get install -y gnat
+          sudo apt-get install -y gnat time
       # Hard gate: no `|| true`. If GNAT is absent or broken, CI fails here
       # rather than silently degrading the Ada regressions into no-ops. The
       # version is printed so the log records which toolchain ran the tests.
@@ -1199,6 +1234,7 @@ jobs:
           set -euo pipefail
           scripts/check-ci-split.sh
           scripts/test-check-ci-split.sh
+          python3 scripts/test-ci-runner001.py
           python3 scripts/test-task060-ci-wrappers.py
           python3 scripts/test-task061-ci-wrappers.py
       # `AMS_GRA_REQUIRE_GNAT` turns the Ada probes' developer-machine skip
