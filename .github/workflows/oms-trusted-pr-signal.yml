@@ -1,0 +1,12 @@
+name: OMS Trusted PR Signal
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+permissions: {}
+jobs:
+  signal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Authenticated PR lifecycle signal only
+        run: printf '%s\n' 'PR signal complete; authorization is performed separately.'
