@@ -1,0 +1,17 @@
+name: CI002 Security Contracts
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - run: python3 -m pip install --no-binary PyYAML --require-hashes -r scripts/ci002/requirements.txt
+      - run: python3 -m unittest discover -s scripts/ci002 -p 'test_*.py' -v
