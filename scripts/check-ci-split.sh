@@ -226,7 +226,8 @@ for required in \
   fi
 done
 
-# Per-job release ownership and complete inherited qualification payloads.
+# PERF-006: independent three-shard release ownership, unique campaigns,
+# exact inherited payloads, GNAT/CLI preparation and Task061 evidence.
 python3 "$repo/scripts/check-task077b-ci-layout.py" "$deep" ||
   fail "Deep CI bounded real-UCI layout failed"
 

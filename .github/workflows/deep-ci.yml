@@ -155,8 +155,12 @@ jobs:
   real-uci-regressions:
     runs-on: ubuntu-latest
     timeout-minutes: 240
+    env:
+      TMPDIR: ${{ runner.temp }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: dtolnay/rust-toolchain@stable
       - name: Install GNAT
         run: |
@@ -304,6 +308,44 @@ jobs:
           grep -Fqx 'UCI 2.6 DURATION MESSAGE IMPACT: RECORDED' <<<"$output"
           grep -Eqx '(test task057_real_uci_category_a_log_generates_and_compiles \.\.\. )?UCI 2\.5 REAL CATEGORY-A DURATION SERVICE: PASSED' <<<"$output"
           grep -qE '^test result: ok\. 4 passed' <<<"$output"
+
+  # Independent ASCII runner: fresh verified inputs and release CLI.
+  real-uci-regressions-ascii:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      TMPDIR: ${{ runner.temp }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install GNAT
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnat
+      # Hard gate, as in Fast CI: no `|| true`.
+      - name: Verify GNAT availability
+        run: |
+          command -v gnatmake
+          gnatmake --version
+      # Fetch each pinned release ONCE for the whole job. Both scripts verify
+      # the tag revision and root SHA-256 and fail hard on any mismatch; the
+      # tests verify the root SHA-256 again before using it.
+      - name: Fetch pinned UCI 2.5 and 2.6 (once)
+        run: |
+          set -euo pipefail
+          UCI25="$(scripts/fetch-pinned-uci-2.5.sh "$RUNNER_TEMP/uci-2.5")"
+          UCI26="$(scripts/fetch-pinned-uci-2.6.sh "$RUNNER_TEMP/uci-2.6")"
+          echo "AMS_GRA_UCI_2_5_ROOT=$UCI25" >> "$GITHUB_ENV"
+          echo "AMS_GRA_UCI_2_6_ROOT=$UCI26" >> "$GITHUB_ENV"
+      - name: Prepare regression inputs and release CLI
+        run: |
+          set -euo pipefail
+          test -n "$AMS_GRA_UCI_2_5_ROOT"
+          test -n "$AMS_GRA_UCI_2_6_ROOT"
+          cargo fetch --locked
+          cargo build --release --locked -p ams-gra-codegen-oms
       # Task 058: fresh bounded-ASCII String inventory (the exact 61-member
       # set per release, 19 alphabets, three still-unsupported Unicode neighbours
       # after Task 062 admits IPv6), the
@@ -343,6 +385,44 @@ jobs:
           grep -Fqx 'UCI 2.6 STRUCTURED ASCII MESSAGE IMPACT: RECORDED' <<<"$output"
           grep -qE '^test result: ok\. 2 passed' <<<"$output"
 
+
+  # Admission and AFTER remain one mandatory gate on an independent runner.
+  real-uci-regressions-alternating:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      TMPDIR: ${{ runner.temp }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install GNAT
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnat
+      # Hard gate, as in Fast CI: no `|| true`.
+      - name: Verify GNAT availability
+        run: |
+          command -v gnatmake
+          gnatmake --version
+      # Fetch each pinned release ONCE for the whole job. Both scripts verify
+      # the tag revision and root SHA-256 and fail hard on any mismatch; the
+      # tests verify the root SHA-256 again before using it.
+      - name: Fetch pinned UCI 2.5 and 2.6 (once)
+        run: |
+          set -euo pipefail
+          UCI25="$(scripts/fetch-pinned-uci-2.5.sh "$RUNNER_TEMP/uci-2.5")"
+          UCI26="$(scripts/fetch-pinned-uci-2.6.sh "$RUNNER_TEMP/uci-2.6")"
+          echo "AMS_GRA_UCI_2_5_ROOT=$UCI25" >> "$GITHUB_ENV"
+          echo "AMS_GRA_UCI_2_6_ROOT=$UCI26" >> "$GITHUB_ENV"
+      - name: Prepare regression inputs and release CLI
+        run: |
+          set -euo pipefail
+          test -n "$AMS_GRA_UCI_2_5_ROOT"
+          test -n "$AMS_GRA_UCI_2_6_ROOT"
+          cargo fetch --locked
+          cargo build --release --locked -p ams-gra-codegen-oms
       - name: Real UCI alternating ASCII evidence (Task 060, must execute)
         run: |
           set -euo pipefail

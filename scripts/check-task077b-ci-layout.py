@@ -9,6 +9,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from collections import Counter
 from pathlib import Path
 
 # Normalized run bodies at cf132afc4d4cd45d0511912f5f1d3c18066357ce.
@@ -55,42 +56,20 @@ GATES = [('Named TimeZulu pinned inventory and impact (Task 061)',
   'real-uci-regressions',
   'd5990a59157a025d95e19826bbbd379956c5a9fd4043179d26d6bcd7d8a3bf66'),
  ('Real UCI bounded-ASCII String inventory and message impact (Task 058, must execute)',
-  'real-uci-regressions',
+  'real-uci-regressions-ascii',
   'b39b1a9bb129a3e0cb32999b673e6159c79df5d4695d5bd0131dba28e716e966'),
  ('Real UCI structured ASCII evidence (Task 059, must execute)',
-  'real-uci-regressions',
+  'real-uci-regressions-ascii',
   'ded6e2dbd4cfee35b9a2ca0d651dd0c4580cce3d441470c3a86fec092e4e5231'),
  ('Real UCI alternating ASCII evidence (Task 060, must execute)',
-  'real-uci-regressions',
+  'real-uci-regressions-alternating',
   '808d7473c6591a958a71f74206b18082ee104ff025a0f260d6f494786be0751d')]
 
 
-def check(path):
-    text = Path(path).read_text()
-    text = "\n".join(line for line in text.splitlines()
-                     if not line.lstrip().startswith("#"))
-    jobs = dict(re.findall(r"^  ([\w-]+):\n(.*?)(?=^  [\w-]+:|\Z)", text, re.M | re.S))
-    errors = []
-    def require(ok, message):
-        if not ok:
-            errors.append("Task077B " + message)
-    for job, releases in (("real-uci", ("2.5", "2.6")),
-                          ("real-uci-regressions", ("2.5", "2.6")),
-                          ("msrv-real-uci", ("2.5",)), ("real-sleet", ("2.5",))):
-        body = jobs.get(job, "")
-        require(bool(body), "missing job: " + job)
-        for release in ("2.5", "2.6"):
-            count = len(re.findall(r"scripts/fetch-pinned-uci-" + re.escape(release)
-                                  + r"\.sh [\"']?\$", body))
-            require(count == int(release in releases), f"fetch ownership: {job} {release}")
-        if job not in ("real-uci", "real-uci-regressions"):
-            continue
-        limit = re.search(r"^    timeout-minutes: ([0-9]+)$", body, re.M)
-        require(limit is not None and int(limit[1]) == 240, "finite timeout: " + job)
-        require(not re.search(r"^    needs:", body, re.M), "independent job: " + job)
-        # PERF-001: only the exact evidence-only upload may run after failure.
-        # Do not exempt arbitrary named steps, commands or conditional gates.
-        evidence = '''      - name: Preserve Task 061 per-selection evidence
+SHARDS = ('real-uci-regressions', 'real-uci-regressions-ascii',
+          'real-uci-regressions-alternating')
+QUALIFICATION_JOBS = ('real-uci',) + SHARDS
+EVIDENCE = '''      - name: Preserve Task 061 per-selection evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -98,12 +77,80 @@ def check(path):
           path: ${{ runner.temp }}/task061-service-check-*/**
           if-no-files-found: error
 '''
-        gate_body = body.replace(evidence, '') if job == 'real-uci-regressions' else body
+
+
+def run_command(step):
+    match = re.search(r"^        run: (.*?)(?:\n|\Z)", step, re.M)
+    if not match:
+        return ''
+    if match[1] != '|':
+        return match[1]
+    return '\n'.join(line.strip() for line in step[match.end():].splitlines()
+                     if line.startswith('          ') and line.strip())
+
+
+def check(path):
+    text = Path(path).read_text()
+    text = "\n".join(line for line in text.splitlines()
+                     if not line.lstrip().startswith("#"))
+    entries = re.findall(r"^  ([\w-]+):\n(.*?)(?=^  [\w-]+:|\Z)", text, re.M | re.S)
+    jobs = dict(entries)
+    errors = []
+    def require(ok, message):
+        if not ok:
+            errors.append("Task077B " + message)
+    require(len(entries) == len(jobs), 'duplicate job identifiers')
+    for job in ('ada-repeated-choice-real-uci', 'ada-hexbinary-real'):
+        require(job in jobs, 'missing job: ' + job)
+    for job, releases in (tuple((j, ('2.5', '2.6')) for j in QUALIFICATION_JOBS) + (
+                          ("msrv-real-uci", ("2.5",)), ("real-sleet", ("2.5",)))):
+        body = jobs.get(job, "")
+        require(bool(body), "missing job: " + job)
+        for release in ("2.5", "2.6"):
+            count = len(re.findall(r"scripts/fetch-pinned-uci-" + re.escape(release)
+                                  + r"\.sh [\"']?\$", body))
+            require(count == int(release in releases), f"fetch ownership: {job} {release}")
+        if job not in QUALIFICATION_JOBS:
+            continue
+        limit = re.search(r"^    timeout-minutes: ([0-9]+)$", body, re.M)
+        require(limit is not None and int(limit[1]) == 240, "finite timeout: " + job)
+        require(not re.search(r"^    needs:", body, re.M), "independent job: " + job)
+        # PERF-001: only the exact evidence-only upload may run after failure.
+        # Do not exempt arbitrary named steps, commands or conditional gates.
+        gate_body = body.replace(EVIDENCE, '') if job == 'real-uci-regressions' else body
         require(not re.search(r"^\s+(if:|continue-on-error:)", gate_body, re.M), "enabled hard gate: " + job)
         for setup in ('uses: actions/checkout@v4', 'uses: dtolnay/rust-toolchain@stable',
                       'sudo apt-get install -y gnat', 'command -v gnatmake', 'gnatmake --version',
                       'AMS_GRA_UCI_2_5_ROOT=$UCI25', 'AMS_GRA_UCI_2_6_ROOT=$UCI26'):
             require(setup in body, "input setup: " + job + " " + setup)
+        if job in SHARDS:
+            require(re.search(r'^    runs-on: ubuntu-(latest|24\.04)$', body, re.M),
+                    'hosted runner: ' + job)
+            require('ref: ${{ github.event.pull_request.head.sha || github.sha }}' in body,
+                    'exact source checkout: ' + job)
+            require('TMPDIR: ${{ runner.temp }}' in body, 'private temporary directory: ' + job)
+            require(not re.search(r'actions/cache|CARGO_TARGET_DIR|target-directory|download-artifact', body),
+                    'isolated inputs: ' + job)
+            commands = [run_command(step) for step in re.split(r'^      - ', body, flags=re.M)[1:]]
+            preparation = '\n'.join(('set -euo pipefail', 'test -n "$AMS_GRA_UCI_2_5_ROOT"',
+                                     'test -n "$AMS_GRA_UCI_2_6_ROOT"', 'cargo fetch --locked',
+                                     'cargo build --release --locked -p ams-gra-codegen-oms'))
+            require(commands.count(preparation) == 1 and
+                    body.find(preparation.splitlines()[-1]) < body.find('cargo test '),
+                    'release CLI preparation: ' + job)
+            fetch = '\n'.join(('set -euo pipefail',
+                               'UCI25="$(scripts/fetch-pinned-uci-2.5.sh "$RUNNER_TEMP/uci-2.5")"',
+                               'UCI26="$(scripts/fetch-pinned-uci-2.6.sh "$RUNNER_TEMP/uci-2.6")"',
+                               'echo "AMS_GRA_UCI_2_5_ROOT=$UCI25" >> "$GITHUB_ENV"',
+                               'echo "AMS_GRA_UCI_2_6_ROOT=$UCI26" >> "$GITHUB_ENV"'))
+            require(commands.count(fetch) == 1, 'verified release setup: ' + job)
+    require(jobs.get('real-uci-regressions', '').count(EVIDENCE) == 1,
+            'Task061 evidence publication')
+    batch = '\n'.join(('set -euo pipefail', 'python3 scripts/test-task061-service-impact.py',
+                       'cargo test --release --locked -p ams-gra-codegen-oms --test service_check_batch'))
+    require(sum(run_command(step) == batch for step in re.split(
+        r'^      - ', jobs.get('real-uci-regressions', ''), flags=re.M)[1:]) == 1,
+        'Task061 batch equivalence controls')
     b = jobs.get("real-uci-regressions", "")
     build = 'cargo build --release --locked -p ams-gra-codegen-oms'
     service = 'python3 scripts/check-task061-service-impact.py target/release/ams-gra-codegen-oms'
@@ -112,35 +159,41 @@ def check(path):
                   'test -n "$AMS_GRA_UCI_2_6_ROOT"', 'export TMPDIR="$RUNNER_TEMP"',
                   'AMS_GRA_REQUIRE_GNAT: "1"'):
         require(setup in b, "regression input: " + setup)
-    for owner in ('real-uci', 'real-uci-regressions'):
-        expected = [name for name, job, _ in GATES if job == owner]
-        actual = re.findall(r'^      - name: (.*)$', jobs.get(owner, ''), re.M)
-        require([name for name in actual if name in expected] == expected,
+    for owner in QUALIFICATION_JOBS:
+        expected = [digest for _, job, digest in GATES if job == owner]
+        actual = [hashlib.sha256(run_command(step).encode()).hexdigest()
+                  for step in re.split(r'^      - ', jobs.get(owner, ''), flags=re.M)[1:]]
+        require([digest for digest in actual if digest in expected] == expected,
                 'qualification order: ' + owner)
+    expected_commands = []
     for name, owner, digest in GATES:
         found = []
         for job, body in jobs.items():
             steps = re.split(r"^      - ", body, flags=re.M)[1:]
             for step in steps:
-                if step.splitlines()[0] != 'name: ' + name:
+                command = run_command(step)
+                actual_digest = hashlib.sha256(command.encode()).hexdigest()
+                if step.splitlines()[0] != 'name: ' + name and actual_digest != digest:
                     continue
                 found.append(job)
-                match = re.search(r"^        run: (.*?)(?:\n|\Z)", step, re.M)
-                command = ''
-                if match:
-                    if match[1] == '|':
-                        command = '\n'.join(line.strip() for line in step[match.end():].splitlines()
-                                            if line.startswith('          ') and line.strip())
-                    else:
-                        command = match[1]
-                require(hashlib.sha256(command.encode()).hexdigest() == digest,
+                require(actual_digest == digest,
                         "payload changed: " + name)
+                expected_commands.append(command)
                 require(not re.search(r"^\s+(if:|continue-on-error:)", step, re.M),
                         "enabled hard gate: " + name)
                 if 'Task 054,' in name:
                     require('AMS_GRA_REQUIRE_GNAT: "1"' in step,
                             "compiler environment: " + name)
         require(found == [owner], "gate ownership: " + name)
+    # Recognize campaigns by executable target as well as description/digest:
+    # a renamed, modified extra invocation in another job must not escape.
+    def targets(commands):
+        return Counter(re.findall(r'--test (uci_[\w]+)|'
+                                  r'(python3 scripts/check-task061-service-impact.py target/release/ams-gra-codegen-oms)',
+                                  '\n'.join(commands)))
+    all_commands = [run_command(step) for body in jobs.values()
+                    for step in re.split(r'^      - ', body, flags=re.M)[1:]]
+    require(targets(all_commands) == targets(expected_commands), 'unique campaign execution')
     return errors
 
 
@@ -174,9 +227,9 @@ def self_test(path, guard, fast, sleet):
     def add(label, text, diagnostic):
         assert text != original, label
         cases.append((label, text, 'Task077B ' + diagnostic))
-    add('missing second job', job_mutation('real-uci-regressions', lambda b: ''),
-        'missing job: real-uci-regressions')
-    for job in ('real-uci', 'real-uci-regressions'):
+    for job in SHARDS:
+        add('missing shard ' + job, job_mutation(job, lambda b: ''), 'missing job: ' + job)
+    for job in QUALIFICATION_JOBS:
         for release in ('2.5', '2.6'):
             # Select the executable fetch in its owner, never another job's
             # command (which may use a different scratch directory).
@@ -196,6 +249,34 @@ def self_test(path, guard, fast, sleet):
         add(f'{job} serialized', job_mutation(job, lambda b: replace_once(
             b, '    runs-on:', '    needs: real-sleet\n    runs-on:')),
             f'independent job: {job}')
+    for job in SHARDS:
+        for command, diagnostic in (
+                ('sudo apt-get install -y gnat', 'input setup: ' + job),
+                ('command -v gnatmake', 'input setup: ' + job),
+                ('gnatmake --version', 'input setup: ' + job),
+                ('cargo fetch --locked', 'release CLI preparation: ' + job),
+                ('cargo build --release --locked -p ams-gra-codegen-oms',
+                 'release CLI preparation: ' + job),
+                ('ref: ${{ github.event.pull_request.head.sha || github.sha }}',
+                 'exact source checkout: ' + job),
+                ('TMPDIR: ${{ runner.temp }}', 'private temporary directory: ' + job)):
+            line = command_line(job, command)
+            add(job + ' missing ' + command,
+                job_mutation(job, lambda b: replace_once(b, line, '')), diagnostic)
+        line = command_line(job, 'cargo build --release --locked -p ams-gra-codegen-oms')
+        add(job + ' debug CLI', job_mutation(job, lambda b: replace_once(
+            b, line, line.replace('--release ', ''))), 'release CLI preparation: ' + job)
+        add(job + ' shard dependency', job_mutation(job, lambda b: replace_once(
+            b, '    runs-on:', '    needs: real-uci-regressions-ascii\n    runs-on:')),
+            'independent job: ' + job)
+        add(job + ' wrong release root', job_mutation(job, lambda b: replace_once(
+            b, 'AMS_GRA_UCI_2_6_ROOT=$UCI26', 'AMS_GRA_UCI_2_6_ROOT=$UCI25')),
+            'verified release setup: ' + job)
+    add('missing Task061 publication', job_mutation('real-uci-regressions',
+        lambda b: replace_once(b, EVIDENCE, '')), 'Task061 evidence publication')
+    line = command_line('real-uci-regressions', 'python3 scripts/test-task061-service-impact.py')
+    add('missing batch controls', job_mutation('real-uci-regressions',
+        lambda b: replace_once(b, line, '')), 'Task061 batch equivalence controls')
     for label, command, diagnostic in (
         ('missing CLI build', 'cargo build --release --locked -p ams-gra-codegen-oms',
          'release CLI build before service confirmations'),
@@ -212,6 +293,16 @@ def self_test(path, guard, fast, sleet):
             'gate ownership: ' + name)
         add('duplicate ' + name, job_mutation(owner, lambda b: replace_once(b, step, step + step)),
             'gate ownership: ' + name)
+        other = next(job for job in SHARDS if job != owner)
+        add('cross-job duplicate ' + name,
+            job_mutation(other, lambda b: b + step.replace(name, 'Renamed duplicate')),
+            'gate ownership: ' + name)
+        for line in step.splitlines(True):
+            if 'grep ' in line:
+                add('changed marker/count ' + line.strip(), job_mutation(owner,
+                    lambda b: replace_once(b, step, replace_once(step, line,
+                                                               line.replace('grep ', 'grep -v ', 1)))),
+                    'payload changed: ' + name)
     name, owner, _ = GATES[-1]
     match = step_match(job_match(owner)[0], name)
     step = match[0]
@@ -226,9 +317,27 @@ def self_test(path, guard, fast, sleet):
             b, '      - name: ' + name + '\n',
             '      - name: ' + name + '\n        ' + field + '\n')),
             'enabled hard gate: ' + name)
+    after = command_line(owner, '--test uci_alternating_after')
+    admission = command_line(owner, '--test uci_alternating_admission')
+    other = 'real-uci-regressions-ascii'
+    moved = job_mutation(owner, lambda b: replace_once(b, after, ''))
+    other_block = job_match(other)[0]
+    add('Task060 separated tests', replace_once(moved, other_block,
+        other_block + '      - name: Misplaced AFTER\n        run: |\n' + after),
+        'payload changed: ' + name)
+    add('renamed modified extra admission', job_mutation(other, lambda b: b +
+        '      - name: Extra invocation\n        run: |\n' + admission),
+        'unique campaign execution')
+    positives = [
+        ('comments', job_mutation(owner, lambda b: b + '      # Harmless comment\n'), None),
+        ('step description', job_mutation(owner, lambda b: replace_once(
+            b, name, 'Alternating qualification description')), None),
+        ('unrelated workflow metadata', original.replace('name: Deep CI\n',
+            'name: Deep CI\nrun-name: Harmless workflow description\n', 1), None),
+    ]
     with tempfile.TemporaryDirectory(prefix='task077b-layout-') as tmp:
         fixture = Path(tmp) / 'deep.yml'
-        for label, text, diagnostic in [('healthy', original, None)] + cases:
+        for label, text, diagnostic in [('healthy', original, None)] + positives + cases:
             fixture.write_text(text)
             result = subprocess.run(['bash', guard, fast, str(fixture), sleet],
                                     capture_output=True, text=True)
@@ -237,7 +346,7 @@ def self_test(path, guard, fast, sleet):
             else:
                 assert result.returncode != 0 and diagnostic in result.stderr, (
                     label, diagnostic, result.returncode, result.stderr)
-    print(len(cases) + 1)
+    print(len(cases) + len(positives) + 1)
 
 
 if __name__ == '__main__' and sys.argv[1] == '--self-test':
