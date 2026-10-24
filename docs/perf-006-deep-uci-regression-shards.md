@@ -15,8 +15,9 @@ No existing PERF-006 branch or PR was found before creating
 `feature/perf-006-deep-uci-regression-shards` in the independent worktree
 `/home/zboll/git/ams-gra-codegen-oms-perf-006`.
 
-The PR URL, final commit/tree, exact-head run IDs and latest Jobs API snapshots
-are recorded in the PR handoff and external evidence directory
+PR: <https://github.com/zackboll/ams-gra-codegen-oms/pull/112> (open, non-draft,
+auto-merge disabled). The final commit/tree, exact-head run IDs and latest Jobs
+API snapshots are recorded in the PR handoff and external evidence directory
 `/home/zboll/perf-006-evidence`. This avoids embedding a self-referential final
 commit hash in its own tree. No other worktree, runner configuration, Alire
 index, production source, Rust test, schema or fixture is changed.
@@ -93,6 +94,9 @@ command digests are not regenerated and no whole-workflow hash is introduced.
 YAML parsing confirms eight jobs. Comparison against starting main confirms
 the five unrelated jobs are unchanged and every inherited digest is identical.
 Raw local output is retained externally in `local-qualification.log`.
+GitHub Actions-aware validation with actionlint 1.7.12 also passes (shellcheck
+and pyflakes integrations disabled; the actual shell/guard suites run above).
+Final corrective-head local output is in `local-qualification-final.log`.
 
 The existing `test-task060-ci-wrappers.py` shell-extraction guard also includes
 the new owners, retaining its complete inherited target inventory and actual
@@ -145,6 +149,15 @@ measured**. A single successful hosted comparison is observational, not a
 controlled benchmark; runner hardware/region and scheduling may differ.
 
 ## Remaining qualification gaps
+
+Initial head `44bcfc5f070dd8054ec069920f20b3fd14aaeb50` produced workflow-load
+failure [40105821171](https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/40105821171)
+before creating jobs: `runner.temp` cannot be referenced in job-level `env`.
+The correction publishes `TMPDIR=$RUNNER_TEMP` through `$GITHUB_ENV` in each
+shard's existing preparation step. actionlint verifies the correction, which
+does not touch any qualification command or digest. This failed zero-job run
+is not a timing observation. Initial ordinary CI run `40105847560` cannot
+qualify the corrected final head regardless of its eventual conclusion.
 
 Until all eight Deep CI jobs and ordinary CI finish successfully for the final
 PR head, hosted timing, added provisioning cost, actual remaining critical path

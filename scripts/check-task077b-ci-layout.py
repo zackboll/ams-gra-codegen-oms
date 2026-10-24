@@ -128,12 +128,13 @@ def check(path):
                     'hosted runner: ' + job)
             require('ref: ${{ github.event.pull_request.head.sha || github.sha }}' in body,
                     'exact source checkout: ' + job)
-            require('TMPDIR: ${{ runner.temp }}' in body, 'private temporary directory: ' + job)
+            require('echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"' in body, 'private temporary directory: ' + job)
             require(not re.search(r'actions/cache|CARGO_TARGET_DIR|target-directory|download-artifact', body),
                     'isolated inputs: ' + job)
             commands = [run_command(step) for step in re.split(r'^      - ', body, flags=re.M)[1:]]
             preparation = '\n'.join(('set -euo pipefail', 'test -n "$AMS_GRA_UCI_2_5_ROOT"',
-                                     'test -n "$AMS_GRA_UCI_2_6_ROOT"', 'cargo fetch --locked',
+                                     'test -n "$AMS_GRA_UCI_2_6_ROOT"',
+                                     'echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"', 'cargo fetch --locked',
                                      'cargo build --release --locked -p ams-gra-codegen-oms'))
             require(commands.count(preparation) == 1 and
                     body.find(preparation.splitlines()[-1]) < body.find('cargo test '),
@@ -259,7 +260,7 @@ def self_test(path, guard, fast, sleet):
                  'release CLI preparation: ' + job),
                 ('ref: ${{ github.event.pull_request.head.sha || github.sha }}',
                  'exact source checkout: ' + job),
-                ('TMPDIR: ${{ runner.temp }}', 'private temporary directory: ' + job)):
+                ('echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"', 'private temporary directory: ' + job)):
             line = command_line(job, command)
             add(job + ' missing ' + command,
                 job_mutation(job, lambda b: replace_once(b, line, '')), diagnostic)

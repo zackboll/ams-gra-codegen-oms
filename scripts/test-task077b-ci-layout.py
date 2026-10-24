@@ -70,7 +70,7 @@ class MutationOwnership(unittest.TestCase):
                     layout.self_test(str(path), str(ROOT / "scripts/check-ci-split.sh"),
                                      str(ROOT / ".github/workflows/ci.yml"),
                                      str(ROOT / "scripts/run-real-sleet-test.sh"))
-                self.assertGreater(len(observed), 150)
+                self.assertEqual(len(observed), 168)
                 self.assertEqual(observed.count(text), 1)  # Healthy case only.
 
 
