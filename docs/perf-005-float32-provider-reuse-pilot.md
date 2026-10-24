@@ -1,0 +1,1199 @@
+# PERF-005 — Float32 GNATCOLL attribution and opt-in reuse pilot
+
+## Scope and disposition
+
+**CI_INTEGRATION_QUALIFIED (R3 implementation; final documentation-head CI
+pending)**: the hosted integration at `2fc151e99e5a7b4bab72b82d70c6073ecd3fe56d`
+passes all 12 required checks and observes a 36.1% complete-job elapsed reduction.
+This is not controlled statistical evidence. Earlier
+**PROVIDER_REUSE_PILOT_INCOMPLETE (R2)** was the pre-integration disposition:
+mapping-specific disposition is
+**PROVIDER_MAPPING_EQUIVALENCE_QUALIFIED** using complete source-read identity,
+versioned compiler semantics and unfiltered genuine-compiler replays. Consumer
+compilation, execution and isolation controls pass. Controlled repeatable
+performance remains unavailable. R1's rejection is preserved below as history;
+the appended R2 section records its resolution without relaxing correctness.
+R3 enables the selected hosted helper workload only; this is not broader
+provider rollout, optimization of the complete 132-build job, or an assessment
+that PR #106 is ready to merge. Ordinary
+qualification scripts, workflow allocation, generator, providers, algorithms,
+corpora, expected diagnostics and numerical checks are unchanged.
+
+The explicit entry point dynamically loads the existing helper-demand runner
+and adapts its `checked` boundary; it does not copy its naming, generation,
+negative-CLI, execution or numerical-check implementation. The qualification
+change is deliberate: construct GNATCOLL freshly once for each effective
+configuration; continue forcing generated and repository-owned support
+compilation for **every** cell, followed by binding, linking and execution.
+
+## Source and environment
+
+- Refreshed `origin/main` starting commit:
+  `401d336ecfe88992e5afabf44e8833986e398cc4`.
+- Starting tree: `88d5cef07013137404f947cfd6bf35a858329c28`.
+- Independent worktree: `/home/zboll/git/ams-gra-codegen-oms-perf-005`.
+- Branch: `feature/perf-005-float32-provider-reuse-pilot`.
+- Raw evidence: `/home/zboll/perf-005-evidence` (not committed).
+- Final source identity: the PR head; `tooling.sha256` records experiment tool
+  identities. The production source remains the starting commit.
+- Production generator built using Rust 1.95.0, `--locked`, from this worktree:
+  SHA-256 `a6797b3ea64e5bca24960fa2e20aab7d8b9fdb2021ae11804e234181cc3c3760`.
+- Local qualified platform image:
+  `3be2d67b84bc116c44fa08d25714359dfd5aff95fddc3c8a270dd359633e03ab`;
+  x86_64, libc `2.41-12+deb13u4`, GNAT 14 package `14.2.0-19`.
+  This is the existing local Task095 platform, not a claim to have recreated
+  GitHub's entire pinned image/provisioning history.
+- libc SHA-256:
+  `9792e3cbb541c8f44c7acf5f14f4022ea62998ecc787d326bed4d8b6547dfd92`.
+- Alire 2.1.1 binary SHA-256:
+  `2e2b8de009b793ad2aed10096e162649bbcc5b0711e3c21785ebe8a1261c5d64`.
+  The workflow-pinned release zip SHA-256
+  `09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7`
+  was downloaded, verified and its extracted binary matched exactly.
+- GPRbuild crate 26.0.1; actual banner **GPRBUILD 26.0.0 (2026-04-15)**,
+  binary SHA-256 `aff9fde5ca766d5497da9dec185cb8b96878206a0d02512aa5685e1e56d0a4d3`.
+- Private index seed commit: `4635347cb4460e87ea70d6599aeff1eb615bd472`.
+- strace 6.13, GNU time 1.9, Python 3.13, Linux 6.12.113.
+
+PR #106's published report and R1 checkpoint were read as background and retained
+in evidence. No code was imported; its worktree and unfinished corrections were
+not modified. Other active worktrees/PRs were not changed.
+
+Before execution the repository filesystem had approximately 501 GiB free and
+114 million free inodes. Host `/tmp` had **zero free inodes**. Task temporary
+files use `/home/zboll/perf-005-evidence/tmp`; the task-owned container has a
+fresh 4-GiB `/tmp` tmpfs. Nothing belonging to other tasks was cleaned.
+
+### Resource arrangement and limitations
+
+One sequential campaign at a time, existing Alire `-j0`, affinity CPUs
+**4,6,8,10**, on a Ryzen 9 7945HX (16 cores / 32 threads). SMT siblings are
+20,22,24,26. Rootless Podman could not apply a cgroup cpuset; `taskset` inside
+the container enforces the four-CPU allocation instead. No cgroup CPU or memory
+quota was imposed. This is **not an exclusive physical-core reservation**.
+Other host activity was present. Local timings must not be promoted to a
+qualified hosted-runner speedup.
+
+Both sides use fresh consumer/provider output, copied private settings, index,
+toolchain metadata and HOME. GNAT 16 and GPRbuild toolchain installations are
+preseeded identically (compiler binaries are inputs, not prebuilt GNATCOLL).
+Provider archives are resolved/deployed by the unchanged Alire flow; no provider
+objects are seeded. The exact provider zip is separately retained and SHA-512
+verified. Network/filesystem page-cache effects are not controlled cold-machine
+effects: “cold” here means **fresh build outputs**, not rebooted OS caches.
+Candidate totals include its three fresh provider builds, validation, hashing,
+all orchestration and runner evidence finalization.
+
+## Verified inventory and applicability
+
+The current Float32 job still has **132 positive forced-build invocations**:
+
+| Campaign | Expansion | Positive builds |
+|---|---|---:|
+| Helper-demand Float32 GNAT14/GNAT16, portable GNAT14 | 3 × 2 profiles × 5 names × 3 policies | 90 |
+| Task095 numeric/environment/rounding + identifiers | 2 compilers × 2 profiles × 2 campaigns × 3 policies | 24 |
+| Task095 optimized OAM | 2 compilers × 3 policies | 6 |
+| Mixed Binary/Float32 | 2 compilers × 2 profiles × 3 policies | 12 |
+
+Portable GNAT16 is another job's 30 cells, not part of 132. The focused pilot is
+only two complete Float32 helper-demand campaigns: **60 positive cells and 40
+negative CLI cases**. Each campaign is ordered OAM then qualified; names are
+`ArraySample`, `Array_Encode_Hex_Binary`, `Encode_Hex_Binary`,
+`Array_encode_hex_binary`, `Array_Decode_Hex_Binary`; policies are normal,
+Check, Ignore. There are two portable rejection invocations for each name/profile.
+
+The historical published-head hosted job
+<https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/39710977367/job/119601977281>
+was 84:44: Task095 20:22, mixed 7:49, Float32 helpers 36:38, portable helpers
+15:17, upload 3:23. API step timestamps were independently retrieved. These
+times are context only, **not this experiment's baseline**.
+
+Portable imports the Core provider through the ordinary support project but
+not Float32/C support. Mixed adds consumer-side C harnesses and multiple mains.
+Task095's `--optimized` changes consumer Ada `-O0` to `-O2`; provider projects
+have their own switches. These labels are not sufficient cache keys. Extension
+to those matrices requires checking their actual effective commands; none of
+them is qualified by this pilot.
+
+## Attribution method
+
+`perf005_profile.py` uses strace `execve` to observe actual commands, including
+absolute compiler/backend paths chosen through Alire. It handles unfinished /
+resumed exec records and records exit status and inclusive lifetime. Inclusive
+lifetimes are **not summed as campaign wall time**. Individual command CPU is
+sampled, not exact; the detailed records retain sampled process identities and
+CPU observations. The sample interval is 20 ms.
+
+Only `/proc/PID/stat` **utime + stime** are attributed, never cumulative
+cutime/cstime. Each observed process tick delta has one phase. Source paths and
+working-directory ownership distinguish Minimal, Core, repository support
+(including C), generated/consumer, archive and bind/link. Alire self CPU and
+unclassified CPU remain separate. Short processes can vanish between samples;
+the difference from outer `RUSAGE_CHILDREN` CPU is explicitly residual, not
+silently redistributed. Trace/sampler overhead is separate from clean timing.
+The outer GNU time CPU also includes Python orchestration/sampling self CPU.
+
+Controlled tests verify that a waiting parent does not duplicate a CPU-burning
+child's CPU and that an absolute-path real compiler failure is observed and
+propagated. Detailed subsequent traces retain GPR temporary configuration and
+response-file contents. Initial representative traces predated that retention;
+their explicit policy argv, source identities and project defaults are retained.
+
+### Initial real representative builds (three policies, first OAM naming case)
+
+| CPU seconds, sampled unless marked outer | GNAT14 | GNAT16 |
+|---|---:|---:|
+| GNATCOLL Minimal compilation | 5.17 | 6.76 |
+| GNATCOLL Core compilation | 111.21 | 146.21 |
+| Repository JSON/Float32/C compilation | 0.94 | 1.54 |
+| Generated model/codec/consumer compilation | 0.38 | 0.69 |
+| All archiving | 0.33 | 0.17 |
+| Bind/link | 0.15 | 0.43 |
+| Alire self/setup within builds | 0.60 | 0.63 |
+| Unclassified sampled CPU | 5.69 | 5.83 |
+| Unobserved residual CPU | 7.616 | 7.448 |
+| **Outer build CPU** | **132.086** | **169.708** |
+| Sequential outer build elapsed | 42.059 | 52.452 |
+| Non-build child CPU (resolution/deployment/execution etc.) | 2.978 | 2.928 |
+| Non-build elapsed, including finalization | 6.324 | 5.916 |
+| Complete representative child CPU | 135.064 | 172.636 |
+| Python self CPU (includes sampler) | 3.500 | 4.420 |
+| Complete representative elapsed | 48.384 | 58.368 |
+
+Provider compilation alone is **88.11% / 90.14% of outer build CPU** (not of
+hosted job elapsed). Residuals are 5.77% / 4.39%. Both compilers execute 21
+Minimal and 85 Core compilation-driver invocations per construction, including
+provider C; four generated, four support, one binder compilation per cell.
+Archiver/index commands are separately visible. No provider assembly is selected
+with the actual generic hash implementations.
+
+This material provider share supports trying reuse rather than another worker
+matrix. GNAT16's provider CPU is materially higher; do not pool compiler results.
+
+## Provider configuration and consumption
+
+Both resolved crates are 26.0.0 from the exact existing zip, SHA-512:
+
+```
+cc5dd0a199115fee269ec1ef963b80abbb56e3029e817d5dbfe71e90fff09d0535ae5be86dedb6d3fbcc74cfa2f3e2e7885de800e5805f9f596507814dce6d4b
+```
+
+Resolved Core/Minimal project bytes match upstream commit
+`8e270f83719d4284782a965edd80246be15b949b`. Their `EXTERNALLY_BUILT` and
+`GNATCOLL_OBJECT_ROOT` attributes are verified against the **resolved** projects.
+Alire 2.1.1 source and actual traces both confirm `-s -j0 -p` already applies.
+
+Actual defaults: PROD, static, unix, version 26.0.0, mmap/madvise yes,
+Blake3 generic, XXHash generic; provider Ada `-O2 -gnatn -gnatwaCJ`, provider C
+`-O2 -Wunreachable-code` (plus the upstream unit-specific flags). Generated and
+support Ada stay `-gnat2022 -gnato -O0`; Float32 C stays
+`-std=c11 -O2 -Wall -Wextra -Werror`.
+
+Each variant identity records compiler/target/runtime banners and executable
+hashes, runtime `system.ads` and `libgnat.a` hashes, relevant environment,
+provider source/project/constant file hashes, exact policy contents, Alire and
+GPRbuild versions. Normal has no added ADC; Check and Ignore contain exactly
+`pragma Assertion_Policy (Check);` and `pragma Assertion_Policy (Ignore);` plus
+newline. The actual provider invocations contain their respective ADC. Compiler
+versions, sources, target, options, externals, ABI/library type and policy must
+not be conflated merely because generated code executes successfully.
+
+Preparation uses the resolved Core project, matching Alire environment and
+`-p -f -j0`, with a fresh `GNATCOLL_OBJECT_ROOT` and
+`EXTERNALLY_BUILT=false` for each policy. Completed artifacts are hashed and
+published with `complete.json`, then made read-only. Consumers pass
+`EXTERNALLY_BUILT=true`, the matching object root, and retain `-f` and the
+original per-cell ADC. Every consumption checks identities and artifact hashes
+before and after; provenance connects every cell to its completed manifest.
+
+Landlock ABI >=3 additionally denies writes outside private consumer/support,
+Alire-state, HOME, `/tmp` and `/dev` roots. The shared providers are readable but
+not writable by consumers, even if an owning process chmods a file writable.
+This Linux-specific experimental isolation is a tradeoff, not a new production
+requirement. A missing sandbox is a failure, never a silent fallback.
+
+Intentional path mappings for equivalence are only campaign-root and private
+state-root substitutions. Relative pins, locks, policy contents, source bytes,
+banners, ordered outcomes and runtime markers must otherwise agree.
+
+## Reproduction
+
+Use the qualified x86_64/glibc2.41 environment, verified Alire 2.1.1 and exact
+toolchain-only seeds. All paths below are absolute; substitute a fresh task-owned
+evidence root. Set `TMPDIR` on the host to a filesystem with free inodes. Inside
+the qualified container, `/tmp` must be private and have sufficient inodes.
+
+```sh
+R=/home/zboll/git/ams-gra-codegen-oms-perf-005
+E=/home/zboll/perf-005-evidence
+export PYTHONDONTWRITEBYTECODE=1
+
+python3 "$R/scripts/perf005-state.py" \
+  --index "$E/seed/settings/indexes/community" \
+  --toolchains "$E/seed/cache/toolchains" --output "$E/new-baseline14-state"
+# Repeat with --output "$E/new-candidate14-state" (never share mutable state).
+
+HOME="$E/new-baseline14-state/home" PATH="$E/new-baseline14-state/bin:$PATH" \
+taskset -c 4,6,8,10 /usr/bin/time -v -o "$E/new-baseline14-time.txt" \
+python3 "$R/scripts/perf005-float32.py" -- --compiler 14 --family float32 \
+  --scratch "$E/new-baseline14" --generator "$E/generator-target/debug/ams-gra-codegen-oms"
+
+HOME="$E/new-candidate14-state/home" PATH="$E/new-candidate14-state/bin:$PATH" \
+taskset -c 4,6,8,10 /usr/bin/time -v -o "$E/new-candidate14-time.txt" \
+python3 "$R/scripts/perf005-float32.py" --reuse-provider -- \
+  --compiler 14 --family float32 --scratch "$E/new-candidate14" \
+  --generator "$E/generator-target/debug/ams-gra-codegen-oms"
+
+python3 "$R/scripts/perf005-compare.py" "$E/new-baseline14" "$E/new-candidate14"
+python3 "$R/scripts/perf005-report.py" "$E/new-candidate14"
+```
+
+Repeat for compiler 16 with fresh state/output directories. For separate command
+coverage evidence repeat the candidate with `--trace` and pass that campaign to
+comparison using `--traced`. `--trace --representative -- --profiles oam ...`
+restricts only to the first name and is **not full qualification**. All production
+runner selectors must follow the entry point's `--` delimiter.
+
+Run controls separately, under the candidate's exact state/HOME:
+
+```sh
+python3 "$R/scripts/test_perf005_profile.py"
+python3 "$R/scripts/test_perf005_provider.py"
+HOME="$E/new-candidate14-state/home" PATH="$E/new-candidate14-state/bin:$PATH" \
+taskset -c 4,6,8,10 python3 "$R/scripts/perf005-controls.py" \
+  "$E/new-candidate14" "$E/new-controls14"
+```
+
+## Correctness, timings, remaining gates
+
+The initial three-policy GNAT14 smoke passed, with no provider compilation in
+consumer build logs. Nine disposable controls per compiler (generated Ada,
+support Ada, support C × three policies) retained actual nonzero compiler
+evidence. Nine accounting/provider/equivalence unit tests pass, including artifact corruption/missing/
+incomplete publication, wrong source/compiler/policy identities, attempted wrong
+variant, symlinks, absolute compiler observation and owner-write rejection.
+The comparator rejects partial inventories rather than treating smoke evidence
+as complete. Existing intentional-red expectations were not modified; the known
+qualified-profile `Oam` diagnostic-harness limitation is not counted as passing.
+
+Full comparison and fresh-output baseline/candidate observations are recorded
+below. Runtime success is supplemented by actual compiler-command coverage.
+The remaining qualification blocker is controlled, repeatable performance.
+
+### Complete fresh-output timing observations (not controlled speedup evidence)
+
+| Compiler / strategy | Whole elapsed s | Aggregate CPU s (child + Python self) | Largest-child peak RSS KiB |
+|---|---:|---:|---:|
+| GNAT14 baseline | 381.858 | 1192.752 | 277304 |
+| GNAT14 pilot, including all provider preparation | 102.744 | 161.647 | 277284 |
+| GNAT16 baseline | 480.263 | 1576.122 | 310860 |
+| GNAT16 pilot, including all provider preparation | 113.808 | 213.170 | 301940 |
+
+RSS here is kernel largest-child high-water RSS, **not simultaneous process-tree
+Complete traces additionally sample peak sum-of-process RSS, which
+double-counts shared pages and can miss short peaks. Neither is unique physical
+memory. The nominal GNAT14/GNAT16 elapsed ratios are 3.717x / 4.220x, but there
+is only one ordered local pair per compiler and host contention is not excluded.
+These are not qualified speedups. No uncontrolled repetition was launched to
+turn these observations into a performance qualification claim.
+
+Both full comparators passed 30 positive cells and 20 negative CLI cases each:
+ordered records, generated/API/codec/support bytes, provider source bytes,
+runtime/compiler evidence, policy contents, normalized locks/diagnostics,
+atomic rejection and exact seven-check runtime marker agree. All 30 clean
+candidate logs per compiler contain eight project-owned source compilations (four generated,
+four support including C), binding/linking, and no GNATCOLL compilation. Actual
+executed per-cell compiler coverage is a separate traced gate, not inferred
+solely from these logs.
+
+| Per compiler campaign | Baseline | Pilot | Eliminated |
+|---|---:|---:|---:|
+| Fresh provider constructions | 30 | 3 | 27 (90%) |
+| Minimal compile drivers | 630 | 63 | 567 |
+| Core compile drivers | 2550 | 255 | 2295 |
+| Provider library archives | 60 | 6 | 54 |
+| Generated source compile drivers | 120 | 120 | 0 |
+| Repository support compile drivers, including C | 120 | 120 | 0 |
+| Binder compile drivers | 30 | 30 | 0 |
+| Positive build/execution cells | 30 | 30 | 0 |
+| Negative CLI cases | 20 | 20 | 0 |
+
+Baseline full provider counts are from complete build logs, cross-checked
+against the three actual-command representative traces (106 provider drivers
+per build). Pilot actual preparation/consumer counts are a separate detailed
+trace gate. Across both clean pilots the construction reduction is 60 to six,
+not 132 to six; no full-job reduction is claimed.
+
+### Reconciliation and instrumentation overhead
+
+Clean runs deliberately have **no sampled phase estimates**. Their exact outer
+child CPU partitions as follows (Python self CPU is separately in the timing
+table):
+
+| CPU seconds | GNAT14 baseline | GNAT14 pilot | GNAT16 baseline | GNAT16 pilot |
+|---|---:|---:|---:|---:|
+| Consumer forced-build subprocesses (includes providers in baseline) | 1177.539 | 23.562 | 1560.860 | 31.855 |
+| Fresh provider preparation subprocesses | 0 | 115.070 | 0 | 157.939 |
+| Other child CPU (setup/identity/execution) | 14.036 | 18.329 | 14.056 | 18.693 |
+| **Outer child CPU** | **1191.576** | **156.961** | **1574.916** | **208.487** |
+
+Non-build elapsed, including resolution/deployment, identity checks, executions,
+provider verification, source hashing and evidence finalization, is 43.481 /
+50.941 s (GNAT14 baseline/pilot) and 42.027 / 48.035 s (GNAT16). Individual
+`*.profile.json` logs separate executable calls and setup calls. Remaining
+Python orchestration/finalization wall is not incorrectly attributed to compiler
+work. Source ownership, not overlapping parent/descendant CPU, drives tracing.
+
+The full GNAT14 detailed pilot took 139.207 s versus 102.744 s clean (+35.5%),
+so detailed tracing is emphatically **not used for the timing comparison**.
+Its sampled phases were Minimal 5.10, Core 110.58, support 6.95, generated 2.36,
+archive 0.33, bind/link 1.67, Alire 6.59, unclassified 20.90 CPU s. Residual
+17.180 s reconciles to outer build CPU 171.660 s. Other child CPU 25.688 s
+brings child total to 197.348 s; Python self CPU is 10.153 s. These traced
+figures include instrumentation-induced work and are not clean performance.
+
+Both compilers' detailed traces prove 120 generated, 120 support, 30 binder and 318
+provider compilation drivers; all three provider command multisets match their
+original representative policy build (106 source/option records each), after
+only dependency-root, temporary response/config path and ADC-path mapping.
+The matching manifest still requires exact ADC contents and source hashes.
+
+The GNAT16 detailed pilot took 155.856 s versus 113.808 s clean (+36.9%).
+Sampled CPU seconds: Minimal 6.89, Core 148.09, support 12.46, generated 5.44,
+archive 0.19, bind/link 4.57, Alire 6.82, unclassified 24.04. Residual 16.830 s
+reconciles to outer build CPU 225.330 s. Other child CPU 25.990 s gives 251.320 s;
+Python self CPU adds 11.343 s. Both complete traced comparators passed, including
+actual absolute compiler coverage and matching per-policy provider options.
+
+Both final disposable compiler-failure sets passed **nine controls each**.
+Missing/corrupt/unpublished/incomplete artifacts, wrong identities/variants and
+consumer write attempts are rejected by the targeted unit controls. No runtime,
+negative-CLI or intentional-failure expectation was relaxed.
+
+Local validation also includes compiler-placement controls, CI split/layout and
+layout mutation controls, syntax parsing, `git diff --check`, and Rust formatting.
+No Rust source changed. An initial layout-check invocation omitted its required
+arguments and failed; the correctly invoked layout and mutation checks passed.
+
+### Recommendation
+
+The provider share justifies the focused experiment. Do not wire it into
+production until complete per-compiler equivalence, actual rebuild evidence,
+negative controls and a controlled, repeatable end-to-end comparison exist.
+The smallest next task is **one repeated same-head baseline/pilot pair for each
+compiler on an exclusive four-CPU allocation**, with identical immutable seeds
+and provider preparation included. If confirmed, extract only the validated
+build boundary into an opt-in production adapter. Do not introduce persistent
+caching or broaden the matrices as part of that first integration.
+
+### Evidence index and local validation
+
+Under `/home/zboll/perf-005-evidence`:
+
+- `environment.txt`, `container-image.txt`, `container-preflight.txt`,
+  `state-version-control.txt`, `gnat16-identity.txt`: environment/tool identities.
+- `archives/`: checksum-verified provider and Alire archives;
+  `upstream/`: independently fetched pinned provider projects.
+- `attribution14`, `attribution16`: representative original three-policy
+  commands, traces, sampled phases, locks, sources and execution evidence.
+- `baseline14`, `baseline16`, `candidate14`, `candidate16`: complete clean
+  campaigns; `*-time.txt` contains independent outer GNU time measurements.
+- `traced14`, `traced16`: separate complete pilot traces, retained GPR temporary
+  inputs, compile ownership/policy evidence and provider preparation commands.
+- `equivalence14-traced.json`, `equivalence16-traced.json`: fail-closed complete
+  comparison results; `*-summary.json`: classified accounting/reconciliation.
+- `candidate14-controls`, `candidate16-controls`: nine actual compiler-failure
+  controls per compiler, separate from positive/performance evidence.
+- `unit-final.log`: nine profiler/provider/equivalence unit controls;
+  `placement-final.log`: eleven existing compiler-placement controls;
+  `ci-layout-mutations.log`: two tests exercising 54 mutations twice;
+  `ci-split-final.log`, `fmt-final.log`: unchanged layout/split/format gates.
+- `tooling.sha256`, `evidence.sha256`: final tooling and selected raw-evidence
+  manifests. Full generated/provider source provenance remains in each runner's
+  `sources.sha256`; external provider artifact provenance is explicitly added
+  in `perf005-providers/*/complete.json` and `perf005-provider-consumers.json`.
+
+Large source/object/toolchain trees are deliberately outside Git. Failed
+disposable exploratory controls remain labeled separately and are not counted
+as passes. No new CI wiring is introduced. Hosted CI status is reported on the
+PR head separately; local passes are not a hosted-check conclusion.
+
+## PERF-005-R1 reconciliation (supersedes earlier qualification claims)
+
+### Source, boundaries and evidence history
+
+R1 starts at `3fef1dd83fde608029c025a48dfce558daf5ac2d`, tree
+`bd952b10b0557a2252be0614a04045fea2b6dbf0`, on the same branch/worktree and
+PR #109. Corrected executable/tooling implementation commit:
+`4107429acc11e9567e2fcbb9b1f5dd8b7ce6bc62`, tree
+`adbfce5f2188381bd349d4823cc82e3125c28b04`
+(full identities in `r1/implementation-source.txt`). Subsequent report
+changes are documentation-only. **No R1 controlled measurement commit exists**:
+none of the requested eight clean campaigns was launched. Production source,
+generator, providers, fixtures, toolchain seeds and ordinary workflow remain
+unchanged. PR #106 and its unfinished corrections remain untouched.
+
+Original evidence is retained under `/home/zboll/perf-005-evidence`. R1 evidence
+is the fresh `r1/` subdirectory there; earlier data is historical, not upgraded
+to controlled performance. Generator SHA-256 remains
+`a6797b3ea64e5bca24960fa2e20aab7d8b9fdb2021ae11804e234181cc3c3760`.
+Platform, GNAT14/16 identities, index commit and immutable seed identities are
+the ones above. Fresh state seed manifests record copied toolchain file hashes.
+
+### Compiler evidence checks and focused controls
+
+The comparator now derives the complete inventory from owned generated bodies,
+bodyless `programs*.ads` namespaces, support bodies and Float32 C sources. It
+requires each absolute owned source exactly once with its retained source hash,
+the qualified compiler path/hash/version, a successful completed driver and
+matching successful `gnat1`/`cc1` backend. Binder-generated source is separate;
+provider/unrelated compilation is rejected rather than matched by basename.
+Every Ada driver **and backend** must receive the exact expected policy contents
+from its ADCs; normal must not receive an assertion-policy ADC. Compiler options
+and indirect inputs are checked too. Specs/API dependencies are not falsely
+counted as independent compiler-driver inputs.
+
+A complete synthetic 30-positive/20-negative campaign fixture passes the real
+comparator. Removing namespace compilation, substituting Ignore in a Check cell,
+redirecting to an unrelated same-basename file, failed/incomplete drivers and
+failed backends all reject. Response/config/specs content mutations reject;
+Check/Ignore never collapse into a normalized filename. Missing indirect inputs
+fail closed. Thirteen focused tests pass, including resumed trace reads.
+
+### Effective provider inputs: a remaining functional gate, not a pass
+
+The old command comparison **dropped** response/specs/configuration/source-map
+arguments and normalized ADC filenames without checking contents. Its earlier
+“command equivalence” success is withdrawn. The corrected representation keeps
+all switches and recursively includes response, GCC specs, generated config,
+ADC and mapping contents. Only campaign/state roots and expanded temporary
+filenames are abstracted. Unit/kind/name/path triples in GNAT mapping files are
+sorted only after checking for duplicate/ambiguous unit entries. No semantic
+compiler input is excluded on the basis of a temporary filename.
+
+The first regenerated originals retained post-build mapping files and exposed
+differences. GCC's `gcc/ada/fmap.adb` confirms `Update_Mapping_File` appends new
+entries. Post-build mapping contents are therefore **insufficient input evidence**.
+The profiler now additionally records `strace -yy` read-time bytes for each
+`gnat1` mapping file, keyed by source and mapping path; absent input bytes cause
+incomplete evidence, never fallback to the mutated output. These verbose traces
+are functional evidence only and are excluded from clean timings.
+
+Even the read-time maps differ: GPR recycles these in/out files between concurrent
+compiler invocations, so later files contain scheduling-dependent accumulated
+entries. Strict per-source effective-input comparison rejects these differences.
+This report does **not** assert they are harmless or silently union/drop them.
+Resolving that semantic question (or using a validated equivalent provider build
+preparation context) is required before pilot qualification. All other compared
+provider compiler options/response/config/specs/ADC inputs match after documented
+root mapping. See `r1/reconciliation.json` for policy/source differences.
+
+The final implementation additionally resolves `bin/../libexec` backend paths
+before comparing qualified identities. This is a validation-only correction;
+no compiler invocation or provider/consumer build behavior changed after the
+refreshed traces. Raw traces were rechecked, not relabeled as measured runs.
+
+### Isolation correction and environment requirements
+
+The pilot and disposable controls now share `consumer_layout`. After resolving
+paths, it rejects a writable ancestor of any protected provider and any writable
+subtree inside it, including symlink aliases. `run` validates the final allowlist
+including trace output before launch. Pilot startup rejects unsafe state/HOME/
+`/tmp`/`/dev` overlap before preparation. Providers beneath `/tmp` are unsupported
+with this allowlist and are explicitly rejected; a regression uses the actual
+adapter list rather than a hand-selected narrower test sandbox.
+
+The supported Linux x86_64 host test demonstrates that a chmod-capable owning
+consumer still cannot overwrite provider bytes, while private writes work.
+Landlock ABI <3, disabled Landlock, wrong architecture or failed enforcement
+are fatal—there is no permission-only fallback. This remains an experimental
+host requirement, not a production portability claim.
+
+### Reuse versus regeneration
+
+| Evidence | R1 handling |
+|---|---|
+| Clean baseline14/16 and candidate14/16 | Retained unchanged; ordered outcomes, bytes, locks, diagnostics, atomic rejection and runtime markers still pass |
+| Initial original three-policy traces | Retained historically; insufficient temporary/read-time inputs, not accepted for effective-input equivalence |
+| Original `traced14/16` complete pilots | Preserved; complete source/driver/backend/policy evidence reconciled, but no read-time mapping capture; stricter indirect-input gate rejects them as incomplete |
+| `r1/original14/16` | First bounded refresh; exposed mutable mapping output limitation; not substituted for valid effective-input evidence |
+| `r1/original-v214/16` | Bounded three-policy originals regenerated with read-time input tracing; parser-only re-extraction from unchanged raw trace is recorded, with old JSON copies preserved |
+| `r1/pilot14/16` | Complete traces refreshed because original candidate traces cannot supply read-time mapping inputs; uses corrected overlap validation |
+| `r1/final-controls14/16` | Disposable generated/support Ada/C failure controls under corrected shared allowlist; nine per compiler |
+
+Each complete refreshed compiler campaign preserves **30 positive cells and 20
+negative CLI cases**, 120 generated and 120 support compiler drivers plus 30
+binder compilations. Provider preparations remain three × 106 drivers (318),
+not 30 × 106 (3180). These counts and executions are not a substitute for the
+remaining provider effective-input equivalence gate.
+
+### Controlled repetitions: unavailable, not run
+
+`r1/resource-allocation.txt` records topology, SMT siblings, process activity,
+CPU counters, boot options and privilege/controller availability. Four logical
+CPUs 4,6,8,10 are distinct cores, but their siblings 20,22,24,26 are unreserved.
+There are no isolated/nohz-full CPUs, no cpuset controller delegated to this
+session (only cpu/memory/pids), and `sudo -n` requires a password. Desktop,
+browser and unrelated development activity is free to migrate across all CPUs.
+Affinity cannot establish those cores/siblings remain free of competing work.
+No unrelated process/worktree was changed to manufacture a reservation.
+
+| Compiler | Required order | Baseline A elapsed/CPU | Pilot A elapsed/CPU | Pilot B elapsed/CPU | Baseline B elapsed/CPU |
+|---|---|---|---|---|---|
+| GNAT14 | baseline A → pilot A → pilot B → baseline B | unavailable | unavailable | unavailable | unavailable |
+| GNAT16 | baseline A → pilot A → pilot B → baseline B | unavailable | unavailable | unavailable | unavailable |
+
+Pair improvement, CPU reduction and repeat spread are **not available**.
+The previous 381.858/102.744 s and 480.263/113.808 s observations remain single
+contended pairs only. No observation was discarded as a slow controlled run;
+there were zero controlled attempts. Refreshed tracing is not timing evidence.
+
+**Disposition: PROVIDER_REUSE_PILOT_INCOMPLETE.** Missing gates are now explicit:
+(1) substantiate semantic equivalence of differing read-time GNAT mapping inputs;
+(2) obtain an exclusive four-distinct-core allocation including SMT siblings and
+run the requested eight fresh-output campaigns under independent outer time.
+The smallest next task is the mapping-input analysis/preparation correction,
+then controlled pairs on a suitable host. Production integration is premature.
+
+### R1 evidence index and reproduction
+
+All paths below are within `/home/zboll/perf-005-evidence/r1`:
+
+- `implementation-source.txt`, `tooling.sha256`: corrected implementation
+  commit/tree and script identities; `evidence.sha256`: selected R1 raw evidence.
+- `resource-allocation.txt`: allocation blocker, topology and activity.
+- `original-v214/16`: refreshed original representative traces and read-time
+  mapping bytes. `reparse16.log` / preserved `*.pre-parser-fix.json` identify
+  parser-only extraction corrections; raw trace bytes were not changed.
+- `pilot14/16`: refreshed complete positive/negative campaigns and provider
+  preparation, with source/seed/artifact manifests and mapping-read capture.
+- `reconciliation.json`, `reconcile-final.log`: complete source compilation
+  counts/outcomes plus strict provider-input rejection details.
+- `final-controls14/16`, `final-controls*.log`, `final-controls.status`: affected
+  compiler-failure controls rerun using the corrected shared isolation path.
+- `tests-final.log`: 13 tests, with all complete-fixture mutations and isolation
+  controls; `placement.log`, `ci-split.log`, `layout-mutations.log`, `fmt.log`:
+  existing relevant gates. No Rust source changed; no full workspace rerun claim.
+- `starting-head-hosted.txt`, `final-head-hosted.txt`: hosted checks, separate
+  from opt-in qualification.
+
+```sh
+R=/home/zboll/git/ams-gra-codegen-oms-perf-005
+E=/home/zboll/perf-005-evidence
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s "$R/scripts" -p 'test_perf005*.py'
+for c in 14 16; do
+  # Consumer equivalence and full actual driver/backend/policy/source evidence:
+  PYTHONDONTWRITEBYTECODE=1 python3 "$R/scripts/perf005-compare.py" \
+    "$E/baseline$c" "$E/candidate$c" --traced "$E/r1/pilot$c"
+  # Strict provider effective-input gate: currently EXPECTED TO REJECT,
+  # not an intentional-failure qualification pass:
+  PYTHONDONTWRITEBYTECODE=1 python3 "$R/scripts/perf005-compare.py" \
+    "$E/baseline$c" "$E/candidate$c" --traced "$E/r1/pilot$c" \
+    --attribution "$E/r1/original-v2$c"
+done
+```
+
+The environment must have the qualified compiler/runtime paths or retained
+identity evidence and unchanged source paths. Run actual compilation and
+Landlock controls in the qualified task-owned container; Landlock tests require
+a supported Linux x86_64 host and do not silently skip enforcement failures.
+
+## PERF-005-R2 — GNAT mapping equivalence
+
+**Mapping disposition: PROVIDER_MAPPING_EQUIVALENCE_QUALIFIED.** This supersedes
+the R1 mapping rejection, not the historical R1 results. Overall disposition
+remains **PROVIDER_REUSE_PILOT_INCOMPLETE** pending controlled performance.
+
+### Source reconciliation and scope
+
+The existing worktree `/home/zboll/git/ams-gra-codegen-oms-perf-005` was clean on
+`feature/perf-005-float32-provider-reuse-pilot` at
+`7d001e3988517bd227a420d1e0b8c7702d499ba7`. `git fetch origin` succeeded; local,
+remote-tracking, and hosted PR #109 heads agreed (zero ahead/behind). No reset,
+replacement worktree, or new PR was needed. PRs #106–108 and their worktrees
+were not modified. R1 raw evidence was only read. New evidence is entirely in
+`/home/zboll/perf-005-evidence/r2`.
+
+The final implementation identity is the commit introducing this R2 section;
+`r2/implementation-source.txt` records its full commit/tree, and
+`r2/tooling.sha256` records the exact final scripts/document. The new tools are
+`scripts/perf005_mapping.py`, `scripts/perf005-mapping-experiments.py`,
+`scripts/perf005-mapping-controls.py`, `scripts/perf005-mapping-report.py`, and
+`scripts/test_perf005_mapping.py` under the worktree above. Only the opt-in
+evidence comparator changes; provider preparation, production compilation,
+assertion options, numerical expectations, diagnostics, and CI allocation do
+not change. No permanent or temporary production serialization was introduced.
+
+### Versioned compiler and builder semantics
+
+Retained copies, manuals, build recipe, Debian patch bundle, URLs and SHA-256
+identities are in `r2/upstream` and `r2/upstream/source-references.json`.
+References are the actual release sources, not an older illustrative compiler:
+
+- [GCC 14.2.0](https://github.com/gcc-mirror/gcc/tree/releases/gcc-14.2.0/gcc/ada),
+  release commit `04696df09633baf97cdbbdd6e9929b9d472161d3`.
+  Installed Debian `gcc-14`/`gnat-14` is `14.2.0-19`. Its retained Debian source
+  bundle includes branch updates through `f8504e361c895b13d00e5c6a52a6cbb47fcc2a9d`.
+  Neither those updates nor Debian patches change Fmap or the relevant
+  Fname.UF/Osint source-resolution logic. Osint patches concern executable
+  suffixes and reproducible ALI timestamps, not mapping precedence.
+- [GCC 16.1.0](https://github.com/gcc-mirror/gcc/tree/releases/gcc-16.1.0/gcc/ada),
+  release commit `6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea`, matching the pinned
+  GNAT-FSF-builds 16.1.0 toolchain. Both compiler identities remain checked by
+  the pre-existing pinned driver SHA-256/version gate.
+- [GNAT 14.2 manual](https://gcc.gnu.org/onlinedocs/gcc-14.2.0/gnat_ugn.pdf) and
+  [GNAT 16.1 manual](https://gcc.gnu.org/onlinedocs/gcc-16.1.0/gnat_ugn.pdf),
+  “Units to Sources Mapping Files”. They describe two maps and path-search
+  short-circuiting, `%s`/`%b`, and only the last `-gnatem` taking effect.
+- [GPRbuild v26.0.0](https://github.com/AdaCore/gprbuild/tree/v26.0.0),
+  `bdfb879cf03643ec8e48a09ce07b08c4a6ff0263`. The retained GNAT-FSF build recipe
+  at `023abf5cf000b83fa5076ae7ff349625cf970c05` explicitly downloads this tag;
+  it updates the date banner, explaining the installed **2026-04-15** date.
+  The Linux recipe does not apply the macOS-only static-link patch.
+
+Established behavior (line references below use retained GCC 16.1 sources;
+the matching GCC 14.2 routines were also inspected):
+
+1. `gnat1drv.adb:1039–1040` calls `Fmap.Initialize` before target parameters
+   and `system.ads` resolution. `fmap.adb:162–359` reads the entire map and
+   requires a unit line ending in `%s`/`%b`, followed by filename and path.
+   CR/LF/EOF separators are skipped. Missing/unreadable input warns; malformed
+   or truncated input warns and clears tables. `/` is a suppression sentinel,
+   not an ordinary source directory. The validator deliberately rejects these
+   cases, even if GNAT could continue by falling back to search paths.
+2. **Documentation discrepancy:** the manuals and `fmap.ads` say duplicate
+   entries invalidate a map. The implementations of `Initialize` call
+   `Add_To_File_Map` (`fmap.adb:112–137`), which replace existing unit→filename
+   and filename→path hash-table values. Conflicting duplicates are therefore
+   order-dependent; successful compilation does not establish validity or
+   equivalence. The live negative controls confirm last-entry behavior under
+   both versions. R2 rejects duplicate units **and duplicate filenames**, even
+   identical duplicates. Only collision-free map order is abstracted.
+3. `fname-uf.adb:236–244` returns a mapped filename before naming pragmas or
+   conventional naming. `osint.adb:1263` checks filename→path before primary
+   source and include-directory searches. Thus an entry for another unit can
+   still change resolution through a colliding filename. Additional entries
+   are **not generally harmless**. Previously inserted mappings can be
+   superseded; there is no global monotonic-map assumption.
+4. With no mapping, `Fname.UF.Get_File_Name` uses naming patterns and GNAT
+   krunching, then `Find_File`. A successful search adds the discovered unit,
+   filename and full path (`fname-uf.adb:359–371`). `Osint.Add_Default_Search_Dirs`
+   adds project path-file and Ada environment paths before the default runtime
+   (`osint.adb:475–545`). `Frontend` updates the mapping after processing
+   (`frontend.adb:550–552`); `Fmap.Update_Mapping_File` appends discoveries after
+   the initialization boundary (`fmap.adb:460–475`).
+5. GPRbuild `gpr/src/gpr-env.adb:785–1025` initializes a map from the source
+   project's imported project closure, with source kind and suppression rules.
+   `src/gprbuild-compile.adb:2694–2725` checks out an available per-language map
+   or creates one for `Source_Project`; it removes the checked-out file from
+   the available pool **until that compilation terminates**. Completion returns
+   the now-extended map to the pool (`:341–350`). These are mutable recycled
+   files, not a single file concurrently appended by all compiler processes.
+   Which completed compiler's map becomes available is scheduling-dependent.
+
+This explains the observed differences: identical provider project inventories
+plus different accumulated default-runtime discoveries in recycled map files.
+There are no normalized provider/consumer source-map additions or removals,
+no conflicting unit/filename resolutions, and no duplicate keys. Changing to a
+direct-provider preparation context was investigated through the actual source
+inventories and builder algorithm; the observed deltas do not require a
+preparation correction. Serializing builds would only alter cache history, not
+fix an incorrect source-resolution input.
+
+### Complete six-way inventory
+
+Each comparison contains **106 provider compiler invocations**, of which **89
+Ada invocations** have maps. The remaining 17 C/assembly invocations still
+require exact effective-option equality. The table counts map-entry occurrences
+across individual Ada compilations (not just unique global entries):
+
+| Compiler | Policy | Differing / 89 maps | Original-only | Pilot-only | Unique differing triples |
+|---|---|---:|---:|---:|---:|
+| 14.2.0 | Normal | 40 | 638 | 747 | 186 |
+| 14.2.0 | Check | 41 | 666 | 800 | 194 |
+| 14.2.0 | Ignore | 46 | 858 | 798 | 184 |
+| 16.1.0 | Normal | 45 | 840 | 893 | 186 |
+| 16.1.0 | Check | 40 | 797 | 714 | 188 |
+| 16.1.0 | Ignore | 43 | 781 | 724 | 172 |
+
+`r2/final/mapping-{14,16}-{normal,Check,Ignore}.json` is the deterministic full
+inventory, including **every common entry**, each side-only entry, actual
+compilation unit/kind, compiler version, policy, mapping filename/read-time
+SHA-256, normalized and resolved paths, counterpart path, SHA-256 of source
+bytes, actual-read relevance and supported classification. Units are never
+merged by basename. Only exact campaign root → `<CAMPAIGN>` and campaign-state
+root → `<STATE>` relocation is abstracted; runtime and provider relative paths
+remain intact. All six have **zero conflicts, ambiguities, invalid entries or
+unresolved differences**. A runtime entry read by that compiler is classified
+as **Proven equivalent source relocation**; an extra entry not read during that
+concrete compilation is **Proven irrelevant mapping difference**, supported by
+the paired complete source reads. This does not approve that entry for an
+arbitrary future compilation. Summary counts are in `r2/final/summary.json`.
+
+### Narrow equivalence rule and genuine-compiler evidence
+
+`effective_args` still retains every mapping. Its raw-map parser is stricter
+than R1: valid unit kinds, absolute non-suppression paths and both collision
+keys are required. The opt-in provider comparison additionally requires:
+
+- Exact source inventory, pinned compiler identity, successful actual driver
+  and backend evidence and every non-map effective option/indirect input.
+- Raw-trace agreement with the retained read-time maps. Missing raw traces or
+  invented/replaced mapping snapshots fail.
+- Complete source-read bytes for each actual GNAT backend, including resumed
+  syscalls; they must equal retained file bytes and paired normalized
+  path→SHA-256 inventories. Byte parsing preserves C octal escapes correctly,
+  including non-UTF-8 bytes. Partial reads and changed hashes fail.
+- Exact common unit/filename/path relationships and matching source hashes.
+  Every extra must be a direct file in the qualified runtime, have the correct
+  `%s`/`%b` extension and declared unit, and match that compiler's **actual
+  `gnatkr` conventional filename**, plus matching counterpart runtime content.
+  Each extra also needs a complete historical source-read witness somewhere
+  in that policy's actual provider compilation. An unobserved file cannot be
+  approved merely by hashing two current copies.
+
+Only after these checks can the map for that particular invocation be treated
+as semantically equivalent. No filtered map is generated or compiled as proof.
+The reports preserve all raw mappings and source reads; unresolved cases raise
+errors rather than receiving a permissive default classification.
+
+All **534 paired invocations / 1,068 isolated genuine compilations** passed,
+89 pairs per version/policy. Each uses identical original source paths and the
+original compiler options, copying retained ADCs and relocating only pilot
+campaign/state roots in its **entire unfiltered mapping**. All project sources
+are mapped; the unmapped discoveries use the pinned compiler's default runtime.
+Fresh output directories prevent ALI/object reuse. The replays match original
+R1 read-time source identities as well as each other, not just successful exit
+codes. Both sides have identical diagnostics, complete resolved source bytes,
+full normalized ALI information (including dependency checksums and settings),
+and **byte-identical object hashes**. Raw traces additionally retain `openat`.
+
+Copied identical ADCs get the same fixed mtime; their output directory paths
+are represented as `<OUTPUT>` in ALI comparisons. This avoids comparing the
+time of copying a temporary ADC rather than compiler behavior. No object,
+dependency, policy or source difference was normalized away. The initial
+`r2/replay` attempt demonstrates the ADC-copy timestamp mismatch and is retained;
+the corrected run is `r2/replay-v2`. Initial exploratory parser runs and host
+tests are also retained, not substituted for final passing evidence.
+
+`r2/negative-final` contains **48 passing rejection controls**: eight per
+version/policy, including redirected same-basename source, changed source hash,
+spec/body substitution, both orders of conflicting unit entries, missing and
+malformed maps, and changed actual dependency resolution. Redirected maps
+compile successfully but resolve a different dependency and produce a different
+object; this is explicitly rejected. Conflicting entries produce the object
+selected by the last entry, confirming why general unordered comparison is
+unsafe. Malformed/missing maps are rejected regardless of compiler fallback.
+Separate genuine assertion probes exit **0 / 1 / 0** for Normal / Check /
+Ignore under each compiler; Check reports
+`ADA.ASSERTIONS.ASSERTION_ERROR`. Both original ADCs remain active in replay.
+
+### Functional regression and limits
+
+Because preparation and generated code do not change, the R1 complete campaign
+outputs remain valid: both namespace profiles, all five naming cases and all
+three policies, **30 positive cells and 20 negative CLI cases per compiler**.
+R2 reruns the full comparator with attribution against this retained evidence:
+both pass, including all **480 actual generated/support compilations**, driver,
+backend, ownership and policy gates. Thus broad regeneration was unnecessary;
+the affected semantic gate was rerun, with fresh provider compiler replays.
+
+R2 also reruns 18 genuine generated/Ada-support/C-support compiler-failure
+controls across both versions/policies, including immutable provider artifact
+checks. All pass. The 17 Python tests include complete-campaign mutations and
+Landlock/provider-isolation checks; all pass in the qualified container. Host
+Python tests initially lacked `strace`; that is not counted as a pass. Final
+compiler-placement checks (11), CI split guard, CI layout tests, CI split/layout
+mutation suite (218 checks), `cargo fmt --all -- --check` and `git diff --check`
+pass. No Rust source changed and no new full workspace-test claim is made.
+
+Mapping equivalence is now closed **for these pinned compiler versions,
+sources, options and concrete invocations**. Other toolchains, new closure
+entries, missing byte evidence, changed hashes or collisions must requalify or
+fail. The raw evidence is local, not a hosted CI artifact; hosted CI status is
+recorded separately in `r2/final-head-hosted.json` and the PR handoff.
+
+No eight controlled performance campaigns were launched. The historical
+381.858/102.744 s (GNAT14) and 480.263/113.808 s (GNAT16) observations remain
+single contended pairs, **not qualified performance results**. This workstation
+still cannot guarantee exclusive four-core allocation including SMT siblings.
+PR #109 stays open, non-draft, unmerged, auto-merge disabled. It is ready for the
+separate controlled-performance task on a runner with verifiable exclusivity,
+not production rollout or an overall pilot-complete disposition.
+
+### R2 reproduction and evidence
+
+Run in the existing pinned `perf-005` container, which mounts the worktree and
+evidence at their identical absolute paths. Commands below must use **new output
+directories**; never overwrite historical evidence:
+
+```sh
+R=/home/zboll/git/ams-gra-codegen-oms-perf-005
+E=/home/zboll/perf-005-evidence
+export PYTHONDONTWRITEBYTECODE=1 TMPDIR="$E/tmp"
+python3 -m unittest discover -s "$R/scripts" -p 'test_perf005*.py'
+python3 "$R/scripts/perf005-mapping-experiments.py" "$E" "$E/r2/reproduce-replay"
+python3 "$R/scripts/perf005-mapping-controls.py" "$E" "$E/r2/reproduce-negative"
+python3 "$R/scripts/perf005-mapping-report.py" \
+  "$E" "$E/r2/reproduce-replay" "$E/r2/reproduce-final"
+for c in 14 16; do
+  python3 "$R/scripts/perf005-compare.py" "$E/baseline$c" "$E/candidate$c" \
+    --traced "$E/r1/pilot$c" --attribution "$E/r1/original-v2$c"
+  HOME="$E/r1/pilot$c-state/home" PATH="$E/r1/pilot$c-state/bin:$PATH" \
+    python3 "$R/scripts/perf005-controls.py" \
+      "$E/r1/pilot$c" "$E/r2/reproduce-failure$c"
+done
+python3 "$R/scripts/test-task093-compiler-placement.py"
+bash "$R/scripts/check-ci-split.sh"
+bash "$R/scripts/test-check-ci-split.sh"
+python3 "$R/scripts/test-task077b-ci-layout.py"
+git -C "$R" diff --check
+(cd "$R" && cargo fmt --all -- --check)
+```
+
+Evidence index, all relative to `/home/zboll/perf-005-evidence/r2`:
+
+- `final/`: final deterministic six-way inventories and summary; final report
+  validates the raw replay inputs/outputs against R1 and final comparator.
+- `replay-v2/`: all 1,068 fresh compilation directories, full raw mapping
+  inputs as read in `compiler.strace`, in/out map files, ADCs, commands, source
+  hashes, diagnostics, objects, ALIs and per-compilation results.
+- `negative-final/`, `negative-final.log/status`: all mapping negative controls
+  and executed assertion probes. Earlier exploratory attempts remain separate.
+- `comparison14/16.json`, `*.error/status`: complete original/pilot gate.
+- `failure-controls14/16`, `*.log/status`: 18 rerun real failure controls.
+- `tests-final.log/status`, `placement.log`, `ci-split.log`, `layout.log`,
+  `ci-split-mutations-v2.log/status`, `fmt.log`: regression evidence.
+- `upstream/`: versioned compiler/builder sources, manuals, build recipe and
+  Debian patch analysis. `source-references.json` and `evidence.sha256` retain
+  identities; `inputs.sha256` inventories the reused R1 traces/profiles/seed
+  records. `reconciliation-start.txt` and `starting-pr.json` record source/PR
+  reconciliation. `implementation-source.txt`, `tooling.sha256`, and
+  `final-head-hosted.json` record final source and hosted state separately.
+
+## PERF-005-R3 — production Float32 CI integration
+
+**Disposition: CI_INTEGRATION_QUALIFIED for the implementation head below;
+HOSTED_CI_PENDING for the final documentation head until its exact-head workflow
+finishes.** This section supersedes R2's rollout scope,
+not its historical measurements or mapping qualification. R3 explicitly selects
+provider reuse in the real `ada-float32-codec` job; ordinary local Task093
+qualification remains unchanged. No standalone benchmarking or eight-run
+campaign is part of this integration.
+
+Starting source is qualified R2 commit
+`9f3ab383a043885ee483ad04043d84aad677d71e` (tree
+`bc8ce9c05a9b1df5084f159362ee46e32db9ea03`). Fetch confirmed a clean matching
+local/remote PR branch. Earlier evidence and other PR worktrees are preserved.
+R3 raw evidence is `/home/zboll/perf-005-evidence/r3`.
+
+### Implementation and selected workload
+
+Changed files under `/home/zboll/git/ams-gra-codegen-oms-perf-005`:
+
+- `.github/workflows/ci.yml`: only the Float32 helper step and its evidence
+  upload selection change. Both compiler campaigns execute through the new
+  explicit wrapper, with required summary/manifest checks.
+- `scripts/perf005-ci.py`: supported CI orchestration, one private Alire state,
+  lightweight setup/campaign timing, source/tree identities, case-preserving
+  archives and GitHub Actions summary. It requires both compilers in order.
+- `scripts/perf005_ci.py`: pinned toolchain/runtime identities, available CPU
+  count/quota bound, per-cell fresh forced object/ALI/bind/link verification,
+  complete coverage and immutable-provider publication checks.
+- `scripts/perf005-float32.py`: CI mode reuses the existing adapter/runner,
+  prohibits partial or traced campaigns and separates the old four-CPU
+  experiment precondition from ordinary hosted qualification.
+- `scripts/perf005-state.py`: accepts the workflow's verified Alire executable
+  instead of hard-coding `/usr/local/bin/alr`; checks its exact release hash.
+- `scripts/perf005_provider.py`: bounded CI `-jN` instead of experiment `-j0`;
+  same project, source inventory, three-variant preparation and consumption.
+- `scripts/perf005_profile.py`: records kernel child RSS even without tracing.
+- `scripts/test_perf005_ci.py` and
+  `scripts/test-task093-compiler-placement.py`: positive/negative CI selection,
+  full-matrix placement, fresh compilation, identity and layout regression gates.
+
+The actual invocation is:
+
+```sh
+python3 scripts/perf005-ci.py --compilers 14 16 --alr /opt/alire/bin/alr \
+  --runtime-root /var/tmp/perf005-float32 \
+  --evidence /tmp/task095-evidence/perf005-ci \
+  --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
+```
+
+Each compiler still covers both namespaces, five names and Normal/Check/Ignore:
+30 forced compile/bind/link/execute cells plus 20 negative CLI cases. Target
+combined counts remain **60 positive, 40 negative, 480 generated/support
+compilations, 60 executions**, with **60 → 6 provider constructions**.
+No `-f`, numerical expectation, assertion policy or diagnostic is removed.
+Provider preparation/consumption errors and missing verification artifacts fail
+the step; there is no unverified fallback.
+
+The private state and campaign outputs are disjoint beneath
+`/var/tmp/perf005-float32`. `/tmp` remains writable for compiler temporaries but
+is not an ancestor of protected providers. The existing Landlock allowlist and
+overlap checks are unchanged. Provider output modes remain read-only and full
+artifact hashes are checked before/after every consumption. A single private
+index/toolchain-only copy is reused sequentially across both compilers; no
+compiled provider artifact is seeded. Immutable toolchains already installed
+by the unchanged earlier job steps are not downloaded again.
+
+Compilation concurrency is bounded by the process affinity and any exposed
+cgroup CPU quota. No exclusive-core allocation is required for CI. R2's
+source-backed mapping semantics remain valid: concurrency can change recycled
+runtime-cache map histories but not the required verified sources. No compiler
+option/source/preparation-project change requires replaying 1,068 compilations;
+the CI instrumentation does not filter or rewrite mapping inputs.
+
+Full campaign evidence, including logs, commands, source manifests, provider
+publication records, generated sources and objects, is retained in per-compiler
+`.tar.gz` files so upload-artifact cannot merge case-distinct naming cases.
+Compact JSON records include provider preparation elapsed/CPU, compiler campaign
+elapsed/CPU, setup/archival-inclusive helper duration, peak child/self RSS,
+allocation, index/Alire and final source identities. Peak child RSS is the
+kernel largest-child high-water mark, not simultaneous process-tree memory.
+The complete job duration is measured from the hosted Jobs API after completion,
+including unchanged tests, provisioning, upload and teardown.
+
+### Local validation and hosted baseline
+
+Focused local validation passes: 25 PERF-005 Python tests, 11 placement tests,
+CI split/layout and 218 mutation checks, Python syntax, Rust formatting and
+diff checks. A real isolated consumer smoke build using `/opt/alire/bin/alr`,
+the new `/var/tmp` state, bounded concurrency and unchanged Landlock protection
+compiled all eight generated/support sources freshly and bound/linked normally.
+No full local campaign or standalone performance run was repeated.
+
+Reproduction (within the pinned task container where Landlock/strace are
+available; host `/tmp` has no free inodes so tests use task-owned temporary space):
+
+```sh
+R=/home/zboll/git/ams-gra-codegen-oms-perf-005
+export PYTHONDONTWRITEBYTECODE=1 TMPDIR=/home/zboll/perf-005-evidence/tmp
+python3 -m unittest discover -s "$R/scripts" -p 'test_perf005*.py'
+python3 "$R/scripts/test-task093-compiler-placement.py"
+bash "$R/scripts/check-ci-split.sh"
+bash "$R/scripts/test-check-ci-split.sh"
+(cd "$R" && cargo fmt --all -- --check && git diff --check)
+```
+
+Baseline hosted run:
+https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/39833762447
+at the R2 head, all 12 checks successful. Retained Jobs API and full job log:
+`r3/hosted-baseline-job.json`, `r3/hosted-baseline.log`.
+
+| Hosted measurement | Before integration |
+|---|---:|
+| Complete Float32 job | 4,707 s (78m 27s) |
+| Float32 helper-demand step | 2,074 s (34m 34s) |
+| Portable helper-demand step (unchanged) | 856 s (14m 16s) |
+
+The target is at least 15% less **complete job** elapsed time (at most 4,000.95
+seconds). Final-head hosted coverage and actual elapsed results must be observed
+before upgrading this section's integration disposition. Runner/provisioning
+differences will be reported; a single hosted comparison is an observation, not
+a statistically controlled speedup. Numeric/environment, mixed Binary/Float32
+and portable helper steps remain byte-for-byte unchanged. Further sharding is
+not introduced here; its potential depends on the remaining hosted step times.
+
+The first integration run (`34568e29b6cfd8840c6ee0fc19a1f951f249d1d2`,
+Actions run `39895881966`) passed both optimized compiler campaigns and all
+60/40 cells with six providers, but then failed the wrapper's final Git identity
+query: container checkout ownership triggered Git's dubious-ownership check.
+The portable step was skipped, so this is **not** a qualified job/performance
+result. The correction queries source identity before campaigns using a
+command-local `safe.directory` for the exact checkout only; no global/wildcard
+Git trust is added. A focused test guards both this scope and early ordering.
+Raw failed-attempt logs and artifacts remain under `r3`, not overwritten.
+
+### Hosted integration qualification and measured result
+
+The corrected implementation is
+`2fc151e99e5a7b4bab72b82d70c6073ecd3fe56d`, tree
+`de76005632af0785463f14ee606ed1b4a5c4b4b4`. Its complete ordinary PR CI run
+[39898354382](https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/39898354382)
+passed **all 12 existing required checks**. Every Float32 step, including the
+unchanged portable campaign, succeeded; nothing was skipped to obtain success.
+The final documentation commit does not alter implementation inputs, but its
+own exact-head hosted run must still be checked before final handoff.
+
+| Measurement | R2 hosted baseline | R3 implementation | Elapsed reduction |
+|---|---:|---:|---:|
+| Complete `ada-float32-codec` job, including upload/teardown | 78m27s (4,707 s) | **50m09s (3,009 s)** | **36.07%** |
+| Float32 helper-demand step, including setup/verification/archive | 34m34s (2,074 s) | **7m20s (440 s)** | **78.78%** |
+| Portable helper-demand, unchanged | 14m16s (856 s) | 14m32s (872 s) | -1.87% |
+| Numeric/environment/profile/policy step, unchanged | 18m23s (1,103 s) | 18m31s (1,111 s) | -0.73% |
+| Mixed Binary/Float32, unchanged | 7m07s (427 s) | 7m12s (432 s) | -1.17% |
+| Evidence upload | 3m08s (188 s) | 1m31s (91 s) | 51.60% |
+
+The complete-job reduction exceeds the **15% target** by 21.07 percentage
+points. The helper alone saves 27m14s; complete-job savings are 28m18s. Compact
+case-preserving helper archives also reduce upload/file-enumeration overhead;
+that is included in the actual job-level result, not hidden from it.
+
+The uploaded `perf005-ci/summary.json` reports:
+
+| Compiler | Campaign elapsed | Provider preparation elapsed (three variants) | Preparation child CPU |
+|---|---:|---:|---:|
+| GNAT 14.2.0 | 184.858 s | 82.248 s | 315.255 s |
+| GNAT 16.1.0 | 224.010 s | 118.417 s | 460.562 s |
+
+Combined compiler campaigns take 408.868 s. Private index/toolchain setup takes
+3.058 s (self CPU approximately 3.082 s, child CPU 0.025 s). Setup, campaigns,
+verification and archive generation take 438.560 s; the hosted step is 440 s
+including wrapper tests/shell overhead. Wrapper largest-child RSS is
+**311,616 KiB**, self RSS **220,780 KiB**; no simultaneous-tree peak claim.
+There is no matching baseline memory instrument, so no memory reduction claim.
+The uploaded artifact is **758,729,004 bytes** for all Float32 job evidence,
+including unchanged campaigns and full helper archives.
+
+Counts independently audited in uploaded archives: **six fresh provider
+constructions** (three per compiler, previously 30), **60 positive/build/bind/
+link/execution cells**, **40 negative CLI cases**, **480 forced generated/support
+compilations**. Per-consumer publication hashes and every archived provider
+artifact hash/mode are verified; all provider artifacts remain read-only.
+The original `TASK093_C4_HELPER_QUALIFICATION_COMPLETE` markers are present for
+both versions, followed by
+`PERF005_CI_COMPLETE providers=6 positive=60 negative=40 compiled=480 executed=60`.
+The portable marker also records all 30 original cells.
+
+Both observations use runner image **ubuntu-24.04 20261012.334.1**, agent
+**2.338.0**, and the same pinned Debian container/toolchain identities. They
+use different Azure instances and regions (**eastus → westus**). R3 exposes
+four CPUs, `-j4`, AMD EPYC 7763, kernel `6.17.0-1022-azure`, glibc 2.41. The
+baseline did not record CPU affinity/model, so hardware equivalence is not
+asserted. The private index snapshot is
+`fb3245c6b74b982f4e5f66bd3ee953addd61f418`; exact dependency/archive/toolchain
+pins are still enforced. Unchanged numeric/mixed/portable timings vary by
+roughly 0.7–1.9%, illustrating the limit of single-run attribution. The first
+failed attempt is not included as a passing or complete performance result.
+
+**Independent review is recommended.** The implementation is ready for review
+once final-head CI is green; no tag/release/index change is authorized.
+Further sharding could materially reduce wall time: the unchanged numeric
+step (18m31s), portable helper (14m32s) and mixed step (7m12s) now dominate.
+Separating those workloads could approach the longest shard plus repeated
+setup/upload overhead instead of their sum, but requires separate coverage,
+resource/cost and artifact-layout review. It is not part of R3, and the new
+7m20s helper is no longer the primary critical path.
+
+Additional raw evidence, relative to `/home/zboll/perf-005-evidence/r3`:
+
+- `qualified-run.json`, `qualified-jobs.json`, `qualified-float32-job.json`,
+  `qualified-float32.log`: exact implementation-head hosted results.
+- `qualified-artifact.zip`, `qualified-artifacts.json`, `qualified-artifact/`:
+  uploaded compact summary/manifest, per-compiler full archives and independent
+  coverage/provider-artifact audit.
+- `hosted-comparison.json`: machine-readable before/after complete job and
+  selected step elapsed times.
+- `hosted-integration-first.log`, `first-hosted-failed-job.json`,
+  `first-hosted-artifact-complete.zip`: retained failed integration attempt.
+- `python-tests-correction.log/status`, `placement.log/status`,
+  `ci-integrity.log/status`, `ci-split.log/status`, `fmt.log`,
+  `state-smoke.*`, `consumer-smoke*`: focused local evidence.
+- `implementation-source.txt`, `tooling.sha256`: source identities; final-head
+  snapshots and handoff record the subsequent documentation commit separately.
+
+## PERF-005-R4 independent-review correction
+
+### Source reconciliation and focused correction
+
+PR #109 was verified open, unmerged, with auto-merge disabled and a clean
+existing worktree. Local, remote and PR heads agreed before changes. No other
+work had addressed [the P2 finding](https://github.com/zackboll/ams-gra-codegen-oms/pull/109#discussion_r4356639222).
+Earlier R1/R2/R3 reports and raw evidence remain intact; new evidence is under
+`/home/zboll/perf-005-evidence/r4`.
+
+| Identity | Commit | Tree |
+|---|---|---|
+| Starting PR | `fce503a4ef55fa1c3d87f133831e8245b9c36567` | `5a6b228434c77725e7bf05848d20a697edd44b9a` |
+| Corrective implementation | `4b92364ae853c1de2f8d52b4b16ca719977fc628` | `af926190c033df85f910b454edec26f264d7d496` |
+| Latest incorporated main | `73b555843dff36c1364674b558241823cfb76375` | `38f790f0c02fc8992a060dc3274edabcb7a7212d` |
+| Merged-main integration | `72670f82d0694893edb4311234d46a0b6ce2f3da` | `b5e318e61f11a5edc3bb87fb4cb938a67b59e1b2` |
+
+The normal, conflict-free merge retains both parents and the entire prior
+PERF-005 implementation ancestry. All 11 files changed by PERF-003/PERF-004
+relative to the previous base are byte-identical to incorporated main.
+`r4/integrated-scope.json` records ancestry, preservation and the complete
+intended PERF-005 PR file inventory.
+
+Corrective code changes are **only**:
+
+- `scripts/test_perf005_ci.py`: remove both opaque whole-workflow SHA-256
+  assertions and add focused acceptance/rejection controls.
+- `scripts/test-task093-compiler-placement.py`: extend the existing bounded,
+  standard-library workflow reader with named Float32 qualification checks.
+
+This appended report is the only additional R4 repository file change. The
+actual workflow, production generator/runtime, provider compilation, mapping
+equivalence, identity checks, Landlock, policies and forced compilation remain
+unchanged from the starting qualified PR. No dependency was added.
+
+Targeted checks protect Float32 placement, pinned Debian/GNAT setup, verified
+Alire installation/selection, explicit ordered GNAT14/16 wrapper execution,
+disjoint runtime/evidence roots, summary/manifest checks, provider-reuse
+selection and the complete count contract. They preserve portable GNAT14,
+numeric/environment/profile/rounding/identifier and mixed Binary/Float32
+campaigns, plus required case-preserving evidence uploads. Conditions,
+continue-on-error, swallowed failures, disabled errexit and early successful
+exits are rejected. These are bounded layout checks, not a general YAML/shell
+interpreter. Unrelated jobs and comments are no longer hashed or frozen.
+
+### Local qualification and mutation controls
+
+The correction and the merged tree each pass:
+
+- All **28** `test_perf005*.py` tests in the existing qualified `perf-005`
+  container, including actual Landlock controls.
+- All **11** compiler-placement tests, retaining the 120-execution matrix.
+- CI split guard and full `test-check-ci-split.sh` inventory (**218 checks**).
+- Both layout ownership regressions and the separately invoked documented
+  `check-task077b-ci-layout.py --self-test deep guard fast sleet` (**54 cases**,
+  including healthy control). Existing placement/layout mutations remain.
+- `cargo fmt --all -- --check` and `git diff --check`.
+
+Three positive workflow mutations pass: unrelated comment, unrelated Python
+qualification description, and unrelated Python-job step. Each asserts that
+the optimized Float32 job is byte-for-byte unchanged. **29 negative workflow
+mutations** reject wrapper/portable/numeric/mixed step deletion; either compiler
+or reversed order; partial profiles/policies; missing Alire selection/hash
+verification; unsafe/overlapping roots; missing summary/manifest; removed archive
+upload or weakened upload error handling; numeric/environment/mixed removal;
+job/step conditions or continue-on-error; swallowed shell errors, disabled
+errexit and early success. The previous five selection rejection controls remain.
+
+Merged-source checks also pass Task062's six wrapper controls and 13 scheduler
+tests (also 13 under `python3 -O`), Task060's 96 workflow controls, Task061's four
+wrapper and six batch-transport tests, and both GNAT-required Task062/Task065
+Fast wrappers. Rust **1.95.0** workspace all-target checking, Clippy with warnings
+denied and the full GNAT-required workspace suite pass using a fresh R4 target
+directory. Logs and individual exit statuses are retained as `r4/integrated-*`;
+the broad suite is `r4/integrated-workspace-test.log`.
+
+The first host-only PERF-005 test attempt failed two existing trace tests
+because host `strace` is absent; it is retained, not counted as a pass. The
+complete suite passes in the existing container with `strace`. No tests were
+skipped or weakened. Local pinned UCI/Sleet/complete dual-compiler Float32
+campaigns are not claimed anew; exact-head hosted CI owns those gates. No new
+mapping research or controlled timing campaign was performed.
+
+### Exact-head hosted gate and handoff
+
+Status at preparation: **HOSTED_CI_PENDING**. The documentation-only follow-up
+commit is identified by `r4/final-source.txt`; its own commit/tree cannot be
+self-embedded in this file. Exact-final-head run IDs and conclusions are
+recorded in the existing PR description/handoff and `r4/final-head-runs.json`,
+not inferred from historical success. A later documentation commit must itself
+receive exact-head qualification.
+
+Historical runs **39903862338** (12/12 ordinary CI) and **39903862285** (Deep CI)
+remain successful observations on the starting head only. Its complete Float32
+job was **39m06s**, versus **78m27s** baseline (**50.16%** reduction); six fresh
+providers, 60 positive cells, 40 negative CLI cases and 480 forced compilations
+were verified. These do **not** qualify the R4 combined tree.
+
+The original independent-review thread is left unresolved for the reviewer,
+with correction evidence and an explicit re-review request. No approval, merge,
+auto-merge, tag, release or Alire-index change is part of R4. Until all 12
+ordinary jobs, complete Float32 evidence and Deep CI pass on the exact final
+head, this PR is not declared ready to merge.
