@@ -56,16 +56,18 @@ pub use backend_layout::{
     rust_model_file_name,
 };
 pub use backend_names::{
-    ADA_BOUNDED_REQUIRED_SEQUENCE_CALLABLES, ADA_BOUNDED_SEQUENCE_CALLABLES, ADA_SEQUENCE_APPEND,
-    ADA_SEQUENCE_CALLABLES, ADA_SEQUENCE_CLEAR, ADA_SEQUENCE_ELEMENT, ADA_SEQUENCE_LENGTH,
-    ADA_SEQUENCE_RESERVE_CAPACITY, ADA_SEQUENCE_TO_SEQUENCE, ADA_UNBOUNDED_SEQUENCE_CALLABLES,
-    AdaSequenceShape, BackendNameError, NameRegion, StructuralMemberKind,
-    StructuralMemberNameRecord, ada_closed_sum_literal_name, ada_kind_companion_name,
-    ada_sequence_shape, backend_names_are_renderable, generated_choice_alternative_name,
-    generated_enum_variant_name, generated_record_field_name, schema_emits_ada_binary_vectors,
+    ADA_BOUNDED_REQUIRED_SEQUENCE_CALLABLES, ADA_BOUNDED_SEQUENCE_CALLABLES, ADA_CODEC_VIEWS_CHILD,
+    ADA_CODEC_VISIT_BINARY, ADA_CODEC_VISIT_ELEMENT, ADA_SEQUENCE_APPEND, ADA_SEQUENCE_CALLABLES,
+    ADA_SEQUENCE_CLEAR, ADA_SEQUENCE_ELEMENT, ADA_SEQUENCE_LENGTH, ADA_SEQUENCE_RESERVE_CAPACITY,
+    ADA_SEQUENCE_TO_SEQUENCE, ADA_UNBOUNDED_SEQUENCE_CALLABLES, AdaCodecSequenceView,
+    AdaCodecViews, AdaSequenceShape, BackendNameError, NameRegion, StructuralMemberKind,
+    StructuralMemberNameRecord, ada_closed_sum_literal_name, ada_codec_views,
+    ada_codec_views_files, ada_kind_companion_name, ada_sequence_shape,
+    backend_names_are_renderable, generated_choice_alternative_name, generated_enum_variant_name,
+    generated_record_field_name, schema_emits_ada_binary_vectors,
     schema_emits_bounded_integer_support, schema_emits_bounded_sequence_support,
     schema_emits_unbounded_sequence_support, structural_member_name_inventory,
-    unsafe_named_declarations, validate_backend_names,
+    unsafe_named_declarations, validate_ada_codec_views_name, validate_backend_names,
 };
 pub use backend_preflight::{BackendPreflightError, backend_preflight, backend_preflight_passes};
 pub use binary::{
@@ -95,9 +97,10 @@ pub use service_api::{
     validate_service_api_artifacts, validate_service_api_names, validate_service_plan_api_names,
 };
 pub use service_codec::{
-    AdaCodecRuntime, OAM_NAMESPACE, RUST_SERVICE_CODEC_FILE, RUST_SERVICE_CODEC_MODULE,
-    ServiceCodecError, ServiceCodecReadiness, analyze_service_codec,
-    analyze_service_codec_with_runtime, oms_json_member_name, oms_json_type_name,
+    AdaCodecFloatingRequirements, AdaCodecRuntime, OAM_NAMESPACE, RUST_SERVICE_CODEC_FILE,
+    RUST_SERVICE_CODEC_MODULE, ServiceCodecError, ServiceCodecReadiness,
+    ada_codec_floating_requirements, analyze_service_codec, analyze_service_codec_with_runtime,
+    oms_json_member_name, oms_json_type_name,
 };
 pub use service_generation::{
     ServiceGenerationError, ServiceGenerationProjection, project_service_generation_schema,

@@ -1,0 +1,18 @@
+--- a/core/src/gnatcoll-strings_impl.adb
++++ b/core/src/gnatcoll-strings_impl.adb
+@@ -328,2 +328,8 @@
+          New_Size  : constant String_Size := Growth_Strategy (0, Size);
++         --  Candidate compatibility repair: allocation is fallible. Keep
++         --  the small representation valid until allocation succeeds, so
++         --  exception unwinding never finalizes inline bytes as a pointer.
++         New_Data : constant Big_String_Data_Access := Convert
++           (System.Memory.Alloc
++              (size_t (New_Size) * Bytes_Per_Char + Extra_Header_Size));
+       begin
+@@ -331,5 +337,3 @@
+          Self.Data.Big.Is_Big := True;
+-         Self.Data.Big.Data := Convert
+-            (System.Memory.Alloc
+-               (size_t (New_Size) * Bytes_Per_Char + Extra_Header_Size));
++         Self.Data.Big.Data := New_Data;
+          Self.Data.Big.Size := Size;

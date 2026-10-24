@@ -1,5 +1,6 @@
 //! Minimal Ada type generation from normalized schema IR.
 
+mod codec_views;
 mod ipv6_address;
 mod service_api;
 mod service_codec;

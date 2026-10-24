@@ -60,6 +60,48 @@ pub enum AdaCodecRuntime {
     #[default]
     Portable,
     LinuxX86_64Glibc241,
+    LinuxX86_64Glibc241LosslessV1,
+}
+
+/// Floating requirements of actual top-level emissions and effective Record
+/// operations. Never inspect declaration spellings or the unprojected XSD.
+/// Choice scalar floats are rejected separately, not activated here.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct AdaCodecFloatingRequirements {
+    pub float32: bool,
+    pub float64: bool,
+}
+
+/// # Errors
+/// Propagates invalid effective Record inheritance rather than guessing demand.
+pub fn ada_codec_floating_requirements(
+    schema: &SchemaIr,
+    emissions: &[TypeEmission<'_>],
+) -> Result<AdaCodecFloatingRequirements, ServiceCodecError> {
+    let mut result = AdaCodecFloatingRequirements::default();
+    let mut admit = |kind| match kind {
+        PrimitiveKind::Float32 => result.float32 = true,
+        PrimitiveKind::Float64 => result.float64 = true,
+        _ => {}
+    };
+    for emission in emissions.iter().filter(|e| e.emits_own_top_level_name()) {
+        if let TypeEmission::Declaration(d) = emission {
+            match &d.kind {
+                TypeKind::Primitive(kind) => admit(*kind),
+                TypeKind::Record { .. } => {
+                    for field in effective_record_fields(schema, &d.name)
+                        .map_err(|e| ServiceCodecError::EmissionPlan(e.to_string()))?
+                    {
+                        if let TypeRefTarget::Primitive(kind) = field.type_ref.target {
+                            admit(kind);
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    Ok(result)
 }
 
 /// The OAM namespace (OMSC-SPC-013 Rev B section 6.1): members of element
@@ -248,6 +290,20 @@ pub fn analyze_service_codec_with_runtime(
         .iter()
         .filter(|emission| emission.emits_own_top_level_name())
         .collect();
+    let runtime = if language == BackendLanguage::Ada
+        && runtime == AdaCodecRuntime::LinuxX86_64Glibc241LosslessV1
+    {
+        let required = ada_codec_floating_requirements(schema, &emissions)?;
+        if required.float64 {
+            runtime
+        } else if required.float32 {
+            AdaCodecRuntime::LinuxX86_64Glibc241
+        } else {
+            AdaCodecRuntime::Portable
+        }
+    } else {
+        runtime
+    };
     let has_oms_exchanges = model.has_oms_exchanges();
     let mut readiness = ServiceCodecReadiness {
         language,
@@ -256,6 +312,13 @@ pub fn analyze_service_codec_with_runtime(
         renderable_emitted_declarations: 0,
         blocker: None,
     };
+    if language != BackendLanguage::Ada && runtime != AdaCodecRuntime::Portable {
+        readiness.blocker = Some(unsupported(
+            "Service_Codec",
+            "Ada runtime profile requires Ada output".into(),
+        ));
+        return Ok(readiness);
+    }
     if !has_oms_exchanges {
         return Ok(readiness);
     }
@@ -265,6 +328,19 @@ pub fn analyze_service_codec_with_runtime(
         if runtime != AdaCodecRuntime::Portable
             && package.iter().any(|part| {
                 ["AMS_GRA_OMS_JSON_Float32", "AMS_GRA_OMS_JSON_Occurrences"]
+                    .iter()
+                    .any(|fixed| part.eq_ignore_ascii_case(fixed))
+            })
+        {
+            readiness.blocker = Some(unsupported(
+                "Service_Codec",
+                "model package collision".into(),
+            ));
+            return Ok(readiness);
+        }
+        if runtime == AdaCodecRuntime::LinuxX86_64Glibc241LosslessV1
+            && package.iter().any(|part| {
+                ["AMS_GRA_OMS_JSON_Float64", "AMS_GRA_OMS_JSON_Emitter"]
                     .iter()
                     .any(|fixed| part.eq_ignore_ascii_case(fixed))
             })
@@ -293,6 +369,39 @@ pub fn analyze_service_codec_with_runtime(
             return Ok(readiness);
         }
         let files = crate::ada_model_file_names(&package);
+        if runtime == AdaCodecRuntime::LinuxX86_64Glibc241LosslessV1 {
+            let views = crate::ada_codec_views(schema, &emissions, world)
+                .map_err(|e| ServiceCodecError::EmissionPlan(e.message))?;
+            if !views.is_empty() {
+                if let Err(e) = crate::validate_ada_codec_views_name(schema, &emissions, world) {
+                    readiness.blocker = Some(unsupported("Service_Codec", e.to_string()));
+                    return Ok(readiness);
+                }
+                let child_files = crate::ada_codec_views_files(&package);
+                let paths = [
+                    files.parent_spec.as_str(),
+                    files.spec.as_str(),
+                    files.body.as_str(),
+                    "service_api.ads",
+                    "service_codec.ads",
+                    "service_codec.adb",
+                    child_files[0].as_str(),
+                    child_files[1].as_str(),
+                ];
+                for (index, path) in paths.iter().enumerate() {
+                    if paths[..index]
+                        .iter()
+                        .any(|other| path.eq_ignore_ascii_case(other))
+                    {
+                        readiness.blocker = Some(unsupported(
+                            "Service_Codec",
+                            format!("artifact collision: {path}"),
+                        ));
+                        return Ok(readiness);
+                    }
+                }
+            }
+        }
         for artifact in [files.parent_spec, files.spec, files.body] {
             if ["service_codec.ads", "service_codec.adb"]
                 .iter()
@@ -314,6 +423,11 @@ pub fn analyze_service_codec_with_runtime(
         }
         if runtime != AdaCodecRuntime::Portable {
             for fixed in ["Scalar_Float32", "Ingress"] {
+                names.insert(fixed.to_ascii_lowercase());
+            }
+        }
+        if runtime == AdaCodecRuntime::LinuxX86_64Glibc241LosslessV1 {
+            for fixed in ["Scalar_Float64", "Output"] {
                 names.insert(fixed.to_ascii_lowercase());
             }
         }
@@ -624,11 +738,19 @@ fn ada_runtime_scalar_support(
     location: &str,
     runtime: AdaCodecRuntime,
 ) -> Result<(), ServiceCodecError> {
-    if kind != PrimitiveKind::Float32 || runtime == AdaCodecRuntime::Portable {
+    let admitted = match kind {
+        PrimitiveKind::Float32 => runtime != AdaCodecRuntime::Portable,
+        PrimitiveKind::Float64 => runtime == AdaCodecRuntime::LinuxX86_64Glibc241LosslessV1,
+        _ => false,
+    };
+    if !admitted {
         return ada_scalar_support(kind, constraints, named, location);
     }
     if !named && *constraints != Default::default() {
-        return Err(unsupported(location, "field-local Float32 facets".into()));
+        return Err(unsupported(
+            location,
+            format!("field-local {kind:?} facets"),
+        ));
     }
     crate::floating_domain(kind, constraints)
         .map(|_| ())
@@ -819,6 +941,8 @@ impl<'a, 's> AdaCodecAnalysis<'a, 's> {
                                 ));
                             }
                             if matches!(referenced, TypeEmission::Declaration(d) if matches!(d.kind, TypeKind::Primitive(PrimitiveKind::Binary)))
+                                && !(self.runtime == AdaCodecRuntime::LinuxX86_64Glibc241LosslessV1
+                                    && matches!(referenced, TypeEmission::Declaration(d) if crate::binary_length_domain(PrimitiveKind::Binary, &d.constraints).is_ok_and(|domain| domain.is_some())))
                             {
                                 return Err(unsupported(
                                     &location,
@@ -873,12 +997,18 @@ impl<'a, 's> AdaCodecAnalysis<'a, 's> {
                                 "direct Binary Choice alternative is not qualified".into(),
                             ));
                         }
-                        TypeRefTarget::Primitive(PrimitiveKind::Float32)
-                            if self.runtime != AdaCodecRuntime::Portable =>
-                        {
+                        TypeRefTarget::Primitive(
+                            PrimitiveKind::Float32 | PrimitiveKind::Float64,
+                        ) if self.runtime != AdaCodecRuntime::Portable => {
                             return Err(unsupported(
                                 &location,
-                                "direct Float32 Choice alternative is not qualified".into(),
+                                format!(
+                                    "direct {:?} Choice alternative is not qualified",
+                                    match field.type_ref.target {
+                                        TypeRefTarget::Primitive(kind) => kind,
+                                        _ => unreachable!(),
+                                    }
+                                ),
                             ));
                         }
                         TypeRefTarget::Primitive(PrimitiveKind::DateTime) => {
@@ -904,11 +1034,20 @@ impl<'a, 's> AdaCodecAnalysis<'a, 's> {
                                 unsupported(&location, "named Choice value is not emitted".into())
                             })?;
                             if self.runtime != AdaCodecRuntime::Portable
-                                && matches!(referenced, TypeEmission::Declaration(d) if matches!(d.kind, TypeKind::Primitive(PrimitiveKind::Float32)))
+                                && matches!(referenced, TypeEmission::Declaration(d) if matches!(d.kind, TypeKind::Primitive(PrimitiveKind::Float32 | PrimitiveKind::Float64)))
                             {
                                 return Err(unsupported(
                                     &location,
-                                    "named Float32 Choice alternative is not qualified".into(),
+                                    format!(
+                                        "named {:?} Choice alternative is not qualified",
+                                        match referenced {
+                                            TypeEmission::Declaration(d) => match d.kind {
+                                                TypeKind::Primitive(kind) => kind,
+                                                _ => unreachable!(),
+                                            },
+                                            _ => unreachable!(),
+                                        }
+                                    ),
                                 ));
                             }
                             if matches!(referenced, TypeEmission::Declaration(d) if matches!(d.kind, TypeKind::Primitive(PrimitiveKind::DateTime)))
@@ -1172,6 +1311,76 @@ mod tests {
                         .is_err()
                 );
             }
+        }
+    }
+
+    #[test]
+    fn task097_float64_profile_is_separate_and_facets_fail_closed() {
+        for runtime in [
+            AdaCodecRuntime::Portable,
+            AdaCodecRuntime::LinuxX86_64Glibc241,
+            AdaCodecRuntime::LinuxX86_64Glibc241LosslessV1,
+        ] {
+            for kind in [
+                PrimitiveKind::Float32,
+                PrimitiveKind::Float64,
+                PrimitiveKind::Decimal,
+            ] {
+                for named in [false, true] {
+                    let admitted = match kind {
+                        PrimitiveKind::Float32 => runtime != AdaCodecRuntime::Portable,
+                        PrimitiveKind::Float64 => {
+                            runtime == AdaCodecRuntime::LinuxX86_64Glibc241LosslessV1
+                        }
+                        _ => false,
+                    };
+                    assert_eq!(
+                        ada_runtime_scalar_support(
+                            kind,
+                            &ConstraintSet::default(),
+                            named,
+                            "P.F",
+                            runtime
+                        )
+                        .is_ok(),
+                        admitted
+                    );
+                    let invalid = ConstraintSet {
+                        length: Some(1),
+                        ..Default::default()
+                    };
+                    assert!(
+                        ada_runtime_scalar_support(kind, &invalid, named, "P.F", runtime).is_err()
+                    );
+                }
+            }
+        }
+        for cardinality in [
+            Cardinality::REQUIRED_ONE,
+            Cardinality {
+                min_occurs: 0,
+                max_occurs: Some(1),
+            },
+            Cardinality {
+                min_occurs: 0,
+                max_occurs: Some(3),
+            },
+            Cardinality {
+                min_occurs: 1,
+                max_occurs: None,
+            },
+        ] {
+            let mut f = field("F", TypeRef::primitive(PrimitiveKind::Float64));
+            f.cardinality = cardinality;
+            let schema = record(OAM_NAMESPACE, vec![f]);
+            let emissions = plan_type_emissions(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
+            let mut analysis = AdaCodecAnalysis::new(&emissions);
+            analysis.runtime = AdaCodecRuntime::LinuxX86_64Glibc241LosslessV1;
+            assert!(
+                analysis
+                    .support(&schema, &emissions[0], GenerationWorld::ClosedSchemaSet)
+                    .is_ok()
+            );
         }
     }
 

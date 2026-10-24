@@ -52,6 +52,13 @@ package body AMS_GRA_OMS_JSON_Occurrences is
    function Get (Items : Value_Array; Index : Positive) return Value is
      (Node => Get (Items.Items, Index));
    function Length (Items : Value_Array) return Natural is (Length (Items.Items));
+   function Numeric_Lexeme (Item : Value) return String is
+   begin
+      if Kind (Item) not in JSON_Int_Type | JSON_Float_Type then
+         raise Validation_Error with "expected numeric occurrence at byte" & First (Item)'Image;
+      end if;
+      return Get (Get (Item.Node, "data"));
+   end Numeric_Lexeme;
    function Floating (Item : Value) return AMS_GRA_OMS_JSON_Float32.Float32 is
    begin
       if Kind (Item) not in JSON_Int_Type | JSON_Float_Type | JSON_String_Type then
