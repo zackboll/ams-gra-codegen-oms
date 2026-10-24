@@ -45,7 +45,8 @@ def workflow_steps(workflow):
     assert step.strip() == perf_step.strip(), "PERF-001 qualification weakened"
     inherited = []
     for job, step in steps:
-        if job not in ("real-uci", "real-uci-regressions") or (job, step) == perf[0]:
+        if job not in ("real-uci", "real-uci-regressions", "real-uci-regressions-ascii",
+                       "real-uci-regressions-alternating") or (job, step) == perf[0]:
             continue
         # Task061/062 helper/CLI steps have dedicated gates, not inline captures.
         if "cargo test" not in step:

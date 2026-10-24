@@ -58,19 +58,19 @@ class MutationOwnership(unittest.TestCase):
                                            text, re.M | re.S))
                     changed = dict(re.findall(r"^  ([\w-]+):\n(.*?)(?=^  [\w-]+:|\Z)",
                                               mutated, re.M | re.S))
-                    for job in jobs.keys() - {"real-uci", "real-uci-regressions"}:
+                    for job in jobs.keys() - set(layout.QUALIFICATION_JOBS):
                         self.assertEqual(changed.get(job), jobs[job], job)
                     observed.append(mutated)
                     return actual_run(command, **kwargs)
 
-                # The complete existing 54-case self-test still runs the real
+                # The expanded sharding self-test still runs the real
                 # guard and checks each attributed diagnostic and non-no-op.
                 from unittest.mock import patch
                 with patch.object(layout.subprocess, "run", side_effect=inspect_mutation):
                     layout.self_test(str(path), str(ROOT / "scripts/check-ci-split.sh"),
                                      str(ROOT / ".github/workflows/ci.yml"),
                                      str(ROOT / "scripts/run-real-sleet-test.sh"))
-                self.assertEqual(len(observed), 54)
+                self.assertEqual(len(observed), 168)
                 self.assertEqual(observed.count(text), 1)  # Healthy case only.
 
 
