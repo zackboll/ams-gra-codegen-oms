@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Task 098: named TimeZulu mixed with every other admitted lossless scalar
+     family: named/direct DateTime, named/direct Duration, Binary, Float32 and
+     Float64. Requires the lossless Ada codec runtime. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+ xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+ targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified">
+ <xs:simpleType name="Clock"><xs:restriction base="xs:time">
+  <xs:pattern value=".+Z"/>
+ </xs:restriction></xs:simpleType>
+ <xs:simpleType name="Instant"><xs:restriction base="xs:dateTime">
+  <xs:pattern value=".+Z"/>
+ </xs:restriction></xs:simpleType>
+ <xs:simpleType name="Span"><xs:restriction base="xs:duration"/></xs:simpleType>
+ <xs:simpleType name="Fraction"><xs:restriction base="xs:double">
+  <xs:minInclusive value="0"/><xs:maxInclusive value="1"/>
+ </xs:restriction></xs:simpleType>
+ <xs:complexType name="ClockPick"><xs:choice>
+  <xs:element name="At" type="uci:Clock"/>
+  <xs:element name="Label" type="xs:string"/>
+ </xs:choice></xs:complexType>
+ <xs:complexType name="ClockLeg"><xs:sequence>
+  <xs:element name="Start" type="uci:Clock"/>
+  <xs:element name="Stop" type="uci:Clock" minOccurs="0"/>
+  <xs:element name="Distance" type="xs:double"/>
+ </xs:sequence></xs:complexType>
+ <xs:complexType name="MixedPayload"><xs:sequence>
+  <xs:element name="Required" type="uci:Clock"/>
+  <xs:element name="Optional" type="uci:Clock" minOccurs="0"/>
+  <xs:element name="Pick" type="uci:ClockPick"/>
+  <xs:element name="Leg" type="uci:ClockLeg"/>
+  <xs:element name="Bounded" type="uci:Clock" minOccurs="0" maxOccurs="3"/>
+  <xs:element name="Unbounded" type="uci:Clock" minOccurs="0" maxOccurs="unbounded"/>
+  <xs:element name="Positive" type="uci:Clock" minOccurs="2" maxOccurs="unbounded"/>
+  <xs:element name="Legs" type="uci:ClockLeg" minOccurs="0" maxOccurs="2"/>
+  <xs:element name="Picks" type="uci:ClockPick" minOccurs="0" maxOccurs="unbounded"/>
+  <xs:element name="Stamp" type="uci:Instant"/>
+  <xs:element name="DirectStamp" type="xs:dateTime"/>
+  <xs:element name="Elapsed" type="uci:Span"/>
+  <xs:element name="DirectElapsed" type="xs:duration"/>
+  <xs:element name="Data" type="xs:hexBinary"/>
+  <xs:element name="Single" type="xs:float"/>
+  <xs:element name="Double" type="xs:double"/>
+  <xs:element name="Ratio" type="uci:Fraction"/>
+ </xs:sequence></xs:complexType>
+ <xs:element name="MixedClockNotice" type="uci:MixedPayload" uci:version="001.000.000.000"/>
+</xs:schema>

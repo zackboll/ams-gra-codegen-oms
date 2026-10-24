@@ -418,7 +418,9 @@ pub fn generate_service_codec_with_runtime(
                         };
                         format!("{operation} ({value})")
                     }
-                    PrimitiveKind::Duration | PrimitiveKind::DateTime => {
+                    // Task 098: named TimeZulu shares the checked lexical
+                    // carrier encoding: the stored spelling as a JSON string.
+                    PrimitiveKind::Duration | PrimitiveKind::DateTime | PrimitiveKind::Time => {
                         format!("{create} (Model.Value (Item))")
                     }
                     PrimitiveKind::String if checked => format!("{create} (Model.Value (Item))"),
@@ -468,6 +470,12 @@ pub fn generate_service_codec_with_runtime(
                     ),
                     PrimitiveKind::DateTime => String::from(
                         "      declare\n         Text : constant String := Scalar_String (Value);\n      begin\n         return Model.Create (Text);\n      exception\n         when Constraint_Error => raise Codec_Error with \"invalid named DateTime\";\n      end;",
+                    ),
+                    // Task 098: readiness admits only TimeZulu here. The checked
+                    // model constructor is the sole lexical authority; only its
+                    // Constraint_Error is translated, never JSON-kind failures.
+                    PrimitiveKind::Time => String::from(
+                        "      declare\n         Text : constant String := Scalar_String (Value);\n      begin\n         begin\n            return Model.Create (Text);\n         exception\n            when Constraint_Error => raise Codec_Error with \"invalid named Time\";\n         end;\n      end;",
                     ),
                     PrimitiveKind::String if checked => String::from(
                         "      declare\n         Text : constant String := Scalar_String (Value);\n      begin\n         return Model.Create (Text);\n      exception\n         when Constraint_Error => raise Codec_Error with \"invalid checked String\";\n      end;",

@@ -1309,6 +1309,170 @@ fn task090_ada_datetime_selected_closures_and_model_bytes() {
     }
 }
 
+/// Task 098: named TimeZulu is codec READY under every Ada runtime profile;
+/// the codec is additive (model/API bytes unchanged) and uses the checked
+/// `Model.Create`/`Model.Value` carrier operations without a new helper.
+#[test]
+fn task098_ada_named_time_zulu_codec_ready_and_model_bytes_unchanged() {
+    let lossless = Some("linux-x86_64-glibc-2.41-lossless-v1");
+    for (fixture, runtime, count) in [
+        ("codec-ada-time-zulu", None, "4/4"),
+        ("codec-ada-time-zulu", lossless, "4/4"),
+        (
+            "codec-ada-time-zulu-float32",
+            Some("linux-x86_64-glibc-2.41"),
+            "4/4",
+        ),
+        ("codec-ada-time-zulu-mixed", lossless, "7/7"),
+    ] {
+        let schema = format!("{fixture}.xsd");
+        let contract = format!("{fixture}.yaml");
+        let mut args = vec![
+            "service-check",
+            "--language",
+            "ada",
+            "--world",
+            "closed-schema",
+            "--with-codec",
+        ];
+        if let Some(runtime) = runtime {
+            args.extend(["--ada-codec-runtime", runtime]);
+        }
+        let output = run(&args, &schema, &contract, None);
+        let report = String::from_utf8(output.stdout).unwrap();
+        assert_eq!(output.status.code(), Some(0), "{fixture}: {report}");
+        assert!(
+            report.contains(&format!("codec renderable emitted declarations: {count}\n")),
+            "{fixture}: {report}"
+        );
+        args[0] = "service-generate";
+        let coded = output_dir(&format!("098-{fixture}-{}-coded", runtime.is_some()));
+        let output = run(&args, &schema, &contract, Some(&coded));
+        assert!(output.status.success(), "{output:?}");
+        let label = format!("098-{fixture}-{}-plain", runtime.is_some());
+        let (output, plain) = generate(&schema, &contract, "ada", false, &label);
+        assert!(output.status.success(), "{output:?}");
+        for name in listing(&plain) {
+            assert_eq!(
+                std::fs::read(plain.join(&name)).unwrap(),
+                std::fs::read(coded.join(&name)).unwrap(),
+                "{fixture}: {name}"
+            );
+        }
+        let body = std::fs::read_to_string(coded.join("service_codec.adb")).unwrap();
+        // One named conversion pair (declaration + body), reused everywhere.
+        assert_eq!(body.matches("function From_JSON_Clock (").count(), 2);
+        assert_eq!(body.matches("\"invalid named Time\"").count(), 1);
+        assert!(body.contains("(Model.Value (Item))"));
+        assert!(!body.contains("Scalar_Time"));
+        // The constructor's Constraint_Error is the only translated exception.
+        let decoder = &body[body.rfind("function From_JSON_Clock (").unwrap()..];
+        let decoder = &decoder[..decoder.find("end From_JSON_Clock;").unwrap()];
+        assert_eq!(decoder.matches("when ").count(), 1, "{decoder}");
+        assert!(decoder.contains("when Constraint_Error =>"), "{decoder}");
+    }
+}
+
+/// Task 098: Time admission is profile-exact. Direct xs:time, unconstrained
+/// named Time, a different pattern and an extra facet remain model or codec
+/// blockers, atomically, under both the portable and lossless runtimes.
+#[test]
+fn task098_unsupported_time_neighbours_stay_atomic_rejections() {
+    let source = std::fs::read_to_string(fixture("codec-ada-time-zulu.xsd")).unwrap();
+    let zulu =
+        "<xs:restriction base=\"xs:time\">\n  <xs:pattern value=\".+Z\"/>\n </xs:restriction>";
+    assert_eq!(source.matches(zulu).count(), 1);
+    for (label, schema) in [
+        (
+            "unconstrained-named",
+            source.replace(zulu, "<xs:restriction base=\"xs:time\"/>"),
+        ),
+        ("other-pattern", source.replace(".+Z", ".*Z")),
+        (
+            "extra-facet",
+            source.replace(
+                "<xs:pattern value=\".+Z\"/>",
+                "<xs:pattern value=\".+Z\"/><xs:maxLength value=\"20\"/>",
+            ),
+        ),
+        (
+            "direct",
+            source.replace(
+                "name=\"Required\" type=\"uci:Clock\"",
+                "name=\"Required\" type=\"xs:time\"",
+            ),
+        ),
+    ] {
+        assert_ne!(schema, source, "{label}: mutation did not apply");
+        let scratch = output_dir(&format!("098-{label}"));
+        std::fs::create_dir(&scratch).unwrap();
+        let schema_path = scratch.join("schema.xsd");
+        std::fs::write(&schema_path, schema).unwrap();
+        for runtime in [None, Some("linux-x86_64-glibc-2.41-lossless-v1")] {
+            let output_path = scratch.join(format!("output-{}", runtime.is_some()));
+            for action in ["service-check", "service-generate"] {
+                let mut command = Command::new(env!("CARGO_BIN_EXE_ams-gra-codegen-oms"));
+                command
+                    .arg(action)
+                    .arg("--schema")
+                    .arg(&schema_path)
+                    .arg("--contract")
+                    .arg(fixture("codec-ada-time-zulu.yaml"))
+                    .args([
+                        "--language",
+                        "ada",
+                        "--world",
+                        "closed-schema",
+                        "--with-codec",
+                    ]);
+                if let Some(runtime) = runtime {
+                    command.args(["--ada-codec-runtime", runtime]);
+                }
+                if action == "service-generate" {
+                    command.arg("--output").arg(&output_path);
+                }
+                let output = command.output().unwrap();
+                let combined = format!(
+                    "{}{}",
+                    String::from_utf8_lossy(&output.stdout),
+                    String::from_utf8_lossy(&output.stderr)
+                );
+                assert_eq!(
+                    output.status.code(),
+                    Some(1),
+                    "{label} {action}: {combined}"
+                );
+                assert!(!output_path.exists(), "{label}: partial output");
+                if label == "extra-facet" {
+                    // A length facet on xs:time never reaches the IR at all.
+                    assert!(
+                        combined.contains("unsupported XSD construct: xs:maxLength"),
+                        "{label} {action}: {combined}"
+                    );
+                    continue;
+                }
+                // Rejected by the unchanged Task 061 model boundary before any
+                // codec work: the codec never widens what the model admits.
+                assert!(
+                    combined.contains("status: NOT READY\n"),
+                    "{label} {action}: {combined}"
+                );
+                assert!(
+                    combined.contains("codec: not measured (selected model is NOT READY)"),
+                    "{label} {action}: {combined}"
+                );
+                let blocker = if label == "direct" {
+                    "ClockPayload"
+                } else {
+                    "}Clock\n"
+                };
+                assert!(combined.contains(blocker), "{label} {action}: {combined}");
+                assert!(!output_path.exists(), "{label}: partial output");
+            }
+        }
+    }
+}
+
 #[test]
 fn task087b_ada_codec_ready_deduplicated_and_preserves_model_api() {
     let (code, report) = check(

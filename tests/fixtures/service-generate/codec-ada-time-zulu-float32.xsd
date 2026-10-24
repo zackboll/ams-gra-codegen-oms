@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Task 098: named TimeZulu beside Float32 only, so the existing qualified
+     Float32 (linux-x86_64-glibc-2.41) ingress path carries the Time codec. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+ xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+ targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified">
+ <xs:simpleType name="Clock"><xs:restriction base="xs:time">
+  <xs:pattern value=".+Z"/>
+ </xs:restriction></xs:simpleType>
+ <xs:complexType name="ClockPick"><xs:choice>
+  <xs:element name="At" type="uci:Clock"/>
+  <xs:element name="Label" type="xs:string"/>
+ </xs:choice></xs:complexType>
+ <xs:complexType name="ClockLeg"><xs:sequence>
+  <xs:element name="Start" type="uci:Clock"/>
+  <xs:element name="Stop" type="uci:Clock" minOccurs="0"/>
+ </xs:sequence></xs:complexType>
+ <xs:complexType name="Float32ClockPayload"><xs:sequence>
+  <xs:element name="Required" type="uci:Clock"/>
+  <xs:element name="Optional" type="uci:Clock" minOccurs="0"/>
+  <xs:element name="Pick" type="uci:ClockPick"/>
+  <xs:element name="Leg" type="uci:ClockLeg"/>
+  <xs:element name="Bounded" type="uci:Clock" minOccurs="0" maxOccurs="3"/>
+  <xs:element name="Unbounded" type="uci:Clock" minOccurs="0" maxOccurs="unbounded"/>
+  <xs:element name="Positive" type="uci:Clock" minOccurs="2" maxOccurs="unbounded"/>
+  <xs:element name="Legs" type="uci:ClockLeg" minOccurs="0" maxOccurs="2"/>
+  <xs:element name="Picks" type="uci:ClockPick" minOccurs="0" maxOccurs="unbounded"/>
+  <xs:element name="Single" type="xs:float"/>
+ </xs:sequence></xs:complexType>
+ <xs:element name="Float32ClockNotice" type="uci:Float32ClockPayload" uci:version="001.000.000.000"/>
+</xs:schema>

@@ -687,6 +687,18 @@ fn ada_scalar_support(
                 "unsupported named DateTime profile".into(),
             )),
         },
+        // Task 098: only the Task 061 named TimeZulu carrier (`.+Z`, nothing
+        // else) is admitted, through the same shared semantic classifier the
+        // model generator uses -- never a declaration name. Direct `xs:time`
+        // (`named == false`) still falls through to the generic rejection.
+        PrimitiveKind::Time if named => match crate::temporal_profile(kind, constraints) {
+            Ok(Some(crate::TemporalProfile::TimeZulu)) => Ok(()),
+            Err(reason) => Err(unsupported(location, reason.to_string())),
+            _ => Err(unsupported(
+                location,
+                "unsupported named Time profile".into(),
+            )),
+        },
         PrimitiveKind::DateTime => match crate::direct_temporal_profile(kind, constraints) {
             Ok(Some(crate::DirectTemporalProfile::DateTime)) => Ok(()),
             Err(reason) => Err(unsupported(location, format!("{reason:?}"))),
@@ -1706,11 +1718,246 @@ mod tests {
         ] {
             for named in [false, true] {
                 assert!(ada_scalar_support(kind, &empty, named, "P.F").is_err());
-                assert!(ada_scalar_support(kind, &zulu, named, "P.F").is_err());
+                // Task 098: exact named TimeZulu is the one admitted neighbour.
+                assert_eq!(
+                    ada_scalar_support(kind, &zulu, named, "P.F").is_ok(),
+                    kind == PrimitiveKind::Time && named,
+                    "{kind:?} named={named}"
+                );
             }
         }
         zulu.max_length = Some(100);
         assert!(ada_scalar_support(PrimitiveKind::DateTime, &zulu, true, "Instant").is_err());
+    }
+
+    fn task098_zulu() -> ConstraintSet {
+        let mut zulu = ConstraintSet::default();
+        zulu.lexical
+            .pattern_groups
+            .push(ams_gra_oms_ir::PatternGroup {
+                alternatives: vec![ams_gra_oms_ir::PatternExpression::xml_schema(".+Z")],
+            });
+        zulu
+    }
+
+    #[test]
+    fn task098_named_time_zulu_is_the_only_admitted_time_profile() {
+        use ams_gra_oms_ir::{NumericValue, PatternExpression, PatternGroup, WhiteSpacePolicy};
+        let zulu = task098_zulu();
+        // Named exact `.+Z` is admitted under every runtime profile.
+        for runtime in [
+            AdaCodecRuntime::Portable,
+            AdaCodecRuntime::LinuxX86_64Glibc241,
+            AdaCodecRuntime::LinuxX86_64Glibc241LosslessV1,
+        ] {
+            assert_eq!(
+                ada_runtime_scalar_support(PrimitiveKind::Time, &zulu, true, "Clock", runtime),
+                Ok(())
+            );
+        }
+        // Direct xs:time is never admitted, with or without facets.
+        for constraints in [ConstraintSet::default(), zulu.clone()] {
+            assert_eq!(
+                ada_scalar_support(PrimitiveKind::Time, &constraints, false, "P.F")
+                    .unwrap_err()
+                    .to_string(),
+                "P.F: unsupported Ada codec primitive or facets: Time"
+            );
+        }
+        // Every named neighbour fails closed with the shared classifier reason.
+        let mut neighbours = vec![ConstraintSet::default()];
+        let mut other = zulu.clone();
+        other.lexical.pattern_groups[0].alternatives[0] = PatternExpression::xml_schema(".*Z");
+        neighbours.push(other);
+        let mut two_alternatives = zulu.clone();
+        two_alternatives.lexical.pattern_groups[0]
+            .alternatives
+            .push(PatternExpression::xml_schema(".+Z"));
+        neighbours.push(two_alternatives);
+        let mut two_groups = zulu.clone();
+        two_groups.lexical.pattern_groups.push(PatternGroup {
+            alternatives: vec![PatternExpression::xml_schema(".+Z")],
+        });
+        neighbours.push(two_groups);
+        let mut white_space = zulu.clone();
+        white_space.lexical.white_space = Some(WhiteSpacePolicy::Collapse);
+        neighbours.push(white_space);
+        let mut length = zulu.clone();
+        length.max_length = Some(20);
+        neighbours.push(length);
+        let mut bound = zulu.clone();
+        bound.min_inclusive = Some(NumericValue::Integer(0));
+        neighbours.push(bound);
+        for constraints in neighbours {
+            assert_eq!(
+                ada_scalar_support(PrimitiveKind::Time, &constraints, true, "Clock")
+                    .unwrap_err()
+                    .to_string(),
+                "Clock: unsupported temporal declaration: Time",
+                "{constraints:?}"
+            );
+        }
+        // Admission is semantic: the UCI spelling `TimeType` is irrelevant.
+        assert_eq!(
+            ada_scalar_support(PrimitiveKind::Time, &zulu, true, "TimeType"),
+            Ok(())
+        );
+        assert!(
+            ada_scalar_support(
+                PrimitiveKind::Time,
+                &ConstraintSet::default(),
+                true,
+                "TimeType"
+            )
+            .is_err()
+        );
+        // No neighbouring kind borrows the Time admission.
+        for kind in [
+            PrimitiveKind::Decimal,
+            PrimitiveKind::Binary,
+            PrimitiveKind::Float32,
+            PrimitiveKind::Float64,
+            PrimitiveKind::Duration,
+        ] {
+            assert!(
+                ada_scalar_support(kind, &zulu, true, "Clock").is_err(),
+                "{kind:?}"
+            );
+        }
+    }
+
+    /// Record `P` with `fields`, a named Time `Clock`, a Choice `Pick` of
+    /// {Time: Clock, Text: string} and a Record `Outer` nesting both.
+    fn task098_schema(clock: ConstraintSet, fields: Vec<FieldDecl>) -> SchemaIr {
+        let named = |local: &str| TypeRef::named(QualifiedName::new(OAM_NAMESPACE, local));
+        let mut schema = record(OAM_NAMESPACE, fields);
+        let declaration = |name: &str, kind: TypeKind, constraints: ConstraintSet| TypeDecl {
+            name: QualifiedName::new(OAM_NAMESPACE, name),
+            is_abstract: false,
+            base_type: None,
+            kind,
+            constraints,
+            documentation: None,
+            source: source(),
+        };
+        let mut clock = declaration("Clock", TypeKind::Primitive(PrimitiveKind::Time), clock);
+        clock.base_type = Some(TypeRef::primitive(PrimitiveKind::Time));
+        schema.types.push(clock);
+        schema.types.push(declaration(
+            "Pick",
+            TypeKind::Choice {
+                alternatives: vec![
+                    field("Time", named("Clock")),
+                    field("Text", TypeRef::primitive(PrimitiveKind::String)),
+                ],
+            },
+            ConstraintSet::default(),
+        ));
+        schema.types.push(declaration(
+            "Outer",
+            TypeKind::Record {
+                fields: vec![
+                    field("Inner", named("P")),
+                    field("Selection", named("Pick")),
+                ],
+            },
+            ConstraintSet::default(),
+        ));
+        schema
+    }
+
+    fn task098_support(schema: &SchemaIr, owner: &str) -> Result<(), ServiceCodecError> {
+        let emissions = plan_type_emissions(schema, GenerationWorld::ClosedSchemaSet).unwrap();
+        let mut analysis = AdaCodecAnalysis::new(&emissions);
+        let emission = emissions
+            .iter()
+            .find(|emission| emission.name().local_name == owner)
+            .unwrap();
+        analysis.support(schema, emission, GenerationWorld::ClosedSchemaSet)?;
+        analysis.record_support(schema, emission, GenerationWorld::ClosedSchemaSet)
+    }
+
+    #[test]
+    fn task098_named_time_composes_through_records_choices_and_repetition() {
+        let clock = || TypeRef::named(QualifiedName::new(OAM_NAMESPACE, "Clock"));
+        let member = |name: &str, min_occurs: u64, max_occurs: Option<u64>| {
+            let mut member = field(name, clock());
+            member.cardinality = Cardinality {
+                min_occurs,
+                max_occurs,
+            };
+            member
+        };
+        let fields = vec![
+            member("Required", 1, Some(1)),
+            member("Optional", 0, Some(1)),
+            member("Bounded", 0, Some(3)),
+            member("Unbounded", 0, None),
+            member("Positive", 2, None),
+        ];
+        let schema = task098_schema(task098_zulu(), fields.clone());
+        for owner in ["Clock", "P", "Pick", "Outer"] {
+            assert_eq!(task098_support(&schema, owner), Ok(()), "{owner}");
+        }
+
+        // Unsupported named Time fails closed in every composition, attributed
+        // to the rejected declaration (and the Choice alternative that uses it).
+        let rejected = task098_schema(ConstraintSet::default(), fields.clone());
+        let reason = "Clock: unsupported temporal declaration: Time";
+        for owner in ["Clock", "P", "Outer"] {
+            assert_eq!(
+                task098_support(&rejected, owner).unwrap_err().to_string(),
+                reason,
+                "{owner}"
+            );
+        }
+        assert_eq!(
+            task098_support(&rejected, "Pick").unwrap_err().to_string(),
+            format!("Pick.Time: {reason}")
+        );
+        // Single required/optional members reach the declaration via the
+        // Record-value closure, not only via repetition.
+        let single = task098_schema(ConstraintSet::default(), fields[..2].to_vec());
+        assert_eq!(
+            task098_support(&single, "P").unwrap_err().to_string(),
+            reason
+        );
+
+        // Field-local facets on a named Time reference are not silently merged.
+        let mut local = fields.clone();
+        local[0].constraints = task098_zulu();
+        assert_eq!(
+            task098_support(&task098_schema(task098_zulu(), local), "P")
+                .unwrap_err()
+                .to_string(),
+            "P.Required: field-local named facets"
+        );
+
+        // Direct xs:time stays rejected as a member and as a Choice alternative.
+        for (min_occurs, max_occurs) in [(1, Some(1)), (0, Some(1)), (0, Some(3)), (0, None)] {
+            let mut direct = field("When", TypeRef::primitive(PrimitiveKind::Time));
+            direct.cardinality = Cardinality {
+                min_occurs,
+                max_occurs,
+            };
+            assert_eq!(
+                task098_support(&task098_schema(task098_zulu(), vec![direct]), "P")
+                    .unwrap_err()
+                    .to_string(),
+                "P.When: unsupported Ada codec primitive or facets: Time"
+            );
+        }
+        let mut direct_choice = schema.clone();
+        let TypeKind::Choice { alternatives } = &mut direct_choice.types[2].kind else {
+            unreachable!()
+        };
+        alternatives[0].type_ref = TypeRef::primitive(PrimitiveKind::Time);
+        assert_eq!(
+            task098_support(&direct_choice, "Pick")
+                .unwrap_err()
+                .to_string(),
+            "Pick.Time: unsupported Ada codec primitive or facets: Time"
+        );
     }
 
     #[test]
