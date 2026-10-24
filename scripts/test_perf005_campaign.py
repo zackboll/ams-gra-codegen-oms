@@ -5,16 +5,23 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
-from test_perf005_equivalence import compare
+import perf005_evidence as evidence
 from perf005_provider import digest, manifest
+from test_perf005_equivalence import compare
+
+
+COMPILER_VERSION = "16.1.0"
+COMPILER_HASH = "238f4adafcb1425c84da6519068fdfcf33e57e406fc793e2958a9238789900de"
 
 
 def fixture(root):
     root.mkdir()
     records, provenance, hashes = [], [], []
-    compiler = "/usr/bin/gcc"
-    compiler_hash = "a23ecab8ff08f09ad8c80602c2c5df7f49e09c25905cb8975902e101bf72635f"
+    # Retained evidence may refer to a qualified container-only compiler. Keep
+    # this synthetic path private and absent, never bound to the host's GCC.
+    compiler = str(root / "synthetic-toolchain/bin/gcc")
     for policy in compare.POLICIES:
         variant = root / "perf005-providers" / policy
         artifacts = variant / "artifacts"
@@ -41,15 +48,15 @@ def fixture(root):
                 directory = consumer / "alire/cache/dependencies" / (dep + "_26.0.0_test")
                 directory.mkdir(parents=True)
                 (directory / "source.ads").write_text("same provider")
-            (root / f"{label}-provider-identity.log").write_text(f"{compiler}\nGNAT 14.2.0\n{compiler_hash}  {compiler}\n")
+            (root / f"{label}-provider-identity.log").write_text(f"{compiler}\nGNAT {COMPILER_VERSION}\n{COMPILER_HASH}  {compiler}\n")
             for suffix in ("portable-reject", "portable-generate-reject"):
                 (root / f"{label}-{suffix}.log").write_text("expected rejection")
                 (root / f"{label}-{suffix}.profile.json").write_text('{"exit":1}')
             for policy in compare.POLICIES:
                 cell = f"{label}-{policy}"
-                records.append(dict(profile=profile, name=name, policy=policy, compiler="14.2.0"))
+                records.append(dict(profile=profile, name=name, policy=policy, compiler=COMPILER_VERSION))
                 (root / f"{cell}-alire.lock").write_text("frozen lock")
-                (root / f"{cell}-gnat.log").write_text("GNAT 14.2.0")
+                (root / f"{cell}-gnat.log").write_text(f"GNAT {COMPILER_VERSION}")
                 (root / f"{cell}-execute.log").write_bytes(b"TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7\n")
                 adc = root / f"{cell}.adc"
                 if policy != "normal":
@@ -61,7 +68,8 @@ def fixture(root):
                         args.append(f"-gnatec={adc}")
                     invocations.append(dict(executable=compiler, argv=args, exit=0, inclusive_elapsed_seconds=0.1))
                 for p in paths:
-                    backend = "/usr/libexec/gcc/x86_64-linux-gnu/14/" + ("cc1" if p.suffix == ".c" else "gnat1")
+                    backend_name = "cc1" if p.suffix == ".c" else "gnat1"
+                    backend = str(Path(compiler).parent.parent / f"libexec/gcc/x86_64-pc-linux-gnu/{COMPILER_VERSION}" / backend_name)
                     args = [backend, str(p)]
                     if p.suffix != ".c" and policy != "normal":
                         args.append(f"-gnatec={adc}")
@@ -86,7 +94,19 @@ class Campaign(unittest.TestCase):
             self.assertEqual(compare.compare(baseline, pilot, traced)["positive_cells"], 30)
             path = traced / "oam-ArraySample-Check-build.profile.json"
             original = json.loads(path.read_text())
-            for mutation in ("namespace", "policy", "source", "failed", "incomplete", "backend"):
+            for mutation, diagnostic in (
+                    ("namespace", "incomplete project-owned compilation inventory"),
+                    ("policy", "effective assertion policy differs"),
+                    ("source", "unexpected/provider/unowned compilation source"),
+                    ("failed", "failed/incomplete compiler execution"),
+                    ("incomplete", "failed/incomplete compiler execution"),
+                    ("backend", "failed/incomplete compiler execution"),
+                    ("missing-backend", "missing/ambiguous compiler backend execution"),
+                    ("backend-path", "compiler backend differs from qualified toolchain"),
+                    ("backend-policy", "backend assertion policy differs"),
+                    ("compiler-path", "compiler path differs from qualified identity"),
+                    ("argv-path", "compiler path differs from qualified identity"),
+                    ("option", "project-owned Ada options differ")):
                 data = copy.deepcopy(original)
                 executions = data["executions"]
                 if mutation == "namespace":
@@ -95,13 +115,92 @@ class Campaign(unittest.TestCase):
                     executions[0]["argv"][-1] = f"-gnatec={traced}/oam-ArraySample-Ignore.adc"
                 elif mutation == "source":
                     executions[0]["argv"][5] = "/unrelated/helper_demand_consumer.adb"
+                elif mutation == "missing-backend":
+                    del executions[8]
+                elif mutation == "backend-path":
+                    executions[8]["executable"] = "/unrelated/gnat1"
+                elif mutation == "backend-policy":
+                    executions[8]["argv"][-1] = f"-gnatec={traced}/oam-ArraySample-Ignore.adc"
+                elif mutation == "compiler-path":
+                    executions[0]["executable"] = "/unrelated/gcc"
+                elif mutation == "argv-path":
+                    executions[0]["argv"][0] = "/unrelated/gcc"
+                elif mutation == "option":
+                    executions[0]["argv"].remove("-gnato")
                 else:
                     executions[8 if mutation == "backend" else 0]["exit"] = 1 if mutation in ("failed", "backend") else None
                 path.write_text(json.dumps(data))
-                with self.subTest(mutation=mutation), self.assertRaises(RuntimeError):
+                with self.subTest(mutation=mutation), self.assertRaisesRegex(RuntimeError, diagnostic):
                     compare.compare(baseline, pilot, traced)
             path.write_text(json.dumps(original))
             self.assertTrue(compare.compare(baseline, pilot, traced)["actual_compiler_coverage_verified"])
+
+    def test_complete_campaign_is_independent_of_host_gcc(self):
+        with tempfile.TemporaryDirectory(dir=Path.home()) as directory:
+            roots = [Path(directory) / n for n in ("baseline", "pilot", "traced")]
+            for root in roots:
+                fixture(root)
+            is_file, read_bytes = Path.is_file, Path.read_bytes
+            for host_gcc in (None, b"unrelated GCC 12", b"unrelated GCC 15"):
+                def host_is_file(path):
+                    return host_gcc is not None if path == Path("/usr/bin/gcc") else is_file(path)
+                def host_read_bytes(path):
+                    return host_gcc if path == Path("/usr/bin/gcc") else read_bytes(path)
+                with self.subTest(host_gcc=host_gcc), \
+                        patch.object(Path, "is_file", host_is_file), \
+                        patch.object(Path, "read_bytes", host_read_bytes):
+                    result = compare.compare(*roots)
+                    self.assertEqual(result["positive_cells"], 30)
+                    self.assertTrue(result["actual_compiler_coverage_verified"])
+
+    def test_qualified_compiler_identity_mutations(self):
+        with tempfile.TemporaryDirectory(dir=Path.home()) as directory:
+            root = Path(directory) / "traced"
+            fixture(root)
+            label = "oam-ArraySample"
+            path = root / f"{label}-provider-identity.log"
+            original = path.read_text()
+            for mutation in (original.replace(COMPILER_HASH, "0" * 64),
+                             original.replace(f"GNAT {COMPILER_VERSION}", "GNAT 14.2.0"),
+                             original.replace(COMPILER_HASH, "a23ecab8ff08f09ad8c80602c2c5df7f49e09c25905cb8975902e101bf72635f")):
+                path.write_text(mutation)
+                with self.subTest(identity=mutation), self.assertRaisesRegex(RuntimeError, "compiler hash/version differs from qualified seed"):
+                    evidence.validate_cell(root, label, "Check")
+            path.write_text(original)
+            result_path = root / "result.json"
+            result = json.loads(result_path.read_text())
+            for version in ("14.2.0", "99.0.0"):
+                result["records"][0]["compiler"] = version
+                result_path.write_text(json.dumps(result))
+                with self.subTest(version=version), self.assertRaisesRegex(RuntimeError, "compiler hash/version differs from qualified seed"):
+                    evidence.validate_cell(root, label, "Check")
+
+    def test_changed_actual_compiler_binary_is_rejected(self):
+        with tempfile.TemporaryDirectory(dir=Path.home()) as directory:
+            root = Path(directory) / "traced"
+            fixture(root)
+            label = "oam-ArraySample"
+            compiler, identity = evidence.compiler_identity(root, label)
+            self.assertEqual(identity, COMPILER_HASH)
+            executable = Path(compiler)
+            self.assertFalse(executable.exists())
+            executable.parent.mkdir(parents=True)
+            executable.write_bytes(b"#!/bin/sh\nexit 0\n")
+            executable.chmod(0o755)
+            self.assertNotEqual(digest(executable), identity)
+            with self.assertRaisesRegex(RuntimeError, "compiler binary identity changed"):
+                evidence.validate_cell(root, label, "Check")
+
+    def test_source_provenance_is_required(self):
+        with tempfile.TemporaryDirectory(dir=Path.home()) as directory:
+            root = Path(directory) / "traced"
+            fixture(root)
+            path = root / "sources.sha256"
+            original = path.read_text()
+            for mutation in ("", original.replace(original.splitlines()[0][:64], "0" * 64, 1)):
+                path.write_text(mutation)
+                with self.subTest(manifest=mutation), self.assertRaisesRegex(RuntimeError, "source identity mismatch"):
+                    evidence.validate_cell(root, "oam-ArraySample", "Check")
 
 
 if __name__ == "__main__":
