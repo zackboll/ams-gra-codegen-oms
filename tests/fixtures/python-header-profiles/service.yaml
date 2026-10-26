@@ -1,0 +1,49 @@
+contract_version: "0.1"
+service:
+  name: Python Header Profiles
+  version: "0.6.0"
+  kind: service
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+functions:
+  - id: loop
+    name: Loop
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: HeaderNotice
+        topic: header.loop
+        timing: {kind: asynchronous}
+      - id: output
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: HeaderNotice
+        topic: header.loop
+        timing: {kind: asynchronous}
+      - id: other
+        kind: oms_message
+        direction: output
+        mandate: optional
+        message: HeaderOther
+        topic: header.other
+        timing: {kind: asynchronous}
+      - id: version
+        kind: oms_message
+        direction: output
+        mandate: optional
+        message: VersionValue
+        topic: header.version
+        timing: {kind: asynchronous}
+      - id: uuid
+        kind: oms_message
+        direction: output
+        mandate: optional
+        message: UUIDValue
+        topic: header.uuid
+        timing: {kind: asynchronous}

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- PY-006 synthetic OAM qualification, not a real-UCI service. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+ xmlns:t="https://www.vdl.afrl.af.mil/programs/oam"
+ xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+ targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified" version="002.5.0">
+ <xs:simpleType name="SchemaVersion"><xs:restriction base="xs:string">
+  <xs:minLength value="7"/><xs:maxLength value="57"/>
+  <xs:pattern value="[0-9]{3}\.[0-9]{1,2}(\.[0-9]{1,2})([a-z]{1,2})?(_[a-zA-Z0-9\-]{1,45})?"/>
+ </xs:restriction></xs:simpleType>
+ <xs:simpleType name="UniversallyUniqueIdentifierType"><xs:restriction base="xs:string">
+  <xs:length value="36"/>
+  <xs:pattern value="(0{8}(-0{4}){3}-0{12})|([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12})"/>
+ </xs:restriction></xs:simpleType>
+ <xs:complexType name="Header"><xs:sequence>
+  <xs:element name="Version" type="t:SchemaVersion"/>
+  <xs:element name="UUID" type="t:UniversallyUniqueIdentifierType"/>
+  <xs:element name="OptionalVersion" type="t:SchemaVersion" minOccurs="0"/>
+  <xs:element name="OptionalUUID" type="t:UniversallyUniqueIdentifierType" minOccurs="0"/>
+ </xs:sequence></xs:complexType>
+ <xs:complexType name="Payload"><xs:sequence>
+  <xs:element name="Header" type="t:Header"/>
+  <xs:element name="Versions" type="t:SchemaVersion" minOccurs="1" maxOccurs="3"/>
+  <xs:element name="UUIDs" type="t:UniversallyUniqueIdentifierType" minOccurs="0" maxOccurs="3"/>
+  <xs:element name="Count" type="xs:unsignedByte"/>
+ </xs:sequence></xs:complexType>
+ <!-- Same name shape, but a changed facet is deliberately unsupported. -->
+ <xs:simpleType name="NearUUID"><xs:restriction base="xs:string">
+  <xs:length value="35"/>
+  <xs:pattern value="(0{8}(-0{4}){3}-0{12})|([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12})"/>
+ </xs:restriction></xs:simpleType>
+ <xs:element name="HeaderNotice" type="t:Payload" uci:version="001.000.000.000"/>
+ <xs:element name="HeaderOther" type="t:Payload" uci:version="001.000.000.000"/>
+ <xs:element name="VersionValue" type="t:SchemaVersion" uci:version="001.000.000.000"/>
+ <xs:element name="UUIDValue" type="t:UniversallyUniqueIdentifierType" uci:version="001.000.000.000"/>
+ <xs:element name="Unsupported" type="t:NearUUID" uci:version="001.000.000.000"/>
+</xs:schema>

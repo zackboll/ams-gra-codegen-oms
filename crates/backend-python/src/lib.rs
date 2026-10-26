@@ -11,7 +11,8 @@ pub use service_codec::{SERVICE_CODEC_FILE, generate_service_codec};
 
 use ams_gra_oms_codegen_core::{
     Backend, CodegenError, GeneratedFile, GenerationWorld, InclusiveIntegralDomain,
-    ServiceApiModel, TypeEmission, inclusive_integral_domain, plan_type_emissions,
+    ServiceApiModel, StringProfile, TypeEmission, inclusive_integral_domain, plan_type_emissions,
+    string_profile,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -66,6 +67,13 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     let emissions = plan_type_emissions(schema, world)?;
     preflight(schema, &emissions)?;
     let mut output = include_str!("runtime.py").to_owned();
+    if schema
+        .types
+        .iter()
+        .any(|declaration| header_profile(declaration).is_some())
+    {
+        output.push_str(include_str!("header_runtime.py"));
+    }
     for emission in emissions {
         let TypeEmission::Declaration(declaration) = emission else {
             return Err(error("abstract value representations are unsupported"));
@@ -86,6 +94,20 @@ fn unconstrained(constraints: &ConstraintSet) -> Result<(), CodegenError> {
         return Err(error("unsupported constraints"));
     }
     Ok(())
+}
+
+// Admission is the shared exact normalized-facet proof, never a type name.
+// Only named declarations gain carriers; field-local constrained strings keep
+// their existing unsupported boundary.
+fn header_profile(declaration: &TypeDecl) -> Option<&'static str> {
+    let TypeKind::Primitive(PrimitiveKind::String) = declaration.kind else {
+        return None;
+    };
+    match string_profile(PrimitiveKind::String, &declaration.constraints) {
+        Ok(Some(StringProfile::UciSchemaVersion)) => Some("_uci_schema_version"),
+        Ok(Some(StringProfile::UniversallyUniqueIdentifier)) => Some("_uci_uuid"),
+        _ => None,
+    }
 }
 
 // Returns both the type annotation and the complete runtime check arguments.
@@ -169,7 +191,9 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
         }
         match &declaration.kind {
             TypeKind::Primitive(kind) => {
-                primitive(*kind, &declaration.constraints)?;
+                if header_profile(declaration).is_none() {
+                    primitive(*kind, &declaration.constraints)?;
+                }
                 scalar_names.insert(declaration.name.clone());
             }
             TypeKind::Alias(target) => {
@@ -248,6 +272,10 @@ fn render(output: &mut String, declaration: &TypeDecl) -> Result<(), CodegenErro
     .unwrap();
     match &declaration.kind {
         TypeKind::Primitive(_) | TypeKind::Alias(_) => {
+            if let Some(validator) = header_profile(declaration) {
+                writeln!(output, "    value: str\n\n    def __post_init__(self) -> None:\n        _check(self.value, str)\n        {validator}(self.value)").unwrap();
+                return Ok(());
+            }
             let (annotation, check) = match &declaration.kind {
                 TypeKind::Primitive(kind) => primitive(*kind, &declaration.constraints)?,
                 TypeKind::Alias(target) => reference(target, &ConstraintSet::default())?,
