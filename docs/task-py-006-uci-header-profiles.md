@@ -205,6 +205,18 @@ normal/optimized (38 method executions per interpreter). The shared Sleet
 harness retains all inherited Rust campaigns and reuses its broker for PY-006.
 Synthetic broker success is **not** real-UCI Python runtime qualification.
 
+The full shared Sleet harness also completed with exit **0**: nine inherited
+Rust test executions, existing PY-005 normal/optimized tests, and all four
+PY-006 interpreter/policy executions. Required legacy markers included
+`REAL UCI POSITIONREPORT THROUGH REAL SLEET: PASSED` and
+`REAL UCI SUBSYSTEMSTREAM THROUGH REAL SLEET: PASSED`; those are **Rust**
+regressions, not Python real-service support. The final harness marker was
+`real pinned Sleet (e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b): PASSED`.
+The first slow unoptimized build-script attempt was explicitly interrupted and
+not counted. The successful rerun used a task-owned Cargo target directory with
+`CARGO_PROFILE_DEV_BUILD_OVERRIDE_OPT_LEVEL=3`, unchanged tests and the same
+single clean pinned broker build.
+
 ## Reproduction and delivery gates
 
 Use distinct interpreters, never count one executable twice:
