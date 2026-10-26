@@ -24,6 +24,7 @@ DISPATCH_PATH = '.github/workflows/oms-ryzen-trusted-dispatch.yml'
 EXECUTOR_PATH = '.github/workflows/oms-trusted-float32.yml'
 SHA = re.compile(r'^[0-9a-f]{40}$')
 CONTEXT = 'ryzen/float32'
+RECEIPT_VERSION = 2
 
 
 class Denied(Exception):
@@ -86,6 +87,34 @@ class API:
         require(data.get('type') == 'file' and data.get('encoding') == 'base64', 'missing file')
         return base64.b64decode(data['content'], validate=False)
 
+    def workflow_file(self, run):
+        # WorkflowRun.file is GitHub's executed workflow-file record. REST
+        # head_sha and a *current* refs/pull/N/merge are not this evidence.
+        query = '''query($suite: ID!) {
+          node(id: $suite) { ... on CheckSuite { workflowRun {
+            databaseId runAttempt event
+            workflow { databaseId }
+            file { path repositoryName repositoryFileUrl }
+          } } }
+        }'''
+        request = urllib.request.Request('https://api.github.com/graphql',
+            data=json.dumps({'query': query, 'variables': {'suite': run['check_suite_node_id']}}).encode(),
+            headers={'Authorization': 'Bearer ' + self.token, 'Content-Type': 'application/json'})
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                content = response.read(65537)
+            require(len(content) <= 65536, 'oversized workflow provenance response')
+            data = json.loads(content)
+            require(not data.get('errors'), 'workflow provenance API error')
+            record = data['data']['node']['workflowRun']
+            require(record['databaseId'] == run['id'] and record['runAttempt'] == run['run_attempt']
+                    and record['event'] == run['event']
+                    and record['workflow']['databaseId'] == run['workflow_id'],
+                    'workflow provenance run mismatch')
+            return record['file']
+        except (urllib.error.URLError, ValueError, KeyError, TypeError):
+            raise Denied('executed workflow provenance unavailable') from None
+
     def artifact_json(self, artifact_id):
         # Follow the authenticated API redirect without forwarding credentials
         # to the signed blob URL. No extraction, execution, or unsafe ZIP paths.
@@ -117,6 +146,9 @@ def repository(api, name, expected):
     data = api.call(f'repos/{name}')
     require(data['id'] == expected and data['full_name'] == name
             and data['default_branch'] == 'main', 'repository identity mismatch')
+    if name == DEST or expected == DEST_ID:
+        require(name == DEST and expected == DEST_ID and data.get('private') is True
+                and data.get('visibility') == 'private', 'execution repository must remain private')
     return data
 
 
@@ -127,7 +159,47 @@ def workflow(api, name, path, expected_id):
     return data
 
 
-def authorize_signal(api, run_id, signal_id, current=True):
+def executed_workflow(api, run, path):
+    record = api.workflow_file(run)
+    require(isinstance(record, dict), 'executed workflow record unavailable')
+    require(record['repositoryName'] == SOURCE and record['path'] == path,
+            'executed workflow repository/path mismatch')
+    prefix = f'https://github.com/{SOURCE}/blob/'
+    url = record['repositoryFileUrl']
+    require(isinstance(url, str) and url.startswith(prefix), 'invalid executed workflow URL')
+    revision, separator, actual_path = url[len(prefix):].partition('/')
+    require(separator and actual_path == path, 'executed workflow path mismatch')
+    return sha(revision)
+
+
+def workflow_identity(content):
+    require(isinstance(content, bytes) and 0 < len(content) <= 65536, 'missing/oversized workflow file')
+    blob = b'blob ' + str(len(content)).encode() + b'\0' + content
+    return {'blob_sha': hashlib.sha1(blob).hexdigest(), 'sha256': digest(content)}
+
+
+def signal_provenance(api, run, association, trusted_revision):
+    # The baseline comes only from the independently verified default-branch
+    # dispatcher run, never the payload or mutable main's workflow bytes.
+    baseline = sha(trusted_revision)
+    head, base = sha(association['head']['sha']), sha(association['base']['sha'])
+    revision = executed_workflow(api, run, SIGNAL_PATH)
+    merge = None
+    if revision != head:
+        commit = api.call(f'repos/{SOURCE}/commits/{revision}')
+        require(commit['sha'] == revision and [p['sha'] for p in commit['parents']] == [base, head],
+                'unverified effective merge parents')
+        merge = revision
+    # No absent-HEAD exception: an older branch is allowed only if GitHub's
+    # executed-file record identifies a verified merge with trusted bytes.
+    actual = api.file(SOURCE, SIGNAL_PATH, revision)
+    trusted = api.file(SOURCE, SIGNAL_PATH, baseline)
+    require(actual == trusted, 'PR modified effective signal workflow')
+    return {'workflow_sha': revision, 'baseline_sha': baseline, 'base_sha': base,
+            'head_sha': head, 'merge_sha': merge, **workflow_identity(actual)}
+
+
+def authorize_signal(api, run_id, signal_id, current=True, *, trusted_revision):
     repository(api, SOURCE, SOURCE_ID)
     workflow(api, SOURCE, SIGNAL_PATH, signal_id)
     run = api.call(f'repos/{SOURCE}/actions/runs/{integer(run_id)}')
@@ -172,12 +244,12 @@ def authorize_signal(api, run_id, signal_id, current=True):
     linked = api.pages(f'repos/{SOURCE}/commits/{head}/pulls')
     require(len(linked) == 1 and linked[0]['id'] == pr['id']
             and linked[0]['number'] == pr['number'], 'ambiguous commit-to-PR association')
-    # Signal content cannot be altered in the PR. Read as bytes; never evaluate
-    # source YAML. Newly edited signal requires default-branch review first.
-    require(api.file(SOURCE, SIGNAL_PATH, head) == api.file(SOURCE, SIGNAL_PATH, 'main'),
-            'PR modified signal workflow')
+    provenance = signal_provenance(api, run, association, trusted_revision)
     return {'key': key(pr['number'], head), 'pr': pr['number'], 'sha': head,
-            'signal_run': run_id, 'signal_id': signal_id, 'stale': stale}
+            'receipt_version': RECEIPT_VERSION, 'source_repository_id': SOURCE_ID,
+            'source_repository': SOURCE, 'pr_id': pr['id'], 'signal_path': SIGNAL_PATH,
+            'signal_run': run_id, 'signal_attempt': run['run_attempt'], 'signal_id': signal_id,
+            'signal_provenance': provenance, 'stale': stale}
 
 
 def verify_dispatch_run(api, run_id, dispatch_id, terminal=False, diagnostic=False):
@@ -191,9 +263,18 @@ def verify_dispatch_run(api, run_id, dispatch_id, terminal=False, diagnostic=Fal
             'untrusted dispatcher provenance/default revision')
     require(run['actor']['id'] == OWNER_ID and run['triggering_actor']['id'] == OWNER_ID,
             'dispatcher actor not owner')
+    require(run['id'] == run_id and executed_workflow(api, run, DISPATCH_PATH) == run['head_sha'],
+            'dispatcher workflow is not its trusted default revision')
     require((run['status'] == 'completed' and (run['conclusion'] == 'success' or diagnostic))
             or (not terminal and run['status'] == 'in_progress'), 'dispatcher not successful/active')
     return run
+
+
+def dispatch_identity(api, run):
+    return {'dispatcher_run': run['id'], 'dispatcher_attempt': run['run_attempt'],
+            'dispatcher_id': run['workflow_id'], 'dispatcher_path': DISPATCH_PATH,
+            'dispatcher_sha': run['head_sha'],
+            'dispatcher_workflow': workflow_identity(api.file(SOURCE, DISPATCH_PATH, run['head_sha']))}
 
 
 def receipt(api, payload, signal_id, dispatch_id, current=True, terminal=False, diagnostic=False):
@@ -202,21 +283,25 @@ def receipt(api, payload, signal_id, dispatch_id, current=True, terminal=False, 
     integer(payload['dispatcher_run'])
     integer(payload['signal_run'])
     require(isinstance(payload['key'], str) and len(payload['key']) < 160, 'invalid key')
-    verify_dispatch_run(api, payload['dispatcher_run'], dispatch_id, terminal, diagnostic)
-    auth = authorize_signal(api, payload['signal_run'], signal_id, current)
+    dispatch = verify_dispatch_run(api, payload['dispatcher_run'], dispatch_id, terminal, diagnostic)
+    auth = authorize_signal(api, payload['signal_run'], signal_id, current,
+                            trusted_revision=dispatch['head_sha'])
+    auth.update(dispatch_identity(api, dispatch))
     require(payload['key'] == auth['key'], 'payload key changed')
     artifacts = api.pages(f'repos/{SOURCE}/actions/runs/{payload["dispatcher_run"]}/artifacts', 'artifacts')
     matches = [a for a in artifacts if a['name'] == auth['key'] and not a['expired']]
     require(len(matches) == 1, 'missing/ambiguous dispatch receipt')
     data = api.artifact_json(matches[0]['id'])
     expected = {k: v for k, v in auth.items() if k != 'stale'}
-    expected['dispatcher_run'] = payload['dispatcher_run']
     require(data == expected, 'receipt identity mismatch')
     return auth
 
 
 def publish(api, auth, state, url, description):
     require(state in {'pending', 'success', 'failure', 'error'}, 'invalid status')
+    require(auth['receipt_version'] == RECEIPT_VERSION
+            and auth['sha'] == auth['signal_provenance']['head_sha']
+            and auth['key'] == key(auth['pr'], auth['sha']), 'status SHA differs from authorization')
     require(url.startswith('https://github.com/' + DEST + '/actions/runs/'), 'invalid result URL')
     api.call(f'repos/{SOURCE}/statuses/{sha(auth["sha"])}', 'POST', {
         'state': state, 'context': CONTEXT, 'target_url': url, 'description': description[:140]})

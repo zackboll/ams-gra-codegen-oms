@@ -61,8 +61,10 @@ strings are never identity proofs.
 The API's PR association head is authoritative. A different run head is accepted
 only if GitHub's commit API confirms a two-parent synthetic merge whose first
 parent is the associated base and second parent is that exact PR head. Signal
-workflow bytes at the PR head must match default-branch bytes. No PR YAML is
-evaluated. Dispatcher modifications in a PR do not change default-branch code.
+workflow revision comes from GitHub's authenticated executed-file record and
+must match the trusted dispatcher's immutable baseline bytes (receipt v2).
+No PR YAML is evaluated. Dispatcher modifications in a PR do not change
+default-branch code. See [R1 provenance and limitations](ci-runner-002-r1-provenance.md).
 The private side checks all of this again and requires the originating dispatcher
 to have successful first-attempt `workflow_run` provenance on `main`; its commit
 must be an ancestor of current main, verified with Compare API.
@@ -85,7 +87,7 @@ Prefer **two narrowly installed Apps**, not a classic PAT:
    Store its private key only in **public OMS** repository secret
    `OMS_DISPATCH_APP_PRIVATE_KEY`; variable `OMS_DISPATCH_APP_ID` is its App ID.
 2. **Status/metadata App:** install only on public `ams-gra-codegen-oms`;
-   **Actions read, Contents read, Pull requests read, Commit statuses write**.
+   **Actions read, Checks read, Contents read, Pull requests read, Commit statuses write**.
    Store its private key only in **private pilot** secret
    `OMS_STATUS_APP_PRIVATE_KEY`; variable `OMS_STATUS_APP_ID` is its App ID.
    It is not installed on pilot and cannot dispatch or modify pilot contents.

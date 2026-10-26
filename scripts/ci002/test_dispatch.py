@@ -22,7 +22,8 @@ class DispatchCoordinator(unittest.TestCase):
         source.artifacts = []
         destination = FixtureAPI()
         destination.data[f'repos/{g.DEST}'] = {
-            'id': g.DEST_ID, 'full_name': g.DEST, 'default_branch': 'main'}
+            'id': g.DEST_ID, 'full_name': g.DEST, 'default_branch': 'main',
+            'private': True, 'visibility': 'private'}
         with tempfile.TemporaryDirectory() as tmp:
             event = Path(tmp) / 'event.json'
             output = Path(tmp) / 'output'
@@ -48,10 +49,13 @@ class DispatchCoordinator(unittest.TestCase):
                 os.chdir(old)
 
     def test_duplicate_or_wrong_event_never_creates_new_receipt(self):
-        for kind in ['duplicate', 'event', 'ref']:
+        for kind in ['duplicate', 'event', 'ref', 'public-destination']:
             source, destination = FixtureAPI(), FixtureAPI()
             destination.data[f'repos/{g.DEST}'] = {
-                'id': g.DEST_ID, 'full_name': g.DEST, 'default_branch': 'main'}
+                'id': g.DEST_ID, 'full_name': g.DEST, 'default_branch': 'main',
+            'private': True, 'visibility': 'private'}
+            if kind == 'public-destination':
+                destination.data[f'repos/{g.DEST}']['private'] = False
             with tempfile.TemporaryDirectory() as tmp:
                 event = Path(tmp) / 'event.json'
                 event.write_text(json.dumps({'action': 'completed', 'workflow_run': {'id': RUN}}))
@@ -73,7 +77,8 @@ class DispatchCoordinator(unittest.TestCase):
         source.pages = lambda path, field=None: ([{'context': 'ryzen/float32', 'creator': {'id': 789}}]
             if path.endswith('/statuses') else actual_pages(path, field))
         destination.data[f'repos/{g.DEST}'] = {
-            'id': g.DEST_ID, 'full_name': g.DEST, 'default_branch': 'main'}
+            'id': g.DEST_ID, 'full_name': g.DEST, 'default_branch': 'main',
+            'private': True, 'visibility': 'private'}
         with tempfile.TemporaryDirectory() as tmp:
             event = Path(tmp) / 'event.json'
             event.write_text(json.dumps({'action': 'completed', 'workflow_run': {'id': RUN}}))

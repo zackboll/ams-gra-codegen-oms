@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 
 from gate import (API, DEST, DEST_ID, SOURCE, Denied, authorize_signal,
-                  integer, repository, require, verify_dispatch_run)
+                  dispatch_identity, integer, repository, require, verify_dispatch_run)
 
 
 def main():
@@ -20,8 +20,10 @@ def main():
     require(event['action'] == 'completed', 'signal not completed')
     run_id = integer(event['workflow_run']['id'])
     dispatcher = int(os.environ['GITHUB_RUN_ID'])
-    verify_dispatch_run(source, dispatcher, int(os.environ['DISPATCH_WORKFLOW_ID']))
-    auth = authorize_signal(source, run_id, int(os.environ['SIGNAL_WORKFLOW_ID']))
+    dispatch = verify_dispatch_run(source, dispatcher, int(os.environ['DISPATCH_WORKFLOW_ID']))
+    auth = authorize_signal(source, run_id, int(os.environ['SIGNAL_WORKFLOW_ID']),
+                            trusted_revision=dispatch['head_sha'])
+    auth.update(dispatch_identity(source, dispatch))
     repository(destination, DEST, DEST_ID)
     # Artifacts provide a durable idempotency ledger. Fail closed on any previous
     # receipt for this exact qualification key, even if dispatch later failed.
@@ -32,7 +34,6 @@ def main():
     require(not any(s['context'] == 'ryzen/float32' and s['creator']['id'] == reporter
                     for s in statuses), 'previous exact-SHA status; duplicate/replay denied')
     auth.pop('stale')
-    auth['dispatcher_run'] = dispatcher
     Path('request.json').write_text(json.dumps(auth, sort_keys=True) + '\n')
     with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
         output.write('key=' + auth['key'] + '\n')

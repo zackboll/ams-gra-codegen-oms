@@ -6,6 +6,7 @@ on:
 permissions:
   contents: read
   actions: read
+  checks: read
   pull-requests: read
   statuses: read
 concurrency:
@@ -56,8 +57,10 @@ jobs:
           python3 - <<'PY'
           import json, os, sys
           sys.path.insert(0, 'scripts/ci002')
-          from gate import API, DEST
-          API(os.environ['GH_TOKEN']).call(f'repos/{DEST}/dispatches', 'POST', {
+          from gate import API, DEST, DEST_ID, repository
+          destination = API(os.environ['GH_TOKEN'])
+          repository(destination, DEST, DEST_ID)
+          destination.call(f'repos/{DEST}/dispatches', 'POST', {
               'event_type': 'oms-trusted-pr-v1', 'client_payload': {
                   'dispatcher_run': int(os.environ['GITHUB_RUN_ID']),
                   'signal_run': int(os.environ['SIGNAL_RUN']), 'key': os.environ['KEY']}})

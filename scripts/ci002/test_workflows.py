@@ -34,7 +34,8 @@ def validate_dispatch(workflow):
     checkout = job['steps'][0]
     assert checkout['with']['ref'] == '${{ github.sha }}'
     assert checkout['with']['persist-credentials'] == 'false'
-    assert workflow['permissions'] == {'contents': 'read', 'actions': 'read', 'pull-requests': 'read', 'statuses': 'read'}
+    assert workflow['permissions'] == {'contents': 'read', 'actions': 'read', 'checks': 'read',
+                                       'pull-requests': 'read', 'statuses': 'read'}
     assert 'pull_request_target' not in str(workflow)
     assert 'client_payload' not in checkout['with']['ref']
     assert any(s.get('run') == 'python3 scripts/ci002/dispatch.py' for s in job['steps'])
