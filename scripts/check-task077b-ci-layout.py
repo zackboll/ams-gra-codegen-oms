@@ -69,6 +69,26 @@ GATES = [('Named TimeZulu pinned inventory and impact (Task 061)',
 SHARDS = ('real-uci-regressions', 'real-uci-regressions-ascii',
           'real-uci-regressions-alternating')
 QUALIFICATION_JOBS = ('real-uci',) + SHARDS
+SOURCE_JOBS = QUALIFICATION_JOBS + ('msrv-real-uci', 'real-sleet',
+                                  'ada-repeated-choice-real-uci', 'ada-hexbinary-real')
+CHECKOUT = '''uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}'''
+SOURCE_COMMAND = '''set -euo pipefail
+actual="$(git rev-parse HEAD)"
+tree="$(git rev-parse HEAD^{tree})"
+test "$actual" = "$GITHUB_SHA"
+test -n "$tree"
+printf 'DEEP_CI_SOURCE_SHA=%s\\n' "$actual"
+printf 'DEEP_CI_SOURCE_TREE=%s\\n' "$tree"
+printf 'DEEP_CI_EVENT=%s\\n' "$GITHUB_EVENT_NAME"'''
+
+
+def source_step():
+    return ('name: Verify Deep CI source identity\n        shell: bash\n        run: |\n'
+            + '\n'.join('          ' + line for line in SOURCE_COMMAND.splitlines()))
+
+
 EVIDENCE = '''      - name: Preserve Task 061 per-selection evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -80,7 +100,7 @@ EVIDENCE = '''      - name: Preserve Task 061 per-selection evidence
 
 
 def run_command(step):
-    match = re.search(r"^        run: (.*?)(?:\n|\Z)", step, re.M)
+    match = re.search(r"^(?:        )?run: (.*?)(?:\n|\Z)", step, re.M)
     if not match:
         return ''
     if match[1] != '|':
@@ -100,6 +120,25 @@ def check(path):
         if not ok:
             errors.append("Task077B " + message)
     require(len(entries) == len(jobs), 'duplicate job identifiers')
+    for job in SOURCE_JOBS:
+        body = jobs.get(job, '')
+        steps = [step.strip() for step in re.split(r'^      - ', body, flags=re.M)[1:]]
+        # Exact step structure binds the immutable ref and mandatory assertion
+        # to their executable owner, not to strings elsewhere in the job.
+        require(bool(steps) and steps[0] == CHECKOUT and
+                len(re.findall(r'uses:\s*actions/checkout@', body)) == 1,
+                'event SHA checkout: ' + job)
+        require(len(steps) > 1 and steps[1] == source_step() and
+                sum(run_command(step + '\n') == SOURCE_COMMAND for step in steps) == 1,
+                'source identity gate before qualification: ' + job)
+        header = body.split('    steps:', 1)[0]
+        require(not re.search(r'^\s+(if:|continue-on-error:|env:|defaults:)', header, re.M),
+                'mandatory source identity: ' + job)
+        # No later action or shell checkout may replace the verified source.
+        require(not any(re.search(r'\bgit\s+(?:-[Cc]\s+\S+\s+)?'
+                                  r'(checkout|switch|reset|read-tree|worktree)\b',
+                                  run_command(step + '\n')) for step in steps[2:]),
+                'no source replacement after verification: ' + job)
     for job in ('ada-repeated-choice-real-uci', 'ada-hexbinary-real'):
         require(job in jobs, 'missing job: ' + job)
     for job, releases in (tuple((j, ('2.5', '2.6')) for j in QUALIFICATION_JOBS) + (
@@ -126,8 +165,6 @@ def check(path):
         if job in SHARDS:
             require(re.search(r'^    runs-on: ubuntu-(latest|24\.04)$', body, re.M),
                     'hosted runner: ' + job)
-            require('ref: ${{ github.event.pull_request.head.sha || github.sha }}' in body,
-                    'exact source checkout: ' + job)
             require('echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"' in body, 'private temporary directory: ' + job)
             require(not re.search(r'actions/cache|CARGO_TARGET_DIR|target-directory|download-artifact', body),
                     'isolated inputs: ' + job)
@@ -228,6 +265,39 @@ def self_test(path, guard, fast, sleet):
     def add(label, text, diagnostic):
         assert text != original, label
         cases.append((label, text, 'Task077B ' + diagnostic))
+    for job in SOURCE_JOBS:
+        checkout = '      - ' + CHECKOUT + '\n'
+        identity = '      - ' + source_step() + '\n'
+        for label, ref in (
+                ('raw PR head', '${{ github.event.pull_request.head.sha || github.sha }}'),
+                ('moving branch', 'main'), ('event ref', '${{ github.ref }}'),
+                ('unrelated commit', '0' * 40)):
+            add(job + ' ' + label, job_mutation(job, lambda b: replace_once(
+                b, 'ref: ${{ github.sha }}', 'ref: ' + ref)), 'event SHA checkout: ' + job)
+        for label, replacement in (
+                ('default checkout', '      - uses: actions/checkout@v4\n'),
+                ('missing checkout', ''), ('duplicate checkout', checkout + checkout)):
+            add(job + ' ' + label, job_mutation(job, lambda b: replace_once(
+                b, checkout, replacement)), 'event SHA checkout: ' + job)
+        add(job + ' later checkout', job_mutation(job, lambda b: b + checkout),
+            'event SHA checkout: ' + job)
+        add(job + ' later shell checkout', job_mutation(job, lambda b: b +
+            '      - run: git checkout main\n'), 'no source replacement after verification: ' + job)
+        for label, replacement in (
+                ('missing identity', ''),
+                ('print only', identity.replace('          test "$actual" = "$GITHUB_SHA"\n', '')),
+                ('missing tree assertion', identity.replace('          test -n "$tree"\n', '')),
+                ('disabled identity', identity.replace('        shell:', '        if: false\n        shell:')),
+                ('optional identity', identity.replace('        shell:',
+                                                       '        continue-on-error: true\n        shell:')),
+                ('work before identity', '      - run: cargo test --workspace\n' + identity),
+                ('duplicate identity', identity + identity)):
+            add(job + ' ' + label, job_mutation(job, lambda b: replace_once(
+                b, identity, replacement)), 'source identity gate before qualification: ' + job)
+        for field in ('if: false', 'continue-on-error: true'):
+            add(job + ' optional job ' + field, job_mutation(job, lambda b: replace_once(
+                b, '    runs-on:', '    ' + field + '\n    runs-on:')),
+                'mandatory source identity: ' + job)
     for job in SHARDS:
         add('missing shard ' + job, job_mutation(job, lambda b: ''), 'missing job: ' + job)
     for job in QUALIFICATION_JOBS:
@@ -258,8 +328,7 @@ def self_test(path, guard, fast, sleet):
                 ('cargo fetch --locked', 'release CLI preparation: ' + job),
                 ('cargo build --release --locked -p ams-gra-codegen-oms',
                  'release CLI preparation: ' + job),
-                ('ref: ${{ github.event.pull_request.head.sha || github.sha }}',
-                 'exact source checkout: ' + job),
+                ('ref: ${{ github.sha }}', 'event SHA checkout: ' + job),
                 ('echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"', 'private temporary directory: ' + job)):
             line = command_line(job, command)
             add(job + ' missing ' + command,
