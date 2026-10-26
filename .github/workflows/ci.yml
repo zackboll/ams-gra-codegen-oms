@@ -740,10 +740,10 @@ jobs:
       # is missing, which is right for developer machines but would let CI go
       # green without ever checking the generated Ada. Installing GNAT here,
       # and gating on it below, makes that skip impossible on the runner.
-      - name: Install GNAT
+      - name: Install GNAT and Python regression dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y gnat
+          sudo apt-get install -y gnat strace
       # Hard gate: no `|| true`. If GNAT is absent or broken, CI fails here
       # rather than silently degrading the Ada regressions into no-ops. The
       # version is printed so the log records which toolchain ran the tests.
@@ -751,6 +751,8 @@ jobs:
         run: |
           command -v gnatmake
           gnatmake --version
+      - name: Python synthetic and Pages regression tests (CI-PAGES-001)
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts -p 'test_*.py'
       - run: cargo fmt --all -- --check
       - name: Duplicate-member ingress policy (Task 077)
         run: |
