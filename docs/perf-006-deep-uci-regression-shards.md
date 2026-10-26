@@ -2,11 +2,14 @@
 
 ## Disposition and source identity
 
-**HOSTED_CI_PENDING** — implementation and local structural qualification are
-complete; exact-head hosted integration and timing qualification must finish
-before independent-review readiness or performance success can be claimed.
+**R1: HOSTED_CI_PENDING** — the source-consistency correction and current-main
+integration require new hosted qualification. **Historical R0 qualification
+completed successfully:** ordinary CI 16/16 and Deep CI 8/8. The sharded
+regression critical path improved 65.7%, but the complete-workflow improvement
+was only 6.6%: the original >=30% target was **not achieved**. R0 success does
+not qualify the corrected R1 head.
 
-Starting and incorporated `origin/main`:
+Original R0 starting and incorporated `origin/main`:
 `a849b87d94948980133038ba909c0b6528cadde6`, tree
 `f3802d1b31e56a8afb6cc46db78b741dea4dde08`.
 PR #109 is merged (merge commit
@@ -25,7 +28,8 @@ index, production source, Rust test, schema or fixture is changed.
 ## Topology and complete ownership inventory
 
 Previously six independent jobs included one serial `real-uci-regressions`.
-There are now eight jobs: the five unchanged jobs `real-uci`, `msrv-real-uci`,
+There are now eight jobs: five jobs with unchanged qualification behavior,
+`real-uci`, `msrv-real-uci`,
 `real-sleet`, `ada-repeated-choice-real-uci`, and `ada-hexbinary-real`, plus:
 
 | Original gate | New mandatory owner | Preserved qualification |
@@ -55,15 +59,16 @@ The Task061 artifact remains `task061-service-check`, at
 `${{ runner.temp }}/task061-service-check-*/**`, with `if: always()` and
 `if-no-files-found: error`.
 
-Each shard independently checks out the PR head (or event SHA), installs stable
+Each shard independently checks out the immutable workflow event SHA, installs stable
 Rust and verified working GNAT, fetches both pinned UCI releases using unchanged
 revision/root-SHA-256-verifying scripts, exports both roots, fetches locked Cargo
 dependencies and builds the exact-source release CLI. Each has private runner
 temporary storage, `ubuntu-latest`, and the inherited finite 240-minute timeout.
 There are no shard `needs`, caches, downloaded inputs, shared target directories,
-optional gates or self-hosted runners. Fast CI is unchanged.
+optional gates or self-hosted runners. PERF-006 does not alter Fast CI; R1
+inherits PR #111's new Python/Pages qualification through a normal main merge.
 
-## Local structural and adversarial qualification
+## Historical R0 local structural and adversarial qualification
 
 Required commands:
 
@@ -121,34 +126,70 @@ has the same head and a **5,970-second (99m30s)** serial regression job.
 Recent successful run identities and both baseline Jobs API responses are
 preserved externally; cancelled runs are not performance observations.
 
-| Deep CI job | Baseline runtime | Optimized exact-head runtime |
-| --- | ---: | --- |
-| `real-uci` | 49m13s | Pending hosted completion |
-| `msrv-real-uci` | 18m56s | Pending hosted completion |
-| `real-sleet` | 28m18s | Pending hosted completion |
-| `ada-repeated-choice-real-uci` | 8m39s | Pending hosted completion |
-| `ada-hexbinary-real` | 17m44s | Pending hosted completion |
-| `real-uci-regressions` | 99m16s (all ten gates) | Pending hosted completion |
-| `real-uci-regressions-ascii` | Included above | Pending hosted completion |
-| `real-uci-regressions-alternating` | Included above | Pending hosted completion |
+## Completed R0 hosted qualification and measured limitations
 
-Use exact-head workflow and Jobs API records for start/completion timestamps,
-each shard's step durations, observable scheduling delay, all eight runtimes and
-total runner-minutes. Compare created-to-last-completion consistently with the
-baseline; separately report the job envelope and workflow metadata timestamps.
-GitHub PR workflows may identify a synthetic merge SHA: record that SHA and its
-PR head association, rather than confusing it with the explicitly checked-out
-source head. Ordinary CI must also pass for that same PR head.
+Tested PR branch head: `43da9368db53c767ee5301b5292a0ac76dc0952e`;
+tree: `23f2eede0aa81aae8548f5a5f34f0e5cfad4deda`.
 
-Sharding adds two independent provisioning/release-build sequences. Report
-their measured step time and the total runner-minute difference when complete;
-neither CPU savings nor exact billing savings can be inferred. The expected
-remaining critical path is the unchanged `real-uci` (baseline 49m13s), not a
-guaranteed result. The >=30% whole-workflow reduction target is **not yet
-measured**. A single successful hosted comparison is observational, not a
-controlled benchmark; runner hardware/region and scheduling may differ.
+- [Ordinary CI 40106583371](https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/40106583371):
+  **success, 16/16 jobs successful**.
+- [Deep CI 40106583450](https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/40106583450):
+  **success, 8/8 jobs successful**. All ten regression campaigns executed,
+  including both Task060 tests, with no compiler/test coverage reduction.
 
-## Remaining qualification gaps
+Both runs' API `head_sha` identifies the raw branch head, **not** the merge
+actually checked out by default checkout steps. R0 logs show `real-uci`,
+`msrv-real-uci` and `real-sleet` checked out synthetic PR merge
+`2e6864fc123d5bc88c6af02fd593330ac88ae805`; the other five jobs checked out
+`43da9368db53c767ee5301b5292a0ac76dc0952e`. Git commit API evidence confirms
+both commits have the same tree `23f2eede0aa81aae8548f5a5f34f0e5cfad4deda`.
+These are genuine successful historical results, but review correctly found
+the mixed checkout semantics unsafe when the base advances.
+
+All timestamps below are UTC on 2026-10-24, from the Jobs API.
+
+| Deep CI job | Baseline runtime | R0 start | R0 complete | R0 runtime |
+| --- | ---: | --- | --- | ---: |
+| `real-uci` | 49m13s | 15:33:42 | 16:54:00 | 80m18s |
+| `msrv-real-uci` | 18m56s | 15:29:09 | 15:54:01 | 24m52s |
+| `real-sleet` | 28m18s | 15:41:22 | 15:54:52 | 13m30s |
+| `ada-repeated-choice-real-uci` | 8m39s | 15:31:19 | 15:37:58 | 6m39s |
+| `ada-hexbinary-real` | 17m44s | 15:54:46 | 16:30:22 | 35m36s |
+| `real-uci-regressions` | 99m16s (all ten gates) | 15:42:14 | 16:16:18 | 34m04s |
+| `real-uci-regressions-ascii` | Included above | 15:22:05 | 15:47:41 | 25m36s |
+| `real-uci-regressions-alternating` | Included above | 15:36:53 | 16:07:05 | 30m12s |
+
+The three regression jobs overlap from 15:42:14 through 15:47:41, demonstrating
+real independent execution. R0 shard step times include Task061 3m42s,
+Task052 22s, Task053 3m35s, Task054 5m45s, Task056 44s, Task064 21s,
+Task057 18m43s; Task058 10m38s and Task059 9m29s; complete Task060 29m18s.
+The two added shards' Rust/GNAT/fetch/release-preparation steps sum to 5m23s
+(ASCII) and 48s (alternating), 6m11s combined. These are observed provisioning
+steps, not a controlled causal estimate of incremental build cost.
+
+| Measurement | Baseline | R0 PERF-006 | Observation |
+| --- | ---: | ---: | --- |
+| Regression critical path | 99m16s | 34m04s | 65.7% reduction |
+| Complete Deep CI (workflow metadata) | 99m20s | 92m46s | 6.6% reduction; >=30% target **missed** |
+| Summed hosted job execution | 222.10 min | 250.78 min | +28.68 runner-minutes, +12.9% |
+
+R0 was created at 15:21:15Z, its last job completed at 16:54:00Z, and workflow
+metadata was updated at 16:54:01Z. Thus creation-to-last-job is 92m45s;
+creation-to-workflow-update is the reviewed **92m46s**. Baseline equivalent
+timestamps differ by a second as well (99m20s to last job, 99m21s to update).
+This one-second endpoint distinction does not change the 6.6% result. Do not
+silently substitute elapsed endpoints. The 80m18s `real-uci` job was the
+remaining critical path, with 12m27s of creation-to-job-start scheduling delay.
+
+The unchanged `real-uci` rose from 49m13s to 80m18s. Source, hosted runner,
+provisioning and scheduling variability prevent assigning the entire workflow
+difference to sharding. Hardware/region parity is not established. This is a
+single hosted comparison, not a statistically controlled performance campaign.
+The cost is extra provisioning and increased summed runner execution; neither
+exact CPU savings nor billing savings are established. Successful R0 runs are
+preserved despite missing the whole-workflow target.
+
+## Original pre-R0 workflow-load correction (preserved provenance)
 
 Initial head `44bcfc5f070dd8054ec069920f20b3fd14aaeb50` produced workflow-load
 failure [40105821171](https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/40105821171)
@@ -159,9 +200,95 @@ does not touch any qualification command or digest. This failed zero-job run
 is not a timing observation. Initial ordinary CI run `40105847560` cannot
 qualify the corrected final head regardless of its eventual conclusion.
 
-Until all eight Deep CI jobs and ordinary CI finish successfully for the final
-PR head, hosted timing, added provisioning cost, actual remaining critical path
-and the performance objective remain unqualified. Keep the PR open, non-draft,
-unmerged and without auto-merge. If any mandatory shard fails or provenance
-changes unexpectedly, use `CORRECTIVE_ACTION_REQUIRED`; only complete passing
-qualification and recorded timing permit `READY_FOR_INDEPENDENT_REVIEW`.
+## R1 source-consistency correction and current-main integration
+
+Review: [5646908788](https://github.com/zackboll/ams-gra-codegen-oms/pull/112#pullrequestreview-5646908788).
+Starting R1 head/tree are the R0 tested identities above. The dedicated
+worktree was clean; local, remote and PR heads matched before changes.
+
+Correction commit: `97642b73dd06b7d57db2c28d38c691407fcac711`, tree
+`12e4cb9e47b39fc1fcea5c5e8e5a9b52c69f9ccf`.
+Normal main-incorporation merge: `455c462236734585e6cb72d79891dc17d94dfd34`,
+tree `88d5b603dfe77a9622ae5f987efd813fa62ea36e`.
+Incorporated main: `a03684eb963e1eaa8a9df3db17c9d1783b7add03`, tree
+`af76aa248a8dcef9cec23dc3b83ee5ce4956c4e1` (merged PR #111).
+The merge was conflict-free, and main is an ancestor of the integrated head.
+PR #111's Python/Pages CI and synthetic compiler tests are retained unchanged.
+
+All eight jobs now start with exactly:
+
+```yaml
+- uses: actions/checkout@v4
+  with:
+    ref: ${{ github.sha }}
+```
+
+On PR events this is the proposed synthetic merge commit; on push, schedule and
+manual dispatch it is the fixed event commit, never a moving branch name.
+The immediately following mandatory Bash step executes before toolchain/setup
+or qualification:
+
+```bash
+set -euo pipefail
+actual="$(git rev-parse HEAD)"
+tree="$(git rev-parse HEAD^{tree})"
+test "$actual" = "$GITHUB_SHA"
+test -n "$tree"
+printf 'DEEP_CI_SOURCE_SHA=%s\n' "$actual"
+printf 'DEEP_CI_SOURCE_TREE=%s\n' "$tree"
+printf 'DEEP_CI_EVENT=%s\n' "$GITHUB_EVENT_NAME"
+```
+
+The topology guard binds the checkout and verification to the first two
+executable steps in each required job, rejects duplicate checkouts/source
+replacement and optional gates, and retains every inherited campaign digest.
+The expanded suite retains all 168 R0 workflow cases and adds 144 job-local
+source mutations (312 total). Negatives cover raw PR head, default checkout,
+moving branch, `github.ref`, unrelated commit, missing/duplicate/later checkout,
+missing/print-only/optional/skipped verification, absent tree assertion and
+qualification before verification. Positive comment/description/metadata
+controls still pass. Live disposable-repository tests execute the exact source
+command for all four event types, SHA mismatch, absent Git repository, failed
+tree resolution and empty tree output.
+
+R1 changes no compiler algorithm, Rust test, schema, fixture, pinned input,
+qualification command, marker, count, timeout or shard topology. All 17 digests
+remain identical to R0. No whole-workflow digest is introduced.
+
+### R1 final qualification status
+
+**HOSTED_CI_PENDING.** The documentation/results update is a separate commit.
+Final raw PR head/tree and its corresponding synthetic merge SHA/tree are
+recorded in the PR handoff and external R1 evidence directory, avoiding a
+self-referential final hash. Every hosted job must report the same merge SHA
+and tree, matching the workflow event, before R1 can be declared qualified.
+Run metadata's branch `head_sha` alone is not proof of the checkout.
+
+R1 local validation and hosted results are recorded separately from R0 under
+`/home/zboll/perf-006-evidence/r1-20261026`; earlier raw evidence is not replaced.
+The final integrated local run includes all requested split/layout/wrapper
+checks, formatting, actionlint and PR #111's full
+`python3 -m unittest discover -s scripts -p 'test_*.py'` gate. A local `strace`
+package is extracted outside the repository for that inherited gate because
+system `strace` is absent and passwordless sudo is unavailable; no compiler
+evidence is mocked or skipped by this environment preparation.
+
+Integrated local results: split guard **PASS**; shell mutation suite **476
+checks PASS**; layout unittest suite **3 tests PASS**, including 312 workflow
+cases for each of the actual/overlapping layouts and live source-gate failure
+tests; standalone layout check **PASS**; Task060 wrappers **96 checks PASS**;
+Task061 wrappers **4 checks PASS**; inherited Python synthetic/compiler/Pages
+discovery **46 tests PASS, no skips**; inherited compiler-placement suite
+**11 tests PASS**; Rust formatting, diff whitespace and actionlint 1.7.12
+expression/schema validation **PASS** (shellcheck/pyflakes integrations disabled).
+Preservation checks confirm all eight jobs' non-checkout/non-identity steps
+match R0 exactly, all 17 gate entries are identical, main's CI and synthetic
+test files are unchanged, and production/test/fixture/schema/pinned-fetch
+paths have no diff from main.
+
+Only new final-head ordinary CI and all eight Deep CI successes, reconciled
+source identities and recorded measurements permit `READY_FOR_INDEPENDENT_REVIEW`.
+Historical R0 success is not R1 qualification and does not mean READY_TO_MERGE.
+The missed 30% complete-workflow target remains explicit; no new research or
+independent performance campaign is required. Keep PR #112 open, non-draft,
+unmerged and without auto-merge; leave reviewer thread resolution to re-review.
