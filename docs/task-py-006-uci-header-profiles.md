@@ -139,6 +139,29 @@ extracts each actual pinned scalar declaration into a task-owned one-value
 selection, explicitly labeled **not a complete real-UCI service**. This measures
 the bounded profile improvement separately from unchanged service readiness.
 
+The isolated pinned campaign executed successfully: **eight selections**
+(two profiles × two releases × two worlds), each changing model/API/codec and
+aggregate **NOT READY → READY**. Baseline first rejection is
+`unsupported Python IR construct: unsupported constraints`. Each generated
+one-value selection passed independent literal-oracle checks normally and under
+`-O`, standalone and package imports (32 one-test subprocesses per interpreter).
+The deterministic full comparison, including exact commands, contracts,
+BEFORE/AFTER diagnostics, runtime qualification labels and artifact hashes, is
+stored beside the fixture as `after.json`. Artifact bytes are identical across
+releases and worlds for each extracted profile:
+
+| Extracted profile | Artifact | SHA-256 |
+| --- | --- | --- |
+| Schema version | model.py | `dc9537778403b1123d850aa67d0b5bcbb6c7d697b98404004d601087010bf6ce` |
+| Schema version | service_api.py | `f9fe3508a33b8bebd86776dd90096507c4123242b377cfc2730bc5565db74e97` |
+| Schema version | service_codec.py | `835982ccd1c74bfd5f5d6039706da034050ea50fe883e22eed67204b29701262` |
+| UUID | model.py | `68d4994c2c5dd7d09ed82070d091043081df7b4ea286fad1d1d45c5f54842445` |
+| UUID | service_api.py | `fe9b3be5481eede07bc6f0958a84149c8f8e223fd3a86a5044c181d8e8f84064` |
+| UUID | service_codec.py | `10d8f6c7d449433f984cae9aee7134922381645748262788b32c7e4c67f49cd7` |
+
+These isolated profile artifacts are not PositionReport artifacts and do not
+qualify any complete real-UCI service against LA-CAL or Sleet.
+
 ## Independent synthetic and broker qualification
 
 `tests/fixtures/python-header-profiles` is new task-owned input; PY-004/PY-005

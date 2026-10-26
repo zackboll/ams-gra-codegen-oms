@@ -84,6 +84,7 @@ def main():
         args.before_generator = args.before_generator.resolve()
     args.output.mkdir(parents=True, exist_ok=False)
     frozen = json.loads((ROOT / 'tests/fixtures/python-header-profiles/before.json').read_text())
+    expected_profiles = json.loads((ROOT / 'tests/fixtures/python-header-profiles/after.json').read_text())['isolated_pinned_profiles']
     require(len(frozen['measurements']) == 24, 'missing frozen BEFORE selections')
     rows, profiles = [], []
     for version, (revision, expected_hash) in PINS.items():
@@ -170,7 +171,12 @@ unittest.main(argv=['pinned-profile'],verbosity=2)
                                                   + ['-c', probe, str(dest), style], capture_output=True, text=True)
                         require(executed.returncode == 0 and 'Ran 1 test' in executed.stderr
                                 and '\nOK\n' in executed.stderr, executed.stderr)
-                before = None
+                expected_profile = [row for row in expected_profiles if row['version'] == version
+                                    and row['declaration'] == name and row['world'] == world]
+                require(len(expected_profile) == 1, 'missing profile baseline')
+                before = expected_profile[0]['before']
+                artifact_hashes = {p.name: digest(p) for p in sorted(dest.glob('*.py'))}
+                require(artifact_hashes == expected_profile[0]['artifacts'], 'nonreproducible generated profile')
                 if args.before_generator:
                     before = check(args.before_generator, extracted, selected, world, True)
                     require(before['exit'] == 1 and 'model status: NOT READY' in before['stdout'], 'missing profile delta')
@@ -178,7 +184,7 @@ unittest.main(argv=['pinned-profile'],verbosity=2)
                                      provenance='extracted pinned declaration, NOT complete real service',
                                      before=before, after=after,
                                      execution='4 literal-oracle tests: normal/-O standalone/package',
-                                     artifacts={p.name: digest(p) for p in sorted(dest.glob('*.py'))}))
+                                     artifacts=artifact_hashes))
     require(len(rows) == 24 and len(profiles) == 8, 'incomplete campaign')
     result = {'services': rows, 'isolated_pinned_profiles': profiles}
     text = json.dumps(result, indent=2)
