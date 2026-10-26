@@ -24,6 +24,104 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  ada-lacal-runtime-core:
+    # Task 099: whole-frame mock transport only, not WebSocket qualification.
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: ['14', '16']
+    container:
+      image: debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5
+    timeout-minutes: 90
+    steps:
+      - name: Verify pinned target and external compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update
+          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14
+          test "$(uname -m)" = x86_64
+          test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.41'
+          mkdir -p /tmp/task099-evidence
+          dpkg-query -W libc6 libc6-dev gnat-14 gcc-14 | tee /tmp/task099-evidence/platform.txt
+          sha256sum /usr/lib/x86_64-linux-gnu/libc.so.6 /usr/bin/gnat /usr/bin/gcc | tee -a /tmp/task099-evidence/platform.txt
+          gnat --version | tee -a /tmp/task099-evidence/platform.txt
+          gnat --version | grep -E '^GNAT 14\.2\.0([[:space:]]|$)'
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Record exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(pwd -P)" = "$(realpath "$GITHUB_WORKSPACE")"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task099-evidence/source.txt
+          test "$(git rev-parse HEAD)" = '${{ github.event.pull_request.head.sha || github.sha }}'
+          status="$(git status --porcelain)"
+          test -z "$status"
+      - uses: dtolnay/rust-toolchain@1.95.0
+      - name: Install verified Alire 2.1.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
+          echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  /tmp/alire.zip' | sha256sum --check --strict
+          unzip -q /tmp/alire.zip -d /opt/alire
+          test "$(/opt/alire/bin/alr --version)" = 'alr 2.1.1'
+          sha256sum /opt/alire/bin/alr | tee -a /tmp/task099-evidence/platform.txt
+          echo /opt/alire/bin >> "$GITHUB_PATH"
+      - name: Build exact-head generator
+        run: cargo +1.95.0 build --locked -p ams-gra-codegen-oms
+      - name: Provision pinned compiler and GNATCOLL inputs
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python3 scripts/task096/setup.py --scratch /tmp/task099-evidence/setup --compiler '${{ matrix.compiler }}'
+      - name: Execute generated runtime consumers and require all cells
+        shell: bash
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          set -euo pipefail
+          python3 scripts/task099/qualify.py --scratch /tmp/task099-evidence/campaign --setup /tmp/task099-evidence/setup --compiler '${{ matrix.compiler }}' --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms" | tee /tmp/task099-evidence/qualify.log
+          python3 - <<'EOF'
+          import json
+          result = json.load(open('/tmp/task099-evidence/campaign/result.json'))
+          cells = result['cells']
+          expected = {(n, p, a, o) for n in ['oam', 'qualified'] for p in ['portable', 'lossless']
+                      for a in ['Normal', 'Check', 'Ignore'] for o in ['0', '2']}
+          actual = {(c['namespace'], c['profile'], c['policy'], c['optimization']) for c in cells}
+          if not result.get('completed') or not result.get('production_generated') or len(cells) != 24 or actual != expected:
+              raise SystemExit('incomplete Task 099 execution matrix')
+          if any(c['checks'] != (53 if c['profile'] == 'lossless' else 44) for c in cells):
+              raise SystemExit('wrong Task 099 check count')
+          if any(s['exit'] != 0 for s in result['steps']):
+              raise SystemExit('failed Task 099 step')
+          print('TASK099_HOSTED_REQUIRED_CELLS', len(cells))
+          EOF
+          test "$(grep -c '^TASK099_CELL_COMPLETE ' /tmp/task099-evidence/qualify.log)" = 24
+          grep -F 'TASK099_QUALIFICATION_COMPLETE' /tmp/task099-evidence/qualify.log
+      - name: Upload mandatory source compiler and execution evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: task099-ada-lacal-runtime-core-${{ matrix.compiler }}
+          path: |
+            /tmp/task099-evidence/*.txt
+            /tmp/task099-evidence/*.log
+            /tmp/task099-evidence/setup/step-*
+            /tmp/task099-evidence/setup/identities.json
+            /tmp/task099-evidence/setup/consumer/alire/alire.lock
+            /tmp/task099-evidence/campaign/*.json
+            /tmp/task099-evidence/campaign/*.stdout
+            /tmp/task099-evidence/campaign/*.stderr
+            /tmp/task099-evidence/campaign/*.exit
+            /tmp/task099-evidence/campaign/*.xsd
+            /tmp/task099-evidence/campaign/*-generated/*.ad?
+            /tmp/task099-evidence/campaign/*-O*-*/runtime_consumer.adb
+            /tmp/task099-evidence/campaign/ada/oms-lacal-runtime/src/*.ad?
+          if-no-files-found: error
   ada-float64-codec:
     runs-on: ubuntu-24.04
     strategy:
