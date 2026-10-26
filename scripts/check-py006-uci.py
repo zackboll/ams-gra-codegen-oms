@@ -188,7 +188,14 @@ unittest.main(argv=['pinned-profile'],verbosity=2)
     require(len(rows) == 24 and len(profiles) == 8, 'incomplete campaign')
     result = {'services': rows, 'isolated_pinned_profiles': profiles}
     text = json.dumps(result, indent=2)
-    for path, replacement in [(str(args.output.resolve()), '<EVIDENCE>'), (str(ROOT), '<REPO>')]:
+    replacements = [(str(args.output.resolve()), '<EVIDENCE>'),
+                    (str(args.generator), '<GENERATOR>'), (str(ROOT), '<REPO>')]
+    for version in PINS:
+        variable = 'AMS_GRA_UCI_' + version.replace('.', '_') + '_ROOT'
+        replacements.append((str(Path(os.environ[variable]).resolve()), '<UCI' + version.replace('.', '') + '_ROOT>'))
+    if args.before_generator:
+        replacements.append((str(args.before_generator), '<BASELINE_CLI>'))
+    for path, replacement in replacements:
         text = text.replace(path, replacement)
     (args.output / 'measurements.json').write_text(text + '\n')
     print('PY006 PINNED UCI: PASSED services=24 isolated_profiles=8 real_ready=0')
