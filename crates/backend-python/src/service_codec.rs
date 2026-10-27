@@ -58,10 +58,11 @@ pub fn generate_service_codec(
     crate::preflight(schema, &emissions)?;
     // Render-time wire preflight is the readiness decision too.
     for declaration in &schema.types {
-        // §6.1.4 has a name-specific RFC 4122 mapping. An unconstrained PY-001
-        // string carrier does not establish that mapping or its validation.
+        // §6.1.4's special mapping requires both exact OAM wire identity and
+        // the checked Task 038 value space. Name alone remains insufficient.
         if declaration.name.namespace_uri == OAM_NAMESPACE
             && declaration.name.local_name == "UniversallyUniqueIdentifierType"
+            && crate::header_profile(declaration) != Some("_uci_uuid")
         {
             return Err(error(
                 "Python OMS JSON codec: OAM UniversallyUniqueIdentifierType RFC 4122 mapping is unsupported",
@@ -80,11 +81,22 @@ pub fn generate_service_codec(
         }
     }
     let mut output = include_str!("codec_runtime.py").to_owned();
+    if schema
+        .types
+        .iter()
+        .any(|declaration| crate::header_profile(declaration).is_some())
+    {
+        output.push_str(include_str!("header_codec_runtime.py"));
+    }
     for emission in emissions {
         let TypeEmission::Declaration(declaration) = emission else {
             return Err(error("Python codec abstract value"));
         };
         let symbol = names::symbol(&declaration.name.local_name, false);
+        if crate::header_profile(declaration).is_some() {
+            writeln!(output, "\n\ndef _encode_{symbol}(value, path):\n    return _header_text(value, path, _model.{symbol})\n\n\ndef _decode_{symbol}(value, path):\n    return _header_value(value, path, _model.{symbol})").unwrap();
+            continue;
+        }
         writeln!(
             output,
             "\n\ndef _encode_{symbol}(value, path):\n    _expect(value, _model.{symbol}, path)"

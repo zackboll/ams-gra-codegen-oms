@@ -27,6 +27,9 @@ on:
       - "scripts/run-real-sleet-test.sh"
       - "python/oms-lacal-runtime/**"
       - "scripts/check-py005-sleet.sh"
+      - "scripts/check-py006-sleet.sh"
+      - "scripts/check-py006-uci.py"
+      - "tests/fixtures/python-header-profiles/**"
       - "tests/fixtures/python-runtime/**"
       - "crates/runtime-rust-facade-tests/tests/task077_sleet.rs"
       - "scripts/check-task062-pinned.sh"
@@ -227,6 +230,17 @@ jobs:
           set -euo pipefail
           python3 scripts/test-task061-service-impact.py
           cargo test --release --locked -p ams-gra-codegen-oms --test service_check_batch
+      - name: Python exact header profiles against pinned UCI (PY-006, must execute)
+        run: |
+          set -euo pipefail
+          python3 scripts/check-py006-uci.py --generator target/release/ams-gra-codegen-oms \
+            --output "$RUNNER_TEMP/py006-uci"
+      - name: Preserve Python pinned UCI measurements
+        uses: actions/upload-artifact@v4
+        with:
+          name: py006-uci
+          path: ${{ runner.temp }}/py006-uci/**
+          if-no-files-found: error
       - name: Confirm unique newly READY Time services (Task 061)
         run: |
           set -euo pipefail
@@ -562,9 +576,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: |
+            3.11
+            3.13
       - name: Install pinned Python LA-CAL runtime
-        run: python -m pip install ./python/oms-lacal-runtime
+        run: |
+          python3.11 -m pip install ./python/oms-lacal-runtime
+          python3.13 -m pip install ./python/oms-lacal-runtime
       - name: Fetch pinned UCI 2.5 (once)
         run: |
           set -euo pipefail
@@ -602,6 +620,8 @@ jobs:
       # AMS_GRA_UCI_2_5_ROOT (from GITHUB_ENV) also enables the script's real
       # PositionReport / SubsystemStream round trips through Sleet.
       - name: Rust LA-CAL runtime against real pinned Sleet (e38f61d8)
+        env:
+          PY006_PYTHONS: python3.11 python3.13
         run: |
           set -euo pipefail
           test -n "$AMS_GRA_UCI_2_5_ROOT"
