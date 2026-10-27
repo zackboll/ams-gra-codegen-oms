@@ -52,6 +52,20 @@ if grep -Fq 'scripts/check-py005-sleet.sh' <<<"$fast_code"; then
   fail "Fast CI must not run Python pinned Sleet"
 fi
 
+# PY-007: retain historical profile hashes and require the current service gate
+# in the existing Deep job, plus generated inheritance in the Python matrix.
+for path in 'scripts/check-py007-uci.py' 'scripts/test-py007-uci.py' \
+  'scripts/check-py007-sleet.sh' 'tests/fixtures/python-inheritance/**'; do
+  grep -Fqx "      - \"$path\"" <<<"$deep_code" || fail "Deep CI lost PY-007 PR path: $path"
+done
+grep -Fq 'python3 scripts/check-py007-uci.py --generator' <<<"$deep_code" || fail "Deep CI lost PY-007 current-service gate"
+grep -Fq -- '--test python_inheritance -- --nocapture' <<<"$fast_code" || fail "Fast CI lost PY-007 generated execution"
+grep -Fq 'python scripts/test-py007-uci.py' <<<"$fast_code" || fail "Fast CI lost PY-007 gate controls"
+grep -Fq 'scripts/check-py007-sleet.sh' <<<"$sleet_code" || fail "Sleet harness lost PY-007 inherited delivery"
+if grep -Fq 'scripts/check-py007-sleet.sh' <<<"$fast_code" || grep -Fq 'scripts/check-py007-uci.py --generator' <<<"$fast_code"; then
+  fail "Fast CI must not run PY-007 external campaigns"
+fi
+
 for required in 'bash scripts/check-task077-fast.sh' 'bash scripts/test-task077-ci-wrappers.sh'; do
   grep -Fq "$required" <<<"$fast_code" || fail "Fast CI lost Task 077 gate: $required"
 done

@@ -1,0 +1,86 @@
+[
+  {
+    "version": "2.5",
+    "message": "PositionReport",
+    "before": {
+      "exit": 0,
+      "stdout": "service contract valid\ncontract version: 0.1\nservice: PY006 PositionReport\nkind: service\ncontract uci schema version: 2.5\nschema root version: 002.5.0\ncapabilities: (omitted by contract)\n\nfunctions: 1\nexchange occurrences: 1\noms message exchanges: 1\nunique uci messages: 1\nselected type closure: 60\n\nselected / output\n  output PositionReport\n  topic: py006.selected\n  resolved: {https://www.vdl.afrl.af.mil/programs/oam}PositionReport\n",
+      "stderr": ""
+    },
+    "after": {
+      "exit": 0,
+      "stdout": "service contract valid\ncontract version: 0.1\nservice: PY006 PositionReport\nkind: service\ncontract uci schema version: 2.5\nschema root version: 002.5.0\ncapabilities: (omitted by contract)\n\nfunctions: 1\nexchange occurrences: 1\noms message exchanges: 1\nunique uci messages: 1\nselected type closure: 60\n\nselected / output\n  output PositionReport\n  topic: py006.selected\n  resolved: {https://www.vdl.afrl.af.mil/programs/oam}PositionReport\n",
+      "stderr": ""
+    }
+  },
+  {
+    "version": "2.5",
+    "message": "RDMA_InitializeSetup",
+    "before": {
+      "exit": 0,
+      "stdout": "service contract valid\ncontract version: 0.1\nservice: PY006 RDMA_InitializeSetup\nkind: service\ncontract uci schema version: 2.5\nschema root version: 002.5.0\ncapabilities: (omitted by contract)\n\nfunctions: 1\nexchange occurrences: 1\noms message exchanges: 1\nunique uci messages: 1\nselected type closure: 50\n\nselected / output\n  output RDMA_InitializeSetup\n  topic: py006.selected\n  resolved: {https://www.vdl.afrl.af.mil/programs/oam}RDMA_InitializeSetup\n",
+      "stderr": ""
+    },
+    "after": {
+      "exit": 0,
+      "stdout": "service contract valid\ncontract version: 0.1\nservice: PY006 RDMA_InitializeSetup\nkind: service\ncontract uci schema version: 2.5\nschema root version: 002.5.0\ncapabilities: (omitted by contract)\n\nfunctions: 1\nexchange occurrences: 1\noms message exchanges: 1\nunique uci messages: 1\nselected type closure: 50\n\nselected / output\n  output RDMA_InitializeSetup\n  topic: py006.selected\n  resolved: {https://www.vdl.afrl.af.mil/programs/oam}RDMA_InitializeSetup\n",
+      "stderr": ""
+    }
+  },
+  {
+    "version": "2.5",
+    "message": "SubsystemStream",
+    "before": {
+      "exit": 0,
+      "stdout": "service contract valid\ncontract version: 0.1\nservice: PY006 SubsystemStream\nkind: service\ncontract uci schema version: 2.5\nschema root version: 002.5.0\ncapabilities: (omitted by contract)\n\nfunctions: 1\nexchange occurrences: 1\noms message exchanges: 1\nunique uci messages: 1\nselected type closure: 40\n\nselected / output\n  output SubsystemStream\n  topic: py006.selected\n  resolved: {https://www.vdl.afrl.af.mil/programs/oam}SubsystemStream\n",
+      "stderr": ""
+    },
+    "after": {
+      "exit": 0,
+      "stdout": "service contract valid\ncontract version: 0.1\nservice: PY006 SubsystemStream\nkind: service\ncontract uci schema version: 2.5\nschema root version: 002.5.0\ncapabilities: (omitted by contract)\n\nfunctions: 1\nexchange occurrences: 1\noms message exchanges: 1\nunique uci messages: 1\nselected type closure: 40\n\nselected / output\n  output SubsystemStream\n  topic: py006.selected\n  resolved: {https://www.vdl.afrl.af.mil/programs/oam}SubsystemStream\n",
+      "stderr": ""
+    }
+  },
+  {
+    "version": "2.6",
+    "message": "PositionReport",
+    "before": {
+      "exit": 0,
+      "stdout": "service contract valid\ncontract version: 0.1\nservice: PY006 PositionReport\nkind: service\ncontract uci schema version: 2.6\nschema root version: 002.6.0\ncapabilities: (omitted by contract)\n\nfunctions: 1\nexchange occurrences: 1\noms message exchanges: 1\nunique uci messages: 1\nselected type closure: 60\n\nselected / output\n  output PositionReport\n  topic: py006.selected\n  resolved: {https://www.vdl.afrl.af.mil/programs/oam}PositionReport\n",
+      "stderr": ""
+    },
+    "after": {
+      "exit": 0,
+      "stdout": "service contract valid\ncontract version: 0.1\nservice: PY006 PositionReport\nkind: service\ncontract uci schema version: 2.6\nschema root version: 002.6.0\ncapabilities: (omitted by contract)\n\nfunctions: 1\nexchange occurrences: 1\noms message exchanges: 1\nunique uci messages: 1\nselected type closure: 60\n\nselected / output\n  output PositionReport\n  topic: py006.selected\n  resolved: {https://www.vdl.afrl.af.mil/programs/oam}PositionReport\n",
+      "stderr": ""
+    }
+  },
+  {
+    "version": "2.6",
+    "message": "RDMA_InitializeSetup",
+    "before": {
+      "exit": 0,
+      "stdout": "service contract valid\ncontract version: 0.1\nservice: PY006 RDMA_InitializeSetup\nkind: service\ncontract uci schema version: 2.6\nschema root version: 002.6.0\ncapabilities: (omitted by contract)\n\nfunctions: 1\nexchange occurrences: 1\noms message exchanges: 1\nunique uci messages: 1\nselected type closure: 50\n\nselected / output\n  output RDMA_InitializeSetup\n  topic: py006.selected\n  resolved: {https://www.vdl.afrl.af.mil/programs/oam}RDMA_InitializeSetup\n",
+      "stderr": ""
+    },
+    "after": {
+      "exit": 0,
+      "stdout": "service contract valid\ncontract version: 0.1\nservice: PY006 RDMA_InitializeSetup\nkind: service\ncontract uci schema version: 2.6\nschema root version: 002.6.0\ncapabilities: (omitted by contract)\n\nfunctions: 1\nexchange occurrences: 1\noms message exchanges: 1\nunique uci messages: 1\nselected type closure: 50\n\nselected / output\n  output RDMA_InitializeSetup\n  topic: py006.selected\n  resolved: {https://www.vdl.afrl.af.mil/programs/oam}RDMA_InitializeSetup\n",
+      "stderr": ""
+    }
+  },
+  {
+    "version": "2.6",
+    "message": "SubsystemStream",
+    "before": {
+      "exit": 0,
+      "stdout": "service contract valid\ncontract version: 0.1\nservice: PY006 SubsystemStream\nkind: service\ncontract uci schema version: 2.6\nschema root version: 002.6.0\ncapabilities: (omitted by contract)\n\nfunctions: 1\nexchange occurrences: 1\noms message exchanges: 1\nunique uci messages: 1\nselected type closure: 41\n\nselected / output\n  output SubsystemStream\n  topic: py006.selected\n  resolved: {https://www.vdl.afrl.af.mil/programs/oam}SubsystemStream\n",
+      "stderr": ""
+    },
+    "after": {
+      "exit": 0,
+      "stdout": "service contract valid\ncontract version: 0.1\nservice: PY006 SubsystemStream\nkind: service\ncontract uci schema version: 2.6\nschema root version: 002.6.0\ncapabilities: (omitted by contract)\n\nfunctions: 1\nexchange occurrences: 1\noms message exchanges: 1\nunique uci messages: 1\nselected type closure: 41\n\nselected / output\n  output SubsystemStream\n  topic: py006.selected\n  resolved: {https://www.vdl.afrl.af.mil/programs/oam}SubsystemStream\n",
+      "stderr": ""
+    }
+  }
+]

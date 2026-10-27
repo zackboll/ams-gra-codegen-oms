@@ -77,6 +77,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--generator', type=Path, required=True)
     parser.add_argument('--before-generator', type=Path)
+    parser.add_argument('--service-baseline', type=Path,
+                        help='Versioned current-service evidence; PY-006 historical default is unchanged')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     args.generator = args.generator.resolve()
@@ -84,6 +86,9 @@ def main():
         args.before_generator = args.before_generator.resolve()
     args.output.mkdir(parents=True, exist_ok=False)
     frozen = json.loads((ROOT / 'tests/fixtures/python-header-profiles/before.json').read_text())
+    if args.service_baseline:
+        require(not args.before_generator, 'ambiguous comparison modes')
+        frozen = json.loads(args.service_baseline.read_text())
     expected_profiles = json.loads((ROOT / 'tests/fixtures/python-header-profiles/after.json').read_text())['isolated_pinned_profiles']
     require(len(frozen['measurements']) == 24, 'missing frozen BEFORE selections')
     rows, profiles = [], []
@@ -198,7 +203,8 @@ unittest.main(argv=['pinned-profile'],verbosity=2)
     for path, replacement in replacements:
         text = text.replace(path, replacement)
     (args.output / 'measurements.json').write_text(text + '\n')
-    print('PY006 PINNED UCI: PASSED services=24 isolated_profiles=8 real_ready=0')
+    qualification = 'PY007 CURRENT' if args.service_baseline else 'PY006'
+    print(qualification + ' PINNED UCI: PASSED services=24 isolated_profiles=8 real_ready=0')
 
 
 if __name__ == '__main__':

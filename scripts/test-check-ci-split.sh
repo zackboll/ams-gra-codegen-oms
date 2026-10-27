@@ -43,6 +43,23 @@ expect_fail "Deep lost Python campaign" "$fast" "$deep" "$tmp/sleet-no-py005.sh"
 { cat "$fast"; printf '      - run: bash scripts/check-py005-sleet.sh\n'; } >"$tmp/fast-py005-real.yml"
 expect_fail "Fast runs Python broker" "$tmp/fast-py005-real.yml" "$deep" "$sleet"
 
+for gate in 'python3 scripts/check-py007-uci.py --generator' \
+  '      - "scripts/check-py007-uci.py"' '      - "scripts/test-py007-uci.py"' \
+  '      - "scripts/check-py007-sleet.sh"' '      - "tests/fixtures/python-inheritance/**"'; do
+  grep -Fv -- "$gate" "$deep" >"$tmp/deep-no-py007.yml"
+  expect_fail "Deep lost PY007 $gate" "$fast" "$tmp/deep-no-py007.yml" "$sleet"
+done
+for gate in '--test python_inheritance -- --nocapture' 'python scripts/test-py007-uci.py'; do
+  grep -Fv -- "$gate" "$fast" >"$tmp/fast-no-py007.yml"
+  expect_fail "Fast lost PY007 $gate" "$tmp/fast-no-py007.yml" "$deep" "$sleet"
+done
+grep -Fv 'scripts/check-py007-sleet.sh' "$sleet" >"$tmp/sleet-no-py007.sh"
+expect_fail "Deep lost PY007 broker" "$fast" "$deep" "$tmp/sleet-no-py007.sh"
+for external in 'bash scripts/check-py007-sleet.sh' 'python3 scripts/check-py007-uci.py --generator'; do
+  { cat "$fast"; printf '      - run: %s\n' "$external"; } >"$tmp/fast-external-py007.yml"
+  expect_fail "Fast runs PY007 external campaign" "$tmp/fast-external-py007.yml" "$deep" "$sleet"
+done
+
 # Task 077B / PERF-006: healthy disposable split, harmless structural changes,
 # and attributed single-defect negatives for all three independent shards.
 # Each negative must contain its targeted diagnostic, not just fail elsewhere.
