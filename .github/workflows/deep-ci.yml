@@ -157,6 +157,10 @@ jobs:
         with:
           name: task100-ada-websocket-sleet-${{ matrix.compiler }}
           path: |
+            scripts/task100/**
+            tests/ada-websocket/**
+            tests/fixtures/service-generate/lacal-websocket.xsd
+            tests/fixtures/service-generate/lacal-runtime.yaml
             /tmp/task100-evidence/*.txt
             /tmp/task100-evidence/*.log
             /tmp/task100-evidence/setup/step-*

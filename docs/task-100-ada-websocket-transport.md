@@ -278,6 +278,7 @@ The fresh `release14` and `release16` campaigns completed successfully:
 | Real pinned Sleet | **12/12 runs**, both compilers × Normal/Check/Ignore × O0/O2; generated OAM typed A/B handlers and rejected topic |
 | Float64 framing | **24/24 probes**, each four values and four byte-exact lexeme echoes, both namespaces |
 | Task 099/R1 | **48/48 cells**, **2,760 checks**, existing mock ownership/safety suite unchanged |
+| Task 098 TimeZulu | **36/36 cells**, **5,616 documents**: 1,368 accepted / 4,248 rejected, both compilers/namespaces and all three runtime profiles/policies |
 | Rust fmt/check/clippy | All locked workspace gates pass |
 | Locked Rust workspace tests | **1,480 passed, 0 failed, 8 existing external-evidence tests ignored**; ignored tests are not interoperability evidence |
 | CI split/layout | Structural guards, 476-check split harness and layout adversarial tests pass |
