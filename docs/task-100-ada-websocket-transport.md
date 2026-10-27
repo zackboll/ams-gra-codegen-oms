@@ -279,6 +279,7 @@ The fresh `release14` and `release16` campaigns completed successfully:
 | Float64 framing | **24/24 probes**, each four values and four byte-exact lexeme echoes, both namespaces |
 | Task 099/R1 | **48/48 cells**, **2,760 checks**, existing mock ownership/safety suite unchanged |
 | Task 098 TimeZulu | **36/36 cells**, **5,616 documents**: 1,368 accepted / 4,248 rejected, both compilers/namespaces and all three runtime profiles/policies |
+| Inherited JSON codec campaigns | **26/26 campaigns** across both compilers: guarded support and Tasks 087b/088/089/089r/090/090r/091/091r/092/093/093-combined/094 |
 | Rust fmt/check/clippy | All locked workspace gates pass |
 | Locked Rust workspace tests | **1,480 passed, 0 failed, 8 existing external-evidence tests ignored**; ignored tests are not interoperability evidence |
 | CI split/layout | Structural guards, 476-check split harness and layout adversarial tests pass |
@@ -288,6 +289,12 @@ The source/API/codec copies used by these completed campaigns are hash-recorded
 and unchanged from actual CLI output. All original runtime core, Ada generator
 and JSON support files remain byte-identical to the baseline. Failed earlier
 campaigns were caused by qualification-harness edits or the documented harness
-issues; none has a successful completion record. Additional inherited codec
-and full Float64/TimeZulu campaigns are still running; hosted exact-final-head
-evidence is also required. Local success alone is not review readiness.
+issues; none has a successful completion record. The later mixed-generator
+attempts are explicitly superseded: an additional Rust 1.95 workspace build
+rebuilt `target/debug/ams-gra-codegen-oms`, and the input hash guard rejected
+mixed campaigns. Fresh final-head runs use an immutable scratch generator;
+its four regenerated profile outputs are byte-identical to the original
+completed runs. Negative tests require the actual transport exception, not
+just a nonzero exit, so a receive timeout/crash cannot count as rejection.
+The full inherited Float64 campaign and hosted exact-final-head evidence are
+still required. Local success alone is not review readiness.

@@ -276,6 +276,10 @@ def run(binary, case, evidence, namespace="oam", preload=None):
     expected_failure = case in BAD_HANDSHAKES or case in BAD_FRAMES
     assert not errors and not thread.is_alive(), (case, errors, result.stdout)
     assert (result.returncode != 0) == expected_failure, (case, result.stdout, result.stderr)
+    if expected_failure:
+        # A timeout, crash or unrelated Program_Error is not rejection evidence.
+        assert "raised OMS_LACAL.TRANSPORTS.WEBSOCKET.TRANSPORT_ERROR :" in result.stdout
+        assert "TRANSPORT_PROBE_COMPLETE" not in result.stdout
     if preload:
         line = next(line for line in result.stderr.splitlines() if line.startswith("TASK100_FORCED_SHORT_SENDS="))
         assert int(line.split("=")[1]) > 0, "partial-send injector not exercised"
@@ -314,6 +318,7 @@ def main():
         result = subprocess.run([str(args.probe.resolve()), url, "valid"],
                                 capture_output=True, text=True, timeout=3)
         assert result.returncode != 0 and "UPGRADE_OWP_COMPLETE" not in result.stdout
+        assert "raised OMS_LACAL.TRANSPORTS.WEBSOCKET.TRANSPORT_ERROR :" in result.stdout
         label = f"invalid-url-{index}"
         (args.evidence / f"{label}.stdout").write_text(result.stdout)
         (args.evidence / f"{label}.stderr").write_text(result.stderr)
