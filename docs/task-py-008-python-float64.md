@@ -13,6 +13,21 @@ force-push are authorized. It must remain unmerged until independent PY-007
 approval/merge and ordinary integration plus requalification against main.
 PR #116 remains open at preflight; its unmerged CI changes are not imported.
 
+During final qualification, main advanced through PR #113 to
+`d603077c6d38ccc0658391776e3af9eecb009255`, tree
+`5ea3873e3bf6a8e2960e8d1faa57049d867a2456`. Ordinary merge
+`6c467b266d672f549c7139422d90bc70d569d670`, tree
+`e998e81d4294912185ed69f51f5158a1dc260900`, incorporated it into PY-008
+without editing PY-007 or retargeting the stacked PR. The twelve incoming
+trusted-dispatch security/workflow/document files are byte-identical to main;
+production backends, tests, runtime and existing Fast/Deep workflows are
+byte-identical to the qualified PY-008 source. The incoming hash-pinned PyYAML
+requirements were installed in a task-owned venv: all **30 CI002 security tests**
+pass, including mutation/provenance gates. The authenticated historical workflow
+probe returns exactly `4c79fff41970a8ba7109df9bd185a6b166c0ffb0`. Actionlint
+and the existing CI split guard pass with these files present. No activation
+variables, credentials, runner settings or another active PR were modified.
+
 Worktree: `/home/zboll/git/ams-gra-codegen-oms-py-008`; task-owned build and
 raw evidence: `/home/zboll/py008-build` and `/home/zboll/py008-evidence`.
 Concurrent Ada/CI work and shared targets are untouched. The source/dependency
@@ -278,8 +293,12 @@ its stable-file adversarial self-test passes **502 checks**.
 The first GNAT-required locked workspace run completed **1,488 passed, zero
 failed, eight pre-existing ignored**, in 189 target/doc summaries. That run
 predates the last additive domain/collision tests, so the complete proposed-source
-GNAT-required rerun is tracked separately and is **not yet claimed complete** at
-this checkpoint. The inherited Rust real-UCI/Sleet build was restarted as a
+GNAT-required rerun was tracked separately: it now completed **1,491 passed,
+zero failed, eight pre-existing ignored**, again 189 target/doc summaries.
+The integrated-main release executable is byte-identical to the qualified
+final generator. Integrated-main focused suites, workspace check and Clippy
+also pass; incoming trusted-dispatch files do not change Cargo or Python inputs.
+The inherited Rust real-UCI/Sleet build was restarted as a
 task-owned release campaign after the debug build spent over 18 minutes in its
 build script without a verdict; it too is not yet claimed passed here. No failed
 or unexecuted campaign is counted as a pass. Both exact implementation-head hosted
