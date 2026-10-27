@@ -1,0 +1,59 @@
+# Ada LA-CAL runtime core
+
+Transport-independent OWP 1.0 core. No production WebSocket/TLS dependency,
+automatic receive task, or Sleet interoperability claim.
+
+Import `oms_lacal_runtime.gpr`. The existing sibling JSON support project uses
+GNATCOLL 26.0.0; the lossless generated codec additionally imports
+`../oms-json-support/ams_gra_oms_json_lossless.gpr` on its qualified platform.
+No generated model or codec is copied into this library.
+
+* `OMS_LACAL`: limits, errors, events and shared global-element QName formatter.
+* `OMS_LACAL.Transports`: whole-frame send, nonblocking poll, close interface.
+* `OMS_LACAL.Connections`: INIT/INFO, PUB/SUB/UNSUB, ACK/error processing,
+  monotonic SIDs, bounded registration/event state, explicit poll and cleanup.
+* `OMS_LACAL.Envelopes`: exactly-one-original-member OMS envelope, untouched
+  payload substring extraction; no numeric DOM round trip.
+* `OMS_LACAL.Typed`: generic binding to generated payload codecs and endpoint
+  Handler interfaces, checked persistent receiver access, guarded dispatch.
+* `OMS_LACAL.Transports.Mock`: deterministic bounded in-process test peer.
+
+For a complete application calling actual generated `Service_API` Publishers
+and Subscribers, see `../../tests/ada-lacal-runtime/runtime_consumer.adb` and
+`../../scripts/task099/qualify.py`. The script generates and executes both
+namespaces/profiles; it does not substitute fake codecs or facade declarations.
+
+Declare transport, then aliased connection, then endpoint-specific generic
+instances and bindings. Declare aliased receiver objects in the generic
+instance's master or an enclosing master. The adapter hook passes the generated
+receiver parameter into the binding's `Subscribe`; a checked conversion rejects
+shorter-lived receivers **before SUB is sent**. Do not free a registered receiver
+with application-owned deallocation. Explicitly unsubscribe/close its binding
+before deliberately finalizing or destroying a receiver.
+
+The application explicitly calls connection `Poll`, then offers the delivery
+to its endpoint bindings' `Dispatch`. Unknown SIDs are not delivered. A binding
+selects by its registered SID and verifies its stored QName before decoding.
+No callback access is stored by the connection. The connection synchronously
+borrows the binding's processing callback during dispatch and guards reentrancy.
+
+Default verbose mode permits only one outstanding command. Poll `+OK` before
+the next command; INIT also requires INFO. Publish success means **sent**;
+acceptance is a later event. Pending subscriptions cannot dispatch until +OK.
+Nonverbose mode does not establish acceptance; late -ERR carries no correlating
+SID and cannot identify a rejected subscription. The runtime reports it without
+inventing correlation or removing arbitrary registrations.
+
+Close is deterministic and connection close is idempotent. Binding close removes
+local mappings without wire traffic; use explicit unsubscribe for peer cleanup
+while retaining a connection. Scope finalization closes a connection and clears
+bindings. No background work or callbacks run after these operations.
+
+Typed `Unsubscribe` accepts only a SID registered by that binding, even when
+multiple generated Handler bindings share a connection. Unknown, foreign, zero
+and already removed SIDs raise `Runtime_Error` without sending an OWP frame or
+changing any subscription state. The local handler mapping is cleared only
+after the connection's unsubscribe succeeds.
+
+See `../../docs/task-099-ada-lacal-runtime-core.md` for protocol, ownership,
+resource, compiler and qualification limitations.
