@@ -119,6 +119,13 @@ Python LA-CAL runtime under `python/oms-lacal-runtime`: async OWP/WebSocket
 publish/subscribe through explicit generated-codec registrations, with pinned
 `websockets==17.2`. Generated files remain transport-independent.
 
+[PY-006](docs/task-py-006-uci-header-profiles.md) adds exact checked UCI
+schema-version and UUID String carriers, preserving lexical spelling (including
+UUID case and nil), and generated JSON String codecs. The OAM UUID special
+mapping requires its exact normalized profile, not its name alone. Synthetic
+header-profile broker qualification is separate from real-UCI service readiness:
+PositionReport, RDMA_InitializeSetup and SubsystemStream remain unsupported.
+
 Run
 `ams-gra-codegen-oms --help` or a command followed by `--help` for complete
 usage. Exit status `0` means success, `2` means invalid command-line usage, and

@@ -1,0 +1,1638 @@
+{
+  "services": [
+    {
+      "version": "2.5",
+      "revision": "093610b7753944059360d3236770ab446d039556",
+      "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}PositionReport",
+      "contract_sha256": "e79d502085fa4e0301cc4d0b077a6b92569d7889739d21dfaf6c37b7b6863714",
+      "world": "closed-schema",
+      "with_codec": false,
+      "before": {
+        "version": "2.5",
+        "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+        "message": "{https://www.vdl.afrl.af.mil/programs/oam}PositionReport",
+        "contract": "2.5-PositionReport.yaml",
+        "world": "closed-schema",
+        "codec": false,
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<UCI25_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.5-PositionReport.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 PositionReport\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 60\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n",
+        "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<UCI25_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.5-PositionReport.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 PositionReport\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 60\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n",
+        "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+      },
+      "artifacts": {},
+      "runtime": "NOT QUALIFIED: service NOT READY"
+    },
+    {
+      "version": "2.5",
+      "revision": "093610b7753944059360d3236770ab446d039556",
+      "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}PositionReport",
+      "contract_sha256": "e79d502085fa4e0301cc4d0b077a6b92569d7889739d21dfaf6c37b7b6863714",
+      "world": "closed-schema",
+      "with_codec": true,
+      "before": {
+        "version": "2.5",
+        "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+        "message": "{https://www.vdl.afrl.af.mil/programs/oam}PositionReport",
+        "contract": "2.5-PositionReport.yaml",
+        "world": "closed-schema",
+        "codec": true,
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<UCI25_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.5-PositionReport.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 PositionReport\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 60\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<UCI25_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.5-PositionReport.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 PositionReport\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 60\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+      },
+      "artifacts": {},
+      "runtime": "NOT QUALIFIED: service NOT READY"
+    },
+    {
+      "version": "2.5",
+      "revision": "093610b7753944059360d3236770ab446d039556",
+      "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}PositionReport",
+      "contract_sha256": "e79d502085fa4e0301cc4d0b077a6b92569d7889739d21dfaf6c37b7b6863714",
+      "world": "open-extensions",
+      "with_codec": false,
+      "before": {
+        "version": "2.5",
+        "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+        "message": "{https://www.vdl.afrl.af.mil/programs/oam}PositionReport",
+        "contract": "2.5-PositionReport.yaml",
+        "world": "open-extensions",
+        "codec": false,
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<UCI25_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.5-PositionReport.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 PositionReport\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 60\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n",
+        "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<UCI25_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.5-PositionReport.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 PositionReport\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 60\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n",
+        "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+      },
+      "artifacts": {},
+      "runtime": "NOT QUALIFIED: service NOT READY"
+    },
+    {
+      "version": "2.5",
+      "revision": "093610b7753944059360d3236770ab446d039556",
+      "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}PositionReport",
+      "contract_sha256": "e79d502085fa4e0301cc4d0b077a6b92569d7889739d21dfaf6c37b7b6863714",
+      "world": "open-extensions",
+      "with_codec": true,
+      "before": {
+        "version": "2.5",
+        "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+        "message": "{https://www.vdl.afrl.af.mil/programs/oam}PositionReport",
+        "contract": "2.5-PositionReport.yaml",
+        "world": "open-extensions",
+        "codec": true,
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<UCI25_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.5-PositionReport.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 PositionReport\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 60\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<UCI25_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.5-PositionReport.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 PositionReport\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 60\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+      },
+      "artifacts": {},
+      "runtime": "NOT QUALIFIED: service NOT READY"
+    },
+    {
+      "version": "2.5",
+      "revision": "093610b7753944059360d3236770ab446d039556",
+      "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}RDMA_InitializeSetup",
+      "contract_sha256": "611dc3a6fef0ffd30eb6853992a886b297625528aa992fc55d01c427fc268358",
+      "world": "closed-schema",
+      "with_codec": false,
+      "before": {
+        "version": "2.5",
+        "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+        "message": "{https://www.vdl.afrl.af.mil/programs/oam}RDMA_InitializeSetup",
+        "contract": "2.5-RDMA_InitializeSetup.yaml",
+        "world": "closed-schema",
+        "codec": false,
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<UCI25_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.5-RDMA_InitializeSetup.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 RDMA_InitializeSetup\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 50\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n",
+        "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<UCI25_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.5-RDMA_InitializeSetup.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 RDMA_InitializeSetup\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 50\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n",
+        "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+      },
+      "artifacts": {},
+      "runtime": "NOT QUALIFIED: service NOT READY"
+    },
+    {
+      "version": "2.5",
+      "revision": "093610b7753944059360d3236770ab446d039556",
+      "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}RDMA_InitializeSetup",
+      "contract_sha256": "611dc3a6fef0ffd30eb6853992a886b297625528aa992fc55d01c427fc268358",
+      "world": "closed-schema",
+      "with_codec": true,
+      "before": {
+        "version": "2.5",
+        "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+        "message": "{https://www.vdl.afrl.af.mil/programs/oam}RDMA_InitializeSetup",
+        "contract": "2.5-RDMA_InitializeSetup.yaml",
+        "world": "closed-schema",
+        "codec": true,
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<UCI25_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.5-RDMA_InitializeSetup.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 RDMA_InitializeSetup\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 50\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<UCI25_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.5-RDMA_InitializeSetup.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 RDMA_InitializeSetup\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 50\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+      },
+      "artifacts": {},
+      "runtime": "NOT QUALIFIED: service NOT READY"
+    },
+    {
+      "version": "2.5",
+      "revision": "093610b7753944059360d3236770ab446d039556",
+      "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}RDMA_InitializeSetup",
+      "contract_sha256": "611dc3a6fef0ffd30eb6853992a886b297625528aa992fc55d01c427fc268358",
+      "world": "open-extensions",
+      "with_codec": false,
+      "before": {
+        "version": "2.5",
+        "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+        "message": "{https://www.vdl.afrl.af.mil/programs/oam}RDMA_InitializeSetup",
+        "contract": "2.5-RDMA_InitializeSetup.yaml",
+        "world": "open-extensions",
+        "codec": false,
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<UCI25_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.5-RDMA_InitializeSetup.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 RDMA_InitializeSetup\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 50\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n",
+        "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<UCI25_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.5-RDMA_InitializeSetup.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 RDMA_InitializeSetup\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 50\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n",
+        "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+      },
+      "artifacts": {},
+      "runtime": "NOT QUALIFIED: service NOT READY"
+    },
+    {
+      "version": "2.5",
+      "revision": "093610b7753944059360d3236770ab446d039556",
+      "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}RDMA_InitializeSetup",
+      "contract_sha256": "611dc3a6fef0ffd30eb6853992a886b297625528aa992fc55d01c427fc268358",
+      "world": "open-extensions",
+      "with_codec": true,
+      "before": {
+        "version": "2.5",
+        "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+        "message": "{https://www.vdl.afrl.af.mil/programs/oam}RDMA_InitializeSetup",
+        "contract": "2.5-RDMA_InitializeSetup.yaml",
+        "world": "open-extensions",
+        "codec": true,
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<UCI25_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.5-RDMA_InitializeSetup.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 RDMA_InitializeSetup\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 50\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<UCI25_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.5-RDMA_InitializeSetup.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 RDMA_InitializeSetup\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 50\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+      },
+      "artifacts": {},
+      "runtime": "NOT QUALIFIED: service NOT READY"
+    },
+    {
+      "version": "2.5",
+      "revision": "093610b7753944059360d3236770ab446d039556",
+      "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}SubsystemStream",
+      "contract_sha256": "915f4fe3614c1fa3b76f6c12c9c0608991c3b96abcecfcc9f394035f4ffdb13e",
+      "world": "closed-schema",
+      "with_codec": false,
+      "before": {
+        "version": "2.5",
+        "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+        "message": "{https://www.vdl.afrl.af.mil/programs/oam}SubsystemStream",
+        "contract": "2.5-SubsystemStream.yaml",
+        "world": "closed-schema",
+        "codec": false,
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<UCI25_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.5-SubsystemStream.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 SubsystemStream\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 40\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n",
+        "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<UCI25_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.5-SubsystemStream.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 SubsystemStream\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 40\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n",
+        "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+      },
+      "artifacts": {},
+      "runtime": "NOT QUALIFIED: service NOT READY"
+    },
+    {
+      "version": "2.5",
+      "revision": "093610b7753944059360d3236770ab446d039556",
+      "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}SubsystemStream",
+      "contract_sha256": "915f4fe3614c1fa3b76f6c12c9c0608991c3b96abcecfcc9f394035f4ffdb13e",
+      "world": "closed-schema",
+      "with_codec": true,
+      "before": {
+        "version": "2.5",
+        "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+        "message": "{https://www.vdl.afrl.af.mil/programs/oam}SubsystemStream",
+        "contract": "2.5-SubsystemStream.yaml",
+        "world": "closed-schema",
+        "codec": true,
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<UCI25_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.5-SubsystemStream.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 SubsystemStream\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 40\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<UCI25_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.5-SubsystemStream.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 SubsystemStream\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 40\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+      },
+      "artifacts": {},
+      "runtime": "NOT QUALIFIED: service NOT READY"
+    },
+    {
+      "version": "2.5",
+      "revision": "093610b7753944059360d3236770ab446d039556",
+      "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}SubsystemStream",
+      "contract_sha256": "915f4fe3614c1fa3b76f6c12c9c0608991c3b96abcecfcc9f394035f4ffdb13e",
+      "world": "open-extensions",
+      "with_codec": false,
+      "before": {
+        "version": "2.5",
+        "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+        "message": "{https://www.vdl.afrl.af.mil/programs/oam}SubsystemStream",
+        "contract": "2.5-SubsystemStream.yaml",
+        "world": "open-extensions",
+        "codec": false,
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<UCI25_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.5-SubsystemStream.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 SubsystemStream\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 40\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n",
+        "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<UCI25_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.5-SubsystemStream.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 SubsystemStream\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 40\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n",
+        "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+      },
+      "artifacts": {},
+      "runtime": "NOT QUALIFIED: service NOT READY"
+    },
+    {
+      "version": "2.5",
+      "revision": "093610b7753944059360d3236770ab446d039556",
+      "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}SubsystemStream",
+      "contract_sha256": "915f4fe3614c1fa3b76f6c12c9c0608991c3b96abcecfcc9f394035f4ffdb13e",
+      "world": "open-extensions",
+      "with_codec": true,
+      "before": {
+        "version": "2.5",
+        "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+        "message": "{https://www.vdl.afrl.af.mil/programs/oam}SubsystemStream",
+        "contract": "2.5-SubsystemStream.yaml",
+        "world": "open-extensions",
+        "codec": true,
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<UCI25_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.5-SubsystemStream.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 SubsystemStream\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 40\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<UCI25_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.5-SubsystemStream.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 SubsystemStream\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 40\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+      },
+      "artifacts": {},
+      "runtime": "NOT QUALIFIED: service NOT READY"
+    },
+    {
+      "version": "2.6",
+      "revision": "78eb61b6112c8bffa40820c33124b57787fc5bd9",
+      "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}PositionReport",
+      "contract_sha256": "fb8978f1a583e3ca619350072895e62b64bf3750d573f8fd2eb01bf26bbcdaf1",
+      "world": "closed-schema",
+      "with_codec": false,
+      "before": {
+        "version": "2.6",
+        "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+        "message": "{https://www.vdl.afrl.af.mil/programs/oam}PositionReport",
+        "contract": "2.6-PositionReport.yaml",
+        "world": "closed-schema",
+        "codec": false,
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<UCI26_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.6-PositionReport.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 PositionReport\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 60\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n",
+        "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<UCI26_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.6-PositionReport.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 PositionReport\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 60\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n",
+        "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+      },
+      "artifacts": {},
+      "runtime": "NOT QUALIFIED: service NOT READY"
+    },
+    {
+      "version": "2.6",
+      "revision": "78eb61b6112c8bffa40820c33124b57787fc5bd9",
+      "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}PositionReport",
+      "contract_sha256": "fb8978f1a583e3ca619350072895e62b64bf3750d573f8fd2eb01bf26bbcdaf1",
+      "world": "closed-schema",
+      "with_codec": true,
+      "before": {
+        "version": "2.6",
+        "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+        "message": "{https://www.vdl.afrl.af.mil/programs/oam}PositionReport",
+        "contract": "2.6-PositionReport.yaml",
+        "world": "closed-schema",
+        "codec": true,
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<UCI26_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.6-PositionReport.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 PositionReport\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 60\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<UCI26_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.6-PositionReport.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 PositionReport\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 60\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+      },
+      "artifacts": {},
+      "runtime": "NOT QUALIFIED: service NOT READY"
+    },
+    {
+      "version": "2.6",
+      "revision": "78eb61b6112c8bffa40820c33124b57787fc5bd9",
+      "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}PositionReport",
+      "contract_sha256": "fb8978f1a583e3ca619350072895e62b64bf3750d573f8fd2eb01bf26bbcdaf1",
+      "world": "open-extensions",
+      "with_codec": false,
+      "before": {
+        "version": "2.6",
+        "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+        "message": "{https://www.vdl.afrl.af.mil/programs/oam}PositionReport",
+        "contract": "2.6-PositionReport.yaml",
+        "world": "open-extensions",
+        "codec": false,
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<UCI26_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.6-PositionReport.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 PositionReport\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 60\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n",
+        "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<UCI26_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.6-PositionReport.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 PositionReport\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 60\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n",
+        "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+      },
+      "artifacts": {},
+      "runtime": "NOT QUALIFIED: service NOT READY"
+    },
+    {
+      "version": "2.6",
+      "revision": "78eb61b6112c8bffa40820c33124b57787fc5bd9",
+      "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}PositionReport",
+      "contract_sha256": "fb8978f1a583e3ca619350072895e62b64bf3750d573f8fd2eb01bf26bbcdaf1",
+      "world": "open-extensions",
+      "with_codec": true,
+      "before": {
+        "version": "2.6",
+        "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+        "message": "{https://www.vdl.afrl.af.mil/programs/oam}PositionReport",
+        "contract": "2.6-PositionReport.yaml",
+        "world": "open-extensions",
+        "codec": true,
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<UCI26_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.6-PositionReport.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 PositionReport\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 60\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<UCI26_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.6-PositionReport.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 PositionReport\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 60\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+      },
+      "artifacts": {},
+      "runtime": "NOT QUALIFIED: service NOT READY"
+    },
+    {
+      "version": "2.6",
+      "revision": "78eb61b6112c8bffa40820c33124b57787fc5bd9",
+      "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}RDMA_InitializeSetup",
+      "contract_sha256": "bc1da702f660b833ee107a69cc35d3a8fd62662182c9a4e7ff0a5f370e4e77ba",
+      "world": "closed-schema",
+      "with_codec": false,
+      "before": {
+        "version": "2.6",
+        "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+        "message": "{https://www.vdl.afrl.af.mil/programs/oam}RDMA_InitializeSetup",
+        "contract": "2.6-RDMA_InitializeSetup.yaml",
+        "world": "closed-schema",
+        "codec": false,
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<UCI26_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.6-RDMA_InitializeSetup.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 RDMA_InitializeSetup\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 50\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n",
+        "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<UCI26_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.6-RDMA_InitializeSetup.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 RDMA_InitializeSetup\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 50\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n",
+        "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+      },
+      "artifacts": {},
+      "runtime": "NOT QUALIFIED: service NOT READY"
+    },
+    {
+      "version": "2.6",
+      "revision": "78eb61b6112c8bffa40820c33124b57787fc5bd9",
+      "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}RDMA_InitializeSetup",
+      "contract_sha256": "bc1da702f660b833ee107a69cc35d3a8fd62662182c9a4e7ff0a5f370e4e77ba",
+      "world": "closed-schema",
+      "with_codec": true,
+      "before": {
+        "version": "2.6",
+        "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+        "message": "{https://www.vdl.afrl.af.mil/programs/oam}RDMA_InitializeSetup",
+        "contract": "2.6-RDMA_InitializeSetup.yaml",
+        "world": "closed-schema",
+        "codec": true,
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<UCI26_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.6-RDMA_InitializeSetup.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 RDMA_InitializeSetup\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 50\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<UCI26_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.6-RDMA_InitializeSetup.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 RDMA_InitializeSetup\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 50\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+      },
+      "artifacts": {},
+      "runtime": "NOT QUALIFIED: service NOT READY"
+    },
+    {
+      "version": "2.6",
+      "revision": "78eb61b6112c8bffa40820c33124b57787fc5bd9",
+      "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}RDMA_InitializeSetup",
+      "contract_sha256": "bc1da702f660b833ee107a69cc35d3a8fd62662182c9a4e7ff0a5f370e4e77ba",
+      "world": "open-extensions",
+      "with_codec": false,
+      "before": {
+        "version": "2.6",
+        "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+        "message": "{https://www.vdl.afrl.af.mil/programs/oam}RDMA_InitializeSetup",
+        "contract": "2.6-RDMA_InitializeSetup.yaml",
+        "world": "open-extensions",
+        "codec": false,
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<UCI26_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.6-RDMA_InitializeSetup.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 RDMA_InitializeSetup\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 50\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n",
+        "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<UCI26_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.6-RDMA_InitializeSetup.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 RDMA_InitializeSetup\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 50\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n",
+        "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+      },
+      "artifacts": {},
+      "runtime": "NOT QUALIFIED: service NOT READY"
+    },
+    {
+      "version": "2.6",
+      "revision": "78eb61b6112c8bffa40820c33124b57787fc5bd9",
+      "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}RDMA_InitializeSetup",
+      "contract_sha256": "bc1da702f660b833ee107a69cc35d3a8fd62662182c9a4e7ff0a5f370e4e77ba",
+      "world": "open-extensions",
+      "with_codec": true,
+      "before": {
+        "version": "2.6",
+        "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+        "message": "{https://www.vdl.afrl.af.mil/programs/oam}RDMA_InitializeSetup",
+        "contract": "2.6-RDMA_InitializeSetup.yaml",
+        "world": "open-extensions",
+        "codec": true,
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<UCI26_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.6-RDMA_InitializeSetup.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 RDMA_InitializeSetup\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 50\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<UCI26_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.6-RDMA_InitializeSetup.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 RDMA_InitializeSetup\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 50\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+      },
+      "artifacts": {},
+      "runtime": "NOT QUALIFIED: service NOT READY"
+    },
+    {
+      "version": "2.6",
+      "revision": "78eb61b6112c8bffa40820c33124b57787fc5bd9",
+      "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}SubsystemStream",
+      "contract_sha256": "1cb8e668802e01dc6bd45cb06550ef0581d87d55f94572e04989d959c861bf8a",
+      "world": "closed-schema",
+      "with_codec": false,
+      "before": {
+        "version": "2.6",
+        "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+        "message": "{https://www.vdl.afrl.af.mil/programs/oam}SubsystemStream",
+        "contract": "2.6-SubsystemStream.yaml",
+        "world": "closed-schema",
+        "codec": false,
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<UCI26_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.6-SubsystemStream.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 SubsystemStream\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 41\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n",
+        "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<UCI26_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.6-SubsystemStream.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 SubsystemStream\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 41\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n",
+        "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+      },
+      "artifacts": {},
+      "runtime": "NOT QUALIFIED: service NOT READY"
+    },
+    {
+      "version": "2.6",
+      "revision": "78eb61b6112c8bffa40820c33124b57787fc5bd9",
+      "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}SubsystemStream",
+      "contract_sha256": "1cb8e668802e01dc6bd45cb06550ef0581d87d55f94572e04989d959c861bf8a",
+      "world": "closed-schema",
+      "with_codec": true,
+      "before": {
+        "version": "2.6",
+        "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+        "message": "{https://www.vdl.afrl.af.mil/programs/oam}SubsystemStream",
+        "contract": "2.6-SubsystemStream.yaml",
+        "world": "closed-schema",
+        "codec": true,
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<UCI26_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.6-SubsystemStream.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 SubsystemStream\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 41\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<UCI26_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.6-SubsystemStream.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 SubsystemStream\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 41\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+      },
+      "artifacts": {},
+      "runtime": "NOT QUALIFIED: service NOT READY"
+    },
+    {
+      "version": "2.6",
+      "revision": "78eb61b6112c8bffa40820c33124b57787fc5bd9",
+      "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}SubsystemStream",
+      "contract_sha256": "1cb8e668802e01dc6bd45cb06550ef0581d87d55f94572e04989d959c861bf8a",
+      "world": "open-extensions",
+      "with_codec": false,
+      "before": {
+        "version": "2.6",
+        "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+        "message": "{https://www.vdl.afrl.af.mil/programs/oam}SubsystemStream",
+        "contract": "2.6-SubsystemStream.yaml",
+        "world": "open-extensions",
+        "codec": false,
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<UCI26_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.6-SubsystemStream.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 SubsystemStream\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 41\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n",
+        "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<UCI26_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.6-SubsystemStream.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 SubsystemStream\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 41\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n",
+        "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+      },
+      "artifacts": {},
+      "runtime": "NOT QUALIFIED: service NOT READY"
+    },
+    {
+      "version": "2.6",
+      "revision": "78eb61b6112c8bffa40820c33124b57787fc5bd9",
+      "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}SubsystemStream",
+      "contract_sha256": "1cb8e668802e01dc6bd45cb06550ef0581d87d55f94572e04989d959c861bf8a",
+      "world": "open-extensions",
+      "with_codec": true,
+      "before": {
+        "version": "2.6",
+        "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+        "message": "{https://www.vdl.afrl.af.mil/programs/oam}SubsystemStream",
+        "contract": "2.6-SubsystemStream.yaml",
+        "world": "open-extensions",
+        "codec": true,
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<UCI26_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.6-SubsystemStream.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 SubsystemStream\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 41\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<UCI26_ROOT>",
+          "--contract",
+          "<EVIDENCE>/2.6-SubsystemStream.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 SubsystemStream\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 41\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+      },
+      "artifacts": {},
+      "runtime": "NOT QUALIFIED: service NOT READY"
+    }
+  ],
+  "isolated_pinned_profiles": [
+    {
+      "version": "2.5",
+      "declaration": "UCI_SchemaVersionStringType",
+      "world": "closed-schema",
+      "provenance": "extracted pinned declaration, NOT complete real service",
+      "before": {
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<EVIDENCE>/2.5-UCI_SchemaVersionStringType.xsd",
+          "--contract",
+          "<EVIDENCE>/2.5-UCI_SchemaVersionStringType.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 ProfileValue\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 1\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: unsupported constraints\n\nservice api boundary: unsupported Python IR construct: unsupported constraints\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<EVIDENCE>/2.5-UCI_SchemaVersionStringType.xsd",
+          "--contract",
+          "<EVIDENCE>/2.5-UCI_SchemaVersionStringType.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema",
+          "--with-codec"
+        ],
+        "exit": 0,
+        "stdout": "service contract valid\nservice: PY006 ProfileValue\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: READY\nservice api status: READY\nstatus: READY\nselected type closure: 1\ngenerated support types: 0\n\ncodec status: READY\n",
+        "stderr": ""
+      },
+      "execution": "4 literal-oracle tests: normal/-O standalone/package",
+      "artifacts": {
+        "model.py": "dc9537778403b1123d850aa67d0b5bcbb6c7d697b98404004d601087010bf6ce",
+        "service_api.py": "f9fe3508a33b8bebd86776dd90096507c4123242b377cfc2730bc5565db74e97",
+        "service_codec.py": "835982ccd1c74bfd5f5d6039706da034050ea50fe883e22eed67204b29701262"
+      }
+    },
+    {
+      "version": "2.5",
+      "declaration": "UCI_SchemaVersionStringType",
+      "world": "open-extensions",
+      "provenance": "extracted pinned declaration, NOT complete real service",
+      "before": {
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<EVIDENCE>/2.5-UCI_SchemaVersionStringType.xsd",
+          "--contract",
+          "<EVIDENCE>/2.5-UCI_SchemaVersionStringType.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 ProfileValue\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 1\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: unsupported constraints\n\nservice api boundary: unsupported Python IR construct: unsupported constraints\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<EVIDENCE>/2.5-UCI_SchemaVersionStringType.xsd",
+          "--contract",
+          "<EVIDENCE>/2.5-UCI_SchemaVersionStringType.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions",
+          "--with-codec"
+        ],
+        "exit": 0,
+        "stdout": "service contract valid\nservice: PY006 ProfileValue\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: READY\nservice api status: READY\nstatus: READY\nselected type closure: 1\ngenerated support types: 0\n\ncodec status: READY\n",
+        "stderr": ""
+      },
+      "execution": "4 literal-oracle tests: normal/-O standalone/package",
+      "artifacts": {
+        "model.py": "dc9537778403b1123d850aa67d0b5bcbb6c7d697b98404004d601087010bf6ce",
+        "service_api.py": "f9fe3508a33b8bebd86776dd90096507c4123242b377cfc2730bc5565db74e97",
+        "service_codec.py": "835982ccd1c74bfd5f5d6039706da034050ea50fe883e22eed67204b29701262"
+      }
+    },
+    {
+      "version": "2.5",
+      "declaration": "UniversallyUniqueIdentifierType",
+      "world": "closed-schema",
+      "provenance": "extracted pinned declaration, NOT complete real service",
+      "before": {
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<EVIDENCE>/2.5-UniversallyUniqueIdentifierType.xsd",
+          "--contract",
+          "<EVIDENCE>/2.5-UniversallyUniqueIdentifierType.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 ProfileValue\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 1\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: unsupported constraints\n\nservice api boundary: unsupported Python IR construct: unsupported constraints\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<EVIDENCE>/2.5-UniversallyUniqueIdentifierType.xsd",
+          "--contract",
+          "<EVIDENCE>/2.5-UniversallyUniqueIdentifierType.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema",
+          "--with-codec"
+        ],
+        "exit": 0,
+        "stdout": "service contract valid\nservice: PY006 ProfileValue\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: READY\nservice api status: READY\nstatus: READY\nselected type closure: 1\ngenerated support types: 0\n\ncodec status: READY\n",
+        "stderr": ""
+      },
+      "execution": "4 literal-oracle tests: normal/-O standalone/package",
+      "artifacts": {
+        "model.py": "68d4994c2c5dd7d09ed82070d091043081df7b4ea286fad1d1d45c5f54842445",
+        "service_api.py": "fe9b3be5481eede07bc6f0958a84149c8f8e223fd3a86a5044c181d8e8f84064",
+        "service_codec.py": "10d8f6c7d449433f984cae9aee7134922381645748262788b32c7e4c67f49cd7"
+      }
+    },
+    {
+      "version": "2.5",
+      "declaration": "UniversallyUniqueIdentifierType",
+      "world": "open-extensions",
+      "provenance": "extracted pinned declaration, NOT complete real service",
+      "before": {
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<EVIDENCE>/2.5-UniversallyUniqueIdentifierType.xsd",
+          "--contract",
+          "<EVIDENCE>/2.5-UniversallyUniqueIdentifierType.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 ProfileValue\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 1\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: unsupported constraints\n\nservice api boundary: unsupported Python IR construct: unsupported constraints\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<EVIDENCE>/2.5-UniversallyUniqueIdentifierType.xsd",
+          "--contract",
+          "<EVIDENCE>/2.5-UniversallyUniqueIdentifierType.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions",
+          "--with-codec"
+        ],
+        "exit": 0,
+        "stdout": "service contract valid\nservice: PY006 ProfileValue\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: READY\nservice api status: READY\nstatus: READY\nselected type closure: 1\ngenerated support types: 0\n\ncodec status: READY\n",
+        "stderr": ""
+      },
+      "execution": "4 literal-oracle tests: normal/-O standalone/package",
+      "artifacts": {
+        "model.py": "68d4994c2c5dd7d09ed82070d091043081df7b4ea286fad1d1d45c5f54842445",
+        "service_api.py": "fe9b3be5481eede07bc6f0958a84149c8f8e223fd3a86a5044c181d8e8f84064",
+        "service_codec.py": "10d8f6c7d449433f984cae9aee7134922381645748262788b32c7e4c67f49cd7"
+      }
+    },
+    {
+      "version": "2.6",
+      "declaration": "UCI_SchemaVersionStringType",
+      "world": "closed-schema",
+      "provenance": "extracted pinned declaration, NOT complete real service",
+      "before": {
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<EVIDENCE>/2.6-UCI_SchemaVersionStringType.xsd",
+          "--contract",
+          "<EVIDENCE>/2.6-UCI_SchemaVersionStringType.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 ProfileValue\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 1\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: unsupported constraints\n\nservice api boundary: unsupported Python IR construct: unsupported constraints\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<EVIDENCE>/2.6-UCI_SchemaVersionStringType.xsd",
+          "--contract",
+          "<EVIDENCE>/2.6-UCI_SchemaVersionStringType.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema",
+          "--with-codec"
+        ],
+        "exit": 0,
+        "stdout": "service contract valid\nservice: PY006 ProfileValue\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: READY\nservice api status: READY\nstatus: READY\nselected type closure: 1\ngenerated support types: 0\n\ncodec status: READY\n",
+        "stderr": ""
+      },
+      "execution": "4 literal-oracle tests: normal/-O standalone/package",
+      "artifacts": {
+        "model.py": "dc9537778403b1123d850aa67d0b5bcbb6c7d697b98404004d601087010bf6ce",
+        "service_api.py": "f9fe3508a33b8bebd86776dd90096507c4123242b377cfc2730bc5565db74e97",
+        "service_codec.py": "835982ccd1c74bfd5f5d6039706da034050ea50fe883e22eed67204b29701262"
+      }
+    },
+    {
+      "version": "2.6",
+      "declaration": "UCI_SchemaVersionStringType",
+      "world": "open-extensions",
+      "provenance": "extracted pinned declaration, NOT complete real service",
+      "before": {
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<EVIDENCE>/2.6-UCI_SchemaVersionStringType.xsd",
+          "--contract",
+          "<EVIDENCE>/2.6-UCI_SchemaVersionStringType.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 ProfileValue\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 1\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: unsupported constraints\n\nservice api boundary: unsupported Python IR construct: unsupported constraints\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<EVIDENCE>/2.6-UCI_SchemaVersionStringType.xsd",
+          "--contract",
+          "<EVIDENCE>/2.6-UCI_SchemaVersionStringType.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions",
+          "--with-codec"
+        ],
+        "exit": 0,
+        "stdout": "service contract valid\nservice: PY006 ProfileValue\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: READY\nservice api status: READY\nstatus: READY\nselected type closure: 1\ngenerated support types: 0\n\ncodec status: READY\n",
+        "stderr": ""
+      },
+      "execution": "4 literal-oracle tests: normal/-O standalone/package",
+      "artifacts": {
+        "model.py": "dc9537778403b1123d850aa67d0b5bcbb6c7d697b98404004d601087010bf6ce",
+        "service_api.py": "f9fe3508a33b8bebd86776dd90096507c4123242b377cfc2730bc5565db74e97",
+        "service_codec.py": "835982ccd1c74bfd5f5d6039706da034050ea50fe883e22eed67204b29701262"
+      }
+    },
+    {
+      "version": "2.6",
+      "declaration": "UniversallyUniqueIdentifierType",
+      "world": "closed-schema",
+      "provenance": "extracted pinned declaration, NOT complete real service",
+      "before": {
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<EVIDENCE>/2.6-UniversallyUniqueIdentifierType.xsd",
+          "--contract",
+          "<EVIDENCE>/2.6-UniversallyUniqueIdentifierType.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 ProfileValue\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 1\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: unsupported constraints\n\nservice api boundary: unsupported Python IR construct: unsupported constraints\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<EVIDENCE>/2.6-UniversallyUniqueIdentifierType.xsd",
+          "--contract",
+          "<EVIDENCE>/2.6-UniversallyUniqueIdentifierType.yaml",
+          "--language",
+          "python",
+          "--world",
+          "closed-schema",
+          "--with-codec"
+        ],
+        "exit": 0,
+        "stdout": "service contract valid\nservice: PY006 ProfileValue\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: READY\nservice api status: READY\nstatus: READY\nselected type closure: 1\ngenerated support types: 0\n\ncodec status: READY\n",
+        "stderr": ""
+      },
+      "execution": "4 literal-oracle tests: normal/-O standalone/package",
+      "artifacts": {
+        "model.py": "68d4994c2c5dd7d09ed82070d091043081df7b4ea286fad1d1d45c5f54842445",
+        "service_api.py": "fe9b3be5481eede07bc6f0958a84149c8f8e223fd3a86a5044c181d8e8f84064",
+        "service_codec.py": "10d8f6c7d449433f984cae9aee7134922381645748262788b32c7e4c67f49cd7"
+      }
+    },
+    {
+      "version": "2.6",
+      "declaration": "UniversallyUniqueIdentifierType",
+      "world": "open-extensions",
+      "provenance": "extracted pinned declaration, NOT complete real service",
+      "before": {
+        "command": [
+          "<BASELINE_CLI>",
+          "service-check",
+          "--schema",
+          "<EVIDENCE>/2.6-UniversallyUniqueIdentifierType.xsd",
+          "--contract",
+          "<EVIDENCE>/2.6-UniversallyUniqueIdentifierType.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions",
+          "--with-codec"
+        ],
+        "exit": 1,
+        "stdout": "service contract valid\nservice: PY006 ProfileValue\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 1\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: unsupported constraints\n\nservice api boundary: unsupported Python IR construct: unsupported constraints\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+        "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+      },
+      "after": {
+        "command": [
+          "<REPO>/target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "<EVIDENCE>/2.6-UniversallyUniqueIdentifierType.xsd",
+          "--contract",
+          "<EVIDENCE>/2.6-UniversallyUniqueIdentifierType.yaml",
+          "--language",
+          "python",
+          "--world",
+          "open-extensions",
+          "--with-codec"
+        ],
+        "exit": 0,
+        "stdout": "service contract valid\nservice: PY006 ProfileValue\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: READY\nservice api status: READY\nstatus: READY\nselected type closure: 1\ngenerated support types: 0\n\ncodec status: READY\n",
+        "stderr": ""
+      },
+      "execution": "4 literal-oracle tests: normal/-O standalone/package",
+      "artifacts": {
+        "model.py": "68d4994c2c5dd7d09ed82070d091043081df7b4ea286fad1d1d45c5f54842445",
+        "service_api.py": "fe9b3be5481eede07bc6f0958a84149c8f8e223fd3a86a5044c181d8e8f84064",
+        "service_codec.py": "10d8f6c7d449433f984cae9aee7134922381645748262788b32c7e4c67f49cd7"
+      }
+    }
+  ]
+}

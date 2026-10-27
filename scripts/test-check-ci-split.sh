@@ -43,7 +43,8 @@ expect_fail "Deep lost Python campaign" "$fast" "$deep" "$tmp/sleet-no-py005.sh"
 { cat "$fast"; printf '      - run: bash scripts/check-py005-sleet.sh\n'; } >"$tmp/fast-py005-real.yml"
 expect_fail "Fast runs Python broker" "$tmp/fast-py005-real.yml" "$deep" "$sleet"
 
-# Task 077B: healthy disposable split plus attributed single-defect negatives.
+# Task 077B / PERF-006: healthy disposable split, harmless structural changes,
+# and attributed single-defect negatives for all three independent shards.
 # Each negative must contain its targeted diagnostic, not just fail elsewhere.
 layout_checks="$(python3 "$repo/scripts/check-task077b-ci-layout.py" \
   --self-test "$deep" "$guard" "$fast" "$sleet")"

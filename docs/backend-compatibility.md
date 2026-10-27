@@ -1,5 +1,20 @@
 # Backend compatibility
 
+## Python update — PY-006 exact UCI header String profiles
+
+Python 3.11+ now admits named primitive Strings classified by the shared exact
+`StringProfile::UciSchemaVersion` and
+`StringProfile::UniversallyUniqueIdentifier` contracts (Tasks 037/038 below).
+Frozen slotted carriers enforce exact `str` input and the full lexical space
+under normal and optimized Python, without normalization. JSON codecs validate
+both directions through the checked carrier; the special OAM UUID mapping also
+requires the exact namespace and local name. Arbitrary constrained Strings and
+near-matching declarations remain unsupported. No legacy Ada/Rust/C++ coverage
+inventory or renderer is changed. Historical PY-001–005 results are unchanged.
+See [PY-006 evidence](task-py-006-uci-header-profiles.md) for qualification,
+real-UCI BEFORE/AFTER measurements and remaining blockers; the selected real-UCI
+services are **not** made READY by these two scalar improvements.
+
 ## Current update — Task 065 semantic Ada artifact names
 
 The concrete-Choice value literal in an abstract closed sum now uses

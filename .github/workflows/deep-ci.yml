@@ -27,6 +27,9 @@ on:
       - "scripts/run-real-sleet-test.sh"
       - "python/oms-lacal-runtime/**"
       - "scripts/check-py005-sleet.sh"
+      - "scripts/check-py006-sleet.sh"
+      - "scripts/check-py006-uci.py"
+      - "tests/fixtures/python-header-profiles/**"
       - "tests/fixtures/python-runtime/**"
       - "crates/runtime-rust-facade-tests/tests/task077_sleet.rs"
       - "scripts/check-task062-pinned.sh"
@@ -58,7 +61,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
+      - name: Verify Deep CI source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          tree="$(git rev-parse HEAD^{tree})"
+          test "$actual" = "$GITHUB_SHA"
+          test -n "$tree"
+          printf 'DEEP_CI_SOURCE_SHA=%s\n' "$actual"
+          printf 'DEEP_CI_SOURCE_TREE=%s\n' "$tree"
+          printf 'DEEP_CI_EVENT=%s\n' "$GITHUB_EVENT_NAME"
       - uses: dtolnay/rust-toolchain@1.95.0
       - name: Install verified Alire 2.1.1
         shell: bash
@@ -112,6 +126,19 @@ jobs:
     timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Verify Deep CI source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          tree="$(git rev-parse HEAD^{tree})"
+          test "$actual" = "$GITHUB_SHA"
+          test -n "$tree"
+          printf 'DEEP_CI_SOURCE_SHA=%s\n' "$actual"
+          printf 'DEEP_CI_SOURCE_TREE=%s\n' "$tree"
+          printf 'DEEP_CI_EVENT=%s\n' "$GITHUB_EVENT_NAME"
       - uses: dtolnay/rust-toolchain@stable
       - name: Install GNAT
         run: |
@@ -157,6 +184,19 @@ jobs:
     timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Verify Deep CI source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          tree="$(git rev-parse HEAD^{tree})"
+          test "$actual" = "$GITHUB_SHA"
+          test -n "$tree"
+          printf 'DEEP_CI_SOURCE_SHA=%s\n' "$actual"
+          printf 'DEEP_CI_SOURCE_TREE=%s\n' "$tree"
+          printf 'DEEP_CI_EVENT=%s\n' "$GITHUB_EVENT_NAME"
       - uses: dtolnay/rust-toolchain@stable
       - name: Install GNAT
         run: |
@@ -182,6 +222,7 @@ jobs:
           set -euo pipefail
           test -n "$AMS_GRA_UCI_2_5_ROOT"
           test -n "$AMS_GRA_UCI_2_6_ROOT"
+          echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
           cargo fetch --locked
           cargo build --release --locked -p ams-gra-codegen-oms
       - name: Qualify batch transport and production equivalence controls
@@ -189,6 +230,17 @@ jobs:
           set -euo pipefail
           python3 scripts/test-task061-service-impact.py
           cargo test --release --locked -p ams-gra-codegen-oms --test service_check_batch
+      - name: Python exact header profiles against pinned UCI (PY-006, must execute)
+        run: |
+          set -euo pipefail
+          python3 scripts/check-py006-uci.py --generator target/release/ams-gra-codegen-oms \
+            --output "$RUNNER_TEMP/py006-uci"
+      - name: Preserve Python pinned UCI measurements
+        uses: actions/upload-artifact@v4
+        with:
+          name: py006-uci
+          path: ${{ runner.temp }}/py006-uci/**
+          if-no-files-found: error
       - name: Confirm unique newly READY Time services (Task 061)
         run: |
           set -euo pipefail
@@ -304,6 +356,54 @@ jobs:
           grep -Fqx 'UCI 2.6 DURATION MESSAGE IMPACT: RECORDED' <<<"$output"
           grep -Eqx '(test task057_real_uci_category_a_log_generates_and_compiles \.\.\. )?UCI 2\.5 REAL CATEGORY-A DURATION SERVICE: PASSED' <<<"$output"
           grep -qE '^test result: ok\. 4 passed' <<<"$output"
+
+  # Independent ASCII runner: fresh verified inputs and release CLI.
+  real-uci-regressions-ascii:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Verify Deep CI source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          tree="$(git rev-parse HEAD^{tree})"
+          test "$actual" = "$GITHUB_SHA"
+          test -n "$tree"
+          printf 'DEEP_CI_SOURCE_SHA=%s\n' "$actual"
+          printf 'DEEP_CI_SOURCE_TREE=%s\n' "$tree"
+          printf 'DEEP_CI_EVENT=%s\n' "$GITHUB_EVENT_NAME"
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install GNAT
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnat
+      # Hard gate, as in Fast CI: no `|| true`.
+      - name: Verify GNAT availability
+        run: |
+          command -v gnatmake
+          gnatmake --version
+      # Fetch each pinned release ONCE for the whole job. Both scripts verify
+      # the tag revision and root SHA-256 and fail hard on any mismatch; the
+      # tests verify the root SHA-256 again before using it.
+      - name: Fetch pinned UCI 2.5 and 2.6 (once)
+        run: |
+          set -euo pipefail
+          UCI25="$(scripts/fetch-pinned-uci-2.5.sh "$RUNNER_TEMP/uci-2.5")"
+          UCI26="$(scripts/fetch-pinned-uci-2.6.sh "$RUNNER_TEMP/uci-2.6")"
+          echo "AMS_GRA_UCI_2_5_ROOT=$UCI25" >> "$GITHUB_ENV"
+          echo "AMS_GRA_UCI_2_6_ROOT=$UCI26" >> "$GITHUB_ENV"
+      - name: Prepare regression inputs and release CLI
+        run: |
+          set -euo pipefail
+          test -n "$AMS_GRA_UCI_2_5_ROOT"
+          test -n "$AMS_GRA_UCI_2_6_ROOT"
+          echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
+          cargo fetch --locked
+          cargo build --release --locked -p ams-gra-codegen-oms
       # Task 058: fresh bounded-ASCII String inventory (the exact 61-member
       # set per release, 19 alphabets, three still-unsupported Unicode neighbours
       # after Task 062 admits IPv6), the
@@ -343,6 +443,54 @@ jobs:
           grep -Fqx 'UCI 2.6 STRUCTURED ASCII MESSAGE IMPACT: RECORDED' <<<"$output"
           grep -qE '^test result: ok\. 2 passed' <<<"$output"
 
+
+  # Admission and AFTER remain one mandatory gate on an independent runner.
+  real-uci-regressions-alternating:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Verify Deep CI source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          tree="$(git rev-parse HEAD^{tree})"
+          test "$actual" = "$GITHUB_SHA"
+          test -n "$tree"
+          printf 'DEEP_CI_SOURCE_SHA=%s\n' "$actual"
+          printf 'DEEP_CI_SOURCE_TREE=%s\n' "$tree"
+          printf 'DEEP_CI_EVENT=%s\n' "$GITHUB_EVENT_NAME"
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install GNAT
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnat
+      # Hard gate, as in Fast CI: no `|| true`.
+      - name: Verify GNAT availability
+        run: |
+          command -v gnatmake
+          gnatmake --version
+      # Fetch each pinned release ONCE for the whole job. Both scripts verify
+      # the tag revision and root SHA-256 and fail hard on any mismatch; the
+      # tests verify the root SHA-256 again before using it.
+      - name: Fetch pinned UCI 2.5 and 2.6 (once)
+        run: |
+          set -euo pipefail
+          UCI25="$(scripts/fetch-pinned-uci-2.5.sh "$RUNNER_TEMP/uci-2.5")"
+          UCI26="$(scripts/fetch-pinned-uci-2.6.sh "$RUNNER_TEMP/uci-2.6")"
+          echo "AMS_GRA_UCI_2_5_ROOT=$UCI25" >> "$GITHUB_ENV"
+          echo "AMS_GRA_UCI_2_6_ROOT=$UCI26" >> "$GITHUB_ENV"
+      - name: Prepare regression inputs and release CLI
+        run: |
+          set -euo pipefail
+          test -n "$AMS_GRA_UCI_2_5_ROOT"
+          test -n "$AMS_GRA_UCI_2_6_ROOT"
+          echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
+          cargo fetch --locked
+          cargo build --release --locked -p ams-gra-codegen-oms
       - name: Real UCI alternating ASCII evidence (Task 060, must execute)
         run: |
           set -euo pipefail
@@ -374,6 +522,19 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Verify Deep CI source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          tree="$(git rev-parse HEAD^{tree})"
+          test "$actual" = "$GITHUB_SHA"
+          test -n "$tree"
+          printf 'DEEP_CI_SOURCE_SHA=%s\n' "$actual"
+          printf 'DEEP_CI_SOURCE_TREE=%s\n' "$tree"
+          printf 'DEEP_CI_EVENT=%s\n' "$GITHUB_EVENT_NAME"
       - name: Install Rust 1.95.0
         run: |
           set -euo pipefail
@@ -399,12 +560,29 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Verify Deep CI source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          tree="$(git rev-parse HEAD^{tree})"
+          test "$actual" = "$GITHUB_SHA"
+          test -n "$tree"
+          printf 'DEEP_CI_SOURCE_SHA=%s\n' "$actual"
+          printf 'DEEP_CI_SOURCE_TREE=%s\n' "$tree"
+          printf 'DEEP_CI_EVENT=%s\n' "$GITHUB_EVENT_NAME"
       - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: |
+            3.11
+            3.13
       - name: Install pinned Python LA-CAL runtime
-        run: python -m pip install ./python/oms-lacal-runtime
+        run: |
+          python3.11 -m pip install ./python/oms-lacal-runtime
+          python3.13 -m pip install ./python/oms-lacal-runtime
       - name: Fetch pinned UCI 2.5 (once)
         run: |
           set -euo pipefail
@@ -442,6 +620,8 @@ jobs:
       # AMS_GRA_UCI_2_5_ROOT (from GITHUB_ENV) also enables the script's real
       # PositionReport / SubsystemStream round trips through Sleet.
       - name: Rust LA-CAL runtime against real pinned Sleet (e38f61d8)
+        env:
+          PY006_PYTHONS: python3.11 python3.13
         run: |
           set -euo pipefail
           test -n "$AMS_GRA_UCI_2_5_ROOT"
@@ -453,7 +633,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
+      - name: Verify Deep CI source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          tree="$(git rev-parse HEAD^{tree})"
+          test "$actual" = "$GITHUB_SHA"
+          test -n "$tree"
+          printf 'DEEP_CI_SOURCE_SHA=%s\n' "$actual"
+          printf 'DEEP_CI_SOURCE_TREE=%s\n' "$tree"
+          printf 'DEEP_CI_EVENT=%s\n' "$GITHUB_EVENT_NAME"
       - uses: dtolnay/rust-toolchain@1.95.0
       - name: Install verified Alire 2.1.1
         shell: bash

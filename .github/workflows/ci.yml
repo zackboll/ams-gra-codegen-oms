@@ -341,6 +341,7 @@ jobs:
           cargo test --locked -p ams-gra-codegen-oms --test python_cli -- --nocapture
           cargo test --locked -p ams-gra-codegen-oms --test python_service -- --nocapture
           cargo test --locked -p ams-gra-codegen-oms --test python_codec -- --nocapture
+          cargo test --locked -p ams-gra-codegen-oms --test python_header_profiles -- --nocapture
           cargo fmt --all -- --check
           cargo clippy --locked -p ams-gra-oms-backend-python -p ams-gra-codegen-oms --all-targets -- -D warnings
           cargo build --locked -p ams-gra-oms-backend-python -p ams-gra-codegen-oms --all-targets
