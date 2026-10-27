@@ -12,6 +12,13 @@ incorporated base, remote/PR equality and exact-head hosted results belong in
 the PR handoff; this document does not claim checks for an unidentified future
 commit. Historical PY-001–006 evidence remains historical.
 
+Implementation commit `a7902c5389f83866ebe3268864c765f6e343c877`, tree
+`94b94a8c1d1cb3c4038e20f041d02055b1b89daa`, is the production/test source
+qualified below. Subsequent evidence-only completion commits do not change
+that source. PR [#117](https://github.com/zackboll/ams-gra-codegen-oms/pull/117)
+targets main; final evidence-commit identities and hosted status are in its
+handoff. No merge or approval is performed by this task.
+
 Rust/Cargo **1.95.0**; Python **3.11.17** and **3.13.16**; GNAT/GCC
 **14.2.0**; pinned `websockets==17.2`. No dependency changes. Cargo.lock
 SHA-256 remains
@@ -169,6 +176,18 @@ Required marker: **`PY007 PINNED SLEET INHERITED RECORD: PASSED`**.
 This is synthetic broker qualification, not a real-UCI READY claim. Complete
 shared-campaign results and existing markers are recorded in the PR handoff.
 
+The complete shared campaign also passed with exit **0**: **nine legacy Rust
+tests**, unchanged PY-005 normal/optimized executions (**two**), PY-006 on
+both interpreters/policies (**four**), and PY-007 on both interpreters/policies
+(**four**). Legacy markers include `REAL UCI POSITIONREPORT THROUGH REAL SLEET: PASSED`,
+`REAL UCI SUBSYSTEMSTREAM THROUGH REAL SLEET: PASSED` and final
+`real pinned Sleet (e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b): PASSED`.
+Earlier slow attempts were explicitly interrupted and are not passes. The
+successful rerun used a task-owned target directory with the established
+`CARGO_PROFILE_DEV_BUILD_OVERRIDE_OPT_LEVEL=3` and dev optimization level 1;
+tests and the single clean pinned broker checkout were unchanged. These Rust
+real-UCI regressions do not imply Python real-UCI support.
+
 ## Actual pinned UCI BEFORE/AFTER
 
 No schemas are committed or downloaded inside the repository. Existing
@@ -190,7 +209,9 @@ failures for the shared pure-Record fixture selected through an ordinary
 service contract.
 
 `selected-closures.json` additionally preserves six BEFORE/AFTER resolved
-service-plan reports and requires their byte identity. `controlled-after.json`
+service-plan reports and requires their byte identity, with actual selected
+type QNames measured through the ordinary shared `selected_type_closure`
+API (counts 60/50/40 for 2.5 and 60/50/41 for 2.6). `controlled-after.json`
 records all four successful shared-fixture selections and artifact hashes;
 their codecs execute independent qualified-name JSON literals on both Python
 versions and optimization policies (eight method executions).
@@ -237,6 +258,10 @@ gain requires generated execution and independent vectors before extending
 this gate. It additionally executes the inherited fixture's 96 Python tests.
 Missing, truncated, duplicate or ambiguous results fail closed.
 
+Both Python 3.11 and 3.13 executions of this complete current-service checker
+passed: 24 actual service selections, eight hash-qualified isolated profile
+selections with 32 literal executions, and 96 inherited-fixture methods each.
+
 Fast CI extends the existing Python 3.11/3.13 matrix; Deep extends the existing
 root-qualified job and one Sleet build. No duplicate heavyweight job is added.
 The CI split guard and adversarial mutations cover the new mandatory gates
@@ -278,6 +303,15 @@ not inferred from successful individual probes. Until all mandatory final-head
 jobs pass the disposition is **HOSTED_CI_PENDING**; unresolved correctness
 failures require **CORRECTIVE_WORK_REQUIRED**. Independent review and merge
 remain the owner's decision.
+
+The final production/test source passed the GNAT-required locked workspace
+regression twice: **1,486 passed, 0 failed, 8 ignored**, across 188 target/doc
+summaries per run. **1,486 Rust tests actually executed** per run; eight
+pre-existing environment/external-gated ignores are not counted as executed.
+Rust 1.95 locked formatting, workspace/all-target check and Clippy with
+warnings denied passed. CI split guard passed and its adversarial self-test
+passed **486 checks**. `git diff --check` passed. Hosted Fast and Deep results
+are deliberately not inferred from these local successes.
 
 ## Remaining boundaries and possible PY-008
 
