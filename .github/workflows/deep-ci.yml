@@ -25,6 +25,10 @@ on:
       - "scripts/fetch-pinned-uci-2.5.sh"
       - "scripts/fetch-pinned-uci-2.6.sh"
       - "scripts/run-real-sleet-test.sh"
+      - "scripts/task100/**"
+      - "tests/ada-websocket/**"
+      - "ada/oms-lacal-runtime/**"
+      - "tests/fixtures/service-generate/lacal-websocket.xsd"
       - "python/oms-lacal-runtime/**"
       - "scripts/check-py005-sleet.sh"
       - "scripts/check-py006-sleet.sh"
@@ -55,6 +59,123 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  ada-websocket-real-sleet:
+    # Task 100: unmodified pinned broker; exact PR head, never merge-ref evidence.
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: ['14', '16']
+    container:
+      image: debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5
+    timeout-minutes: 120
+    steps:
+      - name: Verify pinned target and external compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update
+          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14
+          test "$(uname -m)" = x86_64
+          test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.41'
+          mkdir -p /tmp/task100-evidence
+          dpkg-query -W libc6 libc6-dev gnat-14 gcc-14 | tee /tmp/task100-evidence/platform.txt
+          sha256sum /usr/lib/x86_64-linux-gnu/libc.so.6 /usr/bin/gnat /usr/bin/gcc | tee -a /tmp/task100-evidence/platform.txt
+          gnat --version | tee -a /tmp/task100-evidence/platform.txt
+          gnat --version | grep -E '^GNAT 14\.2\.0([[:space:]]|$)'
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Record exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(pwd -P)" = "$(realpath "$GITHUB_WORKSPACE")"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task100-evidence/source.txt
+          test "$(git rev-parse HEAD)" = '${{ github.event.pull_request.head.sha || github.sha }}'
+          status="$(git status --porcelain)"
+          test -z "$status"
+      - uses: dtolnay/rust-toolchain@1.95.0
+      - name: Install verified Alire 2.1.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
+          echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  /tmp/alire.zip' | sha256sum --check --strict
+          unzip -q /tmp/alire.zip -d /opt/alire
+          test "$(/opt/alire/bin/alr --version)" = 'alr 2.1.1'
+          sha256sum /opt/alire/bin/alr | tee -a /tmp/task100-evidence/platform.txt
+          echo /opt/alire/bin >> "$GITHUB_PATH"
+      - name: Build exact-head generator
+        run: cargo +1.95.0 build --locked -p ams-gra-codegen-oms
+      - name: Provision pinned compiler and GNATCOLL inputs
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python3 scripts/task096/setup.py --scratch /tmp/task100-evidence/setup --compiler '${{ matrix.compiler }}'
+      - name: Build unmodified pinned Sleet
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --quiet https://github.com/open-arsenal/ams-gra-hello-world-sk-infra-sleet /tmp/task100-sleet
+          git -C /tmp/task100-sleet checkout --quiet --detach e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b
+          test "$(git -C /tmp/task100-sleet rev-parse HEAD)" = e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b
+          test -z "$(git -C /tmp/task100-sleet status --porcelain)"
+          git -C /tmp/task100-sleet rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task100-evidence/sleet-source.txt
+          (cd /tmp/task100-sleet && cargo build --release --locked -p sleet) 2>&1 | tee /tmp/task100-evidence/sleet-build.log
+      - name: Execute generated runtime consumers and require all cells
+        shell: bash
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          set -euo pipefail
+          python3 scripts/task100/qualify.py --scratch /tmp/task100-evidence/campaign --setup /tmp/task100-evidence/setup --compiler '${{ matrix.compiler }}' --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms" --sleet /tmp/task100-sleet | tee /tmp/task100-evidence/qualify.log
+          python3 - <<'EOF'
+          import json
+          result = json.load(open('/tmp/task100-evidence/campaign/result.json'))
+          cells = result['cells']
+          expected = {(n, p, a, o) for n in ['oam', 'qualified'] for p in ['portable', 'lossless']
+                      for a in ['Normal', 'Check', 'Ignore'] for o in ['0', '2']}
+          actual = {(c['namespace'], c['profile'], c['policy'], c['optimization']) for c in cells}
+          if not result.get('completed') or len(cells) != 24 or actual != expected:
+              raise SystemExit('incomplete Task 100 execution matrix')
+          if any(s['exit'] != 0 for s in result['steps']):
+              raise SystemExit('failed Task 100 step')
+          if not result.get('real_sleet'):
+              raise SystemExit('real Sleet not requested')
+          from pathlib import Path
+          evidence = list(Path('/tmp/task100-evidence/campaign').glob('oam-portable-*/sleet/result.json'))
+          if len(evidence) != 6 or any(not json.loads(p.read_text()).get('completed') for p in evidence):
+              raise SystemExit('missing real pinned Sleet execution')
+          print('TASK100_HOSTED_REQUIRED_CELLS', len(cells))
+          EOF
+          test "$(grep -c '^TASK100_CELL_COMPLETE ' /tmp/task100-evidence/qualify.log)" = 24
+          grep -F 'TASK100_QUALIFICATION_COMPLETE' /tmp/task100-evidence/qualify.log
+      - name: Upload mandatory source compiler and execution evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: task100-ada-websocket-sleet-${{ matrix.compiler }}
+          path: |
+            /tmp/task100-evidence/*.txt
+            /tmp/task100-evidence/*.log
+            /tmp/task100-evidence/setup/step-*
+            /tmp/task100-evidence/setup/identities.json
+            /tmp/task100-evidence/setup/consumer/alire/alire.lock
+            /tmp/task100-evidence/campaign/**/*.json
+            /tmp/task100-evidence/campaign/**/*.stdout
+            /tmp/task100-evidence/campaign/**/*.stderr
+            /tmp/task100-evidence/campaign/**/*.exit
+            /tmp/task100-evidence/campaign/**/*.ad?
+            /tmp/task100-evidence/campaign/**/*.gpr
+            /tmp/task100-evidence/campaign/**/*.adc
+            /tmp/task100-evidence/campaign/**/*.c
+            /tmp/task100-evidence/campaign/**/*.h
+            /tmp/task100-evidence/campaign/**/*.lock
+            /tmp/task100-evidence/campaign/**/*.xsd
+            /tmp/task100-evidence/campaign/**/*.toml
+            /tmp/task100-evidence/campaign/**/LICENSE
+          if-no-files-found: error
   ada-repeated-choice-real-uci:
     runs-on: ubuntu-24.04
     timeout-minutes: 60

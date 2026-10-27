@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic Task 100 versioned Sleet contract; not UCI. Two global identities, one payload. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+ xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+ targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified" version="000.1.0">
+ <xs:simpleType name="Clock"><xs:restriction base="xs:time">
+  <xs:pattern value=".+Z"/>
+ </xs:restriction></xs:simpleType>
+ <xs:complexType name="SharedPayload"><xs:sequence>
+  <xs:element name="Count" type="xs:int"/>
+  <xs:element name="At" type="uci:Clock"/>
+  <xs:element name="Label" type="xs:string"/>
+ </xs:sequence></xs:complexType>
+ <xs:element name="MessageA" type="uci:SharedPayload" uci:version="001.000.000.000"/>
+ <xs:element name="MessageB" type="uci:SharedPayload" uci:version="001.000.000.000"/>
+</xs:schema>
