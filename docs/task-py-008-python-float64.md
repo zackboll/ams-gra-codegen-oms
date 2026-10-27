@@ -255,6 +255,37 @@ Final qualification records are task-owned, not edits to PY-006/PY-007 or Task
 096 results. Stop at independent review; do not merge, self-approve or enable
 auto-merge.
 
+### Proposed-source local completion checkpoint
+
+Production implementation commit `8c2bbe148c4557dd2fea51bb86f49068b2f620bf`,
+tree `c733c9d1597064a0c8c236a3fe64ab222b5fd99b`, was pushed normally and
+opened as the single non-draft stacked PR
+[#119](https://github.com/zackboll/ams-gra-codegen-oms/pull/119). Subsequent
+qualification/evidence commits do not change the generated Float64 sources.
+The final separate-target executable SHA-256 is
+`f1a0fd113c155f232b625500d6141496b68d8bc06d0bb234757c55a5586c14f9`.
+Its generated model/API/codec bytes match all four independent numeric cells.
+
+Both explicit Python interpreters pass **19 backend Rust tests and 23 CLI
+Rust tests each**, with zero failures/ignores; these execute normal/optimized
+generated probes, including the 176 Float64 unittest methods. Both final-source
+UCI campaigns pass all 24 service selections plus 96 inherited and 32 isolated
+profile executions each. Final-source Float64 Sleet tests pass all four cells.
+Rust 1.95 formatting, locked workspace/all-target check and warnings-denied
+Clippy pass. Actionlint and diff whitespace checks pass. CI split guard passes;
+its stable-file adversarial self-test passes **502 checks**.
+
+The first GNAT-required locked workspace run completed **1,488 passed, zero
+failed, eight pre-existing ignored**, in 189 target/doc summaries. That run
+predates the last additive domain/collision tests, so the complete proposed-source
+GNAT-required rerun is tracked separately and is **not yet claimed complete** at
+this checkpoint. The inherited Rust real-UCI/Sleet build was restarted as a
+task-owned release campaign after the debug build spent over 18 minutes in its
+build script without a verdict; it too is not yet claimed passed here. No failed
+or unexecuted campaign is counted as a pass. Both exact implementation-head hosted
+Fast and Deep runs were still **queued** at the last checkpoint. This is
+**HOSTED_CI_PENDING**, not READY_FOR_INDEPENDENT_REVIEW.
+
 Remaining boundaries: Float32, Decimal, DateTime/Time/Duration, Binary, general
 numeric/String patterns, Choice, abstract value polymorphism, `$type`, general
 named ancestry, field-local constrained direct Float64, unbounded/nillable

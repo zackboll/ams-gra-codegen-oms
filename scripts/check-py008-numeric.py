@@ -26,8 +26,8 @@ def bits(value):
 
 
 def independent_oracle():
-    # The historical oracle sets a global limit on import. Execute its original
-    # code with a private sys facade instead: no mutation of the process limit.
+    # The historical oracle sets a global limit on import. Suppress only that
+    # setter in a private execution namespace: no mutation of the process limit.
     # All numeric cases here fit the default limit; huge exponent tokens are
     # classified by the oracle before converting their digits.
     path = ROOT / 'tests/ada-float64-probe/oracle.py'
