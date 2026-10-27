@@ -1,0 +1,39 @@
+name: CI SELECT isolated five lane pilot
+on:
+  push:
+    branches: [ci-select-001-five-lane-pilot]
+permissions:
+  contents: read
+jobs:
+  queued:
+    name: pilot-${{ matrix.cell }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {cell: 1, lane: 1}
+          - {cell: 2, lane: 2}
+          - {cell: 3, lane: 3}
+          - {cell: 4, lane: 4}
+          - {cell: 5, lane: 5}
+          - {cell: 6, lane: 1}
+          - {cell: 7, lane: 2}
+          - {cell: 8, lane: 3}
+          - {cell: 9, lane: 4}
+          - {cell: 10, lane: 5}
+          - {cell: 11, lane: 1}
+          - {cell: 12, lane: 2}
+          - {cell: 13, lane: 3}
+          - {cell: 14, lane: 4}
+          - {cell: 15, lane: 5}
+    concurrency:
+      group: ci-select-synthetic-pilot-${{ github.run_id }}-lane-${{ matrix.lane }}
+      queue: max
+    steps:
+      - name: Hold a synthetic slot briefly (never a production lane)
+        run: |
+          date -u +%FT%TZ
+          sleep 30
+          date -u +%FT%TZ
