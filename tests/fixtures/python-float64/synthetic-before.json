@@ -1,0 +1,95 @@
+{
+  "source": "d76a36d2cb9d18bcc8b825b5134a65686f361deb",
+  "fixtures": {
+    "service.yaml": "22ee4e6e82ffe0b3879b2c39c0420882b192574f64eea239d3bc6d61e132ae10",
+    "oam.xsd": "ad5d7af086130c5fb944326bcc90d390ea668b940afbb8e874bd58ef4aa48eff"
+  },
+  "measurements": [
+    {
+      "world": "closed-schema",
+      "codec": false,
+      "command": [
+        "/home/zboll/py008-evidence/before-generator",
+        "service-generate",
+        "--schema",
+        "/home/zboll/git/ams-gra-codegen-oms-py-008/tests/fixtures/python-float64/oam.xsd",
+        "--contract",
+        "/home/zboll/git/ams-gra-codegen-oms-py-008/tests/fixtures/python-float64/service.yaml",
+        "--language",
+        "python",
+        "--world",
+        "closed-schema",
+        "--output",
+        "/home/zboll/py008-evidence/before-float64-closed-schema-False"
+      ],
+      "exit": 1,
+      "stdout": "service contract valid\nservice: Python Float64\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 3\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 9\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: primitive Float64\n\nservice api boundary: unsupported Python IR construct: primitive Float64\n",
+      "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+    },
+    {
+      "world": "closed-schema",
+      "codec": true,
+      "command": [
+        "/home/zboll/py008-evidence/before-generator",
+        "service-generate",
+        "--schema",
+        "/home/zboll/git/ams-gra-codegen-oms-py-008/tests/fixtures/python-float64/oam.xsd",
+        "--contract",
+        "/home/zboll/git/ams-gra-codegen-oms-py-008/tests/fixtures/python-float64/service.yaml",
+        "--language",
+        "python",
+        "--world",
+        "closed-schema",
+        "--with-codec",
+        "--output",
+        "/home/zboll/py008-evidence/before-float64-closed-schema-True"
+      ],
+      "exit": 1,
+      "stdout": "service contract valid\nservice: Python Float64\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 3\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 9\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: primitive Float64\n\nservice api boundary: unsupported Python IR construct: primitive Float64\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+      "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+    },
+    {
+      "world": "open-extensions",
+      "codec": false,
+      "command": [
+        "/home/zboll/py008-evidence/before-generator",
+        "service-generate",
+        "--schema",
+        "/home/zboll/git/ams-gra-codegen-oms-py-008/tests/fixtures/python-float64/oam.xsd",
+        "--contract",
+        "/home/zboll/git/ams-gra-codegen-oms-py-008/tests/fixtures/python-float64/service.yaml",
+        "--language",
+        "python",
+        "--world",
+        "open-extensions",
+        "--output",
+        "/home/zboll/py008-evidence/before-float64-open-extensions-False"
+      ],
+      "exit": 1,
+      "stdout": "service contract valid\nservice: Python Float64\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 3\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 9\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: primitive Float64\n\nservice api boundary: unsupported Python IR construct: primitive Float64\n",
+      "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+    },
+    {
+      "world": "open-extensions",
+      "codec": true,
+      "command": [
+        "/home/zboll/py008-evidence/before-generator",
+        "service-generate",
+        "--schema",
+        "/home/zboll/git/ams-gra-codegen-oms-py-008/tests/fixtures/python-float64/oam.xsd",
+        "--contract",
+        "/home/zboll/git/ams-gra-codegen-oms-py-008/tests/fixtures/python-float64/service.yaml",
+        "--language",
+        "python",
+        "--world",
+        "open-extensions",
+        "--with-codec",
+        "--output",
+        "/home/zboll/py008-evidence/before-float64-open-extensions-True"
+      ],
+      "exit": 1,
+      "stdout": "service contract valid\nservice: Python Float64\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 3\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 9\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: primitive Float64\n\nservice api boundary: unsupported Python IR construct: primitive Float64\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+      "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+    }
+  ]
+}

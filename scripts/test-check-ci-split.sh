@@ -61,6 +61,28 @@ for external in 'bash scripts/check-py007-sleet.sh' 'python3 scripts/check-py007
 done
 
 # Task 077B / PERF-006: healthy disposable split, harmless structural changes,
+for gate in 'python3 scripts/check-py008-uci.py --generator' \
+  '--service-baseline tests/fixtures/python-float64/after.json' \
+  'scripts/check-py008-numeric.py --full' \
+  '      - "scripts/check-py008-uci.py"' '      - "scripts/measure-py008-uci.py"' \
+  '      - "scripts/test-py008-uci.py"' '      - "scripts/check-py008-numeric.py"' \
+  '      - "scripts/check-py008-sleet.sh"' '      - "tests/fixtures/python-float64/**"'; do
+  grep -Fv -- "$gate" "$deep" >"$tmp/deep-no-py008.yml"
+  expect_fail "Deep lost PY008 $gate" "$fast" "$tmp/deep-no-py008.yml" "$sleet"
+done
+for gate in '--test python_float64 -- --nocapture' 'python scripts/test-py008-uci.py' \
+  'python scripts/check-py008-numeric.py' 'python -O scripts/check-py008-numeric.py'; do
+  grep -Fv -- "$gate" "$fast" >"$tmp/fast-no-py008.yml"
+  expect_fail "Fast lost PY008 $gate" "$tmp/fast-no-py008.yml" "$deep" "$sleet"
+done
+grep -Fv 'scripts/check-py008-sleet.sh' "$sleet" >"$tmp/sleet-no-py008.sh"
+expect_fail "Deep lost PY008 broker" "$fast" "$deep" "$tmp/sleet-no-py008.sh"
+for external in 'bash scripts/check-py008-sleet.sh' 'python3 scripts/check-py008-uci.py --generator'; do
+  { cat "$fast"; printf '      - run: %s\n' "$external"; } >"$tmp/fast-external-py008.yml"
+  expect_fail "Fast runs PY008 external campaign" "$tmp/fast-external-py008.yml" "$deep" "$sleet"
+done
+
+# Task 077B / PERF-006: healthy disposable split, harmless structural changes,
 # and attributed single-defect negatives for all three independent shards.
 # Each negative must contain its targeted diagnostic, not just fail elsewhere.
 layout_checks="$(python3 "$repo/scripts/check-task077b-ci-layout.py" \

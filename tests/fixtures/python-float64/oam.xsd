@@ -1,0 +1,34 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+ xmlns:t="https://www.vdl.afrl.af.mil/programs/oam"
+ targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified" version="002.5.0">
+  <!-- PY-008 independent synthetic fixture, not a complete UCI service. -->
+  <xs:simpleType name="Scalar"><xs:restriction base="xs:double"/></xs:simpleType>
+  <xs:simpleType name="Bounded"><xs:restriction base="xs:double"><xs:minInclusive value="-1"/><xs:maxExclusive value="2"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Positive"><xs:restriction base="xs:double"><xs:minExclusive value="0"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Nonpositive"><xs:restriction base="xs:double"><xs:maxInclusive value="0"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Singleton"><xs:restriction base="xs:double"><xs:minInclusive value="1.0000000000000002"/><xs:maxInclusive value="1.0000000000000002"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Restricted"><xs:restriction base="t:Bounded"><xs:maxInclusive value="1"/></xs:restriction></xs:simpleType>
+  <xs:complexType name="Ancestor" abstract="true"><xs:sequence>
+    <xs:element name="Inherited" type="xs:double"/>
+  </xs:sequence></xs:complexType>
+  <xs:complexType name="Nested"><xs:sequence>
+    <xs:element name="Value" type="t:Bounded"/>
+  </xs:sequence></xs:complexType>
+  <xs:complexType name="Payload"><xs:complexContent><xs:extension base="t:Ancestor"><xs:sequence>
+    <xs:element name="Direct" type="xs:double"/>
+    <xs:element name="Named" type="t:Scalar"/>
+    <xs:element name="Limited" type="t:Bounded"/>
+    <xs:element name="Optional" type="xs:double" minOccurs="0"/>
+    <xs:element name="Values" type="t:Bounded" minOccurs="1" maxOccurs="3"/>
+    <xs:element name="Nested" type="t:Nested"/>
+    <xs:element name="Integer" type="xs:integer"/>
+    <xs:element name="Text" type="xs:string"/>
+    <xs:element name="Positive" type="t:Positive" minOccurs="0"/>
+    <xs:element name="Nonpositive" type="t:Nonpositive" minOccurs="0"/>
+    <xs:element name="Singleton" type="t:Singleton" minOccurs="0"/>
+    <xs:element name="Restricted" type="t:Restricted" minOccurs="0"/>
+  </xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+  <xs:element name="FloatNotice" type="t:Payload" t:version="001.000.000.000"/>
+  <xs:element name="FloatAlias" type="t:Payload" t:version="001.000.000.000"/>
+  <xs:element name="ScalarNotice" type="t:Scalar" t:version="001.000.000.000"/>
+</xs:schema>

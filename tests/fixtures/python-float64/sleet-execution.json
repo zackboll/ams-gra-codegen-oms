@@ -1,0 +1,41 @@
+{
+  "completed": true,
+  "broker_revision": "e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b",
+  "broker_binary_sha256": "4a2e9ee872d1deaa1a6ce1a1494a2f601660eb57c0df28a447b28a08eba21c94",
+  "python_campaigns": {
+    "shared-py005-311": {
+      "exit": 0,
+      "stdout_stderr": "   Compiling proc-macro2 v1.0.107\n   Compiling unicode-ident v1.0.26\n   Compiling quote v1.0.47\n   Compiling serde_core v1.0.229\n   Compiling serde v1.0.229\n   Compiling zmij v1.0.23\n   Compiling itoa v1.0.18\n   Compiling equivalent v1.0.2\n   Compiling serde_json v1.0.151\n   Compiling hashbrown v0.17.1\n   Compiling memchr v2.8.3\n   Compiling ams-gra-oms-ir v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-008/crates/ir)\n   Compiling libyaml-rs v0.3.0\n   Compiling ryu v1.0.23\n   Compiling uuid v1.26.1\n   Compiling roxmltree v0.20.0\n   Compiling ams-gra-oms-schema-diff v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-008/crates/schema-diff)\n   Compiling ams-gra-oms-xsd-frontend v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-008/crates/xsd-frontend)\n   Compiling indexmap v2.14.2\n   Compiling syn v3.0.6\n   Compiling serde_derive v1.0.229\n   Compiling yaml_serde v0.10.7\n   Compiling ams-gra-oms-service-contract v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-008/crates/service-contract)\n   Compiling ams-gra-oms-codegen-core v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-008/crates/codegen-core)\n   Compiling ams-gra-oms-schema-docs v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-008/crates/schema-docs)\n   Compiling ams-gra-oms-service-routes v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-008/crates/service-routes)\n   Compiling ams-gra-oms-backend-ada v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-008/crates/backend-ada)\n   Compiling ams-gra-oms-backend-python v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-008/crates/backend-python)\n   Compiling ams-gra-oms-backend-cpp v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-008/crates/backend-cpp)\n   Compiling ams-gra-oms-backend-rust v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-008/crates/backend-rust)\n   Compiling ams-gra-codegen-oms v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-008/crates/cli)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 18.43s\ntest_generated_codecs_route_policy_and_typed_delivery (test_sleet.PinnedSleetTests.test_generated_codecs_route_policy_and_typed_delivery) ... PY005 PINNED SLEET RECEIPT AND TYPED DELIVERY: PASSED\nok\n\n----------------------------------------------------------------------\nRan 1 test in 0.239s\n\nOK\ntest_generated_codecs_route_policy_and_typed_delivery (test_sleet.PinnedSleetTests.test_generated_codecs_route_policy_and_typed_delivery) ... PY005 PINNED SLEET RECEIPT AND TYPED DELIVERY: PASSED\nok\n\n----------------------------------------------------------------------\nRan 1 test in 0.230s\n\nOK\n"
+    },
+    "shared-py006-311": {
+      "exit": 0,
+      "stdout_stderr": "test_header_profiles_broker_receipt_rejection_and_recovery (test_header_sleet.HeaderSleetTests.test_header_profiles_broker_receipt_rejection_and_recovery) ... PY006 PINNED SLEET HEADER RECEIPT AND TYPED DELIVERY: PASSED\nok\n\n----------------------------------------------------------------------\nRan 1 test in 0.176s\n\nOK\ntest_header_profiles_broker_receipt_rejection_and_recovery (test_header_sleet.HeaderSleetTests.test_header_profiles_broker_receipt_rejection_and_recovery) ... PY006 PINNED SLEET HEADER RECEIPT AND TYPED DELIVERY: PASSED\nok\n\n----------------------------------------------------------------------\nRan 1 test in 0.188s\n\nOK\n"
+    },
+    "shared-py007-311": {
+      "exit": 0,
+      "stdout_stderr": "test_inherited_record_delivery_rejection_and_recovery (test_inheritance_sleet.InheritanceSleetTests.test_inherited_record_delivery_rejection_and_recovery) ... PY007 PINNED SLEET INHERITED RECORD: PASSED\nok\n\n----------------------------------------------------------------------\nRan 1 test in 0.187s\n\nOK\ntest_inherited_record_delivery_rejection_and_recovery (test_inheritance_sleet.InheritanceSleetTests.test_inherited_record_delivery_rejection_and_recovery) ... PY007 PINNED SLEET INHERITED RECORD: PASSED\nok\n\n----------------------------------------------------------------------\nRan 1 test in 0.198s\n\nOK\n"
+    },
+    "shared-py008-311": {
+      "exit": 0,
+      "stdout_stderr": "test_float64_delivery_rejection_and_recovery (test_float64_sleet.Float64SleetTests.test_float64_delivery_rejection_and_recovery) ... PY008 BROKER: Invalid-Message for exclusive upper bound; subsequent valid delivery\nPY008 PINNED SLEET FLOAT64: PASSED\nok\n\n----------------------------------------------------------------------\nRan 1 test in 0.224s\n\nOK\ntest_float64_delivery_rejection_and_recovery (test_float64_sleet.Float64SleetTests.test_float64_delivery_rejection_and_recovery) ... PY008 BROKER: Invalid-Message for exclusive upper bound; subsequent valid delivery\nPY008 PINNED SLEET FLOAT64: PASSED\nok\n\n----------------------------------------------------------------------\nRan 1 test in 0.207s\n\nOK\n"
+    },
+    "shared-py005-313": {
+      "exit": 0,
+      "stdout_stderr": "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.04s\ntest_generated_codecs_route_policy_and_typed_delivery (test_sleet.PinnedSleetTests.test_generated_codecs_route_policy_and_typed_delivery) ... PY005 PINNED SLEET RECEIPT AND TYPED DELIVERY: PASSED\nok\n\n----------------------------------------------------------------------\nRan 1 test in 0.279s\n\nOK\ntest_generated_codecs_route_policy_and_typed_delivery (test_sleet.PinnedSleetTests.test_generated_codecs_route_policy_and_typed_delivery) ... PY005 PINNED SLEET RECEIPT AND TYPED DELIVERY: PASSED\nok\n\n----------------------------------------------------------------------\nRan 1 test in 0.292s\n\nOK\n"
+    },
+    "shared-py006-313": {
+      "exit": 0,
+      "stdout_stderr": "test_header_profiles_broker_receipt_rejection_and_recovery (test_header_sleet.HeaderSleetTests.test_header_profiles_broker_receipt_rejection_and_recovery) ... PY006 PINNED SLEET HEADER RECEIPT AND TYPED DELIVERY: PASSED\nok\n\n----------------------------------------------------------------------\nRan 1 test in 0.236s\n\nOK\ntest_header_profiles_broker_receipt_rejection_and_recovery (test_header_sleet.HeaderSleetTests.test_header_profiles_broker_receipt_rejection_and_recovery) ... PY006 PINNED SLEET HEADER RECEIPT AND TYPED DELIVERY: PASSED\nok\n\n----------------------------------------------------------------------\nRan 1 test in 0.289s\n\nOK\n"
+    },
+    "shared-py007-313": {
+      "exit": 0,
+      "stdout_stderr": "test_inherited_record_delivery_rejection_and_recovery (test_inheritance_sleet.InheritanceSleetTests.test_inherited_record_delivery_rejection_and_recovery) ... PY007 PINNED SLEET INHERITED RECORD: PASSED\nok\n\n----------------------------------------------------------------------\nRan 1 test in 0.355s\n\nOK\ntest_inherited_record_delivery_rejection_and_recovery (test_inheritance_sleet.InheritanceSleetTests.test_inherited_record_delivery_rejection_and_recovery) ... PY007 PINNED SLEET INHERITED RECORD: PASSED\nok\n\n----------------------------------------------------------------------\nRan 1 test in 0.281s\n\nOK\n"
+    },
+    "shared-py008-313": {
+      "exit": 0,
+      "stdout_stderr": "test_float64_delivery_rejection_and_recovery (test_float64_sleet.Float64SleetTests.test_float64_delivery_rejection_and_recovery) ... PY008 BROKER: Invalid-Message for exclusive upper bound; subsequent valid delivery\nPY008 PINNED SLEET FLOAT64: PASSED\nok\n\n----------------------------------------------------------------------\nRan 1 test in 0.316s\n\nOK\ntest_float64_delivery_rejection_and_recovery (test_float64_sleet.Float64SleetTests.test_float64_delivery_rejection_and_recovery) ... PY008 BROKER: Invalid-Message for exclusive upper bound; subsequent valid delivery\nPY008 PINNED SLEET FLOAT64: PASSED\nok\n\n----------------------------------------------------------------------\nRan 1 test in 0.331s\n\nOK\n"
+    }
+  },
+  "runtime_sources": "working tree; final generated artifact parity separately verified",
+  "inherited_rust_campaign": "RUNNING; not a pass claim"
+}

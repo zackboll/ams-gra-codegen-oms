@@ -76,7 +76,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--generator', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--service-baseline', type=Path,
+                        help='Versioned successor measurement; default PY-007 assertions remain immutable')
     args = parser.parse_args()
+    baseline_path = args.service_baseline or FIXTURE / 'after.json'
     for name, digest in HISTORICAL.items():
         driver.require(driver.digest(ROOT / 'tests/fixtures/python-header-profiles' / name) == digest,
                        'PY-006 historical evidence was modified')
@@ -84,9 +87,9 @@ def main():
     # retains its exact artifact hashes and four must-execute literal probes.
     subprocess.run([sys.executable, str(ROOT / 'scripts/check-py006-uci.py'),
                     '--generator', str(args.generator), '--output', str(args.output),
-                    '--service-baseline', str(FIXTURE / 'after.json')], check=True)
+                    '--service-baseline', str(baseline_path)], check=True)
     result = json.loads((args.output / 'measurements.json').read_text())
-    baseline = json.loads((FIXTURE / 'after.json').read_text())['measurements']
+    baseline = json.loads(baseline_path.read_text())['measurements']
     summaries = validate(result['services'], baseline)
     driver.require(len(result['isolated_pinned_profiles']) == 8, 'missing isolated qualification')
     # Also execute the inherited Record fixture from the same production binary.
@@ -103,7 +106,8 @@ def main():
                 driver.require(probe.returncode == 0 and 'Ran 12 tests' in probe.stderr
                                and '\nOK\n' in probe.stderr, probe.stderr)
     summary = dict(services=summaries, historical_fixture_sha256=HISTORICAL,
-                   source_baseline=json.loads((FIXTURE / 'after.json').read_text())['source'],
+                   current_generator_sha256=driver.digest(args.generator),
+                   source_baseline=json.loads(baseline_path.read_text())['source'],
                    isolated_profiles=8, inherited_python_tests=96, real_ready=0)
     (args.output / 'qualification.json').write_text(json.dumps(summary, indent=2) + '\n')
     print('PY007 PINNED UCI AND INHERITANCE: PASSED services=24 isolated_profiles=8 inherited_tests=96 real_ready=0')

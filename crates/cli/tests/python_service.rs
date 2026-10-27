@@ -324,9 +324,9 @@ fn selected_subset_boundaries_are_truthful() {
             "float",
             original.replace(
                 "type=\"xs:string\" minOccurs=\"0\"",
-                "type=\"xs:double\" minOccurs=\"0\"",
+                "type=\"xs:float\" minOccurs=\"0\"",
             ),
-            "Float64",
+            "Float32",
         ),
         (
             "nil",

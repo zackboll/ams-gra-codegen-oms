@@ -10,9 +10,10 @@ pub use service_api::{SERVICE_API_FILE, generate_service_api};
 pub use service_codec::{SERVICE_CODEC_FILE, generate_service_codec};
 
 use ams_gra_oms_codegen_core::{
-    Backend, CodegenError, GeneratedFile, GenerationWorld, InclusiveIntegralDomain,
-    ServiceApiModel, StringProfile, TypeEmission, abstract_value_targets, effective_record_fields,
-    inclusive_integral_domain, plan_type_emissions, string_profile,
+    Backend, CodegenError, FloatingBoundKind, FloatingDomain, GeneratedFile, GenerationWorld,
+    InclusiveIntegralDomain, ServiceApiModel, StringProfile, TypeEmission, abstract_value_targets,
+    effective_record_fields, floating_domain, inclusive_integral_domain, plan_type_emissions,
+    string_profile,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -67,6 +68,9 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     let emissions = plan_type_emissions(schema, world)?;
     preflight(schema, &emissions)?;
     let mut output = include_str!("runtime.py").to_owned();
+    if uses_float64(schema) {
+        output.push_str(include_str!("float64_runtime.py"));
+    }
     if schema
         .types
         .iter()
@@ -107,12 +111,128 @@ fn header_profile(declaration: &TypeDecl) -> Option<&'static str> {
     }
 }
 
+// Demand is semantic, never a declaration name. The selected schema contains
+// ancestry declarations too, so inherited direct fields are included.
+fn uses_float64(schema: &SchemaIr) -> bool {
+    let direct = |reference: &TypeRef| {
+        matches!(
+            reference.target,
+            TypeRefTarget::Primitive(PrimitiveKind::Float64)
+        )
+    };
+    schema
+        .messages
+        .iter()
+        .any(|message| direct(&message.payload_type))
+        || schema
+            .types
+            .iter()
+            .any(|declaration| match &declaration.kind {
+                TypeKind::Primitive(PrimitiveKind::Float64) => true,
+                TypeKind::Alias(target) => direct(target),
+                TypeKind::Record { fields } => fields.iter().any(|field| direct(&field.type_ref)),
+                _ => false,
+            })
+}
+
+// Both renderers consume exactly the shared domain. Binary64 bits, rather than
+// display text, are the source of every generated bound.
+fn float64_arguments(constraints: &ConstraintSet, prefix: &str) -> Result<String, CodegenError> {
+    let domain = floating_domain(PrimitiveKind::Float64, constraints).map_err(error)?;
+    let Some(FloatingDomain::Float64 { lower, upper }) = domain else {
+        return Ok("None, True, None, True".to_owned());
+    };
+    let bound = |bound: Option<ams_gra_oms_codegen_core::Float64Bound>| {
+        bound.map_or_else(
+            || "None, True".to_owned(),
+            |bound| {
+                format!(
+                    "{prefix}_float64_bound(0x{:016x}), {}",
+                    bound.value.value().to_bits(),
+                    if bound.kind == FloatingBoundKind::Inclusive {
+                        "True"
+                    } else {
+                        "False"
+                    }
+                )
+            },
+        )
+    };
+    Ok(format!("{}, {}", bound(lower), bound(upper)))
+}
+
+// Only compatible Float64 primitive chains with effective (not local) domains
+// are admitted. Prove every child domain is contained in its immediate parent;
+// malformed externally assembled IR cannot drop an inherited constraint.
+fn float64_ancestry(schema: &SchemaIr, declaration: &TypeDecl) -> Result<(), CodegenError> {
+    let mut current = declaration;
+    let mut seen = BTreeSet::new();
+    loop {
+        if !seen.insert(&current.name)
+            || current.is_abstract
+            || current.kind != TypeKind::Primitive(PrimitiveKind::Float64)
+        {
+            return Err(error("unproven Float64 named restriction ancestry"));
+        }
+        let child = floating_domain(PrimitiveKind::Float64, &current.constraints).map_err(error)?;
+        match current.base_type.as_ref().map(|base| &base.target) {
+            Some(TypeRefTarget::Primitive(PrimitiveKind::Float64)) | None => return Ok(()),
+            Some(TypeRefTarget::Named(name)) => {
+                let parent = schema
+                    .types
+                    .iter()
+                    .find(|candidate| candidate.name == *name)
+                    .ok_or_else(|| error("missing Float64 restriction base"))?;
+                if parent.kind != TypeKind::Primitive(PrimitiveKind::Float64) {
+                    return Err(error("incompatible Float64 restriction base"));
+                }
+                if let Some(FloatingDomain::Float64 { lower, upper }) =
+                    floating_domain(PrimitiveKind::Float64, &parent.constraints).map_err(error)?
+                {
+                    let Some(FloatingDomain::Float64 {
+                        lower: child_lower,
+                        upper: child_upper,
+                    }) = child
+                    else {
+                        return Err(error("unresolved effective Float64 constraints"));
+                    };
+                    for (parent_bound, child_bound, is_lower) in
+                        [(lower, child_lower, true), (upper, child_upper, false)]
+                    {
+                        if let Some(parent_bound) = parent_bound {
+                            let compatible = child_bound.is_some_and(|bound| {
+                                let p = parent_bound.value.value();
+                                let c = bound.value.value();
+                                (if is_lower { c > p } else { c < p })
+                                    || (c == p
+                                        && (parent_bound.kind == FloatingBoundKind::Inclusive
+                                            || bound.kind == FloatingBoundKind::Exclusive))
+                            });
+                            if !compatible {
+                                return Err(error("unresolved effective Float64 constraints"));
+                            }
+                        }
+                    }
+                }
+                current = parent;
+            }
+            _ => return Err(error("incompatible Float64 restriction base")),
+        }
+    }
+}
+
 // Returns both the type annotation and the complete runtime check arguments.
 fn primitive(
     kind: PrimitiveKind,
     constraints: &ConstraintSet,
 ) -> Result<(String, String), CodegenError> {
     match kind {
+        PrimitiveKind::Float64 => {
+            // Field-local facets have no established lowering. Named carriers
+            // are classified separately against their effective declaration.
+            unconstrained(constraints)?;
+            Ok(("float".to_owned(), "float".to_owned()))
+        }
         PrimitiveKind::Boolean | PrimitiveKind::String => {
             unconstrained(constraints)?;
             let name = if kind == PrimitiveKind::Boolean {
@@ -173,7 +293,9 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
     for declaration in declarations {
         // Primitive base provenance is not structural inheritance. Named
         // restriction ancestry is deferred rather than silently flattened.
-        if let Some(base) = &declaration.base_type {
+        if declaration.kind == TypeKind::Primitive(PrimitiveKind::Float64) {
+            float64_ancestry(schema, declaration)?;
+        } else if let Some(base) = &declaration.base_type {
             match (&declaration.kind, &base.target) {
                 (TypeKind::Primitive(kind), TypeRefTarget::Primitive(base_kind))
                     if kind == base_kind => {}
@@ -185,7 +307,9 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
         }
         match &declaration.kind {
             TypeKind::Primitive(kind) => {
-                if header_profile(declaration).is_none() {
+                if *kind == PrimitiveKind::Float64 {
+                    floating_domain(*kind, &declaration.constraints).map_err(error)?;
+                } else if header_profile(declaration).is_none() {
                     primitive(*kind, &declaration.constraints)?;
                 }
                 scalar_names.insert(declaration.name.clone());
@@ -306,6 +430,11 @@ fn render(
     .unwrap();
     match &declaration.kind {
         TypeKind::Primitive(_) | TypeKind::Alias(_) => {
+            if declaration.kind == TypeKind::Primitive(PrimitiveKind::Float64) {
+                let args = float64_arguments(&declaration.constraints, "")?;
+                writeln!(output, "    value: float\n\n    def __post_init__(self) -> None:\n        _check_float64(self.value, {args})").unwrap();
+                return Ok(());
+            }
             if let Some(validator) = header_profile(declaration) {
                 writeln!(output, "    value: str\n\n    def __post_init__(self) -> None:\n        _check(self.value, str)\n        {validator}(self.value)").unwrap();
                 return Ok(());
@@ -368,6 +497,85 @@ fn render(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ams_gra_oms_ir::{Float32Value, Float64Value, NumericValue};
+
+    #[test]
+    fn float64_bounds_are_shared_classifications_and_exact_bits() {
+        for bits in [
+            0,
+            1,
+            0x000f_ffff_ffff_ffff,
+            0x0010_0000_0000_0000,
+            0x3ff0_0000_0000_0001,
+            0x7fef_ffff_ffff_ffff,
+            0x8000_0000_0000_0000,
+        ] {
+            for inclusive in [true, false] {
+                let mut constraints = ConstraintSet::default();
+                let bound = Some(NumericValue::Float64(Float64Value::from_bits(bits)));
+                if inclusive {
+                    constraints.min_inclusive = bound;
+                } else {
+                    constraints.min_exclusive = bound;
+                }
+                let rendered = float64_arguments(&constraints, "").unwrap();
+                assert!(
+                    rendered.starts_with(&format!("_float64_bound(0x{bits:016x})")),
+                    "{rendered}"
+                );
+                assert!(rendered.ends_with(if inclusive {
+                    ", True, None, True"
+                } else {
+                    ", False, None, True"
+                }));
+            }
+        }
+        assert!(
+            float64_arguments(
+                &ConstraintSet {
+                    min_inclusive: Some(NumericValue::Float32(Float32Value::from_value(0.0))),
+                    ..ConstraintSet::default()
+                },
+                ""
+            )
+            .is_err()
+        );
+        for constraints in [
+            ConstraintSet {
+                min_inclusive: Some(NumericValue::Float64(Float64Value::from_value(0.0))),
+                min_exclusive: Some(NumericValue::Float64(Float64Value::from_value(1.0))),
+                ..ConstraintSet::default()
+            },
+            ConstraintSet {
+                min_length: Some(1),
+                ..ConstraintSet::default()
+            },
+            ConstraintSet {
+                max_inclusive: Some(NumericValue::Float64(Float64Value::from_value(
+                    f64::INFINITY,
+                ))),
+                ..ConstraintSet::default()
+            },
+            ConstraintSet {
+                min_inclusive: Some(NumericValue::Float64(Float64Value::from_value(2.0))),
+                max_inclusive: Some(NumericValue::Float64(Float64Value::from_value(1.0))),
+                ..ConstraintSet::default()
+            },
+        ] {
+            assert!(float64_arguments(&constraints, "").is_err());
+        }
+        assert!(
+            primitive(
+                PrimitiveKind::Float64,
+                &ConstraintSet {
+                    min_inclusive: Some(NumericValue::Float64(Float64Value::from_value(0.0))),
+                    ..ConstraintSet::default()
+                }
+            )
+            .is_err(),
+            "direct field facets must not gain named-carrier semantics"
+        );
+    }
 
     #[test]
     fn backend_identity_and_empty_schema_fail_closed() {
@@ -384,7 +592,6 @@ mod tests {
         for kind in [
             PrimitiveKind::Decimal,
             PrimitiveKind::Float32,
-            PrimitiveKind::Float64,
             PrimitiveKind::Binary,
             PrimitiveKind::DateTime,
             PrimitiveKind::Time,

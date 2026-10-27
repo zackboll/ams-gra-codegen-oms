@@ -66,6 +66,27 @@ if grep -Fq 'scripts/check-py007-sleet.sh' <<<"$fast_code" || grep -Fq 'scripts/
   fail "Fast CI must not run PY-007 external campaigns"
 fi
 
+# PY-008: versioned current-service evidence, independent numerics and the same
+# shared broker. Keep every historical gate above as well.
+for path in 'scripts/check-py008-uci.py' 'scripts/measure-py008-uci.py' \
+  'scripts/test-py008-uci.py' 'scripts/check-py008-numeric.py' \
+  'scripts/check-py008-sleet.sh' 'tests/fixtures/python-float64/**'; do
+  grep -Fqx "      - \"$path\"" <<<"$deep_code" || fail "Deep CI lost PY-008 PR path: $path"
+done
+for required in '--test python_float64 -- --nocapture' 'python scripts/test-py008-uci.py' \
+  'python scripts/check-py008-numeric.py' 'python -O scripts/check-py008-numeric.py'; do
+  grep -Fq -- "$required" <<<"$fast_code" || fail "Fast CI lost PY-008 gate: $required"
+done
+for required in 'python3 scripts/check-py008-uci.py --generator' \
+  '--service-baseline tests/fixtures/python-float64/after.json' \
+  'scripts/check-py008-numeric.py --full' 'for interpreter in python3.11 python3.13; do'; do
+  grep -Fq -- "$required" <<<"$deep_code" || fail "Deep CI lost PY-008 gate: $required"
+done
+grep -Fq 'scripts/check-py008-sleet.sh' <<<"$sleet_code" || fail "Sleet harness lost PY-008 Float64 delivery"
+if grep -Fq 'scripts/check-py008-sleet.sh' <<<"$fast_code" || grep -Fq 'scripts/check-py008-uci.py --generator' <<<"$fast_code"; then
+  fail "Fast CI must not run PY-008 external campaigns"
+fi
+
 for required in 'bash scripts/check-task077-fast.sh' 'bash scripts/test-task077-ci-wrappers.sh'; do
   grep -Fq "$required" <<<"$fast_code" || fail "Fast CI lost Task 077 gate: $required"
 done
