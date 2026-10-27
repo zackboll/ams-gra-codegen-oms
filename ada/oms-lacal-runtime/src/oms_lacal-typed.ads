@@ -20,6 +20,8 @@ package OMS_LACAL.Typed is
       Has_Group : Boolean; Group : String;
       Receiver : not null access Handler'Class) return Subscription_ID;
    procedure Dispatch (Self : in out Binding; Message : Connections.Delivery);
+   --  Only a SID registered by this binding may be removed. Unknown/foreign
+   --  SIDs raise Runtime_Error before wire traffic or subscription changes.
    procedure Unsubscribe (Self : in out Binding; SID : Subscription_ID);
    procedure Close (Self : in out Binding);
    function Publish

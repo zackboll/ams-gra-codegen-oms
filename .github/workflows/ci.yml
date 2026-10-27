@@ -94,7 +94,7 @@ jobs:
           actual = {(c['namespace'], c['profile'], c['policy'], c['optimization']) for c in cells}
           if not result.get('completed') or not result.get('production_generated') or len(cells) != 24 or actual != expected:
               raise SystemExit('incomplete Task 099 execution matrix')
-          if any(c['checks'] != (53 if c['profile'] == 'lossless' else 44) for c in cells):
+          if any(c['checks'] != (62 if c['profile'] == 'lossless' else 53) for c in cells):
               raise SystemExit('wrong Task 099 check count')
           if any(s['exit'] != 0 for s in result['steps']):
               raise SystemExit('failed Task 099 step')

@@ -347,6 +347,54 @@ hashes and generated/compiled source hashes are recorded separately in both
 is recorded by normal Git commit and PR/CI source artifacts, avoiding a
 self-referential commit hash in its own content.
 
+## Task 099-R1 — typed subscription ownership
+
+Reconciled the existing PR #115 head
+`ce76179da96ad44a9bb396b478db3040a64b07f2` with exact current remote main
+`77066e8e2cf4875274c0227cee16dcf0dc593c05` by normal merge commit
+`ad1f347c5928d87e869e78db5940e1e99311bb0c`. No rebase, force push, or new PR.
+The earlier baseline and qualification records above remain historical evidence,
+not a claim that the original PR head already contains this revision.
+
+`OMS_LACAL.Typed.Unsubscribe` now searches its own receiver-backed table entry
+before invoking `Connections.Unsubscribe`. A SID belonging to another binding
+on the same connection is not removal authority. Unknown/foreign SIDs (including
+zero and retired SIDs) raise `Runtime_Error` without wire traffic or any
+subscription changes. The owning mapping is cleared only after the connection
+operation succeeds; connection validation/failure behavior is unchanged.
+
+The compiled consumer uses the two distinct **real generated** `Exchange_In_A`
+and `Exchange_In_B` Handler interfaces, their typed generic instances, and two
+bindings sharing one connection. It registers and acknowledges both SUBs, rejects
+A's SID through B, checks unchanged frame count, active registrations and command
+state, rejects zero/unknown SIDs, and then successfully dispatches valid messages
+to both handlers. Later it verifies an exact owner `UNSUB` frame, removal of only
+the owned subscription, acknowledgment, and side-effect-free retired-SID rejection.
+All prior Task 099 checks remain; counts increase from 44/53 to **53/62** for
+portable/lossless. The matrix remains GNAT 14.2.0 / 16.1.0, OAM / qualified,
+portable / lossless, Normal / Check / Ignore, O0 / O2: **48 cells, 2,760 checks**.
+Hosted CI requires these increased counts; no inherited codec gate is weakened.
+
+Regression sensitivity: a compiled GNAT 14 O0 Normal portable consumer against
+the original implementation fails with
+`PROGRAM_ERROR : foreign binding UNSUB accepted`. The initial revised lossless
+campaign also caught a harness ordering error: the injected existing Float64
+checks reused `N` after the new wire-count snapshot. The injection now precedes
+that snapshot. Failed/superseded runs are retained, never counted as passes.
+
+Fresh revision evidence is stored separately under
+`/home/zboll/task099-r1-scratch/`: per-command streams/exits, runtime input/source
+hashes, compiler identities, full inherited Float64 and TimeZulu reruns, inherited
+codec consumers, Rust workspace and CI integrity results. Ada generator, JSON
+support, frozen Float64 corpora, and Task 097/098 qualification sources are
+unchanged from the original PR head. The reconciled main's Fast CI is byte-for-byte
+preserved outside the Task 099 job; only that job's expected check counts change.
+
+The final commit/tree is identified by Git and hosted source artifacts rather
+than a self-referential hash in this file. Exact-final-head hosted CI success and
+mandatory uploaded evidence are still required before requesting independent
+review. No approval, merge, auto-merge, or WebSocket/Sleet claim is authorized.
+
 ## Follow-on WebSocket/Sleet qualification
 
 Implement a separate whole-text-frame WebSocket transport, including `owp`

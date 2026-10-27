@@ -49,5 +49,11 @@ local mappings without wire traffic; use explicit unsubscribe for peer cleanup
 while retaining a connection. Scope finalization closes a connection and clears
 bindings. No background work or callbacks run after these operations.
 
+Typed `Unsubscribe` accepts only a SID registered by that binding, even when
+multiple generated Handler bindings share a connection. Unknown, foreign, zero
+and already removed SIDs raise `Runtime_Error` without sending an OWP frame or
+changing any subscription state. The local handler mapping is cleared only
+after the connection's unsubscribe succeeds.
+
 See `../../docs/task-099-ada-lacal-runtime-core.md` for protocol, ownership,
 resource, compiler and qualification limitations.

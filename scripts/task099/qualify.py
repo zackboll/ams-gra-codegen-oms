@@ -136,7 +136,8 @@ def main():
       Calls_A := 3;
    end;
 '''
-                source = source.replace("   A.Unsubscribe (BA, SID_A);", extra + "   A.Unsubscribe (BA, SID_A);")
+                unsubscribe = "   N := M.Sent_Count (Wire);\n   A.Unsubscribe (BA, SID_A);"
+                source = source.replace(unsubscribe, extra + unsubscribe)
             for optimization in ["0", "2"]:
                 for policy in ["Normal", "Check", "Ignore"]:
                     cell = f"{label}-O{optimization}-{policy}"
@@ -157,7 +158,7 @@ def main():
                     run(f"{cell}-build", shell(["gprbuild", "-P", "consumer.gpr", "-p", "-j4",
                         "-cargs:Ada", "-gnato", f"-O{optimization}", f"-gnatec={adc}"]), build)
                     output = run(f"{cell}-execute", shell([build / "bin/runtime_consumer"]), build)
-                    checks = 53 if profile == "lossless" else 44
+                    checks = 62 if profile == "lossless" else 53
                     if not output.endswith(f"TASK099_CONSUMER_COMPLETE checks= {checks}\n") or output.count("PASS ") != checks:
                         raise RuntimeError(f"incomplete execution {cell}")
                     cells.append({"namespace": namespace, "profile": profile, "policy": policy,

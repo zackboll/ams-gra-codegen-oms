@@ -81,10 +81,16 @@ package body OMS_LACAL.Typed is
 
    procedure Unsubscribe (Self : in out Binding; SID : Subscription_ID) is
    begin
-      Connections.Unsubscribe (Self.Core.all, SID);
       for E of Self.Table loop
-         if E.SID = SID then E := (others => <>); end if;
+         --  A shared connection's SID is not authority to remove another
+         --  binding's subscription. Empty slots never establish ownership.
+         if E.SID = SID and E.Receiver /= null then
+            Connections.Unsubscribe (Self.Core.all, SID);
+            E := (others => <>);
+            return;
+         end if;
       end loop;
+      raise Runtime_Error with "subscription not owned by binding";
    end Unsubscribe;
 
    procedure Close (Self : in out Binding) is

@@ -273,6 +273,34 @@ begin
    Check (M.Sent (Wire, 5) = "SUB 2 " & Key ("MessageB") & " common-topic pool-7", "SUB group");
    Check (SID_A /= SID_B, "runtime unique SIDs");
    Ack;
+   Check (C.Is_Active (Core, SID_A) and C.Is_Active (Core, SID_B) and not C.Busy (Core),
+          "ownership regression both SUB acknowledged");
+   N := M.Sent_Count (Wire);
+   begin
+      B.Unsubscribe (BB, SID_A);
+      raise Program_Error with "foreign binding UNSUB accepted";
+   exception when Runtime_Error =>
+      Check (True, "foreign binding UNSUB rejected");
+   end;
+   Check (M.Sent_Count (Wire) = N and C.State (Core) = Active and not C.Busy (Core)
+          and C.Is_Active (Core, SID_A) and C.Is_Active (Core, SID_B),
+          "foreign UNSUB no frame or subscription state change");
+   declare
+      Unknown_SIDs : constant array (1 .. 2) of Subscription_ID :=
+        (No_Subscription, Subscription_ID'Last);
+   begin
+      for SID of Unknown_SIDs loop
+         begin
+            B.Unsubscribe (BB, SID);
+            raise Program_Error with "unknown binding UNSUB accepted";
+         exception when Runtime_Error =>
+            Check (True, "unknown binding UNSUB rejected" & SID'Image);
+         end;
+      end loop;
+   end;
+   Check (M.Sent_Count (Wire) = N and C.State (Core) = Active and not C.Busy (Core)
+          and C.Is_Active (Core, SID_A) and C.Is_Active (Core, SID_B),
+          "unknown UNSUB no frame or subscription state change");
    Receive ("MSG " & Img (SID_A) & " " & Env ("MessageA", Body_Text));
    Receive ("MSG " & Img (SID_B) & " " & Env ("MessageB", Body_Text));
    Check (Calls_A = 1 and Calls_B = 1 and To_String (Last) = Encoded, "typed dispatch and values");
@@ -330,8 +358,22 @@ begin
       raise Program_Error with "invalid encoding sent";
    exception when Envelope_Error => null; end;
    Check (M.Sent_Count (Wire) = N, "invalid encoded document no partial publication");
+   N := M.Sent_Count (Wire);
    A.Unsubscribe (BA, SID_A);
+   Check (M.Sent_Count (Wire) = N + 1 and M.Sent (Wire, N + 1) = "UNSUB " & Img (SID_A)
+          and not C.Is_Active (Core, SID_A) and C.Is_Active (Core, SID_B) and C.Busy (Core),
+          "owning binding UNSUB sends exact frame removes only owned subscription");
    Ack;
+   N := M.Sent_Count (Wire);
+   begin
+      A.Unsubscribe (BA, SID => SID_A);
+      raise Program_Error with "retired binding UNSUB accepted";
+   exception when Runtime_Error =>
+      Check (True, "retired binding UNSUB rejected");
+   end;
+   Check (M.Sent_Count (Wire) = N and not C.Busy (Core)
+          and not C.Is_Active (Core, SID_A) and C.Is_Active (Core, SID_B),
+          "retired UNSUB no frame or subscription state change");
    Receive ("MSG 1 " & Env ("MessageA", Body_Text));
    Check (Calls_A = 3 and Event_Count (Unknown_Subscription) = 1, "UNSUB mapping removed");
    Receive ("-ERR Invalid-Message late error");
