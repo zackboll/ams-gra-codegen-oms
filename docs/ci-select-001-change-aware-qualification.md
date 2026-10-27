@@ -5,6 +5,16 @@
 **HOSTED_CI_PENDING**. This is not merge authorization. Independent review,
 hosted integration categories and actual merged-main acceptance remain required.
 
+Non-draft implementation PR: <https://github.com/zackboll/ams-gra-codegen-oms/pull/116>.
+Auto-merge was verified disabled. Initial implementation commit `ac3470a1109101ea65ccbe7cecb067e064aff794`
+(tree `ea5b4e41a2b66ab8d76b320c1780985cf999d338`) produced synthetic merge
+`f2c026ff0aadc19d6654c751c573fe5d7a44c3f4`. Its real complete 17-file diff
+selected all **16 ordinary cells and eight Deep jobs**, with no ordinary cells
+excluded. Hosted classification succeeded in run `40439985470`; the expected
+reusable check-name prefix was confirmed in actual queued job records. This is
+classification/job-graph evidence, **not** successful qualification. A follow-up
+commit adds the independent diff-completeness cross-check and final evidence.
+
 Starting and incorporated main commit:
 `77066e8e2cf4875274c0227cee16dcf0dc593c05`.
 Starting tree: `e088a7c68797c8da65ea2d1a92f85a963c22b949`.
@@ -82,7 +92,9 @@ identities, readable commit/tree objects, non-shallow history, exact checkout,
 and ordered synthetic merge parents `[event.base.sha, event.head.sha]`.
 `git diff --raw -z --no-ext-diff --no-textconv --find-renames BASE MERGE --`
 collects the entire proposed result, not a capped API files response and not a
-single-commit diff. Nonzero Git commands, malformed/truncated NUL records,
+single-commit diff. A second independent `--name-only -z --no-renames` inventory
+must agree, detecting even truncation at a complete record boundary. Nonzero
+Git commands, malformed/truncated NUL records,
 missing/mismatched identities and ambiguous history select full qualification
 with an explicit reason. Classification failure is not successful qualification:
 the preserved source identity checks and final gate can still fail the run.
@@ -235,10 +247,10 @@ pending jobs' `started_at`, which GitHub can set before actual execution.
 
 | Requirement | Evidence/status |
 |---|---|
-| Focused selector/gate/scheduler tests | 28 passed locally |
-| Underscore Python discovery | 74 tests after final additions; rerun evidence required |
+| Focused selector/gate/scheduler tests | 29 passed locally |
+| Underscore Python discovery | 75 passed locally |
 | `check-ci-split.sh` | Passed |
-| `test-check-ci-split.sh` | 477 checks passed; final repeat pending |
+| `test-check-ci-split.sh` | 477 checks passed, including final repeat |
 | Task077B layout self/mutation test | 3 tests passed; 312 mutation cases per inspected fixture |
 | Task060 / Task061 wrappers | Passed (including adversarial failure/marker cases) |
 | Task093 compiler placement | 12 passed, including exact-only PR condition control |

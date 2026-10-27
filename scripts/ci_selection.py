@@ -49,7 +49,18 @@ def complete_diff(root, base, head, merge):
         git(root, "ls-tree", "-r", "--full-tree", sha)
     raw = git(root, "diff", "--raw", "-z", "--no-abbrev", "--no-ext-diff", "--no-textconv",
               "--find-renames", base, merge, "--")
-    return parse_diff(raw)
+    changes = parse_diff(raw)
+    # Independently cross-check path completeness, including a truncation at a
+    # valid record boundary (which NUL framing alone cannot detect). Disabling
+    # renames here exposes BOTH sides of a rename, matching the raw inventory.
+    names = git(root, "diff", "--name-only", "-z", "--no-renames", "--no-ext-diff",
+                "--no-textconv", base, merge, "--")
+    if names and not names.endswith(b"\0"):
+        raise ValueError("truncated independent diff path collection")
+    names = [p.decode("utf-8", errors="strict") for p in names.split(b"\0")[:-1]]
+    if sorted(names) != sorted(p for c in changes for p in c["paths"]):
+        raise ValueError("incomplete diff: independent path inventories disagree")
+    return changes
 
 
 def parse_diff(raw):

@@ -197,6 +197,19 @@ class RealGitTests(unittest.TestCase):
             event['pull_request']['head']['sha']=changed_head
             self.assertEqual(self.classify(event,self.sha())['mode'],'full-pr')
 
+    def test_truncation_at_complete_record_boundary_detected(self):
+        original=selection.git
+        def truncated(root,*args):
+            result=original(root,*args)
+            if args[:2]==('diff','--raw'):
+                # Keep one complete record from the real two-file diff.
+                result=b'\0'.join(result.split(b'\0')[:2])+b'\0'
+            return result
+        with patch.object(selection,'git',side_effect=truncated):
+            manifest=self.classify()
+            self.assertEqual(manifest['mode'],'full-pr')
+            self.assertIn('independent path inventories disagree',manifest['reasons'][0]['reason'])
+
 
 class GateTests(unittest.TestCase):
     def setUp(self):
