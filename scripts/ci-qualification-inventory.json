@@ -2281,14 +2281,16 @@
     },
     {
       "workflow": "deep-ci.yml",
-      "job_id": "real-uci",
+      "job_id": "real-uci-temporal-naming",
       "cells": [
         {
-          "key": "real-uci",
-          "name": "real-uci",
+          "key": "real-uci-temporal-naming",
+          "name": "real-uci-temporal-naming",
           "variant": {},
           "lane": 4,
-          "artifacts": []
+          "artifacts": [
+            "perf007-real-uci-temporal-naming"
+          ]
         }
       ],
       "prerequisites": [],
@@ -2307,12 +2309,10 @@
       ],
       "direct_dependencies": [
         "scripts/check-task061-pinned.sh",
-        "scripts/check-task062-pinned.sh",
-        "scripts/check-task063-pinned.sh",
-        "scripts/check-task065-pinned.sh",
-        "scripts/check-task066-pinned.sh",
-        "scripts/check-task069-pinned.sh",
         "scripts/check-task071-uci.sh",
+        "scripts/check-task065-pinned.sh",
+        "scripts/real_uci_evidence.py",
+        "scripts/real-uci-contract.json",
         "scripts/fetch-pinned-uci-2.5.sh",
         "scripts/fetch-pinned-uci-2.6.sh"
       ],
@@ -2327,12 +2327,10 @@
       ],
       "tests_and_fixtures": [
         "scripts/check-task061-pinned.sh",
-        "scripts/check-task062-pinned.sh",
-        "scripts/check-task063-pinned.sh",
-        "scripts/check-task065-pinned.sh",
-        "scripts/check-task066-pinned.sh",
-        "scripts/check-task069-pinned.sh",
         "scripts/check-task071-uci.sh",
+        "scripts/check-task065-pinned.sh",
+        "scripts/real_uci_evidence.py",
+        "scripts/real-uci-contract.json",
         "scripts/fetch-pinned-uci-2.5.sh",
         "scripts/fetch-pinned-uci-2.6.sh"
       ],
@@ -2359,6 +2357,98 @@
           "run": "set -euo pipefail\nactual=\"$(git rev-parse HEAD)\"\ntree=\"$(git rev-parse HEAD^{tree})\"\ntest \"$actual\" = \"$GITHUB_SHA\"\ntest -n \"$tree\"\nprintf 'DEEP_CI_SOURCE_SHA=%s\\n' \"$actual\"\nprintf 'DEEP_CI_SOURCE_TREE=%s\\n' \"$tree\"\nprintf 'DEEP_CI_EVENT=%s\\n' \"$GITHUB_EVENT_NAME\"\n"
         },
         {
+          "name": "Initialize private shard evidence",
+          "run": "python3 scripts/real_uci_evidence.py init"
+        },
+        {
+          "uses": "dtolnay/rust-toolchain@stable"
+        },
+        {
+          "name": "Install GNAT",
+          "shell": "python3 scripts/real_uci_evidence.py setup gnat {0}",
+          "run": "sudo apt-get update\nsudo apt-get install -y gnat\n"
+        },
+        {
+          "name": "Verify GNAT availability",
+          "run": "command -v gnatmake\ngnatmake --version\n"
+        },
+        {
+          "name": "Fetch pinned UCI 2.5 and 2.6 (once)",
+          "shell": "python3 scripts/real_uci_evidence.py setup fetch {0}",
+          "run": "set -euo pipefail\nUCI25=\"$(scripts/fetch-pinned-uci-2.5.sh \"$RUNNER_TEMP/uci-2.5\")\"\nUCI26=\"$(scripts/fetch-pinned-uci-2.6.sh \"$RUNNER_TEMP/uci-2.6\")\"\necho \"AMS_GRA_UCI_2_5_ROOT=$UCI25\" >> \"$GITHUB_ENV\"\necho \"AMS_GRA_UCI_2_6_ROOT=$UCI26\" >> \"$GITHUB_ENV\"\n"
+        },
+        {
+          "name": "Prepare independent locked release generator",
+          "shell": "python3 scripts/real_uci_evidence.py setup build {0}",
+          "run": "set -euo pipefail\ncargo fetch --locked\ncargo build --release --locked -p ams-gra-codegen-oms\n"
+        },
+        {
+          "name": "Record verified pinned and toolchain identities",
+          "run": "python3 scripts/real_uci_evidence.py inputs"
+        },
+        {
+          "name": "Named TimeZulu pinned inventory and impact (Task 061)",
+          "shell": "python3 scripts/real_uci_evidence.py task 061 {0}",
+          "run": "bash scripts/check-task061-pinned.sh"
+        },
+        {
+          "name": "Real UCI route identity smoke (Task 071)",
+          "shell": "python3 scripts/real_uci_evidence.py task 071 {0}",
+          "run": "bash scripts/check-task071-uci.sh"
+        },
+        {
+          "name": "Ada semantic companion naming and smallest real vertical (Task 065)",
+          "shell": "python3 scripts/real_uci_evidence.py task 065 {0}",
+          "run": "bash scripts/check-task065-pinned.sh"
+        },
+        {
+          "name": "Reconcile complete shard evidence",
+          "if": "always()",
+          "run": "python3 scripts/real_uci_evidence.py finish"
+        },
+        {
+          "name": "Preserve mandatory shard evidence and failure diagnostics",
+          "if": "always()",
+          "uses": "actions/upload-artifact@v4",
+          "with": {
+            "name": "perf007-real-uci-temporal-naming",
+            "path": "${{ runner.temp }}/perf007/real-uci-temporal-naming/**",
+            "if-no-files-found": "error"
+          }
+        }
+      ],
+      "required_markers": [],
+      "original_steps_yaml": "    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n      - name: Verify Deep CI source identity\n        shell: bash\n        run: |\n          set -euo pipefail\n          actual=\"$(git rev-parse HEAD)\"\n          tree=\"$(git rev-parse HEAD^{tree})\"\n          test \"$actual\" = \"$GITHUB_SHA\"\n          test -n \"$tree\"\n          printf 'DEEP_CI_SOURCE_SHA=%s\\n' \"$actual\"\n          printf 'DEEP_CI_SOURCE_TREE=%s\\n' \"$tree\"\n          printf 'DEEP_CI_EVENT=%s\\n' \"$GITHUB_EVENT_NAME\"\n      - name: Initialize private shard evidence\n        run: python3 scripts/real_uci_evidence.py init\n      - uses: dtolnay/rust-toolchain@stable\n      - name: Install GNAT\n        shell: python3 scripts/real_uci_evidence.py setup gnat {0}\n        run: |\n          sudo apt-get update\n          sudo apt-get install -y gnat\n      # Hard gate, as in Fast CI: no `|| true`.\n      - name: Verify GNAT availability\n        run: |\n          command -v gnatmake\n          gnatmake --version\n      # Fetch each pinned release ONCE for the whole job. Both scripts verify\n      # the tag revision and root SHA-256 and fail hard on any mismatch; the\n      # tests verify the root SHA-256 again before using it.\n      - name: Fetch pinned UCI 2.5 and 2.6 (once)\n        shell: python3 scripts/real_uci_evidence.py setup fetch {0}\n        run: |\n          set -euo pipefail\n          UCI25=\"$(scripts/fetch-pinned-uci-2.5.sh \"$RUNNER_TEMP/uci-2.5\")\"\n          UCI26=\"$(scripts/fetch-pinned-uci-2.6.sh \"$RUNNER_TEMP/uci-2.6\")\"\n          echo \"AMS_GRA_UCI_2_5_ROOT=$UCI25\" >> \"$GITHUB_ENV\"\n          echo \"AMS_GRA_UCI_2_6_ROOT=$UCI26\" >> \"$GITHUB_ENV\"\n      - name: Prepare independent locked release generator\n        shell: python3 scripts/real_uci_evidence.py setup build {0}\n        run: |\n          set -euo pipefail\n          cargo fetch --locked\n          cargo build --release --locked -p ams-gra-codegen-oms\n      - name: Record verified pinned and toolchain identities\n        run: python3 scripts/real_uci_evidence.py inputs\n      - name: Named TimeZulu pinned inventory and impact (Task 061)\n        shell: python3 scripts/real_uci_evidence.py task 061 {0}\n        run: bash scripts/check-task061-pinned.sh\n      - name: Real UCI route identity smoke (Task 071)\n        shell: python3 scripts/real_uci_evidence.py task 071 {0}\n        run: bash scripts/check-task071-uci.sh\n      - name: Ada semantic companion naming and smallest real vertical (Task 065)\n        shell: python3 scripts/real_uci_evidence.py task 065 {0}\n        run: bash scripts/check-task065-pinned.sh\n      - name: Reconcile complete shard evidence\n        if: always()\n        run: python3 scripts/real_uci_evidence.py finish\n      - name: Preserve mandatory shard evidence and failure diagnostics\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: perf007-real-uci-temporal-naming\n          path: ${{ runner.temp }}/perf007/real-uci-temporal-naming/**\n          if-no-files-found: error\n",
+      "expected_header": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-4' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-temporal-naming', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-latest\n    timeout-minutes: 240",
+      "main_eligible": true,
+      "purpose": "PERF-007 exact original seven-task partition",
+      "source_policy": "synthetic merge github.sha",
+      "trigger_type": "workflow_call:\n  schedule:\n    - cron: \"0 6 * * *\"\n  workflow_dispatch:",
+      "pr_concurrency_identity": "${{ github.ref == 'refs/heads/main' && 'oms-main-slot-4' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-temporal-naming', github.workflow, github.run_id, github.run_attempt) }}",
+      "enabled_behavior": "independent workflow triggers",
+      "task_inventory": [
+        "061",
+        "071",
+        "065"
+      ]
+    },
+    {
+      "workflow": "deep-ci.yml",
+      "job_id": "real-uci-schema-ipv6",
+      "cells": [
+        {
+          "key": "real-uci-schema-ipv6",
+          "name": "real-uci-schema-ipv6",
+          "variant": {},
+          "lane": 1,
+          "artifacts": [
+            "perf007-real-uci-schema-ipv6"
+          ]
+        }
+      ],
+      "prerequisites": [],
+      "compiler_runtime": [
+        {
           "uses": "dtolnay/rust-toolchain@stable"
         },
         {
@@ -2368,49 +2458,269 @@
         {
           "name": "Verify GNAT availability",
           "run": "command -v gnatmake\ngnatmake --version\n"
+        }
+      ],
+      "direct_dependencies": [
+        "scripts/check-task069-pinned.sh",
+        "scripts/check-task062-pinned.sh",
+        "scripts/real_uci_evidence.py",
+        "scripts/real-uci-contract.json",
+        "scripts/fetch-pinned-uci-2.5.sh",
+        "scripts/fetch-pinned-uci-2.6.sh"
+      ],
+      "shared_dependencies": [
+        "Cargo.lock",
+        "Cargo.toml",
+        "crates/ir/**",
+        "crates/xsd-frontend/**",
+        "crates/codegen-core/**",
+        "crates/cli/**",
+        "crates/backend-*/**"
+      ],
+      "tests_and_fixtures": [
+        "scripts/check-task069-pinned.sh",
+        "scripts/check-task062-pinned.sh",
+        "scripts/real_uci_evidence.py",
+        "scripts/real-uci-contract.json",
+        "scripts/fetch-pinned-uci-2.5.sh",
+        "scripts/fetch-pinned-uci-2.6.sh"
+      ],
+      "selection_categories": [
+        "deep-harness"
+      ],
+      "infrastructure_required": true,
+      "pr_selectable": true,
+      "full_main_required": true,
+      "original_job": {
+        "runs-on": "ubuntu-latest",
+        "timeout-minutes": 240
+      },
+      "original_steps": [
+        {
+          "uses": "actions/checkout@v4",
+          "with": {
+            "ref": "${{ github.sha }}"
+          }
+        },
+        {
+          "name": "Verify Deep CI source identity",
+          "shell": "bash",
+          "run": "set -euo pipefail\nactual=\"$(git rev-parse HEAD)\"\ntree=\"$(git rev-parse HEAD^{tree})\"\ntest \"$actual\" = \"$GITHUB_SHA\"\ntest -n \"$tree\"\nprintf 'DEEP_CI_SOURCE_SHA=%s\\n' \"$actual\"\nprintf 'DEEP_CI_SOURCE_TREE=%s\\n' \"$tree\"\nprintf 'DEEP_CI_EVENT=%s\\n' \"$GITHUB_EVENT_NAME\"\n"
+        },
+        {
+          "name": "Initialize private shard evidence",
+          "run": "python3 scripts/real_uci_evidence.py init"
+        },
+        {
+          "uses": "dtolnay/rust-toolchain@stable"
+        },
+        {
+          "name": "Install GNAT",
+          "shell": "python3 scripts/real_uci_evidence.py setup gnat {0}",
+          "run": "sudo apt-get update\nsudo apt-get install -y gnat\n"
+        },
+        {
+          "name": "Verify GNAT availability",
+          "run": "command -v gnatmake\ngnatmake --version\n"
         },
         {
           "name": "Fetch pinned UCI 2.5 and 2.6 (once)",
+          "shell": "python3 scripts/real_uci_evidence.py setup fetch {0}",
           "run": "set -euo pipefail\nUCI25=\"$(scripts/fetch-pinned-uci-2.5.sh \"$RUNNER_TEMP/uci-2.5\")\"\nUCI26=\"$(scripts/fetch-pinned-uci-2.6.sh \"$RUNNER_TEMP/uci-2.6\")\"\necho \"AMS_GRA_UCI_2_5_ROOT=$UCI25\" >> \"$GITHUB_ENV\"\necho \"AMS_GRA_UCI_2_6_ROOT=$UCI26\" >> \"$GITHUB_ENV\"\n"
         },
         {
-          "name": "Named TimeZulu pinned inventory and impact (Task 061)",
-          "run": "bash scripts/check-task061-pinned.sh"
+          "name": "Prepare independent locked release generator",
+          "shell": "python3 scripts/real_uci_evidence.py setup build {0}",
+          "run": "set -euo pipefail\ncargo fetch --locked\ncargo build --release --locked -p ams-gra-codegen-oms\n"
         },
         {
-          "name": "Real UCI route identity smoke (Task 071)",
-          "run": "bash scripts/check-task071-uci.sh"
+          "name": "Record verified pinned and toolchain identities",
+          "run": "python3 scripts/real_uci_evidence.py inputs"
         },
         {
           "name": "Pinned semantic schema diff (Task 069, once for both releases)",
+          "shell": "python3 scripts/real_uci_evidence.py task 069 {0}",
           "run": "bash scripts/check-task069-pinned.sh"
         },
         {
           "name": "Exact IPv6 pinned inventory, impact and real vertical (Task 062)",
+          "shell": "python3 scripts/real_uci_evidence.py task 062 {0}",
           "run": "bash scripts/check-task062-pinned.sh"
         },
         {
-          "name": "Exact patterned integral pinned evidence (Task 063)",
-          "run": "bash scripts/check-task063-pinned.sh"
+          "name": "Reconcile complete shard evidence",
+          "if": "always()",
+          "run": "python3 scripts/real_uci_evidence.py finish"
         },
         {
-          "name": "Ada semantic companion naming and smallest real vertical (Task 065)",
-          "run": "bash scripts/check-task065-pinned.sh"
-        },
-        {
-          "name": "Unicode 3.1 pinned profiles, impact and real vertical (Task 066)",
-          "run": "bash scripts/check-task066-pinned.sh"
+          "name": "Preserve mandatory shard evidence and failure diagnostics",
+          "if": "always()",
+          "uses": "actions/upload-artifact@v4",
+          "with": {
+            "name": "perf007-real-uci-schema-ipv6",
+            "path": "${{ runner.temp }}/perf007/real-uci-schema-ipv6/**",
+            "if-no-files-found": "error"
+          }
         }
       ],
       "required_markers": [],
-      "original_steps_yaml": "    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n      - name: Verify Deep CI source identity\n        shell: bash\n        run: |\n          set -euo pipefail\n          actual=\"$(git rev-parse HEAD)\"\n          tree=\"$(git rev-parse HEAD^{tree})\"\n          test \"$actual\" = \"$GITHUB_SHA\"\n          test -n \"$tree\"\n          printf 'DEEP_CI_SOURCE_SHA=%s\\n' \"$actual\"\n          printf 'DEEP_CI_SOURCE_TREE=%s\\n' \"$tree\"\n          printf 'DEEP_CI_EVENT=%s\\n' \"$GITHUB_EVENT_NAME\"\n      - uses: dtolnay/rust-toolchain@stable\n      - name: Install GNAT\n        run: |\n          sudo apt-get update\n          sudo apt-get install -y gnat\n      # Hard gate, as in Fast CI: no `|| true`.\n      - name: Verify GNAT availability\n        run: |\n          command -v gnatmake\n          gnatmake --version\n      # Fetch each pinned release ONCE for the whole job. Both scripts verify\n      # the tag revision and root SHA-256 and fail hard on any mismatch; the\n      # tests verify the root SHA-256 again before using it.\n      - name: Fetch pinned UCI 2.5 and 2.6 (once)\n        run: |\n          set -euo pipefail\n          UCI25=\"$(scripts/fetch-pinned-uci-2.5.sh \"$RUNNER_TEMP/uci-2.5\")\"\n          UCI26=\"$(scripts/fetch-pinned-uci-2.6.sh \"$RUNNER_TEMP/uci-2.6\")\"\n          echo \"AMS_GRA_UCI_2_5_ROOT=$UCI25\" >> \"$GITHUB_ENV\"\n          echo \"AMS_GRA_UCI_2_6_ROOT=$UCI26\" >> \"$GITHUB_ENV\"\n      # Marker checks below use here-strings, never `printf | grep -q`: under\n      # pipefail a grep that exits on its first match can SIGPIPE a writer that\n      # is still emitting a large output and fail a passing check.\n      #\n      - name: Named TimeZulu pinned inventory and impact (Task 061)\n        run: bash scripts/check-task061-pinned.sh\n      - name: Real UCI route identity smoke (Task 071)\n        run: bash scripts/check-task071-uci.sh\n      - name: Pinned semantic schema diff (Task 069, once for both releases)\n        run: bash scripts/check-task069-pinned.sh\n      - name: Exact IPv6 pinned inventory, impact and real vertical (Task 062)\n        run: bash scripts/check-task062-pinned.sh\n      - name: Exact patterned integral pinned evidence (Task 063)\n        run: bash scripts/check-task063-pinned.sh\n      - name: Ada semantic companion naming and smallest real vertical (Task 065)\n        run: bash scripts/check-task065-pinned.sh\n      - name: Unicode 3.1 pinned profiles, impact and real vertical (Task 066)\n        run: bash scripts/check-task066-pinned.sh\n\n  # Independent runner: no artifacts or environment inherited from real-uci.\n",
-      "expected_header": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-4' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-latest\n    timeout-minutes: 240",
+      "original_steps_yaml": "    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n      - name: Verify Deep CI source identity\n        shell: bash\n        run: |\n          set -euo pipefail\n          actual=\"$(git rev-parse HEAD)\"\n          tree=\"$(git rev-parse HEAD^{tree})\"\n          test \"$actual\" = \"$GITHUB_SHA\"\n          test -n \"$tree\"\n          printf 'DEEP_CI_SOURCE_SHA=%s\\n' \"$actual\"\n          printf 'DEEP_CI_SOURCE_TREE=%s\\n' \"$tree\"\n          printf 'DEEP_CI_EVENT=%s\\n' \"$GITHUB_EVENT_NAME\"\n      - name: Initialize private shard evidence\n        run: python3 scripts/real_uci_evidence.py init\n      - uses: dtolnay/rust-toolchain@stable\n      - name: Install GNAT\n        shell: python3 scripts/real_uci_evidence.py setup gnat {0}\n        run: |\n          sudo apt-get update\n          sudo apt-get install -y gnat\n      # Hard gate, as in Fast CI: no `|| true`.\n      - name: Verify GNAT availability\n        run: |\n          command -v gnatmake\n          gnatmake --version\n      # Fetch each pinned release ONCE for the whole job. Both scripts verify\n      # the tag revision and root SHA-256 and fail hard on any mismatch; the\n      # tests verify the root SHA-256 again before using it.\n      - name: Fetch pinned UCI 2.5 and 2.6 (once)\n        shell: python3 scripts/real_uci_evidence.py setup fetch {0}\n        run: |\n          set -euo pipefail\n          UCI25=\"$(scripts/fetch-pinned-uci-2.5.sh \"$RUNNER_TEMP/uci-2.5\")\"\n          UCI26=\"$(scripts/fetch-pinned-uci-2.6.sh \"$RUNNER_TEMP/uci-2.6\")\"\n          echo \"AMS_GRA_UCI_2_5_ROOT=$UCI25\" >> \"$GITHUB_ENV\"\n          echo \"AMS_GRA_UCI_2_6_ROOT=$UCI26\" >> \"$GITHUB_ENV\"\n      - name: Prepare independent locked release generator\n        shell: python3 scripts/real_uci_evidence.py setup build {0}\n        run: |\n          set -euo pipefail\n          cargo fetch --locked\n          cargo build --release --locked -p ams-gra-codegen-oms\n      - name: Record verified pinned and toolchain identities\n        run: python3 scripts/real_uci_evidence.py inputs\n      - name: Pinned semantic schema diff (Task 069, once for both releases)\n        shell: python3 scripts/real_uci_evidence.py task 069 {0}\n        run: bash scripts/check-task069-pinned.sh\n      - name: Exact IPv6 pinned inventory, impact and real vertical (Task 062)\n        shell: python3 scripts/real_uci_evidence.py task 062 {0}\n        run: bash scripts/check-task062-pinned.sh\n      - name: Reconcile complete shard evidence\n        if: always()\n        run: python3 scripts/real_uci_evidence.py finish\n      - name: Preserve mandatory shard evidence and failure diagnostics\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: perf007-real-uci-schema-ipv6\n          path: ${{ runner.temp }}/perf007/real-uci-schema-ipv6/**\n          if-no-files-found: error\n",
+      "expected_header": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-1' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-schema-ipv6', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-latest\n    timeout-minutes: 240",
       "main_eligible": true,
-      "purpose": "Inherited full qualification",
+      "purpose": "PERF-007 exact original seven-task partition",
       "source_policy": "synthetic merge github.sha",
       "trigger_type": "workflow_call:\n  schedule:\n    - cron: \"0 6 * * *\"\n  workflow_dispatch:",
-      "pr_concurrency_identity": "${{ github.ref == 'refs/heads/main' && 'oms-main-slot-4' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci', github.workflow, github.run_id, github.run_attempt) }}",
-      "enabled_behavior": "independent workflow triggers"
+      "pr_concurrency_identity": "${{ github.ref == 'refs/heads/main' && 'oms-main-slot-1' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-schema-ipv6', github.workflow, github.run_id, github.run_attempt) }}",
+      "enabled_behavior": "independent workflow triggers",
+      "task_inventory": [
+        "069",
+        "062"
+      ]
+    },
+    {
+      "workflow": "deep-ci.yml",
+      "job_id": "real-uci-integral-unicode",
+      "cells": [
+        {
+          "key": "real-uci-integral-unicode",
+          "name": "real-uci-integral-unicode",
+          "variant": {},
+          "lane": 3,
+          "artifacts": [
+            "perf007-real-uci-integral-unicode"
+          ]
+        }
+      ],
+      "prerequisites": [],
+      "compiler_runtime": [
+        {
+          "uses": "dtolnay/rust-toolchain@stable"
+        },
+        {
+          "name": "Install GNAT",
+          "run": "sudo apt-get update\nsudo apt-get install -y gnat\n"
+        },
+        {
+          "name": "Verify GNAT availability",
+          "run": "command -v gnatmake\ngnatmake --version\n"
+        }
+      ],
+      "direct_dependencies": [
+        "scripts/check-task063-pinned.sh",
+        "scripts/check-task066-pinned.sh",
+        "scripts/real_uci_evidence.py",
+        "scripts/real-uci-contract.json",
+        "scripts/fetch-pinned-uci-2.5.sh",
+        "scripts/fetch-pinned-uci-2.6.sh"
+      ],
+      "shared_dependencies": [
+        "Cargo.lock",
+        "Cargo.toml",
+        "crates/ir/**",
+        "crates/xsd-frontend/**",
+        "crates/codegen-core/**",
+        "crates/cli/**",
+        "crates/backend-*/**"
+      ],
+      "tests_and_fixtures": [
+        "scripts/check-task063-pinned.sh",
+        "scripts/check-task066-pinned.sh",
+        "scripts/real_uci_evidence.py",
+        "scripts/real-uci-contract.json",
+        "scripts/fetch-pinned-uci-2.5.sh",
+        "scripts/fetch-pinned-uci-2.6.sh"
+      ],
+      "selection_categories": [
+        "deep-harness"
+      ],
+      "infrastructure_required": true,
+      "pr_selectable": true,
+      "full_main_required": true,
+      "original_job": {
+        "runs-on": "ubuntu-latest",
+        "timeout-minutes": 240
+      },
+      "original_steps": [
+        {
+          "uses": "actions/checkout@v4",
+          "with": {
+            "ref": "${{ github.sha }}"
+          }
+        },
+        {
+          "name": "Verify Deep CI source identity",
+          "shell": "bash",
+          "run": "set -euo pipefail\nactual=\"$(git rev-parse HEAD)\"\ntree=\"$(git rev-parse HEAD^{tree})\"\ntest \"$actual\" = \"$GITHUB_SHA\"\ntest -n \"$tree\"\nprintf 'DEEP_CI_SOURCE_SHA=%s\\n' \"$actual\"\nprintf 'DEEP_CI_SOURCE_TREE=%s\\n' \"$tree\"\nprintf 'DEEP_CI_EVENT=%s\\n' \"$GITHUB_EVENT_NAME\"\n"
+        },
+        {
+          "name": "Initialize private shard evidence",
+          "run": "python3 scripts/real_uci_evidence.py init"
+        },
+        {
+          "uses": "dtolnay/rust-toolchain@stable"
+        },
+        {
+          "name": "Install GNAT",
+          "shell": "python3 scripts/real_uci_evidence.py setup gnat {0}",
+          "run": "sudo apt-get update\nsudo apt-get install -y gnat\n"
+        },
+        {
+          "name": "Verify GNAT availability",
+          "run": "command -v gnatmake\ngnatmake --version\n"
+        },
+        {
+          "name": "Fetch pinned UCI 2.5 and 2.6 (once)",
+          "shell": "python3 scripts/real_uci_evidence.py setup fetch {0}",
+          "run": "set -euo pipefail\nUCI25=\"$(scripts/fetch-pinned-uci-2.5.sh \"$RUNNER_TEMP/uci-2.5\")\"\nUCI26=\"$(scripts/fetch-pinned-uci-2.6.sh \"$RUNNER_TEMP/uci-2.6\")\"\necho \"AMS_GRA_UCI_2_5_ROOT=$UCI25\" >> \"$GITHUB_ENV\"\necho \"AMS_GRA_UCI_2_6_ROOT=$UCI26\" >> \"$GITHUB_ENV\"\n"
+        },
+        {
+          "name": "Prepare independent locked release generator",
+          "shell": "python3 scripts/real_uci_evidence.py setup build {0}",
+          "run": "set -euo pipefail\ncargo fetch --locked\ncargo build --release --locked -p ams-gra-codegen-oms\n"
+        },
+        {
+          "name": "Record verified pinned and toolchain identities",
+          "run": "python3 scripts/real_uci_evidence.py inputs"
+        },
+        {
+          "name": "Exact patterned integral pinned evidence (Task 063)",
+          "shell": "python3 scripts/real_uci_evidence.py task 063 {0}",
+          "run": "bash scripts/check-task063-pinned.sh"
+        },
+        {
+          "name": "Unicode 3.1 pinned profiles, impact and real vertical (Task 066)",
+          "shell": "python3 scripts/real_uci_evidence.py task 066 {0}",
+          "run": "bash scripts/check-task066-pinned.sh"
+        },
+        {
+          "name": "Reconcile complete shard evidence",
+          "if": "always()",
+          "run": "python3 scripts/real_uci_evidence.py finish"
+        },
+        {
+          "name": "Preserve mandatory shard evidence and failure diagnostics",
+          "if": "always()",
+          "uses": "actions/upload-artifact@v4",
+          "with": {
+            "name": "perf007-real-uci-integral-unicode",
+            "path": "${{ runner.temp }}/perf007/real-uci-integral-unicode/**",
+            "if-no-files-found": "error"
+          }
+        }
+      ],
+      "required_markers": [],
+      "original_steps_yaml": "    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n      - name: Verify Deep CI source identity\n        shell: bash\n        run: |\n          set -euo pipefail\n          actual=\"$(git rev-parse HEAD)\"\n          tree=\"$(git rev-parse HEAD^{tree})\"\n          test \"$actual\" = \"$GITHUB_SHA\"\n          test -n \"$tree\"\n          printf 'DEEP_CI_SOURCE_SHA=%s\\n' \"$actual\"\n          printf 'DEEP_CI_SOURCE_TREE=%s\\n' \"$tree\"\n          printf 'DEEP_CI_EVENT=%s\\n' \"$GITHUB_EVENT_NAME\"\n      - name: Initialize private shard evidence\n        run: python3 scripts/real_uci_evidence.py init\n      - uses: dtolnay/rust-toolchain@stable\n      - name: Install GNAT\n        shell: python3 scripts/real_uci_evidence.py setup gnat {0}\n        run: |\n          sudo apt-get update\n          sudo apt-get install -y gnat\n      # Hard gate, as in Fast CI: no `|| true`.\n      - name: Verify GNAT availability\n        run: |\n          command -v gnatmake\n          gnatmake --version\n      # Fetch each pinned release ONCE for the whole job. Both scripts verify\n      # the tag revision and root SHA-256 and fail hard on any mismatch; the\n      # tests verify the root SHA-256 again before using it.\n      - name: Fetch pinned UCI 2.5 and 2.6 (once)\n        shell: python3 scripts/real_uci_evidence.py setup fetch {0}\n        run: |\n          set -euo pipefail\n          UCI25=\"$(scripts/fetch-pinned-uci-2.5.sh \"$RUNNER_TEMP/uci-2.5\")\"\n          UCI26=\"$(scripts/fetch-pinned-uci-2.6.sh \"$RUNNER_TEMP/uci-2.6\")\"\n          echo \"AMS_GRA_UCI_2_5_ROOT=$UCI25\" >> \"$GITHUB_ENV\"\n          echo \"AMS_GRA_UCI_2_6_ROOT=$UCI26\" >> \"$GITHUB_ENV\"\n      - name: Prepare independent locked release generator\n        shell: python3 scripts/real_uci_evidence.py setup build {0}\n        run: |\n          set -euo pipefail\n          cargo fetch --locked\n          cargo build --release --locked -p ams-gra-codegen-oms\n      - name: Record verified pinned and toolchain identities\n        run: python3 scripts/real_uci_evidence.py inputs\n      - name: Exact patterned integral pinned evidence (Task 063)\n        shell: python3 scripts/real_uci_evidence.py task 063 {0}\n        run: bash scripts/check-task063-pinned.sh\n      - name: Unicode 3.1 pinned profiles, impact and real vertical (Task 066)\n        shell: python3 scripts/real_uci_evidence.py task 066 {0}\n        run: bash scripts/check-task066-pinned.sh\n      - name: Reconcile complete shard evidence\n        if: always()\n        run: python3 scripts/real_uci_evidence.py finish\n      - name: Preserve mandatory shard evidence and failure diagnostics\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: perf007-real-uci-integral-unicode\n          path: ${{ runner.temp }}/perf007/real-uci-integral-unicode/**\n          if-no-files-found: error\n",
+      "expected_header": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-3' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-integral-unicode', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-latest\n    timeout-minutes: 240",
+      "main_eligible": true,
+      "purpose": "PERF-007 exact original seven-task partition",
+      "source_policy": "synthetic merge github.sha",
+      "trigger_type": "workflow_call:\n  schedule:\n    - cron: \"0 6 * * *\"\n  workflow_dispatch:",
+      "pr_concurrency_identity": "${{ github.ref == 'refs/heads/main' && 'oms-main-slot-3' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-integral-unicode', github.workflow, github.run_id, github.run_attempt) }}",
+      "enabled_behavior": "independent workflow triggers",
+      "task_inventory": [
+        "063",
+        "066"
+      ]
     },
     {
       "workflow": "deep-ci.yml",
@@ -2910,7 +3220,7 @@
           "key": "real-sleet",
           "name": "real-sleet",
           "variant": {},
-          "lane": 2,
+          "lane": 4,
           "artifacts": []
         }
       ],
@@ -3007,12 +3317,12 @@
         "grep -qE '^test result: ok\\. 1 passed' <<<\"$output\""
       ],
       "original_steps_yaml": "    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n      - name: Verify Deep CI source identity\n        shell: bash\n        run: |\n          set -euo pipefail\n          actual=\"$(git rev-parse HEAD)\"\n          tree=\"$(git rev-parse HEAD^{tree})\"\n          test \"$actual\" = \"$GITHUB_SHA\"\n          test -n \"$tree\"\n          printf 'DEEP_CI_SOURCE_SHA=%s\\n' \"$actual\"\n          printf 'DEEP_CI_SOURCE_TREE=%s\\n' \"$tree\"\n          printf 'DEEP_CI_EVENT=%s\\n' \"$GITHUB_EVENT_NAME\"\n      - uses: dtolnay/rust-toolchain@stable\n      - uses: actions/setup-python@v5\n        with:\n          python-version: |\n            3.11\n            3.13\n      - name: Install pinned Python LA-CAL runtime\n        run: |\n          python3.11 -m pip install ./python/oms-lacal-runtime\n          python3.13 -m pip install ./python/oms-lacal-runtime\n      - name: Fetch pinned UCI 2.5 (once)\n        run: |\n          set -euo pipefail\n          UCI25=\"$(scripts/fetch-pinned-uci-2.5.sh \"$RUNNER_TEMP/uci-2.5\")\"\n          echo \"AMS_GRA_UCI_2_5_ROOT=$UCI25\" >> \"$GITHUB_ENV\"\n      - name: Real UCI 2.5 codecs (Tasks 050/052, must execute)\n        run: |\n          set -euo pipefail\n          # Task 050: the REAL UCI 2.5 PositionReport codec.\n          output=\"$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test real_uci_position_report -- \\\n            --exact real::task050_real_position_report_decodes_and_re_encodes --nocapture 2>&1)\"\n          printf '%s\\n' \"$output\"\n          grep -Fqx 'REAL POSITIONREPORT CODEC: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 1 passed' <<<\"$output\"\n          # Task 052: the REAL UCI 2.5 SubsystemStream hexBinary codec.\n          output=\"$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test real_uci_subsystem_stream -- \\\n            --exact real::task052_real_subsystem_stream_hex_binary_round_trips --nocapture 2>&1)\"\n          printf '%s\\n' \"$output\"\n          grep -Fqx 'REAL SUBSYSTEMSTREAM HEXBINARY CODEC: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 1 passed' <<<\"$output\"\n          # Task 058: the REAL UCI 2.5 AMTI_SettingsCommand codec (the\n          # zero-length bounded-ASCII EmptyType through the generated model).\n          output=\"$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test real_uci_amti_settings -- \\\n            --exact real::task058_real_amti_settings_empty_type_round_trips --nocapture 2>&1)\"\n          printf '%s\\n' \"$output\"\n          grep -Fqx 'REAL AMTI_SETTINGSCOMMAND EMPTYTYPE CODEC: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 1 passed' <<<\"$output\"\n          # Task 059: real FileMetadata's FileNameType through the generated\n          # Rust codec; invalid lexical text must fail checked construction.\n          output=\"$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test real_uci_file_metadata -- \\\n            --exact real::task059_real_file_metadata_structured_ascii_codec --nocapture 2>&1)\"\n          printf '%s\\n' \"$output\"\n          grep -Fqx 'REAL FILEMETADATA STRUCTURED ASCII CODEC: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 1 passed' <<<\"$output\"\n      # AMS_GRA_UCI_2_5_ROOT (from GITHUB_ENV) also enables the script's real\n      # PositionReport / SubsystemStream round trips through Sleet.\n      - name: Rust LA-CAL runtime against real pinned Sleet (e38f61d8)\n        env:\n          PY006_PYTHONS: python3.11 python3.13\n        run: |\n          set -euo pipefail\n          test -n \"$AMS_GRA_UCI_2_5_ROOT\"\n          scripts/run-real-sleet-test.sh\n",
-      "expected_header": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-2' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-sleet', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-latest\n    timeout-minutes: 60",
+      "expected_header": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-4' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-sleet', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-latest\n    timeout-minutes: 60",
       "main_eligible": true,
       "purpose": "Inherited full qualification",
       "source_policy": "synthetic merge github.sha",
       "trigger_type": "workflow_call:\n  schedule:\n    - cron: \"0 6 * * *\"\n  workflow_dispatch:",
-      "pr_concurrency_identity": "${{ github.ref == 'refs/heads/main' && 'oms-main-slot-2' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-sleet', github.workflow, github.run_id, github.run_attempt) }}",
+      "pr_concurrency_identity": "${{ github.ref == 'refs/heads/main' && 'oms-main-slot-4' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-sleet', github.workflow, github.run_id, github.run_attempt) }}",
       "enabled_behavior": "independent workflow triggers"
     },
     {
@@ -3621,7 +3931,7 @@
   "deep_caller": "    needs: changes\n    if: github.event_name != 'pull_request' || fromJSON(needs.changes.outputs.manifest).deep\n    uses: ./.github/workflows/deep-ci.yml",
   "orchestration_payloads": {
     "changes": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-ci.yml-changes', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-latest\n    timeout-minutes: 5\n    outputs:\n      manifest: ${{ steps.select.outputs.manifest }}\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n          fetch-depth: 0\n      - name: Classify verified proposed merge (main always full)\n        id: select\n        run: python3 scripts/ci-select-changes.py\n      - uses: actions/upload-artifact@v4\n        with:\n          name: ci-selection\n          path: ci-selection.json\n          if-no-files-found: error",
-    "baseline": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-ci.yml-baseline', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    needs: changes\n    runs-on: ubuntu-latest\n    timeout-minutes: 10\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n          fetch-depth: 0\n      - name: Mandatory documentation and fail-closed orchestration policy\n        run: |\n          python3 scripts/ci-policy.py\n          python3 scripts/ci-doc-policy.py\n          python3 -m unittest discover -s scripts -p 'test_ci_select*.py'\n          bash scripts/check-ci-split.sh\n          bash scripts/test-check-ci-split.sh\n          python3 scripts/test-task060-ci-wrappers.py\n          python3 scripts/test-task061-ci-wrappers.py\n          python3 scripts/test-task093-compiler-placement.py\n          git diff --check\n      - name: Actionlint (pinned; queue syntax also independently guarded)\n        env:\n          ACTIONLINT_VERSION: 1.7.12\n        run: |\n          set -euo pipefail\n          curl --fail --location --retry 3 --output \"$RUNNER_TEMP/actionlint.tar.gz\" \"https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz\"\n          echo \"8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  $RUNNER_TEMP/actionlint.tar.gz\" | sha256sum --check --strict\n          mkdir -p \"$RUNNER_TEMP/ci-select-tools\"\n          tar -xzf \"$RUNNER_TEMP/actionlint.tar.gz\" -C \"$RUNNER_TEMP/ci-select-tools\" actionlint\n          ACTIONLINT=\"$RUNNER_TEMP/ci-select-tools/actionlint\" bash scripts/check-ci-actionlint.sh",
+    "baseline": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-ci.yml-baseline', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    needs: changes\n    runs-on: ubuntu-latest\n    timeout-minutes: 10\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n          fetch-depth: 0\n      - name: Mandatory documentation and fail-closed orchestration policy\n        run: |\n          python3 scripts/ci-policy.py\n          python3 scripts/ci-doc-policy.py\n          python3 -m unittest discover -s scripts -p 'test_ci_select*.py'\n          python3 -m unittest discover -s scripts -p 'test_real_uci*.py'\n          bash scripts/check-ci-split.sh\n          bash scripts/test-check-ci-split.sh\n          python3 scripts/test-task060-ci-wrappers.py\n          python3 scripts/test-task061-ci-wrappers.py\n          python3 scripts/test-task093-compiler-placement.py\n          git diff --check\n      - name: Actionlint (pinned; queue syntax also independently guarded)\n        env:\n          ACTIONLINT_VERSION: 1.7.12\n        run: |\n          set -euo pipefail\n          curl --fail --location --retry 3 --output \"$RUNNER_TEMP/actionlint.tar.gz\" \"https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz\"\n          echo \"8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  $RUNNER_TEMP/actionlint.tar.gz\" | sha256sum --check --strict\n          mkdir -p \"$RUNNER_TEMP/ci-select-tools\"\n          tar -xzf \"$RUNNER_TEMP/actionlint.tar.gz\" -C \"$RUNNER_TEMP/ci-select-tools\" actionlint\n          ACTIONLINT=\"$RUNNER_TEMP/ci-select-tools/actionlint\" bash scripts/check-ci-actionlint.sh",
     "pr-ci-required": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-ci.yml-pr-ci-required', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    if: ${{ always() }}\n    needs: [changes, baseline, deep-qualification, ada-lacal-runtime-core, ada-float64-codec, ada-time-zulu-codec, python-model-backend, ada-float32-codec, ada-repeated-temporal-codec, ada-datetime-codec, ada-json-guard, ada-generated-codec, ada-repeated-codec, ada-duration-codec, ada-hexbinary-codec, ada-repeated-choice-codec, rust]\n    runs-on: ubuntu-latest\n    timeout-minutes: 10\n    permissions:\n      contents: read\n      actions: read\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n          fetch-depth: 0\n      - name: Recompute selection; require every selected cell and evidence\n        env:\n          SELECTION_MANIFEST: ${{ needs.changes.outputs.manifest }}\n          NEEDS_JSON: ${{ toJSON(needs) }}\n          GH_TOKEN: ${{ github.token }}\n        run: python3 scripts/ci-required-gate.py\n      - uses: actions/upload-artifact@v4\n        with:\n          name: ci-required-result\n          path: ci-required-result.json\n          if-no-files-found: error"
   },
   "ci_header": "name: CI\non:\n  pull_request:\n  push:\n    branches:\n      - main\n  workflow_dispatch:\npermissions:\n  contents: read\nconcurrency:\n  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}\n  cancel-in-progress: ${{ github.event_name == 'pull_request' }}",
@@ -3640,5 +3950,6 @@
     "scripts/ci002/requirements.txt": "9057bfbc5f7470fb710e417b3865d5de491865ea13beb096c2a2c3f1b7418a12",
     "scripts/ci002/gate.py": "6b85173313501c7161284fc16d054466ea6a5af6df970792e8354b30b895a0f8",
     "scripts/ci002/dispatch.py": "09e984d2f7bc0695f235871c2afb26f455f3b0f3e1eba8a8b1d9c9e6a25a6921"
-  }
+  },
+  "real_uci_contract": "scripts/real-uci-contract.json"
 }

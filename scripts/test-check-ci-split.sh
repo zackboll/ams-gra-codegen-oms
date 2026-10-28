@@ -203,7 +203,7 @@ import re
 import sys
 from pathlib import Path
 text = Path(sys.argv[1]).read_text()
-job = re.search(r'^  real-uci:\n.*?(?=^  [\w-]+:|\Z)', text, re.M | re.S)
+job = re.search(r'^  real-uci-temporal-naming:\n.*?(?=^  [\w-]+:|\Z)', text, re.M | re.S)
 assert job
 body = job[0]
 line = next(line for line in body.splitlines(True)

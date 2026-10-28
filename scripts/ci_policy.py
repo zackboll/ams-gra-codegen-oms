@@ -64,6 +64,8 @@ def check(policy=None, workflows=None):
             raise ValueError('inherited trusted-dispatch source changed: ' + path)
     if workflows is None:
         workflows = {p.name: p.read_text() for p in (ROOT / '.github/workflows').iterdir() if p.suffix in ('.yml', '.yaml')}
+    from real_uci_evidence import check_layout
+    check_layout(blocks(workflows['deep-ci.yml'])[1])
     if policy['lanes'] != [f'oms-main-slot-{n}' for n in range(1, 6)]:
         raise ValueError("must define exactly five unique common lanes")
     security = {'ci002-validation.yml', 'oms-trusted-pr-signal.yml', 'oms-ryzen-trusted-dispatch.yml'}

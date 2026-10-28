@@ -1,5 +1,21 @@
 # CI-SELECT-001 — change-aware PR qualification and five main lanes
 
+## Stacked PERF-007 graph amendment
+
+The stacked PERF-007 change replaces only the seven-task serial `real-uci`
+record with mandatory `real-uci-temporal-naming` (061/071/065, lane 4),
+`real-uci-schema-ipv6` (069/062, lane 1) and `real-uci-integral-unicode`
+(063/066, lane 3). Deep therefore has ten jobs and the full runner inventory
+36 cells; the five simultaneous main lanes remain unchanged. Real-Sleet moves
+from lane 2 to lane 4 using observed Fast/Deep execution loads, with no payload
+change. The final gate checks each actual job and independently reconciles
+source-bound structured artifact contents and the original disjoint task union.
+Check-name migration, full original marker inventory, baseline evidence, lane
+model and pending hosted acceptance are documented in
+`docs/perf-007-deep-real-uci-parallelism.md`. The historical observations below
+describe CI-SELECT-001 before that stacked graph amendment, not measured PERF-007
+performance. PERF-007 must not merge before this parent is qualified/integrated.
+
 ## Disposition and source reconciliation
 
 **HOSTED_CI_PENDING**. This is not merge authorization. Independent review,

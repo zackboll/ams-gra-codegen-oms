@@ -4,6 +4,10 @@ import json
 import os
 from pathlib import Path
 import urllib.request
+import urllib.error
+import io
+import zipfile
+from real_uci_evidence import SHARDS, ORIGINAL, verify_bundle
 from ci_selection import ROOT, complete_diff, from_environment, git, inventory, ordinary_jobs
 
 
@@ -83,6 +87,59 @@ def evidence(run_id, attempt):
                 artifacts=pages(f"actions/runs/{run_id}/artifacts", "artifacts"))
 
 
+def download_bundle(artifact):
+    """Read data only. Never extract paths or execute untrusted artifact code."""
+    url = ('https://api.github.com/repos/' + os.environ['GITHUB_REPOSITORY']
+           + f'/actions/artifacts/{artifact["id"]}/zip')
+    request = urllib.request.Request(url, headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN']})
+    # GitHub redirects the archive request to a time-limited signed blob URL.
+    # Do not forward the API credential to that host.
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, headers, newurl):
+            return None
+    try:
+        response = urllib.request.build_opener(NoRedirect).open(request, timeout=60)
+    except urllib.error.HTTPError as error:
+        if error.code != 302:
+            raise
+        location = error.headers['Location']
+        error.close()
+        if not location.startswith('https://'):
+            raise ValueError('unsafe evidence redirect')
+        response = urllib.request.urlopen(location, timeout=60)
+    with response:
+        data = response.read(512 * 1024 * 1024 + 1)
+    if len(data) > 512 * 1024 * 1024:
+        raise ValueError('oversized evidence archive')
+    files = {}
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        if sum(i.file_size for i in archive.infolist()) > 1024 * 1024 * 1024:
+            raise ValueError('oversized expanded evidence')
+        for entry in archive.infolist():
+            if entry.is_dir():
+                continue
+            name = entry.filename
+            if name in files or name.startswith('/') or '..' in name.split('/'):
+                raise ValueError('duplicate/unsafe evidence path')
+            files[name] = archive.read(entry)
+    return files
+
+
+def reconcile_primary(artifacts, sha, tree, run_id, attempt, loader=download_bundle):
+    completed = []
+    summaries = {}
+    for shard in SHARDS:
+        matches = [a for a in artifacts if a['name'] == 'perf007-' + shard]
+        if len(matches) != 1 or matches[0]['expired'] or matches[0]['size_in_bytes'] <= 0:
+            raise ValueError('missing/duplicate shard artifact: ' + shard)
+        summary = verify_bundle(loader(matches[0]), shard, sha, tree, run_id, attempt)
+        summaries[shard] = summary
+        completed.extend(summary['tasks'])
+    if sorted(completed) != sorted(ORIGINAL) or len(set(completed)) != len(ORIGINAL):
+        raise ValueError('original qualification != disjoint union of runtime evidence')
+    return summaries
+
+
 def verify_source(manifest, policy, run, sha, event_name):
     identities = manifest['identities']
     if identities['merge'] != sha or git(ROOT, 'rev-parse', 'HEAD').decode().strip() != sha:
@@ -106,8 +163,14 @@ def main():
     verify_source(expected, policy, execution, os.environ['GITHUB_SHA'], os.environ['GITHUB_EVENT_NAME'])
     own = evidence(run, os.environ["GITHUB_RUN_ATTEMPT"])
     validate(manifest, expected, json.loads(os.environ["NEEDS_JSON"]), own["jobs"], own["artifacts"], policy)
+    primary = {}
+    if manifest['deep']:
+        primary = reconcile_primary(own['artifacts'], os.environ['GITHUB_SHA'],
+                                    git(ROOT, 'rev-parse', 'HEAD^{tree}').decode().strip(),
+                                    run, os.environ['GITHUB_RUN_ATTEMPT'])
     report = dict(identities=manifest["identities"], selected_cells=manifest["selected_cells"],
-                  skipped_cells=manifest["skipped_cells"], deep=manifest["deep"], conclusion="success")
+                  skipped_cells=manifest["skipped_cells"], deep=manifest["deep"], conclusion="success",
+                  real_uci_shards=primary)
     Path("ci-required-result.json").write_text(json.dumps(report, indent=2) + "\n")
     print("PR_CI_REQUIRED_COMPLETE", json.dumps(report, sort_keys=True))
 
