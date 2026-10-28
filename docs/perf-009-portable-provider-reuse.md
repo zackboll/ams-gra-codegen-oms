@@ -2,6 +2,10 @@
 
 ## Disposition: QUALIFICATION_FAILED
 
+**R1 update:** see the appended R1 section for portable live controls,
+read-time configuration hardening, benchmark contention rejection and a
+mandatory Rust regression failure. Neither original CI command is replaced.
+
 This is a **partial implementation and qualification checkpoint**, not the
 requested completed CI rollout. Neither portable CI command is changed. Do not
 merge this checkpoint as evidence that PERF-009's acceptance criteria passed.
@@ -317,3 +321,146 @@ policy or runner configuration must be reverted. Remove only task-owned scratch
 directories when evidence retention permits; provider read-only permissions
 may require owner write permissions to remove them. Never alter other worktrees
 or unrelated campaigns to clean up this experiment.
+
+## R1 — source reconciliation and safety hardening
+
+R1 fetched main, the remote feature branch and PR #121. Local/remote/GitHub PR
+heads all matched `162d2f04d5110186456db4565caf51024dbab4cb`; main remained
+`ac046599c492241aefc9b1d6b742668c0e9cd39a`. No merge was necessary. All R1
+evidence is beneath
+`/home/zboll/git/ams-gra-codegen-oms-perf-009-evidence/r1`; earlier evidence is
+preserved. Only normal new commits are used on the same PR/branch.
+
+### R1 implementation
+
+- Added a portable-only `PortablePilot` around the unchanged PERF-005 provider.
+  It retains independent preparation-manifest hashes and rehashes actual GCC,
+  GNAT, GPRbuild, `system.ads` and `libgnat.a` before/after dependent builds.
+- Provider preparation requires 106 successful actual compiler invocations,
+  unique compilation records, complete real traces and exact dependency-lock
+  versions/origin hashes. Artifact mutation cannot be hidden by rewriting the
+  provider's own manifest.
+- New evidence verification matches actual execution records and pre-execution
+  mapping bytes against raw traces. ADC, GCC specs and response evidence require
+  actual compiler read witnesses. Mutable post-build GPR inputs are not proof.
+- Added complete naming/policy-boundary comparison code: all ten independent
+  source deployments per policy, 106 provider inputs and 89 Ada mappings per
+  boundary. It preserves indirect inputs and checks collision-free runtime
+  cache deltas against actual read source bytes. The expensive exhaustive run
+  must finish before this can be called qualified; implementation alone is not
+  evidence of all 60 boundary checks passing.
+- Require exactly one binder-generated compilation, not just five owned
+  compilations plus a binder marker. Reject ABI/runtime and optimization
+  overrides. Consumer executions are traced and checked against their actual
+  executable rather than accepting an arbitrary printed completion marker.
+- Evidence seals inventory every file, reject truncation/additions/symlinks and
+  retain a separate hash. These are integrity records, not signatures against
+  an attacker able to rewrite both records and hashes.
+- Both qualification interfaces require clean committed implementation, equal
+  explicit worker budgets, and unchanged start/end source and generator
+  identities. They fail rather than pairing a rebuilt generator with a
+  different historical baseline binary.
+
+### R1 disposable controls
+
+The committed `perf009-controls.py` replays genuine retained provider compiler
+inputs into new disposable directories. It never mutates positive evidence.
+The third complete attempt passed **108 controls per compiler** (36 per policy):
+
+| Category per compiler | Count | Meaning |
+|---|---:|---|
+| Actual compiler failures | 12 | Changed provider source, GPR configuration, GCC response option, imported dependency map; all three policies |
+| Actual policy compile/link/execution probes | 3 | Assert(False) raises under Check; Ignore does not evaluate it |
+| Actual execution rejected by verifier | 6 | False marker process and skipped executable, each policy |
+| Verifier-only disposable mutations | 87 | Provider artifacts/manifests/policy, compiler/runtime hashes, compile/backend/bind/link records, read-time input records, false preparation, lock provenance, stale/duplicate objects, evidence seals |
+
+The fourth run additionally exercises ABI and optimization overrides, increasing
+the inventory to **114 per compiler** when its completion record is present.
+Raw completion/status is recorded separately in the R1 handoff JSON. The suite
+continues to label itself non-exhaustive: full portable consumer mapping replay
+and complete independent ABI qualification remain mandatory before rollout.
+
+Initial attempts exposed invalid negative controls and were retained:
+
+1. Remapping the explicitly named primary GNAT source did not redirect it;
+   GNAT succeeded, so the harness correctly failed the attempted control. The
+   corrected map redirects an imported `GNATCOLL` dependency and GNAT rejects
+   the planted compile-time error.
+2. Mutating a retained but unused temporary file did not change actual inputs.
+   The corrected control selects the actual backend `-gnatec` argument.
+
+No diagnostic was fabricated to turn those failures into passing results.
+Full-suite results are not inferred from synthetic unit tests.
+
+### R1 performance gate: incomplete
+
+Added a separate **untraced** full-campaign benchmark interface. Original and
+reuse paths specify the same worker budget; timed reuse requires a sealed
+traced qualification with mandatory negatives complete. The mode cannot accept
+tracing as timing evidence, and reports packaging, counts, CPU, elapsed and
+sampled tree RSS separately. Its acceptance flag remains false pending an
+independent uncontended complete A/B/B/A review. Setup is outside campaign
+measurement and must be recorded by the caller; no accepted setup comparison
+or complete clean benchmark exists yet.
+
+Two bounded benchmark preflights rejected the available allocation:
+
+- Four selected CPUs plus SMT siblings measured approximately **91–99% busy**.
+- A second four-CPU allocation was also contended and rejected.
+- Host load was approximately 46–49 on 32 logical CPUs, with unrelated
+  documentation, compiler and CI processes. No unrelated process, mining
+  workload or runner was stopped, reprioritized or modified.
+
+Therefore no R1 clean campaign timings, 35% acceptance result, complete-job
+10% result, CPU-throughput acceptance or A/B/B/A result is claimed. Historical
+instrumented numbers above remain attribution only.
+
+### R1 exact-source campaigns and regression blocker
+
+Fresh original qualification attempts used four workers and separate private
+states. Early attempts were stopped as obsolete after source-identity
+hardening; subsequent attempts are explicitly recorded as incomplete, not as
+30-cell successes. The later attempts reached five completed positive cells
+per compiler before the independent acceptance blockers were recorded and
+task-owned processes stopped. No unrelated process was stopped.
+
+Candidate pairing with the historical baseline failed closed because the
+rebuilt exact-head generator SHA-256 was
+`e67f5235bd6363f21c941a6487ab49e8652d521bb43227c5d8edad240faf133b`, not the
+historical manifest's
+`2521e9d969b0235c89706bc48defd12020efc04f7c4116f5cfecdf8539c9936b`.
+No binary-hash exception or successful fallback was added. Complete current
+30-cell original/candidate pairs and exact-final-head requalification remain
+outstanding; prior complete matrices do not substitute for them.
+
+R1 local validation:
+
+- **43** provider tests pass: 32 PERF-005 plus 11 portable tests.
+- Selector/final-gate **48**, placement **12**, CI split **529**, Task077B
+  layout/mutation controls, CI002 **30**, pinned actionlint and diff check pass.
+- Rust 1.95 fmt, workspace check and clippy pass. Full workspace tests **fail**
+  the existing `runtime_fairness` assertion at line 193:
+  `a runtime worker thread outlived its runtime`.
+- A single focused rerun also fails that assertion. The test is not changed,
+  ignored, retried to green or explained away as proven contention; the cause
+  is not established. Its complete logs are retained in R1 evidence.
+
+The existing Float32 path, authoritative helper runner, workflow commands,
+selection rules, five-lane concurrency and CI002 contracts remain unchanged.
+No production-qualified portable CI entry point is enabled. This is the
+required fail-closed response while safety, clean performance and regression
+gates do not all pass.
+
+### R1 hosted and handoff limits
+
+Hosted status is checked at bounded reconciliation points, not a polling loop.
+At R1 investigation the current-main affected jobs were still incomplete;
+there was no successful complete current-main comparison. No optimized hosted
+jobs exist because the integration gate was not met. Full-job elapsed,
+aggregate runner-minutes, uploads, critical path and five-runner scheduling
+impact remain unqualified. A later green unmodified workflow would not itself
+establish portable reuse or its performance target.
+
+Final R1 status and exact commit/tree are reported in PR #121 and its handoff;
+documentation-head source identity is obtained from Git, not a self-referential
+embedded commit hash. **Disposition remains QUALIFICATION_FAILED.**
