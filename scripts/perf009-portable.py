@@ -41,6 +41,7 @@ def main():
         parser.error("positive worker budget required")
     if subprocess.check_output(["git", "-C", str(ROOT), "status", "--porcelain"]).strip():
         parser.error("commit implementation before exact-source qualification")
+    starting_identity = subprocess.check_output(["git", "-C", str(ROOT), "rev-parse", "HEAD", "HEAD^{tree}"], text=True).splitlines()
     baseline, scratch = args.baseline.resolve(), args.scratch.resolve()
     validate_result(baseline, args.compiler)
     baseline_sources = dict(line.split("  ", 1)[::-1] for line in (baseline / "sources.sha256").read_text().splitlines())
@@ -117,6 +118,8 @@ def main():
     profiles = [json.loads(p.read_text()) for p in scratch.glob("*build.profile.json")]
     identity = subprocess.check_output(["git", "-C", str(ROOT), "rev-parse", "HEAD", "HEAD^{tree}"], text=True).splitlines()
     dirty = bool(subprocess.check_output(["git", "-C", str(ROOT), "status", "--porcelain"], text=True))
+    if identity != starting_identity or dirty or baseline_sources.get(str(generator)) != digest(generator):
+        raise RuntimeError("source/generator changed during candidate qualification")
     report.update(campaign=campaign, source_commit=identity[0], source_tree=identity[1],
                   worktree_dirty=dirty,
                   tooling_sha256={p.name: digest(p) for p in (Path(__file__), ROOT / "scripts/perf009_portable.py",

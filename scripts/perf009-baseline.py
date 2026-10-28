@@ -37,6 +37,8 @@ def main():
         parser.error("positive worker budget required")
     if subprocess.check_output(["git", "-C", str(ROOT), "status", "--porcelain"]).strip():
         parser.error("commit implementation before exact-source qualification")
+    starting_identity = subprocess.check_output(["git", "-C", str(ROOT), "rev-parse", "HEAD", "HEAD^{tree}"], text=True).splitlines()
+    generator_hash = digest(args.generator.resolve(strict=True))
     scratch = args.scratch.resolve()
     alr = shutil.which("alr")
     if not alr:
@@ -82,6 +84,9 @@ def main():
             validate_toolchain((scratch / f"{consumer.name}-provider-identity.log").read_bytes(), args.compiler)
     profiles = [json.loads(p.read_text()) for p in scratch.glob("*build.profile.json")]
     identity = subprocess.check_output(["git", "-C", str(ROOT), "rev-parse", "HEAD", "HEAD^{tree}"], text=True).splitlines()
+    if (identity != starting_identity or generator_hash != digest(args.generator.resolve())
+            or subprocess.check_output(["git", "-C", str(ROOT), "status", "--porcelain"]).strip()):
+        raise RuntimeError("source/generator changed during baseline qualification")
     (scratch / "baseline-total.json").write_text(json.dumps(dict(
         completed=True, compiler=args.compiler, instrumented=True,
         source_commit=identity[0], source_tree=identity[1],
