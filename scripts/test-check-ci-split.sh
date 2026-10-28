@@ -54,13 +54,17 @@ ok
 
 # ---- 2. mutations fail --------------------------------------------------
 for required in \
-  '      - "scripts/check-task061-service-impact.py"' \
-  '      - "scripts/test-task061-service-impact.py"' \
   'python3 scripts/test-task061-service-impact.py' \
   'cargo test --release --locked -p ams-gra-codegen-oms --test service_check_batch'; do
   grep -Fv "$required" "$deep" >"$tmp/deep-no-perf001.yml"
   expect_fail "Deep CI lost $required" "$fast" "$tmp/deep-no-perf001.yml" "$sleet"
 done
+for required in 'uses: ./.github/workflows/deep-ci.yml' "if: github.event_name != 'pull_request' || fromJSON(needs.changes.outputs.manifest).deep"; do
+  grep -Fv "$required" "$fast" >"$tmp/fast-no-deep-caller.yml"
+  expect_fail "CI lost Deep dependency $required" "$tmp/fast-no-deep-caller.yml" "$deep" "$sleet"
+done
+grep -Fv '  workflow_call:' "$deep" >"$tmp/deep-no-call.yml"
+expect_fail "Deep lost reusable entrypoint" "$fast" "$tmp/deep-no-call.yml" "$sleet"
 for gate in 'bash scripts/check-task077-fast.sh' 'bash scripts/test-task077-ci-wrappers.sh'; do
   grep -Fv "$gate" "$fast" >"$tmp/fast-no-t077.yml"
   expect_fail "fast lost $gate" "$tmp/fast-no-t077.yml" "$deep" "$sleet"
@@ -199,7 +203,7 @@ import re
 import sys
 from pathlib import Path
 text = Path(sys.argv[1]).read_text()
-job = re.search(r'^  real-uci:\n.*?(?=^  [\w-]+:|\Z)', text, re.M | re.S)
+job = re.search(r'^  real-uci-temporal-naming:\n.*?(?=^  [\w-]+:|\Z)', text, re.M | re.S)
 assert job
 body = job[0]
 line = next(line for line in body.splitlines(True)

@@ -117,6 +117,9 @@ implementation is introduced.
   `Transport_Error`; sending is never server acceptance. There is no retained
   application output queue. A validation failure publishes nothing and
   leaves an already-open connection usable.
+  This last statement describes direct `WebSocket.Client.Send` only:
+  Task099's unchanged `Connections.Send` wrapper stops its connection on
+  any transport exception, including pre-publication validation failure.
 * Poll: socket remains nonblocking. Each call has at most one zero-time
   readiness check, one read of at most 4,096 bytes, and one consumed frame.
   The codec may inspect the pending bytes before and after that read, but
@@ -147,15 +150,32 @@ implementation is introduced.
 * EOF returns Peer_Closed and releases the socket. A valid peer close is
   echoed exactly once and released. Explicit Close sends 1000, polls up to
   250 ms for the peer, and releases even if the peer never answers. Its close
-  write has the normal two-second write deadline. Finalization drops the
-  descriptor without waiting or attempting a close handshake. Close is
+  write has the normal two-second write deadline. The 250 ms deadline is
+  measured from Close entry, not after that write; a slow write consumes the
+  polling allowance. `WebSocket.Client` finalization drops the descriptor
+  without waiting or attempting a close handshake. Task099 `Connection`
+  finalization instead calls the transport's bounded Close, and can therefore
+  wait for that write/close budget. Close is
   idempotent. Failed Open also releases the descriptor.
+* Any failed Open, including attempting to Open an already-open client,
+  drops the client's current socket. Callers must Close before reopening;
+  rejected reopening does not preserve a live session. This is the original
+  fail-closed behavior, not a reconnect operation.
 * Open uses two-second connect and upgrade budgets (the upgrade clock starts
   at Open entry); Send uses a two-second whole-write budget. These are
   implementation deadlines, not real-time guarantees. No retry, reconnect,
   heartbeat scheduler or automatic receive progress exists. AHT retains one
   close-on-exec entropy-source descriptor per process, not per connection;
   resource tests warm it before measuring lifecycle FD growth.
+* The pinned AHT `Frames.Encode`, `Bytes.To_Array` and `Bytes.From_String`
+  return arrays with lower
+  bound 1. The private write helpers rely on that exact pinned-source contract;
+  a dependency update requires re-review, not only a new pin. Send/Poll also
+  create several message-sized transient arrays. Ada tasks using small/default
+  stacks are not qualified for maximum-size messages; callers must provision
+  adequate stack space for multiple 1 MiB temporaries. No fixed task-stack
+  minimum or arbitrary caller-task configuration is established here. Poll's
+  bounded per-call copies can accumulate quadratic work over one large message.
 
 ### Error classification
 
@@ -250,7 +270,7 @@ observed as peer EOF. No transport receive task exists.
 
 Fast CI adds only the local transport campaign; Deep CI adds the unmodified
 pinned-Sleet campaign. Each new job uses a pinned Debian image, pinned Alire,
-compiler/GNATCOLL graph and source dependencies, checks exact PR head/tree and
+compiler/GNATCOLL graph and source dependencies, originally checked exact PR head/tree and
 clean checkout, requires all cells and completion markers, preserves command
 failures through pipefail, and uploads source/compiler/execution artifacts.
 Existing jobs, runners, concurrency and Fast/Deep coverage remain unchanged.

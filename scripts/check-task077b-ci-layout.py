@@ -9,6 +9,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from real_uci_evidence import SHARDS as PRIMARY_SHARDS
 from collections import Counter
 from pathlib import Path
 
@@ -68,7 +69,10 @@ GATES = [('Named TimeZulu pinned inventory and impact (Task 061)',
 
 SHARDS = ('real-uci-regressions', 'real-uci-regressions-ascii',
           'real-uci-regressions-alternating')
-QUALIFICATION_JOBS = ('real-uci',) + SHARDS
+QUALIFICATION_JOBS = tuple(PRIMARY_SHARDS) + SHARDS
+GATES = [(name, next((job for job, tasks in PRIMARY_SHARDS.items()
+                      if re.search(r'Task (\d+)', name)[1] in tasks), owner)
+          if owner == 'real-uci' else owner, digest) for name, owner, digest in GATES]
 SOURCE_JOBS = QUALIFICATION_JOBS + ('msrv-real-uci', 'real-sleet',
                                   'ada-repeated-choice-real-uci', 'ada-hexbinary-real')
 CHECKOUT = '''uses: actions/checkout@v4
@@ -157,6 +161,9 @@ def check(path):
         # PERF-001: only the exact evidence-only upload may run after failure.
         # Do not exempt arbitrary named steps, commands or conditional gates.
         gate_body = body.replace(EVIDENCE, '') if job == 'real-uci-regressions' else body
+        if job in PRIMARY_SHARDS:
+            from real_uci_evidence import evidence_steps
+            gate_body = gate_body.replace(evidence_steps(job), '')
         require(not re.search(r"^\s+(if:|continue-on-error:)", gate_body, re.M), "enabled hard gate: " + job)
         for setup in ('uses: actions/checkout@v4', 'uses: dtolnay/rust-toolchain@stable',
                       'sudo apt-get install -y gnat', 'command -v gnatmake', 'gnatmake --version',
@@ -232,6 +239,11 @@ def check(path):
     all_commands = [run_command(step) for body in jobs.values()
                     for step in re.split(r'^      - ', body, flags=re.M)[1:]]
     require(targets(all_commands) == targets(expected_commands), 'unique campaign execution')
+    from real_uci_evidence import check_layout
+    try:
+        check_layout(jobs)
+    except ValueError as error:
+        require(False, 'primary shard reconciliation: ' + str(error))
     return errors
 
 
