@@ -49,6 +49,7 @@ def validate_build(command, consumer, data, compiler, policy, started_ns):
         raise RuntimeError("portable compiler identity changed")
     wanted = [] if policy == "normal" else [f"pragma Assertion_Policy ({policy});\n"]
     compiled = []
+    binder_compilations = 0
     artifacts = {}
     for record in drivers(data):
         successful(record)
@@ -59,6 +60,7 @@ def validate_build(command, consumer, data, compiler, policy, started_ns):
             raise RuntimeError("ambiguous portable compiler input")
         source = inputs[0]
         if not Path(source).is_absolute() and source == "b__helper_demand_consumer.adb":
+            binder_compilations += 1
             continue
         if source not in expected or source in compiled:
             raise RuntimeError("unexpected/duplicate portable compiler input")
@@ -84,6 +86,8 @@ def validate_build(command, consumer, data, compiler, policy, started_ns):
             artifacts[str(artifact)] = digest(artifact)
     if set(compiled) != set(expected):
         raise RuntimeError("missing portable generated/support compilation")
+    if binder_compilations != 1:
+        raise RuntimeError("missing/duplicate binder-generated compilation")
     for name in ("gnatbind", "ld"):
         invocations = [r for r in data["executions"] if Path(r["executable"]).name == name]
         if len(invocations) != 1:
@@ -122,11 +126,22 @@ def compare(baseline, candidate, compiler):
     if validate_result(baseline, compiler) != validate_result(candidate, compiler):
         raise RuntimeError("ordered portable outcomes differ")
     for root in (baseline, candidate):
-        for line in (root / "sources.sha256").read_text().splitlines():
+        lines = (root / "sources.sha256").read_text().splitlines()
+        if not lines or len(lines) != len(set(lines)):
+            raise RuntimeError("portable source manifest empty/duplicate")
+        seen = set()
+        for line in lines:
             expected, name = line.split("  ", 1)
+            if name in seen:
+                raise RuntimeError("portable manifest duplicate path")
+            seen.add(name)
             path = Path(name)
             if not path.is_file() or path.is_symlink() or digest(path) != expected:
                 raise RuntimeError("portable source evidence changed/missing")
+        required = {str(p) for p in root.rglob("*") if p.is_file()
+                    and p.suffix in (".ads", ".adb", ".c", ".gpr", ".lock", ".xsd")}
+        if not required <= seen:
+            raise RuntimeError("portable source manifest truncated")
     provenance = json.loads((candidate / "perf005-provider-consumers.json").read_text())
     if [r["cell"] for r in provenance] != [f"{p}-{n}-{a}-build" for p, n, a in cells()]:
         raise RuntimeError("portable provider provenance incomplete")
@@ -153,6 +168,8 @@ def compare(baseline, candidate, compiler):
         verification = json.loads((candidate / f"{cell}-build.verification.json").read_text())
         if len(verification["compiled_sources"]) != 5 or verification["policy"] != policy:
             raise RuntimeError("portable fresh compilation evidence incomplete")
+        from perf009_provider import validate_lock
+        validate_lock(candidate / f"{cell}-alire.lock", compiler)
     for policy in POLICIES:
         variant = candidate / "perf005-providers" / policy
         record = json.loads((variant / "complete.json").read_text())

@@ -22,6 +22,9 @@ from perf005_profile import run
 from perf005_provider import Pilot, digest
 from perf005_sandbox import consumer_layout, validate_layout
 from perf009_portable import compare, validate_build, validate_result
+from perf009_evidence import seal, verify_execution, verify_trace
+from perf009_equivalence import all_boundaries
+from perf009_provider import PortablePilot
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.dont_write_bytecode = True
@@ -33,7 +36,12 @@ def main():
     parser.add_argument("--scratch", type=Path, required=True)
     parser.add_argument("--baseline", type=Path, required=True)
     parser.add_argument("--generator", type=Path, required=True)
+    parser.add_argument("--jobs", type=int, default=4)
     args = parser.parse_args()
+    if args.jobs < 1:
+        parser.error("positive worker budget required")
+    if subprocess.check_output(["git", "-C", str(ROOT), "status", "--porcelain"]).strip():
+        parser.error("commit implementation before exact-source qualification")
     baseline, scratch = args.baseline.resolve(), args.scratch.resolve()
     validate_result(baseline, args.compiler)
     baseline_sources = dict(line.split("  ", 1)[::-1] for line in (baseline / "sources.sha256").read_text().splitlines())
@@ -61,9 +69,13 @@ def main():
 
     def checked(command, cwd, stem, expected=0):
         forced = "-XEXTERNALLY_BUILT=true" in command
+        if command[:4] == ["alr", "-n", "build", "--"]:
+            position = command.index("-cargs:Ada") if "-cargs:Ada" in command else len(command)
+            command = command[:position] + [f"-j{args.jobs}"] + command[position:]
         writable, protected = consumer_layout(command, cwd, state, home) if forced else (None, ())
         started_ns = time.time_ns()
-        code, text = run(command, cwd, stem, trace=forced or "gprbuild" in command,
+        executing = stem.name.endswith("-execute")
+        code, text = run(command, cwd, stem, trace=forced or "gprbuild" in command or executing,
                          writable=writable, protected=protected)
         if expected is not None and code != expected:
             print(text.decode(errors="replace"), file=sys.stderr, flush=True)
@@ -72,12 +84,16 @@ def main():
             validate_toolchain(text, args.compiler)
         if forced:
             policy = stem.name.removesuffix("-build").rsplit("-", 1)[1]
-            data = json.loads(Path(str(stem) + ".profile.json").read_text())
+            data = verify_trace(Path(str(stem) + ".profile.json"))
             verified = validate_build(command, cwd, data, args.compiler, policy, started_ns)
+            verified["started_ns"] = started_ns
             Path(str(stem) + ".verification.json").write_text(json.dumps(verified, indent=2) + "\n")
+        if executing:
+            from perf009_portable import MARKER
+            verify_execution(Path(str(stem) + ".profile.json"), Path(command[0]), MARKER)
         return code, text
 
-    pilot = Pilot(scratch, args.compiler, checked, jobs=4)
+    pilot = PortablePilot(scratch, args.compiler, checked, jobs=args.jobs)
 
     def adapted(command, cwd, stem, expected=0):
         if command[:5] == ["alr", "-n", "build", "--", "-f"]:
@@ -97,9 +113,7 @@ def main():
                     self_cpu_seconds=time.process_time() - self_before, instrumented=True,
                     includes_post_campaign_equivalence=False)
     report = compare(baseline, scratch, args.compiler)
-    proof = {}
-    for policy in ("normal", "Check", "Ignore"):
-        proof[policy] = provider_equivalence(baseline, scratch, policy)
+    proof = all_boundaries(baseline, scratch)
     (scratch / "portable-provider-equivalence.json").write_text(json.dumps(proof, indent=2) + "\n")
     profiles = [json.loads(p.read_text()) for p in scratch.glob("*build.profile.json")]
     identity = subprocess.check_output(["git", "-C", str(ROOT), "rev-parse", "HEAD", "HEAD^{tree}"], text=True).splitlines()
@@ -113,6 +127,9 @@ def main():
                   disposition="QUALIFICATION_FAILED",
                   limitation="Experimental matrix only; mandatory negative controls and clean/hosted benchmarks outstanding")
     (scratch / "perf009-experiment.json").write_text(json.dumps(report, indent=2) + "\n")
+    evidence_hash = seal(scratch)
+    scratch.with_name(scratch.name + "-seal.json").write_text(json.dumps(
+        dict(source_commit=identity[0], source_tree=identity[1], evidence_sha256=evidence_hash), indent=2) + "\n")
     print(f"PERF009_EXPERIMENT_COMPLETE compiler={args.compiler} positive=30 compiled=150 providers=3 NOT_CI_QUALIFIED")
 
 

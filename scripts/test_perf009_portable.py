@@ -107,6 +107,9 @@ class Portable(unittest.TestCase):
             for name in ("gnatbind", "ld"):
                 data["executions"].append(dict(executable="/synthetic/" + name, argv=[name],
                                                exit=0, inclusive_elapsed_seconds=0.1))
+            data["executions"].append(dict(executable=str(compiler),
+                argv=[str(compiler), "-c", "b__helper_demand_consumer.adb"],
+                exit=0, inclusive_elapsed_seconds=0.1))
             (consumer / "bin").mkdir()
             (consumer / "bin/helper_demand_consumer").write_bytes(b"synthetic executable")
             with patch.dict(portable.COMPILERS, {"14": ("14.2.0", digest(compiler), "", "", "")}):
