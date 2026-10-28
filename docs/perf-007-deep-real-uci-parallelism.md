@@ -202,6 +202,19 @@ remain independent of the shared main lane cap, as in PR #116.
 
 ## Performance acceptance and hosted handoff
 
+Non-draft implementation PR:
+<https://github.com/zackboll/ams-gra-codegen-oms/pull/120>. Exactly one PR was
+created against the parent feature branch, then retargeted to main after the
+external parent merge. Ordinary integration commit `8ea0f209b6d4c5afc0edffd264d2453ee35ea3f8`
+has tree `1ea3a670e9806ad6815bc53d4dd7ab70f244917b`; no history was rewritten.
+Initial run `40618960330` started before retargeting: its actual selection log
+binds base `befed75...` and synthetic merge `991f7a7bb3372e88594fc9f76d08ab925a533c0b`.
+It is **not post-integration acceptance**, even though its head/tree match the
+implementation. A normal follow-up documentation commit triggers a new PR event
+against main `d50bf7e...`; that final run's actual event parents, checkout SHA/tree
+and artifacts must be checked afresh. Superseded PR-run cancellation uses only
+the unchanged stale-PR policy; no main qualification run is cancelled.
+
 Candidate setup/group/shard times, maximum shard execution duration, complete
 Deep critical path, runner-minutes and queue delays: **pending actual hosted
 qualification**. The historical task balance suggests a substantially shorter
