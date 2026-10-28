@@ -18,10 +18,11 @@
 
 mod common;
 
-use ams_gra_oms_runtime_rust::{RuntimeEvent, SleetRuntime, WORKER_THREAD_NAME};
+use ams_gra_oms_runtime_rust::{RuntimeEvent, SleetRuntime};
 use ams_gra_oms_runtime_rust_facade_tests::codec::{TestCodec, shared};
 use ams_gra_oms_runtime_rust_facade_tests::runtime_test::model::SharedPayload;
 use ams_gra_oms_runtime_rust_facade_tests::runtime_test::service_api::function_track as track;
+use common::worker_join::WorkerExit;
 use common::{MockPeer, Observed, WAIT, connect};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, mpsc};
@@ -117,23 +118,6 @@ fn next_event(runtime: &Shared) -> Option<RuntimeEvent> {
     None
 }
 
-/// Live runtime worker threads in this process (Linux; names truncated to
-/// 15 bytes by the kernel).
-fn live_workers() -> usize {
-    let Ok(tasks) = std::fs::read_dir("/proc/self/task") else {
-        return 0;
-    };
-    tasks
-        .filter_map(Result::ok)
-        .filter(|task| {
-            std::fs::read_to_string(task.path().join("comm")).is_ok_and(|name| {
-                let name = name.trim_end();
-                !name.is_empty() && WORKER_THREAD_NAME.starts_with(name)
-            })
-        })
-        .count()
-}
-
 const LOAD_FRAME: &str = r#"PUB output-topic {"{urn:test}MessageA":{"Count":1}}"#;
 
 #[test]
@@ -141,8 +125,11 @@ fn task049_receive_progresses_under_sustained_publish_load() {
     let peer = MockPeer::start();
     let mut runtime = connect(&peer);
     let (seen_tx, seen) = mpsc::channel();
+    let (mut worker_exit, exit) = WorkerExit::new(false);
+    let (worker_tx, worker) = mpsc::channel();
     let subscription =
         track::exchange_input_a::subscribe(&mut runtime, move |m: &SharedPayload| {
+            worker_tx.send(worker_exit.arm()).expect("test alive");
             let _ = seen_tx.send(m.count.get());
         })
         .expect("subscribe");
@@ -160,6 +147,8 @@ fn task049_receive_progresses_under_sustained_publish_load() {
         Ok(42),
         "MSG was not dispatched while publishers were active"
     );
+    let worker_id = worker.recv_timeout(WAIT).expect("actual worker identity");
+    assert_ne!(worker_id, thread::current().id());
     assert!(load.running(), "load must still be active at dispatch");
     load.advance_by(PROGRESS);
 
@@ -184,14 +173,13 @@ fn task049_receive_progresses_under_sustained_publish_load() {
         .into_inner()
         .expect("runtime lock");
     runtime.close().expect("close");
+    // This must already be available when close returns, not after a retry.
+    // The barrier-controlled lifecycle tests separately reject detachment.
+    assert_eq!(exit.finished.try_recv(), Ok(worker_id));
 
     // Every load frame is the exact generated PUB; then UNSUB, then close.
     let (skipped, next) = peer.skip_while(|frame| frame == LOAD_FRAME);
     assert_eq!(skipped, total, "every completed publish was written once");
     assert_eq!(next, Observed::Text("UNSUB sub-1".to_owned()));
     peer.expect_closed();
-    assert!(
-        cfg!(not(target_os = "linux")) || live_workers() == 0,
-        "a runtime worker thread outlived its runtime"
-    );
 }
