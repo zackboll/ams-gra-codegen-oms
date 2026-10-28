@@ -1,0 +1,41 @@
+name: CI002 Security Contracts
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  actions: read
+  checks: read
+jobs:
+  test:
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-2' || format('oms-pr-{0}-{1}-{2}-ci002-validation.yml-test', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Verify exact qualification source
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - run: python3 -m pip install --no-binary PyYAML --require-hashes -r scripts/ci002/requirements.txt
+      - run: python3 -m unittest discover -s scripts/ci002 -p 'test_*.py' -v
+      - name: Read-only historical workflow provenance
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import os, sys
+          sys.path.insert(0, 'scripts/ci002')
+          from gate import API, SOURCE, SIGNAL_PATH, executed_workflow
+          api = API(os.environ['GH_TOKEN'])
+          run = api.call(f'repos/{SOURCE}/actions/runs/40108707517')
+          revision = executed_workflow(api, run, SIGNAL_PATH)
+          assert revision == '4c79fff41970a8ba7109df9bd185a6b166c0ffb0'
+          print('Authenticated historical workflow revision:', revision)
+          PY

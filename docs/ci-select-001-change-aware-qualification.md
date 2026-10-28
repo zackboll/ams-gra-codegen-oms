@@ -310,3 +310,245 @@ reserve capacity or pause new merges until a corrected cap is in place. Never
 disable compiler tests, alter frozen fixtures or change runner security as an
 emergency performance workaround. No merge, approval, auto-merge, tags, releases
 or Alire-index operations are part of this work.
+
+## R1 — current-main reconciliation (2026-10-28 UTC)
+
+### Identity and inherited source record
+
+This appendix preserves, rather than supersedes, the original implementation
+record above. Starting PR #116/local/remote head:
+`a02903e07e58a927d4c6713b6b2c028116d38b39`, tree
+`bb1b5669f04ddfa843c1f79cd293470e231aa817`. The feature worktree was clean.
+Previously incorporated main was `77066e8e2cf4875274c0227cee16dcf0dc593c05`.
+Fetched main remains `d603077c6d38ccc0658391776e3af9eecb009255`, tree
+`5ea3873e3bf6a8e2960e8d1faa57049d867a2456`.
+
+The normal merge (no rebase/reset/cherry-pick/amend/squash/force-push) preserves
+both parents. Its only conflict was the new jobs insertion in `ci.yml`: keep
+CI-SELECT orchestration AND the complete Task099 job. Seven newer main commits:
+
+- `4c79fff41970a8ba7109df9bd185a6b166c0ffb0` ci: add disabled automatic trusted PR dispatch
+- `8cc8049d34638f616cbd9caa22bb110f88f7a5d4` ci: bind trusted PR authorization to immutable workflow provenance
+- `ce76179da96ad44a9bb396b478db3040a64b07f2` feat(ada): add transport-independent LA-CAL runtime core and typed bindings
+- `ad1f347c5928d87e869e78db5940e1e99311bb0c` Merge remote-tracking branch 'origin/main' into feature/099-ada-lacal-runtime-core
+- `5fff5e0f3d2c3a2bed81c55e57e7af48fede9e5b` fix(ada): enforce typed subscription ownership before unsubscribe
+- `4978c1c5728d062b9ea64bbcdb39aa96b18361a3` Merge pull request #115 from zackboll/feature/099-ada-lacal-runtime-core
+- `d603077c6d38ccc0658391776e3af9eecb009255` Merge pull request #113 from zackboll/ci/002-trusted-pr-dispatch
+
+Original CI [40440457015](https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/40440457015),
+attempt 1, passed 27 jobs including all eight Deep jobs and `pr-ci-required`
+on the starting PR head. Original pilot
+[40438716306](https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/40438716306)
+passed 15 jobs at peak TWO. Neither qualifies the R1 implementation; the latter
+never established five-way saturation. Raw starting PR/check/run/job/artifact
+metadata was saved in `/tmp/ci-select-001-r1-evidence` before modification.
+
+### Task099 preservation and dependency policy
+
+Both `ada-lacal-runtime-core (14)` and `(16)` remain compiler-backed jobs, with
+unchanged Debian digest, glibc 2.41 verification, GNAT14.2.0/external and pinned
+GNAT16.1.0 setup, verified Alire 2.1.1, locked generator build, fresh GNATCOLL
+inputs, source-tree/cleanliness checks, mock transport and typed OMS JSON
+execution. Each compiler requires 24 combinations: OAM/qualified namespaces,
+portable/lossless profiles, Normal/Check/Ignore assertions and O0/O2. Check counts
+remain 53 portable and 62 lossless. All Task099 markers, result assertions and
+artifact paths are preserved. Production Ada, generators, qualification scripts
+and fixtures are byte-identical to incorporated main. New inheritance tests read
+the pinned main git object; they do not learn expected commands from candidates.
+Only checkout and its exact-SHA assertion change from PR head to `github.sha`,
+consistent with CI-SELECT's verified synthetic merge.
+
+Runtime and owned runtime-test changes select both compilers, Rust and the JSON
+guard. Shared Ada/OMS JSON/Float32/lossless/temporal changes conservatively include
+Task099. Shared IR/generator/dependency and all infrastructure changes select all
+18 ordinary cells plus all eight Deep jobs. Unknown Task099 paths fail broad;
+qualification scripts and service-generation fixtures also fail broad. Local
+category manifests with exact selected/skipped IDs are recorded in
+`docs/evidence/ci-select-001-r1.json`; these are synthetic local controls, NOT
+hosted PR-event acceptance.
+
+### Complete runner inventory and scheduling
+
+There are **34 expanded runner cells**, not the historical 29: **18 ordinary,
+eight Deep, two Pages, three orchestration, three security-workflow cells**.
+**33 are main-eligible**, including the conditional dispatcher. The signal is
+PR-only and is not a main lane occupant. Every main-eligible runner acquires
+exactly one of `oms-main-slot-1` through `oms-main-slot-5`, using job-level
+`queue: max`. No sixth lane, runner semaphore or reserved runner pool exists.
+The inventory JSON records workflow/job, trigger, runner, variants, eligibility,
+lanes, source policy, purpose, prerequisites, expected artifacts and conditional
+behavior. Matrix `slot` values never alter inherited compiler variants/commands.
+
+| Workflow | Expanded runner check | Hosted runner | Main slot | Prerequisites |
+|---|---|---|---|---|
+| `ci.yml` | `ada-float64-codec (14)` | `ubuntu-24.04` | 1 | none |
+| `ci.yml` | `ada-float64-codec (16)` | `ubuntu-24.04` | 2 | none |
+| `ci.yml` | `ada-time-zulu-codec (14)` | `ubuntu-24.04` | 4 | none |
+| `ci.yml` | `ada-time-zulu-codec (16)` | `ubuntu-24.04` | 3 | none |
+| `ci.yml` | `python-model-backend (3.11)` | `ubuntu-24.04` | 1 | none |
+| `ci.yml` | `python-model-backend (3.13)` | `ubuntu-24.04` | 2 | none |
+| `ci.yml` | `ada-float32-codec` | `ubuntu-24.04` | 3 | none |
+| `ci.yml` | `ada-repeated-temporal-codec` | `ubuntu-24.04` | 4 | ada-json-guard |
+| `ci.yml` | `ada-datetime-codec` | `ubuntu-24.04` | 5 | ada-json-guard |
+| `ci.yml` | `ada-json-guard` | `ubuntu-24.04` | 5 | none |
+| `ci.yml` | `ada-generated-codec` | `ubuntu-24.04` | 2 | ada-json-guard |
+| `ci.yml` | `ada-repeated-codec` | `ubuntu-24.04` | 1 | ada-json-guard |
+| `ci.yml` | `ada-duration-codec` | `ubuntu-24.04` | 5 | ada-json-guard |
+| `ci.yml` | `ada-hexbinary-codec` | `ubuntu-24.04` | 4 | ada-json-guard |
+| `ci.yml` | `ada-repeated-choice-codec` | `ubuntu-24.04` | 5 | ada-json-guard |
+| `ci.yml` | `rust` | `ubuntu-latest` | 5 | none |
+| `deep-ci.yml` | `ada-repeated-choice-real-uci` | `ubuntu-24.04` | 5 | none |
+| `deep-ci.yml` | `real-uci` | `ubuntu-latest` | 4 | none |
+| `deep-ci.yml` | `real-uci-regressions` | `ubuntu-latest` | 1 | none |
+| `deep-ci.yml` | `real-uci-regressions-ascii` | `ubuntu-latest` | 2 | none |
+| `deep-ci.yml` | `real-uci-regressions-alternating` | `ubuntu-latest` | 3 | none |
+| `deep-ci.yml` | `msrv-real-uci` | `ubuntu-latest` | 5 | none |
+| `deep-ci.yml` | `real-sleet` | `ubuntu-latest` | 2 | none |
+| `deep-ci.yml` | `ada-hexbinary-real` | `ubuntu-24.04` | 5 | none |
+| `uci-pages.yml` | `build` | `ubuntu-latest` | 4 | none |
+| `uci-pages.yml` | `deploy` | `ubuntu-latest` | 4 | build |
+| `ci.yml` | `ada-lacal-runtime-core (14)` | `ubuntu-24.04` | 1 | none |
+| `ci.yml` | `ada-lacal-runtime-core (16)` | `ubuntu-24.04` | 3 | none |
+| `ci002-validation.yml` | `test` | `ubuntu-24.04` | 2 | none |
+| `oms-trusted-pr-signal.yml` | `signal` | `ubuntu-24.04` | PR only | none |
+| `oms-ryzen-trusted-dispatch.yml` | `dispatch` | `ubuntu-24.04` | 4 | none |
+| `ci.yml` | `changes` | `ubuntu-latest` | 5 | none |
+| `ci.yml` | `baseline` | `ubuntu-latest` | 5 | changes |
+| `ci.yml` | `pr-ci-required` | `ubuntu-latest` | 5 | ordinary + Deep + baseline |
+
+CI ordinary/orchestration triggers remain PR, main push and manual; Deep is the
+reusable all-eight-job dependency. Pages remains main/path-filtered or manual,
+latest-only, and build precedes deploy. Ordinary prerequisites above additionally
+include `changes`; selected prerequisites close transitively. Unique non-main
+identities include workflow/run/attempt/job/variant, never a shared main group.
+CI002 PRs cannot cancel/overwrite each other. Main runs retain unique workflow
+identities, so newer merges cannot cancel prior qualification. The finite GitHub
+100-waiter group limit still applies; overflow must fail visibly, not pass.
+
+### Security boundary and independent checks
+
+* **CI002 Security Contracts** retains PR and main triggers, read-only permissions,
+  exact PR-head/main checkout and assertion, pinned checkout, hashed PyYAML
+  source installation, all 30 security/mutation tests, and authenticated historical
+  workflow provenance for run 40108707517/revision 4c79fff. It acquires slot 2 on
+  main. This is an independent mandatory check, not selected/optional CI.
+* **OMS Trusted PR Signal** retains every PR lifecycle event, `permissions: {}`,
+  one inline signal-only command, no checkout, no dispatch credential. Its
+  unique PR-only concurrency group is inventoried; the entire workflow header
+  and payload are pinned against unreviewed changes.
+* **OMS Ryzen Trusted Dispatch** retains workflow_run/completed semantics,
+  feature gating, default-disabled behavior, destination-only App permissions,
+  independent source/PR authorization, immutable executed-workflow provenance,
+  private authorization, receipt and anti-replay checks. `scripts/ci002/**` is
+  unchanged and hash-protected against inherited main. Passing `pr-ci-required`
+  never authorizes dispatch. No credential/variable/secret was created or changed.
+
+Actual hosted workflow_run 40456471102 reports `head_branch: main`,
+`head_sha: d603077...`, event `workflow_run`, conclusion skipped. Its source
+context is the default branch, NOT the signal's PR commit. The dispatcher now
+acquires slot 4. Its existing per-PR workflow concurrency identity and
+`cancel-in-progress: false` remain; **workflow-level `queue: max` is added** to
+avoid pending-run replacement ahead of the main lane. Receipt/provenance checks
+still independently reject stale/replayed work. The enable variable was absent
+(404); no attempt was made to activate dispatch. Signal workflow-byte changes
+remain denied by the existing default-branch provenance boundary until a reviewed
+main deployment establishes the new trusted baseline.
+
+### Fail-closed gate and policy controls
+
+Closed-world workflow/job inventory, normalized original commands, original step
+payloads, matrix compiler identities, lane assignments, Pages publication policy
+and queue/cancellation controls remain protected. Missing security workflows,
+signal token permissions, removed dispatch gates/authorization, unknown variants,
+omitted Task099 cells, lane bypasses, and weakened inherited markers are rejected.
+Comments and unrelated inventory metadata remain accepted.
+
+`pr-ci-required` includes both Task099 needs. It independently recomputes the
+manifest, requires authoritative successful completed job identities and named
+mandatory steps, nonempty fresh/nonexpired expected artifacts, mandatory baseline
+and classifier, selected prerequisites and all selected Deep cells. Intentional
+skips must match independently proven exclusions. Final verification additionally
+checks run/attempt/event/head, exact checkout and merge parents, and incorporated
+main ancestry of source and expected base. Invalid classifier inputs select full
+qualification; unverifiable source identity cannot pass the final gate.
+
+**Limitation:** the aggregate checks only its own reusable CI graph. It does NOT
+verify independent CI002 or signal workflow results. Preserve separately required
+CI002 `test` (workflow: CI002 Security Contracts) and signal `signal` statuses
+when migrating branch protection. Require the stable `pr-ci-required` plus these
+independent checks; do not remove legacy required compiler checks until genuine
+selective/failure acceptance completes. Independently protect orchestration and
+security-policy edits with review/rulesets. The branch-protection REST endpoint
+reported main unprotected (404); no protection configuration was changed.
+
+### Local qualification
+
+All mandated local commands passed: split guard; split mutation self-test
+(**477 controls**); Task077B layout (**3 tests, including 312 mutations per layout**);
+Task060 wrappers (**96 checks**); Task061 wrappers (**4 checks**); Task093 placement
+(**12 tests**); selector/final-gate/security scheduling suite (**47 test executions**
+after removing duplicate imported test discovery); CI002 (**30 tests**); standalone
+policy (**34 cells/five lanes**); documentation guard; actionlint **1.7.12** with
+only the previously documented queue-key compatibility diagnostic excluded;
+`cargo fmt --all -- --check`; and `git diff --check`.
+
+`cargo test --workspace --locked` passed with local GNAT-backed tests. Full script
+unittest discovery passed **94 tests** after supplying missing `strace` from an
+extracted Debian package under the temporary evidence directory. The first broad
+script run's two missing-strace errors are retained in the raw logs, not hidden.
+Full Python runtime integration passed **21 tests** against existing pinned Sleet
+`e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b` and websockets 17.2 in a temporary venv;
+mock qualification passed **19 tests in each normal/optimized run**. An initial
+unconfigured runtime discovery correctly failed without dependencies/broker;
+configured reruns passed without skips. No test expectations/commands were
+weakened to repair these environment deficiencies.
+
+### Strong isolated pilot and measurements
+
+R1 pilot [40607545508](https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/40607545508),
+attempt 1, workflow `ci-select-pilot.yml`, push source
+`ec2de3db9961f8806000d3e4ef09c4545a7f6c93`, passed **15/15** jobs with no cancellation.
+Three independently queued cells per lane use run-unique synthetic groups,
+**not production main lanes**. The hold window increased from 30 to 150 seconds.
+Real first-step/completion intervals prove **peak five**, **at most one per lane**,
+and eventual successful completion of every submitted job. Timestamp tests also
+reject overlapping jobs in a single lane even below the global ceiling.
+
+Measured **37.967 execution runner-minutes**, **465 seconds** wall interval.
+Run-start-to-first-setup delay: **4–316 seconds**, mean **159.667 seconds**. These
+include both lane wait and hosted scheduling; pure scheduler queue time is not
+available and is not inferred from queued jobs' `started_at`. Complete interval
+and peak evidence is in the version-controlled evidence JSON. No acceleration,
+production-main improvement, account concurrency entitlement, or reservation of
+15 runners is claimed.
+
+### Hosted acceptance and handoff status
+
+**HOSTED_CI_PENDING** until exact-final-head full hosted CI and independent
+security checks pass AND the genuine selective/failure controls are complete.
+Eight local category controls cover docs, Python, Float32, LA-CAL, shared IR,
+security/CI, unknown path and test-only changes. Local mutation tests cover ordinary
+and Deep failure, absent/cancelled/skipped cells, missing/stale artifacts, invalid
+manifest and absent baseline. These are NOT genuine hosted PR runs or hosted
+failure injections. No disposable category PRs or production failure injections
+have been created in R1; their scheduling/final-gate acceptance remains outstanding.
+They must be bounded, unmerged, nonprivileged fixtures, never replacement PRs.
+
+CI-infrastructure changes force conservative full qualification: **18 ordinary
+cells, eight reusable Deep jobs, classifier, baseline, aggregate** = 29 CI runner
+jobs, plus independent CI002 and PR signal. Exact final source/tree/run/attempt
+and check conclusions belong in the PR #116 R1 handoff, after normal push and
+local/remote/PR identity reconciliation. A later documentation commit requires a
+new exact-head run; historical or intermediate-head green runs cannot qualify it.
+No reviewer-ready disposition is claimed while these controls remain pending.
+
+### R1 rollback and operational restrictions
+
+Before merge, retain PR #116 and correct via normal follow-up commits; no
+replacement implementation PR or history rewrite. After reviewed deployment,
+revert the R1 orchestration changes with a normally reviewed PR while retaining
+all current-main Task099 production/security content and full qualification.
+Coordinate legacy/aggregate required-check migration before removing a guard;
+pause merges if the five-lane cap is absent. Keep dispatcher disabled and its
+provenance/receipt policy intact. No merge, approval, auto-merge, release, tag,
+Alire index, self-hosted runner, secret or feature-flag operation is authorized.

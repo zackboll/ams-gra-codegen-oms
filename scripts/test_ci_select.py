@@ -50,7 +50,7 @@ class SelectionTests(unittest.TestCase):
 
     def test_float32_inherited_and_composition_not_python(self):
         selected = self.selected('ada/oms-json-support/float32/ams_gra_float32.c')
-        self.assertEqual(selected, {'rust','ada-json-guard','ada-float32-codec','ada-float64-codec','ada-time-zulu-codec'})
+        self.assertEqual(selected, {'rust','ada-json-guard','ada-float32-codec','ada-float64-codec','ada-time-zulu-codec','ada-lacal-runtime-core'})
         self.assertNotIn('python-model-backend', selected)
 
     def test_shared_api_and_dependency_changes_full(self):
@@ -220,12 +220,12 @@ class GateTests(unittest.TestCase):
         self.jobs=[]
         self.artifacts=[]
         for record in self.policy['jobs']:
-            if record['workflow']=='uci-pages.yml':
+            if record['workflow'] not in ('ci.yml', 'deep-ci.yml'):
                 continue
             for cell in record['cells']:
                 self.jobs.append(dict(name=('deep-qualification / ' if record['workflow']=='deep-ci.yml' else '')+cell['name'],
                     status='completed',conclusion='success',started_at='2026-10-27T01:00:00Z',
-                    steps=[dict(conclusion='success') for _ in record['original_steps']]))
+                    steps=[dict(name=s.get('name','Run command'),conclusion='success') for s in record['original_steps']]))
                 self.artifacts.extend(dict(name=n,expired=False,size_in_bytes=1,created_at='2026-10-27T02:00:00Z') for n in cell['artifacts'])
 
     def validate(self):
@@ -284,8 +284,8 @@ class SchedulingTests(unittest.TestCase):
     def check(self):
         return ci_policy.check(self.policy,self.workflows)
 
-    def test_complete_29_runner_cells_five_common_lanes(self):
-        self.assertEqual(self.check(),29)
+    def test_complete_34_runner_cells_five_common_lanes(self):
+        self.assertEqual(self.check(),34)
 
     def test_six_lanes_duplicate_invalid_or_unassigned_rejected(self):
         for lanes in ([f'oms-main-slot-{n}' for n in range(1,7)],['oms-main-slot-1']*5):

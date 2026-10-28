@@ -4,7 +4,7 @@ import json
 import os
 from pathlib import Path
 import urllib.request
-from ci_selection import ROOT, from_environment, inventory, ordinary_jobs
+from ci_selection import ROOT, complete_diff, from_environment, git, inventory, ordinary_jobs
 
 
 def validate(manifest, expected, needs, jobs, artifacts, policy):
@@ -48,6 +48,9 @@ def validate_cells(record, jobs, artifacts, prefix=""):
         steps = job.get("steps", [])
         if len(steps) < len(record["original_steps"]) or any(s["conclusion"] != "success" for s in steps):
             raise ValueError("missing/skipped/failed qualification step: " + cell["name"])
+        for step in record['original_steps']:
+            if 'name' in step and not any(s.get('name') == step['name'] for s in steps):
+                raise ValueError('missing mandatory named step: ' + step['name'])
         for name in cell["artifacts"]:
             evidence = [a for a in artifacts if a["name"] == name and not a["expired"]
                         and a["size_in_bytes"] > 0 and a["created_at"] >= job["started_at"]]
@@ -80,12 +83,29 @@ def evidence(run_id, attempt):
                 artifacts=pages(f"actions/runs/{run_id}/artifacts", "artifacts"))
 
 
+def verify_source(manifest, policy, run, sha, event_name):
+    identities = manifest['identities']
+    if identities['merge'] != sha or git(ROOT, 'rev-parse', 'HEAD').decode().strip() != sha:
+        raise ValueError('final gate checkout/source mismatch')
+    git(ROOT, 'merge-base', '--is-ancestor', policy['incorporated_main'], sha)
+    if event_name == 'pull_request':
+        complete_diff(ROOT, identities['base'], identities['head'], sha)
+        git(ROOT, 'merge-base', '--is-ancestor', policy['incorporated_main'], identities['base'])
+    if run['event'] != event_name or run['head_sha'] != (identities['head'] if event_name == 'pull_request' else sha):
+        raise ValueError('authoritative workflow run source mismatch')
+
+
 def main():
     manifest = json.loads(os.environ["SELECTION_MANIFEST"])
     expected = from_environment()
     run = os.environ["GITHUB_RUN_ID"]
+    policy = inventory()
+    execution = api(f'actions/runs/{run}/attempts/{os.environ["GITHUB_RUN_ATTEMPT"]}')
+    if str(execution['id']) != run or str(execution['run_attempt']) != os.environ['GITHUB_RUN_ATTEMPT']:
+        raise ValueError('authoritative run/attempt mismatch')
+    verify_source(expected, policy, execution, os.environ['GITHUB_SHA'], os.environ['GITHUB_EVENT_NAME'])
     own = evidence(run, os.environ["GITHUB_RUN_ATTEMPT"])
-    validate(manifest, expected, json.loads(os.environ["NEEDS_JSON"]), own["jobs"], own["artifacts"], inventory())
+    validate(manifest, expected, json.loads(os.environ["NEEDS_JSON"]), own["jobs"], own["artifacts"], policy)
     report = dict(identities=manifest["identities"], selected_cells=manifest["selected_cells"],
                   skipped_cells=manifest["skipped_cells"], deep=manifest["deep"], conclusion="success")
     Path("ci-required-result.json").write_text(json.dumps(report, indent=2) + "\n")

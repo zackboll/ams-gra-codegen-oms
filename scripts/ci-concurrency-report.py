@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 
 
-def report(jobs, limit=5):
+def report(jobs, limit=5, lanes=None):
     if len({j['id'] for j in jobs}) != len(jobs):
         raise ValueError('duplicate job identities')
     events=[]
@@ -31,14 +31,24 @@ def report(jobs, limit=5):
         minutes+=duration/60
         rows.append(dict(id=job['id'],name=job['name'],started_at=start.isoformat(),completed_at=end.isoformat(),seconds=duration))
     current=maximum=0
+    lane_running = {}
+    lane_maximum = {}
+    if lanes is not None and set(lanes) != {j['id'] for j in jobs}:
+        raise ValueError('incomplete lane identity inventory')
     timeline=[]
     for when,delta,job_id in sorted(events):
         current+=delta
+        if lanes is not None:
+            lane = lanes[job_id]
+            lane_running[lane] = lane_running.get(lane, 0) + delta
+            lane_maximum[lane] = max(lane_maximum.get(lane, 0), lane_running[lane])
+            if lane_running[lane] > 1:
+                raise ValueError('multiple running jobs in lane: ' + str(lane))
         maximum=max(maximum,current)
         timeline.append(dict(at=when.isoformat(),delta=delta,running=current,job_id=job_id))
     if maximum>limit:
         raise ValueError(f'observed concurrency {maximum} exceeds {limit}')
-    return dict(jobs=len(rows),maximum_running=maximum,runner_minutes=round(minutes,3),
+    return dict(jobs=len(rows),maximum_running=maximum,maximum_per_lane=lane_maximum,runner_minutes=round(minutes,3),
                 wall_seconds=(max(e[0] for e in events)-min(e[0] for e in events)).total_seconds(),
                 intervals=rows,timeline=timeline,
                 queue_wait='not inferred from queued job started_at; requires run/job eligibility timestamps')

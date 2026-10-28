@@ -125,6 +125,16 @@ def select(changes, policy, full_reason=None, full_main=False):
                 and change["old_mode"] in ("000000", "100644")):
             reasons.append(dict(path=path, category="documentation"))
             continue
+        # Only reviewed Task099 runtime/fixture roots may use the narrow rule.
+        # New similarly named paths must not fall through to generic Ada rules.
+        task099_path = ((path.startswith(('ada/', 'tests/ada-')) and 'lacal' in path.lower())
+                        or 'task099' in path.lower())
+        if task099_path and not any(
+                fnmatch.fnmatchcase(path, p) for r in policy["rules"]
+                if r['category'] == 'ada-lacal-runtime' for p in r['paths']):
+            full = deep = True
+            reasons.append(dict(path=path, category="fallback", reason="unmapped Task099 path"))
+            continue
         rule = next((r for r in policy["rules"] if any(fnmatch.fnmatchcase(path, p) for p in r["paths"])), None)
         if rule is None:
             full = deep = True
