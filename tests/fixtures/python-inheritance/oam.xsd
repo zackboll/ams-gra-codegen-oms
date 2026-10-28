@@ -1,0 +1,23 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+ xmlns:t="https://www.vdl.afrl.af.mil/programs/oam"
+ targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified" version="002.5.0">
+  <!-- PY-007 synthetic, not an actual UCI service. -->
+  <xs:simpleType name="Token"><xs:restriction base="xs:integer"><xs:minInclusive value="0"/><xs:maxInclusive value="9"/></xs:restriction></xs:simpleType>
+  <xs:complexType name="Base" abstract="true"><xs:sequence>
+    <xs:element name="Base_Required" type="xs:int"/>
+    <xs:element name="Base_Optional" type="xs:string" minOccurs="0"/>
+    <xs:element name="Base_Values" type="t:Token" minOccurs="0" maxOccurs="3"/>
+    <xs:element name="Required_Values" type="xs:int" minOccurs="1" maxOccurs="3"/>
+  </xs:sequence></xs:complexType>
+  <xs:complexType name="Middle"><xs:complexContent><xs:extension base="t:Base"><xs:sequence/></xs:extension></xs:complexContent></xs:complexType>
+  <xs:complexType name="Third"><xs:complexContent><xs:extension base="t:Middle"><xs:sequence><xs:element name="Linked" type="t:Token"/></xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+  <xs:complexType name="ConcreteBase"><xs:sequence><xs:element name="Count" type="xs:int"/></xs:sequence></xs:complexType>
+  <xs:complexType name="Nested"><xs:complexContent><xs:extension base="t:ConcreteBase"><xs:sequence><xs:element name="Label" type="xs:string"/></xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+  <xs:complexType name="Leaf"><xs:complexContent><xs:extension base="t:Third"><xs:sequence>
+    <xs:element name="Local" type="xs:string"/>
+    <xs:element name="Nested" type="t:Nested"/>
+  </xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+  <xs:complexType name="Sibling"><xs:complexContent><xs:extension base="t:Base"><xs:sequence><xs:element name="Other" type="xs:boolean"/></xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+  <xs:element name="InheritedNotice" type="t:Leaf" t:version="001.000.000.000"/>
+  <xs:element name="SiblingNotice" type="t:Sibling" t:version="001.000.000.000"/>
+</xs:schema>
