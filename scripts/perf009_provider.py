@@ -1,6 +1,7 @@
 """Portable-only hardening around the unchanged PERF-005 provider mechanism."""
 import json
 from pathlib import Path
+import re
 import tomllib
 
 from perf005_ci import validate_toolchain
@@ -34,6 +35,21 @@ def verify_provider(variant, expected, expected_manifest):
     return record
 
 
+def verify_live_identity(text, compiler):
+    validate_toolchain(text, compiler)
+    hashes = re.findall(r"(?m)^([0-9a-f]{64})  (.+)$", text.decode())
+    required = {"gcc", "gnat", "gprbuild", "system.ads", "libgnat.a"}
+    checked = set()
+    for expected, name in hashes:
+        path = Path(name)
+        if path.name in required:
+            if not path.is_file() or digest(path) != expected:
+                raise RuntimeError("portable live compiler/runtime identity changed")
+            checked.add(path.name)
+    if checked != required:
+        raise RuntimeError("portable live identity inventory incomplete")
+
+
 class PortablePilot(Pilot):
     def __init__(self, scratch, compiler, checked, jobs, traced=True):
         super().__init__(scratch, compiler, checked, jobs)
@@ -42,7 +58,7 @@ class PortablePilot(Pilot):
 
     def configuration(self, directory, roots):
         result = super().configuration(directory, roots)
-        validate_toolchain((self.scratch / f"{directory.name}-provider-identity.log").read_bytes(), self.compiler)
+        verify_live_identity((self.scratch / f"{directory.name}-provider-identity.log").read_bytes(), self.compiler)
         return result
 
     def prepare(self, directory, roots, identity):
@@ -62,6 +78,9 @@ class PortablePilot(Pilot):
         policy = stem.name.removesuffix("-build").rsplit("-", 1)[1]
         if policy not in ("normal", "Check", "Ignore"):
             raise RuntimeError("unknown portable policy")
+        identity_log = self.scratch / f"{directory.name}-provider-identity.log"
+        if identity_log.exists():
+            verify_live_identity(identity_log.read_bytes(), self.compiler)
         for p, expected_hash in self.prepared_hashes.items():
             variant = self.root / p
             identity = dict(self.identity, policy=p,
@@ -77,4 +96,5 @@ class PortablePilot(Pilot):
         key = dict(self.identity, policy=policy,
                    assertion_policy="" if policy == "normal" else f"pragma Assertion_Policy ({policy});\n")
         verify_provider(variant, key, self.prepared_hashes[policy])
+        verify_live_identity(identity_log.read_bytes(), self.compiler)
         return result
