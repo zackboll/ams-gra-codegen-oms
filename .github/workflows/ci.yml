@@ -61,6 +61,7 @@ jobs:
           python3 scripts/ci-policy.py
           python3 scripts/ci-doc-policy.py
           python3 -m unittest discover -s scripts -p 'test_ci_select*.py'
+          python3 -m unittest discover -s scripts -p 'test_real_uci*.py'
           bash scripts/check-ci-split.sh
           bash scripts/test-check-ci-split.sh
           python3 scripts/test-task060-ci-wrappers.py
