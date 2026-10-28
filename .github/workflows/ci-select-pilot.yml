@@ -32,8 +32,9 @@ jobs:
       group: ci-select-synthetic-pilot-${{ github.run_id }}-lane-${{ matrix.lane }}
       queue: max
     steps:
-      - name: Hold a synthetic slot briefly (never a production lane)
+      - name: R1 hold synthetic lanes long enough to observe hosted capacity
         run: |
           date -u +%FT%TZ
-          sleep 30
+          printf 'R1 cell=%s lane=%s\n' '${{ matrix.cell }}' '${{ matrix.lane }}'
+          sleep 150
           date -u +%FT%TZ
