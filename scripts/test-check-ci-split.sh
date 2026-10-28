@@ -43,9 +43,7 @@ expect_fail "Deep lost Python campaign" "$fast" "$deep" "$tmp/sleet-no-py005.sh"
 { cat "$fast"; printf '      - run: bash scripts/check-py005-sleet.sh\n'; } >"$tmp/fast-py005-real.yml"
 expect_fail "Fast runs Python broker" "$tmp/fast-py005-real.yml" "$deep" "$sleet"
 
-for gate in 'python3 scripts/check-py007-uci.py --generator' \
-  '      - "scripts/check-py007-uci.py"' '      - "scripts/test-py007-uci.py"' \
-  '      - "scripts/check-py007-sleet.sh"' '      - "tests/fixtures/python-inheritance/**"'; do
+for gate in 'python3 scripts/check-py007-uci.py --generator' '          name: py006-uci'; do
   grep -Fv -- "$gate" "$deep" >"$tmp/deep-no-py007.yml"
   expect_fail "Deep lost PY007 $gate" "$fast" "$tmp/deep-no-py007.yml" "$sleet"
 done
@@ -71,12 +69,27 @@ ok
 
 # ---- 2. mutations fail --------------------------------------------------
 for required in \
-  '      - "scripts/check-task061-service-impact.py"' \
-  '      - "scripts/test-task061-service-impact.py"' \
   'python3 scripts/test-task061-service-impact.py' \
   'cargo test --release --locked -p ams-gra-codegen-oms --test service_check_batch'; do
   grep -Fv "$required" "$deep" >"$tmp/deep-no-perf001.yml"
   expect_fail "Deep CI lost $required" "$fast" "$tmp/deep-no-perf001.yml" "$sleet"
+done
+for required in 'uses: ./.github/workflows/deep-ci.yml' "if: github.event_name != 'pull_request' || fromJSON(needs.changes.outputs.manifest).deep"; do
+  grep -Fv "$required" "$fast" >"$tmp/fast-no-deep-caller.yml"
+  expect_fail "CI lost Deep dependency $required" "$tmp/fast-no-deep-caller.yml" "$deep" "$sleet"
+done
+grep -Fv '  workflow_call:' "$deep" >"$tmp/deep-no-call.yml"
+expect_fail "Deep lost reusable entrypoint" "$fast" "$tmp/deep-no-call.yml" "$sleet"
+for required in '  changes:' '  pr-ci-required:' '    needs: [changes]' \
+  'permissions:' '  contents: read'; do
+  grep -Fv "$required" "$fast" >"$tmp/fast-no-selection-policy.yml"
+  expect_fail "CI lost selection/security policy $required" "$tmp/fast-no-selection-policy.yml" "$deep" "$sleet"
+done
+for required in 'shell: python3 scripts/real_uci_evidence.py task 061' \
+  'run: python3 scripts/real_uci_evidence.py finish' \
+  '          name: perf007-real-uci-temporal-naming'; do
+  grep -Fv "$required" "$deep" >"$tmp/deep-no-primary-evidence.yml"
+  expect_fail "Deep lost PERF007 evidence $required" "$fast" "$tmp/deep-no-primary-evidence.yml" "$sleet"
 done
 for gate in 'bash scripts/check-task077-fast.sh' 'bash scripts/test-task077-ci-wrappers.sh'; do
   grep -Fv "$gate" "$fast" >"$tmp/fast-no-t077.yml"
@@ -216,7 +229,7 @@ import re
 import sys
 from pathlib import Path
 text = Path(sys.argv[1]).read_text()
-job = re.search(r'^  real-uci:\n.*?(?=^  [\w-]+:|\Z)', text, re.M | re.S)
+job = re.search(r'^  real-uci-temporal-naming:\n.*?(?=^  [\w-]+:|\Z)', text, re.M | re.S)
 assert job
 body = job[0]
 line = next(line for line in body.splitlines(True)

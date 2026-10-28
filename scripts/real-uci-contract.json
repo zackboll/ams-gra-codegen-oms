@@ -1,0 +1,312 @@
+{
+  "parent_sha": "befed75bf2a4dc68e0ee5c562545a4ed70ebceda",
+  "parent_tree": "bb5327a76ceaede12cb5f94a243b403c477f1ff3",
+  "original_order": [
+    "061",
+    "071",
+    "069",
+    "062",
+    "063",
+    "065",
+    "066"
+  ],
+  "shards": {
+    "real-uci-temporal-naming": [
+      "061",
+      "071",
+      "065"
+    ],
+    "real-uci-schema-ipv6": [
+      "069",
+      "062"
+    ],
+    "real-uci-integral-unicode": [
+      "063",
+      "066"
+    ]
+  },
+  "pins": {
+    "2.5": {
+      "tag": "v2.5",
+      "revision": "093610b7753944059360d3236770ab446d039556",
+      "sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27"
+    },
+    "2.6": {
+      "tag": "v2.6",
+      "revision": "78eb61b6112c8bffa40820c33124b57787fc5bd9",
+      "sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b"
+    }
+  },
+  "tasks": {
+    "061": {
+      "name": "Named TimeZulu pinned inventory and impact (Task 061)",
+      "command": "bash scripts/check-task061-pinned.sh",
+      "wrapper": "scripts/check-task061-pinned.sh",
+      "wrapper_sha256": "c5f9e16418e4b9da355dd3868e9b30c81a6ddc6bfaa31b52a54081291fc80a67",
+      "markers": {
+        "UCI 2.5 TASK061 TIME INVENTORY AND IMPACT: PASSED": 1,
+        "UCI 2.6 TASK061 TIME INVENTORY AND IMPACT: PASSED": 1,
+        "UCI 2.5 TASK061 DLZ COMPILER CODEC VERTICAL: PASSED": 1,
+        "UCI 2.6 TASK061 DLZ COMPILER CODEC VERTICAL: PASSED": 1,
+        "TASK061 PINNED GATES: PASSED": 1
+      },
+      "results": [
+        [
+          1,
+          0,
+          0,
+          0,
+          3
+        ],
+        [
+          1,
+          0,
+          0,
+          0,
+          3
+        ]
+      ],
+      "patterns": {}
+    },
+    "071": {
+      "name": "Real UCI route identity smoke (Task 071)",
+      "command": "bash scripts/check-task071-uci.sh",
+      "wrapper": "scripts/check-task071-uci.sh",
+      "wrapper_sha256": "93fe10803831e78232693a9cd1586ee0924c94fbe780c7a1a9f5288e5faa51d0",
+      "markers": {
+        "TASK071 REAL UCI ROUTES: PASSED": 1
+      },
+      "results": [],
+      "patterns": {}
+    },
+    "069": {
+      "name": "Pinned semantic schema diff (Task 069, once for both releases)",
+      "command": "bash scripts/check-task069-pinned.sh",
+      "wrapper": "scripts/check-task069-pinned.sh",
+      "wrapper_sha256": "603735e32f00ac0d9252cf0f81a221e3c50dbac0ca97d8000ec6fa3cca3d3480",
+      "markers": {
+        "TASK069 REAL UCI SEMANTIC DIFF: PASSED": 1
+      },
+      "results": [
+        [
+          1,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "patterns": {}
+    },
+    "062": {
+      "name": "Exact IPv6 pinned inventory, impact and real vertical (Task 062)",
+      "command": "bash scripts/check-task062-pinned.sh",
+      "wrapper": "scripts/check-task062-pinned.sh",
+      "wrapper_sha256": "2b8d29d5d16915bfef1bbde12e864c8b1a8c125aa6c507a7cbae3e4ff5ffaa52",
+      "markers": {
+        "UCI 2.5 TASK062 ClosedSchemaSet INVENTORY COVERAGE IMPACT: PASSED": 1,
+        "UCI 2.5 TASK062 OpenExtensions INVENTORY COVERAGE IMPACT: PASSED": 1,
+        "UCI 2.6 TASK062 ClosedSchemaSet INVENTORY COVERAGE IMPACT: PASSED": 1,
+        "UCI 2.6 TASK062 OpenExtensions INVENTORY COVERAGE IMPACT: PASSED": 1,
+        "TASK062 ALL 54 NEWLY READY CLI TUPLES: PASSED": 1,
+        "UCI 2.5 TASK062 RDMA ada COMPILER VERTICAL: PASSED": 1,
+        "TASK062 REAL RDMA IPV6 CODEC: PASSED": 2,
+        "UCI 2.5 TASK062 RDMA rust COMPILER VERTICAL: PASSED": 1,
+        "UCI 2.5 TASK062 RDMA cpp COMPILER VERTICAL: PASSED": 1,
+        "UCI 2.6 TASK062 RDMA ada COMPILER VERTICAL: PASSED": 1,
+        "UCI 2.6 TASK062 RDMA rust COMPILER VERTICAL: PASSED": 1,
+        "UCI 2.6 TASK062 RDMA cpp COMPILER VERTICAL: PASSED": 1,
+        "TASK062 PINNED GATES: PASSED": 1
+      },
+      "results": [
+        [
+          1,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "patterns": {}
+    },
+    "063": {
+      "name": "Exact patterned integral pinned evidence (Task 063)",
+      "command": "bash scripts/check-task063-pinned.sh",
+      "wrapper": "scripts/check-task063-pinned.sh",
+      "wrapper_sha256": "ab5bd3048caaa21f4b4887c1db8fa24cdc5b4a88566f222474f9eb8c41dd5b06",
+      "markers": {
+        "UCI 2.5 TASK063 PINNED INVENTORY AND IMPACT: PASSED": 1,
+        "UCI 2.6 TASK063 PINNED INVENTORY AND IMPACT: PASSED": 1,
+        "UCI 2.5 TASK063 ada ORDERS METADATA VERTICAL: PASSED": 1,
+        "UCI 2.5 TASK063 rust ORDERS METADATA VERTICAL: PASSED": 1,
+        "UCI 2.5 TASK063 cpp ORDERS METADATA VERTICAL: PASSED": 1,
+        "UCI 2.5 TASK063 SMALLEST SERVICE VERTICAL: PASSED": 1,
+        "UCI 2.6 TASK063 ada ORDERS METADATA VERTICAL: PASSED": 1,
+        "UCI 2.6 TASK063 rust ORDERS METADATA VERTICAL: PASSED": 1,
+        "UCI 2.6 TASK063 cpp ORDERS METADATA VERTICAL: PASSED": 1,
+        "UCI 2.6 TASK063 SMALLEST SERVICE VERTICAL: PASSED": 1,
+        "TASK063 NEWLY READY SERVICE-CHECK: PASSED (9 world tuples; 6 release/backend/message tuples)": 1,
+        "TASK063 PINNED GATES: PASSED": 1
+      },
+      "results": [
+        [
+          1,
+          0,
+          0,
+          0,
+          1
+        ],
+        [
+          1,
+          0,
+          0,
+          0,
+          1
+        ]
+      ],
+      "patterns": {}
+    },
+    "065": {
+      "name": "Ada semantic companion naming and smallest real vertical (Task 065)",
+      "command": "bash scripts/check-task065-pinned.sh",
+      "wrapper": "scripts/check-task065-pinned.sh",
+      "wrapper_sha256": "fe9c9221a0700fdc296284e7afca42320afd01ad8fd51f7256f21784a0046887",
+      "markers": {
+        "UCI 2.5 TASK065 HIDING INVENTORY: PASSED": 1,
+        "UCI 2.5 TASK065 ORIGINAL COLLISION ATTRIBUTION: PASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tAction\t578\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tActionCommand\t560\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tActionPlan\t956\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tActionPlanCommand\t952\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tApprovalPolicy\t633\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tAuthorization\t230\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tAuthorizationRequest\t234\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tCommSupport\t581\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tCommSupportActivity\t258\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tCommSupportPlan\t962\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tCommSupportPlanCommand\t960\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tEffect\t578\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tEffectCommand\t560\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tEffectPlan\t956\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tEffectPlanCommand\t952\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tMissionPlan\t994\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tMissionPlanCommand\t982\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tPlanningFunction\t623\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tPlanningFunctionSettingsCommand\t632\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tPlanningFunctionStatus\t628\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tRequirementOptions\t949\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tRequirementOptionsCommand\t943\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tResponseCommand\t560\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tResponsePlan\t956\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tResponsePlanCommand\t952\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tSupportPlan\t608\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tSupportPlanRequest\t601\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tSupportRequest\t592\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tSystemsNeededRequest\t579\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tTask\t1125\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tTaskCommand\t563\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tTaskPlan\t956\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.5\tTaskPlanCommand\t952\tPASSED": 1,
+        "FORMER-GAP-COMPILE\t2.5\tAuthorization\t230\tPASSED": 1,
+        "UCI 2.5 TASK065 AUTHORIZATION MODEL API GNAT: PASSED": 1,
+        "UCI 2.5 TASK065 NAMING EVIDENCE: PASSED": 1,
+        "UCI 2.6 TASK065 HIDING INVENTORY: PASSED": 1,
+        "UCI 2.6 TASK065 ORIGINAL COLLISION ATTRIBUTION: PASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tAction\t578\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tActionCommand\t561\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tActionPlan\t966\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tActionPlanCommand\t962\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tApprovalPolicy\t634\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tAuthorization\t231\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tAuthorizationRequest\t235\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tCommSupport\t581\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tCommSupportActivity\t258\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tCommSupportPlan\t972\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tCommSupportPlanCommand\t970\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tEffect\t578\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tEffectCommand\t561\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tEffectPlan\t966\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tEffectPlanCommand\t962\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tMissionPlan\t1004\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tMissionPlanCommand\t992\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tPlanningFunction\t623\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tPlanningFunctionSettingsCommand\t632\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tPlanningFunctionStatus\t628\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tRequirementOptions\t960\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tRequirementOptionsCommand\t953\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tResponseCommand\t561\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tResponsePlan\t966\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tResponsePlanCommand\t962\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tSupportPlan\t608\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tSupportPlanRequest\t601\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tSupportRequest\t592\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tSystemsNeededRequest\t579\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tTask\t1126\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tTaskCommand\t555\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tTaskPlan\t966\tPASSED": 1,
+        "FORMER-GAP-GENERATE\t2.6\tTaskPlanCommand\t962\tPASSED": 1,
+        "FORMER-GAP-COMPILE\t2.6\tAuthorization\t231\tPASSED": 1,
+        "UCI 2.6 TASK065 AUTHORIZATION MODEL API GNAT: PASSED": 1,
+        "UCI 2.6 TASK065 NAMING EVIDENCE: PASSED": 1,
+        "TASK065 PINNED GATES: PASSED": 1
+      },
+      "results": [
+        [
+          1,
+          0,
+          0,
+          0,
+          7
+        ]
+      ],
+      "patterns": {
+        "^FORMER-GAP-PROJECTION\\t2.5\\t.*$": 33,
+        "^FORMER-GAP-PROJECTION\\t2.6\\t.*$": 33,
+        "^GAP-COUNT\\t2.5\\t.*\\t0$": 2,
+        "^GAP-COUNT\\t2.6\\t.*\\t0$": 2
+      }
+    },
+    "066": {
+      "name": "Unicode 3.1 pinned profiles, impact and real vertical (Task 066)",
+      "command": "bash scripts/check-task066-pinned.sh",
+      "wrapper": "scripts/check-task066-pinned.sh",
+      "wrapper_sha256": "c36accbce4d5b1435fd5530ca6b3dfd31dfbf1d4178195c39d308fc7731cd379",
+      "markers": {
+        "UCI 2.5 TASK066 AUTHORITY INVENTORY: PASSED": 1,
+        "UCI 2.6 TASK066 AUTHORITY INVENTORY: PASSED": 1,
+        "UCI 2.5 TASK066 AO_CAPABILITY ada VERTICAL: PASSED": 1,
+        "TASK066 REAL UNICODE JSON ROUNDTRIP: PASSED": 2,
+        "UCI 2.5 TASK066 AO_CAPABILITY rust VERTICAL: PASSED": 1,
+        "UCI 2.5 TASK066 AO_CAPABILITY cpp VERTICAL: PASSED": 1,
+        "UCI 2.6 TASK066 AO_CAPABILITY ada VERTICAL: PASSED": 1,
+        "UCI 2.6 TASK066 AO_CAPABILITY rust VERTICAL: PASSED": 1,
+        "UCI 2.6 TASK066 AO_CAPABILITY cpp VERTICAL: PASSED": 1,
+        "TASK066 PINNED GATES: PASSED": 1
+      },
+      "results": [
+        [
+          1,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "patterns": {}
+    }
+  },
+  "source_files": [
+    "scripts/check-task061-pinned.sh",
+    "scripts/check-task071-uci.sh",
+    "scripts/check-task069-pinned.sh",
+    "scripts/check-task062-pinned.sh",
+    "scripts/check-task063-pinned.sh",
+    "scripts/check-task065-pinned.sh",
+    "scripts/check-task066-pinned.sh",
+    ".github/workflows/deep-ci.yml",
+    "scripts/real_uci_evidence.py",
+    "scripts/fetch-pinned-uci-2.5.sh",
+    "scripts/fetch-pinned-uci-2.6.sh",
+    "scripts/ci-qualification-inventory.json"
+  ]
+}

@@ -1,0 +1,199 @@
+{
+  "status": "MODEL_NOT_HOSTED_PERFORMANCE",
+  "observations_run_id": 40609156659,
+  "observations_source_sha": "befed75bf2a4dc68e0ee5c562545a4ed70ebceda",
+  "rows": [
+    {
+      "name": "ada-lacal-runtime-core (14)",
+      "job_id": 122556890708,
+      "observed_execution_minutes": 8.95,
+      "parent_lane": 1,
+      "candidate_lane": 1
+    },
+    {
+      "name": "ada-time-zulu-codec (16)",
+      "job_id": 122556890727,
+      "observed_execution_minutes": 25.833333333333332,
+      "parent_lane": 3,
+      "candidate_lane": 3
+    },
+    {
+      "name": "ada-lacal-runtime-core (16)",
+      "job_id": 122556890735,
+      "observed_execution_minutes": 12.633333333333333,
+      "parent_lane": 3,
+      "candidate_lane": 3
+    },
+    {
+      "name": "ada-json-guard",
+      "job_id": 122556890740,
+      "observed_execution_minutes": 1.9833333333333334,
+      "parent_lane": 5,
+      "candidate_lane": 5
+    },
+    {
+      "name": "rust",
+      "job_id": 122556890741,
+      "observed_execution_minutes": 29.933333333333334,
+      "parent_lane": 5,
+      "candidate_lane": 5
+    },
+    {
+      "name": "ada-time-zulu-codec (14)",
+      "job_id": 122556890793,
+      "observed_execution_minutes": 22.466666666666665,
+      "parent_lane": 4,
+      "candidate_lane": 4
+    },
+    {
+      "name": "ada-float64-codec (14)",
+      "job_id": 122556890804,
+      "observed_execution_minutes": 36.93333333333333,
+      "parent_lane": 1,
+      "candidate_lane": 1
+    },
+    {
+      "name": "python-model-backend (3.11)",
+      "job_id": 122556890825,
+      "observed_execution_minutes": 1.0,
+      "parent_lane": 1,
+      "candidate_lane": 1
+    },
+    {
+      "name": "ada-float32-codec",
+      "job_id": 122556890850,
+      "observed_execution_minutes": 32.71666666666667,
+      "parent_lane": 3,
+      "candidate_lane": 3
+    },
+    {
+      "name": "python-model-backend (3.13)",
+      "job_id": 122556890862,
+      "observed_execution_minutes": 0.7666666666666667,
+      "parent_lane": 2,
+      "candidate_lane": 2
+    },
+    {
+      "name": "ada-float64-codec (16)",
+      "job_id": 122556890869,
+      "observed_execution_minutes": 53.93333333333333,
+      "parent_lane": 2,
+      "candidate_lane": 2
+    },
+    {
+      "name": "ada-repeated-choice-real-uci",
+      "job_id": 122556891036,
+      "observed_execution_minutes": 8.733333333333333,
+      "parent_lane": 5,
+      "candidate_lane": 5
+    },
+    {
+      "name": "real-uci-regressions-alternating",
+      "job_id": 122556891261,
+      "observed_execution_minutes": 30.433333333333334,
+      "parent_lane": 3,
+      "candidate_lane": 3
+    },
+    {
+      "name": "real-sleet",
+      "job_id": 122556891337,
+      "observed_execution_minutes": 24.616666666666667,
+      "parent_lane": 2,
+      "candidate_lane": 4
+    },
+    {
+      "name": "msrv-real-uci",
+      "job_id": 122556891371,
+      "observed_execution_minutes": 14.95,
+      "parent_lane": 5,
+      "candidate_lane": 5
+    },
+    {
+      "name": "ada-hexbinary-real",
+      "job_id": 122556891414,
+      "observed_execution_minutes": 35.81666666666667,
+      "parent_lane": 5,
+      "candidate_lane": 5
+    },
+    {
+      "name": "real-uci-regressions-ascii",
+      "job_id": 122556891415,
+      "observed_execution_minutes": 38.3,
+      "parent_lane": 2,
+      "candidate_lane": 2
+    },
+    {
+      "name": "real-uci-regressions",
+      "job_id": 122556891465,
+      "observed_execution_minutes": 38.31666666666667,
+      "parent_lane": 1,
+      "candidate_lane": 1
+    },
+    {
+      "name": "ada-duration-codec",
+      "job_id": 122557623413,
+      "observed_execution_minutes": 11.616666666666667,
+      "parent_lane": 5,
+      "candidate_lane": 5
+    },
+    {
+      "name": "ada-datetime-codec",
+      "job_id": 122557623422,
+      "observed_execution_minutes": 7.016666666666667,
+      "parent_lane": 5,
+      "candidate_lane": 5
+    },
+    {
+      "name": "ada-repeated-codec",
+      "job_id": 122557623472,
+      "observed_execution_minutes": 4.933333333333334,
+      "parent_lane": 1,
+      "candidate_lane": 1
+    },
+    {
+      "name": "ada-repeated-choice-codec",
+      "job_id": 122557623569,
+      "observed_execution_minutes": 5.416666666666667,
+      "parent_lane": 5,
+      "candidate_lane": 5
+    },
+    {
+      "name": "ada-hexbinary-codec",
+      "job_id": 122557623615,
+      "observed_execution_minutes": 31.233333333333334,
+      "parent_lane": 4,
+      "candidate_lane": 4
+    },
+    {
+      "name": "ada-repeated-temporal-codec",
+      "job_id": 122557623637,
+      "observed_execution_minutes": 8.133333333333333,
+      "parent_lane": 4,
+      "candidate_lane": 4
+    },
+    {
+      "name": "ada-generated-codec",
+      "job_id": 122557623645,
+      "observed_execution_minutes": 8.933333333333334,
+      "parent_lane": 2,
+      "candidate_lane": 2
+    }
+  ],
+  "serial_execution_minutes": 70.46666666666667,
+  "baseline_lane_minutes": {
+    "1": 90.13333333333333,
+    "2": 126.55,
+    "3": 101.61666666666667,
+    "4": 132.3,
+    "5": 115.46666666666667
+  },
+  "candidate_lane_minutes": {
+    "1": 118.0,
+    "2": 101.93333333333334,
+    "3": 124.08333333333334,
+    "4": 115.19999999999999,
+    "5": 115.46666666666667
+  },
+  "assumption": "Historical task sums plus 240s per shard illustrative setup; no measured candidate speedup. Other observed completed parent cells unchanged. Excludes classifier/baseline/final and independent security/pages.",
+  "note": "Do not equate summed lane loads with actual scheduling makespan. Maximum five shared lanes is separately enforced."
+}

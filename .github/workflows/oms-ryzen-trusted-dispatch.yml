@@ -1,0 +1,72 @@
+name: OMS Ryzen Trusted Dispatch
+on:
+  workflow_run:
+    workflows: [OMS Trusted PR Signal]
+    types: [completed]
+permissions:
+  contents: read
+  actions: read
+  checks: read
+  pull-requests: read
+  statuses: read
+concurrency:
+  group: oms-trusted-dispatch-${{ github.event.workflow_run.pull_requests[0].number || github.event.workflow_run.id }}
+  cancel-in-progress: false
+  queue: max
+jobs:
+  dispatch:
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-4' || format('oms-pr-{0}-{1}-{2}-oms-ryzen-trusted-dispatch.yml-dispatch', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
+    if: vars.OMS_TRUSTED_PR_DISPATCH_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Destination-only dispatch token
+        id: app
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2
+        with:
+          app-id: ${{ vars.OMS_DISPATCH_APP_ID }}
+          private-key: ${{ secrets.OMS_DISPATCH_APP_PRIVATE_KEY }}
+          owner: zackboll
+          repositories: ci-runner-pilot
+          permission-contents: write
+      - name: Authorize API provenance and reserve exact-SHA receipt
+        id: gate
+        env:
+          ACTIVATED: ${{ vars.OMS_TRUSTED_PR_DISPATCH_ENABLED }}
+          SOURCE_TOKEN: ${{ github.token }}
+          DISPATCH_TOKEN: ${{ steps.app.outputs.token }}
+          SIGNAL_WORKFLOW_ID: ${{ vars.OMS_SIGNAL_WORKFLOW_ID }}
+          DISPATCH_WORKFLOW_ID: ${{ vars.OMS_DISPATCH_WORKFLOW_ID }}
+          STATUS_BOT_USER_ID: ${{ vars.OMS_STATUS_BOT_USER_ID }}
+        run: python3 scripts/ci002/dispatch.py
+      - name: Preserve trusted handoff receipt
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ${{ steps.gate.outputs.key }}
+          path: request.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Dispatch private authorization (not a runner credential)
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          KEY: ${{ steps.gate.outputs.key }}
+          SIGNAL_RUN: ${{ steps.gate.outputs.signal_run }}
+        run: |
+          python3 - <<'PY'
+          import json, os, sys
+          sys.path.insert(0, 'scripts/ci002')
+          from gate import API, DEST, DEST_ID, repository
+          destination = API(os.environ['GH_TOKEN'])
+          repository(destination, DEST, DEST_ID)
+          destination.call(f'repos/{DEST}/dispatches', 'POST', {
+              'event_type': 'oms-trusted-pr-v1', 'client_payload': {
+                  'dispatcher_run': int(os.environ['GITHUB_RUN_ID']),
+                  'signal_run': int(os.environ['SIGNAL_RUN']), 'key': os.environ['KEY']}})
+          print('Private dispatch accepted; execution independently reauthorizes.')
+          PY

@@ -1,65 +1,25 @@
 name: Deep CI
 
-# Task 055: slow external/reference evidence, moved OFF the pull-request
-# critical path. Nothing here was deleted or weakened; it runs after merge.
-#
-#   push to main       -> hard, visible post-merge signal on every merge
-#   nightly 06:00 UTC  -> environment / toolchain drift signal
-#   workflow_dispatch  -> manual investigation
-#   pull_request       -> ONLY when the CI harness itself changes (workflow
-#                         files or the deep-only scripts), so a PR that edits
-#                         this evidence also exercises it. Ordinary source PRs
-#                         do not match these paths and do not run Deep CI.
-#
-# See docs/task-055-ci-fast-deep-split.md.
+# Task 055 evidence is preserved. CI-SELECT-001 invokes the complete suite as
+# a reusable dependency on every main push and on applicable PR changes.
+# Nightly and manual qualification remain available; no duplicate push run.
+# See docs/ci-select-001-change-aware-qualification.md.
 on:
-  push:
-    branches:
-      - main
+  workflow_call:
   schedule:
     - cron: "0 6 * * *"
   workflow_dispatch:
-  pull_request:
-    paths:
-      - ".github/workflows/**"
-      - "scripts/fetch-pinned-uci-2.5.sh"
-      - "scripts/fetch-pinned-uci-2.6.sh"
-      - "scripts/run-real-sleet-test.sh"
-      - "python/oms-lacal-runtime/**"
-      - "scripts/check-py005-sleet.sh"
-      - "scripts/check-py006-sleet.sh"
-      - "scripts/check-py006-uci.py"
-      - "scripts/check-py007-uci.py"
-      - "scripts/test-py007-uci.py"
-      - "scripts/check-py007-sleet.sh"
-      - "tests/fixtures/python-inheritance/**"
-      - "tests/fixtures/python-header-profiles/**"
-      - "tests/fixtures/python-runtime/**"
-      - "crates/runtime-rust-facade-tests/tests/task077_sleet.rs"
-      - "scripts/check-task062-pinned.sh"
-      - "scripts/check-task061-service-impact.py"
-      - "scripts/test-task061-service-impact.py"
-      - "scripts/check-task062-service-impact.py"
-      - "scripts/check-task062-vertical.py"
-      - "scripts/check-task063-pinned.sh"
-      - "scripts/check-task063-service-impact.py"
-      - "scripts/check-task065-pinned.sh"
-      - "scripts/check-task066-pinned.sh"
-      - "scripts/check-task066-vertical.py"
-      - "scripts/check-task069-pinned.sh"
 
 permissions:
   contents: read
 
-# If A and B merge to main while A's deep run is still going, B contains A and
-# is the more useful target, so the obsolete run is cancelled. PR validation
-# runs use refs/pull/N/merge and so never cancel main (or each other).
-concurrency:
-  group: deep-ci-${{ github.ref }}
-  cancel-in-progress: true
+# CI caller owns PR cancellation; no main cancellation group here.
 
 jobs:
   ada-repeated-choice-real-uci:
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-ada-repeated-choice-real-uci', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -123,10 +83,12 @@ jobs:
   # Tasks 052/053/054 on the REAL pinned UCI 2.5 and 2.6 roots. GNAT is
   # installed here because the Task 054 real category-A test compiles the
   # generated Ada (gnatmake -gnatc) and AMS_GRA_REQUIRE_GNAT forbids a skip.
-  real-uci:
+  # PERF-007: three independent hosted runners; unchanged seven task bodies.
+  real-uci-temporal-naming:
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-4' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-temporal-naming', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
     runs-on: ubuntu-latest
-    # Task 077B: first seven qualification gates; regressions have their own
-    # independent four-hour budget. No payload gate is repeated.
     timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
@@ -143,8 +105,11 @@ jobs:
           printf 'DEEP_CI_SOURCE_SHA=%s\n' "$actual"
           printf 'DEEP_CI_SOURCE_TREE=%s\n' "$tree"
           printf 'DEEP_CI_EVENT=%s\n' "$GITHUB_EVENT_NAME"
+      - name: Initialize private shard evidence
+        run: python3 scripts/real_uci_evidence.py init
       - uses: dtolnay/rust-toolchain@stable
       - name: Install GNAT
+        shell: python3 scripts/real_uci_evidence.py setup gnat {0}
         run: |
           sudo apt-get update
           sudo apt-get install -y gnat
@@ -157,33 +122,186 @@ jobs:
       # the tag revision and root SHA-256 and fail hard on any mismatch; the
       # tests verify the root SHA-256 again before using it.
       - name: Fetch pinned UCI 2.5 and 2.6 (once)
+        shell: python3 scripts/real_uci_evidence.py setup fetch {0}
         run: |
           set -euo pipefail
           UCI25="$(scripts/fetch-pinned-uci-2.5.sh "$RUNNER_TEMP/uci-2.5")"
           UCI26="$(scripts/fetch-pinned-uci-2.6.sh "$RUNNER_TEMP/uci-2.6")"
           echo "AMS_GRA_UCI_2_5_ROOT=$UCI25" >> "$GITHUB_ENV"
           echo "AMS_GRA_UCI_2_6_ROOT=$UCI26" >> "$GITHUB_ENV"
-      # Marker checks below use here-strings, never `printf | grep -q`: under
-      # pipefail a grep that exits on its first match can SIGPIPE a writer that
-      # is still emitting a large output and fail a passing check.
-      #
+      - name: Prepare independent locked release generator
+        shell: python3 scripts/real_uci_evidence.py setup build {0}
+        run: |
+          set -euo pipefail
+          cargo fetch --locked
+          cargo build --release --locked -p ams-gra-codegen-oms
+      - name: Record verified pinned and toolchain identities
+        run: python3 scripts/real_uci_evidence.py inputs
       - name: Named TimeZulu pinned inventory and impact (Task 061)
+        shell: python3 scripts/real_uci_evidence.py task 061 {0}
         run: bash scripts/check-task061-pinned.sh
       - name: Real UCI route identity smoke (Task 071)
+        shell: python3 scripts/real_uci_evidence.py task 071 {0}
         run: bash scripts/check-task071-uci.sh
+      - name: Ada semantic companion naming and smallest real vertical (Task 065)
+        shell: python3 scripts/real_uci_evidence.py task 065 {0}
+        run: bash scripts/check-task065-pinned.sh
+      - name: Reconcile complete shard evidence
+        if: always()
+        run: python3 scripts/real_uci_evidence.py finish
+      - name: Preserve mandatory shard evidence and failure diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf007-real-uci-temporal-naming
+          path: ${{ runner.temp }}/perf007/real-uci-temporal-naming/**
+          if-no-files-found: error
+
+  real-uci-schema-ipv6:
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-1' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-schema-ipv6', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Verify Deep CI source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          tree="$(git rev-parse HEAD^{tree})"
+          test "$actual" = "$GITHUB_SHA"
+          test -n "$tree"
+          printf 'DEEP_CI_SOURCE_SHA=%s\n' "$actual"
+          printf 'DEEP_CI_SOURCE_TREE=%s\n' "$tree"
+          printf 'DEEP_CI_EVENT=%s\n' "$GITHUB_EVENT_NAME"
+      - name: Initialize private shard evidence
+        run: python3 scripts/real_uci_evidence.py init
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install GNAT
+        shell: python3 scripts/real_uci_evidence.py setup gnat {0}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnat
+      # Hard gate, as in Fast CI: no `|| true`.
+      - name: Verify GNAT availability
+        run: |
+          command -v gnatmake
+          gnatmake --version
+      # Fetch each pinned release ONCE for the whole job. Both scripts verify
+      # the tag revision and root SHA-256 and fail hard on any mismatch; the
+      # tests verify the root SHA-256 again before using it.
+      - name: Fetch pinned UCI 2.5 and 2.6 (once)
+        shell: python3 scripts/real_uci_evidence.py setup fetch {0}
+        run: |
+          set -euo pipefail
+          UCI25="$(scripts/fetch-pinned-uci-2.5.sh "$RUNNER_TEMP/uci-2.5")"
+          UCI26="$(scripts/fetch-pinned-uci-2.6.sh "$RUNNER_TEMP/uci-2.6")"
+          echo "AMS_GRA_UCI_2_5_ROOT=$UCI25" >> "$GITHUB_ENV"
+          echo "AMS_GRA_UCI_2_6_ROOT=$UCI26" >> "$GITHUB_ENV"
+      - name: Prepare independent locked release generator
+        shell: python3 scripts/real_uci_evidence.py setup build {0}
+        run: |
+          set -euo pipefail
+          cargo fetch --locked
+          cargo build --release --locked -p ams-gra-codegen-oms
+      - name: Record verified pinned and toolchain identities
+        run: python3 scripts/real_uci_evidence.py inputs
       - name: Pinned semantic schema diff (Task 069, once for both releases)
+        shell: python3 scripts/real_uci_evidence.py task 069 {0}
         run: bash scripts/check-task069-pinned.sh
       - name: Exact IPv6 pinned inventory, impact and real vertical (Task 062)
+        shell: python3 scripts/real_uci_evidence.py task 062 {0}
         run: bash scripts/check-task062-pinned.sh
-      - name: Exact patterned integral pinned evidence (Task 063)
-        run: bash scripts/check-task063-pinned.sh
-      - name: Ada semantic companion naming and smallest real vertical (Task 065)
-        run: bash scripts/check-task065-pinned.sh
-      - name: Unicode 3.1 pinned profiles, impact and real vertical (Task 066)
-        run: bash scripts/check-task066-pinned.sh
+      - name: Reconcile complete shard evidence
+        if: always()
+        run: python3 scripts/real_uci_evidence.py finish
+      - name: Preserve mandatory shard evidence and failure diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf007-real-uci-schema-ipv6
+          path: ${{ runner.temp }}/perf007/real-uci-schema-ipv6/**
+          if-no-files-found: error
 
-  # Independent runner: no artifacts or environment inherited from real-uci.
+  real-uci-integral-unicode:
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-3' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-integral-unicode', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Verify Deep CI source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          tree="$(git rev-parse HEAD^{tree})"
+          test "$actual" = "$GITHUB_SHA"
+          test -n "$tree"
+          printf 'DEEP_CI_SOURCE_SHA=%s\n' "$actual"
+          printf 'DEEP_CI_SOURCE_TREE=%s\n' "$tree"
+          printf 'DEEP_CI_EVENT=%s\n' "$GITHUB_EVENT_NAME"
+      - name: Initialize private shard evidence
+        run: python3 scripts/real_uci_evidence.py init
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install GNAT
+        shell: python3 scripts/real_uci_evidence.py setup gnat {0}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnat
+      # Hard gate, as in Fast CI: no `|| true`.
+      - name: Verify GNAT availability
+        run: |
+          command -v gnatmake
+          gnatmake --version
+      # Fetch each pinned release ONCE for the whole job. Both scripts verify
+      # the tag revision and root SHA-256 and fail hard on any mismatch; the
+      # tests verify the root SHA-256 again before using it.
+      - name: Fetch pinned UCI 2.5 and 2.6 (once)
+        shell: python3 scripts/real_uci_evidence.py setup fetch {0}
+        run: |
+          set -euo pipefail
+          UCI25="$(scripts/fetch-pinned-uci-2.5.sh "$RUNNER_TEMP/uci-2.5")"
+          UCI26="$(scripts/fetch-pinned-uci-2.6.sh "$RUNNER_TEMP/uci-2.6")"
+          echo "AMS_GRA_UCI_2_5_ROOT=$UCI25" >> "$GITHUB_ENV"
+          echo "AMS_GRA_UCI_2_6_ROOT=$UCI26" >> "$GITHUB_ENV"
+      - name: Prepare independent locked release generator
+        shell: python3 scripts/real_uci_evidence.py setup build {0}
+        run: |
+          set -euo pipefail
+          cargo fetch --locked
+          cargo build --release --locked -p ams-gra-codegen-oms
+      - name: Record verified pinned and toolchain identities
+        run: python3 scripts/real_uci_evidence.py inputs
+      - name: Exact patterned integral pinned evidence (Task 063)
+        shell: python3 scripts/real_uci_evidence.py task 063 {0}
+        run: bash scripts/check-task063-pinned.sh
+      - name: Unicode 3.1 pinned profiles, impact and real vertical (Task 066)
+        shell: python3 scripts/real_uci_evidence.py task 066 {0}
+        run: bash scripts/check-task066-pinned.sh
+      - name: Reconcile complete shard evidence
+        if: always()
+        run: python3 scripts/real_uci_evidence.py finish
+      - name: Preserve mandatory shard evidence and failure diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf007-real-uci-integral-unicode
+          path: ${{ runner.temp }}/perf007/real-uci-integral-unicode/**
+          if-no-files-found: error
+
+  # Independent regression runners retain their original qualification.
   real-uci-regressions:
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-1' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-regressions', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
@@ -364,6 +482,9 @@ jobs:
 
   # Independent ASCII runner: fresh verified inputs and release CLI.
   real-uci-regressions-ascii:
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-2' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-regressions-ascii', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
@@ -451,6 +572,9 @@ jobs:
 
   # Admission and AFTER remain one mandatory gate on an independent runner.
   real-uci-regressions-alternating:
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-3' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-regressions-alternating', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
@@ -523,6 +647,9 @@ jobs:
   # PositionReport and SubsystemStream codecs (build.rs generates them only
   # when AMS_GRA_UCI_2_5_ROOT is set) under 1.95.0. Rust only: no GNAT.
   msrv-real-uci:
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-msrv-real-uci', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -561,6 +688,9 @@ jobs:
   # checkout with Sleet's own pinned toolchain), plus the real UCI 2.5
   # PositionReport / SubsystemStream codecs. Rust only: no GNAT.
   real-sleet:
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-4' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-sleet', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -633,6 +763,9 @@ jobs:
           scripts/run-real-sleet-test.sh
 
   ada-hexbinary-real:
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-ada-hexbinary-real', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
