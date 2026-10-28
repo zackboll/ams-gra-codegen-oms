@@ -353,8 +353,10 @@ execution. Each compiler requires 24 combinations: OAM/qualified namespaces,
 portable/lossless profiles, Normal/Check/Ignore assertions and O0/O2. Check counts
 remain 53 portable and 62 lossless. All Task099 markers, result assertions and
 artifact paths are preserved. Production Ada, generators, qualification scripts
-and fixtures are byte-identical to incorporated main. New inheritance tests read
-the pinned main git object; they do not learn expected commands from candidates.
+and fixtures are byte-identical to incorporated main. New inheritance tests use
+independent payload hashes derived from the verified main git object during
+reconciliation; they do not learn expected commands from candidates or require
+history in inherited shallow Rust/Pages checkouts.
 Only checkout and its exact-SHA assertion change from PR head to `github.sha`,
 consistent with CI-SELECT's verified synthetic merge.
 
@@ -486,7 +488,7 @@ reported main unprotected (404); no protection configuration was changed.
 All mandated local commands passed: split guard; split mutation self-test
 (**477 controls**); Task077B layout (**3 tests, including 312 mutations per layout**);
 Task060 wrappers (**96 checks**); Task061 wrappers (**4 checks**); Task093 placement
-(**12 tests**); selector/final-gate/security scheduling suite (**47 test executions**
+(**12 tests**); selector/final-gate/security scheduling suite (**48 test executions**
 after removing duplicate imported test discovery); CI002 (**30 tests**); standalone
 policy (**34 cells/five lanes**); documentation guard; actionlint **1.7.12** with
 only the previously documented queue-key compatibility diagnostic excluded;
