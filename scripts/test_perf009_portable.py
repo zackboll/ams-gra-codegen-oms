@@ -114,7 +114,7 @@ class Portable(unittest.TestCase):
             (consumer / "bin/helper_demand_consumer").write_bytes(b"synthetic executable")
             with patch.dict(portable.COMPILERS, {"14": ("14.2.0", digest(compiler), "", "", "")}):
                 self.assertEqual(len(portable.validate_build(command, consumer, data, "14", "Check", 0)["compiled_sources"]), 5)
-                for mutation in ("missing", "duplicate", "backend", "bind", "link", "policy", "compiler", "stale", "unforced"):
+                for mutation in ("missing", "duplicate", "backend", "bind", "link", "policy", "compiler", "stale", "unforced", "abi", "optimization"):
                     changed = copy.deepcopy(data)
                     stamp = 0
                     cmd = command
@@ -133,6 +133,8 @@ class Portable(unittest.TestCase):
                         changed["executions"][0]["executable"] = "/wrong/gcc"
                     elif mutation == "stale":
                         stamp = 2**63
+                    elif mutation in ("abi", "optimization"):
+                        changed["executions"][0]["argv"].append("-m32" if mutation == "abi" else "-O2")
                     else:
                         cmd = []
                     with self.subTest(mutation=mutation), self.assertRaises(RuntimeError):

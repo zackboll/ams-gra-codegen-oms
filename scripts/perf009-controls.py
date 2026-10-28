@@ -14,7 +14,7 @@ import shutil
 import sys
 
 from perf005_ci import validate_toolchain
-from perf005_evidence import drivers, effective_args
+from perf005_evidence import drivers
 from perf005_profile import run
 from perf005_provider import digest, manifest, source_identity, sources
 from perf009_evidence import seal, verify_artifacts, verify_execution, verify_preparation, verify_seal, verify_trace
@@ -145,7 +145,7 @@ def verifier_controls(campaign, output, compiler, policy):
     data = verify_trace(profile)
     command = data["command"]
     consumer = campaign / "oam-ArraySample"
-    for kind in ("missing-compile", "duplicate-compile", "missing-binder", "missing-linker", "wrong-policy"):
+    for kind in ("missing-compile", "duplicate-compile", "missing-binder", "missing-linker", "wrong-policy", "abi-override", "optimization-override"):
         changed = copy.deepcopy(data)
         if kind == "missing-compile":
             changed["executions"].remove(drivers(changed)[0])
@@ -154,6 +154,8 @@ def verifier_controls(campaign, output, compiler, policy):
         elif kind in ("missing-binder", "missing-linker"):
             name = "gnatbind" if kind == "missing-binder" else "ld"
             changed["executions"] = [r for r in changed["executions"] if Path(r["executable"]).name != name]
+        elif kind in ("abi-override", "optimization-override"):
+            drivers(changed)[0]["argv"].append("-m32" if kind == "abi-override" else "-O2")
         else:
             for name, value in changed["gpr_temporary_inputs"].items():
                 if "Assertion_Policy" in value:

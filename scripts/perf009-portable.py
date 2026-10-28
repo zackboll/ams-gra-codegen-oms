@@ -17,9 +17,8 @@ import sys
 import time
 
 from perf005_ci import validate_toolchain
-from perf005_mapping import provider_equivalence
 from perf005_profile import run
-from perf005_provider import Pilot, digest
+from perf005_provider import digest
 from perf005_sandbox import consumer_layout, validate_layout
 from perf009_portable import compare, validate_build, validate_result
 from perf009_evidence import seal, verify_execution, verify_trace

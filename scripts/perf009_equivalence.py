@@ -83,5 +83,12 @@ def boundary(original, prepared, label, policy):
 
 
 def all_boundaries(original, prepared):
-    return [boundary(original, prepared, f"{profile}-{name}", policy)
-            for profile, name, policy in cells()]
+    # Keep one preparation profile in the bounded read-time parser cache while
+    # checking all ten naming directories. Restore authoritative cell order in
+    # the report; this changes no proof or compiler scheduling.
+    reports = {}
+    for policy in ("normal", "Check", "Ignore"):
+        for profile, name, selected in cells():
+            if selected == policy:
+                reports[(profile, name, policy)] = boundary(original, prepared, f"{profile}-{name}", policy)
+    return [reports[cell] for cell in cells()]

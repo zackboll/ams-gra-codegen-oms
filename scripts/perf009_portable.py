@@ -72,10 +72,15 @@ def validate_build(command, consumer, data, compiler, policy, started_ns):
         successful(backends[0])
         for invocation in (record, backends[0]):
             args = effective_args(data, invocation["argv"][1:], consumer.parent, source=source)
+            scalars = [a for a in args if isinstance(a, str)]
+            if (any(a.startswith("-O") and a != "-O0" for a in scalars)
+                    or any(a.startswith(("-m32", "-mx32", "--RTS=", "--target=", "-gnatep=", "-fplugin"))
+                           for a in scalars)):
+                raise RuntimeError("portable ABI/runtime/optimization override")
             policies = [a[1] for a in args if isinstance(a, list) and a[0] == "-gnatec="
                         and re.search(r"\bAssertion_Policy\b", a[1], re.I)]
             if policies != wanted or not {"-gnat2022", "-gnato", "-O0"} <= set(
-                    a for a in args if isinstance(a, str)):
+                    scalars):
                 raise RuntimeError("portable effective compiler policy/options differ")
         path = Path(source)
         objdir = consumer / "obj" if path.parent == consumer else path.parent.parent / "obj"

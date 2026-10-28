@@ -1,5 +1,4 @@
 """R1 independent evidence gates; fake fixtures are verifier-only controls."""
-import copy
 import importlib.util
 import json
 from pathlib import Path
