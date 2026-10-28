@@ -30,6 +30,9 @@ concurrency:
 
 jobs:
   build:
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-4' || format('oms-pr-{0}-{1}-{2}-uci-pages.yml-build', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -46,6 +49,9 @@ jobs:
           path: ${{ runner.temp }}/uci-pages
 
   deploy:
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-4' || format('oms-pr-{0}-{1}-{2}-uci-pages.yml-deploy', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
     if: github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest

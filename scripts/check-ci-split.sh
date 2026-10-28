@@ -34,10 +34,15 @@ fast_code="$(code "$fast")"
 deep_code="$(code "$deep")"
 sleet_code="$(code "$sleet")"
 
-# PERF-001: the batch driver is itself a mandatory qualification surface.
-for path in 'scripts/check-task061-service-impact.py' 'scripts/test-task061-service-impact.py'; do
-  grep -Fqx "      - \"$path\"" <<<"$deep_code" || fail "Deep CI lost Task 061 PR path: $path"
+# CI-SELECT-001: inherited PR paths are in the audited selector inventory.
+# Deep qualification is now a reusable dependency, avoiding a polling runner
+# holding a main lane while waiting for jobs queued behind that same lane.
+for required in \
+  'uses: ./.github/workflows/deep-ci.yml' \
+  "if: github.event_name != 'pull_request' || fromJSON(needs.changes.outputs.manifest).deep"; do
+  grep -Fq "$required" <<<"$fast_code" || fail "CI lost mandatory Deep caller: $required"
 done
+grep -Eq '^  workflow_call:' <<<"$deep_code" || fail "Deep CI lost reusable entrypoint"
 for required in \
   'python3 scripts/test-task061-service-impact.py' \
   'cargo test --release --locked -p ams-gra-codegen-oms --test service_check_batch'; do

@@ -5,6 +5,9 @@ on:
 permissions: {}
 jobs:
   signal:
+    concurrency:
+      group: ${{ format('oms-pr-{0}-{1}-{2}-oms-trusted-pr-signal.yml-signal', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     steps:
