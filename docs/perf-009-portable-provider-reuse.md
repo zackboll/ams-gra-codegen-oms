@@ -1,6 +1,10 @@
 # PERF-009 — portable provider reuse experiment
 
-## Disposition: QUALIFICATION_FAILED
+## Current disposition: PERFORMANCE_ENVIRONMENT_BLOCKED (R2)
+
+Portable exact-head correctness and mandatory Rust acceptance also remain
+incomplete; this is not a functional qualification pass. Historical checkpoint
+dispositions below remain preserved.
 
 **R1 update:** see the appended R1 section for portable live controls,
 read-time configuration hardening, benchmark contention rejection and a
@@ -464,3 +468,147 @@ establish portable reuse or its performance target.
 Final R1 status and exact commit/tree are reported in PR #121 and its handoff;
 documentation-head source identity is obtained from Git, not a self-referential
 embedded commit hash. **Disposition remains QUALIFICATION_FAILED.**
+
+## R2 — diagnosed Rust observation race; performance environment blocked
+
+**R2 disposition: PERFORMANCE_ENVIRONMENT_BLOCKED.** This does not imply that
+the portable functional or Rust regression gates passed. CI remains unchanged.
+R2 stops with reproducible prerequisite evidence rather than restarting long
+Ada campaigns or selecting a passing Rust rerun.
+
+### Reconciliation and isolation
+
+Fetched main, the feature branch and PR #121. Local, remote branch and GitHub PR
+heads matched `51576c69525891f5aff78de4a35a935f54dc5885`, tree
+`f5be301d6fdd009dfdf76c0d08093d4d02f7bf5d`. Main remained
+`ac046599c492241aefc9b1d6b742668c0e9cd39a`; no merge was required.
+New evidence is exclusively beneath
+`/home/zboll/git/ams-gra-codegen-oms-perf-009-evidence/r2`.
+Main was extracted with `git archive` into a disposable source directory and
+built with a separate Cargo target directory. No existing worktree was used
+as a scratch checkout. Earlier results are preserved.
+
+### Unmodified Rust comparison
+
+The runtime, fairness test, test support, Cargo manifest and lock inputs are
+identical between main and the starting PR head (`git diff` is empty).
+Fairness source SHA-256:
+`1b5b39ca32b3a1f59a6039c1ae0fa21b099c48ef4ca7189e762f9e317cd89cc7`.
+Compiler: Rust 1.95.0, commit
+`59807616e1fa2540724bfbac14d7976d7e4a3860`, LLVM 22.1.2,
+`x86_64-unknown-linux-gnu`. Both `--locked --no-run` focused builds succeeded.
+
+| Source | Test binary SHA-256 |
+|---|---|
+| main | `01e47833a49d48b4ad012ab0e8f02f6fd9a024acc9d165da9be7a335fa92a67f` |
+| PR head | `edd3957527c97e644655ac9643dc34bb3e1975cfd9068113ab35128827a95e6d` |
+
+The executable test command was the independently built binary followed by
+`--exact task049_receive_progresses_under_sustained_publish_load --nocapture --test-threads=1`.
+Single-CPU runs prefix `taskset -c 0`. All stdout/stderr, commands, exits,
+source/binary hashes and load snapshots are retained per run, including failures.
+
+| Fixed bounded series | main failures/runs | head failures/runs |
+|---|---:|---:|
+| Initial focused runs, inherited affinity | 0/3 | 0/3 |
+| Syscall-traced runs, inherited affinity | 0/3 | 0/3 |
+| Frequency series, inherited 32-CPU affinity | 0/10 | 0/10 |
+| Frequency series, single CPU | **7/10** | **5/10** |
+
+These were focused, single-test processes on a loaded shared host, **not**
+exclusive isolated hardware. An uncontended reproduction frequency is
+unavailable. Host load was approximately 24–29 on 32 logical CPUs; unrelated
+compiler/documentation/CI workloads remained untouched. Passing runs are not
+substituted for the reproduced failure.
+
+### Executable diagnosis: successful join is not immediate procfs removal
+
+A diagnostic-only LD_PRELOAD observer records `pthread_create`, thread names,
+callback returns, real `pthread_join` results and the exact `/proc/self/task`
+name bytes read by the **unmodified** fairness test. It delegates calls and
+does not alter return values, task names or the assertion. Observer runs are
+separately labeled because their timing differs from uninstrumented runs.
+
+In the third observer series, two of five runs failed on each source. Every
+failure has this ordering for the **same worker handle/TID**:
+
+1. Worker `ams-gra-oms-lac` callback returns.
+2. Test thread's real `pthread_join(worker)` returns **0**.
+3. The original `live_workers()` reads that worker's procfs `comm` successfully.
+4. The original line-193 assertion fails with exit **101**.
+
+For example, head worker TID **3358668**, pthread handle
+**140080581990080**, was joined by test TID **3358665** before its name was
+counted. Main worker TID **3358230** shows the same sequence. Complete logs
+and executable/binary identities are included in the R2 result manifest.
+Additional observed main failures captured `/proc/.../stat` flags
+**0x40004c**, including **PF_EXITING (0x4)**: the visible task is already in
+kernel exit, not evidence of an application worker continuing to serve.
+
+A standalone C/POSIX probe, with **no Rust or project runtime**, creates and
+joins 1,000 threads on CPU 0. It requires the callback-completion flag and
+successful join before reading the joined TID's procfs record. It completed
+1,000 successful joins and found **501 still-visible procfs task records**.
+This independently reproduces the assumption violated by the test.
+
+Source references retained with hashes support the observed ordering:
+glibc 2.41 `pthread_join_common.c` waits for the child's TID word to clear;
+Linux 6.12 `mm_release()` clears it and wakes the futex before later
+`do_exit()` cleanup and `exit_notify()`. Upstream reference files explain the
+mechanism; they are not claimed to be exact Debian kernel build provenance.
+The running host was Debian kernel 6.12.113 and glibc 2.41-12+deb13u4.
+
+One GDB observation also captured the worker before `close()`, its exit, and
+successful return from `close()` with no worker visible afterwards. That
+passing debugger run is corroboration only, not a substitute for the failing
+observer traces. The first preload attempt accidentally opened its log only
+in the `taskset` wrapper; empty-log attempts were retained and excluded from
+diagnostic conclusions. Corrected observers append across exec.
+
+**Supported conclusion:** the reproduced assertion failure is an inherited
+join/procfs observation race, not an established runtime lifecycle defect.
+There is no supported Rust production correction to import into PERF-009.
+The minimum separately reviewed follow-up is lifecycle instrumentation tied
+to the exact worker's successful join, with any procfs-disappearance check
+treated as asynchronous kernel cleanup and bounded separately. This PR does
+**not** implement that follow-up, relax the assertion, add sleeps/retries to
+the test, or mark its failing executions successful. The current mandatory
+Rust gate therefore remains unmet despite the diagnosis.
+
+### R2 performance and stop decision
+
+Ran the existing untraced benchmark interface once with `--preflight-only`,
+four workers and CPUs 0–3. Physical siblings 16–19 were also measured.
+Utilization ranged from **40% to 100%**, failing the existing <5% busy
+precondition. The interface exited nonzero before starting a campaign.
+Recorded status is **PERFORMANCE_ENVIRONMENT_BLOCKED**. No expensive rejected
+benchmark, synthetic load generator, process reprioritization, runner change
+or unrelated workload interruption followed. No A/B/B/A or clean performance
+acceptance is claimed.
+
+Because the environment prerequisite remains unavailable and the unchanged
+mandatory Rust assertion still fails, R2 did not rebuild another Ada generator,
+prepare more Alire states, or restart the long original/candidate matrices.
+There are **zero new complete R2 portable campaigns or 60-boundary proofs**.
+Historical 30-cell/150-owned-compilation results and R1's 114 controls/compiler
+remain historical only, not current-head substitutes. Exact generator/source,
+mapping, ABI and artifact gates remain mandatory for resumption.
+
+R2 reran the **43 PERF-005/PERF-009 tests**, all passing. Documentation/CI
+policy, placement, actionlint and diff checks are recorded separately. Full
+workspace acceptance is not claimed from focused passing runs.
+No production, Rust test/runtime, workflow, PERF-005, selector, security or
+runner configuration changed. The original two portable commands stay active.
+
+At bounded hosted reconciliation, the current-main Float32 job was successful
+but hexBinary was still pending. No complete current-main performance baseline,
+optimized hosted job, final-head mandatory artifact verification, full-job
+speedup, runner-minute reduction or critical-path result exists.
+
+Compact R2 results are in
+`/home/zboll/git/ams-gra-codegen-oms-perf-009-portable-provider/docs/perf-009-r2-results.json`.
+The external R2 directory retains standalone probe/observer source, compiled
+binaries, all run transcripts, source references and hashes. Reproduce the
+unmodified failing command with CPU-0 affinity; the fixed series records
+intermittency rather than promising every invocation fails. Final source
+commit/tree are the normal PR handoff head, not embedded self-referentially.
