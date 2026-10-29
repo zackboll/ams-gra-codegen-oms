@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 import ci_selection as selection
 import task100_evidence
+from ci_retry_test_data import metadata
 import test_ci_select as original
 
 
@@ -229,11 +230,14 @@ class Task100Evidence(unittest.TestCase):
                      for kind, c in itertools.product(('transport', 'sleet'), ('14', '16'))]
         def loader(artifact):
             return bundle(artifact['name'][-2:], '-sleet-' in artifact['name'])
-        result = original.gate.reconcile_task100(artifacts, manifest, 'a'*40, 'b'*40, '123', '2', loader)
+        jobs, attempts = metadata(artifacts)
+        result = original.gate.reconcile_task100(artifacts, manifest, 'a'*40, 'b'*40, '123', '2', loader,
+                                                jobs=jobs, attempts=attempts)
         self.assertEqual(len(result), 4)
         for index in range(4):
             with self.assertRaises(ValueError):
-                original.gate.reconcile_task100(artifacts[:index]+artifacts[index+1:], manifest, 'a'*40, 'b'*40, '123', '2', loader)
+                original.gate.reconcile_task100(artifacts[:index]+artifacts[index+1:], manifest, 'a'*40, 'b'*40, '123', '2', loader,
+                                                jobs=jobs, attempts=attempts)
 
     def test_wrong_source_tree_run_attempt_compiler_and_dirty_source(self):
         for field in ('sha', 'tree', 'run_id', 'run_attempt', 'compiler'):
