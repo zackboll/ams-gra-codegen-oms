@@ -4387,5 +4387,21 @@
   "task100_incorporated_main": "ac046599c492241aefc9b1d6b742668c0e9cd39a",
   "task100_original_head": "904ad3baebbf237a91e118c91457ac7207e8edd9",
   "reconciliation_main": "b6c6c9c5b1fabcd0716c1fd1183cc411d8841872",
-  "reconciliation_main_tree": "9dc99ef6531ab61b248f83b5f613e981e4002bc0"
+  "reconciliation_main_tree": "9dc99ef6531ab61b248f83b5f613e981e4002bc0",
+  "manual_benchmark": {
+    "workflow": "portable-provider-benchmark.yml",
+    "job_id": "portable-provider-benchmark",
+    "lane": 3,
+    "events": [
+      "workflow_dispatch"
+    ],
+    "source_policy": "current main controller; exact untrusted repository commit",
+    "workflow_sha256": "786ff5a9eb34d8f0fbb0999f1d0134b15d7afe5ea556b054c9c0e82971e78c3e",
+    "sources_sha256": {
+      "scripts/ci_bench/Dockerfile": "78194910d2e1c4bdc87b44094b9f4782488e6154df1c61c6b6d8be0cdbb4ce1b",
+      "scripts/ci_bench/controller.py": "f5560de4d95cdfbc7fb4f9aa7c175839358e0c4a0a225e8229bfdb053cd76be3",
+      "scripts/ci_bench/worker.py": "ca280d89ec953d614cdeb1fe580c75a3174cefbcba5fd780743225f5c420ffcf",
+      "scripts/ci_bench/provision.py": "096f6896913a4aa5381a32f30e31ae48db8df21c7526a2836c91b4fe3127e745"
+    }
+  }
 }

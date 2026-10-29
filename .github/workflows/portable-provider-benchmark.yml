@@ -1,0 +1,67 @@
+name: Portable Provider Benchmark
+
+# Authorization is manual AND main-only; candidate contents are never host code.
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact approved repository commit (40 lowercase hex characters)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  portable-provider-benchmark:
+    concurrency:
+      group: oms-main-slot-3
+      queue: max
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.repository == 'zackboll/ams-gra-codegen-oms'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Authorize exact main controller and candidate commit
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          EXPECTED_WORKFLOW_SHA: ${{ github.sha }}
+        run: python3 scripts/ci_bench/controller.py prepare
+      - name: Build trusted pinned tool and dependency image
+        run: python3 scripts/ci_bench/controller.py image
+      - name: Execute isolated original reuse reuse original for both compilers
+        run: python3 scripts/ci_bench/controller.py campaign
+      - name: Package bounded mandatory evidence
+        if: always()
+        run: python3 scripts/ci_bench/controller.py package
+      - name: Upload mandatory measurements
+        id: measurements
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ci-bench-001-measurements
+          path: ${{ runner.temp }}/ci-bench-001/public/
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+      - name: Account for actual packaging and upload step
+        if: always()
+        env:
+          MEASUREMENTS_OUTCOME: ${{ steps.measurements.outcome }}
+          MEASUREMENTS_ID: ${{ steps.measurements.outputs.artifact-id }}
+          MEASUREMENTS_DIGEST: ${{ steps.measurements.outputs.artifact-digest }}
+        run: python3 scripts/ci_bench/controller.py receipt
+      - name: Upload mandatory transport receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ci-bench-001-upload-receipt
+          path: ${{ runner.temp }}/ci-bench-001/upload-receipt.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Enforce complete campaign and acceptance gates
+        if: always()
+        run: python3 scripts/ci_bench/controller.py gate
