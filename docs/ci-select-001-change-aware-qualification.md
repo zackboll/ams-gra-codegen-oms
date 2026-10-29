@@ -1,5 +1,17 @@
 # CI-SELECT-001 — change-aware PR qualification and five main lanes
 
+## Task100 integration amendment (PR #118)
+
+The current-main Task100 integration adds two compiler cells to ordinary CI
+and two to reusable Deep CI. The inventory is now **40 expanded runner cells**,
+**39 main-eligible**, with the PR-only trusted signal excluded from main lanes.
+Deep has twelve expanded cells. All five shared lanes, the three PERF-007
+primary shards and inherited security controls remain. See
+`docs/task-100-main-integration.md` for source identities, exact gate contracts,
+observed historical Task100 runtimes and the pending final-head acceptance.
+The 34/36-cell counts below describe their historical reconciliation stages,
+not this integrated inventory.
+
 ## Stacked PERF-007 graph amendment
 
 The stacked PERF-007 change replaces only the seven-task serial `real-uci`

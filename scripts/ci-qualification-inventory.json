@@ -23,6 +23,23 @@
       "deep": false
     },
     {
+      "category": "ada-websocket",
+      "paths": [
+        "tests/ada-websocket/**",
+        "tests/fixtures/service-generate/lacal-websocket.xsd",
+        "tests/fixtures/service-generate/lacal-runtime.xsd",
+        "tests/fixtures/service-generate/lacal-runtime.yaml"
+      ],
+      "jobs": [
+        "rust",
+        "ada-json-guard",
+        "ada-lacal-runtime-core",
+        "ada-websocket-transport"
+      ],
+      "deep": true,
+      "rationale": "Task100 fixtures and generated consumers share Task099 runtime and OMS JSON"
+    },
+    {
       "category": "ada-lacal-runtime",
       "paths": [
         "ada/oms-lacal-runtime/**",
@@ -32,10 +49,11 @@
       "jobs": [
         "rust",
         "ada-json-guard",
-        "ada-lacal-runtime-core"
+        "ada-lacal-runtime-core",
+        "ada-websocket-transport"
       ],
-      "deep": false,
-      "rationale": "Task099 mock transport and typed OMS JSON integration require both compilers"
+      "deep": true,
+      "rationale": "Task099 mock transport and typed OMS JSON integration require both compilers; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification"
     },
     {
       "category": "python",
@@ -65,10 +83,11 @@
         "ada-float32-codec",
         "ada-float64-codec",
         "ada-time-zulu-codec",
-        "ada-lacal-runtime-core"
+        "ada-lacal-runtime-core",
+        "ada-websocket-transport"
       ],
-      "rationale": "task097/inherited.py reruns Float32 campaigns; task098/qualify.py covers Float32 composition; task097 boundary/environment reuse Float32 probes",
-      "deep": false
+      "rationale": "task097/inherited.py reruns Float32 campaigns; task098/qualify.py covers Float32 composition; task097 boundary/environment reuse Float32 probes; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification",
+      "deep": true
     },
     {
       "category": "lossless-support",
@@ -83,10 +102,11 @@
         "ada-json-guard",
         "ada-float64-codec",
         "ada-time-zulu-codec",
-        "ada-lacal-runtime-core"
+        "ada-lacal-runtime-core",
+        "ada-websocket-transport"
       ],
-      "rationale": "Float64 ABI/rounding and GNAT14/16 qualification; TimeZulu lossless profile composes this support",
-      "deep": false
+      "rationale": "Float64 ABI/rounding and GNAT14/16 qualification; TimeZulu lossless profile composes this support; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification",
+      "deep": true
     },
     {
       "category": "ada-shared",
@@ -109,10 +129,11 @@
         "ada-duration-codec",
         "ada-hexbinary-codec",
         "ada-repeated-choice-codec",
-        "ada-lacal-runtime-core"
+        "ada-lacal-runtime-core",
+        "ada-websocket-transport"
       ],
-      "rationale": "Guard/support is imported by all Ada campaigns; generated consumer and backend changes lack proven independence",
-      "deep": false
+      "rationale": "Guard/support is imported by all Ada campaigns; generated consumer and backend changes lack proven independence; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification",
+      "deep": true
     },
     {
       "category": "time-zulu-tests",
@@ -127,10 +148,11 @@
         "ada-duration-codec",
         "ada-repeated-temporal-codec",
         "ada-float64-codec",
-        "ada-lacal-runtime-core"
+        "ada-lacal-runtime-core",
+        "ada-websocket-transport"
       ],
-      "rationale": "Temporal composition and inherited task097 temporal campaigns",
-      "deep": false
+      "rationale": "Temporal composition and inherited task097 temporal campaigns; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification",
+      "deep": true
     },
     {
       "category": "frozen-temporal",
@@ -150,10 +172,11 @@
         "ada-duration-codec",
         "ada-hexbinary-codec",
         "ada-repeated-choice-codec",
-        "ada-lacal-runtime-core"
+        "ada-lacal-runtime-core",
+        "ada-websocket-transport"
       ],
-      "rationale": "DateTime/Duration frozen corpora shared by generated consumers, repeated temporal and inherited Float64 campaigns",
-      "deep": false
+      "rationale": "DateTime/Duration frozen corpora shared by generated consumers, repeated temporal and inherited Float64 campaigns; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification",
+      "deep": true
     },
     {
       "category": "rust",
@@ -202,10 +225,11 @@
         "ada-hexbinary-codec",
         "ada-repeated-choice-codec",
         "rust",
-        "ada-lacal-runtime-core"
+        "ada-lacal-runtime-core",
+        "ada-websocket-transport"
       ],
-      "rationale": "Generator binary links every backend; shared parsing/planning/contracts and dependency configuration lack proven independence",
-      "deep": false
+      "rationale": "Generator binary links every backend; shared parsing/planning/contracts and dependency configuration lack proven independence; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification",
+      "deep": true
     },
     {
       "category": "infrastructure",
@@ -231,9 +255,10 @@
         "ada-hexbinary-codec",
         "ada-repeated-choice-codec",
         "rust",
-        "ada-lacal-runtime-core"
+        "ada-lacal-runtime-core",
+        "ada-websocket-transport"
       ],
-      "rationale": "CI/security/shared harness and selector changes must qualify their own orchestration",
+      "rationale": "CI/security/shared harness and selector changes must qualify their own orchestration; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification",
       "deep": true
     },
     {
@@ -255,10 +280,11 @@
         "ada-hexbinary-codec",
         "ada-repeated-choice-codec",
         "rust",
-        "ada-lacal-runtime-core"
+        "ada-lacal-runtime-core",
+        "ada-websocket-transport"
       ],
-      "rationale": "Frozen schema/golden inputs are consumed across languages; no component-only proof",
-      "deep": false
+      "rationale": "Frozen schema/golden inputs are consumed across languages; no component-only proof; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification",
+      "deep": true
     }
   ],
   "documentation": {
@@ -295,6 +321,11 @@
     "scripts/check-task066-pinned.sh",
     "scripts/check-task066-vertical.py",
     "scripts/check-task069-pinned.sh",
+    "scripts/task100/**",
+    "tests/ada-websocket/**",
+    "ada/oms-lacal-runtime/**",
+    "tests/fixtures/service-generate/lacal-websocket.xsd",
+    "tests/fixtures/service-generate/lacal-runtime.yaml",
     "scripts/check-py007-uci.py",
     "scripts/test-py007-uci.py",
     "scripts/check-py007-sleet.sh",
@@ -352,7 +383,8 @@
         "ada-hexbinary-codec",
         "ada-repeated-choice-codec",
         "rust",
-        "ada-lacal-runtime-core"
+        "ada-lacal-runtime-core",
+        "ada-websocket-transport"
       ],
       "artifacts": [
         "ci-required-result"
@@ -3924,6 +3956,402 @@
       "pr_concurrency_identity": "${{ github.ref == 'refs/heads/main' && 'oms-main-slot-4' || format('oms-pr-{0}-{1}-{2}-oms-ryzen-trusted-dispatch.yml-dispatch', github.workflow, github.run_id, github.run_attempt) }}",
       "enabled_behavior": "feature-gated, disabled unless OMS_TRUSTED_PR_DISPATCH_ENABLED=true",
       "selection_categories": []
+    },
+    {
+      "workflow": "ci.yml",
+      "job_id": "ada-websocket-transport",
+      "cells": [
+        {
+          "key": "ada-websocket-transport-14",
+          "name": "ada-websocket-transport (14)",
+          "variant": {
+            "compiler": "14"
+          },
+          "lane": 2,
+          "artifacts": [
+            "task100-ada-websocket-transport-14"
+          ]
+        },
+        {
+          "key": "ada-websocket-transport-16",
+          "name": "ada-websocket-transport (16)",
+          "variant": {
+            "compiler": "16"
+          },
+          "lane": 4,
+          "artifacts": [
+            "task100-ada-websocket-transport-16"
+          ]
+        }
+      ],
+      "prerequisites": [],
+      "original_job": {
+        "runs-on": "ubuntu-24.04",
+        "strategy": {
+          "fail-fast": false,
+          "matrix": {
+            "compiler": [
+              "14",
+              "16"
+            ]
+          }
+        },
+        "container": {
+          "image": "debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5"
+        },
+        "timeout-minutes": 90,
+        "steps": [
+          {
+            "name": "Verify pinned target and external compiler",
+            "shell": "bash",
+            "run": "set -euo pipefail\napt-get update\napt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14\ntest \"$(uname -m)\" = x86_64\ntest \"$(getconf GNU_LIBC_VERSION)\" = 'glibc 2.41'\nmkdir -p /tmp/task100-evidence\ndpkg-query -W libc6 libc6-dev gnat-14 gcc-14 | tee /tmp/task100-evidence/platform.txt\nsha256sum /usr/lib/x86_64-linux-gnu/libc.so.6 /usr/bin/gnat /usr/bin/gcc | tee -a /tmp/task100-evidence/platform.txt\ngnat --version | tee -a /tmp/task100-evidence/platform.txt\ngnat --version | grep -E '^GNAT 14\\.2\\.0([[:space:]]|$)'\n"
+          },
+          {
+            "uses": "actions/checkout@v4",
+            "with": {
+              "ref": "${{ github.event.pull_request.head.sha || github.sha }}"
+            }
+          },
+          {
+            "name": "Record exact source identity",
+            "shell": "bash",
+            "run": "set -euo pipefail\ntest \"$(pwd -P)\" = \"$(realpath \"$GITHUB_WORKSPACE\")\"\ngit config --global --add safe.directory \"$GITHUB_WORKSPACE\"\ngit rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task100-evidence/source.txt\ntest \"$(git rev-parse HEAD)\" = '${{ github.event.pull_request.head.sha || github.sha }}'\nstatus=\"$(git status --porcelain)\"\ntest -z \"$status\"\n"
+          },
+          {
+            "uses": "dtolnay/rust-toolchain@1.95.0"
+          },
+          {
+            "name": "Install verified Alire 2.1.1",
+            "shell": "bash",
+            "run": "set -euo pipefail\ncurl --fail --location --retry 3 --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip\necho '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  /tmp/alire.zip' | sha256sum --check --strict\nunzip -q /tmp/alire.zip -d /opt/alire\ntest \"$(/opt/alire/bin/alr --version)\" = 'alr 2.1.1'\nsha256sum /opt/alire/bin/alr | tee -a /tmp/task100-evidence/platform.txt\necho /opt/alire/bin >> \"$GITHUB_PATH\"\n"
+          },
+          {
+            "name": "Build exact-head generator",
+            "run": "cargo +1.95.0 build --locked -p ams-gra-codegen-oms"
+          },
+          {
+            "name": "Provision pinned compiler and GNATCOLL inputs",
+            "env": {
+              "PYTHONDONTWRITEBYTECODE": "1"
+            },
+            "run": "python3 scripts/task096/setup.py --scratch /tmp/task100-evidence/setup --compiler '${{ matrix.compiler }}'"
+          },
+          {
+            "name": "Execute generated runtime consumers and require all cells",
+            "shell": "bash",
+            "env": {
+              "PYTHONDONTWRITEBYTECODE": "1"
+            },
+            "run": "set -euo pipefail\npython3 scripts/task100/qualify.py --scratch /tmp/task100-evidence/campaign --setup /tmp/task100-evidence/setup --compiler '${{ matrix.compiler }}' --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\" | tee /tmp/task100-evidence/qualify.log\npython3 - <<'EOF'\nimport json\nresult = json.load(open('/tmp/task100-evidence/campaign/result.json'))\ncells = result['cells']\nexpected = {(n, p, a, o) for n in ['oam', 'qualified'] for p in ['portable', 'lossless']\n            for a in ['Normal', 'Check', 'Ignore'] for o in ['0', '2']}\nactual = {(c['namespace'], c['profile'], c['policy'], c['optimization']) for c in cells}\nif not result.get('completed') or len(cells) != 24 or actual != expected:\n    raise SystemExit('incomplete Task 100 execution matrix')\nif any(s['exit'] != 0 for s in result['steps']):\n    raise SystemExit('failed Task 100 step')\nprint('TASK100_HOSTED_REQUIRED_CELLS', len(cells))\nEOF\ntest \"$(grep -c '^TASK100_CELL_COMPLETE ' /tmp/task100-evidence/qualify.log)\" = 24\ngrep -F 'TASK100_QUALIFICATION_COMPLETE' /tmp/task100-evidence/qualify.log\n"
+          },
+          {
+            "name": "Upload mandatory source compiler and execution evidence",
+            "if": "always()",
+            "uses": "actions/upload-artifact@v4",
+            "with": {
+              "name": "task100-ada-websocket-transport-${{ matrix.compiler }}",
+              "path": "scripts/task100/**\ntests/ada-websocket/**\ntests/fixtures/service-generate/lacal-websocket.xsd\ntests/fixtures/service-generate/lacal-runtime.yaml\n/tmp/task100-evidence/*.txt\n/tmp/task100-evidence/*.log\n/tmp/task100-evidence/setup/step-*\n/tmp/task100-evidence/setup/identities.json\n/tmp/task100-evidence/setup/consumer/alire/alire.lock\n/tmp/task100-evidence/campaign/**/*.json\n/tmp/task100-evidence/campaign/**/*.stdout\n/tmp/task100-evidence/campaign/**/*.stderr\n/tmp/task100-evidence/campaign/**/*.exit\n/tmp/task100-evidence/campaign/**/*.ad?\n/tmp/task100-evidence/campaign/**/*.gpr\n/tmp/task100-evidence/campaign/**/*.adc\n/tmp/task100-evidence/campaign/**/*.c\n/tmp/task100-evidence/campaign/**/*.h\n/tmp/task100-evidence/campaign/**/*.lock\n/tmp/task100-evidence/campaign/**/*.xsd\n/tmp/task100-evidence/campaign/**/*.toml\n/tmp/task100-evidence/campaign/**/LICENSE\n",
+              "if-no-files-found": "error"
+            }
+          }
+        ]
+      },
+      "original_steps": [
+        {
+          "name": "Verify pinned target and external compiler",
+          "shell": "bash",
+          "run": "set -euo pipefail\napt-get update\napt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14\ntest \"$(uname -m)\" = x86_64\ntest \"$(getconf GNU_LIBC_VERSION)\" = 'glibc 2.41'\nmkdir -p /tmp/task100-evidence\ndpkg-query -W libc6 libc6-dev gnat-14 gcc-14 | tee /tmp/task100-evidence/platform.txt\nsha256sum /usr/lib/x86_64-linux-gnu/libc.so.6 /usr/bin/gnat /usr/bin/gcc | tee -a /tmp/task100-evidence/platform.txt\ngnat --version | tee -a /tmp/task100-evidence/platform.txt\ngnat --version | grep -E '^GNAT 14\\.2\\.0([[:space:]]|$)'\n"
+        },
+        {
+          "uses": "actions/checkout@v4",
+          "with": {
+            "ref": "${{ github.event.pull_request.head.sha || github.sha }}"
+          }
+        },
+        {
+          "name": "Record exact source identity",
+          "shell": "bash",
+          "run": "set -euo pipefail\ntest \"$(pwd -P)\" = \"$(realpath \"$GITHUB_WORKSPACE\")\"\ngit config --global --add safe.directory \"$GITHUB_WORKSPACE\"\ngit rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task100-evidence/source.txt\ntest \"$(git rev-parse HEAD)\" = '${{ github.event.pull_request.head.sha || github.sha }}'\nstatus=\"$(git status --porcelain)\"\ntest -z \"$status\"\n"
+        },
+        {
+          "uses": "dtolnay/rust-toolchain@1.95.0"
+        },
+        {
+          "name": "Install verified Alire 2.1.1",
+          "shell": "bash",
+          "run": "set -euo pipefail\ncurl --fail --location --retry 3 --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip\necho '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  /tmp/alire.zip' | sha256sum --check --strict\nunzip -q /tmp/alire.zip -d /opt/alire\ntest \"$(/opt/alire/bin/alr --version)\" = 'alr 2.1.1'\nsha256sum /opt/alire/bin/alr | tee -a /tmp/task100-evidence/platform.txt\necho /opt/alire/bin >> \"$GITHUB_PATH\"\n"
+        },
+        {
+          "name": "Build exact-head generator",
+          "run": "cargo +1.95.0 build --locked -p ams-gra-codegen-oms"
+        },
+        {
+          "name": "Provision pinned compiler and GNATCOLL inputs",
+          "env": {
+            "PYTHONDONTWRITEBYTECODE": "1"
+          },
+          "run": "python3 scripts/task096/setup.py --scratch /tmp/task100-evidence/setup --compiler '${{ matrix.compiler }}'"
+        },
+        {
+          "name": "Execute generated runtime consumers and require all cells",
+          "shell": "bash",
+          "env": {
+            "PYTHONDONTWRITEBYTECODE": "1"
+          },
+          "run": "set -euo pipefail\npython3 scripts/task100/qualify.py --scratch /tmp/task100-evidence/campaign --setup /tmp/task100-evidence/setup --compiler '${{ matrix.compiler }}' --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\" | tee /tmp/task100-evidence/qualify.log\npython3 - <<'EOF'\nimport json\nresult = json.load(open('/tmp/task100-evidence/campaign/result.json'))\ncells = result['cells']\nexpected = {(n, p, a, o) for n in ['oam', 'qualified'] for p in ['portable', 'lossless']\n            for a in ['Normal', 'Check', 'Ignore'] for o in ['0', '2']}\nactual = {(c['namespace'], c['profile'], c['policy'], c['optimization']) for c in cells}\nif not result.get('completed') or len(cells) != 24 or actual != expected:\n    raise SystemExit('incomplete Task 100 execution matrix')\nif any(s['exit'] != 0 for s in result['steps']):\n    raise SystemExit('failed Task 100 step')\nprint('TASK100_HOSTED_REQUIRED_CELLS', len(cells))\nEOF\ntest \"$(grep -c '^TASK100_CELL_COMPLETE ' /tmp/task100-evidence/qualify.log)\" = 24\ngrep -F 'TASK100_QUALIFICATION_COMPLETE' /tmp/task100-evidence/qualify.log\n"
+        },
+        {
+          "name": "Upload mandatory source compiler and execution evidence",
+          "if": "always()",
+          "uses": "actions/upload-artifact@v4",
+          "with": {
+            "name": "task100-ada-websocket-transport-${{ matrix.compiler }}",
+            "path": "scripts/task100/**\ntests/ada-websocket/**\ntests/fixtures/service-generate/lacal-websocket.xsd\ntests/fixtures/service-generate/lacal-runtime.yaml\n/tmp/task100-evidence/*.txt\n/tmp/task100-evidence/*.log\n/tmp/task100-evidence/setup/step-*\n/tmp/task100-evidence/setup/identities.json\n/tmp/task100-evidence/setup/consumer/alire/alire.lock\n/tmp/task100-evidence/campaign/**/*.json\n/tmp/task100-evidence/campaign/**/*.stdout\n/tmp/task100-evidence/campaign/**/*.stderr\n/tmp/task100-evidence/campaign/**/*.exit\n/tmp/task100-evidence/campaign/**/*.ad?\n/tmp/task100-evidence/campaign/**/*.gpr\n/tmp/task100-evidence/campaign/**/*.adc\n/tmp/task100-evidence/campaign/**/*.c\n/tmp/task100-evidence/campaign/**/*.h\n/tmp/task100-evidence/campaign/**/*.lock\n/tmp/task100-evidence/campaign/**/*.xsd\n/tmp/task100-evidence/campaign/**/*.toml\n/tmp/task100-evidence/campaign/**/LICENSE\n",
+            "if-no-files-found": "error"
+          }
+        }
+      ],
+      "original_steps_yaml": "    steps:\n      - name: Verify pinned target and external compiler\n        shell: bash\n        run: |\n          set -euo pipefail\n          apt-get update\n          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14\n          test \"$(uname -m)\" = x86_64\n          test \"$(getconf GNU_LIBC_VERSION)\" = 'glibc 2.41'\n          mkdir -p /tmp/task100-evidence\n          dpkg-query -W libc6 libc6-dev gnat-14 gcc-14 | tee /tmp/task100-evidence/platform.txt\n          sha256sum /usr/lib/x86_64-linux-gnu/libc.so.6 /usr/bin/gnat /usr/bin/gcc | tee -a /tmp/task100-evidence/platform.txt\n          gnat --version | tee -a /tmp/task100-evidence/platform.txt\n          gnat --version | grep -E '^GNAT 14\\.2\\.0([[:space:]]|$)'\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.event.pull_request.head.sha || github.sha }}\n      - name: Record exact source identity\n        shell: bash\n        run: |\n          set -euo pipefail\n          test \"$(pwd -P)\" = \"$(realpath \"$GITHUB_WORKSPACE\")\"\n          git config --global --add safe.directory \"$GITHUB_WORKSPACE\"\n          git rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task100-evidence/source.txt\n          test \"$(git rev-parse HEAD)\" = '${{ github.event.pull_request.head.sha || github.sha }}'\n          status=\"$(git status --porcelain)\"\n          test -z \"$status\"\n      - uses: dtolnay/rust-toolchain@1.95.0\n      - name: Install verified Alire 2.1.1\n        shell: bash\n        run: |\n          set -euo pipefail\n          curl --fail --location --retry 3 --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip\n          echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  /tmp/alire.zip' | sha256sum --check --strict\n          unzip -q /tmp/alire.zip -d /opt/alire\n          test \"$(/opt/alire/bin/alr --version)\" = 'alr 2.1.1'\n          sha256sum /opt/alire/bin/alr | tee -a /tmp/task100-evidence/platform.txt\n          echo /opt/alire/bin >> \"$GITHUB_PATH\"\n      - name: Build exact-head generator\n        run: cargo +1.95.0 build --locked -p ams-gra-codegen-oms\n      - name: Provision pinned compiler and GNATCOLL inputs\n        env:\n          PYTHONDONTWRITEBYTECODE: '1'\n        run: python3 scripts/task096/setup.py --scratch /tmp/task100-evidence/setup --compiler '${{ matrix.compiler }}'\n      - name: Execute generated runtime consumers and require all cells\n        shell: bash\n        env:\n          PYTHONDONTWRITEBYTECODE: '1'\n        run: |\n          set -euo pipefail\n          python3 scripts/task100/qualify.py --scratch /tmp/task100-evidence/campaign --setup /tmp/task100-evidence/setup --compiler '${{ matrix.compiler }}' --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\" | tee /tmp/task100-evidence/qualify.log\n          python3 - <<'EOF'\n          import json\n          result = json.load(open('/tmp/task100-evidence/campaign/result.json'))\n          cells = result['cells']\n          expected = {(n, p, a, o) for n in ['oam', 'qualified'] for p in ['portable', 'lossless']\n                      for a in ['Normal', 'Check', 'Ignore'] for o in ['0', '2']}\n          actual = {(c['namespace'], c['profile'], c['policy'], c['optimization']) for c in cells}\n          if not result.get('completed') or len(cells) != 24 or actual != expected:\n              raise SystemExit('incomplete Task 100 execution matrix')\n          if any(s['exit'] != 0 for s in result['steps']):\n              raise SystemExit('failed Task 100 step')\n          print('TASK100_HOSTED_REQUIRED_CELLS', len(cells))\n          EOF\n          test \"$(grep -c '^TASK100_CELL_COMPLETE ' /tmp/task100-evidence/qualify.log)\" = 24\n          grep -F 'TASK100_QUALIFICATION_COMPLETE' /tmp/task100-evidence/qualify.log\n      - name: Upload mandatory source compiler and execution evidence\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: task100-ada-websocket-transport-${{ matrix.compiler }}\n          path: |\n            scripts/task100/**\n            tests/ada-websocket/**\n            tests/fixtures/service-generate/lacal-websocket.xsd\n            tests/fixtures/service-generate/lacal-runtime.yaml\n            /tmp/task100-evidence/*.txt\n            /tmp/task100-evidence/*.log\n            /tmp/task100-evidence/setup/step-*\n            /tmp/task100-evidence/setup/identities.json\n            /tmp/task100-evidence/setup/consumer/alire/alire.lock\n            /tmp/task100-evidence/campaign/**/*.json\n            /tmp/task100-evidence/campaign/**/*.stdout\n            /tmp/task100-evidence/campaign/**/*.stderr\n            /tmp/task100-evidence/campaign/**/*.exit\n            /tmp/task100-evidence/campaign/**/*.ad?\n            /tmp/task100-evidence/campaign/**/*.gpr\n            /tmp/task100-evidence/campaign/**/*.adc\n            /tmp/task100-evidence/campaign/**/*.c\n            /tmp/task100-evidence/campaign/**/*.h\n            /tmp/task100-evidence/campaign/**/*.lock\n            /tmp/task100-evidence/campaign/**/*.xsd\n            /tmp/task100-evidence/campaign/**/*.toml\n            /tmp/task100-evidence/campaign/**/LICENSE\n          if-no-files-found: error\n",
+      "expected_header": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && format('oms-main-slot-{0}', matrix.slot) || format('oms-pr-{0}-{1}-{2}-ci.yml-ada-websocket-transport-{3}', github.workflow, github.run_id, github.run_attempt, matrix.compiler) }}\n      queue: max\n    name: ada-websocket-transport (${{ matrix.compiler }})\n    needs: [changes]\n    if: github.event_name != 'pull_request' || fromJSON(needs.changes.outputs.manifest).jobs['ada-websocket-transport']\n    runs-on: ubuntu-24.04\n    strategy:\n      fail-fast: false\n      matrix:\n        compiler: ['14', '16']\n        include:\n          - compiler: '14'\n            slot: 2\n          - compiler: '16'\n            slot: 4\n    container:\n      image: debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5\n    timeout-minutes: 90",
+      "main_eligible": true,
+      "purpose": "Task100 optional loopback WebSocket transport; original 24-cell compiler/policy/optimization matrix",
+      "source_policy": "synthetic merge github.sha",
+      "inherited_from": "904ad3baebbf237a91e118c91457ac7207e8edd9",
+      "pr_selectable": true,
+      "full_main_required": true,
+      "trigger_type": "pull_request, push main, workflow_dispatch",
+      "pr_concurrency_identity": "${{ github.ref == 'refs/heads/main' && format('oms-main-slot-{0}', matrix.slot) || format('oms-pr-{0}-{1}-{2}-ci.yml-ada-websocket-transport-{3}', github.workflow, github.run_id, github.run_attempt, matrix.compiler) }}",
+      "enabled_behavior": "source-selected on PR; full on main",
+      "direct_dependencies": [
+        "ada/oms-lacal-runtime/**",
+        "tests/ada-websocket/**",
+        "scripts/task100/**",
+        "tests/fixtures/service-generate/lacal-websocket.xsd",
+        "tests/fixtures/service-generate/lacal-runtime.yaml",
+        "scripts/task096/setup.py",
+        "tests/fixtures/service-generate/lacal-runtime.xsd"
+      ],
+      "shared_dependencies": [
+        "ada/oms-json-support/**",
+        "crates/backend-ada/**",
+        "crates/codegen-core/**",
+        "crates/ir/**",
+        "Cargo.lock",
+        "Cargo.toml",
+        "crates/cli/**",
+        "crates/xsd-frontend/**",
+        "crates/service-contract/**"
+      ],
+      "required_markers": [
+        "TASK100_HOSTED_REQUIRED_CELLS",
+        "TASK100_CELL_COMPLETE",
+        "TASK100_QUALIFICATION_COMPLETE"
+      ],
+      "integration_steps_yaml": "    steps:\n      - name: Verify pinned target and external compiler\n        shell: bash\n        run: |\n          set -euo pipefail\n          apt-get update\n          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14\n          test \"$(uname -m)\" = x86_64\n          test \"$(getconf GNU_LIBC_VERSION)\" = 'glibc 2.41'\n          mkdir -p /tmp/task100-evidence\n          dpkg-query -W libc6 libc6-dev gnat-14 gcc-14 | tee /tmp/task100-evidence/platform.txt\n          sha256sum /usr/lib/x86_64-linux-gnu/libc.so.6 /usr/bin/gnat /usr/bin/gcc | tee -a /tmp/task100-evidence/platform.txt\n          gnat --version | tee -a /tmp/task100-evidence/platform.txt\n          gnat --version | grep -E '^GNAT 14\\.2\\.0([[:space:]]|$)'\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n      - name: Record exact source identity\n        shell: bash\n        run: |\n          set -euo pipefail\n          test \"$(pwd -P)\" = \"$(realpath \"$GITHUB_WORKSPACE\")\"\n          git config --global --add safe.directory \"$GITHUB_WORKSPACE\"\n          git rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task100-evidence/source.txt\n          test \"$(git rev-parse HEAD)\" = '${{ github.sha }}'\n          status=\"$(git status --porcelain)\"\n          test -z \"$status\"\n      - uses: dtolnay/rust-toolchain@1.95.0\n      - name: Install verified Alire 2.1.1\n        shell: bash\n        run: |\n          set -euo pipefail\n          curl --fail --location --retry 3 --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip\n          echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  /tmp/alire.zip' | sha256sum --check --strict\n          unzip -q /tmp/alire.zip -d /opt/alire\n          test \"$(/opt/alire/bin/alr --version)\" = 'alr 2.1.1'\n          sha256sum /opt/alire/bin/alr | tee -a /tmp/task100-evidence/platform.txt\n          echo /opt/alire/bin >> \"$GITHUB_PATH\"\n      - name: Build exact-head generator\n        run: cargo +1.95.0 build --locked -p ams-gra-codegen-oms\n      - name: Provision pinned compiler and GNATCOLL inputs\n        env:\n          PYTHONDONTWRITEBYTECODE: '1'\n        run: python3 scripts/task096/setup.py --scratch /tmp/task100-evidence/setup --compiler '${{ matrix.compiler }}'\n      - name: Execute generated runtime consumers and require all cells\n        shell: bash\n        env:\n          PYTHONDONTWRITEBYTECODE: '1'\n        run: |\n          set -euo pipefail\n          python3 scripts/task100/qualify.py --scratch /tmp/task100-evidence/campaign --setup /tmp/task100-evidence/setup --compiler '${{ matrix.compiler }}' --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\" | tee /tmp/task100-evidence/qualify.log\n          python3 - <<'EOF'\n          import json\n          result = json.load(open('/tmp/task100-evidence/campaign/result.json'))\n          cells = result['cells']\n          expected = {(n, p, a, o) for n in ['oam', 'qualified'] for p in ['portable', 'lossless']\n                      for a in ['Normal', 'Check', 'Ignore'] for o in ['0', '2']}\n          actual = {(c['namespace'], c['profile'], c['policy'], c['optimization']) for c in cells}\n          if not result.get('completed') or len(cells) != 24 or actual != expected:\n              raise SystemExit('incomplete Task 100 execution matrix')\n          if any(s['exit'] != 0 for s in result['steps']):\n              raise SystemExit('failed Task 100 step')\n          print('TASK100_HOSTED_REQUIRED_CELLS', len(cells))\n          EOF\n          test \"$(grep -c '^TASK100_CELL_COMPLETE ' /tmp/task100-evidence/qualify.log)\" = 24\n          grep -F 'TASK100_QUALIFICATION_COMPLETE' /tmp/task100-evidence/qualify.log\n      - name: Record Task100 integration run identity\n        shell: bash\n        env:\n          TASK100_COMPILER: ${{ matrix.compiler }}\n        run: |\n          python3 - <<'EOF'\n          import json, os, subprocess\n          from pathlib import Path\n          git = lambda ref: subprocess.check_output(['git', 'rev-parse', ref], text=True).strip()\n          sha = git('HEAD')\n          if sha != os.environ['GITHUB_SHA']:\n              raise SystemExit('Task100 source is not qualified workflow source')\n          Path('/tmp/task100-evidence/integration-identity.json').write_text(json.dumps(dict(\n              sha=sha, tree=git('HEAD^{tree}'), run_id=os.environ['GITHUB_RUN_ID'],\n              run_attempt=os.environ['GITHUB_RUN_ATTEMPT'], compiler=os.environ['TASK100_COMPILER'])) + '\\n')\n          EOF\n      - name: Upload mandatory source compiler and execution evidence\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: task100-ada-websocket-transport-${{ matrix.compiler }}\n          path: |\n            scripts/task100/**\n            tests/ada-websocket/**\n            tests/fixtures/service-generate/lacal-websocket.xsd\n            tests/fixtures/service-generate/lacal-runtime.yaml\n            /tmp/task100-evidence/*.txt\n            /tmp/task100-evidence/integration-identity.json\n            /tmp/task100-evidence/*.log\n            /tmp/task100-evidence/setup/step-*\n            /tmp/task100-evidence/setup/identities.json\n            /tmp/task100-evidence/setup/consumer/alire/alire.lock\n            /tmp/task100-evidence/campaign/**/*.json\n            /tmp/task100-evidence/campaign/**/*.txt\n            /tmp/task100-evidence/campaign/**/*.stdout\n            /tmp/task100-evidence/campaign/**/*.stderr\n            /tmp/task100-evidence/campaign/**/*.exit\n            /tmp/task100-evidence/campaign/**/*.ad?\n            /tmp/task100-evidence/campaign/**/*.gpr\n            /tmp/task100-evidence/campaign/**/*.adc\n            /tmp/task100-evidence/campaign/**/*.c\n            /tmp/task100-evidence/campaign/**/*.h\n            /tmp/task100-evidence/campaign/**/*.lock\n            /tmp/task100-evidence/campaign/**/*.xsd\n            /tmp/task100-evidence/campaign/**/*.toml\n            /tmp/task100-evidence/campaign/**/LICENSE\n            /tmp/task100-evidence/campaign/**/*.sha256\n          if-no-files-found: error\n\n",
+      "original_payload_sha256": "866e61d53974f75501df8e516a273a1af63206eb476a190d6ad641f1ae451a3e"
+    },
+    {
+      "workflow": "deep-ci.yml",
+      "job_id": "ada-websocket-real-sleet",
+      "cells": [
+        {
+          "key": "ada-websocket-real-sleet-14",
+          "name": "ada-websocket-real-sleet (14)",
+          "variant": {
+            "compiler": "14"
+          },
+          "lane": 4,
+          "artifacts": [
+            "task100-ada-websocket-sleet-14"
+          ]
+        },
+        {
+          "key": "ada-websocket-real-sleet-16",
+          "name": "ada-websocket-real-sleet (16)",
+          "variant": {
+            "compiler": "16"
+          },
+          "lane": 2,
+          "artifacts": [
+            "task100-ada-websocket-sleet-16"
+          ]
+        }
+      ],
+      "prerequisites": [],
+      "original_job": {
+        "runs-on": "ubuntu-24.04",
+        "strategy": {
+          "fail-fast": false,
+          "matrix": {
+            "compiler": [
+              "14",
+              "16"
+            ]
+          }
+        },
+        "container": {
+          "image": "debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5"
+        },
+        "timeout-minutes": 120,
+        "steps": [
+          {
+            "name": "Verify pinned target and external compiler",
+            "shell": "bash",
+            "run": "set -euo pipefail\napt-get update\napt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14\ntest \"$(uname -m)\" = x86_64\ntest \"$(getconf GNU_LIBC_VERSION)\" = 'glibc 2.41'\nmkdir -p /tmp/task100-evidence\ndpkg-query -W libc6 libc6-dev gnat-14 gcc-14 | tee /tmp/task100-evidence/platform.txt\nsha256sum /usr/lib/x86_64-linux-gnu/libc.so.6 /usr/bin/gnat /usr/bin/gcc | tee -a /tmp/task100-evidence/platform.txt\ngnat --version | tee -a /tmp/task100-evidence/platform.txt\ngnat --version | grep -E '^GNAT 14\\.2\\.0([[:space:]]|$)'\n"
+          },
+          {
+            "uses": "actions/checkout@v4",
+            "with": {
+              "ref": "${{ github.event.pull_request.head.sha || github.sha }}"
+            }
+          },
+          {
+            "name": "Record exact source identity",
+            "shell": "bash",
+            "run": "set -euo pipefail\ntest \"$(pwd -P)\" = \"$(realpath \"$GITHUB_WORKSPACE\")\"\ngit config --global --add safe.directory \"$GITHUB_WORKSPACE\"\ngit rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task100-evidence/source.txt\ntest \"$(git rev-parse HEAD)\" = '${{ github.event.pull_request.head.sha || github.sha }}'\nstatus=\"$(git status --porcelain)\"\ntest -z \"$status\"\n"
+          },
+          {
+            "uses": "dtolnay/rust-toolchain@1.95.0"
+          },
+          {
+            "name": "Install verified Alire 2.1.1",
+            "shell": "bash",
+            "run": "set -euo pipefail\ncurl --fail --location --retry 3 --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip\necho '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  /tmp/alire.zip' | sha256sum --check --strict\nunzip -q /tmp/alire.zip -d /opt/alire\ntest \"$(/opt/alire/bin/alr --version)\" = 'alr 2.1.1'\nsha256sum /opt/alire/bin/alr | tee -a /tmp/task100-evidence/platform.txt\necho /opt/alire/bin >> \"$GITHUB_PATH\"\n"
+          },
+          {
+            "name": "Build exact-head generator",
+            "run": "cargo +1.95.0 build --locked -p ams-gra-codegen-oms"
+          },
+          {
+            "name": "Provision pinned compiler and GNATCOLL inputs",
+            "env": {
+              "PYTHONDONTWRITEBYTECODE": "1"
+            },
+            "run": "python3 scripts/task096/setup.py --scratch /tmp/task100-evidence/setup --compiler '${{ matrix.compiler }}'"
+          },
+          {
+            "name": "Build unmodified pinned Sleet",
+            "shell": "bash",
+            "run": "set -euo pipefail\ngit clone --quiet https://github.com/open-arsenal/ams-gra-hello-world-sk-infra-sleet /tmp/task100-sleet\ngit -C /tmp/task100-sleet checkout --quiet --detach e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b\ntest \"$(git -C /tmp/task100-sleet rev-parse HEAD)\" = e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b\ntest -z \"$(git -C /tmp/task100-sleet status --porcelain)\"\ngit -C /tmp/task100-sleet rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task100-evidence/sleet-source.txt\n(cd /tmp/task100-sleet && cargo build --release --locked -p sleet) 2>&1 | tee /tmp/task100-evidence/sleet-build.log\n"
+          },
+          {
+            "name": "Execute generated runtime consumers and require all cells",
+            "shell": "bash",
+            "env": {
+              "PYTHONDONTWRITEBYTECODE": "1"
+            },
+            "run": "set -euo pipefail\npython3 scripts/task100/qualify.py --scratch /tmp/task100-evidence/campaign --setup /tmp/task100-evidence/setup --compiler '${{ matrix.compiler }}' --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\" --sleet /tmp/task100-sleet | tee /tmp/task100-evidence/qualify.log\npython3 - <<'EOF'\nimport json\nresult = json.load(open('/tmp/task100-evidence/campaign/result.json'))\ncells = result['cells']\nexpected = {(n, p, a, o) for n in ['oam', 'qualified'] for p in ['portable', 'lossless']\n            for a in ['Normal', 'Check', 'Ignore'] for o in ['0', '2']}\nactual = {(c['namespace'], c['profile'], c['policy'], c['optimization']) for c in cells}\nif not result.get('completed') or len(cells) != 24 or actual != expected:\n    raise SystemExit('incomplete Task 100 execution matrix')\nif any(s['exit'] != 0 for s in result['steps']):\n    raise SystemExit('failed Task 100 step')\nif not result.get('real_sleet'):\n    raise SystemExit('real Sleet not requested')\nfrom pathlib import Path\nevidence = list(Path('/tmp/task100-evidence/campaign').glob('oam-portable-*/sleet/result.json'))\nif len(evidence) != 6 or any(not json.loads(p.read_text()).get('completed') for p in evidence):\n    raise SystemExit('missing real pinned Sleet execution')\nprint('TASK100_HOSTED_REQUIRED_CELLS', len(cells))\nEOF\ntest \"$(grep -c '^TASK100_CELL_COMPLETE ' /tmp/task100-evidence/qualify.log)\" = 24\ngrep -F 'TASK100_QUALIFICATION_COMPLETE' /tmp/task100-evidence/qualify.log\n"
+          },
+          {
+            "name": "Upload mandatory source compiler and execution evidence",
+            "if": "always()",
+            "uses": "actions/upload-artifact@v4",
+            "with": {
+              "name": "task100-ada-websocket-sleet-${{ matrix.compiler }}",
+              "path": "scripts/task100/**\ntests/ada-websocket/**\ntests/fixtures/service-generate/lacal-websocket.xsd\ntests/fixtures/service-generate/lacal-runtime.yaml\n/tmp/task100-evidence/*.txt\n/tmp/task100-evidence/*.log\n/tmp/task100-evidence/setup/step-*\n/tmp/task100-evidence/setup/identities.json\n/tmp/task100-evidence/setup/consumer/alire/alire.lock\n/tmp/task100-evidence/campaign/**/*.json\n/tmp/task100-evidence/campaign/**/*.stdout\n/tmp/task100-evidence/campaign/**/*.stderr\n/tmp/task100-evidence/campaign/**/*.exit\n/tmp/task100-evidence/campaign/**/*.ad?\n/tmp/task100-evidence/campaign/**/*.gpr\n/tmp/task100-evidence/campaign/**/*.adc\n/tmp/task100-evidence/campaign/**/*.c\n/tmp/task100-evidence/campaign/**/*.h\n/tmp/task100-evidence/campaign/**/*.lock\n/tmp/task100-evidence/campaign/**/*.xsd\n/tmp/task100-evidence/campaign/**/*.toml\n/tmp/task100-evidence/campaign/**/LICENSE\n",
+              "if-no-files-found": "error"
+            }
+          }
+        ]
+      },
+      "original_steps": [
+        {
+          "name": "Verify pinned target and external compiler",
+          "shell": "bash",
+          "run": "set -euo pipefail\napt-get update\napt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14\ntest \"$(uname -m)\" = x86_64\ntest \"$(getconf GNU_LIBC_VERSION)\" = 'glibc 2.41'\nmkdir -p /tmp/task100-evidence\ndpkg-query -W libc6 libc6-dev gnat-14 gcc-14 | tee /tmp/task100-evidence/platform.txt\nsha256sum /usr/lib/x86_64-linux-gnu/libc.so.6 /usr/bin/gnat /usr/bin/gcc | tee -a /tmp/task100-evidence/platform.txt\ngnat --version | tee -a /tmp/task100-evidence/platform.txt\ngnat --version | grep -E '^GNAT 14\\.2\\.0([[:space:]]|$)'\n"
+        },
+        {
+          "uses": "actions/checkout@v4",
+          "with": {
+            "ref": "${{ github.event.pull_request.head.sha || github.sha }}"
+          }
+        },
+        {
+          "name": "Record exact source identity",
+          "shell": "bash",
+          "run": "set -euo pipefail\ntest \"$(pwd -P)\" = \"$(realpath \"$GITHUB_WORKSPACE\")\"\ngit config --global --add safe.directory \"$GITHUB_WORKSPACE\"\ngit rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task100-evidence/source.txt\ntest \"$(git rev-parse HEAD)\" = '${{ github.event.pull_request.head.sha || github.sha }}'\nstatus=\"$(git status --porcelain)\"\ntest -z \"$status\"\n"
+        },
+        {
+          "uses": "dtolnay/rust-toolchain@1.95.0"
+        },
+        {
+          "name": "Install verified Alire 2.1.1",
+          "shell": "bash",
+          "run": "set -euo pipefail\ncurl --fail --location --retry 3 --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip\necho '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  /tmp/alire.zip' | sha256sum --check --strict\nunzip -q /tmp/alire.zip -d /opt/alire\ntest \"$(/opt/alire/bin/alr --version)\" = 'alr 2.1.1'\nsha256sum /opt/alire/bin/alr | tee -a /tmp/task100-evidence/platform.txt\necho /opt/alire/bin >> \"$GITHUB_PATH\"\n"
+        },
+        {
+          "name": "Build exact-head generator",
+          "run": "cargo +1.95.0 build --locked -p ams-gra-codegen-oms"
+        },
+        {
+          "name": "Provision pinned compiler and GNATCOLL inputs",
+          "env": {
+            "PYTHONDONTWRITEBYTECODE": "1"
+          },
+          "run": "python3 scripts/task096/setup.py --scratch /tmp/task100-evidence/setup --compiler '${{ matrix.compiler }}'"
+        },
+        {
+          "name": "Build unmodified pinned Sleet",
+          "shell": "bash",
+          "run": "set -euo pipefail\ngit clone --quiet https://github.com/open-arsenal/ams-gra-hello-world-sk-infra-sleet /tmp/task100-sleet\ngit -C /tmp/task100-sleet checkout --quiet --detach e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b\ntest \"$(git -C /tmp/task100-sleet rev-parse HEAD)\" = e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b\ntest -z \"$(git -C /tmp/task100-sleet status --porcelain)\"\ngit -C /tmp/task100-sleet rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task100-evidence/sleet-source.txt\n(cd /tmp/task100-sleet && cargo build --release --locked -p sleet) 2>&1 | tee /tmp/task100-evidence/sleet-build.log\n"
+        },
+        {
+          "name": "Execute generated runtime consumers and require all cells",
+          "shell": "bash",
+          "env": {
+            "PYTHONDONTWRITEBYTECODE": "1"
+          },
+          "run": "set -euo pipefail\npython3 scripts/task100/qualify.py --scratch /tmp/task100-evidence/campaign --setup /tmp/task100-evidence/setup --compiler '${{ matrix.compiler }}' --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\" --sleet /tmp/task100-sleet | tee /tmp/task100-evidence/qualify.log\npython3 - <<'EOF'\nimport json\nresult = json.load(open('/tmp/task100-evidence/campaign/result.json'))\ncells = result['cells']\nexpected = {(n, p, a, o) for n in ['oam', 'qualified'] for p in ['portable', 'lossless']\n            for a in ['Normal', 'Check', 'Ignore'] for o in ['0', '2']}\nactual = {(c['namespace'], c['profile'], c['policy'], c['optimization']) for c in cells}\nif not result.get('completed') or len(cells) != 24 or actual != expected:\n    raise SystemExit('incomplete Task 100 execution matrix')\nif any(s['exit'] != 0 for s in result['steps']):\n    raise SystemExit('failed Task 100 step')\nif not result.get('real_sleet'):\n    raise SystemExit('real Sleet not requested')\nfrom pathlib import Path\nevidence = list(Path('/tmp/task100-evidence/campaign').glob('oam-portable-*/sleet/result.json'))\nif len(evidence) != 6 or any(not json.loads(p.read_text()).get('completed') for p in evidence):\n    raise SystemExit('missing real pinned Sleet execution')\nprint('TASK100_HOSTED_REQUIRED_CELLS', len(cells))\nEOF\ntest \"$(grep -c '^TASK100_CELL_COMPLETE ' /tmp/task100-evidence/qualify.log)\" = 24\ngrep -F 'TASK100_QUALIFICATION_COMPLETE' /tmp/task100-evidence/qualify.log\n"
+        },
+        {
+          "name": "Upload mandatory source compiler and execution evidence",
+          "if": "always()",
+          "uses": "actions/upload-artifact@v4",
+          "with": {
+            "name": "task100-ada-websocket-sleet-${{ matrix.compiler }}",
+            "path": "scripts/task100/**\ntests/ada-websocket/**\ntests/fixtures/service-generate/lacal-websocket.xsd\ntests/fixtures/service-generate/lacal-runtime.yaml\n/tmp/task100-evidence/*.txt\n/tmp/task100-evidence/*.log\n/tmp/task100-evidence/setup/step-*\n/tmp/task100-evidence/setup/identities.json\n/tmp/task100-evidence/setup/consumer/alire/alire.lock\n/tmp/task100-evidence/campaign/**/*.json\n/tmp/task100-evidence/campaign/**/*.stdout\n/tmp/task100-evidence/campaign/**/*.stderr\n/tmp/task100-evidence/campaign/**/*.exit\n/tmp/task100-evidence/campaign/**/*.ad?\n/tmp/task100-evidence/campaign/**/*.gpr\n/tmp/task100-evidence/campaign/**/*.adc\n/tmp/task100-evidence/campaign/**/*.c\n/tmp/task100-evidence/campaign/**/*.h\n/tmp/task100-evidence/campaign/**/*.lock\n/tmp/task100-evidence/campaign/**/*.xsd\n/tmp/task100-evidence/campaign/**/*.toml\n/tmp/task100-evidence/campaign/**/LICENSE\n",
+            "if-no-files-found": "error"
+          }
+        }
+      ],
+      "original_steps_yaml": "    steps:\n      - name: Verify pinned target and external compiler\n        shell: bash\n        run: |\n          set -euo pipefail\n          apt-get update\n          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14\n          test \"$(uname -m)\" = x86_64\n          test \"$(getconf GNU_LIBC_VERSION)\" = 'glibc 2.41'\n          mkdir -p /tmp/task100-evidence\n          dpkg-query -W libc6 libc6-dev gnat-14 gcc-14 | tee /tmp/task100-evidence/platform.txt\n          sha256sum /usr/lib/x86_64-linux-gnu/libc.so.6 /usr/bin/gnat /usr/bin/gcc | tee -a /tmp/task100-evidence/platform.txt\n          gnat --version | tee -a /tmp/task100-evidence/platform.txt\n          gnat --version | grep -E '^GNAT 14\\.2\\.0([[:space:]]|$)'\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.event.pull_request.head.sha || github.sha }}\n      - name: Record exact source identity\n        shell: bash\n        run: |\n          set -euo pipefail\n          test \"$(pwd -P)\" = \"$(realpath \"$GITHUB_WORKSPACE\")\"\n          git config --global --add safe.directory \"$GITHUB_WORKSPACE\"\n          git rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task100-evidence/source.txt\n          test \"$(git rev-parse HEAD)\" = '${{ github.event.pull_request.head.sha || github.sha }}'\n          status=\"$(git status --porcelain)\"\n          test -z \"$status\"\n      - uses: dtolnay/rust-toolchain@1.95.0\n      - name: Install verified Alire 2.1.1\n        shell: bash\n        run: |\n          set -euo pipefail\n          curl --fail --location --retry 3 --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip\n          echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  /tmp/alire.zip' | sha256sum --check --strict\n          unzip -q /tmp/alire.zip -d /opt/alire\n          test \"$(/opt/alire/bin/alr --version)\" = 'alr 2.1.1'\n          sha256sum /opt/alire/bin/alr | tee -a /tmp/task100-evidence/platform.txt\n          echo /opt/alire/bin >> \"$GITHUB_PATH\"\n      - name: Build exact-head generator\n        run: cargo +1.95.0 build --locked -p ams-gra-codegen-oms\n      - name: Provision pinned compiler and GNATCOLL inputs\n        env:\n          PYTHONDONTWRITEBYTECODE: '1'\n        run: python3 scripts/task096/setup.py --scratch /tmp/task100-evidence/setup --compiler '${{ matrix.compiler }}'\n      - name: Build unmodified pinned Sleet\n        shell: bash\n        run: |\n          set -euo pipefail\n          git clone --quiet https://github.com/open-arsenal/ams-gra-hello-world-sk-infra-sleet /tmp/task100-sleet\n          git -C /tmp/task100-sleet checkout --quiet --detach e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b\n          test \"$(git -C /tmp/task100-sleet rev-parse HEAD)\" = e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b\n          test -z \"$(git -C /tmp/task100-sleet status --porcelain)\"\n          git -C /tmp/task100-sleet rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task100-evidence/sleet-source.txt\n          (cd /tmp/task100-sleet && cargo build --release --locked -p sleet) 2>&1 | tee /tmp/task100-evidence/sleet-build.log\n      - name: Execute generated runtime consumers and require all cells\n        shell: bash\n        env:\n          PYTHONDONTWRITEBYTECODE: '1'\n        run: |\n          set -euo pipefail\n          python3 scripts/task100/qualify.py --scratch /tmp/task100-evidence/campaign --setup /tmp/task100-evidence/setup --compiler '${{ matrix.compiler }}' --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\" --sleet /tmp/task100-sleet | tee /tmp/task100-evidence/qualify.log\n          python3 - <<'EOF'\n          import json\n          result = json.load(open('/tmp/task100-evidence/campaign/result.json'))\n          cells = result['cells']\n          expected = {(n, p, a, o) for n in ['oam', 'qualified'] for p in ['portable', 'lossless']\n                      for a in ['Normal', 'Check', 'Ignore'] for o in ['0', '2']}\n          actual = {(c['namespace'], c['profile'], c['policy'], c['optimization']) for c in cells}\n          if not result.get('completed') or len(cells) != 24 or actual != expected:\n              raise SystemExit('incomplete Task 100 execution matrix')\n          if any(s['exit'] != 0 for s in result['steps']):\n              raise SystemExit('failed Task 100 step')\n          if not result.get('real_sleet'):\n              raise SystemExit('real Sleet not requested')\n          from pathlib import Path\n          evidence = list(Path('/tmp/task100-evidence/campaign').glob('oam-portable-*/sleet/result.json'))\n          if len(evidence) != 6 or any(not json.loads(p.read_text()).get('completed') for p in evidence):\n              raise SystemExit('missing real pinned Sleet execution')\n          print('TASK100_HOSTED_REQUIRED_CELLS', len(cells))\n          EOF\n          test \"$(grep -c '^TASK100_CELL_COMPLETE ' /tmp/task100-evidence/qualify.log)\" = 24\n          grep -F 'TASK100_QUALIFICATION_COMPLETE' /tmp/task100-evidence/qualify.log\n      - name: Upload mandatory source compiler and execution evidence\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: task100-ada-websocket-sleet-${{ matrix.compiler }}\n          path: |\n            scripts/task100/**\n            tests/ada-websocket/**\n            tests/fixtures/service-generate/lacal-websocket.xsd\n            tests/fixtures/service-generate/lacal-runtime.yaml\n            /tmp/task100-evidence/*.txt\n            /tmp/task100-evidence/*.log\n            /tmp/task100-evidence/setup/step-*\n            /tmp/task100-evidence/setup/identities.json\n            /tmp/task100-evidence/setup/consumer/alire/alire.lock\n            /tmp/task100-evidence/campaign/**/*.json\n            /tmp/task100-evidence/campaign/**/*.stdout\n            /tmp/task100-evidence/campaign/**/*.stderr\n            /tmp/task100-evidence/campaign/**/*.exit\n            /tmp/task100-evidence/campaign/**/*.ad?\n            /tmp/task100-evidence/campaign/**/*.gpr\n            /tmp/task100-evidence/campaign/**/*.adc\n            /tmp/task100-evidence/campaign/**/*.c\n            /tmp/task100-evidence/campaign/**/*.h\n            /tmp/task100-evidence/campaign/**/*.lock\n            /tmp/task100-evidence/campaign/**/*.xsd\n            /tmp/task100-evidence/campaign/**/*.toml\n            /tmp/task100-evidence/campaign/**/LICENSE\n          if-no-files-found: error\n",
+      "expected_header": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && format('oms-main-slot-{0}', matrix.slot) || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-ada-websocket-real-sleet-{3}', github.workflow, github.run_id, github.run_attempt, matrix.compiler) }}\n      queue: max\n    name: ada-websocket-real-sleet (${{ matrix.compiler }})\n    runs-on: ubuntu-24.04\n    strategy:\n      fail-fast: false\n      matrix:\n        compiler: ['14', '16']\n        include:\n          - compiler: '14'\n            slot: 4\n          - compiler: '16'\n            slot: 2\n    container:\n      image: debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5\n    timeout-minutes: 120",
+      "main_eligible": true,
+      "purpose": "Task100 optional loopback WebSocket sleet; original 24-cell compiler/policy/optimization matrix",
+      "source_policy": "synthetic merge github.sha",
+      "inherited_from": "904ad3baebbf237a91e118c91457ac7207e8edd9",
+      "pr_selectable": false,
+      "full_main_required": true,
+      "trigger_type": "workflow_call",
+      "pr_concurrency_identity": "${{ github.ref == 'refs/heads/main' && format('oms-main-slot-{0}', matrix.slot) || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-ada-websocket-real-sleet-{3}', github.workflow, github.run_id, github.run_attempt, matrix.compiler) }}",
+      "enabled_behavior": "complete reusable Deep qualification",
+      "direct_dependencies": [
+        "ada/oms-lacal-runtime/**",
+        "tests/ada-websocket/**",
+        "scripts/task100/**",
+        "tests/fixtures/service-generate/lacal-websocket.xsd",
+        "tests/fixtures/service-generate/lacal-runtime.yaml",
+        "scripts/task096/setup.py",
+        "tests/fixtures/service-generate/lacal-runtime.xsd"
+      ],
+      "shared_dependencies": [
+        "ada/oms-json-support/**",
+        "crates/backend-ada/**",
+        "crates/codegen-core/**",
+        "crates/ir/**",
+        "Cargo.lock",
+        "Cargo.toml",
+        "crates/cli/**",
+        "crates/xsd-frontend/**",
+        "crates/service-contract/**"
+      ],
+      "required_markers": [
+        "TASK100_HOSTED_REQUIRED_CELLS",
+        "TASK100_CELL_COMPLETE",
+        "TASK100_QUALIFICATION_COMPLETE"
+      ],
+      "integration_steps_yaml": "    steps:\n      - name: Verify pinned target and external compiler\n        shell: bash\n        run: |\n          set -euo pipefail\n          apt-get update\n          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14\n          test \"$(uname -m)\" = x86_64\n          test \"$(getconf GNU_LIBC_VERSION)\" = 'glibc 2.41'\n          mkdir -p /tmp/task100-evidence\n          dpkg-query -W libc6 libc6-dev gnat-14 gcc-14 | tee /tmp/task100-evidence/platform.txt\n          sha256sum /usr/lib/x86_64-linux-gnu/libc.so.6 /usr/bin/gnat /usr/bin/gcc | tee -a /tmp/task100-evidence/platform.txt\n          gnat --version | tee -a /tmp/task100-evidence/platform.txt\n          gnat --version | grep -E '^GNAT 14\\.2\\.0([[:space:]]|$)'\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n      - name: Record exact source identity\n        shell: bash\n        run: |\n          set -euo pipefail\n          test \"$(pwd -P)\" = \"$(realpath \"$GITHUB_WORKSPACE\")\"\n          git config --global --add safe.directory \"$GITHUB_WORKSPACE\"\n          git rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task100-evidence/source.txt\n          test \"$(git rev-parse HEAD)\" = '${{ github.sha }}'\n          status=\"$(git status --porcelain)\"\n          test -z \"$status\"\n      - uses: dtolnay/rust-toolchain@1.95.0\n      - name: Install verified Alire 2.1.1\n        shell: bash\n        run: |\n          set -euo pipefail\n          curl --fail --location --retry 3 --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip\n          echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  /tmp/alire.zip' | sha256sum --check --strict\n          unzip -q /tmp/alire.zip -d /opt/alire\n          test \"$(/opt/alire/bin/alr --version)\" = 'alr 2.1.1'\n          sha256sum /opt/alire/bin/alr | tee -a /tmp/task100-evidence/platform.txt\n          echo /opt/alire/bin >> \"$GITHUB_PATH\"\n      - name: Build exact-head generator\n        run: cargo +1.95.0 build --locked -p ams-gra-codegen-oms\n      - name: Provision pinned compiler and GNATCOLL inputs\n        env:\n          PYTHONDONTWRITEBYTECODE: '1'\n        run: python3 scripts/task096/setup.py --scratch /tmp/task100-evidence/setup --compiler '${{ matrix.compiler }}'\n      - name: Build unmodified pinned Sleet\n        shell: bash\n        run: |\n          set -euo pipefail\n          git clone --quiet https://github.com/open-arsenal/ams-gra-hello-world-sk-infra-sleet /tmp/task100-sleet\n          git -C /tmp/task100-sleet checkout --quiet --detach e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b\n          test \"$(git -C /tmp/task100-sleet rev-parse HEAD)\" = e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b\n          test -z \"$(git -C /tmp/task100-sleet status --porcelain)\"\n          git -C /tmp/task100-sleet rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task100-evidence/sleet-source.txt\n          (cd /tmp/task100-sleet && cargo build --release --locked -p sleet) 2>&1 | tee /tmp/task100-evidence/sleet-build.log\n      - name: Execute generated runtime consumers and require all cells\n        shell: bash\n        env:\n          PYTHONDONTWRITEBYTECODE: '1'\n        run: |\n          set -euo pipefail\n          python3 scripts/task100/qualify.py --scratch /tmp/task100-evidence/campaign --setup /tmp/task100-evidence/setup --compiler '${{ matrix.compiler }}' --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\" --sleet /tmp/task100-sleet | tee /tmp/task100-evidence/qualify.log\n          python3 - <<'EOF'\n          import json\n          result = json.load(open('/tmp/task100-evidence/campaign/result.json'))\n          cells = result['cells']\n          expected = {(n, p, a, o) for n in ['oam', 'qualified'] for p in ['portable', 'lossless']\n                      for a in ['Normal', 'Check', 'Ignore'] for o in ['0', '2']}\n          actual = {(c['namespace'], c['profile'], c['policy'], c['optimization']) for c in cells}\n          if not result.get('completed') or len(cells) != 24 or actual != expected:\n              raise SystemExit('incomplete Task 100 execution matrix')\n          if any(s['exit'] != 0 for s in result['steps']):\n              raise SystemExit('failed Task 100 step')\n          if not result.get('real_sleet'):\n              raise SystemExit('real Sleet not requested')\n          from pathlib import Path\n          evidence = list(Path('/tmp/task100-evidence/campaign').glob('oam-portable-*/sleet/result.json'))\n          if len(evidence) != 6 or any(not json.loads(p.read_text()).get('completed') for p in evidence):\n              raise SystemExit('missing real pinned Sleet execution')\n          print('TASK100_HOSTED_REQUIRED_CELLS', len(cells))\n          EOF\n          test \"$(grep -c '^TASK100_CELL_COMPLETE ' /tmp/task100-evidence/qualify.log)\" = 24\n          grep -F 'TASK100_QUALIFICATION_COMPLETE' /tmp/task100-evidence/qualify.log\n      - name: Record Task100 integration run identity\n        shell: bash\n        env:\n          TASK100_COMPILER: ${{ matrix.compiler }}\n        run: |\n          python3 - <<'EOF'\n          import json, os, subprocess\n          from pathlib import Path\n          git = lambda ref: subprocess.check_output(['git', 'rev-parse', ref], text=True).strip()\n          sha = git('HEAD')\n          if sha != os.environ['GITHUB_SHA']:\n              raise SystemExit('Task100 source is not qualified workflow source')\n          Path('/tmp/task100-evidence/integration-identity.json').write_text(json.dumps(dict(\n              sha=sha, tree=git('HEAD^{tree}'), run_id=os.environ['GITHUB_RUN_ID'],\n              run_attempt=os.environ['GITHUB_RUN_ATTEMPT'], compiler=os.environ['TASK100_COMPILER'])) + '\\n')\n          EOF\n      - name: Upload mandatory source compiler and execution evidence\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: task100-ada-websocket-sleet-${{ matrix.compiler }}\n          path: |\n            scripts/task100/**\n            tests/ada-websocket/**\n            tests/fixtures/service-generate/lacal-websocket.xsd\n            tests/fixtures/service-generate/lacal-runtime.yaml\n            /tmp/task100-evidence/*.txt\n            /tmp/task100-evidence/integration-identity.json\n            /tmp/task100-evidence/*.log\n            /tmp/task100-evidence/setup/step-*\n            /tmp/task100-evidence/setup/identities.json\n            /tmp/task100-evidence/setup/consumer/alire/alire.lock\n            /tmp/task100-evidence/campaign/**/*.json\n            /tmp/task100-evidence/campaign/**/*.txt\n            /tmp/task100-evidence/campaign/**/*.stdout\n            /tmp/task100-evidence/campaign/**/*.stderr\n            /tmp/task100-evidence/campaign/**/*.exit\n            /tmp/task100-evidence/campaign/**/*.ad?\n            /tmp/task100-evidence/campaign/**/*.gpr\n            /tmp/task100-evidence/campaign/**/*.adc\n            /tmp/task100-evidence/campaign/**/*.c\n            /tmp/task100-evidence/campaign/**/*.h\n            /tmp/task100-evidence/campaign/**/*.lock\n            /tmp/task100-evidence/campaign/**/*.xsd\n            /tmp/task100-evidence/campaign/**/*.toml\n            /tmp/task100-evidence/campaign/**/LICENSE\n            /tmp/task100-evidence/campaign/**/*.sha256\n          if-no-files-found: error\n\n",
+      "original_payload_sha256": "deb7a055c9dd6b268fe04fce07791132d3d7a46c77e9a0adacf78bb4c1a07816"
     }
   ],
   "reusable_jobs": {
@@ -3936,7 +4364,7 @@
   "orchestration_payloads": {
     "changes": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-ci.yml-changes', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-latest\n    timeout-minutes: 5\n    outputs:\n      manifest: ${{ steps.select.outputs.manifest }}\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n          fetch-depth: 0\n      - name: Classify verified proposed merge (main always full)\n        id: select\n        run: python3 scripts/ci-select-changes.py\n      - uses: actions/upload-artifact@v4\n        with:\n          name: ci-selection\n          path: ci-selection.json\n          if-no-files-found: error",
     "baseline": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-ci.yml-baseline', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    needs: changes\n    runs-on: ubuntu-latest\n    timeout-minutes: 20\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n          fetch-depth: 0\n      - name: Mandatory documentation and fail-closed orchestration policy\n        run: |\n          python3 scripts/ci-policy.py\n          python3 scripts/ci-doc-policy.py\n          python3 -m unittest discover -s scripts -p 'test_ci_select*.py'\n          python3 -m unittest discover -s scripts -p 'test_real_uci*.py'\n          bash scripts/check-ci-split.sh\n          bash scripts/test-check-ci-split.sh\n          python3 scripts/test-task060-ci-wrappers.py\n          python3 scripts/test-task061-ci-wrappers.py\n          python3 scripts/test-task093-compiler-placement.py\n          git diff --check\n      - name: Actionlint (pinned; queue syntax also independently guarded)\n        env:\n          ACTIONLINT_VERSION: 1.7.12\n        run: |\n          set -euo pipefail\n          curl --fail --location --retry 3 --output \"$RUNNER_TEMP/actionlint.tar.gz\" \"https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz\"\n          echo \"8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  $RUNNER_TEMP/actionlint.tar.gz\" | sha256sum --check --strict\n          mkdir -p \"$RUNNER_TEMP/ci-select-tools\"\n          tar -xzf \"$RUNNER_TEMP/actionlint.tar.gz\" -C \"$RUNNER_TEMP/ci-select-tools\" actionlint\n          ACTIONLINT=\"$RUNNER_TEMP/ci-select-tools/actionlint\" bash scripts/check-ci-actionlint.sh",
-    "pr-ci-required": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-ci.yml-pr-ci-required', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    if: ${{ always() }}\n    needs: [changes, baseline, deep-qualification, ada-lacal-runtime-core, ada-float64-codec, ada-time-zulu-codec, python-model-backend, ada-float32-codec, ada-repeated-temporal-codec, ada-datetime-codec, ada-json-guard, ada-generated-codec, ada-repeated-codec, ada-duration-codec, ada-hexbinary-codec, ada-repeated-choice-codec, rust]\n    runs-on: ubuntu-latest\n    timeout-minutes: 10\n    permissions:\n      contents: read\n      actions: read\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n          fetch-depth: 0\n      - name: Recompute selection; require every selected cell and evidence\n        env:\n          SELECTION_MANIFEST: ${{ needs.changes.outputs.manifest }}\n          NEEDS_JSON: ${{ toJSON(needs) }}\n          GH_TOKEN: ${{ github.token }}\n        run: python3 scripts/ci-required-gate.py\n      - uses: actions/upload-artifact@v4\n        with:\n          name: ci-required-result\n          path: ci-required-result.json\n          if-no-files-found: error"
+    "pr-ci-required": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-ci.yml-pr-ci-required', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    if: ${{ always() }}\n    needs: [changes, baseline, deep-qualification, ada-lacal-runtime-core, ada-float64-codec, ada-time-zulu-codec, python-model-backend, ada-float32-codec, ada-repeated-temporal-codec, ada-datetime-codec, ada-json-guard, ada-generated-codec, ada-repeated-codec, ada-duration-codec, ada-hexbinary-codec, ada-repeated-choice-codec, rust, ada-websocket-transport]\n    runs-on: ubuntu-latest\n    timeout-minutes: 10\n    permissions:\n      contents: read\n      actions: read\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n          fetch-depth: 0\n      - name: Recompute selection; require every selected cell and evidence\n        env:\n          SELECTION_MANIFEST: ${{ needs.changes.outputs.manifest }}\n          NEEDS_JSON: ${{ toJSON(needs) }}\n          GH_TOKEN: ${{ github.token }}\n        run: python3 scripts/ci-required-gate.py\n      - uses: actions/upload-artifact@v4\n        with:\n          name: ci-required-result\n          path: ci-required-result.json\n          if-no-files-found: error"
   },
   "ci_header": "name: CI\non:\n  pull_request:\n  push:\n    branches:\n      - main\n  workflow_dispatch:\npermissions:\n  contents: read\nconcurrency:\n  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}\n  cancel-in-progress: ${{ github.event_name == 'pull_request' }}",
   "incorporated_main": "d603077c6d38ccc0658391776e3af9eecb009255",
@@ -3955,5 +4383,9 @@
     "scripts/ci002/gate.py": "6b85173313501c7161284fc16d054466ea6a5af6df970792e8354b30b895a0f8",
     "scripts/ci002/dispatch.py": "09e984d2f7bc0695f235871c2afb26f455f3b0f3e1eba8a8b1d9c9e6a25a6921"
   },
-  "real_uci_contract": "scripts/real-uci-contract.json"
+  "real_uci_contract": "scripts/real-uci-contract.json",
+  "task100_incorporated_main": "ac046599c492241aefc9b1d6b742668c0e9cd39a",
+  "task100_original_head": "904ad3baebbf237a91e118c91457ac7207e8edd9",
+  "reconciliation_main": "b6c6c9c5b1fabcd0716c1fd1183cc411d8841872",
+  "reconciliation_main_tree": "9dc99ef6531ab61b248f83b5f613e981e4002bc0"
 }

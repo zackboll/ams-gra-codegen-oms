@@ -8,6 +8,7 @@ import urllib.error
 import io
 import zipfile
 from real_uci_evidence import SHARDS, ORIGINAL, verify_bundle
+from task100_evidence import verify_bundle as verify_task100_bundle
 from ci_selection import ROOT, complete_diff, from_environment, git, inventory, ordinary_jobs
 
 
@@ -50,10 +51,13 @@ def validate_cells(record, jobs, artifacts, prefix=""):
             raise ValueError("cell not successful: " + cell["name"])
         # A successful job with skipped qualification steps is NOT qualification.
         steps = job.get("steps", [])
-        if len(steps) < len(record["original_steps"]) or any(s["conclusion"] != "success" for s in steps):
+        mandatory = record['original_steps']
+        if record['job_id'].startswith('ada-websocket-'):
+            mandatory = [*mandatory, dict(name='Record Task100 integration run identity')]
+        if len(steps) < len(mandatory) or any(s["conclusion"] != "success" for s in steps):
             raise ValueError("missing/skipped/failed qualification step: " + cell["name"])
-        for step in record['original_steps']:
-            if 'name' in step and not any(s.get('name') == step['name'] for s in steps):
+        for step in mandatory:
+            if 'name' in step and sum(s.get('name') == step['name'] for s in steps) != 1:
                 raise ValueError('missing mandatory named step: ' + step['name'])
         for name in cell["artifacts"]:
             evidence = [a for a in artifacts if a["name"] == name and not a["expired"]
@@ -145,11 +149,33 @@ def verify_source(manifest, policy, run, sha, event_name):
     if identities['merge'] != sha or git(ROOT, 'rev-parse', 'HEAD').decode().strip() != sha:
         raise ValueError('final gate checkout/source mismatch')
     git(ROOT, 'merge-base', '--is-ancestor', policy['incorporated_main'], sha)
+    git(ROOT, 'merge-base', '--is-ancestor', policy['task100_incorporated_main'], sha)
+    git(ROOT, 'merge-base', '--is-ancestor', policy['reconciliation_main'], sha)
     if event_name == 'pull_request':
         complete_diff(ROOT, identities['base'], identities['head'], sha)
         git(ROOT, 'merge-base', '--is-ancestor', policy['incorporated_main'], identities['base'])
+        git(ROOT, 'merge-base', '--is-ancestor', policy['task100_incorporated_main'], identities['base'])
+        git(ROOT, 'merge-base', '--is-ancestor', policy['reconciliation_main'], identities['base'])
     if run['event'] != event_name or run['head_sha'] != (identities['head'] if event_name == 'pull_request' else sha):
         raise ValueError('authoritative workflow run source mismatch')
+
+
+def reconcile_task100(artifacts, manifest, sha, tree, run_id, attempt, loader=download_bundle):
+    summaries = {}
+    kinds = []
+    if manifest['jobs']['ada-websocket-transport']:
+        kinds.append(('transport', False))
+    if manifest['deep']:
+        kinds.append(('sleet', True))
+    for kind, real_sleet in kinds:
+        for compiler in ('14', '16'):
+            name = f'task100-ada-websocket-{kind}-{compiler}'
+            matches = [a for a in artifacts if a['name'] == name]
+            if len(matches) != 1 or matches[0]['expired'] or matches[0]['size_in_bytes'] <= 0:
+                raise ValueError('missing/duplicate Task100 artifact: ' + name)
+            summaries[name] = verify_task100_bundle(loader(matches[0]), compiler, real_sleet,
+                                                    sha, tree, run_id, attempt)
+    return summaries
 
 
 def main():
@@ -164,13 +190,16 @@ def main():
     own = evidence(run, os.environ["GITHUB_RUN_ATTEMPT"])
     validate(manifest, expected, json.loads(os.environ["NEEDS_JSON"]), own["jobs"], own["artifacts"], policy)
     primary = {}
+    task100 = reconcile_task100(own['artifacts'], manifest, os.environ['GITHUB_SHA'],
+                               git(ROOT, 'rev-parse', 'HEAD^{tree}').decode().strip(),
+                               run, os.environ['GITHUB_RUN_ATTEMPT'])
     if manifest['deep']:
         primary = reconcile_primary(own['artifacts'], os.environ['GITHUB_SHA'],
                                     git(ROOT, 'rev-parse', 'HEAD^{tree}').decode().strip(),
                                     run, os.environ['GITHUB_RUN_ATTEMPT'])
     report = dict(identities=manifest["identities"], selected_cells=manifest["selected_cells"],
                   skipped_cells=manifest["skipped_cells"], deep=manifest["deep"], conclusion="success",
-                  real_uci_shards=primary)
+                  real_uci_shards=primary, task100=task100)
     Path("ci-required-result.json").write_text(json.dumps(report, indent=2) + "\n")
     print("PR_CI_REQUIRED_COMPLETE", json.dumps(report, sort_keys=True))
 

@@ -1,7 +1,32 @@
-# Ada LA-CAL runtime core
+# Ada LA-CAL runtime
 
-Transport-independent OWP 1.0 core. No production WebSocket/TLS dependency,
-automatic receive task, or Sleet interoperability claim.
+## Optional WebSocket transport (Task 100)
+
+The core project remains transport-independent. Import the separate
+`oms_lacal_websocket.gpr` companion to use
+`OMS_LACAL.Transports.WebSocket.Client`. The client implements the existing
+transport interface; call `Open` before `Connections.Initialize` and drive
+receive explicitly using the existing connection's `Poll`.
+
+Set `OMS_WS_AHT_SOURCE` to the clean AHT checkout at
+`664d5ddeb568626b2f9ff66054c7091894b3b8d4` and `OMS_WS_CODEC_SOURCE` to the clean
+websocket-ada checkout at `765d9cd612838eb00645037977c8cc9af7171c3e`. The
+qualification runner provisions these pins itself. Only standalone framing,
+UTF-8, randomness, bytes and handshake units are compiled, not either library's
+high-level client. GNATCOLL 26 remains the unchanged support dependency.
+
+This adapter supports explicit IPv4 loopback `ws://` URLs only. `wss://` and
+remote hosts are rejected. It is not secure for remote deployments. Poll is
+nonblocking/bounded-work, never calls application handlers, and has no
+background task. See the complete contract, limits, compiler/Sleet evidence,
+license identities and unsupported features in
+`docs/task-100-ada-websocket-transport.md` at the repository root.
+
+## Transport-independent core (Task 099)
+
+Transport-independent OWP 1.0 core. The core project has no production
+WebSocket/TLS dependency or automatic receive task; the optional transport
+and its separately scoped Sleet qualification are described above.
 
 Import `oms_lacal_runtime.gpr`. The existing sibling JSON support project uses
 GNATCOLL 26.0.0; the lossless generated codec additionally imports

@@ -10,13 +10,34 @@ from pathlib import Path
 import re
 from ci_selection import ROOT, inventory, ordinary_jobs, select
 
-# Independently reconciled from d603077c6d38ccc0658391776e3af9eecb009255.
+# Independently reconciled from d603077c6d38ccc0658391776e3af9eecb009255
+# (Task099/security) and 904ad3baebbf237a91e118c91457ac7207e8edd9 (Task100).
 # These are normalized ORIGINAL payloads, not candidate workflow snapshots.
 INHERITED_PAYLOADS = {
+    # PR #117 payloads independently derived from b6c6c9c5, not this candidate.
+    ('ci.yml', 'python-model-backend'): '901f3eb0d236d16ec4ae928f069f5ffc046467b8c6834c216d69bea309c593e8',
+    ('deep-ci.yml', 'real-uci-regressions'): 'ecd52d12535fd41daf7adb6ef94127ff10bb61a921f8ebb543edb9176c47304f',
+    ('ci.yml', 'ada-websocket-transport'): '866e61d53974f75501df8e516a273a1af63206eb476a190d6ad641f1ae451a3e',
+    ('deep-ci.yml', 'ada-websocket-real-sleet'): 'deb7a055c9dd6b268fe04fce07791132d3d7a46c77e9a0adacf78bb4c1a07816',
     ('ci.yml', 'ada-lacal-runtime-core'): 'c30d66a0dc4fdf56313964f98407784670cd42b066d3ed1d0fddd5a3a07a1368',
     ('ci002-validation.yml', 'test'): '9b0173054780810fd2541b0eebcb67d51c41173bc0a3e8d25beb069191f0e2ca',
     ('oms-trusted-pr-signal.yml', 'signal'): 'ba84d00fbfcc1b93274e2077c7c91bffb31a810828d1132e4e87ffdb46acb585',
     ('oms-ryzen-trusted-dispatch.yml', 'dispatch'): '837b0a7ed7ff1d6289f3c521e2fffd7548eecbd6a26cccda228e9732fff114ac',
+}
+
+TASK100_INTEGRATED_PAYLOADS = {
+    ('ci.yml', 'ada-websocket-transport'): 'd6ef0377f5465890e7f45b9085bbd8d1a46f2cc4a6c395c0e4fefcbd24328ef7',
+    ('deep-ci.yml', 'ada-websocket-real-sleet'): 'c25d0bd21c201cdf5bc28c3f94952de286e4dfea0b33235cd26c71cf174efa62',
+}
+
+SECURITY_SOURCES = {
+    'scripts/ci002/test_workflows.py': 'a7c34b958fcbe113e79bbb8e6389e4b9950f52bc9d78733b731d391afa5be5ff',
+    'scripts/ci002/test_mutations.py': '86020a418a0dfd202a040aeed2d17fb3044359d306eae799ced1db9f898220f1',
+    'scripts/ci002/test_gate.py': '19bb7c6ff89bf58679e0959ea227065a94aebf06c33752b10a436ec3e792a87e',
+    'scripts/ci002/test_dispatch.py': 'f6e3db711aa4b5dbe30f87554f00ee0dea62da37348b8dc60d4ce2d80c4fbee5',
+    'scripts/ci002/requirements.txt': '9057bfbc5f7470fb710e417b3865d5de491865ea13beb096c2a2c3f1b7418a12',
+    'scripts/ci002/gate.py': '6b85173313501c7161284fc16d054466ea6a5af6df970792e8354b30b895a0f8',
+    'scripts/ci002/dispatch.py': '09e984d2f7bc0695f235871c2afb26f455f3b0f3e1eba8a8b1d9c9e6a25a6921',
 }
 
 
@@ -59,7 +80,9 @@ def field(header, key):
 
 def check(policy=None, workflows=None):
     policy = policy or inventory()
-    for path, digest in policy.get('security_source_sha256', {}).items():
+    if policy.get('security_source_sha256') != SECURITY_SOURCES:
+        raise ValueError('missing/modified inherited CI002 source inventory')
+    for path, digest in SECURITY_SOURCES.items():
         if hashlib.sha256((ROOT / path).read_bytes()).hexdigest() != digest:
             raise ValueError('inherited trusted-dispatch source changed: ' + path)
     if workflows is None:
@@ -68,6 +91,10 @@ def check(policy=None, workflows=None):
     check_layout(blocks(workflows['deep-ci.yml'])[1])
     if policy['lanes'] != [f'oms-main-slot-{n}' for n in range(1, 6)]:
         raise ValueError("must define exactly five unique common lanes")
+    if (policy.get('reconciliation_main'), policy.get('reconciliation_main_tree')) != (
+            'b6c6c9c5b1fabcd0716c1fd1183cc411d8841872',
+            '9dc99ef6531ab61b248f83b5f613e981e4002bc0'):
+        raise ValueError('verified PR117 reconciliation base identity changed')
     security = {'ci002-validation.yml', 'oms-trusted-pr-signal.yml', 'oms-ryzen-trusted-dispatch.yml'}
     if set(policy.get('security_headers', {})) != security:
         raise ValueError('required independent security workflow removed')
@@ -76,6 +103,16 @@ def check(policy=None, workflows=None):
             ('ada-lacal-runtime-core-' + v, 'ada-lacal-runtime-core (' + v + ')', {'compiler': v}) for v in ('14', '16')]:
         raise ValueError('Task099 requires exactly GNAT14/GNAT16 qualification cells')
     expected = {}
+    for workflow, job_id, kind in [('ci.yml', 'ada-websocket-transport', 'transport'),
+                                   ('deep-ci.yml', 'ada-websocket-real-sleet', 'sleet')]:
+        records = [r for r in policy['jobs'] if (r['workflow'], r['job_id']) == (workflow, job_id)]
+        if len(records) != 1 or [(c['key'], c['name'], c['variant'], c['artifacts'])
+                                for c in records[0]['cells']] != [
+                (job_id + '-' + v, job_id + ' (' + v + ')', {'compiler': v},
+                 ['task100-ada-websocket-' + kind + '-' + v]) for v in ('14', '16')]:
+            raise ValueError('Task100 requires exactly GNAT14/GNAT16 cells and artifacts: ' + job_id)
+    if 'ada-websocket-transport' not in policy['orchestration_jobs']['pr-ci-required']['prerequisites']:
+        raise ValueError('Task100 missing from required aggregate dependencies')
     for record in policy['jobs']:
         key = record['workflow'], record['job_id']
         if key in expected:
@@ -136,6 +173,10 @@ def check(policy=None, workflows=None):
                 if normalized(top) != record['expected_header']:
                     raise ValueError('qualification runner/matrix/dependency policy changed: '+job_id)
                 pinned = record['original_steps_yaml']
+                if (workflow, job_id) in TASK100_INTEGRATED_PAYLOADS:
+                    pinned = record['integration_steps_yaml']
+                    if hashlib.sha256(normalized(pinned).encode()).hexdigest() != TASK100_INTEGRATED_PAYLOADS[workflow, job_id]:
+                        raise ValueError('Task100 integration payload changed: ' + job_id)
                 if record.get('source_policy') != 'exact PR head or main SHA':
                     pinned = pinned.replace('github.event.pull_request.head.sha || github.sha','github.sha')
                 if normalized('    steps:\n'+steps) != normalized(pinned):
