@@ -866,9 +866,25 @@
     "proposed_merge": "PENDING"
   },
   "limitations": [
+    "Main advanced during campaigns to Task100 PR #118; ordinary merge preserved upstream contracts, but exact-final-tree compiler campaigns remain outstanding.",
     "Correctness is bound to the exact committed implementation, not the later documentation-only delivery head.",
     "No uncontended local physical-core allocation or policy-authorized isolated hosted benchmark was obtained.",
     "No accepted helper or whole-job performance evidence; production CI remains original.",
     "Evidence seals are integrity records, not external signatures. Initial failures and recorder/verifier mistakes are preserved."
-  ]
+  ],
+  "late_main_reconciliation": {
+    "main_commit": "7958c4e0d8f78768fd4c7d4c1bd34877c31d893a",
+    "pr": 118,
+    "merge_commit": "02ee9ff1acb05497dff2b4bde8ea81862b350d2b",
+    "merge_tree": "b054636d935afc9c5f952339969d6a1f4195521a",
+    "conflicts": false,
+    "upstream_contracts_preserved": true,
+    "runner_cells": 40,
+    "main_lanes": 5,
+    "python_tests": 145,
+    "python_exit": 0,
+    "qualified_generator_rust_portable_code_changed": false,
+    "exact_final_tree_compiler_qualification": false
+  },
+  "exact_final_tree_correctness_qualified": false
 }

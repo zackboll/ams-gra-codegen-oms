@@ -774,3 +774,24 @@ remain intact. No literal `negative_controls_qualified` flag was enabled.
 Final-head hosted CI/artifacts and proposed merge acceptance remain pending.
 **Disposition: PERFORMANCE_ENVIRONMENT_BLOCKED**, with fresh correctness work
 completed separately. This is not PERF-009 completion or merge readiness.
+
+### Late main advance during delivery
+
+The final fetch discovered PR #118 had advanced main during the long campaigns
+to `7958c4e0d8f78768fd4c7d4c1bd34877c31d893a` (Task100 WebSocket transport).
+Ordinary merge `02ee9ff1acb05497dff2b4bde8ea81862b350d2b`, tree
+`b054636d935afc9c5f952339969d6a1f4195521a`, incorporated all its runtime support,
+four-cell compiler qualification, workflow, selector/inventory and required-gate
+contracts without conflicts. No upstream qualification payload was modified.
+Current policy reports **40 runner cells, still five main lanes**.
+
+All **145** Python regression tests passed after this late merge; CI policy,
+documentation policy, pinned queue-aware actionlint and diff checks passed.
+The qualified generator/Rust/portable implementation source paths have no delta
+from `c6cba732`, but Task100 changes repository Ada support/workflow inputs.
+Therefore the completed four-campaign certificate is **not exact-final-tree
+qualification**. Its complete evidence is preserved under its honest source
+identity; fresh final-tree campaigns and hosted acceptance remain outstanding.
+This is an additional delivery limitation, not a claim that the R3 success
+criteria have been met. Final HEAD/tree, current-main and proposed merge are
+recorded in the external handoff after the final normal push.
