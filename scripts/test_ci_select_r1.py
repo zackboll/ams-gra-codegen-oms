@@ -12,6 +12,18 @@ change, gate, reporter = original.change, original.gate, original.reporter
 
 
 class Py007Integration(unittest.TestCase):
+    def test_reconciliation_base_cannot_be_removed_or_replaced(self):
+        for field in ('reconciliation_main', 'reconciliation_main_tree'):
+            for replacement in (None, '0' * 40):
+                policy = selection.inventory()
+                if replacement is None:
+                    del policy[field]
+                else:
+                    policy[field] = replacement
+                with self.subTest(field=field, replacement=replacement), self.assertRaisesRegex(
+                        ValueError, 'reconciliation base identity changed'):
+                    ci_policy.check(policy=policy)
+
     def test_aggregate_requires_integrated_uci_step_name(self):
         policy = selection.inventory()
         record = next(r for r in policy['jobs'] if
@@ -45,6 +57,7 @@ class Py007Integration(unittest.TestCase):
         for workflow, command in (
                 ('ci.yml', 'cargo test --locked -p ams-gra-codegen-oms --test python_inheritance -- --nocapture'),
                 ('ci.yml', 'python scripts/test-py007-uci.py'),
+                ('deep-ci.yml', 'python3 scripts/test-py007-uci.py'),
                 ('deep-ci.yml', 'python3 scripts/check-py007-uci.py --generator')):
             for replacement in ('', 'true # ' + command, command + ' --skip inheritance'):
                 with self.subTest(workflow=workflow, command=command, replacement=replacement):
@@ -104,6 +117,8 @@ class Task099Gate(original.GateTests):
             gate.verify_source(manifest, self.policy, run, sha, 'pull_request')
             diff.assert_called_once_with(selection.ROOT, base, head, sha)
             self.assertIn(unittest.mock.call(selection.ROOT, 'merge-base', '--is-ancestor', self.policy['incorporated_main'], base), git.call_args_list)
+            for source in (sha, base):
+                self.assertIn(unittest.mock.call(selection.ROOT, 'merge-base', '--is-ancestor', self.policy['reconciliation_main'], source), git.call_args_list)
             with self.assertRaises(ValueError):
                 gate.verify_source(manifest, self.policy, dict(event='pull_request', head_sha=base), sha, 'pull_request')
         with patch.object(gate, 'git', return_value=(head + '\n').encode()), self.assertRaises(ValueError):
@@ -166,10 +181,10 @@ class R1Policy(original.SchedulingTests):
 
     def test_comments_and_unrelated_metadata_are_harmless(self):
         self.workflows = {name: '# harmless comment\n' + text for name, text in self.workflows.items()}
-        self.assertEqual(self.check(), 36)
+        self.assertEqual(self.check(), 40)
         # Inventory descriptions do not influence selection or authorization.
         self.policy['description'] = 'Review note'
-        self.assertEqual(self.check(), 36)
+        self.assertEqual(self.check(), 40)
 
 
 class LaneTimestamps(unittest.TestCase):

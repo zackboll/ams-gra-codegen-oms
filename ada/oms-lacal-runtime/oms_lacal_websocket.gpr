@@ -1,0 +1,9 @@
+with "oms_lacal_runtime";
+with "oms_websocket_dependencies";
+project OMS_LACAL_WebSocket is
+   for Source_Dirs use ("websocket");
+   for Object_Dir use "obj-websocket";
+   package Compiler is
+      for Default_Switches ("Ada") use ("-gnat2022", "-gnato", "-O0");
+   end Compiler;
+end OMS_LACAL_WebSocket;

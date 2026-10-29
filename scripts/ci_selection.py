@@ -127,6 +127,13 @@ def select(changes, policy, full_reason=None, full_main=False):
             continue
         # Only reviewed Task099 runtime/fixture roots may use the narrow rule.
         # New similarly named paths must not fall through to generic Ada rules.
+        task100_path = ('websocket' in path.lower() or 'task100' in path.lower())
+        if task100_path and not any(
+                fnmatch.fnmatchcase(path, p) for r in policy['rules']
+                if r['category'] in ('ada-websocket', 'ada-lacal-runtime') for p in r['paths']):
+            full = deep = True
+            reasons.append(dict(path=path, category='fallback', reason='unmapped Task100 path'))
+            continue
         task099_path = ((path.startswith(('ada/', 'tests/ada-')) and 'lacal' in path.lower())
                         or 'task099' in path.lower())
         if task099_path and not any(
