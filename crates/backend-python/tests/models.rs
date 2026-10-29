@@ -523,3 +523,9 @@ fn zero_oms_service_api_is_generated_without_a_model() {
     assert!(!files[0].contents.contains("Payload"));
     assert!(!files[0].contents.contains("import model"));
 }
+
+// Disposable expected-red acceptance control; never merge.
+#[test]
+fn ci_select_002_selected_qualification_must_fail_closed() {
+    panic!("CI-SELECT-002-FINAL intentional selected-test failure");
+}
