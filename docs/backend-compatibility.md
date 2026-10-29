@@ -1,5 +1,21 @@
 # Backend compatibility
 
+## Python update — PY-007 pure Record inheritance
+
+Python uses the Task 018 `effective_record_fields` projection for naming,
+model validation/rendering and OMS JSON codecs. Each concrete Record is a
+single frozen, slotted, keyword-only dataclass with base-to-derived members,
+not a Python subclass. Borrowed authored declarations preserve member types,
+cardinality and wire QNames; the concrete class retains its own QName.
+Abstract Records used only as ancestry generate no class, in both explicit
+worlds. Demanded abstract values, including Task 026 absent-only occurrences,
+remain unsupported. Choice segments and all pre-existing unsupported effective
+fields fail before output; no closed sums, `$type` or transport policy is added.
+The three-language coverage inventory is unchanged. See
+[PY-007 evidence](task-py-007-python-record-inheritance.md) for the measured
+24-selection pinned-UCI BEFORE/AFTER campaign, synthetic execution and the
+versioned CI migration preserving immutable PY-006 evidence.
+
 ## Python update — PY-006 exact UCI header String profiles
 
 Python 3.11+ now admits named primitive Strings classified by the shared exact
