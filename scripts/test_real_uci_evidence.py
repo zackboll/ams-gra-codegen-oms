@@ -12,6 +12,7 @@ from unittest.mock import patch
 
 import ci_policy
 import real_uci_evidence as evidence
+from ci_retry_test_data import metadata
 from test_ci_select import GateTests, gate
 
 
@@ -79,11 +80,15 @@ class RuntimeEvidence(unittest.TestCase):
             observed.extend(self.verify(bundle(shard), shard)['tasks'])
         self.assertCountEqual(observed, evidence.ORIGINAL)
         artifacts = [dict(name='perf007-'+s, id=s, expired=False, size_in_bytes=1) for s in evidence.SHARDS]
-        result = gate.reconcile_primary(artifacts, 'a'*40, 'b'*40, '123', '1', lambda a: bundle(a['id']))
+        jobs, attempts = metadata(artifacts, current=1)
+        loader = lambda a: bundle(a['name'].removeprefix('perf007-'))
+        result = gate.reconcile_primary(artifacts, 'a'*40, 'b'*40, '123', '1', loader,
+                                        jobs=jobs, attempts=attempts)
         self.assertEqual(set(result), set(evidence.SHARDS))
         for missing in artifacts:
             with self.assertRaises(ValueError):
-                gate.reconcile_primary([a for a in artifacts if a != missing], 'a'*40, 'b'*40, '123', '1', lambda a: bundle(a['id']))
+                gate.reconcile_primary([a for a in artifacts if a != missing], 'a'*40, 'b'*40, '123', '1', loader,
+                                        jobs=jobs, attempts=attempts)
 
     def test_missing_duplicate_failed_skipped_truncated_stale_and_hash_mutations(self):
         for shard, tasks in evidence.SHARDS.items():
@@ -152,7 +157,7 @@ class RuntimeEvidence(unittest.TestCase):
                     patch.object(gate.urllib.request, 'build_opener') as opener:
                 opener.return_value.open.return_value = io.BytesIO(stream.getvalue())
                 with self.assertRaises(ValueError):
-                    gate.download_bundle(dict(id=1))
+                    gate.download_bundle(dict(id=1, digest='sha256:' + evidence.digest(stream.getvalue())))
 
     def test_incomplete_finalization_writes_failed_completion(self):
         with tempfile.TemporaryDirectory() as tmp:

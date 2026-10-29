@@ -58,6 +58,41 @@ for external in 'bash scripts/check-py007-sleet.sh' 'python3 scripts/check-py007
   expect_fail "Fast runs PY007 external campaign" "$tmp/fast-external-py007.yml" "$deep" "$sleet"
 done
 
+# PY-008: attributed mutations of current ownership, not retired PR filters.
+expect_py008_fail() {
+  local diagnostic="$1"; shift
+  if "$guard" "$@" >"$tmp/py008-diagnostic.log" 2>&1; then
+    die "guard accepted PY008 mutation: $diagnostic"
+  fi
+  grep -Fq -- "$diagnostic" "$tmp/py008-diagnostic.log" ||
+    die "PY008 mutation failed for the wrong reason: $diagnostic"
+  ok
+}
+for gate in 'python3 scripts/check-py008-uci.py --generator' \
+  '--service-baseline tests/fixtures/python-float64/after.json' \
+  'scripts/check-py008-numeric.py --full' 'for interpreter in python3.11 python3.13; do'; do
+  grep -Fq -- "$gate" "$deep" || die "missing PY008 mutation target: $gate"
+  grep -Fv -- "$gate" "$deep" >"$tmp/deep-no-py008.yml"
+  cmp -s "$deep" "$tmp/deep-no-py008.yml" && die "unchanged PY008 Deep mutation"
+  expect_py008_fail "Deep CI lost PY-008 gate: $gate" "$fast" "$tmp/deep-no-py008.yml" "$sleet"
+done
+for gate in '--test python_float64 -- --nocapture' 'python scripts/test-py008-uci.py' \
+  'python scripts/check-py008-numeric.py' 'python -O scripts/check-py008-numeric.py'; do
+  grep -Fq -- "$gate" "$fast" || die "missing PY008 mutation target: $gate"
+  grep -Fv -- "$gate" "$fast" >"$tmp/fast-no-py008.yml"
+  cmp -s "$fast" "$tmp/fast-no-py008.yml" && die "unchanged PY008 Fast mutation"
+  expect_py008_fail "Fast CI lost PY-008 gate: $gate" "$tmp/fast-no-py008.yml" "$deep" "$sleet"
+done
+grep -Fq 'scripts/check-py008-sleet.sh' "$sleet" || die "missing PY008 shared-Sleet mutation target"
+grep -Fv 'scripts/check-py008-sleet.sh' "$sleet" >"$tmp/sleet-no-py008.sh"
+expect_py008_fail "PY-008 shared-Sleet execution changed" "$fast" "$deep" "$tmp/sleet-no-py008.sh"
+for external in 'bash scripts/check-py008-sleet.sh' 'python3 scripts/check-py008-uci.py --generator'; do
+  { cat "$fast"; printf '      - run: %s\n' "$external"; } >"$tmp/fast-external-py008.yml"
+  expect_py008_fail "Fast CI must not run PY-008 external campaigns" "$tmp/fast-external-py008.yml" "$deep" "$sleet"
+done
+python3 -m unittest discover -s "$repo/scripts" -p 'test_ci_select_py008.py'
+ok
+
 # Task 077B / PERF-006: healthy disposable split, harmless structural changes,
 # and attributed single-defect negatives for all three independent shards.
 # Each negative must contain its targeted diagnostic, not just fail elsewhere.

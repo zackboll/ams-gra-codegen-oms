@@ -103,9 +103,10 @@
         "ada-float64-codec",
         "ada-time-zulu-codec",
         "ada-lacal-runtime-core",
-        "ada-websocket-transport"
+        "ada-websocket-transport",
+        "python-model-backend"
       ],
-      "rationale": "Float64 ABI/rounding and GNAT14/16 qualification; TimeZulu lossless profile composes this support; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification",
+      "rationale": "Float64 ABI/rounding and GNAT14/16 qualification; TimeZulu lossless profile composes this support; Task100 runtime/OMS JSON consumers require transport and independent pinned-Sleet qualification; frozen Task096 oracle/corpus also qualifies Python Float64 in both versions and all Deep numerical cells",
       "deep": true
     },
     {
@@ -329,7 +330,14 @@
     "scripts/check-py007-uci.py",
     "scripts/test-py007-uci.py",
     "scripts/check-py007-sleet.sh",
-    "tests/fixtures/python-inheritance/**"
+    "tests/fixtures/python-inheritance/**",
+    "scripts/check-py008-uci.py",
+    "scripts/measure-py008-uci.py",
+    "scripts/test-py008-uci.py",
+    "scripts/check-py008-numeric.py",
+    "scripts/check-py008-parity.py",
+    "scripts/check-py008-sleet.sh",
+    "tests/fixtures/python-float64/**"
   ],
   "orchestration_jobs": {
     "changes": {
@@ -826,7 +834,41 @@
       "source_policy": "synthetic merge github.sha",
       "trigger_type": "pull_request:\n  push:\n    branches:\n      - main\n  workflow_dispatch:",
       "pr_concurrency_identity": "${{ github.ref == 'refs/heads/main' && format('oms-main-slot-{0}', matrix.slot) || format('oms-pr-{0}-{1}-{2}-ci.yml-python-model-backend-{3}', github.workflow, github.run_id, github.run_attempt, matrix.python-version) }}",
-      "enabled_behavior": "source-selected on PR; full on main"
+      "enabled_behavior": "source-selected on PR; full on main",
+      "integration_steps_yaml": "    steps:\n      - uses: actions/checkout@v4\n      - uses: dtolnay/rust-toolchain@1.95.0\n        with:\n          components: rustfmt, clippy\n      - uses: actions/setup-python@v5\n        with:\n          python-version: ${{ matrix.python-version }}\n      - name: Qualify Python model generation (runtime probes must execute)\n        env:\n          PYTHON: python\n        run: |\n          python -c 'import sys; assert sys.version_info >= (3, 11); print(sys.version)'\n          cargo test --locked -p ams-gra-oms-backend-python --all-targets -- --nocapture\n          cargo test --locked -p ams-gra-codegen-oms --test python_cli -- --nocapture\n          cargo test --locked -p ams-gra-codegen-oms --test python_service -- --nocapture\n          cargo test --locked -p ams-gra-codegen-oms --test python_codec -- --nocapture\n          cargo test --locked -p ams-gra-codegen-oms --test python_header_profiles -- --nocapture\n          cargo test --locked -p ams-gra-codegen-oms --test python_inheritance -- --nocapture\n          cargo test --locked -p ams-gra-codegen-oms --test python_float64 -- --nocapture\n          python scripts/test-py007-uci.py\n          python scripts/test-py008-uci.py\n          cargo fmt --all -- --check\n          cargo clippy --locked -p ams-gra-oms-backend-python -p ams-gra-codegen-oms --all-targets -- -D warnings\n          cargo build --locked -p ams-gra-oms-backend-python -p ams-gra-codegen-oms --all-targets\n      - name: Focused independent Float64 numeric controls (PY-008)\n        run: |\n          set -euo pipefail\n          python tests/ada-float64-probe/oracle.py \"$RUNNER_TEMP/py008-corpus\"\n          target/debug/ams-gra-codegen-oms service-generate --schema tests/fixtures/python-float64/oam.xsd --contract tests/fixtures/python-float64/service.yaml --language python --world closed-schema --with-codec --output \"$RUNNER_TEMP/py008-generated\"\n          python scripts/check-py008-numeric.py --generated \"$RUNNER_TEMP/py008-generated\" --corpus \"$RUNNER_TEMP/py008-corpus\" --output \"$RUNNER_TEMP/py008-normal.json\"\n          python -O scripts/check-py008-numeric.py --generated \"$RUNNER_TEMP/py008-generated\" --corpus \"$RUNNER_TEMP/py008-corpus\" --output \"$RUNNER_TEMP/py008-optimized.json\"\n      - name: Python LA-CAL actual network mock qualification (PY-005)\n        run: |\n          python -m pip install ./python/oms-lacal-runtime\n          PYTHON=python bash scripts/check-py005-mock.sh\n\n",
+      "integration_steps": [
+        {
+          "uses": "actions/checkout@v4"
+        },
+        {
+          "uses": "dtolnay/rust-toolchain@1.95.0",
+          "with": {
+            "components": "rustfmt, clippy"
+          }
+        },
+        {
+          "uses": "actions/setup-python@v5",
+          "with": {
+            "python-version": "${{ matrix.python-version }}"
+          }
+        },
+        {
+          "name": "Qualify Python model generation (runtime probes must execute)",
+          "env": {
+            "PYTHON": "python"
+          },
+          "run": "python -c 'import sys; assert sys.version_info >= (3, 11); print(sys.version)'\ncargo test --locked -p ams-gra-oms-backend-python --all-targets -- --nocapture\ncargo test --locked -p ams-gra-codegen-oms --test python_cli -- --nocapture\ncargo test --locked -p ams-gra-codegen-oms --test python_service -- --nocapture\ncargo test --locked -p ams-gra-codegen-oms --test python_codec -- --nocapture\ncargo test --locked -p ams-gra-codegen-oms --test python_header_profiles -- --nocapture\ncargo test --locked -p ams-gra-codegen-oms --test python_inheritance -- --nocapture\ncargo test --locked -p ams-gra-codegen-oms --test python_float64 -- --nocapture\npython scripts/test-py007-uci.py\npython scripts/test-py008-uci.py\ncargo fmt --all -- --check\ncargo clippy --locked -p ams-gra-oms-backend-python -p ams-gra-codegen-oms --all-targets -- -D warnings\ncargo build --locked -p ams-gra-oms-backend-python -p ams-gra-codegen-oms --all-targets\n"
+        },
+        {
+          "name": "Focused independent Float64 numeric controls (PY-008)",
+          "run": "set -euo pipefail\npython tests/ada-float64-probe/oracle.py \"$RUNNER_TEMP/py008-corpus\"\ntarget/debug/ams-gra-codegen-oms service-generate --schema tests/fixtures/python-float64/oam.xsd --contract tests/fixtures/python-float64/service.yaml --language python --world closed-schema --with-codec --output \"$RUNNER_TEMP/py008-generated\"\npython scripts/check-py008-numeric.py --generated \"$RUNNER_TEMP/py008-generated\" --corpus \"$RUNNER_TEMP/py008-corpus\" --output \"$RUNNER_TEMP/py008-normal.json\"\npython -O scripts/check-py008-numeric.py --generated \"$RUNNER_TEMP/py008-generated\" --corpus \"$RUNNER_TEMP/py008-corpus\" --output \"$RUNNER_TEMP/py008-optimized.json\"\n"
+        },
+        {
+          "name": "Python LA-CAL actual network mock qualification (PY-005)",
+          "run": "python -m pip install ./python/oms-lacal-runtime\nPYTHON=python bash scripts/check-py005-mock.sh\n"
+        }
+      ],
+      "integration_from": "af467b4789758cab544829a15bc0ae5d2d96cbba"
     },
     {
       "workflow": "ci.yml",
@@ -2947,7 +2989,99 @@
       "source_policy": "synthetic merge github.sha",
       "trigger_type": "workflow_call:\n  schedule:\n    - cron: \"0 6 * * *\"\n  workflow_dispatch:",
       "pr_concurrency_identity": "${{ github.ref == 'refs/heads/main' && 'oms-main-slot-1' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-regressions', github.workflow, github.run_id, github.run_attempt) }}",
-      "enabled_behavior": "independent workflow triggers"
+      "enabled_behavior": "independent workflow triggers",
+      "integration_steps_yaml": "    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n      - name: Verify Deep CI source identity\n        shell: bash\n        run: |\n          set -euo pipefail\n          actual=\"$(git rev-parse HEAD)\"\n          tree=\"$(git rev-parse HEAD^{tree})\"\n          test \"$actual\" = \"$GITHUB_SHA\"\n          test -n \"$tree\"\n          printf 'DEEP_CI_SOURCE_SHA=%s\\n' \"$actual\"\n          printf 'DEEP_CI_SOURCE_TREE=%s\\n' \"$tree\"\n          printf 'DEEP_CI_EVENT=%s\\n' \"$GITHUB_EVENT_NAME\"\n      - uses: dtolnay/rust-toolchain@stable\n      - name: Install GNAT\n        run: |\n          sudo apt-get update\n          sudo apt-get install -y gnat\n      - name: Verify GNAT availability\n        run: |\n          command -v gnatmake\n          gnatmake --version\n      - name: Fetch pinned UCI 2.5 and 2.6 (once)\n        run: |\n          set -euo pipefail\n          UCI25=\"$(scripts/fetch-pinned-uci-2.5.sh \"$RUNNER_TEMP/uci-2.5\")\"\n          UCI26=\"$(scripts/fetch-pinned-uci-2.6.sh \"$RUNNER_TEMP/uci-2.6\")\"\n          echo \"AMS_GRA_UCI_2_5_ROOT=$UCI25\" >> \"$GITHUB_ENV\"\n          echo \"AMS_GRA_UCI_2_6_ROOT=$UCI26\" >> \"$GITHUB_ENV\"\n      - name: Prepare regression inputs and release CLI\n        run: |\n          set -euo pipefail\n          test -n \"$AMS_GRA_UCI_2_5_ROOT\"\n          test -n \"$AMS_GRA_UCI_2_6_ROOT\"\n          echo \"TMPDIR=$RUNNER_TEMP\" >> \"$GITHUB_ENV\"\n          cargo fetch --locked\n          cargo build --release --locked -p ams-gra-codegen-oms\n      - name: Qualify batch transport and production equivalence controls\n        run: |\n          set -euo pipefail\n          python3 scripts/test-task061-service-impact.py\n          cargo test --release --locked -p ams-gra-codegen-oms --test service_check_batch\n      - name: Python current services and immutable historical profiles (PY-007 and PY-008, must execute)\n        run: |\n          set -euo pipefail\n          python3 scripts/test-py007-uci.py\n          python3 scripts/test-py008-uci.py\n          python3 scripts/check-py007-uci.py --generator target/release/ams-gra-codegen-oms \\\n            --output \"$RUNNER_TEMP/py006-uci\" --service-baseline tests/fixtures/python-float64/after.json\n          python3 scripts/check-py008-uci.py --generator target/release/ams-gra-codegen-oms \\\n            --output \"$RUNNER_TEMP/py006-uci\" --existing-output\n      - name: Preserve Python pinned UCI measurements\n        uses: actions/upload-artifact@v4\n        with:\n          name: py006-uci\n          path: ${{ runner.temp }}/py006-uci/**\n          if-no-files-found: error\n      - name: Confirm unique newly READY Time services (Task 061)\n        run: |\n          set -euo pipefail\n          export TMPDIR=\"$RUNNER_TEMP\"\n          python3 scripts/check-task061-service-impact.py target/release/ams-gra-codegen-oms\n      - name: Preserve Task 061 per-selection evidence\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: task061-service-check\n          path: ${{ runner.temp }}/task061-service-check-*/**\n          if-no-files-found: error\n      - name: Real UCI Binary provenance inventory (Task 052, must execute)\n        run: |\n          set -euo pipefail\n          status=0\n          output=\"$(cargo test --release -p ams-gra-oms-xsd-frontend --test uci_binary_provenance -- \\\n            --nocapture --test-threads 1 2>&1)\" || status=$?\n          printf '%s\\n' \"$output\"\n          if (( status != 0 )); then exit \"$status\"; fi\n          grep -Fqx 'UCI 2.5 BINARY PROVENANCE INVENTORY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 BINARY PROVENANCE INVENTORY: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 2 passed' <<<\"$output\"\n      - name: Real UCI constrained Binary inventory (Task 053, must execute)\n        run: |\n          set -euo pipefail\n          status=0\n          output=\"$(cargo test --release -p ams-gra-codegen-oms --test uci_constrained_binary -- \\\n            --nocapture --test-threads 1 2>&1)\" || status=$?\n          printf '%s\\n' \"$output\"\n          if (( status != 0 )); then exit \"$status\"; fi\n          grep -Fqx 'UCI 2.5 CONSTRAINED BINARY INVENTORY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 CONSTRAINED BINARY INVENTORY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.5 CONSTRAINED BINARY MESSAGE IMPACT: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 CONSTRAINED BINARY MESSAGE IMPACT: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 3 passed' <<<\"$output\"\n      - name: Real UCI member identifier inventory (Task 054, must execute)\n        env:\n          AMS_GRA_REQUIRE_GNAT: \"1\"\n        run: |\n          set -euo pipefail\n          status=0\n          output=\"$(cargo test --release -p ams-gra-codegen-oms --test uci_member_names -- \\\n            --nocapture --test-threads 1 2>&1)\" || status=$?\n          printf '%s\\n' \"$output\"\n          if (( status != 0 )); then exit \"$status\"; fi\n          grep -Fqx 'UCI 2.5 MEMBER IDENTIFIER INVENTORY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 MEMBER IDENTIFIER INVENTORY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.5 WHOLE-SCHEMA FIRST BLOCKER PROBE: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 WHOLE-SCHEMA FIRST BLOCKER PROBE: PASSED' <<<\"$output\"\n          grep -Eqx '(test task054_real_uci_category_a_selection_generates_and_compiles \\.\\.\\. )?UCI 2\\.5 REAL CATEGORY-A MEMBER REMAPPING: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 4 passed' <<<\"$output\"\n      - name: Real UCI generated-support readiness parity (Task 056, must execute)\n        run: |\n          set -euo pipefail\n          status=0\n          output=\"$(cargo test --release -p ams-gra-codegen-oms --test uci_generated_support task056_real_uci -- \\\n            --nocapture --test-threads 1 2>&1)\" || status=$?\n          printf '%s\\n' \"$output\"\n          if (( status != 0 )); then exit \"$status\"; fi\n          grep -Fqx 'UCI 2.5 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.5 CATEGORY-A GENERATED SUPPORT PARITY: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 2 passed' <<<\"$output\"\n      - name: Real UCI generated-support plan binding (Task 064, must execute)\n        run: |\n          set -euo pipefail\n          name=task064_real_uci_generated_support_binding\n          status=0\n          listing=\"$(cargo test --release -p ams-gra-codegen-oms --test uci_generated_support -- --list 2>&1)\" || status=$?\n          printf '%s\\n' \"$listing\"\n          if (( status != 0 )); then exit \"$status\"; fi\n          grep -Fqx \"$name: test\" <<<\"$listing\"\n          status=0\n          output=\"$(cargo test --release -p ams-gra-codegen-oms --test uci_generated_support \"$name\" -- \\\n            --exact --nocapture --test-threads 1 2>&1)\" || status=$?\n          printf '%s\\n' \"$output\"\n          if (( status != 0 )); then exit \"$status\"; fi\n          grep -qE '^test result: ok\\. 1 passed' <<<\"$output\"\n          grep -Fqx 'UCI 2.5 GENERATED SUPPORT BINDING: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 GENERATED SUPPORT BINDING: PASSED' <<<\"$output\"\n      - name: Real UCI duration inventory and message impact (Task 057, must execute)\n        run: |\n          set -euo pipefail\n          status=0\n          output=\"$(cargo test --release -p ams-gra-codegen-oms --test uci_duration -- \\\n            --nocapture --test-threads 1 2>&1)\" || status=$?\n          printf '%s\\n' \"$output\"\n          if (( status != 0 )); then exit \"$status\"; fi\n          grep -Fqx 'UCI 2.5 DURATION INVENTORY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 DURATION INVENTORY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.5 DURATION MESSAGE IMPACT: RECORDED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 DURATION MESSAGE IMPACT: RECORDED' <<<\"$output\"\n          grep -Eqx '(test task057_real_uci_category_a_log_generates_and_compiles \\.\\.\\. )?UCI 2\\.5 REAL CATEGORY-A DURATION SERVICE: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 4 passed' <<<\"$output\"\n\n",
+      "integration_steps": [
+        {
+          "uses": "actions/checkout@v4",
+          "with": {
+            "ref": "${{ github.sha }}"
+          }
+        },
+        {
+          "name": "Verify Deep CI source identity",
+          "shell": "bash",
+          "run": "set -euo pipefail\nactual=\"$(git rev-parse HEAD)\"\ntree=\"$(git rev-parse HEAD^{tree})\"\ntest \"$actual\" = \"$GITHUB_SHA\"\ntest -n \"$tree\"\nprintf 'DEEP_CI_SOURCE_SHA=%s\\n' \"$actual\"\nprintf 'DEEP_CI_SOURCE_TREE=%s\\n' \"$tree\"\nprintf 'DEEP_CI_EVENT=%s\\n' \"$GITHUB_EVENT_NAME\"\n"
+        },
+        {
+          "uses": "dtolnay/rust-toolchain@stable"
+        },
+        {
+          "name": "Install GNAT",
+          "run": "sudo apt-get update\nsudo apt-get install -y gnat\n"
+        },
+        {
+          "name": "Verify GNAT availability",
+          "run": "command -v gnatmake\ngnatmake --version\n"
+        },
+        {
+          "name": "Fetch pinned UCI 2.5 and 2.6 (once)",
+          "run": "set -euo pipefail\nUCI25=\"$(scripts/fetch-pinned-uci-2.5.sh \"$RUNNER_TEMP/uci-2.5\")\"\nUCI26=\"$(scripts/fetch-pinned-uci-2.6.sh \"$RUNNER_TEMP/uci-2.6\")\"\necho \"AMS_GRA_UCI_2_5_ROOT=$UCI25\" >> \"$GITHUB_ENV\"\necho \"AMS_GRA_UCI_2_6_ROOT=$UCI26\" >> \"$GITHUB_ENV\"\n"
+        },
+        {
+          "name": "Prepare regression inputs and release CLI",
+          "run": "set -euo pipefail\ntest -n \"$AMS_GRA_UCI_2_5_ROOT\"\ntest -n \"$AMS_GRA_UCI_2_6_ROOT\"\necho \"TMPDIR=$RUNNER_TEMP\" >> \"$GITHUB_ENV\"\ncargo fetch --locked\ncargo build --release --locked -p ams-gra-codegen-oms\n"
+        },
+        {
+          "name": "Qualify batch transport and production equivalence controls",
+          "run": "set -euo pipefail\npython3 scripts/test-task061-service-impact.py\ncargo test --release --locked -p ams-gra-codegen-oms --test service_check_batch\n"
+        },
+        {
+          "name": "Python current services and immutable historical profiles (PY-007 and PY-008, must execute)",
+          "run": "set -euo pipefail\npython3 scripts/test-py007-uci.py\npython3 scripts/test-py008-uci.py\npython3 scripts/check-py007-uci.py --generator target/release/ams-gra-codegen-oms \\\n  --output \"$RUNNER_TEMP/py006-uci\" --service-baseline tests/fixtures/python-float64/after.json\npython3 scripts/check-py008-uci.py --generator target/release/ams-gra-codegen-oms \\\n  --output \"$RUNNER_TEMP/py006-uci\" --existing-output\n"
+        },
+        {
+          "name": "Preserve Python pinned UCI measurements",
+          "uses": "actions/upload-artifact@v4",
+          "with": {
+            "name": "py006-uci",
+            "path": "${{ runner.temp }}/py006-uci/**",
+            "if-no-files-found": "error"
+          }
+        },
+        {
+          "name": "Confirm unique newly READY Time services (Task 061)",
+          "run": "set -euo pipefail\nexport TMPDIR=\"$RUNNER_TEMP\"\npython3 scripts/check-task061-service-impact.py target/release/ams-gra-codegen-oms\n"
+        },
+        {
+          "name": "Preserve Task 061 per-selection evidence",
+          "if": "always()",
+          "uses": "actions/upload-artifact@v4",
+          "with": {
+            "name": "task061-service-check",
+            "path": "${{ runner.temp }}/task061-service-check-*/**",
+            "if-no-files-found": "error"
+          }
+        },
+        {
+          "name": "Real UCI Binary provenance inventory (Task 052, must execute)",
+          "run": "set -euo pipefail\nstatus=0\noutput=\"$(cargo test --release -p ams-gra-oms-xsd-frontend --test uci_binary_provenance -- \\\n  --nocapture --test-threads 1 2>&1)\" || status=$?\nprintf '%s\\n' \"$output\"\nif (( status != 0 )); then exit \"$status\"; fi\ngrep -Fqx 'UCI 2.5 BINARY PROVENANCE INVENTORY: PASSED' <<<\"$output\"\ngrep -Fqx 'UCI 2.6 BINARY PROVENANCE INVENTORY: PASSED' <<<\"$output\"\ngrep -qE '^test result: ok\\. 2 passed' <<<\"$output\"\n"
+        },
+        {
+          "name": "Real UCI constrained Binary inventory (Task 053, must execute)",
+          "run": "set -euo pipefail\nstatus=0\noutput=\"$(cargo test --release -p ams-gra-codegen-oms --test uci_constrained_binary -- \\\n  --nocapture --test-threads 1 2>&1)\" || status=$?\nprintf '%s\\n' \"$output\"\nif (( status != 0 )); then exit \"$status\"; fi\ngrep -Fqx 'UCI 2.5 CONSTRAINED BINARY INVENTORY: PASSED' <<<\"$output\"\ngrep -Fqx 'UCI 2.6 CONSTRAINED BINARY INVENTORY: PASSED' <<<\"$output\"\ngrep -Fqx 'UCI 2.5 CONSTRAINED BINARY MESSAGE IMPACT: PASSED' <<<\"$output\"\ngrep -Fqx 'UCI 2.6 CONSTRAINED BINARY MESSAGE IMPACT: PASSED' <<<\"$output\"\ngrep -qE '^test result: ok\\. 3 passed' <<<\"$output\"\n"
+        },
+        {
+          "name": "Real UCI member identifier inventory (Task 054, must execute)",
+          "env": {
+            "AMS_GRA_REQUIRE_GNAT": "1"
+          },
+          "run": "set -euo pipefail\nstatus=0\noutput=\"$(cargo test --release -p ams-gra-codegen-oms --test uci_member_names -- \\\n  --nocapture --test-threads 1 2>&1)\" || status=$?\nprintf '%s\\n' \"$output\"\nif (( status != 0 )); then exit \"$status\"; fi\ngrep -Fqx 'UCI 2.5 MEMBER IDENTIFIER INVENTORY: PASSED' <<<\"$output\"\ngrep -Fqx 'UCI 2.6 MEMBER IDENTIFIER INVENTORY: PASSED' <<<\"$output\"\ngrep -Fqx 'UCI 2.5 WHOLE-SCHEMA FIRST BLOCKER PROBE: PASSED' <<<\"$output\"\ngrep -Fqx 'UCI 2.6 WHOLE-SCHEMA FIRST BLOCKER PROBE: PASSED' <<<\"$output\"\ngrep -Eqx '(test task054_real_uci_category_a_selection_generates_and_compiles \\.\\.\\. )?UCI 2\\.5 REAL CATEGORY-A MEMBER REMAPPING: PASSED' <<<\"$output\"\ngrep -qE '^test result: ok\\. 4 passed' <<<\"$output\"\n"
+        },
+        {
+          "name": "Real UCI generated-support readiness parity (Task 056, must execute)",
+          "run": "set -euo pipefail\nstatus=0\noutput=\"$(cargo test --release -p ams-gra-codegen-oms --test uci_generated_support task056_real_uci -- \\\n  --nocapture --test-threads 1 2>&1)\" || status=$?\nprintf '%s\\n' \"$output\"\nif (( status != 0 )); then exit \"$status\"; fi\ngrep -Fqx 'UCI 2.5 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' <<<\"$output\"\ngrep -Fqx 'UCI 2.6 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' <<<\"$output\"\ngrep -Fqx 'UCI 2.5 CATEGORY-A GENERATED SUPPORT PARITY: PASSED' <<<\"$output\"\ngrep -qE '^test result: ok\\. 2 passed' <<<\"$output\"\n"
+        },
+        {
+          "name": "Real UCI generated-support plan binding (Task 064, must execute)",
+          "run": "set -euo pipefail\nname=task064_real_uci_generated_support_binding\nstatus=0\nlisting=\"$(cargo test --release -p ams-gra-codegen-oms --test uci_generated_support -- --list 2>&1)\" || status=$?\nprintf '%s\\n' \"$listing\"\nif (( status != 0 )); then exit \"$status\"; fi\ngrep -Fqx \"$name: test\" <<<\"$listing\"\nstatus=0\noutput=\"$(cargo test --release -p ams-gra-codegen-oms --test uci_generated_support \"$name\" -- \\\n  --exact --nocapture --test-threads 1 2>&1)\" || status=$?\nprintf '%s\\n' \"$output\"\nif (( status != 0 )); then exit \"$status\"; fi\ngrep -qE '^test result: ok\\. 1 passed' <<<\"$output\"\ngrep -Fqx 'UCI 2.5 GENERATED SUPPORT BINDING: PASSED' <<<\"$output\"\ngrep -Fqx 'UCI 2.6 GENERATED SUPPORT BINDING: PASSED' <<<\"$output\"\n"
+        },
+        {
+          "name": "Real UCI duration inventory and message impact (Task 057, must execute)",
+          "run": "set -euo pipefail\nstatus=0\noutput=\"$(cargo test --release -p ams-gra-codegen-oms --test uci_duration -- \\\n  --nocapture --test-threads 1 2>&1)\" || status=$?\nprintf '%s\\n' \"$output\"\nif (( status != 0 )); then exit \"$status\"; fi\ngrep -Fqx 'UCI 2.5 DURATION INVENTORY: PASSED' <<<\"$output\"\ngrep -Fqx 'UCI 2.6 DURATION INVENTORY: PASSED' <<<\"$output\"\ngrep -Fqx 'UCI 2.5 DURATION MESSAGE IMPACT: RECORDED' <<<\"$output\"\ngrep -Fqx 'UCI 2.6 DURATION MESSAGE IMPACT: RECORDED' <<<\"$output\"\ngrep -Eqx '(test task057_real_uci_category_a_log_generates_and_compiles \\.\\.\\. )?UCI 2\\.5 REAL CATEGORY-A DURATION SERVICE: PASSED' <<<\"$output\"\ngrep -qE '^test result: ok\\. 4 passed' <<<\"$output\"\n"
+        }
+      ],
+      "integration_from": "af467b4789758cab544829a15bc0ae5d2d96cbba"
     },
     {
       "workflow": "deep-ci.yml",
@@ -3257,7 +3391,9 @@
           "name": "real-sleet",
           "variant": {},
           "lane": 4,
-          "artifacts": []
+          "artifacts": [
+            "py008-numeric"
+          ]
         }
       ],
       "prerequisites": [],
@@ -3359,7 +3495,64 @@
       "source_policy": "synthetic merge github.sha",
       "trigger_type": "workflow_call:\n  schedule:\n    - cron: \"0 6 * * *\"\n  workflow_dispatch:",
       "pr_concurrency_identity": "${{ github.ref == 'refs/heads/main' && 'oms-main-slot-4' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-sleet', github.workflow, github.run_id, github.run_attempt) }}",
-      "enabled_behavior": "independent workflow triggers"
+      "enabled_behavior": "independent workflow triggers",
+      "integration_steps_yaml": "    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n      - name: Verify Deep CI source identity\n        shell: bash\n        run: |\n          set -euo pipefail\n          actual=\"$(git rev-parse HEAD)\"\n          tree=\"$(git rev-parse HEAD^{tree})\"\n          test \"$actual\" = \"$GITHUB_SHA\"\n          test -n \"$tree\"\n          printf 'DEEP_CI_SOURCE_SHA=%s\\n' \"$actual\"\n          printf 'DEEP_CI_SOURCE_TREE=%s\\n' \"$tree\"\n          printf 'DEEP_CI_EVENT=%s\\n' \"$GITHUB_EVENT_NAME\"\n      - uses: dtolnay/rust-toolchain@stable\n      - uses: actions/setup-python@v5\n        with:\n          python-version: |\n            3.11\n            3.13\n      - name: Install pinned Python LA-CAL runtime\n        run: |\n          python3.11 -m pip install ./python/oms-lacal-runtime\n          python3.13 -m pip install ./python/oms-lacal-runtime\n      - name: Full independent Python Float64 corpus (PY-008)\n        run: |\n          set -euo pipefail\n          python3 tests/ada-float64-probe/oracle.py \"$RUNNER_TEMP/py008-corpus\"\n          rustup toolchain install 1.95.0 --profile minimal\n          cargo +1.95.0 build --locked -p ams-gra-codegen-oms\n          target/debug/ams-gra-codegen-oms service-generate --schema tests/fixtures/python-float64/oam.xsd --contract tests/fixtures/python-float64/service.yaml --language python --world closed-schema --with-codec --output \"$RUNNER_TEMP/py008-generated\"\n          for interpreter in python3.11 python3.13; do\n            version=\"$(\"$interpreter\" -c 'import sys; print(str(sys.version_info.major) + str(sys.version_info.minor))')\"\n            \"$interpreter\" scripts/check-py008-numeric.py --full --generated \"$RUNNER_TEMP/py008-generated\" --corpus \"$RUNNER_TEMP/py008-corpus\" --output \"$RUNNER_TEMP/py008-$version-normal.json\"\n            \"$interpreter\" -O scripts/check-py008-numeric.py --full --generated \"$RUNNER_TEMP/py008-generated\" --corpus \"$RUNNER_TEMP/py008-corpus\" --output \"$RUNNER_TEMP/py008-$version-optimized.json\"\n          done\n      - name: Preserve Python Float64 numeric evidence\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: py008-numeric\n          path: ${{ runner.temp }}/py008-*.json\n          if-no-files-found: error\n      - name: Fetch pinned UCI 2.5 (once)\n        run: |\n          set -euo pipefail\n          UCI25=\"$(scripts/fetch-pinned-uci-2.5.sh \"$RUNNER_TEMP/uci-2.5\")\"\n          echo \"AMS_GRA_UCI_2_5_ROOT=$UCI25\" >> \"$GITHUB_ENV\"\n      - name: Real UCI 2.5 codecs (Tasks 050/052, must execute)\n        run: |\n          set -euo pipefail\n          output=\"$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test real_uci_position_report -- \\\n            --exact real::task050_real_position_report_decodes_and_re_encodes --nocapture 2>&1)\"\n          printf '%s\\n' \"$output\"\n          grep -Fqx 'REAL POSITIONREPORT CODEC: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 1 passed' <<<\"$output\"\n          output=\"$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test real_uci_subsystem_stream -- \\\n            --exact real::task052_real_subsystem_stream_hex_binary_round_trips --nocapture 2>&1)\"\n          printf '%s\\n' \"$output\"\n          grep -Fqx 'REAL SUBSYSTEMSTREAM HEXBINARY CODEC: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 1 passed' <<<\"$output\"\n          output=\"$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test real_uci_amti_settings -- \\\n            --exact real::task058_real_amti_settings_empty_type_round_trips --nocapture 2>&1)\"\n          printf '%s\\n' \"$output\"\n          grep -Fqx 'REAL AMTI_SETTINGSCOMMAND EMPTYTYPE CODEC: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 1 passed' <<<\"$output\"\n          output=\"$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test real_uci_file_metadata -- \\\n            --exact real::task059_real_file_metadata_structured_ascii_codec --nocapture 2>&1)\"\n          printf '%s\\n' \"$output\"\n          grep -Fqx 'REAL FILEMETADATA STRUCTURED ASCII CODEC: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 1 passed' <<<\"$output\"\n      - name: Rust LA-CAL runtime against real pinned Sleet (e38f61d8)\n        env:\n          PY006_PYTHONS: python3.11 python3.13\n        run: |\n          set -euo pipefail\n          test -n \"$AMS_GRA_UCI_2_5_ROOT\"\n          scripts/run-real-sleet-test.sh\n\n",
+      "integration_steps": [
+        {
+          "uses": "actions/checkout@v4",
+          "with": {
+            "ref": "${{ github.sha }}"
+          }
+        },
+        {
+          "name": "Verify Deep CI source identity",
+          "shell": "bash",
+          "run": "set -euo pipefail\nactual=\"$(git rev-parse HEAD)\"\ntree=\"$(git rev-parse HEAD^{tree})\"\ntest \"$actual\" = \"$GITHUB_SHA\"\ntest -n \"$tree\"\nprintf 'DEEP_CI_SOURCE_SHA=%s\\n' \"$actual\"\nprintf 'DEEP_CI_SOURCE_TREE=%s\\n' \"$tree\"\nprintf 'DEEP_CI_EVENT=%s\\n' \"$GITHUB_EVENT_NAME\"\n"
+        },
+        {
+          "uses": "dtolnay/rust-toolchain@stable"
+        },
+        {
+          "uses": "actions/setup-python@v5",
+          "with": {
+            "python-version": "3.11\n3.13\n"
+          }
+        },
+        {
+          "name": "Install pinned Python LA-CAL runtime",
+          "run": "python3.11 -m pip install ./python/oms-lacal-runtime\npython3.13 -m pip install ./python/oms-lacal-runtime\n"
+        },
+        {
+          "name": "Full independent Python Float64 corpus (PY-008)",
+          "run": "set -euo pipefail\npython3 tests/ada-float64-probe/oracle.py \"$RUNNER_TEMP/py008-corpus\"\nrustup toolchain install 1.95.0 --profile minimal\ncargo +1.95.0 build --locked -p ams-gra-codegen-oms\ntarget/debug/ams-gra-codegen-oms service-generate --schema tests/fixtures/python-float64/oam.xsd --contract tests/fixtures/python-float64/service.yaml --language python --world closed-schema --with-codec --output \"$RUNNER_TEMP/py008-generated\"\nfor interpreter in python3.11 python3.13; do\n  version=\"$(\"$interpreter\" -c 'import sys; print(str(sys.version_info.major) + str(sys.version_info.minor))')\"\n  \"$interpreter\" scripts/check-py008-numeric.py --full --generated \"$RUNNER_TEMP/py008-generated\" --corpus \"$RUNNER_TEMP/py008-corpus\" --output \"$RUNNER_TEMP/py008-$version-normal.json\"\n  \"$interpreter\" -O scripts/check-py008-numeric.py --full --generated \"$RUNNER_TEMP/py008-generated\" --corpus \"$RUNNER_TEMP/py008-corpus\" --output \"$RUNNER_TEMP/py008-$version-optimized.json\"\ndone\n"
+        },
+        {
+          "name": "Preserve Python Float64 numeric evidence",
+          "if": "always()",
+          "uses": "actions/upload-artifact@v4",
+          "with": {
+            "name": "py008-numeric",
+            "path": "${{ runner.temp }}/py008-*.json",
+            "if-no-files-found": "error"
+          }
+        },
+        {
+          "name": "Fetch pinned UCI 2.5 (once)",
+          "run": "set -euo pipefail\nUCI25=\"$(scripts/fetch-pinned-uci-2.5.sh \"$RUNNER_TEMP/uci-2.5\")\"\necho \"AMS_GRA_UCI_2_5_ROOT=$UCI25\" >> \"$GITHUB_ENV\"\n"
+        },
+        {
+          "name": "Real UCI 2.5 codecs (Tasks 050/052, must execute)",
+          "run": "set -euo pipefail\noutput=\"$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test real_uci_position_report -- \\\n  --exact real::task050_real_position_report_decodes_and_re_encodes --nocapture 2>&1)\"\nprintf '%s\\n' \"$output\"\ngrep -Fqx 'REAL POSITIONREPORT CODEC: PASSED' <<<\"$output\"\ngrep -qE '^test result: ok\\. 1 passed' <<<\"$output\"\noutput=\"$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test real_uci_subsystem_stream -- \\\n  --exact real::task052_real_subsystem_stream_hex_binary_round_trips --nocapture 2>&1)\"\nprintf '%s\\n' \"$output\"\ngrep -Fqx 'REAL SUBSYSTEMSTREAM HEXBINARY CODEC: PASSED' <<<\"$output\"\ngrep -qE '^test result: ok\\. 1 passed' <<<\"$output\"\noutput=\"$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test real_uci_amti_settings -- \\\n  --exact real::task058_real_amti_settings_empty_type_round_trips --nocapture 2>&1)\"\nprintf '%s\\n' \"$output\"\ngrep -Fqx 'REAL AMTI_SETTINGSCOMMAND EMPTYTYPE CODEC: PASSED' <<<\"$output\"\ngrep -qE '^test result: ok\\. 1 passed' <<<\"$output\"\noutput=\"$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test real_uci_file_metadata -- \\\n  --exact real::task059_real_file_metadata_structured_ascii_codec --nocapture 2>&1)\"\nprintf '%s\\n' \"$output\"\ngrep -Fqx 'REAL FILEMETADATA STRUCTURED ASCII CODEC: PASSED' <<<\"$output\"\ngrep -qE '^test result: ok\\. 1 passed' <<<\"$output\"\n"
+        },
+        {
+          "name": "Rust LA-CAL runtime against real pinned Sleet (e38f61d8)",
+          "env": {
+            "PY006_PYTHONS": "python3.11 python3.13"
+          },
+          "run": "set -euo pipefail\ntest -n \"$AMS_GRA_UCI_2_5_ROOT\"\nscripts/run-real-sleet-test.sh\n"
+        }
+      ],
+      "integration_from": "af467b4789758cab544829a15bc0ae5d2d96cbba"
     },
     {
       "workflow": "deep-ci.yml",

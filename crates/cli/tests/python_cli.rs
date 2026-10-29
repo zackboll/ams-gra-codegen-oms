@@ -229,6 +229,16 @@ fn invalid_language_and_world_are_usage_errors_without_output() {
 #[test]
 fn unsupported_python_selected_models_fail_without_writing() {
     let temp = Temp::new();
+    // Float64 is now supported; retain this atomic-preflight regression using
+    // an independently unsupported primitive without changing shared fixtures.
+    let schema = temp.0.join("unsupported.xsd");
+    fs::write(
+        &schema,
+        fs::read_to_string(fixture("../../tests/fixtures/service-check/root.xsd"))
+            .unwrap()
+            .replace("xs:double", "xs:float"),
+    )
+    .unwrap();
     for (world, _) in WORLDS {
         for command in ["service-check", "service-generate"] {
             for codec in [false, true] {
@@ -241,7 +251,7 @@ fn unsupported_python_selected_models_fail_without_writing() {
                         let mut cmd = cli();
                         cmd.arg(command)
                             .arg("--schema")
-                            .arg(fixture("../../tests/fixtures/service-check/root.xsd"))
+                            .arg(&schema)
                             .arg("--contract")
                             .arg(fixture(contract))
                             .args(["--language", "python", "--world", world]);
@@ -259,7 +269,7 @@ fn unsupported_python_selected_models_fail_without_writing() {
                         assert!(
                             String::from_utf8_lossy(&output.stdout).contains("status: NOT READY")
                         );
-                        assert!(String::from_utf8_lossy(&output.stdout).contains("Float64"));
+                        assert!(String::from_utf8_lossy(&output.stdout).contains("Float32"));
                     }
                     assert!(!dest.exists());
                     fs::create_dir(&dest).unwrap();

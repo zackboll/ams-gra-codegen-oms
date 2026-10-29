@@ -501,12 +501,15 @@ jobs:
           set -euo pipefail
           python3 scripts/test-task061-service-impact.py
           cargo test --release --locked -p ams-gra-codegen-oms --test service_check_batch
-      - name: Python current services and immutable historical profiles (PY-007, must execute)
+      - name: Python current services and immutable historical profiles (PY-007 and PY-008, must execute)
         run: |
           set -euo pipefail
           python3 scripts/test-py007-uci.py
+          python3 scripts/test-py008-uci.py
           python3 scripts/check-py007-uci.py --generator target/release/ams-gra-codegen-oms \
-            --output "$RUNNER_TEMP/py006-uci"
+            --output "$RUNNER_TEMP/py006-uci" --service-baseline tests/fixtures/python-float64/after.json
+          python3 scripts/check-py008-uci.py --generator target/release/ams-gra-codegen-oms \
+            --output "$RUNNER_TEMP/py006-uci" --existing-output
       - name: Preserve Python pinned UCI measurements
         uses: actions/upload-artifact@v4
         with:
@@ -867,6 +870,25 @@ jobs:
         run: |
           python3.11 -m pip install ./python/oms-lacal-runtime
           python3.13 -m pip install ./python/oms-lacal-runtime
+      - name: Full independent Python Float64 corpus (PY-008)
+        run: |
+          set -euo pipefail
+          python3 tests/ada-float64-probe/oracle.py "$RUNNER_TEMP/py008-corpus"
+          rustup toolchain install 1.95.0 --profile minimal
+          cargo +1.95.0 build --locked -p ams-gra-codegen-oms
+          target/debug/ams-gra-codegen-oms service-generate --schema tests/fixtures/python-float64/oam.xsd --contract tests/fixtures/python-float64/service.yaml --language python --world closed-schema --with-codec --output "$RUNNER_TEMP/py008-generated"
+          for interpreter in python3.11 python3.13; do
+            version="$("$interpreter" -c 'import sys; print(str(sys.version_info.major) + str(sys.version_info.minor))')"
+            "$interpreter" scripts/check-py008-numeric.py --full --generated "$RUNNER_TEMP/py008-generated" --corpus "$RUNNER_TEMP/py008-corpus" --output "$RUNNER_TEMP/py008-$version-normal.json"
+            "$interpreter" -O scripts/check-py008-numeric.py --full --generated "$RUNNER_TEMP/py008-generated" --corpus "$RUNNER_TEMP/py008-corpus" --output "$RUNNER_TEMP/py008-$version-optimized.json"
+          done
+      - name: Preserve Python Float64 numeric evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: py008-numeric
+          path: ${{ runner.temp }}/py008-*.json
+          if-no-files-found: error
       - name: Fetch pinned UCI 2.5 (once)
         run: |
           set -euo pipefail

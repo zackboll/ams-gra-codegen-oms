@@ -1,0 +1,514 @@
+{
+  "before": {
+    "generate/closed-schema/ada": {
+      "oms-track.adb": "82f8d629bbdc1c83030605628fe8f4c2faaee5911e0492650f08a3fe05f97ac7",
+      "oms-track.ads": "8bcc446dbb254c97c0b4e9ca3cadc0d8d047c7a45de898c67f0df5202134d955",
+      "oms.ads": "38b828c695b287d641b4b5915dea08f8ecbc47d59c77a90ec99ada5ee591148e"
+    },
+    "readiness/closed-schema/ada/ready.yaml": {
+      "exit": 0,
+      "stdout": "service contract valid\nservice: Readiness Ready\nlanguage: ada\ngeneration world: closed-schema\n\nselected oms messages: 1\nrenderable selected oms messages: 1\nselected type closure: 1\nrenderable selected types: 1\nstatus: READY\n",
+      "stderr": ""
+    },
+    "readiness/closed-schema/ada/unready.yaml": {
+      "exit": 1,
+      "stdout": "service contract valid\nservice: Readiness Unready\nlanguage: ada\ngeneration world: closed-schema\n\nselected oms messages: 3\nrenderable selected oms messages: 1\nselected type closure: 5\nrenderable selected types: 3\nstatus: NOT READY\n\nunsupported selected types:\n  {urn:test}TimeA\n  {urn:test}TimeB\n\nblocked selected messages:\n  BlockedReportB\n    resolved: {urn:test}BlockedReportB\n    blocker: {urn:test}TimeB\n  BlockedReportA\n    resolved: {urn:test}BlockedReportA\n    blocker: {urn:test}TimeA\n",
+      "stderr": "error: service selection is not renderable for ada under closed-schema\n"
+    },
+    "generate/closed-schema/rust": {
+      "track.rs": "11adf3aace329f778dbaa0653bdbda3541014dc31d571a6f2079b2332af80e97"
+    },
+    "readiness/closed-schema/rust/ready.yaml": {
+      "exit": 0,
+      "stdout": "service contract valid\nservice: Readiness Ready\nlanguage: rust\ngeneration world: closed-schema\n\nselected oms messages: 1\nrenderable selected oms messages: 1\nselected type closure: 1\nrenderable selected types: 1\nstatus: READY\n",
+      "stderr": ""
+    },
+    "readiness/closed-schema/rust/unready.yaml": {
+      "exit": 1,
+      "stdout": "service contract valid\nservice: Readiness Unready\nlanguage: rust\ngeneration world: closed-schema\n\nselected oms messages: 3\nrenderable selected oms messages: 1\nselected type closure: 5\nrenderable selected types: 3\nstatus: NOT READY\n\nunsupported selected types:\n  {urn:test}TimeA\n  {urn:test}TimeB\n\nblocked selected messages:\n  BlockedReportB\n    resolved: {urn:test}BlockedReportB\n    blocker: {urn:test}TimeB\n  BlockedReportA\n    resolved: {urn:test}BlockedReportA\n    blocker: {urn:test}TimeA\n",
+      "stderr": "error: service selection is not renderable for rust under closed-schema\n"
+    },
+    "generate/closed-schema/cpp": {
+      "track.hpp": "bffe083a07f45c6f029f46d8403beb5148d1ea285ad14e74799e4c8549d90ffe"
+    },
+    "readiness/closed-schema/cpp/ready.yaml": {
+      "exit": 0,
+      "stdout": "service contract valid\nservice: Readiness Ready\nlanguage: cpp\ngeneration world: closed-schema\n\nselected oms messages: 1\nrenderable selected oms messages: 1\nselected type closure: 1\nrenderable selected types: 1\nstatus: READY\n",
+      "stderr": ""
+    },
+    "readiness/closed-schema/cpp/unready.yaml": {
+      "exit": 1,
+      "stdout": "service contract valid\nservice: Readiness Unready\nlanguage: cpp\ngeneration world: closed-schema\n\nselected oms messages: 3\nrenderable selected oms messages: 1\nselected type closure: 5\nrenderable selected types: 3\nstatus: NOT READY\n\nunsupported selected types:\n  {urn:test}TimeA\n  {urn:test}TimeB\n\nblocked selected messages:\n  BlockedReportB\n    resolved: {urn:test}BlockedReportB\n    blocker: {urn:test}TimeB\n  BlockedReportA\n    resolved: {urn:test}BlockedReportA\n    blocker: {urn:test}TimeA\n",
+      "stderr": "error: service selection is not renderable for cpp under closed-schema\n"
+    },
+    "coverage/closed-schema": "generation world: closed-schema\ninventory\nabstract_usage.base: 0\nabstract_usage.base_only: 0\nabstract_usage.choice-alternative: 0\nabstract_usage.list-item: 0\nabstract_usage.message-payload: 0\nabstract_usage.other-named-reference: 0\nabstract_usage.record-field: 0\nabstract_value.acyclic_targets: 0\nabstract_value.recursive_targets: 0\nabstract_value.targets: 0\nabstract_value.zero_descendant_targets: 0\nbase.simple_named: 0\nbase.simple_primitive: 2\nbase.structural_named: 0\ncardinality.finite_repeated: 1\ncardinality.min_gt_1: 0\ncardinality.optional_0_1: 1\ncardinality.required_1_1: 2\ncardinality.unbounded_repeated: 0\nchoice.alternatives_sharing_payload_type: 0\nchoice.duplicate_names: 0\nchoice.duplicate_payload_types: 0\nchoice.nillable_alternatives: 0\nchoice.participating_in_inheritance: 0\nchoice.repeated_alternatives: 0\nchoice.standalone: 0\ncollisions.inherited_choice_redeclarations: 0\ncollisions.inherited_field_redeclarations: 0\ncollisions.record_choice_names: 0\ncollisions.same_name_across_levels: 0\nconstraints.length: 0\nconstraints.max_exclusive: 0\nconstraints.max_inclusive: 0\nconstraints.max_length: 0\nconstraints.min_exclusive: 0\nconstraints.min_inclusive: 0\nconstraints.min_length: 0\nconstraints.pattern: 0\nconstraints.present: 0\nconstraints.white_space: 0\ndeclarations.abstract: 0\ndeclarations.concrete: 3\ndeclarations.total: 3\ndeclarations.with_base_type: 2\ninheritance.abstract_bases: 0\ninheritance.choice-with-choice-base: 0\ninheritance.choice-with-record-base: 0\ninheritance.concrete_bases: 0\ninheritance.distinct_bases: 0\ninheritance.empty_local_extensions: 0\ninheritance.local_choice_extensions: 0\ninheritance.local_record_extensions: 0\ninheritance.maximum_depth: 0\ninheritance.record-with-choice-base: 0\ninheritance.record-with-record-base: 0\ninheritance.structural_roots: 1\nkind.Alias: 0\nkind.Choice: 0\nkind.Enumeration: 1\nkind.List: 0\nkind.Primitive.Binary: 0\nkind.Primitive.Boolean: 0\nkind.Primitive.DateTime: 0\nkind.Primitive.Decimal: 0\nkind.Primitive.Duration: 0\nkind.Primitive.Float32: 0\nkind.Primitive.Float64: 0\nkind.Primitive.SignedInteger: 1\nkind.Primitive.String: 0\nkind.Primitive.Time: 0\nkind.Primitive.UnsignedInteger: 0\nkind.Record: 1\nmembers.choice_alternatives: 0\nmembers.named_references: 2\nmembers.primitive_references.Binary: 0\nmembers.primitive_references.Boolean: 0\nmembers.primitive_references.DateTime: 0\nmembers.primitive_references.Decimal: 0\nmembers.primitive_references.Duration: 0\nmembers.primitive_references.Float32: 0\nmembers.primitive_references.Float64: 0\nmembers.primitive_references.SignedInteger: 1\nmembers.primitive_references.String: 1\nmembers.primitive_references.Time: 0\nmembers.primitive_references.UnsignedInteger: 0\nmembers.record_fields: 4\nnillable.false: 4\nnillable.true: 0\nevidence\nbackend coverage\nAda: kinds 3/3 (100.00%), declarations 3/3 (100.00%), field-types 4/4 (100.00%), field-occurrences 4/4 (100.00%), message-closures 0/0 (100.00%)\n  primitive refs/declarations: 0 (+0)\n  cardinality/nillability: 0 (+0)\n  primitive refs/declarations + cardinality/nillability: 0 (+0)\n  Choice: 0 (+0)\n  primitive refs/declarations + Choice: 0 (+0)\n  cardinality/nillability + Choice: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice: 0 (+0)\n  remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + remaining structural inheritance/abstract: 0 (+0)\n  cardinality/nillability + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + remaining structural inheritance/abstract: 0 (+0)\n  Choice + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + Choice + remaining structural inheritance/abstract: 0 (+0)\n  cardinality/nillability + Choice + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + remaining structural inheritance/abstract: 0 (+0)\n  constrained simple types: 0 (+0)\n  primitive refs/declarations + constrained simple types: 0 (+0)\n  cardinality/nillability + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + constrained simple types: 0 (+0)\n  Choice + constrained simple types: 0 (+0)\n  primitive refs/declarations + Choice + constrained simple types: 0 (+0)\n  cardinality/nillability + Choice + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + constrained simple types: 0 (+0)\n  remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  cardinality/nillability + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  cardinality/nillability + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\nRust: kinds 3/3 (100.00%), declarations 3/3 (100.00%), field-types 4/4 (100.00%), field-occurrences 4/4 (100.00%), message-closures 0/0 (100.00%)\n  primitive refs/declarations: 0 (+0)\n  cardinality/nillability: 0 (+0)\n  primitive refs/declarations + cardinality/nillability: 0 (+0)\n  Choice: 0 (+0)\n  primitive refs/declarations + Choice: 0 (+0)\n  cardinality/nillability + Choice: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice: 0 (+0)\n  remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + remaining structural inheritance/abstract: 0 (+0)\n  cardinality/nillability + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + remaining structural inheritance/abstract: 0 (+0)\n  Choice + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + Choice + remaining structural inheritance/abstract: 0 (+0)\n  cardinality/nillability + Choice + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + remaining structural inheritance/abstract: 0 (+0)\n  constrained simple types: 0 (+0)\n  primitive refs/declarations + constrained simple types: 0 (+0)\n  cardinality/nillability + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + constrained simple types: 0 (+0)\n  Choice + constrained simple types: 0 (+0)\n  primitive refs/declarations + Choice + constrained simple types: 0 (+0)\n  cardinality/nillability + Choice + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + constrained simple types: 0 (+0)\n  remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  cardinality/nillability + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  cardinality/nillability + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\nC++: kinds 3/3 (100.00%), declarations 3/3 (100.00%), field-types 4/4 (100.00%), field-occurrences 4/4 (100.00%), message-closures 0/0 (100.00%)\n  primitive refs/declarations: 0 (+0)\n  cardinality/nillability: 0 (+0)\n  primitive refs/declarations + cardinality/nillability: 0 (+0)\n  Choice: 0 (+0)\n  primitive refs/declarations + Choice: 0 (+0)\n  cardinality/nillability + Choice: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice: 0 (+0)\n  remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + remaining structural inheritance/abstract: 0 (+0)\n  cardinality/nillability + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + remaining structural inheritance/abstract: 0 (+0)\n  Choice + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + Choice + remaining structural inheritance/abstract: 0 (+0)\n  cardinality/nillability + Choice + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + remaining structural inheritance/abstract: 0 (+0)\n  constrained simple types: 0 (+0)\n  primitive refs/declarations + constrained simple types: 0 (+0)\n  cardinality/nillability + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + constrained simple types: 0 (+0)\n  Choice + constrained simple types: 0 (+0)\n  primitive refs/declarations + Choice + constrained simple types: 0 (+0)\n  cardinality/nillability + Choice + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + constrained simple types: 0 (+0)\n  remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  cardinality/nillability + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  cardinality/nillability + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n",
+    "generate/open-extensions/ada": {
+      "oms-track.adb": "82f8d629bbdc1c83030605628fe8f4c2faaee5911e0492650f08a3fe05f97ac7",
+      "oms-track.ads": "8bcc446dbb254c97c0b4e9ca3cadc0d8d047c7a45de898c67f0df5202134d955",
+      "oms.ads": "38b828c695b287d641b4b5915dea08f8ecbc47d59c77a90ec99ada5ee591148e"
+    },
+    "readiness/open-extensions/ada/ready.yaml": {
+      "exit": 0,
+      "stdout": "service contract valid\nservice: Readiness Ready\nlanguage: ada\ngeneration world: open-extensions\n\nselected oms messages: 1\nrenderable selected oms messages: 1\nselected type closure: 1\nrenderable selected types: 1\nstatus: READY\n",
+      "stderr": ""
+    },
+    "readiness/open-extensions/ada/unready.yaml": {
+      "exit": 1,
+      "stdout": "service contract valid\nservice: Readiness Unready\nlanguage: ada\ngeneration world: open-extensions\n\nselected oms messages: 3\nrenderable selected oms messages: 1\nselected type closure: 5\nrenderable selected types: 3\nstatus: NOT READY\n\nunsupported selected types:\n  {urn:test}TimeA\n  {urn:test}TimeB\n\nblocked selected messages:\n  BlockedReportB\n    resolved: {urn:test}BlockedReportB\n    blocker: {urn:test}TimeB\n  BlockedReportA\n    resolved: {urn:test}BlockedReportA\n    blocker: {urn:test}TimeA\n",
+      "stderr": "error: service selection is not renderable for ada under open-extensions\n"
+    },
+    "generate/open-extensions/rust": {
+      "track.rs": "11adf3aace329f778dbaa0653bdbda3541014dc31d571a6f2079b2332af80e97"
+    },
+    "readiness/open-extensions/rust/ready.yaml": {
+      "exit": 0,
+      "stdout": "service contract valid\nservice: Readiness Ready\nlanguage: rust\ngeneration world: open-extensions\n\nselected oms messages: 1\nrenderable selected oms messages: 1\nselected type closure: 1\nrenderable selected types: 1\nstatus: READY\n",
+      "stderr": ""
+    },
+    "readiness/open-extensions/rust/unready.yaml": {
+      "exit": 1,
+      "stdout": "service contract valid\nservice: Readiness Unready\nlanguage: rust\ngeneration world: open-extensions\n\nselected oms messages: 3\nrenderable selected oms messages: 1\nselected type closure: 5\nrenderable selected types: 3\nstatus: NOT READY\n\nunsupported selected types:\n  {urn:test}TimeA\n  {urn:test}TimeB\n\nblocked selected messages:\n  BlockedReportB\n    resolved: {urn:test}BlockedReportB\n    blocker: {urn:test}TimeB\n  BlockedReportA\n    resolved: {urn:test}BlockedReportA\n    blocker: {urn:test}TimeA\n",
+      "stderr": "error: service selection is not renderable for rust under open-extensions\n"
+    },
+    "generate/open-extensions/cpp": {
+      "track.hpp": "bffe083a07f45c6f029f46d8403beb5148d1ea285ad14e74799e4c8549d90ffe"
+    },
+    "readiness/open-extensions/cpp/ready.yaml": {
+      "exit": 0,
+      "stdout": "service contract valid\nservice: Readiness Ready\nlanguage: cpp\ngeneration world: open-extensions\n\nselected oms messages: 1\nrenderable selected oms messages: 1\nselected type closure: 1\nrenderable selected types: 1\nstatus: READY\n",
+      "stderr": ""
+    },
+    "readiness/open-extensions/cpp/unready.yaml": {
+      "exit": 1,
+      "stdout": "service contract valid\nservice: Readiness Unready\nlanguage: cpp\ngeneration world: open-extensions\n\nselected oms messages: 3\nrenderable selected oms messages: 1\nselected type closure: 5\nrenderable selected types: 3\nstatus: NOT READY\n\nunsupported selected types:\n  {urn:test}TimeA\n  {urn:test}TimeB\n\nblocked selected messages:\n  BlockedReportB\n    resolved: {urn:test}BlockedReportB\n    blocker: {urn:test}TimeB\n  BlockedReportA\n    resolved: {urn:test}BlockedReportA\n    blocker: {urn:test}TimeA\n",
+      "stderr": "error: service selection is not renderable for cpp under open-extensions\n"
+    },
+    "coverage/open-extensions": "generation world: open-extensions\ninventory\nabstract_usage.base: 0\nabstract_usage.base_only: 0\nabstract_usage.choice-alternative: 0\nabstract_usage.list-item: 0\nabstract_usage.message-payload: 0\nabstract_usage.other-named-reference: 0\nabstract_usage.record-field: 0\nabstract_value.acyclic_targets: 0\nabstract_value.recursive_targets: 0\nabstract_value.targets: 0\nabstract_value.zero_descendant_targets: 0\nbase.simple_named: 0\nbase.simple_primitive: 2\nbase.structural_named: 0\ncardinality.finite_repeated: 1\ncardinality.min_gt_1: 0\ncardinality.optional_0_1: 1\ncardinality.required_1_1: 2\ncardinality.unbounded_repeated: 0\nchoice.alternatives_sharing_payload_type: 0\nchoice.duplicate_names: 0\nchoice.duplicate_payload_types: 0\nchoice.nillable_alternatives: 0\nchoice.participating_in_inheritance: 0\nchoice.repeated_alternatives: 0\nchoice.standalone: 0\ncollisions.inherited_choice_redeclarations: 0\ncollisions.inherited_field_redeclarations: 0\ncollisions.record_choice_names: 0\ncollisions.same_name_across_levels: 0\nconstraints.length: 0\nconstraints.max_exclusive: 0\nconstraints.max_inclusive: 0\nconstraints.max_length: 0\nconstraints.min_exclusive: 0\nconstraints.min_inclusive: 0\nconstraints.min_length: 0\nconstraints.pattern: 0\nconstraints.present: 0\nconstraints.white_space: 0\ndeclarations.abstract: 0\ndeclarations.concrete: 3\ndeclarations.total: 3\ndeclarations.with_base_type: 2\ninheritance.abstract_bases: 0\ninheritance.choice-with-choice-base: 0\ninheritance.choice-with-record-base: 0\ninheritance.concrete_bases: 0\ninheritance.distinct_bases: 0\ninheritance.empty_local_extensions: 0\ninheritance.local_choice_extensions: 0\ninheritance.local_record_extensions: 0\ninheritance.maximum_depth: 0\ninheritance.record-with-choice-base: 0\ninheritance.record-with-record-base: 0\ninheritance.structural_roots: 1\nkind.Alias: 0\nkind.Choice: 0\nkind.Enumeration: 1\nkind.List: 0\nkind.Primitive.Binary: 0\nkind.Primitive.Boolean: 0\nkind.Primitive.DateTime: 0\nkind.Primitive.Decimal: 0\nkind.Primitive.Duration: 0\nkind.Primitive.Float32: 0\nkind.Primitive.Float64: 0\nkind.Primitive.SignedInteger: 1\nkind.Primitive.String: 0\nkind.Primitive.Time: 0\nkind.Primitive.UnsignedInteger: 0\nkind.Record: 1\nmembers.choice_alternatives: 0\nmembers.named_references: 2\nmembers.primitive_references.Binary: 0\nmembers.primitive_references.Boolean: 0\nmembers.primitive_references.DateTime: 0\nmembers.primitive_references.Decimal: 0\nmembers.primitive_references.Duration: 0\nmembers.primitive_references.Float32: 0\nmembers.primitive_references.Float64: 0\nmembers.primitive_references.SignedInteger: 1\nmembers.primitive_references.String: 1\nmembers.primitive_references.Time: 0\nmembers.primitive_references.UnsignedInteger: 0\nmembers.record_fields: 4\nnillable.false: 4\nnillable.true: 0\nevidence\nbackend coverage\nAda: kinds 3/3 (100.00%), declarations 3/3 (100.00%), field-types 4/4 (100.00%), field-occurrences 4/4 (100.00%), message-closures 0/0 (100.00%)\n  primitive refs/declarations: 0 (+0)\n  cardinality/nillability: 0 (+0)\n  primitive refs/declarations + cardinality/nillability: 0 (+0)\n  Choice: 0 (+0)\n  primitive refs/declarations + Choice: 0 (+0)\n  cardinality/nillability + Choice: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice: 0 (+0)\n  remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + remaining structural inheritance/abstract: 0 (+0)\n  cardinality/nillability + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + remaining structural inheritance/abstract: 0 (+0)\n  Choice + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + Choice + remaining structural inheritance/abstract: 0 (+0)\n  cardinality/nillability + Choice + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + remaining structural inheritance/abstract: 0 (+0)\n  constrained simple types: 0 (+0)\n  primitive refs/declarations + constrained simple types: 0 (+0)\n  cardinality/nillability + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + constrained simple types: 0 (+0)\n  Choice + constrained simple types: 0 (+0)\n  primitive refs/declarations + Choice + constrained simple types: 0 (+0)\n  cardinality/nillability + Choice + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + constrained simple types: 0 (+0)\n  remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  cardinality/nillability + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  cardinality/nillability + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\nRust: kinds 3/3 (100.00%), declarations 3/3 (100.00%), field-types 4/4 (100.00%), field-occurrences 4/4 (100.00%), message-closures 0/0 (100.00%)\n  primitive refs/declarations: 0 (+0)\n  cardinality/nillability: 0 (+0)\n  primitive refs/declarations + cardinality/nillability: 0 (+0)\n  Choice: 0 (+0)\n  primitive refs/declarations + Choice: 0 (+0)\n  cardinality/nillability + Choice: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice: 0 (+0)\n  remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + remaining structural inheritance/abstract: 0 (+0)\n  cardinality/nillability + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + remaining structural inheritance/abstract: 0 (+0)\n  Choice + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + Choice + remaining structural inheritance/abstract: 0 (+0)\n  cardinality/nillability + Choice + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + remaining structural inheritance/abstract: 0 (+0)\n  constrained simple types: 0 (+0)\n  primitive refs/declarations + constrained simple types: 0 (+0)\n  cardinality/nillability + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + constrained simple types: 0 (+0)\n  Choice + constrained simple types: 0 (+0)\n  primitive refs/declarations + Choice + constrained simple types: 0 (+0)\n  cardinality/nillability + Choice + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + constrained simple types: 0 (+0)\n  remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  cardinality/nillability + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  cardinality/nillability + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\nC++: kinds 3/3 (100.00%), declarations 3/3 (100.00%), field-types 4/4 (100.00%), field-occurrences 4/4 (100.00%), message-closures 0/0 (100.00%)\n  primitive refs/declarations: 0 (+0)\n  cardinality/nillability: 0 (+0)\n  primitive refs/declarations + cardinality/nillability: 0 (+0)\n  Choice: 0 (+0)\n  primitive refs/declarations + Choice: 0 (+0)\n  cardinality/nillability + Choice: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice: 0 (+0)\n  remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + remaining structural inheritance/abstract: 0 (+0)\n  cardinality/nillability + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + remaining structural inheritance/abstract: 0 (+0)\n  Choice + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + Choice + remaining structural inheritance/abstract: 0 (+0)\n  cardinality/nillability + Choice + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + remaining structural inheritance/abstract: 0 (+0)\n  constrained simple types: 0 (+0)\n  primitive refs/declarations + constrained simple types: 0 (+0)\n  cardinality/nillability + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + constrained simple types: 0 (+0)\n  Choice + constrained simple types: 0 (+0)\n  primitive refs/declarations + Choice + constrained simple types: 0 (+0)\n  cardinality/nillability + Choice + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + constrained simple types: 0 (+0)\n  remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  cardinality/nillability + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  cardinality/nillability + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n",
+    "service/closed-schema/ada/only-a.yaml": {
+      "stdout": "service contract valid\nservice: Selected Generation Narrow\nlanguage: ada\ngeneration world: closed-schema\n\nselected oms messages: 1\ncontract-selected types: 3\ngenerated support types: 0\nprojected schema types: 3\ngenerated model files: 2\ngenerated service api files: 1\ngenerated 3 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "files": {
+        "service_api.ads": "27de344a7035596f3b578b007c60a32dd8d999366f22930225baf4f5d0d0120c",
+        "urn-test.ads": "64a1d4d06e9e7f3bdadaf2d5271725d9b607e0715e4cbe42738af010c94bb659",
+        "urn.ads": "a570571230ee7f3b7e29252e195d265275f36a23f265eb374ace3eca72a8bfb5"
+      }
+    },
+    "service/closed-schema/ada/non-uci.yaml": {
+      "stdout": "service contract valid\nservice: Selected Generation Non UCI\nlanguage: ada\ngeneration world: closed-schema\n\nselected oms messages: 0\ncontract-selected types: 0\ngenerated support types: 0\nprojected schema types: 0\ngenerated model files: 0\ngenerated service api files: 1\ngenerated 1 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "files": {
+        "service_api.ads": "12a0ac0fab4d7a6f3b3c70bc5b3b59f02cae5b6995b3c4f71d4d681e6e6e760a"
+      }
+    },
+    "service/closed-schema/rust/only-a.yaml": {
+      "stdout": "service contract valid\nservice: Selected Generation Narrow\nlanguage: rust\ngeneration world: closed-schema\n\nselected oms messages: 1\ncontract-selected types: 3\ngenerated support types: 0\nprojected schema types: 3\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "files": {
+        "service_api.rs": "4e9dacf269ad2426e79108dec66208822e1c483742cd8f54ded0909fd94e9176",
+        "test.rs": "0101d53f54757c739509ebf391ee7d01c57211eafb9629ac551489bc6be09c4a"
+      }
+    },
+    "service/closed-schema/rust/non-uci.yaml": {
+      "stdout": "service contract valid\nservice: Selected Generation Non UCI\nlanguage: rust\ngeneration world: closed-schema\n\nselected oms messages: 0\ncontract-selected types: 0\ngenerated support types: 0\nprojected schema types: 0\ngenerated model files: 0\ngenerated service api files: 1\ngenerated 1 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "files": {
+        "service_api.rs": "c119e1c48c43eceb868a905a2a875c590b7ed7111f60945d454887c17867ac41"
+      }
+    },
+    "service/closed-schema/cpp/only-a.yaml": {
+      "stdout": "service contract valid\nservice: Selected Generation Narrow\nlanguage: cpp\ngeneration world: closed-schema\n\nselected oms messages: 1\ncontract-selected types: 3\ngenerated support types: 0\nprojected schema types: 3\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "files": {
+        "service_api.hpp": "59907a0c8451d27ddebe265162e48446b422bef9618a2e43829b60d138f63829",
+        "test.hpp": "8a817b1549c51ee9e712173de8e027ae01ecfeb30ee314dee8f6d0f14ec4c593"
+      }
+    },
+    "service/closed-schema/cpp/non-uci.yaml": {
+      "stdout": "service contract valid\nservice: Selected Generation Non UCI\nlanguage: cpp\ngeneration world: closed-schema\n\nselected oms messages: 0\ncontract-selected types: 0\ngenerated support types: 0\nprojected schema types: 0\ngenerated model files: 0\ngenerated service api files: 1\ngenerated 1 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "files": {
+        "service_api.hpp": "388c741bb3168a63c77fe1469fc9c60511e59b0e382676ff80bf2ff6150a20d4"
+      }
+    },
+    "service/open-extensions/ada/only-a.yaml": {
+      "stdout": "service contract valid\nservice: Selected Generation Narrow\nlanguage: ada\ngeneration world: open-extensions\n\nselected oms messages: 1\ncontract-selected types: 3\ngenerated support types: 0\nprojected schema types: 3\ngenerated model files: 2\ngenerated service api files: 1\ngenerated 3 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "files": {
+        "service_api.ads": "27de344a7035596f3b578b007c60a32dd8d999366f22930225baf4f5d0d0120c",
+        "urn-test.ads": "64a1d4d06e9e7f3bdadaf2d5271725d9b607e0715e4cbe42738af010c94bb659",
+        "urn.ads": "a570571230ee7f3b7e29252e195d265275f36a23f265eb374ace3eca72a8bfb5"
+      }
+    },
+    "service/open-extensions/ada/non-uci.yaml": {
+      "stdout": "service contract valid\nservice: Selected Generation Non UCI\nlanguage: ada\ngeneration world: open-extensions\n\nselected oms messages: 0\ncontract-selected types: 0\ngenerated support types: 0\nprojected schema types: 0\ngenerated model files: 0\ngenerated service api files: 1\ngenerated 1 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "files": {
+        "service_api.ads": "12a0ac0fab4d7a6f3b3c70bc5b3b59f02cae5b6995b3c4f71d4d681e6e6e760a"
+      }
+    },
+    "service/open-extensions/rust/only-a.yaml": {
+      "stdout": "service contract valid\nservice: Selected Generation Narrow\nlanguage: rust\ngeneration world: open-extensions\n\nselected oms messages: 1\ncontract-selected types: 3\ngenerated support types: 0\nprojected schema types: 3\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "files": {
+        "service_api.rs": "4e9dacf269ad2426e79108dec66208822e1c483742cd8f54ded0909fd94e9176",
+        "test.rs": "0101d53f54757c739509ebf391ee7d01c57211eafb9629ac551489bc6be09c4a"
+      }
+    },
+    "service/open-extensions/rust/non-uci.yaml": {
+      "stdout": "service contract valid\nservice: Selected Generation Non UCI\nlanguage: rust\ngeneration world: open-extensions\n\nselected oms messages: 0\ncontract-selected types: 0\ngenerated support types: 0\nprojected schema types: 0\ngenerated model files: 0\ngenerated service api files: 1\ngenerated 1 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "files": {
+        "service_api.rs": "c119e1c48c43eceb868a905a2a875c590b7ed7111f60945d454887c17867ac41"
+      }
+    },
+    "service/open-extensions/cpp/only-a.yaml": {
+      "stdout": "service contract valid\nservice: Selected Generation Narrow\nlanguage: cpp\ngeneration world: open-extensions\n\nselected oms messages: 1\ncontract-selected types: 3\ngenerated support types: 0\nprojected schema types: 3\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "files": {
+        "service_api.hpp": "59907a0c8451d27ddebe265162e48446b422bef9618a2e43829b60d138f63829",
+        "test.hpp": "8a817b1549c51ee9e712173de8e027ae01ecfeb30ee314dee8f6d0f14ec4c593"
+      }
+    },
+    "service/open-extensions/cpp/non-uci.yaml": {
+      "stdout": "service contract valid\nservice: Selected Generation Non UCI\nlanguage: cpp\ngeneration world: open-extensions\n\nselected oms messages: 0\ncontract-selected types: 0\ngenerated support types: 0\nprojected schema types: 0\ngenerated model files: 0\ngenerated service api files: 1\ngenerated 1 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "files": {
+        "service_api.hpp": "388c741bb3168a63c77fe1469fc9c60511e59b0e382676ff80bf2ff6150a20d4"
+      }
+    },
+    "python/closed-schema/python-service/root.xsd/python-service/service.yaml": {
+      "check": "service contract valid\nservice: Python \"Demo\" \u03bb\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 2\nmodel status: READY\nservice api status: READY\nstatus: READY\nselected type closure: 3\ngenerated support types: 0\n",
+      "check_stderr": "",
+      "generation": "service contract valid\nservice: Python \"Demo\" \u03bb\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 2\ncontract-selected types: 3\ngenerated support types: 0\nprojected schema types: 3\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "generation_stderr": "",
+      "files": {
+        "model.py": "4088b5dff30ba758eeda2ca4b055177fe61aee8ff4df030a9a89b5ff362be4ad",
+        "service_api.py": "b3c7de8944013b2e138e94e8754940822bd7eac7631da77b50c7d63631cb4dae"
+      }
+    },
+    "python/closed-schema/python-codec/oam.xsd/python-codec/service.yaml": {
+      "check": "service contract valid\nservice: Python Codec\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 2\nmodel status: READY\nservice api status: READY\nstatus: READY\nselected type closure: 9\ngenerated support types: 0\n",
+      "check_stderr": "",
+      "generation": "service contract valid\nservice: Python Codec\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 2\ncontract-selected types: 9\ngenerated support types: 0\nprojected schema types: 9\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "generation_stderr": "",
+      "files": {
+        "model.py": "4265e331c658598f9a77136732be124c38db1e0f750807cf3533559b1060ea8e",
+        "service_api.py": "cbe144ad31079b59cdf95e944e5daf14d4832547827a8f201ee9de4f633b23d7"
+      }
+    },
+    "python/closed-schema/python-codec/non-oam.xsd/python-codec/service.yaml": {
+      "check": "service contract valid\nservice: Python Codec\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 2\nmodel status: READY\nservice api status: READY\nstatus: READY\nselected type closure: 9\ngenerated support types: 0\n",
+      "check_stderr": "",
+      "generation": "service contract valid\nservice: Python Codec\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 2\ncontract-selected types: 9\ngenerated support types: 0\nprojected schema types: 9\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "generation_stderr": "",
+      "files": {
+        "model.py": "26783aa9827fe36a4a273b15a20ca4450b93c7fa634e60116b4507bba2f922a8",
+        "service_api.py": "9596d0df211816e3b623ac283bb94650f09b572b5018f3944d683b9cfea7015c"
+      }
+    },
+    "python/closed-schema/python-service/root.xsd/service-generate/non-uci.yaml": {
+      "check": "service contract valid\nservice: Selected Generation Non UCI\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 0\nmodel status: READY\nservice api status: READY\nstatus: READY\nselected type closure: 0\ngenerated support types: 0\n",
+      "check_stderr": "",
+      "generation": "service contract valid\nservice: Selected Generation Non UCI\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 0\ncontract-selected types: 0\ngenerated support types: 0\nprojected schema types: 0\ngenerated model files: 0\ngenerated service api files: 1\ngenerated 1 file(s)\noutput: <OUTPUT>\n",
+      "generation_stderr": "",
+      "files": {
+        "service_api.py": "85ecb273f1ccbf14861072c4726bfa4bbc31974bd3633f394fdc78c2edab7e2d"
+      }
+    },
+    "python/open-extensions/python-service/root.xsd/python-service/service.yaml": {
+      "check": "service contract valid\nservice: Python \"Demo\" \u03bb\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 2\nmodel status: READY\nservice api status: READY\nstatus: READY\nselected type closure: 3\ngenerated support types: 0\n",
+      "check_stderr": "",
+      "generation": "service contract valid\nservice: Python \"Demo\" \u03bb\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 2\ncontract-selected types: 3\ngenerated support types: 0\nprojected schema types: 3\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "generation_stderr": "",
+      "files": {
+        "model.py": "4088b5dff30ba758eeda2ca4b055177fe61aee8ff4df030a9a89b5ff362be4ad",
+        "service_api.py": "b3c7de8944013b2e138e94e8754940822bd7eac7631da77b50c7d63631cb4dae"
+      }
+    },
+    "python/open-extensions/python-codec/oam.xsd/python-codec/service.yaml": {
+      "check": "service contract valid\nservice: Python Codec\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 2\nmodel status: READY\nservice api status: READY\nstatus: READY\nselected type closure: 9\ngenerated support types: 0\n",
+      "check_stderr": "",
+      "generation": "service contract valid\nservice: Python Codec\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 2\ncontract-selected types: 9\ngenerated support types: 0\nprojected schema types: 9\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "generation_stderr": "",
+      "files": {
+        "model.py": "4265e331c658598f9a77136732be124c38db1e0f750807cf3533559b1060ea8e",
+        "service_api.py": "cbe144ad31079b59cdf95e944e5daf14d4832547827a8f201ee9de4f633b23d7"
+      }
+    },
+    "python/open-extensions/python-codec/non-oam.xsd/python-codec/service.yaml": {
+      "check": "service contract valid\nservice: Python Codec\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 2\nmodel status: READY\nservice api status: READY\nstatus: READY\nselected type closure: 9\ngenerated support types: 0\n",
+      "check_stderr": "",
+      "generation": "service contract valid\nservice: Python Codec\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 2\ncontract-selected types: 9\ngenerated support types: 0\nprojected schema types: 9\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "generation_stderr": "",
+      "files": {
+        "model.py": "26783aa9827fe36a4a273b15a20ca4450b93c7fa634e60116b4507bba2f922a8",
+        "service_api.py": "9596d0df211816e3b623ac283bb94650f09b572b5018f3944d683b9cfea7015c"
+      }
+    },
+    "python/open-extensions/python-service/root.xsd/service-generate/non-uci.yaml": {
+      "check": "service contract valid\nservice: Selected Generation Non UCI\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 0\nmodel status: READY\nservice api status: READY\nstatus: READY\nselected type closure: 0\ngenerated support types: 0\n",
+      "check_stderr": "",
+      "generation": "service contract valid\nservice: Selected Generation Non UCI\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 0\ncontract-selected types: 0\ngenerated support types: 0\nprojected schema types: 0\ngenerated model files: 0\ngenerated service api files: 1\ngenerated 1 file(s)\noutput: <OUTPUT>\n",
+      "generation_stderr": "",
+      "files": {
+        "service_api.py": "85ecb273f1ccbf14861072c4726bfa4bbc31974bd3633f394fdc78c2edab7e2d"
+      }
+    }
+  },
+  "after": {
+    "generate/closed-schema/ada": {
+      "oms-track.adb": "82f8d629bbdc1c83030605628fe8f4c2faaee5911e0492650f08a3fe05f97ac7",
+      "oms-track.ads": "8bcc446dbb254c97c0b4e9ca3cadc0d8d047c7a45de898c67f0df5202134d955",
+      "oms.ads": "38b828c695b287d641b4b5915dea08f8ecbc47d59c77a90ec99ada5ee591148e"
+    },
+    "readiness/closed-schema/ada/ready.yaml": {
+      "exit": 0,
+      "stdout": "service contract valid\nservice: Readiness Ready\nlanguage: ada\ngeneration world: closed-schema\n\nselected oms messages: 1\nrenderable selected oms messages: 1\nselected type closure: 1\nrenderable selected types: 1\nstatus: READY\n",
+      "stderr": ""
+    },
+    "readiness/closed-schema/ada/unready.yaml": {
+      "exit": 1,
+      "stdout": "service contract valid\nservice: Readiness Unready\nlanguage: ada\ngeneration world: closed-schema\n\nselected oms messages: 3\nrenderable selected oms messages: 1\nselected type closure: 5\nrenderable selected types: 3\nstatus: NOT READY\n\nunsupported selected types:\n  {urn:test}TimeA\n  {urn:test}TimeB\n\nblocked selected messages:\n  BlockedReportB\n    resolved: {urn:test}BlockedReportB\n    blocker: {urn:test}TimeB\n  BlockedReportA\n    resolved: {urn:test}BlockedReportA\n    blocker: {urn:test}TimeA\n",
+      "stderr": "error: service selection is not renderable for ada under closed-schema\n"
+    },
+    "generate/closed-schema/rust": {
+      "track.rs": "11adf3aace329f778dbaa0653bdbda3541014dc31d571a6f2079b2332af80e97"
+    },
+    "readiness/closed-schema/rust/ready.yaml": {
+      "exit": 0,
+      "stdout": "service contract valid\nservice: Readiness Ready\nlanguage: rust\ngeneration world: closed-schema\n\nselected oms messages: 1\nrenderable selected oms messages: 1\nselected type closure: 1\nrenderable selected types: 1\nstatus: READY\n",
+      "stderr": ""
+    },
+    "readiness/closed-schema/rust/unready.yaml": {
+      "exit": 1,
+      "stdout": "service contract valid\nservice: Readiness Unready\nlanguage: rust\ngeneration world: closed-schema\n\nselected oms messages: 3\nrenderable selected oms messages: 1\nselected type closure: 5\nrenderable selected types: 3\nstatus: NOT READY\n\nunsupported selected types:\n  {urn:test}TimeA\n  {urn:test}TimeB\n\nblocked selected messages:\n  BlockedReportB\n    resolved: {urn:test}BlockedReportB\n    blocker: {urn:test}TimeB\n  BlockedReportA\n    resolved: {urn:test}BlockedReportA\n    blocker: {urn:test}TimeA\n",
+      "stderr": "error: service selection is not renderable for rust under closed-schema\n"
+    },
+    "generate/closed-schema/cpp": {
+      "track.hpp": "bffe083a07f45c6f029f46d8403beb5148d1ea285ad14e74799e4c8549d90ffe"
+    },
+    "readiness/closed-schema/cpp/ready.yaml": {
+      "exit": 0,
+      "stdout": "service contract valid\nservice: Readiness Ready\nlanguage: cpp\ngeneration world: closed-schema\n\nselected oms messages: 1\nrenderable selected oms messages: 1\nselected type closure: 1\nrenderable selected types: 1\nstatus: READY\n",
+      "stderr": ""
+    },
+    "readiness/closed-schema/cpp/unready.yaml": {
+      "exit": 1,
+      "stdout": "service contract valid\nservice: Readiness Unready\nlanguage: cpp\ngeneration world: closed-schema\n\nselected oms messages: 3\nrenderable selected oms messages: 1\nselected type closure: 5\nrenderable selected types: 3\nstatus: NOT READY\n\nunsupported selected types:\n  {urn:test}TimeA\n  {urn:test}TimeB\n\nblocked selected messages:\n  BlockedReportB\n    resolved: {urn:test}BlockedReportB\n    blocker: {urn:test}TimeB\n  BlockedReportA\n    resolved: {urn:test}BlockedReportA\n    blocker: {urn:test}TimeA\n",
+      "stderr": "error: service selection is not renderable for cpp under closed-schema\n"
+    },
+    "coverage/closed-schema": "generation world: closed-schema\ninventory\nabstract_usage.base: 0\nabstract_usage.base_only: 0\nabstract_usage.choice-alternative: 0\nabstract_usage.list-item: 0\nabstract_usage.message-payload: 0\nabstract_usage.other-named-reference: 0\nabstract_usage.record-field: 0\nabstract_value.acyclic_targets: 0\nabstract_value.recursive_targets: 0\nabstract_value.targets: 0\nabstract_value.zero_descendant_targets: 0\nbase.simple_named: 0\nbase.simple_primitive: 2\nbase.structural_named: 0\ncardinality.finite_repeated: 1\ncardinality.min_gt_1: 0\ncardinality.optional_0_1: 1\ncardinality.required_1_1: 2\ncardinality.unbounded_repeated: 0\nchoice.alternatives_sharing_payload_type: 0\nchoice.duplicate_names: 0\nchoice.duplicate_payload_types: 0\nchoice.nillable_alternatives: 0\nchoice.participating_in_inheritance: 0\nchoice.repeated_alternatives: 0\nchoice.standalone: 0\ncollisions.inherited_choice_redeclarations: 0\ncollisions.inherited_field_redeclarations: 0\ncollisions.record_choice_names: 0\ncollisions.same_name_across_levels: 0\nconstraints.length: 0\nconstraints.max_exclusive: 0\nconstraints.max_inclusive: 0\nconstraints.max_length: 0\nconstraints.min_exclusive: 0\nconstraints.min_inclusive: 0\nconstraints.min_length: 0\nconstraints.pattern: 0\nconstraints.present: 0\nconstraints.white_space: 0\ndeclarations.abstract: 0\ndeclarations.concrete: 3\ndeclarations.total: 3\ndeclarations.with_base_type: 2\ninheritance.abstract_bases: 0\ninheritance.choice-with-choice-base: 0\ninheritance.choice-with-record-base: 0\ninheritance.concrete_bases: 0\ninheritance.distinct_bases: 0\ninheritance.empty_local_extensions: 0\ninheritance.local_choice_extensions: 0\ninheritance.local_record_extensions: 0\ninheritance.maximum_depth: 0\ninheritance.record-with-choice-base: 0\ninheritance.record-with-record-base: 0\ninheritance.structural_roots: 1\nkind.Alias: 0\nkind.Choice: 0\nkind.Enumeration: 1\nkind.List: 0\nkind.Primitive.Binary: 0\nkind.Primitive.Boolean: 0\nkind.Primitive.DateTime: 0\nkind.Primitive.Decimal: 0\nkind.Primitive.Duration: 0\nkind.Primitive.Float32: 0\nkind.Primitive.Float64: 0\nkind.Primitive.SignedInteger: 1\nkind.Primitive.String: 0\nkind.Primitive.Time: 0\nkind.Primitive.UnsignedInteger: 0\nkind.Record: 1\nmembers.choice_alternatives: 0\nmembers.named_references: 2\nmembers.primitive_references.Binary: 0\nmembers.primitive_references.Boolean: 0\nmembers.primitive_references.DateTime: 0\nmembers.primitive_references.Decimal: 0\nmembers.primitive_references.Duration: 0\nmembers.primitive_references.Float32: 0\nmembers.primitive_references.Float64: 0\nmembers.primitive_references.SignedInteger: 1\nmembers.primitive_references.String: 1\nmembers.primitive_references.Time: 0\nmembers.primitive_references.UnsignedInteger: 0\nmembers.record_fields: 4\nnillable.false: 4\nnillable.true: 0\nevidence\nbackend coverage\nAda: kinds 3/3 (100.00%), declarations 3/3 (100.00%), field-types 4/4 (100.00%), field-occurrences 4/4 (100.00%), message-closures 0/0 (100.00%)\n  primitive refs/declarations: 0 (+0)\n  cardinality/nillability: 0 (+0)\n  primitive refs/declarations + cardinality/nillability: 0 (+0)\n  Choice: 0 (+0)\n  primitive refs/declarations + Choice: 0 (+0)\n  cardinality/nillability + Choice: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice: 0 (+0)\n  remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + remaining structural inheritance/abstract: 0 (+0)\n  cardinality/nillability + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + remaining structural inheritance/abstract: 0 (+0)\n  Choice + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + Choice + remaining structural inheritance/abstract: 0 (+0)\n  cardinality/nillability + Choice + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + remaining structural inheritance/abstract: 0 (+0)\n  constrained simple types: 0 (+0)\n  primitive refs/declarations + constrained simple types: 0 (+0)\n  cardinality/nillability + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + constrained simple types: 0 (+0)\n  Choice + constrained simple types: 0 (+0)\n  primitive refs/declarations + Choice + constrained simple types: 0 (+0)\n  cardinality/nillability + Choice + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + constrained simple types: 0 (+0)\n  remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  cardinality/nillability + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  cardinality/nillability + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\nRust: kinds 3/3 (100.00%), declarations 3/3 (100.00%), field-types 4/4 (100.00%), field-occurrences 4/4 (100.00%), message-closures 0/0 (100.00%)\n  primitive refs/declarations: 0 (+0)\n  cardinality/nillability: 0 (+0)\n  primitive refs/declarations + cardinality/nillability: 0 (+0)\n  Choice: 0 (+0)\n  primitive refs/declarations + Choice: 0 (+0)\n  cardinality/nillability + Choice: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice: 0 (+0)\n  remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + remaining structural inheritance/abstract: 0 (+0)\n  cardinality/nillability + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + remaining structural inheritance/abstract: 0 (+0)\n  Choice + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + Choice + remaining structural inheritance/abstract: 0 (+0)\n  cardinality/nillability + Choice + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + remaining structural inheritance/abstract: 0 (+0)\n  constrained simple types: 0 (+0)\n  primitive refs/declarations + constrained simple types: 0 (+0)\n  cardinality/nillability + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + constrained simple types: 0 (+0)\n  Choice + constrained simple types: 0 (+0)\n  primitive refs/declarations + Choice + constrained simple types: 0 (+0)\n  cardinality/nillability + Choice + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + constrained simple types: 0 (+0)\n  remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  cardinality/nillability + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  cardinality/nillability + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\nC++: kinds 3/3 (100.00%), declarations 3/3 (100.00%), field-types 4/4 (100.00%), field-occurrences 4/4 (100.00%), message-closures 0/0 (100.00%)\n  primitive refs/declarations: 0 (+0)\n  cardinality/nillability: 0 (+0)\n  primitive refs/declarations + cardinality/nillability: 0 (+0)\n  Choice: 0 (+0)\n  primitive refs/declarations + Choice: 0 (+0)\n  cardinality/nillability + Choice: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice: 0 (+0)\n  remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + remaining structural inheritance/abstract: 0 (+0)\n  cardinality/nillability + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + remaining structural inheritance/abstract: 0 (+0)\n  Choice + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + Choice + remaining structural inheritance/abstract: 0 (+0)\n  cardinality/nillability + Choice + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + remaining structural inheritance/abstract: 0 (+0)\n  constrained simple types: 0 (+0)\n  primitive refs/declarations + constrained simple types: 0 (+0)\n  cardinality/nillability + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + constrained simple types: 0 (+0)\n  Choice + constrained simple types: 0 (+0)\n  primitive refs/declarations + Choice + constrained simple types: 0 (+0)\n  cardinality/nillability + Choice + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + constrained simple types: 0 (+0)\n  remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  cardinality/nillability + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  cardinality/nillability + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n",
+    "generate/open-extensions/ada": {
+      "oms-track.adb": "82f8d629bbdc1c83030605628fe8f4c2faaee5911e0492650f08a3fe05f97ac7",
+      "oms-track.ads": "8bcc446dbb254c97c0b4e9ca3cadc0d8d047c7a45de898c67f0df5202134d955",
+      "oms.ads": "38b828c695b287d641b4b5915dea08f8ecbc47d59c77a90ec99ada5ee591148e"
+    },
+    "readiness/open-extensions/ada/ready.yaml": {
+      "exit": 0,
+      "stdout": "service contract valid\nservice: Readiness Ready\nlanguage: ada\ngeneration world: open-extensions\n\nselected oms messages: 1\nrenderable selected oms messages: 1\nselected type closure: 1\nrenderable selected types: 1\nstatus: READY\n",
+      "stderr": ""
+    },
+    "readiness/open-extensions/ada/unready.yaml": {
+      "exit": 1,
+      "stdout": "service contract valid\nservice: Readiness Unready\nlanguage: ada\ngeneration world: open-extensions\n\nselected oms messages: 3\nrenderable selected oms messages: 1\nselected type closure: 5\nrenderable selected types: 3\nstatus: NOT READY\n\nunsupported selected types:\n  {urn:test}TimeA\n  {urn:test}TimeB\n\nblocked selected messages:\n  BlockedReportB\n    resolved: {urn:test}BlockedReportB\n    blocker: {urn:test}TimeB\n  BlockedReportA\n    resolved: {urn:test}BlockedReportA\n    blocker: {urn:test}TimeA\n",
+      "stderr": "error: service selection is not renderable for ada under open-extensions\n"
+    },
+    "generate/open-extensions/rust": {
+      "track.rs": "11adf3aace329f778dbaa0653bdbda3541014dc31d571a6f2079b2332af80e97"
+    },
+    "readiness/open-extensions/rust/ready.yaml": {
+      "exit": 0,
+      "stdout": "service contract valid\nservice: Readiness Ready\nlanguage: rust\ngeneration world: open-extensions\n\nselected oms messages: 1\nrenderable selected oms messages: 1\nselected type closure: 1\nrenderable selected types: 1\nstatus: READY\n",
+      "stderr": ""
+    },
+    "readiness/open-extensions/rust/unready.yaml": {
+      "exit": 1,
+      "stdout": "service contract valid\nservice: Readiness Unready\nlanguage: rust\ngeneration world: open-extensions\n\nselected oms messages: 3\nrenderable selected oms messages: 1\nselected type closure: 5\nrenderable selected types: 3\nstatus: NOT READY\n\nunsupported selected types:\n  {urn:test}TimeA\n  {urn:test}TimeB\n\nblocked selected messages:\n  BlockedReportB\n    resolved: {urn:test}BlockedReportB\n    blocker: {urn:test}TimeB\n  BlockedReportA\n    resolved: {urn:test}BlockedReportA\n    blocker: {urn:test}TimeA\n",
+      "stderr": "error: service selection is not renderable for rust under open-extensions\n"
+    },
+    "generate/open-extensions/cpp": {
+      "track.hpp": "bffe083a07f45c6f029f46d8403beb5148d1ea285ad14e74799e4c8549d90ffe"
+    },
+    "readiness/open-extensions/cpp/ready.yaml": {
+      "exit": 0,
+      "stdout": "service contract valid\nservice: Readiness Ready\nlanguage: cpp\ngeneration world: open-extensions\n\nselected oms messages: 1\nrenderable selected oms messages: 1\nselected type closure: 1\nrenderable selected types: 1\nstatus: READY\n",
+      "stderr": ""
+    },
+    "readiness/open-extensions/cpp/unready.yaml": {
+      "exit": 1,
+      "stdout": "service contract valid\nservice: Readiness Unready\nlanguage: cpp\ngeneration world: open-extensions\n\nselected oms messages: 3\nrenderable selected oms messages: 1\nselected type closure: 5\nrenderable selected types: 3\nstatus: NOT READY\n\nunsupported selected types:\n  {urn:test}TimeA\n  {urn:test}TimeB\n\nblocked selected messages:\n  BlockedReportB\n    resolved: {urn:test}BlockedReportB\n    blocker: {urn:test}TimeB\n  BlockedReportA\n    resolved: {urn:test}BlockedReportA\n    blocker: {urn:test}TimeA\n",
+      "stderr": "error: service selection is not renderable for cpp under open-extensions\n"
+    },
+    "coverage/open-extensions": "generation world: open-extensions\ninventory\nabstract_usage.base: 0\nabstract_usage.base_only: 0\nabstract_usage.choice-alternative: 0\nabstract_usage.list-item: 0\nabstract_usage.message-payload: 0\nabstract_usage.other-named-reference: 0\nabstract_usage.record-field: 0\nabstract_value.acyclic_targets: 0\nabstract_value.recursive_targets: 0\nabstract_value.targets: 0\nabstract_value.zero_descendant_targets: 0\nbase.simple_named: 0\nbase.simple_primitive: 2\nbase.structural_named: 0\ncardinality.finite_repeated: 1\ncardinality.min_gt_1: 0\ncardinality.optional_0_1: 1\ncardinality.required_1_1: 2\ncardinality.unbounded_repeated: 0\nchoice.alternatives_sharing_payload_type: 0\nchoice.duplicate_names: 0\nchoice.duplicate_payload_types: 0\nchoice.nillable_alternatives: 0\nchoice.participating_in_inheritance: 0\nchoice.repeated_alternatives: 0\nchoice.standalone: 0\ncollisions.inherited_choice_redeclarations: 0\ncollisions.inherited_field_redeclarations: 0\ncollisions.record_choice_names: 0\ncollisions.same_name_across_levels: 0\nconstraints.length: 0\nconstraints.max_exclusive: 0\nconstraints.max_inclusive: 0\nconstraints.max_length: 0\nconstraints.min_exclusive: 0\nconstraints.min_inclusive: 0\nconstraints.min_length: 0\nconstraints.pattern: 0\nconstraints.present: 0\nconstraints.white_space: 0\ndeclarations.abstract: 0\ndeclarations.concrete: 3\ndeclarations.total: 3\ndeclarations.with_base_type: 2\ninheritance.abstract_bases: 0\ninheritance.choice-with-choice-base: 0\ninheritance.choice-with-record-base: 0\ninheritance.concrete_bases: 0\ninheritance.distinct_bases: 0\ninheritance.empty_local_extensions: 0\ninheritance.local_choice_extensions: 0\ninheritance.local_record_extensions: 0\ninheritance.maximum_depth: 0\ninheritance.record-with-choice-base: 0\ninheritance.record-with-record-base: 0\ninheritance.structural_roots: 1\nkind.Alias: 0\nkind.Choice: 0\nkind.Enumeration: 1\nkind.List: 0\nkind.Primitive.Binary: 0\nkind.Primitive.Boolean: 0\nkind.Primitive.DateTime: 0\nkind.Primitive.Decimal: 0\nkind.Primitive.Duration: 0\nkind.Primitive.Float32: 0\nkind.Primitive.Float64: 0\nkind.Primitive.SignedInteger: 1\nkind.Primitive.String: 0\nkind.Primitive.Time: 0\nkind.Primitive.UnsignedInteger: 0\nkind.Record: 1\nmembers.choice_alternatives: 0\nmembers.named_references: 2\nmembers.primitive_references.Binary: 0\nmembers.primitive_references.Boolean: 0\nmembers.primitive_references.DateTime: 0\nmembers.primitive_references.Decimal: 0\nmembers.primitive_references.Duration: 0\nmembers.primitive_references.Float32: 0\nmembers.primitive_references.Float64: 0\nmembers.primitive_references.SignedInteger: 1\nmembers.primitive_references.String: 1\nmembers.primitive_references.Time: 0\nmembers.primitive_references.UnsignedInteger: 0\nmembers.record_fields: 4\nnillable.false: 4\nnillable.true: 0\nevidence\nbackend coverage\nAda: kinds 3/3 (100.00%), declarations 3/3 (100.00%), field-types 4/4 (100.00%), field-occurrences 4/4 (100.00%), message-closures 0/0 (100.00%)\n  primitive refs/declarations: 0 (+0)\n  cardinality/nillability: 0 (+0)\n  primitive refs/declarations + cardinality/nillability: 0 (+0)\n  Choice: 0 (+0)\n  primitive refs/declarations + Choice: 0 (+0)\n  cardinality/nillability + Choice: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice: 0 (+0)\n  remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + remaining structural inheritance/abstract: 0 (+0)\n  cardinality/nillability + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + remaining structural inheritance/abstract: 0 (+0)\n  Choice + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + Choice + remaining structural inheritance/abstract: 0 (+0)\n  cardinality/nillability + Choice + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + remaining structural inheritance/abstract: 0 (+0)\n  constrained simple types: 0 (+0)\n  primitive refs/declarations + constrained simple types: 0 (+0)\n  cardinality/nillability + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + constrained simple types: 0 (+0)\n  Choice + constrained simple types: 0 (+0)\n  primitive refs/declarations + Choice + constrained simple types: 0 (+0)\n  cardinality/nillability + Choice + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + constrained simple types: 0 (+0)\n  remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  cardinality/nillability + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  cardinality/nillability + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\nRust: kinds 3/3 (100.00%), declarations 3/3 (100.00%), field-types 4/4 (100.00%), field-occurrences 4/4 (100.00%), message-closures 0/0 (100.00%)\n  primitive refs/declarations: 0 (+0)\n  cardinality/nillability: 0 (+0)\n  primitive refs/declarations + cardinality/nillability: 0 (+0)\n  Choice: 0 (+0)\n  primitive refs/declarations + Choice: 0 (+0)\n  cardinality/nillability + Choice: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice: 0 (+0)\n  remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + remaining structural inheritance/abstract: 0 (+0)\n  cardinality/nillability + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + remaining structural inheritance/abstract: 0 (+0)\n  Choice + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + Choice + remaining structural inheritance/abstract: 0 (+0)\n  cardinality/nillability + Choice + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + remaining structural inheritance/abstract: 0 (+0)\n  constrained simple types: 0 (+0)\n  primitive refs/declarations + constrained simple types: 0 (+0)\n  cardinality/nillability + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + constrained simple types: 0 (+0)\n  Choice + constrained simple types: 0 (+0)\n  primitive refs/declarations + Choice + constrained simple types: 0 (+0)\n  cardinality/nillability + Choice + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + constrained simple types: 0 (+0)\n  remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  cardinality/nillability + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  cardinality/nillability + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\nC++: kinds 3/3 (100.00%), declarations 3/3 (100.00%), field-types 4/4 (100.00%), field-occurrences 4/4 (100.00%), message-closures 0/0 (100.00%)\n  primitive refs/declarations: 0 (+0)\n  cardinality/nillability: 0 (+0)\n  primitive refs/declarations + cardinality/nillability: 0 (+0)\n  Choice: 0 (+0)\n  primitive refs/declarations + Choice: 0 (+0)\n  cardinality/nillability + Choice: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice: 0 (+0)\n  remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + remaining structural inheritance/abstract: 0 (+0)\n  cardinality/nillability + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + remaining structural inheritance/abstract: 0 (+0)\n  Choice + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + Choice + remaining structural inheritance/abstract: 0 (+0)\n  cardinality/nillability + Choice + remaining structural inheritance/abstract: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + remaining structural inheritance/abstract: 0 (+0)\n  constrained simple types: 0 (+0)\n  primitive refs/declarations + constrained simple types: 0 (+0)\n  cardinality/nillability + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + constrained simple types: 0 (+0)\n  Choice + constrained simple types: 0 (+0)\n  primitive refs/declarations + Choice + constrained simple types: 0 (+0)\n  cardinality/nillability + Choice + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + constrained simple types: 0 (+0)\n  remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  cardinality/nillability + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  cardinality/nillability + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n  primitive refs/declarations + cardinality/nillability + Choice + remaining structural inheritance/abstract + constrained simple types: 0 (+0)\n",
+    "service/closed-schema/ada/only-a.yaml": {
+      "stdout": "service contract valid\nservice: Selected Generation Narrow\nlanguage: ada\ngeneration world: closed-schema\n\nselected oms messages: 1\ncontract-selected types: 3\ngenerated support types: 0\nprojected schema types: 3\ngenerated model files: 2\ngenerated service api files: 1\ngenerated 3 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "files": {
+        "service_api.ads": "27de344a7035596f3b578b007c60a32dd8d999366f22930225baf4f5d0d0120c",
+        "urn-test.ads": "64a1d4d06e9e7f3bdadaf2d5271725d9b607e0715e4cbe42738af010c94bb659",
+        "urn.ads": "a570571230ee7f3b7e29252e195d265275f36a23f265eb374ace3eca72a8bfb5"
+      }
+    },
+    "service/closed-schema/ada/non-uci.yaml": {
+      "stdout": "service contract valid\nservice: Selected Generation Non UCI\nlanguage: ada\ngeneration world: closed-schema\n\nselected oms messages: 0\ncontract-selected types: 0\ngenerated support types: 0\nprojected schema types: 0\ngenerated model files: 0\ngenerated service api files: 1\ngenerated 1 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "files": {
+        "service_api.ads": "12a0ac0fab4d7a6f3b3c70bc5b3b59f02cae5b6995b3c4f71d4d681e6e6e760a"
+      }
+    },
+    "service/closed-schema/rust/only-a.yaml": {
+      "stdout": "service contract valid\nservice: Selected Generation Narrow\nlanguage: rust\ngeneration world: closed-schema\n\nselected oms messages: 1\ncontract-selected types: 3\ngenerated support types: 0\nprojected schema types: 3\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "files": {
+        "service_api.rs": "4e9dacf269ad2426e79108dec66208822e1c483742cd8f54ded0909fd94e9176",
+        "test.rs": "0101d53f54757c739509ebf391ee7d01c57211eafb9629ac551489bc6be09c4a"
+      }
+    },
+    "service/closed-schema/rust/non-uci.yaml": {
+      "stdout": "service contract valid\nservice: Selected Generation Non UCI\nlanguage: rust\ngeneration world: closed-schema\n\nselected oms messages: 0\ncontract-selected types: 0\ngenerated support types: 0\nprojected schema types: 0\ngenerated model files: 0\ngenerated service api files: 1\ngenerated 1 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "files": {
+        "service_api.rs": "c119e1c48c43eceb868a905a2a875c590b7ed7111f60945d454887c17867ac41"
+      }
+    },
+    "service/closed-schema/cpp/only-a.yaml": {
+      "stdout": "service contract valid\nservice: Selected Generation Narrow\nlanguage: cpp\ngeneration world: closed-schema\n\nselected oms messages: 1\ncontract-selected types: 3\ngenerated support types: 0\nprojected schema types: 3\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "files": {
+        "service_api.hpp": "59907a0c8451d27ddebe265162e48446b422bef9618a2e43829b60d138f63829",
+        "test.hpp": "8a817b1549c51ee9e712173de8e027ae01ecfeb30ee314dee8f6d0f14ec4c593"
+      }
+    },
+    "service/closed-schema/cpp/non-uci.yaml": {
+      "stdout": "service contract valid\nservice: Selected Generation Non UCI\nlanguage: cpp\ngeneration world: closed-schema\n\nselected oms messages: 0\ncontract-selected types: 0\ngenerated support types: 0\nprojected schema types: 0\ngenerated model files: 0\ngenerated service api files: 1\ngenerated 1 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "files": {
+        "service_api.hpp": "388c741bb3168a63c77fe1469fc9c60511e59b0e382676ff80bf2ff6150a20d4"
+      }
+    },
+    "service/open-extensions/ada/only-a.yaml": {
+      "stdout": "service contract valid\nservice: Selected Generation Narrow\nlanguage: ada\ngeneration world: open-extensions\n\nselected oms messages: 1\ncontract-selected types: 3\ngenerated support types: 0\nprojected schema types: 3\ngenerated model files: 2\ngenerated service api files: 1\ngenerated 3 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "files": {
+        "service_api.ads": "27de344a7035596f3b578b007c60a32dd8d999366f22930225baf4f5d0d0120c",
+        "urn-test.ads": "64a1d4d06e9e7f3bdadaf2d5271725d9b607e0715e4cbe42738af010c94bb659",
+        "urn.ads": "a570571230ee7f3b7e29252e195d265275f36a23f265eb374ace3eca72a8bfb5"
+      }
+    },
+    "service/open-extensions/ada/non-uci.yaml": {
+      "stdout": "service contract valid\nservice: Selected Generation Non UCI\nlanguage: ada\ngeneration world: open-extensions\n\nselected oms messages: 0\ncontract-selected types: 0\ngenerated support types: 0\nprojected schema types: 0\ngenerated model files: 0\ngenerated service api files: 1\ngenerated 1 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "files": {
+        "service_api.ads": "12a0ac0fab4d7a6f3b3c70bc5b3b59f02cae5b6995b3c4f71d4d681e6e6e760a"
+      }
+    },
+    "service/open-extensions/rust/only-a.yaml": {
+      "stdout": "service contract valid\nservice: Selected Generation Narrow\nlanguage: rust\ngeneration world: open-extensions\n\nselected oms messages: 1\ncontract-selected types: 3\ngenerated support types: 0\nprojected schema types: 3\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "files": {
+        "service_api.rs": "4e9dacf269ad2426e79108dec66208822e1c483742cd8f54ded0909fd94e9176",
+        "test.rs": "0101d53f54757c739509ebf391ee7d01c57211eafb9629ac551489bc6be09c4a"
+      }
+    },
+    "service/open-extensions/rust/non-uci.yaml": {
+      "stdout": "service contract valid\nservice: Selected Generation Non UCI\nlanguage: rust\ngeneration world: open-extensions\n\nselected oms messages: 0\ncontract-selected types: 0\ngenerated support types: 0\nprojected schema types: 0\ngenerated model files: 0\ngenerated service api files: 1\ngenerated 1 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "files": {
+        "service_api.rs": "c119e1c48c43eceb868a905a2a875c590b7ed7111f60945d454887c17867ac41"
+      }
+    },
+    "service/open-extensions/cpp/only-a.yaml": {
+      "stdout": "service contract valid\nservice: Selected Generation Narrow\nlanguage: cpp\ngeneration world: open-extensions\n\nselected oms messages: 1\ncontract-selected types: 3\ngenerated support types: 0\nprojected schema types: 3\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "files": {
+        "service_api.hpp": "59907a0c8451d27ddebe265162e48446b422bef9618a2e43829b60d138f63829",
+        "test.hpp": "8a817b1549c51ee9e712173de8e027ae01ecfeb30ee314dee8f6d0f14ec4c593"
+      }
+    },
+    "service/open-extensions/cpp/non-uci.yaml": {
+      "stdout": "service contract valid\nservice: Selected Generation Non UCI\nlanguage: cpp\ngeneration world: open-extensions\n\nselected oms messages: 0\ncontract-selected types: 0\ngenerated support types: 0\nprojected schema types: 0\ngenerated model files: 0\ngenerated service api files: 1\ngenerated 1 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "files": {
+        "service_api.hpp": "388c741bb3168a63c77fe1469fc9c60511e59b0e382676ff80bf2ff6150a20d4"
+      }
+    },
+    "python/closed-schema/python-service/root.xsd/python-service/service.yaml": {
+      "check": "service contract valid\nservice: Python \"Demo\" \u03bb\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 2\nmodel status: READY\nservice api status: READY\nstatus: READY\nselected type closure: 3\ngenerated support types: 0\n",
+      "check_stderr": "",
+      "generation": "service contract valid\nservice: Python \"Demo\" \u03bb\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 2\ncontract-selected types: 3\ngenerated support types: 0\nprojected schema types: 3\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "generation_stderr": "",
+      "files": {
+        "model.py": "4088b5dff30ba758eeda2ca4b055177fe61aee8ff4df030a9a89b5ff362be4ad",
+        "service_api.py": "b3c7de8944013b2e138e94e8754940822bd7eac7631da77b50c7d63631cb4dae"
+      }
+    },
+    "python/closed-schema/python-codec/oam.xsd/python-codec/service.yaml": {
+      "check": "service contract valid\nservice: Python Codec\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 2\nmodel status: READY\nservice api status: READY\nstatus: READY\nselected type closure: 9\ngenerated support types: 0\n",
+      "check_stderr": "",
+      "generation": "service contract valid\nservice: Python Codec\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 2\ncontract-selected types: 9\ngenerated support types: 0\nprojected schema types: 9\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "generation_stderr": "",
+      "files": {
+        "model.py": "4265e331c658598f9a77136732be124c38db1e0f750807cf3533559b1060ea8e",
+        "service_api.py": "cbe144ad31079b59cdf95e944e5daf14d4832547827a8f201ee9de4f633b23d7"
+      }
+    },
+    "python/closed-schema/python-codec/non-oam.xsd/python-codec/service.yaml": {
+      "check": "service contract valid\nservice: Python Codec\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 2\nmodel status: READY\nservice api status: READY\nstatus: READY\nselected type closure: 9\ngenerated support types: 0\n",
+      "check_stderr": "",
+      "generation": "service contract valid\nservice: Python Codec\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 2\ncontract-selected types: 9\ngenerated support types: 0\nprojected schema types: 9\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "generation_stderr": "",
+      "files": {
+        "model.py": "26783aa9827fe36a4a273b15a20ca4450b93c7fa634e60116b4507bba2f922a8",
+        "service_api.py": "9596d0df211816e3b623ac283bb94650f09b572b5018f3944d683b9cfea7015c"
+      }
+    },
+    "python/closed-schema/python-service/root.xsd/service-generate/non-uci.yaml": {
+      "check": "service contract valid\nservice: Selected Generation Non UCI\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 0\nmodel status: READY\nservice api status: READY\nstatus: READY\nselected type closure: 0\ngenerated support types: 0\n",
+      "check_stderr": "",
+      "generation": "service contract valid\nservice: Selected Generation Non UCI\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 0\ncontract-selected types: 0\ngenerated support types: 0\nprojected schema types: 0\ngenerated model files: 0\ngenerated service api files: 1\ngenerated 1 file(s)\noutput: <OUTPUT>\n",
+      "generation_stderr": "",
+      "files": {
+        "service_api.py": "85ecb273f1ccbf14861072c4726bfa4bbc31974bd3633f394fdc78c2edab7e2d"
+      }
+    },
+    "python/open-extensions/python-service/root.xsd/python-service/service.yaml": {
+      "check": "service contract valid\nservice: Python \"Demo\" \u03bb\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 2\nmodel status: READY\nservice api status: READY\nstatus: READY\nselected type closure: 3\ngenerated support types: 0\n",
+      "check_stderr": "",
+      "generation": "service contract valid\nservice: Python \"Demo\" \u03bb\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 2\ncontract-selected types: 3\ngenerated support types: 0\nprojected schema types: 3\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "generation_stderr": "",
+      "files": {
+        "model.py": "4088b5dff30ba758eeda2ca4b055177fe61aee8ff4df030a9a89b5ff362be4ad",
+        "service_api.py": "b3c7de8944013b2e138e94e8754940822bd7eac7631da77b50c7d63631cb4dae"
+      }
+    },
+    "python/open-extensions/python-codec/oam.xsd/python-codec/service.yaml": {
+      "check": "service contract valid\nservice: Python Codec\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 2\nmodel status: READY\nservice api status: READY\nstatus: READY\nselected type closure: 9\ngenerated support types: 0\n",
+      "check_stderr": "",
+      "generation": "service contract valid\nservice: Python Codec\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 2\ncontract-selected types: 9\ngenerated support types: 0\nprojected schema types: 9\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "generation_stderr": "",
+      "files": {
+        "model.py": "4265e331c658598f9a77136732be124c38db1e0f750807cf3533559b1060ea8e",
+        "service_api.py": "cbe144ad31079b59cdf95e944e5daf14d4832547827a8f201ee9de4f633b23d7"
+      }
+    },
+    "python/open-extensions/python-codec/non-oam.xsd/python-codec/service.yaml": {
+      "check": "service contract valid\nservice: Python Codec\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 2\nmodel status: READY\nservice api status: READY\nstatus: READY\nselected type closure: 9\ngenerated support types: 0\n",
+      "check_stderr": "",
+      "generation": "service contract valid\nservice: Python Codec\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 2\ncontract-selected types: 9\ngenerated support types: 0\nprojected schema types: 9\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "generation_stderr": "",
+      "files": {
+        "model.py": "26783aa9827fe36a4a273b15a20ca4450b93c7fa634e60116b4507bba2f922a8",
+        "service_api.py": "9596d0df211816e3b623ac283bb94650f09b572b5018f3944d683b9cfea7015c"
+      }
+    },
+    "python/open-extensions/python-service/root.xsd/service-generate/non-uci.yaml": {
+      "check": "service contract valid\nservice: Selected Generation Non UCI\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 0\nmodel status: READY\nservice api status: READY\nstatus: READY\nselected type closure: 0\ngenerated support types: 0\n",
+      "check_stderr": "",
+      "generation": "service contract valid\nservice: Selected Generation Non UCI\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 0\ncontract-selected types: 0\ngenerated support types: 0\nprojected schema types: 0\ngenerated model files: 0\ngenerated service api files: 1\ngenerated 1 file(s)\noutput: <OUTPUT>\n",
+      "generation_stderr": "",
+      "files": {
+        "service_api.py": "85ecb273f1ccbf14861072c4726bfa4bbc31974bd3633f394fdc78c2edab7e2d"
+      }
+    }
+  }
+}

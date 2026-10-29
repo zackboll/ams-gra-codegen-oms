@@ -1,0 +1,42 @@
+contract_version: "0.1"
+service:
+  name: Python Float64
+  version: "0.8.0"
+  kind: service
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+functions:
+  - id: loop
+    name: Float64 Loop
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: FloatNotice
+        topic: float64.loop
+        timing: {kind: asynchronous}
+      - id: output
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: FloatNotice
+        topic: float64.loop
+        timing: {kind: asynchronous}
+      - id: alias
+        kind: oms_message
+        direction: output
+        mandate: optional
+        message: FloatAlias
+        topic: float64.alias
+        timing: {kind: asynchronous}
+      - id: scalar
+        kind: oms_message
+        direction: output
+        mandate: optional
+        message: ScalarNotice
+        topic: float64.scalar
+        timing: {kind: asynchronous}
