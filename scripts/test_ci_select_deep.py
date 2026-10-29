@@ -196,6 +196,47 @@ class SelectiveDeepGate(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'unexpected unselected Deep artifact'):
             self.validate()
 
+    def test_hosted_literal_matrix_skip_has_no_runner_steps_or_artifacts(self):
+        # Actual GitHub API record: run 40821921150, job 123276175940.
+        name = 'deep-qualification / ada-websocket-real-sleet (${{ matrix.compiler }})'
+        index = next(n for n, j in enumerate(self.jobs)
+                     if j['name'] == 'deep-qualification / ada-websocket-real-sleet')
+        self.jobs[index] = dict(name=name, status='completed', conclusion='skipped',
+                                steps=[], runner_id=None, runner_name=None)
+        self.validate()
+        healthy = copy.deepcopy(self.jobs[index])
+        for mutation in ({'conclusion': 'success'}, {'runner_id': 123},
+                         {'steps': [{'name': 'qualification', 'conclusion': 'success'}]}):
+            self.jobs[index].update(mutation)
+            with self.subTest(mutation=mutation), self.assertRaisesRegex(
+                    ValueError, 'unselected Deep job executed'):
+                self.validate()
+            self.jobs[index] = copy.deepcopy(healthy)
+        self.artifacts.append(dict(name='task100-ada-websocket-sleet-16'))
+        with self.assertRaisesRegex(ValueError, 'unexpected unselected Deep artifact'):
+            self.validate()
+
+    def test_literal_matrix_skip_rejects_duplicates_wrong_axes_and_selected_cells(self):
+        name = 'deep-qualification / ada-websocket-real-sleet (${{ matrix.compiler }})'
+        index = next(n for n, j in enumerate(self.jobs)
+                     if j['name'] == 'deep-qualification / ada-websocket-real-sleet')
+        healthy = copy.deepcopy(self.jobs[index])
+        self.jobs.append(dict(healthy, name=name, runner_id=None))
+        with self.assertRaisesRegex(ValueError, 'missing/ambiguous skipped Deep'):
+            self.validate()
+        self.jobs.pop()
+        for wrong in ('(${{ matrix.python-version }})', '(${{ matrix.compiler}})', '(14, 16)'):
+            self.jobs[index]['name'] = 'deep-qualification / ada-websocket-real-sleet ' + wrong
+            with self.subTest(wrong=wrong), self.assertRaisesRegex(
+                    ValueError, 'missing/ambiguous skipped Deep'):
+                self.validate()
+        self.narrow('tests/ada-websocket/transport_probe.adb')
+        self.jobs = [j for j in self.jobs if not j['name'].startswith(
+            'deep-qualification / ada-websocket-real-sleet')]
+        self.jobs.append(dict(healthy, name=name))
+        with self.assertRaisesRegex(ValueError, 'authoritative matrix cell'):
+            self.validate()
+
     def test_selected_evidence_expired_stale_duplicate_missing_and_step_skip(self):
         self.validate()
         index = next(n for n, a in enumerate(self.artifacts) if a['name'] == 'py006-uci')
@@ -310,12 +351,13 @@ class FinalReportContract(unittest.TestCase):
             environment = dict(SELECTION_MANIFEST=json.dumps(manifest),
                                NEEDS_JSON=json.dumps(fixture.needs), GITHUB_RUN_ID='123',
                                GITHUB_RUN_ATTEMPT='1', GITHUB_SHA='c' * 40,
-                               GITHUB_EVENT_NAME='pull_request')
-            records = dict(jobs=fixture.jobs, artifacts=fixture.artifacts)
+                               GITHUB_EVENT_NAME='pull_request', GITHUB_JOB='pr-ci-required')
+            records = dict(jobs=fixture.jobs, artifacts=fixture.artifacts, attempts={})
             with self.subTest(docs=docs), patch.dict('os.environ', environment), \
                     patch.object(gate, 'from_environment', return_value=manifest), \
                     patch.object(gate, 'api', return_value=dict(id=123, run_attempt=1)), \
                     patch.object(gate, 'verify_source'), patch.object(gate, 'verify_records'), \
+                    patch.object(gate, 'verify_final_job'), \
                     patch.object(gate, 'evidence', return_value=records), \
                     patch.object(gate, 'git', return_value=('d' * 40 + '\n').encode()), \
                     patch.object(gate, 'reconcile_task100', return_value={}), \
@@ -330,6 +372,20 @@ class FinalReportContract(unittest.TestCase):
                 for field in ('version', 'identities', 'deep_jobs', 'selected_cells',
                               'skipped_cells', 'deep_selected_cells', 'deep_skipped_cells'):
                     self.assertEqual(report[field], manifest[field], field)
+                self.assertEqual(report['run_id'], '123')
+                self.assertEqual(report['gate_attempt'], '1')
+                gate.verify_records.assert_called_once_with(records, dict(id=123, run_attempt=1))
+                gate.verify_final_job.assert_called_once_with(
+                    fixture.jobs, dict(id=123, run_attempt=1), 'pr-ci-required')
+                gate.reconcile_task100.assert_called_once_with(
+                    fixture.artifacts, manifest, 'c' * 40, 'd' * 40, '123', '1',
+                    jobs=fixture.jobs, attempts={})
+                if docs:
+                    gate.reconcile_primary.assert_not_called()
+                else:
+                    gate.reconcile_primary.assert_called_once_with(
+                        fixture.artifacts, 'c' * 40, 'd' * 40, '123', '1',
+                        jobs=fixture.jobs, attempts={})
                 self.assertEqual(report['version'], 2)
                 self.assertEqual(report['deep_selected_cells'], 0 if docs else 12)
                 self.assertEqual(report['conclusion'], 'success')

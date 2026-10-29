@@ -7,6 +7,8 @@ import urllib.request
 import urllib.error
 import io
 import zipfile
+import hashlib
+from ci_artifact_provenance import resolve, verify_final_job
 from real_uci_evidence import SHARDS, ORIGINAL, verify_bundle
 from task100_evidence import verify_bundle as verify_task100_bundle
 from ci_selection import ROOT, complete_diff, deep_jobs, from_environment, git, inventory, ordinary_jobs, validate_deep
@@ -44,8 +46,17 @@ def validate(manifest, expected, needs, jobs, artifacts, policy):
             validate_skipped_deep(record, jobs, artifacts, caller_selected=manifest['deep'])
     known = {'deep-qualification / ' + c['name'] for r in deep_jobs(policy).values() for c in r['cells']}
     known.update('deep-qualification / ' + j for j in deep_jobs(policy))
+    known.update(collapsed_matrix_name(r) for j, r in deep_jobs(policy).items()
+                 if j not in manifest['deep_jobs'] and len(r['cells']) > 1)
     if any(j['name'].startswith('deep-qualification / ') and j['name'] not in known for j in jobs):
         raise ValueError('unregistered authoritative Deep job')
+
+
+def collapsed_matrix_name(record):
+    # Hosted job-level skips retain the literal, unexpanded matrix expression.
+    # Derive only the reviewed inventory axis, never accept an arbitrary suffix.
+    axis, = record['cells'][0]['variant']
+    return 'deep-qualification / ' + record['job_id'] + ' (${{ matrix.' + axis + ' }})'
 
 
 def validate_skipped_deep(record, jobs, artifacts, caller_selected):
@@ -57,6 +68,8 @@ def validate_skipped_deep(record, jobs, artifacts, caller_selected):
     """
     prefix = 'deep-qualification / '
     names = {prefix + record['job_id'], *(prefix + c['name'] for c in record['cells'])}
+    if len(record['cells']) > 1:
+        names.add(collapsed_matrix_name(record))
     matches = [j for j in jobs if j['name'] in names]
     if caller_selected and len(matches) != 1:
         raise ValueError('missing/ambiguous skipped Deep job: ' + record['job_id'])
@@ -117,7 +130,12 @@ def pages(path, key):
 
 
 def evidence(run_id, attempt):
-    return dict(jobs=pages(f"actions/runs/{run_id}/attempts/{attempt}/jobs", "jobs"),
+    if not 1 <= int(attempt) <= 100:
+        raise ValueError('excessive/invalid workflow attempt')
+    attempts = {n: dict(run=api(f'actions/runs/{run_id}/attempts/{n}'),
+                       jobs=pages(f'actions/runs/{run_id}/attempts/{n}/jobs', 'jobs'))
+                for n in range(1, int(attempt) + 1)}
+    return dict(jobs=attempts[int(attempt)]['jobs'], attempts=attempts,
                 artifacts=pages(f"actions/runs/{run_id}/artifacts", "artifacts"))
 
 
@@ -162,6 +180,8 @@ def download_bundle(artifact):
         data = response.read(512 * 1024 * 1024 + 1)
     if len(data) > 512 * 1024 * 1024:
         raise ValueError('oversized evidence archive')
+    if artifact.get('digest') != 'sha256:' + hashlib.sha256(data).hexdigest():
+        raise ValueError('artifact archive digest mismatch')
     files = {}
     with zipfile.ZipFile(io.BytesIO(data)) as archive:
         if sum(i.file_size for i in archive.infolist()) > 1024 * 1024 * 1024:
@@ -176,14 +196,16 @@ def download_bundle(artifact):
     return files
 
 
-def reconcile_primary(artifacts, sha, tree, run_id, attempt, loader=download_bundle):
+def reconcile_primary(artifacts, sha, tree, run_id, attempt, loader=download_bundle, *, jobs, attempts):
     completed = []
     summaries = {}
     for shard in SHARDS:
         matches = [a for a in artifacts if a['name'] == 'perf007-' + shard]
         if len(matches) != 1 or matches[0]['expired'] or matches[0]['size_in_bytes'] <= 0:
             raise ValueError('missing/duplicate shard artifact: ' + shard)
-        summary = verify_bundle(loader(matches[0]), shard, sha, tree, run_id, attempt)
+        producer = resolve(matches[0], 'deep-qualification / ' + shard, jobs, attempts, run_id, attempt)
+        summary = verify_bundle(loader(matches[0]), shard, sha, tree, run_id, producer['run_attempt'])
+        summary = dict(summary, producer=producer)
         summaries[shard] = summary
         completed.extend(summary['tasks'])
     if sorted(completed) != sorted(ORIGINAL) or len(set(completed)) != len(ORIGINAL):
@@ -209,7 +231,7 @@ def verify_source(manifest, policy, run, sha, event_name):
         raise ValueError('authoritative workflow run source mismatch')
 
 
-def reconcile_task100(artifacts, manifest, sha, tree, run_id, attempt, loader=download_bundle):
+def reconcile_task100(artifacts, manifest, sha, tree, run_id, attempt, loader=download_bundle, *, jobs, attempts):
     summaries = {}
     kinds = []
     if manifest['jobs']['ada-websocket-transport']:
@@ -222,8 +244,11 @@ def reconcile_task100(artifacts, manifest, sha, tree, run_id, attempt, loader=do
             matches = [a for a in artifacts if a['name'] == name]
             if len(matches) != 1 or matches[0]['expired'] or matches[0]['size_in_bytes'] <= 0:
                 raise ValueError('missing/duplicate Task100 artifact: ' + name)
-            summaries[name] = verify_task100_bundle(loader(matches[0]), compiler, real_sleet,
-                                                    sha, tree, run_id, attempt)
+            job_name = ('deep-qualification / ada-websocket-real-sleet' if real_sleet
+                        else 'ada-websocket-transport') + f' ({compiler})'
+            producer = resolve(matches[0], job_name, jobs, attempts, run_id, attempt)
+            summaries[name] = dict(verify_task100_bundle(loader(matches[0]), compiler, real_sleet,
+                                   sha, tree, run_id, producer['run_attempt']), producer=producer)
     return summaries
 
 
@@ -238,19 +263,23 @@ def main():
     verify_source(expected, policy, execution, os.environ['GITHUB_SHA'], os.environ['GITHUB_EVENT_NAME'])
     own = evidence(run, os.environ["GITHUB_RUN_ATTEMPT"])
     verify_records(own, execution)
+    verify_final_job(own['jobs'], execution, os.environ['GITHUB_JOB'])
+    for snapshot in own['attempts'].values():
+        verify_source(expected, policy, snapshot['run'], os.environ['GITHUB_SHA'], os.environ['GITHUB_EVENT_NAME'])
     validate(manifest, expected, json.loads(os.environ["NEEDS_JSON"]), own["jobs"], own["artifacts"], policy)
     primary = {}
     task100 = reconcile_task100(own['artifacts'], manifest, os.environ['GITHUB_SHA'],
                                git(ROOT, 'rev-parse', 'HEAD^{tree}').decode().strip(),
-                               run, os.environ['GITHUB_RUN_ATTEMPT'])
+                               run, os.environ['GITHUB_RUN_ATTEMPT'], jobs=own['jobs'], attempts=own['attempts'])
     if set(SHARDS) <= set(manifest['deep_jobs']):
         primary = reconcile_primary(own['artifacts'], os.environ['GITHUB_SHA'],
                                     git(ROOT, 'rev-parse', 'HEAD^{tree}').decode().strip(),
-                                    run, os.environ['GITHUB_RUN_ATTEMPT'])
+                                    run, os.environ['GITHUB_RUN_ATTEMPT'], jobs=own['jobs'], attempts=own['attempts'])
     report = dict(version=manifest['version'], identities=manifest["identities"], selected_cells=manifest["selected_cells"],
                   skipped_cells=manifest["skipped_cells"], deep=manifest["deep"],
                   deep_jobs=manifest['deep_jobs'], deep_selected_cells=manifest['deep_selected_cells'],
                   deep_skipped_cells=manifest['deep_skipped_cells'], conclusion="success",
+                  run_id=run, gate_attempt=os.environ['GITHUB_RUN_ATTEMPT'],
                   real_uci_shards=primary, task100=task100)
     Path("ci-required-result.json").write_text(json.dumps(report, indent=2) + "\n")
     print("PR_CI_REQUIRED_COMPLETE", json.dumps(report, sort_keys=True))

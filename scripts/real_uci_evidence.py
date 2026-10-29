@@ -222,6 +222,7 @@ def inputs():
 
 
 def verify_bundle(files, shard, sha, tree, run_id, attempt, value=None):
+    """Require exact identity at the independently verified producer attempt."""
     value = value or contract()
     completion = json.loads(files['completion.json'])
     if files['completion.sha256'].decode().strip() != digest(files['completion.json']):
