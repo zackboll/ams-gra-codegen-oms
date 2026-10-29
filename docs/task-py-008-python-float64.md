@@ -453,3 +453,37 @@ Exact ordinary-merge identity, final push identity and exact-head hosted
 outcomes are recorded at the completion checkpoint below;
 none is inferred from the old PR head's green workflow runs. No merge,
 self-approval, release, publication or auto-merge is authorized.
+
+### R1 integration completion checkpoint
+
+The ordinary integration commit is
+`84f7d5f171d2254c84ba9c10bd21cbd5ce16b2c0`, tree
+`0abd08c302374780f7e4601e75c8766803f17c8e`. Its ordered parents are original
+PY-008 `b9d9fcf74ace0a3063ec28d823979adf41fc166d` and incorporated main
+`b6c6c9c5b1fabcd0716c1fd1183cc411d8841872`. Both historical and merged PY-007
+ancestries are retained. The stable-source adversarial rerun passes all **556
+checks**; all 42 recorded local gates and the 61 selector tests pass. The
+follow-up evidence-only commit changes no qualified executable or CI input.
+
+Final-source gate SHA-256 identities:
+
+| Surface | SHA-256 |
+|---|---|
+| `.github/workflows/ci.yml` | `102fc1366bcdca1ba04b21221b4a7c9da1559eb6f50e5e949119f38102fe6b70` |
+| `.github/workflows/deep-ci.yml` | `c2b6f0cc973d7956234328a12d1422035706ed858f0bd64c40b04378f241ed9a` |
+| `scripts/ci_selection.py` | `6b61d83d500527c7f4a91bf83248f210273c6ea4569f813a5bc9b1650563f638` |
+| `scripts/ci_policy.py` | `c836ae41846a4bc72fc9f902c9202ab75026d1b3a790f111a0ae81566e54195f` |
+| `scripts/ci-required-gate.py` | `118b2792dd7eaac9a45d5b617b5f2b79146a56f504785ac48963193e91e70434` |
+| `scripts/ci-qualification-inventory.json` | `03e817dfe8ee912798d9211ca0993c0f0e201214d13ee6d854430f79155c6c4a` |
+| `scripts/check-ci-split.sh` | `2d07ff4fc9792bd2eb659f2d32555f2b750ce0354d16be36801a2e1c3edff8eb` |
+| `scripts/test-check-ci-split.sh` | `780719c932e295e774f405a2cbfd783cb568fdc8115c27c0531153b49ded60fe` |
+| `scripts/test_ci_select_r1.py` | `e7a82f5c59688dd4ab5e553413bcaac733a6510e83c3f7f844b8bac4251f9f16` |
+| `scripts/test_ci_select_py008.py` | `e8e832cbfb6d68a2d1c6faeeb4796d473ea7305965f035465a1e495203a500ab` |
+
+The final commit/tree, normal-push/PR-head equality, complete PR diff and
+exact-head workflow IDs/outcomes are recorded in the external delivery handoff
+and existing PR #119. At this local checkpoint the disposition is
+**HOSTED_CI_PENDING**, not independent-review readiness: the final proposed
+integration must still satisfy the selected ordinary/reusable Deep jobs,
+CI002 security and source-bound `pr-ci-required`, without a failed, cancelled,
+timed-out or unexpectedly skipped mandatory cell. PR #119 remains unmerged.
