@@ -881,7 +881,7 @@
     "upstream_contracts_preserved": true,
     "runner_cells": 40,
     "main_lanes": 5,
-    "python_tests": 145,
+    "python_tests": 152,
     "python_exit": 0,
     "qualified_generator_rust_portable_code_changed": false,
     "exact_final_tree_compiler_qualification": false

@@ -785,7 +785,7 @@ four-cell compiler qualification, workflow, selector/inventory and required-gate
 contracts without conflicts. No upstream qualification payload was modified.
 Current policy reports **40 runner cells, still five main lanes**.
 
-All **145** Python regression tests passed after this late merge; CI policy,
+All **152** Python regression tests passed after this late merge; CI policy,
 documentation policy, pinned queue-aware actionlint and diff checks passed.
 The qualified generator/Rust/portable implementation source paths have no delta
 from `c6cba732`, but Task100 changes repository Ada support/workflow inputs.
