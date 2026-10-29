@@ -14,6 +14,9 @@ from ci_selection import ROOT, inventory, ordinary_jobs, select
 # (Task099/security) and 904ad3baebbf237a91e118c91457ac7207e8edd9 (Task100).
 # These are normalized ORIGINAL payloads, not candidate workflow snapshots.
 INHERITED_PAYLOADS = {
+    # PR #117 payloads independently derived from b6c6c9c5, not this candidate.
+    ('ci.yml', 'python-model-backend'): '901f3eb0d236d16ec4ae928f069f5ffc046467b8c6834c216d69bea309c593e8',
+    ('deep-ci.yml', 'real-uci-regressions'): 'ecd52d12535fd41daf7adb6ef94127ff10bb61a921f8ebb543edb9176c47304f',
     ('ci.yml', 'ada-websocket-transport'): '866e61d53974f75501df8e516a273a1af63206eb476a190d6ad641f1ae451a3e',
     ('deep-ci.yml', 'ada-websocket-real-sleet'): 'deb7a055c9dd6b268fe04fce07791132d3d7a46c77e9a0adacf78bb4c1a07816',
     ('ci.yml', 'ada-lacal-runtime-core'): 'c30d66a0dc4fdf56313964f98407784670cd42b066d3ed1d0fddd5a3a07a1368',
@@ -88,6 +91,10 @@ def check(policy=None, workflows=None):
     check_layout(blocks(workflows['deep-ci.yml'])[1])
     if policy['lanes'] != [f'oms-main-slot-{n}' for n in range(1, 6)]:
         raise ValueError("must define exactly five unique common lanes")
+    if (policy.get('reconciliation_main'), policy.get('reconciliation_main_tree')) != (
+            'b6c6c9c5b1fabcd0716c1fd1183cc411d8841872',
+            '9dc99ef6531ab61b248f83b5f613e981e4002bc0'):
+        raise ValueError('verified PR117 reconciliation base identity changed')
     security = {'ci002-validation.yml', 'oms-trusted-pr-signal.yml', 'oms-ryzen-trusted-dispatch.yml'}
     if set(policy.get('security_headers', {})) != security:
         raise ValueError('required independent security workflow removed')

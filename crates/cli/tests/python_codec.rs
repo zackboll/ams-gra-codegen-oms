@@ -366,9 +366,9 @@ fn all_model_boundaries_still_fail_closed_with_codec_requested() {
             source.replace("type=\"t:Payload\"", "type=\"t:UnusedUnsupported\""),
         ),
         (
-            "inheritance",
+            "choice-inheritance",
             source.replace("<xs:complexType name=\"Empty\"><xs:sequence/></xs:complexType>",
-                "<xs:complexType name=\"Empty\"><xs:complexContent><xs:extension base=\"t:Child\"><xs:sequence/></xs:extension></xs:complexContent></xs:complexType>"),
+                "<xs:complexType name=\"Empty\"><xs:complexContent><xs:extension base=\"t:UnusedUnsupported\"><xs:sequence/></xs:extension></xs:complexContent></xs:complexType>"),
         ),
     ] {
         let schema = temp.0.join(format!("{label}.xsd"));

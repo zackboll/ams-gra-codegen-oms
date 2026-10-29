@@ -11,6 +11,63 @@ import test_ci_select as original
 change, gate, reporter = original.change, original.gate, original.reporter
 
 
+class Py007Integration(unittest.TestCase):
+    def test_reconciliation_base_cannot_be_removed_or_replaced(self):
+        for field in ('reconciliation_main', 'reconciliation_main_tree'):
+            for replacement in (None, '0' * 40):
+                policy = selection.inventory()
+                if replacement is None:
+                    del policy[field]
+                else:
+                    policy[field] = replacement
+                with self.subTest(field=field, replacement=replacement), self.assertRaisesRegex(
+                        ValueError, 'reconciliation base identity changed'):
+                    ci_policy.check(policy=policy)
+
+    def test_aggregate_requires_integrated_uci_step_name(self):
+        policy = selection.inventory()
+        record = next(r for r in policy['jobs'] if
+                      (r['workflow'], r['job_id']) == ('deep-ci.yml', 'real-uci-regressions'))
+        step = next(s for s in record['original_steps'] if 'PY-007' in s.get('name', ''))
+        self.assertIn('scripts/check-py007-uci.py --generator', step['run'])
+        self.assertIn('scripts/test-py007-uci.py', step['run'])
+        self.assertIn(step['name'], record['original_steps_yaml'])
+        fast = next(r for r in policy['jobs'] if
+                    (r['workflow'], r['job_id']) == ('ci.yml', 'python-model-backend'))
+        self.assertTrue(any('--test python_inheritance -- --nocapture' in s.get('run', '')
+                            for s in fast['original_steps']))
+
+    def test_every_inheritance_surface_selects_both_pythons_and_deep(self):
+        for path in ('crates/backend-python/src/lib.rs',
+                     'crates/backend-python/tests/models.rs',
+                     'crates/cli/tests/python_inheritance.rs',
+                     'tests/fixtures/python-inheritance/oam.xsd',
+                     'python/oms-lacal-runtime/tests/test_inheritance_sleet.py',
+                     'scripts/check-py007-uci.py', 'scripts/test-py007-uci.py',
+                     'scripts/check-py007-sleet.sh'):
+            with self.subTest(path=path):
+                manifest = selection.select([change(path)], selection.inventory())
+                self.assertTrue(manifest['deep'])
+                self.assertTrue({'python-model-backend-3.11', 'python-model-backend-3.13'}
+                                <= set(manifest['cells']))
+
+    def test_inheritance_commands_cannot_be_removed_disabled_or_filtered(self):
+        workflows = {p.name: p.read_text() for p in
+                     (selection.ROOT / '.github/workflows').glob('*.yml')}
+        for workflow, command in (
+                ('ci.yml', 'cargo test --locked -p ams-gra-codegen-oms --test python_inheritance -- --nocapture'),
+                ('ci.yml', 'python scripts/test-py007-uci.py'),
+                ('deep-ci.yml', 'python3 scripts/test-py007-uci.py'),
+                ('deep-ci.yml', 'python3 scripts/check-py007-uci.py --generator')):
+            for replacement in ('', 'true # ' + command, command + ' --skip inheritance'):
+                with self.subTest(workflow=workflow, command=command, replacement=replacement):
+                    mutated = dict(workflows)
+                    self.assertEqual(mutated[workflow].count(command), 1)
+                    mutated[workflow] = mutated[workflow].replace(command, replacement)
+                    with self.assertRaisesRegex(ValueError, 'payload/evidence changed'):
+                        ci_policy.check(workflows=mutated)
+
+
 class Task099Selection(unittest.TestCase):
     def test_runtime_fixtures_scripts_and_unknown_paths(self):
         for path in ('ada/oms-lacal-runtime/src/oms_lacal.ads',
@@ -60,6 +117,8 @@ class Task099Gate(original.GateTests):
             gate.verify_source(manifest, self.policy, run, sha, 'pull_request')
             diff.assert_called_once_with(selection.ROOT, base, head, sha)
             self.assertIn(unittest.mock.call(selection.ROOT, 'merge-base', '--is-ancestor', self.policy['incorporated_main'], base), git.call_args_list)
+            for source in (sha, base):
+                self.assertIn(unittest.mock.call(selection.ROOT, 'merge-base', '--is-ancestor', self.policy['reconciliation_main'], source), git.call_args_list)
             with self.assertRaises(ValueError):
                 gate.verify_source(manifest, self.policy, dict(event='pull_request', head_sha=base), sha, 'pull_request')
         with patch.object(gate, 'git', return_value=(head + '\n').encode()), self.assertRaises(ValueError):

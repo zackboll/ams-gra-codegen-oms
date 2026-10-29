@@ -126,6 +126,13 @@ mapping requires its exact normalized profile, not its name alone. Synthetic
 header-profile broker qualification is separate from real-UCI service readiness:
 PositionReport, RDMA_InitializeSetup and SubsystemStream remain unsupported.
 
+[PY-007](docs/task-py-007-python-record-inheritance.md) adds pure Record
+inheritance using the shared structural projection: each concrete type is one
+flattened frozen, slotted, keyword-only dataclass, with inherited and local
+members in schema order and flat OMS JSON codecs. Abstract Records are supported
+only as ancestry and have no generated class. Abstract value positions, Choice
+lowering, Python subclass polymorphism and `$type` substitution remain rejected.
+
 Run
 `ams-gra-codegen-oms --help` or a command followed by `--help` for complete
 usage. Exit status `0` means success, `2` means invalid command-line usage, and

@@ -91,6 +91,19 @@ class Task100Gate(original.GateTests):
 
 
 class Task100Policy(original.SchedulingTests):
+    def test_either_workflow_compiler_cell_cannot_be_omitted(self):
+        healthy = copy.deepcopy(self.workflows)
+        for workflow in ('ci.yml', 'deep-ci.yml'):
+            for compiler in ('14', '16'):
+                self.workflows = copy.deepcopy(healthy)
+                matrix = "compiler: ['14', '16']"
+                self.assertIn(matrix, self.workflows[workflow])
+                other = '16' if compiler == '14' else '14'
+                self.workflows[workflow] = self.workflows[workflow].replace(
+                    matrix, f"compiler: ['{other}']", 1)
+                with self.subTest(workflow=workflow, omitted=compiler), self.assertRaises(ValueError):
+                    self.check()
+
     def test_missing_or_weakened_security_source_inventory_rejected(self):
         healthy = copy.deepcopy(self.policy)
         for mutation in ('missing', 'empty', 'removed-file', 'changed-digest'):

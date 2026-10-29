@@ -2,8 +2,8 @@
 //! capability, type spelling and primitive domains remain the PY-001 rules.
 use crate::{error, names};
 use ams_gra_oms_codegen_core::{
-    CodegenError, GeneratedFile, OAM_NAMESPACE, ServiceApiModel, TypeEmission,
-    oms_json_member_name, plan_type_emissions,
+    CodegenError, GeneratedFile, OAM_NAMESPACE, ServiceApiModel, oms_json_member_name,
+    plan_type_emissions,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, FieldDecl, OccurrenceShape, SchemaIr, TypeKind, TypeRef, TypeRefTarget,
@@ -56,8 +56,9 @@ pub fn generate_service_codec(
     }
     let emissions = plan_type_emissions(schema, model.world())?;
     crate::preflight(schema, &emissions)?;
+    let declarations = crate::emitted_declarations(&emissions)?;
     // Render-time wire preflight is the readiness decision too.
-    for declaration in &schema.types {
+    for declaration in &declarations {
         // §6.1.4's special mapping requires both exact OAM wire identity and
         // the checked Task 038 value space. Name alone remains insufficient.
         if declaration.name.namespace_uri == OAM_NAMESPACE
@@ -68,9 +69,9 @@ pub fn generate_service_codec(
                 "Python OMS JSON codec: OAM UniversallyUniqueIdentifierType RFC 4122 mapping is unsupported",
             ));
         }
-        if let TypeKind::Record { fields } = &declaration.kind {
+        if let TypeKind::Record { .. } = &declaration.kind {
             let mut keys = BTreeSet::new();
-            for field in fields {
+            for field in crate::record_fields(schema, declaration)? {
                 let key = wire_key(field)?;
                 if key == "$type" || !keys.insert(key) {
                     return Err(error(
@@ -88,10 +89,7 @@ pub fn generate_service_codec(
     {
         output.push_str(include_str!("header_codec_runtime.py"));
     }
-    for emission in emissions {
-        let TypeEmission::Declaration(declaration) = emission else {
-            return Err(error("Python codec abstract value"));
-        };
+    for declaration in declarations {
         let symbol = names::symbol(&declaration.name.local_name, false);
         if crate::header_profile(declaration).is_some() {
             writeln!(output, "\n\ndef _encode_{symbol}(value, path):\n    return _header_text(value, path, _model.{symbol})\n\n\ndef _decode_{symbol}(value, path):\n    return _header_value(value, path, _model.{symbol})").unwrap();
@@ -139,9 +137,9 @@ pub fn generate_service_codec(
                 )
                 .unwrap();
             }
-            TypeKind::Record { fields } => {
+            TypeKind::Record { .. } => {
                 writeln!(output, "    result = {{}}").unwrap();
-                for field in fields {
+                for field in crate::record_fields(schema, declaration)? {
                     let key = names::literal(&wire_key(field)?);
                     let access = format!("value.{}", names::symbol(&field.name, true));
                     let path = format!("path + '.' + {key}");
@@ -207,7 +205,8 @@ pub fn generate_service_codec(
                 )
                 .unwrap();
             }
-            TypeKind::Record { fields } => {
+            TypeKind::Record { .. } => {
+                let fields = crate::record_fields(schema, declaration)?;
                 let keys = fields
                     .iter()
                     .map(|field| wire_key(field).map(|key| names::literal(&key)))

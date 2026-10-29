@@ -34,6 +34,7 @@ export AMS_GRA_SLEET_BIN="$CHECKOUT/target/release/sleet"
 bash "$ROOT/scripts/check-py005-sleet.sh"
 for interpreter in ${PY006_PYTHONS:-${PYTHON:-python3}}; do
   PYTHON="$interpreter" bash "$ROOT/scripts/check-py006-sleet.sh"
+  PYTHON="$interpreter" bash "$ROOT/scripts/check-py007-sleet.sh"
 done
 
 cd "$ROOT"

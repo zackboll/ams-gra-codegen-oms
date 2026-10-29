@@ -501,10 +501,11 @@ jobs:
           set -euo pipefail
           python3 scripts/test-task061-service-impact.py
           cargo test --release --locked -p ams-gra-codegen-oms --test service_check_batch
-      - name: Python exact header profiles against pinned UCI (PY-006, must execute)
+      - name: Python current services and immutable historical profiles (PY-007, must execute)
         run: |
           set -euo pipefail
-          python3 scripts/check-py006-uci.py --generator target/release/ams-gra-codegen-oms \
+          python3 scripts/test-py007-uci.py
+          python3 scripts/check-py007-uci.py --generator target/release/ams-gra-codegen-oms \
             --output "$RUNNER_TEMP/py006-uci"
       - name: Preserve Python pinned UCI measurements
         uses: actions/upload-artifact@v4

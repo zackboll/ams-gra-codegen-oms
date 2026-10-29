@@ -11,8 +11,8 @@ pub use service_codec::{SERVICE_CODEC_FILE, generate_service_codec};
 
 use ams_gra_oms_codegen_core::{
     Backend, CodegenError, GeneratedFile, GenerationWorld, InclusiveIntegralDomain,
-    ServiceApiModel, StringProfile, TypeEmission, inclusive_integral_domain, plan_type_emissions,
-    string_profile,
+    ServiceApiModel, StringProfile, TypeEmission, abstract_value_targets, effective_record_fields,
+    inclusive_integral_domain, plan_type_emissions, string_profile,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -74,11 +74,8 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     {
         output.push_str(include_str!("header_runtime.py"));
     }
-    for emission in emissions {
-        let TypeEmission::Declaration(declaration) = emission else {
-            return Err(error("abstract value representations are unsupported"));
-        };
-        render(&mut output, declaration)?;
+    for declaration in emitted_declarations(&emissions)? {
+        render(&mut output, schema, declaration)?;
     }
     Ok(output)
 }
@@ -159,25 +156,21 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
     if schema.namespaces.len() != 1 {
         return Err(error("exactly one schema namespace is required"));
     }
-    // Inspect the original declarations as well: the shared planner can elide
-    // uninhabited abstract targets under ClosedSchemaSet. Python does not yet
-    // implement that absent-only representation either.
-    if schema
-        .types
-        .iter()
-        .any(|declaration| declaration.is_abstract)
-    {
-        return Err(error("abstract declarations are unsupported"));
+    // The shared classifier includes fields, alternatives, aliases, lists and
+    // message payloads, but never base_type edges. Inspect the original schema:
+    // the planner may elide Task 026 absent-only targets, which Python still
+    // does not support. No known descendant is an implicit concrete default.
+    if let Some(target) = abstract_value_targets(schema).first() {
+        return Err(error(format!(
+            "abstract value representations are unsupported: {}",
+            target.name.local_name
+        )));
     }
-    names::validate(schema)?;
+    let declarations = emitted_declarations(emissions)?;
+    names::validate(schema, &declarations)?;
     let mut scalar_names = BTreeSet::new();
-    for emission in emissions {
-        let TypeEmission::Declaration(declaration) = emission else {
-            return Err(error("abstract value representations are unsupported"));
-        };
-        if declaration.is_abstract {
-            return Err(error("abstract declarations are unsupported"));
-        }
+    let mut available = BTreeSet::new();
+    for declaration in declarations {
         // Primitive base provenance is not structural inheritance. Named
         // restriction ancestry is deferred rather than silently flattened.
         if let Some(base) = &declaration.base_type {
@@ -186,6 +179,7 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
                     if kind == base_kind => {}
                 (TypeKind::Enumeration { .. }, TypeRefTarget::Primitive(PrimitiveKind::String)) => {
                 }
+                (TypeKind::Record { .. }, TypeRefTarget::Named(_)) => {}
                 _ => return Err(error("inheritance / named restriction ancestry")),
             }
         }
@@ -210,9 +204,9 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
                 unconstrained(&declaration.constraints)?;
                 scalar_names.insert(declaration.name.clone());
             }
-            TypeKind::Record { fields } => {
+            TypeKind::Record { .. } => {
                 unconstrained(&declaration.constraints)?;
-                for field in fields {
+                for field in record_fields(schema, declaration)? {
                     if field.nillable {
                         return Err(error(format!("nillable field {}", field.name)));
                     }
@@ -220,12 +214,21 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
                         return Err(error(format!("unbounded field {}", field.name)));
                     }
                     reference(&field.type_ref, &field.constraints)?;
+                    if let TypeRefTarget::Named(name) = &field.type_ref.target
+                        && !available.contains(name)
+                    {
+                        return Err(error(format!(
+                            "field {} requires a preceding concrete emitted type {}",
+                            field.name, name.local_name
+                        )));
+                    }
                 }
             }
             TypeKind::Choice { .. } | TypeKind::List { .. } => {
                 return Err(error("Choice / List declarations"));
             }
         }
+        available.insert(declaration.name.clone());
     }
     // Messages are not rendered, but their payload cannot escape subset checks.
     for message in &schema.messages {
@@ -234,7 +237,38 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
     Ok(())
 }
 
-fn render(output: &mut String, declaration: &TypeDecl) -> Result<(), CodegenError> {
+// This Python-specific emission surface is shared by naming, models and codecs.
+// The shared planner's no-value-target shortcut retains ancestry declarations.
+fn emitted_declarations<'a>(
+    emissions: &[TypeEmission<'a>],
+) -> Result<Vec<&'a TypeDecl>, CodegenError> {
+    let mut declarations = Vec::new();
+    for emission in emissions {
+        match emission {
+            TypeEmission::Declaration(declaration)
+                if declaration.is_abstract
+                    && matches!(declaration.kind, TypeKind::Record { .. }) => {}
+            TypeEmission::Declaration(declaration) if !declaration.is_abstract => {
+                declarations.push(*declaration);
+            }
+            _ => return Err(error("abstract value representations are unsupported")),
+        }
+    }
+    Ok(declarations)
+}
+
+fn record_fields<'a>(
+    schema: &'a SchemaIr,
+    declaration: &TypeDecl,
+) -> Result<Vec<&'a ams_gra_oms_ir::FieldDecl>, CodegenError> {
+    effective_record_fields(schema, &declaration.name).map_err(error)
+}
+
+fn render(
+    output: &mut String,
+    schema: &SchemaIr,
+    declaration: &TypeDecl,
+) -> Result<(), CodegenError> {
     let name = names::symbol(&declaration.name.local_name, false);
     let identity = format!(
         "({}, {})",
@@ -283,8 +317,9 @@ fn render(output: &mut String, declaration: &TypeDecl) -> Result<(), CodegenErro
             };
             writeln!(output, "    value: {annotation}\n\n    def __post_init__(self) -> None:\n        _check(self.value, {check})").unwrap();
         }
-        TypeKind::Record { fields } => {
-            for field in fields {
+        TypeKind::Record { .. } => {
+            let fields = record_fields(schema, declaration)?;
+            for field in &fields {
                 let symbol = names::symbol(&field.name, true);
                 let (base, _) = reference(&field.type_ref, &field.constraints)?;
                 let (annotation, default) = match field.cardinality.shape() {

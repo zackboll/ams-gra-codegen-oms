@@ -150,10 +150,12 @@ def verify_source(manifest, policy, run, sha, event_name):
         raise ValueError('final gate checkout/source mismatch')
     git(ROOT, 'merge-base', '--is-ancestor', policy['incorporated_main'], sha)
     git(ROOT, 'merge-base', '--is-ancestor', policy['task100_incorporated_main'], sha)
+    git(ROOT, 'merge-base', '--is-ancestor', policy['reconciliation_main'], sha)
     if event_name == 'pull_request':
         complete_diff(ROOT, identities['base'], identities['head'], sha)
         git(ROOT, 'merge-base', '--is-ancestor', policy['incorporated_main'], identities['base'])
         git(ROOT, 'merge-base', '--is-ancestor', policy['task100_incorporated_main'], identities['base'])
+        git(ROOT, 'merge-base', '--is-ancestor', policy['reconciliation_main'], identities['base'])
     if run['event'] != event_name or run['head_sha'] != (identities['head'] if event_name == 'pull_request' else sha):
         raise ValueError('authoritative workflow run source mismatch')
 
