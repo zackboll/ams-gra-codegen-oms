@@ -233,7 +233,6 @@ fn unsupported_ir_semantics_fail_closed_without_artifacts() {
     for kind in [
         PrimitiveKind::Decimal,
         PrimitiveKind::Float32,
-        PrimitiveKind::Float64,
         PrimitiveKind::Binary,
         PrimitiveKind::DateTime,
         PrimitiveKind::Time,
@@ -316,6 +315,120 @@ fn unsupported_ir_semantics_fail_closed_without_artifacts() {
     for schema in cases {
         rejected(&schema);
     }
+}
+
+#[test]
+fn float64_named_ancestry_requires_resolved_compatible_domains() {
+    let baseline = fixture("../../tests/fixtures/python-float64/oam.xsd");
+    let restricted = baseline
+        .types
+        .iter()
+        .position(|d| d.name.local_name == "Restricted")
+        .unwrap();
+    let scalar = baseline
+        .types
+        .iter()
+        .find(|d| d.name.local_name == "Scalar")
+        .unwrap()
+        .name
+        .clone();
+    let mut unresolved = baseline.clone();
+    unresolved.types[restricted].constraints = ConstraintSet::default();
+    rejected(&unresolved);
+    let mut widened = baseline.clone();
+    widened.types[restricted].constraints.min_inclusive = Some(NumericValue::Float64(
+        ams_gra_oms_ir::Float64Value::from_value(-2.0),
+    ));
+    rejected(&widened);
+    let mut incompatible = baseline;
+    let parent = incompatible
+        .types
+        .iter_mut()
+        .find(|d| d.name == scalar)
+        .unwrap();
+    parent.kind = TypeKind::Primitive(PrimitiveKind::String);
+    parent.base_type = None;
+    incompatible.types[restricted].base_type = Some(TypeRef::named(scalar));
+    rejected(&incompatible);
+}
+
+#[test]
+fn generated_float64_comparisons_match_shared_domains_at_ieee_edges() {
+    use ams_gra_oms_codegen_core::floating_domain;
+    use ams_gra_oms_ir::Float64Value;
+    let mut schema = fixture("../../tests/fixtures/python-float64/oam.xsd");
+    let template = schema
+        .types
+        .iter()
+        .find(|d| d.name.local_name == "Scalar")
+        .unwrap()
+        .clone();
+    let numeric = |value| Some(NumericValue::Float64(Float64Value::from_value(value)));
+    let mut script = String::from(
+        "import struct, unittest\nclass Domains(unittest.TestCase):\n def test_shared_acceptance(self):\n",
+    );
+    let mut index = 0;
+    for lower in [None, Some(false), Some(true)] {
+        for upper in [None, Some(false), Some(true)] {
+            for singleton in [false, true] {
+                if singleton && (lower != Some(true) || upper != Some(true)) {
+                    continue;
+                }
+                let mut declaration = template.clone();
+                let symbol = format!("Domain{index}");
+                declaration.name.local_name = symbol.clone();
+                declaration.constraints = ConstraintSet::default();
+                match lower {
+                    Some(true) => declaration.constraints.min_inclusive = numeric(0.0),
+                    Some(false) => declaration.constraints.min_exclusive = numeric(0.0),
+                    None => {}
+                }
+                match upper {
+                    Some(true) => {
+                        declaration.constraints.max_inclusive =
+                            numeric(if singleton { 0.0 } else { 1.0 })
+                    }
+                    Some(false) => declaration.constraints.max_exclusive = numeric(1.0),
+                    None => {}
+                }
+                let domain =
+                    floating_domain(PrimitiveKind::Float64, &declaration.constraints).unwrap();
+                for value in [
+                    f64::NAN,
+                    f64::NEG_INFINITY,
+                    f64::INFINITY,
+                    -1.0,
+                    -0.0,
+                    0.0,
+                    f64::from_bits(1),
+                    f64::from_bits(0x000f_ffff_ffff_ffff),
+                    f64::MIN_POSITIVE,
+                    f64::from_bits(0x3fef_ffff_ffff_ffff),
+                    1.0,
+                    f64::from_bits(0x3ff0_0000_0000_0001),
+                    f64::MAX,
+                ] {
+                    let accepts = domain.is_none_or(|d| d.accepts_f64(value) == Some(true));
+                    let expression = format!(
+                        "{symbol}(struct.unpack('>d', bytes.fromhex('{:016x}'))[0])",
+                        value.to_bits()
+                    );
+                    if accepts {
+                        script.push_str(&format!("  {expression}\n"));
+                    } else {
+                        script.push_str(&format!(
+                            "  with self.assertRaises(ValueError): {expression}\n"
+                        ));
+                    }
+                }
+                schema.types.push(declaration);
+                index += 1;
+            }
+        }
+    }
+    assert_eq!(index, 10);
+    script.push_str("unittest.main()\n");
+    execute(&schema, &script);
 }
 
 #[test]

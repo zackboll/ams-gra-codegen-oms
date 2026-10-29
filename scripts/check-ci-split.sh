@@ -103,6 +103,29 @@ if grep -Fq 'scripts/check-py007-sleet.sh' <<<"$fast_code" || grep -Fq 'scripts/
   fail "Fast CI must not run PY-007 external campaigns"
 fi
 
+# PY-008 uses the current selector, not the obsolete Deep PR path trigger.
+# Check the supplied shared harness, including disposable adversarial copies.
+python3 - "$repo" "$sleet" <<'PY' || fail "PY-008 shared-Sleet execution policy failed"
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(sys.argv[1]) / 'scripts'))
+from ci_policy import check_py008_sleet
+check_py008_sleet(Path(sys.argv[2]).read_text())
+PY
+for required in '--test python_float64 -- --nocapture' 'python scripts/test-py008-uci.py' \
+  'python scripts/check-py008-numeric.py' 'python -O scripts/check-py008-numeric.py'; do
+  grep -Fq -- "$required" <<<"$fast_code" || fail "Fast CI lost PY-008 gate: $required"
+done
+for required in 'python3 scripts/check-py008-uci.py --generator' \
+  '--service-baseline tests/fixtures/python-float64/after.json' \
+  'scripts/check-py008-numeric.py --full' 'for interpreter in python3.11 python3.13; do'; do
+  grep -Fq -- "$required" <<<"$deep_code" || fail "Deep CI lost PY-008 gate: $required"
+done
+grep -Fq 'scripts/check-py008-sleet.sh' <<<"$sleet_code" || fail "Sleet harness lost PY-008 Float64 delivery"
+if grep -Fq 'scripts/check-py008-sleet.sh' <<<"$fast_code" || grep -Fq 'scripts/check-py008-uci.py --generator' <<<"$fast_code"; then
+  fail "Fast CI must not run PY-008 external campaigns"
+fi
+
 for required in 'bash scripts/check-task077-fast.sh' 'bash scripts/test-task077-ci-wrappers.sh'; do
   grep -Fq "$required" <<<"$fast_code" || fail "Fast CI lost Task 077 gate: $required"
 done

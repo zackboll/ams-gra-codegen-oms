@@ -133,6 +133,14 @@ members in schema order and flat OMS JSON codecs. Abstract Records are supported
 only as ancestry and have no generated class. Abstract value positions, Choice
 lowering, Python subclass polymorphism and `$type` substitution remain rejected.
 
+[PY-008](docs/task-py-008-python-float64.md) adds checked named Float64 carriers
+and unconstrained direct `float` members, using the shared binary64 range
+classifier. Demand-gated standard-library codecs preserve finite bits (including
+negative zero), correctly round original JSON number tokens, and use exact OMS
+special Strings. Integer syntax/arbitrary precision and duplicate rejection are
+unchanged. Float32, Decimal, DateTime, Binary, Choice and abstract values remain
+outside this Python subset; numerical qualification is not complete-UCI readiness.
+
 Run
 `ams-gra-codegen-oms --help` or a command followed by `--help` for complete
 usage. Exit status `0` means success, `2` means invalid command-line usage, and

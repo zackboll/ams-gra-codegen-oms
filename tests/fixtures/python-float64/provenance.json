@@ -1,0 +1,24 @@
+{
+  "authority": {
+    "revision": "726272bd0390982a759c91a9cf4e13b81c2b510b",
+    "sha256": "b1c3c07872570fb4f2c84fd819076b1b588148ef28225f5a8e23433efe94b1a7"
+  },
+  "uci_tags": "093610b7753944059360d3236770ab446d039556\trefs/tags/v2.5\n78eb61b6112c8bffa40820c33124b57787fc5bd9\trefs/tags/v2.6\n",
+  "sleet": {
+    "revision": "e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b",
+    "binary_sha256": "4a2e9ee872d1deaa1a6ce1a1494a2f601660eb57c0df28a447b28a08eba21c94"
+  },
+  "raw_evidence_root": "/home/zboll/py008-evidence",
+  "discarded_capture": "after-uci-capture: stale baseline executable; NOT qualification",
+  "historical_files_unchanged": {
+    "tests/fixtures/python-header-profiles/before.json": "cd8c707460a3da6f3ef5eac8115324a2173440f4726fb553db961873a5782f05",
+    "tests/fixtures/python-header-profiles/after.json": "7345f45f3cc0a69cd552e48d3c2f04d98aab4e77b24c902ab764057bf2f3f7dc",
+    "tests/fixtures/python-inheritance/controlled-before.json": "c0913286091baa206a0a78543d9c8f0e170a2e33ef5a01d46e2b1a3f536eb9c6",
+    "tests/fixtures/python-inheritance/before.json": "f9b56c017187d84e75c182a83cd5ebfebb7d568e596b15167aa953c1e5726233",
+    "tests/fixtures/python-inheritance/qualification.json": "876967b0bfdb9b95fb30ec690b6c56309b3ff5cc6887273c1b7f9a65f6fee341",
+    "tests/fixtures/python-inheritance/source-output-parity.json": "cfbe973ff24c8317ed805ac3b1873330d2f56a94fa1886ba68d8205f990f2ebf",
+    "tests/fixtures/python-inheritance/controlled-after.json": "7e06e575a871dcc54043b5769ceee84255680b026d8768c90869558c7d7931d6",
+    "tests/fixtures/python-inheritance/after.json": "b80985470ec6757eed65db1683cca08c5f24f3b191edf4ca04cb2d24d5e5d25c",
+    "tests/fixtures/python-inheritance/selected-closures.json": "774d397a9ac294c5f50320a60a19473a8dca0402d7321833cb17afd193ace9b9"
+  }
+}

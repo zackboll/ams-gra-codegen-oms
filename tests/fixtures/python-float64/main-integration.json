@@ -1,0 +1,45 @@
+{
+  "main": "d603077c6d38ccc0658391776e3af9eecb009255",
+  "main_tree": "5ea3873e3bf6a8e2960e8d1faa57049d867a2456",
+  "integration_commit": "6c467b266d672f549c7139422d90bc70d569d670",
+  "integration_tree": "e998e81d4294912185ed69f51f5158a1dc260900",
+  "incoming_files": [
+    ".github/workflows/ci002-validation.yml",
+    ".github/workflows/oms-ryzen-trusted-dispatch.yml",
+    ".github/workflows/oms-trusted-pr-signal.yml",
+    "docs/ci-runner-002-r1-provenance.md",
+    "docs/ci-runner-002-trusted-pr-dispatch.md",
+    "scripts/ci002/dispatch.py",
+    "scripts/ci002/gate.py",
+    "scripts/ci002/requirements.txt",
+    "scripts/ci002/test_dispatch.py",
+    "scripts/ci002/test_gate.py",
+    "scripts/ci002/test_mutations.py",
+    "scripts/ci002/test_workflows.py"
+  ],
+  "incoming_bytes_match_main": true,
+  "python_production_unchanged": true,
+  "ci002_security_tests": 30,
+  "ci002_exit": 0,
+  "historical_authenticated_workflow": "4c79fff41970a8ba7109df9bd185a6b166c0ffb0",
+  "integrated_generator_byte_identical": true,
+  "focused": {
+    "integrated-backend-python3.11": {
+      "exit": 0,
+      "log_sha256": "cd6b218b7d8f5ca678e4d5a8df1ff3c7cc6d6ab28b3a1a89617341f181c2010a"
+    },
+    "integrated-backend-python3.13": {
+      "exit": 0,
+      "log_sha256": "d4954ac2f678864ffc285c0eb45f79db190d02c570974d49f6f025f94de221d4"
+    },
+    "integrated-focused-python3.11": {
+      "exit": 0,
+      "log_sha256": "ab79d10bf96240c5405fbb86e5c4b270f20a4b7522698b6b8567dd1d4a5241fb"
+    },
+    "integrated-focused-python3.13": {
+      "exit": 0,
+      "log_sha256": "e610a9b679ba9e2772549c48e5a5935906639b3627605eb13a75c921ba338267"
+    }
+  },
+  "integrated_check_clippy_exit": 0
+}

@@ -1,5 +1,26 @@
 # Backend compatibility
 
+## Python update — PY-008 checked Float64 and lossless OMS JSON
+
+Named Float64 declarations use frozen, slotted `value: float` carriers; direct
+unconstrained Record fields use exact native `float` (`int`, `bool`, Decimal and
+float subclasses are rejected). Shared `floating_domain` supplies finite,
+width-correct inclusive/exclusive ranges; checks remain active under `-O` and
+reject NaN in constrained domains. Compatible Float64 named restriction chains
+require resolved effective domains; this does not admit other named ancestry.
+
+Original JSON numeric tokens survive until the expected field is known. Float64
+conversion is correctly rounded once, preserves signed zero/subnormal underflow,
+and rejects overflow. Finite encoding uses shortest binary64 numbers; nonfinite
+values use exactly `"NaN"`, `"Infinity"`, `"-Infinity"`. Integer fields retain
+integer-only syntax and arbitrary precision without process-global limit changes.
+Private helpers are absent from Float64-free output. Existing service/runtime
+APIs and message-size limits are unchanged. See [PY-008 qualification](task-py-008-python-float64.md)
+for numerical oracle, pinned Sleet and separately measured real-UCI boundaries.
+No Float32, Decimal, general patterns, Choice, abstract values or new transport
+capabilities are introduced. Historical PY-001–007 descriptions below retain
+their original scope.
+
 ## Python update — PY-007 pure Record inheritance
 
 Python uses the Task 018 `effective_record_fields` projection for naming,

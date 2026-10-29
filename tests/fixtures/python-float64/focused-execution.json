@@ -1,0 +1,39 @@
+{
+  "proposed-backend-python3.11": {
+    "exit": 0,
+    "passed": 19,
+    "failed": 0,
+    "ignored": 0,
+    "log_sha256": "0a8aaae0f85ec17c03aa3408cc240d896a8a2a204444ef502a351751ec45af1c"
+  },
+  "proposed-backend-python3.13": {
+    "exit": 0,
+    "passed": 19,
+    "failed": 0,
+    "ignored": 0,
+    "log_sha256": "70f94d35240f2d8c8d9efb3b2ac10f825b77b7cdeefcda7ea4b26e3a197f4c72"
+  },
+  "proposed-focused-python3.11": {
+    "exit": 0,
+    "passed": 23,
+    "failed": 0,
+    "ignored": 0,
+    "log_sha256": "b28957bbfe6b145286c62e8e1ec7050c012d0987eb4e06a9094d1bfa3f6c95bf"
+  },
+  "proposed-focused-python3.13": {
+    "exit": 0,
+    "passed": 23,
+    "failed": 0,
+    "ignored": 0,
+    "log_sha256": "84c45b943a6658e18070b3258e57be764f62bfdb554cc2dc357c387602d45ca8"
+  },
+  "float64_generated_probe": {
+    "methods_per_cell": 11,
+    "worlds": 2,
+    "import_styles": 2,
+    "execution_policies": 2,
+    "interpreters": 2,
+    "total_method_executions": 176
+  },
+  "source_commit": "8c2bbe148c4557dd2fea51bb86f49068b2f620bf"
+}
