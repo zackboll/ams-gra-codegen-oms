@@ -247,7 +247,7 @@ def main():
         primary = reconcile_primary(own['artifacts'], os.environ['GITHUB_SHA'],
                                     git(ROOT, 'rev-parse', 'HEAD^{tree}').decode().strip(),
                                     run, os.environ['GITHUB_RUN_ATTEMPT'])
-    report = dict(identities=manifest["identities"], selected_cells=manifest["selected_cells"],
+    report = dict(version=manifest['version'], identities=manifest["identities"], selected_cells=manifest["selected_cells"],
                   skipped_cells=manifest["skipped_cells"], deep=manifest["deep"],
                   deep_jobs=manifest['deep_jobs'], deep_selected_cells=manifest['deep_selected_cells'],
                   deep_skipped_cells=manifest['deep_skipped_cells'], conclusion="success",

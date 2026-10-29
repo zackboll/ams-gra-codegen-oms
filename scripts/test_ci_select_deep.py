@@ -1,6 +1,8 @@
 """CI-SELECT-002 ownership, wire contract, job skip and immutable policy tests."""
 import copy
+import json
 import unittest
+from unittest.mock import patch
 
 import ci_policy
 import ci_selection as selection
@@ -290,6 +292,47 @@ class AuthoritativeIdentity(unittest.TestCase):
             records[kind].append(copy.deepcopy(records[kind][0]))
             with self.assertRaisesRegex(ValueError, 'duplicate authoritative'):
                 gate.verify_records(records, execution)
+
+
+class FinalReportContract(unittest.TestCase):
+    def test_written_and_printed_result_preserve_manifest_version_and_cells(self):
+        for docs in (False, True):
+            fixture = GateTests()
+            fixture.setUp()
+            manifest = fixture.manifest
+            if docs:
+                manifest = selection.select([change('README.md')], fixture.policy)
+                fixture.needs = {j: dict(result='skipped') for j in manifest['jobs']}
+                fixture.needs.update({j: dict(result='success') for j in ('changes', 'baseline')})
+                fixture.needs['deep-qualification'] = dict(result='skipped')
+                fixture.jobs, fixture.artifacts = [], []
+            manifest['identities'] = dict(base='a' * 40, head='b' * 40, merge='c' * 40)
+            environment = dict(SELECTION_MANIFEST=json.dumps(manifest),
+                               NEEDS_JSON=json.dumps(fixture.needs), GITHUB_RUN_ID='123',
+                               GITHUB_RUN_ATTEMPT='1', GITHUB_SHA='c' * 40,
+                               GITHUB_EVENT_NAME='pull_request')
+            records = dict(jobs=fixture.jobs, artifacts=fixture.artifacts)
+            with self.subTest(docs=docs), patch.dict('os.environ', environment), \
+                    patch.object(gate, 'from_environment', return_value=manifest), \
+                    patch.object(gate, 'api', return_value=dict(id=123, run_attempt=1)), \
+                    patch.object(gate, 'verify_source'), patch.object(gate, 'verify_records'), \
+                    patch.object(gate, 'evidence', return_value=records), \
+                    patch.object(gate, 'git', return_value=('d' * 40 + '\n').encode()), \
+                    patch.object(gate, 'reconcile_task100', return_value={}), \
+                    patch.object(gate, 'reconcile_primary', return_value={}), \
+                    patch.object(gate, 'Path') as path, patch('builtins.print') as output:
+                gate.main()
+                path.assert_called_once_with('ci-required-result.json')
+                report = json.loads(path.return_value.write_text.call_args.args[0])
+                printed = json.loads(output.call_args.args[1])
+                self.assertEqual(output.call_args.args[0], 'PR_CI_REQUIRED_COMPLETE')
+                self.assertEqual(printed, report)
+                for field in ('version', 'identities', 'deep_jobs', 'selected_cells',
+                              'skipped_cells', 'deep_selected_cells', 'deep_skipped_cells'):
+                    self.assertEqual(report[field], manifest[field], field)
+                self.assertEqual(report['version'], 2)
+                self.assertEqual(report['deep_selected_cells'], 0 if docs else 12)
+                self.assertEqual(report['conclusion'], 'success')
 
 
 if __name__ == '__main__':
