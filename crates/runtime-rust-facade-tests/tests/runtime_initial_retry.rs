@@ -1,10 +1,9 @@
-//! Task070: public lifecycle and generated endpoint controls. Serialized so
-//! Linux worker counts belong exclusively to the test holding the lock.
+//! Task070: public lifecycle and generated endpoint controls. Procfs task
+//! removal can lag a successful join; close/Drop joining is tested with
+//! actual-worker callback and TLS barriers in runtime_lifecycle.rs.
 mod common;
 
-use ams_gra_oms_runtime_rust::{
-    RuntimeConfig, RuntimeError, RuntimeEvent, SleetRuntime, WORKER_THREAD_NAME,
-};
+use ams_gra_oms_runtime_rust::{RuntimeConfig, RuntimeError, RuntimeEvent, SleetRuntime};
 use ams_gra_oms_runtime_rust_facade_tests::codec::{TestCodec, shared};
 use ams_gra_oms_runtime_rust_facade_tests::runtime_test::model::SharedPayload;
 use ams_gra_oms_runtime_rust_facade_tests::runtime_test::service_api::function_track as track;
@@ -21,24 +20,6 @@ fn config(url: &str) -> RuntimeConfig {
     RuntimeConfig::new(url, "svc-1", "000.1.0")
         .with_connect_timeout(Duration::from_millis(500))
         .with_initial_connect_retry(3, Duration::from_millis(2), Duration::from_millis(4))
-}
-
-fn no_workers() {
-    #[cfg(target_os = "linux")]
-    assert_eq!(
-        std::fs::read_dir("/proc/self/task")
-            .unwrap()
-            .filter_map(Result::ok)
-            .filter(|task| {
-                std::fs::read_to_string(task.path().join("comm")).is_ok_and(|name| {
-                    let name = name.trim_end();
-                    !name.is_empty() && WORKER_THREAD_NAME.starts_with(name)
-                })
-            })
-            .count(),
-        0,
-        "runtime worker outlived joined connect/close"
-    );
 }
 
 #[test]
@@ -64,7 +45,6 @@ fn task070_terminal_refusal_preserves_error_and_joins_worker() {
     assert!(
         matches!(*client, ClientError::Transport(WsError::Io(ref io)) if io.kind() == std::io::ErrorKind::ConnectionRefused)
     );
-    no_workers();
 }
 
 #[test]
@@ -81,7 +61,6 @@ fn task070_init_rejection_is_terminal() {
     assert!(peer.next_text().starts_with("INIT "));
     peer.expect_closed();
     peer.expect_no_connection();
-    no_workers();
 }
 
 #[test]
@@ -112,7 +91,6 @@ fn task070_established_session_never_reconnects_or_replays() {
     ));
     runtime.close().unwrap();
     peer.expect_no_connection();
-    no_workers();
 }
 
 #[test]
@@ -126,5 +104,4 @@ fn task070_generated_publish_once_and_close() {
     runtime.close().unwrap();
     peer.expect_closed();
     peer.expect_no_connection();
-    no_workers();
 }

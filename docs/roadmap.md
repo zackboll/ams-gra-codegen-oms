@@ -773,8 +773,13 @@ Progress (typed LA-CAL integration as a whole is **not** complete):
       generated façade against a mock OWP peer in CI and against the
       unmodified pinned Sleet.
 - [ ] Ada LA-CAL runtime. Task 099 adds a transport-independent OWP core and
-      generated typed codec/facade mock consumers; WebSocket/Sleet transport
-      qualification remains separate. See [Task 099](task-099-ada-lacal-runtime-core.md).
+      generated typed codec/facade mock consumers. Task 100 adds an optional
+      single-threaded loopback WebSocket adapter over pinned external framing
+      libraries and has executed generated typed messages through unmodified
+      pinned Sleet; full qualification/review remains required, and remote TLS
+      and real-UCI interoperability are not claimed. See
+      [Task 099](task-099-ada-lacal-runtime-core.md) and
+      [Task 100](task-100-ada-websocket-transport.md).
 - [ ] C++ LA-CAL runtime.
 - [x] generated **Rust** OMS JSON payload codecs (Task 050). Opt-in
       `service-check`/`service-generate --with-codec` emits `service_codec.rs`

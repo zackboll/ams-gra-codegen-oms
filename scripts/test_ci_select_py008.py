@@ -1,4 +1,6 @@
 """PY-008 reconciliation: attributed, non-vacuous offline policy controls."""
+import copy
+import hashlib
 import re
 import unittest
 
@@ -13,7 +15,7 @@ class Float64Integration(unittest.TestCase):
         self.workflows = {p.name: p.read_text() for p in
                           (selection.ROOT / '.github/workflows').glob('*.yml')}
         self.sleet = (selection.ROOT / 'scripts/run-real-sleet-test.sh').read_text()
-        self.assertEqual(ci_policy.check(self.policy, self.workflows, self.sleet), 36)
+        self.assertEqual(ci_policy.check(self.policy, self.workflows, self.sleet), 40)
 
     def reject(self, workflow, before, after, diagnostic):
         mutated = dict(self.workflows)
@@ -103,7 +105,100 @@ class Float64Integration(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'missing/expired/stale required evidence: ' + artifact):
                 gate.validate_cells(record, [dict(name=job, status='completed', conclusion='success',
                     started_at='2026-10-29T00:00:00Z', steps=[dict(name=s.get('name', 'action'), conclusion='success')
-                    for s in record['original_steps']])], [])
+                    for s in record.get('integration_steps', record['original_steps'])])], [])
+
+    def test_reviewed_baseline_and_additive_payloads_are_separate(self):
+        for key, digest in ci_policy.PY008_INTEGRATED_PAYLOADS.items():
+            record = next(r for r in self.policy['jobs'] if (r['workflow'], r['job_id']) == key)
+            self.assertEqual(hashlib.sha256(ci_policy.normalized(record['original_steps_yaml']).encode()).hexdigest(),
+                             ci_policy.INHERITED_PAYLOADS[key])
+            self.assertEqual(hashlib.sha256(ci_policy.normalized(record['integration_steps_yaml']).encode()).hexdigest(), digest)
+            ci_policy.check_py008_integration(record)
+            self.assertNotEqual(record['original_steps_yaml'], record['integration_steps_yaml'])
+            mutated = copy.deepcopy(record)
+            owner = next(s for s in mutated['integration_steps'] if s.get('run') and 'PY-008' not in s.get('name', ''))
+            self.assertNotEqual(owner['run'], 'true\n')
+            owner['run'] = 'true\n'
+            with self.assertRaisesRegex(ValueError, 'PY-008 (mandatory additive command|integration removed/replaced inherited step)'):
+                ci_policy.check_py008_integration(mutated)
+
+    def test_inherited_test_cannot_be_replaced_and_repinned(self):
+        for workflow, job, command in (
+                ('ci.yml', 'python-model-backend', 'cargo test --locked -p ams-gra-codegen-oms --test python_inheritance -- --nocapture'),
+                ('deep-ci.yml', 'real-uci-regressions', 'python3 scripts/test-py007-uci.py')):
+            policy = copy.deepcopy(self.policy)
+            record = next(r for r in policy['jobs'] if (r['workflow'], r['job_id']) == (workflow, job))
+            self.assertEqual(record['integration_steps_yaml'].count(command), 1)
+            record['integration_steps_yaml'] = record['integration_steps_yaml'].replace(command, 'true # unrelated success')
+            with self.assertRaisesRegex(ValueError, 'PY-008 integration payload changed: ' + job):
+                ci_policy.check(policy, self.workflows, self.sleet)
+            record['original_steps_yaml'] = record['integration_steps_yaml']
+            with self.assertRaisesRegex(ValueError, 'verified current-main baseline payload changed: ' + job):
+                ci_policy.check(policy, self.workflows, self.sleet)
+
+    def test_aggregate_step_arrays_cannot_drift_from_pinned_yaml(self):
+        for key in ci_policy.PY008_INTEGRATED_PAYLOADS:
+            for field in ('original_steps', 'integration_steps'):
+                policy = copy.deepcopy(self.policy)
+                record = next(r for r in policy['jobs'] if (r['workflow'], r['job_id']) == key)
+                healthy = copy.deepcopy(record[field])
+                record[field].pop()
+                self.assertNotEqual(record[field], healthy)
+                with self.assertRaisesRegex(ValueError, 'PY-008 aggregate step contract changed: ' + key[1]):
+                    ci_policy.check(policy, self.workflows, self.sleet)
+
+    def test_task096_oracle_retains_task100_and_python_ownership(self):
+        for path in ('tests/ada-float64-probe/oracle.py', 'tests/ada-float64-probe/corpus-manifest.json'):
+            manifest = selection.select([change(path)], self.policy)
+            self.assertTrue(manifest['deep'])
+            self.assertTrue({'python-model-backend-3.11', 'python-model-backend-3.13',
+                             'ada-websocket-transport-14', 'ada-websocket-transport-16'} <= set(manifest['cells']))
+
+    def test_task100_compiler_cells_and_artifacts_remain_mandatory(self):
+        for workflow, job, kind in (('ci.yml', 'ada-websocket-transport', 'transport'),
+                                    ('deep-ci.yml', 'ada-websocket-real-sleet', 'sleet')):
+            for compiler in ('14', '16'):
+                policy = copy.deepcopy(self.policy)
+                record = next(r for r in policy['jobs'] if r['job_id'] == job)
+                cell = next(c for c in record['cells'] if c['variant']['compiler'] == compiler)
+                record['cells'].remove(cell)
+                with self.assertRaisesRegex(ValueError, 'Task100 requires exactly GNAT14/GNAT16 cells and artifacts: ' + job):
+                    ci_policy.check(policy, self.workflows, self.sleet)
+                for artifacts in ([], [f'task100-ada-websocket-{kind}-{compiler}'] * 2):
+                    policy = copy.deepcopy(self.policy)
+                    record = next(r for r in policy['jobs'] if r['job_id'] == job)
+                    cell = next(c for c in record['cells'] if c['variant']['compiler'] == compiler)
+                    self.assertNotEqual(cell['artifacts'], artifacts)
+                    cell['artifacts'] = artifacts
+                    with self.assertRaisesRegex(ValueError, 'Task100 requires exactly GNAT14/GNAT16 cells and artifacts: ' + job):
+                        ci_policy.check(policy, self.workflows, self.sleet)
+
+    def test_primary_shards_cannot_be_skipped(self):
+        for shard in ('real-uci-temporal-naming', 'real-uci-schema-ipv6', 'real-uci-integral-unicode'):
+            self.reject('deep-ci.yml', '  ' + shard + ':\n', '  ' + shard + ':\n    if: false\n',
+                        'primary shard.*conditional|qualification runner/matrix/dependency policy changed: ' + shard)
+
+    def test_aggregate_evidence_and_security_cannot_be_bypassed(self):
+        self.reject('ci.yml', 'python3 scripts/ci-required-gate.py', 'true # bypass evidence',
+                    'mandatory baseline/final gate changed: pr-ci-required')
+        policy = copy.deepcopy(self.policy)
+        path = next(iter(policy['security_source_sha256']))
+        self.assertNotEqual(policy['security_source_sha256'][path], '0' * 64)
+        policy['security_source_sha256'][path] = '0' * 64
+        with self.assertRaisesRegex(ValueError, 'missing/modified inherited CI002 source inventory'):
+            ci_policy.check(policy, self.workflows, self.sleet)
+
+    def test_rust_worker_join_sources_and_required_workspace_cannot_disappear(self):
+        sources = {p: (selection.ROOT / p).read_bytes() for p in ci_policy.RUST_CI001_SOURCES}
+        ci_policy.check_rust_ci001(sources)
+        for path in sources:
+            mutated = dict(sources)
+            mutated[path] = b'// removed worker-join regression\n'
+            self.assertNotEqual(mutated[path], sources[path])
+            with self.assertRaisesRegex(ValueError, 'RUST-CI-001 worker-join qualification source changed: ' + re.escape(path)):
+                ci_policy.check_rust_ci001(mutated)
+        self.reject('ci.yml', '- run: cargo test --workspace', '- run: cargo test --workspace --exclude ams-gra-oms-runtime-rust-facade-tests',
+                    'inherited qualification payload/evidence changed: rust')
 
 
 if __name__ == '__main__':

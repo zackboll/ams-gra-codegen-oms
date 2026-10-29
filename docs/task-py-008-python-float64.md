@@ -487,3 +487,167 @@ and existing PR #119. At this local checkpoint the disposition is
 integration must still satisfy the selected ordinary/reusable Deep jobs,
 CI002 security and source-bound `pr-ci-required`, without a failed, cancelled,
 timed-out or unexpectedly skipped mandatory cell. PR #119 remains unmerged.
+
+## PY-008-R2 — Task100 and RUST-CI-001 integration
+
+### Verified provenance and preservation
+
+R2 starts from qualified PR #119 HEAD
+`af467b4789758cab544829a15bc0ae5d2d96cbba`, tree
+`bb030913d5f7f04d208bd2575eba2f0836643c5a`, with a clean worktree on the
+existing `feature/py-008-python-float64` branch. Remote refs and independent
+GitHub branch metadata agree on main
+`7958c4e0d8f78768fd4c7d4c1bd34877c31d893a`, tree
+`a94fc3bb844349780772566eafd50db7a7328efe`. The merge base is
+`b6c6c9c5b1fabcd0716c1fd1183cc411d8841872`. No competing worktree process or
+Git lock was observed. The ordinary merge's first parent must be the starting
+PR HEAD and its second parent the independently fetched main above.
+
+The R1 pending checkpoint above is historical: R2 independently confirms R1
+CI run **40794646389 succeeded with all 31 jobs**, including `pr-ci-required`,
+and CI002 run **40794646242 succeeded** for the exact R1 HEAD. Those results
+do not qualify R2. Main run **40800583532** was still pending when inspected;
+its merge is not evidence that main qualification completed.
+
+Before merging, R2 froze **122 files**, with Git blob IDs, SHA-256 hashes and
+read-only external copies. **All 36 original frozen PY-008 files remain
+byte-identical**, as do all backend/runtime/CLI Float64 implementation files,
+historical PY-006/PY-007 fixtures, numerical scripts and the Task096 oracle
+and corpus manifest. Of the broader 122-file capture, 121 are unchanged; the
+sole intentional extension is `scripts/test_ci_select_py008.py`, explicitly
+required to qualify the new 40-cell policy. No historical evidence is
+regenerated or revised. The final executable SHA-256 remains
+`f1a0fd113c155f232b625500d6141496b68d8bc06d0bb234757c55a5586c14f9`.
+
+Task100's Ada runtime/transport, GPR companions, fixtures, local peer,
+qualification driver, evidence verifier and original documentation are
+byte-identical to fetched main. RUST-CI-001's entire facade-test source tree,
+worker-join helper, fairness/retry/lifecycle regressions and qualification
+documentation/evidence are also byte-identical to main. Their merged
+ancestries are preserved; no duplicate or reverted implementation is added.
+
+### Complete conflict and semantic reconciliation manifest
+
+There is **one textual conflict**, in
+`scripts/ci-qualification-inventory.json`: the Task096 Float64 rule has
+Python ownership on R1 and Ada WebSocket transport ownership on main. The
+resolution takes the union, retaining Rust, Ada JSON/Float64/TimeZulu/runtime,
+Task100 GNAT14/GNAT16 transport and both Python versions, plus Deep.
+
+Automatic merges require the following semantic review/corrections:
+
+| Surface | Resolution |
+|---|---|
+| Ordinary CI | Retain both Task100 transport compiler cells and aggregate dependency; preserve exact R1 Python model/Float64 commands and Rust 1.95 pin. |
+| Reusable Deep | Retain independent Task100 GNAT14/GNAT16 Sleet campaigns, all PERF-007 shards, and the R1 Python full numerical/UCI/shared-broker campaign. |
+| Qualification inventory | Restore original main Python/Deep payloads as historical authority; separately retain reviewed R1 additive payloads and parsed steps. Preserve new-main selection rules and all 40 expanded cells (39 main-eligible). |
+| `ci_policy.py` | Keep every original `INHERITED_PAYLOADS`, Task100 original/integration distinction and seven CI002 hashes. Separately pin R1 integration YAML and parsed step arrays; project the narrow additive delta back to the original mandatory steps. Preserve the optional third shared-Sleet argument and all Task100 checks. |
+| `ci-required-gate.py` | Require the integrated Python named steps, not just the historical subset. Existing four-cell Task100 and three-shard PERF-007 evidence reconciliation remains intact. |
+| Selector tests | Healthy aggregate fixtures contain the additive named steps. All inherited assertions and tests remain; PY-008 adds attributed negative controls, step-array drift rejection and 40-cell coverage. |
+| Rust qualification guard | Bind the unchanged main worker-join source identities and original Rust job payload so removal/exclusion cannot silently avoid the newly inherited tests. |
+
+`PY008_INTEGRATED_PAYLOADS` is derived from **qualified R1**, not from merged
+candidate workflows. Original payload hashes are verified separately against
+the actual fetched-main Git objects. Parsed original and integrated step
+contracts are separately pinned because the final gate consumes those arrays.
+The additive projection permits only the reviewed Float64 commands/steps,
+Rust pin, versioned UCI baseline argument and combined step name. Removed
+inherited checks replaced with unrelated successful commands are rejected.
+Comment-only differences do not remove executable qualification.
+
+All five lanes and lane assignments, `queue: max`, baseline **20-minute**
+timeout, mandatory aggregate, trusted workflow protections and seven CI002
+source hashes are preserved. Task100's four artifacts remain:
+`task100-ada-websocket-transport-14`, `task100-ada-websocket-transport-16`,
+`task100-ada-websocket-sleet-14`, `task100-ada-websocket-sleet-16`.
+
+### R2 numerical, generated-code and interoperability execution
+
+| Interpreter/policy | Conversions | Finite encodings | Mismatches | Corruption controls |
+|---|---:|---:|---:|---:|
+| Python 3.11 normal | 27,167 | 20,474 | 0 | 4/4 |
+| Python 3.11 optimized | 27,167 | 20,474 | 0 | 4/4 |
+| Python 3.13 normal | 27,167 | 20,474 | 0 | 4/4 |
+| Python 3.13 optimized | 27,167 | 20,474 | 0 | 4/4 |
+
+All four Fast samples separately pass **6,693 conversions / 162 encodings**.
+The frozen corpus hashes and all three CLI-generated Python source hashes
+match R1. Actual probes cover binary64 rounding/ties, signed zero, subnormals,
+NaN/bounds, infinities, special strings, huge integers, finite numeric
+serialization and duplicate-member rejection without acquiring unsupported
+Float32/Decimal/DateTime/Binary/Choice behavior.
+
+Each explicit interpreter passes **19 backend Rust tests + 23 focused CLI
+Rust tests**, zero failed/ignored/filtered. Their generated Python probes
+execute 24 backend unittest methods and 440 focused methods per interpreter;
+the Float64 standalone/package normal/optimized subset is **88 methods**.
+The network mocks execute **38 methods per interpreter**, without skips.
+
+The current generator reproduces all **12 non-Float64 selections / 30 Python
+files** and **40 legacy generation/report selections**, with the complete
+result objects equal to frozen `nonfloat-parity.json` and `legacy-parity.json`.
+Both pinned UCI release commits and root hashes are verified unchanged.
+Each interpreter executes **24 current selections, 96 inherited-Record tests
+and 32 isolated-profile executions**, with **zero complete services READY**.
+The blockers remain DateTime for all UCI 2.5 messages; UCI 2.6 PositionReport
+and RDMA_InitializeSetup have unsupported constraints, and SubsystemStream
+has Binary. Historical profiles/expected verdicts are not rewritten.
+
+The complete Python shared pinned-Sleet campaign passes **nine Rust tests**
+and **14 Python executions**, including all four Float64
+delivery/rejection/recovery cells. Both additional PY-005 interpreter
+normal/optimized campaigns pass. Four inherited real-UCI Rust codec tests
+also pass. The shared campaign and codec campaign each explicitly filter two
+counterpart tests; filtered tests are **not** counted as executed passes.
+The original clean pinned broker/build is reused; the Ada Task100 campaigns
+remain independent executions, not substitutions for Python qualification.
+
+### R2 local toolchain and policy gates
+
+Rust **1.95.0** formatting, locked workspace/all-target check and
+warnings-denied Clippy pass. The full **GNAT-required locked workspace**
+passes **1,494 tests, zero failed, eight pre-existing ignored, zero filtered**,
+across 189 summaries. All three new worker-join close/drop/panic tests execute
+and pass; the increase over historical 1,491 is not hidden or backdated.
+
+Selector/policy tests pass **91 tests** (including Task100's separately
+executed **21-test** policy/evidence-verifier entrypoint). UCI
+evidence/performance tests pass **18**, CI002 **30**, PY-007/PY-008 controls
+**five each**. The split adversarial harness passes **556 checks**; inherited
+Task060/061 wrapper controls pass **96/4**, and Task093 placement passes
+**12 tests**. Pinned actionlint **1.7.12**, documentation policy and whitespace
+checks pass. Initial policy-projection development failures are retained
+externally, not counted as passes. An extra codec invocation named nonexistent
+CLI targets, and an actionlint invocation used a nonexistent path; corrected
+actual entrypoints pass without source/test-expectation changes.
+
+Task100 is executed through unchanged `scripts/task100/qualify.py` with the
+original Alire **2.1.1**, GNAT **14.2.0/16.1.0**, GPRbuild **26.0.1**,
+GNATCOLL/minimal **26.0.0**, Linux x86-64 glibc **2.41**, pinned AHT and
+websocket-ada sources/licenses, and pinned Sleet. Original setup input hashes
+are verified before reuse; an immutable exact-source generator is supplied.
+Both local transport compiler campaigns pass **24 cells / 1,044 scenarios /
+12 Float64 framing probes each**. Both separate Ada pinned-Sleet compiler
+campaigns also pass **24 cells / 1,044 scenarios / 12 Float64 probes each**,
+with **six real pinned-Sleet executions per compiler**. Clean-source artifact
+verification is recorded at the R2 completion checkpoint, not inferred from
+these staged-source local runs or earlier Task100 runs.
+
+Precommit campaigns honestly record their staged worktree state and R1 HEAD;
+they are local execution evidence, **not clean hosted artifacts**. Source
+identities/status files must never be rewritten to make them pass the clean
+artifact verifier. Final exact-source Task100 evidence and hosted acceptance
+remain separate gates. Full manifests, command logs, failure histories,
+generated output and count summaries are external under
+`/home/zboll/py008-r2-evidence`, not committed generated artifacts.
+
+### R2 completion and hosted acceptance
+
+The exact ordinary-merge SHA/tree, ordered parents, normal-push equality,
+final-head hosted run IDs, accepted artifact identities and disposition are
+recorded in the completion handoff and existing PR #119. No earlier green
+head qualifies this new integration. R2 is not independent-review-ready
+until every selected ordinary/reusable Deep cell, both Task100 transport and
+both Task100 real-Sleet compilers, all PERF-007 primary shards, numerical/UCI/
+Python Sleet evidence, CI002 and `pr-ci-required` pass for the final source.
+No merge, approval, auto-merge, release, publication or tag is authorized.
