@@ -7,6 +7,7 @@ import json
 import pathlib
 import shutil
 import subprocess
+import sys
 import tomllib
 import xml.etree.ElementTree as ET
 
@@ -22,6 +23,20 @@ def checked(command, cwd, log):
     if result.returncode:
         raise RuntimeError(f"exit {result.returncode}: {command}; {log}")
     return log.read_bytes()
+
+
+def verify_provider(consumer):
+    lock = consumer / "alire/alire.lock"
+    releases = [s["release"] for s in tomllib.loads(lock.read_text())["solution"]["state"] if "release" in s]
+    for name in ["gnatcoll", "gnatcoll_minimal"]:
+        release = next(r for r in releases if r["name"] == name)
+        archive = "sha512:cc5dd0a199115fee269ec1ef963b80abbb56e3029e817d5dbfe71e90fff09d0535ae5be86dedb6d3fbcc74cfa2f3e2e7885de800e5805f9f596507814dce6d4b"
+        if release["version"] != "26.0.0" or archive not in release["origin"]["hashes"]:
+            raise RuntimeError("wrong provider")
+    provider_sources = list((consumer / "alire").rglob("gnatcoll-json.adb"))
+    if not provider_sources or any(hashlib.sha256(p.read_bytes()).hexdigest() != "7e07277731a44ea08716fd61a6462ebe7a7ce0722adc6dc787cbbaafd3099063" for p in provider_sources):
+        raise RuntimeError("provider source hash mismatch")
+    return lock
 
 
 def main():
@@ -157,30 +172,33 @@ def main():
         f'for Default_Switches ("Ada") use ("-gnat2022", "-gnato", "{"-O2" if args.optimized else "-O0"}");\n'
         'for Default_Switches ("C") use ("-O2", "-Wall", "-Wextra", "-Werror");\n'
         'end Compiler; end Consumer;\n')
-    checked(["alr", "-n", "settings", "--set", "dependencies.shared", "false"], consumer, scratch / "isolation.log")
-    checked(["alr", "-n", "--force", "toolchain", "--select", "--local",
+    # Alire 2.1.1 makes download_cmd global-only. A task-owned settings root
+    # confines that setting to this campaign, never the developer/runner home.
+    (scratch / 'settings').mkdir()
+    alr = ["alr", "-s", str(scratch / 'settings'), "-n"]
+    checked(alr + ["settings", "--set", "dependencies.shared", "false"], consumer, scratch / "isolation.log")
+    # Only the pinned archive transport has bounded recovery; every consumer
+    # remains isolated and Alire's origin verification is never bypassed.
+    downloader = ROOT / 'scripts/task095_download.py'
+    if any(any(c.isspace() for c in str(p)) for p in (sys.executable, downloader, scratch)):
+        raise RuntimeError('Alire download command requires whitespace-free paths')
+    checked(alr + ["settings", "--global", "--set", "origins.archive.download_cmd",
+             f'{sys.executable} {downloader} --evidence {scratch} ${{URL}} ${{DEST}}'],
+            consumer, scratch / "download-settings.log")
+    checked(alr + ["--force", "toolchain", "--select", "--local",
              f"{compiler}={version}", "gprbuild=26.0.1"], consumer, scratch / "toolchain.log")
     cells = []
     for policy in ["Normal", "Check", "Ignore"]:
-        build = ["alr", "-n", "build", "--", "-f"]
+        build = alr + ["build", "--", "-f"]
         if policy != "Normal":
             adc = scratch / f"{policy}.adc"
             adc.write_text(f"pragma Assertion_Policy ({policy});\n")
             build += ["-cargs:Ada", f"-gnatec={adc}"]
         checked(build, consumer, scratch / f"{policy}-build.log")
-        identity = checked(["alr", "-n", "exec", "--", "gnat", "--version"], consumer, scratch / f"{policy}-gnat.log")
+        identity = checked(alr + ["exec", "--", "gnat", "--version"], consumer, scratch / f"{policy}-gnat.log")
         if f"GNAT {version}".encode() not in identity:
             raise RuntimeError("compiler identity mismatch")
-        lock = consumer / "alire/alire.lock"
-        releases = [s["release"] for s in tomllib.loads(lock.read_text())["solution"]["state"] if "release" in s]
-        for name in ["gnatcoll", "gnatcoll_minimal"]:
-            release = next(r for r in releases if r["name"] == name)
-            archive = "sha512:cc5dd0a199115fee269ec1ef963b80abbb56e3029e817d5dbfe71e90fff09d0535ae5be86dedb6d3fbcc74cfa2f3e2e7885de800e5805f9f596507814dce6d4b"
-            if release["version"] != "26.0.0" or archive not in release["origin"]["hashes"]:
-                raise RuntimeError("wrong provider")
-        provider_sources = list((consumer / "alire").rglob("gnatcoll-json.adb"))
-        if not provider_sources or any(hashlib.sha256(p.read_bytes()).hexdigest() != "7e07277731a44ea08716fd61a6462ebe7a7ce0722adc6dc787cbbaafd3099063" for p in provider_sources):
-            raise RuntimeError("provider source hash mismatch")
+        lock = verify_provider(consumer)
         shutil.copy2(lock, scratch / f"{policy}-alire.lock")
         output = checked([str(consumer / f"bin/{main_name}"), str(golden)], consumer, scratch / f"{policy}-run.log")
         if output != marker:
@@ -230,7 +248,7 @@ def main():
                             raise RuntimeError("writer changed Float32 value")
         cells.append({"compiler": version, "profile": args.profile, "policy": policy, "marker": output.decode().strip()})
     paths = [p for p in scratch.rglob("*") if p.is_file() and p.suffix in [".ads", ".adb", ".c", ".lock", ".gpr"]]
-    paths += [args.generator.resolve(), schema, contract, golden, pathlib.Path(__file__).resolve(),
+    paths += [args.generator.resolve(), schema, contract, golden, pathlib.Path(__file__).resolve(), downloader,
               ROOT / f"tests/ada-generated-codec/{main_name}.adb"]
     if args.environment:
         paths += [ROOT / "tests/ada-generated-codec/float32_environment.adb", ROOT / "tests/ada-float32-probe/environment_harness.c"]
