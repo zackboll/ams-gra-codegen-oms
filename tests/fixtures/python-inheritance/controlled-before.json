@@ -1,0 +1,88 @@
+[
+  {
+    "world": "closed-schema",
+    "codec": false,
+    "result": {
+      "command": [
+        "<EVIDENCE>/before-generator",
+        "service-check",
+        "--schema",
+        "<EVIDENCE>/controlled.xsd",
+        "--contract",
+        "<EVIDENCE>/controlled.yaml",
+        "--language",
+        "python",
+        "--world",
+        "closed-schema"
+      ],
+      "exit": 1,
+      "stdout": "service contract valid\nservice: PY006 InheritedReport\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 5\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n",
+      "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+    }
+  },
+  {
+    "world": "closed-schema",
+    "codec": true,
+    "result": {
+      "command": [
+        "<EVIDENCE>/before-generator",
+        "service-check",
+        "--schema",
+        "<EVIDENCE>/controlled.xsd",
+        "--contract",
+        "<EVIDENCE>/controlled.yaml",
+        "--language",
+        "python",
+        "--world",
+        "closed-schema",
+        "--with-codec"
+      ],
+      "exit": 1,
+      "stdout": "service contract valid\nservice: PY006 InheritedReport\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 5\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+      "stderr": "error: service selection is not renderable for python under closed-schema; no files were generated\n"
+    }
+  },
+  {
+    "world": "open-extensions",
+    "codec": false,
+    "result": {
+      "command": [
+        "<EVIDENCE>/before-generator",
+        "service-check",
+        "--schema",
+        "<EVIDENCE>/controlled.xsd",
+        "--contract",
+        "<EVIDENCE>/controlled.yaml",
+        "--language",
+        "python",
+        "--world",
+        "open-extensions"
+      ],
+      "exit": 1,
+      "stdout": "service contract valid\nservice: PY006 InheritedReport\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 5\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n",
+      "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+    }
+  },
+  {
+    "world": "open-extensions",
+    "codec": true,
+    "result": {
+      "command": [
+        "<EVIDENCE>/before-generator",
+        "service-check",
+        "--schema",
+        "<EVIDENCE>/controlled.xsd",
+        "--contract",
+        "<EVIDENCE>/controlled.yaml",
+        "--language",
+        "python",
+        "--world",
+        "open-extensions",
+        "--with-codec"
+      ],
+      "exit": 1,
+      "stdout": "service contract valid\nservice: PY006 InheritedReport\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\nmodel status: NOT READY\nservice api status: NOT READY\nstatus: NOT READY\nselected type closure: 5\ngenerated support types: 0\n\nmodel boundary: unsupported Python IR construct: abstract declarations are unsupported\n\nservice api boundary: unsupported Python IR construct: abstract declarations are unsupported\n\ncodec: not measured (selected model or service API is NOT READY)\n",
+      "stderr": "error: service selection is not renderable for python under open-extensions; no files were generated\n"
+    }
+  }
+]

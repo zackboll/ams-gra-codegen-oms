@@ -2,7 +2,7 @@
 
 use crate::error;
 use ams_gra_oms_codegen_core::CodegenError;
-use ams_gra_oms_ir::{SchemaIr, TypeKind};
+use ams_gra_oms_ir::{SchemaIr, TypeDecl, TypeKind};
 use std::collections::BTreeSet;
 use std::fmt::Write as _;
 
@@ -57,7 +57,7 @@ fn insert(seen: &mut BTreeSet<String>, original: &str, member: bool) -> Result<(
     Ok(())
 }
 
-pub(crate) fn validate(schema: &SchemaIr) -> Result<(), CodegenError> {
+pub(crate) fn validate(schema: &SchemaIr, declarations: &[&TypeDecl]) -> Result<(), CodegenError> {
     // Builtins used by annotations, decorators and runtime checks must never be
     // shadowed by a schema declaration. Leading-underscore runtime names cannot
     // be emitted by symbol(). No foreign-language preflight is consulted.
@@ -78,10 +78,10 @@ pub(crate) fn validate(schema: &SchemaIr) -> Result<(), CodegenError> {
     .into_iter()
     .map(str::to_owned)
     .collect();
-    for declaration in &schema.types {
+    for declaration in declarations {
         insert(&mut top, &declaration.name.local_name, false)?;
         match &declaration.kind {
-            TypeKind::Record { fields } => {
+            TypeKind::Record { .. } => {
                 // An annotation is evaluated in the class body. A field named
                 // `int`, `tuple`, or a lowercase schema type would shadow a
                 // later annotation with its dataclasses.Field instance.
@@ -89,13 +89,12 @@ pub(crate) fn validate(schema: &SchemaIr) -> Result<(), CodegenError> {
                     .into_iter()
                     .map(str::to_owned)
                     .chain(
-                        schema
-                            .types
+                        declarations
                             .iter()
                             .map(|declaration| symbol(&declaration.name.local_name, false)),
                     )
                     .collect();
-                for field in fields {
+                for field in crate::record_fields(schema, declaration)? {
                     insert(&mut members, &field.name, true)?;
                 }
             }

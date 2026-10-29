@@ -131,3 +131,56 @@ with t.assertRaises(c.CodecError): c.encode_AliasChain(m.Alias(m.Big(1)))
         fs::remove_dir_all(&dest).unwrap();
     }
 }
+
+#[test]
+fn inherited_wire_qnames_come_from_authored_members_not_the_concrete_owner() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let fixture = root.join("tests/fixtures/python-inheritance");
+    let mut schema = load_schema_document(&fixture.join("oam.xsd")).unwrap();
+    let base = schema
+        .types
+        .iter_mut()
+        .find(|ty| ty.name.local_name == "Base")
+        .unwrap();
+    let TypeKind::Record { fields } = &mut base.kind else {
+        panic!()
+    };
+    fields[0].name = "Authored-Required".into();
+    let contract = parse_yaml(&fs::read_to_string(fixture.join("service.yaml")).unwrap()).unwrap();
+    let plan = resolve_service_plan(&contract, &schema).unwrap();
+    let world = GenerationWorld::ClosedSchemaSet;
+    let projection = project_service_generation_schema(&plan, &schema, world).unwrap();
+    let model = build_service_api_model(&plan, projection.schema(), world).unwrap();
+    let dest = std::env::temp_dir().join(format!("py007-wire-{}", std::process::id()));
+    fs::create_dir(&dest).unwrap();
+    for file in PythonBackend
+        .generate(projection.schema(), world)
+        .unwrap()
+        .into_iter()
+        .chain(generate_service_codec(&model, projection.schema()).unwrap())
+    {
+        fs::write(dest.join(file.relative_path), file.contents).unwrap();
+    }
+    let probe = r#"import model as m,service_codec as c,dataclasses,unittest
+class Wire(unittest.TestCase):
+ def test_authored_namespace(self):
+  value=m.Sibling(authored_required=7,required_values=(3,),other=True)
+  text='{"Authored-Required":7,"Required_Values":[3],"Other":true}'
+  self.assertEqual(c.encode_Sibling(value), text)
+  self.assertEqual(c.decode_Sibling(text), value)
+  field=dataclasses.fields(m.Sibling)[0]
+  self.assertEqual(field.metadata['schema_namespace'], 'https://www.vdl.afrl.af.mil/programs/oam')
+  self.assertEqual(field.metadata['schema_name'], 'Authored-Required')
+unittest.main()
+"#;
+    for optimized in [false, true] {
+        let mut cmd = Command::new(std::env::var_os("PYTHON").unwrap_or_else(|| "python3".into()));
+        if optimized {
+            cmd.arg("-O");
+        }
+        let output = cmd.args(["-c", probe]).current_dir(&dest).output().unwrap();
+        assert!(output.status.success(), "{output:?}");
+        assert!(String::from_utf8_lossy(&output.stderr).contains("Ran 1 test"));
+    }
+    fs::remove_dir_all(dest).unwrap();
+}

@@ -50,7 +50,7 @@ jobs:
       queue: max
     needs: changes
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -446,6 +446,8 @@ jobs:
           cargo test --locked -p ams-gra-codegen-oms --test python_service -- --nocapture
           cargo test --locked -p ams-gra-codegen-oms --test python_codec -- --nocapture
           cargo test --locked -p ams-gra-codegen-oms --test python_header_profiles -- --nocapture
+          cargo test --locked -p ams-gra-codegen-oms --test python_inheritance -- --nocapture
+          python scripts/test-py007-uci.py
           cargo fmt --all -- --check
           cargo clippy --locked -p ams-gra-oms-backend-python -p ams-gra-codegen-oms --all-targets -- -D warnings
           cargo build --locked -p ams-gra-oms-backend-python -p ams-gra-codegen-oms --all-targets

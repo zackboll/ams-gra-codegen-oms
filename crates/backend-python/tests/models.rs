@@ -149,13 +149,81 @@ fn negative_schema_fixtures_return_errors_and_no_artifacts() {
         "tests/fixtures/unsupported-pattern.xsd",
         "../xsd-frontend/tests/fixtures/backend-abstract-value-reference.xsd",
         "../xsd-frontend/tests/fixtures/backend-uninhabited-abstract-optional.xsd",
-        "../xsd-frontend/tests/fixtures/backend-base-only-abstract-ancestry.xsd",
     ] {
         rejected(&fixture(path));
     }
     let schema = fixture("../xsd-frontend/tests/fixtures/backend-abstract-value-reference.xsd");
     let error = generate(&schema, OPEN).unwrap_err();
     assert!(error.message.contains("open"), "{error}");
+
+    // A real normalized Choice alternative demanding an abstract value, not
+    // an invalid nested compositor that the frontend rejects first.
+    let mut choice = schema;
+    let TypeKind::Record { fields } = &choice.types[2].kind else {
+        panic!()
+    };
+    choice.types[2].kind = TypeKind::Choice {
+        alternatives: fields.clone(),
+    };
+    for world in [CLOSED, OPEN] {
+        let diagnostic = generate(&choice, world).unwrap_err().message;
+        assert!(diagnostic.contains("abstract"), "{diagnostic}");
+    }
+    rejected(&choice);
+}
+
+#[test]
+fn base_only_abstract_ancestry_executes_without_an_abstract_class() {
+    let schema = fixture("../xsd-frontend/tests/fixtures/backend-base-only-abstract-ancestry.xsd");
+    assert_eq!(
+        generate(&schema, CLOSED).unwrap(),
+        generate(&schema, OPEN).unwrap()
+    );
+    execute(
+        &schema,
+        "import unittest\nclass Ancestry(unittest.TestCase):\n def test_concrete(self):\n  self.assertFalse(hasattr(model, 'Base'))\n  value = Concrete(inherited='base', local='leaf')\n  self.assertEqual(Holder(item=value).item, value)\n  with self.assertRaises(TypeError): Concrete(local='missing')\nunittest.main()\n",
+    );
+}
+
+#[test]
+fn shared_four_level_fixture_executes_in_authored_field_order() {
+    let schema = fixture("../xsd-frontend/tests/fixtures/backend-record-inheritance.xsd");
+    assert_eq!(
+        generate(&schema, CLOSED).unwrap(),
+        generate(&schema, OPEN).unwrap()
+    );
+    execute(
+        &schema,
+        "import unittest,dataclasses\nclass Inheritance(unittest.TestCase):\n def test_leaf(self):\n  self.assertFalse(hasattr(model, 'Base'))\n  self.assertEqual([f.name for f in dataclasses.fields(Leaf)], ['base_optional','base_values','linked','local'])\n  value=Leaf(linked=Token(1),local='leaf')\n  self.assertEqual(value.base_values, ())\n  with self.assertRaises(TypeError): Leaf(linked=1,local='leaf')\nunittest.main()\n",
+    );
+}
+
+#[test]
+fn ancestry_names_are_not_emitted_and_special_members_are_safely_prefixed() {
+    let mut schema =
+        fixture("../xsd-frontend/tests/fixtures/backend-base-only-abstract-ancestry.xsd");
+    let old_name = schema.types[0].name.clone();
+    schema.types[0].name.local_name = "int".to_owned();
+    let new_name = schema.types[0].name.clone();
+    for declaration in &mut schema.types {
+        if let Some(base) = &mut declaration.base_type
+            && base.target == TypeRef::named(old_name.clone()).target
+        {
+            *base = TypeRef::named(new_name.clone());
+        }
+    }
+    let TypeKind::Record { fields } = &mut schema.types[0].kind else {
+        panic!()
+    };
+    fields[0].name = "__post_init__".to_owned();
+    let TypeKind::Record { fields } = &mut schema.types[1].kind else {
+        panic!()
+    };
+    fields[0].name = "_value_".to_owned();
+    execute(
+        &schema,
+        "import unittest\nclass Names(unittest.TestCase):\n def test_names(self):\n  self.assertFalse(hasattr(model, 'int'))\n  value=Concrete(schema___post_init__='ancestor',schema__value_='local')\n  self.assertEqual(value.schema___post_init__, 'ancestor')\n  self.assertEqual(value.schema__value_, 'local')\nunittest.main()\n",
+    );
 }
 
 #[test]

@@ -1,0 +1,44 @@
+[
+  {
+    "world": "closed-schema",
+    "with_codec": false,
+    "exit": 0,
+    "stdout": "service contract valid\nservice: PY006 InheritedReport\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\ncontract-selected types: 5\ngenerated support types: 0\nprojected schema types: 5\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <EVIDENCE>/controlled-after-closed-schemaFalse\n",
+    "artifacts": {
+      "service_api.py": "10a121f857ea6dfcec18a8da4e42e8f9599016fbd13eac6509a97bbaad44a699",
+      "model.py": "f9ce164313d26edc60fe2dcaae1add13fc966bfd7c1aeed254f9a0b3dd9147ca"
+    }
+  },
+  {
+    "world": "closed-schema",
+    "with_codec": true,
+    "exit": 0,
+    "stdout": "service contract valid\nservice: PY006 InheritedReport\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 1\ncontract-selected types: 5\ngenerated support types: 0\nprojected schema types: 5\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <EVIDENCE>/controlled-after-closed-schemaTrue\ngenerated service codec files: 1\ngenerated 3 file(s) including the codec\n",
+    "artifacts": {
+      "service_codec.py": "d113c6768a6447c3efe681ba6a42d137ac6d3c271595b968e65f1e1d5e0bb038",
+      "service_api.py": "10a121f857ea6dfcec18a8da4e42e8f9599016fbd13eac6509a97bbaad44a699",
+      "model.py": "f9ce164313d26edc60fe2dcaae1add13fc966bfd7c1aeed254f9a0b3dd9147ca"
+    }
+  },
+  {
+    "world": "open-extensions",
+    "with_codec": false,
+    "exit": 0,
+    "stdout": "service contract valid\nservice: PY006 InheritedReport\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\ncontract-selected types: 5\ngenerated support types: 0\nprojected schema types: 5\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <EVIDENCE>/controlled-after-open-extensionsFalse\n",
+    "artifacts": {
+      "service_api.py": "10a121f857ea6dfcec18a8da4e42e8f9599016fbd13eac6509a97bbaad44a699",
+      "model.py": "f9ce164313d26edc60fe2dcaae1add13fc966bfd7c1aeed254f9a0b3dd9147ca"
+    }
+  },
+  {
+    "world": "open-extensions",
+    "with_codec": true,
+    "exit": 0,
+    "stdout": "service contract valid\nservice: PY006 InheritedReport\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 1\ncontract-selected types: 5\ngenerated support types: 0\nprojected schema types: 5\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <EVIDENCE>/controlled-after-open-extensionsTrue\ngenerated service codec files: 1\ngenerated 3 file(s) including the codec\n",
+    "artifacts": {
+      "service_codec.py": "d113c6768a6447c3efe681ba6a42d137ac6d3c271595b968e65f1e1d5e0bb038",
+      "service_api.py": "10a121f857ea6dfcec18a8da4e42e8f9599016fbd13eac6509a97bbaad44a699",
+      "model.py": "f9ce164313d26edc60fe2dcaae1add13fc966bfd7c1aeed254f9a0b3dd9147ca"
+    }
+  }
+]
