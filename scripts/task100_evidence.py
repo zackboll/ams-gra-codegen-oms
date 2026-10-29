@@ -41,6 +41,7 @@ LOCAL_CASES = {
 
 
 def verify_bundle(files, compiler, real_sleet, sha, tree, run_id, attempt):
+    """attempt is the externally verified PRODUCER attempt, never a fallback."""
     def raw(suffix):
         matches = [value for name, value in files.items()
                    if name == suffix or name.endswith('/' + suffix)]

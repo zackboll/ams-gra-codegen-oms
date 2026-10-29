@@ -351,12 +351,13 @@ class FinalReportContract(unittest.TestCase):
             environment = dict(SELECTION_MANIFEST=json.dumps(manifest),
                                NEEDS_JSON=json.dumps(fixture.needs), GITHUB_RUN_ID='123',
                                GITHUB_RUN_ATTEMPT='1', GITHUB_SHA='c' * 40,
-                               GITHUB_EVENT_NAME='pull_request')
-            records = dict(jobs=fixture.jobs, artifacts=fixture.artifacts)
+                               GITHUB_EVENT_NAME='pull_request', GITHUB_JOB='pr-ci-required')
+            records = dict(jobs=fixture.jobs, artifacts=fixture.artifacts, attempts={})
             with self.subTest(docs=docs), patch.dict('os.environ', environment), \
                     patch.object(gate, 'from_environment', return_value=manifest), \
                     patch.object(gate, 'api', return_value=dict(id=123, run_attempt=1)), \
                     patch.object(gate, 'verify_source'), patch.object(gate, 'verify_records'), \
+                    patch.object(gate, 'verify_final_job'), \
                     patch.object(gate, 'evidence', return_value=records), \
                     patch.object(gate, 'git', return_value=('d' * 40 + '\n').encode()), \
                     patch.object(gate, 'reconcile_task100', return_value={}), \
@@ -371,6 +372,20 @@ class FinalReportContract(unittest.TestCase):
                 for field in ('version', 'identities', 'deep_jobs', 'selected_cells',
                               'skipped_cells', 'deep_selected_cells', 'deep_skipped_cells'):
                     self.assertEqual(report[field], manifest[field], field)
+                self.assertEqual(report['run_id'], '123')
+                self.assertEqual(report['gate_attempt'], '1')
+                gate.verify_records.assert_called_once_with(records, dict(id=123, run_attempt=1))
+                gate.verify_final_job.assert_called_once_with(
+                    fixture.jobs, dict(id=123, run_attempt=1), 'pr-ci-required')
+                gate.reconcile_task100.assert_called_once_with(
+                    fixture.artifacts, manifest, 'c' * 40, 'd' * 40, '123', '1',
+                    jobs=fixture.jobs, attempts={})
+                if docs:
+                    gate.reconcile_primary.assert_not_called()
+                else:
+                    gate.reconcile_primary.assert_called_once_with(
+                        fixture.artifacts, 'c' * 40, 'd' * 40, '123', '1',
+                        jobs=fixture.jobs, attempts={})
                 self.assertEqual(report['version'], 2)
                 self.assertEqual(report['deep_selected_cells'], 0 if docs else 12)
                 self.assertEqual(report['conclusion'], 'success')
