@@ -218,6 +218,8 @@ jobs:
     needs: changes
     if: github.event_name != 'pull_request' || fromJSON(needs.changes.outputs.manifest).deep
     uses: ./.github/workflows/deep-ci.yml
+    with:
+      selection: ${{ needs.changes.outputs.manifest }}
 
   ada-lacal-runtime-core:
     concurrency:

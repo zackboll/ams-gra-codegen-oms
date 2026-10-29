@@ -8,7 +8,7 @@ import json
 import hashlib
 from pathlib import Path
 import re
-from ci_selection import ROOT, inventory, ordinary_jobs, select
+from ci_selection import ROOT, inventory, ordinary_jobs, deep_jobs, deep_condition, select
 
 # Independently reconciled from d603077c6d38ccc0658391776e3af9eecb009255
 # (Task099/security) and 904ad3baebbf237a91e118c91457ac7207e8edd9 (Task100).
@@ -80,6 +80,31 @@ def field(header, key):
 
 def check(policy=None, workflows=None):
     policy = policy or inventory()
+    deep_baseline = [{k: r[k] for k in ('job_id', 'cells', 'original_steps_yaml', 'original_steps')}
+                     for r in policy['jobs'] if r['workflow'] == 'deep-ci.yml']
+    if hashlib.sha256(json.dumps(deep_baseline, sort_keys=True).encode()).hexdigest() != '4850f5e34beca0c5ab52c1152fa84a2ad1d1e8883d24a8bece9a4f206ea799f0':
+        raise ValueError('immutable main Deep cell/qualification inventory changed')
+    original_headers = {r['job_id']: normalized(r['expected_header'].replace(
+        '    if: ' + deep_condition(r['job_id']) + '\n', '').replace(
+        'if: ' + deep_condition(r['job_id']) + '\n', ''))
+        for r in policy['jobs'] if r['workflow'] == 'deep-ci.yml'}
+    if hashlib.sha256(json.dumps(original_headers, sort_keys=True).encode()).hexdigest() != '3946b92fb805271be235bde5170f0fa483ce3c8a56fa3488b4171ee004a7f22a':
+        raise ValueError('immutable main Deep runner/matrix/header inventory changed')
+    if hashlib.sha256(policy['deep_header'].encode()).hexdigest() != '41b85c9ba045f75f412929efd73e9de54977b77ccddaef8a52a95e698728ed72':
+        raise ValueError('reviewed Deep input contract changed')
+    if hashlib.sha256(policy['deep_caller'].encode()).hexdigest() != 'a343b3f71a5299740901fef920a1121757a44872850f1c07c1165d41e3170264':
+        raise ValueError('reviewed Deep caller input changed')
+    rules = [{k: r[k] for k in ('category', 'paths', 'deep_jobs', 'deep_rationale')} for r in policy['rules']]
+    if hashlib.sha256(json.dumps(rules, sort_keys=True).encode()).hexdigest() != '02b7b1164b26f8105c9672913b3cdeaedbbc07dae08e4b1b9ce90f5a6d809661':
+        raise ValueError('reviewed Deep dependency ownership changed')
+    from real_uci_evidence import SHARDS
+    for job_id, record in deep_jobs(policy).items():
+        wanted = sorted(set(SHARDS) - {job_id}) if job_id in SHARDS else []
+        if record['prerequisites'] != wanted:
+            raise ValueError('Deep evidence dependency closure changed')
+    if (policy.get('ci_select_002_main'), policy.get('ci_select_002_main_tree')) != (
+            '7958c4e0d8f78768fd4c7d4c1bd34877c31d893a', 'a94fc3bb844349780772566eafd50db7a7328efe'):
+        raise ValueError('CI-SELECT-002 incorporated main identity changed')
     if policy.get('security_source_sha256') != SECURITY_SOURCES:
         raise ValueError('missing/modified inherited CI002 source inventory')
     for path, digest in SECURITY_SOURCES.items():
@@ -138,6 +163,8 @@ def check(policy=None, workflows=None):
             if "group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}" not in header or "cancel-in-progress: ${{ github.event_name == 'pull_request' }}" not in header:
                 raise ValueError('main runs must not cancel/replace earlier qualification')
         elif workflow=='deep-ci.yml':
+            if normalized(header) != policy['deep_header']:
+                raise ValueError('Deep reusable input/trigger/permissions changed')
             if 'concurrency:' in header or '  workflow_call:\n' not in header or '  pull_request:' in header or '  push:' in header:
                 raise ValueError('Deep caller owns full merge/PR qualification and cancellation')
         elif workflow in policy.get('security_headers', {}):
@@ -188,8 +215,10 @@ def check(policy=None, workflows=None):
                     wanted_if = "github.event_name != 'pull_request' || fromJSON(needs.changes.outputs.manifest).jobs['"+job_id+"']"
                     if field(top,'needs') != [wanted_needs] or field(top,'if') != [wanted_if]:
                         raise ValueError('unsafe selection/prerequisite/full-main condition: '+job_id)
-                elif workflow=='deep-ci.yml' and field(top,'if'):
-                    raise ValueError('Deep main qualification became optional: '+job_id)
+                elif workflow=='deep-ci.yml':
+                    wanted_if = deep_condition(job_id)
+                    if field(top, 'if') != [wanted_if] or record.get('selection_condition') != wanted_if:
+                        raise ValueError('unsafe Deep job selection condition: ' + job_id)
             else:
                 if normalized(body) != policy['orchestration_payloads'][job_id]:
                     raise ValueError('mandatory baseline/final gate changed: '+job_id)
@@ -209,6 +238,10 @@ def check(policy=None, workflows=None):
     for r in policy['rules']:
         if not set(r['jobs']) <= jobs.keys():
             raise ValueError('unmapped source dependency')
+        if (r.get('deep_jobs') != sorted(set(r.get('deep_jobs', [])))
+                or not set(r['deep_jobs']) <= deep_jobs(policy).keys()
+                or bool(r['deep_jobs']) != r['deep'] or not r.get('deep_rationale')):
+            raise ValueError('unmapped Deep source dependency')
         sample = select([dict(status='M', paths=[r['paths'][0].replace('**','example').replace('*','example')],
                               old_mode='100644', new_mode='100644')],policy)
         if not all(sample['jobs'][j] for j in r['jobs']):

@@ -1,11 +1,17 @@
 name: Deep CI
 
-# Task 055 evidence is preserved. CI-SELECT-001 invokes the complete suite as
-# a reusable dependency on every main push and on applicable PR changes.
+# Task 055 evidence is preserved. CI-SELECT-002 selects individual jobs for
+# verified PR changes; main, nightly and manual qualification remain complete.
 # Nightly and manual qualification remain available; no duplicate push run.
 # See docs/ci-select-001-change-aware-qualification.md.
 on:
   workflow_call:
+    inputs:
+      selection:
+        description: Verified canonical v2 CI selection manifest; empty only for direct full qualification
+        type: string
+        required: false
+        default: ''
   schedule:
     - cron: "0 6 * * *"
   workflow_dispatch:
@@ -17,6 +23,7 @@ permissions:
 
 jobs:
   ada-websocket-real-sleet:
+    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'ada-websocket-real-sleet')
     concurrency:
       group: ${{ github.ref == 'refs/heads/main' && format('oms-main-slot-{0}', matrix.slot) || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-ada-websocket-real-sleet-{3}', github.workflow, github.run_id, github.run_attempt, matrix.compiler) }}
       queue: max
@@ -166,6 +173,7 @@ jobs:
           if-no-files-found: error
 
   ada-repeated-choice-real-uci:
+    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'ada-repeated-choice-real-uci')
     concurrency:
       group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-ada-repeated-choice-real-uci', github.workflow, github.run_id, github.run_attempt) }}
       queue: max
@@ -234,6 +242,7 @@ jobs:
   # generated Ada (gnatmake -gnatc) and AMS_GRA_REQUIRE_GNAT forbids a skip.
   # PERF-007: three independent hosted runners; unchanged seven task bodies.
   real-uci-temporal-naming:
+    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'real-uci-temporal-naming')
     concurrency:
       group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-4' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-temporal-naming', github.workflow, github.run_id, github.run_attempt) }}
       queue: max
@@ -307,6 +316,7 @@ jobs:
           if-no-files-found: error
 
   real-uci-schema-ipv6:
+    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'real-uci-schema-ipv6')
     concurrency:
       group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-1' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-schema-ipv6', github.workflow, github.run_id, github.run_attempt) }}
       queue: max
@@ -377,6 +387,7 @@ jobs:
           if-no-files-found: error
 
   real-uci-integral-unicode:
+    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'real-uci-integral-unicode')
     concurrency:
       group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-3' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-integral-unicode', github.workflow, github.run_id, github.run_attempt) }}
       queue: max
@@ -448,6 +459,7 @@ jobs:
 
   # Independent regression runners retain their original qualification.
   real-uci-regressions:
+    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'real-uci-regressions')
     concurrency:
       group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-1' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-regressions', github.workflow, github.run_id, github.run_attempt) }}
       queue: max
@@ -631,6 +643,7 @@ jobs:
 
   # Independent ASCII runner: fresh verified inputs and release CLI.
   real-uci-regressions-ascii:
+    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'real-uci-regressions-ascii')
     concurrency:
       group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-2' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-regressions-ascii', github.workflow, github.run_id, github.run_attempt) }}
       queue: max
@@ -721,6 +734,7 @@ jobs:
 
   # Admission and AFTER remain one mandatory gate on an independent runner.
   real-uci-regressions-alternating:
+    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'real-uci-regressions-alternating')
     concurrency:
       group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-3' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-regressions-alternating', github.workflow, github.run_id, github.run_attempt) }}
       queue: max
@@ -796,6 +810,7 @@ jobs:
   # PositionReport and SubsystemStream codecs (build.rs generates them only
   # when AMS_GRA_UCI_2_5_ROOT is set) under 1.95.0. Rust only: no GNAT.
   msrv-real-uci:
+    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'msrv-real-uci')
     concurrency:
       group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-msrv-real-uci', github.workflow, github.run_id, github.run_attempt) }}
       queue: max
@@ -837,6 +852,7 @@ jobs:
   # checkout with Sleet's own pinned toolchain), plus the real UCI 2.5
   # PositionReport / SubsystemStream codecs. Rust only: no GNAT.
   real-sleet:
+    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'real-sleet')
     concurrency:
       group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-4' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-sleet', github.workflow, github.run_id, github.run_attempt) }}
       queue: max
@@ -912,6 +928,7 @@ jobs:
           scripts/run-real-sleet-test.sh
 
   ada-hexbinary-real:
+    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'ada-hexbinary-real')
     concurrency:
       group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-ada-hexbinary-real', github.workflow, github.run_id, github.run_attempt) }}
       queue: max
