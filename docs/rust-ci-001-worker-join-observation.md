@@ -133,3 +133,46 @@ The final commit/tree is recorded by the PR handoff, not embedded
 self-referentially. Exact-final-head hosted CI remains required; until it
 completes and is checked, disposition is **HOSTED_CI_PENDING**, not approval or
 merge readiness. No merge, approval or auto-merge is authorized.
+
+## Current-main reconciliation (2026-10-29 UTC)
+
+The original corrective head `57f42d57f899713ce491a3bbf57e50dc19ebd5ad`
+completed hosted CI run **40641154336** successfully: Rust, baseline and
+`pr-ci-required` all succeeded. CI002 run **40641154221** also succeeded.
+Downloaded `ci-selection` and `ci-required-result` artifacts agree on base
+`ac046599c492241aefc9b1d6b742668c0e9cd39a`, head `57f42d5…`, proposed merge
+`1bff519a5b474ea4b6797da0ceebb1dd5ed52df8`, full 18-cell selection and success.
+Direct job-log downloads confirm all three new lifecycle regressions executed
+and passed in the hosted Rust workspace tests. This closes the *historical*
+hosted pending checkpoint above, not qualification of subsequent source.
+
+On resumption, fetched main was
+`b6c6c9c5b1fabcd0716c1fd1183cc411d8841872`, tree
+`9dc99ef6531ab61b248f83b5f613e981e4002bc0`. The existing branch incorporated it
+through ordinary merge `2a7cf1567a72e2dff25361faef0a05d7b807b8c3`, tree
+`8c852881da8f4216c1f6674449b8f8c31e203da8`. The intervening main changes do
+not alter the Rust runtime, facade tests, workspace manifests or lockfile.
+Upstream Python inheritance and baseline-budget CI updates are preserved;
+the corrective branch has **zero workflow/script/runtime differences from
+current main**. This task did not modify production CI configuration.
+
+Fresh independently built current-main and merged-branch binaries were run
+five times per test target and affinity. Current main reproduced fairness
+failures **2/5 on CPU 0** and initial-retry procfs failures **5/5 on CPU 0**;
+all three main binaries passed all five multi-CPU trials and lifecycle passed
+all ten trials. The merged branch passed **30/30** focused runs. The exact
+source/binary identities and every trial, including failures, are retained.
+No passing current-main rerun replaces these reproduced failures.
+
+Fresh current-main/merged-branch locked workspace and security/policy checks,
+and a fresh disposable negative-control series, are recorded separately under
+`/home/zboll/git/ams-gra-codegen-oms-rust-ci-001-evidence/reconcile-20261029`.
+Any incomplete run is not a pass. The initial result JSON is an immutable
+historical snapshot; later records do not rewrite its claims or raw evidence.
+The original GitHub CLI log subcommand returned empty output; direct job-log
+API downloads supplied the actual logs, and the empty attempts are retained.
+
+**Current disposition: HOSTED_CI_PENDING.** A new exact-final-head run after
+this main merge is mandatory. The original green run is not a substitute.
+PR #122 remains the only corrective PR; PR #121 remains unchanged. No merge,
+approval or auto-merge is enabled.
