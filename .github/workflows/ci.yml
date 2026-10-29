@@ -16,21 +16,91 @@ on:
 permissions:
   contents: read
 
-# A newer commit on PR #N cancels the in-flight run for PR #N's older head.
-# Different PRs have different numbers, so they never cancel each other; main
-# (and manual dispatches) fall back to github.ref and get their own group.
+# Only stale PR runs share a cancellation identity. Each main run is unique.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  changes:
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-ci.yml-changes', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      manifest: ${{ steps.select.outputs.manifest }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - name: Classify verified proposed merge (main always full)
+        id: select
+        run: python3 scripts/ci-select-changes.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ci-selection
+          path: ci-selection.json
+          if-no-files-found: error
+
+  baseline:
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-ci.yml-baseline', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - name: Mandatory documentation and fail-closed orchestration policy
+        run: |
+          python3 scripts/ci-policy.py
+          python3 scripts/ci-doc-policy.py
+          python3 -m unittest discover -s scripts -p 'test_ci_select*.py'
+          python3 -m unittest discover -s scripts -p 'test_real_uci*.py'
+          bash scripts/check-ci-split.sh
+          bash scripts/test-check-ci-split.sh
+          python3 scripts/test-task060-ci-wrappers.py
+          python3 scripts/test-task061-ci-wrappers.py
+          python3 scripts/test-task093-compiler-placement.py
+          git diff --check
+      - name: Actionlint (pinned; queue syntax also independently guarded)
+        env:
+          ACTIONLINT_VERSION: 1.7.12
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --output "$RUNNER_TEMP/actionlint.tar.gz" "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  $RUNNER_TEMP/actionlint.tar.gz" | sha256sum --check --strict
+          mkdir -p "$RUNNER_TEMP/ci-select-tools"
+          tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP/ci-select-tools" actionlint
+          ACTIONLINT="$RUNNER_TEMP/ci-select-tools/actionlint" bash scripts/check-ci-actionlint.sh
+
+  deep-qualification:
+    needs: changes
+    if: github.event_name != 'pull_request' || fromJSON(needs.changes.outputs.manifest).deep
+    uses: ./.github/workflows/deep-ci.yml
+
   ada-lacal-runtime-core:
-    # Task 099: whole-frame mock transport only, not WebSocket qualification.
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && format('oms-main-slot-{0}', matrix.slot) || format('oms-pr-{0}-{1}-{2}-ci.yml-ada-lacal-runtime-core-{3}', github.workflow, github.run_id, github.run_attempt, matrix.compiler) }}
+      queue: max
+    name: ada-lacal-runtime-core (${{ matrix.compiler }})
+    needs: [changes]
+    if: github.event_name != 'pull_request' || fromJSON(needs.changes.outputs.manifest).jobs['ada-lacal-runtime-core']
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
         compiler: ['14', '16']
+        include:
+          - compiler: '14'
+            slot: 1
+          - compiler: '16'
+            slot: 3
     container:
       image: debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5
     timeout-minutes: 90
@@ -50,7 +120,7 @@ jobs:
           gnat --version | grep -E '^GNAT 14\.2\.0([[:space:]]|$)'
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
       - name: Record exact source identity
         shell: bash
         run: |
@@ -58,7 +128,7 @@ jobs:
           test "$(pwd -P)" = "$(realpath "$GITHUB_WORKSPACE")"
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task099-evidence/source.txt
-          test "$(git rev-parse HEAD)" = '${{ github.event.pull_request.head.sha || github.sha }}'
+          test "$(git rev-parse HEAD)" = '${{ github.sha }}'
           status="$(git status --porcelain)"
           test -z "$status"
       - uses: dtolnay/rust-toolchain@1.95.0
@@ -122,12 +192,24 @@ jobs:
             /tmp/task099-evidence/campaign/*-O*-*/runtime_consumer.adb
             /tmp/task099-evidence/campaign/ada/oms-lacal-runtime/src/*.ad?
           if-no-files-found: error
+
   ada-float64-codec:
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && format('oms-main-slot-{0}', matrix.slot) || format('oms-pr-{0}-{1}-{2}-ci.yml-ada-float64-codec-{3}', github.workflow, github.run_id, github.run_attempt, matrix.compiler) }}
+      queue: max
+    name: ada-float64-codec (${{ matrix.compiler }})
+    needs: [changes]
+    if: github.event_name != 'pull_request' || fromJSON(needs.changes.outputs.manifest).jobs['ada-float64-codec']
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
         compiler: ['14', '16']
+        include:
+          - compiler: '14'
+            slot: 1
+          - compiler: '16'
+            slot: 2
     container:
       image: debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5
     timeout-minutes: 90
@@ -148,7 +230,7 @@ jobs:
           gnat --version | grep -E '^GNAT 14\.2\.0([[:space:]]|$)'
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
       - name: Record exact source identity
         shell: bash
         run: |
@@ -158,7 +240,7 @@ jobs:
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task097-evidence/source.txt
           actual_sha="$(git rev-parse HEAD)"
-          test "$actual_sha" = '${{ github.event.pull_request.head.sha || github.sha }}'
+          test "$actual_sha" = '${{ github.sha }}'
           porcelain="$(git status --porcelain)"
           test -z "$porcelain"
       - uses: dtolnay/rust-toolchain@1.95.0
@@ -219,6 +301,12 @@ jobs:
             /tmp/task097-evidence/**/support/**/*.h
           if-no-files-found: error
   ada-time-zulu-codec:
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && format('oms-main-slot-{0}', matrix.slot) || format('oms-pr-{0}-{1}-{2}-ci.yml-ada-time-zulu-codec-{3}', github.workflow, github.run_id, github.run_attempt, matrix.compiler) }}
+      queue: max
+    name: ada-time-zulu-codec (${{ matrix.compiler }})
+    needs: [changes]
+    if: github.event_name != 'pull_request' || fromJSON(needs.changes.outputs.manifest).jobs['ada-time-zulu-codec']
     # Task 098: focused named TimeZulu codec execution. Same pinned target and
     # provisioning as ada-float64-codec, but only the synthetic Time matrix:
     # portable, Float32 and lossless profiles x OAM/qualified x 3 policies.
@@ -227,6 +315,11 @@ jobs:
       fail-fast: false
       matrix:
         compiler: ['14', '16']
+        include:
+          - compiler: '14'
+            slot: 4
+          - compiler: '16'
+            slot: 3
     container:
       image: debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5
     timeout-minutes: 60
@@ -247,7 +340,7 @@ jobs:
           gnat --version | grep -E '^GNAT 14\.2\.0([[:space:]]|$)'
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
       - name: Record exact source identity
         shell: bash
         run: |
@@ -256,7 +349,7 @@ jobs:
           # in the shell HOME as well, without bypassing the identity checks.
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task098-evidence/source.txt
-          test "$(git rev-parse HEAD)" = '${{ github.event.pull_request.head.sha || github.sha }}'
+          test "$(git rev-parse HEAD)" = '${{ github.sha }}'
           status="$(git status --porcelain)"
           test -z "$status"
       - uses: dtolnay/rust-toolchain@1.95.0
@@ -319,11 +412,22 @@ jobs:
           if-no-files-found: error
 
   python-model-backend:
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && format('oms-main-slot-{0}', matrix.slot) || format('oms-pr-{0}-{1}-{2}-ci.yml-python-model-backend-{3}', github.workflow, github.run_id, github.run_attempt, matrix.python-version) }}
+      queue: max
+    name: python-model-backend (${{ matrix.python-version }})
+    needs: [changes]
+    if: github.event_name != 'pull_request' || fromJSON(needs.changes.outputs.manifest).jobs['python-model-backend']
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       matrix:
         python-version: ['3.11', '3.13']
+        include:
+          - python-version: '3.11'
+            slot: 1
+          - python-version: '3.13'
+            slot: 2
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.95.0
@@ -362,6 +466,11 @@ jobs:
           PYTHON=python bash scripts/check-py005-mock.sh
 
   ada-float32-codec:
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-3' || format('oms-pr-{0}-{1}-{2}-ci.yml-ada-float32-codec', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
+    needs: [changes]
+    if: github.event_name != 'pull_request' || fromJSON(needs.changes.outputs.manifest).jobs['ada-float32-codec']
     runs-on: ubuntu-24.04
     container:
       image: debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5
@@ -384,7 +493,7 @@ jobs:
           gnat --version | grep -E '^GNAT 14\.2\.0([[:space:]]|$)'
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
       - uses: dtolnay/rust-toolchain@1.95.0
       - name: Install verified Alire 2.1.1
         shell: bash
@@ -472,13 +581,17 @@ jobs:
             /tmp/task095-evidence/task093-c5-portable-14/**
           if-no-files-found: error
   ada-repeated-temporal-codec:
-    needs: ada-json-guard
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-4' || format('oms-pr-{0}-{1}-{2}-ci.yml-ada-repeated-temporal-codec', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
+    needs: [changes, ada-json-guard]
+    if: github.event_name != 'pull_request' || fromJSON(needs.changes.outputs.manifest).jobs['ada-repeated-temporal-codec']
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
       - uses: dtolnay/rust-toolchain@1.95.0
       - name: Install verified Alire 2.1.1
         shell: bash
@@ -521,13 +634,17 @@ jobs:
             ${{ runner.temp }}/task094-combined/**
           if-no-files-found: error
   ada-datetime-codec:
-    needs: ada-json-guard
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-ci.yml-ada-datetime-codec', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
+    needs: [changes, ada-json-guard]
+    if: github.event_name != 'pull_request' || fromJSON(needs.changes.outputs.manifest).jobs['ada-datetime-codec']
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
       - uses: dtolnay/rust-toolchain@1.95.0
       - name: Install verified Alire 2.1.1
         shell: bash
@@ -567,6 +684,11 @@ jobs:
           if-no-files-found: error
   # Task 087A: separate provider/toolchain environment; no generator/runtime work.
   ada-json-guard:
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-ci.yml-ada-json-guard', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
+    needs: [changes]
+    if: github.event_name != 'pull_request' || fromJSON(needs.changes.outputs.manifest).jobs['ada-json-guard']
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -597,13 +719,17 @@ jobs:
             ${{ runner.temp }}/task087a-qualification/qualified-alire.lock
           if-no-files-found: error
   ada-generated-codec:
-    needs: ada-json-guard
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-2' || format('oms-pr-{0}-{1}-{2}-ci.yml-ada-generated-codec', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
+    needs: [changes, ada-json-guard]
+    if: github.event_name != 'pull_request' || fromJSON(needs.changes.outputs.manifest).jobs['ada-generated-codec']
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
       - uses: dtolnay/rust-toolchain@1.95.0
       - name: Install verified Alire 2.1.1
         shell: bash
@@ -637,13 +763,17 @@ jobs:
             ${{ runner.temp }}/task088-choice/**/alire.lock
           if-no-files-found: error
   ada-repeated-codec:
-    needs: ada-json-guard
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-1' || format('oms-pr-{0}-{1}-{2}-ci.yml-ada-repeated-codec', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
+    needs: [changes, ada-json-guard]
+    if: github.event_name != 'pull_request' || fromJSON(needs.changes.outputs.manifest).jobs['ada-repeated-codec']
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
       - uses: dtolnay/rust-toolchain@1.95.0
       - name: Install verified Alire 2.1.1
         shell: bash
@@ -679,13 +809,17 @@ jobs:
             ${{ runner.temp }}/task089r-codec/source-hashes.json
           if-no-files-found: error
   ada-duration-codec:
-    needs: ada-json-guard
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-ci.yml-ada-duration-codec', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
+    needs: [changes, ada-json-guard]
+    if: github.event_name != 'pull_request' || fromJSON(needs.changes.outputs.manifest).jobs['ada-duration-codec']
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
       - uses: dtolnay/rust-toolchain@1.95.0
       - name: Install verified Alire 2.1.1
         shell: bash
@@ -722,13 +856,17 @@ jobs:
             ${{ runner.temp }}/task091-duration/named/*.ad?
           if-no-files-found: error
   ada-hexbinary-codec:
-    needs: ada-json-guard
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-4' || format('oms-pr-{0}-{1}-{2}-ci.yml-ada-hexbinary-codec', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
+    needs: [changes, ada-json-guard]
+    if: github.event_name != 'pull_request' || fromJSON(needs.changes.outputs.manifest).jobs['ada-hexbinary-codec']
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
       - uses: dtolnay/rust-toolchain@1.95.0
       - name: Install verified Alire 2.1.1
         shell: bash
@@ -792,13 +930,17 @@ jobs:
             ${{ runner.temp }}/task093-combined/**
           if-no-files-found: error
   ada-repeated-choice-codec:
-    needs: ada-json-guard
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-ci.yml-ada-repeated-choice-codec', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
+    needs: [changes, ada-json-guard]
+    if: github.event_name != 'pull_request' || fromJSON(needs.changes.outputs.manifest).jobs['ada-repeated-choice-codec']
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
       - uses: dtolnay/rust-toolchain@1.95.0
       - name: Install verified Alire 2.1.1
         shell: bash
@@ -839,6 +981,11 @@ jobs:
             ${{ runner.temp }}/task092-qualified/**
           if-no-files-found: error
   rust:
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-ci.yml-rust', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
+    needs: [changes]
+    if: github.event_name != 'pull_request' || fromJSON(needs.changes.outputs.manifest).jobs['rust']
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -1516,3 +1663,31 @@ jobs:
       - run: cargo test --workspace
         env:
           AMS_GRA_REQUIRE_GNAT: "1"
+
+  pr-ci-required:
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-ci.yml-pr-ci-required', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
+    if: ${{ always() }}
+    needs: [changes, baseline, deep-qualification, ada-lacal-runtime-core, ada-float64-codec, ada-time-zulu-codec, python-model-backend, ada-float32-codec, ada-repeated-temporal-codec, ada-datetime-codec, ada-json-guard, ada-generated-codec, ada-repeated-codec, ada-duration-codec, ada-hexbinary-codec, ada-repeated-choice-codec, rust]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - name: Recompute selection; require every selected cell and evidence
+        env:
+          SELECTION_MANIFEST: ${{ needs.changes.outputs.manifest }}
+          NEEDS_JSON: ${{ toJSON(needs) }}
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/ci-required-gate.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ci-required-result
+          path: ci-required-result.json
+          if-no-files-found: error

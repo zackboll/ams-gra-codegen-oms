@@ -33,7 +33,7 @@ class MutationOwnership(unittest.TestCase):
     def test_actual_task092_and_overlapping_predecessor(self):
         original = (ROOT / ".github/workflows/deep-ci.yml").read_text()
         self.assertLess(original.index("  ada-repeated-choice-real-uci:"),
-                        original.index("  real-uci:"))
+                        original.index("  real-uci-temporal-naming:"))
         independent = '''  independent-layout-regression:
     runs-on: ubuntu-latest
     steps:
@@ -71,7 +71,9 @@ class MutationOwnership(unittest.TestCase):
                     layout.self_test(str(path), str(ROOT / "scripts/check-ci-split.sh"),
                                      str(ROOT / ".github/workflows/ci.yml"),
                                      str(ROOT / "scripts/run-real-sleet-test.sh"))
-                self.assertEqual(len(observed), 312)
+                # Every primary shard now receives the same source/setup
+                # mutations as each independent regression runner.
+                self.assertEqual(len(observed), 364)
                 self.assertEqual(observed.count(text), 1)  # Healthy case only.
 
     def test_source_gate_executes_fail_closed(self):

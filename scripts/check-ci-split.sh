@@ -34,10 +34,15 @@ fast_code="$(code "$fast")"
 deep_code="$(code "$deep")"
 sleet_code="$(code "$sleet")"
 
-# PERF-001: the batch driver is itself a mandatory qualification surface.
-for path in 'scripts/check-task061-service-impact.py' 'scripts/test-task061-service-impact.py'; do
-  grep -Fqx "      - \"$path\"" <<<"$deep_code" || fail "Deep CI lost Task 061 PR path: $path"
+# CI-SELECT-001: inherited PR paths are in the audited selector inventory.
+# Deep qualification is now a reusable dependency, avoiding a polling runner
+# holding a main lane while waiting for jobs queued behind that same lane.
+for required in \
+  'uses: ./.github/workflows/deep-ci.yml' \
+  "if: github.event_name != 'pull_request' || fromJSON(needs.changes.outputs.manifest).deep"; do
+  grep -Fq "$required" <<<"$fast_code" || fail "CI lost mandatory Deep caller: $required"
 done
+grep -Eq '^  workflow_call:' <<<"$deep_code" || fail "Deep CI lost reusable entrypoint"
 for required in \
   'python3 scripts/test-task061-service-impact.py' \
   'cargo test --release --locked -p ams-gra-codegen-oms --test service_check_batch'; do
@@ -52,12 +57,44 @@ if grep -Fq 'scripts/check-py005-sleet.sh' <<<"$fast_code"; then
   fail "Fast CI must not run Python pinned Sleet"
 fi
 
-# PY-007: retain historical profile hashes and require the current service gate
-# in the existing Deep job, plus generated inheritance in the Python matrix.
-for path in 'scripts/check-py007-uci.py' 'scripts/test-py007-uci.py' \
-  'scripts/check-py007-sleet.sh' 'tests/fixtures/python-inheritance/**'; do
-  grep -Fqx "      - \"$path\"" <<<"$deep_code" || fail "Deep CI lost PY-007 PR path: $path"
-done
+# PY-007: selector coverage replaces obsolete Deep pull_request.paths.
+# Inspect the owning jobs, not unrelated commands or comments elsewhere.
+python3 - "$repo" "$fast" "$deep" <<'PY' || fail "PY-007 selection/mandatory execution policy failed"
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(sys.argv[1]) / 'scripts'))
+from ci_policy import blocks, check, normalized
+from ci_selection import inventory, select
+from real_uci_evidence import check_layout
+policy = inventory()
+# Keep current-main policy/security pins authoritative. Disposable layout
+# fixtures below may still change harmless descriptions, as before.
+check()
+for path in ('scripts/check-py007-uci.py', 'scripts/test-py007-uci.py',
+             'scripts/check-py007-sleet.sh', 'tests/fixtures/python-inheritance/oam.xsd',
+             'crates/backend-python/src/lib.rs', 'crates/cli/tests/python_inheritance.rs',
+             'python/oms-lacal-runtime/tests/test_inheritance_sleet.py'):
+    manifest = select([dict(status='M', paths=[path], old_mode='100644', new_mode='100644')], policy)
+    assert manifest['deep'] and {'python-model-backend-3.11', 'python-model-backend-3.13'} <= set(manifest['cells']), path
+fast_header, fast_jobs = blocks(Path(sys.argv[2]).read_text())
+deep_jobs = blocks(Path(sys.argv[3]).read_text())[1]
+assert normalized(fast_header) == policy['ci_header']
+for job in policy['orchestration_jobs']:
+    if policy['orchestration_jobs'][job]['workflow'] == 'ci.yml':
+        assert normalized(fast_jobs[job]) == policy['orchestration_payloads'][job], job
+check_layout(deep_jobs)
+python_job = fast_jobs['python-model-backend']
+record = next(r for r in policy['jobs'] if
+              (r['workflow'], r['job_id']) == ('ci.yml', 'python-model-backend'))
+assert normalized(python_job.split('    steps:\n', 1)[0]) == record['expected_header']
+assert "python-version: ['3.11', '3.13']" in python_job
+for command in ('cargo test --locked -p ams-gra-codegen-oms --test python_inheritance -- --nocapture',
+                'python scripts/test-py007-uci.py'):
+    assert python_job.count(command) == 1, command
+regressions = deep_jobs['real-uci-regressions']
+assert regressions.count('python3 scripts/check-py007-uci.py --generator') == 1
+assert 'name: py006-uci' in regressions and 'if-no-files-found: error' in regressions
+PY
 grep -Fq 'python3 scripts/check-py007-uci.py --generator' <<<"$deep_code" || fail "Deep CI lost PY-007 current-service gate"
 grep -Fq -- '--test python_inheritance -- --nocapture' <<<"$fast_code" || fail "Fast CI lost PY-007 generated execution"
 grep -Fq 'python scripts/test-py007-uci.py' <<<"$fast_code" || fail "Fast CI lost PY-007 gate controls"
@@ -66,13 +103,15 @@ if grep -Fq 'scripts/check-py007-sleet.sh' <<<"$fast_code" || grep -Fq 'scripts/
   fail "Fast CI must not run PY-007 external campaigns"
 fi
 
-# PY-008: versioned current-service evidence, independent numerics and the same
-# shared broker. Keep every historical gate above as well.
-for path in 'scripts/check-py008-uci.py' 'scripts/measure-py008-uci.py' \
-  'scripts/test-py008-uci.py' 'scripts/check-py008-numeric.py' \
-  'scripts/check-py008-sleet.sh' 'tests/fixtures/python-float64/**'; do
-  grep -Fqx "      - \"$path\"" <<<"$deep_code" || fail "Deep CI lost PY-008 PR path: $path"
-done
+# PY-008 uses the current selector, not the obsolete Deep PR path trigger.
+# Check the supplied shared harness, including disposable adversarial copies.
+python3 - "$repo" "$sleet" <<'PY' || fail "PY-008 shared-Sleet execution policy failed"
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(sys.argv[1]) / 'scripts'))
+from ci_policy import check_py008_sleet
+check_py008_sleet(Path(sys.argv[2]).read_text())
+PY
 for required in '--test python_float64 -- --nocapture' 'python scripts/test-py008-uci.py' \
   'python scripts/check-py008-numeric.py' 'python -O scripts/check-py008-numeric.py'; do
   grep -Fq -- "$required" <<<"$fast_code" || fail "Fast CI lost PY-008 gate: $required"

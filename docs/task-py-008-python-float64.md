@@ -310,3 +310,146 @@ numeric/String patterns, Choice, abstract value polymorphism, `$type`, general
 named ancestry, field-local constrained direct Float64, unbounded/nillable
 cardinalities and additional transport capabilities remain unsupported. No
 resource-exhaustion recovery or NaN payload preservation is claimed.
+
+## R1 — reconciliation with merged PY-007 and current CI architecture
+
+The earlier sections are implementation history, not a statement that PR #117
+is still open or that the old stacked target/independent Deep PR trigger applies.
+R1 verified PR #117 **MERGED**, PR #119 **OPEN**, non-draft, targeting `main`.
+No replacement branch/PR, rebase, amendment, cherry-pick or forced update is used.
+
+### Provenance and conflict-resolution manifest
+
+| Checkpoint | Commit | Tree |
+|---|---|---|
+| Original qualified PY-008 PR head | `b9d9fcf74ace0a3063ec28d823979adf41fc166d` | `0f89dbf953dcbded5d38c24957aff88eaffcfd78` |
+| Fetched starting main / merged PR #117 | `b6c6c9c5b1fabcd0716c1fd1183cc411d8841872` | `9dc99ef6531ab61b248f83b5f613e981e4002bc0` |
+| Merged PY-007 feature parent | `71da44f199b135100697e2837732e54a9aa26370` | `9dc99ef6531ab61b248f83b5f613e981e4002bc0` |
+| Historical qualified PY-007 dependency | `d76a36d2cb9d18bcc8b825b5134a65686f361deb` | `bb28f2e70e0c2b1c75ed19ff390f8c1df40773c3` |
+
+The existing worktree was clean and had no observed competing task process or
+Git lock. Before integration, all 36 requested production/test/script/fixture
+files, plus the Task 096 oracle and manifest, were copied read-only and recorded
+with Git blob IDs and SHA-256 in
+`/home/zboll/py008-r1-evidence/original-manifest.json`. Its SHA-256 is
+`13f873bfb3d6e06b81c0971f414ae1278d408cf26f9df3c8d189bf79e1510ea9`.
+Original qualification files were not regenerated or rewritten.
+
+`git fetch origin main` followed by `git merge --no-ff origin/main` produced
+one textual conflict, in `.github/workflows/deep-ci.yml`: the old PY-008
+`pull_request.paths` block conflicted with main's reusable entrypoint. The
+obsolete direct PR trigger was removed; `workflow_call`, nightly/manual entry,
+and the ordinary CI selector/caller remain authoritative. No whole conflicted
+file was selected from either parent.
+
+The automatically merged surfaces were reviewed and reconciled explicitly:
+
+- `.github/workflows/ci.yml`: retain main's `changes`, five shared lanes,
+  `queue: max`, 20-minute `baseline`, and mandatory `pr-ci-required`; add
+  Float64 and PY-008 UCI controls to both existing Python cells without dropping
+  any historical Python target. Keep focused numerical execution normal/`-O`
+  against actual CLI-generated code and pin its Rust toolchain to 1.95.0.
+- `.github/workflows/deep-ci.yml`: retain all three PERF-007 primary shards and
+  existing source verification/artifacts; integrate the versioned PY-008 UCI
+  gate in the existing PY-007 current-service step, retaining both sets of
+  controls and the fail-closed `py006-uci` artifact. Own the four full numerical
+  cells once in `real-sleet`, with mandatory `py008-numeric` evidence.
+- `scripts/check-ci-split.sh` and `scripts/test-check-ci-split.sh`: replace only
+  obsolete PY-008 path-trigger expectations with selector/owning-payload and
+  shared-Sleet checks; retain inherited PY-007/PERF/security coverage and
+  require the intended diagnostic for every new mutation.
+- `scripts/ci-qualification-inventory.json`: reconcile exactly the three owning
+  job payloads and the new numeric artifact; add PY-008 evidence paths and
+  include Python/Deep in the existing shared Task 096 oracle/corpus ownership.
+- `scripts/ci_policy.py` and `scripts/test_ci_select_py008.py`: require both
+  Python versions and Deep for Float64 surfaces; reject removed, masked,
+  renamed, filtered, version-reduced, optimization-reduced or source/artifact
+  altered qualification. Pin the already-qualified shared Sleet harness,
+  including its loop and build, against early exits/outer false conditions.
+
+All other inventory records, orchestration payloads, inherited-source IDs,
+trusted-dispatch source hashes/security headers, aggregate gate, selector
+implementation and PERF-007 evidence reconciliation remain identical to main.
+No trusted-dispatch hash was recalculated to authorize workflow changes.
+
+### Production and historical parity
+
+All **36 frozen files match byte-for-byte** after integration. The complete
+Python backend, runtime tests and historical fixtures have no changes relative
+to original PY-008. Main's production/fixture trees have no changes relative to
+the historical PY-007 dependency, so no baseline drift requires an exception.
+The final diff against main introduces only incremental Float64 production,
+tests, evidence, documentation and necessary CI integration, not PY-007-only
+files. Shared `effective_record_fields`, frozen concrete Records, ancestry-only
+abstract elision, demanded abstract-value rejection, both worlds and inherited
+QName/order behavior are preserved and re-executed by the inherited tests.
+
+The preserved historical PY-007 executable and current release executable
+match the unchanged frozen `nonfloat-parity.json`: **12 selections / 30 Python
+model/API/codec files**. All **40 legacy generation/report selections** also
+match `legacy-parity.json`, including six Ada/Rust/C++ full model generations,
+twelve selected generations, twelve readiness reports, two coverage reports
+and eight Python non-codec selections. Canonical legacy evidence SHA-256 stays
+`b0749e258b6484b568c07b60f81b855353565488a5b26fc3ed224b160cfab235`.
+The integrated release generator SHA-256 remains
+`f1a0fd113c155f232b625500d6141496b68d8bc06d0bb234757c55a5586c14f9`.
+Historical dependency/source identities in PY-008 evidence remain unchanged.
+
+### R1 local qualification
+
+Rust 1.95.0 formatting, locked workspace/all-target check and warnings-denied
+Clippy pass. Focused backend suites pass **19 Rust tests** and the six CLI
+targets pass **23 Rust tests**, separately with Python 3.11.17 and 3.13.16;
+zero failures, ignores or filters in those suites. The Float64 CLI test executes
+**88 unittest methods per interpreter**, covering both worlds, standalone and
+package imports, normal and optimized execution (176 methods across versions).
+`AMS_GRA_REQUIRE_GNAT=1` locked workspace execution completes **1,491 passed,
+zero failed, eight pre-existing ignored, zero filtered**, in 189 summaries.
+Ignored external campaigns are not counted as successful execution.
+
+| Numerical cell | Decimal conversions | Finite encodings | Mismatches | Corruption controls |
+|---|---:|---:|---:|---:|
+| Python 3.11 normal | 27,167 | 20,474 | 0 | 4/4 |
+| Python 3.11 optimized | 27,167 | 20,474 | 0 | 4/4 |
+| Python 3.13 normal | 27,167 | 20,474 | 0 | 4/4 |
+| Python 3.13 optimized | 27,167 | 20,474 | 0 | 4/4 |
+
+The unchanged oracle and verified corpus hashes above are reused, not adjusted.
+All four smaller Fast samples also pass **6,693 conversions / 162 encodings**
+each, with all controls and zero mismatches. Both current-UCI campaigns pass
+**24 actual selections, 96 inherited tests and 32 profile executions each**;
+zero complete services READY and the exact six first blockers in the original
+table remain unchanged. PY-006/PY-007 history and source/contract/process/stage
+identities are checked by the versioned gates, not relabeled as new evidence.
+
+Offline policy checks pass **61 selector tests**, **18 real-UCI evidence and
+performance tests**, **30 CI002 tests**, and both PY-007/PY-008 **five-test**
+UCI-control suites. The split self-test passes **556 checks**, including the
+new seven-test attributed Float64 policy suite and inherited layout tests.
+Task 060/061 wrappers pass **96/4 controls**, Task 093 placement passes **12
+tests**. Pinned actionlint 1.7.12 and documentation/whitespace policies pass.
+Authenticated historical CI002 provenance remains exactly
+`4c79fff41970a8ba7109df9bd185a6b166c0ffb0`. Large logs and generated code are
+outside the repository in `/home/zboll/py008-r1-evidence`.
+
+The complete shared pinned-Sleet campaign passes: **nine Rust tests**, zero
+failures/ignores, two explicitly filtered counterparts, plus **14 Python
+executions** (PY-005 normal/optimized and PY-006/007/008 in both interpreter
+versions/policies). A separate PY-005 3.13 run adds its two executions. All four
+PY-008 real broker delivery/rejection/recovery cells pass. The existing clean
+Sleet checkout/build at `e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b` is reused;
+its binary SHA-256 remains
+`4a2e9ee872d1deaa1a6ce1a1494a2f601660eb57c0df28a447b28a08eba21c94`.
+The external local harness uses the unchanged shared script's campaigns with
+explicit Rust 1.95/release/locked commands, the existing pinned checkout and
+task-owned target, not a second broker. All four existing real-UCI Rust codec
+tests also pass (two deliberately filtered Sleet counterparts are not passes).
+The historical PY-007 executable separately requalifies all 24 historical
+services, 96 inherited tests and 32 PY-006 profile executions against its
+unchanged default baseline. Both Python mock campaigns pass **38 methods per
+version**, normal and optimized, with no skips.
+
+Exact ordinary-merge identity, final push identity and exact-head hosted
+outcomes are recorded at the completion checkpoint below;
+none is inferred from the old PR head's green workflow runs. No merge,
+self-approval, release, publication or auto-merge is authorized.

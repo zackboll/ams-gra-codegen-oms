@@ -9,6 +9,9 @@ permissions:
   checks: read
 jobs:
   test:
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-2' || format('oms-pr-{0}-{1}-{2}-ci002-validation.yml-test', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:

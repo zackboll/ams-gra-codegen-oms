@@ -12,8 +12,12 @@ permissions:
 concurrency:
   group: oms-trusted-dispatch-${{ github.event.workflow_run.pull_requests[0].number || github.event.workflow_run.id }}
   cancel-in-progress: false
+  queue: max
 jobs:
   dispatch:
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-4' || format('oms-pr-{0}-{1}-{2}-oms-ryzen-trusted-dispatch.yml-dispatch', github.workflow, github.run_id, github.run_attempt) }}
+      queue: max
     if: vars.OMS_TRUSTED_PR_DISPATCH_ENABLED == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10

@@ -1,0 +1,659 @@
+{
+  "disposition": "HOSTED_CI_PENDING",
+  "starting_pr_head": "a02903e07e58a927d4c6713b6b2c028116d38b39",
+  "starting_pr_tree": "bb1b5669f04ddfa843c1f79cd293470e231aa817",
+  "incorporated_main": "d603077c6d38ccc0658391776e3af9eecb009255",
+  "incorporated_main_tree": "5ea3873e3bf6a8e2960e8d1faa57049d867a2456",
+  "historical_only": {
+    "original_ci": 40440457015,
+    "original_ci_jobs": 27,
+    "original_pilot": 40438716306,
+    "original_pilot_jobs": 15,
+    "original_pilot_peak": 2
+  },
+  "pilot": {
+    "run": 40607545508,
+    "attempt": 1,
+    "head": "ec2de3db9961f8806000d3e4ef09c4545a7f6c93",
+    "workflow": "ci-select-pilot.yml",
+    "conclusion": "success",
+    "jobs": 15,
+    "maximum_running": 5,
+    "maximum_per_lane": {
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "2": 1,
+      "1": 1
+    },
+    "runner_minutes": 37.967,
+    "wall_seconds": 465.0,
+    "intervals": [
+      {
+        "id": 122550703529,
+        "name": "pilot-3",
+        "started_at": "2026-10-28T00:15:08+00:00",
+        "completed_at": "2026-10-28T00:17:39+00:00",
+        "seconds": 151.0
+      },
+      {
+        "id": 122550703607,
+        "name": "pilot-14",
+        "started_at": "2026-10-28T00:15:08+00:00",
+        "completed_at": "2026-10-28T00:17:40+00:00",
+        "seconds": 152.0
+      },
+      {
+        "id": 122550703613,
+        "name": "pilot-5",
+        "started_at": "2026-10-28T00:15:08+00:00",
+        "completed_at": "2026-10-28T00:17:40+00:00",
+        "seconds": 152.0
+      },
+      {
+        "id": 122550703717,
+        "name": "pilot-2",
+        "started_at": "2026-10-28T00:15:08+00:00",
+        "completed_at": "2026-10-28T00:17:39+00:00",
+        "seconds": 151.0
+      },
+      {
+        "id": 122550703769,
+        "name": "pilot-11",
+        "started_at": "2026-10-28T00:15:09+00:00",
+        "completed_at": "2026-10-28T00:17:41+00:00",
+        "seconds": 152.0
+      },
+      {
+        "id": 122550703799,
+        "name": "pilot-4",
+        "started_at": "2026-10-28T00:17:44+00:00",
+        "completed_at": "2026-10-28T00:20:16+00:00",
+        "seconds": 152.0
+      },
+      {
+        "id": 122550703809,
+        "name": "pilot-7",
+        "started_at": "2026-10-28T00:20:18+00:00",
+        "completed_at": "2026-10-28T00:22:49+00:00",
+        "seconds": 151.0
+      },
+      {
+        "id": 122550703975,
+        "name": "pilot-9",
+        "started_at": "2026-10-28T00:20:20+00:00",
+        "completed_at": "2026-10-28T00:22:53+00:00",
+        "seconds": 153.0
+      },
+      {
+        "id": 122550704041,
+        "name": "pilot-13",
+        "started_at": "2026-10-28T00:17:43+00:00",
+        "completed_at": "2026-10-28T00:20:15+00:00",
+        "seconds": 152.0
+      },
+      {
+        "id": 122550704063,
+        "name": "pilot-6",
+        "started_at": "2026-10-28T00:20:19+00:00",
+        "completed_at": "2026-10-28T00:22:51+00:00",
+        "seconds": 152.0
+      },
+      {
+        "id": 122550704080,
+        "name": "pilot-8",
+        "started_at": "2026-10-28T00:20:19+00:00",
+        "completed_at": "2026-10-28T00:22:51+00:00",
+        "seconds": 152.0
+      },
+      {
+        "id": 122550704104,
+        "name": "pilot-15",
+        "started_at": "2026-10-28T00:20:20+00:00",
+        "completed_at": "2026-10-28T00:22:52+00:00",
+        "seconds": 152.0
+      },
+      {
+        "id": 122550704167,
+        "name": "pilot-10",
+        "started_at": "2026-10-28T00:17:44+00:00",
+        "completed_at": "2026-10-28T00:20:17+00:00",
+        "seconds": 153.0
+      },
+      {
+        "id": 122550704169,
+        "name": "pilot-12",
+        "started_at": "2026-10-28T00:17:43+00:00",
+        "completed_at": "2026-10-28T00:20:14+00:00",
+        "seconds": 151.0
+      },
+      {
+        "id": 122550704359,
+        "name": "pilot-1",
+        "started_at": "2026-10-28T00:17:44+00:00",
+        "completed_at": "2026-10-28T00:20:16+00:00",
+        "seconds": 152.0
+      }
+    ],
+    "timeline": [
+      {
+        "at": "2026-10-28T00:15:08+00:00",
+        "delta": 1,
+        "running": 1,
+        "job_id": 122550703529
+      },
+      {
+        "at": "2026-10-28T00:15:08+00:00",
+        "delta": 1,
+        "running": 2,
+        "job_id": 122550703607
+      },
+      {
+        "at": "2026-10-28T00:15:08+00:00",
+        "delta": 1,
+        "running": 3,
+        "job_id": 122550703613
+      },
+      {
+        "at": "2026-10-28T00:15:08+00:00",
+        "delta": 1,
+        "running": 4,
+        "job_id": 122550703717
+      },
+      {
+        "at": "2026-10-28T00:15:09+00:00",
+        "delta": 1,
+        "running": 5,
+        "job_id": 122550703769
+      },
+      {
+        "at": "2026-10-28T00:17:39+00:00",
+        "delta": -1,
+        "running": 4,
+        "job_id": 122550703529
+      },
+      {
+        "at": "2026-10-28T00:17:39+00:00",
+        "delta": -1,
+        "running": 3,
+        "job_id": 122550703717
+      },
+      {
+        "at": "2026-10-28T00:17:40+00:00",
+        "delta": -1,
+        "running": 2,
+        "job_id": 122550703607
+      },
+      {
+        "at": "2026-10-28T00:17:40+00:00",
+        "delta": -1,
+        "running": 1,
+        "job_id": 122550703613
+      },
+      {
+        "at": "2026-10-28T00:17:41+00:00",
+        "delta": -1,
+        "running": 0,
+        "job_id": 122550703769
+      },
+      {
+        "at": "2026-10-28T00:17:43+00:00",
+        "delta": 1,
+        "running": 1,
+        "job_id": 122550704041
+      },
+      {
+        "at": "2026-10-28T00:17:43+00:00",
+        "delta": 1,
+        "running": 2,
+        "job_id": 122550704169
+      },
+      {
+        "at": "2026-10-28T00:17:44+00:00",
+        "delta": 1,
+        "running": 3,
+        "job_id": 122550703799
+      },
+      {
+        "at": "2026-10-28T00:17:44+00:00",
+        "delta": 1,
+        "running": 4,
+        "job_id": 122550704167
+      },
+      {
+        "at": "2026-10-28T00:17:44+00:00",
+        "delta": 1,
+        "running": 5,
+        "job_id": 122550704359
+      },
+      {
+        "at": "2026-10-28T00:20:14+00:00",
+        "delta": -1,
+        "running": 4,
+        "job_id": 122550704169
+      },
+      {
+        "at": "2026-10-28T00:20:15+00:00",
+        "delta": -1,
+        "running": 3,
+        "job_id": 122550704041
+      },
+      {
+        "at": "2026-10-28T00:20:16+00:00",
+        "delta": -1,
+        "running": 2,
+        "job_id": 122550703799
+      },
+      {
+        "at": "2026-10-28T00:20:16+00:00",
+        "delta": -1,
+        "running": 1,
+        "job_id": 122550704359
+      },
+      {
+        "at": "2026-10-28T00:20:17+00:00",
+        "delta": -1,
+        "running": 0,
+        "job_id": 122550704167
+      },
+      {
+        "at": "2026-10-28T00:20:18+00:00",
+        "delta": 1,
+        "running": 1,
+        "job_id": 122550703809
+      },
+      {
+        "at": "2026-10-28T00:20:19+00:00",
+        "delta": 1,
+        "running": 2,
+        "job_id": 122550704063
+      },
+      {
+        "at": "2026-10-28T00:20:19+00:00",
+        "delta": 1,
+        "running": 3,
+        "job_id": 122550704080
+      },
+      {
+        "at": "2026-10-28T00:20:20+00:00",
+        "delta": 1,
+        "running": 4,
+        "job_id": 122550703975
+      },
+      {
+        "at": "2026-10-28T00:20:20+00:00",
+        "delta": 1,
+        "running": 5,
+        "job_id": 122550704104
+      },
+      {
+        "at": "2026-10-28T00:22:49+00:00",
+        "delta": -1,
+        "running": 4,
+        "job_id": 122550703809
+      },
+      {
+        "at": "2026-10-28T00:22:51+00:00",
+        "delta": -1,
+        "running": 3,
+        "job_id": 122550704063
+      },
+      {
+        "at": "2026-10-28T00:22:51+00:00",
+        "delta": -1,
+        "running": 2,
+        "job_id": 122550704080
+      },
+      {
+        "at": "2026-10-28T00:22:52+00:00",
+        "delta": -1,
+        "running": 1,
+        "job_id": 122550704104
+      },
+      {
+        "at": "2026-10-28T00:22:53+00:00",
+        "delta": -1,
+        "running": 0,
+        "job_id": 122550703975
+      }
+    ],
+    "queue_wait": "not inferred from queued job started_at; requires run/job eligibility timestamps",
+    "run_started_to_setup_seconds": {
+      "minimum": 4,
+      "maximum": 316,
+      "mean": 159.667,
+      "limitation": "Includes lane waiting and hosted scheduling; not a pure scheduler queue duration"
+    }
+  },
+  "local_categories": [
+    {
+      "category": "documentation-only",
+      "paths": [
+        "docs/r1-fixture.md"
+      ],
+      "selected": [],
+      "intentionally_skipped": [
+        "ada-datetime-codec",
+        "ada-duration-codec",
+        "ada-float32-codec",
+        "ada-float64-codec",
+        "ada-generated-codec",
+        "ada-hexbinary-codec",
+        "ada-json-guard",
+        "ada-lacal-runtime-core",
+        "ada-repeated-choice-codec",
+        "ada-repeated-codec",
+        "ada-repeated-temporal-codec",
+        "ada-time-zulu-codec",
+        "python-model-backend",
+        "rust"
+      ],
+      "selected_cells": [],
+      "deep": false,
+      "mode": "selective-pr",
+      "evidence_type": "LOCAL_SYNTHETIC_SELECTION_NOT_GENUINE_PR",
+      "final_gate_outcome": "local gate healthy-fixture controls only; hosted acceptance pending"
+    },
+    {
+      "category": "python-only",
+      "paths": [
+        "python/oms-lacal-runtime/src/oms_lacal/runtime.py"
+      ],
+      "selected": [
+        "python-model-backend",
+        "rust"
+      ],
+      "intentionally_skipped": [
+        "ada-datetime-codec",
+        "ada-duration-codec",
+        "ada-float32-codec",
+        "ada-float64-codec",
+        "ada-generated-codec",
+        "ada-hexbinary-codec",
+        "ada-json-guard",
+        "ada-lacal-runtime-core",
+        "ada-repeated-choice-codec",
+        "ada-repeated-codec",
+        "ada-repeated-temporal-codec",
+        "ada-time-zulu-codec"
+      ],
+      "selected_cells": [
+        "python-model-backend-3.11",
+        "python-model-backend-3.13",
+        "rust"
+      ],
+      "deep": true,
+      "mode": "selective-pr",
+      "evidence_type": "LOCAL_SYNTHETIC_SELECTION_NOT_GENUINE_PR",
+      "final_gate_outcome": "local gate healthy-fixture controls only; hosted acceptance pending"
+    },
+    {
+      "category": "ada-float32",
+      "paths": [
+        "ada/oms-json-support/float32/ams_gra_float32.c"
+      ],
+      "selected": [
+        "ada-float32-codec",
+        "ada-float64-codec",
+        "ada-json-guard",
+        "ada-lacal-runtime-core",
+        "ada-time-zulu-codec",
+        "rust"
+      ],
+      "intentionally_skipped": [
+        "ada-datetime-codec",
+        "ada-duration-codec",
+        "ada-generated-codec",
+        "ada-hexbinary-codec",
+        "ada-repeated-choice-codec",
+        "ada-repeated-codec",
+        "ada-repeated-temporal-codec",
+        "python-model-backend"
+      ],
+      "selected_cells": [
+        "ada-float32-codec",
+        "ada-float64-codec-14",
+        "ada-float64-codec-16",
+        "ada-json-guard",
+        "ada-lacal-runtime-core-14",
+        "ada-lacal-runtime-core-16",
+        "ada-time-zulu-codec-14",
+        "ada-time-zulu-codec-16",
+        "rust"
+      ],
+      "deep": false,
+      "mode": "selective-pr",
+      "evidence_type": "LOCAL_SYNTHETIC_SELECTION_NOT_GENUINE_PR",
+      "final_gate_outcome": "local gate healthy-fixture controls only; hosted acceptance pending"
+    },
+    {
+      "category": "ada-lacal",
+      "paths": [
+        "ada/oms-lacal-runtime/src/oms_lacal-typed.adb"
+      ],
+      "selected": [
+        "ada-json-guard",
+        "ada-lacal-runtime-core",
+        "rust"
+      ],
+      "intentionally_skipped": [
+        "ada-datetime-codec",
+        "ada-duration-codec",
+        "ada-float32-codec",
+        "ada-float64-codec",
+        "ada-generated-codec",
+        "ada-hexbinary-codec",
+        "ada-repeated-choice-codec",
+        "ada-repeated-codec",
+        "ada-repeated-temporal-codec",
+        "ada-time-zulu-codec",
+        "python-model-backend"
+      ],
+      "selected_cells": [
+        "ada-json-guard",
+        "ada-lacal-runtime-core-14",
+        "ada-lacal-runtime-core-16",
+        "rust"
+      ],
+      "deep": false,
+      "mode": "selective-pr",
+      "evidence_type": "LOCAL_SYNTHETIC_SELECTION_NOT_GENUINE_PR",
+      "final_gate_outcome": "local gate healthy-fixture controls only; hosted acceptance pending"
+    },
+    {
+      "category": "shared-generator-ir",
+      "paths": [
+        "crates/ir/src/lib.rs"
+      ],
+      "selected": [
+        "ada-datetime-codec",
+        "ada-duration-codec",
+        "ada-float32-codec",
+        "ada-float64-codec",
+        "ada-generated-codec",
+        "ada-hexbinary-codec",
+        "ada-json-guard",
+        "ada-lacal-runtime-core",
+        "ada-repeated-choice-codec",
+        "ada-repeated-codec",
+        "ada-repeated-temporal-codec",
+        "ada-time-zulu-codec",
+        "python-model-backend",
+        "rust"
+      ],
+      "intentionally_skipped": [],
+      "selected_cells": [
+        "ada-datetime-codec",
+        "ada-duration-codec",
+        "ada-float32-codec",
+        "ada-float64-codec-14",
+        "ada-float64-codec-16",
+        "ada-generated-codec",
+        "ada-hexbinary-codec",
+        "ada-json-guard",
+        "ada-lacal-runtime-core-14",
+        "ada-lacal-runtime-core-16",
+        "ada-repeated-choice-codec",
+        "ada-repeated-codec",
+        "ada-repeated-temporal-codec",
+        "ada-time-zulu-codec-14",
+        "ada-time-zulu-codec-16",
+        "python-model-backend-3.11",
+        "python-model-backend-3.13",
+        "rust"
+      ],
+      "deep": true,
+      "mode": "full-pr",
+      "evidence_type": "LOCAL_SYNTHETIC_SELECTION_NOT_GENUINE_PR",
+      "final_gate_outcome": "local gate healthy-fixture controls only; hosted acceptance pending"
+    },
+    {
+      "category": "security-ci",
+      "paths": [
+        "scripts/ci002/gate.py"
+      ],
+      "selected": [
+        "ada-datetime-codec",
+        "ada-duration-codec",
+        "ada-float32-codec",
+        "ada-float64-codec",
+        "ada-generated-codec",
+        "ada-hexbinary-codec",
+        "ada-json-guard",
+        "ada-lacal-runtime-core",
+        "ada-repeated-choice-codec",
+        "ada-repeated-codec",
+        "ada-repeated-temporal-codec",
+        "ada-time-zulu-codec",
+        "python-model-backend",
+        "rust"
+      ],
+      "intentionally_skipped": [],
+      "selected_cells": [
+        "ada-datetime-codec",
+        "ada-duration-codec",
+        "ada-float32-codec",
+        "ada-float64-codec-14",
+        "ada-float64-codec-16",
+        "ada-generated-codec",
+        "ada-hexbinary-codec",
+        "ada-json-guard",
+        "ada-lacal-runtime-core-14",
+        "ada-lacal-runtime-core-16",
+        "ada-repeated-choice-codec",
+        "ada-repeated-codec",
+        "ada-repeated-temporal-codec",
+        "ada-time-zulu-codec-14",
+        "ada-time-zulu-codec-16",
+        "python-model-backend-3.11",
+        "python-model-backend-3.13",
+        "rust"
+      ],
+      "deep": true,
+      "mode": "full-pr",
+      "evidence_type": "LOCAL_SYNTHETIC_SELECTION_NOT_GENUINE_PR",
+      "final_gate_outcome": "local gate healthy-fixture controls only; hosted acceptance pending"
+    },
+    {
+      "category": "unknown",
+      "paths": [
+        "unknown-r1-path.txt"
+      ],
+      "selected": [
+        "ada-datetime-codec",
+        "ada-duration-codec",
+        "ada-float32-codec",
+        "ada-float64-codec",
+        "ada-generated-codec",
+        "ada-hexbinary-codec",
+        "ada-json-guard",
+        "ada-lacal-runtime-core",
+        "ada-repeated-choice-codec",
+        "ada-repeated-codec",
+        "ada-repeated-temporal-codec",
+        "ada-time-zulu-codec",
+        "python-model-backend",
+        "rust"
+      ],
+      "intentionally_skipped": [],
+      "selected_cells": [
+        "ada-datetime-codec",
+        "ada-duration-codec",
+        "ada-float32-codec",
+        "ada-float64-codec-14",
+        "ada-float64-codec-16",
+        "ada-generated-codec",
+        "ada-hexbinary-codec",
+        "ada-json-guard",
+        "ada-lacal-runtime-core-14",
+        "ada-lacal-runtime-core-16",
+        "ada-repeated-choice-codec",
+        "ada-repeated-codec",
+        "ada-repeated-temporal-codec",
+        "ada-time-zulu-codec-14",
+        "ada-time-zulu-codec-16",
+        "python-model-backend-3.11",
+        "python-model-backend-3.13",
+        "rust"
+      ],
+      "deep": true,
+      "mode": "full-pr",
+      "evidence_type": "LOCAL_SYNTHETIC_SELECTION_NOT_GENUINE_PR",
+      "final_gate_outcome": "local gate healthy-fixture controls only; hosted acceptance pending"
+    },
+    {
+      "category": "test-only",
+      "paths": [
+        "tests/ada-lacal-runtime/runtime_consumer.adb"
+      ],
+      "selected": [
+        "ada-json-guard",
+        "ada-lacal-runtime-core",
+        "rust"
+      ],
+      "intentionally_skipped": [
+        "ada-datetime-codec",
+        "ada-duration-codec",
+        "ada-float32-codec",
+        "ada-float64-codec",
+        "ada-generated-codec",
+        "ada-hexbinary-codec",
+        "ada-repeated-choice-codec",
+        "ada-repeated-codec",
+        "ada-repeated-temporal-codec",
+        "ada-time-zulu-codec",
+        "python-model-backend"
+      ],
+      "selected_cells": [
+        "ada-json-guard",
+        "ada-lacal-runtime-core-14",
+        "ada-lacal-runtime-core-16",
+        "rust"
+      ],
+      "deep": false,
+      "mode": "selective-pr",
+      "evidence_type": "LOCAL_SYNTHETIC_SELECTION_NOT_GENUINE_PR",
+      "final_gate_outcome": "local gate healthy-fixture controls only; hosted acceptance pending"
+    }
+  ],
+  "hosted_categories": "NOT_EXECUTED",
+  "hosted_failure_injections": "NOT_EXECUTED",
+  "final_head_hosted": "Required; see exact-head PR handoff, never substitute original-head evidence",
+  "local_results": {
+    "split_guard": "pass",
+    "split_mutations": 477,
+    "task077b_layout_tests": 3,
+    "task060_wrapper_checks": 96,
+    "task061_wrapper_checks": 4,
+    "task093_placement_tests": 12,
+    "selector_gate_scheduling_tests": 48,
+    "security_tests": 30,
+    "all_script_unittests": 94,
+    "rust_workspace": "cargo test --workspace --locked: pass",
+    "python_runtime_tests": 21,
+    "python_mock_tests_per_policy": 19,
+    "actionlint": "1.7.12: pass with existing narrowly scoped queue-key compatibility",
+    "fmt": "pass",
+    "diff_check": "pass"
+  }
+}
