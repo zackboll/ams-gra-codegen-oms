@@ -95,7 +95,7 @@ def check(policy=None, workflows=None):
     if hashlib.sha256(policy['deep_caller'].encode()).hexdigest() != 'a343b3f71a5299740901fef920a1121757a44872850f1c07c1165d41e3170264':
         raise ValueError('reviewed Deep caller input changed')
     rules = [{k: r[k] for k in ('category', 'paths', 'deep_jobs', 'deep_rationale')} for r in policy['rules']]
-    if hashlib.sha256(json.dumps(rules, sort_keys=True).encode()).hexdigest() != '02b7b1164b26f8105c9672913b3cdeaedbbc07dae08e4b1b9ce90f5a6d809661':
+    if hashlib.sha256(json.dumps(rules, sort_keys=True).encode()).hexdigest() != '21ae69c58815ddedc8536b660cbf095d68d77741f92a94e00c0b2ad116504d2b':
         raise ValueError('reviewed Deep dependency ownership changed')
     from real_uci_evidence import SHARDS
     for job_id, record in deep_jobs(policy).items():

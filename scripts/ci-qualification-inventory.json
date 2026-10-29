@@ -359,10 +359,11 @@
         "msrv-real-uci",
         "real-sleet",
         "real-uci-integral-unicode",
+        "real-uci-regressions-alternating",
         "real-uci-schema-ipv6",
         "real-uci-temporal-naming"
       ],
-      "deep_rationale": "Task062 and Task066 vertical scripts import runtime-api-rust/runtime-rust; retain the complete PERF007 evidence group plus real-sleet and MSRV. Ada-only real-UCI jobs do not import these runtime crates."
+      "deep_rationale": "Task061/062/063/066 and Task060 alternating generated consumers import runtime-api-rust/runtime-rust; retain the complete PERF007 evidence group, real-uci-regressions-alternating, real-sleet and MSRV. Ada-only real-UCI jobs do not import these runtime crates."
     },
     {
       "category": "shared",
