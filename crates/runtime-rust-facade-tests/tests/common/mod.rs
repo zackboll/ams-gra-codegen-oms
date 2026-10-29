@@ -14,6 +14,7 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 
 mod serve;
+pub mod worker_join;
 
 /// Upper bound for every wait in these tests.
 pub const WAIT: Duration = Duration::from_secs(5);

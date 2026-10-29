@@ -9,6 +9,7 @@ use ams_gra_oms_runtime_rust::{
 use ams_gra_oms_runtime_rust_facade_tests::codec::shared;
 use ams_gra_oms_runtime_rust_facade_tests::runtime_test::model::SharedPayload;
 use ams_gra_oms_runtime_rust_facade_tests::runtime_test::service_api::function_track as track;
+use common::worker_join::{WorkerExit, assert_still_blocked};
 use common::{MockPeer, WAIT, connect};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
@@ -24,29 +25,8 @@ fn wait_until(mut done: impl FnMut() -> bool) -> bool {
     true
 }
 
-/// Live runtime worker threads in this process, by name (Linux only;
-/// the kernel truncates thread names to 15 bytes).
-fn live_workers() -> usize {
-    let Ok(tasks) = std::fs::read_dir("/proc/self/task") else {
-        return 0;
-    };
-    tasks
-        .filter_map(Result::ok)
-        .filter(|task| {
-            std::fs::read_to_string(task.path().join("comm")).is_ok_and(|name| {
-                let name = name.trim_end();
-                !name.is_empty() && WORKER_THREAD_NAME.starts_with(name)
-            })
-        })
-        .count()
-}
-
 /// connect, subscribe, publish, then close (or drop): the connection
 /// closes and the worker is joined before close/drop returns.
-///
-/// This is the only test in this binary that holds a runtime while it
-/// counts worker threads, and every other test here closes its runtime
-/// before it returns, so zero live workers is deterministic at the end.
 #[test]
 fn task049_close_and_drop_leave_no_worker_thread() {
     for explicit in [true, false] {
@@ -67,10 +47,123 @@ fn task049_close_and_drop_leave_no_worker_thread() {
         assert!(started.elapsed() < WAIT, "shutdown must be prompt");
         peer.expect_closed();
     }
+}
+
+fn shutdown_joins_actual_worker(explicit: bool) {
+    let peer = MockPeer::start();
+    let mut runtime = connect(&peer);
+    let (mut worker_exit, exit) = WorkerExit::new(true);
+    let (entered_tx, entered) = mpsc::channel();
+    let (release_tx, release) = mpsc::channel();
+    let (callback_done_tx, callback_done) = mpsc::channel();
+    let handle = track::exchange_input_a::subscribe(&mut runtime, move |_: &SharedPayload| {
+        let id = worker_exit.arm();
+        assert_eq!(std::thread::current().name(), Some(WORKER_THREAD_NAME));
+        entered_tx.send(id).expect("test alive");
+        release.recv_timeout(WAIT).expect("release blocked handler");
+        callback_done_tx.send(id).expect("test alive");
+    })
+    .expect("subscribe");
+    peer.expect("SUB sub-1 {urn:test}MessageA input-topic");
+    peer.send(r#"MSG sub-1 {"{urn:test}MessageA":{"Count":1}}"#);
+    let worker = entered
+        .recv_timeout(WAIT)
+        .expect("handler entered actual worker");
+    assert_ne!(worker, std::thread::current().id());
+    let (started_tx, started) = mpsc::channel();
+    let (done_tx, done) = mpsc::channel();
+    let shutdown = std::thread::spawn(move || {
+        started_tx.send(()).expect("test alive");
+        let result = if explicit {
+            runtime.close()
+        } else {
+            drop(runtime);
+            Ok(())
+        };
+        done_tx.send(result).expect("test alive");
+    });
+    started
+        .recv_timeout(WAIT)
+        .expect("shutdown application thread started");
+    assert_still_blocked(&done, "handler");
+    release_tx.send(()).expect("release callback");
+    assert_eq!(callback_done.recv_timeout(WAIT), Ok(worker));
+    assert_eq!(exit.entered.recv_timeout(WAIT), Ok(worker));
+    // Even after the callback and connection-owning worker body finish,
+    // shutdown must wait for this exact thread's TLS teardown. A detached
+    // worker which merely stops later cannot pass this second barrier.
+    assert_still_blocked(&done, "thread-local teardown");
+    exit.release
+        .as_ref()
+        .unwrap()
+        .send(())
+        .expect("release TLS teardown");
+    done.recv_timeout(WAIT)
+        .expect("shutdown completed")
+        .expect("successful shutdown");
+    assert_eq!(exit.finished.try_recv(), Ok(worker));
+    shutdown.join().expect("shutdown application thread");
+    peer.expect_closed();
     assert!(
-        cfg!(not(target_os = "linux")) || wait_until(|| live_workers() == 0),
-        "a runtime worker thread outlived its runtime"
+        matches!(entered.try_recv(), Err(mpsc::TryRecvError::Disconnected)),
+        "no further callback can execute"
     );
+    assert!(matches!(
+        handle.unsubscribe(),
+        Err(RuntimeError::WorkerStopped)
+    ));
+    eprintln!("WORKER_JOIN_COMPLETE explicit={explicit} worker={worker:?}");
+}
+
+#[test]
+fn rust_ci_001_close_joins_blocked_worker() {
+    shutdown_joins_actual_worker(true);
+}
+
+#[test]
+fn rust_ci_001_drop_joins_blocked_worker() {
+    shutdown_joins_actual_worker(false);
+}
+
+/// Handler panics are deliberately contained by Worker::deliver (tested
+/// below). A panic while destroying the handler is outside that catch and
+/// really unwinds the worker: explicit close must report its failed join.
+#[test]
+fn rust_ci_001_close_reports_unexpected_worker_panic() {
+    struct PanicOnWorkerDrop;
+    impl Drop for PanicOnWorkerDrop {
+        fn drop(&mut self) {
+            assert_ne!(
+                std::thread::current().name(),
+                Some(WORKER_THREAD_NAME),
+                "deliberate unexpected worker teardown panic"
+            );
+        }
+    }
+    let peer = MockPeer::start();
+    let mut runtime = connect(&peer);
+    let panic_on_drop = PanicOnWorkerDrop;
+    let (mut worker_exit, exit) = WorkerExit::new(false);
+    let (seen_tx, seen) = mpsc::channel();
+    let _handle = track::exchange_input_a::subscribe(&mut runtime, move |_: &SharedPayload| {
+        let _keep_capture = &panic_on_drop;
+        seen_tx.send(worker_exit.arm()).expect("test alive");
+    })
+    .expect("subscribe");
+    peer.expect("SUB sub-1 {urn:test}MessageA input-topic");
+    peer.send(r#"MSG sub-1 {"{urn:test}MessageA":{"Count":1}}"#);
+    let worker = seen.recv_timeout(WAIT).expect("handler installed witness");
+    let (closed_tx, closed) = mpsc::channel();
+    let closer = std::thread::spawn(move || {
+        closed_tx.send(runtime.close()).expect("test alive");
+    });
+    assert!(matches!(
+        closed.recv_timeout(WAIT),
+        Ok(Err(RuntimeError::WorkerPanicked))
+    ));
+    assert_eq!(exit.finished.try_recv(), Ok(worker));
+    closer.join().expect("close application thread");
+    peer.expect_closed();
 }
 
 /// The connection ending is an event; the worker then exits by itself and
