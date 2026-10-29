@@ -45,16 +45,38 @@ class Evidence(unittest.TestCase):
             releases = [("gnatcoll", "26.0.0"), ("gnatcoll_minimal", "26.0.0"),
                         ("gprbuild", "26.0.1"), ("gnat_external", "14.2.0")]
             def text(items):
-                return "".join(f'[[solution.state]]\n[solution.state.release]\nname="{name}"\nversion="{version}"\n'
+                return "".join(f'[[solution.state]]\ncrate="{name}"\n[solution.state.release]\nname="{name}"\nversion="{version}"\n'
                                f'[solution.state.release.origin]\nhashes=["{ORIGIN}"]\n' for name, version in items)
-            original = text(releases)
+            alias = text([releases[-1]]).replace('crate="gnat_external"', 'crate="gnat"')
+            original = text(releases) + alias
             path.write_text(original)
             validate_lock(path, "14")
-            for value in (text(releases + [releases[0]]), original.replace("26.0.0", "25.0.0"),
-                          original.replace(ORIGIN, "wrong")):
+            for value in (original + text([releases[0]]), original.replace("26.0.0", "25.0.0"),
+                          original.replace(ORIGIN, "wrong"), text(releases), original + alias,
+                          text(releases) + alias.replace('version="14.2.0"', 'version="16.1.0"'),
+                          original + text([releases[0]]).replace('crate="gnatcoll"', 'crate="unexpected"')):
                 path.write_text(value)
                 with self.assertRaises(RuntimeError):
                     validate_lock(path, "14")
+
+    def test_native_compiler_virtual_alias_is_exact(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "lock"
+            releases = [("gnatcoll", "26.0.0"), ("gnatcoll_minimal", "26.0.0"),
+                        ("gprbuild", "26.0.1"), ("gnat_native", "16.1.0")]
+            original = "".join(f'[[solution.state]]\ncrate="{name}"\n[solution.state.release]\n'
+                               f'name="{name}"\nversion="{version}"\n[solution.state.release.origin]\n'
+                               f'hashes=["{ORIGIN}"]\n' for name, version in releases)
+            alias = original[original.rfind('[[solution.state]]'):].replace('crate="gnat_native"', 'crate="gnat"')
+            path.write_text(original + alias)
+            validate_lock(path, "16")
+            for changed in (original + alias.replace(ORIGIN, "changed"),
+                            original + alias + alias,
+                            original + alias + '[[solution.state]]\ncrate="other"\n'
+                            '[solution.state.release]\nname="gnat_external"\nversion="14.2.0"\n'):
+                path.write_text(changed)
+                with self.assertRaises(RuntimeError):
+                    validate_lock(path, "16")
 
     def test_seal_rejects_truncation_extra_altered_and_symlink(self):
         for mutation in ("truncate", "alter", "extra", "symlink", "missing"):

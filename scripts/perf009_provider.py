@@ -13,16 +13,36 @@ ORIGIN = "sha512:cc5dd0a199115fee269ec1ef963b80abbb56e3029e817d5dbfe71e90fff09d0
 
 def validate_lock(path, compiler):
     data = tomllib.loads(path.read_text())
-    releases = [s.get("release", {}) for s in data["solution"]["state"]]
+    states = data["solution"]["state"]
+    crates = [s.get("crate") for s in states]
+    if any(not isinstance(name, str) for name in crates) or len(crates) != len(set(crates)):
+        raise RuntimeError("portable dependency crate inventory differs")
     required = {"gnatcoll": "26.0.0", "gnatcoll_minimal": "26.0.0", "gprbuild": "26.0.1",
                 "gnat_external" if compiler == "14" else "gnat_native":
                 "14.2.0" if compiler == "14" else "16.1.0"}
     for name, version in required.items():
-        matches = [r for r in releases if r.get("name") == name]
+        matches = [s.get("release", {}) for s in states if s["crate"] == name]
         if len(matches) != 1 or matches[0].get("version") != version:
             raise RuntimeError("portable dependency lock differs")
+        if matches[0].get("name") != name:
+            raise RuntimeError("portable dependency release name differs")
         if name.startswith("gnatcoll") and ORIGIN not in matches[0].get("origin", {}).get("hashes", []):
             raise RuntimeError("portable provider origin differs")
+    # Alire materializes the virtual `gnat` dependency as a second state whose
+    # release is the selected concrete compiler. It is not a duplicate crate.
+    # Accept only this exact alias, never a conflicting/extra compiler release.
+    compiler_name = "gnat_external" if compiler == "14" else "gnat_native"
+    concrete = next(s["release"] for s in states if s["crate"] == compiler_name)
+    aliases = [s["release"] for s in states if s["crate"] == "gnat"]
+    if len(aliases) != 1 or aliases[0] != concrete:
+        raise RuntimeError("portable compiler alias differs")
+    for state in states:
+        release_name = state.get("release", {}).get("name", "")
+        if (release_name in required and state["crate"] != release_name
+                and not (state["crate"] == "gnat" and release_name == compiler_name)):
+            raise RuntimeError("portable dependency release alias differs")
+        if release_name.startswith("gnat_") and release_name != compiler_name:
+            raise RuntimeError("portable conflicting compiler release")
     return data
 
 
