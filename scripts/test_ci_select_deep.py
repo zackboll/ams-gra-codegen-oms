@@ -196,6 +196,47 @@ class SelectiveDeepGate(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'unexpected unselected Deep artifact'):
             self.validate()
 
+    def test_hosted_literal_matrix_skip_has_no_runner_steps_or_artifacts(self):
+        # Actual GitHub API record: run 40821921150, job 123276175940.
+        name = 'deep-qualification / ada-websocket-real-sleet (${{ matrix.compiler }})'
+        index = next(n for n, j in enumerate(self.jobs)
+                     if j['name'] == 'deep-qualification / ada-websocket-real-sleet')
+        self.jobs[index] = dict(name=name, status='completed', conclusion='skipped',
+                                steps=[], runner_id=None, runner_name=None)
+        self.validate()
+        healthy = copy.deepcopy(self.jobs[index])
+        for mutation in ({'conclusion': 'success'}, {'runner_id': 123},
+                         {'steps': [{'name': 'qualification', 'conclusion': 'success'}]}):
+            self.jobs[index].update(mutation)
+            with self.subTest(mutation=mutation), self.assertRaisesRegex(
+                    ValueError, 'unselected Deep job executed'):
+                self.validate()
+            self.jobs[index] = copy.deepcopy(healthy)
+        self.artifacts.append(dict(name='task100-ada-websocket-sleet-16'))
+        with self.assertRaisesRegex(ValueError, 'unexpected unselected Deep artifact'):
+            self.validate()
+
+    def test_literal_matrix_skip_rejects_duplicates_wrong_axes_and_selected_cells(self):
+        name = 'deep-qualification / ada-websocket-real-sleet (${{ matrix.compiler }})'
+        index = next(n for n, j in enumerate(self.jobs)
+                     if j['name'] == 'deep-qualification / ada-websocket-real-sleet')
+        healthy = copy.deepcopy(self.jobs[index])
+        self.jobs.append(dict(healthy, name=name, runner_id=None))
+        with self.assertRaisesRegex(ValueError, 'missing/ambiguous skipped Deep'):
+            self.validate()
+        self.jobs.pop()
+        for wrong in ('(${{ matrix.python-version }})', '(${{ matrix.compiler}})', '(14, 16)'):
+            self.jobs[index]['name'] = 'deep-qualification / ada-websocket-real-sleet ' + wrong
+            with self.subTest(wrong=wrong), self.assertRaisesRegex(
+                    ValueError, 'missing/ambiguous skipped Deep'):
+                self.validate()
+        self.narrow('tests/ada-websocket/transport_probe.adb')
+        self.jobs = [j for j in self.jobs if not j['name'].startswith(
+            'deep-qualification / ada-websocket-real-sleet')]
+        self.jobs.append(dict(healthy, name=name))
+        with self.assertRaisesRegex(ValueError, 'authoritative matrix cell'):
+            self.validate()
+
     def test_selected_evidence_expired_stale_duplicate_missing_and_step_skip(self):
         self.validate()
         index = next(n for n, a in enumerate(self.artifacts) if a['name'] == 'py006-uci')

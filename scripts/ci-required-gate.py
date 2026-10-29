@@ -44,8 +44,17 @@ def validate(manifest, expected, needs, jobs, artifacts, policy):
             validate_skipped_deep(record, jobs, artifacts, caller_selected=manifest['deep'])
     known = {'deep-qualification / ' + c['name'] for r in deep_jobs(policy).values() for c in r['cells']}
     known.update('deep-qualification / ' + j for j in deep_jobs(policy))
+    known.update(collapsed_matrix_name(r) for j, r in deep_jobs(policy).items()
+                 if j not in manifest['deep_jobs'] and len(r['cells']) > 1)
     if any(j['name'].startswith('deep-qualification / ') and j['name'] not in known for j in jobs):
         raise ValueError('unregistered authoritative Deep job')
+
+
+def collapsed_matrix_name(record):
+    # Hosted job-level skips retain the literal, unexpanded matrix expression.
+    # Derive only the reviewed inventory axis, never accept an arbitrary suffix.
+    axis, = record['cells'][0]['variant']
+    return 'deep-qualification / ' + record['job_id'] + ' (${{ matrix.' + axis + ' }})'
 
 
 def validate_skipped_deep(record, jobs, artifacts, caller_selected):
@@ -57,6 +66,8 @@ def validate_skipped_deep(record, jobs, artifacts, caller_selected):
     """
     prefix = 'deep-qualification / '
     names = {prefix + record['job_id'], *(prefix + c['name'] for c in record['cells'])}
+    if len(record['cells']) > 1:
+        names.add(collapsed_matrix_name(record))
     matches = [j for j in jobs if j['name'] in names]
     if caller_selected and len(matches) != 1:
         raise ValueError('missing/ambiguous skipped Deep job: ' + record['job_id'])
