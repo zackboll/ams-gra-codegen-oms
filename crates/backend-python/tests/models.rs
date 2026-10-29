@@ -118,6 +118,7 @@ fn golden_output_is_byte_identical_and_world_is_explicit() {
     let schema = track();
     let first = PythonBackend.generate(&schema, CLOSED).unwrap();
     assert_eq!(first, PythonBackend.generate(&schema, CLOSED).unwrap());
+    assert_eq!(first[0].relative_path, Path::new(MODEL_FILE));
     assert_eq!(first, PythonBackend.generate(&schema, OPEN).unwrap());
     assert_eq!(first[0].contents, include_str!("expected/track.py"));
     let mut relocated = schema;
