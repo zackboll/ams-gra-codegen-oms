@@ -4399,8 +4399,8 @@
     "workflow_sha256": "786ff5a9eb34d8f0fbb0999f1d0134b15d7afe5ea556b054c9c0e82971e78c3e",
     "sources_sha256": {
       "scripts/ci_bench/Dockerfile": "78194910d2e1c4bdc87b44094b9f4782488e6154df1c61c6b6d8be0cdbb4ce1b",
-      "scripts/ci_bench/controller.py": "f5560de4d95cdfbc7fb4f9aa7c175839358e0c4a0a225e8229bfdb053cd76be3",
-      "scripts/ci_bench/worker.py": "ca280d89ec953d614cdeb1fe580c75a3174cefbcba5fd780743225f5c420ffcf",
+      "scripts/ci_bench/controller.py": "5cf3a3d35ce9b3b6734e62f280172b6ca71c716827b6f1e56028b4c9c231ac16",
+      "scripts/ci_bench/worker.py": "dce5ebc675ed7b4d437b1210947684fbce59f03ac8c2738d6200d9120a8df7bc",
       "scripts/ci_bench/provision.py": "096f6896913a4aa5381a32f30e31ae48db8df21c7526a2836c91b4fe3127e745"
     }
   }

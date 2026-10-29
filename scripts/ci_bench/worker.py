@@ -131,6 +131,7 @@ def main():
     started = time.monotonic()
     before = resource.getrusage(resource.RUSAGE_CHILDREN)
     runner.main()
+    helper_wall_seconds = time.monotonic() - started
     after = resource.getrusage(resource.RUSAGE_CHILDREN)
     expected = dict(provider=3180 if mode == 'original' else 318,
                     generated_support=150, bind=30, link=30, execute=30)
@@ -145,7 +146,7 @@ def main():
     dependency_identities = []
     for consumer in sorted(scratch.glob('oam-*')) + sorted(scratch.glob('qualified-*')):
         if consumer.is_dir() and (consumer / 'consumer.gpr').is_file():
-            identity = verifier.configuration(consumer, sources(consumer))
+            identity = pilot.identity if pilot else verifier.configuration(consumer, sources(consumer))
             dependency_identities.append(identity)
     if len(dependency_identities) != (1 if smoke else 10) or any(i != dependency_identities[0] for i in dependency_identities):
         raise RuntimeError('consumer dependency/compiler identities differ')
@@ -161,7 +162,7 @@ def main():
                   seed_sha256=hashlib.sha256(Path('/seed/identity.json').read_bytes()).hexdigest(),
                   dependency_identity_sha256=hashlib.sha256(json.dumps(
                       dependency_identities[0], sort_keys=True).encode()).hexdigest(),
-                  helper_wall_seconds=time.monotonic() - started,
+                  helper_wall_seconds=helper_wall_seconds,
                   helper_child_cpu_seconds=after.ru_utime + after.ru_stime - before.ru_utime - before.ru_stime,
                   largest_child_peak_rss_kib=after.ru_maxrss, counts=counts, builds=build_records,
                   records=records, candidate_reported=True)

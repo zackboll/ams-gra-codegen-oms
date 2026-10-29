@@ -71,9 +71,11 @@ def prepare():
     run(['git', '-C', str(repo), 'fetch', '--depth=1', 'https://github.com/' + REPOSITORY + '.git', source])
     if run(['git', '-C', str(repo), 'rev-parse', 'FETCH_HEAD', 'FETCH_HEAD^{tree}']).splitlines() != [source, tree]:
         raise ValueError('fetched commit/tree mismatch')
-    entries = run(['git', '-C', str(repo), 'ls-tree', '-r', source]).splitlines()
+    entries = run(['git', '-C', str(repo), 'ls-tree', '-r', '-z', source]).split('\0')
     if any(line.startswith(('120000 ', '160000 ')) for line in entries):
         raise ValueError('candidate symlinks/submodules not authorized')
+    if any('.git' in line.split('\t', 1)[-1].lower().split('/') for line in entries if line):
+        raise ValueError('nested Git metadata not authorized')
     archive = base / 'source.tar'
     with archive.open('wb') as output:
         subprocess.run(['git', '-C', str(repo), 'archive', source], stdout=output, check=True, timeout=120)
@@ -142,7 +144,7 @@ def sample_delta(before, after, cpus, workload_usec=0, elapsed=1, maximum_gap=3)
 
 
 def docker_command(image_id, source, name, cpu, compiler, mode):
-    return ['docker', 'create', '--name', name, '--network=none', '--read-only',
+    return ['docker', 'create', '--name', name, '--network=none', '--read-only', '--log-driver=none',
             '--cap-drop=ALL', '--security-opt=no-new-privileges', '--user=10001:10001',
             '--pids-limit=256', '--memory=6g', '--memory-swap=6g', '--cpus=1',
             '--cpuset-cpus=' + str(cpu), '--ulimit', 'nofile=1024:1024',
