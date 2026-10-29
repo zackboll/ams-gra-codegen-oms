@@ -1,10 +1,11 @@
 # PERF-009 — portable provider reuse experiment
 
-## Current disposition: PERFORMANCE_ENVIRONMENT_BLOCKED (R2)
+## Current disposition: PERFORMANCE_ENVIRONMENT_BLOCKED (R3)
 
-Portable exact-head correctness and mandatory Rust acceptance also remain
-incomplete; this is not a functional qualification pass. Historical checkpoint
-dispositions below remain preserved.
+R3 completed fresh portable correctness qualification and the mandatory Rust
+gate at the committed implementation identified below. Clean performance,
+production integration and exact-final-delivery hosted acceptance remain
+unqualified. Historical checkpoint dispositions below remain preserved.
 
 **R1 update:** see the appended R1 section for portable live controls,
 read-time configuration hardening, benchmark contention rejection and a
@@ -612,3 +613,164 @@ binaries, all run transcripts, source references and hashes. Reproduce the
 unmodified failing command with CPU-0 affinity; the fixed series records
 intermittency rather than promising every invocation fails. Final source
 commit/tree are the normal PR handoff head, not embedded self-referentially.
+
+## R3 — reconciled correctness certification; performance environment blocked
+
+### Source reconciliation and scope
+
+- Starting local, fetched feature and PR #121 HEAD:
+  `56651e5e95258cf6d98c82975ccef5c35ab1b8d3`, tree
+  `85af5afa9ee8e6a5128caaef0dba71dde7b6b803`.
+- Fetched main: `3b08f64d7e374af28e0140dfeeaf6fc4f9aaa860`, the merged
+  corrective PR #122 / RUST-CI-001. Ordinary merge commit
+  `7dcedb94bf4a286635fa53946fa86bbdb4f29aaa`, tree
+  `2edd3ed0f96bbd5c233899ab65f0db0fb33c6517`, incorporated it without conflicts.
+- Corrected, committed implementation qualified below:
+  `c6cba732f70b05ebbc432181bee5644c8039e1cc`, tree
+  `ea0b93cbf3103225f5b76371fa3df40401e26857`.
+- Fresh evidence root:
+  `/home/zboll/git/ams-gra-codegen-oms-perf-009-evidence/r3`.
+  Successful replacement campaigns, controls, proof and certificate are in its
+  `qualified` subdirectory. R0/R1/R2 and the failed initial R3 attempt remain intact.
+
+No rebase, amend, reset, force-push or other history rewrite was used. No other
+worktree was modified. Upstream Python, Rust, workflow, selector, security and
+five-lane policies are preserved. Production Rust runtime code was not changed.
+The delivery documentation commit is later than the qualification commit:
+its final identity is recorded externally, not misrepresented as the source of
+the completed compiler campaigns. It requires its own hosted acceptance.
+
+### Fresh failure and narrow Alire correction
+
+The initial R3 originals completed both 30-cell matrices. Both candidates then
+failed closed after their first successful consumer compile/bind/link because
+the portable lock validator counted Alire's virtual `gnat` state as a duplicate
+concrete compiler release. Actual Alire 2.1.1 locks contain one `gnat` alias and
+one `gnat_external` or `gnat_native` state with identical release records.
+
+The correction keys uniqueness by **crate**, requires exactly one concrete
+compiler and one byte-equivalent parsed virtual release, and rejects conflicting
+compiler releases, duplicate crates, unexpected aliases, changed versions and
+provider archive provenance. New GNAT14/GNAT16 tests exercise those mutations.
+Existing assertions were not relaxed. All **130 Python regression tests** passed.
+The generator was rebuilt and **all four** campaigns restarted in new directories
+after the correction was committed; initial results were not substituted.
+
+### Rust gate
+
+Rust **1.95.0**, locked dependencies: fairness, lifecycle/application-thread Drop,
+initial retry, fmt, workspace/all-target check, Clippy with warnings denied and
+the full workspace tests all exited **0**, both after reconciliation and after
+the correction. The lifecycle log retains handler and TLS teardown non-completion
+barriers followed by exact-worker completion for explicit close and Drop.
+Tests used private task-owned temporary directories. No Rust failure was rerun
+until green; no assertion, runtime or worker instrumentation was changed here.
+
+### Exact committed-source compiler results
+
+Production generator: `cargo +1.95.0 build --release --locked -p ams-gra-codegen-oms`.
+The retained executable is read-only and has SHA-256
+`ef2bbb947adf6c31d5e47bfe379cbecfd1da511b35249273d021fed12763ebcb`.
+Every successful original/candidate manifest binds that same absolute executable
+and digest. Four independent private Alire states have identical index/toolchain
+seed records, not copied provider objects or dependency deployments.
+
+| Compiler | Mode | Positive / real execution cells | Providers | Generated/support | Bind / link |
+|---|---|---:|---:|---:|---:|
+| GNAT 14.2.0 | Original | 30 / 30 | 3,180 | 150 | 30 / 30 |
+| GNAT 14.2.0 | Provider reuse | 30 / 30 | 318 | 150 | 30 / 30 |
+| GNAT 16.1.0 | Original | 30 / 30 | 3,180 | 150 | 30 / 30 |
+| GNAT 16.1.0 | Provider reuse | 30 / 30 | 318 | 150 | 30 / 30 |
+
+Each full matrix preserves all five names, both namespaces, Normal/Check/Ignore,
+readiness, byte-identical plain/opted/generated Ada, helper presence/absence,
+original generator negatives and exact seven-check executable markers. The
+five owned compilations exclude the additional binder-generated compilation,
+which is also required. No representative-only campaign was accepted.
+
+### All 60 boundaries and live controls
+
+Both committed candidate runners completed `all_boundaries`: **30/30 per
+compiler, 60/60 total**, each retaining **106 provider compilation identities**
+and **89 Ada read-time mappings**. Full source/dependency, compiler/runtime,
+GPRbuild, arguments, ADC/assertion policy, specs/response, mapping/source-read,
+artifact immutability and consumer provenance checks passed. The independent
+verifier additionally checks all 120 consumer cells' backend source reads,
+compilation counts, actual bind/link processes and actual executable invocations.
+
+Per compiler the original **114-control** inventory passed:
+
+| Category | Count per compiler |
+|---|---:|
+| Actual GNAT compiler-failure controls | 12 |
+| Actual assertion-policy compile/link/execution probes | 3 |
+| False/skipped execution rejected by verifier | 6 |
+| Explicitly verifier-only mutations | 93 |
+
+Nine supplemental verifier-only controls per compiler reject cross-compiler
+provider identity, absent compiler backends and wrong runtime selection under
+all three policies. Cross-policy, ABI/optimization, source/config/map/response,
+artifact/object freshness, bind/link, false markers, dependency origin and
+evidence truncation/alteration controls remain present. Thus **228 required +
+18 supplemental** controls passed; actual compiler failures executed GNAT.
+The inherited raw control result's conservative `exhaustive: false` field was
+not overwritten. The supplemental complete-matrix consumer read proof and
+negative inventory are certified separately, not by flipping that field.
+
+`qualified/independent-correctness.json` contains all matrices, counts, boundary
+results, control records, provider artifact hashes and consumer read provenance.
+Its SHA-256 is `62d540326cedcb9455c775bcb5a83383193ae0d5f6ba82759ab2b9fa20f54057`.
+`qualified/certificate/qualification.json` derives certification from that
+completed proof and the six campaign/control seals. Certificate seal SHA-256:
+`f9149ededbf1d20549deb23470c282771ac6f1e97bf5fbbab3d7caf0ffef32a9`.
+Seals are independently checkable integrity inventories, not signatures.
+
+Repeated parsing was bounded by validating complete evidence inventories and
+profile digests before reusing records already verified by the full boundary
+implementation. Compiler source bytes were independently parsed and checked.
+Initial task-owned verifier attempts incorrectly applied PERF-005's Float32
+owned-only inventory to the original portable trace; their failures and the
+corrected portable inventory verifier are retained. They are not compiler passes.
+
+### Performance and hosted investigation
+
+After task-owned correctness workers finished, the existing contention probe
+surveyed **all 32 CPUs and SMT siblings**. Busy fractions were **13%–99.5%**;
+no physical core pair met the <5% precondition. No expensive local A/B/B/A run
+was attempted, and no unrelated process was stopped or reprioritized.
+
+Existing GitHub-hosted workflows and API permissions were inspected. The
+authorized manual CI/Deep paths run mandatory qualification, not a supplied
+benchmark command. The historical pilot is absent from current main. A
+task-scoped workflow fixture is rejected by CI-SELECT-001 as
+`unmapped workflow runner inventory`. No policy bypass, new permanent matrix,
+self-hosted runner, secret, runner-lane change or temporary workflow was added.
+An isolated hosted benchmark needs a reviewed task-scoped policy extension or
+an authorized existing benchmark execution path; it was not obtained here.
+
+All traced elapsed/CPU/memory figures are **qualification attribution only**.
+The 35% helper and 10% aggregate-job targets, memory/throughput acceptance,
+A/B/B/A variation, uploads, runner-minutes, full-workflow critical path and
+five-lane scheduling improvement remain **unmeasured/unaccepted**. Current-main
+CI run `40797665867` was still pending at delivery preparation; no successfully
+completed current-main whole-job comparison was available. No historical
+traced timings or earlier-head hosted checks substitute for these requirements.
+
+### Regression and delivery status
+
+Completed: PERF-005/PERF-009 and all 130 Python tests, compiler placement,
+54 selector/final-gate tests, CI policy/documentation policy, 544 CI split
+checks, Task077B layout and 364-case mutation runs (including its overlapping
+setup tests), 30 CI002 tests, PERF-007 evidence tests, Rust 1.95 gates,
+pinned actionlint **1.7.12** through the repository's queue-aware wrapper and
+`git diff --check`. Initial missing-strace PATH, missing Task077B arguments and
+raw actionlint queue-key errors remain recorded; corrected invocations use the
+existing contracts, not exclusions or relaxed tests.
+
+Neither existing portable production command changed. PERF-005 optimization,
+numeric/rounding/composition controls, evidence uploads, job names, five lanes,
+change-aware selection, independent final gate and trusted/security contracts
+remain intact. No literal `negative_controls_qualified` flag was enabled.
+Final-head hosted CI/artifacts and proposed merge acceptance remain pending.
+**Disposition: PERFORMANCE_ENVIRONMENT_BLOCKED**, with fresh correctness work
+completed separately. This is not PERF-009 completion or merge readiness.
