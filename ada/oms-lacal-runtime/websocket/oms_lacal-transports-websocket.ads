@@ -10,6 +10,7 @@ package OMS_LACAL.Transports.WebSocket is
    --  consumption; bounded codec/copy work is O(Max_Frame_Bytes).
    --  Open/Send have two-second I/O deadlines; Close waits at most 250 ms
    --  after its bounded write. Finalization releases without waiting.
+   --  CI-SELECT-002-FINAL: preserve these bounds in both compiler campaigns.
    Transport_Error : exception;
    type Client is new Ada.Finalization.Limited_Controlled and Transport with private;
    procedure Open (Self : in out Client; URL : String);
