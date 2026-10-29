@@ -1,0 +1,664 @@
+{
+  "completed": true,
+  "version": "PY-008",
+  "services": [
+    {
+      "version": "2.5",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}PositionReport",
+      "world": "closed-schema",
+      "with_codec": false,
+      "process_exit": 1,
+      "stages": {
+        "model": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive DateTime"
+        },
+        "service api": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive DateTime"
+        },
+        "codec": {
+          "verdict": "NOT REQUESTED"
+        }
+      },
+      "selected_closure": [
+        "selected oms messages: 1",
+        "selected type closure: 60",
+        "generated support types: 0"
+      ],
+      "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+      "contract_sha256": "e79d502085fa4e0301cc4d0b077a6b92569d7889739d21dfaf6c37b7b6863714"
+    },
+    {
+      "version": "2.5",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}PositionReport",
+      "world": "closed-schema",
+      "with_codec": true,
+      "process_exit": 1,
+      "stages": {
+        "model": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive DateTime"
+        },
+        "service api": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive DateTime"
+        },
+        "codec": {
+          "verdict": "NOT MEASURED"
+        }
+      },
+      "selected_closure": [
+        "selected oms messages: 1",
+        "selected type closure: 60",
+        "generated support types: 0"
+      ],
+      "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+      "contract_sha256": "e79d502085fa4e0301cc4d0b077a6b92569d7889739d21dfaf6c37b7b6863714"
+    },
+    {
+      "version": "2.5",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}PositionReport",
+      "world": "open-extensions",
+      "with_codec": false,
+      "process_exit": 1,
+      "stages": {
+        "model": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive DateTime"
+        },
+        "service api": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive DateTime"
+        },
+        "codec": {
+          "verdict": "NOT REQUESTED"
+        }
+      },
+      "selected_closure": [
+        "selected oms messages: 1",
+        "selected type closure: 60",
+        "generated support types: 0"
+      ],
+      "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+      "contract_sha256": "e79d502085fa4e0301cc4d0b077a6b92569d7889739d21dfaf6c37b7b6863714"
+    },
+    {
+      "version": "2.5",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}PositionReport",
+      "world": "open-extensions",
+      "with_codec": true,
+      "process_exit": 1,
+      "stages": {
+        "model": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive DateTime"
+        },
+        "service api": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive DateTime"
+        },
+        "codec": {
+          "verdict": "NOT MEASURED"
+        }
+      },
+      "selected_closure": [
+        "selected oms messages: 1",
+        "selected type closure: 60",
+        "generated support types: 0"
+      ],
+      "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+      "contract_sha256": "e79d502085fa4e0301cc4d0b077a6b92569d7889739d21dfaf6c37b7b6863714"
+    },
+    {
+      "version": "2.5",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}RDMA_InitializeSetup",
+      "world": "closed-schema",
+      "with_codec": false,
+      "process_exit": 1,
+      "stages": {
+        "model": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive DateTime"
+        },
+        "service api": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive DateTime"
+        },
+        "codec": {
+          "verdict": "NOT REQUESTED"
+        }
+      },
+      "selected_closure": [
+        "selected oms messages: 1",
+        "selected type closure: 50",
+        "generated support types: 0"
+      ],
+      "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+      "contract_sha256": "611dc3a6fef0ffd30eb6853992a886b297625528aa992fc55d01c427fc268358"
+    },
+    {
+      "version": "2.5",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}RDMA_InitializeSetup",
+      "world": "closed-schema",
+      "with_codec": true,
+      "process_exit": 1,
+      "stages": {
+        "model": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive DateTime"
+        },
+        "service api": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive DateTime"
+        },
+        "codec": {
+          "verdict": "NOT MEASURED"
+        }
+      },
+      "selected_closure": [
+        "selected oms messages: 1",
+        "selected type closure: 50",
+        "generated support types: 0"
+      ],
+      "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+      "contract_sha256": "611dc3a6fef0ffd30eb6853992a886b297625528aa992fc55d01c427fc268358"
+    },
+    {
+      "version": "2.5",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}RDMA_InitializeSetup",
+      "world": "open-extensions",
+      "with_codec": false,
+      "process_exit": 1,
+      "stages": {
+        "model": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive DateTime"
+        },
+        "service api": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive DateTime"
+        },
+        "codec": {
+          "verdict": "NOT REQUESTED"
+        }
+      },
+      "selected_closure": [
+        "selected oms messages: 1",
+        "selected type closure: 50",
+        "generated support types: 0"
+      ],
+      "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+      "contract_sha256": "611dc3a6fef0ffd30eb6853992a886b297625528aa992fc55d01c427fc268358"
+    },
+    {
+      "version": "2.5",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}RDMA_InitializeSetup",
+      "world": "open-extensions",
+      "with_codec": true,
+      "process_exit": 1,
+      "stages": {
+        "model": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive DateTime"
+        },
+        "service api": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive DateTime"
+        },
+        "codec": {
+          "verdict": "NOT MEASURED"
+        }
+      },
+      "selected_closure": [
+        "selected oms messages: 1",
+        "selected type closure: 50",
+        "generated support types: 0"
+      ],
+      "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+      "contract_sha256": "611dc3a6fef0ffd30eb6853992a886b297625528aa992fc55d01c427fc268358"
+    },
+    {
+      "version": "2.5",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}SubsystemStream",
+      "world": "closed-schema",
+      "with_codec": false,
+      "process_exit": 1,
+      "stages": {
+        "model": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive DateTime"
+        },
+        "service api": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive DateTime"
+        },
+        "codec": {
+          "verdict": "NOT REQUESTED"
+        }
+      },
+      "selected_closure": [
+        "selected oms messages: 1",
+        "selected type closure: 40",
+        "generated support types: 0"
+      ],
+      "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+      "contract_sha256": "915f4fe3614c1fa3b76f6c12c9c0608991c3b96abcecfcc9f394035f4ffdb13e"
+    },
+    {
+      "version": "2.5",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}SubsystemStream",
+      "world": "closed-schema",
+      "with_codec": true,
+      "process_exit": 1,
+      "stages": {
+        "model": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive DateTime"
+        },
+        "service api": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive DateTime"
+        },
+        "codec": {
+          "verdict": "NOT MEASURED"
+        }
+      },
+      "selected_closure": [
+        "selected oms messages: 1",
+        "selected type closure: 40",
+        "generated support types: 0"
+      ],
+      "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+      "contract_sha256": "915f4fe3614c1fa3b76f6c12c9c0608991c3b96abcecfcc9f394035f4ffdb13e"
+    },
+    {
+      "version": "2.5",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}SubsystemStream",
+      "world": "open-extensions",
+      "with_codec": false,
+      "process_exit": 1,
+      "stages": {
+        "model": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive DateTime"
+        },
+        "service api": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive DateTime"
+        },
+        "codec": {
+          "verdict": "NOT REQUESTED"
+        }
+      },
+      "selected_closure": [
+        "selected oms messages: 1",
+        "selected type closure: 40",
+        "generated support types: 0"
+      ],
+      "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+      "contract_sha256": "915f4fe3614c1fa3b76f6c12c9c0608991c3b96abcecfcc9f394035f4ffdb13e"
+    },
+    {
+      "version": "2.5",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}SubsystemStream",
+      "world": "open-extensions",
+      "with_codec": true,
+      "process_exit": 1,
+      "stages": {
+        "model": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive DateTime"
+        },
+        "service api": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive DateTime"
+        },
+        "codec": {
+          "verdict": "NOT MEASURED"
+        }
+      },
+      "selected_closure": [
+        "selected oms messages: 1",
+        "selected type closure: 40",
+        "generated support types: 0"
+      ],
+      "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+      "contract_sha256": "915f4fe3614c1fa3b76f6c12c9c0608991c3b96abcecfcc9f394035f4ffdb13e"
+    },
+    {
+      "version": "2.6",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}PositionReport",
+      "world": "closed-schema",
+      "with_codec": false,
+      "process_exit": 1,
+      "stages": {
+        "model": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: unsupported constraints"
+        },
+        "service api": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: unsupported constraints"
+        },
+        "codec": {
+          "verdict": "NOT REQUESTED"
+        }
+      },
+      "selected_closure": [
+        "selected oms messages: 1",
+        "selected type closure: 60",
+        "generated support types: 0"
+      ],
+      "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+      "contract_sha256": "fb8978f1a583e3ca619350072895e62b64bf3750d573f8fd2eb01bf26bbcdaf1"
+    },
+    {
+      "version": "2.6",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}PositionReport",
+      "world": "closed-schema",
+      "with_codec": true,
+      "process_exit": 1,
+      "stages": {
+        "model": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: unsupported constraints"
+        },
+        "service api": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: unsupported constraints"
+        },
+        "codec": {
+          "verdict": "NOT MEASURED"
+        }
+      },
+      "selected_closure": [
+        "selected oms messages: 1",
+        "selected type closure: 60",
+        "generated support types: 0"
+      ],
+      "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+      "contract_sha256": "fb8978f1a583e3ca619350072895e62b64bf3750d573f8fd2eb01bf26bbcdaf1"
+    },
+    {
+      "version": "2.6",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}PositionReport",
+      "world": "open-extensions",
+      "with_codec": false,
+      "process_exit": 1,
+      "stages": {
+        "model": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: unsupported constraints"
+        },
+        "service api": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: unsupported constraints"
+        },
+        "codec": {
+          "verdict": "NOT REQUESTED"
+        }
+      },
+      "selected_closure": [
+        "selected oms messages: 1",
+        "selected type closure: 60",
+        "generated support types: 0"
+      ],
+      "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+      "contract_sha256": "fb8978f1a583e3ca619350072895e62b64bf3750d573f8fd2eb01bf26bbcdaf1"
+    },
+    {
+      "version": "2.6",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}PositionReport",
+      "world": "open-extensions",
+      "with_codec": true,
+      "process_exit": 1,
+      "stages": {
+        "model": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: unsupported constraints"
+        },
+        "service api": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: unsupported constraints"
+        },
+        "codec": {
+          "verdict": "NOT MEASURED"
+        }
+      },
+      "selected_closure": [
+        "selected oms messages: 1",
+        "selected type closure: 60",
+        "generated support types: 0"
+      ],
+      "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+      "contract_sha256": "fb8978f1a583e3ca619350072895e62b64bf3750d573f8fd2eb01bf26bbcdaf1"
+    },
+    {
+      "version": "2.6",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}RDMA_InitializeSetup",
+      "world": "closed-schema",
+      "with_codec": false,
+      "process_exit": 1,
+      "stages": {
+        "model": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: unsupported constraints"
+        },
+        "service api": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: unsupported constraints"
+        },
+        "codec": {
+          "verdict": "NOT REQUESTED"
+        }
+      },
+      "selected_closure": [
+        "selected oms messages: 1",
+        "selected type closure: 50",
+        "generated support types: 0"
+      ],
+      "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+      "contract_sha256": "bc1da702f660b833ee107a69cc35d3a8fd62662182c9a4e7ff0a5f370e4e77ba"
+    },
+    {
+      "version": "2.6",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}RDMA_InitializeSetup",
+      "world": "closed-schema",
+      "with_codec": true,
+      "process_exit": 1,
+      "stages": {
+        "model": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: unsupported constraints"
+        },
+        "service api": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: unsupported constraints"
+        },
+        "codec": {
+          "verdict": "NOT MEASURED"
+        }
+      },
+      "selected_closure": [
+        "selected oms messages: 1",
+        "selected type closure: 50",
+        "generated support types: 0"
+      ],
+      "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+      "contract_sha256": "bc1da702f660b833ee107a69cc35d3a8fd62662182c9a4e7ff0a5f370e4e77ba"
+    },
+    {
+      "version": "2.6",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}RDMA_InitializeSetup",
+      "world": "open-extensions",
+      "with_codec": false,
+      "process_exit": 1,
+      "stages": {
+        "model": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: unsupported constraints"
+        },
+        "service api": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: unsupported constraints"
+        },
+        "codec": {
+          "verdict": "NOT REQUESTED"
+        }
+      },
+      "selected_closure": [
+        "selected oms messages: 1",
+        "selected type closure: 50",
+        "generated support types: 0"
+      ],
+      "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+      "contract_sha256": "bc1da702f660b833ee107a69cc35d3a8fd62662182c9a4e7ff0a5f370e4e77ba"
+    },
+    {
+      "version": "2.6",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}RDMA_InitializeSetup",
+      "world": "open-extensions",
+      "with_codec": true,
+      "process_exit": 1,
+      "stages": {
+        "model": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: unsupported constraints"
+        },
+        "service api": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: unsupported constraints"
+        },
+        "codec": {
+          "verdict": "NOT MEASURED"
+        }
+      },
+      "selected_closure": [
+        "selected oms messages: 1",
+        "selected type closure: 50",
+        "generated support types: 0"
+      ],
+      "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+      "contract_sha256": "bc1da702f660b833ee107a69cc35d3a8fd62662182c9a4e7ff0a5f370e4e77ba"
+    },
+    {
+      "version": "2.6",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}SubsystemStream",
+      "world": "closed-schema",
+      "with_codec": false,
+      "process_exit": 1,
+      "stages": {
+        "model": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive Binary"
+        },
+        "service api": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive Binary"
+        },
+        "codec": {
+          "verdict": "NOT REQUESTED"
+        }
+      },
+      "selected_closure": [
+        "selected oms messages: 1",
+        "selected type closure: 41",
+        "generated support types: 0"
+      ],
+      "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+      "contract_sha256": "1cb8e668802e01dc6bd45cb06550ef0581d87d55f94572e04989d959c861bf8a"
+    },
+    {
+      "version": "2.6",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}SubsystemStream",
+      "world": "closed-schema",
+      "with_codec": true,
+      "process_exit": 1,
+      "stages": {
+        "model": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive Binary"
+        },
+        "service api": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive Binary"
+        },
+        "codec": {
+          "verdict": "NOT MEASURED"
+        }
+      },
+      "selected_closure": [
+        "selected oms messages: 1",
+        "selected type closure: 41",
+        "generated support types: 0"
+      ],
+      "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+      "contract_sha256": "1cb8e668802e01dc6bd45cb06550ef0581d87d55f94572e04989d959c861bf8a"
+    },
+    {
+      "version": "2.6",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}SubsystemStream",
+      "world": "open-extensions",
+      "with_codec": false,
+      "process_exit": 1,
+      "stages": {
+        "model": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive Binary"
+        },
+        "service api": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive Binary"
+        },
+        "codec": {
+          "verdict": "NOT REQUESTED"
+        }
+      },
+      "selected_closure": [
+        "selected oms messages: 1",
+        "selected type closure: 41",
+        "generated support types: 0"
+      ],
+      "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+      "contract_sha256": "1cb8e668802e01dc6bd45cb06550ef0581d87d55f94572e04989d959c861bf8a"
+    },
+    {
+      "version": "2.6",
+      "message": "{https://www.vdl.afrl.af.mil/programs/oam}SubsystemStream",
+      "world": "open-extensions",
+      "with_codec": true,
+      "process_exit": 1,
+      "stages": {
+        "model": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive Binary"
+        },
+        "service api": {
+          "verdict": "NOT READY",
+          "first_blocker": "unsupported Python IR construct: primitive Binary"
+        },
+        "codec": {
+          "verdict": "NOT MEASURED"
+        }
+      },
+      "selected_closure": [
+        "selected oms messages: 1",
+        "selected type closure: 41",
+        "generated support types: 0"
+      ],
+      "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+      "contract_sha256": "1cb8e668802e01dc6bd45cb06550ef0581d87d55f94572e04989d959c861bf8a"
+    }
+  ],
+  "historical_sha256": {
+    "python-header-profiles/before.json": "cd8c707460a3da6f3ef5eac8115324a2173440f4726fb553db961873a5782f05",
+    "python-header-profiles/after.json": "7345f45f3cc0a69cd552e48d3c2f04d98aab4e77b24c902ab764057bf2f3f7dc",
+    "python-inheritance/before.json": "f9b56c017187d84e75c182a83cd5ebfebb7d568e596b15167aa953c1e5726233",
+    "python-inheritance/after.json": "b80985470ec6757eed65db1683cca08c5f24f3b191edf4ca04cb2d24d5e5d25c"
+  },
+  "inherited_tests": 96,
+  "isolated_profile_executions": 32,
+  "real_ready": 0,
+  "interoperability": "NOT QUALIFIED: complete services remain NOT READY"
+}

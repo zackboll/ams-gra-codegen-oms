@@ -81,7 +81,7 @@ def validate_cells(record, jobs, artifacts, prefix=""):
             raise ValueError("cell not successful: " + cell["name"])
         # A successful job with skipped qualification steps is NOT qualification.
         steps = job.get("steps", [])
-        mandatory = record['original_steps']
+        mandatory = record.get('integration_steps', record['original_steps'])
         if record['job_id'].startswith('ada-websocket-'):
             mandatory = [*mandatory, dict(name='Record Task100 integration run identity')]
         if len(steps) < len(mandatory) or any(s["conclusion"] != "success" for s in steps):

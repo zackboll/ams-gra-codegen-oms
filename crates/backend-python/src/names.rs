@@ -61,7 +61,7 @@ pub(crate) fn validate(schema: &SchemaIr, declarations: &[&TypeDecl]) -> Result<
     // Builtins used by annotations, decorators and runtime checks must never be
     // shadowed by a schema declaration. Leading-underscore runtime names cannot
     // be emitted by symbol(). No foreign-language preflight is consulted.
-    let mut top = [
+    let mut top: BTreeSet<String> = [
         "bool",
         "str",
         "int",
@@ -78,6 +78,11 @@ pub(crate) fn validate(schema: &SchemaIr, declarations: &[&TypeDecl]) -> Result<
     .into_iter()
     .map(str::to_owned)
     .collect();
+    if crate::uses_float64(schema) {
+        top.insert("float".to_owned());
+        // A lowercase declaration would collide with the private codec helper.
+        top.insert("float64".to_owned());
+    }
     for declaration in declarations {
         insert(&mut top, &declaration.name.local_name, false)?;
         match &declaration.kind {
@@ -85,7 +90,7 @@ pub(crate) fn validate(schema: &SchemaIr, declarations: &[&TypeDecl]) -> Result<
                 // An annotation is evaluated in the class body. A field named
                 // `int`, `tuple`, or a lowercase schema type would shadow a
                 // later annotation with its dataclasses.Field instance.
-                let mut members = ["bool", "str", "int", "tuple"]
+                let mut members: BTreeSet<String> = ["bool", "str", "int", "tuple"]
                     .into_iter()
                     .map(str::to_owned)
                     .chain(
@@ -94,6 +99,9 @@ pub(crate) fn validate(schema: &SchemaIr, declarations: &[&TypeDecl]) -> Result<
                             .map(|declaration| symbol(&declaration.name.local_name, false)),
                     )
                     .collect();
+                if crate::uses_float64(schema) {
+                    members.insert("float".to_owned());
+                }
                 for field in crate::record_fields(schema, declaration)? {
                     insert(&mut members, &field.name, true)?;
                 }

@@ -567,7 +567,7 @@ jobs:
             slot: 2
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.95.0
         with:
           components: rustfmt, clippy
       - uses: actions/setup-python@v5
@@ -584,10 +584,19 @@ jobs:
           cargo test --locked -p ams-gra-codegen-oms --test python_codec -- --nocapture
           cargo test --locked -p ams-gra-codegen-oms --test python_header_profiles -- --nocapture
           cargo test --locked -p ams-gra-codegen-oms --test python_inheritance -- --nocapture
+          cargo test --locked -p ams-gra-codegen-oms --test python_float64 -- --nocapture
           python scripts/test-py007-uci.py
+          python scripts/test-py008-uci.py
           cargo fmt --all -- --check
           cargo clippy --locked -p ams-gra-oms-backend-python -p ams-gra-codegen-oms --all-targets -- -D warnings
           cargo build --locked -p ams-gra-oms-backend-python -p ams-gra-codegen-oms --all-targets
+      - name: Focused independent Float64 numeric controls (PY-008)
+        run: |
+          set -euo pipefail
+          python tests/ada-float64-probe/oracle.py "$RUNNER_TEMP/py008-corpus"
+          target/debug/ams-gra-codegen-oms service-generate --schema tests/fixtures/python-float64/oam.xsd --contract tests/fixtures/python-float64/service.yaml --language python --world closed-schema --with-codec --output "$RUNNER_TEMP/py008-generated"
+          python scripts/check-py008-numeric.py --generated "$RUNNER_TEMP/py008-generated" --corpus "$RUNNER_TEMP/py008-corpus" --output "$RUNNER_TEMP/py008-normal.json"
+          python -O scripts/check-py008-numeric.py --generated "$RUNNER_TEMP/py008-generated" --corpus "$RUNNER_TEMP/py008-corpus" --output "$RUNNER_TEMP/py008-optimized.json"
       - name: Python LA-CAL actual network mock qualification (PY-005)
         run: |
           python -m pip install ./python/oms-lacal-runtime

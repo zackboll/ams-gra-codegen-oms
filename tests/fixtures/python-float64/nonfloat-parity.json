@@ -1,0 +1,306 @@
+{
+  "before": [
+    {
+      "fixture": "python-codec",
+      "world": "closed-schema",
+      "codec": false,
+      "stdout": "service contract valid\nservice: Python Codec\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 2\ncontract-selected types: 9\ngenerated support types: 0\nprojected schema types: 9\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "exit": 0,
+      "files": {
+        "model.py": "4265e331c658598f9a77136732be124c38db1e0f750807cf3533559b1060ea8e",
+        "service_api.py": "cbe144ad31079b59cdf95e944e5daf14d4832547827a8f201ee9de4f633b23d7"
+      }
+    },
+    {
+      "fixture": "python-codec",
+      "world": "closed-schema",
+      "codec": true,
+      "stdout": "service contract valid\nservice: Python Codec\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 2\ncontract-selected types: 9\ngenerated support types: 0\nprojected schema types: 9\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\ngenerated service codec files: 1\ngenerated 3 file(s) including the codec\n",
+      "stderr": "",
+      "exit": 0,
+      "files": {
+        "model.py": "4265e331c658598f9a77136732be124c38db1e0f750807cf3533559b1060ea8e",
+        "service_api.py": "cbe144ad31079b59cdf95e944e5daf14d4832547827a8f201ee9de4f633b23d7",
+        "service_codec.py": "f2f539ac3eb0e73789dd5c6baa977f974f4069e674a7200a8b9c21a6b7a36148"
+      }
+    },
+    {
+      "fixture": "python-codec",
+      "world": "open-extensions",
+      "codec": false,
+      "stdout": "service contract valid\nservice: Python Codec\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 2\ncontract-selected types: 9\ngenerated support types: 0\nprojected schema types: 9\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "exit": 0,
+      "files": {
+        "model.py": "4265e331c658598f9a77136732be124c38db1e0f750807cf3533559b1060ea8e",
+        "service_api.py": "cbe144ad31079b59cdf95e944e5daf14d4832547827a8f201ee9de4f633b23d7"
+      }
+    },
+    {
+      "fixture": "python-codec",
+      "world": "open-extensions",
+      "codec": true,
+      "stdout": "service contract valid\nservice: Python Codec\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 2\ncontract-selected types: 9\ngenerated support types: 0\nprojected schema types: 9\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\ngenerated service codec files: 1\ngenerated 3 file(s) including the codec\n",
+      "stderr": "",
+      "exit": 0,
+      "files": {
+        "model.py": "4265e331c658598f9a77136732be124c38db1e0f750807cf3533559b1060ea8e",
+        "service_api.py": "cbe144ad31079b59cdf95e944e5daf14d4832547827a8f201ee9de4f633b23d7",
+        "service_codec.py": "f2f539ac3eb0e73789dd5c6baa977f974f4069e674a7200a8b9c21a6b7a36148"
+      }
+    },
+    {
+      "fixture": "python-header-profiles",
+      "world": "closed-schema",
+      "codec": false,
+      "stdout": "service contract valid\nservice: Python Header Profiles\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 4\ncontract-selected types: 4\ngenerated support types: 0\nprojected schema types: 4\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "exit": 0,
+      "files": {
+        "model.py": "16fa390c490cd596eb54eb90191691afaa896f05541b4d39d33d7bb892c62dd2",
+        "service_api.py": "d94e675e4285be6b013367dde7ec6f18e21099096f3c219602c2d82c8b7a246c"
+      }
+    },
+    {
+      "fixture": "python-header-profiles",
+      "world": "closed-schema",
+      "codec": true,
+      "stdout": "service contract valid\nservice: Python Header Profiles\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 4\ncontract-selected types: 4\ngenerated support types: 0\nprojected schema types: 4\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\ngenerated service codec files: 1\ngenerated 3 file(s) including the codec\n",
+      "stderr": "",
+      "exit": 0,
+      "files": {
+        "model.py": "16fa390c490cd596eb54eb90191691afaa896f05541b4d39d33d7bb892c62dd2",
+        "service_api.py": "d94e675e4285be6b013367dde7ec6f18e21099096f3c219602c2d82c8b7a246c",
+        "service_codec.py": "48820cc0f96f4cc4f47676bc8c59d9be131523535723116edde0893fddf91bc6"
+      }
+    },
+    {
+      "fixture": "python-header-profiles",
+      "world": "open-extensions",
+      "codec": false,
+      "stdout": "service contract valid\nservice: Python Header Profiles\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 4\ncontract-selected types: 4\ngenerated support types: 0\nprojected schema types: 4\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "exit": 0,
+      "files": {
+        "model.py": "16fa390c490cd596eb54eb90191691afaa896f05541b4d39d33d7bb892c62dd2",
+        "service_api.py": "d94e675e4285be6b013367dde7ec6f18e21099096f3c219602c2d82c8b7a246c"
+      }
+    },
+    {
+      "fixture": "python-header-profiles",
+      "world": "open-extensions",
+      "codec": true,
+      "stdout": "service contract valid\nservice: Python Header Profiles\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 4\ncontract-selected types: 4\ngenerated support types: 0\nprojected schema types: 4\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\ngenerated service codec files: 1\ngenerated 3 file(s) including the codec\n",
+      "stderr": "",
+      "exit": 0,
+      "files": {
+        "model.py": "16fa390c490cd596eb54eb90191691afaa896f05541b4d39d33d7bb892c62dd2",
+        "service_api.py": "d94e675e4285be6b013367dde7ec6f18e21099096f3c219602c2d82c8b7a246c",
+        "service_codec.py": "48820cc0f96f4cc4f47676bc8c59d9be131523535723116edde0893fddf91bc6"
+      }
+    },
+    {
+      "fixture": "python-inheritance",
+      "world": "closed-schema",
+      "codec": false,
+      "stdout": "service contract valid\nservice: Python Inherited Records\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 2\ncontract-selected types: 8\ngenerated support types: 0\nprojected schema types: 8\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "exit": 0,
+      "files": {
+        "model.py": "8465cb22b684239a80f0322880cd1615730d8ca0074d041a6ebbe259cd6e8df0",
+        "service_api.py": "9a41b219c18206e3792c223bda0e80e847f62a8e0c780bfb7a1f444dcffd05c4"
+      }
+    },
+    {
+      "fixture": "python-inheritance",
+      "world": "closed-schema",
+      "codec": true,
+      "stdout": "service contract valid\nservice: Python Inherited Records\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 2\ncontract-selected types: 8\ngenerated support types: 0\nprojected schema types: 8\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\ngenerated service codec files: 1\ngenerated 3 file(s) including the codec\n",
+      "stderr": "",
+      "exit": 0,
+      "files": {
+        "model.py": "8465cb22b684239a80f0322880cd1615730d8ca0074d041a6ebbe259cd6e8df0",
+        "service_api.py": "9a41b219c18206e3792c223bda0e80e847f62a8e0c780bfb7a1f444dcffd05c4",
+        "service_codec.py": "9eb7b0480337b573c0ee1f9d1afca3288a08fc9a684fb5dbd263dcd76b88e030"
+      }
+    },
+    {
+      "fixture": "python-inheritance",
+      "world": "open-extensions",
+      "codec": false,
+      "stdout": "service contract valid\nservice: Python Inherited Records\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 2\ncontract-selected types: 8\ngenerated support types: 0\nprojected schema types: 8\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "exit": 0,
+      "files": {
+        "model.py": "8465cb22b684239a80f0322880cd1615730d8ca0074d041a6ebbe259cd6e8df0",
+        "service_api.py": "9a41b219c18206e3792c223bda0e80e847f62a8e0c780bfb7a1f444dcffd05c4"
+      }
+    },
+    {
+      "fixture": "python-inheritance",
+      "world": "open-extensions",
+      "codec": true,
+      "stdout": "service contract valid\nservice: Python Inherited Records\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 2\ncontract-selected types: 8\ngenerated support types: 0\nprojected schema types: 8\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\ngenerated service codec files: 1\ngenerated 3 file(s) including the codec\n",
+      "stderr": "",
+      "exit": 0,
+      "files": {
+        "model.py": "8465cb22b684239a80f0322880cd1615730d8ca0074d041a6ebbe259cd6e8df0",
+        "service_api.py": "9a41b219c18206e3792c223bda0e80e847f62a8e0c780bfb7a1f444dcffd05c4",
+        "service_codec.py": "9eb7b0480337b573c0ee1f9d1afca3288a08fc9a684fb5dbd263dcd76b88e030"
+      }
+    }
+  ],
+  "after": [
+    {
+      "fixture": "python-codec",
+      "world": "closed-schema",
+      "codec": false,
+      "stdout": "service contract valid\nservice: Python Codec\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 2\ncontract-selected types: 9\ngenerated support types: 0\nprojected schema types: 9\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "exit": 0,
+      "files": {
+        "model.py": "4265e331c658598f9a77136732be124c38db1e0f750807cf3533559b1060ea8e",
+        "service_api.py": "cbe144ad31079b59cdf95e944e5daf14d4832547827a8f201ee9de4f633b23d7"
+      }
+    },
+    {
+      "fixture": "python-codec",
+      "world": "closed-schema",
+      "codec": true,
+      "stdout": "service contract valid\nservice: Python Codec\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 2\ncontract-selected types: 9\ngenerated support types: 0\nprojected schema types: 9\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\ngenerated service codec files: 1\ngenerated 3 file(s) including the codec\n",
+      "stderr": "",
+      "exit": 0,
+      "files": {
+        "model.py": "4265e331c658598f9a77136732be124c38db1e0f750807cf3533559b1060ea8e",
+        "service_api.py": "cbe144ad31079b59cdf95e944e5daf14d4832547827a8f201ee9de4f633b23d7",
+        "service_codec.py": "f2f539ac3eb0e73789dd5c6baa977f974f4069e674a7200a8b9c21a6b7a36148"
+      }
+    },
+    {
+      "fixture": "python-codec",
+      "world": "open-extensions",
+      "codec": false,
+      "stdout": "service contract valid\nservice: Python Codec\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 2\ncontract-selected types: 9\ngenerated support types: 0\nprojected schema types: 9\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "exit": 0,
+      "files": {
+        "model.py": "4265e331c658598f9a77136732be124c38db1e0f750807cf3533559b1060ea8e",
+        "service_api.py": "cbe144ad31079b59cdf95e944e5daf14d4832547827a8f201ee9de4f633b23d7"
+      }
+    },
+    {
+      "fixture": "python-codec",
+      "world": "open-extensions",
+      "codec": true,
+      "stdout": "service contract valid\nservice: Python Codec\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 2\ncontract-selected types: 9\ngenerated support types: 0\nprojected schema types: 9\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\ngenerated service codec files: 1\ngenerated 3 file(s) including the codec\n",
+      "stderr": "",
+      "exit": 0,
+      "files": {
+        "model.py": "4265e331c658598f9a77136732be124c38db1e0f750807cf3533559b1060ea8e",
+        "service_api.py": "cbe144ad31079b59cdf95e944e5daf14d4832547827a8f201ee9de4f633b23d7",
+        "service_codec.py": "f2f539ac3eb0e73789dd5c6baa977f974f4069e674a7200a8b9c21a6b7a36148"
+      }
+    },
+    {
+      "fixture": "python-header-profiles",
+      "world": "closed-schema",
+      "codec": false,
+      "stdout": "service contract valid\nservice: Python Header Profiles\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 4\ncontract-selected types: 4\ngenerated support types: 0\nprojected schema types: 4\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "exit": 0,
+      "files": {
+        "model.py": "16fa390c490cd596eb54eb90191691afaa896f05541b4d39d33d7bb892c62dd2",
+        "service_api.py": "d94e675e4285be6b013367dde7ec6f18e21099096f3c219602c2d82c8b7a246c"
+      }
+    },
+    {
+      "fixture": "python-header-profiles",
+      "world": "closed-schema",
+      "codec": true,
+      "stdout": "service contract valid\nservice: Python Header Profiles\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 4\ncontract-selected types: 4\ngenerated support types: 0\nprojected schema types: 4\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\ngenerated service codec files: 1\ngenerated 3 file(s) including the codec\n",
+      "stderr": "",
+      "exit": 0,
+      "files": {
+        "model.py": "16fa390c490cd596eb54eb90191691afaa896f05541b4d39d33d7bb892c62dd2",
+        "service_api.py": "d94e675e4285be6b013367dde7ec6f18e21099096f3c219602c2d82c8b7a246c",
+        "service_codec.py": "48820cc0f96f4cc4f47676bc8c59d9be131523535723116edde0893fddf91bc6"
+      }
+    },
+    {
+      "fixture": "python-header-profiles",
+      "world": "open-extensions",
+      "codec": false,
+      "stdout": "service contract valid\nservice: Python Header Profiles\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 4\ncontract-selected types: 4\ngenerated support types: 0\nprojected schema types: 4\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "exit": 0,
+      "files": {
+        "model.py": "16fa390c490cd596eb54eb90191691afaa896f05541b4d39d33d7bb892c62dd2",
+        "service_api.py": "d94e675e4285be6b013367dde7ec6f18e21099096f3c219602c2d82c8b7a246c"
+      }
+    },
+    {
+      "fixture": "python-header-profiles",
+      "world": "open-extensions",
+      "codec": true,
+      "stdout": "service contract valid\nservice: Python Header Profiles\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 4\ncontract-selected types: 4\ngenerated support types: 0\nprojected schema types: 4\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\ngenerated service codec files: 1\ngenerated 3 file(s) including the codec\n",
+      "stderr": "",
+      "exit": 0,
+      "files": {
+        "model.py": "16fa390c490cd596eb54eb90191691afaa896f05541b4d39d33d7bb892c62dd2",
+        "service_api.py": "d94e675e4285be6b013367dde7ec6f18e21099096f3c219602c2d82c8b7a246c",
+        "service_codec.py": "48820cc0f96f4cc4f47676bc8c59d9be131523535723116edde0893fddf91bc6"
+      }
+    },
+    {
+      "fixture": "python-inheritance",
+      "world": "closed-schema",
+      "codec": false,
+      "stdout": "service contract valid\nservice: Python Inherited Records\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 2\ncontract-selected types: 8\ngenerated support types: 0\nprojected schema types: 8\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "exit": 0,
+      "files": {
+        "model.py": "8465cb22b684239a80f0322880cd1615730d8ca0074d041a6ebbe259cd6e8df0",
+        "service_api.py": "9a41b219c18206e3792c223bda0e80e847f62a8e0c780bfb7a1f444dcffd05c4"
+      }
+    },
+    {
+      "fixture": "python-inheritance",
+      "world": "closed-schema",
+      "codec": true,
+      "stdout": "service contract valid\nservice: Python Inherited Records\nlanguage: python\ngeneration world: closed-schema\n\nselected oms messages: 2\ncontract-selected types: 8\ngenerated support types: 0\nprojected schema types: 8\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\ngenerated service codec files: 1\ngenerated 3 file(s) including the codec\n",
+      "stderr": "",
+      "exit": 0,
+      "files": {
+        "model.py": "8465cb22b684239a80f0322880cd1615730d8ca0074d041a6ebbe259cd6e8df0",
+        "service_api.py": "9a41b219c18206e3792c223bda0e80e847f62a8e0c780bfb7a1f444dcffd05c4",
+        "service_codec.py": "9eb7b0480337b573c0ee1f9d1afca3288a08fc9a684fb5dbd263dcd76b88e030"
+      }
+    },
+    {
+      "fixture": "python-inheritance",
+      "world": "open-extensions",
+      "codec": false,
+      "stdout": "service contract valid\nservice: Python Inherited Records\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 2\ncontract-selected types: 8\ngenerated support types: 0\nprojected schema types: 8\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\n",
+      "stderr": "",
+      "exit": 0,
+      "files": {
+        "model.py": "8465cb22b684239a80f0322880cd1615730d8ca0074d041a6ebbe259cd6e8df0",
+        "service_api.py": "9a41b219c18206e3792c223bda0e80e847f62a8e0c780bfb7a1f444dcffd05c4"
+      }
+    },
+    {
+      "fixture": "python-inheritance",
+      "world": "open-extensions",
+      "codec": true,
+      "stdout": "service contract valid\nservice: Python Inherited Records\nlanguage: python\ngeneration world: open-extensions\n\nselected oms messages: 2\ncontract-selected types: 8\ngenerated support types: 0\nprojected schema types: 8\ngenerated model files: 1\ngenerated service api files: 1\ngenerated 2 file(s)\noutput: <OUTPUT>\ngenerated service codec files: 1\ngenerated 3 file(s) including the codec\n",
+      "stderr": "",
+      "exit": 0,
+      "files": {
+        "model.py": "8465cb22b684239a80f0322880cd1615730d8ca0074d041a6ebbe259cd6e8df0",
+        "service_api.py": "9a41b219c18206e3792c223bda0e80e847f62a8e0c780bfb7a1f444dcffd05c4",
+        "service_codec.py": "9eb7b0480337b573c0ee1f9d1afca3288a08fc9a684fb5dbd263dcd76b88e030"
+      }
+    }
+  ]
+}

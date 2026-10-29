@@ -1,0 +1,18 @@
+{
+  "workspace": {
+    "exit": 0,
+    "summaries": 189,
+    "passed": 1488,
+    "failed": 0,
+    "ignored": 8,
+    "log_sha256": "bd0209dd2ff3c8bcc68ea94410f828d8b94b2cd6bc535d2860b057b81c619d2e"
+  },
+  "proposed-workspace": {
+    "exit": 0,
+    "summaries": 189,
+    "passed": 1491,
+    "failed": 0,
+    "ignored": 8,
+    "log_sha256": "ecf99a0fe0250c3561d3dd3fd07044502eabe73ae02550e5b146629bde0ddb7f"
+  }
+}

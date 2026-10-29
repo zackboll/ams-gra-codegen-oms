@@ -6,7 +6,8 @@ use ams_gra_oms_codegen_core::{
     plan_type_emissions,
 };
 use ams_gra_oms_ir::{
-    ConstraintSet, FieldDecl, OccurrenceShape, SchemaIr, TypeKind, TypeRef, TypeRefTarget,
+    ConstraintSet, FieldDecl, OccurrenceShape, PrimitiveKind, SchemaIr, TypeKind, TypeRef,
+    TypeRefTarget,
 };
 use std::collections::BTreeSet;
 use std::fmt::Write as _;
@@ -35,6 +36,13 @@ fn reference(
             symbol = names::symbol(&name.local_name, false)
         )),
         TypeRefTarget::Primitive(kind) => {
+            if *kind == PrimitiveKind::Float64 {
+                let args = crate::float64_arguments(constraints, "_model.")?;
+                return Ok(format!(
+                    "_{}_float64({value}, {path}, {args})",
+                    if encode { "encode" } else { "decode" }
+                ));
+            }
             let (_, check) = crate::primitive(*kind, constraints)?;
             Ok(format!("_scalar({value}, {path}, {check})"))
         }
@@ -82,6 +90,9 @@ pub fn generate_service_codec(
         }
     }
     let mut output = include_str!("codec_runtime.py").to_owned();
+    if crate::uses_float64(schema) {
+        output.push_str(include_str!("float64_codec_runtime.py"));
+    }
     if schema
         .types
         .iter()

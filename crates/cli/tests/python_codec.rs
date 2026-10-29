@@ -308,7 +308,6 @@ fn all_model_boundaries_still_fail_closed_with_codec_requested() {
     let source = fs::read_to_string(fixture("oam.xsd")).unwrap();
     for primitive in [
         "float",
-        "double",
         "dateTime",
         "duration",
         "time",

@@ -225,7 +225,7 @@ class GateTests(unittest.TestCase):
             for cell in record['cells']:
                 self.jobs.append(dict(name=('deep-qualification / ' if record['workflow']=='deep-ci.yml' else '')+cell['name'],
                     status='completed',conclusion='success',started_at='2026-10-27T01:00:00Z',
-                    steps=[dict(name=s.get('name','Run command'),conclusion='success') for s in record['original_steps']]))
+                    steps=[dict(name=s.get('name','Run command'),conclusion='success') for s in record.get('integration_steps', record['original_steps'])]))
                 if record['job_id'].startswith('ada-websocket-'):
                     self.jobs[-1]['steps'].append(dict(name='Record Task100 integration run identity', conclusion='success'))
                 self.artifacts.extend(dict(name=n,expired=False,size_in_bytes=1,created_at='2026-10-27T02:00:00Z') for n in cell['artifacts'])
