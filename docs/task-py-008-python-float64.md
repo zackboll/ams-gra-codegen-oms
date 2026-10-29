@@ -651,3 +651,16 @@ until every selected ordinary/reusable Deep cell, both Task100 transport and
 both Task100 real-Sleet compilers, all PERF-007 primary shards, numerical/UCI/
 Python Sleet evidence, CI002 and `pr-ci-required` pass for the final source.
 No merge, approval, auto-merge, release, publication or tag is authorized.
+
+### R2 ordinary integration identity
+
+Ordinary merge commit `3dc126939f92df5845335c2c226177e5cc74ef02` has tree
+`24f43432b5d5f4c64dfd7dad429ad0ef05aa9253` and ordered parents
+`af467b4789758cab544829a15bc0ae5d2d96cbba` and
+`7958c4e0d8f78768fd4c7d4c1bd34877c31d893a`. All 51 recorded mandatory
+precommit local gates pass, including the four independent Task100 campaigns.
+The documentation-only follow-up records this identity without changing
+qualified executable or CI inputs; fresh clean-source Task100 campaigns,
+their strict verifier summaries, the stable-source split rerun and final
+hosted outcomes belong to the external R2 delivery report and PR handoff.
+At this checkpoint exact-final-head hosted acceptance is not yet established.
