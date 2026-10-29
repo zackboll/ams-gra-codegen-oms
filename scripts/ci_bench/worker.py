@@ -1,4 +1,4 @@
-"""Unprivileged offline worker; never import candidate Python.
+"""Unprivileged offline worker; candidate Python executes ONLY here.
 
 The host owns resource and contention accounting. The generator, generated
 programs, GPR files and candidate dependency hooks remain untrusted execution.
@@ -17,6 +17,11 @@ import subprocess
 import sys
 import threading
 import time
+
+try:
+    from . import contract
+except ImportError:
+    import contract
 
 
 def load(name, path):
@@ -38,6 +43,9 @@ def main():
         raise ValueError('unexpected worker arguments')
     if compiler not in ('14', '16') or mode not in ('original', 'reuse'):
         raise ValueError('invalid worker arguments')
+    if len(os.sched_getaffinity(0)) != contract.WORKERS:
+        raise ValueError('guest worker affinity does not match build worker budget')
+    setup_started = time.monotonic()
     state = Path('/work/state')
     shutil.copytree('/seed/' + compiler, state, symlinks=True)
     shutil.copytree('/usr/local/cargo', '/work/cargo', symlinks=True)
@@ -48,7 +56,7 @@ def main():
         http.server.SimpleHTTPRequestHandler, directory='/seed'))
     threading.Thread(target=server.serve_forever, daemon=True).start()
     os.environ.update(HOME=str(state / 'home'), CARGO_HOME='/work/cargo',
-                      CARGO_TARGET_DIR='/work/target', CARGO_BUILD_JOBS='1',
+                      CARGO_TARGET_DIR='/work/target', CARGO_BUILD_JOBS=str(contract.WORKERS),
                       PATH='/work/bin:' + os.environ['PATH'], PYTHONDONTWRITEBYTECODE='1',
                       TMPDIR='/work/tmp')
     Path('/work/tmp').mkdir()
@@ -56,13 +64,19 @@ def main():
     alr = Path('/work/bin/alr')
     alr.write_text('#!/bin/sh\nexec /opt/alire/bin/alr -s /work/state/settings "$@"\n')
     alr.chmod(0o755)
+    generator_started = time.monotonic()
     subprocess.run(['cargo', '+1.95.0', 'build', '--offline', '--locked',
                     '-p', 'ams-gra-codegen-oms'], cwd='/source', check=True, timeout=600)
     generator = Path('/work/target/debug/ams-gra-codegen-oms')
+    generator_build_seconds = time.monotonic() - generator_started
     generator_hash = hashlib.sha256(generator.read_bytes()).hexdigest()
-    sys.path.insert(0, '/trusted/scripts')
+    # Exact candidate implementation, including its extra integrity work.
+    # No candidate module is ever imported by the Actions host controller.
+    sys.path.insert(0, '/source/scripts')
     from perf005_ci import validate_toolchain
     from perf005_provider import Pilot
+    from perf009_provider import PortablePilot
+    from perf009_portable import inventory
     runner = load('benchmark_runner', '/trusted/scripts/check-task093-helper-demand.py')
     runner.ROOT = Path('/source')
     if smoke:
@@ -76,7 +90,8 @@ def main():
             command[:5] == ['alr', '-n', 'exec', '--', 'gprbuild'])
         if building:
             pos = command.index('-cargs:Ada') if '-cargs:Ada' in command else len(command)
-            command = command[:pos] + ['-j1'] + command[pos:]
+            command = [arg for arg in command[:pos] if not re.fullmatch(r'-j\d+', arg)] + [
+                '-j' + str(contract.WORKERS)] + command[pos:]
         start = time.monotonic()
         log = stem.with_suffix('.log')
         with log.open('xb') as output:
@@ -105,18 +120,38 @@ def main():
                     raise RuntimeError('bind/link evidence missing')
                 counts['bind'] += 1
                 counts['link'] += 1
-            build_records.append(dict(cell=stem.name, units=[u.decode() for u in units]))
+            record = dict(cell=stem.name, units=[u.decode() for u in units])
+            if not provider:
+                owned = inventory(cwd)
+                record.update(bind=True, link=True, source_sha256=hashlib.sha256(json.dumps(
+                    {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in owned},
+                    sort_keys=True).encode()).hexdigest())
+                # Forced builds must have produced fresh actual objects/ALI,
+                # not merely log labels. Binding/linking must produce a fresh executable.
+                for path in owned:
+                    objdir = cwd / 'obj' if path.parent == cwd else path.parent.parent / 'obj'
+                    for suffix in ('.o', '.ali'):
+                        artifact = objdir / (path.stem + suffix)
+                        if (not artifact.is_file() or artifact.is_symlink()
+                                or artifact.stat().st_mtime < time.time() - (time.monotonic() - start) - 1):
+                            raise RuntimeError('missing/stale generated compilation artifact')
+                executable = cwd / 'bin/helper_demand_consumer'
+                if not executable.is_file() or executable.stat().st_mtime < time.time() - (time.monotonic() - start) - 1:
+                    raise RuntimeError('missing/stale linked executable')
+            build_records.append(record)
         if stem.name.endswith('-execute'):
             if text != b'TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7\n':
                 raise RuntimeError('execution marker differs')
             counts['execute'] += 1
+            matches = [r for r in build_records if r['cell'] == stem.name.removesuffix('-execute') + '-build']
+            if len(matches) != 1:
+                raise RuntimeError('execution has no unique consumer build')
+            matches[0]['execute_marker'] = text.decode()
         return result.returncode, text
 
     pilot = None
     if mode == 'reuse':
-        # Same already-main campaign-local provider mechanism, benchmark-only.
-        # Do not import or change PERF-009's implementation/certificate.
-        pilot = Pilot(scratch, compiler, checked, jobs=1)
+        pilot = PortablePilot(scratch, compiler, checked, jobs=contract.WORKERS, traced=False)
 
     def adapted(command, cwd, stem, expected=0):
         if pilot and command[:5] == ['alr', '-n', 'build', '--', '-f']:
@@ -129,6 +164,7 @@ def main():
     if smoke:
         sys.argv += ['--profiles', 'oam', '--policies', 'normal']
     started = time.monotonic()
+    setup_seconds = started - setup_started
     before = resource.getrusage(resource.RUSAGE_CHILDREN)
     runner.main()
     helper_wall_seconds = time.monotonic() - started
@@ -141,7 +177,7 @@ def main():
     if counts != expected:
         raise RuntimeError('incomplete benchmark counts')
     # Independently resolve compiler/runtime/source identities on both sides.
-    verifier = pilot or Pilot(scratch, compiler, checked, jobs=1)
+    verifier = pilot or Pilot(scratch, compiler, checked, jobs=contract.WORKERS)
     from perf005_provider import sources
     dependency_identities = []
     for consumer in sorted(scratch.glob('oam-*')) + sorted(scratch.glob('qualified-*')):
@@ -157,7 +193,11 @@ def main():
     if hashlib.sha256(generator.read_bytes()).hexdigest() != generator_hash:
         raise RuntimeError('generator mutated during campaign')
     # Emission is bounded and is treated as candidate-reported evidence only.
-    report = dict(completed=not smoke, smoke=smoke, compiler=compiler, mode=mode, instrumented=False, jobs=1,
+    report = dict(completed=not smoke, smoke=smoke, compiler=compiler, mode=mode,
+                  instrumented=False, jobs=contract.WORKERS,
+                  source_commit=contract.SOURCE_COMMIT, source_tree=contract.SOURCE_TREE,
+                  measurement_scope=contract.SCOPE, generator_build_seconds=generator_build_seconds,
+                  setup_seconds=setup_seconds,
                   generator_sha256=generator_hash,
                   seed_sha256=hashlib.sha256(Path('/seed/identity.json').read_bytes()).hexdigest(),
                   dependency_identity_sha256=hashlib.sha256(json.dumps(
@@ -167,6 +207,10 @@ def main():
                   largest_child_peak_rss_kib=after.ru_maxrss, counts=counts, builds=build_records,
                   records=records, candidate_reported=True)
     print('CI_BENCH_RESULT ' + json.dumps(report, sort_keys=True), flush=True)
+    # Keep the cgroup alive until the trusted host captures the final counters.
+    # Local standalone trials can supply this fixed non-secret acknowledgement.
+    if sys.stdin.readline() != 'accounted\n':
+        raise RuntimeError('host resource accounting acknowledgement missing')
 
 
 if __name__ == '__main__':

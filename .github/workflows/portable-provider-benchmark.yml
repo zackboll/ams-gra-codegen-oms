@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       source_sha:
-        description: Exact approved repository commit (40 lowercase hex characters)
+        description: Exact reviewed PERF-009 commit (controller allowlist; 40 lowercase hex)
         required: true
         type: string
 
@@ -19,7 +19,7 @@ jobs:
       queue: max
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.repository == 'zackboll/ams-gra-codegen-oms'
     runs-on: ubuntu-24.04
-    timeout-minutes: 180
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -55,6 +55,7 @@ jobs:
           MEASUREMENTS_DIGEST: ${{ steps.measurements.outputs.artifact-digest }}
         run: python3 scripts/ci_bench/controller.py receipt
       - name: Upload mandatory transport receipt
+        id: transport
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -64,4 +65,6 @@ jobs:
           retention-days: 30
       - name: Enforce complete campaign and acceptance gates
         if: always()
+        env:
+          RECEIPT_OUTCOME: ${{ steps.transport.outcome }}
         run: python3 scripts/ci_bench/controller.py gate

@@ -17,6 +17,11 @@ import threading
 import time
 import urllib.request
 
+try:
+    from . import contract
+except ImportError:
+    import contract
+
 ROOT = Path(__file__).resolve().parents[2]
 REPOSITORY = 'zackboll/ams-gra-codegen-oms'
 ORDER = [(c, m) for c in ('14', '16') for m in ('original', 'reuse', 'reuse', 'original')]
@@ -54,6 +59,7 @@ def prepare():
     base.mkdir(exist_ok=False)
     write(base / 'public/result.json', dict(valid=False, completed=False, disposition='PREPARING'))
     source, workflow = authorize(os.environ)
+    validate_source_scope(source)
     if run(['git', '-C', str(ROOT), 'rev-parse', 'HEAD']) != workflow:
         raise ValueError('trusted controller checkout mismatch')
     # A branch-selected workflow must not masquerade as an authorized main run.
@@ -66,6 +72,7 @@ def prepare():
     if metadata['sha'] != source:
         raise ValueError('repository commit identity mismatch')
     tree = sha(metadata['commit']['tree']['sha'])
+    validate_source_scope(source, tree)
     repo = base / 'repository'
     run(['git', 'init', str(repo)])
     run(['git', '-C', str(repo), 'fetch', '--depth=1', 'https://github.com/' + REPOSITORY + '.git', source])
@@ -98,11 +105,17 @@ def prepare():
 
 def image():
     base = work()
+    started = time.monotonic()
     subprocess.run(['docker', 'build', '--pull', '--tag', 'ci-bench-001:trusted',
                     '--file', str(ROOT / 'scripts/ci_bench/Dockerfile'), str(ROOT)],
-                   check=True, timeout=1800)
+                   check=True, timeout=contract.IMAGE_SECONDS)
     image_id = run(['docker', 'image', 'inspect', '--format', '{{.Id}}', 'ci-bench-001:trusted'])
-    write(base / 'image.json', dict(image_id=image_id))
+    write(base / 'image.json', dict(image_id=image_id, setup_seconds=time.monotonic() - started))
+
+
+def validate_source_scope(source, tree=None):
+    if source != contract.SOURCE_COMMIT or (tree is not None and tree != contract.SOURCE_TREE):
+        raise ValueError('BENCHMARK_SCOPE_INSUFFICIENT: exact reviewed PERF-009 commit/tree required')
 
 
 def cpu_stat(text):
@@ -123,13 +136,54 @@ def cpu_set(text):
     return result
 
 
+def validate_topology(topology, selected, allowed):
+    if len(selected) != contract.WORKERS or len(set(selected)) != contract.WORKERS or not set(selected) <= set(allowed):
+        raise ValueError('CPU quota/cpuset/worker mismatch')
+    monitored = set()
+    for cpu in selected:
+        if cpu not in topology:
+            raise ValueError('missing guest CPU topology')
+        item = topology[cpu]
+        siblings = set(item['siblings'])
+        if not siblings or cpu not in siblings or not siblings <= set(allowed):
+            raise ValueError('incomplete guest SMT topology')
+        for sibling in siblings:
+            if sibling not in topology:
+                raise ValueError('missing SMT sibling topology')
+            other = topology[sibling]
+            if (set(other['siblings']) != siblings or other['core'] != item['core']
+                    or other['package'] != item['package'] or item['core'] < 0 or item['package'] < 0):
+                raise ValueError('inconsistent guest SMT topology')
+        monitored.update(siblings)
+    cores = {(topology[c]['package'], topology[c]['core']) for c in selected}
+    return dict(cpus=selected, monitored_smt_siblings=sorted(monitored), workers=contract.WORKERS,
+                guest_core_count=len(cores), topology={str(c): topology[c] for c in sorted(monitored)},
+                physical_isolation_proven=False)
+
+
 def allocation():
     allowed = os.sched_getaffinity(0)
+    topology = {}
     for cpu in sorted(allowed):
-        siblings = cpu_set(Path(f'/sys/devices/system/cpu/cpu{cpu}/topology/thread_siblings_list').read_text())
-        if siblings <= allowed:
-            return cpu, sorted(siblings)
-    raise ValueError('complete guest SMT topology unavailable')
+        root = Path(f'/sys/devices/system/cpu/cpu{cpu}/topology')
+        topology[cpu] = dict(siblings=sorted(cpu_set((root / 'thread_siblings_list').read_text())),
+                             core=int((root / 'core_id').read_text()),
+                             package=int((root / 'physical_package_id').read_text()))
+    # Prefer two distinct guest cores; a complete two-thread guest core is
+    # also allowed, explicitly labeled as one guest core, never two physical cores.
+    pairs = [(a, b) for a in sorted(allowed) for b in sorted(allowed) if a < b]
+    pairs.sort(key=lambda p: topology[p[0]]['core'] == topology[p[1]]['core'])
+    for pair in pairs:
+        try:
+            return validate_topology(topology, list(pair), allowed)
+        except ValueError:
+            continue
+    raise ValueError('qualified two-vCPU allocation unavailable')
+
+
+def validate_host_resources(mem_available, disk_available):
+    if mem_available < 8 * 1024**3 or disk_available < 10 * 1024**3:
+        raise ValueError('insufficient runner memory/disk headroom')
 
 
 def sample_delta(before, after, cpus, workload_usec=0, elapsed=1, maximum_gap=3):
@@ -137,17 +191,22 @@ def sample_delta(before, after, cpus, workload_usec=0, elapsed=1, maximum_gap=3)
     idle = sum(after[c]['idle'] - before[c]['idle'] for c in cpus)
     steal = sum(after[c]['steal'] - before[c]['steal'] for c in cpus)
     workload = workload_usec / 1e6 * os.sysconf('SC_CLK_TCK')
-    if total <= 0 or elapsed > maximum_gap or elapsed <= 0:
+    if total <= 0 or elapsed > maximum_gap or elapsed <= 0 or workload_usec < 0 or steal < 0 or idle < 0:
         raise ValueError('missing or gapped CPU samples')
     return dict(external_busy_fraction=max(0, total - idle - workload) / (total / len(cpus)),
                 steal_fraction=steal / total, elapsed_seconds=elapsed)
 
 
-def docker_command(image_id, source, name, cpu, compiler, mode):
-    return ['docker', 'create', '--name', name, '--network=none', '--read-only', '--log-driver=none',
+def docker_command(image_id, source, name, cpus, compiler, mode):
+    if (not re.fullmatch(r'sha256:[0-9a-f]{64}', image_id)
+            or not re.fullmatch(r'ci-bench-001-\d+', name)
+            or compiler not in ('14', '16') or mode not in ('original', 'reuse')
+            or len(set(cpus)) != contract.WORKERS or any(type(c) is not int or c < 0 for c in cpus)):
+        raise ValueError('invalid trusted Docker arguments or CPU allocation')
+    return ['docker', 'create', '--interactive', '--name', name, '--network=none', '--read-only', '--log-driver=none',
             '--cap-drop=ALL', '--security-opt=no-new-privileges', '--user=10001:10001',
-            '--pids-limit=256', '--memory=6g', '--memory-swap=6g', '--cpus=1',
-            '--cpuset-cpus=' + str(cpu), '--ulimit', 'nofile=1024:1024',
+            '--pids-limit=256', '--memory=6g', '--memory-swap=6g', '--cpus=2',
+            '--cpuset-cpus=' + ','.join(map(str, cpus)), '--ulimit', 'nofile=1024:1024',
             '--ulimit', 'fsize=2147483648:2147483648',
             '--tmpfs', '/work:rw,exec,nosuid,nodev,size=4g,uid=10001,gid=10001',
             '--tmpfs', '/tmp:rw,noexec,nosuid,nodev,size=256m,uid=10001,gid=10001',
@@ -155,39 +214,91 @@ def docker_command(image_id, source, name, cpu, compiler, mode):
             image_id, 'python3', '/trusted/scripts/ci_bench/worker.py', compiler, mode]
 
 
-def drain(stream, path):
+def drain(stream, path, ready=None):
     """Drain without runner command interpretation; retain at most 16 MiB."""
     count = 0
     with path.open('wb') as output:
-        while chunk := stream.read(65536):
+        pending = b''
+        while chunk := stream.read1(65536) if hasattr(stream, 'read1') else stream.read(65536):
             output.write(chunk[:max(0, LIMIT - count)])
+            output.flush()
             count += len(chunk)
+            pending = (pending + chunk)[-LIMIT:]
+            if ready is not None and b'CI_BENCH_RESULT ' in pending and pending.endswith(b'\n'):
+                ready.set()
     return count
+
+
+def cgroup_stats(cgroup):
+    stats = {k: int(v) for k, v in (line.split() for line in (cgroup / 'cpu.stat').read_text().splitlines())}
+    events = {k: int(v) for k, v in (line.split() for line in (cgroup / 'memory.events').read_text().splitlines())}
+    return dict(usage_usec=stats['usage_usec'], throttled_usec=stats['throttled_usec'],
+                memory_peak=int((cgroup / 'memory.peak').read_text()), oom=events['oom'],
+                oom_kill=events['oom_kill'])
+
+
+def validate_cgroup_limits(cgroup, cpus):
+    quota, period = (cgroup / 'cpu.max').read_text().split()
+    if (quota == 'max' or int(quota) != contract.WORKERS * int(period)
+            or cpu_set((cgroup / 'cpuset.cpus.effective').read_text()) != set(cpus)
+            or int((cgroup / 'memory.max').read_text()) != contract.MEMORY_BYTES
+            or int((cgroup / 'memory.swap.max').read_text()) != 0
+            or int((cgroup / 'pids.max').read_text()) != 256):
+        raise ValueError('actual cgroup CPU/memory/process allocation mismatch')
+
+
+def validate_samples(samples, wall):
+    previous_at, previous_usage, previous_throttle = 0, 0, 0
+    if not samples or not 0 < wall <= contract.ITERATION_SECONDS + 3:
+        raise ValueError('missing samples or iteration timeout')
+    for sample in samples:
+        keys = ('at_seconds', 'usage_usec', 'throttled_usec', 'external_busy_fraction',
+                'steal_fraction', 'elapsed_seconds')
+        if any(not math.isfinite(sample[k]) or sample[k] < 0 for k in keys):
+            raise ValueError('invalid cgroup/contention sample')
+        delta = sample['at_seconds'] - previous_at
+        if (not 0 < delta <= 3 or abs(delta - sample['elapsed_seconds']) > .05
+                or sample['usage_usec'] < previous_usage or sample['throttled_usec'] < previous_throttle
+                or sample['external_busy_fraction'] > .05 or sample['steal_fraction'] > .01
+                or (sample['throttled_usec'] - previous_throttle) / (delta * 1e6)
+                > contract.MAX_THROTTLED_FRACTION):
+            raise ValueError('gapped/throttled/contended campaign')
+        previous_at, previous_usage, previous_throttle = (sample['at_seconds'], sample['usage_usec'],
+                                                         sample['throttled_usec'])
+    if not 0 <= wall - previous_at <= 3:
+        raise ValueError('missing final cgroup samples')
 
 
 def campaign():
     base = work()
     identity = json.loads((base / 'identity.json').read_text())
     image_id = json.loads((base / 'image.json').read_text())['image_id']
-    cpu, siblings = allocation()
+    assigned = allocation()
+    cpus, siblings = assigned['cpus'], assigned['monitored_smt_siblings']
+    meminfo = dict(line.split(':', 1) for line in Path('/proc/meminfo').read_text().splitlines())
+    validate_host_resources(int(meminfo['MemAvailable'].split()[0]) * 1024,
+                            shutil.disk_usage(base).free)
     before = cpu_stat(Path('/proc/stat').read_text())
+    preflight_started = time.monotonic()
     time.sleep(10)
     preflight = sample_delta(before, cpu_stat(Path('/proc/stat').read_text()), siblings,
-                             elapsed=10, maximum_gap=11)
-    write(base / 'public/preflight.json', dict(allocation=dict(cpu=cpu, siblings=siblings), sample=preflight))
+                             elapsed=time.monotonic() - preflight_started, maximum_gap=11)
+    write(base / 'public/preflight.json', dict(allocation=assigned, sample=preflight))
     # The ten-second preflight is intentionally one interval, not a lost sample.
     if preflight['external_busy_fraction'] > .05 or preflight['steal_fraction'] > .01:
         raise ValueError('preflight contention gate failed')
     rows = []
     for index, (compiler, mode) in enumerate(ORDER):
         name = f'ci-bench-001-{index}'
-        run(docker_command(image_id, base / 'source', name, cpu, compiler, mode))
+        run(docker_command(image_id, base / 'source', name, cpus, compiler, mode))
         samples = []
         started = time.monotonic()
+        previous = cpu_stat(Path('/proc/stat').read_text())
         log = base / f'worker-{index}.log'
-        process = subprocess.Popen(['docker', 'start', '--attach', name], stdout=subprocess.PIPE,
-                                   stderr=subprocess.STDOUT)
-        reader = threading.Thread(target=drain, args=(process.stdout, log))
+        ready = threading.Event()
+        process = subprocess.Popen(['docker', 'start', '--attach', '--interactive', name], stdout=subprocess.PIPE,
+                                   stdin=subprocess.PIPE, stderr=subprocess.STDOUT)
+        reader = threading.Thread(target=drain, args=(process.stdout, log, ready))
         reader.start()
         try:
             # Cgroup counters are host-owned, outside the candidate's namespace.
@@ -199,28 +310,41 @@ def campaign():
                 time.sleep(.1)
             cgroup_path = Path(f'/proc/{pid}/cgroup').read_text().strip().split('::', 1)[1]
             cgroup = Path('/sys/fs/cgroup') / cgroup_path.lstrip('/')
-            previous = cpu_stat(Path('/proc/stat').read_text())
-            usage = int(dict(line.split() for line in (cgroup / 'cpu.stat').read_text().splitlines())['usage_usec'])
+            validate_cgroup_limits(cgroup, cpus)
+            # Account from container start, not the first observed nonzero counter.
+            usage = 0
             last = time.monotonic()
+            if last - started > 3:
+                raise ValueError('cgroup startup monitoring gap')
+            last = started
             peak = 0
+            final_stats = None
             while process.poll() is None:
                 time.sleep(1)
                 now = time.monotonic()
                 current = cpu_stat(Path('/proc/stat').read_text())
                 try:
-                    stats = dict(line.split() for line in (cgroup / 'cpu.stat').read_text().splitlines())
-                    current_usage = int(stats['usage_usec'])
-                    peak = max(peak, int((cgroup / 'memory.peak').read_text()))
+                    stats = cgroup_stats(cgroup)
+                    current_usage = stats['usage_usec']
+                    peak = max(peak, stats['memory_peak'])
+                    final_stats = stats
                 except FileNotFoundError:
                     break
                 item = sample_delta(previous, current, siblings, current_usage - usage, now - last)
                 item.update(at_seconds=now - started, usage_usec=current_usage,
-                            throttled_usec=int(stats.get('throttled_usec', '0')))
+                            throttled_usec=stats['throttled_usec'])
                 samples.append(item)
                 write(base / 'public/current-contention.json', dict(iteration=index, samples=samples))
                 previous, usage, last = current, current_usage, now
-                if now - started > 1800 or log.stat().st_size >= LIMIT:
+                if now - started > contract.ITERATION_SECONDS or log.stat().st_size >= LIMIT:
                     raise ValueError('per-iteration time/output limit reached')
+                if ready.is_set():
+                    # Snapshot host-owned counters while the worker is alive.
+                    # Release only after sampling; final evidence cannot disappear
+                    # with cgroup removal between polls.
+                    process.stdin.write(b'accounted\n')
+                    process.stdin.flush()
+                    break
             process.wait(timeout=10)
             reader.join(timeout=10)
             text = log.read_text(errors='replace')
@@ -231,8 +355,14 @@ def campaign():
             if time.monotonic() - last > 3 or samples[0]['at_seconds'] > 3:
                 raise ValueError('CPU monitoring start/end gap')
             report = json.loads(emitted[0])
+            state = json.loads(run(['docker', 'inspect', '--format', '{{json .State}}', name]))
+            if state['OOMKilled'] or state['ExitCode'] != 0 or not final_stats:
+                raise ValueError('OOM/incomplete worker')
+            if final_stats['oom'] or final_stats['oom_kill']:
+                raise ValueError('cgroup OOM event')
             row = dict(compiler=compiler, mode=mode, wall_seconds=time.monotonic() - started,
                        cpu_seconds=usage / 1e6, cgroup_peak_memory_bytes=peak,
+                       allocation=assigned, oom=False, exit_code=state['ExitCode'],
                        samples=samples, candidate_report=report, worker_log=str(log.name))
             rows.append(row)
             write(base / 'public/progress.json', dict(identity=identity, runs=rows))
@@ -242,10 +372,49 @@ def campaign():
             reader.join(timeout=30)
     valid = validate_rows(rows)
     write(base / 'public/result.json', dict(completed=True, valid=valid, identity=identity,
-          image_id=image_id, allocation=dict(cpu=cpu, monitored_smt_siblings=siblings, workers=1),
+          image_id=image_id, allocation=assigned, budget=contract.budget(),
           preflight=preflight, runs=rows, performance_success=False,
           isolation_scope='guest-visible CPUs/SMT and steal; hypervisor co-tenancy is not observable',
           evidence_trust='host resource counters; candidate-reported workload counts are not attestations'))
+
+
+def validate_cells(report):
+    names = ('ArraySample', 'Array_Encode_Hex_Binary', 'Encode_Hex_Binary',
+             'Array_encode_hex_binary', 'Array_Decode_Hex_Binary')
+    cells = {(profile, name, policy) for profile in ('oam', 'qualified')
+             for name in names for policy in ('normal', 'Check', 'Ignore')}
+    records = report.get('records', [])
+    actual = [(r['profile'], r['name'], r['policy']) for r in records]
+    if (len(actual) != 30 or set(actual) != cells
+            or any(r['compiler'] != ('14.2.0' if report['compiler'] == '14' else '16.1.0')
+                   or r['family'] != 'portable' or r['intentional_red'] is not False
+                   or r['compiler_exit'] != 0 for r in records)):
+        raise ValueError('incomplete/duplicate/wrong compiler consumer cells')
+    builds = report.get('builds', [])
+    expected = {f'{p}-{n}-{a}-build' for p, n, a in cells}
+    consumers = [b for b in builds if not b['cell'].startswith('provider-')]
+    providers = [b for b in builds if b['cell'].startswith('provider-')]
+    if len(consumers) != 30 or {b['cell'] for b in consumers} != expected:
+        raise ValueError('missing/duplicate consumer compilation/binding/linking')
+    for build in consumers:
+        namespace = 'task093' if build['cell'].startswith('qualified-') else 'oam'
+        owned = {'helper_demand_consumer.adb', 'service_codec.adb', 'programs.ads',
+                 f'programs-{namespace}.ads', 'ams_gra_oms_json_guard.adb'}
+        units = build['units']
+        if (len(units) != (111 if report['mode'] == 'original' else 5)
+                or len(units) != len(set(units)) or not owned <= set(units)
+                or build.get('bind') is not True or build.get('link') is not True
+                or build.get('execute_marker') != 'TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7\n'
+                or not re.fullmatch('[0-9a-f]{64}', build.get('source_sha256', ''))):
+            raise ValueError('source/compiler/binder/linker/execution evidence differs')
+    if report['mode'] == 'reuse':
+        if len(providers) != 3 or {b['cell'] for b in providers} != {
+                f'provider-{p}-build' for p in ('normal', 'Check', 'Ignore')}:
+            raise ValueError('provider policy preparation incomplete')
+        if any(len(b['units']) != 106 or len(set(b['units'])) != 106 for b in providers):
+            raise ValueError('provider compilation incomplete')
+    elif providers:
+        raise ValueError('unexpected provider preparation')
 
 
 def validate_rows(rows):
@@ -253,12 +422,16 @@ def validate_rows(rows):
         raise ValueError('complete two-compiler ABBA required')
     generators, seeds = set(), set()
     dependencies = {c: set() for c in ('14', '16')}
+    source_identities = {}
     for row in rows:
         report = row['candidate_report']
         expected = dict(provider=3180 if row['mode'] == 'original' else 318,
                         generated_support=150, bind=30, link=30, execute=30)
         if (report.get('completed') is not True or report.get('counts') != expected
-                or report.get('instrumented') is not False or report.get('jobs') != 1
+                or report.get('instrumented') is not False or report.get('jobs') != contract.WORKERS
+                or report.get('measurement_scope') != contract.SCOPE
+                or report.get('source_commit') != contract.SOURCE_COMMIT
+                or report.get('source_tree') != contract.SOURCE_TREE
                 or report.get('compiler') != row['compiler'] or report.get('mode') != row['mode']):
             raise ValueError('candidate counts/identity/workload gate failed')
         for key in ('generator_sha256', 'seed_sha256', 'dependency_identity_sha256'):
@@ -267,15 +440,33 @@ def validate_rows(rows):
         generators.add(report['generator_sha256'])
         seeds.add(report['seed_sha256'])
         dependencies[row['compiler']].add(report['dependency_identity_sha256'])
-        if not row['samples'] or any(not all(math.isfinite(s[k]) for k in (
-                                     'external_busy_fraction', 'steal_fraction', 'elapsed_seconds'))
-                                     or s['external_busy_fraction'] > .05 or s['steal_fraction'] > .01
-                                     or s['elapsed_seconds'] > 3 or s['elapsed_seconds'] <= 0
-                                     or s['external_busy_fraction'] < 0 or s['steal_fraction'] < 0
-                                     for s in row['samples']):
-            raise ValueError('throughout-campaign contention gate failed')
-        if row['cpu_seconds'] <= 0 or row['cgroup_peak_memory_bytes'] <= 0:
+        validate_samples(row['samples'], row['wall_seconds'])
+        assigned = row['allocation']
+        topology = {int(c): v for c, v in assigned['topology'].items()}
+        if assigned != validate_topology(topology, assigned['cpus'], assigned['monitored_smt_siblings']):
+            raise ValueError('allocation evidence differs')
+        if row['oom'] is not False or row['exit_code'] != 0 or assigned != rows[0]['allocation']:
+            raise ValueError('OOM/exit/allocation mismatch')
+        validate_cells(report)
+        for build in report['builds']:
+            if build['cell'].startswith('provider-'):
+                continue
+            key = (row['compiler'], build['cell'])
+            if key in source_identities and source_identities[key] != build['source_sha256']:
+                raise ValueError('A/B generated source identity changed')
+            source_identities[key] = build['source_sha256']
+        if (not math.isfinite(row['cpu_seconds']) or row['cpu_seconds'] <= 0
+                or row['cgroup_peak_memory_bytes'] <= 0
+                or row['cgroup_peak_memory_bytes'] > contract.MEMORY_BYTES
+                or abs(row['cpu_seconds'] - row['samples'][-1]['usage_usec'] / 1e6) > .000001):
             raise ValueError('resource accounting missing')
+        for key in ('helper_wall_seconds', 'helper_child_cpu_seconds', 'generator_build_seconds', 'setup_seconds'):
+            if not math.isfinite(report.get(key, -1)) or report.get(key, -1) <= 0:
+                raise ValueError('missing helper/generator/setup measurements')
+        if (report['helper_wall_seconds'] > row['wall_seconds']
+                or report['generator_build_seconds'] > report['setup_seconds']
+                or report['helper_wall_seconds'] + report['setup_seconds'] > row['wall_seconds']):
+            raise ValueError('inconsistent timing scopes')
     if len(generators) != 1 or len(seeds) != 1 or any(len(s) != 1 for s in dependencies.values()):
         raise ValueError('A/B generator or dependency identity differs')
     return True
@@ -307,6 +498,7 @@ def receipt():
     base = work()
     start = json.loads((base / 'upload-start.json').read_text())['monotonic']
     write(base / 'upload-receipt.json', dict(outcome=os.environ.get('MEASUREMENTS_OUTCOME'),
+          run_id=os.environ.get('GITHUB_RUN_ID'), run_attempt=os.environ.get('GITHUB_RUN_ATTEMPT'),
           artifact_id=os.environ.get('MEASUREMENTS_ID'), artifact_digest=os.environ.get('MEASUREMENTS_DIGEST'),
           upload_step_envelope_seconds=time.monotonic() - start,
           uploaded_input_bytes=sum(p.stat().st_size for p in (base / 'public').iterdir() if p.is_file()),
@@ -318,9 +510,25 @@ def gate():
     base = work()
     result = json.loads((base / 'public/result.json').read_text())
     transport = json.loads((base / 'upload-receipt.json').read_text())
-    if (result.get('valid') is not True or transport.get('outcome') != 'success'
-            or not transport.get('artifact_id') or not transport.get('artifact_digest')):
+    if (result.get('valid') is not True or result.get('completed') is not True
+            or transport.get('outcome') != 'success' or os.environ.get('RECEIPT_OUTCOME') != 'success'
+            or not re.fullmatch('[1-9][0-9]*', transport.get('artifact_id') or '')
+            or not re.fullmatch('[0-9a-f]{64}', transport.get('artifact_digest') or '')
+            or any(transport.get(k) != os.environ.get(e) or not transport.get(k)
+                   for k, e in [('run_id', 'GITHUB_RUN_ID'), ('run_attempt', 'GITHUB_RUN_ATTEMPT')])):
         raise ValueError('benchmark invalid/incomplete or mandatory upload failed')
+    identity = json.loads((base / 'identity.json').read_text())
+    if result['identity'] != identity:
+        raise ValueError('stale/cross-source result identity')
+    validate_source_scope(identity['source_commit'], identity['source_tree'])
+    if any(identity[k] != transport[k] for k in ('run_id', 'run_attempt')):
+        raise ValueError('stale result producer attempt')
+    preflight = result['preflight']
+    if (not all(math.isfinite(preflight[k]) and preflight[k] >= 0
+                for k in ('external_busy_fraction', 'steal_fraction', 'elapsed_seconds'))
+            or preflight['external_busy_fraction'] > .05 or preflight['steal_fraction'] > .01
+            or not 10 <= preflight['elapsed_seconds'] <= 11):
+        raise ValueError('invalid preflight evidence')
     validate_rows(result['runs'])
 
 

@@ -22,7 +22,7 @@ def check(policy, workflows, root):
     if digest != record['workflow_sha256'] or digest != WORKFLOW_SHA256:
         raise ValueError('manual benchmark workflow trust contract changed')
     expected_paths = {f'scripts/ci_bench/{name}' for name in (
-        'Dockerfile', 'controller.py', 'worker.py', 'provision.py')}
+        'Dockerfile', 'controller.py', 'worker.py', 'provision.py', 'contract.py')}
     if set(record['sources_sha256']) != expected_paths:
         raise ValueError('manual benchmark source inventory incomplete')
     for path, expected in record['sources_sha256'].items():
@@ -31,4 +31,4 @@ def check(policy, workflows, root):
 
 
 # Recomputed only as part of an explicitly reviewed CI-BENCH workflow change.
-WORKFLOW_SHA256 = '786ff5a9eb34d8f0fbb0999f1d0134b15d7afe5ea556b054c9c0e82971e78c3e'
+WORKFLOW_SHA256 = '5d4933809b9d4a0c7bdbde9211482dd6de2c79cc7faec1f3d8e6d5a64f2bb61b'

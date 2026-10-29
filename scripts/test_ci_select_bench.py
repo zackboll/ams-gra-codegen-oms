@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import ci_policy
 import ci_selection
-from ci_bench import controller, policy
+from ci_bench import controller, policy, contract
 from ci_bench.worker import compiled_units
 
 
@@ -52,7 +52,7 @@ class Registration(unittest.TestCase):
             ("github.ref == 'refs/heads/main'", 'true'),
             ('persist-credentials: false', 'persist-credentials: true'),
             ('ref: ${{ github.sha }}', 'ref: ${{ inputs.source_sha }}'),
-            ('timeout-minutes: 180', 'timeout-minutes: 360'),
+            ('timeout-minutes: 360', 'timeout-minutes: 720'),
             ('python3 scripts/ci_bench/controller.py campaign', 'bash candidate/scripts/run.sh'),
             ('SOURCE_SHA: ${{ inputs.source_sha }}', 'TOKEN: ${{ secrets.TOKEN }}'),
             ('if-no-files-found: error', 'if-no-files-found: warn'),
@@ -105,10 +105,10 @@ class Authorization(unittest.TestCase):
                     controller.authorize(dict(self.env, **{key: value}))
 
     def test_offline_unprivileged_bounded_container(self):
-        command = controller.docker_command('sha256:' + 'a' * 64, Path('/tmp/candidate'), 'test', 1, '14', 'original')
+        command = controller.docker_command('sha256:' + 'a' * 64, Path('/tmp/candidate'), 'ci-bench-001-0', [0, 1], '14', 'original')
         for required in ('--network=none', '--read-only', '--cap-drop=ALL',
                          '--security-opt=no-new-privileges', '--user=10001:10001',
-                         '--pids-limit=256', '--memory=6g', '--memory-swap=6g', '--cpus=1', '--cpuset-cpus=1'):
+                          '--pids-limit=256', '--memory=6g', '--memory-swap=6g', '--cpus=2', '--cpuset-cpus=0,1'):
             self.assertIn(required, command)
         mounts = [command[i+1] for i, arg in enumerate(command) if arg == '--mount']
         self.assertEqual(mounts, ['type=bind,source=/tmp/candidate,target=/source,readonly'])
@@ -129,17 +129,170 @@ class Authorization(unittest.TestCase):
 def rows():
     result = []
     for compiler, mode in controller.ORDER:
-        report = dict(completed=True, compiler=compiler, mode=mode, jobs=1, instrumented=False,
+        records = [dict(profile=p, name=n, policy=a, compiler='14.2.0' if compiler == '14' else '16.1.0',
+                        family='portable', intentional_red=False, compiler_exit=0)
+                   for p in ('oam', 'qualified') for n in (
+                       'ArraySample', 'Array_Encode_Hex_Binary', 'Encode_Hex_Binary',
+                       'Array_encode_hex_binary', 'Array_Decode_Hex_Binary')
+                   for a in ('normal', 'Check', 'Ignore')]
+        builds = []
+        for record in records:
+            ns = 'task093' if record['profile'] == 'qualified' else 'oam'
+            units = ['helper_demand_consumer.adb', 'service_codec.adb', 'programs.ads',
+                     f'programs-{ns}.ads', 'ams_gra_oms_json_guard.adb']
+            if mode == 'original':
+                units += [f'provider-{n}.adb' for n in range(106)]
+            builds.append(dict(cell='{profile}-{name}-{policy}-build'.format(**record), units=units,
+                               bind=True, link=True, source_sha256='d' * 64,
+                               execute_marker='TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7\n'))
+        if mode == 'reuse':
+            builds += [dict(cell=f'provider-{a}-build', units=[f'provider-{n}.adb' for n in range(106)])
+                       for a in ('normal', 'Check', 'Ignore')]
+        report = dict(completed=True, compiler=compiler, mode=mode, jobs=2, instrumented=False,
+                      source_commit=contract.SOURCE_COMMIT, source_tree=contract.SOURCE_TREE,
+                      measurement_scope=contract.SCOPE, records=records, builds=builds,
+                      helper_wall_seconds=.5, helper_child_cpu_seconds=1,
+                      generator_build_seconds=.1, setup_seconds=.2,
                       generator_sha256='a' * 64, seed_sha256='b' * 64, dependency_identity_sha256=compiler * 32,
                       counts=dict(provider=3180 if mode == 'original' else 318,
                                   generated_support=150, bind=30, link=30, execute=30))
-        result.append(dict(compiler=compiler, mode=mode, candidate_report=report,
+        topology = {0: dict(siblings=[0, 1], core=0, package=0),
+                    1: dict(siblings=[0, 1], core=0, package=0)}
+        result.append(dict(compiler=compiler, mode=mode, candidate_report=report, wall_seconds=1,
+                           allocation=controller.validate_topology(topology, [0, 1], [0, 1]),
+                           oom=False, exit_code=0,
                            cpu_seconds=10, cgroup_peak_memory_bytes=1024,
-                           samples=[dict(external_busy_fraction=.01, steal_fraction=0, elapsed_seconds=1)]))
+                           samples=[dict(at_seconds=1, usage_usec=10000000, throttled_usec=0,
+                                         external_busy_fraction=.01, steal_fraction=0, elapsed_seconds=1)]))
     return result
 
 
 class Measurement(unittest.TestCase):
+    def test_budget_does_not_credit_provider_speedup(self):
+        self.assertEqual(sum(contract.budget().values()), 360 * 60)
+        self.assertEqual(contract.budget()['campaigns'], 8 * contract.ITERATION_SECONDS)
+        self.assertEqual(contract.WORKERS, 2)
+
+    def test_scope_cannot_accept_perf005_or_another_candidate(self):
+        controller.validate_source_scope(contract.SOURCE_COMMIT, contract.SOURCE_TREE)
+        for source, tree in [('a' * 40, contract.SOURCE_TREE), (contract.SOURCE_COMMIT, 'b' * 40)]:
+            with self.assertRaisesRegex(ValueError, 'BENCHMARK_SCOPE_INSUFFICIENT'):
+                controller.validate_source_scope(source, tree)
+
+    def test_topology_and_smt_sibling_negatives(self):
+        topology = {0: dict(siblings=[0, 2], core=0, package=0),
+                    2: dict(siblings=[0, 2], core=0, package=0),
+                    1: dict(siblings=[1, 3], core=1, package=0),
+                    3: dict(siblings=[1, 3], core=1, package=0)}
+        assigned = controller.validate_topology(topology, [0, 1], [0, 1, 2, 3])
+        self.assertEqual(assigned['monitored_smt_siblings'], [0, 1, 2, 3])
+        self.assertEqual(assigned['guest_core_count'], 2)
+        self.assertFalse(assigned['physical_isolation_proven'])
+        assigned = controller.validate_topology(topology, [0, 2], [0, 1, 2, 3])
+        self.assertEqual(assigned['guest_core_count'], 1)
+        for selected, allowed in [([0], [0, 1, 2, 3]), ([0, 1], [0, 1]), ([0, 0], [0, 1, 2, 3])]:
+            with self.assertRaises(ValueError):
+                controller.validate_topology(topology, selected, allowed)
+        topology[2]['siblings'] = [2]
+        with self.assertRaises(ValueError):
+            controller.validate_topology(topology, [0, 1], [0, 1, 2, 3])
+
+    def test_actual_cgroup_mismatch_and_missing_counters(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            files = {'cpu.max': '200000 100000', 'cpuset.cpus.effective': '0-1',
+                     'memory.max': str(6 * 1024**3), 'memory.swap.max': '0', 'pids.max': '256'}
+            for name, value in files.items():
+                (root / name).write_text(value)
+            controller.validate_cgroup_limits(root, [0, 1])
+            for name, wrong in [('cpu.max', '100000 100000'), ('cpu.max', 'max 100000'),
+                                ('cpuset.cpus.effective', '0'), ('memory.max', 'max'),
+                                ('memory.swap.max', '100'), ('pids.max', 'max')]:
+                (root / name).write_text(wrong)
+                with self.subTest(name=name), self.assertRaises(ValueError):
+                    controller.validate_cgroup_limits(root, [0, 1])
+                (root / name).write_text(files[name])
+            (root / 'cpu.max').unlink()
+            with self.assertRaises(FileNotFoundError):
+                controller.validate_cgroup_limits(root, [0, 1])
+
+    def test_docker_arguments_cannot_be_candidate_controlled(self):
+        for image, name, cpus, compiler in [('evil', 'ci-bench-001-0', [0, 1], '14'),
+                                           ('sha256:' + 'a' * 64, '--privileged', [0, 1], '14'),
+                                           ('sha256:' + 'a' * 64, 'ci-bench-001-0', [0], '14'),
+                                           ('sha256:' + 'a' * 64, 'ci-bench-001-0', [0, 1], '--env')]:
+            with self.assertRaises(ValueError):
+                controller.docker_command(image, Path('/tmp/source'), name, cpus, compiler, 'reuse')
+
+    def test_host_headroom_required(self):
+        controller.validate_host_resources(8 * 1024**3, 10 * 1024**3)
+        for memory, disk in [(7 * 1024**3, 10 * 1024**3), (8 * 1024**3, 9 * 1024**3)]:
+            with self.assertRaises(ValueError):
+                controller.validate_host_resources(memory, disk)
+
+    def test_candidate_modules_only_inside_worker(self):
+        host = (ci_selection.ROOT / 'scripts/ci_bench/controller.py').read_text()
+        self.assertNotIn('importlib', host)
+        self.assertNotIn('sys.path.insert', host)
+        worker = (ci_selection.ROOT / 'scripts/ci_bench/worker.py').read_text()
+        self.assertIn("sys.path.insert(0, '/source/scripts')", worker)
+        self.assertIn('PortablePilot(scratch, compiler, checked, jobs=contract.WORKERS, traced=False)', worker)
+
+    def test_upload_receipts_source_attempt_and_preflight_fail_closed(self):
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, RUNNER_TEMP=directory,
+                GITHUB_RUN_ID='123', GITHUB_RUN_ATTEMPT='2', RECEIPT_OUTCOME='success'):
+            base = controller.work()
+            identity = dict(source_commit=contract.SOURCE_COMMIT, source_tree=contract.SOURCE_TREE,
+                            run_id='123', run_attempt='2')
+            result = dict(valid=True, completed=True, identity=identity, runs=rows(),
+                          preflight=dict(external_busy_fraction=.01, steal_fraction=0, elapsed_seconds=10))
+            transport = dict(outcome='success', artifact_id='456', artifact_digest='a' * 64,
+                             run_id='123', run_attempt='2')
+            controller.write(base / 'identity.json', identity)
+            controller.write(base / 'public/result.json', result)
+            controller.write(base / 'upload-receipt.json', transport)
+            controller.gate()
+            for key, value in [('artifact_id', ''), ('artifact_digest', 'bad'), ('run_id', '122'),
+                               ('run_attempt', '1'), ('outcome', 'failure')]:
+                controller.write(base / 'upload-receipt.json', dict(transport, **{key: value}))
+                with self.subTest(key=key), self.assertRaises(ValueError):
+                    controller.gate()
+            controller.write(base / 'upload-receipt.json', transport)
+            with patch.dict(os.environ, RECEIPT_OUTCOME='failure'), self.assertRaises(ValueError):
+                controller.gate()
+            result['preflight']['external_busy_fraction'] = .06
+            controller.write(base / 'public/result.json', result)
+            with self.assertRaises(ValueError):
+                controller.gate()
+
+    def test_adversarial_cells_scope_resources_and_sampling(self):
+        mutations = [lambda r: r[0]['candidate_report'].update(measurement_scope='PERF-005'),
+                     lambda r: r[0]['candidate_report'].update(source_commit='a' * 40),
+                     lambda r: r[0]['candidate_report']['records'].pop(),
+                     lambda r: r[0]['candidate_report']['records'].__setitem__(0, r[0]['candidate_report']['records'][1]),
+                     lambda r: r[0]['candidate_report']['builds'][0].update(bind=False),
+                     lambda r: r[0]['candidate_report']['builds'][0].update(link=False),
+                     lambda r: r[0]['candidate_report']['builds'][0].update(execute_marker='checks= 6'),
+                     lambda r: r[0]['candidate_report']['builds'][0].update(source_sha256='missing'),
+                     lambda r: r[0]['candidate_report']['builds'][0].update(source_sha256='e' * 64),
+                     lambda r: r[0]['candidate_report']['builds'][0]['units'].pop(),
+                     lambda r: r[0].update(oom=True), lambda r: r[0].update(exit_code=124),
+                     lambda r: r[0].update(cpu_seconds=float('nan')),
+                     lambda r: r[0].update(cpu_seconds=9),
+                     lambda r: r[0]['candidate_report'].update(generator_build_seconds=0),
+                     lambda r: r[0].update(wall_seconds=contract.ITERATION_SECONDS + 4),
+                     lambda r: r[0].update(wall_seconds=5),
+                     lambda r: r[0]['samples'][0].update(at_seconds=4),
+                     lambda r: r[0]['samples'][0].update(throttled_usec=10001),
+                     lambda r: r[0]['samples'][0].update(usage_usec=-1),
+                     lambda r: r[0]['allocation'].update(guest_core_count=2),
+                     lambda r: r[0]['allocation'].update(workers=1)]
+        for index, mutate in enumerate(mutations):
+            value = rows()
+            mutate(value)
+            with self.subTest(index=index), self.assertRaises(ValueError):
+                controller.validate_rows(value)
+
     def test_binder_metadata_not_counted_as_source_compilation(self):
         self.assertEqual(compiled_units(b'[Ada] unit.adb\n[Ada] programs.ads\n'
                          b'[C] memory.c\n[Ada] b__main.adb\n[Ada] main.ali\n'),
@@ -155,7 +308,7 @@ class Measurement(unittest.TestCase):
                  lambda r: r[0]['candidate_report'].update(seed_sha256='c' * 64),
                  lambda r: r[0]['candidate_report'].update(dependency_identity_sha256='c' * 64),
                  lambda r: r[0]['candidate_report'].update(instrumented=True),
-                 lambda r: r[0]['candidate_report'].update(jobs=2),
+                 lambda r: r[0]['candidate_report'].update(jobs=1),
                  lambda r: r[0]['candidate_report'].update(completed=False),
                  lambda r: r[0].update(samples=[]), lambda r: r[0].update(cpu_seconds=0),
                  lambda r: r[0].update(cgroup_peak_memory_bytes=0),
