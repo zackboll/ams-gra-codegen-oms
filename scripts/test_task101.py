@@ -1,12 +1,15 @@
 """Task101 independently constructed verifier and selector rejection controls."""
 import copy
 import hashlib
+import importlib.util
 import itertools
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import ci_selection
 from ci_retry_test_data import metadata
@@ -84,6 +87,86 @@ def bundle(compiler='14'):
     return files
 
 
+class GitTrustBoundary(unittest.TestCase):
+    def check_boundary(self, actual_owner=False):
+        def load(name, path):
+            spec = importlib.util.spec_from_file_location(name, evidence.ROOT / path)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module
+        qualify = load('task101_git_trust', 'scripts/task101/qualify.py')
+        shared = load('task101_git_campaign', 'scripts/task098/qualify.py')
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            repo = base / 'checkout'
+            home = base / 'setup/home'
+            home.mkdir(parents=True)
+            # No inherited global/system trust, SUDO_UID, or Git command config.
+            env = {k: v for k, v in os.environ.items() if not k.startswith('GIT_') and k != 'SUDO_UID'}
+            env.update(HOME=str(home), XDG_CONFIG_HOME=str(home / '.config'), GIT_CONFIG_NOSYSTEM='1')
+            def git(*args):
+                return subprocess.run(['git', '-C', str(repo), *args], env=env,
+                                      text=True, capture_output=True, check=True).stdout
+            subprocess.run(['git', 'init', '--quiet', str(repo)], env=env, check=True)
+            (repo / 'tracked').write_text('original\n')
+            git('add', 'tracked')
+            git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
+                'commit', '--quiet', '-m', 'fixture')
+            expected = git('rev-parse', 'HEAD', 'HEAD^{tree}').splitlines()
+            if actual_owner:
+                subprocess.run(['podman', 'unshare', 'chown', '-R', '1', str(repo)], check=True)
+                self.assertNotEqual(repo.stat().st_uid, os.getuid())
+            else:
+                # Portable exercise of Git's real ownership validator. The opt-in
+                # test below additionally changes the disposable checkout's UID.
+                env['GIT_TEST_ASSUME_DIFFERENT_OWNER'] = '1'
+            try:
+                with patch.dict(os.environ, env, clear=True), patch.object(qualify, 'ROOT', repo):
+                    def campaign(label):
+                        directory = base / label
+                        directory.mkdir()
+                        return shared.Campaign(directory, base / 'setup', '14')
+                    for label, command in (
+                            ('untrusted', ['git', 'rev-parse', 'HEAD', 'HEAD^{tree}']),
+                            ('wrong-path', ['git', '-c', f'safe.directory={base / "other"}',
+                                            'rev-parse', 'HEAD', 'HEAD^{tree}'])):
+                        failed = campaign(label)
+                        with self.assertRaisesRegex(RuntimeError, 'nonzero exit'):
+                            failed.run('source', command, repo)
+                        self.assertEqual((failed.scratch / 'source.exit').read_text(), '128\n')
+                        self.assertIn('detected dubious ownership', (failed.scratch / 'source.stderr').read_text())
+                        self.assertEqual(failed.steps, [dict(label='source', exit=128)])
+                        self.assertFalse((failed.scratch / 'result.json').exists())
+                    clean = campaign('clean')
+                    qualify.record_source(clean)
+                    self.assertEqual((clean.scratch / 'source.stdout').read_text().splitlines(), expected)
+                    self.assertEqual((clean.scratch / 'source-status.stdout').read_text(), '')
+                    for label in ('source', 'source-status'):
+                        self.assertEqual((clean.scratch / f'{label}.exit').read_text(), '0\n')
+                        argv = json.loads((clean.scratch / f'{label}.command.json').read_text())['argv']
+                        self.assertEqual(argv[:3], ['git', '-c', f'safe.directory={repo.resolve()}'])
+                        self.assertNotIn('safe.directory=*', argv)
+                    (repo / 'untracked').write_text('dirty\n')
+                    dirty = campaign('dirty')
+                    with self.assertRaisesRegex(RuntimeError, 'dirty source checkout'):
+                        qualify.record_source(dirty)
+                    self.assertIn('?? untracked', (dirty.scratch / 'source-status.stdout').read_text())
+                    self.assertFalse((dirty.scratch / 'result.json').exists())
+                    self.assertEqual(clean.env['HOME'], str(home))
+                    self.assertFalse((home / '.gitconfig').exists())
+            finally:
+                if actual_owner:
+                    subprocess.run(['podman', 'unshare', 'chown', '-R', '0', str(repo)], check=True)
+
+    def test_git_trust_boundary_portable(self):
+        self.check_boundary()
+
+    @unittest.skipUnless(os.environ.get('TASK101_OWNERSHIP_FIXTURE') == 'podman',
+                         'opt-in disposable UID fixture: TASK101_OWNERSHIP_FIXTURE=podman')
+    def test_git_trust_boundary_different_owner(self):
+        self.check_boundary(actual_owner=True)
+
+
 class EvidenceTests(unittest.TestCase):
     def test_per_tool_identities_under_posix_sh(self):
         import importlib.util
@@ -135,6 +218,7 @@ class EvidenceTests(unittest.TestCase):
     def test_identity_matrix_exits_markers_schema_compiler_and_sources(self):
         files = bundle()
         mutations = [
+            ('campaign/source.exit', b'128\n'), ('campaign/source-status.exit', b'128\n'),
             ('campaign/source.stdout', b'wrong source\n'), ('campaign/source-status.stdout', b'M dirty'),
             ('campaign/gnat-version.stdout', b'GNAT 16.1.0\n'), ('campaign/generator.sha256', b''),
             ('campaign/uci25/UCI_MessageDefinitions_v2_5_0.xsd', b'wrong authentic release'),
@@ -168,6 +252,32 @@ class EvidenceTests(unittest.TestCase):
 
 
 class SelectionAndAggregate(GateTests):
+    def test_task101_and_manual_benchmark_integration_preserves_both_policies(self):
+        import ci_policy
+        from ci_bench import policy as benchmark
+        policy = ci_selection.inventory()
+        workflows = {p.name: p.read_text() for p in (evidence.ROOT / '.github/workflows').glob('*.yml')}
+        self.assertEqual(ci_policy.check(policy, workflows), 42)
+        registered = ci_selection.deep_jobs(policy)
+        self.assertEqual([c['variant']['compiler'] for c in registered[evidence.JOB]['cells']], ['14', '16'])
+        self.assertEqual(policy['manual_benchmark']['events'], ['workflow_dispatch'])
+        self.assertEqual(policy['manual_benchmark']['sources_sha256']['scripts/ci_artifact_provenance.py'],
+                         'f2f7cfe5dcde40cbd64832f8ac8be83ff229cfd760dc955364ec4f9b850158b2')
+        for path in ('scripts/task101/qualify.py', 'scripts/ci_bench/controller.py'):
+            selection = ci_selection.select([change(path)], policy)
+            self.assertIn(evidence.JOB, selection['deep_jobs'])
+            self.assertFalse(set(benchmark.JOBS) & (set(selection['jobs']) | set(selection['deep_jobs'])))
+        for mutation in ('remove-task101', 'automatic-benchmark', 'wildcard-trust'):
+            modified_policy, modified_workflows = copy.deepcopy(policy), dict(workflows)
+            if mutation == 'remove-task101':
+                modified_policy['jobs'] = [r for r in modified_policy['jobs'] if r['job_id'] != evidence.JOB]
+            elif mutation == 'automatic-benchmark':
+                modified_policy['manual_benchmark']['events'].append('pull_request')
+            else:
+                modified_workflows['portable-provider-benchmark.yml'] += '\ninvalid-trust: safe.directory=*\n'
+            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                ci_policy.check(modified_policy, modified_workflows)
+
     def test_task101_surfaces_select_both_families_and_deep(self):
         policy = ci_selection.inventory()
         for path in ('scripts/task101/qualify.py', 'scripts/task101/sleet.py', 'scripts/task101_evidence.py',

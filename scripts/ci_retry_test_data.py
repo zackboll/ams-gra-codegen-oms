@@ -29,8 +29,6 @@ def metadata(artifacts, current=2, producers=None):
             prefix = f'2026-10-27T{producer:02d}'
             publication = ('Preserve mandatory shard evidence and failure diagnostics'
                            if artifact['name'].startswith('perf007-') else
-                           'Preserve Task101 mandatory source and execution evidence'
-                           if artifact['name'].startswith('task101-') else
                            'Upload mandatory source compiler and execution evidence')
             job = dict(id=number*100 + index, run_id=123, run_attempt=number,
                        head_sha='c'*40, name=job_name(artifact['name']),

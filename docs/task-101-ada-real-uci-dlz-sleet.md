@@ -260,3 +260,48 @@ alternate protocol/parser/codec, general polymorphism/$type, OpenExtensions
 registry, arbitrary unsupported UCI types, or resource-exhaustion recovery
 guarantee is added. Sleet's limited temporal validation is recorded rather than
 changed. No production capability is broadened to manufacture a passing result.
+
+## R1: hosted checkout ownership and current-main reconciliation
+
+The original source was `844a4da20c6170607c5374963a20d66df236266d`, tree
+`2cff07ab000a5b84e7510d6403f9a52446129795`. Hosted run `41002089379` failed
+before DLZ execution in jobs `123888643214` and `123888643217`. Retained
+artifacts `12954101998` and `12954360436` independently record `source.exit=128`
+and Git's dubious-ownership error. The shared Campaign deliberately changes HOME
+to its isolated Alire home, hiding the workflow's earlier global Git trust entry.
+
+R1 scopes `git -c safe.directory=<resolved checkout>` to Task101's source and
+source-status calls only. It does not change persistent configuration, wildcard
+trust, shared Campaign environments, authentic schemas, codec expectations or
+Sleet. Nonzero exits retain their original evidence and abort; a nonempty clean
+status contract now also aborts immediately. The source-bound verifier still
+requires exact expected SHA/tree and successful source/status exit records.
+
+Portable regression tests exercise Git's real ownership validator using its
+different-owner test hook. The optional
+`TASK101_OWNERSHIP_FIXTURE=podman` test additionally assigns a different UID to a
+disposable checkout using rootless user namespaces, restores ownership in a
+finally block, and needs no privileged changes on ordinary test runners. Both
+tests check untrusted and wrong-path failures, exact-path SHA/tree and clean
+status success, dirty rejection, isolated HOME, no wildcard or persistent trust,
+and durable nonzero failure records. Verifier mutations reject source/status
+exit 128 even when other synthetic completion records claim success.
+
+Normal merge `713ae273b96da0e21440236ab315a26d9f38fe78` incorporates CI-BENCH-001
+main `b65937fefa79818ac460b28ba3d3ae5996cf0506`, tree
+`101b2fdb0931a2c9c9a543c1d91667dfab513245`, with parents original Task101 and
+that main commit. Benchmark controller/workflow hashes are not updated to bless
+Task101 changes: Task101 uses the existing mandatory upload-step name, restoring
+the inherited provenance resolver's exact bytes. Policy projects only this
+single step-name change to the original Task101 payload hash; inherited hashes
+remain unchanged. Focused integration tests preserve both Task101 compiler jobs,
+manual-only benchmark isolation, selective Deep, producer-attempt validation,
+PERF-007, CI002/trusted-dispatch boundaries, five lanes and the required gate.
+
+R1 evidence is separate from all historical campaigns under
+`/home/zboll/task101-r1-scratch/`, including untouched original hosted ZIPs/logs,
+ownership reproductions, production-byte comparisons, current-source campaign
+records and hosted reconciliation. Final identities and actual completed counts
+are recorded there and on PR #131; historical totals above are not R1 execution
+claims. Readiness requires all new exact-head hosted mandatory gates. Stop before
+approval, merge, auto-merge, release or publication.

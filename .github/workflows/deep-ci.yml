@@ -152,7 +152,7 @@ jobs:
           print('TASK101_HOSTED_VERIFIED', verify_bundle(files, os.environ['TASK101_COMPILER'],
                 os.environ['GITHUB_SHA'], tree, os.environ['GITHUB_RUN_ID'], os.environ['GITHUB_RUN_ATTEMPT']))
           EOF
-      - name: Preserve Task101 mandatory source and execution evidence
+      - name: Upload mandatory source compiler and execution evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:

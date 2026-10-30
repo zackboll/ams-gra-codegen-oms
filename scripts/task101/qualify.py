@@ -20,6 +20,16 @@ TOOL_IDENTITIES = ('for tool in gcc gnat gprbuild ld; do path=$(command -v "$too
                    'printf "%s\\n" "$path"; sha256sum "$path"; done; gcc -print-prog-name=ld')
 
 
+def record_source(campaign):
+    # Campaign deliberately uses an isolated Alire HOME. Trust only this exact
+    # checkout for these calls, not persistent global config or other tasks.
+    trusted_git = ['git', '-c', f'safe.directory={ROOT.resolve()}']
+    campaign.run('source', [*trusted_git, 'rev-parse', 'HEAD', 'HEAD^{tree}'], ROOT)
+    status = campaign.run('source-status', [*trusted_git, 'status', '--porcelain'], ROOT)
+    if status.strip():
+        raise RuntimeError('Task101 dirty source checkout; see source-status.stdout')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ['scratch', 'setup', 'generator', 'sleet', 'uci25', 'uci26']:
@@ -37,8 +47,7 @@ def main():
     real_spec.loader.exec_module(real)
     campaign = module.Campaign(scratch, args.setup.resolve(), args.compiler)
     campaign.provision()
-    campaign.run('source', ['git', 'rev-parse', 'HEAD', 'HEAD^{tree}'])
-    campaign.run('source-status', ['git', 'status', '--porcelain'])
+    record_source(campaign)
     campaign.run('platform', campaign.shell(['sh', '-ec', 'test "$(uname -m)" = x86_64; test "$(getconf GNU_LIBC_VERSION)" = "glibc 2.41"; uname -m; getconf GNU_LIBC_VERSION; gcc -v; ld --version; ' + TOOL_IDENTITIES]))
     generator = args.generator.resolve()
     hashes = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()

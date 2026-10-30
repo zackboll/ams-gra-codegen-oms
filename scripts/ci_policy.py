@@ -255,8 +255,17 @@ def check(policy=None, workflows=None, sleet=None):
     if [(c['variant'], c['lane'], c['artifacts']) for c in task101['cells']] != [
             ({'compiler': c}, lane, ['task101-ada-real-uci-dlz-' + c]) for c, lane in [('14', 3), ('16', 5)]]:
         raise ValueError('Task101 mandatory compiler/artifact/lane inventory changed')
+    # R1 uses the inherited producer publication name so CI-BENCH's immutable
+    # provenance source remains byte-identical. Project exactly that one name
+    # back to Task101's original payload; retain its original hash authority.
+    task101_steps = task101['original_steps_yaml']
+    publication = '      - name: Upload mandatory source compiler and execution evidence\n'
+    if task101_steps.count(publication) != 1:
+        raise ValueError('Task101 mandatory publication contract changed')
+    task101_steps = task101_steps.replace(publication,
+        '      - name: Preserve Task101 mandatory source and execution evidence\n')
     if (hashlib.sha256(task101['expected_header'].encode()).hexdigest() != 'a93ce7ff40b525284f849b9946c603b65602860a0e3e88156d4a22535e8c3e23'
-            or hashlib.sha256(normalized(task101['original_steps_yaml']).encode()).hexdigest() != '62ce975ac7d3ffdbf7fd6bbcdd360c2fb8ccadd360fbdd29b0fa9c63b57ec31e'):
+            or hashlib.sha256(normalized(task101_steps).encode()).hexdigest() != '62ce975ac7d3ffdbf7fd6bbcdd360c2fb8ccadd360fbdd29b0fa9c63b57ec31e'):
         raise ValueError('Task101 mandatory qualification header/payload changed')
     for workflow, job_id, kind in [('ci.yml', 'ada-websocket-transport', 'transport'),
                                    ('deep-ci.yml', 'ada-websocket-real-sleet', 'sleet')]:
