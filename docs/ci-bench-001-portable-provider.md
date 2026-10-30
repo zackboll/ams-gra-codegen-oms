@@ -2,7 +2,7 @@
 
 ## Scope and authorization
 
-Infrastructure only, reconciled in R2 with main
+Infrastructure only, split into per-compiler jobs in R3 after R2 reconciliation with main
 `f025748445db2954186bea39079bd34afb63080f` through ordinary merge
 `e8fdb432478009d80dbc6cf60f59bfa18b54ff28`. This preserves PR #125's
 producer-attempt verification, Python Float64, Task100 and the current
@@ -27,7 +27,7 @@ abbreviations, shell expressions and fork repository overrides are rejected.
   `ci.yml`, `deep-ci.yml`, Pages, CI002, signal and trusted-dispatch workflows
   are unchanged. Main continues full qualification; PR source rules are unchanged.
 - All main-eligible runner cells share exactly five `oms-main-slot-1` through
-  `oms-main-slot-5` groups. The new manual job takes **slot 3**, not a new lane.
+  `oms-main-slot-5` groups. All three manual jobs take **slot 3**, not a new lane.
   `queue: max` preserves pending jobs; there is no cancellation expression.
   GitHub documents a maximum of 100 queued jobs per group, after which additional
   arrivals are canceled by the service. Operators must not flood dispatches.
@@ -36,18 +36,22 @@ abbreviations, shell expressions and fork repository overrides are rejected.
   arbitrary benchmark interface. The new registration is an explicit
   `manual_benchmark` inventory section, outside automatic selection and the
   mandatory aggregate. The existing **40 automatic cells/five lanes** remain
-  unchanged; there is **one additional manual runner cell**, never selected by
+  unchanged; there are **three explicitly registered manual runner cells**, never selected by
   push, PR, nightly schedule, workflow call or workflow-run events.
 - The exact normalized workflow digest is independently pinned in
   `ci_bench/policy.py` and the inventory. Controller/image/worker/provisioning
-  hashes are mandatory. A new unrelated workflow still fails closed.
+  hashes, the independent reconciler and unchanged CI-RETRY resolver hash are
+  mandatory. A new unrelated workflow still fails closed.
 - Existing CI002 trust tests, sources, permission boundaries, required-gate
   behavior and historical dispatcher provenance are unchanged.
 
 ## Trust boundary and resource limits
 
-The workflow has only `contents: read`, no secrets/environment, OIDC, write
-permissions, app token, self-hosted label or destination dispatch. Actions are
+The compiler jobs have only `contents: read`. The independent evidence job adds
+`actions: read` solely to read authoritative run/attempt/job/artifact metadata and
+digest-verified archives. Its token is scoped to the reconciliation step; neither
+compiler job nor any candidate container receives it. There are no repository
+secrets/environment, OIDC, write permissions, app token, self-hosted label or destination dispatch. Actions are
 SHA-pinned. Checkout uses the dispatch's exact main SHA and explicitly disables
 credential persistence. The controller independently verifies current main,
 public repository commit metadata, fetched commit/tree and archive identity.
@@ -71,7 +75,7 @@ Each fresh worker container has:
 - read-only image and candidate source; only bounded private tmpfs writable;
 - two fixed guest logical CPUs, two Cargo/GPRbuild workers, 6 GiB RAM with no swap expansion,
   256 processes, 4 GiB work tmpfs, 256 MiB temporary tmpfs;
-- 2,250-second iteration limit, bounded 16 MiB retained output, 360-minute job
+- 4,500-second iteration limit, bounded 16 MiB retained output, 360-minute compiler job
   limit; no candidate output is interpreted as a runner workflow command;
 - fresh generator build, private Alire settings/cache and build directories.
 
@@ -85,6 +89,15 @@ untrusted source safe to run directly on the Actions host.
 ## Campaign and measurement contract
 
 One dispatch runs eight sequential full 30-cell portable campaigns:
+
+`benchmark-gnat-14` completes its four A/B/B/A iterations on **one runner**.
+`benchmark-gnat-16` has `needs: [benchmark-gnat-14]` and only runs after success,
+with its own four iterations on **one runner**. No iteration is split across jobs
+or matrix runners. `benchmark-evidence` needs both jobs and uses `always()` to
+report failure for failed/skipped/cancelled compiler work. All three acquire the
+existing `oms-main-slot-3` group with `queue: max`; no workflow-level lock nests
+the same group. Ordinary slot-3 jobs may run between compiler jobs. Cross-compiler
+wall-time comparison is not a same-host comparison.
 
 | Compiler | Order |
 |---|---|
@@ -124,8 +137,12 @@ The pinned Rust 1.95.0 image digest, Alire 2.1.1 archive hash, frozen Alire inde
 commit `842d7165e3e1e644f4d03563e7a4f35c05415af4`, GNAT/GPRbuild/runtime hashes,
 GNATCOLL 26.0.0 SHA-512 origin, source/tree/archive, built generator and dependency
 identity hashes are retained. Apt package versions and image content are
-resolved once per dispatch, then the **same immutable image ID** is used for
-all eight workers. An upstream package drift that violates compiler/runtime
+resolved once per compiler job, then the **same immutable image ID** is used for
+that compiler's four workers. Both jobs provision both toolchains as before;
+there is no cross-runner cache or image transfer. Images/seeds may differ between
+compiler jobs; exact identities must remain stable within each A/B/B/A, while
+the reviewed source/archive/workflow and built generator must agree across both.
+An upstream package drift that violates compiler/runtime
 hash checks fails the campaign instead of silently establishing a new baseline.
 
 The GNATCOLL archive is downloaded and hash-verified once during trusted image
@@ -145,7 +162,7 @@ The host records wall time, cgroup cumulative CPU and cgroup peak memory for
 each **whole worker**, including private seed copy and generator build. The
 worker separately reports helper-only wall/child CPU and largest-child RSS
 (not simultaneous process-tree peak). These scopes must not be mixed.
-Generator hashes and seed identity must agree across all eight runs; dependency
+Generator hashes must agree across all eight runs; seed and dependency
 identities must agree within each compiler. Each campaign uses the same CPU
 and worker budget and fresh independent build directories, including a fresh
 reuse provider for every B iteration.
@@ -178,10 +195,12 @@ isolation, statistical significance, PERF-009 completion or performance success*
 The report always sets `performance_success: false`; independent acceptance is
 required. Never override a failed identity/contention gate to obtain timings.
 
-## R2 execution-budget analysis and feasibility limitation
+## R3 per-compiler budget and feasibility limitation
 
 **Current disposition: PERFORMANCE_BUDGET_BLOCKED.** The implementation is
-bounded, but complete-workload hosted feasibility is not yet qualified.
+bounded and the inherited planning scenario fits each compiler job, but
+complete-workload hosted feasibility is not yet qualified. No benchmark dispatch
+is authorized by this budget correction.
 
 The original configuration cannot defensibly promise completion: eight
 1,800-second iteration maxima already total **240 minutes**, before image,
@@ -207,36 +226,50 @@ generator/setup:
 `4 × [(2026 + 564) × 1.25 + 120] +
  4 × [(2641 + 630) × 1.25 + 120] = 30,265 seconds = 504.4 minutes`.
 
-Thus even the revised envelope is not a conservative *completion proof*. With
-ideal two-worker child scaling but serial historical harness CPU, that same
-scenario is approximately **310.0 minutes** for eight iterations. This explains both why
-180 minutes is unsafe to retain without data and why a finite 360-minute
-envelope is proposed. It does **not** qualify the scaling assumption, source
-overhead or 25% margin. No observed provider-reuse improvement is credited to
-this model. Historical and smoke timings cannot prove the PERF-009 target.
+R2's single 360-minute job with 2,250-second iterations did not cover that
+scenario. R3 separates compilers without splitting a compiler's comparison:
+
+| No-speedup planning scenario | GNAT 14 | GNAT 16 |
+|---|---:|---:|
+| Child + historical harness CPU | 2,590 s | 3,271 s |
+| Per iteration × 1.25 + 120 s setup | 3,357.5 s (55.96 min) | 4,208.75 s (70.15 min) |
+| Four campaigns | 223.83 min | 280.58 min |
+| Headroom below 75-minute iteration limit | 19.04 min | 4.85 min |
+| Four campaigns plus all 60 min non-campaign reserves | 283.83 min | 340.58 min |
+| Headroom below 360-minute job limit | 76.17 min | 19.42 min |
+
+The same **4,500-second (75-minute)** limit applies to A and B, with no reuse
+speedup or two-worker scaling credited. This is defensible planning, not a
+conservative mathematical completion proof: historical traced observations,
+25% variance and setup reserves are not clean PERF-009 upper bounds. Full
+authorized eight-iteration evidence is still required, with every resource,
+integrity and contention gate unchanged. Historical and smoke timings cannot
+prove the PERF-009 target.
 
 The independently policy-pinned resource/time envelope is:
 
 | Component | Maximum/planning reserve |
 |---|---:|
-| Eight sequential whole-worker iterations, including generator/private setup | 8 × 2,250 s = 300 min |
+| Four sequential whole-worker iterations per compiler, including generator/private setup | 4 × 4,500 s = 300 min |
 | Trusted image build, dependency/compiler provisioning | 1,800 s = 30 min |
 | Authorization, source fetch, extraction, preflight | 300 s = 5 min |
 | Bounded artifact packaging, both uploads, receipt | 600 s = 10 min |
 | Operational margin, cleanup/inter-step overhead | 900 s = 15 min |
-| Overall Actions hard limit | **360 min** |
+| Each compiler Actions hard limit | **360 min** |
+| Independent reconciliation job hard limit | **15 min** |
 
-`contract.budget()` tests that these sum exactly. The 37.5-minute per-iteration
-limit exceeds the worst historical child-only ideal of 22.1 minutes, but the
-worst modeled serial-harness/25%-variance/setup iteration is **42.6 minutes**.
-Therefore **the per-iteration budget remains unqualified**; the limit is a
-fail-closed bound, not permission to call incomplete work complete. A full
-authorized feasibility campaign must show all eight independently complete
-iterations below 2,250 seconds, with enough margin, or this PR needs another
-reviewed budget correction. No sixth lane or automatic job is added.
+`contract.budget()` tests that compiler reserves sum exactly to 360 minutes.
+Preparation, provisioning, packaging and upload envelopes are independently
+checked against their reserves; the hosted timeout remains the ultimate bound.
+No sixth lane or automatic job is added. Queue delay is not runner execution
+time and is unbounded by this arithmetic. Retried attempts incur additional cost.
 
-Runner cost is at most **360 Linux runner-minutes per attempted job** (not
-720: two vCPUs are within the existing runner). Dollar/billed-minute cost
+Runner cost is at most **360 + 360 + 15 = 735 Linux runner-minutes per full
+attempt**, with at most one slot-3 job executing at a time. Two vCPUs per worker
+are within the existing runner, not two billed runners. Campaign CPU allocation
+is at most `8 × 4,500 × 2 = 72,000 vCPU-seconds` (20 vCPU-hours), not measured
+consumption. Every worker retains the 6 GiB memory/4 GiB work-tmpfs cap; the
+reconciliation job executes no candidate workload. Dollar/billed-minute cost
 depends on repository plan and public-runner eligibility; record actual job
 duration/queue delay from Jobs API, never fabricate a price. Image setup time,
 worker generator/setup and helper time are separate measurements. Packaging
@@ -288,23 +321,44 @@ Fast CI, Deep CI, CI002, Trusted PR Signal, mandatory selection/results and
 `pr-ci-required` must still be reconciled externally. Pending is not passing.
 No manual benchmark dispatch is authorized by these local results.
 
-## Artifact contract
+## Artifact contract and independent final gate
 
-Two mandatory artifacts (30-day retention):
+Five mandatory artifacts (30-day retention):
 
-1. `ci-bench-001-measurements`: source/image identities, result/progress and
+1. `ci-bench-001-gnat-14-measurements`: source/image identities, result/progress and
    contention JSON, bounded case-preserving compressed worker logs, packaging
    elapsed time, archive bytes and SHA-256 inventory. Failure emits invalid
    machine-readable results rather than a success marker.
-2. `ci-bench-001-upload-receipt`: upload outcome, artifact ID/digest, input byte
+2. `ci-bench-001-gnat-14-upload-receipt`: upload outcome, artifact ID/digest, input byte
    count and monotonic upload-step envelope (includes inter-step scheduling).
 
-Both uploads use `always()` and `if-no-files-found: error`; the final gate
-requires complete valid eight-run evidence and successful measurements upload.
-The receipt upload's own completion, exact upload durations, runner minutes,
-queue delay and whole-job wall time must be read **after completion** from the
-Actions Jobs/Artifacts APIs. A final upload cannot measure its own completed
-duration from within itself. Do not label the envelope as network transfer time.
+3. `ci-bench-001-gnat-16-measurements`: same complete four-iteration contract.
+4. `ci-bench-001-gnat-16-upload-receipt`: separate mandatory transport receipt.
+5. `ci-bench-001-reconciliation`: independent combined result or explicit failure.
+
+All uploads use `always()` and `if-no-files-found: error`. The final job does
+not trust producer `valid` flags: it independently validates all eight ordered
+iterations, 240 consumer executions/binds/links and 1,200 generated/support
+compilations (13,992 provider compilations total), source/tree/archive/workflow
+digest, generated-source and generator/dependency identity, live cgroup limits
+and final counters, complete samples, contention, headroom, timings and budgets.
+The exact producer job/runner is bound to each compiler's four iterations.
+
+Actions API metadata binds both uploads to successful named publication steps
+and successful compiler executions. The unchanged CI-RETRY resolver independently
+selects historical execution attempts, never embedded receipt claims or copied
+partial-rerun IDs. Both artifacts must have the same producer. Stale, duplicate,
+cross-run/head/repository, expired and incomplete evidence fails closed.
+Archive SHA-256 is verified before bounded, data-only ZIP reading (no extraction);
+the packaging inventory verifies every member digest. The receipt must match
+the measurement artifact ID/digest/byte count and producer job/run/attempt.
+Jobs API timestamps prove sequential compiler execution and job limits, and
+provide completed measurement/receipt upload steps and actual durations.
+
+The reconciliation upload itself is mandatory: failure makes the final job fail.
+Its own completed transport digest/duration, queue delays and final runner cost
+must still be collected after completion. A final upload cannot measure its own
+completed duration. Do not label the upload envelope as network transfer time.
 No helper or whole-job performance threshold is automatically accepted here.
 
 ## One approved campaign (after main integration and authorization)
@@ -326,7 +380,7 @@ gh api repos/zackboll/ams-gra-codegen-oms/actions/runs/RUN_ID/jobs?per_page=100
 gh api repos/zackboll/ams-gra-codegen-oms/actions/runs/RUN_ID/artifacts?per_page=100
 ```
 
-Check both artifact digests, exact controller/source identities, all eight
+Check all five artifact digests, exact controller/source identities, all eight
 ordered runs and every gate. Preserve failed evidence. Do not retry until an
 identity/configuration error is understood; for contention wait for another
 approved execution opportunity rather than loosening limits. The standalone
@@ -346,6 +400,13 @@ isolation, partial ABBA, counts, compiler/generator/dependency mismatches,
 traced runs, worker-budget changes, missing CPU/memory, steal/contention and
 sampling gaps. Exact-head hosted validation and local sandbox smoke results are
 recorded externally with the final commit/tree; a pending check is not a pass.
+
+R3's `test_ci_select_bench_reconcile.py` also covers complete digest-verified ZIP
+transport, all four mandatory producer artifacts, distinct compiler runners,
+historical/copied/mixed retry attempts, forged receipts, sequential job timing,
+same-compiler seed stability, indexed iteration reversal, missing/skipped steps,
+bad source/workflow/runner identity, invalid packaging and full accounting.
+Synthetic fixtures are verifier tests, never hosted measurement evidence.
 
 References:
 - <https://docs.github.com/en/actions/reference/runners/github-hosted-runners>

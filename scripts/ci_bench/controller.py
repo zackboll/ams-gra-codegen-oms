@@ -24,7 +24,7 @@ except ImportError:
 
 ROOT = Path(__file__).resolve().parents[2]
 REPOSITORY = 'zackboll/ams-gra-codegen-oms'
-ORDER = [(c, m) for c in ('14', '16') for m in ('original', 'reuse', 'reuse', 'original')]
+ORDER = [(c, m) for c in contract.COMPILERS for m in contract.MODES]
 LIMIT = 16 * 1024 * 1024
 
 
@@ -47,6 +47,13 @@ def work():
     return Path(os.environ['RUNNER_TEMP']) / 'ci-bench-001'
 
 
+def compiler_job():
+    compiler = os.environ.get('BENCH_COMPILER')
+    if compiler not in contract.COMPILERS or os.environ.get('GITHUB_JOB') != contract.JOBS[compiler]:
+        raise ValueError('exact registered compiler job required')
+    return compiler
+
+
 def authorize(env):
     if (env.get('GITHUB_EVENT_NAME'), env.get('GITHUB_REF'), env.get('GITHUB_REPOSITORY'),
             env.get('RUNNER_ENVIRONMENT')) != ('workflow_dispatch', 'refs/heads/main', REPOSITORY, 'github-hosted'):
@@ -55,10 +62,12 @@ def authorize(env):
 
 
 def prepare():
+    started = time.monotonic()
     base = work()
     base.mkdir(exist_ok=False)
     write(base / 'public/result.json', dict(valid=False, completed=False, disposition='PREPARING'))
     source, workflow = authorize(os.environ)
+    compiler = compiler_job()
     validate_source_scope(source)
     if run(['git', '-C', str(ROOT), 'rev-parse', 'HEAD']) != workflow:
         raise ValueError('trusted controller checkout mismatch')
@@ -97,8 +106,21 @@ def prepare():
         raise ValueError('candidate dependency lock not authorized by main')
     if not (destination / 'Cargo.toml').is_file():
         raise ValueError('candidate lacks generator workspace')
+    url = ('https://api.github.com/repos/' + REPOSITORY + '/actions/runs/' +
+           os.environ['GITHUB_RUN_ID'] + '/attempts/' + os.environ['GITHUB_RUN_ATTEMPT'] + '/jobs?per_page=100')
+    with urllib.request.urlopen(url, timeout=30) as response:
+        jobs = json.load(response)
+    matches = [j for j in jobs['jobs'] if j['name'] == contract.JOBS[compiler]
+               and j['status'] == 'in_progress' and str(j['run_attempt']) == os.environ['GITHUB_RUN_ATTEMPT']]
+    if jobs['total_count'] > 100 or len(matches) != 1:
+        raise ValueError('missing/ambiguous authoritative compiler producer')
+    producer = matches[0]
     write(base / 'identity.json', dict(source_commit=source, source_tree=tree, workflow_commit=workflow,
           workflow_tree=run(['git', '-C', str(ROOT), 'rev-parse', 'HEAD^{tree}']),
+          workflow_sha256=hashlib.sha256((ROOT / '.github/workflows/portable-provider-benchmark.yml').read_bytes()).hexdigest(),
+          compiler=compiler, job=contract.JOBS[compiler], job_id=str(producer['id']),
+          runner_id=producer['runner_id'], runner_name=producer['runner_name'],
+          preparation_seconds=time.monotonic() - started,
           source_archive_sha256=hashlib.sha256(archive.read_bytes()).hexdigest(),
           run_id=os.environ['GITHUB_RUN_ID'], run_attempt=os.environ['GITHUB_RUN_ATTEMPT']))
 
@@ -238,12 +260,18 @@ def cgroup_stats(cgroup):
 
 
 def validate_cgroup_limits(cgroup, cpus):
-    quota, period = (cgroup / 'cpu.max').read_text().split()
+    values = {key: (cgroup / key).read_text().strip() for key in (
+        'cpu.max', 'cpuset.cpus.effective', 'memory.max', 'memory.swap.max', 'pids.max')}
+    validate_limit_values(values, cpus)
+    return values
+
+
+def validate_limit_values(values, cpus):
+    quota, period = values['cpu.max'].split()
     if (quota == 'max' or int(quota) != contract.WORKERS * int(period)
-            or cpu_set((cgroup / 'cpuset.cpus.effective').read_text()) != set(cpus)
-            or int((cgroup / 'memory.max').read_text()) != contract.MEMORY_BYTES
-            or int((cgroup / 'memory.swap.max').read_text()) != 0
-            or int((cgroup / 'pids.max').read_text()) != 256):
+            or int(period) <= 0 or cpu_set(values['cpuset.cpus.effective']) != set(cpus)
+            or int(values['memory.max']) != contract.MEMORY_BYTES
+            or int(values['memory.swap.max']) != 0 or int(values['pids.max']) != 256):
         raise ValueError('actual cgroup CPU/memory/process allocation mismatch')
 
 
@@ -271,13 +299,15 @@ def validate_samples(samples, wall):
 
 def campaign():
     base = work()
+    compiler = compiler_job()
     identity = json.loads((base / 'identity.json').read_text())
     image_id = json.loads((base / 'image.json').read_text())['image_id']
     assigned = allocation()
     cpus, siblings = assigned['cpus'], assigned['monitored_smt_siblings']
     meminfo = dict(line.split(':', 1) for line in Path('/proc/meminfo').read_text().splitlines())
-    validate_host_resources(int(meminfo['MemAvailable'].split()[0]) * 1024,
-                            shutil.disk_usage(base).free)
+    host_resources = dict(available_memory_bytes=int(meminfo['MemAvailable'].split()[0]) * 1024,
+                          free_disk_bytes=shutil.disk_usage(base).free)
+    validate_host_resources(host_resources['available_memory_bytes'], host_resources['free_disk_bytes'])
     before = cpu_stat(Path('/proc/stat').read_text())
     preflight_started = time.monotonic()
     time.sleep(10)
@@ -288,7 +318,7 @@ def campaign():
     if preflight['external_busy_fraction'] > .05 or preflight['steal_fraction'] > .01:
         raise ValueError('preflight contention gate failed')
     rows = []
-    for index, (compiler, mode) in enumerate(ORDER):
+    for index, mode in enumerate(contract.MODES):
         name = f'ci-bench-001-{index}'
         run(docker_command(image_id, base / 'source', name, cpus, compiler, mode))
         samples = []
@@ -310,7 +340,7 @@ def campaign():
                 time.sleep(.1)
             cgroup_path = Path(f'/proc/{pid}/cgroup').read_text().strip().split('::', 1)[1]
             cgroup = Path('/sys/fs/cgroup') / cgroup_path.lstrip('/')
-            validate_cgroup_limits(cgroup, cpus)
+            limits = validate_cgroup_limits(cgroup, cpus)
             # Account from container start, not the first observed nonzero counter.
             usage = 0
             last = time.monotonic()
@@ -360,8 +390,10 @@ def campaign():
                 raise ValueError('OOM/incomplete worker')
             if final_stats['oom'] or final_stats['oom_kill']:
                 raise ValueError('cgroup OOM event')
-            row = dict(compiler=compiler, mode=mode, wall_seconds=time.monotonic() - started,
+            row = dict(compiler=compiler, mode=mode, iteration=index, wall_seconds=time.monotonic() - started,
                        cpu_seconds=usage / 1e6, cgroup_peak_memory_bytes=peak,
+                       final_cgroup=final_stats,
+                       cgroup_limits=limits,
                        allocation=assigned, oom=False, exit_code=state['ExitCode'],
                        samples=samples, candidate_report=report, worker_log=str(log.name))
             rows.append(row)
@@ -370,9 +402,10 @@ def campaign():
             subprocess.run(['docker', 'rm', '--force', name], capture_output=True, timeout=30, check=False)
             process.wait(timeout=30)
             reader.join(timeout=30)
-    valid = validate_rows(rows)
-    write(base / 'public/result.json', dict(completed=True, valid=valid, identity=identity,
+    validate_rows(rows, compiler)
+    write(base / 'public/result.json', dict(completed=True, valid=True, identity=identity,
           image_id=image_id, allocation=assigned, budget=contract.budget(),
+          host_resources=host_resources,
           preflight=preflight, runs=rows, performance_success=False,
           isolation_scope='guest-visible CPUs/SMT and steal; hypervisor co-tenancy is not observable',
           evidence_trust='host resource counters; candidate-reported workload counts are not attestations'))
@@ -417,13 +450,19 @@ def validate_cells(report):
         raise ValueError('unexpected provider preparation')
 
 
-def validate_rows(rows):
-    if [(r['compiler'], r['mode']) for r in rows] != ORDER:
-        raise ValueError('complete two-compiler ABBA required')
-    generators, seeds = set(), set()
-    dependencies = {c: set() for c in ('14', '16')}
+def validate_rows(rows, compiler=None):
+    if compiler is not None and compiler not in contract.COMPILERS:
+        raise ValueError('unknown compiler')
+    order = ORDER if compiler is None else [(compiler, m) for m in contract.MODES]
+    if [(r['compiler'], r['mode']) for r in rows] != order:
+        raise ValueError('complete compiler ABBA required')
+    generators = set()
+    seeds = {c: set() for c, _ in order}
+    dependencies = {c: set() for c, _ in order}
     source_identities = {}
-    for row in rows:
+    for index, row in enumerate(rows):
+        if row['iteration'] != index % 4:
+            raise ValueError('missing/reordered iteration identity')
         report = row['candidate_report']
         expected = dict(provider=3180 if row['mode'] == 'original' else 318,
                         generated_support=150, bind=30, link=30, execute=30)
@@ -438,14 +477,22 @@ def validate_rows(rows):
             if not re.fullmatch('[0-9a-f]{64}', report.get(key, '')):
                 raise ValueError('missing generator/seed identity')
         generators.add(report['generator_sha256'])
-        seeds.add(report['seed_sha256'])
+        seeds[row['compiler']].add(report['seed_sha256'])
         dependencies[row['compiler']].add(report['dependency_identity_sha256'])
         validate_samples(row['samples'], row['wall_seconds'])
         assigned = row['allocation']
+        validate_limit_values(row['cgroup_limits'], assigned['cpus'])
+        final = row['final_cgroup']
+        if (final['oom'] != 0 or final['oom_kill'] != 0
+                or final['usage_usec'] != row['samples'][-1]['usage_usec']
+                or final['throttled_usec'] != row['samples'][-1]['throttled_usec']
+                or final['memory_peak'] != row['cgroup_peak_memory_bytes']):
+            raise ValueError('final live-cgroup accounting mismatch')
         topology = {int(c): v for c, v in assigned['topology'].items()}
         if assigned != validate_topology(topology, assigned['cpus'], assigned['monitored_smt_siblings']):
             raise ValueError('allocation evidence differs')
-        if row['oom'] is not False or row['exit_code'] != 0 or assigned != rows[0]['allocation']:
+        first = next(r for r in rows if r['compiler'] == row['compiler'])
+        if row['oom'] is not False or row['exit_code'] != 0 or assigned != first['allocation']:
             raise ValueError('OOM/exit/allocation mismatch')
         validate_cells(report)
         for build in report['builds']:
@@ -467,7 +514,7 @@ def validate_rows(rows):
                 or report['generator_build_seconds'] > report['setup_seconds']
                 or report['helper_wall_seconds'] + report['setup_seconds'] > row['wall_seconds']):
             raise ValueError('inconsistent timing scopes')
-    if len(generators) != 1 or len(seeds) != 1 or any(len(s) != 1 for s in dependencies.values()):
+    if len(generators) != 1 or any(len(s) != 1 for s in [*seeds.values(), *dependencies.values()]):
         raise ValueError('A/B generator or dependency identity differs')
     return True
 
@@ -499,6 +546,8 @@ def receipt():
     start = json.loads((base / 'upload-start.json').read_text())['monotonic']
     write(base / 'upload-receipt.json', dict(outcome=os.environ.get('MEASUREMENTS_OUTCOME'),
           run_id=os.environ.get('GITHUB_RUN_ID'), run_attempt=os.environ.get('GITHUB_RUN_ATTEMPT'),
+          job=os.environ.get('GITHUB_JOB'), compiler=os.environ.get('BENCH_COMPILER'),
+          job_id=json.loads((base / 'identity.json').read_text())['job_id'] if (base / 'identity.json').exists() else None,
           artifact_id=os.environ.get('MEASUREMENTS_ID'), artifact_digest=os.environ.get('MEASUREMENTS_DIGEST'),
           upload_step_envelope_seconds=time.monotonic() - start,
           uploaded_input_bytes=sum(p.stat().st_size for p in (base / 'public').iterdir() if p.is_file()),
@@ -506,21 +555,22 @@ def receipt():
           receipt_upload='measure after completion from Jobs API; cannot self-measure final upload'))
 
 
-def gate():
-    base = work()
-    result = json.loads((base / 'public/result.json').read_text())
-    transport = json.loads((base / 'upload-receipt.json').read_text())
+def validate_result(result, transport, identity):
     if (result.get('valid') is not True or result.get('completed') is not True
-            or transport.get('outcome') != 'success' or os.environ.get('RECEIPT_OUTCOME') != 'success'
+            or transport.get('outcome') != 'success'
             or not re.fullmatch('[1-9][0-9]*', transport.get('artifact_id') or '')
             or not re.fullmatch('[0-9a-f]{64}', transport.get('artifact_digest') or '')
-            or any(transport.get(k) != os.environ.get(e) or not transport.get(k)
-                   for k, e in [('run_id', 'GITHUB_RUN_ID'), ('run_attempt', 'GITHUB_RUN_ATTEMPT')])):
+            or any(transport.get(k) != identity.get(k) or not transport.get(k)
+                   for k in ('run_id', 'run_attempt', 'job', 'job_id', 'compiler'))):
         raise ValueError('benchmark invalid/incomplete or mandatory upload failed')
-    identity = json.loads((base / 'identity.json').read_text())
     if result['identity'] != identity:
         raise ValueError('stale/cross-source result identity')
     validate_source_scope(identity['source_commit'], identity['source_tree'])
+    if (result.get('budget') != contract.budget() or result.get('performance_success') is not False
+            or result.get('allocation') != result['runs'][0]['allocation']):
+        raise ValueError('budget/allocation/performance scope mismatch')
+    validate_host_resources(result['host_resources']['available_memory_bytes'],
+                            result['host_resources']['free_disk_bytes'])
     if any(identity[k] != transport[k] for k in ('run_id', 'run_attempt')):
         raise ValueError('stale result producer attempt')
     preflight = result['preflight']
@@ -529,7 +579,19 @@ def gate():
             or preflight['external_busy_fraction'] > .05 or preflight['steal_fraction'] > .01
             or not 10 <= preflight['elapsed_seconds'] <= 11):
         raise ValueError('invalid preflight evidence')
-    validate_rows(result['runs'])
+    validate_rows(result['runs'], identity['compiler'])
+
+
+def gate():
+    base = work()
+    compiler = compiler_job()
+    identity = json.loads((base / 'identity.json').read_text())
+    if (os.environ.get('RECEIPT_OUTCOME') != 'success' or identity['compiler'] != compiler
+            or any(identity[k] != os.environ.get(e) for k, e in (
+                ('run_id', 'GITHUB_RUN_ID'), ('run_attempt', 'GITHUB_RUN_ATTEMPT'), ('job', 'GITHUB_JOB')))):
+        raise ValueError('mandatory receipt upload or producer identity failed')
+    validate_result(json.loads((base / 'public/result.json').read_text()),
+                    json.loads((base / 'upload-receipt.json').read_text()), identity)
 
 
 if __name__ == '__main__':

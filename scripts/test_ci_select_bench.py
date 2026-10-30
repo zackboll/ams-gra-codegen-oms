@@ -25,7 +25,8 @@ class Registration(unittest.TestCase):
         self.assertEqual(self.inventory['manual_benchmark']['lane'], 3)
         for full in (False, True):
             selection = ci_selection.select([], self.inventory, full_main=full)
-            self.assertNotIn(policy.JOB, selection['jobs'])
+            for job in policy.JOBS:
+                self.assertNotIn(job, selection['jobs'])
         self.assertEqual(self.inventory['lanes'], [f'oms-main-slot-{n}' for n in range(1, 6)])
 
     def test_registration_removal_and_extra_workflow_rejected(self):
@@ -58,6 +59,14 @@ class Registration(unittest.TestCase):
             ('if-no-files-found: error', 'if-no-files-found: warn'),
             ('if: always()', 'if: success()'),
             ('source_sha:', 'source_ref:'),
+            ('needs: [benchmark-gnat-14]', 'needs: []'),
+            ('needs: [benchmark-gnat-14, benchmark-gnat-16]', 'needs: [benchmark-gnat-14]'),
+            ("BENCH_COMPILER: '16'", "BENCH_COMPILER: '14'"),
+            ('actions: read', 'actions: write'),
+            ('timeout-minutes: 15', 'timeout-minutes: 360'),
+            ('ci-bench-001-gnat-16-measurements', 'ci-bench-001-gnat-14-measurements'),
+            ('python3 scripts/ci_bench/reconcile.py', 'true'),
+            ('BENCH_NEEDS: ${{ toJSON(needs) }}', "BENCH_NEEDS: '{}'"),
             ('      - name: Enforce complete campaign and acceptance gates', '      - continue-on-error: true\n        name: Enforce complete campaign and acceptance gates'),
         ]
         for before, after in cases:
@@ -83,6 +92,36 @@ class Registration(unittest.TestCase):
             inventory['manual_benchmark'][key] = value
             with self.subTest(key=key), self.assertRaises(ValueError):
                 ci_policy.check(inventory, self.workflows)
+
+    def test_manual_topology_registration_is_explicit(self):
+        for job in policy.JOBS:
+            inventory = copy.deepcopy(self.inventory)
+            del inventory['manual_benchmark']['jobs'][job]
+            with self.subTest(job=job), self.assertRaises(ValueError):
+                ci_policy.check(inventory, self.workflows)
+        for job, key, value in [(contract.JOBS['16'], 'needs', []),
+                                (contract.FINAL_JOB, 'needs', [contract.JOBS['14']]),
+                                (contract.JOBS['14'], 'timeout_minutes', 720)]:
+            inventory = copy.deepcopy(self.inventory)
+            inventory['manual_benchmark']['jobs'][job][key] = value
+            with self.subTest(job=job, key=key), self.assertRaises(ValueError):
+                ci_policy.check(inventory, self.workflows)
+
+    def test_every_manual_job_lock_and_authorization_is_mandatory(self):
+        header, jobs = ci_policy.blocks(self.workflows[policy.WORKFLOW])
+        self.assertEqual(set(jobs), set(policy.JOBS))
+        for job in jobs:
+            for before, after in [('group: oms-main-slot-3', 'group: oms-main-slot-4'),
+                                  ('queue: max', 'queue: max\n      cancel-in-progress: true'),
+                                  ("github.ref == 'refs/heads/main'", 'true'),
+                                  ('persist-credentials: false', 'persist-credentials: true')]:
+                changed = dict(jobs)
+                self.assertIn(before, changed[job])
+                changed[job] = changed[job].replace(before, after, 1)
+                workflows = dict(self.workflows)
+                workflows[policy.WORKFLOW] = header + ''.join('  ' + j + ':\n' + body for j, body in changed.items())
+                with self.subTest(job=job, before=before), self.assertRaises(ValueError):
+                    ci_policy.check(self.inventory, workflows)
 
 
 class Authorization(unittest.TestCase):
@@ -125,6 +164,14 @@ class Authorization(unittest.TestCase):
             controller.drain(io.BytesIO(payload), path)
             self.assertEqual(path.stat().st_size, controller.LIMIT)
 
+    def test_compiler_can_only_run_in_its_registered_job(self):
+        for compiler in contract.COMPILERS:
+            with patch.dict(os.environ, BENCH_COMPILER=compiler, GITHUB_JOB=contract.JOBS[compiler]):
+                self.assertEqual(controller.compiler_job(), compiler)
+            for wrong in [contract.FINAL_JOB, contract.JOBS['16' if compiler == '14' else '14'], 'unknown']:
+                with patch.dict(os.environ, BENCH_COMPILER=compiler, GITHUB_JOB=wrong), self.assertRaises(ValueError):
+                    controller.compiler_job()
+
 
 def rows():
     result = []
@@ -164,13 +211,25 @@ def rows():
                            cpu_seconds=10, cgroup_peak_memory_bytes=1024,
                            samples=[dict(at_seconds=1, usage_usec=10000000, throttled_usec=0,
                                          external_busy_fraction=.01, steal_fraction=0, elapsed_seconds=1)]))
+    for index, row in enumerate(result):
+        row['iteration'] = index % 4
+        row['worker_log'] = f'worker-{index % 4}.log'
+        row.update(cgroup_limits={'cpu.max': '200000 100000', 'cpuset.cpus.effective': '0,1',
+                                 'memory.max': str(contract.MEMORY_BYTES), 'memory.swap.max': '0', 'pids.max': '256'},
+                   final_cgroup=dict(usage_usec=row['samples'][-1]['usage_usec'],
+                                     throttled_usec=row['samples'][-1]['throttled_usec'],
+                                     memory_peak=row['cgroup_peak_memory_bytes'], oom=0, oom_kill=0))
     return result
 
 
 class Measurement(unittest.TestCase):
     def test_budget_does_not_credit_provider_speedup(self):
         self.assertEqual(sum(contract.budget().values()), 360 * 60)
-        self.assertEqual(contract.budget()['campaigns'], 8 * contract.ITERATION_SECONDS)
+        self.assertEqual(contract.budget()['campaigns'], 4 * contract.ITERATION_SECONDS)
+        self.assertEqual(contract.ITERATION_SECONDS, 4500)
+        self.assertEqual(contract.FINAL_MINUTES, 15)
+        for child, harness in [(2026, 564), (2641, 630)]:
+            self.assertLess((child + harness) * 1.25 + 120, contract.ITERATION_SECONDS)
         self.assertEqual(contract.WORKERS, 2)
 
     def test_scope_cannot_accept_perf005_or_another_candidate(self):
@@ -240,14 +299,18 @@ class Measurement(unittest.TestCase):
 
     def test_upload_receipts_source_attempt_and_preflight_fail_closed(self):
         with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, RUNNER_TEMP=directory,
-                GITHUB_RUN_ID='123', GITHUB_RUN_ATTEMPT='2', RECEIPT_OUTCOME='success'):
+                GITHUB_RUN_ID='123', GITHUB_RUN_ATTEMPT='2', RECEIPT_OUTCOME='success',
+                GITHUB_JOB=contract.JOBS['14'], BENCH_COMPILER='14'):
             base = controller.work()
             identity = dict(source_commit=contract.SOURCE_COMMIT, source_tree=contract.SOURCE_TREE,
-                            run_id='123', run_attempt='2')
-            result = dict(valid=True, completed=True, identity=identity, runs=rows(),
+                            run_id='123', run_attempt='2', job=contract.JOBS['14'], job_id='789', compiler='14')
+            runs = rows()[:4]
+            result = dict(valid=True, completed=True, identity=identity, runs=runs,
+                          budget=contract.budget(), allocation=runs[0]['allocation'], performance_success=False,
+                          host_resources=dict(available_memory_bytes=8 * 1024**3, free_disk_bytes=10 * 1024**3),
                           preflight=dict(external_busy_fraction=.01, steal_fraction=0, elapsed_seconds=10))
             transport = dict(outcome='success', artifact_id='456', artifact_digest='a' * 64,
-                             run_id='123', run_attempt='2')
+                             run_id='123', run_attempt='2', job=contract.JOBS['14'], job_id='789', compiler='14')
             controller.write(base / 'identity.json', identity)
             controller.write(base / 'public/result.json', result)
             controller.write(base / 'upload-receipt.json', transport)
@@ -300,6 +363,11 @@ class Measurement(unittest.TestCase):
 
     def test_complete_two_compiler_abba(self):
         self.assertTrue(controller.validate_rows(rows()))
+        self.assertTrue(controller.validate_rows(rows()[:4], '14'))
+        self.assertTrue(controller.validate_rows(rows()[4:], '16'))
+        for data, compiler in [(rows(), '14'), (rows()[:4], '16'), (rows()[:3], '14')]:
+            with self.assertRaises(ValueError):
+                controller.validate_rows(data, compiler)
 
     def test_missing_order_identity_counts_trace_and_contention_fail(self):
         cases = [lambda r: r.pop(), lambda r: r.reverse(),
