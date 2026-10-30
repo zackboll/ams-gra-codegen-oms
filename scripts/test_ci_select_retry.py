@@ -2,6 +2,7 @@
 import copy
 import hashlib
 import io
+import importlib.util
 import json
 import unittest
 import zipfile
@@ -12,6 +13,31 @@ from ci_retry_test_data import metadata, job_name
 from test_ci_select import gate
 from test_ci_select_task100 import Task100Evidence, bundle as task100_bundle
 from test_real_uci_evidence import bundle as shard_bundle, change_json
+import ci_selection
+
+
+class HistoricalReplaySelection(unittest.TestCase):
+    def test_only_complete_historical_v1_can_be_projected(self):
+        spec = importlib.util.spec_from_file_location('retry_replay',
+            ci_selection.ROOT / 'scripts/replay-ci-retry-001.py')
+        replay = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(replay)
+        policy = ci_selection.inventory()
+        manifest = ci_selection.select([], policy, full_reason='historical fixture')
+        for field in ('deep_jobs', 'deep_selected_cells', 'deep_skipped_cells'):
+            manifest.pop(field)
+        manifest['version'] = 1
+        original = copy.deepcopy(manifest)
+        result = replay.replay_selection(manifest, policy)
+        ci_selection.validate_deep(result, policy)
+        self.assertEqual(result['deep_selected_cells'], 12)
+        self.assertEqual(result['deep_skipped_cells'], 0)
+        self.assertEqual(manifest, original)
+        for mutation in (dict(version=2), dict(mode='selective-pr'), dict(deep=False),
+                         dict(baseline=False), dict(jobs={}), dict(cells=[]),
+                         dict(selected_cells=19), dict(skipped_cells=1)):
+            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                replay.replay_selection(dict(manifest, **mutation), policy)
 
 
 NAMES = [f'task100-ada-websocket-{kind}-{compiler}' for kind in ('transport', 'sleet')

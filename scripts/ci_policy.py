@@ -296,10 +296,16 @@ def check(policy=None, workflows=None, sleet=None):
         raise ValueError('immutable main Deep cell/qualification inventory changed')
     for job_id, record in policy['orchestration_jobs'].items():
         expected[record['workflow'], job_id] = dict(cells=[dict(lane=record['lane'])])
-    if set(workflows) != {w for w, _ in expected}:
+    from ci_bench.policy import check as benchmark_policy, WORKFLOW as benchmark_workflow
+    benchmark_policy(policy, workflows, ROOT)
+    if set(workflows) != {w for w, _ in expected} | {benchmark_workflow}:
         raise ValueError('unmapped workflow runner inventory')
     count = 0
     for workflow, text in workflows.items():
+        if workflow == benchmark_workflow:
+            # Manual-only infrastructure is registered separately, never part of
+            # automatic PR/main selection or mandatory qualification aggregation.
+            continue
         header, jobs = blocks(text)
         required = {j for w,j in expected if w==workflow} | set(policy['reusable_jobs'].get(workflow, {}))
         if set(jobs) != required:

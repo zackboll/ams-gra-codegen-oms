@@ -5092,6 +5092,45 @@
   "task100_original_head": "904ad3baebbf237a91e118c91457ac7207e8edd9",
   "reconciliation_main": "b6c6c9c5b1fabcd0716c1fd1183cc411d8841872",
   "reconciliation_main_tree": "9dc99ef6531ab61b248f83b5f613e981e4002bc0",
+  "manual_benchmark": {
+    "workflow": "portable-provider-benchmark.yml",
+    "lane": 3,
+    "events": [
+      "workflow_dispatch"
+    ],
+    "source_policy": "current main controller; exact untrusted repository commit",
+    "workflow_sha256": "f07d07683698e768d6031f16b6f0e1998015fc9a491a4e259a77c8df2d130acf",
+    "sources_sha256": {
+      "scripts/ci_artifact_provenance.py": "f2f7cfe5dcde40cbd64832f8ac8be83ff229cfd760dc955364ec4f9b850158b2",
+      "scripts/ci_bench/Dockerfile": "78194910d2e1c4bdc87b44094b9f4782488e6154df1c61c6b6d8be0cdbb4ce1b",
+      "scripts/ci_bench/contract.py": "126cbb3ad922e2b53d4b8a15e7adce460aa9abe947b1d3dc1ad74128fcb0ba12",
+      "scripts/ci_bench/controller.py": "dc29947e984b8d855ee247e251537d3d4e3abb4a65190f759ffbaffef8e10843",
+      "scripts/ci_bench/provision.py": "096f6896913a4aa5381a32f30e31ae48db8df21c7526a2836c91b4fe3127e745",
+      "scripts/ci_bench/reconcile.py": "4fea6cdbbcd3f9492384e9b6507636bf3d2a516ecd1d540e8d6f6ea6518577c4",
+      "scripts/ci_bench/worker.py": "1ae47dc4d637159bf7a90f68b17b72f77e1fd8daa26b6ce78dd90d0f8a0aad93"
+    },
+    "jobs": {
+      "benchmark-gnat-14": {
+        "compiler": "14",
+        "needs": [],
+        "timeout_minutes": 360
+      },
+      "benchmark-gnat-16": {
+        "compiler": "16",
+        "needs": [
+          "benchmark-gnat-14"
+        ],
+        "timeout_minutes": 360
+      },
+      "benchmark-evidence": {
+        "needs": [
+          "benchmark-gnat-14",
+          "benchmark-gnat-16"
+        ],
+        "timeout_minutes": 15
+      }
+    }
+  },
   "deep_header": "name: Deep CI\non:\n  workflow_call:\n    inputs:\n      selection:\n        description: Verified canonical v2 CI selection manifest; empty only for direct full qualification\n        type: string\n        required: false\n        default: ''\n  schedule:\n    - cron: \"0 6 * * *\"\n  workflow_dispatch:\npermissions:\n  contents: read",
   "deep_selection_version": 2,
   "ci_select_002_main": "7958c4e0d8f78768fd4c7d4c1bd34877c31d893a",

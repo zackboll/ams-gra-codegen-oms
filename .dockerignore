@@ -1,0 +1,8 @@
+# Trusted image context only; no worktree .git credentials, build outputs or evidence.
+.git
+target
+build
+generated
+**/__pycache__
+**/*.pyc
+*.log
