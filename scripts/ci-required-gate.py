@@ -11,12 +11,13 @@ import hashlib
 from ci_artifact_provenance import resolve, verify_final_job
 from real_uci_evidence import SHARDS, ORIGINAL, verify_bundle
 from task100_evidence import verify_bundle as verify_task100_bundle
-from ci_selection import ROOT, complete_diff, from_environment, git, inventory, ordinary_jobs
+from ci_selection import ROOT, complete_diff, deep_jobs, from_environment, git, inventory, ordinary_jobs, validate_deep
 
 
 def validate(manifest, expected, needs, jobs, artifacts, policy):
     if manifest != expected:
         raise ValueError("selection differs from independently recomputed complete diff")
+    validate_deep(manifest, policy)
     required = ordinary_jobs(policy)
     for prerequisite in ("changes", "baseline"):
         if needs.get(prerequisite, {}).get("result") != "success":
@@ -36,11 +37,51 @@ def validate(manifest, expected, needs, jobs, artifacts, policy):
     if manifest["deep"]:
         if needs.get("deep-qualification", {}).get("result") != "success":
             raise ValueError("missing/failed/cancelled Deep CI prerequisite")
-        for record in policy["jobs"]:
-            if record["workflow"] == "deep-ci.yml":
-                validate_cells(record, jobs, artifacts, prefix="deep-qualification / ")
     elif needs.get("deep-qualification", {}).get("result") != "skipped":
         raise ValueError("unselected Deep CI not explicitly skipped")
+    for job_id, record in deep_jobs(policy).items():
+        if job_id in manifest['deep_jobs']:
+            validate_cells(record, jobs, artifacts, prefix="deep-qualification / ")
+        else:
+            validate_skipped_deep(record, jobs, artifacts, caller_selected=manifest['deep'])
+    known = {'deep-qualification / ' + c['name'] for r in deep_jobs(policy).values() for c in r['cells']}
+    known.update('deep-qualification / ' + j for j in deep_jobs(policy))
+    known.update(collapsed_matrix_name(r) for j, r in deep_jobs(policy).items()
+                 if j not in manifest['deep_jobs'] and len(r['cells']) > 1)
+    if any(j['name'].startswith('deep-qualification / ') and j['name'] not in known for j in jobs):
+        raise ValueError('unregistered authoritative Deep job')
+
+
+def collapsed_matrix_name(record):
+    # Hosted job-level skips retain the literal, unexpanded matrix expression.
+    # Derive only the reviewed inventory axis, never accept an arbitrary suffix.
+    axis, = record['cells'][0]['variant']
+    return 'deep-qualification / ' + record['job_id'] + ' (${{ matrix.' + axis + ' }})'
+
+
+def validate_skipped_deep(record, jobs, artifacts, caller_selected):
+    """Job-level if precedes matrix expansion: GitHub emits one collapsed skip.
+
+    Reject expanded execution even if the reusable caller's aggregate is green.
+    With the caller skipped GitHub may expose only that caller, not its children.
+    These representations must also be confirmed against retained hosted jobs.
+    """
+    prefix = 'deep-qualification / '
+    names = {prefix + record['job_id'], *(prefix + c['name'] for c in record['cells'])}
+    if len(record['cells']) > 1:
+        names.add(collapsed_matrix_name(record))
+    matches = [j for j in jobs if j['name'] in names]
+    if caller_selected and len(matches) != 1:
+        raise ValueError('missing/ambiguous skipped Deep job: ' + record['job_id'])
+    if not caller_selected and len(matches) > 1:
+        raise ValueError('ambiguous skipped Deep caller child: ' + record['job_id'])
+    for job in matches:
+        if (job['status'] != 'completed' or job['conclusion'] != 'skipped'
+                or job.get('steps') or job.get('runner_id', 0) not in (0, None)):
+            raise ValueError('unselected Deep job executed qualification: ' + record['job_id'])
+    owned = {n for c in record['cells'] for n in c['artifacts']}
+    if any(a['name'] in owned for a in artifacts):
+        raise ValueError('unexpected unselected Deep artifact: ' + record['job_id'])
 
 
 def validate_cells(record, jobs, artifacts, prefix=""):
@@ -62,9 +103,9 @@ def validate_cells(record, jobs, artifacts, prefix=""):
             if 'name' in step and sum(s.get('name') == step['name'] for s in steps) != 1:
                 raise ValueError('missing mandatory named step: ' + step['name'])
         for name in cell["artifacts"]:
-            evidence = [a for a in artifacts if a["name"] == name and not a["expired"]
-                        and a["size_in_bytes"] > 0 and a["created_at"] >= job["started_at"]]
-            if len(evidence) != 1:
+            evidence = [a for a in artifacts if a["name"] == name]
+            if (len(evidence) != 1 or evidence[0]['expired'] or evidence[0]['size_in_bytes'] <= 0
+                    or evidence[0]['created_at'] < job['started_at']):
                 raise ValueError("missing/expired/stale required evidence: " + name)
 
 
@@ -96,6 +137,23 @@ def evidence(run_id, attempt):
                 for n in range(1, int(attempt) + 1)}
     return dict(jobs=attempts[int(attempt)]['jobs'], attempts=attempts,
                 artifacts=pages(f"actions/runs/{run_id}/artifacts", "artifacts"))
+
+
+def verify_records(records, execution):
+    """Bind every API record to the authoritative run, attempt and head source."""
+    jobs = records['jobs']
+    artifacts = records['artifacts']
+    if len({j['id'] for j in jobs}) != len(jobs) or len({a['id'] for a in artifacts}) != len(artifacts):
+        raise ValueError('duplicate authoritative job/artifact identity')
+    for job in jobs:
+        if (str(job['run_id']) != str(execution['id'])
+                or str(job['run_attempt']) != str(execution['run_attempt'])
+                or job['head_sha'] != execution['head_sha']):
+            raise ValueError('authoritative job source/run/attempt mismatch')
+    for artifact in artifacts:
+        source = artifact.get('workflow_run', {})
+        if str(source.get('id')) != str(execution['id']) or source.get('head_sha') != execution['head_sha']:
+            raise ValueError('authoritative artifact source/run mismatch')
 
 
 def download_bundle(artifact):
@@ -162,11 +220,13 @@ def verify_source(manifest, policy, run, sha, event_name):
     git(ROOT, 'merge-base', '--is-ancestor', policy['incorporated_main'], sha)
     git(ROOT, 'merge-base', '--is-ancestor', policy['task100_incorporated_main'], sha)
     git(ROOT, 'merge-base', '--is-ancestor', policy['reconciliation_main'], sha)
+    git(ROOT, 'merge-base', '--is-ancestor', policy['ci_select_002_main'], sha)
     if event_name == 'pull_request':
         complete_diff(ROOT, identities['base'], identities['head'], sha)
         git(ROOT, 'merge-base', '--is-ancestor', policy['incorporated_main'], identities['base'])
         git(ROOT, 'merge-base', '--is-ancestor', policy['task100_incorporated_main'], identities['base'])
         git(ROOT, 'merge-base', '--is-ancestor', policy['reconciliation_main'], identities['base'])
+        git(ROOT, 'merge-base', '--is-ancestor', policy['ci_select_002_main'], identities['base'])
     if run['event'] != event_name or run['head_sha'] != (identities['head'] if event_name == 'pull_request' else sha):
         raise ValueError('authoritative workflow run source mismatch')
 
@@ -176,7 +236,7 @@ def reconcile_task100(artifacts, manifest, sha, tree, run_id, attempt, loader=do
     kinds = []
     if manifest['jobs']['ada-websocket-transport']:
         kinds.append(('transport', False))
-    if manifest['deep']:
+    if 'ada-websocket-real-sleet' in manifest['deep_jobs']:
         kinds.append(('sleet', True))
     for kind, real_sleet in kinds:
         for compiler in ('14', '16'):
@@ -202,6 +262,7 @@ def main():
         raise ValueError('authoritative run/attempt mismatch')
     verify_source(expected, policy, execution, os.environ['GITHUB_SHA'], os.environ['GITHUB_EVENT_NAME'])
     own = evidence(run, os.environ["GITHUB_RUN_ATTEMPT"])
+    verify_records(own, execution)
     verify_final_job(own['jobs'], execution, os.environ['GITHUB_JOB'])
     for snapshot in own['attempts'].values():
         verify_source(expected, policy, snapshot['run'], os.environ['GITHUB_SHA'], os.environ['GITHUB_EVENT_NAME'])
@@ -210,12 +271,14 @@ def main():
     task100 = reconcile_task100(own['artifacts'], manifest, os.environ['GITHUB_SHA'],
                                git(ROOT, 'rev-parse', 'HEAD^{tree}').decode().strip(),
                                run, os.environ['GITHUB_RUN_ATTEMPT'], jobs=own['jobs'], attempts=own['attempts'])
-    if manifest['deep']:
+    if set(SHARDS) <= set(manifest['deep_jobs']):
         primary = reconcile_primary(own['artifacts'], os.environ['GITHUB_SHA'],
                                     git(ROOT, 'rev-parse', 'HEAD^{tree}').decode().strip(),
                                     run, os.environ['GITHUB_RUN_ATTEMPT'], jobs=own['jobs'], attempts=own['attempts'])
-    report = dict(identities=manifest["identities"], selected_cells=manifest["selected_cells"],
-                  skipped_cells=manifest["skipped_cells"], deep=manifest["deep"], conclusion="success",
+    report = dict(version=manifest['version'], identities=manifest["identities"], selected_cells=manifest["selected_cells"],
+                  skipped_cells=manifest["skipped_cells"], deep=manifest["deep"],
+                  deep_jobs=manifest['deep_jobs'], deep_selected_cells=manifest['deep_selected_cells'],
+                  deep_skipped_cells=manifest['deep_skipped_cells'], conclusion="success",
                   run_id=run, gate_attempt=os.environ['GITHUB_RUN_ATTEMPT'],
                   real_uci_shards=primary, task100=task100)
     Path("ci-required-result.json").write_text(json.dumps(report, indent=2) + "\n")

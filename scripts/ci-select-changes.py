@@ -15,6 +15,8 @@ if os.environ.get("GITHUB_STEP_SUMMARY"):
     with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
         summary.write(f"## CI selection: {manifest['mode']}\n\n"
                       f"Selected ordinary cells: {manifest['selected_cells']}; "
-                      f"skipped: {manifest['skipped_cells']}; Deep required: {manifest['deep']}\n\n"
+                      f"skipped: {manifest['skipped_cells']}; "
+                      f"Deep selected: {manifest['deep_selected_cells']}; "
+                      f"Deep skipped: {manifest['deep_skipped_cells']}\n\n"
                       "```json\n" + json.dumps(manifest, indent=2, sort_keys=True) + "\n```\n")
 print(compact)
