@@ -138,8 +138,18 @@ and unconstrained direct `float` members, using the shared binary64 range
 classifier. Demand-gated standard-library codecs preserve finite bits (including
 negative zero), correctly round original JSON number tokens, and use exact OMS
 special Strings. Integer syntax/arbitrary precision and duplicate rejection are
-unchanged. Float32, Decimal, DateTime, Binary, Choice and abstract values remain
+unchanged. Float32, Decimal, Binary, Choice and abstract values remain
 outside this Python subset; numerical qualification is not complete-UCI readiness.
+
+[PY-009](docs/task-py-009-python-datetime.md) adds checked named DateTime Zulu
+carriers (the shared exact effective `.+Z` profile) and unconstrained direct
+`xs:dateTime` members. Models and OMS JSON codecs retain XML-whitespace-normalized
+lexical spelling, arbitrary fractional precision, long/negative years, hour 24
+and the established leap-second contract without `datetime` conversion.
+Direct members additionally admit omitted and bounded numeric timezones.
+Named unconstrained DateTime, other temporal facets, Time and Duration remain
+unsupported. DateTime support is not complete real-UCI service interoperability;
+the qualification document records measured successor blockers.
 
 Run
 `ams-gra-codegen-oms --help` or a command followed by `--help` for complete

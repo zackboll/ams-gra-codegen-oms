@@ -1,0 +1,10 @@
+{
+  "authority": "Frozen PY-009 independently authored lexical/JSON vectors and measured UCI campaigns; changes require new reviewed evidence",
+  "sha256": {
+    "lexical.json": "e9690328c8003ece978a056e8fb5e041f1ee02170b1923a2319eaf044e4fbf1d",
+    "positive.json": "1b045c199580dd0ec773c432494b6ab9019d38488c0ee3fb79a4b08147fe5c45",
+    "negative.json": "1a59dcdecb8fc801ac16bd78fd7f9a09b4d9df9c865bf5bd19a5e7984345d85e",
+    "before.json": "0fa0cb64e84d461532481b666194c8a8eac822cbab72164290cfd3d6c55d9aa9",
+    "after.json": "c46102cc62324bb9656f18b5836a6f21a14f09881a0d1fb05a9e3889fdb02f60"
+  }
+}

@@ -133,6 +133,8 @@ PY008_SURFACES = (
 
 
 def check_py008_sleet(text):
+    from py009_ci import project_sleet
+    text = project_sleet(text)
     # Bind execution to the existing version loop and shared pinned build.
     # A comment, disabled command, filter or invocation outside this loop is
     # not a substitute for executing PY-006/007/008 for every interpreter.
@@ -232,6 +234,8 @@ def check(policy=None, workflows=None, sleet=None):
             raise ValueError('inherited trusted-dispatch source changed: ' + path)
     if workflows is None:
         workflows = {p.name: p.read_text() for p in (ROOT / '.github/workflows').iterdir() if p.suffix in ('.yml', '.yaml')}
+    from py009_ci import project
+    workflows = project(workflows)
     from real_uci_evidence import check_layout
     check_layout(blocks(workflows['deep-ci.yml'])[1])
     if policy['lanes'] != [f'oms-main-slot-{n}' for n in range(1, 6)]:
