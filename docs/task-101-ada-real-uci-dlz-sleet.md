@@ -125,6 +125,17 @@ matrices. They were development runs with a dirty checkout and intentionally do
 fresh directory from committed source after the fixture/codec-corpus additions.
 No unfinished or superseded cell is a success record.
 
+The clean committed-source campaigns `final-b271b13-14/` and
+`final-b271b13-16/` subsequently passed the independent source-bound verifier:
+each completed all 12 real-Sleet cells, six real-DLZ codec cells (156 documents,
+60 accepted/96 rejected), 132 primary handler calls, 12 witness calls, 120 typed
+publications, 120 broker rejections, and 12 recoverable Ada decode rejections.
+All consumer/server exits were zero. This qualifies source
+`b271b13a4bfb6251998eafcc973f1a0e823937ef`, tree
+`a90ae58da7cb5d3e660befb624b63e29d81451ed`, not a later corrective head.
+The final per-tool identity recording correction requires a fresh campaign;
+delivery evidence must name that new source rather than relabel these runs.
+
 ## Negative stages and recovery
 
 | Input | Observed / required stage and error |
@@ -162,6 +173,13 @@ selection. Adding the output endpoint intentionally changes only Service_API
 and the service manifest. All generated source, contract, schema/include, compiler,
 linker, generator and Sleet identities are retained. Baseline regenerated selections
 must be compared separately against the verified main binary before final delivery.
+
+The separately built verified-main generator and candidate generator have the
+same SHA-256 `f1a0fd113c155f232b625500d6141496b68d8bc06d0bb234757c55a5586c14f9`.
+`generated-parity/result.json` records 238 byte-identical selections: 182
+successful output trees and 56 matching atomic rejections, including both real
+DLZ releases and all available service fixtures across admitted Ada profiles.
+`production-source-parity.json` proves 462 production source files unchanged.
 
 Published payloads, original delivered envelopes, broker diagnostics, command
 argv/cwd, exits, per-cell handler counts, and cleanup markers are retained, not
@@ -220,6 +238,20 @@ GNAT-required locked all-target workspace suite passed during development:
 executed interoperability evidence. Task098/099/100 regressions and final
 source-bound execution must finish before a PR is opened; exact-head hosted
 success is separately required for review readiness.
+
+Completed local regressions preserve all existing execution distinctions:
+Task098 36 cells/5,616 documents, Task099 48 cells, and Task100 48 cells including
+12 existing synthetic pinned-Sleet runs. The selector suite passes 128 tests;
+Task101's verifier/selector/provenance controls pass 15 tests, with per-file
+missing/duplicate and per-field adversarial subcases. All script unit tests pass
+215 tests when the existing `strace` prerequisite is on PATH. CI002 passes 30
+tests. Split guard and 556-check adversarial split suite pass; layout ownership
+passes its three tests, including two independent 364-mutation campaigns.
+Pinned actionlint 1.7.12 (binary SHA-256
+`c872d6db8c6bf83a8eaa704fc93999f027d55dffbc63b8a6abdccb47df5f4cd4`)
+and whitespace checks pass. Initial harness/setup failures remain preserved,
+including missing strace, a missing layout-checker CLI argument, and the
+development port-zero probe; none is recorded as successful qualification.
 
 ## Explicit unsupported features
 

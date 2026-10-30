@@ -16,6 +16,8 @@ PINS = {'25': 'ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27'
         '26': 'af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b'}
 DEPS = {'aht': ('https://github.com/ovenpasta/aht.git', '664d5ddeb568626b2f9ff66054c7091894b3b8d4'),
         'websocket-ada': ('https://github.com/kokhlo/websocket-ada.git', '765d9cd612838eb00645037977c8cc9af7171c3e')}
+TOOL_IDENTITIES = ('for tool in gcc gnat gprbuild ld; do path=$(command -v "$tool"); '
+                   'printf "%s\\n" "$path"; sha256sum "$path"; done; gcc -print-prog-name=ld')
 
 
 def main():
@@ -37,7 +39,7 @@ def main():
     campaign.provision()
     campaign.run('source', ['git', 'rev-parse', 'HEAD', 'HEAD^{tree}'])
     campaign.run('source-status', ['git', 'status', '--porcelain'])
-    campaign.run('platform', campaign.shell(['sh', '-ec', 'test "$(uname -m)" = x86_64; test "$(getconf GNU_LIBC_VERSION)" = "glibc 2.41"; uname -m; getconf GNU_LIBC_VERSION; gcc -v; ld --version; command -v gcc gnat gprbuild ld; sha256sum $(command -v gcc gnat gprbuild ld)']))
+    campaign.run('platform', campaign.shell(['sh', '-ec', 'test "$(uname -m)" = x86_64; test "$(getconf GNU_LIBC_VERSION)" = "glibc 2.41"; uname -m; getconf GNU_LIBC_VERSION; gcc -v; ld --version; ' + TOOL_IDENTITIES]))
     generator = args.generator.resolve()
     hashes = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
               for folder in ['scripts/task101', 'tests/ada-real-uci-dlz', 'tests/fixtures/task101', 'ada']

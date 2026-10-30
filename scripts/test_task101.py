@@ -3,6 +3,9 @@ import copy
 import hashlib
 import itertools
 import json
+from pathlib import Path
+import subprocess
+import tempfile
 import unittest
 
 import ci_selection
@@ -82,6 +85,27 @@ def bundle(compiler='14'):
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_per_tool_identities_under_posix_sh(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('task101_qualification_test',
+            evidence.ROOT / 'scripts/task101/qualify.py')
+        qualify = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(qualify)
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            for tool in ('gcc', 'gnat', 'gprbuild', 'ld'):
+                path = directory / tool
+                path.write_text('#!/bin/sh\nprintf "linker-path\\n"\n')
+                path.chmod(0o755)
+            from unittest.mock import patch
+            import os
+            with patch.dict(os.environ, PATH=str(directory) + ':' + os.environ['PATH']):
+                output = subprocess.check_output(['sh', '-ec', qualify.TOOL_IDENTITIES], text=True)
+            for tool in ('gcc', 'gnat', 'gprbuild', 'ld'):
+                path = directory / tool
+                self.assertIn(str(path) + '\n', output)
+                self.assertIn(hashlib.sha256(path.read_bytes()).hexdigest() + '  ' + str(path), output)
+
     def verify(self, files, compiler='14'):
         # Only root bytes are synthetic. All SHA checks still execute, including
         # a wrong-root mutation; production never substitutes these pins.
