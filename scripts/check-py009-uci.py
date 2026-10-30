@@ -94,10 +94,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--generator', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--service-baseline', type=Path, default=FIXTURE / 'after.json',
+                        help='Explicit versioned successor; historical oracle stays immutable')
     args = parser.parse_args()
     generator = args.generator.resolve()
     historical()
-    baseline = json.loads((FIXTURE / 'after.json').read_text())
+    baseline = json.loads(args.service_baseline.read_text())
     driver.require(baseline.get('completed') is True, 'incomplete frozen measurements')
     actual = measurement.measure(generator, generator.parent / 'examples/python_datetime_closure', args.output.resolve())
     summary = validate(actual['measurements'], baseline['measurements'])

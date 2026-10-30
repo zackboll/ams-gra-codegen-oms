@@ -3631,7 +3631,8 @@
           "variant": {},
           "lane": 4,
           "artifacts": [
-            "py008-numeric"
+            "py008-numeric",
+            "py010-sleet"
           ]
         }
       ],

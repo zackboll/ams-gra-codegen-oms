@@ -1,0 +1,42 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+ xmlns:t="https://www.vdl.afrl.af.mil/programs/oam"
+ targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified" version="002.5.0">
+  <!-- All ten authoritative shapes; names intentionally unrelated to UCI. -->
+  <xs:simpleType name="Text20"><xs:restriction base="xs:string"><xs:minLength value="1"/><xs:maxLength value="20"/><xs:pattern value="[ -~]{1,20}"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Text32"><xs:restriction base="xs:string"><xs:minLength value="1"/><xs:maxLength value="32"/><xs:pattern value="[ -~]{1,32}"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Text64"><xs:restriction base="xs:string"><xs:minLength value="1"/><xs:maxLength value="64"/><xs:pattern value="[ -~]{1,64}"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Text81"><xs:restriction base="xs:string"><xs:minLength value="1"/><xs:maxLength value="81"/><xs:pattern value="[ -~]{1,81}"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Text128"><xs:restriction base="xs:string"><xs:minLength value="1"/><xs:maxLength value="128"/><xs:pattern value="[ -~]{1,128}"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Text256"><xs:restriction base="xs:string"><xs:minLength value="1"/><xs:maxLength value="256"/><xs:pattern value="[ -~]{1,256}"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Text480"><xs:restriction base="xs:string"><xs:minLength value="1"/><xs:maxLength value="480"/><xs:pattern value="[ -~]{1,480}"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Text512"><xs:restriction base="xs:string"><xs:minLength value="1"/><xs:maxLength value="512"/><xs:pattern value="[ -~]{1,512}"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Text1024"><xs:restriction base="xs:string"><xs:minLength value="1"/><xs:maxLength value="1024"/><xs:pattern value="[ -~]{1,1024}"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Text4"><xs:restriction base="xs:string"><xs:minLength value="2"/><xs:maxLength value="4"/><xs:pattern value="[ -~]{2,4}"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Restricted"><xs:restriction base="t:Text256"/></xs:simpleType>
+  <xs:complexType name="Ancestor" abstract="true"><xs:sequence>
+    <xs:element name="Inherited" type="t:Text256"/>
+  </xs:sequence></xs:complexType>
+  <xs:complexType name="Nested"><xs:sequence>
+    <xs:element name="Value" type="t:Text256"/>
+    <xs:element name="Values" type="t:Text256" minOccurs="0" maxOccurs="3"/>
+  </xs:sequence></xs:complexType>
+  <xs:complexType name="Payload"><xs:complexContent><xs:extension base="t:Ancestor"><xs:sequence>
+    <xs:element name="Direct" type="xs:string"/>
+    <xs:element name="Named" type="t:Text256"/>
+    <xs:element name="Optional" type="t:Text256" minOccurs="0"/>
+    <xs:element name="Values" type="t:Text256" minOccurs="1" maxOccurs="3"/>
+    <xs:element name="Nested" type="t:Nested"/>
+    <xs:element name="Restricted" type="t:Restricted" minOccurs="0"/>
+    <xs:element name="Bound20" type="t:Text20" minOccurs="0"/>
+    <xs:element name="Bound32" type="t:Text32" minOccurs="0"/>
+    <xs:element name="Bound64" type="t:Text64" minOccurs="0"/>
+    <xs:element name="Bound81" type="t:Text81" minOccurs="0"/>
+    <xs:element name="Bound128" type="t:Text128" minOccurs="0"/>
+    <xs:element name="Bound256" type="t:Text256" minOccurs="0"/>
+    <xs:element name="Bound480" type="t:Text480" minOccurs="0"/>
+    <xs:element name="Bound512" type="t:Text512" minOccurs="0"/>
+    <xs:element name="Bound1024" type="t:Text1024" minOccurs="0"/>
+    <xs:element name="Bound4" type="t:Text4" minOccurs="0"/>
+  </xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+  <xs:element name="TextNotice" type="t:Payload" t:version="001.000.000.000"/>
+</xs:schema>

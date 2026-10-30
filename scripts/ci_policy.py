@@ -133,6 +133,8 @@ PY008_SURFACES = (
 
 
 def check_py008_sleet(text):
+    from py010_ci import project_sleet as project_py010_sleet
+    text = project_py010_sleet(text)
     from py009_ci import project_sleet
     text = project_sleet(text)
     # Bind execution to the existing version loop and shared pinned build.
@@ -234,6 +236,8 @@ def check(policy=None, workflows=None, sleet=None):
             raise ValueError('inherited trusted-dispatch source changed: ' + path)
     if workflows is None:
         workflows = {p.name: p.read_text() for p in (ROOT / '.github/workflows').iterdir() if p.suffix in ('.yml', '.yaml')}
+    from py010_ci import project as project_py010
+    workflows = project_py010(workflows)
     from py009_ci import project
     workflows = project(workflows)
     from real_uci_evidence import check_layout
@@ -283,7 +287,7 @@ def check(policy=None, workflows=None, sleet=None):
     # its independently pinned additive payload/step contracts are checked below.
     deep_baseline = json.loads(json.dumps(deep_baseline))
     sleet_cells = next(r['cells'] for r in deep_baseline if r['job_id'] == 'real-sleet')
-    if len(sleet_cells) != 1 or sleet_cells[0]['artifacts'] != ['py008-numeric']:
+    if len(sleet_cells) != 1 or sleet_cells[0]['artifacts'] != ['py008-numeric', 'py010-sleet']:
         raise ValueError('PY-008 mandatory numeric artifact inventory changed')
     sleet_cells[0]['artifacts'] = []
     if hashlib.sha256(json.dumps(deep_baseline, sort_keys=True).encode()).hexdigest() != '4850f5e34beca0c5ab52c1152fa84a2ad1d1e8883d24a8bece9a4f206ea799f0':
