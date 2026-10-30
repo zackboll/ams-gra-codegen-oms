@@ -11,6 +11,26 @@ PERF-009's branch, correctness certificate, acceptance flags or production
 portable qualification. The infrastructure PR must remain unmerged, without
 auto-merge, for independent review. No benchmark is dispatched by this PR.
 
+R4 incorporates current main `e186c9dd7c700eb56e142a22309256f3de9a0141`
+(merged CI-SELECT-002) through an ordinary merge into the existing branch.
+The inventory conflict is resolved additively: all current-main fields,
+automatic jobs, source rules and Deep prerequisites remain intact alongside
+the unchanged `manual_benchmark` registration. The policy retains main's
+immutable Deep inventory, canonical manifest **v2**, job-level selection and
+selected/skipped cell accounting, plus the separate manual-workflow check.
+The ordinary/Deep workflows, classifier, authoritative final gate and provenance
+resolver match that main revision exactly; all upstream negative controls are
+preserved. The historical CI-RETRY replay utility explicitly projects only a
+validated complete full-PR v1 selection to full v2 for retrospective replay,
+with new rejection tests and fresh output outside the retained evidence. This
+does not add a fallback to the live final gate or authorize old hosted results.
+No benchmark source/workflow checksum was changed to reconcile this merge.
+The three manual jobs remain outside both automatic Fast and Deep selection;
+benchmark infrastructure changes still demand full automatic qualification.
+R4 hosted acceptance qualifies infrastructure integration only, not benchmark
+feasibility, clean measurements or PERF-009 performance acceptance. The R3
+budget and the full-workload feasibility limitation below remain unchanged.
+
 After independent review and explicit authorization, the trusted definition
 and controller must be merged to **main** before use. Dispatching a feature
 version of this workflow is not supported. Only maintainers with repository

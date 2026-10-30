@@ -238,6 +238,8 @@ class GateTests(unittest.TestCase):
         self.manifest=selection.select([change('README.md')],self.policy)
         self.needs.update({j:dict(result='skipped') for j in self.manifest['jobs']})
         self.needs['deep-qualification']['result']='skipped'
+        self.jobs = []
+        self.artifacts = []
         self.validate()
 
     def test_selected_failure_cancellation_skipped_missing_conclusion(self):

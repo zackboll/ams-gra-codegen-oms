@@ -2,6 +2,7 @@
 import copy
 import hashlib
 import io
+import importlib.util
 import json
 import unittest
 import zipfile
@@ -12,6 +13,31 @@ from ci_retry_test_data import metadata, job_name
 from test_ci_select import gate
 from test_ci_select_task100 import Task100Evidence, bundle as task100_bundle
 from test_real_uci_evidence import bundle as shard_bundle, change_json
+import ci_selection
+
+
+class HistoricalReplaySelection(unittest.TestCase):
+    def test_only_complete_historical_v1_can_be_projected(self):
+        spec = importlib.util.spec_from_file_location('retry_replay',
+            ci_selection.ROOT / 'scripts/replay-ci-retry-001.py')
+        replay = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(replay)
+        policy = ci_selection.inventory()
+        manifest = ci_selection.select([], policy, full_reason='historical fixture')
+        for field in ('deep_jobs', 'deep_selected_cells', 'deep_skipped_cells'):
+            manifest.pop(field)
+        manifest['version'] = 1
+        original = copy.deepcopy(manifest)
+        result = replay.replay_selection(manifest, policy)
+        ci_selection.validate_deep(result, policy)
+        self.assertEqual(result['deep_selected_cells'], 12)
+        self.assertEqual(result['deep_skipped_cells'], 0)
+        self.assertEqual(manifest, original)
+        for mutation in (dict(version=2), dict(mode='selective-pr'), dict(deep=False),
+                         dict(baseline=False), dict(jobs={}), dict(cells=[]),
+                         dict(selected_cells=19), dict(skipped_cells=1)):
+            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                replay.replay_selection(dict(manifest, **mutation), policy)
 
 
 NAMES = [f'task100-ada-websocket-{kind}-{compiler}' for kind in ('transport', 'sleet')
@@ -42,7 +68,8 @@ class RetryEvidence(unittest.TestCase):
     def reconcile(self, fixture, current=2):
         artifacts, jobs, attempts, files = fixture
         loader = lambda a: files[a['name']]
-        task100 = gate.reconcile_task100(artifacts, dict(jobs={'ada-websocket-transport': True}, deep=True),
+        task100 = gate.reconcile_task100(artifacts, dict(jobs={'ada-websocket-transport': True}, deep=True,
+                                        deep_jobs=['ada-websocket-real-sleet']),
                                         'a'*40, 'b'*40, '123', str(current), loader,
                                         jobs=jobs, attempts=attempts)
         primary = gate.reconcile_primary(artifacts, 'a'*40, 'b'*40, '123', str(current), loader,
@@ -187,17 +214,18 @@ class GateIdentity(unittest.TestCase):
         from pathlib import Path
         import tempfile
         manifest = dict(identities=dict(merge='a'*40, head='c'*40), deep=True,
-                        selected_cells=34, skipped_cells=0)
+                        deep_jobs=sorted(gate.SHARDS), selected_cells=34, skipped_cells=0)
         _, attempts = metadata([], 2)
         run = attempts[2]['run']
         env = dict(SELECTION_MANIFEST=json.dumps(manifest), NEEDS_JSON='{}',
                    GITHUB_RUN_ID='123', GITHUB_RUN_ATTEMPT='2', GITHUB_SHA='a'*40,
                    GITHUB_EVENT_NAME='pull_request', GITHUB_JOB='pr-ci-required')
-        for target in ('verify_final_job', 'reconcile_task100', 'reconcile_primary'):
+        for target in ('verify_records', 'verify_final_job', 'reconcile_task100', 'reconcile_primary'):
             with self.subTest(target=target), tempfile.TemporaryDirectory() as directory, \
                     patch.dict(gate.os.environ, env), patch.object(gate, 'from_environment', return_value=manifest), \
                     patch.object(gate, 'inventory', return_value={}), patch.object(gate, 'api', return_value=run), \
                     patch.object(gate, 'verify_source'), patch.object(gate, 'validate'), \
+                    patch.object(gate, 'verify_records'), \
                     patch.object(gate, 'git', return_value=b'b'*40), \
                     patch.object(gate, 'evidence', return_value=dict(jobs=[], attempts=attempts, artifacts=[])), \
                     patch.object(gate, 'verify_final_job'), patch.object(gate, 'reconcile_task100', return_value={}), \

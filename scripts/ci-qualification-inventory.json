@@ -20,7 +20,29 @@
         "rust"
       ],
       "rationale": "codegen-core/backend_names.rs includes this exact document in an executable test",
-      "deep": false
+      "deep": false,
+      "deep_jobs": [],
+      "deep_rationale": "codegen-core/backend_names.rs includes this exact document in an executable test"
+    },
+    {
+      "category": "ada-websocket-implementation",
+      "paths": [
+        "ada/oms-lacal-runtime/websocket/**",
+        "ada/oms-lacal-runtime/oms_lacal_websocket.gpr",
+        "ada/oms-lacal-runtime/oms_websocket_dependencies.gpr"
+      ],
+      "jobs": [
+        "rust",
+        "ada-json-guard",
+        "ada-lacal-runtime-core",
+        "ada-websocket-transport"
+      ],
+      "deep": true,
+      "rationale": "Optional WebSocket sources/projects are consumed only by Task100, not the shared transport interface or Rust/Python pinned broker clients.",
+      "deep_jobs": [
+        "ada-websocket-real-sleet"
+      ],
+      "deep_rationale": "Optional WebSocket sources/projects are consumed only by Task100, not the shared transport interface or Rust/Python pinned broker clients."
     },
     {
       "category": "ada-websocket",
@@ -37,7 +59,11 @@
         "ada-websocket-transport"
       ],
       "deep": true,
-      "rationale": "Task100 fixtures and generated consumers share Task099 runtime and OMS JSON"
+      "rationale": "Task100 fixtures and generated consumers share Task099 runtime and OMS JSON",
+      "deep_jobs": [
+        "ada-websocket-real-sleet"
+      ],
+      "deep_rationale": "Task100 fixtures and generated consumers share Task099 runtime and OMS JSON"
     },
     {
       "category": "ada-lacal-runtime",
@@ -53,13 +79,34 @@
         "ada-websocket-transport"
       ],
       "deep": true,
-      "rationale": "Task099 mock transport and typed OMS JSON integration require both compilers; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification"
+      "rationale": "Task099 mock transport and typed OMS JSON integration require both compilers; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification",
+      "deep_jobs": [
+        "ada-websocket-real-sleet"
+      ],
+      "deep_rationale": "Task100 compiles shared Ada runtime plus typed consumers; no Rust/Python or UCI Ada driver imports the LA-CAL runtime."
+    },
+    {
+      "category": "python-backend",
+      "paths": [
+        "crates/backend-python/**"
+      ],
+      "jobs": [
+        "rust",
+        "python-model-backend"
+      ],
+      "rationale": "PythonBackend is dispatched only for Python generation; real-sleet runs PY005/006/007, regressions runs pinned PY007, and msrv compiles CLI/backend-python transitively through facade build.rs.",
+      "deep": true,
+      "deep_jobs": [
+        "msrv-real-uci",
+        "real-sleet",
+        "real-uci-regressions"
+      ],
+      "deep_rationale": "PythonBackend is dispatched only for Python generation; real-sleet runs PY005/006/007, regressions runs pinned PY007, and msrv compiles CLI/backend-python transitively through facade build.rs."
     },
     {
       "category": "python",
       "paths": [
         "python/oms-lacal-runtime/**",
-        "crates/backend-python/**",
         "crates/cli/tests/python*",
         "tests/fixtures/python*/**"
       ],
@@ -68,7 +115,12 @@
         "python-model-backend"
       ],
       "rationale": "Both Python versions execute backend, CLI, generated codecs and actual network mock; rust owns workspace and shared CLI contracts",
-      "deep": true
+      "deep": true,
+      "deep_jobs": [
+        "real-sleet",
+        "real-uci-regressions"
+      ],
+      "deep_rationale": "PY005/006/007 Sleet scripts and pinned PY007 driver consume Python runtime/fixtures. MSRV does not load Python runtime or fixtures."
     },
     {
       "category": "float32-support",
@@ -87,7 +139,21 @@
         "ada-websocket-transport"
       ],
       "rationale": "task097/inherited.py reruns Float32 campaigns; task098/qualify.py covers Float32 composition; task097 boundary/environment reuse Float32 probes; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification",
-      "deep": true
+      "deep": true,
+      "deep_jobs": [
+        "ada-hexbinary-real",
+        "ada-repeated-choice-real-uci",
+        "ada-websocket-real-sleet",
+        "msrv-real-uci",
+        "real-sleet",
+        "real-uci-integral-unicode",
+        "real-uci-regressions",
+        "real-uci-regressions-alternating",
+        "real-uci-regressions-ascii",
+        "real-uci-schema-ipv6",
+        "real-uci-temporal-naming"
+      ],
+      "deep_rationale": "task097/inherited.py reruns Float32 campaigns; task098/qualify.py covers Float32 composition; task097 boundary/environment reuse Float32 probes; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification"
     },
     {
       "category": "lossless-support",
@@ -107,7 +173,21 @@
         "python-model-backend"
       ],
       "rationale": "Float64 ABI/rounding and GNAT14/16 qualification; TimeZulu lossless profile composes this support; Task100 runtime/OMS JSON consumers require transport and independent pinned-Sleet qualification; frozen Task096 oracle/corpus also qualifies Python Float64 in both versions and all Deep numerical cells",
-      "deep": true
+      "deep": true,
+      "deep_jobs": [
+        "ada-hexbinary-real",
+        "ada-repeated-choice-real-uci",
+        "ada-websocket-real-sleet",
+        "msrv-real-uci",
+        "real-sleet",
+        "real-uci-integral-unicode",
+        "real-uci-regressions",
+        "real-uci-regressions-alternating",
+        "real-uci-regressions-ascii",
+        "real-uci-schema-ipv6",
+        "real-uci-temporal-naming"
+      ],
+      "deep_rationale": "Float64 ABI/rounding and GNAT14/16 qualification; TimeZulu lossless profile composes this support; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification"
     },
     {
       "category": "ada-shared",
@@ -134,7 +214,21 @@
         "ada-websocket-transport"
       ],
       "rationale": "Guard/support is imported by all Ada campaigns; generated consumer and backend changes lack proven independence; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification",
-      "deep": true
+      "deep": true,
+      "deep_jobs": [
+        "ada-hexbinary-real",
+        "ada-repeated-choice-real-uci",
+        "ada-websocket-real-sleet",
+        "msrv-real-uci",
+        "real-sleet",
+        "real-uci-integral-unicode",
+        "real-uci-regressions",
+        "real-uci-regressions-alternating",
+        "real-uci-regressions-ascii",
+        "real-uci-schema-ipv6",
+        "real-uci-temporal-naming"
+      ],
+      "deep_rationale": "Guard/support is imported by all Ada campaigns; generated consumer and backend changes lack proven independence; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification"
     },
     {
       "category": "time-zulu-tests",
@@ -153,7 +247,21 @@
         "ada-websocket-transport"
       ],
       "rationale": "Temporal composition and inherited task097 temporal campaigns; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification",
-      "deep": true
+      "deep": true,
+      "deep_jobs": [
+        "ada-hexbinary-real",
+        "ada-repeated-choice-real-uci",
+        "ada-websocket-real-sleet",
+        "msrv-real-uci",
+        "real-sleet",
+        "real-uci-integral-unicode",
+        "real-uci-regressions",
+        "real-uci-regressions-alternating",
+        "real-uci-regressions-ascii",
+        "real-uci-schema-ipv6",
+        "real-uci-temporal-naming"
+      ],
+      "deep_rationale": "Temporal composition and inherited task097 temporal campaigns; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification"
     },
     {
       "category": "frozen-temporal",
@@ -177,22 +285,86 @@
         "ada-websocket-transport"
       ],
       "rationale": "DateTime/Duration frozen corpora shared by generated consumers, repeated temporal and inherited Float64 campaigns; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification",
-      "deep": true
+      "deep": true,
+      "deep_jobs": [
+        "ada-hexbinary-real",
+        "ada-repeated-choice-real-uci",
+        "ada-websocket-real-sleet",
+        "msrv-real-uci",
+        "real-sleet",
+        "real-uci-integral-unicode",
+        "real-uci-regressions",
+        "real-uci-regressions-alternating",
+        "real-uci-regressions-ascii",
+        "real-uci-schema-ipv6",
+        "real-uci-temporal-naming"
+      ],
+      "deep_rationale": "DateTime/Duration frozen corpora shared by generated consumers, repeated temporal and inherited Float64 campaigns; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification"
     },
     {
-      "category": "rust",
+      "category": "rust-generator",
       "paths": [
-        "crates/runtime-api-rust/**",
-        "crates/runtime-rust/**",
-        "crates/runtime-rust-facade-tests/**",
         "crates/backend-rust/**"
       ],
       "jobs": [
         "rust",
         "python-model-backend"
       ],
+      "rationale": "Generated Rust is exercised across pinned qualification drivers; retain all Deep jobs until each generator dependency is independently narrowed.",
+      "deep": true,
+      "deep_jobs": [
+        "ada-hexbinary-real",
+        "ada-repeated-choice-real-uci",
+        "ada-websocket-real-sleet",
+        "msrv-real-uci",
+        "real-sleet",
+        "real-uci-integral-unicode",
+        "real-uci-regressions",
+        "real-uci-regressions-alternating",
+        "real-uci-regressions-ascii",
+        "real-uci-schema-ipv6",
+        "real-uci-temporal-naming"
+      ],
+      "deep_rationale": "Generated Rust is exercised across pinned qualification drivers; retain all Deep jobs until each generator dependency is independently narrowed."
+    },
+    {
+      "category": "rust-facade",
+      "paths": [
+        "crates/runtime-rust-facade-tests/**"
+      ],
+      "jobs": [
+        "rust",
+        "python-model-backend"
+      ],
       "rationale": "Workspace compiler/MSRV/Clippy and Python shared CLI/network contracts; runtime real-Sleet path remains Deep-qualified",
-      "deep": true
+      "deep": true,
+      "deep_jobs": [
+        "msrv-real-uci",
+        "real-sleet"
+      ],
+      "deep_rationale": "Facade test harness is consumed by real-sleet and MSRV; pinned vertical consumers import runtime crates directly, not this test harness."
+    },
+    {
+      "category": "rust",
+      "paths": [
+        "crates/runtime-api-rust/**",
+        "crates/runtime-rust/**"
+      ],
+      "jobs": [
+        "rust",
+        "python-model-backend"
+      ],
+      "rationale": "Workspace compiler/MSRV/Clippy and Python shared CLI/network contracts; runtime real-Sleet path remains Deep-qualified",
+      "deep": true,
+      "deep_jobs": [
+        "msrv-real-uci",
+        "real-sleet",
+        "real-uci-integral-unicode",
+        "real-uci-regressions-alternating",
+        "real-uci-schema-ipv6",
+        "real-uci-temporal-naming"
+      ],
+      "deep_rationale": "Task061/062/063/066 and Task060 alternating generated consumers import runtime-api-rust/runtime-rust; retain the complete PERF007 evidence group, real-uci-regressions-alternating, real-sleet and MSRV. Ada-only real-UCI jobs do not import these runtime crates."
     },
     {
       "category": "shared",
@@ -230,7 +402,21 @@
         "ada-websocket-transport"
       ],
       "rationale": "Generator binary links every backend; shared parsing/planning/contracts and dependency configuration lack proven independence; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification",
-      "deep": true
+      "deep": true,
+      "deep_jobs": [
+        "ada-hexbinary-real",
+        "ada-repeated-choice-real-uci",
+        "ada-websocket-real-sleet",
+        "msrv-real-uci",
+        "real-sleet",
+        "real-uci-integral-unicode",
+        "real-uci-regressions",
+        "real-uci-regressions-alternating",
+        "real-uci-regressions-ascii",
+        "real-uci-schema-ipv6",
+        "real-uci-temporal-naming"
+      ],
+      "deep_rationale": "Generator binary links every backend; shared parsing/planning/contracts and dependency configuration lack proven independence; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification"
     },
     {
       "category": "infrastructure",
@@ -260,7 +446,21 @@
         "ada-websocket-transport"
       ],
       "rationale": "CI/security/shared harness and selector changes must qualify their own orchestration; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification",
-      "deep": true
+      "deep": true,
+      "deep_jobs": [
+        "ada-hexbinary-real",
+        "ada-repeated-choice-real-uci",
+        "ada-websocket-real-sleet",
+        "msrv-real-uci",
+        "real-sleet",
+        "real-uci-integral-unicode",
+        "real-uci-regressions",
+        "real-uci-regressions-alternating",
+        "real-uci-regressions-ascii",
+        "real-uci-schema-ipv6",
+        "real-uci-temporal-naming"
+      ],
+      "deep_rationale": "CI/security/shared harness and selector changes must qualify their own orchestration; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification"
     },
     {
       "category": "shared-fixtures",
@@ -285,7 +485,21 @@
         "ada-websocket-transport"
       ],
       "rationale": "Frozen schema/golden inputs are consumed across languages; no component-only proof; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification",
-      "deep": true
+      "deep": true,
+      "deep_jobs": [
+        "ada-hexbinary-real",
+        "ada-repeated-choice-real-uci",
+        "ada-websocket-real-sleet",
+        "msrv-real-uci",
+        "real-sleet",
+        "real-uci-integral-unicode",
+        "real-uci-regressions",
+        "real-uci-regressions-alternating",
+        "real-uci-regressions-ascii",
+        "real-uci-schema-ipv6",
+        "real-uci-temporal-naming"
+      ],
+      "deep_rationale": "Frozen schema/golden inputs are consumed across languages; no component-only proof; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification"
     }
   ],
   "documentation": {
@@ -2349,13 +2563,15 @@
         "test -s \"$RUNNER_TEMP/task092-real/$selection/$policy-run.log\""
       ],
       "original_steps_yaml": "    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n      - name: Verify Deep CI source identity\n        shell: bash\n        run: |\n          set -euo pipefail\n          actual=\"$(git rev-parse HEAD)\"\n          tree=\"$(git rev-parse HEAD^{tree})\"\n          test \"$actual\" = \"$GITHUB_SHA\"\n          test -n \"$tree\"\n          printf 'DEEP_CI_SOURCE_SHA=%s\\n' \"$actual\"\n          printf 'DEEP_CI_SOURCE_TREE=%s\\n' \"$tree\"\n          printf 'DEEP_CI_EVENT=%s\\n' \"$GITHUB_EVENT_NAME\"\n      - uses: dtolnay/rust-toolchain@1.95.0\n      - name: Install verified Alire 2.1.1\n        shell: bash\n        run: |\n          set -euo pipefail\n          mkdir -p \"$RUNNER_TEMP/task092-tools\"\n          cd \"$RUNNER_TEMP/task092-tools\"\n          curl --fail --location --retry 3 --output alire.zip \\\n            https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip\n          echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  alire.zip' | sha256sum --check --strict\n          unzip -q alire.zip\n          test \"$(bin/alr --version)\" = 'alr 2.1.1'\n          echo \"$PWD/bin\" >> \"$GITHUB_PATH\"\n      - name: Build production generator\n        run: cargo build --release --locked -p ams-gra-codegen-oms\n      - name: Fetch unchanged hash-verified pinned UCI roots\n        shell: bash\n        run: |\n          set -euo pipefail\n          UCI25=\"$(scripts/fetch-pinned-uci-2.5.sh \"$RUNNER_TEMP/task092-uci25\")\"\n          UCI26=\"$(scripts/fetch-pinned-uci-2.6.sh \"$RUNNER_TEMP/task092-uci26\")\"\n          echo \"TASK092_UCI25=$UCI25\" >> \"$GITHUB_ENV\"\n          echo \"TASK092_UCI26=$UCI26\" >> \"$GITHUB_ENV\"\n      - name: Execute real UCI repeated Choice typed consumers\n        run: python3 scripts/check-task092-real.py --compiler 16 --generator \"$GITHUB_WORKSPACE/target/release/ams-gra-codegen-oms\" --scratch \"$RUNNER_TEMP/task092-real\" --uci25 \"$TASK092_UCI25\" --uci26 \"$TASK092_UCI26\"\n      - name: Require real qualification evidence\n        shell: bash\n        run: |\n          set -euo pipefail\n          for selection in 25-rdma 26-rdma 25-survivability; do\n            test -s \"$RUNNER_TEMP/task092-real/$selection/sources.sha256\"\n            for policy in normal Check Ignore; do\n              test -s \"$RUNNER_TEMP/task092-real/$selection/$policy-alire.lock\"\n              test -s \"$RUNNER_TEMP/task092-real/$selection/$policy-run.log\"\n            done\n          done\n      - name: Preserve qualification evidence\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: task092-real-uci-repeated-choice\n          path: ${{ runner.temp }}/task092-real/**\n          if-no-files-found: error\n  # Tasks 052/053/054 on the REAL pinned UCI 2.5 and 2.6 roots. GNAT is\n  # installed here because the Task 054 real category-A test compiles the\n  # generated Ada (gnatmake -gnatc) and AMS_GRA_REQUIRE_GNAT forbids a skip.\n",
-      "expected_header": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-ada-repeated-choice-real-uci', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-24.04\n    timeout-minutes: 60",
+      "expected_header": "    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'ada-repeated-choice-real-uci')\n    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-ada-repeated-choice-real-uci', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-24.04\n    timeout-minutes: 60",
       "main_eligible": true,
       "purpose": "Inherited full qualification",
       "source_policy": "synthetic merge github.sha",
       "trigger_type": "workflow_call:\n  schedule:\n    - cron: \"0 6 * * *\"\n  workflow_dispatch:",
       "pr_concurrency_identity": "${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-ada-repeated-choice-real-uci', github.workflow, github.run_id, github.run_attempt) }}",
-      "enabled_behavior": "independent workflow triggers"
+      "enabled_behavior": "independent workflow triggers",
+      "selection_condition": "github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'ada-repeated-choice-real-uci')",
+      "ownership": "Selected by reviewed rules.deep_jobs; prerequisites close transitively. Qualification payload unchanged."
     },
     {
       "workflow": "deep-ci.yml",
@@ -2371,7 +2587,10 @@
           ]
         }
       ],
-      "prerequisites": [],
+      "prerequisites": [
+        "real-uci-integral-unicode",
+        "real-uci-schema-ipv6"
+      ],
       "compiler_runtime": [
         {
           "uses": "dtolnay/rust-toolchain@stable"
@@ -2497,7 +2716,7 @@
       ],
       "required_markers": [],
       "original_steps_yaml": "    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n      - name: Verify Deep CI source identity\n        shell: bash\n        run: |\n          set -euo pipefail\n          actual=\"$(git rev-parse HEAD)\"\n          tree=\"$(git rev-parse HEAD^{tree})\"\n          test \"$actual\" = \"$GITHUB_SHA\"\n          test -n \"$tree\"\n          printf 'DEEP_CI_SOURCE_SHA=%s\\n' \"$actual\"\n          printf 'DEEP_CI_SOURCE_TREE=%s\\n' \"$tree\"\n          printf 'DEEP_CI_EVENT=%s\\n' \"$GITHUB_EVENT_NAME\"\n      - name: Initialize private shard evidence\n        run: python3 scripts/real_uci_evidence.py init\n      - uses: dtolnay/rust-toolchain@stable\n      - name: Install GNAT\n        shell: python3 scripts/real_uci_evidence.py setup gnat {0}\n        run: |\n          sudo apt-get update\n          sudo apt-get install -y gnat\n      # Hard gate, as in Fast CI: no `|| true`.\n      - name: Verify GNAT availability\n        run: |\n          command -v gnatmake\n          gnatmake --version\n      # Fetch each pinned release ONCE for the whole job. Both scripts verify\n      # the tag revision and root SHA-256 and fail hard on any mismatch; the\n      # tests verify the root SHA-256 again before using it.\n      - name: Fetch pinned UCI 2.5 and 2.6 (once)\n        shell: python3 scripts/real_uci_evidence.py setup fetch {0}\n        run: |\n          set -euo pipefail\n          UCI25=\"$(scripts/fetch-pinned-uci-2.5.sh \"$RUNNER_TEMP/uci-2.5\")\"\n          UCI26=\"$(scripts/fetch-pinned-uci-2.6.sh \"$RUNNER_TEMP/uci-2.6\")\"\n          echo \"AMS_GRA_UCI_2_5_ROOT=$UCI25\" >> \"$GITHUB_ENV\"\n          echo \"AMS_GRA_UCI_2_6_ROOT=$UCI26\" >> \"$GITHUB_ENV\"\n      - name: Prepare independent locked release generator\n        shell: python3 scripts/real_uci_evidence.py setup build {0}\n        run: |\n          set -euo pipefail\n          cargo fetch --locked\n          cargo build --release --locked -p ams-gra-codegen-oms\n      - name: Record verified pinned and toolchain identities\n        run: python3 scripts/real_uci_evidence.py inputs\n      - name: Named TimeZulu pinned inventory and impact (Task 061)\n        shell: python3 scripts/real_uci_evidence.py task 061 {0}\n        run: bash scripts/check-task061-pinned.sh\n      - name: Real UCI route identity smoke (Task 071)\n        shell: python3 scripts/real_uci_evidence.py task 071 {0}\n        run: bash scripts/check-task071-uci.sh\n      - name: Ada semantic companion naming and smallest real vertical (Task 065)\n        shell: python3 scripts/real_uci_evidence.py task 065 {0}\n        run: bash scripts/check-task065-pinned.sh\n      - name: Reconcile complete shard evidence\n        if: always()\n        run: python3 scripts/real_uci_evidence.py finish\n      - name: Preserve mandatory shard evidence and failure diagnostics\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: perf007-real-uci-temporal-naming\n          path: ${{ runner.temp }}/perf007/real-uci-temporal-naming/**\n          if-no-files-found: error\n",
-      "expected_header": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-4' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-temporal-naming', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-latest\n    timeout-minutes: 240",
+      "expected_header": "    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'real-uci-temporal-naming')\n    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-4' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-temporal-naming', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-latest\n    timeout-minutes: 240",
       "main_eligible": true,
       "purpose": "PERF-007 exact original seven-task partition",
       "source_policy": "synthetic merge github.sha",
@@ -2508,7 +2727,9 @@
         "061",
         "071",
         "065"
-      ]
+      ],
+      "selection_condition": "github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'real-uci-temporal-naming')",
+      "ownership": "Selected by reviewed rules.deep_jobs; prerequisites close transitively. Qualification payload unchanged."
     },
     {
       "workflow": "deep-ci.yml",
@@ -2524,7 +2745,10 @@
           ]
         }
       ],
-      "prerequisites": [],
+      "prerequisites": [
+        "real-uci-integral-unicode",
+        "real-uci-temporal-naming"
+      ],
       "compiler_runtime": [
         {
           "uses": "dtolnay/rust-toolchain@stable"
@@ -2643,7 +2867,7 @@
       ],
       "required_markers": [],
       "original_steps_yaml": "    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n      - name: Verify Deep CI source identity\n        shell: bash\n        run: |\n          set -euo pipefail\n          actual=\"$(git rev-parse HEAD)\"\n          tree=\"$(git rev-parse HEAD^{tree})\"\n          test \"$actual\" = \"$GITHUB_SHA\"\n          test -n \"$tree\"\n          printf 'DEEP_CI_SOURCE_SHA=%s\\n' \"$actual\"\n          printf 'DEEP_CI_SOURCE_TREE=%s\\n' \"$tree\"\n          printf 'DEEP_CI_EVENT=%s\\n' \"$GITHUB_EVENT_NAME\"\n      - name: Initialize private shard evidence\n        run: python3 scripts/real_uci_evidence.py init\n      - uses: dtolnay/rust-toolchain@stable\n      - name: Install GNAT\n        shell: python3 scripts/real_uci_evidence.py setup gnat {0}\n        run: |\n          sudo apt-get update\n          sudo apt-get install -y gnat\n      # Hard gate, as in Fast CI: no `|| true`.\n      - name: Verify GNAT availability\n        run: |\n          command -v gnatmake\n          gnatmake --version\n      # Fetch each pinned release ONCE for the whole job. Both scripts verify\n      # the tag revision and root SHA-256 and fail hard on any mismatch; the\n      # tests verify the root SHA-256 again before using it.\n      - name: Fetch pinned UCI 2.5 and 2.6 (once)\n        shell: python3 scripts/real_uci_evidence.py setup fetch {0}\n        run: |\n          set -euo pipefail\n          UCI25=\"$(scripts/fetch-pinned-uci-2.5.sh \"$RUNNER_TEMP/uci-2.5\")\"\n          UCI26=\"$(scripts/fetch-pinned-uci-2.6.sh \"$RUNNER_TEMP/uci-2.6\")\"\n          echo \"AMS_GRA_UCI_2_5_ROOT=$UCI25\" >> \"$GITHUB_ENV\"\n          echo \"AMS_GRA_UCI_2_6_ROOT=$UCI26\" >> \"$GITHUB_ENV\"\n      - name: Prepare independent locked release generator\n        shell: python3 scripts/real_uci_evidence.py setup build {0}\n        run: |\n          set -euo pipefail\n          cargo fetch --locked\n          cargo build --release --locked -p ams-gra-codegen-oms\n      - name: Record verified pinned and toolchain identities\n        run: python3 scripts/real_uci_evidence.py inputs\n      - name: Pinned semantic schema diff (Task 069, once for both releases)\n        shell: python3 scripts/real_uci_evidence.py task 069 {0}\n        run: bash scripts/check-task069-pinned.sh\n      - name: Exact IPv6 pinned inventory, impact and real vertical (Task 062)\n        shell: python3 scripts/real_uci_evidence.py task 062 {0}\n        run: bash scripts/check-task062-pinned.sh\n      - name: Reconcile complete shard evidence\n        if: always()\n        run: python3 scripts/real_uci_evidence.py finish\n      - name: Preserve mandatory shard evidence and failure diagnostics\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: perf007-real-uci-schema-ipv6\n          path: ${{ runner.temp }}/perf007/real-uci-schema-ipv6/**\n          if-no-files-found: error\n",
-      "expected_header": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-1' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-schema-ipv6', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-latest\n    timeout-minutes: 240",
+      "expected_header": "    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'real-uci-schema-ipv6')\n    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-1' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-schema-ipv6', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-latest\n    timeout-minutes: 240",
       "main_eligible": true,
       "purpose": "PERF-007 exact original seven-task partition",
       "source_policy": "synthetic merge github.sha",
@@ -2653,7 +2877,9 @@
       "task_inventory": [
         "069",
         "062"
-      ]
+      ],
+      "selection_condition": "github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'real-uci-schema-ipv6')",
+      "ownership": "Selected by reviewed rules.deep_jobs; prerequisites close transitively. Qualification payload unchanged."
     },
     {
       "workflow": "deep-ci.yml",
@@ -2669,7 +2895,10 @@
           ]
         }
       ],
-      "prerequisites": [],
+      "prerequisites": [
+        "real-uci-schema-ipv6",
+        "real-uci-temporal-naming"
+      ],
       "compiler_runtime": [
         {
           "uses": "dtolnay/rust-toolchain@stable"
@@ -2788,7 +3017,7 @@
       ],
       "required_markers": [],
       "original_steps_yaml": "    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n      - name: Verify Deep CI source identity\n        shell: bash\n        run: |\n          set -euo pipefail\n          actual=\"$(git rev-parse HEAD)\"\n          tree=\"$(git rev-parse HEAD^{tree})\"\n          test \"$actual\" = \"$GITHUB_SHA\"\n          test -n \"$tree\"\n          printf 'DEEP_CI_SOURCE_SHA=%s\\n' \"$actual\"\n          printf 'DEEP_CI_SOURCE_TREE=%s\\n' \"$tree\"\n          printf 'DEEP_CI_EVENT=%s\\n' \"$GITHUB_EVENT_NAME\"\n      - name: Initialize private shard evidence\n        run: python3 scripts/real_uci_evidence.py init\n      - uses: dtolnay/rust-toolchain@stable\n      - name: Install GNAT\n        shell: python3 scripts/real_uci_evidence.py setup gnat {0}\n        run: |\n          sudo apt-get update\n          sudo apt-get install -y gnat\n      # Hard gate, as in Fast CI: no `|| true`.\n      - name: Verify GNAT availability\n        run: |\n          command -v gnatmake\n          gnatmake --version\n      # Fetch each pinned release ONCE for the whole job. Both scripts verify\n      # the tag revision and root SHA-256 and fail hard on any mismatch; the\n      # tests verify the root SHA-256 again before using it.\n      - name: Fetch pinned UCI 2.5 and 2.6 (once)\n        shell: python3 scripts/real_uci_evidence.py setup fetch {0}\n        run: |\n          set -euo pipefail\n          UCI25=\"$(scripts/fetch-pinned-uci-2.5.sh \"$RUNNER_TEMP/uci-2.5\")\"\n          UCI26=\"$(scripts/fetch-pinned-uci-2.6.sh \"$RUNNER_TEMP/uci-2.6\")\"\n          echo \"AMS_GRA_UCI_2_5_ROOT=$UCI25\" >> \"$GITHUB_ENV\"\n          echo \"AMS_GRA_UCI_2_6_ROOT=$UCI26\" >> \"$GITHUB_ENV\"\n      - name: Prepare independent locked release generator\n        shell: python3 scripts/real_uci_evidence.py setup build {0}\n        run: |\n          set -euo pipefail\n          cargo fetch --locked\n          cargo build --release --locked -p ams-gra-codegen-oms\n      - name: Record verified pinned and toolchain identities\n        run: python3 scripts/real_uci_evidence.py inputs\n      - name: Exact patterned integral pinned evidence (Task 063)\n        shell: python3 scripts/real_uci_evidence.py task 063 {0}\n        run: bash scripts/check-task063-pinned.sh\n      - name: Unicode 3.1 pinned profiles, impact and real vertical (Task 066)\n        shell: python3 scripts/real_uci_evidence.py task 066 {0}\n        run: bash scripts/check-task066-pinned.sh\n      - name: Reconcile complete shard evidence\n        if: always()\n        run: python3 scripts/real_uci_evidence.py finish\n      - name: Preserve mandatory shard evidence and failure diagnostics\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: perf007-real-uci-integral-unicode\n          path: ${{ runner.temp }}/perf007/real-uci-integral-unicode/**\n          if-no-files-found: error\n",
-      "expected_header": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-3' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-integral-unicode', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-latest\n    timeout-minutes: 240",
+      "expected_header": "    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'real-uci-integral-unicode')\n    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-3' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-integral-unicode', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-latest\n    timeout-minutes: 240",
       "main_eligible": true,
       "purpose": "PERF-007 exact original seven-task partition",
       "source_policy": "synthetic merge github.sha",
@@ -2798,7 +3027,9 @@
       "task_inventory": [
         "063",
         "066"
-      ]
+      ],
+      "selection_condition": "github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'real-uci-integral-unicode')",
+      "ownership": "Selected by reviewed rules.deep_jobs; prerequisites close transitively. Qualification payload unchanged."
     },
     {
       "workflow": "deep-ci.yml",
@@ -2983,13 +3214,15 @@
         "grep -qE '^test result: ok\\. 4 passed' <<<\"$output\""
       ],
       "original_steps_yaml": "    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n      - name: Verify Deep CI source identity\n        shell: bash\n        run: |\n          set -euo pipefail\n          actual=\"$(git rev-parse HEAD)\"\n          tree=\"$(git rev-parse HEAD^{tree})\"\n          test \"$actual\" = \"$GITHUB_SHA\"\n          test -n \"$tree\"\n          printf 'DEEP_CI_SOURCE_SHA=%s\\n' \"$actual\"\n          printf 'DEEP_CI_SOURCE_TREE=%s\\n' \"$tree\"\n          printf 'DEEP_CI_EVENT=%s\\n' \"$GITHUB_EVENT_NAME\"\n      - uses: dtolnay/rust-toolchain@stable\n      - name: Install GNAT\n        run: |\n          sudo apt-get update\n          sudo apt-get install -y gnat\n      - name: Verify GNAT availability\n        run: |\n          command -v gnatmake\n          gnatmake --version\n      - name: Fetch pinned UCI 2.5 and 2.6 (once)\n        run: |\n          set -euo pipefail\n          UCI25=\"$(scripts/fetch-pinned-uci-2.5.sh \"$RUNNER_TEMP/uci-2.5\")\"\n          UCI26=\"$(scripts/fetch-pinned-uci-2.6.sh \"$RUNNER_TEMP/uci-2.6\")\"\n          echo \"AMS_GRA_UCI_2_5_ROOT=$UCI25\" >> \"$GITHUB_ENV\"\n          echo \"AMS_GRA_UCI_2_6_ROOT=$UCI26\" >> \"$GITHUB_ENV\"\n      - name: Prepare regression inputs and release CLI\n        run: |\n          set -euo pipefail\n          test -n \"$AMS_GRA_UCI_2_5_ROOT\"\n          test -n \"$AMS_GRA_UCI_2_6_ROOT\"\n          echo \"TMPDIR=$RUNNER_TEMP\" >> \"$GITHUB_ENV\"\n          cargo fetch --locked\n          cargo build --release --locked -p ams-gra-codegen-oms\n      - name: Qualify batch transport and production equivalence controls\n        run: |\n          set -euo pipefail\n          python3 scripts/test-task061-service-impact.py\n          cargo test --release --locked -p ams-gra-codegen-oms --test service_check_batch\n      - name: Python current services and immutable historical profiles (PY-007, must execute)\n        run: |\n          set -euo pipefail\n          python3 scripts/test-py007-uci.py\n          python3 scripts/check-py007-uci.py --generator target/release/ams-gra-codegen-oms \\\n            --output \"$RUNNER_TEMP/py006-uci\"\n      - name: Preserve Python pinned UCI measurements\n        uses: actions/upload-artifact@v4\n        with:\n          name: py006-uci\n          path: ${{ runner.temp }}/py006-uci/**\n          if-no-files-found: error\n      - name: Confirm unique newly READY Time services (Task 061)\n        run: |\n          set -euo pipefail\n          export TMPDIR=\"$RUNNER_TEMP\"\n          python3 scripts/check-task061-service-impact.py target/release/ams-gra-codegen-oms\n      - name: Preserve Task 061 per-selection evidence\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: task061-service-check\n          path: ${{ runner.temp }}/task061-service-check-*/**\n          if-no-files-found: error\n      - name: Real UCI Binary provenance inventory (Task 052, must execute)\n        run: |\n          set -euo pipefail\n          status=0\n          output=\"$(cargo test --release -p ams-gra-oms-xsd-frontend --test uci_binary_provenance -- \\\n            --nocapture --test-threads 1 2>&1)\" || status=$?\n          printf '%s\\n' \"$output\"\n          if (( status != 0 )); then exit \"$status\"; fi\n          grep -Fqx 'UCI 2.5 BINARY PROVENANCE INVENTORY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 BINARY PROVENANCE INVENTORY: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 2 passed' <<<\"$output\"\n      - name: Real UCI constrained Binary inventory (Task 053, must execute)\n        run: |\n          set -euo pipefail\n          status=0\n          output=\"$(cargo test --release -p ams-gra-codegen-oms --test uci_constrained_binary -- \\\n            --nocapture --test-threads 1 2>&1)\" || status=$?\n          printf '%s\\n' \"$output\"\n          if (( status != 0 )); then exit \"$status\"; fi\n          grep -Fqx 'UCI 2.5 CONSTRAINED BINARY INVENTORY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 CONSTRAINED BINARY INVENTORY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.5 CONSTRAINED BINARY MESSAGE IMPACT: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 CONSTRAINED BINARY MESSAGE IMPACT: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 3 passed' <<<\"$output\"\n      - name: Real UCI member identifier inventory (Task 054, must execute)\n        env:\n          AMS_GRA_REQUIRE_GNAT: \"1\"\n        run: |\n          set -euo pipefail\n          status=0\n          output=\"$(cargo test --release -p ams-gra-codegen-oms --test uci_member_names -- \\\n            --nocapture --test-threads 1 2>&1)\" || status=$?\n          printf '%s\\n' \"$output\"\n          if (( status != 0 )); then exit \"$status\"; fi\n          grep -Fqx 'UCI 2.5 MEMBER IDENTIFIER INVENTORY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 MEMBER IDENTIFIER INVENTORY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.5 WHOLE-SCHEMA FIRST BLOCKER PROBE: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 WHOLE-SCHEMA FIRST BLOCKER PROBE: PASSED' <<<\"$output\"\n          grep -Eqx '(test task054_real_uci_category_a_selection_generates_and_compiles \\.\\.\\. )?UCI 2\\.5 REAL CATEGORY-A MEMBER REMAPPING: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 4 passed' <<<\"$output\"\n      - name: Real UCI generated-support readiness parity (Task 056, must execute)\n        run: |\n          set -euo pipefail\n          status=0\n          output=\"$(cargo test --release -p ams-gra-codegen-oms --test uci_generated_support task056_real_uci -- \\\n            --nocapture --test-threads 1 2>&1)\" || status=$?\n          printf '%s\\n' \"$output\"\n          if (( status != 0 )); then exit \"$status\"; fi\n          grep -Fqx 'UCI 2.5 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.5 CATEGORY-A GENERATED SUPPORT PARITY: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 2 passed' <<<\"$output\"\n      - name: Real UCI generated-support plan binding (Task 064, must execute)\n        run: |\n          set -euo pipefail\n          name=task064_real_uci_generated_support_binding\n          status=0\n          listing=\"$(cargo test --release -p ams-gra-codegen-oms --test uci_generated_support -- --list 2>&1)\" || status=$?\n          printf '%s\\n' \"$listing\"\n          if (( status != 0 )); then exit \"$status\"; fi\n          grep -Fqx \"$name: test\" <<<\"$listing\"\n          status=0\n          output=\"$(cargo test --release -p ams-gra-codegen-oms --test uci_generated_support \"$name\" -- \\\n            --exact --nocapture --test-threads 1 2>&1)\" || status=$?\n          printf '%s\\n' \"$output\"\n          if (( status != 0 )); then exit \"$status\"; fi\n          grep -qE '^test result: ok\\. 1 passed' <<<\"$output\"\n          grep -Fqx 'UCI 2.5 GENERATED SUPPORT BINDING: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 GENERATED SUPPORT BINDING: PASSED' <<<\"$output\"\n      - name: Real UCI duration inventory and message impact (Task 057, must execute)\n        run: |\n          set -euo pipefail\n          status=0\n          output=\"$(cargo test --release -p ams-gra-codegen-oms --test uci_duration -- \\\n            --nocapture --test-threads 1 2>&1)\" || status=$?\n          printf '%s\\n' \"$output\"\n          if (( status != 0 )); then exit \"$status\"; fi\n          grep -Fqx 'UCI 2.5 DURATION INVENTORY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 DURATION INVENTORY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.5 DURATION MESSAGE IMPACT: RECORDED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 DURATION MESSAGE IMPACT: RECORDED' <<<\"$output\"\n          grep -Eqx '(test task057_real_uci_category_a_log_generates_and_compiles \\.\\.\\. )?UCI 2\\.5 REAL CATEGORY-A DURATION SERVICE: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 4 passed' <<<\"$output\"\n",
-      "expected_header": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-1' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-regressions', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-latest\n    timeout-minutes: 240",
+      "expected_header": "    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'real-uci-regressions')\n    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-1' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-regressions', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-latest\n    timeout-minutes: 240",
       "main_eligible": true,
       "purpose": "Inherited full qualification",
       "source_policy": "synthetic merge github.sha",
       "trigger_type": "workflow_call:\n  schedule:\n    - cron: \"0 6 * * *\"\n  workflow_dispatch:",
       "pr_concurrency_identity": "${{ github.ref == 'refs/heads/main' && 'oms-main-slot-1' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-regressions', github.workflow, github.run_id, github.run_attempt) }}",
       "enabled_behavior": "independent workflow triggers",
+      "selection_condition": "github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'real-uci-regressions')",
+      "ownership": "Selected by reviewed rules.deep_jobs; prerequisites close transitively. Qualification payload unchanged.",
       "integration_steps_yaml": "    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n      - name: Verify Deep CI source identity\n        shell: bash\n        run: |\n          set -euo pipefail\n          actual=\"$(git rev-parse HEAD)\"\n          tree=\"$(git rev-parse HEAD^{tree})\"\n          test \"$actual\" = \"$GITHUB_SHA\"\n          test -n \"$tree\"\n          printf 'DEEP_CI_SOURCE_SHA=%s\\n' \"$actual\"\n          printf 'DEEP_CI_SOURCE_TREE=%s\\n' \"$tree\"\n          printf 'DEEP_CI_EVENT=%s\\n' \"$GITHUB_EVENT_NAME\"\n      - uses: dtolnay/rust-toolchain@stable\n      - name: Install GNAT\n        run: |\n          sudo apt-get update\n          sudo apt-get install -y gnat\n      - name: Verify GNAT availability\n        run: |\n          command -v gnatmake\n          gnatmake --version\n      - name: Fetch pinned UCI 2.5 and 2.6 (once)\n        run: |\n          set -euo pipefail\n          UCI25=\"$(scripts/fetch-pinned-uci-2.5.sh \"$RUNNER_TEMP/uci-2.5\")\"\n          UCI26=\"$(scripts/fetch-pinned-uci-2.6.sh \"$RUNNER_TEMP/uci-2.6\")\"\n          echo \"AMS_GRA_UCI_2_5_ROOT=$UCI25\" >> \"$GITHUB_ENV\"\n          echo \"AMS_GRA_UCI_2_6_ROOT=$UCI26\" >> \"$GITHUB_ENV\"\n      - name: Prepare regression inputs and release CLI\n        run: |\n          set -euo pipefail\n          test -n \"$AMS_GRA_UCI_2_5_ROOT\"\n          test -n \"$AMS_GRA_UCI_2_6_ROOT\"\n          echo \"TMPDIR=$RUNNER_TEMP\" >> \"$GITHUB_ENV\"\n          cargo fetch --locked\n          cargo build --release --locked -p ams-gra-codegen-oms\n      - name: Qualify batch transport and production equivalence controls\n        run: |\n          set -euo pipefail\n          python3 scripts/test-task061-service-impact.py\n          cargo test --release --locked -p ams-gra-codegen-oms --test service_check_batch\n      - name: Python current services and immutable historical profiles (PY-007 and PY-008, must execute)\n        run: |\n          set -euo pipefail\n          python3 scripts/test-py007-uci.py\n          python3 scripts/test-py008-uci.py\n          python3 scripts/check-py007-uci.py --generator target/release/ams-gra-codegen-oms \\\n            --output \"$RUNNER_TEMP/py006-uci\" --service-baseline tests/fixtures/python-float64/after.json\n          python3 scripts/check-py008-uci.py --generator target/release/ams-gra-codegen-oms \\\n            --output \"$RUNNER_TEMP/py006-uci\" --existing-output\n      - name: Preserve Python pinned UCI measurements\n        uses: actions/upload-artifact@v4\n        with:\n          name: py006-uci\n          path: ${{ runner.temp }}/py006-uci/**\n          if-no-files-found: error\n      - name: Confirm unique newly READY Time services (Task 061)\n        run: |\n          set -euo pipefail\n          export TMPDIR=\"$RUNNER_TEMP\"\n          python3 scripts/check-task061-service-impact.py target/release/ams-gra-codegen-oms\n      - name: Preserve Task 061 per-selection evidence\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: task061-service-check\n          path: ${{ runner.temp }}/task061-service-check-*/**\n          if-no-files-found: error\n      - name: Real UCI Binary provenance inventory (Task 052, must execute)\n        run: |\n          set -euo pipefail\n          status=0\n          output=\"$(cargo test --release -p ams-gra-oms-xsd-frontend --test uci_binary_provenance -- \\\n            --nocapture --test-threads 1 2>&1)\" || status=$?\n          printf '%s\\n' \"$output\"\n          if (( status != 0 )); then exit \"$status\"; fi\n          grep -Fqx 'UCI 2.5 BINARY PROVENANCE INVENTORY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 BINARY PROVENANCE INVENTORY: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 2 passed' <<<\"$output\"\n      - name: Real UCI constrained Binary inventory (Task 053, must execute)\n        run: |\n          set -euo pipefail\n          status=0\n          output=\"$(cargo test --release -p ams-gra-codegen-oms --test uci_constrained_binary -- \\\n            --nocapture --test-threads 1 2>&1)\" || status=$?\n          printf '%s\\n' \"$output\"\n          if (( status != 0 )); then exit \"$status\"; fi\n          grep -Fqx 'UCI 2.5 CONSTRAINED BINARY INVENTORY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 CONSTRAINED BINARY INVENTORY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.5 CONSTRAINED BINARY MESSAGE IMPACT: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 CONSTRAINED BINARY MESSAGE IMPACT: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 3 passed' <<<\"$output\"\n      - name: Real UCI member identifier inventory (Task 054, must execute)\n        env:\n          AMS_GRA_REQUIRE_GNAT: \"1\"\n        run: |\n          set -euo pipefail\n          status=0\n          output=\"$(cargo test --release -p ams-gra-codegen-oms --test uci_member_names -- \\\n            --nocapture --test-threads 1 2>&1)\" || status=$?\n          printf '%s\\n' \"$output\"\n          if (( status != 0 )); then exit \"$status\"; fi\n          grep -Fqx 'UCI 2.5 MEMBER IDENTIFIER INVENTORY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 MEMBER IDENTIFIER INVENTORY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.5 WHOLE-SCHEMA FIRST BLOCKER PROBE: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 WHOLE-SCHEMA FIRST BLOCKER PROBE: PASSED' <<<\"$output\"\n          grep -Eqx '(test task054_real_uci_category_a_selection_generates_and_compiles \\.\\.\\. )?UCI 2\\.5 REAL CATEGORY-A MEMBER REMAPPING: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 4 passed' <<<\"$output\"\n      - name: Real UCI generated-support readiness parity (Task 056, must execute)\n        run: |\n          set -euo pipefail\n          status=0\n          output=\"$(cargo test --release -p ams-gra-codegen-oms --test uci_generated_support task056_real_uci -- \\\n            --nocapture --test-threads 1 2>&1)\" || status=$?\n          printf '%s\\n' \"$output\"\n          if (( status != 0 )); then exit \"$status\"; fi\n          grep -Fqx 'UCI 2.5 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 ORDEROFBATTLE GENERATED SUPPORT PARITY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.5 CATEGORY-A GENERATED SUPPORT PARITY: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 2 passed' <<<\"$output\"\n      - name: Real UCI generated-support plan binding (Task 064, must execute)\n        run: |\n          set -euo pipefail\n          name=task064_real_uci_generated_support_binding\n          status=0\n          listing=\"$(cargo test --release -p ams-gra-codegen-oms --test uci_generated_support -- --list 2>&1)\" || status=$?\n          printf '%s\\n' \"$listing\"\n          if (( status != 0 )); then exit \"$status\"; fi\n          grep -Fqx \"$name: test\" <<<\"$listing\"\n          status=0\n          output=\"$(cargo test --release -p ams-gra-codegen-oms --test uci_generated_support \"$name\" -- \\\n            --exact --nocapture --test-threads 1 2>&1)\" || status=$?\n          printf '%s\\n' \"$output\"\n          if (( status != 0 )); then exit \"$status\"; fi\n          grep -qE '^test result: ok\\. 1 passed' <<<\"$output\"\n          grep -Fqx 'UCI 2.5 GENERATED SUPPORT BINDING: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 GENERATED SUPPORT BINDING: PASSED' <<<\"$output\"\n      - name: Real UCI duration inventory and message impact (Task 057, must execute)\n        run: |\n          set -euo pipefail\n          status=0\n          output=\"$(cargo test --release -p ams-gra-codegen-oms --test uci_duration -- \\\n            --nocapture --test-threads 1 2>&1)\" || status=$?\n          printf '%s\\n' \"$output\"\n          if (( status != 0 )); then exit \"$status\"; fi\n          grep -Fqx 'UCI 2.5 DURATION INVENTORY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 DURATION INVENTORY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.5 DURATION MESSAGE IMPACT: RECORDED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 DURATION MESSAGE IMPACT: RECORDED' <<<\"$output\"\n          grep -Eqx '(test task057_real_uci_category_a_log_generates_and_compiles \\.\\.\\. )?UCI 2\\.5 REAL CATEGORY-A DURATION SERVICE: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 4 passed' <<<\"$output\"\n\n",
       "integration_steps": [
         {
@@ -3190,13 +3423,15 @@
         "grep -qE '^test result: ok\\. 2 passed' <<<\"$output\""
       ],
       "original_steps_yaml": "    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n      - name: Verify Deep CI source identity\n        shell: bash\n        run: |\n          set -euo pipefail\n          actual=\"$(git rev-parse HEAD)\"\n          tree=\"$(git rev-parse HEAD^{tree})\"\n          test \"$actual\" = \"$GITHUB_SHA\"\n          test -n \"$tree\"\n          printf 'DEEP_CI_SOURCE_SHA=%s\\n' \"$actual\"\n          printf 'DEEP_CI_SOURCE_TREE=%s\\n' \"$tree\"\n          printf 'DEEP_CI_EVENT=%s\\n' \"$GITHUB_EVENT_NAME\"\n      - uses: dtolnay/rust-toolchain@stable\n      - name: Install GNAT\n        run: |\n          sudo apt-get update\n          sudo apt-get install -y gnat\n      # Hard gate, as in Fast CI: no `|| true`.\n      - name: Verify GNAT availability\n        run: |\n          command -v gnatmake\n          gnatmake --version\n      # Fetch each pinned release ONCE for the whole job. Both scripts verify\n      # the tag revision and root SHA-256 and fail hard on any mismatch; the\n      # tests verify the root SHA-256 again before using it.\n      - name: Fetch pinned UCI 2.5 and 2.6 (once)\n        run: |\n          set -euo pipefail\n          UCI25=\"$(scripts/fetch-pinned-uci-2.5.sh \"$RUNNER_TEMP/uci-2.5\")\"\n          UCI26=\"$(scripts/fetch-pinned-uci-2.6.sh \"$RUNNER_TEMP/uci-2.6\")\"\n          echo \"AMS_GRA_UCI_2_5_ROOT=$UCI25\" >> \"$GITHUB_ENV\"\n          echo \"AMS_GRA_UCI_2_6_ROOT=$UCI26\" >> \"$GITHUB_ENV\"\n      - name: Prepare regression inputs and release CLI\n        run: |\n          set -euo pipefail\n          test -n \"$AMS_GRA_UCI_2_5_ROOT\"\n          test -n \"$AMS_GRA_UCI_2_6_ROOT\"\n          echo \"TMPDIR=$RUNNER_TEMP\" >> \"$GITHUB_ENV\"\n          cargo fetch --locked\n          cargo build --release --locked -p ams-gra-codegen-oms\n      # Task 058: fresh bounded-ASCII String inventory (the exact 61-member\n      # set per release, 19 alphabets, three still-unsupported Unicode neighbours\n      # after Task 062 admits IPv6), the\n      # real message-impact classification (no member may remain a blocker),\n      # capability-relative Task058 Ada-only closure/name-context regression,\n      # and the smallest real newly-READY service generating and compiling in\n      # Ada, Rust and C++ with a real Rust codec round trip. The service test\n      # prints its marker FIRST, so it may share libtest's unterminated\n      # \"test <name> ... \" line.\n      - name: Real UCI bounded-ASCII String inventory and message impact (Task 058, must execute)\n        run: |\n          set -euo pipefail\n          status=0\n          output=\"$(cargo test --release -p ams-gra-codegen-oms --test uci_bounded_ascii_string -- \\\n            --nocapture --test-threads 1 2>&1)\" || status=$?\n          printf '%s\\n' \"$output\"\n          if (( status != 0 )); then exit \"$status\"; fi\n          grep -Fqx 'UCI 2.5 BOUNDED ASCII INVENTORY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 BOUNDED ASCII INVENTORY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.5 BOUNDED ASCII MESSAGE IMPACT: RECORDED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 BOUNDED ASCII MESSAGE IMPACT: RECORDED' <<<\"$output\"\n          grep -Eqx '(test task058_real_uci_newly_ready_service_generates_and_compiles \\.\\.\\. )?UCI 2\\.5 REAL NEWLY-READY BOUNDED ASCII SERVICE: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 5 passed' <<<\"$output\"\n      # Task 059: pinned inventory, twelve coverage cells and real-message\n      # impact. No pinned UCI root is required by Fast CI.\n      - name: Real UCI structured ASCII evidence (Task 059, must execute)\n        run: |\n          set -euo pipefail\n          status=0\n          output=\"$(cargo test --release -p ams-gra-codegen-oms --test uci_structured_ascii -- \\\n            --nocapture --test-threads 1 2>&1)\" || status=$?\n          printf '%s\\n' \"$output\"\n          if (( status != 0 )); then exit \"$status\"; fi\n          grep -Fqx 'UCI 2.5 STRUCTURED ASCII INVENTORY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 STRUCTURED ASCII INVENTORY: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.5 STRUCTURED ASCII MESSAGE IMPACT: RECORDED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 STRUCTURED ASCII MESSAGE IMPACT: RECORDED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 2 passed' <<<\"$output\"\n\n\n  # Admission and AFTER remain one mandatory gate on an independent runner.\n",
-      "expected_header": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-2' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-regressions-ascii', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-latest\n    timeout-minutes: 240",
+      "expected_header": "    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'real-uci-regressions-ascii')\n    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-2' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-regressions-ascii', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-latest\n    timeout-minutes: 240",
       "main_eligible": true,
       "purpose": "Inherited full qualification",
       "source_policy": "synthetic merge github.sha",
       "trigger_type": "workflow_call:\n  schedule:\n    - cron: \"0 6 * * *\"\n  workflow_dispatch:",
       "pr_concurrency_identity": "${{ github.ref == 'refs/heads/main' && 'oms-main-slot-2' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-regressions-ascii', github.workflow, github.run_id, github.run_attempt) }}",
-      "enabled_behavior": "independent workflow triggers"
+      "enabled_behavior": "independent workflow triggers",
+      "selection_condition": "github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'real-uci-regressions-ascii')",
+      "ownership": "Selected by reviewed rules.deep_jobs; prerequisites close transitively. Qualification payload unchanged."
     },
     {
       "workflow": "deep-ci.yml",
@@ -3300,13 +3535,15 @@
         "grep -qE '^test result: ok\\. 3 passed' <<<\"$output\""
       ],
       "original_steps_yaml": "    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n      - name: Verify Deep CI source identity\n        shell: bash\n        run: |\n          set -euo pipefail\n          actual=\"$(git rev-parse HEAD)\"\n          tree=\"$(git rev-parse HEAD^{tree})\"\n          test \"$actual\" = \"$GITHUB_SHA\"\n          test -n \"$tree\"\n          printf 'DEEP_CI_SOURCE_SHA=%s\\n' \"$actual\"\n          printf 'DEEP_CI_SOURCE_TREE=%s\\n' \"$tree\"\n          printf 'DEEP_CI_EVENT=%s\\n' \"$GITHUB_EVENT_NAME\"\n      - uses: dtolnay/rust-toolchain@stable\n      - name: Install GNAT\n        run: |\n          sudo apt-get update\n          sudo apt-get install -y gnat\n      # Hard gate, as in Fast CI: no `|| true`.\n      - name: Verify GNAT availability\n        run: |\n          command -v gnatmake\n          gnatmake --version\n      # Fetch each pinned release ONCE for the whole job. Both scripts verify\n      # the tag revision and root SHA-256 and fail hard on any mismatch; the\n      # tests verify the root SHA-256 again before using it.\n      - name: Fetch pinned UCI 2.5 and 2.6 (once)\n        run: |\n          set -euo pipefail\n          UCI25=\"$(scripts/fetch-pinned-uci-2.5.sh \"$RUNNER_TEMP/uci-2.5\")\"\n          UCI26=\"$(scripts/fetch-pinned-uci-2.6.sh \"$RUNNER_TEMP/uci-2.6\")\"\n          echo \"AMS_GRA_UCI_2_5_ROOT=$UCI25\" >> \"$GITHUB_ENV\"\n          echo \"AMS_GRA_UCI_2_6_ROOT=$UCI26\" >> \"$GITHUB_ENV\"\n      - name: Prepare regression inputs and release CLI\n        run: |\n          set -euo pipefail\n          test -n \"$AMS_GRA_UCI_2_5_ROOT\"\n          test -n \"$AMS_GRA_UCI_2_6_ROOT\"\n          echo \"TMPDIR=$RUNNER_TEMP\" >> \"$GITHUB_ENV\"\n          cargo fetch --locked\n          cargo build --release --locked -p ams-gra-codegen-oms\n      - name: Real UCI alternating ASCII evidence (Task 060, must execute)\n        run: |\n          set -euo pipefail\n          status=0\n          output=\"$(cargo test --release -p ams-gra-codegen-oms --test uci_alternating_admission -- --nocapture --test-threads 1 2>&1)\" || status=$?\n          printf '%s\\n' \"$output\"\n          if (( status != 0 )); then exit \"$status\"; fi\n          grep -Fqx 'UCI 2.5 TASK060 FINAL ADMISSION: baseline=19 admitted=15 DEFERRED_UNICODE=3 DEFERRED_COMPLEX=1' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 TASK060 FINAL ADMISSION: baseline=19 admitted=15 DEFERRED_UNICODE=3 DEFERRED_COMPLEX=1' <<<\"$output\"\n          grep -qE '^test result: ok\\. 2 passed' <<<\"$output\"\n          status=0\n          output=\"$(cargo test --release -p ams-gra-codegen-oms --test uci_alternating_after -- --nocapture --test-threads 1 2>&1)\" || status=$?\n          printf '%s\\n' \"$output\"\n          if (( status != 0 )); then exit \"$status\"; fi\n          grep -Fqx 'UCI 2.5 TASK060 PROJECTED MESSAGE IMPACT: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 TASK060 PROJECTED MESSAGE IMPACT: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.5 TASK060 OrderOfBattle COMPILER CODEC VERTICAL: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 TASK060 OrderOfBattle COMPILER CODEC VERTICAL: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.5 TASK060 SMTI_SettingsCommand COMPILER CODEC VERTICAL: PASSED' <<<\"$output\"\n          grep -Fqx 'UCI 2.6 TASK060 SMTI_SettingsCommand COMPILER CODEC VERTICAL: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 3 passed' <<<\"$output\"\n\n  # The runtime crates declare rust-version = \"1.95\". Fast CI checks them at\n  # 1.95.0 on synthetic fixtures only; this job adds the generated REAL UCI 2.5\n  # PositionReport and SubsystemStream codecs (build.rs generates them only\n  # when AMS_GRA_UCI_2_5_ROOT is set) under 1.95.0. Rust only: no GNAT.\n",
-      "expected_header": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-3' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-regressions-alternating', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-latest\n    timeout-minutes: 240",
+      "expected_header": "    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'real-uci-regressions-alternating')\n    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-3' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-regressions-alternating', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-latest\n    timeout-minutes: 240",
       "main_eligible": true,
       "purpose": "Inherited full qualification",
       "source_policy": "synthetic merge github.sha",
       "trigger_type": "workflow_call:\n  schedule:\n    - cron: \"0 6 * * *\"\n  workflow_dispatch:",
       "pr_concurrency_identity": "${{ github.ref == 'refs/heads/main' && 'oms-main-slot-3' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-regressions-alternating', github.workflow, github.run_id, github.run_attempt) }}",
-      "enabled_behavior": "independent workflow triggers"
+      "enabled_behavior": "independent workflow triggers",
+      "selection_condition": "github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'real-uci-regressions-alternating')",
+      "ownership": "Selected by reviewed rules.deep_jobs; prerequisites close transitively. Qualification payload unchanged."
     },
     {
       "workflow": "deep-ci.yml",
@@ -3374,13 +3611,15 @@
       ],
       "required_markers": [],
       "original_steps_yaml": "    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n      - name: Verify Deep CI source identity\n        shell: bash\n        run: |\n          set -euo pipefail\n          actual=\"$(git rev-parse HEAD)\"\n          tree=\"$(git rev-parse HEAD^{tree})\"\n          test \"$actual\" = \"$GITHUB_SHA\"\n          test -n \"$tree\"\n          printf 'DEEP_CI_SOURCE_SHA=%s\\n' \"$actual\"\n          printf 'DEEP_CI_SOURCE_TREE=%s\\n' \"$tree\"\n          printf 'DEEP_CI_EVENT=%s\\n' \"$GITHUB_EVENT_NAME\"\n      - name: Install Rust 1.95.0\n        run: |\n          set -euo pipefail\n          rustup toolchain install 1.95.0 --profile minimal\n          cargo +1.95.0 --version\n      - name: Fetch pinned UCI 2.5 (once)\n        run: |\n          set -euo pipefail\n          UCI25=\"$(scripts/fetch-pinned-uci-2.5.sh \"$RUNNER_TEMP/uci-2.5\")\"\n          echo \"AMS_GRA_UCI_2_5_ROOT=$UCI25\" >> \"$GITHUB_ENV\"\n      - name: Real-UCI generated code MSRV (1.95.0)\n        run: |\n          set -euo pipefail\n          test -n \"$AMS_GRA_UCI_2_5_ROOT\"\n          cargo +1.95.0 check --locked -p ams-gra-oms-runtime-rust-facade-tests --all-targets\n\n  # Tasks 049-053: the generated facade and codecs against the UNMODIFIED\n  # Sleet server at the exact pinned revision (built by the script from a fresh\n  # checkout with Sleet's own pinned toolchain), plus the real UCI 2.5\n  # PositionReport / SubsystemStream codecs. Rust only: no GNAT.\n",
-      "expected_header": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-msrv-real-uci', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-latest\n    timeout-minutes: 60",
+      "expected_header": "    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'msrv-real-uci')\n    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-msrv-real-uci', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-latest\n    timeout-minutes: 60",
       "main_eligible": true,
       "purpose": "Inherited full qualification",
       "source_policy": "synthetic merge github.sha",
       "trigger_type": "workflow_call:\n  schedule:\n    - cron: \"0 6 * * *\"\n  workflow_dispatch:",
       "pr_concurrency_identity": "${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-msrv-real-uci', github.workflow, github.run_id, github.run_attempt) }}",
-      "enabled_behavior": "independent workflow triggers"
+      "enabled_behavior": "independent workflow triggers",
+      "selection_condition": "github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'msrv-real-uci')",
+      "ownership": "Selected by reviewed rules.deep_jobs; prerequisites close transitively. Qualification payload unchanged."
     },
     {
       "workflow": "deep-ci.yml",
@@ -3489,13 +3728,15 @@
         "grep -qE '^test result: ok\\. 1 passed' <<<\"$output\""
       ],
       "original_steps_yaml": "    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n      - name: Verify Deep CI source identity\n        shell: bash\n        run: |\n          set -euo pipefail\n          actual=\"$(git rev-parse HEAD)\"\n          tree=\"$(git rev-parse HEAD^{tree})\"\n          test \"$actual\" = \"$GITHUB_SHA\"\n          test -n \"$tree\"\n          printf 'DEEP_CI_SOURCE_SHA=%s\\n' \"$actual\"\n          printf 'DEEP_CI_SOURCE_TREE=%s\\n' \"$tree\"\n          printf 'DEEP_CI_EVENT=%s\\n' \"$GITHUB_EVENT_NAME\"\n      - uses: dtolnay/rust-toolchain@stable\n      - uses: actions/setup-python@v5\n        with:\n          python-version: |\n            3.11\n            3.13\n      - name: Install pinned Python LA-CAL runtime\n        run: |\n          python3.11 -m pip install ./python/oms-lacal-runtime\n          python3.13 -m pip install ./python/oms-lacal-runtime\n      - name: Fetch pinned UCI 2.5 (once)\n        run: |\n          set -euo pipefail\n          UCI25=\"$(scripts/fetch-pinned-uci-2.5.sh \"$RUNNER_TEMP/uci-2.5\")\"\n          echo \"AMS_GRA_UCI_2_5_ROOT=$UCI25\" >> \"$GITHUB_ENV\"\n      - name: Real UCI 2.5 codecs (Tasks 050/052, must execute)\n        run: |\n          set -euo pipefail\n          # Task 050: the REAL UCI 2.5 PositionReport codec.\n          output=\"$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test real_uci_position_report -- \\\n            --exact real::task050_real_position_report_decodes_and_re_encodes --nocapture 2>&1)\"\n          printf '%s\\n' \"$output\"\n          grep -Fqx 'REAL POSITIONREPORT CODEC: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 1 passed' <<<\"$output\"\n          # Task 052: the REAL UCI 2.5 SubsystemStream hexBinary codec.\n          output=\"$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test real_uci_subsystem_stream -- \\\n            --exact real::task052_real_subsystem_stream_hex_binary_round_trips --nocapture 2>&1)\"\n          printf '%s\\n' \"$output\"\n          grep -Fqx 'REAL SUBSYSTEMSTREAM HEXBINARY CODEC: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 1 passed' <<<\"$output\"\n          # Task 058: the REAL UCI 2.5 AMTI_SettingsCommand codec (the\n          # zero-length bounded-ASCII EmptyType through the generated model).\n          output=\"$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test real_uci_amti_settings -- \\\n            --exact real::task058_real_amti_settings_empty_type_round_trips --nocapture 2>&1)\"\n          printf '%s\\n' \"$output\"\n          grep -Fqx 'REAL AMTI_SETTINGSCOMMAND EMPTYTYPE CODEC: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 1 passed' <<<\"$output\"\n          # Task 059: real FileMetadata's FileNameType through the generated\n          # Rust codec; invalid lexical text must fail checked construction.\n          output=\"$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test real_uci_file_metadata -- \\\n            --exact real::task059_real_file_metadata_structured_ascii_codec --nocapture 2>&1)\"\n          printf '%s\\n' \"$output\"\n          grep -Fqx 'REAL FILEMETADATA STRUCTURED ASCII CODEC: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 1 passed' <<<\"$output\"\n      # AMS_GRA_UCI_2_5_ROOT (from GITHUB_ENV) also enables the script's real\n      # PositionReport / SubsystemStream round trips through Sleet.\n      - name: Rust LA-CAL runtime against real pinned Sleet (e38f61d8)\n        env:\n          PY006_PYTHONS: python3.11 python3.13\n        run: |\n          set -euo pipefail\n          test -n \"$AMS_GRA_UCI_2_5_ROOT\"\n          scripts/run-real-sleet-test.sh\n",
-      "expected_header": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-4' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-sleet', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-latest\n    timeout-minutes: 60",
+      "expected_header": "    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'real-sleet')\n    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-4' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-sleet', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-latest\n    timeout-minutes: 60",
       "main_eligible": true,
       "purpose": "Inherited full qualification",
       "source_policy": "synthetic merge github.sha",
       "trigger_type": "workflow_call:\n  schedule:\n    - cron: \"0 6 * * *\"\n  workflow_dispatch:",
       "pr_concurrency_identity": "${{ github.ref == 'refs/heads/main' && 'oms-main-slot-4' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-sleet', github.workflow, github.run_id, github.run_attempt) }}",
       "enabled_behavior": "independent workflow triggers",
+      "selection_condition": "github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'real-sleet')",
+      "ownership": "Selected by reviewed rules.deep_jobs; prerequisites close transitively. Qualification payload unchanged.",
       "integration_steps_yaml": "    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n      - name: Verify Deep CI source identity\n        shell: bash\n        run: |\n          set -euo pipefail\n          actual=\"$(git rev-parse HEAD)\"\n          tree=\"$(git rev-parse HEAD^{tree})\"\n          test \"$actual\" = \"$GITHUB_SHA\"\n          test -n \"$tree\"\n          printf 'DEEP_CI_SOURCE_SHA=%s\\n' \"$actual\"\n          printf 'DEEP_CI_SOURCE_TREE=%s\\n' \"$tree\"\n          printf 'DEEP_CI_EVENT=%s\\n' \"$GITHUB_EVENT_NAME\"\n      - uses: dtolnay/rust-toolchain@stable\n      - uses: actions/setup-python@v5\n        with:\n          python-version: |\n            3.11\n            3.13\n      - name: Install pinned Python LA-CAL runtime\n        run: |\n          python3.11 -m pip install ./python/oms-lacal-runtime\n          python3.13 -m pip install ./python/oms-lacal-runtime\n      - name: Full independent Python Float64 corpus (PY-008)\n        run: |\n          set -euo pipefail\n          python3 tests/ada-float64-probe/oracle.py \"$RUNNER_TEMP/py008-corpus\"\n          rustup toolchain install 1.95.0 --profile minimal\n          cargo +1.95.0 build --locked -p ams-gra-codegen-oms\n          target/debug/ams-gra-codegen-oms service-generate --schema tests/fixtures/python-float64/oam.xsd --contract tests/fixtures/python-float64/service.yaml --language python --world closed-schema --with-codec --output \"$RUNNER_TEMP/py008-generated\"\n          for interpreter in python3.11 python3.13; do\n            version=\"$(\"$interpreter\" -c 'import sys; print(str(sys.version_info.major) + str(sys.version_info.minor))')\"\n            \"$interpreter\" scripts/check-py008-numeric.py --full --generated \"$RUNNER_TEMP/py008-generated\" --corpus \"$RUNNER_TEMP/py008-corpus\" --output \"$RUNNER_TEMP/py008-$version-normal.json\"\n            \"$interpreter\" -O scripts/check-py008-numeric.py --full --generated \"$RUNNER_TEMP/py008-generated\" --corpus \"$RUNNER_TEMP/py008-corpus\" --output \"$RUNNER_TEMP/py008-$version-optimized.json\"\n          done\n      - name: Preserve Python Float64 numeric evidence\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: py008-numeric\n          path: ${{ runner.temp }}/py008-*.json\n          if-no-files-found: error\n      - name: Fetch pinned UCI 2.5 (once)\n        run: |\n          set -euo pipefail\n          UCI25=\"$(scripts/fetch-pinned-uci-2.5.sh \"$RUNNER_TEMP/uci-2.5\")\"\n          echo \"AMS_GRA_UCI_2_5_ROOT=$UCI25\" >> \"$GITHUB_ENV\"\n      - name: Real UCI 2.5 codecs (Tasks 050/052, must execute)\n        run: |\n          set -euo pipefail\n          output=\"$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test real_uci_position_report -- \\\n            --exact real::task050_real_position_report_decodes_and_re_encodes --nocapture 2>&1)\"\n          printf '%s\\n' \"$output\"\n          grep -Fqx 'REAL POSITIONREPORT CODEC: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 1 passed' <<<\"$output\"\n          output=\"$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test real_uci_subsystem_stream -- \\\n            --exact real::task052_real_subsystem_stream_hex_binary_round_trips --nocapture 2>&1)\"\n          printf '%s\\n' \"$output\"\n          grep -Fqx 'REAL SUBSYSTEMSTREAM HEXBINARY CODEC: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 1 passed' <<<\"$output\"\n          output=\"$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test real_uci_amti_settings -- \\\n            --exact real::task058_real_amti_settings_empty_type_round_trips --nocapture 2>&1)\"\n          printf '%s\\n' \"$output\"\n          grep -Fqx 'REAL AMTI_SETTINGSCOMMAND EMPTYTYPE CODEC: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 1 passed' <<<\"$output\"\n          output=\"$(cargo test -p ams-gra-oms-runtime-rust-facade-tests --test real_uci_file_metadata -- \\\n            --exact real::task059_real_file_metadata_structured_ascii_codec --nocapture 2>&1)\"\n          printf '%s\\n' \"$output\"\n          grep -Fqx 'REAL FILEMETADATA STRUCTURED ASCII CODEC: PASSED' <<<\"$output\"\n          grep -qE '^test result: ok\\. 1 passed' <<<\"$output\"\n      - name: Rust LA-CAL runtime against real pinned Sleet (e38f61d8)\n        env:\n          PY006_PYTHONS: python3.11 python3.13\n        run: |\n          set -euo pipefail\n          test -n \"$AMS_GRA_UCI_2_5_ROOT\"\n          scripts/run-real-sleet-test.sh\n\n",
       "integration_steps": [
         {
@@ -3669,13 +3910,15 @@
         "grep -Fx 'TASK093_LOG_COMPLETE checks= 29 rejections= 9' \"$root/$policy-run.log\""
       ],
       "original_steps_yaml": "    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n      - name: Verify Deep CI source identity\n        shell: bash\n        run: |\n          set -euo pipefail\n          actual=\"$(git rev-parse HEAD)\"\n          tree=\"$(git rev-parse HEAD^{tree})\"\n          test \"$actual\" = \"$GITHUB_SHA\"\n          test -n \"$tree\"\n          printf 'DEEP_CI_SOURCE_SHA=%s\\n' \"$actual\"\n          printf 'DEEP_CI_SOURCE_TREE=%s\\n' \"$tree\"\n          printf 'DEEP_CI_EVENT=%s\\n' \"$GITHUB_EVENT_NAME\"\n      - uses: dtolnay/rust-toolchain@1.95.0\n      - name: Install verified Alire 2.1.1\n        shell: bash\n        run: |\n          set -euo pipefail\n          mkdir -p \"$RUNNER_TEMP/task093-tools\"\n          cd \"$RUNNER_TEMP/task093-tools\"\n          curl --fail --location --retry 3 --output alire.zip \\\n            https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip\n          echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  alire.zip' | sha256sum --check --strict\n          unzip -q alire.zip\n          test \"$(bin/alr --version)\" = 'alr 2.1.1'\n          echo \"$PWD/bin\" >> \"$GITHUB_PATH\"\n      - name: Build production generator\n        run: cargo build --locked -p ams-gra-codegen-oms\n      - name: Qualify extracted pinned real Binary types and fields\n        shell: bash\n        run: |\n          set -euo pipefail\n          uci25=\"$(scripts/fetch-pinned-uci-2.5.sh \"$RUNNER_TEMP/task093-uci25\")\"\n          uci26=\"$(scripts/fetch-pinned-uci-2.6.sh \"$RUNNER_TEMP/task093-uci26\")\"\n          echo \"TASK093_UCI25=$uci25\" >> \"$GITHUB_ENV\"\n          echo \"TASK093_UCI26=$uci26\" >> \"$GITHUB_ENV\"\n          python3 scripts/check-task093-real.py --compiler 16 --version 2.5 --schema \"$uci25\" --scratch \"$RUNNER_TEMP/task093-real25\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\"\n          python3 scripts/check-task093-real.py --compiler 16 --version 2.6 --schema \"$uci26\" --scratch \"$RUNNER_TEMP/task093-real26\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\"\n          for version in 25 26; do\n            root=\"$RUNNER_TEMP/task093-real$version\"\n            test -s \"$root/sources.json\"\n            test -s \"$root/provenance.json\"\n            for policy in normal Check Ignore; do\n              test -s \"$root/$policy-alire.lock\"\n              test -s \"$root/$policy-build.command.json\"\n              grep -Fx 'TASK093_REAL_COMPLETE cases= 14' \"$root/$policy-run.log\"\n            done\n          done\n      - name: Execute newly READY complete real Log services, all policies\n        shell: bash\n        run: |\n          set -euo pipefail\n          python3 scripts/check-task093-log.py --compiler 16 --version 2.5 --schema \"$TASK093_UCI25\" --scratch \"$RUNNER_TEMP/task093-log25\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\"\n          python3 scripts/check-task093-log.py --compiler 16 --version 2.6 --schema \"$TASK093_UCI26\" --scratch \"$RUNNER_TEMP/task093-log26\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\"\n          for version in 25 26; do\n            root=\"$RUNNER_TEMP/task093-log$version\"\n            test -s \"$root/sources.json\"\n            test -s \"$root/qualification.json\"\n            for policy in normal Check Ignore; do\n              grep -Fx 'TASK093_LOG_COMPLETE checks= 29 rejections= 9' \"$root/$policy-run.log\"\n            done\n          done\n      - name: Preserve real Binary qualification evidence\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: task093-real-binary\n          path: |\n            ${{ runner.temp }}/task093-real25/**\n            ${{ runner.temp }}/task093-real26/**\n            ${{ runner.temp }}/task093-log25/**\n            ${{ runner.temp }}/task093-log26/**\n          if-no-files-found: error\n",
-      "expected_header": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-ada-hexbinary-real', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-24.04\n    timeout-minutes: 40",
+      "expected_header": "    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'ada-hexbinary-real')\n    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-ada-hexbinary-real', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-24.04\n    timeout-minutes: 40",
       "main_eligible": true,
       "purpose": "Inherited full qualification",
       "source_policy": "synthetic merge github.sha",
       "trigger_type": "workflow_call:\n  schedule:\n    - cron: \"0 6 * * *\"\n  workflow_dispatch:",
       "pr_concurrency_identity": "${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-ada-hexbinary-real', github.workflow, github.run_id, github.run_attempt) }}",
-      "enabled_behavior": "independent workflow triggers"
+      "enabled_behavior": "independent workflow triggers",
+      "selection_condition": "github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'ada-hexbinary-real')",
+      "ownership": "Selected by reviewed rules.deep_jobs; prerequisites close transitively. Qualification payload unchanged."
     },
     {
       "workflow": "uci-pages.yml",
@@ -4508,7 +4751,7 @@
         }
       ],
       "original_steps_yaml": "    steps:\n      - name: Verify pinned target and external compiler\n        shell: bash\n        run: |\n          set -euo pipefail\n          apt-get update\n          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14\n          test \"$(uname -m)\" = x86_64\n          test \"$(getconf GNU_LIBC_VERSION)\" = 'glibc 2.41'\n          mkdir -p /tmp/task100-evidence\n          dpkg-query -W libc6 libc6-dev gnat-14 gcc-14 | tee /tmp/task100-evidence/platform.txt\n          sha256sum /usr/lib/x86_64-linux-gnu/libc.so.6 /usr/bin/gnat /usr/bin/gcc | tee -a /tmp/task100-evidence/platform.txt\n          gnat --version | tee -a /tmp/task100-evidence/platform.txt\n          gnat --version | grep -E '^GNAT 14\\.2\\.0([[:space:]]|$)'\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.event.pull_request.head.sha || github.sha }}\n      - name: Record exact source identity\n        shell: bash\n        run: |\n          set -euo pipefail\n          test \"$(pwd -P)\" = \"$(realpath \"$GITHUB_WORKSPACE\")\"\n          git config --global --add safe.directory \"$GITHUB_WORKSPACE\"\n          git rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task100-evidence/source.txt\n          test \"$(git rev-parse HEAD)\" = '${{ github.event.pull_request.head.sha || github.sha }}'\n          status=\"$(git status --porcelain)\"\n          test -z \"$status\"\n      - uses: dtolnay/rust-toolchain@1.95.0\n      - name: Install verified Alire 2.1.1\n        shell: bash\n        run: |\n          set -euo pipefail\n          curl --fail --location --retry 3 --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip\n          echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  /tmp/alire.zip' | sha256sum --check --strict\n          unzip -q /tmp/alire.zip -d /opt/alire\n          test \"$(/opt/alire/bin/alr --version)\" = 'alr 2.1.1'\n          sha256sum /opt/alire/bin/alr | tee -a /tmp/task100-evidence/platform.txt\n          echo /opt/alire/bin >> \"$GITHUB_PATH\"\n      - name: Build exact-head generator\n        run: cargo +1.95.0 build --locked -p ams-gra-codegen-oms\n      - name: Provision pinned compiler and GNATCOLL inputs\n        env:\n          PYTHONDONTWRITEBYTECODE: '1'\n        run: python3 scripts/task096/setup.py --scratch /tmp/task100-evidence/setup --compiler '${{ matrix.compiler }}'\n      - name: Build unmodified pinned Sleet\n        shell: bash\n        run: |\n          set -euo pipefail\n          git clone --quiet https://github.com/open-arsenal/ams-gra-hello-world-sk-infra-sleet /tmp/task100-sleet\n          git -C /tmp/task100-sleet checkout --quiet --detach e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b\n          test \"$(git -C /tmp/task100-sleet rev-parse HEAD)\" = e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b\n          test -z \"$(git -C /tmp/task100-sleet status --porcelain)\"\n          git -C /tmp/task100-sleet rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task100-evidence/sleet-source.txt\n          (cd /tmp/task100-sleet && cargo build --release --locked -p sleet) 2>&1 | tee /tmp/task100-evidence/sleet-build.log\n      - name: Execute generated runtime consumers and require all cells\n        shell: bash\n        env:\n          PYTHONDONTWRITEBYTECODE: '1'\n        run: |\n          set -euo pipefail\n          python3 scripts/task100/qualify.py --scratch /tmp/task100-evidence/campaign --setup /tmp/task100-evidence/setup --compiler '${{ matrix.compiler }}' --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\" --sleet /tmp/task100-sleet | tee /tmp/task100-evidence/qualify.log\n          python3 - <<'EOF'\n          import json\n          result = json.load(open('/tmp/task100-evidence/campaign/result.json'))\n          cells = result['cells']\n          expected = {(n, p, a, o) for n in ['oam', 'qualified'] for p in ['portable', 'lossless']\n                      for a in ['Normal', 'Check', 'Ignore'] for o in ['0', '2']}\n          actual = {(c['namespace'], c['profile'], c['policy'], c['optimization']) for c in cells}\n          if not result.get('completed') or len(cells) != 24 or actual != expected:\n              raise SystemExit('incomplete Task 100 execution matrix')\n          if any(s['exit'] != 0 for s in result['steps']):\n              raise SystemExit('failed Task 100 step')\n          if not result.get('real_sleet'):\n              raise SystemExit('real Sleet not requested')\n          from pathlib import Path\n          evidence = list(Path('/tmp/task100-evidence/campaign').glob('oam-portable-*/sleet/result.json'))\n          if len(evidence) != 6 or any(not json.loads(p.read_text()).get('completed') for p in evidence):\n              raise SystemExit('missing real pinned Sleet execution')\n          print('TASK100_HOSTED_REQUIRED_CELLS', len(cells))\n          EOF\n          test \"$(grep -c '^TASK100_CELL_COMPLETE ' /tmp/task100-evidence/qualify.log)\" = 24\n          grep -F 'TASK100_QUALIFICATION_COMPLETE' /tmp/task100-evidence/qualify.log\n      - name: Upload mandatory source compiler and execution evidence\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: task100-ada-websocket-sleet-${{ matrix.compiler }}\n          path: |\n            scripts/task100/**\n            tests/ada-websocket/**\n            tests/fixtures/service-generate/lacal-websocket.xsd\n            tests/fixtures/service-generate/lacal-runtime.yaml\n            /tmp/task100-evidence/*.txt\n            /tmp/task100-evidence/*.log\n            /tmp/task100-evidence/setup/step-*\n            /tmp/task100-evidence/setup/identities.json\n            /tmp/task100-evidence/setup/consumer/alire/alire.lock\n            /tmp/task100-evidence/campaign/**/*.json\n            /tmp/task100-evidence/campaign/**/*.stdout\n            /tmp/task100-evidence/campaign/**/*.stderr\n            /tmp/task100-evidence/campaign/**/*.exit\n            /tmp/task100-evidence/campaign/**/*.ad?\n            /tmp/task100-evidence/campaign/**/*.gpr\n            /tmp/task100-evidence/campaign/**/*.adc\n            /tmp/task100-evidence/campaign/**/*.c\n            /tmp/task100-evidence/campaign/**/*.h\n            /tmp/task100-evidence/campaign/**/*.lock\n            /tmp/task100-evidence/campaign/**/*.xsd\n            /tmp/task100-evidence/campaign/**/*.toml\n            /tmp/task100-evidence/campaign/**/LICENSE\n          if-no-files-found: error\n",
-      "expected_header": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && format('oms-main-slot-{0}', matrix.slot) || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-ada-websocket-real-sleet-{3}', github.workflow, github.run_id, github.run_attempt, matrix.compiler) }}\n      queue: max\n    name: ada-websocket-real-sleet (${{ matrix.compiler }})\n    runs-on: ubuntu-24.04\n    strategy:\n      fail-fast: false\n      matrix:\n        compiler: ['14', '16']\n        include:\n          - compiler: '14'\n            slot: 4\n          - compiler: '16'\n            slot: 2\n    container:\n      image: debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5\n    timeout-minutes: 120",
+      "expected_header": "    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'ada-websocket-real-sleet')\n    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && format('oms-main-slot-{0}', matrix.slot) || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-ada-websocket-real-sleet-{3}', github.workflow, github.run_id, github.run_attempt, matrix.compiler) }}\n      queue: max\n    name: ada-websocket-real-sleet (${{ matrix.compiler }})\n    runs-on: ubuntu-24.04\n    strategy:\n      fail-fast: false\n      matrix:\n        compiler: ['14', '16']\n        include:\n          - compiler: '14'\n            slot: 4\n          - compiler: '16'\n            slot: 2\n    container:\n      image: debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5\n    timeout-minutes: 120",
       "main_eligible": true,
       "purpose": "Task100 optional loopback WebSocket sleet; original 24-cell compiler/policy/optimization matrix",
       "source_policy": "synthetic merge github.sha",
@@ -4544,7 +4787,9 @@
         "TASK100_QUALIFICATION_COMPLETE"
       ],
       "integration_steps_yaml": "    steps:\n      - name: Verify pinned target and external compiler\n        shell: bash\n        run: |\n          set -euo pipefail\n          apt-get update\n          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14\n          test \"$(uname -m)\" = x86_64\n          test \"$(getconf GNU_LIBC_VERSION)\" = 'glibc 2.41'\n          mkdir -p /tmp/task100-evidence\n          dpkg-query -W libc6 libc6-dev gnat-14 gcc-14 | tee /tmp/task100-evidence/platform.txt\n          sha256sum /usr/lib/x86_64-linux-gnu/libc.so.6 /usr/bin/gnat /usr/bin/gcc | tee -a /tmp/task100-evidence/platform.txt\n          gnat --version | tee -a /tmp/task100-evidence/platform.txt\n          gnat --version | grep -E '^GNAT 14\\.2\\.0([[:space:]]|$)'\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n      - name: Record exact source identity\n        shell: bash\n        run: |\n          set -euo pipefail\n          test \"$(pwd -P)\" = \"$(realpath \"$GITHUB_WORKSPACE\")\"\n          git config --global --add safe.directory \"$GITHUB_WORKSPACE\"\n          git rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task100-evidence/source.txt\n          test \"$(git rev-parse HEAD)\" = '${{ github.sha }}'\n          status=\"$(git status --porcelain)\"\n          test -z \"$status\"\n      - uses: dtolnay/rust-toolchain@1.95.0\n      - name: Install verified Alire 2.1.1\n        shell: bash\n        run: |\n          set -euo pipefail\n          curl --fail --location --retry 3 --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip\n          echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  /tmp/alire.zip' | sha256sum --check --strict\n          unzip -q /tmp/alire.zip -d /opt/alire\n          test \"$(/opt/alire/bin/alr --version)\" = 'alr 2.1.1'\n          sha256sum /opt/alire/bin/alr | tee -a /tmp/task100-evidence/platform.txt\n          echo /opt/alire/bin >> \"$GITHUB_PATH\"\n      - name: Build exact-head generator\n        run: cargo +1.95.0 build --locked -p ams-gra-codegen-oms\n      - name: Provision pinned compiler and GNATCOLL inputs\n        env:\n          PYTHONDONTWRITEBYTECODE: '1'\n        run: python3 scripts/task096/setup.py --scratch /tmp/task100-evidence/setup --compiler '${{ matrix.compiler }}'\n      - name: Build unmodified pinned Sleet\n        shell: bash\n        run: |\n          set -euo pipefail\n          git clone --quiet https://github.com/open-arsenal/ams-gra-hello-world-sk-infra-sleet /tmp/task100-sleet\n          git -C /tmp/task100-sleet checkout --quiet --detach e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b\n          test \"$(git -C /tmp/task100-sleet rev-parse HEAD)\" = e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b\n          test -z \"$(git -C /tmp/task100-sleet status --porcelain)\"\n          git -C /tmp/task100-sleet rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task100-evidence/sleet-source.txt\n          (cd /tmp/task100-sleet && cargo build --release --locked -p sleet) 2>&1 | tee /tmp/task100-evidence/sleet-build.log\n      - name: Execute generated runtime consumers and require all cells\n        shell: bash\n        env:\n          PYTHONDONTWRITEBYTECODE: '1'\n        run: |\n          set -euo pipefail\n          python3 scripts/task100/qualify.py --scratch /tmp/task100-evidence/campaign --setup /tmp/task100-evidence/setup --compiler '${{ matrix.compiler }}' --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\" --sleet /tmp/task100-sleet | tee /tmp/task100-evidence/qualify.log\n          python3 - <<'EOF'\n          import json\n          result = json.load(open('/tmp/task100-evidence/campaign/result.json'))\n          cells = result['cells']\n          expected = {(n, p, a, o) for n in ['oam', 'qualified'] for p in ['portable', 'lossless']\n                      for a in ['Normal', 'Check', 'Ignore'] for o in ['0', '2']}\n          actual = {(c['namespace'], c['profile'], c['policy'], c['optimization']) for c in cells}\n          if not result.get('completed') or len(cells) != 24 or actual != expected:\n              raise SystemExit('incomplete Task 100 execution matrix')\n          if any(s['exit'] != 0 for s in result['steps']):\n              raise SystemExit('failed Task 100 step')\n          if not result.get('real_sleet'):\n              raise SystemExit('real Sleet not requested')\n          from pathlib import Path\n          evidence = list(Path('/tmp/task100-evidence/campaign').glob('oam-portable-*/sleet/result.json'))\n          if len(evidence) != 6 or any(not json.loads(p.read_text()).get('completed') for p in evidence):\n              raise SystemExit('missing real pinned Sleet execution')\n          print('TASK100_HOSTED_REQUIRED_CELLS', len(cells))\n          EOF\n          test \"$(grep -c '^TASK100_CELL_COMPLETE ' /tmp/task100-evidence/qualify.log)\" = 24\n          grep -F 'TASK100_QUALIFICATION_COMPLETE' /tmp/task100-evidence/qualify.log\n      - name: Record Task100 integration run identity\n        shell: bash\n        env:\n          TASK100_COMPILER: ${{ matrix.compiler }}\n        run: |\n          python3 - <<'EOF'\n          import json, os, subprocess\n          from pathlib import Path\n          git = lambda ref: subprocess.check_output(['git', 'rev-parse', ref], text=True).strip()\n          sha = git('HEAD')\n          if sha != os.environ['GITHUB_SHA']:\n              raise SystemExit('Task100 source is not qualified workflow source')\n          Path('/tmp/task100-evidence/integration-identity.json').write_text(json.dumps(dict(\n              sha=sha, tree=git('HEAD^{tree}'), run_id=os.environ['GITHUB_RUN_ID'],\n              run_attempt=os.environ['GITHUB_RUN_ATTEMPT'], compiler=os.environ['TASK100_COMPILER'])) + '\\n')\n          EOF\n      - name: Upload mandatory source compiler and execution evidence\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: task100-ada-websocket-sleet-${{ matrix.compiler }}\n          path: |\n            scripts/task100/**\n            tests/ada-websocket/**\n            tests/fixtures/service-generate/lacal-websocket.xsd\n            tests/fixtures/service-generate/lacal-runtime.yaml\n            /tmp/task100-evidence/*.txt\n            /tmp/task100-evidence/integration-identity.json\n            /tmp/task100-evidence/*.log\n            /tmp/task100-evidence/setup/step-*\n            /tmp/task100-evidence/setup/identities.json\n            /tmp/task100-evidence/setup/consumer/alire/alire.lock\n            /tmp/task100-evidence/campaign/**/*.json\n            /tmp/task100-evidence/campaign/**/*.txt\n            /tmp/task100-evidence/campaign/**/*.stdout\n            /tmp/task100-evidence/campaign/**/*.stderr\n            /tmp/task100-evidence/campaign/**/*.exit\n            /tmp/task100-evidence/campaign/**/*.ad?\n            /tmp/task100-evidence/campaign/**/*.gpr\n            /tmp/task100-evidence/campaign/**/*.adc\n            /tmp/task100-evidence/campaign/**/*.c\n            /tmp/task100-evidence/campaign/**/*.h\n            /tmp/task100-evidence/campaign/**/*.lock\n            /tmp/task100-evidence/campaign/**/*.xsd\n            /tmp/task100-evidence/campaign/**/*.toml\n            /tmp/task100-evidence/campaign/**/LICENSE\n            /tmp/task100-evidence/campaign/**/*.sha256\n          if-no-files-found: error\n\n",
-      "original_payload_sha256": "deb7a055c9dd6b268fe04fce07791132d3d7a46c77e9a0adacf78bb4c1a07816"
+      "original_payload_sha256": "deb7a055c9dd6b268fe04fce07791132d3d7a46c77e9a0adacf78bb4c1a07816",
+      "selection_condition": "github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'ada-websocket-real-sleet')",
+      "ownership": "Selected by reviewed rules.deep_jobs; prerequisites close transitively. Qualification payload unchanged."
     }
   ],
   "reusable_jobs": {
@@ -4553,7 +4798,7 @@
     }
   },
   "pages_header": "name: UCI Pages\non:\n  workflow_dispatch:\n  push:\n    branches:\n      - main\n    paths:\n      - 'crates/schema-docs/**'\n      - 'crates/xsd-frontend/**'\n      - 'crates/ir/**'\n      - 'crates/codegen-core/**'\n      - 'crates/cli/**'\n      - 'Cargo.toml'\n      - 'Cargo.lock'\n      - 'rust-toolchain.toml'\n      - 'scripts/build-uci-pages.sh'\n      - 'scripts/validate-uci-pages.py'\n      - 'scripts/test_validate_uci_pages.py'\n      - 'site/**'\n      - '.github/workflows/uci-pages.yml'\npermissions:\n  contents: read\nconcurrency:\n  group: ${{ github.ref == 'refs/heads/main' && 'uci-pages-publication' || format('uci-pages-non-main-{0}', github.ref) }}\n  cancel-in-progress: true",
-  "deep_caller": "    needs: changes\n    if: github.event_name != 'pull_request' || fromJSON(needs.changes.outputs.manifest).deep\n    uses: ./.github/workflows/deep-ci.yml",
+  "deep_caller": "    needs: changes\n    if: github.event_name != 'pull_request' || fromJSON(needs.changes.outputs.manifest).deep\n    uses: ./.github/workflows/deep-ci.yml\n    with:\n      selection: ${{ needs.changes.outputs.manifest }}",
   "orchestration_payloads": {
     "changes": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-ci.yml-changes', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    runs-on: ubuntu-latest\n    timeout-minutes: 5\n    outputs:\n      manifest: ${{ steps.select.outputs.manifest }}\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n          fetch-depth: 0\n      - name: Classify verified proposed merge (main always full)\n        id: select\n        run: python3 scripts/ci-select-changes.py\n      - uses: actions/upload-artifact@v4\n        with:\n          name: ci-selection\n          path: ci-selection.json\n          if-no-files-found: error",
     "baseline": "    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-ci.yml-baseline', github.workflow, github.run_id, github.run_attempt) }}\n      queue: max\n    needs: changes\n    runs-on: ubuntu-latest\n    timeout-minutes: 20\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n          fetch-depth: 0\n      - name: Mandatory documentation and fail-closed orchestration policy\n        run: |\n          python3 scripts/ci-policy.py\n          python3 scripts/ci-doc-policy.py\n          python3 -m unittest discover -s scripts -p 'test_ci_select*.py'\n          python3 -m unittest discover -s scripts -p 'test_real_uci*.py'\n          bash scripts/check-ci-split.sh\n          bash scripts/test-check-ci-split.sh\n          python3 scripts/test-task060-ci-wrappers.py\n          python3 scripts/test-task061-ci-wrappers.py\n          python3 scripts/test-task093-compiler-placement.py\n          git diff --check\n      - name: Actionlint (pinned; queue syntax also independently guarded)\n        env:\n          ACTIONLINT_VERSION: 1.7.12\n        run: |\n          set -euo pipefail\n          curl --fail --location --retry 3 --output \"$RUNNER_TEMP/actionlint.tar.gz\" \"https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz\"\n          echo \"8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  $RUNNER_TEMP/actionlint.tar.gz\" | sha256sum --check --strict\n          mkdir -p \"$RUNNER_TEMP/ci-select-tools\"\n          tar -xzf \"$RUNNER_TEMP/actionlint.tar.gz\" -C \"$RUNNER_TEMP/ci-select-tools\" actionlint\n          ACTIONLINT=\"$RUNNER_TEMP/ci-select-tools/actionlint\" bash scripts/check-ci-actionlint.sh",
@@ -4619,5 +4864,9 @@
         "timeout_minutes": 15
       }
     }
-  }
+  },
+  "deep_header": "name: Deep CI\non:\n  workflow_call:\n    inputs:\n      selection:\n        description: Verified canonical v2 CI selection manifest; empty only for direct full qualification\n        type: string\n        required: false\n        default: ''\n  schedule:\n    - cron: \"0 6 * * *\"\n  workflow_dispatch:\npermissions:\n  contents: read",
+  "deep_selection_version": 2,
+  "ci_select_002_main": "7958c4e0d8f78768fd4c7d4c1bd34877c31d893a",
+  "ci_select_002_main_tree": "a94fc3bb844349780772566eafd50db7a7328efe"
 }

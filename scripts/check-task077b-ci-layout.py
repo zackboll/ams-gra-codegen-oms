@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 from real_uci_evidence import SHARDS as PRIMARY_SHARDS
+from ci_selection import deep_condition
 from collections import Counter
 from pathlib import Path
 
@@ -136,6 +137,9 @@ def check(path):
                 sum(run_command(step + '\n') == SOURCE_COMMAND for step in steps) == 1,
                 'source identity gate before qualification: ' + job)
         header = body.split('    steps:', 1)[0]
+        selection = '    if: ' + deep_condition(job) + '\n'
+        require(header.count(selection) == 1, 'job selection condition: ' + job)
+        header = header.replace(selection, '', 1)
         require(not re.search(r'^\s+(if:|continue-on-error:|env:|defaults:)', header, re.M),
                 'mandatory source identity: ' + job)
         # No later action or shell checkout may replace the verified source.
@@ -164,6 +168,11 @@ def check(path):
         if job in PRIMARY_SHARDS:
             from real_uci_evidence import evidence_steps
             gate_body = gate_body.replace(evidence_steps(job), '')
+        # CI-SELECT-002 permits exactly the reviewed job-level orchestration
+        # condition, never a step-level conditional qualification bypass.
+        selection = '    if: ' + deep_condition(job) + '\n'
+        require(gate_body.count(selection) == 1, 'job selection condition: ' + job)
+        gate_body = gate_body.replace(selection, '', 1)
         require(not re.search(r"^\s+(if:|continue-on-error:)", gate_body, re.M), "enabled hard gate: " + job)
         for setup in ('uses: actions/checkout@v4', 'uses: dtolnay/rust-toolchain@stable',
                       'sudo apt-get install -y gnat', 'command -v gnatmake', 'gnatmake --version',

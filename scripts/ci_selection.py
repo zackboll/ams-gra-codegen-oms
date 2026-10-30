@@ -23,6 +23,37 @@ def ordinary_jobs(policy):
     return {j["job_id"]: j for j in policy["jobs"] if j["workflow"] == "ci.yml"}
 
 
+def deep_jobs(policy):
+    return {j["job_id"]: j for j in policy["jobs"] if j["workflow"] == "deep-ci.yml"}
+
+
+def deep_condition(job_id):
+    return ("github.event_name != 'pull_request' || inputs.selection == '' || "
+            "fromJSON(inputs.selection).version != 2 || "
+            "contains(fromJSON(inputs.selection).deep_jobs, '" + job_id + "')")
+
+
+def validate_deep(manifest, policy):
+    """Validate the v2 wire contract, independently of path classification."""
+    registered = deep_jobs(policy)
+    selected = manifest.get('deep_jobs')
+    if (manifest.get('version') != 2 or not isinstance(selected, list)
+            or any(not isinstance(j, str) or not re.fullmatch(r'[a-z][a-z0-9-]*', j)
+                   or j not in registered for j in selected)
+            or selected != sorted(set(selected))):
+        raise ValueError('invalid canonical Deep job selection')
+    if type(manifest.get('deep')) is not bool or manifest['deep'] != bool(selected):
+        raise ValueError('inconsistent Deep boolean')
+    if close_prerequisites(selected, registered) != set(selected):
+        raise ValueError('missing Deep dependency closure')
+    for field, enabled in (('deep_selected_cells', True), ('deep_skipped_cells', False)):
+        wanted = sum(len(r['cells']) for j, r in registered.items() if (j in selected) == enabled)
+        if type(manifest.get(field)) is not int or manifest[field] != wanted:
+            raise ValueError('incorrect Deep matrix cell count: ' + field)
+    if manifest.get('mode') in ('full-main', 'full-pr') and set(selected) != set(registered):
+        raise ValueError('full qualification omitted Deep jobs')
+
+
 def git(root, *args):
     result = subprocess.run(["git", "-C", str(root), *args], capture_output=True, timeout=120)
     if result.returncode:
@@ -96,9 +127,11 @@ def close_prerequisites(selected, jobs):
         selected = expanded
 
 
-def select(changes, policy, full_reason=None, full_main=False):
+def _select(changes, policy, full_reason=None, full_main=False):
     jobs = ordinary_jobs(policy)
+    registered = deep_jobs(policy)
     selected, reasons = set(), []
+    selected_deep = set()
     full = bool(full_reason) or full_main
     deep = full
     if full_reason:
@@ -108,7 +141,8 @@ def select(changes, policy, full_reason=None, full_main=False):
         deep |= any(fnmatch.fnmatchcase(p, pattern) for p in change["paths"]
                     for pattern in policy["deep_pr_paths"])
         status = change["status"][0]
-        if status not in "AM" or change["new_mode"] not in ("100644", "100755"):
+        if (status not in "AM" or change["new_mode"] not in ("100644", "100755")
+                or (status == 'M' and change['old_mode'] != change['new_mode'])):
             full = deep = True
             reasons.append(dict(path=path, category="fallback", reason="deleted/renamed/copied/type-changed or nonregular path"))
             continue
@@ -130,7 +164,7 @@ def select(changes, policy, full_reason=None, full_main=False):
         task100_path = ('websocket' in path.lower() or 'task100' in path.lower())
         if task100_path and not any(
                 fnmatch.fnmatchcase(path, p) for r in policy['rules']
-                if r['category'] in ('ada-websocket', 'ada-lacal-runtime') for p in r['paths']):
+                if r['category'] in ('ada-websocket', 'ada-websocket-implementation', 'ada-lacal-runtime') for p in r['paths']):
             full = deep = True
             reasons.append(dict(path=path, category='fallback', reason='unmapped Task100 path'))
             continue
@@ -150,18 +184,50 @@ def select(changes, policy, full_reason=None, full_main=False):
             selected.update(rule["jobs"])
             full |= set(rule["jobs"]) == set(jobs)
             deep |= rule["deep"]
-            reasons.append(dict(path=path, category=rule["category"], reason=rule["rationale"]))
+            if type(rule['deep']) is not bool or bool(rule['deep_jobs']) != rule['deep']:
+                raise ValueError('incomplete Deep ownership: ' + rule['category'])
+            owned = close_prerequisites(rule['deep_jobs'], registered)
+            selected_deep.update(owned)
+            reasons.append(dict(path=path, category=rule["category"], reason=rule["rationale"],
+                                deep_jobs=sorted(owned)))
     if not changes and not full_main:
         # An empty verified diff has only baseline qualification.
         reasons.append(dict(category="empty-verified-diff"))
+    if full_main:
+        reasons.append(dict(category='full-main', reason='non-PR events require complete qualification'))
     deep |= full
+    # Legacy Deep trigger paths not covered by explicit reviewed ownership stay
+    # broad. Never infer ownership from a filename or silently lose a trigger.
+    if deep and not selected_deep:
+        selected_deep = set(registered)
+    if full:
+        selected_deep = set(registered)
+    for reason in reasons:
+        if full or 'deep_jobs' not in reason:
+            reason['deep_jobs'] = sorted(selected_deep) if full else []
     selected = close_prerequisites(jobs if full else selected, jobs)
-    return dict(version=1, mode="full-main" if full_main else "full-pr" if full else "selective-pr",
-                baseline=True, deep=bool(deep), reasons=reasons, changes=changes,
+    return dict(version=2, mode="full-main" if full_main else "full-pr" if full else "selective-pr",
+                baseline=True, deep=bool(selected_deep), deep_jobs=sorted(selected_deep),
+                deep_selected_cells=sum(len(registered[j]['cells']) for j in selected_deep),
+                deep_skipped_cells=sum(len(r['cells']) for j, r in registered.items() if j not in selected_deep),
+                reasons=reasons, changes=changes,
                 jobs={j: j in selected for j in sorted(jobs)},
                 cells=[c["key"] for j in sorted(selected) for c in jobs[j]["cells"]],
                 selected_cells=sum(len(jobs[j]["cells"]) for j in selected),
                 skipped_cells=sum(len(jobs[j]["cells"]) for j in jobs if j not in selected))
+
+
+def select(changes, policy, full_reason=None, full_main=False):
+    try:
+        result = _select(changes, policy, full_reason, full_main)
+        validate_deep(result, policy)
+        return result
+    except (KeyError, TypeError, ValueError, IndexError) as error:
+        # Classification uncertainty cannot authorize a narrow run. Inventory
+        # corruption is separately fatal in the mandatory baseline policy gate.
+        result = _select([], policy, 'incomplete classification: ' + str(error), full_main)
+        validate_deep(result, policy)
+        return result
 
 
 def classify(root, event, event_name, sha, policy=None):

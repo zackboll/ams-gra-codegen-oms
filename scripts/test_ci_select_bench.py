@@ -29,6 +29,31 @@ class Registration(unittest.TestCase):
                 self.assertNotIn(job, selection['jobs'])
         self.assertEqual(self.inventory['lanes'], [f'oms-main-slot-{n}' for n in range(1, 6)])
 
+    def test_v2_deep_selection_and_manual_topology_remain_independent(self):
+        registered = ci_selection.deep_jobs(self.inventory)
+        self.assertEqual(sum(len(r['cells']) for r in registered.values()), 12)
+        cases = [('README.md', set()),
+                 ('tests/ada-websocket/transport_probe.adb', {'ada-websocket-real-sleet'}),
+                 ('scripts/ci_bench/reconcile.py', set(registered)),
+                 ('.github/workflows/portable-provider-benchmark.yml', set(registered))]
+        for path, wanted in cases:
+            change = dict(status='M', paths=[path], old_mode='100644', new_mode='100644')
+            manifest = ci_selection.select([change], self.inventory)
+            ci_selection.validate_deep(manifest, self.inventory)
+            with self.subTest(path=path):
+                self.assertEqual(manifest['version'], 2)
+                self.assertEqual(manifest['deep_jobs'], sorted(wanted))
+                self.assertEqual(manifest['deep_selected_cells'] + manifest['deep_skipped_cells'], 12)
+                self.assertFalse(set(policy.JOBS) & (set(manifest['jobs']) | set(manifest['deep_jobs'])))
+        manifest = ci_selection.select([], self.inventory, full_main=True)
+        self.assertEqual(manifest['selected_cells'], 20)
+        self.assertEqual(manifest['deep_selected_cells'], 12)
+        self.assertEqual(manifest['deep_skipped_cells'], 0)
+        for mutation in (dict(version=1), dict(deep_selected_cells=11),
+                         dict(deep_jobs=sorted([*registered, contract.FINAL_JOB]))):
+            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                ci_selection.validate_deep(dict(manifest, **mutation), self.inventory)
+
     def test_registration_removal_and_extra_workflow_rejected(self):
         del self.inventory['manual_benchmark']
         with self.assertRaisesRegex(ValueError, 'manual benchmark inventory'):
