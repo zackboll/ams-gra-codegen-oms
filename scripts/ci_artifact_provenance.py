@@ -88,6 +88,8 @@ def resolve(artifact, job_name, jobs, attempts, run_id, current_attempt):
             # job lifetime; reject missing/skipped/forged publication metadata.
             publication = ('Preserve mandatory shard evidence and failure diagnostics'
                            if artifact['name'].startswith('perf007-') else
+                           'Preserve Task101 mandatory source and execution evidence'
+                           if artifact['name'].startswith('task101-') else
                            'Upload mandatory source compiler and execution evidence')
             uploads = [s for s in job['steps'] if s.get('name') == publication
                        and s.get('conclusion') == 'success'
