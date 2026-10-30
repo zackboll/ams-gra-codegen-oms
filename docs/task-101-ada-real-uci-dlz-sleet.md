@@ -298,6 +298,15 @@ remain unchanged. Focused integration tests preserve both Task101 compiler jobs,
 manual-only benchmark isolation, selective Deep, producer-attempt validation,
 PERF-007, CI002/trusted-dispatch boundaries, five lanes and the required gate.
 
+Main advanced again during R1: a second normal merge incorporated PY-009 main
+`a44ce80f278c0a64c604a1b800679e02f8687cdf`, tree
+`845a29e78466fa5ad2397cff8c475cf298027deb`. Merge
+`5fdc44519361d44582759944f3d6705fb7ecfee8` has parents
+`38a49e1209439f57e670dc02636851f9ca140de0` (the R1 correction) and that main
+commit. Python backend/fixture additions belong to merged main, not Task101.
+PY-009's additive workflow projection remains intact; its runner-count test is
+updated from 40 to the combined 42 cells, without relaxing payload contracts.
+
 R1 evidence is separate from all historical campaigns under
 `/home/zboll/task101-r1-scratch/`, including untouched original hosted ZIPs/logs,
 ownership reproductions, production-byte comparisons, current-source campaign
