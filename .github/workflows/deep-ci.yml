@@ -513,6 +513,12 @@ jobs:
           set -euo pipefail
           python3 scripts/test-task061-service-impact.py
           cargo test --release --locked -p ams-gra-codegen-oms --test service_check_batch
+      - name: Install PY-010 pinned-profile Python interpreters
+        uses: actions/setup-python@v5
+        with:
+          python-version: |
+            3.11
+            3.13
       - name: Python current services and immutable historical profiles (PY-007 and PY-008, must execute)
         run: |
           set -euo pipefail
@@ -520,11 +526,16 @@ jobs:
           python3 scripts/test-py007-uci.py
           python3 scripts/test-py008-uci.py
           python3 scripts/check-py007-uci.py --generator target/release/ams-gra-codegen-oms \
-            --output "$RUNNER_TEMP/py006-uci" --service-baseline tests/fixtures/python-datetime/after.json
+            --output "$RUNNER_TEMP/py006-uci" --service-baseline tests/fixtures/python-visible-ascii/after.json
           python3 scripts/check-py008-uci.py --generator target/release/ams-gra-codegen-oms \
-            --output "$RUNNER_TEMP/py006-uci" --existing-output --service-baseline tests/fixtures/python-datetime/after.json
+            --output "$RUNNER_TEMP/py006-uci" --existing-output --service-baseline tests/fixtures/python-visible-ascii/after.json
           python3 scripts/test-py009-uci.py
-          python3 scripts/check-py009-uci.py --generator target/release/ams-gra-codegen-oms --output "$RUNNER_TEMP/py006-uci/py009"
+          python3 scripts/check-py009-uci.py --generator target/release/ams-gra-codegen-oms --output "$RUNNER_TEMP/py006-uci/py009" --service-baseline tests/fixtures/python-visible-ascii/after.json
+          cargo build --locked --release -p ams-gra-codegen-oms --example python_visible_ascii_profiles
+          python3 scripts/test-py010-uci.py
+          for py010_interpreter in python3.11 python3.13; do
+            "$py010_interpreter" scripts/check-py010-uci.py --generator target/release/ams-gra-codegen-oms --output "$RUNNER_TEMP/py006-uci/py010-$py010_interpreter"
+          done
       - name: Preserve Python pinned UCI measurements
         uses: actions/upload-artifact@v4
         with:
@@ -951,6 +962,13 @@ jobs:
           set -euo pipefail
           test -n "$AMS_GRA_UCI_2_5_ROOT"
           scripts/run-real-sleet-test.sh
+      - name: Preserve PY-010 generated sources and observed broker events
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: py010-sleet
+          path: ${{ runner.temp }}/py010-sleet/**
+          if-no-files-found: error
 
   ada-hexbinary-real:
     if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'ada-hexbinary-real')

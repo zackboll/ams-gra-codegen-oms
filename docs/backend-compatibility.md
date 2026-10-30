@@ -1,5 +1,40 @@
 # Backend compatibility
 
+## Python update — PY-010 checked visible-ASCII Strings
+
+Named `Primitive(String)` declarations are admitted only by the unchanged
+shared `string_profile` classifier's `VisibleAscii { min_length, max_length }`
+proof. All ten observed pairs are supported: `(1,20)`, `(1,32)`, `(1,64)`,
+`(1,81)`, `(1,128)`, `(1,256)`, `(1,480)`, `(1,512)`, `(1,1024)`, `(2,4)`.
+The exact single XML Schema pattern and matching effective facets are required.
+An absent explicit whiteSpace facet means intrinsic `xs:string` preserve;
+the authoritative classifier rejects explicit policies, including explicit
+preserve. No classifier, frontend or normalized IR change is made here.
+
+Frozen, slotted dataclasses store exact `str` with checked construction. Only
+U+0020 SPACE through U+007E TILDE is allowed, with inclusive length bounds.
+There is no coercion, trimming, whitespace collapse or Unicode normalization.
+Validation uses exceptions and remains active under `-O`. Every named ancestry
+edge must retain a compatible proven domain; missing, cyclic, unproven or
+incompatible bases fail closed. Concrete inherited/nested/optional/bounded
+Record positions reuse the existing projection and tuple mechanisms.
+
+OMS JSON emits unchanged strings, requires exact named carrier types, and
+revalidates stored values on egress, including forged/mutated instances. Decode
+constructs the actual checked carrier and retains member/index error paths.
+The private model validator and reused checked-string codec helpers are
+demand-gated; VisibleAscii-free sources match PY-009 bytes across 20 selections.
+Strict JSON, Unicode, duplicate-member, Float64 and size policies are unchanged.
+
+WhitespaceVisible, NatoSpecialWords, general Bounded/Structured/AlternatingAscii,
+IP addresses, Unicode profiles, other constrained Strings, unsupported aliases,
+field-local constraints, Choices, Lists and abstract-value polymorphism remain
+unsupported. Ordinary unconstrained direct String fields are unchanged.
+See [PY-010 qualification](task-py-010-python-visible-ascii.md) for independent
+corpus, actual CLI execution, pinned broker events and the measured next UCI
+blockers. All 24 measured service selections remain **NOT READY**; codecs are
+not measured for those blocked complete services.
+
 ## Python update — PY-009 checked DateTime and lexical OMS JSON
 
 Named primitive DateTime requires the shared `temporal_profile` proof of exactly
