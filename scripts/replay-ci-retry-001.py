@@ -22,9 +22,27 @@ import task100_evidence
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def replay_selection(manifest, policy):
+    """Explicit historical full-v1 projection, never a live-gate fallback."""
+    jobs = ci_selection.ordinary_jobs(policy)
+    cells = sorted(c['key'] for record in jobs.values() for c in record['cells'])
+    if (manifest.get('version') != 1 or manifest.get('mode') != 'full-pr'
+            or manifest.get('deep') is not True or manifest.get('baseline') is not True
+            or manifest.get('jobs') != {job: True for job in sorted(jobs)}
+            or sorted(manifest.get('cells', [])) != cells
+            or manifest.get('selected_cells') != len(cells) or manifest.get('skipped_cells') != 0):
+        raise ValueError('historical replay requires complete full-pr v1 selection')
+    deep = ci_selection.deep_jobs(policy)
+    projected = dict(manifest, version=2, deep_jobs=sorted(deep),
+                     deep_selected_cells=sum(len(r['cells']) for r in deep.values()), deep_skipped_cells=0)
+    ci_selection.validate_deep(projected, policy)
+    return projected
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument('--evidence', type=Path, required=True)
+    parser.add_argument('--output', type=Path, help='Fresh replay result; retained evidence is not modified')
     args = parser.parse_args()
     directory = args.evidence.resolve(strict=True)
     read = lambda name: json.loads((directory / name).read_text())
@@ -35,6 +53,7 @@ def main():
     artifacts = [a for page in read('artifacts-pages.json') for a in page['artifacts']]
     with zipfile.ZipFile(directory / 'selection.zip') as archive:
         manifest = json.loads(archive.read('ci-selection.json'))
+    projected = replay_selection(manifest, ci_selection.inventory())
     sha = manifest['identities']['merge']
     tree = subprocess.check_output(['git', '-C', str(ROOT), 'rev-parse', sha+'^{tree}'], text=True).strip()
     if run['head_sha'] != manifest['identities']['head']:
@@ -89,14 +108,16 @@ def main():
                 else:
                     raise ValueError('original failure did not reproduce: ' + name)
                 verify(producers[name]['run_attempt'])
-            task100 = gate.reconcile_task100(artifacts, manifest, sha, tree, run['id'], 2, loader,
+            task100 = gate.reconcile_task100(artifacts, projected, sha, tree, run['id'], 2, loader,
                                              jobs=history[2]['jobs'], attempts=history)
             primary = gate.reconcile_primary(artifacts, sha, tree, run['id'], 2, loader,
                                              jobs=history[2]['jobs'], attempts=history)
     result = dict(reproduced=True, run_id=run['id'], gate_attempt=2, sha=sha, tree=tree,
                   original_errors=errors, verified_producers=producers, task100=task100,
-                  primary=primary, retrospective_replay=True, hosted_final_gate_success=False)
-    (directory / 'replay-result.json').write_text(json.dumps(result, indent=2) + '\n')
+                  primary=primary, retrospective_replay=True, hosted_final_gate_success=False,
+                  selection_projection='historical complete full-pr v1 to full v2; replay only')
+    output = args.output or directory / 'replay-result.json'
+    output.write_text(json.dumps(result, indent=2) + '\n')
     print('CI_RETRY_REPLAY_COMPLETE original_failures=7 verified_bundles=7 NOT_HOSTED_GATE_SUCCESS')
 
 
