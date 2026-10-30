@@ -1,5 +1,33 @@
 # Backend compatibility
 
+## Python update — PY-009 checked DateTime and lexical OMS JSON
+
+Named primitive DateTime requires the shared `temporal_profile` proof of exactly
+`TemporalProfile::DateTimeZulu` (effective `.+Z`, no extra facets). Compatible
+named restriction ancestors must each retain that proven domain. Carriers are
+frozen, slotted `value: str` dataclasses. Direct unconstrained Record members
+require `direct_temporal_profile` and use exact `str`, including inherited,
+optional, nested and bounded repeated positions. XML whitespace collapse is
+stored; all other spelling, fractional zeros and timezone forms are preserved.
+
+The standard-library lexical validator matches the Task036/046 XML Schema 1.0
+contract: Gregorian/leap validity, nonzero four-or-more-digit years without
+extended leading zeros, negative years, arbitrary fractional precision, second
+60 and zero-only hour 24. Direct values admit omitted timezone, `Z`, and signed
+offsets through ±14:00; named values require literal `Z`. Checks remain active
+under `-O`. No timestamp conversion, canonicalization, arithmetic, ordering or
+value-space equality is added (dataclass equality remains lexical).
+
+OMS JSON uses strings and the same validator on ingress/egress, including
+mutated carriers. Errors retain nested member/index paths. Helpers are absent
+from DateTime-free generated sources. Named unconstrained DateTime, other
+facets/unproven ancestry, field-local temporal constraints, aliases to DateTime,
+Time, Duration, Binary, Decimal, Float32, Choice and abstract-value polymorphism
+remain rejected. No service adapter, OWP or runtime implementation changes.
+See [PY-009 qualification](task-py-009-python-datetime.md) for exact evidence and
+real-UCI successor blockers; the three measured services remain **NOT READY**.
+Historical sections below retain their original scope.
+
 ## Python update — PY-008 checked Float64 and lossless OMS JSON
 
 Named Float64 declarations use frozen, slotted `value: float` carriers; direct

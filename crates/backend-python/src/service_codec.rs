@@ -36,6 +36,10 @@ fn reference(
             symbol = names::symbol(&name.local_name, false)
         )),
         TypeRefTarget::Primitive(kind) => {
+            if *kind == PrimitiveKind::DateTime {
+                crate::primitive(*kind, constraints)?;
+                return Ok(format!("_checked_datetime({value}, {path})"));
+            }
             if *kind == PrimitiveKind::Float64 {
                 let args = crate::float64_arguments(constraints, "_model.")?;
                 return Ok(format!(
@@ -90,6 +94,9 @@ pub fn generate_service_codec(
         }
     }
     let mut output = include_str!("codec_runtime.py").to_owned();
+    if crate::uses_datetime(schema) {
+        output.push_str(include_str!("datetime_codec_runtime.py"));
+    }
     if crate::uses_float64(schema) {
         output.push_str(include_str!("float64_codec_runtime.py"));
     }
@@ -102,6 +109,10 @@ pub fn generate_service_codec(
     }
     for declaration in declarations {
         let symbol = names::symbol(&declaration.name.local_name, false);
+        if declaration.kind == TypeKind::Primitive(PrimitiveKind::DateTime) {
+            writeln!(output, "\n\ndef _encode_{symbol}(value, path):\n    _expect(value, _model.{symbol}, path)\n    return _checked_datetime(value.value, path, True)\n\n\ndef _decode_{symbol}(value, path):\n    return _model.{symbol}(_checked_datetime(value, path, True))").unwrap();
+            continue;
+        }
         if crate::header_profile(declaration).is_some() {
             writeln!(output, "\n\ndef _encode_{symbol}(value, path):\n    return _header_text(value, path, _model.{symbol})\n\n\ndef _decode_{symbol}(value, path):\n    return _header_value(value, path, _model.{symbol})").unwrap();
             continue;

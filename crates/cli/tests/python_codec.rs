@@ -326,6 +326,24 @@ fn all_model_boundaries_still_fail_closed_with_codec_requested() {
         for world in ["closed-schema", "open-extensions"] {
             let dest = temp.0.join(format!("absent-{primitive}-{world}"));
             let blocked = run(&schema, &fixture("service.yaml"), world, true, Some(&dest));
+            if primitive == "dateTime" {
+                // PY-009 intentionally admits unconstrained direct members.
+                // Retain this historical control as a real positive/negative
+                // generated-code execution, not a removed/ignored test case.
+                assert!(blocked.status.success(), "{blocked:?}");
+                for optimized in [false, true] {
+                    let mut command = Command::new(
+                        std::env::var_os("PYTHON").unwrap_or_else(|| "python3".into()),
+                    );
+                    if optimized {
+                        command.arg("-O");
+                    }
+                    let output = command.args(["-c", "import model\nif model._check_datetime(' 2000-01-01T00:00:00+14:00 ') != '2000-01-01T00:00:00+14:00': raise RuntimeError('direct DateTime')\ntry: model._check_datetime('1900-02-29T00:00:00Z')\nexcept ValueError: pass\nelse: raise RuntimeError('invalid calendar accepted')"])
+                        .current_dir(&dest).output().unwrap();
+                    assert!(output.status.success(), "{output:?}");
+                }
+                continue;
+            }
             assert_eq!(blocked.status.code(), Some(1), "{blocked:?}");
             let text = String::from_utf8_lossy(&blocked.stdout);
             if primitive == "decimal" {
