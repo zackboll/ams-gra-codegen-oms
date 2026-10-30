@@ -56,14 +56,17 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--existing-output', action='store_true',
                         help='Validate the immediately preceding versioned parent campaign without repeating it')
+    parser.add_argument('--service-baseline', type=Path,
+                        help='Measured successor baseline; historical defaults remain immutable')
     args = parser.parse_args()
+    baseline_path = args.service_baseline or FIXTURE / 'after.json'
     historical()
     if not args.existing_output:
         subprocess.run([sys.executable, str(ROOT / 'scripts/check-py007-uci.py'),
                         '--generator', str(args.generator), '--output', str(args.output),
-                        '--service-baseline', str(FIXTURE / 'after.json')], check=True)
+                        '--service-baseline', str(baseline_path)], check=True)
     result = json.loads((args.output / 'measurements.json').read_text())
-    baseline = json.loads((FIXTURE / 'after.json').read_text())
+    baseline = json.loads(baseline_path.read_text())
     parent.driver.require(baseline.get('completed') is True, 'incomplete frozen campaign')
     summaries = validate(result['services'], baseline['measurements'])
     inherited = json.loads((args.output / 'qualification.json').read_text())

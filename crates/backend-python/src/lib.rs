@@ -10,10 +10,11 @@ pub use service_api::{SERVICE_API_FILE, generate_service_api};
 pub use service_codec::{SERVICE_CODEC_FILE, generate_service_codec};
 
 use ams_gra_oms_codegen_core::{
-    Backend, CodegenError, FloatingBoundKind, FloatingDomain, GeneratedFile, GenerationWorld,
-    InclusiveIntegralDomain, ServiceApiModel, StringProfile, TypeEmission, abstract_value_targets,
-    effective_record_fields, floating_domain, inclusive_integral_domain, plan_type_emissions,
-    string_profile,
+    Backend, CodegenError, DirectTemporalProfile, FloatingBoundKind, FloatingDomain, GeneratedFile,
+    GenerationWorld, InclusiveIntegralDomain, ServiceApiModel, StringProfile, TemporalProfile,
+    TypeEmission, abstract_value_targets, direct_temporal_profile, effective_record_fields,
+    floating_domain, inclusive_integral_domain, plan_type_emissions, string_profile,
+    temporal_profile,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -68,6 +69,9 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     let emissions = plan_type_emissions(schema, world)?;
     preflight(schema, &emissions)?;
     let mut output = include_str!("runtime.py").to_owned();
+    if uses_datetime(schema) {
+        output.push_str(include_str!("datetime_runtime.py"));
+    }
     if uses_float64(schema) {
         output.push_str(include_str!("float64_runtime.py"));
     }
@@ -133,6 +137,57 @@ fn uses_float64(schema: &SchemaIr) -> bool {
                 TypeKind::Record { fields } => fields.iter().any(|field| direct(&field.type_ref)),
                 _ => false,
             })
+}
+
+fn uses_datetime(schema: &SchemaIr) -> bool {
+    schema
+        .types
+        .iter()
+        .any(|declaration| match &declaration.kind {
+            TypeKind::Primitive(PrimitiveKind::DateTime) => true,
+            TypeKind::Record { .. } if !declaration.is_abstract => {
+                record_fields(schema, declaration).is_ok_and(|fields| {
+                    fields.iter().any(|field| {
+                        field.type_ref.target == TypeRefTarget::Primitive(PrimitiveKind::DateTime)
+                    })
+                })
+            }
+            _ => false,
+        })
+}
+
+fn datetime_profile(constraints: &ConstraintSet) -> Result<(), CodegenError> {
+    match temporal_profile(PrimitiveKind::DateTime, constraints).map_err(error)? {
+        Some(TemporalProfile::DateTimeZulu) => Ok(()),
+        _ => Err(error("unproven named DateTime profile")),
+    }
+}
+
+// Every effective restriction must retain the same proven Zulu domain. Never
+// flatten incompatible ancestry or trust only the leaf's primitive kind.
+fn datetime_ancestry(schema: &SchemaIr, declaration: &TypeDecl) -> Result<(), CodegenError> {
+    let mut current = declaration;
+    let mut seen = BTreeSet::new();
+    loop {
+        if !seen.insert(&current.name)
+            || current.is_abstract
+            || current.kind != TypeKind::Primitive(PrimitiveKind::DateTime)
+        {
+            return Err(error("unproven DateTime named restriction ancestry"));
+        }
+        datetime_profile(&current.constraints)?;
+        match current.base_type.as_ref().map(|base| &base.target) {
+            Some(TypeRefTarget::Primitive(PrimitiveKind::DateTime)) | None => return Ok(()),
+            Some(TypeRefTarget::Named(name)) => {
+                current = schema
+                    .types
+                    .iter()
+                    .find(|item| item.name == *name)
+                    .ok_or_else(|| error("missing DateTime restriction base"))?;
+            }
+            _ => return Err(error("incompatible DateTime restriction base")),
+        }
+    }
 }
 
 // Both renderers consume exactly the shared domain. Binary64 bits, rather than
@@ -227,6 +282,15 @@ fn primitive(
     constraints: &ConstraintSet,
 ) -> Result<(String, String), CodegenError> {
     match kind {
+        PrimitiveKind::DateTime => {
+            if direct_temporal_profile(kind, constraints)
+                .map_err(|reason| error(format!("{reason:?}")))?
+                != Some(DirectTemporalProfile::DateTime)
+            {
+                return Err(error("unproven direct DateTime profile"));
+            }
+            Ok(("str".to_owned(), "str".to_owned()))
+        }
         PrimitiveKind::Float64 => {
             // Field-local facets have no established lowering. Named carriers
             // are classified separately against their effective declaration.
@@ -288,71 +352,106 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
     }
     let declarations = emitted_declarations(emissions)?;
     names::validate(schema, &declarations)?;
+    let datetime_demand = uses_datetime(schema);
     let mut scalar_names = BTreeSet::new();
     let mut available = BTreeSet::new();
     for declaration in declarations {
-        // Primitive base provenance is not structural inheritance. Named
-        // restriction ancestry is deferred rather than silently flattened.
-        if declaration.kind == TypeKind::Primitive(PrimitiveKind::Float64) {
-            float64_ancestry(schema, declaration)?;
-        } else if let Some(base) = &declaration.base_type {
-            match (&declaration.kind, &base.target) {
-                (TypeKind::Primitive(kind), TypeRefTarget::Primitive(base_kind))
-                    if kind == base_kind => {}
-                (TypeKind::Enumeration { .. }, TypeRefTarget::Primitive(PrimitiveKind::String)) => {
+        let qualified = (|| -> Result<(), CodegenError> {
+            // Primitive base provenance is not structural inheritance. Named
+            // restriction ancestry is deferred rather than silently flattened.
+            if declaration.kind == TypeKind::Primitive(PrimitiveKind::Float64) {
+                float64_ancestry(schema, declaration)?;
+            } else if declaration.kind == TypeKind::Primitive(PrimitiveKind::DateTime) {
+                datetime_ancestry(schema, declaration)?;
+            } else if let Some(base) = &declaration.base_type {
+                match (&declaration.kind, &base.target) {
+                    (TypeKind::Primitive(kind), TypeRefTarget::Primitive(base_kind))
+                        if kind == base_kind => {}
+                    (
+                        TypeKind::Enumeration { .. },
+                        TypeRefTarget::Primitive(PrimitiveKind::String),
+                    ) => {}
+                    (TypeKind::Record { .. }, TypeRefTarget::Named(_)) => {}
+                    _ => return Err(error("inheritance / named restriction ancestry")),
                 }
-                (TypeKind::Record { .. }, TypeRefTarget::Named(_)) => {}
-                _ => return Err(error("inheritance / named restriction ancestry")),
             }
-        }
-        match &declaration.kind {
-            TypeKind::Primitive(kind) => {
-                if *kind == PrimitiveKind::Float64 {
-                    floating_domain(*kind, &declaration.constraints).map_err(error)?;
-                } else if header_profile(declaration).is_none() {
-                    primitive(*kind, &declaration.constraints)?;
-                }
-                scalar_names.insert(declaration.name.clone());
-            }
-            TypeKind::Alias(target) => {
-                unconstrained(&declaration.constraints)?;
-                if let TypeRefTarget::Named(name) = &target.target
-                    && !scalar_names.contains(name)
-                {
-                    return Err(error("aliases must target supported scalar declarations"));
-                }
-                reference(target, &ConstraintSet::default())?;
-                scalar_names.insert(declaration.name.clone());
-            }
-            TypeKind::Enumeration { .. } => {
-                unconstrained(&declaration.constraints)?;
-                scalar_names.insert(declaration.name.clone());
-            }
-            TypeKind::Record { .. } => {
-                unconstrained(&declaration.constraints)?;
-                for field in record_fields(schema, declaration)? {
-                    if field.nillable {
-                        return Err(error(format!("nillable field {}", field.name)));
+            match &declaration.kind {
+                TypeKind::Primitive(kind) => {
+                    if *kind == PrimitiveKind::Float64 {
+                        floating_domain(*kind, &declaration.constraints).map_err(error)?;
+                    } else if *kind == PrimitiveKind::DateTime {
+                        datetime_profile(&declaration.constraints)?;
+                    } else if header_profile(declaration).is_none() {
+                        primitive(*kind, &declaration.constraints)?;
                     }
-                    if matches!(field.cardinality.shape(), OccurrenceShape::Unbounded { .. }) {
-                        return Err(error(format!("unbounded field {}", field.name)));
+                    if *kind != PrimitiveKind::DateTime {
+                        scalar_names.insert(declaration.name.clone());
                     }
-                    reference(&field.type_ref, &field.constraints)?;
-                    if let TypeRefTarget::Named(name) = &field.type_ref.target
-                        && !available.contains(name)
+                }
+                TypeKind::Alias(target) => {
+                    if target.target == TypeRefTarget::Primitive(PrimitiveKind::DateTime) {
+                        return Err(error("DateTime aliases are unsupported"));
+                    }
+                    unconstrained(&declaration.constraints)?;
+                    if let TypeRefTarget::Named(name) = &target.target
+                        && !scalar_names.contains(name)
                     {
-                        return Err(error(format!(
-                            "field {} requires a preceding concrete emitted type {}",
-                            field.name, name.local_name
-                        )));
+                        return Err(error("aliases must target supported scalar declarations"));
+                    }
+                    reference(target, &ConstraintSet::default())?;
+                    scalar_names.insert(declaration.name.clone());
+                }
+                TypeKind::Enumeration { .. } => {
+                    unconstrained(&declaration.constraints)?;
+                    scalar_names.insert(declaration.name.clone());
+                }
+                TypeKind::Record { .. } => {
+                    unconstrained(&declaration.constraints)?;
+                    for field in record_fields(schema, declaration)? {
+                        if field.nillable {
+                            return Err(error(format!("nillable field {}", field.name)));
+                        }
+                        if matches!(field.cardinality.shape(), OccurrenceShape::Unbounded { .. }) {
+                            return Err(error(format!("unbounded field {}", field.name)));
+                        }
+                        reference(&field.type_ref, &field.constraints).map_err(|failure| {
+                            if datetime_demand {
+                                error(format!("field {}: {}", field.name, failure.message))
+                            } else {
+                                failure
+                            }
+                        })?;
+                        if let TypeRefTarget::Named(name) = &field.type_ref.target
+                            && !available.contains(name)
+                        {
+                            return Err(error(format!(
+                                "field {} requires a preceding concrete emitted type {}",
+                                field.name, name.local_name
+                            )));
+                        }
                     }
                 }
+                TypeKind::Choice { .. } | TypeKind::List { .. } => {
+                    return Err(error("Choice / List declarations"));
+                }
             }
-            TypeKind::Choice { .. } | TypeKind::List { .. } => {
-                return Err(error("Choice / List declarations"));
+            available.insert(declaration.name.clone());
+            Ok(())
+        })();
+        qualified.map_err(|failure| {
+            if datetime_demand {
+                CodegenError {
+                    message: format!(
+                        "{{{}}}{}: {}",
+                        declaration.name.namespace_uri,
+                        declaration.name.local_name,
+                        failure.message
+                    ),
+                }
+            } else {
+                failure
             }
-        }
-        available.insert(declaration.name.clone());
+        })?;
     }
     // Messages are not rendered, but their payload cannot escape subset checks.
     for message in &schema.messages {
@@ -430,6 +529,10 @@ fn render(
     .unwrap();
     match &declaration.kind {
         TypeKind::Primitive(_) | TypeKind::Alias(_) => {
+            if declaration.kind == TypeKind::Primitive(PrimitiveKind::DateTime) {
+                writeln!(output, "    value: str\n\n    def __post_init__(self) -> None:\n        object.__setattr__(self, 'value', _check_datetime(self.value, True))").unwrap();
+                return Ok(());
+            }
             if declaration.kind == TypeKind::Primitive(PrimitiveKind::Float64) {
                 let args = float64_arguments(&declaration.constraints, "")?;
                 writeln!(output, "    value: float\n\n    def __post_init__(self) -> None:\n        _check_float64(self.value, {args})").unwrap();
@@ -486,6 +589,24 @@ fn render(
                         writeln!(output, "        _check(self.{symbol}, tuple)\n        if not {min} <= len(self.{symbol}) <= {max}:\n            raise ValueError({})\n        for item in self.{symbol}:\n            _check(item, {check})", names::literal(&format!("{symbol}: expected {min}..{max} items"))).unwrap();
                     }
                     OccurrenceShape::Unbounded { .. } => unreachable!("preflight"),
+                }
+                if field.type_ref.target == TypeRefTarget::Primitive(PrimitiveKind::DateTime) {
+                    let value = match field.cardinality.shape() {
+                        OccurrenceShape::RequiredOne => format!("_check_datetime(self.{symbol})"),
+                        OccurrenceShape::OptionalOne => format!(
+                            "_check_datetime(self.{symbol}) if self.{symbol} is not None else None"
+                        ),
+                        OccurrenceShape::Bounded { .. } => {
+                            format!("tuple(_check_datetime(item) for item in self.{symbol})")
+                        }
+                        OccurrenceShape::Unbounded { .. } => unreachable!("preflight"),
+                    };
+                    writeln!(
+                        output,
+                        "        object.__setattr__(self, {}, {value})",
+                        names::literal(&symbol)
+                    )
+                    .unwrap();
                 }
             }
         }
@@ -593,7 +714,6 @@ mod tests {
             PrimitiveKind::Decimal,
             PrimitiveKind::Float32,
             PrimitiveKind::Binary,
-            PrimitiveKind::DateTime,
             PrimitiveKind::Time,
             PrimitiveKind::Duration,
         ] {

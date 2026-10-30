@@ -516,12 +516,15 @@ jobs:
       - name: Python current services and immutable historical profiles (PY-007 and PY-008, must execute)
         run: |
           set -euo pipefail
+          cargo build --locked --release -p ams-gra-codegen-oms --example python_datetime_closure
           python3 scripts/test-py007-uci.py
           python3 scripts/test-py008-uci.py
           python3 scripts/check-py007-uci.py --generator target/release/ams-gra-codegen-oms \
-            --output "$RUNNER_TEMP/py006-uci" --service-baseline tests/fixtures/python-float64/after.json
+            --output "$RUNNER_TEMP/py006-uci" --service-baseline tests/fixtures/python-datetime/after.json
           python3 scripts/check-py008-uci.py --generator target/release/ams-gra-codegen-oms \
-            --output "$RUNNER_TEMP/py006-uci" --existing-output
+            --output "$RUNNER_TEMP/py006-uci" --existing-output --service-baseline tests/fixtures/python-datetime/after.json
+          python3 scripts/test-py009-uci.py
+          python3 scripts/check-py009-uci.py --generator target/release/ams-gra-codegen-oms --output "$RUNNER_TEMP/py006-uci/py009"
       - name: Preserve Python pinned UCI measurements
         uses: actions/upload-artifact@v4
         with:

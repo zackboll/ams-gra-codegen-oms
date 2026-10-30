@@ -1,0 +1,13 @@
+[
+  ["Named", 2024, "$.Named"],
+  ["Named", null, "$.Named"],
+  ["Named", true, "$.Named"],
+  ["Named", [], "$.Named"],
+  ["Named", {}, "$.Named"],
+  ["Named", "2024-02-29T00:00:00+00:00", "$.Named"],
+  ["Direct", "1900-02-29T00:00:00Z", "$.Direct"],
+  ["Optional", "2024-01-01T24:00:00.01Z", "$.Optional"],
+  ["Values", ["2024-01-01T00:00:00Z", "badZ"], "$.Values[1]"],
+  ["Nested", {"Value":"2024-01-01T00:00:00Z","Directs":["bad"]}, "$.Nested.Directs[0]"],
+  ["Nested", {"Value":"badZ"}, "$.Nested.Value"]
+]

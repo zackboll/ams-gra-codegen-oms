@@ -117,11 +117,20 @@ for required in '--test python_float64 -- --nocapture' 'python scripts/test-py00
   grep -Fq -- "$required" <<<"$fast_code" || fail "Fast CI lost PY-008 gate: $required"
 done
 for required in 'python3 scripts/check-py008-uci.py --generator' \
-  '--service-baseline tests/fixtures/python-float64/after.json' \
+  '--service-baseline tests/fixtures/python-datetime/after.json' \
   'scripts/check-py008-numeric.py --full' 'for interpreter in python3.11 python3.13; do'; do
   grep -Fq -- "$required" <<<"$deep_code" || fail "Deep CI lost PY-008 gate: $required"
 done
 grep -Fq 'scripts/check-py008-sleet.sh' <<<"$sleet_code" || fail "Sleet harness lost PY-008 Float64 delivery"
+# PY-009 is mandatory alongside every unchanged inherited campaign.
+for required in '--test python_datetime -- --nocapture' 'python scripts/test-py009-uci.py'; do
+  grep -Fq -- "$required" <<<"$fast_code" || fail "Fast CI lost PY-009 gate: $required"
+done
+for required in 'python3 scripts/check-py009-uci.py --generator' 'python3 scripts/test-py009-uci.py' \
+  '--example python_datetime_closure'; do
+  grep -Fq -- "$required" <<<"$deep_code" || fail "Deep CI lost PY-009 gate: $required"
+done
+grep -Fq 'scripts/check-py009-sleet.sh' <<<"$sleet_code" || fail "Sleet harness lost PY-009 DateTime delivery"
 if grep -Fq 'scripts/check-py008-sleet.sh' <<<"$fast_code" || grep -Fq 'scripts/check-py008-uci.py --generator' <<<"$fast_code"; then
   fail "Fast CI must not run PY-008 external campaigns"
 fi

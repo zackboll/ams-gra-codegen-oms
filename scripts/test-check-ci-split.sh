@@ -69,7 +69,7 @@ expect_py008_fail() {
   ok
 }
 for gate in 'python3 scripts/check-py008-uci.py --generator' \
-  '--service-baseline tests/fixtures/python-float64/after.json' \
+  '--service-baseline tests/fixtures/python-datetime/after.json' \
   'scripts/check-py008-numeric.py --full' 'for interpreter in python3.11 python3.13; do'; do
   grep -Fq -- "$gate" "$deep" || die "missing PY008 mutation target: $gate"
   grep -Fv -- "$gate" "$deep" >"$tmp/deep-no-py008.yml"
