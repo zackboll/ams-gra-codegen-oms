@@ -269,7 +269,41 @@ def reconcile_task101(artifacts, manifest, sha, tree, run_id, attempt, loader=do
     return summaries
 
 
+def reconcile_owned(artifacts, manifest, sha, tree, run_id, attempt, loader=download_bundle, *, jobs, attempts):
+    from owned_ada_evidence import verify_bundle as verify_ada
+    from owned_python_evidence import verify_bundle as verify_python
+    owners = []
+    selected = manifest.get('jobs', {})
+    if selected.get('ada-lacal-runtime-core'):
+        owners.extend((f'ci004-ada-fast-{c}', f'ada-lacal-runtime-core ({c})', 'ada', 'fast', c)
+                      for c in ('14', '16'))
+    if 'ada-real-uci-dlz-sleet' in manifest['deep_jobs']:
+        owners.extend((f'ci004-ada-pinned-{c}', f'deep-qualification / ada-real-uci-dlz-sleet ({c})',
+                       'ada', 'pinned', c) for c in ('14', '16'))
+    if selected.get('python-model-backend'):
+        owners.extend((f'ci004-python-fast-{v}', f'python-model-backend ({v})', 'python', 'fast', [v])
+                      for v in ('3.11', '3.13'))
+    for mode, owner in [('uci', 'real-uci-regressions'), ('sleet', 'real-sleet')]:
+        if owner in manifest['deep_jobs']:
+            owners.append(('ci004-python-' + mode, 'deep-qualification / ' + owner,
+                           'python', mode, ['3.11', '3.13']))
+    summaries = {}
+    expected = {owner[0] for owner in owners}
+    if any(a['name'].startswith('ci004-') and a['name'] not in expected for a in artifacts):
+        raise ValueError('owned artifact from unselected/wrong qualification owner')
+    for name, job, language, mode, variant in owners:
+        matches = [a for a in artifacts if a['name'] == name]
+        if len(matches) != 1:
+            raise ValueError('missing/duplicate owned qualification artifact: ' + name)
+        producer = resolve(matches[0], job, jobs, attempts, run_id, attempt)
+        verifier = verify_ada if language == 'ada' else verify_python
+        summaries[name] = dict(verifier(loader(matches[0]), mode, variant, sha, tree,
+                                        run_id, producer['run_attempt']), producer=producer)
+    return summaries
+
+
 def main():
+    Path('ci-required-result.json').unlink(missing_ok=True)
     manifest = json.loads(os.environ["SELECTION_MANIFEST"])
     expected = from_environment()
     run = os.environ["GITHUB_RUN_ID"]
@@ -291,6 +325,9 @@ def main():
     task101 = reconcile_task101(own['artifacts'], manifest, os.environ['GITHUB_SHA'],
                                git(ROOT, 'rev-parse', 'HEAD^{tree}').decode().strip(),
                                run, os.environ['GITHUB_RUN_ATTEMPT'], jobs=own['jobs'], attempts=own['attempts'])
+    owned = reconcile_owned(own['artifacts'], manifest, os.environ['GITHUB_SHA'],
+                            git(ROOT, 'rev-parse', 'HEAD^{tree}').decode().strip(), run,
+                            os.environ['GITHUB_RUN_ATTEMPT'], jobs=own['jobs'], attempts=own['attempts'])
     if set(SHARDS) <= set(manifest['deep_jobs']):
         primary = reconcile_primary(own['artifacts'], os.environ['GITHUB_SHA'],
                                     git(ROOT, 'rev-parse', 'HEAD^{tree}').decode().strip(),
@@ -300,7 +337,7 @@ def main():
                   deep_jobs=manifest['deep_jobs'], deep_selected_cells=manifest['deep_selected_cells'],
                   deep_skipped_cells=manifest['deep_skipped_cells'], conclusion="success",
                   run_id=run, gate_attempt=os.environ['GITHUB_RUN_ATTEMPT'],
-                  real_uci_shards=primary, task100=task100, task101=task101)
+                  real_uci_shards=primary, task100=task100, task101=task101, owned_qualification=owned)
     Path("ci-required-result.json").write_text(json.dumps(report, indent=2) + "\n")
     print("PR_CI_REQUIRED_COMPLETE", json.dumps(report, sort_keys=True))
 

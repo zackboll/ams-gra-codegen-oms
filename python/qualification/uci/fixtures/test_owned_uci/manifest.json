@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "test": "test_owned_uci.py",
+  "files": ["dlz.json", "service.yaml"],
+  "tests": ["test_owned_uci.OwnedUci.test_generated_dlz"]
+}

@@ -37,6 +37,12 @@ def discover(mode, qualification=QUALIFICATION):
     if not directory.is_dir() or directory.is_symlink():
         raise ValueError(f'absent or redirected Python qualification directory: {mode}')
     sources = sorted(directory.iterdir())
+    fixture_root = directory / 'fixtures'
+    if fixture_root.exists() or fixture_root.is_symlink():
+        sys.path.insert(0, str(ROOT / 'scripts'))
+        from owned_qualification import python_fixtures
+        python_fixtures(ROOT)
+        sources = [source for source in sources if source != fixture_root]
     if not sources:
         raise ValueError(f'no Python qualification test sources: {mode}')
     for source in sources:
@@ -54,6 +60,11 @@ def discover(mode, qualification=QUALIFICATION):
     identities = [item.id() for item in tests]
     if not tests or actual != expected or len(identities) != len(set(identities)):
         raise ValueError('incomplete/duplicate Python qualification test discovery')
+    if fixture_root.exists():
+        from owned_qualification import python_ids
+        declared = sorted(identity for source in sources for identity in python_ids(source))
+        if sorted(identities) != declared:
+            raise ValueError('Python discovery filtered actual source test inventory')
     return suite, sources, identities
 
 
