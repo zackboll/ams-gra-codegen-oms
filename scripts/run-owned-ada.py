@@ -145,6 +145,10 @@ def main():
         raise ValueError('owned sources changed during execution')
     if digest(args.generator.read_bytes()) != identity['generator_sha256']:
         raise ValueError('generator changed during owned execution')
+    if (campaign.run('owned-final-source', ['git', '-c', f'safe.directory={ROOT}',
+            'rev-parse', 'HEAD', 'HEAD^{tree}']).splitlines() != source or
+            campaign.run('owned-final-clean', ['git', '-c', f'safe.directory={ROOT}', 'status', '--porcelain'])):
+        raise ValueError('source changed during owned execution')
     expected = [cell for r in records for cell in cells(r)]
     # Build products and a writable provider are not evidence and must not inflate
     # the uploaded bundle or leak executable task output into gate processing.

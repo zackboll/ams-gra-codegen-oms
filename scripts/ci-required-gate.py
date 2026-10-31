@@ -275,10 +275,10 @@ def reconcile_owned(artifacts, manifest, sha, tree, run_id, attempt, loader=down
     owners = []
     selected = manifest.get('jobs', {})
     if selected.get('ada-lacal-runtime-core'):
-        owners.extend((f'ci004-ada-fast-{c}', f'ada-lacal-runtime-core ({c})', 'ada', 'fast', c)
+        owners.extend((f'task099-ada-lacal-runtime-core-{c}', f'ada-lacal-runtime-core ({c})', 'ada', 'fast', c)
                       for c in ('14', '16'))
     if 'ada-real-uci-dlz-sleet' in manifest['deep_jobs']:
-        owners.extend((f'ci004-ada-pinned-{c}', f'deep-qualification / ada-real-uci-dlz-sleet ({c})',
+        owners.extend((f'task101-ada-real-uci-dlz-{c}', f'deep-qualification / ada-real-uci-dlz-sleet ({c})',
                        'ada', 'pinned', c) for c in ('14', '16'))
     if selected.get('python-model-backend'):
         owners.extend((f'ci004-python-fast-{v}', f'python-model-backend ({v})', 'python', 'fast', [v])
@@ -297,7 +297,11 @@ def reconcile_owned(artifacts, manifest, sha, tree, run_id, attempt, loader=down
             raise ValueError('missing/duplicate owned qualification artifact: ' + name)
         producer = resolve(matches[0], job, jobs, attempts, run_id, attempt)
         verifier = verify_ada if language == 'ada' else verify_python
-        summaries[name] = dict(verifier(loader(matches[0]), mode, variant, sha, tree,
+        files = loader(matches[0])
+        if language == 'ada':
+            prefix = 'ci004-ada-' + mode + '/'
+            files = {path[len(prefix):]: data for path, data in files.items() if path.startswith(prefix)}
+        summaries[name] = dict(verifier(files, mode, variant, sha, tree,
                                         run_id, producer['run_attempt']), producer=producer)
     return summaries
 

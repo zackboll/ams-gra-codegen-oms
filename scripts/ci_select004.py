@@ -18,7 +18,7 @@ ADA_FAST = '''      - name: Execute source-bound Ada Fast registrations
         env:
           PYTHONDONTWRITEBYTECODE: '1'
         run: python3 scripts/run-owned-ada.py fast --compiler '${{ matrix.compiler }}' --setup /tmp/task099-evidence/setup --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms" --output /tmp/ci004-ada-fast
-''' + upload('ci004-ada-fast-${{ matrix.compiler }}', '/tmp/ci004-ada-fast/**')
+'''
 ADA_PINNED = '''      - name: Execute source-bound Ada pinned registrations with shared broker
         shell: bash
         env:
@@ -26,7 +26,7 @@ ADA_PINNED = '''      - name: Execute source-bound Ada pinned registrations with
         run: |
           set -euo pipefail
           /tmp/task101-venv/bin/python scripts/run-owned-ada.py pinned --compiler '${{ matrix.compiler }}' --setup /tmp/task101-evidence/setup --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms" --output /tmp/ci004-ada-pinned --sleet /tmp/task101-sleet --shared-campaign /tmp/task101-evidence/campaign --uci25 "$(cat /tmp/task101-evidence/uci25-root.txt)" --uci26 "$(cat /tmp/task101-evidence/uci26-root.txt)"
-''' + upload('ci004-ada-pinned-${{ matrix.compiler }}', '/tmp/ci004-ada-pinned/**')
+'''
 PYTHON_FAST = '''      - name: Execute source-bound Python Fast inventory
         run: |
           set -euo pipefail
@@ -49,6 +49,8 @@ HOOKS = (
     ('deep-ci.yml', 'real-uci-regressions', PYTHON_UCI),
     ('deep-ci.yml', 'real-sleet', PYTHON_SLEET),
 )
+ADA_PATHS = {'ada-lacal-runtime-core': '            /tmp/ci004-ada-fast/**\n',
+             'ada-real-uci-dlz-sleet': '            /tmp/ci004-ada-pinned/**\n'}
 SLEET = ('  "$interpreter" "$ROOT/scripts/run-owned-python.py" sleet\n'
          '  "$interpreter" -O "$ROOT/scripts/run-owned-python.py" sleet\n')
 
@@ -59,9 +61,16 @@ def project(workflows):
         text = result[workflow]
         jobs = dict(re.findall(r'^  ([\w-]+):\n(.*?)(?=^  [\w-]+:|\Z)', text, re.M | re.S))
         body = jobs.get(owner, '')
-        if (text.count(addition) != 1 or body.count(addition) != 1 or
-                any(line.strip() and not line.lstrip().startswith('#')
-                    for line in body.split(addition, 1)[-1].splitlines())):
+        if text.count(addition) != 1 or body.count(addition) != 1:
+            raise ValueError('CI-SELECT-004 mandatory hook missing/moved/masked: ' + owner)
+        if owner in ADA_PATHS:
+            anchor = '      - name: Upload mandatory source compiler and execution evidence\n'
+            path = ADA_PATHS[owner]
+            if body.count(addition + anchor) != 1 or body.count(path) != 1 or text.count(path) != 1:
+                raise ValueError('CI-SELECT-004 Ada evidence publication missing/moved: ' + owner)
+            text = text.replace(path, '', 1)
+        elif any(line.strip() and not line.lstrip().startswith('#')
+                 for line in body.split(addition, 1)[-1].splitlines()):
             raise ValueError('CI-SELECT-004 mandatory hook missing/moved/masked: ' + owner)
         result[workflow] = text.replace(addition, '', 1)
     return result

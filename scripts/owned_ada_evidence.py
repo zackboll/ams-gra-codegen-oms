@@ -63,7 +63,8 @@ def verify_bundle(files, mode, compiler, sha, tree, run_id, attempt, root=ROOT):
     if not result['files']:
         raise ValueError('missing owned source/log hashes')
     if (not text('gnat-version.stdout').startswith('GNAT ' + VERSIONS[compiler] + '\n') or
-            text('owned-source.stdout').splitlines() != [sha, tree] or text('owned-clean.stdout')):
+            text('owned-source.stdout').splitlines() != [sha, tree] or text('owned-clean.stdout') or
+            text('owned-final-source.stdout').splitlines() != [sha, tree] or text('owned-final-clean.stdout')):
         raise ValueError('wrong actual owned compiler/source identity')
     labels = [s['label'] for s in result['steps']]
     if len(labels) != len(set(labels)) or any(s['exit'] != 0 or text(s['label'] + '.exit') != '0\n'
@@ -73,7 +74,8 @@ def verify_bundle(files, mode, compiler, sha, tree, run_id, attempt, root=ROOT):
     if (len(tools) != 6 or any(not tools[n].startswith('/') or not re.fullmatch('[0-9a-f]{64}  .+', tools[n+1])
                               for n in (0, 2, 4))):
         raise ValueError('missing actual compiler binary identities')
-    required = {'printenv', 'gnat-version', 'gprbuild-version', 'owned-source', 'owned-clean', 'tool-identities'}
+    required = {'printenv', 'gnat-version', 'gprbuild-version', 'owned-source', 'owned-clean', 'tool-identities',
+                'owned-final-source', 'owned-final-clean'}
     for record in records:
         item = record['manifest']
         if record['mode'] != 'fast':

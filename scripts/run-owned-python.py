@@ -79,6 +79,10 @@ def main():
         raise ValueError('incomplete Python execution: ' + json.dumps(execution))
     if any(digest((ROOT / p).read_bytes()) != h for p, h in hashes.items()):
         raise ValueError('Python inputs changed during execution')
+    if (subprocess.check_output(['git', 'rev-parse', 'HEAD', 'HEAD^{tree}'], cwd=ROOT, text=True).splitlines() != source or
+            subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT) or
+            digest(generator.read_bytes()) != identity['generator_sha256']):
+        raise ValueError('Python source/generator changed during execution')
     runner.write_receipt(receipt, dict(version=1, identity=identity, hashes=hashes,
         fixtures=fixtures, test_ids=expected, execution=execution,
         log_sha256=digest((output / 'execution.log').read_bytes())))

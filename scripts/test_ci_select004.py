@@ -121,7 +121,7 @@ class Registration(unittest.TestCase):
                  ('qualification/ada/sleet/ci004-dlz-transport/service.yaml', {'ada-lacal-runtime-core'}, {'ada-real-uci-dlz-sleet'}),
                  ('python/qualification/fast/fixtures/test_owned_fixture/values.json', {'python-model-backend'}, set())]
         cases.extend([
-            ('python/qualification/uci/fixtures/test_owned_uci/dlz.json', {'python-model-backend'}, {'real-uci-regressions'}),
+            ('python/qualification/uci/fixtures/test_owned_uci/values.json', {'python-model-backend'}, {'real-uci-regressions'}),
             ('python/qualification/sleet/fixtures/test_owned_transport/required.json', {'python-model-backend'}, {'real-sleet'})])
         with patch.object(ci_selection, 'ROOT', self.root):
             for path, jobs, deep in cases:
@@ -172,11 +172,13 @@ class Evidence(unittest.TestCase):
         records = [r for r in owned.ada() if r['mode'] == 'fast']
         expected = [c for r in records for c in owned.cells(r)]
         files = {'gnat-version.stdout': b'GNAT 14.2.0\n', 'owned-source.stdout': b'a\nb\n',
+                 'owned-final-source.stdout': b'a\nb\n', 'owned-final-clean.stdout': b'',
                  'owned-clean.stdout': b'', 'generator.sha256': b'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\n'}
         files['tool-identities.stdout'] = ''.join('/bin/' + name + '\n' + 'd'*64 + '  /bin/' + name + '\n'
                                                   for name in ('gnat', 'gcc', 'gprbuild')).encode()
         steps = []
-        for label in ('printenv', 'gnat-version', 'gprbuild-version', 'owned-source', 'owned-clean', 'tool-identities'):
+        for label in ('printenv', 'gnat-version', 'gprbuild-version', 'owned-source', 'owned-clean', 'tool-identities',
+                      'owned-final-source', 'owned-final-clean'):
             steps.append(dict(label=label, exit=0))
             for suffix in ('.command.json', '.stdout', '.stderr', '.exit'):
                 files.setdefault(label + suffix, b'0\n' if suffix == '.exit' else b'')
@@ -244,7 +246,7 @@ class Evidence(unittest.TestCase):
         manifest = dict(jobs={'ada-lacal-runtime-core': True}, deep_jobs=[])
         with self.assertRaisesRegex(ValueError, 'missing/duplicate'):
             gate.reconcile_owned([], manifest, 'a', 'b', '123', '2', jobs=[], attempts={})
-        artifacts = [dict(name='ci004-ada-fast-' + c) for c in ('14', '16')]
+        artifacts = [dict(name='task099-ada-lacal-runtime-core-' + c) for c in ('14', '16')]
         jobs, attempts = metadata(artifacts)
         for snapshot in attempts.values():
             if not snapshot['jobs']:

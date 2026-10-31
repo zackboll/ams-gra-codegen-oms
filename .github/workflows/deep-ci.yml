@@ -152,6 +152,13 @@ jobs:
           print('TASK101_HOSTED_VERIFIED', verify_bundle(files, os.environ['TASK101_COMPILER'],
                 os.environ['GITHUB_SHA'], tree, os.environ['GITHUB_RUN_ID'], os.environ['GITHUB_RUN_ATTEMPT']))
           EOF
+      - name: Execute source-bound Ada pinned registrations with shared broker
+        shell: bash
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          set -euo pipefail
+          /tmp/task101-venv/bin/python scripts/run-owned-ada.py pinned --compiler '${{ matrix.compiler }}' --setup /tmp/task101-evidence/setup --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms" --output /tmp/ci004-ada-pinned --sleet /tmp/task101-sleet --shared-campaign /tmp/task101-evidence/campaign --uci25 "$(cat /tmp/task101-evidence/uci25-root.txt)" --uci26 "$(cat /tmp/task101-evidence/uci26-root.txt)"
       - name: Upload mandatory source compiler and execution evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -174,20 +181,7 @@ jobs:
             /tmp/task101-evidence/campaign/**/*.gpr
             /tmp/task101-evidence/campaign/**/*.xsd
             /tmp/task101-evidence/campaign/**/*.yaml
-          if-no-files-found: error
-      - name: Execute source-bound Ada pinned registrations with shared broker
-        shell: bash
-        env:
-          PYTHONDONTWRITEBYTECODE: '1'
-        run: |
-          set -euo pipefail
-          /tmp/task101-venv/bin/python scripts/run-owned-ada.py pinned --compiler '${{ matrix.compiler }}' --setup /tmp/task101-evidence/setup --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms" --output /tmp/ci004-ada-pinned --sleet /tmp/task101-sleet --shared-campaign /tmp/task101-evidence/campaign --uci25 "$(cat /tmp/task101-evidence/uci25-root.txt)" --uci26 "$(cat /tmp/task101-evidence/uci26-root.txt)"
-      - name: Upload mandatory source compiler and execution evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ci004-ada-pinned-${{ matrix.compiler }}
-          path: /tmp/ci004-ada-pinned/**
+            /tmp/ci004-ada-pinned/**
           if-no-files-found: error
 
   ada-websocket-real-sleet:

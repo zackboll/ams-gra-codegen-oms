@@ -1,6 +1,6 @@
 contract_version: "0.1"
 service:
-  name: task098-dlz
+  name: ci004-pinned-datetime-probe
   version: "0.1.0"
   kind: service
 standards:
@@ -16,7 +16,7 @@ functions:
         kind: oms_message
         direction: input
         mandate: mandatory
-        message: DLZ
-        topic: task098-dlz
+        message: ProfileValue
+        topic: ci004.pinned
         timing:
           kind: asynchronous

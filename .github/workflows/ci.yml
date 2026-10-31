@@ -309,6 +309,11 @@ jobs:
           EOF
           test "$(grep -c '^TASK099_CELL_COMPLETE ' /tmp/task099-evidence/qualify.log)" = 24
           grep -F 'TASK099_QUALIFICATION_COMPLETE' /tmp/task099-evidence/qualify.log
+      - name: Execute source-bound Ada Fast registrations
+        shell: bash
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python3 scripts/run-owned-ada.py fast --compiler '${{ matrix.compiler }}' --setup /tmp/task099-evidence/setup --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms" --output /tmp/ci004-ada-fast
       - name: Upload mandatory source compiler and execution evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -328,18 +333,7 @@ jobs:
             /tmp/task099-evidence/campaign/*-generated/*.ad?
             /tmp/task099-evidence/campaign/*-O*-*/runtime_consumer.adb
             /tmp/task099-evidence/campaign/ada/oms-lacal-runtime/src/*.ad?
-          if-no-files-found: error
-      - name: Execute source-bound Ada Fast registrations
-        shell: bash
-        env:
-          PYTHONDONTWRITEBYTECODE: '1'
-        run: python3 scripts/run-owned-ada.py fast --compiler '${{ matrix.compiler }}' --setup /tmp/task099-evidence/setup --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms" --output /tmp/ci004-ada-fast
-      - name: Upload mandatory source compiler and execution evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ci004-ada-fast-${{ matrix.compiler }}
-          path: /tmp/ci004-ada-fast/**
+            /tmp/ci004-ada-fast/**
           if-no-files-found: error
 
   ada-float64-codec:

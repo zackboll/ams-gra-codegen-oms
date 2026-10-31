@@ -70,7 +70,12 @@ reconciled with unittest discovery and actual starts/passes; fixture registratio
 cannot use `load_tests` to omit source tests. Skips, errors, expected failures,
 suppressed execution and duplicate identities cannot produce accepted receipts.
 The checked-in examples generate actual Python code and exercise Fast, pinned UCI,
-and an inherited real transport probe. Both real Python 3.11/3.13 interpreters run
+and an inherited real transport probe. The Python UCI example extracts the exact
+authenticated DateTimeType declaration from each release (as PY-009 does); it is
+**not full real-UCI service interoperability**. The attempted full DLZ example
+failed at the existing unsupported Python primitive Time boundary. That production
+boundary and all historical NOT READY expectations remain unchanged.
+Both real Python 3.11/3.13 interpreters run
 normal and `-O` in their existing owners. Existing CI-SELECT-003 UCI receipt
 publication/invalidation remains in place; new source-bound receipts are additive.
 
@@ -86,9 +91,11 @@ generator/backend/IR/schema paths keep their inherited conservative policy.
 Workflow, security, shared harness and selector changes require full CI, including
 this infrastructure PR. Task folders do not grant selective production ownership.
 
-Artifacts `ci004-ada-{fast,pinned}-{14,16}` and
-`ci004-python-{fast-3.11,fast-3.13,uci,sleet}` are mandatory whenever their owner
-is selected. The final gate downloads digest-verified data-only archives and uses
+Ada evidence is added under `ci004-ada-{fast,pinned}/` inside the existing
+Task099/Task101 compiler artifacts; their historical contents and names remain
+mandatory. Artifacts `ci004-python-{fast-3.11,fast-3.13,uci,sleet}` are additive
+and mandatory whenever their owner is selected. The final gate downloads
+digest-verified data-only archives and uses
 the unchanged CI-RETRY-001 resolver to bind them to an exact successful owner and
 publication step, actual producing run/attempt, source head/tree and repository.
 Independent verifiers reconstruct registrations and required cells from source;
