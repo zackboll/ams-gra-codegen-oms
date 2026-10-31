@@ -367,11 +367,11 @@ def verify_bundle(files, compiler, sha, tree, run_id, attempt):
                 raise ValueError('Task105 independent broker/typed variant observation absent')
         if sum(item.get('label') == 'wrong-service-closed' for item in wire) != 1:
             raise ValueError('Task105 required service-error connection closure absent')
-        for version in ('002.5.0', '002.6'):
-            rejected = [item for item in wire if item.get('label') == 'wrong-init-schema-' + version]
+        for session_version in ('002.5.0', '002.6'):
+            rejected = [item for item in wire if item.get('label') == 'wrong-init-schema-' + session_version]
             if (len(rejected) != 1 or not rejected[0]['response'].startswith('-ERR Unsupported-Schema')
                     or 'does not match 002.6.0' not in rejected[0]['response']
-                    or sum(item.get('label') == 'wrong-init-schema-closed-' + version for item in wire) != 1):
+                    or sum(item.get('label') == 'wrong-init-schema-closed-' + session_version for item in wire) != 1):
                 raise ValueError('Task105 wrong OWP session release rejection/closure absent')
         other = cases.golden(release)
         other['MessageHeader']['SchemaVersion'] = '002.5.0'

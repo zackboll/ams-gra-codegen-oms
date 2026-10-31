@@ -361,7 +361,9 @@ class EvidenceTests(unittest.TestCase):
     def test_both_compilers_complete_and_each_file_missing_or_duplicated(self):
         for compiler in ('14', '16'):
             files = bundle(compiler)
-            self.assertEqual(self.verify(files, compiler)['cells'], 6)
+            summary = self.verify(files, compiler)
+            self.assertEqual(summary['cells'], 6)
+            self.assertEqual(summary['compiler'], {'14': '14.2.0', '16': '16.1.0'}[compiler])
         files = bundle()
         for path in files:
             with self.subTest(missing=path):
