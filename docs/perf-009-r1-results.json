@@ -1,0 +1,1557 @@
+{
+  "disposition": "QUALIFICATION_FAILED",
+  "starting_head": "162d2f04d5110186456db4565caf51024dbab4cb",
+  "main": "ac046599c492241aefc9b1d6b742668c0e9cd39a",
+  "ci_modified": false,
+  "controls": {
+    "14": {
+      "completed": true,
+      "count": 114,
+      "categories": {
+        "actual-compiler-failure": 12,
+        "actual-compiler-execution": 3,
+        "verifier-only": 93,
+        "actual-execution-verifier-rejection": 6
+      },
+      "records": [
+        {
+          "policy": "normal",
+          "control": "provider-source",
+          "category": "actual-compiler-failure",
+          "exit": 1,
+          "diagnostic": "gnatcoll-json.adb:1:28: error: PERF009_CHANGED_PROVIDER\n"
+        },
+        {
+          "policy": "normal",
+          "control": "gpr-configuration",
+          "category": "actual-compiler-failure",
+          "exit": 1,
+          "diagnostic": "<OUTPUT>/config-8.adc:38:01: error: only configuration pragmas allowed in configuration file\n"
+        },
+        {
+          "policy": "normal",
+          "control": "compiler-response",
+          "category": "actual-compiler-failure",
+          "exit": 1,
+          "diagnostic": "gcc: error: unrecognized command-line option \u2018-fperf009-invalid-compiler-option\u2019\n"
+        },
+        {
+          "policy": "normal",
+          "control": "read-time-mapping",
+          "category": "actual-compiler-failure",
+          "exit": 1,
+          "diagnostic": "gnatcoll.ads:1:28: error: PERF009_CHANGED_PROVIDER\n"
+        },
+        {
+          "policy": "normal",
+          "control": "assertion-behavior",
+          "category": "actual-compiler-execution",
+          "exit": 1,
+          "assertion_raised": true
+        },
+        {
+          "policy": "normal",
+          "control": "missing-object",
+          "category": "verifier-only",
+          "rejection": "missing/corrupt provider artifact"
+        },
+        {
+          "policy": "normal",
+          "control": "corrupt-object",
+          "category": "verifier-only",
+          "rejection": "missing/corrupt provider artifact"
+        },
+        {
+          "policy": "normal",
+          "control": "changed-object",
+          "category": "verifier-only",
+          "rejection": "missing/corrupt provider artifact"
+        },
+        {
+          "policy": "normal",
+          "control": "post-preparation-mutation",
+          "category": "verifier-only",
+          "rejection": "portable prepared manifest changed"
+        },
+        {
+          "policy": "normal",
+          "control": "cross-policy",
+          "category": "verifier-only",
+          "rejection": "provider identity/incomplete preparation mismatch"
+        },
+        {
+          "policy": "normal",
+          "control": "false-preparation",
+          "category": "verifier-only",
+          "rejection": "portable prepared manifest changed"
+        },
+        {
+          "policy": "normal",
+          "control": "altered-manifest",
+          "category": "verifier-only",
+          "rejection": "portable prepared manifest changed"
+        },
+        {
+          "policy": "normal",
+          "control": "identity-gcc",
+          "category": "verifier-only",
+          "rejection": "CI toolchain/runtime identity differs from R2 qualification"
+        },
+        {
+          "policy": "normal",
+          "control": "identity-system.ads",
+          "category": "verifier-only",
+          "rejection": "CI toolchain/runtime identity differs from R2 qualification"
+        },
+        {
+          "policy": "normal",
+          "control": "identity-libgnat.a",
+          "category": "verifier-only",
+          "rejection": "CI toolchain/runtime identity differs from R2 qualification"
+        },
+        {
+          "policy": "normal",
+          "control": "missing-compile",
+          "category": "verifier-only",
+          "rejection": "missing portable generated/support compilation"
+        },
+        {
+          "policy": "normal",
+          "control": "duplicate-compile",
+          "category": "verifier-only",
+          "rejection": "unexpected/duplicate portable compiler input"
+        },
+        {
+          "policy": "normal",
+          "control": "missing-binder",
+          "category": "verifier-only",
+          "rejection": "missing/duplicate portable bind/link execution"
+        },
+        {
+          "policy": "normal",
+          "control": "missing-linker",
+          "category": "verifier-only",
+          "rejection": "missing/duplicate portable bind/link execution"
+        },
+        {
+          "policy": "normal",
+          "control": "wrong-policy",
+          "category": "verifier-only",
+          "rejection": "portable effective compiler policy/options differ"
+        },
+        {
+          "policy": "normal",
+          "control": "abi-override",
+          "category": "verifier-only",
+          "rejection": "portable ABI/runtime/optimization override"
+        },
+        {
+          "policy": "normal",
+          "control": "optimization-override",
+          "category": "verifier-only",
+          "rejection": "portable ABI/runtime/optimization override"
+        },
+        {
+          "policy": "normal",
+          "control": "read-time-map-record",
+          "category": "verifier-only",
+          "rejection": "altered read-time mapping evidence"
+        },
+        {
+          "policy": "normal",
+          "control": "gpr-config-record",
+          "category": "verifier-only",
+          "rejection": "configuration differs from compiler read-time input"
+        },
+        {
+          "policy": "normal",
+          "control": "missing-execution-record",
+          "category": "verifier-only",
+          "rejection": "missing/altered raw execution evidence"
+        },
+        {
+          "policy": "normal",
+          "control": "false-success-preparation",
+          "category": "verifier-only",
+          "rejection": "missing/altered raw execution evidence"
+        },
+        {
+          "policy": "normal",
+          "control": "incomplete-preparation",
+          "category": "verifier-only",
+          "rejection": "missing/altered raw execution evidence"
+        },
+        {
+          "policy": "normal",
+          "control": "false-success-consumer",
+          "category": "actual-execution-verifier-rejection",
+          "rejection": "missing/false consumer execution"
+        },
+        {
+          "policy": "normal",
+          "control": "skipped-consumer",
+          "category": "actual-execution-verifier-rejection",
+          "rejection": "missing/false consumer execution"
+        },
+        {
+          "policy": "normal",
+          "control": "wrong-dependency-version",
+          "category": "verifier-only",
+          "rejection": "portable dependency lock differs"
+        },
+        {
+          "policy": "normal",
+          "control": "wrong-provider-origin",
+          "category": "verifier-only",
+          "rejection": "portable provider origin differs"
+        },
+        {
+          "policy": "normal",
+          "control": "provider-source-identity",
+          "category": "verifier-only",
+          "rejected": true
+        },
+        {
+          "policy": "normal",
+          "control": "missing-generated-object",
+          "category": "verifier-only",
+          "rejection": "missing/stale/changed portable artifact"
+        },
+        {
+          "policy": "normal",
+          "control": "stale-generated-object",
+          "category": "verifier-only",
+          "rejection": "missing/stale/changed portable artifact"
+        },
+        {
+          "policy": "normal",
+          "control": "duplicate-generated-object",
+          "category": "verifier-only",
+          "rejection": "incomplete/duplicated portable artifact inventory"
+        },
+        {
+          "policy": "normal",
+          "control": "truncated-manifest",
+          "category": "verifier-only",
+          "rejection": "portable evidence seal incomplete/changed"
+        },
+        {
+          "policy": "normal",
+          "control": "altered-evidence",
+          "category": "verifier-only",
+          "rejection": "portable evidence seal incomplete/changed"
+        },
+        {
+          "policy": "normal",
+          "control": "added-evidence",
+          "category": "verifier-only",
+          "rejection": "portable evidence seal incomplete/changed"
+        },
+        {
+          "policy": "Check",
+          "control": "provider-source",
+          "category": "actual-compiler-failure",
+          "exit": 1,
+          "diagnostic": "gnatcoll-json.adb:1:28: error: PERF009_CHANGED_PROVIDER\n"
+        },
+        {
+          "policy": "Check",
+          "control": "gpr-configuration",
+          "category": "actual-compiler-failure",
+          "exit": 1,
+          "diagnostic": "<OUTPUT>/config-8.adc:3:01: error: only configuration pragmas allowed in configuration file\n"
+        },
+        {
+          "policy": "Check",
+          "control": "compiler-response",
+          "category": "actual-compiler-failure",
+          "exit": 1,
+          "diagnostic": "gcc: error: unrecognized command-line option \u2018-fperf009-invalid-compiler-option\u2019\n"
+        },
+        {
+          "policy": "Check",
+          "control": "read-time-mapping",
+          "category": "actual-compiler-failure",
+          "exit": 1,
+          "diagnostic": "gnatcoll.ads:1:28: error: PERF009_CHANGED_PROVIDER\n"
+        },
+        {
+          "policy": "Check",
+          "control": "assertion-behavior",
+          "category": "actual-compiler-execution",
+          "exit": 1,
+          "assertion_raised": true
+        },
+        {
+          "policy": "Check",
+          "control": "missing-object",
+          "category": "verifier-only",
+          "rejection": "missing/corrupt provider artifact"
+        },
+        {
+          "policy": "Check",
+          "control": "corrupt-object",
+          "category": "verifier-only",
+          "rejection": "missing/corrupt provider artifact"
+        },
+        {
+          "policy": "Check",
+          "control": "changed-object",
+          "category": "verifier-only",
+          "rejection": "missing/corrupt provider artifact"
+        },
+        {
+          "policy": "Check",
+          "control": "post-preparation-mutation",
+          "category": "verifier-only",
+          "rejection": "portable prepared manifest changed"
+        },
+        {
+          "policy": "Check",
+          "control": "cross-policy",
+          "category": "verifier-only",
+          "rejection": "provider identity/incomplete preparation mismatch"
+        },
+        {
+          "policy": "Check",
+          "control": "false-preparation",
+          "category": "verifier-only",
+          "rejection": "portable prepared manifest changed"
+        },
+        {
+          "policy": "Check",
+          "control": "altered-manifest",
+          "category": "verifier-only",
+          "rejection": "portable prepared manifest changed"
+        },
+        {
+          "policy": "Check",
+          "control": "identity-gcc",
+          "category": "verifier-only",
+          "rejection": "CI toolchain/runtime identity differs from R2 qualification"
+        },
+        {
+          "policy": "Check",
+          "control": "identity-system.ads",
+          "category": "verifier-only",
+          "rejection": "CI toolchain/runtime identity differs from R2 qualification"
+        },
+        {
+          "policy": "Check",
+          "control": "identity-libgnat.a",
+          "category": "verifier-only",
+          "rejection": "CI toolchain/runtime identity differs from R2 qualification"
+        },
+        {
+          "policy": "Check",
+          "control": "missing-compile",
+          "category": "verifier-only",
+          "rejection": "missing portable generated/support compilation"
+        },
+        {
+          "policy": "Check",
+          "control": "duplicate-compile",
+          "category": "verifier-only",
+          "rejection": "unexpected/duplicate portable compiler input"
+        },
+        {
+          "policy": "Check",
+          "control": "missing-binder",
+          "category": "verifier-only",
+          "rejection": "missing/duplicate portable bind/link execution"
+        },
+        {
+          "policy": "Check",
+          "control": "missing-linker",
+          "category": "verifier-only",
+          "rejection": "missing/duplicate portable bind/link execution"
+        },
+        {
+          "policy": "Check",
+          "control": "wrong-policy",
+          "category": "verifier-only",
+          "rejection": "portable effective compiler policy/options differ"
+        },
+        {
+          "policy": "Check",
+          "control": "abi-override",
+          "category": "verifier-only",
+          "rejection": "portable ABI/runtime/optimization override"
+        },
+        {
+          "policy": "Check",
+          "control": "optimization-override",
+          "category": "verifier-only",
+          "rejection": "portable ABI/runtime/optimization override"
+        },
+        {
+          "policy": "Check",
+          "control": "read-time-map-record",
+          "category": "verifier-only",
+          "rejection": "altered read-time mapping evidence"
+        },
+        {
+          "policy": "Check",
+          "control": "gpr-config-record",
+          "category": "verifier-only",
+          "rejection": "configuration differs from compiler read-time input"
+        },
+        {
+          "policy": "Check",
+          "control": "missing-execution-record",
+          "category": "verifier-only",
+          "rejection": "missing/altered raw execution evidence"
+        },
+        {
+          "policy": "Check",
+          "control": "false-success-preparation",
+          "category": "verifier-only",
+          "rejection": "missing/altered raw execution evidence"
+        },
+        {
+          "policy": "Check",
+          "control": "incomplete-preparation",
+          "category": "verifier-only",
+          "rejection": "missing/altered raw execution evidence"
+        },
+        {
+          "policy": "Check",
+          "control": "false-success-consumer",
+          "category": "actual-execution-verifier-rejection",
+          "rejection": "missing/false consumer execution"
+        },
+        {
+          "policy": "Check",
+          "control": "skipped-consumer",
+          "category": "actual-execution-verifier-rejection",
+          "rejection": "missing/false consumer execution"
+        },
+        {
+          "policy": "Check",
+          "control": "wrong-dependency-version",
+          "category": "verifier-only",
+          "rejection": "portable dependency lock differs"
+        },
+        {
+          "policy": "Check",
+          "control": "wrong-provider-origin",
+          "category": "verifier-only",
+          "rejection": "portable provider origin differs"
+        },
+        {
+          "policy": "Check",
+          "control": "provider-source-identity",
+          "category": "verifier-only",
+          "rejected": true
+        },
+        {
+          "policy": "Check",
+          "control": "missing-generated-object",
+          "category": "verifier-only",
+          "rejection": "missing/stale/changed portable artifact"
+        },
+        {
+          "policy": "Check",
+          "control": "stale-generated-object",
+          "category": "verifier-only",
+          "rejection": "missing/stale/changed portable artifact"
+        },
+        {
+          "policy": "Check",
+          "control": "duplicate-generated-object",
+          "category": "verifier-only",
+          "rejection": "incomplete/duplicated portable artifact inventory"
+        },
+        {
+          "policy": "Check",
+          "control": "truncated-manifest",
+          "category": "verifier-only",
+          "rejection": "portable evidence seal incomplete/changed"
+        },
+        {
+          "policy": "Check",
+          "control": "altered-evidence",
+          "category": "verifier-only",
+          "rejection": "portable evidence seal incomplete/changed"
+        },
+        {
+          "policy": "Check",
+          "control": "added-evidence",
+          "category": "verifier-only",
+          "rejection": "portable evidence seal incomplete/changed"
+        },
+        {
+          "policy": "Ignore",
+          "control": "provider-source",
+          "category": "actual-compiler-failure",
+          "exit": 1,
+          "diagnostic": "gnatcoll-json.adb:1:28: error: PERF009_CHANGED_PROVIDER\n"
+        },
+        {
+          "policy": "Ignore",
+          "control": "gpr-configuration",
+          "category": "actual-compiler-failure",
+          "exit": 1,
+          "diagnostic": "<OUTPUT>/config-8.adc:3:01: error: only configuration pragmas allowed in configuration file\n"
+        },
+        {
+          "policy": "Ignore",
+          "control": "compiler-response",
+          "category": "actual-compiler-failure",
+          "exit": 1,
+          "diagnostic": "gcc: error: unrecognized command-line option \u2018-fperf009-invalid-compiler-option\u2019\n"
+        },
+        {
+          "policy": "Ignore",
+          "control": "read-time-mapping",
+          "category": "actual-compiler-failure",
+          "exit": 1,
+          "diagnostic": "gnatcoll.ads:1:28: error: PERF009_CHANGED_PROVIDER\n"
+        },
+        {
+          "policy": "Ignore",
+          "control": "assertion-behavior",
+          "category": "actual-compiler-execution",
+          "exit": 0,
+          "assertion_raised": false
+        },
+        {
+          "policy": "Ignore",
+          "control": "missing-object",
+          "category": "verifier-only",
+          "rejection": "missing/corrupt provider artifact"
+        },
+        {
+          "policy": "Ignore",
+          "control": "corrupt-object",
+          "category": "verifier-only",
+          "rejection": "missing/corrupt provider artifact"
+        },
+        {
+          "policy": "Ignore",
+          "control": "changed-object",
+          "category": "verifier-only",
+          "rejection": "missing/corrupt provider artifact"
+        },
+        {
+          "policy": "Ignore",
+          "control": "post-preparation-mutation",
+          "category": "verifier-only",
+          "rejection": "portable prepared manifest changed"
+        },
+        {
+          "policy": "Ignore",
+          "control": "cross-policy",
+          "category": "verifier-only",
+          "rejection": "provider identity/incomplete preparation mismatch"
+        },
+        {
+          "policy": "Ignore",
+          "control": "false-preparation",
+          "category": "verifier-only",
+          "rejection": "portable prepared manifest changed"
+        },
+        {
+          "policy": "Ignore",
+          "control": "altered-manifest",
+          "category": "verifier-only",
+          "rejection": "portable prepared manifest changed"
+        },
+        {
+          "policy": "Ignore",
+          "control": "identity-gcc",
+          "category": "verifier-only",
+          "rejection": "CI toolchain/runtime identity differs from R2 qualification"
+        },
+        {
+          "policy": "Ignore",
+          "control": "identity-system.ads",
+          "category": "verifier-only",
+          "rejection": "CI toolchain/runtime identity differs from R2 qualification"
+        },
+        {
+          "policy": "Ignore",
+          "control": "identity-libgnat.a",
+          "category": "verifier-only",
+          "rejection": "CI toolchain/runtime identity differs from R2 qualification"
+        },
+        {
+          "policy": "Ignore",
+          "control": "missing-compile",
+          "category": "verifier-only",
+          "rejection": "missing portable generated/support compilation"
+        },
+        {
+          "policy": "Ignore",
+          "control": "duplicate-compile",
+          "category": "verifier-only",
+          "rejection": "unexpected/duplicate portable compiler input"
+        },
+        {
+          "policy": "Ignore",
+          "control": "missing-binder",
+          "category": "verifier-only",
+          "rejection": "missing/duplicate portable bind/link execution"
+        },
+        {
+          "policy": "Ignore",
+          "control": "missing-linker",
+          "category": "verifier-only",
+          "rejection": "missing/duplicate portable bind/link execution"
+        },
+        {
+          "policy": "Ignore",
+          "control": "wrong-policy",
+          "category": "verifier-only",
+          "rejection": "portable effective compiler policy/options differ"
+        },
+        {
+          "policy": "Ignore",
+          "control": "abi-override",
+          "category": "verifier-only",
+          "rejection": "portable ABI/runtime/optimization override"
+        },
+        {
+          "policy": "Ignore",
+          "control": "optimization-override",
+          "category": "verifier-only",
+          "rejection": "portable ABI/runtime/optimization override"
+        },
+        {
+          "policy": "Ignore",
+          "control": "read-time-map-record",
+          "category": "verifier-only",
+          "rejection": "altered read-time mapping evidence"
+        },
+        {
+          "policy": "Ignore",
+          "control": "gpr-config-record",
+          "category": "verifier-only",
+          "rejection": "configuration differs from compiler read-time input"
+        },
+        {
+          "policy": "Ignore",
+          "control": "missing-execution-record",
+          "category": "verifier-only",
+          "rejection": "missing/altered raw execution evidence"
+        },
+        {
+          "policy": "Ignore",
+          "control": "false-success-preparation",
+          "category": "verifier-only",
+          "rejection": "missing/altered raw execution evidence"
+        },
+        {
+          "policy": "Ignore",
+          "control": "incomplete-preparation",
+          "category": "verifier-only",
+          "rejection": "missing/altered raw execution evidence"
+        },
+        {
+          "policy": "Ignore",
+          "control": "false-success-consumer",
+          "category": "actual-execution-verifier-rejection",
+          "rejection": "missing/false consumer execution"
+        },
+        {
+          "policy": "Ignore",
+          "control": "skipped-consumer",
+          "category": "actual-execution-verifier-rejection",
+          "rejection": "missing/false consumer execution"
+        },
+        {
+          "policy": "Ignore",
+          "control": "wrong-dependency-version",
+          "category": "verifier-only",
+          "rejection": "portable dependency lock differs"
+        },
+        {
+          "policy": "Ignore",
+          "control": "wrong-provider-origin",
+          "category": "verifier-only",
+          "rejection": "portable provider origin differs"
+        },
+        {
+          "policy": "Ignore",
+          "control": "provider-source-identity",
+          "category": "verifier-only",
+          "rejected": true
+        },
+        {
+          "policy": "Ignore",
+          "control": "missing-generated-object",
+          "category": "verifier-only",
+          "rejection": "missing/stale/changed portable artifact"
+        },
+        {
+          "policy": "Ignore",
+          "control": "stale-generated-object",
+          "category": "verifier-only",
+          "rejection": "missing/stale/changed portable artifact"
+        },
+        {
+          "policy": "Ignore",
+          "control": "duplicate-generated-object",
+          "category": "verifier-only",
+          "rejection": "incomplete/duplicated portable artifact inventory"
+        },
+        {
+          "policy": "Ignore",
+          "control": "truncated-manifest",
+          "category": "verifier-only",
+          "rejection": "portable evidence seal incomplete/changed"
+        },
+        {
+          "policy": "Ignore",
+          "control": "altered-evidence",
+          "category": "verifier-only",
+          "rejection": "portable evidence seal incomplete/changed"
+        },
+        {
+          "policy": "Ignore",
+          "control": "added-evidence",
+          "category": "verifier-only",
+          "rejection": "portable evidence seal incomplete/changed"
+        }
+      ],
+      "exhaustive": false,
+      "limitation": "Full portable consumer mapping replay and ABI negative controls still required before production",
+      "result_sha256": "d1eb8ca6483525819d77761c3a4fcf6ce5ff1f8c51cbc7af6bf6582c113ad2d2"
+    },
+    "16": {
+      "completed": true,
+      "count": 114,
+      "categories": {
+        "actual-compiler-failure": 12,
+        "actual-compiler-execution": 3,
+        "verifier-only": 93,
+        "actual-execution-verifier-rejection": 6
+      },
+      "records": [
+        {
+          "policy": "normal",
+          "control": "provider-source",
+          "category": "actual-compiler-failure",
+          "exit": 1,
+          "diagnostic": "gnatcoll-json.adb:1:28: error: PERF009_CHANGED_PROVIDER\n"
+        },
+        {
+          "policy": "normal",
+          "control": "gpr-configuration",
+          "category": "actual-compiler-failure",
+          "exit": 1,
+          "diagnostic": "<OUTPUT>/config-8.adc:38:01: error: only configuration pragmas allowed in configuration file\n"
+        },
+        {
+          "policy": "normal",
+          "control": "compiler-response",
+          "category": "actual-compiler-failure",
+          "exit": 1,
+          "diagnostic": "gcc: error: unrecognized command-line option '-fperf009-invalid-compiler-option'\n"
+        },
+        {
+          "policy": "normal",
+          "control": "read-time-mapping",
+          "category": "actual-compiler-failure",
+          "exit": 1,
+          "diagnostic": "gnatcoll.ads:1:28: error: PERF009_CHANGED_PROVIDER\n"
+        },
+        {
+          "policy": "normal",
+          "control": "assertion-behavior",
+          "category": "actual-compiler-execution",
+          "exit": 1,
+          "assertion_raised": true
+        },
+        {
+          "policy": "normal",
+          "control": "missing-object",
+          "category": "verifier-only",
+          "rejection": "missing/corrupt provider artifact"
+        },
+        {
+          "policy": "normal",
+          "control": "corrupt-object",
+          "category": "verifier-only",
+          "rejection": "missing/corrupt provider artifact"
+        },
+        {
+          "policy": "normal",
+          "control": "changed-object",
+          "category": "verifier-only",
+          "rejection": "missing/corrupt provider artifact"
+        },
+        {
+          "policy": "normal",
+          "control": "post-preparation-mutation",
+          "category": "verifier-only",
+          "rejection": "portable prepared manifest changed"
+        },
+        {
+          "policy": "normal",
+          "control": "cross-policy",
+          "category": "verifier-only",
+          "rejection": "provider identity/incomplete preparation mismatch"
+        },
+        {
+          "policy": "normal",
+          "control": "false-preparation",
+          "category": "verifier-only",
+          "rejection": "portable prepared manifest changed"
+        },
+        {
+          "policy": "normal",
+          "control": "altered-manifest",
+          "category": "verifier-only",
+          "rejection": "portable prepared manifest changed"
+        },
+        {
+          "policy": "normal",
+          "control": "identity-gcc",
+          "category": "verifier-only",
+          "rejection": "CI toolchain/runtime identity differs from R2 qualification"
+        },
+        {
+          "policy": "normal",
+          "control": "identity-system.ads",
+          "category": "verifier-only",
+          "rejection": "CI toolchain/runtime identity differs from R2 qualification"
+        },
+        {
+          "policy": "normal",
+          "control": "identity-libgnat.a",
+          "category": "verifier-only",
+          "rejection": "CI toolchain/runtime identity differs from R2 qualification"
+        },
+        {
+          "policy": "normal",
+          "control": "missing-compile",
+          "category": "verifier-only",
+          "rejection": "missing portable generated/support compilation"
+        },
+        {
+          "policy": "normal",
+          "control": "duplicate-compile",
+          "category": "verifier-only",
+          "rejection": "unexpected/duplicate portable compiler input"
+        },
+        {
+          "policy": "normal",
+          "control": "missing-binder",
+          "category": "verifier-only",
+          "rejection": "missing/duplicate portable bind/link execution"
+        },
+        {
+          "policy": "normal",
+          "control": "missing-linker",
+          "category": "verifier-only",
+          "rejection": "missing/duplicate portable bind/link execution"
+        },
+        {
+          "policy": "normal",
+          "control": "wrong-policy",
+          "category": "verifier-only",
+          "rejection": "portable effective compiler policy/options differ"
+        },
+        {
+          "policy": "normal",
+          "control": "abi-override",
+          "category": "verifier-only",
+          "rejection": "portable ABI/runtime/optimization override"
+        },
+        {
+          "policy": "normal",
+          "control": "optimization-override",
+          "category": "verifier-only",
+          "rejection": "portable ABI/runtime/optimization override"
+        },
+        {
+          "policy": "normal",
+          "control": "read-time-map-record",
+          "category": "verifier-only",
+          "rejection": "altered read-time mapping evidence"
+        },
+        {
+          "policy": "normal",
+          "control": "gpr-config-record",
+          "category": "verifier-only",
+          "rejection": "configuration differs from compiler read-time input"
+        },
+        {
+          "policy": "normal",
+          "control": "missing-execution-record",
+          "category": "verifier-only",
+          "rejection": "missing/altered raw execution evidence"
+        },
+        {
+          "policy": "normal",
+          "control": "false-success-preparation",
+          "category": "verifier-only",
+          "rejection": "missing/altered raw execution evidence"
+        },
+        {
+          "policy": "normal",
+          "control": "incomplete-preparation",
+          "category": "verifier-only",
+          "rejection": "missing/altered raw execution evidence"
+        },
+        {
+          "policy": "normal",
+          "control": "false-success-consumer",
+          "category": "actual-execution-verifier-rejection",
+          "rejection": "missing/false consumer execution"
+        },
+        {
+          "policy": "normal",
+          "control": "skipped-consumer",
+          "category": "actual-execution-verifier-rejection",
+          "rejection": "missing/false consumer execution"
+        },
+        {
+          "policy": "normal",
+          "control": "wrong-dependency-version",
+          "category": "verifier-only",
+          "rejection": "portable dependency lock differs"
+        },
+        {
+          "policy": "normal",
+          "control": "wrong-provider-origin",
+          "category": "verifier-only",
+          "rejection": "portable provider origin differs"
+        },
+        {
+          "policy": "normal",
+          "control": "provider-source-identity",
+          "category": "verifier-only",
+          "rejected": true
+        },
+        {
+          "policy": "normal",
+          "control": "missing-generated-object",
+          "category": "verifier-only",
+          "rejection": "missing/stale/changed portable artifact"
+        },
+        {
+          "policy": "normal",
+          "control": "stale-generated-object",
+          "category": "verifier-only",
+          "rejection": "missing/stale/changed portable artifact"
+        },
+        {
+          "policy": "normal",
+          "control": "duplicate-generated-object",
+          "category": "verifier-only",
+          "rejection": "incomplete/duplicated portable artifact inventory"
+        },
+        {
+          "policy": "normal",
+          "control": "truncated-manifest",
+          "category": "verifier-only",
+          "rejection": "portable evidence seal incomplete/changed"
+        },
+        {
+          "policy": "normal",
+          "control": "altered-evidence",
+          "category": "verifier-only",
+          "rejection": "portable evidence seal incomplete/changed"
+        },
+        {
+          "policy": "normal",
+          "control": "added-evidence",
+          "category": "verifier-only",
+          "rejection": "portable evidence seal incomplete/changed"
+        },
+        {
+          "policy": "Check",
+          "control": "provider-source",
+          "category": "actual-compiler-failure",
+          "exit": 1,
+          "diagnostic": "gnatcoll-json.adb:1:28: error: PERF009_CHANGED_PROVIDER\n"
+        },
+        {
+          "policy": "Check",
+          "control": "gpr-configuration",
+          "category": "actual-compiler-failure",
+          "exit": 1,
+          "diagnostic": "<OUTPUT>/config-8.adc:3:01: error: only configuration pragmas allowed in configuration file\n"
+        },
+        {
+          "policy": "Check",
+          "control": "compiler-response",
+          "category": "actual-compiler-failure",
+          "exit": 1,
+          "diagnostic": "gcc: error: unrecognized command-line option '-fperf009-invalid-compiler-option'\n"
+        },
+        {
+          "policy": "Check",
+          "control": "read-time-mapping",
+          "category": "actual-compiler-failure",
+          "exit": 1,
+          "diagnostic": "gnatcoll.ads:1:28: error: PERF009_CHANGED_PROVIDER\n"
+        },
+        {
+          "policy": "Check",
+          "control": "assertion-behavior",
+          "category": "actual-compiler-execution",
+          "exit": 1,
+          "assertion_raised": true
+        },
+        {
+          "policy": "Check",
+          "control": "missing-object",
+          "category": "verifier-only",
+          "rejection": "missing/corrupt provider artifact"
+        },
+        {
+          "policy": "Check",
+          "control": "corrupt-object",
+          "category": "verifier-only",
+          "rejection": "missing/corrupt provider artifact"
+        },
+        {
+          "policy": "Check",
+          "control": "changed-object",
+          "category": "verifier-only",
+          "rejection": "missing/corrupt provider artifact"
+        },
+        {
+          "policy": "Check",
+          "control": "post-preparation-mutation",
+          "category": "verifier-only",
+          "rejection": "portable prepared manifest changed"
+        },
+        {
+          "policy": "Check",
+          "control": "cross-policy",
+          "category": "verifier-only",
+          "rejection": "provider identity/incomplete preparation mismatch"
+        },
+        {
+          "policy": "Check",
+          "control": "false-preparation",
+          "category": "verifier-only",
+          "rejection": "portable prepared manifest changed"
+        },
+        {
+          "policy": "Check",
+          "control": "altered-manifest",
+          "category": "verifier-only",
+          "rejection": "portable prepared manifest changed"
+        },
+        {
+          "policy": "Check",
+          "control": "identity-gcc",
+          "category": "verifier-only",
+          "rejection": "CI toolchain/runtime identity differs from R2 qualification"
+        },
+        {
+          "policy": "Check",
+          "control": "identity-system.ads",
+          "category": "verifier-only",
+          "rejection": "CI toolchain/runtime identity differs from R2 qualification"
+        },
+        {
+          "policy": "Check",
+          "control": "identity-libgnat.a",
+          "category": "verifier-only",
+          "rejection": "CI toolchain/runtime identity differs from R2 qualification"
+        },
+        {
+          "policy": "Check",
+          "control": "missing-compile",
+          "category": "verifier-only",
+          "rejection": "missing portable generated/support compilation"
+        },
+        {
+          "policy": "Check",
+          "control": "duplicate-compile",
+          "category": "verifier-only",
+          "rejection": "unexpected/duplicate portable compiler input"
+        },
+        {
+          "policy": "Check",
+          "control": "missing-binder",
+          "category": "verifier-only",
+          "rejection": "missing/duplicate portable bind/link execution"
+        },
+        {
+          "policy": "Check",
+          "control": "missing-linker",
+          "category": "verifier-only",
+          "rejection": "missing/duplicate portable bind/link execution"
+        },
+        {
+          "policy": "Check",
+          "control": "wrong-policy",
+          "category": "verifier-only",
+          "rejection": "portable effective compiler policy/options differ"
+        },
+        {
+          "policy": "Check",
+          "control": "abi-override",
+          "category": "verifier-only",
+          "rejection": "portable ABI/runtime/optimization override"
+        },
+        {
+          "policy": "Check",
+          "control": "optimization-override",
+          "category": "verifier-only",
+          "rejection": "portable ABI/runtime/optimization override"
+        },
+        {
+          "policy": "Check",
+          "control": "read-time-map-record",
+          "category": "verifier-only",
+          "rejection": "altered read-time mapping evidence"
+        },
+        {
+          "policy": "Check",
+          "control": "gpr-config-record",
+          "category": "verifier-only",
+          "rejection": "configuration differs from compiler read-time input"
+        },
+        {
+          "policy": "Check",
+          "control": "missing-execution-record",
+          "category": "verifier-only",
+          "rejection": "missing/altered raw execution evidence"
+        },
+        {
+          "policy": "Check",
+          "control": "false-success-preparation",
+          "category": "verifier-only",
+          "rejection": "missing/altered raw execution evidence"
+        },
+        {
+          "policy": "Check",
+          "control": "incomplete-preparation",
+          "category": "verifier-only",
+          "rejection": "missing/altered raw execution evidence"
+        },
+        {
+          "policy": "Check",
+          "control": "false-success-consumer",
+          "category": "actual-execution-verifier-rejection",
+          "rejection": "missing/false consumer execution"
+        },
+        {
+          "policy": "Check",
+          "control": "skipped-consumer",
+          "category": "actual-execution-verifier-rejection",
+          "rejection": "missing/false consumer execution"
+        },
+        {
+          "policy": "Check",
+          "control": "wrong-dependency-version",
+          "category": "verifier-only",
+          "rejection": "portable dependency lock differs"
+        },
+        {
+          "policy": "Check",
+          "control": "wrong-provider-origin",
+          "category": "verifier-only",
+          "rejection": "portable provider origin differs"
+        },
+        {
+          "policy": "Check",
+          "control": "provider-source-identity",
+          "category": "verifier-only",
+          "rejected": true
+        },
+        {
+          "policy": "Check",
+          "control": "missing-generated-object",
+          "category": "verifier-only",
+          "rejection": "missing/stale/changed portable artifact"
+        },
+        {
+          "policy": "Check",
+          "control": "stale-generated-object",
+          "category": "verifier-only",
+          "rejection": "missing/stale/changed portable artifact"
+        },
+        {
+          "policy": "Check",
+          "control": "duplicate-generated-object",
+          "category": "verifier-only",
+          "rejection": "incomplete/duplicated portable artifact inventory"
+        },
+        {
+          "policy": "Check",
+          "control": "truncated-manifest",
+          "category": "verifier-only",
+          "rejection": "portable evidence seal incomplete/changed"
+        },
+        {
+          "policy": "Check",
+          "control": "altered-evidence",
+          "category": "verifier-only",
+          "rejection": "portable evidence seal incomplete/changed"
+        },
+        {
+          "policy": "Check",
+          "control": "added-evidence",
+          "category": "verifier-only",
+          "rejection": "portable evidence seal incomplete/changed"
+        },
+        {
+          "policy": "Ignore",
+          "control": "provider-source",
+          "category": "actual-compiler-failure",
+          "exit": 1,
+          "diagnostic": "gnatcoll-json.adb:1:28: error: PERF009_CHANGED_PROVIDER\n"
+        },
+        {
+          "policy": "Ignore",
+          "control": "gpr-configuration",
+          "category": "actual-compiler-failure",
+          "exit": 1,
+          "diagnostic": "<OUTPUT>/config-8.adc:3:01: error: only configuration pragmas allowed in configuration file\n"
+        },
+        {
+          "policy": "Ignore",
+          "control": "compiler-response",
+          "category": "actual-compiler-failure",
+          "exit": 1,
+          "diagnostic": "gcc: error: unrecognized command-line option '-fperf009-invalid-compiler-option'\n"
+        },
+        {
+          "policy": "Ignore",
+          "control": "read-time-mapping",
+          "category": "actual-compiler-failure",
+          "exit": 1,
+          "diagnostic": "gnatcoll.ads:1:28: error: PERF009_CHANGED_PROVIDER\n"
+        },
+        {
+          "policy": "Ignore",
+          "control": "assertion-behavior",
+          "category": "actual-compiler-execution",
+          "exit": 0,
+          "assertion_raised": false
+        },
+        {
+          "policy": "Ignore",
+          "control": "missing-object",
+          "category": "verifier-only",
+          "rejection": "missing/corrupt provider artifact"
+        },
+        {
+          "policy": "Ignore",
+          "control": "corrupt-object",
+          "category": "verifier-only",
+          "rejection": "missing/corrupt provider artifact"
+        },
+        {
+          "policy": "Ignore",
+          "control": "changed-object",
+          "category": "verifier-only",
+          "rejection": "missing/corrupt provider artifact"
+        },
+        {
+          "policy": "Ignore",
+          "control": "post-preparation-mutation",
+          "category": "verifier-only",
+          "rejection": "portable prepared manifest changed"
+        },
+        {
+          "policy": "Ignore",
+          "control": "cross-policy",
+          "category": "verifier-only",
+          "rejection": "provider identity/incomplete preparation mismatch"
+        },
+        {
+          "policy": "Ignore",
+          "control": "false-preparation",
+          "category": "verifier-only",
+          "rejection": "portable prepared manifest changed"
+        },
+        {
+          "policy": "Ignore",
+          "control": "altered-manifest",
+          "category": "verifier-only",
+          "rejection": "portable prepared manifest changed"
+        },
+        {
+          "policy": "Ignore",
+          "control": "identity-gcc",
+          "category": "verifier-only",
+          "rejection": "CI toolchain/runtime identity differs from R2 qualification"
+        },
+        {
+          "policy": "Ignore",
+          "control": "identity-system.ads",
+          "category": "verifier-only",
+          "rejection": "CI toolchain/runtime identity differs from R2 qualification"
+        },
+        {
+          "policy": "Ignore",
+          "control": "identity-libgnat.a",
+          "category": "verifier-only",
+          "rejection": "CI toolchain/runtime identity differs from R2 qualification"
+        },
+        {
+          "policy": "Ignore",
+          "control": "missing-compile",
+          "category": "verifier-only",
+          "rejection": "missing portable generated/support compilation"
+        },
+        {
+          "policy": "Ignore",
+          "control": "duplicate-compile",
+          "category": "verifier-only",
+          "rejection": "unexpected/duplicate portable compiler input"
+        },
+        {
+          "policy": "Ignore",
+          "control": "missing-binder",
+          "category": "verifier-only",
+          "rejection": "missing/duplicate portable bind/link execution"
+        },
+        {
+          "policy": "Ignore",
+          "control": "missing-linker",
+          "category": "verifier-only",
+          "rejection": "missing/duplicate portable bind/link execution"
+        },
+        {
+          "policy": "Ignore",
+          "control": "wrong-policy",
+          "category": "verifier-only",
+          "rejection": "portable effective compiler policy/options differ"
+        },
+        {
+          "policy": "Ignore",
+          "control": "abi-override",
+          "category": "verifier-only",
+          "rejection": "portable ABI/runtime/optimization override"
+        },
+        {
+          "policy": "Ignore",
+          "control": "optimization-override",
+          "category": "verifier-only",
+          "rejection": "portable ABI/runtime/optimization override"
+        },
+        {
+          "policy": "Ignore",
+          "control": "read-time-map-record",
+          "category": "verifier-only",
+          "rejection": "altered read-time mapping evidence"
+        },
+        {
+          "policy": "Ignore",
+          "control": "gpr-config-record",
+          "category": "verifier-only",
+          "rejection": "configuration differs from compiler read-time input"
+        },
+        {
+          "policy": "Ignore",
+          "control": "missing-execution-record",
+          "category": "verifier-only",
+          "rejection": "missing/altered raw execution evidence"
+        },
+        {
+          "policy": "Ignore",
+          "control": "false-success-preparation",
+          "category": "verifier-only",
+          "rejection": "missing/altered raw execution evidence"
+        },
+        {
+          "policy": "Ignore",
+          "control": "incomplete-preparation",
+          "category": "verifier-only",
+          "rejection": "missing/altered raw execution evidence"
+        },
+        {
+          "policy": "Ignore",
+          "control": "false-success-consumer",
+          "category": "actual-execution-verifier-rejection",
+          "rejection": "missing/false consumer execution"
+        },
+        {
+          "policy": "Ignore",
+          "control": "skipped-consumer",
+          "category": "actual-execution-verifier-rejection",
+          "rejection": "missing/false consumer execution"
+        },
+        {
+          "policy": "Ignore",
+          "control": "wrong-dependency-version",
+          "category": "verifier-only",
+          "rejection": "portable dependency lock differs"
+        },
+        {
+          "policy": "Ignore",
+          "control": "wrong-provider-origin",
+          "category": "verifier-only",
+          "rejection": "portable provider origin differs"
+        },
+        {
+          "policy": "Ignore",
+          "control": "provider-source-identity",
+          "category": "verifier-only",
+          "rejected": true
+        },
+        {
+          "policy": "Ignore",
+          "control": "missing-generated-object",
+          "category": "verifier-only",
+          "rejection": "missing/stale/changed portable artifact"
+        },
+        {
+          "policy": "Ignore",
+          "control": "stale-generated-object",
+          "category": "verifier-only",
+          "rejection": "missing/stale/changed portable artifact"
+        },
+        {
+          "policy": "Ignore",
+          "control": "duplicate-generated-object",
+          "category": "verifier-only",
+          "rejection": "incomplete/duplicated portable artifact inventory"
+        },
+        {
+          "policy": "Ignore",
+          "control": "truncated-manifest",
+          "category": "verifier-only",
+          "rejection": "portable evidence seal incomplete/changed"
+        },
+        {
+          "policy": "Ignore",
+          "control": "altered-evidence",
+          "category": "verifier-only",
+          "rejection": "portable evidence seal incomplete/changed"
+        },
+        {
+          "policy": "Ignore",
+          "control": "added-evidence",
+          "category": "verifier-only",
+          "rejection": "portable evidence seal incomplete/changed"
+        }
+      ],
+      "exhaustive": false,
+      "limitation": "Full portable consumer mapping replay and ABI negative controls still required before production",
+      "result_sha256": "9e3607c6e4937c6c216461dd2fba8e552a6bda07aa0ae5f9474ada169e0a58a9"
+    }
+  },
+  "benchmarks": {
+    "benchmark-preflight": {
+      "affinity": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "physical_siblings": [
+        0,
+        1,
+        2,
+        3,
+        16,
+        17,
+        18,
+        19
+      ],
+      "busy_fraction": {
+        "0": 0.9132653061224489,
+        "1": 0.9230769230769231,
+        "2": 0.985,
+        "3": 0.9086294416243654,
+        "16": 0.9850746268656716,
+        "17": 0.9796954314720813,
+        "18": 0.9128205128205128,
+        "19": 0.96
+      },
+      "uncontended": false,
+      "method": "two-second idle preflight across selected CPUs and SMT siblings; no process stopping"
+    },
+    "benchmark-preflight-16": {
+      "affinity": [
+        20,
+        21,
+        22,
+        23
+      ],
+      "physical_siblings": [
+        4,
+        5,
+        6,
+        7,
+        20,
+        21,
+        22,
+        23
+      ],
+      "busy_fraction": {
+        "4": 0.9797979797979798,
+        "5": 0.96,
+        "6": 0.9642857142857143,
+        "7": 0.8223350253807107,
+        "20": 0.9747474747474747,
+        "21": 0.9601990049751243,
+        "22": 0.8844221105527639,
+        "23": 0.9603960396039604
+      },
+      "uncontended": false,
+      "method": "two-second idle preflight across selected CPUs and SMT siblings; no process stopping"
+    }
+  },
+  "regressions": {
+    "policy": {
+      "exit": 0,
+      "log": "/home/zboll/git/ams-gra-codegen-oms-perf-009-evidence/r1/policy.log",
+      "sha256": "dc09cfd034f0e1d492b86f8d2601fa3c7ef89a3bc156fc3f072140f70cede117"
+    },
+    "rust": {
+      "exit": 101,
+      "log": "/home/zboll/git/ams-gra-codegen-oms-perf-009-evidence/r1/rust.log",
+      "sha256": "b78b361e875cc1b3e2a856137ca218ce949b958e0b2659bdaf9a6083c9cbd4d7"
+    },
+    "runtime-focused": {
+      "exit": 101,
+      "log": "/home/zboll/git/ams-gra-codegen-oms-perf-009-evidence/r1/runtime-focused.log",
+      "sha256": "ce540254f4426eea089edb6c3d608f5d0da73912b3dec331f59e28b9e375aa2f"
+    }
+  },
+  "complete_exact_head_matrices": false,
+  "incomplete_campaigns": {
+    "14": {
+      "completed": false,
+      "disposition": "QUALIFICATION_FAILED",
+      "reason": "clean performance unavailable and mandatory Rust regression failed; incomplete campaign stopped, no complete matrix claim",
+      "finished_builds": 5,
+      "completion_lines": [
+        "COMPLETE oam-ArraySample-normal",
+        "COMPLETE oam-ArraySample-Check",
+        "COMPLETE oam-ArraySample-Ignore",
+        "COMPLETE oam-Array_Encode_Hex_Binary-normal",
+        "COMPLETE oam-Array_Encode_Hex_Binary-Check"
+      ],
+      "build_elapsed_seconds": 224.5277003980009,
+      "build_child_cpu_seconds": 422.377295,
+      "sampled_peak_tree_rss_kib": 718484
+    },
+    "16": {
+      "completed": false,
+      "disposition": "QUALIFICATION_FAILED",
+      "reason": "clean performance unavailable and mandatory Rust regression failed; incomplete campaign stopped, no complete matrix claim",
+      "finished_builds": 5,
+      "completion_lines": [
+        "COMPLETE oam-ArraySample-normal",
+        "COMPLETE oam-ArraySample-Check",
+        "COMPLETE oam-ArraySample-Ignore",
+        "COMPLETE oam-Array_Encode_Hex_Binary-normal",
+        "COMPLETE oam-Array_Encode_Hex_Binary-Check"
+      ],
+      "build_elapsed_seconds": 233.1418066470651,
+      "build_child_cpu_seconds": 556.628553,
+      "sampled_peak_tree_rss_kib": 797612
+    }
+  },
+  "limitations": [
+    "No uncontended benchmark environment; no clean performance result",
+    "Mandatory Rust runtime_fairness test fails, including focused rerun",
+    "No complete exact-final-head positive requalification",
+    "Full naming-boundary verifier execution not yet complete",
+    "No optimized hosted integration or performance evidence"
+  ]
+}
