@@ -307,6 +307,18 @@ commit. Python backend/fixture additions belong to merged main, not Task101.
 PY-009's additive workflow projection remains intact; its runner-count test is
 updated from 40 to the combined 42 cells, without relaxing payload contracts.
 
+The first corrected hosted run `41150306532` proves source/status exits zero and
+the actual proposed merge identity after the ownership fix. Independent archive
+verification then detected two missing hash-listed provider YAML files under
+`.github/`: upload-artifact excludes hidden paths by default. Task101 alone now
+enables `include-hidden-files: true` for its existing bounded evidence patterns.
+Provider copies exclude `.git`; no host HOME or credentials are uploaded. Policy
+requires exactly this additive setting and projects it back to the unchanged
+original payload hash. A regression rejects disabled/removed hidden uploads and
+demonstrates rejection of a missing hash-listed hidden provider file. That run
+is diagnostic evidence, not accepted final qualification; the corrected source
+requires fresh local and hosted campaigns.
+
 R1 evidence is separate from all historical campaigns under
 `/home/zboll/task101-r1-scratch/`, including untouched original hosted ZIPs/logs,
 ownership reproductions, production-byte comparisons, current-source campaign

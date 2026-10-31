@@ -157,6 +157,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: task101-ada-real-uci-dlz-${{ matrix.compiler }}
+          include-hidden-files: true
           path: |
             /tmp/task101-evidence/*.json
             /tmp/task101-evidence/*.txt

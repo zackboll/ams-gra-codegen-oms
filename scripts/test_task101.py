@@ -278,6 +278,29 @@ class SelectionAndAggregate(GateTests):
             with self.subTest(mutation=mutation), self.assertRaises(ValueError):
                 ci_policy.check(modified_policy, modified_workflows)
 
+    def test_hashed_hidden_provider_sources_cannot_be_omitted(self):
+        import ci_policy
+        workflows = {p.name: p.read_text() for p in (evidence.ROOT / '.github/workflows').glob('*.yml')}
+        addition = ('          name: task101-ada-real-uci-dlz-${{ matrix.compiler }}\n'
+                    '          include-hidden-files: true\n')
+        self.assertEqual(workflows['deep-ci.yml'].count(addition), 1)
+        for replacement in (addition.replace('          include-hidden-files: true\n', ''),
+                            addition.replace('true', 'false')):
+            modified = dict(workflows)
+            modified['deep-ci.yml'] = modified['deep-ci.yml'].replace(addition, replacement)
+            with self.subTest(replacement=replacement), self.assertRaises(ValueError):
+                ci_policy.check(workflows=modified)
+        files = bundle()
+        hidden = 'campaign/provider/gnatcoll/.github/workflows/main.yaml'
+        files[hidden] = b'name: provider fixture\n'
+        sources = json.loads(files['campaign/sources.json'])
+        sources[hidden.removeprefix('campaign/')] = hashlib.sha256(files[hidden]).hexdigest()
+        files['campaign/sources.json'] = json.dumps(sources).encode()
+        EvidenceTests().verify(files)
+        del files[hidden]
+        with self.assertRaisesRegex(ValueError, 'missing/duplicate Task101 evidence'):
+            EvidenceTests().verify(files)
+
     def test_task101_surfaces_select_both_families_and_deep(self):
         policy = ci_selection.inventory()
         for path in ('scripts/task101/qualify.py', 'scripts/task101/sleet.py', 'scripts/task101_evidence.py',

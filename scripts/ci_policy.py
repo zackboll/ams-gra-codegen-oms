@@ -263,6 +263,12 @@ def check(policy=None, workflows=None, sleet=None):
     # provenance source remains byte-identical. Project exactly that one name
     # back to Task101's original payload; retain its original hash authority.
     task101_steps = task101['original_steps_yaml']
+    hidden_sources = ('          name: task101-ada-real-uci-dlz-${{ matrix.compiler }}\n'
+                      '          include-hidden-files: true\n')
+    if task101_steps.count(hidden_sources) != 1:
+        raise ValueError('Task101 hashed hidden provider evidence must be uploaded')
+    task101_steps = task101_steps.replace(hidden_sources,
+        '          name: task101-ada-real-uci-dlz-${{ matrix.compiler }}\n')
     publication = '      - name: Upload mandatory source compiler and execution evidence\n'
     if task101_steps.count(publication) != 1:
         raise ValueError('Task101 mandatory publication contract changed')
