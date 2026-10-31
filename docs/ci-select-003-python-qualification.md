@@ -32,8 +32,24 @@ rejects unknown Python modules, symlinks, subdirectories, duplicate test IDs,
 import failures and empty suites. Bytecode creation is disabled so the normal
 and optimized runs do not introduce unregistered __pycache__ directories.
 
+Mandatory execution is stricter than `unittest.wasSuccessful()`: every registered
+unique test ID must start and pass exactly once, the executed count must match
+registration, and failures, errors, skips, expected failures, and unexpected
+successes must all be zero. Skips and expected failures retain unittest's normal
+reporting but reject qualification, including mixed passing/incomplete suites.
+Failure diagnostics include actual execution counts and affected test IDs; no
+completion marker is emitted. These checks do not depend on Python assertions
+and apply identically under normal Python and `python -O`.
+
 Pinned-UCI mode requires the two existing UCI roots and release generator; its
-versioned test inventory receipt goes in the existing py006-uci artifact.
+versioned execution receipt goes in the existing py006-uci artifact. It requires
+`RUNNER_TEMP` and the already-created `py006-uci` directory. Before input checks
+or discovery, it invalidates `ci-select003-python.json` from any earlier attempt.
+Only complete success atomically publishes schema version 2, with success status,
+registered/run/passed counts, all outcome counts, deterministic source/test
+inventory, and actual executed/passed test IDs. Failed input checks, discovery,
+execution, or receipt publication cannot emit a completion marker or retain an
+accepted successful receipt. No artifact name or final-gate reconciliation changes.
 Pinned-Sleet mode requires the existing AMS_GRA_SLEET_BIN; it never downloads,
 rebuilds or edits Sleet. Test failures propagate as nonzero job exits.
 
@@ -55,6 +71,14 @@ five-lane guard is waived.
 The new rule and hook negative controls exercise path ownership, selected and
 skipped Deep matrices, main/full fallbacks, deletion/type/rename/unknown paths,
 test-discovery completeness, hook removal, and relocation into wrong jobs.
+The actual runner CLI is exercised in isolated temporary copies for all three
+modes, normally and optimized: passing tests; decorator/runtime/class skips;
+expected failures alone or mixed with passes; unexpected successes; assertion
+failures; exceptions; missing modules/sources; empty modules/suites; duplicate or
+missing identities; suppressed execution; unregistered helpers and nested roots.
+Every UCI case also runs after a genuine successful fixture receipt to verify
+failed reruns remove stale success. Fixture input-presence files are not claimed
+as authentic pinned-UCI/Sleet qualification; those inputs are validated separately.
 
 ## Delivery and outstanding qualification
 

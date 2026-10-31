@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import re
 import sys
+import tempfile
 import unittest
 
 # Discovery must not create an unregistered __pycache__ directory.
@@ -70,32 +71,112 @@ def require_inputs(mode):
             raise ValueError('missing shared pinned-Sleet binary')
 
 
+class QualificationResult(unittest.TextTestResult):
+    """Account for actual starts and successes, not just suite registration."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.executed_ids = []
+        self.passed_ids = []
+
+    def startTest(self, test):
+        self.executed_ids.append(test.id())
+        super().startTest(test)
+
+    def addSuccess(self, test):
+        self.passed_ids.append(test.id())
+        super().addSuccess(test)
+
+
+def execution_status(result, identities):
+    counts = dict(tests_registered=len(identities), tests_run=result.testsRun,
+                  tests_passed=len(result.passed_ids), failures=len(result.failures),
+                  errors=len(result.errors), skipped=len(result.skipped),
+                  expected_failures=len(result.expectedFailures),
+                  unexpected_successes=len(result.unexpectedSuccesses))
+    complete = (result.wasSuccessful()
+                and result.testsRun == len(identities)
+                and not result.failures and not result.errors
+                and not result.skipped and not result.expectedFailures
+                and not result.unexpectedSuccesses
+                and sorted(result.executed_ids) == sorted(identities)
+                and sorted(result.passed_ids) == sorted(identities))
+    reasons = [name for name in ('failures', 'errors', 'skipped', 'expected_failures',
+                                'unexpected_successes') if counts[name]]
+    if not result.wasSuccessful():
+        reasons.append('unittest unsuccessful')
+    if result.testsRun != len(identities):
+        reasons.append('executed count differs from registration')
+    if sorted(result.executed_ids) != sorted(identities):
+        reasons.append('missing, duplicate, or unregistered executed test identities')
+    if sorted(result.passed_ids) != sorted(identities):
+        reasons.append('not every registered identity passed exactly once')
+    return dict(status='success' if complete else 'failed', reasons=reasons, **counts,
+                executed_test_ids=result.executed_ids, passed_test_ids=result.passed_ids,
+                skipped_test_ids=[test.id() for test, _ in result.skipped],
+                expected_failure_test_ids=[test.id() for test, _ in result.expectedFailures],
+                unexpected_success_test_ids=[test.id() for test in result.unexpectedSuccesses],
+                failed_test_ids=[test.id() for test, _ in result.failures],
+                error_test_ids=[test.id() for test, _ in result.errors])
+
+
+def prepare_receipt(mode):
+    if mode != 'uci':
+        return None
+    temporary = os.environ.get('RUNNER_TEMP')
+    if not temporary:
+        raise ValueError('missing RUNNER_TEMP for mandatory pinned-UCI receipt')
+    receipt = Path(temporary) / 'py006-uci' / 'ci-select003-python.json'
+    # A failed rerun must never leave an earlier success in the uploaded bundle,
+    # even when input validation or test discovery fails before execution.
+    receipt.unlink(missing_ok=True)
+    if not receipt.parent.is_dir():
+        raise ValueError('missing existing pinned-UCI evidence directory')
+    return receipt
+
+
+def write_receipt(receipt, document):
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode='w', dir=receipt.parent,
+                                         prefix='.ci-select003-', delete=False) as output:
+            temporary = Path(output.name)
+            output.write(json.dumps(document, indent=2) + '\n')
+        temporary.replace(receipt)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
 def main(argv):
     if len(argv) != 1 or argv[0] not in MODES:
         print('usage: python/qualification/run.py {fast|uci|sleet}', file=sys.stderr)
         return 2
     mode = argv[0]
     try:
+        receipt = prepare_receipt(mode)
         if sys.version_info < (3, 11):
             raise ValueError('Python 3.11+ required')
         require_inputs(mode)
         suite, files, identities = discover(mode)
-    except ValueError as error:
-        print(f'CI_SELECT_003_INVALID: {error}', file=sys.stderr)
+    except (OSError, ValueError) as error:
+        print(f'CI_SELECT_003_INVALID: {error}; tests_run=0 tests_registered=unknown',
+              file=sys.stderr)
         return 1
-    result = unittest.TextTestRunner(verbosity=2).run(suite)
-    if not result.wasSuccessful() or result.testsRun != len(identities):
-        print('CI_SELECT_003_QUALIFICATION_FAILED', file=sys.stderr)
+    result = unittest.TextTestRunner(verbosity=2, resultclass=QualificationResult).run(suite)
+    execution = execution_status(result, identities)
+    if execution['status'] != 'success':
+        print('CI_SELECT_003_QUALIFICATION_FAILED ' + json.dumps(execution, sort_keys=True),
+              file=sys.stderr)
         return 1
-    if mode == 'uci' and os.environ.get('RUNNER_TEMP'):
-        receipt = Path(os.environ['RUNNER_TEMP']) / 'py006-uci' / 'ci-select003-python.json'
-        if not receipt.parent.is_dir():
-            print('CI_SELECT_003_INVALID: missing existing pinned-UCI evidence directory', file=sys.stderr)
+    if receipt is not None:
+        try:
+            write_receipt(receipt, dict(schema_version=2, mode=mode, **execution,
+                                       sources=[f.name for f in files], test_ids=identities))
+        except OSError as error:
+            print(f'CI_SELECT_003_RECEIPT_FAILED: {error}; ' +
+                  json.dumps(execution, sort_keys=True), file=sys.stderr)
             return 1
-        receipt.write_text(json.dumps({'schema_version': 1, 'mode': mode,
-                                      'tests_run': result.testsRun,
-                                      'sources': [f.name for f in files],
-                                      'test_ids': identities}, indent=2) + '\n')
     print(f'CI_SELECT_003_{mode.upper()}_COMPLETE tests={result.testsRun} files={len(files)}',
           flush=True)
     return 0
