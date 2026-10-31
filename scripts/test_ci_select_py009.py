@@ -5,6 +5,9 @@ import ci_policy
 import ci_selection as selection
 from py009_ci import FAST, DEEP, BASELINE, SLEET, BUILD
 from py010_ci import BASELINE as CURRENT_BASELINE
+from py010_ci import project as project_current
+from ci_select003 import project as project_owned
+from py009_ci import project
 from test_ci_select import change
 
 
@@ -16,7 +19,7 @@ class DateTimeIntegration(unittest.TestCase):
         self.policy = selection.inventory()
 
     def test_current_contract(self):
-        self.assertEqual(ci_policy.check(self.policy, self.workflows, self.sleet), 40)
+        self.assertEqual(ci_policy.check(self.policy, self.workflows, self.sleet), 42)
 
     def test_commands_cannot_be_removed_disabled_or_filtered(self):
         current_deep = DEEP.replace(' --output "$RUNNER_TEMP/py006-uci/py009"\n',
@@ -27,6 +30,7 @@ class DateTimeIntegration(unittest.TestCase):
                                     line.rstrip() + ' --skip datetime\n']:
                     with self.subTest(line=line, replacement=replacement):
                         mutated = dict(self.workflows)
+                        self.assertEqual(mutated[workflow].count(line), 1)
                         mutated[workflow] = mutated[workflow].replace(line, replacement, 1)
                         with self.assertRaises(ValueError):
                             ci_policy.check(self.policy, mutated, self.sleet)
@@ -56,11 +60,15 @@ class DateTimeIntegration(unittest.TestCase):
                 self.assertTrue({'real-sleet', 'real-uci-regressions'} <= set(result['deep_jobs']))
 
     def test_commands_must_execute_in_owning_job_and_interpreter_loop(self):
+        # Test the PY-009 authority after the independently checked successor
+        # projections, so their adjacency rules cannot mask this defect.
+        projected = project_owned(project_current(self.workflows))
         for workflow, addition in [('ci.yml', FAST), ('deep-ci.yml', DEEP)]:
-            mutated = dict(self.workflows)
+            mutated = dict(projected)
+            self.assertEqual(mutated[workflow].count(addition), 1)
             mutated[workflow] = mutated[workflow].replace(addition, '', 1) + addition
-            with self.assertRaises(ValueError):
-                ci_policy.check(self.policy, mutated, self.sleet)
+            with self.assertRaisesRegex(ValueError, 'mandatory PY-009'):
+                project(mutated)
         moved = self.sleet.replace(SLEET, '', 1) + SLEET
         with self.assertRaises(ValueError):
             ci_policy.check(self.policy, self.workflows, moved)

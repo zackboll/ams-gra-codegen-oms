@@ -91,7 +91,9 @@ for external in 'bash scripts/check-py008-sleet.sh' 'python3 scripts/check-py008
   expect_py008_fail "Fast CI must not run PY-008 external campaigns" "$tmp/fast-external-py008.yml" "$deep" "$sleet"
 done
 python3 -m unittest discover -s "$repo/scripts" -p 'test_ci_select_py008.py'
+python3 -m unittest discover -s "$repo/scripts" -p 'test_ci_select_py009.py'
 python3 -m unittest discover -s "$repo/scripts" -p 'test_ci_select_py010.py'
+python3 -m unittest discover -s "$repo/scripts" -p 'test_ci_select003.py'
 ok
 
 # Task 077B / PERF-006: healthy disposable split, harmless structural changes,

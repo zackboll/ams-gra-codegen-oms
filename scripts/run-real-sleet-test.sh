@@ -38,6 +38,8 @@ for interpreter in ${PY006_PYTHONS:-${PYTHON:-python3}}; do
   PYTHON="$interpreter" bash "$ROOT/scripts/check-py008-sleet.sh"
   PYTHON="$interpreter" bash "$ROOT/scripts/check-py009-sleet.sh"
   PYTHON="$interpreter" bash "$ROOT/scripts/check-py010-sleet.sh"
+  "$interpreter" "$ROOT/python/qualification/run.py" sleet
+  "$interpreter" -O "$ROOT/python/qualification/run.py" sleet
 done
 
 cd "$ROOT"

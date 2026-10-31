@@ -66,10 +66,18 @@ sys.path.insert(0, str(Path(sys.argv[1]) / 'scripts'))
 from ci_policy import blocks, check, normalized
 from ci_selection import inventory, select
 from real_uci_evidence import check_layout
+from py010_ci import project as project_py010
+from ci_select003 import project as project003
+from py009_ci import project as project_py009
 policy = inventory()
 # Keep current-main policy/security pins authoritative. Disposable layout
 # fixtures below may still change harmless descriptions, as before.
 check()
+# Validate additive commands/evidence in the supplied owning jobs too, not
+# just the worktree files. Historical layout fixtures may alter descriptions.
+supplied = {'ci.yml': Path(sys.argv[2]).read_text(),
+            'deep-ci.yml': Path(sys.argv[3]).read_text()}
+project_py009(project003(project_py010(supplied)))
 for path in ('scripts/check-py007-uci.py', 'scripts/test-py007-uci.py',
              'scripts/check-py007-sleet.sh', 'tests/fixtures/python-inheritance/oam.xsd',
              'crates/backend-python/src/lib.rs', 'crates/cli/tests/python_inheritance.rs',
