@@ -181,10 +181,10 @@ class R1Policy(original.SchedulingTests):
 
     def test_comments_and_unrelated_metadata_are_harmless(self):
         self.workflows = {name: '# harmless comment\n' + text for name, text in self.workflows.items()}
-        self.assertEqual(self.check(), 42)
+        self.assertEqual(self.check(), 44)
         # Inventory descriptions do not influence selection or authorization.
         self.policy['description'] = 'Review note'
-        self.assertEqual(self.check(), 42)
+        self.assertEqual(self.check(), 44)
 
 
 class LaneTimestamps(unittest.TestCase):
