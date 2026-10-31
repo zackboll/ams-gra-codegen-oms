@@ -205,19 +205,21 @@ def check_rust_ci001(sources=None):
 
 def check(policy=None, workflows=None, sleet=None):
     policy = policy or inventory()
+    from task103_ci import JOB as TASK103_JOB, project as project_task103
+    inherited_policy = project_task103(policy, normalized)
     from task102_ci import JOB as TASK102_JOB, project_rules, check_job
     check_job(policy, normalized)
     original_headers = {r['job_id']: normalized(r['expected_header'].replace(
         '    if: ' + deep_condition(r['job_id']) + '\n', '').replace(
         'if: ' + deep_condition(r['job_id']) + '\n', ''))
-        for r in policy['jobs'] if r['workflow'] == 'deep-ci.yml' and r['job_id'] not in ('ada-real-uci-dlz-sleet', TASK102_JOB)}
+        for r in policy['jobs'] if r['workflow'] == 'deep-ci.yml' and r['job_id'] not in ('ada-real-uci-dlz-sleet', TASK102_JOB, TASK103_JOB)}
     if hashlib.sha256(json.dumps(original_headers, sort_keys=True).encode()).hexdigest() != '3946b92fb805271be235bde5170f0fa483ce3c8a56fa3488b4171ee004a7f22a':
         raise ValueError('immutable main Deep runner/matrix/header inventory changed')
     if hashlib.sha256(policy['deep_header'].encode()).hexdigest() != '41b85c9ba045f75f412929efd73e9de54977b77ccddaef8a52a95e698728ed72':
         raise ValueError('reviewed Deep input contract changed')
     if hashlib.sha256(policy['deep_caller'].encode()).hexdigest() != 'a343b3f71a5299740901fef920a1121757a44872850f1c07c1165d41e3170264':
         raise ValueError('reviewed Deep caller input changed')
-    rules = [{k: r[k] for k in ('category', 'paths', 'deep_jobs', 'deep_rationale')} for r in project_rules(policy)]
+    rules = [{k: r[k] for k in ('category', 'paths', 'deep_jobs', 'deep_rationale')} for r in project_rules(inherited_policy)]
     if hashlib.sha256(json.dumps(rules, sort_keys=True).encode()).hexdigest() != '2fb1c569eaf4c5ef0f0ebf5840c85c8f89395b67ef4517f32eefce60f5b82469':
         raise ValueError('reviewed Deep dependency ownership changed')
     from real_uci_evidence import SHARDS
@@ -304,7 +306,7 @@ def check(policy=None, workflows=None, sleet=None):
             check_py008_integration(record)
         expected[key] = record
     deep_baseline = [{k: r[k] for k in ('job_id', 'cells', 'original_steps_yaml', 'original_steps')}
-                     for r in policy['jobs'] if r['workflow'] == 'deep-ci.yml' and r['job_id'] not in ('ada-real-uci-dlz-sleet', TASK102_JOB)]
+                     for r in policy['jobs'] if r['workflow'] == 'deep-ci.yml' and r['job_id'] not in ('ada-real-uci-dlz-sleet', TASK102_JOB, TASK103_JOB)]
     # Preserve the frozen 7958c4e0 baseline rather than reattribute it to this
     # merge. Main 3f69cb0e adds exactly one PY-008 artifact to real-sleet;
     # its independently pinned additive payload/step contracts are checked below.

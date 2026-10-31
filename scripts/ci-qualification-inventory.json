@@ -12,6 +12,30 @@
   "match_policy": "first-match; unknown/deleted/renamed/type-changed/unreliable => full ordinary; unknown => Deep also",
   "rules": [
     {
+      "category": "ada-real-uci-rdma",
+      "paths": [
+        "scripts/task103/**",
+        "scripts/task103_evidence.py",
+        "scripts/task103_ci.py",
+        "scripts/test_ci_select_task103.py",
+        "tests/ada-real-uci-rdma/**",
+        "tests/fixtures/task103/**"
+      ],
+      "jobs": [
+        "rust",
+        "ada-json-guard",
+        "ada-repeated-choice-codec",
+        "ada-lacal-runtime-core",
+        "ada-websocket-transport"
+      ],
+      "deep": true,
+      "deep_jobs": [
+        "ada-real-uci-rdma-sleet"
+      ],
+      "rationale": "Real UCI RDMA campaign, fixtures, consumer and evidence verifier",
+      "deep_rationale": "Task103 actual generated RDMA transport under both compiler families"
+    },
+    {
       "category": "compiled-documentation",
       "paths": [
         "docs/task-044-enum-identifier-remapping.md"
@@ -88,6 +112,7 @@
       "deep_jobs": [
         "ada-real-uci-dlz-sleet",
         "ada-real-uci-log-sleet",
+        "ada-real-uci-rdma-sleet",
         "ada-websocket-real-sleet"
       ],
       "deep_rationale": "Optional WebSocket sources/projects are consumed only by Task100, not the shared transport interface or Rust/Python pinned broker clients."
@@ -111,6 +136,7 @@
       "deep_jobs": [
         "ada-real-uci-dlz-sleet",
         "ada-real-uci-log-sleet",
+        "ada-real-uci-rdma-sleet",
         "ada-websocket-real-sleet"
       ],
       "deep_rationale": "Task100 fixtures and generated consumers share Task099 runtime and OMS JSON"
@@ -133,6 +159,7 @@
       "deep_jobs": [
         "ada-real-uci-dlz-sleet",
         "ada-real-uci-log-sleet",
+        "ada-real-uci-rdma-sleet",
         "ada-websocket-real-sleet"
       ],
       "deep_rationale": "Task100 compiles shared Ada runtime plus typed consumers; no Rust/Python or UCI Ada driver imports the LA-CAL runtime."
@@ -196,6 +223,7 @@
         "ada-hexbinary-real",
         "ada-real-uci-dlz-sleet",
         "ada-real-uci-log-sleet",
+        "ada-real-uci-rdma-sleet",
         "ada-repeated-choice-real-uci",
         "ada-websocket-real-sleet",
         "msrv-real-uci",
@@ -232,6 +260,7 @@
         "ada-hexbinary-real",
         "ada-real-uci-dlz-sleet",
         "ada-real-uci-log-sleet",
+        "ada-real-uci-rdma-sleet",
         "ada-repeated-choice-real-uci",
         "ada-websocket-real-sleet",
         "msrv-real-uci",
@@ -275,6 +304,7 @@
         "ada-hexbinary-real",
         "ada-real-uci-dlz-sleet",
         "ada-real-uci-log-sleet",
+        "ada-real-uci-rdma-sleet",
         "ada-repeated-choice-real-uci",
         "ada-websocket-real-sleet",
         "msrv-real-uci",
@@ -310,6 +340,7 @@
         "ada-hexbinary-real",
         "ada-real-uci-dlz-sleet",
         "ada-real-uci-log-sleet",
+        "ada-real-uci-rdma-sleet",
         "ada-repeated-choice-real-uci",
         "ada-websocket-real-sleet",
         "msrv-real-uci",
@@ -350,6 +381,7 @@
         "ada-hexbinary-real",
         "ada-real-uci-dlz-sleet",
         "ada-real-uci-log-sleet",
+        "ada-real-uci-rdma-sleet",
         "ada-repeated-choice-real-uci",
         "ada-websocket-real-sleet",
         "msrv-real-uci",
@@ -378,6 +410,7 @@
         "ada-hexbinary-real",
         "ada-real-uci-dlz-sleet",
         "ada-real-uci-log-sleet",
+        "ada-real-uci-rdma-sleet",
         "ada-repeated-choice-real-uci",
         "ada-websocket-real-sleet",
         "msrv-real-uci",
@@ -471,6 +504,7 @@
         "ada-hexbinary-real",
         "ada-real-uci-dlz-sleet",
         "ada-real-uci-log-sleet",
+        "ada-real-uci-rdma-sleet",
         "ada-repeated-choice-real-uci",
         "ada-websocket-real-sleet",
         "msrv-real-uci",
@@ -517,6 +551,7 @@
         "ada-hexbinary-real",
         "ada-real-uci-dlz-sleet",
         "ada-real-uci-log-sleet",
+        "ada-real-uci-rdma-sleet",
         "ada-repeated-choice-real-uci",
         "ada-websocket-real-sleet",
         "msrv-real-uci",
@@ -558,6 +593,7 @@
         "ada-hexbinary-real",
         "ada-real-uci-dlz-sleet",
         "ada-real-uci-log-sleet",
+        "ada-real-uci-rdma-sleet",
         "ada-repeated-choice-real-uci",
         "ada-websocket-real-sleet",
         "msrv-real-uci",
@@ -5324,6 +5360,239 @@
       "selection_condition": "github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'ada-real-uci-log-sleet')",
       "ownership": "Task102 real UCI generated Ada typed transport, independent additive qualification",
       "original_payload_sha256": "2b24e53977c465526aef0fce0edd60c587b25f18bb9ad43ab3973fad81ac1f84"
+    },
+    {
+      "workflow": "deep-ci.yml",
+      "job_id": "ada-real-uci-rdma-sleet",
+      "cells": [
+        {
+          "key": "ada-real-uci-rdma-sleet-14",
+          "name": "ada-real-uci-rdma-sleet (14)",
+          "variant": {
+            "compiler": "14"
+          },
+          "lane": 1,
+          "artifacts": [
+            "task103-ada-real-uci-rdma-14"
+          ]
+        },
+        {
+          "key": "ada-real-uci-rdma-sleet-16",
+          "name": "ada-real-uci-rdma-sleet (16)",
+          "variant": {
+            "compiler": "16"
+          },
+          "lane": 3,
+          "artifacts": [
+            "task103-ada-real-uci-rdma-16"
+          ]
+        }
+      ],
+      "prerequisites": [],
+      "original_job": {
+        "if": "github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'ada-real-uci-rdma-sleet')",
+        "concurrency": {
+          "group": "${{ github.ref == 'refs/heads/main' && format('oms-main-slot-{0}', matrix.slot) || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-ada-real-uci-rdma-sleet-{3}', github.workflow, github.run_id, github.run_attempt, matrix.compiler) }}",
+          "queue": "max"
+        },
+        "name": "ada-real-uci-rdma-sleet (${{ matrix.compiler }})",
+        "runs-on": "ubuntu-24.04",
+        "strategy": {
+          "fail-fast": false,
+          "matrix": {
+            "compiler": [
+              "14",
+              "16"
+            ],
+            "include": [
+              {
+                "compiler": "14",
+                "slot": 1
+              },
+              {
+                "compiler": "16",
+                "slot": 3
+              }
+            ]
+          }
+        },
+        "container": {
+          "image": "debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5"
+        },
+        "timeout-minutes": 120,
+        "steps": [
+          {
+            "name": "Verify pinned target and external compiler",
+            "shell": "bash",
+            "run": "set -euo pipefail\napt-get update\napt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14\ntest \"$(uname -m)\" = x86_64\ntest \"$(getconf GNU_LIBC_VERSION)\" = 'glibc 2.41'\nmkdir -p /tmp/task103-evidence\ndpkg-query -W libc6 libc6-dev gnat-14 gcc-14 | tee /tmp/task103-evidence/platform.txt\nsha256sum /usr/lib/x86_64-linux-gnu/libc.so.6 /usr/bin/gnat /usr/bin/gcc | tee -a /tmp/task103-evidence/platform.txt\ngnat --version | tee -a /tmp/task103-evidence/platform.txt\ngnat --version | grep -E '^GNAT 14\\.2\\.0([[:space:]]|$)'\n"
+          },
+          {
+            "uses": "actions/checkout@v4",
+            "with": {
+              "ref": "${{ github.sha }}"
+            }
+          },
+          {
+            "name": "Record exact source identity",
+            "shell": "bash",
+            "run": "set -euo pipefail\ntest \"$(pwd -P)\" = \"$(realpath \"$GITHUB_WORKSPACE\")\"\ngit config --global --add safe.directory \"$GITHUB_WORKSPACE\"\ngit rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task103-evidence/source.txt\ntest \"$(git rev-parse HEAD)\" = '${{ github.sha }}'\nstatus=\"$(git status --porcelain)\"\ntest -z \"$status\"\n"
+          },
+          {
+            "uses": "dtolnay/rust-toolchain@1.95.0"
+          },
+          {
+            "name": "Install verified Alire 2.1.1",
+            "shell": "bash",
+            "run": "set -euo pipefail\ncurl --fail --location --retry 3 --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip\necho '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  /tmp/alire.zip' | sha256sum --check --strict\nunzip -q /tmp/alire.zip -d /opt/alire\ntest \"$(/opt/alire/bin/alr --version)\" = 'alr 2.1.1'\nsha256sum /opt/alire/bin/alr | tee -a /tmp/task103-evidence/platform.txt\necho /opt/alire/bin >> \"$GITHUB_PATH\"\n"
+          },
+          {
+            "name": "Build source-bound generator",
+            "run": "cargo +1.95.0 build --release --locked -p ams-gra-codegen-oms"
+          },
+          {
+            "name": "Provision pinned compiler and GNATCOLL inputs",
+            "env": {
+              "PYTHONDONTWRITEBYTECODE": "1"
+            },
+            "run": "python3 scripts/task096/setup.py --scratch /tmp/task103-evidence/setup --compiler '${{ matrix.compiler }}'"
+          },
+          {
+            "name": "Build unmodified pinned Sleet",
+            "shell": "bash",
+            "run": "set -euo pipefail\ngit clone --quiet https://github.com/open-arsenal/ams-gra-hello-world-sk-infra-sleet /tmp/task103-sleet\ngit -C /tmp/task103-sleet checkout --quiet --detach e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b\ntest \"$(git -C /tmp/task103-sleet rev-parse HEAD)\" = e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b\ntest -z \"$(git -C /tmp/task103-sleet status --porcelain)\"\ngit -C /tmp/task103-sleet rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task103-evidence/sleet-source.txt\n(cd /tmp/task103-sleet && cargo build --release --locked -p sleet) 2>&1 | tee /tmp/task103-evidence/sleet-build.log\n"
+          },
+          {
+            "name": "Fetch authentic pinned UCI releases and protocol client",
+            "shell": "bash",
+            "run": "set -euo pipefail\napt-get install --no-install-recommends -y python3-venv\nbash scripts/fetch-pinned-uci-2.5.sh /tmp/task103-uci25 > /tmp/task103-evidence/uci25-root.txt\nbash scripts/fetch-pinned-uci-2.6.sh /tmp/task103-uci26 > /tmp/task103-evidence/uci26-root.txt\npython3 -m venv /tmp/task103-venv\n/tmp/task103-venv/bin/pip install 'websockets==17.2'\n"
+          },
+          {
+            "name": "Execute actual Ada RDMA_InitializeSetup against pinned Sleet",
+            "shell": "bash",
+            "env": {
+              "PYTHONDONTWRITEBYTECODE": "1"
+            },
+            "run": "set -euo pipefail\n/tmp/task103-venv/bin/python scripts/task103/qualify.py \\\n  --scratch /tmp/task103-evidence/campaign --setup /tmp/task103-evidence/setup \\\n  --compiler '${{ matrix.compiler }}' --generator target/release/ams-gra-codegen-oms \\\n  --sleet /tmp/task103-sleet \\\n  --uci25 \"$(cat /tmp/task103-evidence/uci25-root.txt)\" \\\n  --uci26 \"$(cat /tmp/task103-evidence/uci26-root.txt)\" \\\n  | tee /tmp/task103-evidence/qualify.log\n"
+          },
+          {
+            "name": "Record Task103 source-bound integration identity",
+            "shell": "bash",
+            "env": {
+              "TASK103_COMPILER": "${{ matrix.compiler }}"
+            },
+            "run": "python3 - <<'EOF'\nimport json, os, subprocess\nfrom pathlib import Path\ngit = lambda ref: subprocess.check_output(['git', 'rev-parse', ref], text=True).strip()\nsha = git('HEAD')\nif sha != os.environ['GITHUB_SHA']:\n    raise SystemExit('Task103 source is not workflow source')\nPath('/tmp/task103-evidence/integration-identity.json').write_text(json.dumps(dict(\n    sha=sha, tree=git('HEAD^{tree}'), run_id=os.environ['GITHUB_RUN_ID'],\n    run_attempt=os.environ['GITHUB_RUN_ATTEMPT'], compiler=os.environ['TASK103_COMPILER'])) + '\\n')\nEOF\n"
+          },
+          {
+            "name": "Independently verify every mandatory Task103 cell",
+            "shell": "bash",
+            "env": {
+              "TASK103_COMPILER": "${{ matrix.compiler }}",
+              "PYTHONDONTWRITEBYTECODE": "1"
+            },
+            "run": "python3 - <<'EOF'\nimport os, sys, subprocess\nfrom pathlib import Path\nsys.path.insert(0, 'scripts')\nfrom task103_evidence import verify_bundle\nroot = Path('/tmp/task103-evidence')\nfiles = {str(p.relative_to(root)): p.read_bytes() for p in root.rglob('*')\n         if p.is_file() and p.suffix in {'.json', '.txt', '.log', '.stdout', '.stderr', '.exit',\n                                        '.sha256', '.ads', '.adb', '.gpr', '.adc', '.xsd', '.yaml'}}\ntree = subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], text=True).strip()\nprint('TASK103_HOSTED_VERIFIED', verify_bundle(files, os.environ['TASK103_COMPILER'],\n      os.environ['GITHUB_SHA'], tree, os.environ['GITHUB_RUN_ID'], os.environ['GITHUB_RUN_ATTEMPT']))\nEOF\n"
+          },
+          {
+            "name": "Upload mandatory source compiler and execution evidence",
+            "if": "always()",
+            "uses": "actions/upload-artifact@v4",
+            "with": {
+              "name": "task103-ada-real-uci-rdma-${{ matrix.compiler }}",
+              "include-hidden-files": true,
+              "path": "/tmp/task103-evidence/*.json\n/tmp/task103-evidence/*.txt\n/tmp/task103-evidence/*.log\n/tmp/task103-evidence/setup/step-*\n/tmp/task103-evidence/setup/identities.json\n/tmp/task103-evidence/campaign/**/*.json\n/tmp/task103-evidence/campaign/**/*.log\n/tmp/task103-evidence/campaign/**/*.txt\n/tmp/task103-evidence/campaign/**/*.stdout\n/tmp/task103-evidence/campaign/**/*.stderr\n/tmp/task103-evidence/campaign/**/*.exit\n/tmp/task103-evidence/campaign/**/*.sha256\n/tmp/task103-evidence/campaign/**/*.ad?\n/tmp/task103-evidence/campaign/**/*.gpr\n/tmp/task103-evidence/campaign/**/*.adc\n/tmp/task103-evidence/campaign/**/*.xsd\n/tmp/task103-evidence/campaign/**/*.yaml\n",
+              "if-no-files-found": "error"
+            }
+          }
+        ]
+      },
+      "original_steps": [
+        {
+          "name": "Verify pinned target and external compiler",
+          "shell": "bash",
+          "run": "set -euo pipefail\napt-get update\napt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14\ntest \"$(uname -m)\" = x86_64\ntest \"$(getconf GNU_LIBC_VERSION)\" = 'glibc 2.41'\nmkdir -p /tmp/task103-evidence\ndpkg-query -W libc6 libc6-dev gnat-14 gcc-14 | tee /tmp/task103-evidence/platform.txt\nsha256sum /usr/lib/x86_64-linux-gnu/libc.so.6 /usr/bin/gnat /usr/bin/gcc | tee -a /tmp/task103-evidence/platform.txt\ngnat --version | tee -a /tmp/task103-evidence/platform.txt\ngnat --version | grep -E '^GNAT 14\\.2\\.0([[:space:]]|$)'\n"
+        },
+        {
+          "uses": "actions/checkout@v4",
+          "with": {
+            "ref": "${{ github.sha }}"
+          }
+        },
+        {
+          "name": "Record exact source identity",
+          "shell": "bash",
+          "run": "set -euo pipefail\ntest \"$(pwd -P)\" = \"$(realpath \"$GITHUB_WORKSPACE\")\"\ngit config --global --add safe.directory \"$GITHUB_WORKSPACE\"\ngit rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task103-evidence/source.txt\ntest \"$(git rev-parse HEAD)\" = '${{ github.sha }}'\nstatus=\"$(git status --porcelain)\"\ntest -z \"$status\"\n"
+        },
+        {
+          "uses": "dtolnay/rust-toolchain@1.95.0"
+        },
+        {
+          "name": "Install verified Alire 2.1.1",
+          "shell": "bash",
+          "run": "set -euo pipefail\ncurl --fail --location --retry 3 --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip\necho '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  /tmp/alire.zip' | sha256sum --check --strict\nunzip -q /tmp/alire.zip -d /opt/alire\ntest \"$(/opt/alire/bin/alr --version)\" = 'alr 2.1.1'\nsha256sum /opt/alire/bin/alr | tee -a /tmp/task103-evidence/platform.txt\necho /opt/alire/bin >> \"$GITHUB_PATH\"\n"
+        },
+        {
+          "name": "Build source-bound generator",
+          "run": "cargo +1.95.0 build --release --locked -p ams-gra-codegen-oms"
+        },
+        {
+          "name": "Provision pinned compiler and GNATCOLL inputs",
+          "env": {
+            "PYTHONDONTWRITEBYTECODE": "1"
+          },
+          "run": "python3 scripts/task096/setup.py --scratch /tmp/task103-evidence/setup --compiler '${{ matrix.compiler }}'"
+        },
+        {
+          "name": "Build unmodified pinned Sleet",
+          "shell": "bash",
+          "run": "set -euo pipefail\ngit clone --quiet https://github.com/open-arsenal/ams-gra-hello-world-sk-infra-sleet /tmp/task103-sleet\ngit -C /tmp/task103-sleet checkout --quiet --detach e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b\ntest \"$(git -C /tmp/task103-sleet rev-parse HEAD)\" = e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b\ntest -z \"$(git -C /tmp/task103-sleet status --porcelain)\"\ngit -C /tmp/task103-sleet rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task103-evidence/sleet-source.txt\n(cd /tmp/task103-sleet && cargo build --release --locked -p sleet) 2>&1 | tee /tmp/task103-evidence/sleet-build.log\n"
+        },
+        {
+          "name": "Fetch authentic pinned UCI releases and protocol client",
+          "shell": "bash",
+          "run": "set -euo pipefail\napt-get install --no-install-recommends -y python3-venv\nbash scripts/fetch-pinned-uci-2.5.sh /tmp/task103-uci25 > /tmp/task103-evidence/uci25-root.txt\nbash scripts/fetch-pinned-uci-2.6.sh /tmp/task103-uci26 > /tmp/task103-evidence/uci26-root.txt\npython3 -m venv /tmp/task103-venv\n/tmp/task103-venv/bin/pip install 'websockets==17.2'\n"
+        },
+        {
+          "name": "Execute actual Ada RDMA_InitializeSetup against pinned Sleet",
+          "shell": "bash",
+          "env": {
+            "PYTHONDONTWRITEBYTECODE": "1"
+          },
+          "run": "set -euo pipefail\n/tmp/task103-venv/bin/python scripts/task103/qualify.py \\\n  --scratch /tmp/task103-evidence/campaign --setup /tmp/task103-evidence/setup \\\n  --compiler '${{ matrix.compiler }}' --generator target/release/ams-gra-codegen-oms \\\n  --sleet /tmp/task103-sleet \\\n  --uci25 \"$(cat /tmp/task103-evidence/uci25-root.txt)\" \\\n  --uci26 \"$(cat /tmp/task103-evidence/uci26-root.txt)\" \\\n  | tee /tmp/task103-evidence/qualify.log\n"
+        },
+        {
+          "name": "Record Task103 source-bound integration identity",
+          "shell": "bash",
+          "env": {
+            "TASK103_COMPILER": "${{ matrix.compiler }}"
+          },
+          "run": "python3 - <<'EOF'\nimport json, os, subprocess\nfrom pathlib import Path\ngit = lambda ref: subprocess.check_output(['git', 'rev-parse', ref], text=True).strip()\nsha = git('HEAD')\nif sha != os.environ['GITHUB_SHA']:\n    raise SystemExit('Task103 source is not workflow source')\nPath('/tmp/task103-evidence/integration-identity.json').write_text(json.dumps(dict(\n    sha=sha, tree=git('HEAD^{tree}'), run_id=os.environ['GITHUB_RUN_ID'],\n    run_attempt=os.environ['GITHUB_RUN_ATTEMPT'], compiler=os.environ['TASK103_COMPILER'])) + '\\n')\nEOF\n"
+        },
+        {
+          "name": "Independently verify every mandatory Task103 cell",
+          "shell": "bash",
+          "env": {
+            "TASK103_COMPILER": "${{ matrix.compiler }}",
+            "PYTHONDONTWRITEBYTECODE": "1"
+          },
+          "run": "python3 - <<'EOF'\nimport os, sys, subprocess\nfrom pathlib import Path\nsys.path.insert(0, 'scripts')\nfrom task103_evidence import verify_bundle\nroot = Path('/tmp/task103-evidence')\nfiles = {str(p.relative_to(root)): p.read_bytes() for p in root.rglob('*')\n         if p.is_file() and p.suffix in {'.json', '.txt', '.log', '.stdout', '.stderr', '.exit',\n                                        '.sha256', '.ads', '.adb', '.gpr', '.adc', '.xsd', '.yaml'}}\ntree = subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], text=True).strip()\nprint('TASK103_HOSTED_VERIFIED', verify_bundle(files, os.environ['TASK103_COMPILER'],\n      os.environ['GITHUB_SHA'], tree, os.environ['GITHUB_RUN_ID'], os.environ['GITHUB_RUN_ATTEMPT']))\nEOF\n"
+        },
+        {
+          "name": "Upload mandatory source compiler and execution evidence",
+          "if": "always()",
+          "uses": "actions/upload-artifact@v4",
+          "with": {
+            "name": "task103-ada-real-uci-rdma-${{ matrix.compiler }}",
+            "include-hidden-files": true,
+            "path": "/tmp/task103-evidence/*.json\n/tmp/task103-evidence/*.txt\n/tmp/task103-evidence/*.log\n/tmp/task103-evidence/setup/step-*\n/tmp/task103-evidence/setup/identities.json\n/tmp/task103-evidence/campaign/**/*.json\n/tmp/task103-evidence/campaign/**/*.log\n/tmp/task103-evidence/campaign/**/*.txt\n/tmp/task103-evidence/campaign/**/*.stdout\n/tmp/task103-evidence/campaign/**/*.stderr\n/tmp/task103-evidence/campaign/**/*.exit\n/tmp/task103-evidence/campaign/**/*.sha256\n/tmp/task103-evidence/campaign/**/*.ad?\n/tmp/task103-evidence/campaign/**/*.gpr\n/tmp/task103-evidence/campaign/**/*.adc\n/tmp/task103-evidence/campaign/**/*.xsd\n/tmp/task103-evidence/campaign/**/*.yaml\n",
+            "if-no-files-found": "error"
+          }
+        }
+      ],
+      "original_steps_yaml": "    steps:\n      - name: Verify pinned target and external compiler\n        shell: bash\n        run: |\n          set -euo pipefail\n          apt-get update\n          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14\n          test \"$(uname -m)\" = x86_64\n          test \"$(getconf GNU_LIBC_VERSION)\" = 'glibc 2.41'\n          mkdir -p /tmp/task103-evidence\n          dpkg-query -W libc6 libc6-dev gnat-14 gcc-14 | tee /tmp/task103-evidence/platform.txt\n          sha256sum /usr/lib/x86_64-linux-gnu/libc.so.6 /usr/bin/gnat /usr/bin/gcc | tee -a /tmp/task103-evidence/platform.txt\n          gnat --version | tee -a /tmp/task103-evidence/platform.txt\n          gnat --version | grep -E '^GNAT 14\\.2\\.0([[:space:]]|$)'\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n      - name: Record exact source identity\n        shell: bash\n        run: |\n          set -euo pipefail\n          test \"$(pwd -P)\" = \"$(realpath \"$GITHUB_WORKSPACE\")\"\n          git config --global --add safe.directory \"$GITHUB_WORKSPACE\"\n          git rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task103-evidence/source.txt\n          test \"$(git rev-parse HEAD)\" = '${{ github.sha }}'\n          status=\"$(git status --porcelain)\"\n          test -z \"$status\"\n      - uses: dtolnay/rust-toolchain@1.95.0\n      - name: Install verified Alire 2.1.1\n        shell: bash\n        run: |\n          set -euo pipefail\n          curl --fail --location --retry 3 --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip\n          echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  /tmp/alire.zip' | sha256sum --check --strict\n          unzip -q /tmp/alire.zip -d /opt/alire\n          test \"$(/opt/alire/bin/alr --version)\" = 'alr 2.1.1'\n          sha256sum /opt/alire/bin/alr | tee -a /tmp/task103-evidence/platform.txt\n          echo /opt/alire/bin >> \"$GITHUB_PATH\"\n      - name: Build source-bound generator\n        run: cargo +1.95.0 build --release --locked -p ams-gra-codegen-oms\n      - name: Provision pinned compiler and GNATCOLL inputs\n        env:\n          PYTHONDONTWRITEBYTECODE: '1'\n        run: python3 scripts/task096/setup.py --scratch /tmp/task103-evidence/setup --compiler '${{ matrix.compiler }}'\n      - name: Build unmodified pinned Sleet\n        shell: bash\n        run: |\n          set -euo pipefail\n          git clone --quiet https://github.com/open-arsenal/ams-gra-hello-world-sk-infra-sleet /tmp/task103-sleet\n          git -C /tmp/task103-sleet checkout --quiet --detach e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b\n          test \"$(git -C /tmp/task103-sleet rev-parse HEAD)\" = e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b\n          test -z \"$(git -C /tmp/task103-sleet status --porcelain)\"\n          git -C /tmp/task103-sleet rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task103-evidence/sleet-source.txt\n          (cd /tmp/task103-sleet && cargo build --release --locked -p sleet) 2>&1 | tee /tmp/task103-evidence/sleet-build.log\n      - name: Fetch authentic pinned UCI releases and protocol client\n        shell: bash\n        run: |\n          set -euo pipefail\n          apt-get install --no-install-recommends -y python3-venv\n          bash scripts/fetch-pinned-uci-2.5.sh /tmp/task103-uci25 > /tmp/task103-evidence/uci25-root.txt\n          bash scripts/fetch-pinned-uci-2.6.sh /tmp/task103-uci26 > /tmp/task103-evidence/uci26-root.txt\n          python3 -m venv /tmp/task103-venv\n          /tmp/task103-venv/bin/pip install 'websockets==17.2'\n      - name: Execute actual Ada RDMA_InitializeSetup against pinned Sleet\n        shell: bash\n        env:\n          PYTHONDONTWRITEBYTECODE: '1'\n        run: |\n          set -euo pipefail\n          /tmp/task103-venv/bin/python scripts/task103/qualify.py \\\n            --scratch /tmp/task103-evidence/campaign --setup /tmp/task103-evidence/setup \\\n            --compiler '${{ matrix.compiler }}' --generator target/release/ams-gra-codegen-oms \\\n            --sleet /tmp/task103-sleet \\\n            --uci25 \"$(cat /tmp/task103-evidence/uci25-root.txt)\" \\\n            --uci26 \"$(cat /tmp/task103-evidence/uci26-root.txt)\" \\\n            | tee /tmp/task103-evidence/qualify.log\n      - name: Record Task103 source-bound integration identity\n        shell: bash\n        env:\n          TASK103_COMPILER: ${{ matrix.compiler }}\n        run: |\n          python3 - <<'EOF'\n          import json, os, subprocess\n          from pathlib import Path\n          git = lambda ref: subprocess.check_output(['git', 'rev-parse', ref], text=True).strip()\n          sha = git('HEAD')\n          if sha != os.environ['GITHUB_SHA']:\n              raise SystemExit('Task103 source is not workflow source')\n          Path('/tmp/task103-evidence/integration-identity.json').write_text(json.dumps(dict(\n              sha=sha, tree=git('HEAD^{tree}'), run_id=os.environ['GITHUB_RUN_ID'],\n              run_attempt=os.environ['GITHUB_RUN_ATTEMPT'], compiler=os.environ['TASK103_COMPILER'])) + '\\n')\n          EOF\n      - name: Independently verify every mandatory Task103 cell\n        shell: bash\n        env:\n          TASK103_COMPILER: ${{ matrix.compiler }}\n          PYTHONDONTWRITEBYTECODE: '1'\n        run: |\n          python3 - <<'EOF'\n          import os, sys, subprocess\n          from pathlib import Path\n          sys.path.insert(0, 'scripts')\n          from task103_evidence import verify_bundle\n          root = Path('/tmp/task103-evidence')\n          files = {str(p.relative_to(root)): p.read_bytes() for p in root.rglob('*')\n                   if p.is_file() and p.suffix in {'.json', '.txt', '.log', '.stdout', '.stderr', '.exit',\n                                                  '.sha256', '.ads', '.adb', '.gpr', '.adc', '.xsd', '.yaml'}}\n          tree = subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], text=True).strip()\n          print('TASK103_HOSTED_VERIFIED', verify_bundle(files, os.environ['TASK103_COMPILER'],\n                os.environ['GITHUB_SHA'], tree, os.environ['GITHUB_RUN_ID'], os.environ['GITHUB_RUN_ATTEMPT']))\n          EOF\n      - name: Upload mandatory source compiler and execution evidence\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: task103-ada-real-uci-rdma-${{ matrix.compiler }}\n          include-hidden-files: true\n          path: |\n            /tmp/task103-evidence/*.json\n            /tmp/task103-evidence/*.txt\n            /tmp/task103-evidence/*.log\n            /tmp/task103-evidence/setup/step-*\n            /tmp/task103-evidence/setup/identities.json\n            /tmp/task103-evidence/campaign/**/*.json\n            /tmp/task103-evidence/campaign/**/*.log\n            /tmp/task103-evidence/campaign/**/*.txt\n            /tmp/task103-evidence/campaign/**/*.stdout\n            /tmp/task103-evidence/campaign/**/*.stderr\n            /tmp/task103-evidence/campaign/**/*.exit\n            /tmp/task103-evidence/campaign/**/*.sha256\n            /tmp/task103-evidence/campaign/**/*.ad?\n            /tmp/task103-evidence/campaign/**/*.gpr\n            /tmp/task103-evidence/campaign/**/*.adc\n            /tmp/task103-evidence/campaign/**/*.xsd\n            /tmp/task103-evidence/campaign/**/*.yaml\n          if-no-files-found: error\n",
+      "expected_header": "    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'ada-real-uci-rdma-sleet')\n    concurrency:\n      group: ${{ github.ref == 'refs/heads/main' && format('oms-main-slot-{0}', matrix.slot) || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-ada-real-uci-rdma-sleet-{3}', github.workflow, github.run_id, github.run_attempt, matrix.compiler) }}\n      queue: max\n    name: ada-real-uci-rdma-sleet (${{ matrix.compiler }})\n    runs-on: ubuntu-24.04\n    strategy:\n      fail-fast: false\n      matrix:\n        compiler: ['14', '16']\n        include:\n          - compiler: '14'\n            slot: 1\n          - compiler: '16'\n            slot: 3\n    container:\n      image: debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5\n    timeout-minutes: 120",
+      "source_policy": "proposed integration SHA",
+      "selection_condition": "github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'ada-real-uci-rdma-sleet')",
+      "ownership": "Task103 real UCI generated Ada typed transport, independent additive qualification",
+      "original_payload_sha256": "a097befb5b1de81c6f6c75b488b56bb8759b5c80b2f946d8d2989b1d88e06bf0"
     }
   ],
   "reusable_jobs": {
