@@ -116,7 +116,7 @@ def bundle(compiler='14'):
             put(f'campaign/uci{release}-{policy}-O{optimization}/generated/{name}', 'synthetic unchanged ' + name)
         prefix = f'campaign/uci{release}-{policy}-O{optimization}/sleet/'
         put(prefix + 'result.json', dict(completed=True, release=release, revision=evidence.REV, tree=evidence.TREE,
-            handlers=7, witness_handlers=1, decode_rejected=1, published=6, broker_rejected=12,
+            handlers=12, witness_handlers=1, decode_rejected=1, published=6, broker_rejected=12,
             consumer_exit=0, server_exit=0, cleanup=True))
         put(prefix + 'sleet-source.txt', evidence.REV + '\n' + evidence.TREE + '\n')
         put(prefix + 'sleet-binary.sha256', 'd'*64)
@@ -124,16 +124,19 @@ def bundle(compiler='14'):
             put(prefix + phase + '.exit', '0\n')
         positive = cases.positives(release)
         received = [{'RDMA_InitializeSetup': doc} for _, doc in cases.decoder_invalid(release)]
-        received += [{'RDMA_InitializeSetup': positive[0][1]}] + [{'RDMA_InitializeSetup': expected} for _, _, expected in positive] + [{'RDMA_InitializeSetup': positive[0][1]}]
+        received += [{cases.MESSAGE: positive[0][1]}, {cases.MESSAGE: positive[0][2]}]
+        for _, value, canonical in positive[1:]:
+            received += [{cases.MESSAGE: value}, {cases.MESSAGE: canonical}]
+        received += [{cases.MESSAGE: positive[0][1]}]
         put(prefix + 'consumer.stdout', '\n'.join([
-            'TASK103_ADA_REAL_RDMA_COMPLETE handlers= 7 rejected= 1',
+            'TASK103_ADA_REAL_RDMA_COMPLETE handlers= 12 rejected= 1',
             'TASK103_UNSUB_WITNESS_COMPLETE primary_unchanged witness=1', 'TASK103_CLEANUP_COMPLETE',
             'TASK103_DECODE_RECOVERY_COMPLETE', 'TASK103_UNKNOWN_BINDING_SID_REJECTED',
             'TASK103_UPGRADE_OWP_COMPLETE', 'TASK103_INFO_VALIDATED', 'TASK103_SUB_ACCEPTED RDMA_InitializeSetup task103-rdma',
             'TASK103_EVENT DECODE_ERROR invalid named DateTime',
             *['TASK103_EVENT COMMAND_ACCEPTED +OK'] * 12,
-            *['TASK103_MODEL_CHECK_COMPLETE case= ' + str(n) for n in (0, 0, 1, 2, 3, 4, 5, 0)],
-            *['TASK103_TYPED_HANDLER ' + str(n) for n in range(7)], 'TASK103_WITNESS_HANDLER 1',
+            *['TASK103_MODEL_CHECK_COMPLETE case= ' + str(n) for n in (0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 0)],
+            *['TASK103_TYPED_HANDLER ' + str(n) for n in range(12)], 'TASK103_WITNESS_HANDLER 1',
             *['TASK103_PUBLISHED ' + json.dumps(expected) for _, _, expected in positive],
             *['TASK103_WIRE_RECEIVED ' + json.dumps(doc) for doc in received]]) + '\n')
         put(prefix + 'wire.json', [dict(label=label, command=command,
@@ -141,8 +144,7 @@ def bundle(compiler='14'):
                 for label, command, code, detail in cases.broker_cases(release)]
             + [dict(label=label, command=cases.publication(doc), response='+OK') for label, doc in cases.decoder_invalid(release)]
             + [dict(label='same-subscription-recovery', command=cases.publication(positive[0][1]), response='+OK')]
-            + [dict(label='broker-' + label, response='+OK') for label, _, _ in positive[-2:]]
-            + [dict(label='broker-' + label + '-delivery', response='MSG 99 ' + json.dumps({cases.MESSAGE: doc})) for label, doc, _ in positive[-2:]]
+            + [dict(label='external-' + label, command=cases.publication(value), response='+OK') for label, value, _ in positive[1:]]
             + [dict(label='wrong-service-closed')])
         put(prefix + 'server.stdout', 'schema loaded\nroute PUB message\nshutdown complete\n')
     return files
@@ -326,7 +328,7 @@ class EvidenceTests(unittest.TestCase):
             with self.subTest(before=before), self.assertRaises(ValueError):
                 self.verify(dict(files, **{prefix + 'consumer.stdout': original.replace(before, after).encode()}))
         for label in ('invalid-timestamp', 'same-subscription-recovery',
-                      'broker-additional', 'broker-empty'):
+                      'external-additional', 'external-empty'):
             wire = json.loads(files[prefix + 'wire.json'])
             next(item for item in wire if item.get('label') == label)['response'] = '-ERR Invalid-Message'
             with self.subTest(label=label), self.assertRaises(ValueError):

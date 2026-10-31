@@ -250,11 +250,14 @@ begin
               AMS_GRA_OMS_JSON_Guard.Read (Ada.Text_IO.Get_Line (Expectations))
             then raise Program_Error with "independent JSON expectation mismatch"; end if;
             Check_Model (Value);
+            Ada.Text_IO.Put_Line ("TASK103_EXTERNAL_READY " & Sequence_Case'Image);
+            Ada.Text_IO.Flush;
+            Await_Calls (Want);
             Sent := Publisher.Publish (Value);
             if not Sent then raise Program_Error with "not sent"; end if;
             Ada.Text_IO.Put_Line ("TASK103_PUBLISHED " & To_String (Expected));
             Await_Command;
-            Await_Calls (Want);
+            Await_Calls (Want + 1);
          end;
       end loop;
       Ada.Text_IO.Close (Documents);

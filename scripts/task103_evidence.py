@@ -184,7 +184,7 @@ def verify_bundle(files, compiler, sha, tree, run_id, attempt):
         cell = f'uci{release}-{policy}-O{optimization}'
         prefix = f'campaign/{cell}/sleet/'
         evidence = doc(prefix + 'result.json')
-        if evidence != dict(completed=True, release=release, revision=REV, tree=TREE, handlers=7,
+        if evidence != dict(completed=True, release=release, revision=REV, tree=TREE, handlers=12,
                             witness_handlers=1, decode_rejected=1, published=6, broker_rejected=12,
                             consumer_exit=0, server_exit=0, cleanup=True):
             raise ValueError('Task103 real-Sleet handler/count/cleanup mismatch')
@@ -197,20 +197,20 @@ def verify_bundle(files, compiler, sha, tree, run_id, attempt):
         output = text(prefix + 'consumer.stdout').splitlines()
         if output.count('TASK103_EVENT COMMAND_ACCEPTED +OK') != 12:
             raise ValueError('Task103 generated publications/subscriptions not broker accepted')
-        for marker in ['TASK103_ADA_REAL_RDMA_COMPLETE handlers= 7 rejected= 1',
+        for marker in ['TASK103_ADA_REAL_RDMA_COMPLETE handlers= 12 rejected= 1',
                        'TASK103_UNSUB_WITNESS_COMPLETE primary_unchanged witness=1',
                        'TASK103_CLEANUP_COMPLETE', 'TASK103_DECODE_RECOVERY_COMPLETE',
                        'TASK103_UNKNOWN_BINDING_SID_REJECTED', 'TASK103_UPGRADE_OWP_COMPLETE',
                        'TASK103_INFO_VALIDATED', 'TASK103_SUB_ACCEPTED RDMA_InitializeSetup task103-rdma']:
             if output.count(marker) != 1:
                 raise ValueError('Task103 interoperability marker missing/duplicate')
-        if (sum(s.startswith('TASK103_TYPED_HANDLER ') for s in output) != 7
+        if (sum(s.startswith('TASK103_TYPED_HANDLER ') for s in output) != 12
                 or sum(s.startswith('TASK103_WITNESS_HANDLER ') for s in output) != 1
                 or sum(s.startswith('TASK103_PUBLISHED ') for s in output) != 6
                 or sum(s.startswith('TASK103_EVENT DECODE_ERROR ') for s in output) != 1):
             raise ValueError('Task103 actual handler/codec/publication count mismatch')
         model_checks = [s for s in output if s.startswith('TASK103_MODEL_CHECK_COMPLETE case=')]
-        if model_checks != ['TASK103_MODEL_CHECK_COMPLETE case= ' + str(n) for n in (0, 0, 1, 2, 3, 4, 5, 0)]:
+        if model_checks != ['TASK103_MODEL_CHECK_COMPLETE case= ' + str(n) for n in (0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 0)]:
             raise ValueError('Task103 decoded model discriminant/value/order observations absent')
         published = [json.loads(s.removeprefix('TASK103_PUBLISHED ')) for s in output if s.startswith('TASK103_PUBLISHED ')]
         positive = cases.positives(release)
@@ -218,7 +218,10 @@ def verify_bundle(files, compiler, sha, tree, run_id, attempt):
             raise ValueError('Task103 publications differ from independent real RDMA_InitializeSetup oracle')
         received = [json.loads(s.removeprefix('TASK103_WIRE_RECEIVED ')) for s in output if s.startswith('TASK103_WIRE_RECEIVED ')]
         expected_wire = [{'RDMA_InitializeSetup': doc} for _, doc in cases.decoder_invalid(release)]
-        expected_wire += [{'RDMA_InitializeSetup': positive[0][1]}] + [{'RDMA_InitializeSetup': expected} for _, _, expected in positive] + [{'RDMA_InitializeSetup': positive[0][1]}]
+        expected_wire += [{cases.MESSAGE: positive[0][1]}, {cases.MESSAGE: positive[0][2]}]
+        for _, value, canonical in positive[1:]:
+            expected_wire += [{cases.MESSAGE: value}, {cases.MESSAGE: canonical}]
+        expected_wire += [{cases.MESSAGE: positive[0][1]}]
         if received != expected_wire:
             raise ValueError('Task103 broker delivery wire identity/value/order mismatch')
         errors = [s.removeprefix('TASK103_EVENT DECODE_ERROR ') for s in output if s.startswith('TASK103_EVENT DECODE_ERROR ')]
@@ -239,17 +242,14 @@ def verify_bundle(files, compiler, sha, tree, run_id, attempt):
         recovery = [item for item in wire if item.get('label') == 'same-subscription-recovery']
         if len(recovery) != 1 or recovery[0]['response'] != '+OK' or recovery[0]['command'] != cases.publication(positive[0][1]):
             raise ValueError('Task103 same subscription valid recovery absent')
-        for label, value, _ in positive[-2:]:
-            admission = [item for item in wire if item.get('label') == 'broker-' + label]
-            delivery = [item for item in wire if item.get('label') == 'broker-' + label + '-delivery']
-            if (len(admission) != 1 or admission[0]['response'] != '+OK' or len(delivery) != 1
-                    or not delivery[0]['response'].startswith('MSG 99 ')
-                    or json.loads(delivery[0]['response'].split(' ', 2)[2]) != {cases.MESSAGE: value}):
-                raise ValueError('Task103 independent broker endpoint observation absent')
+        for label, value, _ in positive[1:]:
+            admission = [item for item in wire if item.get('label') == 'external-' + label]
+            if len(admission) != 1 or admission[0]['response'] != '+OK' or admission[0]['command'] != cases.publication(value):
+                raise ValueError('Task103 independent broker/typed variant observation absent')
         if sum(item.get('label') == 'wrong-service-closed' for item in wire) != 1:
             raise ValueError('Task103 required service-error connection closure absent')
         server = text(prefix + 'server.stdout')
         if not all(marker in server for marker in ('schema loaded', 'route PUB message', 'shutdown complete')):
             raise ValueError('Task103 schema/routing/cleanup evidence absent')
-    return dict(compiler=version, cells=12, releases=['25', '26'], handlers=84, codec_rejected=12,
+    return dict(compiler=version, cells=12, releases=['25', '26'], handlers=144, codec_rejected=12,
                 sha=sha, tree=tree, run_id=str(run_id), run_attempt=str(attempt))

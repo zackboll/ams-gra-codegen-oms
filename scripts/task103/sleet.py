@@ -116,6 +116,15 @@ def execute(checkout, consumer, schema, release, directory):
                 for label, invalid in cases.decoder_invalid(release):
                     exchange(client, label, 'PUB task103-rdma ' + json.dumps({'RDMA_InitializeSetup': invalid}), '+OK')
                 exchange(client, 'same-subscription-recovery', 'PUB task103-rdma ' + json.dumps({'RDMA_InitializeSetup': positives[0][1]}), '+OK')
+                for index, (label, doc, _) in enumerate(positives[1:], 1):
+                    deadline = time.monotonic() + 15
+                    while True:
+                        line = lines.get(timeout=max(0.01, deadline - time.monotonic()))
+                        assert line is not None, 'consumer exited before independent variant'
+                        if line == f'TASK103_EXTERNAL_READY  {index}':
+                            break
+                        assert time.monotonic() < deadline, 'independent variant readiness not observed'
+                    exchange(client, 'external-' + label, cases.publication(doc), '+OK')
             child.wait(timeout=30)
             reader.join(timeout=5)
             assert not reader.is_alive() and not errors
@@ -123,10 +132,10 @@ def execute(checkout, consumer, schema, release, directory):
             (directory / 'consumer.exit').write_text(str(child.returncode) + '\n')
             output = (directory / 'consumer.stdout').read_text()
             assert child.returncode == 0, output
-            assert 'TASK103_ADA_REAL_RDMA_COMPLETE handlers= 7 rejected= 1' in output
+            assert 'TASK103_ADA_REAL_RDMA_COMPLETE handlers= 12 rejected= 1' in output
             assert 'TASK103_UNSUB_WITNESS_COMPLETE primary_unchanged witness=1' in output
             assert 'TASK103_CLEANUP_COMPLETE' in output
-            assert output.count('TASK103_MODEL_CHECK_COMPLETE case=') == 8
+            assert output.count('TASK103_MODEL_CHECK_COMPLETE case=') == 13
             published = [line.removeprefix('TASK103_PUBLISHED ') for line in output.splitlines() if line.startswith('TASK103_PUBLISHED ')]
             assert len(published) == len(positives)
             for text, (_, _, expected) in zip(published, positives, strict=True):
@@ -135,18 +144,11 @@ def execute(checkout, consumer, schema, release, directory):
                         for line in output.splitlines() if line.startswith('TASK103_WIRE_RECEIVED ')]
             expected_wire = [{cases.MESSAGE: doc} for _, doc in cases.decoder_invalid(release)]
             expected_wire += [{cases.MESSAGE: positives[0][1]}]
-            expected_wire += [{cases.MESSAGE: expected} for _, _, expected in positives]
+            expected_wire += [{cases.MESSAGE: positives[0][2]}]
+            for _, doc, expected in positives[1:]:
+                expected_wire += [{cases.MESSAGE: doc}, {cases.MESSAGE: expected}]
             expected_wire += [{cases.MESSAGE: positives[0][1]}]
             assert received == expected_wire, 'actual broker delivery identity/value/order mismatch'
-            with connect(url, subprotocols=['owp']) as lexical:
-                initialize(lexical)
-                exchange(lexical, 'lexical-sub', 'SUB 99 RDMA_InitializeSetup task103-rdma', '+OK')
-                for label, doc, expected in positives[-2:]:
-                    exchange(lexical, 'broker-' + label, 'PUB task103-rdma ' + json.dumps({'RDMA_InitializeSetup': doc}), '+OK')
-                    delivery = lexical.recv(timeout=5)
-                    assert delivery.startswith('MSG 99 ') and json.loads(delivery.split(' ', 2)[2]) == {'RDMA_InitializeSetup': doc}
-                    transcript.append(dict(label='broker-' + label + '-delivery', response=delivery))
-                exchange(lexical, 'lexical-unsub', 'UNSUB 99', '+OK')
             with connect(url, subprotocols=['owp']) as client:
                 initialize(client, 'unauthorized', accepted=False)
                 try:
@@ -180,11 +182,11 @@ def execute(checkout, consumer, schema, release, directory):
     with socket.socket() as probe:
         probe.settimeout(1)
         assert probe.connect_ex(('127.0.0.1', port)) != 0, 'broker socket retained'
-    result = dict(completed=True, release=release, revision=REV, tree=TREE, handlers=7,
+    result = dict(completed=True, release=release, revision=REV, tree=TREE, handlers=12,
                   witness_handlers=1, decode_rejected=1, published=6, broker_rejected=12,
                   consumer_exit=0, server_exit=0, cleanup=True)
     (directory / 'result.json').write_text(json.dumps(result, indent=2) + '\n')
-    print('TASK103_REAL_SLEET_CELL_COMPLETE', release, 'handlers=7 decode_rejected=1 witness=1', flush=True)
+    print('TASK103_REAL_SLEET_CELL_COMPLETE', release, 'handlers=12 decode_rejected=1 witness=1', flush=True)
 
 
 if __name__ == '__main__':

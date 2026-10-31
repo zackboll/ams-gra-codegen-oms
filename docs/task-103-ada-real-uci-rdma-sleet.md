@@ -113,8 +113,9 @@ empty optional sequence; independently publishing `Endpoint: []` is also
 accepted and delivered by Sleet.
 
 Each cell observes broker acceptance, actual typed delivery and independent
-value/model checks. It has seven primary deliveries (one externally published
-recovery plus six generated publications), one witness delivery and one decoder
+value/model checks. It has twelve primary deliveries (one externally published
+recovery, five independently authored external variants and six generated
+publications), one witness delivery and one decoder
 rejection. After a second live typed subscription is accepted, the primary is
 removed: publishing another golden reaches only the witness. Successful routing
 to that witness, not just silence on a closed connection, proves unsubscribe.
