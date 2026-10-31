@@ -20,9 +20,9 @@ class DeepSelection(unittest.TestCase):
             'python/oms-lacal-runtime/src/oms_lacal/client.py': {'real-sleet', 'real-uci-regressions'},
             'tests/fixtures/python-inheritance/oam.xsd': {'real-sleet', 'real-uci-regressions'},
             'crates/backend-python/src/lib.rs': {'msrv-real-uci', 'real-sleet', 'real-uci-regressions'},
-            'tests/ada-websocket/transport_probe.adb': {'ada-websocket-real-sleet', 'ada-real-uci-dlz-sleet', 'ada-real-uci-log-sleet', 'ada-real-uci-rdma-sleet', 'ada-real-uci-survivability-sleet'},
-            'ada/oms-lacal-runtime/websocket/oms_ws_handshake.ads': {'ada-websocket-real-sleet', 'ada-real-uci-dlz-sleet', 'ada-real-uci-log-sleet', 'ada-real-uci-rdma-sleet', 'ada-real-uci-survivability-sleet'},
-            'ada/oms-lacal-runtime/oms_lacal_websocket.gpr': {'ada-websocket-real-sleet', 'ada-real-uci-dlz-sleet', 'ada-real-uci-log-sleet', 'ada-real-uci-rdma-sleet', 'ada-real-uci-survivability-sleet'},
+            'tests/ada-websocket/transport_probe.adb': {'ada-websocket-real-sleet', 'ada-real-uci-dlz-sleet', 'ada-real-uci-log-sleet', 'ada-real-uci-rdma-sleet', 'ada-real-uci-survivability-sleet', 'ada-real-uci-survivability-26-sleet'},
+            'ada/oms-lacal-runtime/websocket/oms_ws_handshake.ads': {'ada-websocket-real-sleet', 'ada-real-uci-dlz-sleet', 'ada-real-uci-log-sleet', 'ada-real-uci-rdma-sleet', 'ada-real-uci-survivability-sleet', 'ada-real-uci-survivability-26-sleet'},
+            'ada/oms-lacal-runtime/oms_lacal_websocket.gpr': {'ada-websocket-real-sleet', 'ada-real-uci-dlz-sleet', 'ada-real-uci-log-sleet', 'ada-real-uci-rdma-sleet', 'ada-real-uci-survivability-sleet', 'ada-real-uci-survivability-26-sleet'},
             'crates/runtime-rust-facade-tests/tests/task077_sleet.rs': {'msrv-real-uci', 'real-sleet'},
             'crates/runtime-rust/src/lib.rs': {'msrv-real-uci', 'real-sleet', 'real-uci-temporal-naming',
                                                'real-uci-schema-ipv6', 'real-uci-integral-unicode',
@@ -43,7 +43,7 @@ class DeepSelection(unittest.TestCase):
                 result = selection.select([change(path)], self.policy)
                 selection.validate_deep(result, self.policy)
                 self.assertEqual(set(result['deep_jobs']), wanted)
-                self.assertEqual(result['deep_selected_cells'] + result['deep_skipped_cells'], 20)
+                self.assertEqual(result['deep_selected_cells'] + result['deep_skipped_cells'], 22)
                 self.assertEqual(result['deep_jobs'], sorted(wanted))
                 self.assertEqual(set(result['reasons'][0]['deep_jobs']), wanted)
                 self.assertEqual(result['deep'], bool(wanted))
@@ -52,7 +52,7 @@ class DeepSelection(unittest.TestCase):
         for event in ('push', 'workflow_dispatch', 'schedule'):
             result = selection.classify(selection.ROOT, {}, event, 'a' * 40, self.policy)
             self.assertEqual(set(result['deep_jobs']), self.all)
-            self.assertEqual(result['deep_selected_cells'], 20)
+            self.assertEqual(result['deep_selected_cells'], 22)
             self.assertTrue(all(result['jobs'].values()))
         for c in (change('README.md', 'D'), change('README.md', mode='100755'),
                   {'paths': []}, {'paths': ['README.md']}, change('python/new.py', 'R100')):
@@ -64,7 +64,7 @@ class DeepSelection(unittest.TestCase):
         b = selection.select([change(p) for p in reversed(paths)], self.policy)
         for field in ('jobs', 'cells', 'deep_jobs', 'deep_selected_cells', 'deep_skipped_cells'):
             self.assertEqual(a[field], b[field])
-        self.assertEqual(a['deep_selected_cells'], 13)
+        self.assertEqual(a['deep_selected_cells'], 15)
 
     def test_dependency_closure_transitive(self):
         records = copy.deepcopy(selection.deep_jobs(self.policy))
@@ -107,11 +107,11 @@ class DeepSelection(unittest.TestCase):
                 with self.subTest(missing=field), self.assertRaises(ValueError):
                     selection.validate_deep(result, self.policy)
         result = selection.select([], self.policy, full_main=True)
-        result.update(deep_jobs=['real-sleet'], deep_selected_cells=1, deep_skipped_cells=19)
+        result.update(deep_jobs=['real-sleet'], deep_selected_cells=1, deep_skipped_cells=21)
         with self.assertRaisesRegex(ValueError, 'full qualification omitted'):
             selection.validate_deep(result, self.policy)
         result = copy.deepcopy(healthy)
-        result.update(deep_jobs=['real-uci-schema-ipv6'], deep_selected_cells=1, deep_skipped_cells=19)
+        result.update(deep_jobs=['real-uci-schema-ipv6'], deep_selected_cells=1, deep_skipped_cells=21)
         with self.assertRaisesRegex(ValueError, 'dependency closure'):
             selection.validate_deep(result, self.policy)
 
@@ -273,7 +273,7 @@ class DeepPolicy(unittest.TestCase):
         self.workflows = {p.name: p.read_text() for p in (selection.ROOT / '.github/workflows').glob('*.yml')}
 
     def test_every_deep_condition_removed_inverted_bypassed(self):
-        self.assertEqual(ci_policy.check(workflows=self.workflows), 48)
+        self.assertEqual(ci_policy.check(workflows=self.workflows), 50)
         for job_id, record in selection.deep_jobs(selection.inventory()).items():
             line = '    if: ' + record['selection_condition'] + '\n'
             for replacement in ('', '    if: true\n', line.replace('contains(', '!contains('),
@@ -365,6 +365,7 @@ class FinalReportContract(unittest.TestCase):
                     patch.object(gate, 'reconcile_task102', return_value={}), \
                     patch.object(gate, 'reconcile_task103', return_value={}), \
                     patch.object(gate, 'reconcile_task104', return_value={}), \
+                    patch.object(gate, 'reconcile_task105', return_value={}), \
                     patch.object(gate, 'reconcile_primary', return_value={}), \
                     patch.object(gate, 'Path') as path, patch('builtins.print') as output:
                 gate.main()
@@ -391,7 +392,7 @@ class FinalReportContract(unittest.TestCase):
                         fixture.artifacts, 'c' * 40, 'd' * 40, '123', '1',
                         jobs=fixture.jobs, attempts={})
                 self.assertEqual(report['version'], 2)
-                self.assertEqual(report['deep_selected_cells'], 0 if docs else 20)
+                self.assertEqual(report['deep_selected_cells'], 0 if docs else 22)
                 self.assertEqual(report['conclusion'], 'success')
 
 

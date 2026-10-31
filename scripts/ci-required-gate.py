@@ -14,6 +14,7 @@ from task100_evidence import verify_bundle as verify_task100_bundle
 from task101_evidence import JOB as TASK101_JOB, verify_bundle as verify_task101_bundle
 from task102_evidence import JOB as TASK102_JOB, verify_bundle as verify_task102_bundle
 from task103_evidence import JOB as TASK103_JOB, verify_bundle as verify_task103_bundle
+from task105_evidence import JOB as TASK105_JOB, verify_bundle as verify_task105_bundle
 from task104_evidence import JOB as TASK104_JOB, verify_bundle as verify_task104_bundle
 from ci_selection import ROOT, complete_diff, deep_jobs, from_environment, git, inventory, ordinary_jobs, validate_deep
 
@@ -320,6 +321,22 @@ def reconcile_task104(artifacts, manifest, sha, tree, run_id, attempt, loader=do
     return summaries
 
 
+def reconcile_task105(artifacts, manifest, sha, tree, run_id, attempt, loader=download_bundle, *, jobs, attempts):
+    summaries = {}
+    if TASK105_JOB not in manifest['deep_jobs']:
+        return summaries
+    for compiler in ('14', '16'):
+        name = 'task105-ada-survivability-26-' + compiler
+        matches = [a for a in artifacts if a['name'] == name]
+        if len(matches) != 1 or matches[0]['expired'] or matches[0]['size_in_bytes'] <= 0:
+            raise ValueError('missing/duplicate/expired Task105 artifact: ' + name)
+        producer = resolve(matches[0], f'deep-qualification / {TASK105_JOB} ({compiler})',
+                           jobs, attempts, run_id, attempt)
+        summaries[name] = dict(verify_task105_bundle(loader(matches[0]), compiler, sha, tree,
+                              run_id, producer['run_attempt']), producer=producer)
+    return summaries
+
+
 def main():
     manifest = json.loads(os.environ["SELECTION_MANIFEST"])
     expected = from_environment()
@@ -351,6 +368,9 @@ def main():
     task104 = reconcile_task104(own['artifacts'], manifest, os.environ['GITHUB_SHA'],
                                git(ROOT, 'rev-parse', 'HEAD^{tree}').decode().strip(),
                                run, os.environ['GITHUB_RUN_ATTEMPT'], jobs=own['jobs'], attempts=own['attempts'])
+    task105 = reconcile_task105(own['artifacts'], manifest, os.environ['GITHUB_SHA'],
+                               git(ROOT, 'rev-parse', 'HEAD^{tree}').decode().strip(),
+                               run, os.environ['GITHUB_RUN_ATTEMPT'], jobs=own['jobs'], attempts=own['attempts'])
     if set(SHARDS) <= set(manifest['deep_jobs']):
         primary = reconcile_primary(own['artifacts'], os.environ['GITHUB_SHA'],
                                     git(ROOT, 'rev-parse', 'HEAD^{tree}').decode().strip(),
@@ -360,7 +380,7 @@ def main():
                   deep_jobs=manifest['deep_jobs'], deep_selected_cells=manifest['deep_selected_cells'],
                   deep_skipped_cells=manifest['deep_skipped_cells'], conclusion="success",
                   run_id=run, gate_attempt=os.environ['GITHUB_RUN_ATTEMPT'],
-                  real_uci_shards=primary, task100=task100, task101=task101, task102=task102, task103=task103, task104=task104)
+                  real_uci_shards=primary, task100=task100, task101=task101, task102=task102, task103=task103, task104=task104, task105=task105)
     Path("ci-required-result.json").write_text(json.dumps(report, indent=2) + "\n")
     print("PR_CI_REQUIRED_COMPLETE", json.dumps(report, sort_keys=True))
 

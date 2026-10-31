@@ -3,6 +3,8 @@ import copy
 
 
 def job_name(name):
+    if name.startswith('task105-'):
+        return 'deep-qualification / ada-real-uci-survivability-26-sleet' + f' ({name[-2:]})'
     if name.startswith('task104-'):
         return 'deep-qualification / ada-real-uci-survivability-sleet' + f' ({name[-2:]})'
     if name.startswith('task103-'):
