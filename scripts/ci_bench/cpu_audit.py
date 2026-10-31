@@ -20,6 +20,14 @@ def number(value, minimum=0):
 
 
 def decode(data):
+    def reject_constant(token):
+        raise ValueError('CPU audit: nonfinite JSON constant: ' + token)
+
+    def finite_number(token):
+        value = float(token)
+        require(math.isfinite(value), 'nonfinite JSON numeric representation: ' + token)
+        return value
+
     def pairs(values):
         result = {}
         for name, value in values:
@@ -28,7 +36,8 @@ def decode(data):
         return result
     require(len(data) <= 16 * 1024**2 and data.endswith(b'\n'), 'oversized/truncated raw journal')
     try:
-        return [json.loads(line, object_pairs_hook=pairs, parse_constant=lambda _: None)
+        return [json.loads(line, object_pairs_hook=pairs,
+                           parse_constant=reject_constant, parse_float=finite_number)
                 for line in data.splitlines()]
     except (UnicodeError, json.JSONDecodeError) as error:
         raise ValueError('CPU audit: malformed raw journal') from error
@@ -52,7 +61,7 @@ def cgparse(text):
     found = {}
     for line in text.splitlines():
         parts = line.split()
-        require(len(parts) == 2 and re.fullmatch(r'[a-z_]+', parts[0]) and
+        require(len(parts) == 2 and re.fullmatch(r'[a-z_]+(?:\.[a-z_]+)*', parts[0]) and
                 re.fullmatch(r'[0-9]+', parts[1]) and parts[0] not in found,
                 'duplicate/corrupt cgroup counter')
         found[parts[0]] = int(parts[1])

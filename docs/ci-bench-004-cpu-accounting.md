@@ -171,3 +171,29 @@ an unqualified self-hosted runner.
 Kernel references:
 <https://docs.kernel.org/filesystems/proc.html> and
 <https://docs.kernel.org/admin-guide/cgroup-v2.html>.
+
+## CI-BENCH-004R1 — parser review corrections
+
+Both independently implemented cgroup parsers accept internal periods between
+nonempty lowercase/underscore name components, including the optional Linux
+`core_sched.force_idle_usec` counter. They preserve keys and integer values
+exactly, still require the six original mandatory counters, and reject duplicate
+keys, malformed names/records and non-ASCII/noninteger/negative counter values.
+An optional field is never made mandatory on kernels that do not expose it.
+
+Both raw JSON decoders reject `NaN`, `Infinity` and `-Infinity`, and reject JSON
+numeric tokens whose conversion would overflow to a nonfinite float. Decoder
+hooks apply at every nesting level, including otherwise unused metadata. Finite
+numeric metadata, exact integer counters, literal strings and the existing
+schema remain compatible. The independent consumer imports no producer parser
+or arithmetic implementation.
+
+`scripts/test_ci_select_bench_parsing.py` includes direct parser checks, complete
+raw replay, and full-bundle reconciliation with producer validation disabled.
+The tests were run against the original PR head before changing either parser:
+the dotted-field and nonfinite/overflow regressions failed as expected. These
+are synthetic parser regressions, not historical benchmark qualification.
+
+The R1 change does not modify accounting equations, consistency/lifecycle gates,
+5% busy / 1% steal / 1% throttle thresholds, provenance, resource/security policy,
+workflow authorization, workflow YAML, compiler/candidate scope or main lanes.

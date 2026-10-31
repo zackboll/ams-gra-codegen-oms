@@ -44,7 +44,10 @@ def parse_cgroup(text):
     counters = {}
     for line in text.splitlines():
         parts = line.split()
-        if len(parts) != 2 or not re.fullmatch(r'[a-z_]+', parts[0]) or parts[0] in counters:
+        # Kernel extensions such as core_sched.force_idle_usec use dotted
+        # names. Require nonempty lowercase/underscore components, not text.
+        if (len(parts) != 2 or not re.fullmatch(r'[a-z_]+(?:\.[a-z_]+)*', parts[0])
+                or not re.fullmatch(r'[0-9]+', parts[1]) or parts[0] in counters):
             raise ValueError('duplicate/truncated cgroup counter')
         counters[parts[0]] = integer(int(parts[1]))
     if not REQUIRED <= set(counters):
@@ -131,6 +134,15 @@ def resolve(reference_record, loader, expected_name):
 
 
 def strict_json(data):
+    def nonfinite(value):
+        raise ValueError('nonfinite JSON number: ' + value)
+
+    def finite_float(value):
+        parsed = float(value)
+        if not math.isfinite(parsed):
+            nonfinite(value)
+        return parsed
+
     def pairs(items):
         result = {}
         for k, v in items:
@@ -141,7 +153,7 @@ def strict_json(data):
     if not data.endswith(b'\n'):
         raise ValueError('truncated raw CPU journal')
     return [json.loads(line, object_pairs_hook=pairs,
-            parse_constant=lambda _: (_ for _ in ()).throw(ValueError('nonfinite JSON')))
+            parse_constant=nonfinite, parse_float=finite_float)
             for line in data.splitlines()]
 
 

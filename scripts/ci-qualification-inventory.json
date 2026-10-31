@@ -5108,8 +5108,8 @@
       "scripts/ci_bench/provision.py": "096f6896913a4aa5381a32f30e31ae48db8df21c7526a2836c91b4fe3127e745",
       "scripts/ci_bench/reconcile.py": "0efaf97e9a320b35ee0a2185c502dd1fd2f4e819176bda442feaf63dbed746ea",
       "scripts/ci_bench/worker.py": "fd3706b01dc2decdfa9d09a042509ac66d74ca2311f706d86e0c66f757e78609",
-      "scripts/ci_bench/cpu.py": "65249272ed17a10ea1bb6eacca43a63af8813aa0343f5445f25d0ddb57f2f0af",
-      "scripts/ci_bench/cpu_audit.py": "53f0f0555648b4607b8eb3ef3054dc5479a2cfa4de6b93d3a4b58dadf35dfddf",
+      "scripts/ci_bench/cpu.py": "3d487cc4e0e965e972ed1a16ef52dc15c840fecd5e2727b6f0e2134467549ece",
+      "scripts/ci_bench/cpu_audit.py": "4931d67759b5d43ff14e2b2d0b7e8cf0c5416507a045f3aee8e25e65eea250aa",
       "scripts/ci_bench/supervisor.py": "f1ba941ad5a5660531d82eb70f5ae183c17216647c540afc05e682dd1a12a032"
     },
     "jobs": {
