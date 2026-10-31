@@ -16,6 +16,7 @@ from ci_select004 import HOOKS, project, project_sleet, SLEET, PYTHON_ENV
 import owned_qualification as owned
 from owned_ada_evidence import verify_bundle
 from ci_retry_test_data import metadata
+from owned_python_evidence import verify_bundle as verify_python
 
 ROOT = owned.ROOT
 
@@ -48,7 +49,7 @@ class Registration(unittest.TestCase):
         item['task_id'] = 'future-task'
         (new / 'manifest.json').write_text(json.dumps(item))
         records = owned.registrations(self.root)
-        self.assertEqual(len(records), 7)
+        self.assertEqual(len(records), len(owned.registrations(ROOT)) + 1)
         self.assertEqual(owned.ownership('qualification/ada/fast/future-task/owned_smoke.adb', self.root)['jobs'],
                          ['rust', 'ada-lacal-runtime-core'])
         self.assertEqual(before, {p: (ROOT / p).read_bytes() for p in before})
@@ -206,7 +207,8 @@ class Evidence(unittest.TestCase):
                         files[label + '-' + action + '.stderr'] = b''
                         files[label + '-' + action + '.stdout'] = b''
                         files[label + '-' + action + '.command.json'] = json.dumps(dict(argv=['gprbuild', '-gnato', '-O' + optimization, '-gnatec=policy.adc'])).encode()
-                    files[label + '-execute.stdout'] = b'CI004_PASS checked-arithmetic\nCI004_PASS exception-propagation\n'
+                    files[label + '-execute.stdout'] = ''.join('CI004_PASS ' + test + '\n'
+                                                               for test in record['manifest']['tests']).encode()
                     files[label + '/policy.adc'] = ('' if policy == 'Normal' else f'pragma Assertion_Policy ({policy});\n').encode()
                     for name in record['manifest']['sources']:
                         files[label + '/' + name] = (ROOT / record['path'] / name).read_bytes()
@@ -223,7 +225,8 @@ class Evidence(unittest.TestCase):
 
     def test_omitted_skipped_forged_wrong_compiler_stale_and_masked_receipts(self):
         original = self.fixture()
-        self.assertEqual(self.verify(original)['cells'], 6)
+        self.assertEqual(self.verify(original)['cells'], sum(len(owned.cells(r)) for r in owned.ada()
+                                                             if r['mode'] == 'fast'))
         for field, value in [('actual_cells', []), ('required_cells', []), ('completed', False),
                              ('registrations', []), ('steps', []), ('files', {})]:
             files = dict(original)
@@ -289,6 +292,48 @@ class Evidence(unittest.TestCase):
             with self.subTest(mutation=mutation), self.assertRaises(ValueError):
                 gate.reconcile_owned(a, manifest, 'a', 'b', '123', '2', loader=lambda artifact: {},
                                      jobs=j, attempts=history)
+
+    def test_python_receipts_reject_omitted_skipped_forged_stale_wrong_pins(self):
+        fixtures = [r for r in owned.python_fixtures() if r['mode'] == 'uci']
+        sources = sorted((ROOT / 'python/qualification/uci').glob('test_*.py'))
+        tests = sorted(test for source in sources for test in owned.python_ids(source))
+        hashes = {p.relative_to(ROOT).as_posix(): owned.digest(p.read_bytes()) for p in sources}
+        for record in fixtures:
+            hashes.update(record['hashes'])
+        from task101_evidence import PINS, INCLUDES
+        original = {}
+        for version in ('3.11', '3.13'):
+            for policy in ('normal', 'optimized'):
+                prefix = version + '-' + policy + '/'
+                log = b'synthetic verifier fixture, not execution qualification\n'
+                result = dict(version=1, identity=dict(sha='a', tree='b', run_id='123', run_attempt='2',
+                    mode='uci', python=version, python_version=version + '.0 fixture', optimization=policy,
+                    interpreter_sha256='c'*64, generator_sha256='d'*64, uci_roots=PINS, uci_includes=INCLUDES),
+                    hashes=hashes, fixtures=fixtures, test_ids=tests, log_sha256=owned.digest(log),
+                    execution=dict(status='success', reasons=[], tests_registered=len(tests), tests_run=len(tests),
+                        tests_passed=len(tests), failures=0, errors=0, skipped=0, expected_failures=0,
+                        unexpected_successes=0, executed_test_ids=tests, passed_test_ids=tests))
+                original[prefix + 'result.json'] = json.dumps(result).encode()
+                original[prefix + 'execution.log'] = log
+        self.assertEqual(verify_python(original, 'uci', ['3.11', '3.13'], 'a', 'b', '123', '2')['tests'], len(tests))
+        path = '3.11-normal/result.json'
+        for section, key, value in [('identity', 'python', '3.12'), ('identity', 'sha', 'stale'),
+                                    ('identity', 'run_attempt', '1'), ('identity', 'uci_roots', {}),
+                                    ('identity', 'uci_includes', {}), ('identity', 'mode', 'sleet'),
+                                    ('execution', 'skipped', 1), ('execution', 'expected_failures', 1),
+                                    ('execution', 'failures', 1), ('execution', 'tests_run', 0),
+                                    ('execution', 'executed_test_ids', [])]:
+            files = dict(original)
+            result = json.loads(files[path])
+            result[section][key] = value
+            files[path] = json.dumps(result).encode()
+            with self.subTest(section=section, key=key), self.assertRaises(ValueError):
+                verify_python(files, 'uci', ['3.11', '3.13'], 'a', 'b', '123', '2')
+        for path in original:
+            files = dict(original)
+            del files[path]
+            with self.subTest(path=path), self.assertRaises((ValueError, KeyError)):
+                verify_python(files, 'uci', ['3.11', '3.13'], 'a', 'b', '123', '2')
 
 
 if __name__ == '__main__':
