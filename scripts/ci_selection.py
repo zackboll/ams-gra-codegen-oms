@@ -153,6 +153,21 @@ def _select(changes, policy, full_reason=None, full_main=False):
             full = deep = True
             reasons.append(dict(path=path, category="infrastructure"))
             continue
+        # Only a flat, registered Python test or evidence-only CLI example may
+        # inherit component ownership. fnmatch '*' also matches '/', so
+        # validate structure independently before the first-match rules.
+        if path.startswith('python/qualification/') and not re.fullmatch(
+                r'python/qualification/(fast|uci|sleet)/test_[a-z0-9_]+\.py', path):
+            full = deep = True
+            reasons.append(dict(path=path, category='fallback',
+                                reason='unregistered Python qualification source'))
+            continue
+        if path.startswith('crates/cli/examples/python_') and not re.fullmatch(
+                r'crates/cli/examples/python_[a-z0-9_]+\.rs', path):
+            full = deep = True
+            reasons.append(dict(path=path, category='fallback',
+                                reason='unregistered Python evidence example'))
+            continue
         docs = policy["documentation"]
         if (any(fnmatch.fnmatchcase(path, p) for p in docs["paths"])
                 and path not in docs["exclusions"] and change["new_mode"] == "100644"
