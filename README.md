@@ -151,6 +151,16 @@ Named unconstrained DateTime, other temporal facets, Time and Duration remain
 unsupported. DateTime support is not complete real-UCI service interoperability;
 the qualification document records measured successor blockers.
 
+[PY-010](docs/task-py-010-python-visible-ascii.md) adds checked named
+visible-ASCII String carriers and lossless OMS JSON String codecs for the exact
+shared Task 039 family: lengths `1..20/32/64/81/128/256/480/512/1024` and `2..4`,
+with only U+0020–U+007E. Leading, trailing and repeated spaces are significant.
+Construction and codec ingress/egress validate exact types without coercion or
+normalization, including under `python -O`. Other String profiles, Binary and
+field-local constrained Strings remain unsupported. Measured PositionReport
+now first blocks on `NATO_SpecialWordsType`; UCI 2.5 SubsystemStream first blocks
+on unbounded `SubsystemStreamString`. None of the measured services is READY.
+
 Run
 `ams-gra-codegen-oms --help` or a command followed by `--help` for complete
 usage. Exit status `0` means success, `2` means invalid command-line usage, and

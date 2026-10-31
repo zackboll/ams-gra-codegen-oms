@@ -66,10 +66,18 @@ sys.path.insert(0, str(Path(sys.argv[1]) / 'scripts'))
 from ci_policy import blocks, check, normalized
 from ci_selection import inventory, select
 from real_uci_evidence import check_layout
+from py010_ci import project as project_py010
+from ci_select003 import project as project003
+from py009_ci import project as project_py009
 policy = inventory()
 # Keep current-main policy/security pins authoritative. Disposable layout
 # fixtures below may still change harmless descriptions, as before.
 check()
+# Validate additive commands/evidence in the supplied owning jobs too, not
+# just the worktree files. Historical layout fixtures may alter descriptions.
+supplied = {'ci.yml': Path(sys.argv[2]).read_text(),
+            'deep-ci.yml': Path(sys.argv[3]).read_text()}
+project_py009(project003(project_py010(supplied)))
 for path in ('scripts/check-py007-uci.py', 'scripts/test-py007-uci.py',
              'scripts/check-py007-sleet.sh', 'tests/fixtures/python-inheritance/oam.xsd',
              'crates/backend-python/src/lib.rs', 'crates/cli/tests/python_inheritance.rs',
@@ -117,7 +125,7 @@ for required in '--test python_float64 -- --nocapture' 'python scripts/test-py00
   grep -Fq -- "$required" <<<"$fast_code" || fail "Fast CI lost PY-008 gate: $required"
 done
 for required in 'python3 scripts/check-py008-uci.py --generator' \
-  '--service-baseline tests/fixtures/python-datetime/after.json' \
+  '--service-baseline tests/fixtures/python-visible-ascii/after.json' \
   'scripts/check-py008-numeric.py --full' 'for interpreter in python3.11 python3.13; do'; do
   grep -Fq -- "$required" <<<"$deep_code" || fail "Deep CI lost PY-008 gate: $required"
 done
@@ -131,6 +139,15 @@ for required in 'python3 scripts/check-py009-uci.py --generator' 'python3 script
   grep -Fq -- "$required" <<<"$deep_code" || fail "Deep CI lost PY-009 gate: $required"
 done
 grep -Fq 'scripts/check-py009-sleet.sh' <<<"$sleet_code" || fail "Sleet harness lost PY-009 DateTime delivery"
+for required in '--test python_visible_ascii -- --nocapture' 'python scripts/test-py010-uci.py' \
+  'python scripts/check-py010-parity.py'; do
+  grep -Fq -- "$required" <<<"$fast_code" || fail "Fast CI lost PY-010 gate: $required"
+done
+for required in '"$py010_interpreter" scripts/check-py010-uci.py --generator' 'python3 scripts/test-py010-uci.py' \
+  '--example python_visible_ascii_profiles'; do
+  grep -Fq -- "$required" <<<"$deep_code" || fail "Deep CI lost PY-010 gate: $required"
+done
+grep -Fq 'scripts/check-py010-sleet.sh' <<<"$sleet_code" || fail "Sleet harness lost PY-010 VisibleAscii delivery"
 if grep -Fq 'scripts/check-py008-sleet.sh' <<<"$fast_code" || grep -Fq 'scripts/check-py008-uci.py --generator' <<<"$fast_code"; then
   fail "Fast CI must not run PY-008 external campaigns"
 fi
