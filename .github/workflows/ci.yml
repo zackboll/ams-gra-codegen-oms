@@ -573,6 +573,9 @@ jobs:
             slot: 2
     steps:
       - uses: actions/checkout@v4
+      - name: Prevent Python bytecode in source-bound qualification
+        shell: bash
+        run: echo 'PYTHONDONTWRITEBYTECODE=1' >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@1.95.0
         with:
           components: rustfmt, clippy

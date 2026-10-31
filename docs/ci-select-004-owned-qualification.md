@@ -117,3 +117,16 @@ must compare actual job allocations, execution/artifacts/final gate, runner-minu
 and workflow elapsed time against full-CI baselines; skipped labels alone are not
 savings. Close without merging after retaining evidence. Do not claim readiness
 before hosted acceptance and independent verification. Stop before merging.
+
+### First hosted correction
+
+PR #146 initial head `90f2d630c219722c4bb68fa2e6e52733fecbb80c` selected full CI
+(20 ordinary and 14 Deep cells) in run `41252272956`. Both Python Fast receipt
+steps rejected dirty source after inherited tests generated Python bytecode in
+shared source directories. A clean disposable clone independently reproduced
+`?? scripts/__pycache__/` after importing the policy without bytecode prevention.
+No completion artifact was accepted. All three Python-owning jobs now require
+`PYTHONDONTWRITEBYTECODE=1` from job start, independently checked by exact additive
+projection. The source cleanliness check is retained, not ignored or cleaned away.
+Dirty-source failures include actual status diagnostics. That earlier run is
+failed qualification evidence, not an exact-head pass for the corrective source.

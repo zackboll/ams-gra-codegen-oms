@@ -3,6 +3,7 @@ import copy
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import tempfile
@@ -11,7 +12,7 @@ from unittest.mock import patch
 
 import ci_policy
 import ci_selection
-from ci_select004 import HOOKS, project, project_sleet, SLEET
+from ci_select004 import HOOKS, project, project_sleet, SLEET, PYTHON_ENV
 import owned_qualification as owned
 from owned_ada_evidence import verify_bundle
 from ci_retry_test_data import metadata
@@ -165,6 +166,19 @@ class HookContracts(unittest.TestCase):
         project_sleet(text)
         with self.assertRaises(ValueError):
             project_sleet(text.replace(SLEET, '', 1))
+
+    def test_python_bytecode_prevention_is_mandatory_before_shared_tests(self):
+        workflows = {p.name: p.read_text() for p in (ROOT / '.github/workflows').glob('*.yml')}
+        for workflow, owner, _ in HOOKS:
+            if owner.startswith('ada-'):
+                continue
+            body = dict(re.findall(r'^  ([\w-]+):\n(.*?)(?=^  [\w-]+:|\Z)',
+                                   workflows[workflow], re.M | re.S))[owner]
+            for replacement in ('', PYTHON_ENV.replace('BYTECODE=1', 'BYTECODE=0')):
+                altered = dict(workflows)
+                altered[workflow] = altered[workflow].replace(body, body.replace(PYTHON_ENV, replacement, 1), 1)
+                with self.subTest(owner=owner), self.assertRaisesRegex(ValueError, 'bytecode-free'):
+                    project(altered)
 
 
 class Evidence(unittest.TestCase):

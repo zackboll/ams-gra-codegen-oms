@@ -51,6 +51,10 @@ HOOKS = (
 )
 ADA_PATHS = {'ada-lacal-runtime-core': '            /tmp/ci004-ada-fast/**\n',
              'ada-real-uci-dlz-sleet': '            /tmp/ci004-ada-pinned/**\n'}
+PYTHON_ENV = '''      - name: Prevent Python bytecode in source-bound qualification
+        shell: bash
+        run: echo 'PYTHONDONTWRITEBYTECODE=1' >> "$GITHUB_ENV"
+'''
 SLEET = ('  "$interpreter" "$ROOT/scripts/run-owned-python.py" sleet\n'
          '  "$interpreter" -O "$ROOT/scripts/run-owned-python.py" sleet\n')
 
@@ -69,9 +73,13 @@ def project(workflows):
             if body.count(addition + anchor) != 1 or body.count(path) != 1 or text.count(path) != 1:
                 raise ValueError('CI-SELECT-004 Ada evidence publication missing/moved: ' + owner)
             text = text.replace(path, '', 1)
-        elif any(line.strip() and not line.lstrip().startswith('#')
-                 for line in body.split(addition, 1)[-1].splitlines()):
-            raise ValueError('CI-SELECT-004 mandatory hook missing/moved/masked: ' + owner)
+        else:
+            if body.count(PYTHON_ENV + '      - uses: dtolnay/rust-toolchain@') != 1:
+                raise ValueError('CI-SELECT-004 bytecode-free Python source contract missing: ' + owner)
+            text = text.replace(body, body.replace(PYTHON_ENV, '', 1), 1)
+            if any(line.strip() and not line.lstrip().startswith('#')
+                   for line in body.split(addition, 1)[-1].splitlines()):
+                raise ValueError('CI-SELECT-004 mandatory hook missing/moved/masked: ' + owner)
         result[workflow] = text.replace(addition, '', 1)
     return result
 

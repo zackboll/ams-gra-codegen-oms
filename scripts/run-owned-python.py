@@ -34,8 +34,9 @@ def main():
     spec.loader.exec_module(runner)
     runner.require_inputs(mode)
     source = subprocess.check_output(['git', 'rev-parse', 'HEAD', 'HEAD^{tree}'], cwd=ROOT, text=True).splitlines()
-    if subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT):
-        raise ValueError('dirty Python qualification source')
+    status = subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT, text=True)
+    if status:
+        raise ValueError('dirty Python qualification source: ' + status)
     if source[0] != os.environ.get('GITHUB_SHA', source[0]):
         raise ValueError('Python workflow source mismatch')
     generator = ROOT / 'target' / ('release' if mode == 'uci' else 'debug') / 'ams-gra-codegen-oms'
