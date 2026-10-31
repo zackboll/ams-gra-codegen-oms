@@ -133,6 +133,8 @@ PY008_SURFACES = (
 
 
 def check_py008_sleet(text):
+    from ci_select003 import project_sleet as project_sleet003
+    text = project_sleet003(text)
     from py009_ci import project_sleet
     text = project_sleet(text)
     # Bind execution to the existing version loop and shared pinned build.
@@ -215,7 +217,11 @@ def check(policy=None, workflows=None, sleet=None):
         raise ValueError('reviewed Deep input contract changed')
     if hashlib.sha256(policy['deep_caller'].encode()).hexdigest() != 'a343b3f71a5299740901fef920a1121757a44872850f1c07c1165d41e3170264':
         raise ValueError('reviewed Deep caller input changed')
-    rules = [{k: r[k] for k in ('category', 'paths', 'deep_jobs', 'deep_rationale')} for r in policy['rules']]
+    from ci_select003 import RULES as CI003_RULES
+    if policy['rules'][:len(CI003_RULES)] != CI003_RULES:
+        raise ValueError('CI-SELECT-003 reviewed Python Deep ownership changed')
+    inherited_rules = policy['rules'][len(CI003_RULES):]
+    rules = [{k: r[k] for k in ('category', 'paths', 'deep_jobs', 'deep_rationale')} for r in inherited_rules]
     if hashlib.sha256(json.dumps(rules, sort_keys=True).encode()).hexdigest() != '21ae69c58815ddedc8536b660cbf095d68d77741f92a94e00c0b2ad116504d2b':
         raise ValueError('reviewed Deep dependency ownership changed')
     from real_uci_evidence import SHARDS
@@ -234,6 +240,8 @@ def check(policy=None, workflows=None, sleet=None):
             raise ValueError('inherited trusted-dispatch source changed: ' + path)
     if workflows is None:
         workflows = {p.name: p.read_text() for p in (ROOT / '.github/workflows').iterdir() if p.suffix in ('.yml', '.yaml')}
+    from ci_select003 import project as project003
+    workflows = project003(workflows)
     from py009_ci import project
     workflows = project(workflows)
     from real_uci_evidence import check_layout
@@ -401,6 +409,11 @@ def check(policy=None, workflows=None, sleet=None):
         manifest = select([dict(status='M', paths=[path], old_mode='100644', new_mode='100644')], policy)
         if not manifest['deep'] or not {'python-model-backend-3.11', 'python-model-backend-3.13'} <= set(manifest['cells']):
             raise ValueError('PY-008 source avoids Python/Deep qualification: ' + path)
+    for mode in ('fast', 'uci', 'sleet'):
+        if not (ROOT / ('python/qualification/' + mode + '/test_' + mode + '_contract.py')).is_file():
+            raise ValueError('CI-SELECT-003 initial mandatory test registration missing: ' + mode)
+    if not (ROOT / 'python/qualification/run.py').is_file():
+        raise ValueError('CI-SELECT-003 mandatory runner missing')
     check_py008_sleet(sleet if sleet is not None else (ROOT / 'scripts/run-real-sleet-test.sh').read_text())
     return count
 
