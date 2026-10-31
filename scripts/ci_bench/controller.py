@@ -374,7 +374,9 @@ def campaign():
             peak = 0
             final_stats = None
             while process.poll() is None:
-                time.sleep(1)
+                # Target the next one-second boundary, rather than adding a
+                # second after JSON persistence/observer work every iteration.
+                time.sleep(max(0, 1 - (time.monotonic_ns()-previous['host']['begin_ns']) / 1e9))
                 current = journal.snapshot(len(samples) + 1, cgroup)
                 now = current['host']['begin_ns'] / 1e9
                 stats = cgroup_stats(cgroup)

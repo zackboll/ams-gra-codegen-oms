@@ -5104,7 +5104,7 @@
       "scripts/ci_artifact_provenance.py": "f2f7cfe5dcde40cbd64832f8ac8be83ff229cfd760dc955364ec4f9b850158b2",
       "scripts/ci_bench/Dockerfile": "78194910d2e1c4bdc87b44094b9f4782488e6154df1c61c6b6d8be0cdbb4ce1b",
       "scripts/ci_bench/contract.py": "126cbb3ad922e2b53d4b8a15e7adce460aa9abe947b1d3dc1ad74128fcb0ba12",
-      "scripts/ci_bench/controller.py": "c2497b68858cb08f5eca7f06956227948cb7743d33659fe5c3d097daad729b76",
+      "scripts/ci_bench/controller.py": "18cf69aa92d11d24fdbff69878449ca6b8f21c08134ee25c79f09cfdd933b3da",
       "scripts/ci_bench/provision.py": "096f6896913a4aa5381a32f30e31ae48db8df21c7526a2836c91b4fe3127e745",
       "scripts/ci_bench/reconcile.py": "0efaf97e9a320b35ee0a2185c502dd1fd2f4e819176bda442feaf63dbed746ea",
       "scripts/ci_bench/worker.py": "fd3706b01dc2decdfa9d09a042509ac66d74ca2311f706d86e0c66f757e78609",
