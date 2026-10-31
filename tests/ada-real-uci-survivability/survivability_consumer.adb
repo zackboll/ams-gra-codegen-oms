@@ -92,6 +92,16 @@ procedure Survivability_Consumer is
       Check (Length (Owners.Additional) = (if Sequence_Case = 4 then 3 else 1), "additional owners length");
       Check (Element (Owners.Additional, 1).Kind = NATO_SpecialWord_Kind, "additional owner discriminant");
       Check (Value (Element (Owners.Additional, 1).NATO_SpecialWord) = "NATO:EXAMPLE", "additional owner value");
+      if Sequence_Case = 4 then
+         Check (Element (Owners.Additional, 2).Kind = GovernmentIdentifier_Kind,
+                "extra government owner discriminant/order");
+         Check (Element (Owners.Additional, 2).GovernmentIdentifier = CAN,
+                "extra government owner value");
+         Check (Element (Owners.Additional, 3).Kind = NATO_SpecialWord_Kind,
+                "extra NATO owner discriminant/order");
+         Check (Value (Element (Owners.Additional, 3).NATO_SpecialWord) = "NATO:MORE",
+                "extra NATO owner value");
+      end if;
       Check (Length (Message.MessageData.AppliesToSystemID) = 0, "optional system sequence");
       Check (Length (Settings) = (case Sequence_Case is when 3 => 2, when 4 => 4, when others => 1),
              "risk settings length");
