@@ -44,7 +44,9 @@ class ComponentSelection(unittest.TestCase):
                 self.assertEqual(set(result['deep_jobs']), wanted)
                 self.assertEqual({j for j, enabled in result['jobs'].items() if enabled},
                                  {'rust', 'python-model-backend'})
-                self.assertEqual(result['deep_selected_cells'] + result['deep_skipped_cells'], 12)
+                # Current main adds Task101's two mandatory Deep compiler cells;
+                # Python ownership remains bounded and does not select either.
+                self.assertEqual(result['deep_selected_cells'] + result['deep_skipped_cells'], 14)
                 self.assertTrue({'python-model-backend-3.11', 'python-model-backend-3.13'}
                                 <= set(result['cells']))
 
@@ -56,6 +58,22 @@ class ComponentSelection(unittest.TestCase):
         main = selection.select([], self.policy, full_main=True)
         self.assertEqual(set(main['deep_jobs']), self.all)
         self.assertTrue(all(main['jobs'].values()))
+
+    def test_main_task101_ownership_and_compiler_cells_are_preserved(self):
+        record = selection.deep_jobs(self.policy)['ada-real-uci-dlz-sleet']
+        self.assertEqual([(c['variant'], c['lane'], c['artifacts']) for c in record['cells']],
+                         [({'compiler': c}, lane, ['task101-ada-real-uci-dlz-' + c])
+                          for c, lane in [('14', 3), ('16', 5)]])
+        cases = {
+            'tests/ada-real-uci-dlz/dlz_consumer.adb': {'ada-real-uci-dlz-sleet'},
+            'ada/oms-lacal-runtime/websocket/oms_lacal_websocket.ads': {
+                'ada-real-uci-dlz-sleet', 'ada-websocket-real-sleet'},
+        }
+        for path, wanted in cases.items():
+            with self.subTest(path=path):
+                result = selection.select([changed(path)], self.policy)
+                self.assertEqual(result['mode'], 'selective-pr')
+                self.assertEqual(set(result['deep_jobs']), wanted)
 
     def test_unknown_scripts_runner_and_suspicious_paths_fail_broad(self):
         for path in (
@@ -117,7 +135,7 @@ class RunnerContract(unittest.TestCase):
         self.assertNotIn('python/qualification/run.py', projected['ci.yml'])
         self.assertNotIn('python/qualification/run.py', projected['deep-ci.yml'])
         self.assertNotIn('python/qualification/run.py', project_sleet(sleet))
-        self.assertEqual(ci_policy.check(), 40)
+        self.assertEqual(ci_policy.check(), 42)
         for workflow, hook in [('ci.yml', FAST), ('deep-ci.yml', DEEP)]:
             altered = dict(workflows)
             altered[workflow] = altered[workflow].replace(hook, '', 1)
@@ -145,6 +163,13 @@ class RunnerContract(unittest.TestCase):
         rule['deep_jobs'].remove('real-sleet')
         with self.assertRaisesRegex(ValueError,
                                     '^CI-SELECT-003 reviewed Python Deep ownership changed$'):
+            ci_policy.check(policy=policy)
+
+    def test_main_task101_deep_owner_removal_is_rejected(self):
+        policy = selection.inventory()
+        rule = next(r for r in policy['rules'] if r['category'] == 'ada-websocket-implementation')
+        rule['deep_jobs'].remove('ada-real-uci-dlz-sleet')
+        with self.assertRaisesRegex(ValueError, '^reviewed Deep dependency ownership changed$'):
             ci_policy.check(policy=policy)
 
 

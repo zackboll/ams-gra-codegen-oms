@@ -210,7 +210,7 @@ def check(policy=None, workflows=None, sleet=None):
     original_headers = {r['job_id']: normalized(r['expected_header'].replace(
         '    if: ' + deep_condition(r['job_id']) + '\n', '').replace(
         'if: ' + deep_condition(r['job_id']) + '\n', ''))
-        for r in policy['jobs'] if r['workflow'] == 'deep-ci.yml'}
+        for r in policy['jobs'] if r['workflow'] == 'deep-ci.yml' and r['job_id'] != 'ada-real-uci-dlz-sleet'}
     if hashlib.sha256(json.dumps(original_headers, sort_keys=True).encode()).hexdigest() != '3946b92fb805271be235bde5170f0fa483ce3c8a56fa3488b4171ee004a7f22a':
         raise ValueError('immutable main Deep runner/matrix/header inventory changed')
     if hashlib.sha256(policy['deep_header'].encode()).hexdigest() != '41b85c9ba045f75f412929efd73e9de54977b77ccddaef8a52a95e698728ed72':
@@ -222,7 +222,9 @@ def check(policy=None, workflows=None, sleet=None):
         raise ValueError('CI-SELECT-003 reviewed Python Deep ownership changed')
     inherited_rules = policy['rules'][len(CI003_RULES):]
     rules = [{k: r[k] for k in ('category', 'paths', 'deep_jobs', 'deep_rationale')} for r in inherited_rules]
-    if hashlib.sha256(json.dumps(rules, sort_keys=True).encode()).hexdigest() != '21ae69c58815ddedc8536b660cbf095d68d77741f92a94e00c0b2ad116504d2b':
+    # Main fc36c97f independently pins the inherited Task101 ownership extension.
+    # Keep that authority separate from CI-SELECT-003's four exact prefix rules.
+    if hashlib.sha256(json.dumps(rules, sort_keys=True).encode()).hexdigest() != '2fb1c569eaf4c5ef0f0ebf5840c85c8f89395b67ef4517f32eefce60f5b82469':
         raise ValueError('reviewed Deep dependency ownership changed')
     from real_uci_evidence import SHARDS
     for job_id, record in deep_jobs(policy).items():
@@ -260,6 +262,31 @@ def check(policy=None, workflows=None, sleet=None):
             ('ada-lacal-runtime-core-' + v, 'ada-lacal-runtime-core (' + v + ')', {'compiler': v}) for v in ('14', '16')]:
         raise ValueError('Task099 requires exactly GNAT14/GNAT16 qualification cells')
     expected = {}
+    task101 = [r for r in policy['jobs'] if r['job_id'] == 'ada-real-uci-dlz-sleet']
+    if len(task101) != 1 or task101[0]['workflow'] != 'deep-ci.yml':
+        raise ValueError('Task101 mandatory independent Deep job absent/duplicate')
+    task101 = task101[0]
+    if [(c['variant'], c['lane'], c['artifacts']) for c in task101['cells']] != [
+            ({'compiler': c}, lane, ['task101-ada-real-uci-dlz-' + c]) for c, lane in [('14', 3), ('16', 5)]]:
+        raise ValueError('Task101 mandatory compiler/artifact/lane inventory changed')
+    # R1 uses the inherited producer publication name so CI-BENCH's immutable
+    # provenance source remains byte-identical. Project exactly that one name
+    # back to Task101's original payload; retain its original hash authority.
+    task101_steps = task101['original_steps_yaml']
+    hidden_sources = ('          name: task101-ada-real-uci-dlz-${{ matrix.compiler }}\n'
+                      '          include-hidden-files: true\n')
+    if task101_steps.count(hidden_sources) != 1:
+        raise ValueError('Task101 hashed hidden provider evidence must be uploaded')
+    task101_steps = task101_steps.replace(hidden_sources,
+        '          name: task101-ada-real-uci-dlz-${{ matrix.compiler }}\n')
+    publication = '      - name: Upload mandatory source compiler and execution evidence\n'
+    if task101_steps.count(publication) != 1:
+        raise ValueError('Task101 mandatory publication contract changed')
+    task101_steps = task101_steps.replace(publication,
+        '      - name: Preserve Task101 mandatory source and execution evidence\n')
+    if (hashlib.sha256(task101['expected_header'].encode()).hexdigest() != 'a93ce7ff40b525284f849b9946c603b65602860a0e3e88156d4a22535e8c3e23'
+            or hashlib.sha256(normalized(task101_steps).encode()).hexdigest() != '62ce975ac7d3ffdbf7fd6bbcdd360c2fb8ccadd360fbdd29b0fa9c63b57ec31e'):
+        raise ValueError('Task101 mandatory qualification header/payload changed')
     for workflow, job_id, kind in [('ci.yml', 'ada-websocket-transport', 'transport'),
                                    ('deep-ci.yml', 'ada-websocket-real-sleet', 'sleet')]:
         records = [r for r in policy['jobs'] if (r['workflow'], r['job_id']) == (workflow, job_id)]
@@ -285,7 +312,7 @@ def check(policy=None, workflows=None, sleet=None):
             check_py008_integration(record)
         expected[key] = record
     deep_baseline = [{k: r[k] for k in ('job_id', 'cells', 'original_steps_yaml', 'original_steps')}
-                     for r in policy['jobs'] if r['workflow'] == 'deep-ci.yml']
+                     for r in policy['jobs'] if r['workflow'] == 'deep-ci.yml' and r['job_id'] != 'ada-real-uci-dlz-sleet']
     # Preserve the frozen 7958c4e0 baseline rather than reattribute it to this
     # merge. Main 3f69cb0e adds exactly one PY-008 artifact to real-sleet;
     # its independently pinned additive payload/step contracts are checked below.
