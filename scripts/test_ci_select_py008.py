@@ -15,7 +15,7 @@ class Float64Integration(unittest.TestCase):
         self.workflows = {p.name: p.read_text() for p in
                           (selection.ROOT / '.github/workflows').glob('*.yml')}
         self.sleet = (selection.ROOT / 'scripts/run-real-sleet-test.sh').read_text()
-        self.assertEqual(ci_policy.check(self.policy, self.workflows, self.sleet), 46)
+        self.assertEqual(ci_policy.check(self.policy, self.workflows, self.sleet), 48)
 
     def reject(self, workflow, before, after, diagnostic):
         mutated = dict(self.workflows)

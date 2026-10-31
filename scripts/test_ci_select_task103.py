@@ -363,7 +363,7 @@ class SelectionAndAggregate(GateTests):
         from ci_bench import policy as benchmark
         policy = ci_selection.inventory()
         workflows = {p.name: p.read_text() for p in (evidence.ROOT / '.github/workflows').glob('*.yml')}
-        self.assertEqual(ci_policy.check(policy, workflows), 46)
+        self.assertEqual(ci_policy.check(policy, workflows), 48)
         registered = ci_selection.deep_jobs(policy)
         self.assertEqual([c['variant']['compiler'] for c in registered[evidence.JOB]['cells']], ['14', '16'])
         self.assertEqual(policy['manual_benchmark']['events'], ['workflow_dispatch'])

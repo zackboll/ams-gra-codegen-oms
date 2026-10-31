@@ -20,7 +20,7 @@ class BaselineBudget(unittest.TestCase):
 
     def test_reviewed_twenty_minute_budget_is_accepted(self):
         self.assertEqual(ci_policy.field(self.baseline, 'timeout-minutes'), ['20'])
-        self.assertEqual(ci_policy.check(workflows=self.workflows), 46)
+        self.assertEqual(ci_policy.check(workflows=self.workflows), 48)
 
     def test_other_timeout_values_and_omission_are_rejected(self):
         for replacement in ('', '    timeout-minutes: 10\n',

@@ -205,14 +205,16 @@ def check_rust_ci001(sources=None):
 
 def check(policy=None, workflows=None, sleet=None):
     policy = policy or inventory()
+    from task104_ci import JOB as TASK104_JOB, project as project_task104
+    task103_policy = project_task104(policy, normalized)
     from task103_ci import JOB as TASK103_JOB, project as project_task103
-    inherited_policy = project_task103(policy, normalized)
+    inherited_policy = project_task103(task103_policy, normalized)
     from task102_ci import JOB as TASK102_JOB, project_rules, check_job
     check_job(policy, normalized)
     original_headers = {r['job_id']: normalized(r['expected_header'].replace(
         '    if: ' + deep_condition(r['job_id']) + '\n', '').replace(
         'if: ' + deep_condition(r['job_id']) + '\n', ''))
-        for r in policy['jobs'] if r['workflow'] == 'deep-ci.yml' and r['job_id'] not in ('ada-real-uci-dlz-sleet', TASK102_JOB, TASK103_JOB)}
+        for r in policy['jobs'] if r['workflow'] == 'deep-ci.yml' and r['job_id'] not in ('ada-real-uci-dlz-sleet', TASK102_JOB, TASK103_JOB, TASK104_JOB)}
     if hashlib.sha256(json.dumps(original_headers, sort_keys=True).encode()).hexdigest() != '3946b92fb805271be235bde5170f0fa483ce3c8a56fa3488b4171ee004a7f22a':
         raise ValueError('immutable main Deep runner/matrix/header inventory changed')
     if hashlib.sha256(policy['deep_header'].encode()).hexdigest() != '41b85c9ba045f75f412929efd73e9de54977b77ccddaef8a52a95e698728ed72':
@@ -306,7 +308,7 @@ def check(policy=None, workflows=None, sleet=None):
             check_py008_integration(record)
         expected[key] = record
     deep_baseline = [{k: r[k] for k in ('job_id', 'cells', 'original_steps_yaml', 'original_steps')}
-                     for r in policy['jobs'] if r['workflow'] == 'deep-ci.yml' and r['job_id'] not in ('ada-real-uci-dlz-sleet', TASK102_JOB, TASK103_JOB)]
+                     for r in policy['jobs'] if r['workflow'] == 'deep-ci.yml' and r['job_id'] not in ('ada-real-uci-dlz-sleet', TASK102_JOB, TASK103_JOB, TASK104_JOB)]
     # Preserve the frozen 7958c4e0 baseline rather than reattribute it to this
     # merge. Main 3f69cb0e adds exactly one PY-008 artifact to real-sleet;
     # its independently pinned additive payload/step contracts are checked below.

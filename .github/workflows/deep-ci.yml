@@ -22,6 +22,167 @@ permissions:
 # CI caller owns PR cancellation; no main cancellation group here.
 
 jobs:
+  ada-real-uci-survivability-sleet:
+    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'ada-real-uci-survivability-sleet')
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && format('oms-main-slot-{0}', matrix.slot) || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-ada-real-uci-survivability-sleet-{3}', github.workflow, github.run_id, github.run_attempt, matrix.compiler) }}
+      queue: max
+    name: ada-real-uci-survivability-sleet (${{ matrix.compiler }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: ['14', '16']
+        include:
+          - compiler: '14'
+            slot: 4
+          - compiler: '16'
+            slot: 1
+    container:
+      image: debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5
+    timeout-minutes: 120
+    steps:
+      - name: Verify pinned target and external compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update
+          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14
+          test "$(uname -m)" = x86_64
+          test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.41'
+          mkdir -p /tmp/task104-evidence
+          dpkg-query -W libc6 libc6-dev gnat-14 gcc-14 | tee /tmp/task104-evidence/platform.txt
+          sha256sum /usr/lib/x86_64-linux-gnu/libc.so.6 /usr/bin/gnat /usr/bin/gcc | tee -a /tmp/task104-evidence/platform.txt
+          gnat --version | tee -a /tmp/task104-evidence/platform.txt
+          gnat --version | grep -E '^GNAT 14\.2\.0([[:space:]]|$)'
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Record exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(pwd -P)" = "$(realpath "$GITHUB_WORKSPACE")"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task104-evidence/source.txt
+          test "$(git rev-parse HEAD)" = '${{ github.sha }}'
+          status="$(git status --porcelain)"
+          test -z "$status"
+      - uses: dtolnay/rust-toolchain@1.95.0
+      - name: Install verified Alire 2.1.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
+          echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  /tmp/alire.zip' | sha256sum --check --strict
+          unzip -q /tmp/alire.zip -d /opt/alire
+          test "$(/opt/alire/bin/alr --version)" = 'alr 2.1.1'
+          sha256sum /opt/alire/bin/alr | tee -a /tmp/task104-evidence/platform.txt
+          echo /opt/alire/bin >> "$GITHUB_PATH"
+      - name: Build source-bound generator
+        run: cargo +1.95.0 build --release --locked -p ams-gra-codegen-oms
+      - name: Provision pinned compiler and GNATCOLL inputs
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python3 scripts/task096/setup.py --scratch /tmp/task104-evidence/setup --compiler '${{ matrix.compiler }}'
+      - name: Build unmodified pinned Sleet
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --quiet https://github.com/open-arsenal/ams-gra-hello-world-sk-infra-sleet /tmp/task104-sleet
+          git -C /tmp/task104-sleet checkout --quiet --detach e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b
+          test "$(git -C /tmp/task104-sleet rev-parse HEAD)" = e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b
+          test -z "$(git -C /tmp/task104-sleet status --porcelain)"
+          git -C /tmp/task104-sleet rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task104-evidence/sleet-source.txt
+          (cd /tmp/task104-sleet && cargo build --release --locked -p sleet) 2>&1 | tee /tmp/task104-evidence/sleet-build.log
+      - name: Fetch authentic pinned UCI releases and protocol client
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get install --no-install-recommends -y python3-venv
+          bash scripts/fetch-pinned-uci-2.5.sh /tmp/task104-uci25 > /tmp/task104-evidence/uci25-root.txt
+          bash scripts/fetch-pinned-uci-2.6.sh /tmp/task104-uci26 > /tmp/task104-evidence/uci26-root.txt
+          python3 -m venv /tmp/task104-venv
+          /tmp/task104-venv/bin/pip install 'websockets==15.0.1'
+      - name: Inventory UCI 2.6 without compiler or transport claims
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python3 scripts/task104/inventory.py --schema "$(cat /tmp/task104-evidence/uci26-root.txt)" \
+            --generator target/release/ams-gra-codegen-oms --evidence /tmp/task104-evidence/uci26-inventory.json
+      - name: Execute actual Ada SurvivabilityRiskLevel against pinned Sleet
+        shell: bash
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          set -euo pipefail
+          /tmp/task104-venv/bin/python scripts/task104/qualify.py \
+            --scratch /tmp/task104-evidence/campaign --setup /tmp/task104-evidence/setup \
+            --compiler '${{ matrix.compiler }}' --generator target/release/ams-gra-codegen-oms \
+            --sleet /tmp/task104-sleet \
+            --uci25 "$(cat /tmp/task104-evidence/uci25-root.txt)" \
+            | tee /tmp/task104-evidence/qualify.log
+      - name: Record Task104 source-bound integration identity
+        shell: bash
+        env:
+          TASK104_COMPILER: ${{ matrix.compiler }}
+        run: |
+          python3 - <<'EOF'
+          import json, os, subprocess
+          from pathlib import Path
+          git = lambda ref: subprocess.check_output(['git', 'rev-parse', ref], text=True).strip()
+          sha = git('HEAD')
+          if sha != os.environ['GITHUB_SHA']:
+              raise SystemExit('Task104 source is not workflow source')
+          Path('/tmp/task104-evidence/integration-identity.json').write_text(json.dumps(dict(
+              sha=sha, tree=git('HEAD^{tree}'), run_id=os.environ['GITHUB_RUN_ID'],
+              run_attempt=os.environ['GITHUB_RUN_ATTEMPT'], compiler=os.environ['TASK104_COMPILER'])) + '\n')
+          EOF
+      - name: Independently verify every mandatory Task104 cell
+        shell: bash
+        env:
+          TASK104_COMPILER: ${{ matrix.compiler }}
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python3 - <<'EOF'
+          import os, sys, subprocess
+          from pathlib import Path
+          sys.path.insert(0, 'scripts')
+          from task104_evidence import verify_bundle
+          root = Path('/tmp/task104-evidence')
+          files = {str(p.relative_to(root)): p.read_bytes() for p in root.rglob('*')
+                   if p.is_file() and p.suffix in {'.json', '.txt', '.log', '.stdout', '.stderr', '.exit',
+                                                  '.sha256', '.ads', '.adb', '.gpr', '.adc', '.xsd', '.yaml'}}
+          tree = subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], text=True).strip()
+          print('TASK104_HOSTED_VERIFIED', verify_bundle(files, os.environ['TASK104_COMPILER'],
+                os.environ['GITHUB_SHA'], tree, os.environ['GITHUB_RUN_ID'], os.environ['GITHUB_RUN_ATTEMPT']))
+          EOF
+      - name: Upload mandatory source compiler and execution evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: task104-ada-real-uci-survivability-${{ matrix.compiler }}
+          include-hidden-files: true
+          path: |
+            /tmp/task104-evidence/*.json
+            /tmp/task104-evidence/*.txt
+            /tmp/task104-evidence/*.log
+            /tmp/task104-evidence/setup/step-*
+            /tmp/task104-evidence/setup/identities.json
+            /tmp/task104-evidence/campaign/**/*.json
+            /tmp/task104-evidence/campaign/**/*.log
+            /tmp/task104-evidence/campaign/**/*.txt
+            /tmp/task104-evidence/campaign/**/*.stdout
+            /tmp/task104-evidence/campaign/**/*.stderr
+            /tmp/task104-evidence/campaign/**/*.exit
+            /tmp/task104-evidence/campaign/**/*.sha256
+            /tmp/task104-evidence/campaign/**/*.ad?
+            /tmp/task104-evidence/campaign/**/*.gpr
+            /tmp/task104-evidence/campaign/**/*.adc
+            /tmp/task104-evidence/campaign/**/*.xsd
+            /tmp/task104-evidence/campaign/**/*.yaml
+          if-no-files-found: error
+
   ada-real-uci-rdma-sleet:
     if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'ada-real-uci-rdma-sleet')
     concurrency:
