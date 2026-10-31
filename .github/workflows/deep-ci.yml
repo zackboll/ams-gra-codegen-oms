@@ -525,6 +525,7 @@ jobs:
             --output "$RUNNER_TEMP/py006-uci" --existing-output --service-baseline tests/fixtures/python-datetime/after.json
           python3 scripts/test-py009-uci.py
           python3 scripts/check-py009-uci.py --generator target/release/ams-gra-codegen-oms --output "$RUNNER_TEMP/py006-uci/py009"
+          python3 python/qualification/run.py uci
       - name: Preserve Python pinned UCI measurements
         uses: actions/upload-artifact@v4
         with:
