@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import ci_policy
 import ci_selection
-from ci_bench import controller, policy, contract
+from ci_bench import controller, policy, contract, fixtures, cpu
 from ci_bench.worker import compiled_units
 
 
@@ -239,6 +239,9 @@ def rows():
     for index, row in enumerate(result):
         row['iteration'] = index % 4
         row['worker_log'] = f'worker-{index % 4}.log'
+        row['cpu_raw'], row['samples'] = fixtures.evidence({}, row['allocation'], row['iteration'])
+        row['wall_seconds'] = 1.101
+        row['cpu_seconds'] = 2
         row.update(cgroup_limits={'cpu.max': '200000 100000', 'cpuset.cpus.effective': '0,1',
                                  'memory.max': str(contract.MEMORY_BYTES), 'memory.swap.max': '0', 'pids.max': '256'},
                    final_cgroup=dict(usage_usec=row['samples'][-1]['usage_usec'],
@@ -330,10 +333,22 @@ class Measurement(unittest.TestCase):
             identity = dict(source_commit=contract.SOURCE_COMMIT, source_tree=contract.SOURCE_TREE,
                             run_id='123', run_attempt='2', job=contract.JOBS['14'], job_id='789', compiler='14')
             runs = rows()[:4]
+            for row in runs:
+                row['cpu_raw'], row['samples'] = fixtures.evidence(identity, row['allocation'], row['iteration'])
+            preflight_raw, preflight = fixtures.evidence(identity, runs[0]['allocation'], -1)
+            raw = b''.join(json.dumps(r,sort_keys=True).encode()+b'\n' for r in preflight_raw)
+            (base / 'public').mkdir(parents=True, exist_ok=True)
+            (base / 'public/cpu-preflight.jsonl').write_bytes(raw)
+            preflight_raw = cpu.reference('cpu-preflight.jsonl', raw)
+            for row in runs:
+                name = f"cpu-{row['iteration']}.jsonl"
+                raw = b''.join(json.dumps(r,sort_keys=True).encode()+b'\n' for r in row['cpu_raw'])
+                (base / 'public' / name).write_bytes(raw)
+                row['cpu_raw'] = cpu.reference(name,raw)
             result = dict(valid=True, completed=True, identity=identity, runs=runs,
                           budget=contract.budget(), allocation=runs[0]['allocation'], performance_success=False,
                           host_resources=dict(available_memory_bytes=8 * 1024**3, free_disk_bytes=10 * 1024**3),
-                          preflight=dict(external_busy_fraction=.01, steal_fraction=0, elapsed_seconds=10))
+                          preflight=preflight[0], preflight_raw=preflight_raw)
             transport = dict(outcome='success', artifact_id='456', artifact_digest='a' * 64,
                              run_id='123', run_attempt='2', job=contract.JOBS['14'], job_id='789', compiler='14')
             controller.write(base / 'identity.json', identity)

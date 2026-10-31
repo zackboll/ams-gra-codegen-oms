@@ -5104,10 +5104,13 @@
       "scripts/ci_artifact_provenance.py": "f2f7cfe5dcde40cbd64832f8ac8be83ff229cfd760dc955364ec4f9b850158b2",
       "scripts/ci_bench/Dockerfile": "78194910d2e1c4bdc87b44094b9f4782488e6154df1c61c6b6d8be0cdbb4ce1b",
       "scripts/ci_bench/contract.py": "126cbb3ad922e2b53d4b8a15e7adce460aa9abe947b1d3dc1ad74128fcb0ba12",
-      "scripts/ci_bench/controller.py": "dc29947e984b8d855ee247e251537d3d4e3abb4a65190f759ffbaffef8e10843",
+      "scripts/ci_bench/controller.py": "c2497b68858cb08f5eca7f06956227948cb7743d33659fe5c3d097daad729b76",
       "scripts/ci_bench/provision.py": "096f6896913a4aa5381a32f30e31ae48db8df21c7526a2836c91b4fe3127e745",
-      "scripts/ci_bench/reconcile.py": "4fea6cdbbcd3f9492384e9b6507636bf3d2a516ecd1d540e8d6f6ea6518577c4",
-      "scripts/ci_bench/worker.py": "1ae47dc4d637159bf7a90f68b17b72f77e1fd8daa26b6ce78dd90d0f8a0aad93"
+      "scripts/ci_bench/reconcile.py": "0efaf97e9a320b35ee0a2185c502dd1fd2f4e819176bda442feaf63dbed746ea",
+      "scripts/ci_bench/worker.py": "fd3706b01dc2decdfa9d09a042509ac66d74ca2311f706d86e0c66f757e78609",
+      "scripts/ci_bench/cpu.py": "65249272ed17a10ea1bb6eacca43a63af8813aa0343f5445f25d0ddb57f2f0af",
+      "scripts/ci_bench/cpu_audit.py": "53f0f0555648b4607b8eb3ef3054dc5479a2cfa4de6b93d3a4b58dadf35dfddf",
+      "scripts/ci_bench/supervisor.py": "f1ba941ad5a5660531d82eb70f5ae183c17216647c540afc05e682dd1a12a032"
     },
     "jobs": {
       "benchmark-gnat-14": {

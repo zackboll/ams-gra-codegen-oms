@@ -207,10 +207,8 @@ def main():
                   largest_child_peak_rss_kib=after.ru_maxrss, counts=counts, builds=build_records,
                   records=records, candidate_reported=True)
     print('CI_BENCH_RESULT ' + json.dumps(report, sort_keys=True), flush=True)
-    # Keep the cgroup alive until the trusted host captures the final counters.
-    # Local standalone trials can supply this fixed non-secret acknowledgement.
-    if sys.stdin.readline() != 'accounted\n':
-        raise RuntimeError('host resource accounting acknowledgement missing')
+    # The trusted supervisor waits for this process to exit before exposing the
+    # final quiescent cgroup snapshot and accepting the host acknowledgement.
 
 
 if __name__ == '__main__':

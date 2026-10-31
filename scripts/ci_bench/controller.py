@@ -18,9 +18,9 @@ import time
 import urllib.request
 
 try:
-    from . import contract
+    from . import contract, cpu
 except ImportError:
-    import contract
+    import contract, cpu
 
 ROOT = Path(__file__).resolve().parents[2]
 REPOSITORY = 'zackboll/ams-gra-codegen-oms'
@@ -233,7 +233,7 @@ def docker_command(image_id, source, name, cpus, compiler, mode):
             '--tmpfs', '/work:rw,exec,nosuid,nodev,size=4g,uid=10001,gid=10001',
             '--tmpfs', '/tmp:rw,noexec,nosuid,nodev,size=256m,uid=10001,gid=10001',
             '--mount', f'type=bind,source={source},target=/source,readonly',
-            image_id, 'python3', '/trusted/scripts/ci_bench/worker.py', compiler, mode]
+            image_id, 'python3', '/trusted/scripts/ci_bench/supervisor.py', compiler, mode]
 
 
 def drain(stream, path, ready=None):
@@ -246,7 +246,7 @@ def drain(stream, path, ready=None):
             output.flush()
             count += len(chunk)
             pending = (pending + chunk)[-LIMIT:]
-            if ready is not None and b'CI_BENCH_RESULT ' in pending and pending.endswith(b'\n'):
+            if ready is not None and b'\nCI_BENCH_WORKER_EXITED\n' in pending:
                 ready.set()
     return count
 
@@ -308,11 +308,16 @@ def campaign():
     host_resources = dict(available_memory_bytes=int(meminfo['MemAvailable'].split()[0]) * 1024,
                           free_disk_bytes=shutil.disk_usage(base).free)
     validate_host_resources(host_resources['available_memory_bytes'], host_resources['free_disk_bytes'])
-    before = cpu_stat(Path('/proc/stat').read_text())
-    preflight_started = time.monotonic()
+    preflight_journal = cpu.Journal(base / 'public/cpu-preflight.jsonl', cpu.context(identity, assigned, -1))
+    preflight_journal.event('coverage_start')
+    before = preflight_journal.snapshot(0, state='preflight')
     time.sleep(10)
-    preflight = sample_delta(before, cpu_stat(Path('/proc/stat').read_text()), siblings,
-                             elapsed=time.monotonic() - preflight_started, maximum_gap=11)
+    after = preflight_journal.snapshot(1, state='preflight')
+    preflight_journal.event('coverage_end')
+    header = dict(preflight_journal.header, coverage_start_ns=before['host']['begin_ns'])
+    preflight = cpu.calculate(before, after, header, host_only=True)
+    cpu.replay(preflight_journal.records, identity, assigned, -1, [preflight])
+    preflight_journal.close()
     write(base / 'public/preflight.json', dict(allocation=assigned, sample=preflight))
     # The ten-second preflight is intentionally one interval, not a lost sample.
     if preflight['external_busy_fraction'] > .05 or preflight['steal_fraction'] > .01:
@@ -320,12 +325,28 @@ def campaign():
     rows = []
     for index, mode in enumerate(contract.MODES):
         name = f'ci-bench-001-{index}'
-        run(docker_command(image_id, base / 'source', name, cpus, compiler, mode))
+        if index == 0:
+            context = cpu.context(identity, assigned, index)
+            journal = cpu.Journal(base / f'public/cpu-{index}.jsonl', context)
+            journal.event('coverage_start')
+            previous = journal.snapshot(0, state='not_started')
+        else:
+            # Reuse the previous terminal host endpoint exactly: no gap during
+            # docker rm, next create, or inter-iteration controller work.
+            context = cpu.context(identity, assigned, index, bridge['host']['begin_ns'])
+            journal = cpu.Journal(base / f'public/cpu-{index}.jsonl', context)
+            journal.append(dict(type='event', name='coverage_start', at_ns=bridge['host']['begin_ns']))
+            previous = dict(bridge, sequence=0, state='not_started')
+            journal.append(previous)
+        header = dict(journal.header, coverage_start_ns=previous['host']['begin_ns'])
+        journal.event('create_requested')
+        container_id = run(docker_command(image_id, base / 'source', name, cpus, compiler, mode))
+        journal.event('created', container_id=container_id)
         samples = []
-        started = time.monotonic()
-        previous = cpu_stat(Path('/proc/stat').read_text())
+        started = previous['host']['begin_ns'] / 1e9
         log = base / f'worker-{index}.log'
         ready = threading.Event()
+        journal.event('start_requested')
         process = subprocess.Popen(['docker', 'start', '--attach', '--interactive', name], stdout=subprocess.PIPE,
                                    stdin=subprocess.PIPE, stderr=subprocess.STDOUT)
         reader = threading.Thread(target=drain, args=(process.stdout, log, ready))
@@ -341,6 +362,9 @@ def campaign():
             cgroup_path = Path(f'/proc/{pid}/cgroup').read_text().strip().split('::', 1)[1]
             cgroup = Path('/sys/fs/cgroup') / cgroup_path.lstrip('/')
             limits = validate_cgroup_limits(cgroup, cpus)
+            group_identity = cgroup.stat()
+            journal.event('cgroup_discovered', path=str(cgroup), inode=group_identity.st_ino,
+                          device=group_identity.st_dev, pid=pid)
             # Account from container start, not the first observed nonzero counter.
             usage = 0
             last = time.monotonic()
@@ -351,31 +375,39 @@ def campaign():
             final_stats = None
             while process.poll() is None:
                 time.sleep(1)
-                now = time.monotonic()
-                current = cpu_stat(Path('/proc/stat').read_text())
-                try:
-                    stats = cgroup_stats(cgroup)
-                    current_usage = stats['usage_usec']
-                    peak = max(peak, stats['memory_peak'])
-                    final_stats = stats
-                except FileNotFoundError:
-                    break
-                item = sample_delta(previous, current, siblings, current_usage - usage, now - last)
-                item.update(at_seconds=now - started, usage_usec=current_usage,
-                            throttled_usec=stats['throttled_usec'])
+                current = journal.snapshot(len(samples) + 1, cgroup)
+                now = current['host']['begin_ns'] / 1e9
+                stats = cgroup_stats(cgroup)
+                peak = max(peak, stats['memory_peak'])
+                stats.update(usage_usec=current['cgroup']['counters']['usage_usec'],
+                             throttled_usec=current['cgroup']['counters']['throttled_usec'])
+                final_stats = stats
+                item = cpu.calculate(previous, current, header)
                 samples.append(item)
                 write(base / 'public/current-contention.json', dict(iteration=index, samples=samples))
-                previous, usage, last = current, current_usage, now
+                previous, usage, last = current, stats['usage_usec'], now
                 if now - started > contract.ITERATION_SECONDS or log.stat().st_size >= LIMIT:
                     raise ValueError('per-iteration time/output limit reached')
-                if ready.is_set():
+                if ready.is_set() and current['cgroup']['procs'] == [pid]:
                     # Snapshot host-owned counters while the worker is alive.
                     # Release only after sampling; final evidence cannot disappear
                     # with cgroup removal between polls.
+                    journal.event('worker_exited', snapshot=current['sequence'])
+                    journal.event('accounted')
                     process.stdin.write(b'accounted\n')
                     process.stdin.flush()
                     break
             process.wait(timeout=10)
+            journal.event('container_exited')
+            # Keep one-second observation cadence through shutdown; a sub-tick
+            # tail cannot distinguish an actual CPU stall from quantization.
+            time.sleep(max(0, 1 - (time.monotonic_ns()-previous['host']['begin_ns']) / 1e9))
+            current = journal.snapshot(len(samples) + 1, state='shutdown')
+            bridge = current
+            samples.append(cpu.calculate(previous, current, header, host_only=True))
+            write(base / 'public/current-contention.json', dict(iteration=index, samples=samples))
+            journal.event('coverage_end')
+            cpu.replay(journal.records, identity, assigned, index, samples)
             reader.join(timeout=10)
             text = log.read_text(errors='replace')
             emitted = [line.removeprefix('CI_BENCH_RESULT ') for line in text.splitlines()
@@ -395,10 +427,12 @@ def campaign():
                        final_cgroup=final_stats,
                        cgroup_limits=limits,
                        allocation=assigned, oom=False, exit_code=state['ExitCode'],
-                       samples=samples, candidate_report=report, worker_log=str(log.name))
+                       samples=samples, cpu_raw=journal.reference(),
+                       candidate_report=report, worker_log=str(log.name))
             rows.append(row)
             write(base / 'public/progress.json', dict(identity=identity, runs=rows))
         finally:
+            journal.close()
             subprocess.run(['docker', 'rm', '--force', name], capture_output=True, timeout=30, check=False)
             process.wait(timeout=30)
             reader.join(timeout=30)
@@ -406,7 +440,7 @@ def campaign():
     write(base / 'public/result.json', dict(completed=True, valid=True, identity=identity,
           image_id=image_id, allocation=assigned, budget=contract.budget(),
           host_resources=host_resources,
-          preflight=preflight, runs=rows, performance_success=False,
+          preflight=preflight, preflight_raw=preflight_journal.reference(), runs=rows, performance_success=False,
           isolation_scope='guest-visible CPUs/SMT and steal; hypervisor co-tenancy is not observable',
           evidence_trust='host resource counters; candidate-reported workload counts are not attestations'))
 
@@ -555,7 +589,7 @@ def receipt():
           receipt_upload='measure after completion from Jobs API; cannot self-measure final upload'))
 
 
-def validate_result(result, transport, identity):
+def validate_result(result, transport, identity, raw_loader=None):
     if (result.get('valid') is not True or result.get('completed') is not True
             or transport.get('outcome') != 'success'
             or not re.fullmatch('[1-9][0-9]*', transport.get('artifact_id') or '')
@@ -580,6 +614,13 @@ def validate_result(result, transport, identity):
             or not 10 <= preflight['elapsed_seconds'] <= 11):
         raise ValueError('invalid preflight evidence')
     validate_rows(result['runs'], identity['compiler'])
+    if raw_loader is None or 'preflight_raw' not in result or any('cpu_raw' not in row for row in result['runs']):
+        raise ValueError('complete CPU-v2 raw evidence required; legacy is diagnostic only')
+    cpu.replay(cpu.resolve(result['preflight_raw'], raw_loader, 'cpu-preflight.jsonl'),
+               identity, result['allocation'], -1, [preflight])
+    for row in result['runs']:
+        cpu.replay(cpu.resolve(row['cpu_raw'], raw_loader, f"cpu-{row['iteration']}.jsonl"),
+                   identity, row['allocation'], row['iteration'], row['samples'])
 
 
 def gate():
@@ -591,7 +632,8 @@ def gate():
                 ('run_id', 'GITHUB_RUN_ID'), ('run_attempt', 'GITHUB_RUN_ATTEMPT'), ('job', 'GITHUB_JOB')))):
         raise ValueError('mandatory receipt upload or producer identity failed')
     validate_result(json.loads((base / 'public/result.json').read_text()),
-                    json.loads((base / 'upload-receipt.json').read_text()), identity)
+                    json.loads((base / 'upload-receipt.json').read_text()), identity,
+                    lambda name: (base / 'public' / name).read_bytes())
 
 
 if __name__ == '__main__':

@@ -7,7 +7,7 @@ import tarfile
 import unittest
 import zipfile
 
-from ci_bench import contract, reconcile
+from ci_bench import contract, reconcile, fixtures, cpu
 from test_ci_select_bench import rows
 
 
@@ -55,23 +55,37 @@ class Reconciliation(unittest.TestCase):
                             runner_id=producer_job['runner_id'], runner_name=producer_job['runner_name'])
             identity['preparation_seconds'] = 5
             runs = all_rows[index * 4:(index + 1) * 4]
+            terminal = None
+            for row in runs:
+                row['cpu_raw'], row['samples'] = fixtures.evidence(identity, row['allocation'], row['iteration'])
+                if terminal is not None:
+                    fixtures.bridge(row['cpu_raw'], row['samples'], terminal)
+                terminal = next(r for r in reversed(row['cpu_raw']) if r['type'] == 'snapshot')
+            preflight_raw, preflight = fixtures.evidence(identity, runs[0]['allocation'], -1)
             result = dict(valid=True, completed=True, identity=identity, runs=runs,
                           budget=contract.budget(), allocation=runs[0]['allocation'], performance_success=False,
                           host_resources=dict(available_memory_bytes=8 * 1024**3, free_disk_bytes=10 * 1024**3),
                           image_id='sha256:' + 'e' * 64,
-                          preflight=dict(external_busy_fraction=.01, steal_fraction=0, elapsed_seconds=10))
+                          preflight=preflight[0], preflight_raw=preflight_raw)
             log_archive = io.BytesIO()
             with tarfile.open(fileobj=log_archive, mode='w:gz') as archive:
                 for row in runs:
                     log = b'CI_BENCH_RESULT ' + encoded(row['candidate_report']) + b'\n'
                     info = tarfile.TarInfo(row['worker_log']); info.size = len(log)
                     archive.addfile(info, io.BytesIO(log))
+            raw_files = {'cpu-preflight.jsonl': b''.join(encoded(r)+b'\n' for r in preflight_raw)}
+            result['preflight_raw'] = cpu.reference('cpu-preflight.jsonl', raw_files['cpu-preflight.jsonl'])
+            for row in runs:
+                name = f"cpu-{row['iteration']}.jsonl"
+                raw_files[name] = b''.join(encoded(r)+b'\n' for r in row['cpu_raw'])
+                row['cpu_raw'] = cpu.reference(name, raw_files[name])
             files = {'identity.json': encoded(identity), 'result.json': encoded(result),
                      'image.json': encoded(dict(image_id=result['image_id'], setup_seconds=100)),
                      'preflight.json': encoded(dict(allocation=result['allocation'], sample=result['preflight'])),
                      'progress.json': encoded(dict(identity=identity, runs=runs)),
                      'current-contention.json': encoded(dict(iteration=3, samples=runs[-1]['samples'])),
                      'worker-logs.tar.gz': log_archive.getvalue()}
+            files.update(raw_files)
             files['packaging.json'] = encoded(dict(wall_seconds=1, archive_bytes=len(files['worker-logs.tar.gz']),
                 files={p: hashlib.sha256(data).hexdigest() for p, data in files.items()}))
             receipt = dict(outcome='success', artifact_id=str(index * 2 + 1), artifact_digest='f' * 64,

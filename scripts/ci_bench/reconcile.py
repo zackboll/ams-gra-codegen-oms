@@ -17,7 +17,7 @@ import zipfile
 if __package__ in (None, ''):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from ci_artifact_provenance import resolve, timestamp, verify_final_job
-from ci_bench import contract, controller
+from ci_bench import contract, controller, cpu_audit
 
 WORKFLOW = '.github/workflows/portable-provider-benchmark.yml'
 UPLOADS = {'measurements': 'Upload mandatory measurements',
@@ -190,7 +190,34 @@ def verify(artifacts, jobs, attempts, run_id, attempt, workflow, tree, workflow_
         duration = (timestamp(job['completed_at']) - timestamp(job['started_at'])).total_seconds()
         if not 0 < duration <= contract.JOB_MINUTES * 60:
             raise ValueError('compiler hosted job limit exceeded')
-        controller.validate_result(result, receipt, identity)
+        # Independent arithmetic and raw-source parsing must run even if the
+        # controller implementation accidentally accepts a forged point value.
+        raw = cpu_audit.decode(files['cpu-preflight.jsonl'])
+        if result.get('preflight_raw') != dict(schema='ci-bench-cpu-v2', file='cpu-preflight.jsonl',
+                sha256=hashlib.sha256(files['cpu-preflight.jsonl']).hexdigest(), bytes=len(files['cpu-preflight.jsonl'])):
+            raise ValueError('preflight raw journal mismatch')
+        cpu_audit.verify(raw, identity, result['allocation'], -1, [result['preflight']])
+        host_context = raw[0]
+        last_coverage = raw[-1]['at_ns']
+        previous_terminal = None
+        for row in result['runs']:
+            raw = cpu_audit.decode(files[f"cpu-{row['iteration']}.jsonl"])
+            name = f"cpu-{row['iteration']}.jsonl"
+            if row.get('cpu_raw') != dict(schema='ci-bench-cpu-v2', file=name,
+                    sha256=hashlib.sha256(files[name]).hexdigest(), bytes=len(files[name])):
+                raise ValueError('iteration raw journal mismatch')
+            cpu_audit.verify(raw, identity, row['allocation'], row['iteration'], row['samples'])
+            if (any(raw[0][key] != host_context[key] for key in (
+                    'boot_id', 'kernel_release', 'clk_tck', 'getconf_clk_tck', 'cgroup_namespace_inode',
+                    'host_source', 'cgroup_mount', 'monitored_cpus', 'allocation'))
+                    or (previous_terminal is None and raw[0]['clock']['origin_ns'] < last_coverage)):
+                raise ValueError('CPU clock/source changed or iteration coverage overlaps')
+            first = next(r for r in raw if r['type'] == 'snapshot')
+            if previous_terminal is not None and first['host'] != previous_terminal['host']:
+                raise ValueError('missing inter-iteration lifecycle boundary coverage')
+            previous_terminal = next(r for r in reversed(raw) if r['type'] == 'snapshot')
+            last_coverage = raw[-1]['at_ns']
+        controller.validate_result(result, receipt, identity, lambda name: files[name])
         verify_logs(files['worker-logs.tar.gz'], result['runs'])
         image = json.loads(files['image.json'])
         if (image['image_id'] != result['image_id']
