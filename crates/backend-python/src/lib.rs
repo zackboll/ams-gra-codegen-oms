@@ -75,6 +75,9 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     if uses_float64(schema) {
         output.push_str(include_str!("float64_runtime.py"));
     }
+    if uses_visible_ascii(schema) {
+        output.push_str(include_str!("visible_ascii_runtime.py"));
+    }
     if schema
         .types
         .iter()
@@ -112,6 +115,57 @@ fn header_profile(declaration: &TypeDecl) -> Option<&'static str> {
         Ok(Some(StringProfile::UciSchemaVersion)) => Some("_uci_schema_version"),
         Ok(Some(StringProfile::UniversallyUniqueIdentifier)) => Some("_uci_uuid"),
         _ => None,
+    }
+}
+
+fn visible_ascii_profile(declaration: &TypeDecl) -> Option<(u64, u64)> {
+    if declaration.kind != TypeKind::Primitive(PrimitiveKind::String) {
+        return None;
+    }
+    match string_profile(PrimitiveKind::String, &declaration.constraints) {
+        Ok(Some(StringProfile::VisibleAscii {
+            min_length,
+            max_length,
+        })) => Some((min_length, max_length)),
+        _ => None,
+    }
+}
+
+fn uses_visible_ascii(schema: &SchemaIr) -> bool {
+    schema
+        .types
+        .iter()
+        .any(|declaration| visible_ascii_profile(declaration).is_some())
+}
+
+// Effective constraints must prove a contained domain at every named edge.
+// Never infer a parent's proof from a leaf's facets or its declaration name.
+fn visible_ascii_ancestry(schema: &SchemaIr, declaration: &TypeDecl) -> Result<(), CodegenError> {
+    let mut current = declaration;
+    let mut seen = BTreeSet::new();
+    loop {
+        if current.is_abstract || !seen.insert(&current.name) {
+            return Err(error("unproven visible-ASCII named restriction ancestry"));
+        }
+        let (min, max) = visible_ascii_profile(current)
+            .ok_or_else(|| error("unproven visible-ASCII restriction profile"))?;
+        match current.base_type.as_ref().map(|base| &base.target) {
+            Some(TypeRefTarget::Primitive(PrimitiveKind::String)) | None => return Ok(()),
+            Some(TypeRefTarget::Named(name)) => {
+                let parent = schema
+                    .types
+                    .iter()
+                    .find(|candidate| candidate.name == *name)
+                    .ok_or_else(|| error("missing visible-ASCII restriction base"))?;
+                let (parent_min, parent_max) = visible_ascii_profile(parent)
+                    .ok_or_else(|| error("unproven visible-ASCII restriction base"))?;
+                if min < parent_min || max > parent_max {
+                    return Err(error("incompatible effective visible-ASCII constraints"));
+                }
+                current = parent;
+            }
+            _ => return Err(error("incompatible visible-ASCII restriction base")),
+        }
     }
 }
 
@@ -363,6 +417,8 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
                 float64_ancestry(schema, declaration)?;
             } else if declaration.kind == TypeKind::Primitive(PrimitiveKind::DateTime) {
                 datetime_ancestry(schema, declaration)?;
+            } else if visible_ascii_profile(declaration).is_some() {
+                visible_ascii_ancestry(schema, declaration)?;
             } else if let Some(base) = &declaration.base_type {
                 match (&declaration.kind, &base.target) {
                     (TypeKind::Primitive(kind), TypeRefTarget::Primitive(base_kind))
@@ -381,10 +437,14 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
                         floating_domain(*kind, &declaration.constraints).map_err(error)?;
                     } else if *kind == PrimitiveKind::DateTime {
                         datetime_profile(&declaration.constraints)?;
-                    } else if header_profile(declaration).is_none() {
+                    } else if header_profile(declaration).is_none()
+                        && visible_ascii_profile(declaration).is_none()
+                    {
                         primitive(*kind, &declaration.constraints)?;
                     }
-                    if *kind != PrimitiveKind::DateTime {
+                    if *kind != PrimitiveKind::DateTime
+                        && visible_ascii_profile(declaration).is_none()
+                    {
                         scalar_names.insert(declaration.name.clone());
                     }
                 }
@@ -540,6 +600,10 @@ fn render(
             }
             if let Some(validator) = header_profile(declaration) {
                 writeln!(output, "    value: str\n\n    def __post_init__(self) -> None:\n        _check(self.value, str)\n        {validator}(self.value)").unwrap();
+                return Ok(());
+            }
+            if let Some((min, max)) = visible_ascii_profile(declaration) {
+                writeln!(output, "    value: str\n\n    def __post_init__(self) -> None:\n        _check_visible_ascii(self.value, {min}, {max})").unwrap();
                 return Ok(());
             }
             let (annotation, check) = match &declaration.kind {

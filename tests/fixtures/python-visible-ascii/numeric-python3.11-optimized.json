@@ -1,0 +1,51 @@
+{
+  "completed": true,
+  "python": "3.11.17 (main, Oct 14 2026, 01:05:33) [Clang 23.1.3 ]",
+  "optimized": true,
+  "full": true,
+  "conversions": 27167,
+  "overflow_rejections": 5,
+  "encodings": 20474,
+  "mismatches": 0,
+  "controls": {
+    "exponent-rounding": true,
+    "signed-zero-normalization": true,
+    "ties-to-even": true,
+    "special-string": true
+  },
+  "groups": [
+    "all-exponent-exact",
+    "explicit",
+    "integer-boundary",
+    "midpoint-even",
+    "midpoint-odd",
+    "overflow-midpoint",
+    "power-ten",
+    "power-ten-neighbor"
+  ],
+  "corpus": {
+    "conversion_rows": 27167,
+    "encoding_rows": 20474,
+    "finite_exponent_bands": 2047,
+    "groups": {
+      "all-exponent-exact": 20474,
+      "explicit": 12,
+      "integer-boundary": 27,
+      "midpoint-even": 1338,
+      "midpoint-odd": 1512,
+      "overflow-midpoint": 6,
+      "power-ten": 1266,
+      "power-ten-neighbor": 2532
+    },
+    "hashes": {
+      "conversions.tsv": "14c86c5fa674d279d198947dad03f71f517a40b583729df1184bbf6596a6451b",
+      "encoding.tsv": "b1ad323c7d5d88c465bf966dc2edc1249c68982ad817044fa5579ce65e9abc82"
+    },
+    "seed": 9601
+  },
+  "generated_sha256": {
+    "model.py": "aae03e940d2f9a4a27221f00be1e0801a9c18845bae4a93877d6f75600c4ea51",
+    "service_api.py": "70c15532aeb2f1426f44d0bc4793c562a7b423ebadf410288ade5020f877164a",
+    "service_codec.py": "df20aed6085a84b858582fcb635b36d109d9ccdcd3caa52fb732592670a1e687"
+  }
+}

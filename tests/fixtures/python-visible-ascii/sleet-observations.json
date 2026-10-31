@@ -1,0 +1,201 @@
+{
+  "broker_identity": [
+    "e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b",
+    "7e705f4eb5f658957bd414b4abc8207311f3c1e4",
+    "4a2e9ee872d1deaa1a6ce1a1494a2f601660eb57c0df28a447b28a08eba21c94  /home/zboll/py006-deps/sleet/target/release/sleet"
+  ],
+  "observations": {
+    "311": {
+      "normal": [
+        [
+          "'\\t'",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "'\\r'",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "'\\n'",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "'\\x00'",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "'\\x1f'",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "'\\x7f'",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "'\u00e9'",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "''",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'",
+          "broker rejection",
+          "Invalid-Message"
+        ]
+      ],
+      "optimized": [
+        [
+          "'\\t'",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "'\\r'",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "'\\n'",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "'\\x00'",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "'\\x1f'",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "'\\x7f'",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "'\u00e9'",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "''",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'",
+          "broker rejection",
+          "Invalid-Message"
+        ]
+      ]
+    },
+    "313": {
+      "normal": [
+        [
+          "'\\t'",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "'\\r'",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "'\\n'",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "'\\x00'",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "'\\x1f'",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "'\\x7f'",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "'\u00e9'",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "''",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'",
+          "broker rejection",
+          "Invalid-Message"
+        ]
+      ],
+      "optimized": [
+        [
+          "'\\t'",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "'\\r'",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "'\\n'",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "'\\x00'",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "'\\x1f'",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "'\\x7f'",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "'\u00e9'",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "''",
+          "broker rejection",
+          "Invalid-Message"
+        ],
+        [
+          "'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'",
+          "broker rejection",
+          "Invalid-Message"
+        ]
+      ]
+    }
+  }
+}

@@ -13,6 +13,7 @@ import unittest
 import ci_policy
 import ci_selection as selection
 from ci_select003 import DEEP, FAST, RULES, SLEET, project, project_sleet
+from py010_ci import project as project_py010, project_sleet as project_py010_sleet
 
 ROOT = selection.ROOT
 
@@ -131,6 +132,8 @@ class RunnerContract(unittest.TestCase):
         workflows = {p.name: p.read_text() for p in
                      (ROOT / '.github/workflows').glob('*.yml')}
         sleet = (ROOT / 'scripts/run-real-sleet-test.sh').read_text()
+        workflows = project_py010(workflows)
+        sleet = project_py010_sleet(sleet)
         projected = project(workflows)
         self.assertNotIn('python/qualification/run.py', projected['ci.yml'])
         self.assertNotIn('python/qualification/run.py', projected['deep-ci.yml'])
