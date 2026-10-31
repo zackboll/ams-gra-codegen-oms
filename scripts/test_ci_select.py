@@ -288,8 +288,8 @@ class SchedulingTests(unittest.TestCase):
     def check(self):
         return ci_policy.check(self.policy,self.workflows)
 
-    def test_complete_40_runner_cells_five_common_lanes(self):
-        self.assertEqual(self.check(),40)
+    def test_complete_42_runner_cells_five_common_lanes(self):
+        self.assertEqual(self.check(),42)
 
     def test_six_lanes_duplicate_invalid_or_unassigned_rejected(self):
         for lanes in ([f'oms-main-slot-{n}' for n in range(1,7)],['oms-main-slot-1']*5):

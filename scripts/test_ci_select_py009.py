@@ -15,7 +15,7 @@ class DateTimeIntegration(unittest.TestCase):
         self.policy = selection.inventory()
 
     def test_current_contract(self):
-        self.assertEqual(ci_policy.check(self.policy, self.workflows, self.sleet), 40)
+        self.assertEqual(ci_policy.check(self.policy, self.workflows, self.sleet), 42)
 
     def test_commands_cannot_be_removed_disabled_or_filtered(self):
         for workflow, addition in [('ci.yml', FAST), ('deep-ci.yml', DEEP + BUILD)]:

@@ -1,0 +1,58 @@
+{
+  "SecurityInformation": {
+    "Classification": "U",
+    "OwnerProducer": [
+      {
+        "GovernmentIdentifier": "USA"
+      },
+      {
+        "NATO_SpecialWord": "NATO:COSMIC"
+      }
+    ]
+  },
+  "MessageHeader": {
+    "SystemID": {
+      "UUID": "550e8400-e29b-41d4-a716-446655440000"
+    },
+    "Timestamp": "2026-01-02T03:04:05Z",
+    "SchemaVersion": "002.6.0",
+    "Mode": "LIVE"
+  },
+  "MessageData": {
+    "DLZ_ID": {
+      "UUID": "550e8400-e29b-41d4-a716-446655440000"
+    },
+    "CapabilityID": {
+      "UUID": "550e8400-e29b-41d4-a716-446655440000"
+    },
+    "DLZ_Type": "DLZ_STAPLE",
+    "GeneratedByWeapon": false,
+    "DLZ_Data": {
+      "RangeMinimum": 1.0,
+      "RangeTurnAndRun": 2.5,
+      "RangeProbabilityOfIntercept": 1.0000000000000002,
+      "RangeMaxGuidance": 100.0,
+      "RangeOptimal": 50.0,
+      "RangeMaxAero": 75.0,
+      "TargetClosureRate": {
+        "NorthSpeed": -12.5,
+        "EastSpeed": 0.25
+      },
+      "TargetRange": 30.0,
+      "SteeringUnitVector": {
+        "LOS_ReferenceFrame": "NED",
+        "LOS_UnitVector": {
+          "X": 0.5,
+          "Y": -0.5,
+          "Z": 1.0
+        }
+      },
+      "LoftAngle": -0.0,
+      "TimeOfIntercept": "12:34:56.5000Z",
+      "TimeToRelease": "24:00:00.000Z",
+      "TimeOfActivation": "23:59:60Z",
+      "TimeOfMPRF": "00:00:00Z",
+      "TimeOfAutonomous": "12:34:56.12345678901234567890Z"
+    }
+  }
+}

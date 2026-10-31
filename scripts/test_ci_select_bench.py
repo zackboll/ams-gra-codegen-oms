@@ -21,7 +21,7 @@ class Registration(unittest.TestCase):
                           (ci_selection.ROOT / '.github/workflows').glob('*.yml')}
 
     def test_registered_manual_job_does_not_expand_main_or_pr(self):
-        self.assertEqual(ci_policy.check(self.inventory, self.workflows), 40)
+        self.assertEqual(ci_policy.check(self.inventory, self.workflows), 42)
         self.assertEqual(self.inventory['manual_benchmark']['lane'], 3)
         for full in (False, True):
             selection = ci_selection.select([], self.inventory, full_main=full)
@@ -31,9 +31,9 @@ class Registration(unittest.TestCase):
 
     def test_v2_deep_selection_and_manual_topology_remain_independent(self):
         registered = ci_selection.deep_jobs(self.inventory)
-        self.assertEqual(sum(len(r['cells']) for r in registered.values()), 12)
+        self.assertEqual(sum(len(r['cells']) for r in registered.values()), 14)
         cases = [('README.md', set()),
-                 ('tests/ada-websocket/transport_probe.adb', {'ada-websocket-real-sleet'}),
+                 ('tests/ada-websocket/transport_probe.adb', {'ada-websocket-real-sleet', 'ada-real-uci-dlz-sleet'}),
                  ('scripts/ci_bench/reconcile.py', set(registered)),
                  ('.github/workflows/portable-provider-benchmark.yml', set(registered))]
         for path, wanted in cases:
@@ -43,11 +43,11 @@ class Registration(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertEqual(manifest['version'], 2)
                 self.assertEqual(manifest['deep_jobs'], sorted(wanted))
-                self.assertEqual(manifest['deep_selected_cells'] + manifest['deep_skipped_cells'], 12)
+                self.assertEqual(manifest['deep_selected_cells'] + manifest['deep_skipped_cells'], 14)
                 self.assertFalse(set(policy.JOBS) & (set(manifest['jobs']) | set(manifest['deep_jobs'])))
         manifest = ci_selection.select([], self.inventory, full_main=True)
         self.assertEqual(manifest['selected_cells'], 20)
-        self.assertEqual(manifest['deep_selected_cells'], 12)
+        self.assertEqual(manifest['deep_selected_cells'], 14)
         self.assertEqual(manifest['deep_skipped_cells'], 0)
         for mutation in (dict(version=1), dict(deep_selected_cells=11),
                          dict(deep_jobs=sorted([*registered, contract.FINAL_JOB]))):
