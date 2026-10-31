@@ -27,7 +27,10 @@ class ComponentSelection(unittest.TestCase):
             'python/qualification/fast/test_next.py': set(),
             'python/qualification/uci/test_next.py': {'real-uci-regressions'},
             'python/qualification/sleet/test_next.py': {'real-sleet'},
-            'crates/cli/examples/python_future_probe.rs': {'msrv-real-uci', 'real-uci-regressions'},
+            'crates/cli/examples/python_future_probe.rs': {
+                'msrv-real-uci', 'real-sleet', 'real-uci-regressions'},
+            'crates/cli/examples/python_datetime_closure.rs': {
+                'msrv-real-uci', 'real-sleet', 'real-uci-regressions'},
         }
         for path, wanted in cases.items():
             with self.subTest(path=path):
@@ -130,6 +133,14 @@ class RunnerContract(unittest.TestCase):
             damaged = copy.deepcopy(policy)
             damaged['rules'] = mutation
             self.assertNotEqual(damaged['rules'][:len(RULES)], RULES)
+
+    def test_python_example_deep_owner_removal_is_rejected(self):
+        policy = selection.inventory()
+        rule = next(r for r in policy['rules'] if r['category'] == 'python-cli-example')
+        rule['deep_jobs'].remove('real-sleet')
+        with self.assertRaisesRegex(ValueError,
+                                    '^CI-SELECT-003 reviewed Python Deep ownership changed$'):
+            ci_policy.check(policy=policy)
 
 
 if __name__ == '__main__':

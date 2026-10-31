@@ -219,7 +219,7 @@ def check(policy=None, workflows=None, sleet=None):
         raise ValueError('reviewed Deep caller input changed')
     from ci_select003 import RULES as CI003_RULES
     if policy['rules'][:len(CI003_RULES)] != CI003_RULES:
-        raise ValueError('CI-SELECT-003 reviewed Python ownership changed')
+        raise ValueError('CI-SELECT-003 reviewed Python Deep ownership changed')
     inherited_rules = policy['rules'][len(CI003_RULES):]
     rules = [{k: r[k] for k in ('category', 'paths', 'deep_jobs', 'deep_rationale')} for r in inherited_rules]
     if hashlib.sha256(json.dumps(rules, sort_keys=True).encode()).hexdigest() != '21ae69c58815ddedc8536b660cbf095d68d77741f92a94e00c0b2ad116504d2b':

@@ -13,7 +13,13 @@ can add flat, component-owned test files without modifying CI YAML or scripts:
 - python/qualification/sleet/test_*.py — selected real-sleet Deep job, reusing
   the one verified pinned broker build for both Python versions and policies
 - crates/cli/examples/python_*.rs — Python evidence-only CLI examples compile
-  through Rust/Python ordinary gates and MSRV plus Python pinned-UCI Deep jobs
+  through Rust/Python ordinary gates and select exactly three Deep owners:
+  `msrv-real-uci`, `real-sleet`, and `real-uci-regressions`
+
+For Python CLI examples, MSRV retains Rust all-target compilation and the Python
+UCI regression job owns release example execution. The Sleet owner preserves the
+inherited PY-009 Python broker qualification, including the datetime example's
+contract. This bounded set does not select unrelated Ada or other UCI Deep jobs.
 
 Every mode keeps Rust and both existing Python ordinary cells. The Deep job
 selection retains dependency closure. Neither the workflow inventory, lane

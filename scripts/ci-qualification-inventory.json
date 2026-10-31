@@ -66,13 +66,14 @@
         "rust",
         "python-model-backend"
       ],
-      "rationale": "Python-specific evidence-only CLI examples compile with the Rust workspace and are used for pinned Python UCI qualification; not production CLI.",
+      "rationale": "Python-specific evidence-only CLI examples compile with the Rust workspace and retain pinned Python UCI and inherited PY-009 broker qualification; not production CLI.",
       "deep": true,
       "deep_jobs": [
         "msrv-real-uci",
+        "real-sleet",
         "real-uci-regressions"
       ],
-      "deep_rationale": "MSRV compiles the CLI examples through Rust all-target coverage; Python UCI regression job owns release example execution."
+      "deep_rationale": "MSRV compiles the CLI examples through Rust all-target coverage; Python UCI regression job owns release example execution; real-sleet preserves inherited PY-009 Python broker qualification."
     },
     {
       "category": "compiled-documentation",
