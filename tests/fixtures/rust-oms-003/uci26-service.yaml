@@ -1,0 +1,52 @@
+# Authentic UCI 2.6 heterogeneous service; all exchanges share one LA-CAL session.
+contract_version: "0.1"
+service:
+  name: rust-oms-003-multimessage
+  version: "0.1.0"
+  kind: service
+standards:
+  oms_version: "2.6"
+  uci_schema_version: "2.6"
+functions:
+  - id: log
+    name: Log qualification
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: receive
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: Log
+        topic: rust-oms-003-log
+        timing:
+          kind: asynchronous
+      - id: publish
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: Log
+        topic: rust-oms-003-log
+        timing:
+          kind: asynchronous
+  - id: rdma
+    name: RDMA qualification
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: receive
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: RDMA_InitializeSetup
+        topic: rust-oms-003-rdma
+        timing:
+          kind: asynchronous
+      - id: publish
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: RDMA_InitializeSetup
+        topic: rust-oms-003-rdma
+        timing:
+          kind: asynchronous
