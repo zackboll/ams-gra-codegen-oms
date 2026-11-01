@@ -1,0 +1,260 @@
+{
+  "version": 1,
+  "working_directory": "/home/zboll/git/ams-gra-codegen-oms-py-011",
+  "raw_logs": "/home/zboll/py011-evidence/v1",
+  "base_commit": "070a9f8b8d40b7e8a48c093af655ca882034f987",
+  "corpus": {
+    "path": "tests/fixtures/string/nato-special-words.txt",
+    "cases": 113,
+    "sha256": "3c08d593d8da548ddef1d87b9d0e21b2cdcc19d20b4eca69384ed1cd0bb8cf0b"
+  },
+  "commands": {
+    "backend": "PYTHON=python{version} CARGO_TARGET_DIR=/home/zboll/py011-build cargo +1.95.0 test --locked -p ams-gra-oms-backend-python --all-targets",
+    "cli": "PYTHON=python{version} CARGO_TARGET_DIR=/home/zboll/py011-build cargo +1.95.0 test --locked -p ams-gra-codegen-oms --test python_cli --test python_service --test python_codec --test python_header_profiles --test python_inheritance --test python_float64 --test python_datetime --test python_visible_ascii --test python_nato_special_words -- --nocapture",
+    "smoke": "python3.11 scripts/pr_smoke.py run python",
+    "numeric": "python{version} {policy} scripts/check-py008-numeric.py --full --generated /home/zboll/py011-evidence/v1/numeric-generated --corpus /home/zboll/py011-evidence/v1/numeric-corpus --output /home/zboll/py011-evidence/v1/numeric-{version}{policy}.json"
+  },
+  "logs": {
+    "final-backend-3.11.log": {
+      "sha256": "0d3dec774089be76cf2f06ae218be1c35714c850550441af74b1fb2955f26748",
+      "exit": 0,
+      "rust_passed": 23,
+      "python_reported": 0
+    },
+    "final-backend-3.13.log": {
+      "sha256": "f47dd48d4c39943cdd087ef94fa76e5b89fd5c1b8fe96ce85af6a3ff1d297914",
+      "exit": 0,
+      "rust_passed": 23,
+      "python_reported": 0
+    },
+    "final-cli-3.11.log": {
+      "sha256": "747dda716a4869d3fb27a778d073bc0acda200f22fda292aa3b98d4aa7903b46",
+      "exit": 0,
+      "rust_passed": 31,
+      "python_reported": 600
+    },
+    "final-cli-3.13.log": {
+      "sha256": "c0b419f0180e67e560cb651d2666e9226cd3fa71a2915061244530eaa8b35bdb",
+      "exit": 0,
+      "rust_passed": 31,
+      "python_reported": 600
+    },
+    "last-fast-3.11-O.log": {
+      "sha256": "b57ef8ec3a71bb878e57d3bf8a68e40c6aa1797f9b8e2d495e738c782fb592ed",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 5
+    },
+    "last-fast-3.11.log": {
+      "sha256": "56c90707e902b6c043f2893ff6e853e26721f1731b5ee408cfa93690e012446c",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 5
+    },
+    "last-fast-3.13-O.log": {
+      "sha256": "a7692a4d4bd3acb9c9b4e6db5fbff230a22845d339ea40ae4e2f28b400946571",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 5
+    },
+    "last-fast-3.13.log": {
+      "sha256": "aa308e4ddb2f4bdeb767e64000c7d5b2d4c2b0da44fffb560b2598c642fa0032",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 5
+    },
+    "final-transport-311-O.log": {
+      "sha256": "6f9d07fc54ced598525d936ad9a8eadf743036cb5cd2f12a13178fdba3697306",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 3
+    },
+    "final-transport-311.log": {
+      "sha256": "038d50621c86700e9f49311f21f6c6bb2f357eb107c10cca8545566b3f103346",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 3
+    },
+    "final-transport-313-O.log": {
+      "sha256": "b7ed2a418cca24344e1b3e6c6f8dd2c8a17c75faa36986c360d4ebf7fb3335b7",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 3
+    },
+    "final-transport-313.log": {
+      "sha256": "64eb3d8369996064c61184daecceba1e63d2b787e6356f3d29f52e0cdeec79eb",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 3
+    },
+    "final-pinned-311-O.log": {
+      "sha256": "5a54157d48a23bf07ed1bf5298c4ffb1df70fd1e72409a88f0b6c18a2104120e",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 1
+    },
+    "final-pinned-311.log": {
+      "sha256": "4b4dc88bc57fc19baf9c40f13e7b6b177845a0dbd5ec9c96d21f8a4b71938bab",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 1
+    },
+    "final-pinned-313-O.log": {
+      "sha256": "dfacadc31412cc25fe450b439229734804ec3daf2c39770f7c215fcd7cf20957",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 1
+    },
+    "final-pinned-313.log": {
+      "sha256": "027416f6d839f4208d4817f2b9d37f61749d8cb310fa5958d7c5f673ae249769",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 1
+    },
+    "check-py005-mock.sh-311.log": {
+      "sha256": "d7cc62cb484cdf2d6b0386fccb64cfcdd549c11d90945c343f0d581f14e0c7ed",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 38
+    },
+    "check-py005-mock.sh-313.log": {
+      "sha256": "42f65ec9ba5ccef47c7824da32d20b1fb03b196556305d88c2f7df9a17a1858c",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 38
+    },
+    "check-py006-sleet.sh-311.log": {
+      "sha256": "c51c78b3942285be78442620873b89b6bda2eda3321be1256847fa929d5c21c3",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 2
+    },
+    "check-py006-sleet.sh-313.log": {
+      "sha256": "b0bd1ea1131cea4d1a89d25eadcffaaab7d0fa83f8bb498c7d1b48ec36a6ec1d",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 2
+    },
+    "check-py007-sleet.sh-311.log": {
+      "sha256": "2776273cd3ebdb364130617878fcc8aadc71051eb9afec5f25ac3ef5e170ead1",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 2
+    },
+    "check-py007-sleet.sh-313.log": {
+      "sha256": "0774a12b454cbea460579348f64a87bfe3e7a337d74a3ca377a305cc07e48c38",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 2
+    },
+    "check-py008-sleet.sh-311.log": {
+      "sha256": "507857046921d2ad0ee97f0be58aea207482fb5360700310c8c26eb72961a54d",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 2
+    },
+    "check-py008-sleet.sh-313.log": {
+      "sha256": "6af20562d7b709dcf536f33c98019ae7322aa3135f9dc36ffe17dd273b880913",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 2
+    },
+    "check-py009-sleet.sh-311.log": {
+      "sha256": "584350ac8de345c6606fcbe84889ef3351018b577bbdbe6fafda7cc43e102304",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 2
+    },
+    "check-py009-sleet.sh-313.log": {
+      "sha256": "515a042db00379be0c0827aaa693e6baeb6f350bfdd27452ff1df2cff19b0b6e",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 2
+    },
+    "check-py010-sleet.sh-311.log": {
+      "sha256": "f273d1d8d96734c19a71b16f3b159a2b8eec6a95158a9a032ae611889f0f68a6",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 2
+    },
+    "check-py010-sleet.sh-313.log": {
+      "sha256": "782d2c1d4f3ec6496d668067061699fe56512eb44f23efd56f925f1c766fadcd",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 2
+    },
+    "historical-py007.log": {
+      "sha256": "0181104efd5936be0c4657da40c6daefc7cc6558842dd6dff26e3c700babf756",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 5
+    },
+    "historical-py008.log": {
+      "sha256": "f5112022c3dd87458de293d3a60239d1234589c4558d804972052f2c0a0f7b22",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 5
+    },
+    "historical-py009.log": {
+      "sha256": "3b276704f3e563f93455088f7ce46c6323f4b89f61012ff8ddd99bba729ec60f",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 6
+    },
+    "historical-py010.log": {
+      "sha256": "c57bdec5f19166a93690118c71d5c3ee68b3bfc2827da2e950a0cdc421d4bd4f",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 6
+    },
+    "last-pr-smoke.log": {
+      "sha256": "3d5012dc41fd6f2e686106c292e477ec04f508bba1f1b8cc0de72b433fbebacd",
+      "exit": 0,
+      "rust_passed": 14,
+      "python_reported": 33
+    },
+    "last-discovery-regression.log": {
+      "sha256": "e618132086d4e04f4fab77356e23e816b0def217b160faf322c31481d14f1f97",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 4
+    },
+    "clippy-final.log": {
+      "sha256": "613d5b7eaa42735602ef93ea28a22f8a9e9f2b31370d3cf13fe43e058c4aa77f",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 0
+    },
+    "complete-uci-313.log": {
+      "sha256": "8fb2c7516a123b840c597d9ddf65bdbee766e996d269f38d9b07da27951919ce",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 3
+    },
+    "complete-uci-311.log": {
+      "sha256": "0c4c19c855aa6745633c5c158918a3cbed20e05a468db51a946c79cf5a321bd1",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 3
+    },
+    "complete-uci-313-O.log": {
+      "sha256": "8fa48ba3f9046f03627cd503e9900a21c9922fbbbc8ca48216ceca79ab6fd977",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 3
+    },
+    "complete-uci-311-O.log": {
+      "sha256": "d322688e2f8e6abd015ca57bb593944894704761f4205a112a0a90d5e12e94c0",
+      "exit": 0,
+      "rust_passed": 0,
+      "python_reported": 3
+    }
+  },
+  "notes": [
+    "CLI Python reported counts omit silently captured model-only probes; they are not a coverage percentage.",
+    "AFTER measurement was taken with dirty=true; production SHA256 map matches final production sources. No clean-commit provenance is claimed for that run.",
+    "Initial qualified namespace fixture and cross-mode test-name collisions were corrected and rerun.",
+    "Debug UCI measurement attempts were interrupted and superseded by complete release measurements.",
+    "Initial full UCI-discovery invocations lacked RUNNER_TEMP/py006-uci receipt provisioning; corrected environment and all four cells rerun."
+  ]
+}

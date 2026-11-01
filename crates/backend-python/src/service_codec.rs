@@ -103,6 +103,7 @@ pub fn generate_service_codec(
     if schema.types.iter().any(|declaration| {
         crate::header_profile(declaration).is_some()
             || crate::visible_ascii_profile(declaration).is_some()
+            || crate::nato_special_words_profile(declaration)
     }) {
         output.push_str(include_str!("header_codec_runtime.py"));
     }
@@ -114,6 +115,7 @@ pub fn generate_service_codec(
         }
         if crate::header_profile(declaration).is_some()
             || crate::visible_ascii_profile(declaration).is_some()
+            || crate::nato_special_words_profile(declaration)
         {
             writeln!(output, "\n\ndef _encode_{symbol}(value, path):\n    return _header_text(value, path, _model.{symbol})\n\n\ndef _decode_{symbol}(value, path):\n    return _header_value(value, path, _model.{symbol})").unwrap();
             continue;

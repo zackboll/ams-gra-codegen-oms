@@ -1,0 +1,26 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+ xmlns:t="https://www.vdl.afrl.af.mil/programs/oam"
+ targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified" version="002.5.0">
+  <!-- Names do not confer support: only the shared effective-facet classifier does. -->
+  <xs:simpleType name="SpecialWord"><xs:restriction base="xs:string"><xs:minLength value="6"/><xs:maxLength value="261"/><xs:pattern value="NATO:[a-zA-Z\-_]{1,256}"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="Restricted"><xs:restriction base="t:SpecialWord"/></xs:simpleType>
+  <!-- Exercise builtin names used by the new helper without reserving them. -->
+  <xs:simpleType name="any"><xs:restriction base="xs:string"/></xs:simpleType>
+  <xs:complexType name="Ancestor" abstract="true"><xs:sequence>
+    <xs:element name="Inherited" type="t:SpecialWord"/>
+  </xs:sequence></xs:complexType>
+  <xs:complexType name="Nested"><xs:sequence>
+    <xs:element name="Value" type="t:SpecialWord"/>
+    <xs:element name="Values" type="t:SpecialWord" minOccurs="0" maxOccurs="3"/>
+  </xs:sequence></xs:complexType>
+  <xs:complexType name="Payload"><xs:complexContent><xs:extension base="t:Ancestor"><xs:sequence>
+    <xs:element name="Direct" type="xs:string"/>
+    <xs:element name="Named" type="t:SpecialWord"/>
+    <xs:element name="Optional" type="t:SpecialWord" minOccurs="0"/>
+    <xs:element name="Values" type="t:SpecialWord" minOccurs="1" maxOccurs="3"/>
+    <xs:element name="Nested" type="t:Nested"/>
+    <xs:element name="Restricted" type="t:Restricted" minOccurs="0"/>
+    <xs:element name="Builtin" type="t:any" minOccurs="0"/>
+  </xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+  <xs:element name="TextNotice" type="t:Payload" t:version="001.000.000.000"/>
+</xs:schema>
