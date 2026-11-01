@@ -313,3 +313,16 @@ normal workspace check was rerun without those optional inputs and passed.
 An initial direct actionlint call rejected main's `queue: max`; the prescribed
 repository wrapper passed using main's existing narrow compatibility filter.
 Both initial logs are retained, distinct from the successful executions.
+
+Before final push, main advanced again to
+`2e3cd319fc8b56f71ca1cd142ddf57d1db1cf13c`, tree
+`c147a85d0c50ba828683efe2d04120756b318ff6` (Ada multi-message dispatch).
+It was incorporated by ordinary merge
+`51e5dba1bcbae3f180443e02578179c657f7b58a`; all Ada files and main's updated
+CI workflow are preserved exactly. Preliminary final-head checks at `7329cab`
+were stopped/retained under `intermediate-7329cab`, not claimed against the new
+head. Final acceptance reruns are recorded separately under
+`/home/zboll/py012-r1-evidence/v1/final-head`, with their own actual source identity.
+The committed R1 report continues to describe clean `ced74dd` execution rather
+than relabeling it; final-head source equivalence and outcomes are in the PR
+handoff.
