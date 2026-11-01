@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic dispatch fixture: three genuinely different concrete types. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+ xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+ targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified">
+ <xs:complexType name="LogPayload"><xs:sequence>
+  <xs:element name="Text" type="xs:string"/>
+ </xs:sequence></xs:complexType>
+ <xs:complexType name="RdmaPayload"><xs:sequence>
+  <xs:element name="Channel" type="xs:int"/>
+ </xs:sequence></xs:complexType>
+ <xs:complexType name="RiskPayload"><xs:sequence>
+  <xs:element name="Allowed" type="xs:boolean"/>
+ </xs:sequence></xs:complexType>
+ <xs:element name="Log" type="uci:LogPayload" uci:version="001.000.000.000"/>
+ <xs:element name="Rdma" type="uci:RdmaPayload" uci:version="001.000.000.000"/>
+ <xs:element name="Risk" type="uci:RiskPayload" uci:version="001.000.000.000"/>
+</xs:schema>

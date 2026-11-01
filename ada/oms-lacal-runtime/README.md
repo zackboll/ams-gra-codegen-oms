@@ -1,5 +1,55 @@
 # Ada LA-CAL runtime
 
+## Borrowed heterogeneous dispatch (Task 107)
+
+`OMS_LACAL.Dispatchers.Poll_And_Dispatch` replaces application-side repeated
+typed dispatch calls. Instantiate `OMS_LACAL.Typed` once per generated payload /
+Handler pair as before, and declare the bindings `aliased`:
+
+```ada
+--  Log_Binding, Rdma_Binding and Risk_Binding are distinct Typed instances
+--  using generated LogPayload, RdmaPayload and RiskPayload codecs/handlers.
+LB : aliased Log_Binding.Binding (Core'Access);
+RB : aliased Rdma_Binding.Binding (Core'Access);
+SB : aliased Risk_Binding.Binding (Core'Access);
+--  After subscriptions have been acknowledged:
+OMS_LACAL.Dispatchers.Poll_And_Dispatch
+  (Core'Access,
+   ((Value => LB'Access), (Value => RB'Access), (Value => SB'Access)));
+```
+
+The public limited `Participant` interface provides `Is_For` and `Dispatch`;
+`Typed.Binding` implements both without changing its existing calls. A limited
+`Reference` has an anonymous access discriminant `Value`, and `Binding_List` is
+an unconstrained array of these references. This permits checked references to
+locally instantiated tagged bindings without a library-level named access type.
+No unchecked accessibility escape, persistent registry or allocation is needed.
+
+Every entry must be nonnull, unique by object identity and associated with the
+supplied connection. Invalid lists raise `Runtime_Error` before polling or
+dispatching, leaving queued frames untouched. A valid call performs exactly one
+`Connections.Poll`, then synchronously offers its delivery to every listed
+binding. Only the binding owning an active SID decodes and calls its receiver;
+its stored QName, generated codec, error events and reentrancy guards are unchanged.
+An empty list still polls once and discards any delivery; omitting an owning
+binding also discards that delivery. No replay, automatic registration or loop
+is provided. Unexpected exceptions propagate to the caller.
+
+The list is **borrowed only for the call**: dispatchers retain neither binding
+references nor handler values. The connection and each binding must remain alive
+throughout the call. Existing registered receiver lifetime rules below still
+apply: the typed binding, not the dispatcher, retains those receivers until
+unsubscribe/close/finalization. Do not destroy a participating binding or receiver
+inside a callback. Calls are synchronous and single-threaded, not task-safe.
+Duplicate validation is quadratic in list length; there is no new dispatch-size
+limit or SID registry. Application-defined `Participant` implementations must
+truthfully implement `Is_For` and honor this synchronous borrowing contract;
+the type-safe generated payload routing is supplied by `Typed.Binding`.
+
+See `../../tests/ada-lacal-dispatch/dispatch_consumer.adb` for the complete
+three-type generated-code example and
+`../../docs/task-107-ada-lacal-multi-dispatch.md` for tests and limitations.
+
 ## Optional WebSocket transport (Task 100)
 
 The core project remains transport-independent. Import the separate
