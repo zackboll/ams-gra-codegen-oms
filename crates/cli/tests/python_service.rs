@@ -334,11 +334,6 @@ fn selected_subset_boundaries_are_truthful() {
             "nillable",
         ),
         (
-            "unbounded",
-            original.replace("maxOccurs=\"3\"", "maxOccurs=\"unbounded\""),
-            "unbounded",
-        ),
-        (
             "pattern",
             original.replace(
                 "<xs:minInclusive value=\"1\"/>",

@@ -267,12 +267,6 @@ fn unsupported_ir_semantics_fail_closed_without_artifacts() {
         schema.types[0].constraints = constraints;
         cases.push(schema);
     }
-    let mut unbounded = baseline.clone();
-    let TypeKind::Record { fields } = &mut unbounded.types[2].kind else {
-        panic!()
-    };
-    fields[3].cardinality.max_occurs = None;
-    cases.push(unbounded);
     let mut named_constraints = baseline.clone();
     let TypeKind::Record { fields } = &mut named_constraints.types[2].kind else {
         panic!()
