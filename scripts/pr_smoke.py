@@ -50,13 +50,14 @@ def classify(paths):
                                "tests/ada-", "tests/fixtures/ada-",
                                "tests/fixtures/service-generate/codec-ada-",
                                "crates/cli/tests/ada_", "scripts/task102/", "scripts/task103/",
-                               "scripts/task104/", "scripts/task105/", "tests/fixtures/task102/",
+                               "scripts/task104/", "scripts/task105/", "scripts/task106/", "tests/fixtures/task102/",
                                "tests/fixtures/task103/", "tests/fixtures/task104/",
-                               "tests/fixtures/task105/"))
+                               "tests/fixtures/task105/", "tests/fixtures/task106/"))
               or path in ("scripts/task102_evidence.py", "scripts/task103_evidence.py",
-                          "scripts/task104_evidence.py", "scripts/task105_evidence.py")
+                          "scripts/task104_evidence.py", "scripts/task105_evidence.py",
+                          "scripts/task106_evidence.py")
               or (path.startswith(("scripts/test_task102", "scripts/test_task103")) and path.endswith(".py"))
-              or (path.startswith(("scripts/test_task104", "scripts/test_task105"))
+              or (path.startswith(("scripts/test_task104", "scripts/test_task105", "scripts/test_task106"))
                   and "/" not in path.removeprefix("scripts/") and path.endswith(".py"))):
             selected.add("ada")
         else:
