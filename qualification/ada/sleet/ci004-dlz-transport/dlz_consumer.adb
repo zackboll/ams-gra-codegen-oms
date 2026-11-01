@@ -1,3 +1,4 @@
+--  CI-SELECT-004-A3: retain the registered real transport checks.
 with Ada.Command_Line;
 with GNAT.Directory_Operations;
 with Ada.Exceptions;
