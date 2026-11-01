@@ -46,10 +46,13 @@ def classify(paths):
                               "crates/runtime-api-rust/", "crates/runtime-rust-facade-tests/",
                               "tests/rust-", "tests/fixtures/rust-")):
             selected.add("rust")
-        elif path.startswith(("crates/backend-ada/", "ada/", "qualification/ada/",
-                              "tests/ada-", "tests/fixtures/ada-",
-                              "tests/fixtures/service-generate/codec-ada-",
-                              "crates/cli/tests/ada_")):
+        elif (path.startswith(("crates/backend-ada/", "ada/", "qualification/ada/",
+                               "tests/ada-", "tests/fixtures/ada-",
+                               "tests/fixtures/service-generate/codec-ada-",
+                               "crates/cli/tests/ada_", "scripts/task102/",
+                               "tests/fixtures/task102/"))
+              or path == "scripts/task102_evidence.py"
+              or (path.startswith("scripts/test_task102") and path.endswith(".py"))):
             selected.add("ada")
         else:
             selected.update(BACKENDS)

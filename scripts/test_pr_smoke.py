@@ -41,6 +41,29 @@ class Routing(unittest.TestCase):
             self.assert_execution([path], list(smoke.BACKENDS))
         self.assert_execution(["crates/backend-python/Cargo.toml"], list(smoke.BACKENDS))
 
+    def test_task102_ada_only(self):
+        paths = ("scripts/task102/admission.py", "scripts/task102/cases.py",
+                 "scripts/task102/constrained.py", "scripts/task102/qualify.py",
+                 "scripts/task102/sleet.py", "scripts/task102/nested/new.py",
+                 "scripts/task102_evidence.py", "scripts/test_task102.py",
+                 "scripts/test_task102_evidence.py", "scripts/test_task102_new.py",
+                 "tests/ada-real-uci-log/log_consumer.adb",
+                 "tests/ada-real-uci-log/hash_probe.adb",
+                 "tests/fixtures/task102/uci25-service.yaml",
+                 "tests/fixtures/task102/uci26-service.yaml")
+        for path in paths:
+            with self.subTest(path=path):
+                self.assert_execution([path], ["ada"])
+        self.assert_execution(paths, ["ada"])
+        self.assert_execution([paths[0], "docs/task-102-ada-real-uci-log-sleet.md"], ["ada"])
+        self.assert_execution([paths[0], "crates/backend-rust/src/lib.rs"], ["rust", "ada"])
+
+    def test_task102_ownership_boundaries(self):
+        for path in ("scripts/task102_other.py", "scripts/task102_evidence.py.bak",
+                     "scripts/test_task102_evidence.txt", "tests/fixtures/task102-other/new.yaml"):
+            with self.subTest(path=path):
+                self.assert_execution([path], list(smoke.BACKENDS))
+
     def test_mixed(self):
         self.assert_execution(["crates/backend-python/src/lib.rs", "ada/new.ads"], ["python", "ada"])
         self.assert_execution(["crates/backend-rust/src/lib.rs", "python/new.py"], ["python", "rust"])
