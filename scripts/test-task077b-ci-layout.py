@@ -54,7 +54,7 @@ class MutationOwnership(unittest.TestCase):
                 observed = []
 
                 def inspect_mutation(command, **kwargs):
-                    mutated = pathlib.Path(command[3]).read_text()
+                    mutated = pathlib.Path(command[2]).read_text()
                     jobs = dict(re.findall(r"^  ([\w-]+):\n(.*?)(?=^  [\w-]+:|\Z)",
                                            text, re.M | re.S))
                     changed = dict(re.findall(r"^  ([\w-]+):\n(.*?)(?=^  [\w-]+:|\Z)",
@@ -68,9 +68,7 @@ class MutationOwnership(unittest.TestCase):
                 # guard and checks each attributed diagnostic and non-no-op.
                 from unittest.mock import patch
                 with patch.object(layout.subprocess, "run", side_effect=inspect_mutation):
-                    layout.self_test(str(path), str(ROOT / "scripts/check-ci-split.sh"),
-                                     str(ROOT / ".github/workflows/ci.yml"),
-                                     str(ROOT / "scripts/run-real-sleet-test.sh"))
+                    layout.self_test(str(path))
                 # Every primary shard now receives the same source/setup
                 # mutations as each independent regression runner.
                 self.assertEqual(len(observed), 364)

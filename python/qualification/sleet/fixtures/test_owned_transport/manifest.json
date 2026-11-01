@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "test": "test_owned_transport.py",
+  "files": ["required.json"],
+  "tests": ["test_owned_transport.OwnedTransport.test_actual_transport_and_decoder_recovery"]
+}

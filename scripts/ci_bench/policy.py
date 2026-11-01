@@ -22,7 +22,7 @@ def check(policy, workflows, root):
     text = workflows.get(WORKFLOW, '')
     # Exact normalized trusted definition: any event/permission/runner/checkout,
     # input interpolation, lane, timeout, upload or container command edit fails.
-    from ci_policy import normalized
+    from workflow_text import normalized
     digest = hashlib.sha256(normalized(text).encode()).hexdigest()
     if digest != record['workflow_sha256'] or digest != WORKFLOW_SHA256:
         raise ValueError('manual benchmark workflow trust contract changed')

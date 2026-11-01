@@ -1,0 +1,259 @@
+{
+  "scope": "Precommit local source-qualified execution; exact-final-head hosted CI remains independent",
+  "checks": {
+    "workspace": {
+      "exit": 0,
+      "log_sha256": "361045b15ffd40b56c88929e3560daeeee55bdf608f3d5956846e8b847311454"
+    },
+    "backend-python3.11": {
+      "exit": 0,
+      "log_sha256": "e1ac859d54a520bba207af80e447efeb27a2f6923989acf6b40b8bfeba24b22d"
+    },
+    "backend-python3.13": {
+      "exit": 0,
+      "log_sha256": "6ef00117c6a30bacd76fea9942c452f5b7b99bac59668bd7e35be6dc14086e67"
+    },
+    "cli-python3.11": {
+      "exit": 0,
+      "log_sha256": "3fc52ae335c2c77e37ef59a83738d3830e29e5aba785030964698b4afd77c0a7"
+    },
+    "cli-python3.13": {
+      "exit": 0,
+      "log_sha256": "f9d4868d3bcab27ad72126bc8d66daf1b2ffb65beffa337629e9272a73198d5b"
+    },
+    "visible-final-python3.11": {
+      "exit": 0,
+      "log_sha256": "18ce90af27e8117e6fe3cf7b055211fd4eb690034cc980b9ec2d91e031616e26"
+    },
+    "visible-final-python3.13": {
+      "exit": 0,
+      "log_sha256": "fbd676bfcdab247bbf29fa0cb0f7e2b85eac08a6f8935ef61a5f6d64febba30d"
+    },
+    "fmt-final": {
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "check-final": {
+      "exit": 0,
+      "log_sha256": "0fb86310e3d1083efa0f170b282a7b7347d473a242ce5831852c3003fe361c33"
+    },
+    "clippy-final": {
+      "exit": 0,
+      "log_sha256": "bac9a85711e1d7a20c7493e5079ce44c709ad4f33439f49d1007249666a00565"
+    },
+    "mock-311": {
+      "exit": 0,
+      "log_sha256": "984bb77e973a9718148dbca527621e7e074ace581873bc34f78d43ea0956b243"
+    },
+    "mock-313": {
+      "exit": 0,
+      "log_sha256": "9d2fc15ecd0e3445cc378393ee67134f0c6cd1547b689afded4c3e16526429c1"
+    },
+    "artifact-policy": {
+      "exit": 0,
+      "log_sha256": "bfbdd5fed17bb82ab0f19c543e6abb42abb141824cd9f0e063abc8fae14cd6e0"
+    },
+    "uci-before": {
+      "exit": 0,
+      "log_sha256": "0ef48b851d9012064c8f06ff5b43ea5f888aa13394cbc07a69c21482ba971c32"
+    },
+    "uci-after": {
+      "exit": 0,
+      "log_sha256": "e623b2a0ccf1e953ee836440245205fe61c5d5c9a58318801816347de5e55cc4"
+    },
+    "uci-controls-final": {
+      "exit": 0,
+      "log_sha256": "6af0e6c6e142de031548a49370fc459b42338e0aaa08f9ee61ac48282b1b5942"
+    },
+    "uci-python3.11": {
+      "exit": 0,
+      "log_sha256": "137bc510f61885d834453c98a040b2763997b458b04761c7e52c11b905491e39"
+    },
+    "pinned-profiles-initial": {
+      "exit": 0,
+      "log_sha256": "957a8989684d19877e5ea6549c0bbaafd63be1e5dab227c4d7b991332b9b1ddb"
+    },
+    "visible-free-parity": {
+      "exit": 0,
+      "log_sha256": "3a0af9b97ea1beccf8b5bf704bd86d176ebf69365e07b765902a6d20e5eebadb"
+    },
+    "legacy-parity": {
+      "exit": 0,
+      "log_sha256": "89acf174a7a300ce66d0bce6a3ca4073cec149a805603733c3dc67287ec9112f"
+    },
+    "header-record-parity": {
+      "exit": 0,
+      "log_sha256": "92e65811498a81c46c2900869e46bb671677cd8a58257f32880c95b7b3fefa4e"
+    },
+    "ci-selection-complete": {
+      "exit": 0,
+      "log_sha256": "110bd116627d572e0ba403381582f421d3e46aa7620b53ef7af7502f95f4c90e"
+    },
+    "numeric-corrected-python3.11-normal": {
+      "exit": 0,
+      "log_sha256": "d18b7e8a69b40fff6ea5b19b1d767cd674ae589178bfd8a273d75cd1d1b96f26"
+    },
+    "numeric-corrected-python3.11-optimized": {
+      "exit": 0,
+      "log_sha256": "d18b7e8a69b40fff6ea5b19b1d767cd674ae589178bfd8a273d75cd1d1b96f26"
+    },
+    "numeric-corrected-python3.13-normal": {
+      "exit": 0,
+      "log_sha256": "d18b7e8a69b40fff6ea5b19b1d767cd674ae589178bfd8a273d75cd1d1b96f26"
+    },
+    "numeric-corrected-python3.13-optimized": {
+      "exit": 0,
+      "log_sha256": "d18b7e8a69b40fff6ea5b19b1d767cd674ae589178bfd8a273d75cd1d1b96f26"
+    },
+    "sleet-005-311": {
+      "exit": 0,
+      "log_sha256": "fe809a5495124a26e6fbe7f37bfbc2f816a62041fbe978bcbd2fad7f3c56b728"
+    },
+    "sleet-005-313": {
+      "exit": 0,
+      "log_sha256": "1e806b5d5d65f17e47c5ee361719f27401aae21eff3a9db97f0e08d05a30d001"
+    },
+    "sleet-006-311": {
+      "exit": 0,
+      "log_sha256": "ce03be697142291e336549b8ba8416a409a8b08876f9d42e294886e9f85955ee"
+    },
+    "sleet-006-313": {
+      "exit": 0,
+      "log_sha256": "813744534e23935699f20cc27bf756638dbb7c24888638fcaeb1b0fb8015d99b"
+    },
+    "sleet-007-311": {
+      "exit": 0,
+      "log_sha256": "10b56c31c3a5ea0fd44a0a385e718d9806fc895b775972f7d9e7c4569ca77366"
+    },
+    "sleet-007-313": {
+      "exit": 0,
+      "log_sha256": "f0647f4e405472a37863992b77e12b99375079440817ffb0d8d09e7e7aea8144"
+    },
+    "sleet-008-311": {
+      "exit": 0,
+      "log_sha256": "c0110eb39eb537a9ba4e7d68919d098fc9526254e9b9107753906d1a5aa75728"
+    },
+    "sleet-008-313": {
+      "exit": 0,
+      "log_sha256": "87685c5100c0a705ff25572c8f54e5e9561c34967d1f2659d380ee787f1a416b"
+    },
+    "sleet-009-311": {
+      "exit": 0,
+      "log_sha256": "2f47a0abece0da61856f5c552028b5f692b7f57a8eb4ff8d1ad838a47ddea56d"
+    },
+    "sleet-009-313": {
+      "exit": 0,
+      "log_sha256": "2c431d8bafd30943fddb413f545ccd516bd6b39d6039e708033181e5ddb08b59"
+    },
+    "sleet-retained-311": {
+      "exit": 0,
+      "log_sha256": "962e6ce467a6232d5c05d0607c9587949f8a6ef3e8d8dca626306c6a36bb2f26"
+    },
+    "sleet-retained-313": {
+      "exit": 0,
+      "log_sha256": "a8adb842c804a79d35cbf9846bd46d126e449ee4e0e61a51d69daa6ac758a0ea"
+    },
+    "uci-python3.13": {
+      "exit": 0,
+      "log_sha256": "137bc510f61885d834453c98a040b2763997b458b04761c7e52c11b905491e39"
+    },
+    "inherited-007": {
+      "exit": 0,
+      "log_sha256": "391a44d2066a8d8e007991ed7b521294360cb86af1172b1100dcbc1e1ef552f7"
+    },
+    "inherited-008": {
+      "exit": 0,
+      "log_sha256": "bc641c5244890250bc4a9df2ebade434073e0fa50c3f1d1b441b5815e477b4ba"
+    },
+    "inherited-009": {
+      "exit": 0,
+      "log_sha256": "345e98b5f5d89d550aeeee0bc715eb0ac96ca1f5ca6e3da181c35c157cb14535"
+    },
+    "historical-007": {
+      "exit": 0,
+      "log_sha256": "85bc0fd1b8cdc52cd26750a4d4fa8fc8cbb1d3d889791be6ff5def166d6f504b"
+    },
+    "historical-008": {
+      "exit": 0,
+      "log_sha256": "afc339452cb42082dddedbbfa702fbc515ac2228ed7d5d1f18a105369cca614f"
+    },
+    "historical-009": {
+      "exit": 0,
+      "log_sha256": "d26bdd8902cfd9615fdc56631c8cf5c6f50365669f489e98ad81e93f48fdb11a"
+    },
+    "docs": {
+      "exit": 0,
+      "log_sha256": "14ac33b4fa4bdc66c28a38b2d2093b3f9b20796387125fc7179220e4e6aeee83"
+    }
+  },
+  "workspace": {
+    "passed": 1501,
+    "failed": 0,
+    "preexisting_ignored": 8
+  },
+  "supported_pairs": [
+    [
+      1,
+      20
+    ],
+    [
+      1,
+      32
+    ],
+    [
+      1,
+      64
+    ],
+    [
+      1,
+      81
+    ],
+    [
+      1,
+      128
+    ],
+    [
+      1,
+      256
+    ],
+    [
+      1,
+      480
+    ],
+    [
+      1,
+      512
+    ],
+    [
+      1,
+      1024
+    ],
+    [
+      2,
+      4
+    ]
+  ],
+  "corpus_cases": 60,
+  "pinned_profile_methods_per_interpreter": 416,
+  "visible_cli_methods_per_interpreter": 72,
+  "source_sha256": {
+    "crates/backend-python/src/codec_runtime.py": "1cac581f877c18898a6a71c8bc06f138cb27a55a368a701278cb333c6c803565",
+    "crates/backend-python/src/datetime_codec_runtime.py": "acc5089ee783815e693b1a163eb7b537b81c4e79294bfc25bd1dd6301c0a4bb2",
+    "crates/backend-python/src/datetime_runtime.py": "1d255fcbdd35151c13c8ff49c28cc1ceceaa700049adb5a7631b84afa156b6ba",
+    "crates/backend-python/src/float64_codec_runtime.py": "706cfc7ca10a7b278a7f0b3e7c8d35412819791423a8099776bcd80f79f25f6a",
+    "crates/backend-python/src/float64_runtime.py": "14d20e12b631056782d3b7244ff42ee2a7c8fd3347f0193711eab46cdbe385e0",
+    "crates/backend-python/src/header_codec_runtime.py": "e00159fb1f1e0839db6275fa8fb20cf6c2150a03fe810282c378c49c8c045eaa",
+    "crates/backend-python/src/header_runtime.py": "3f21a05dc5badad30c100570bde6f49797a627c298214ab028dfc702b5d56571",
+    "crates/backend-python/src/lib.rs": "6d687373da2d559048ad52b31432cac5230ea495461a4e05a6fb4cccb79be97d",
+    "crates/backend-python/src/names.rs": "62e3b3bf82628a41a05641325e85875a5293bf73bc5f3742df8f030742741539",
+    "crates/backend-python/src/runtime.py": "3515dde68d97418471258e354e41ceceb6911138644856fb81a4c5265b931d69",
+    "crates/backend-python/src/service_api.rs": "736f52a065b7ff06e2c24b74b998720a114ddd5988092c9c1838e54db3463778",
+    "crates/backend-python/src/service_codec.rs": "66ece3196992ab409d1d2de7511d4b4479012dcbdbd07f38823d2d2a35e1fed8",
+    "crates/backend-python/src/service_runtime.py": "5814cc0370b28cecd75b1f15b2f684550192dd2f7286e4981c8124ba24b84e49",
+    "crates/backend-python/src/visible_ascii_runtime.py": "2d2d661c5487069d3a95aa8f8e84bfedf03cb017f54f7a73a5f4c3d85e19a0fa"
+  },
+  "remaining_local_gates": [
+    "split-mutations-complete"
+  ],
+  "hosted": "PENDING"
+}

@@ -3,15 +3,16 @@
 ## Scope, dependency, and provenance
 
 This is **message-level OMS interoperability**, not a hardware RDMA connection.
-The dependency is [PR #134](https://github.com/zackboll/ams-gra-codegen-oms/pull/134),
-Task102, reviewed HEAD `5bb331c5e970d2ee543522c2de4c46f1c5aeae9f`, tree
-`dac4b1224bbe57144155f9d8c3b148cccdd67943`. PR #134 was OPEN when this work
-started. The dedicated branch is `feature/103-ada-real-uci-rdma-sleet`, created
-directly from its remote branch. Its initial PR base is
-`feature/102-ada-real-uci-log-sleet`, not main. No Task103 branch or PR existed.
+The dependency, [PR #134](https://github.com/zackboll/ams-gra-codegen-oms/pull/134)
+(Task102), is now merged. PR #142 originally stacked on
+`feature/102-ada-real-uci-log-sleet`; TASK103-R1 merges current main
+`15f07ce022fa86e3c80cfea9129793c4aefc9474` into the existing
+`feature/103-ada-real-uci-rdma-sleet` branch and retargets the PR to `main`.
+Published Task103 history is preserved, without rebase, amend or force push.
+Current main's Task102 sources, verifier tests, routing and Deep job are retained.
 
-Worktree: `/home/zboll/git/ams-gra-codegen-oms-task103`.
-Evidence root: `/home/zboll/task103-scratch`. Parent worktrees, branches,
+Original qualification worktree: `/home/zboll/git/ams-gra-codegen-oms-task103`.
+Historical evidence root: `/home/zboll/task103-scratch`. Parent worktrees, branches,
 qualification evidence and PRs are not implementation targets. No rebase,
 reset, amend, cherry-pick, force push, approval, merge, auto-merge, publication
 or release belongs to this task. Concurrent PR #133 remains independently owned.
@@ -168,12 +169,16 @@ Expected compiler negatives assert the reason rather than any arbitrary failure.
 Source inputs are hashed before and after execution; drift aborts the campaign.
 
 No final clean-source success is inferred from a dirty development campaign.
-Final acceptance requires fresh campaigns at the committed integration source,
-independent bundle verification, required regression exits, and exact hosted
-source/run/attempt/compiler identities. Actual executed, ignored and filtered
-Rust counts must be recorded separately; skipped tests are not passes.
+Full qualification on main requires fresh campaigns at the committed source,
+independent bundle verification and exact source/run/attempt/compiler identities.
+The historical local campaigns are not relabelled as reconciliation-head runs.
+Pre-merge reconciliation runs focused verifier/unit and router tests, actual
+lightweight Ada smoke, pinned actionlint and a diff audit. The final exact-head
+GitHub `PR smoke` check must pass; no full Deep run is dispatched on this PR.
+Actual executed, ignored and filtered test counts are recorded separately;
+skipped tests are not passes.
 
-## Independently owned Deep CI
+## Main-only Deep CI and lightweight PR routing
 
 New job: `ada-real-uci-rdma-sleet`, compiler cells 14/16. Artifacts:
 `task103-ada-real-uci-rdma-14` and `task103-ada-real-uci-rdma-16`.
@@ -183,24 +188,34 @@ Lane placement used current API occupancy and exact-parent successful run
 registered self-hosted runners (these jobs use hosted runners). Measured inherited
 ordinary+Deep seconds by shared lane: 1: 7,643; 2: 9,155; 3: 8,131; 4: 9,335;
 5: 10,762. New cells use **1 (14)** and **3 (16)**; no inherited cell moves.
-Five shared main lanes and `queue: max` remain. Registered cells increase
-44 → 46 and Deep cells 16 → 18. Existing compiler/message expectations are not
-changed to make room; inherited tests only update additive topology totals.
+Five shared main lanes and `queue: max` remain, using the existing
+`oms-main-slot-{0}` concurrency format. No inherited job or cell moves.
+The job condition is `github.ref == 'refs/heads/main'`; it has no PR selection
+input or PR-specific execution. It builds unmodified pinned Sleet, fetches both
+authentic pinned UCI releases, runs the full compiler campaign, then independently
+verifies the local outcome with `scripts/task103_evidence.py`. Missing evidence,
+stale source, wrong run/attempt/compiler, failed or missing execution steps,
+changed schema pins, missing cells, generated parity drift, forged markers/model
+observations, incorrect rejection stages and missing cleanup fail closed.
 
-CI-SELECT-002 owns change-aware selection. A Task103 projection validates its
-own rule/job pins and removes only its additions before checking unchanged
-Task101/102 and historical ownership pins. Both artifacts are mandatory when
-selected. The aggregate uses unchanged CI-RETRY-001 producer resolution and then
-the independently owned source-bound RDMA verifier. Wrong/missing artifacts,
-stale source, wrong run/attempt/compiler, skipped steps, changed schema pins,
-missing cells, generated parity drift, forged markers/model observations,
-incorrect rejection stages and missing cleanup fail closed.
+CI-RESET-001 retired selector/policy projections and PR aggregate artifact gates.
+`scripts/task103_ci.py` is removed. Substantive verifier and Git trust-boundary
+controls now live in `scripts/test_task103_evidence.py`, without selector or PR
+aggregate tests. Diagnostic artifacts are still uploaded with `if: always()`;
+the campaign and independent verification themselves must succeed.
+
+The existing lightweight `scripts/pr_smoke.py` router selects Ada only for
+`scripts/task103/**`, `scripts/task103_evidence.py`, `scripts/test_task103*.py`,
+`tests/ada-real-uci-rdma/**` and `tests/fixtures/task103/**`. This reconciliation
+also changes the shared router, so its integration PR runs Python, Rust and Ada
+smoke plus workflow syntax validation. Comprehensive GNAT14/16 qualification
+runs on main after merge, not as a pre-merge PR requirement.
 
 Exact-path Git trust under isolated HOME and bounded hidden-file uploads carry
 forward Task101/102 protections; no `.git`, developer HOME or credentials are
-uploaded. PERF-007's three evidence shards, CI002/trusted dispatch, manual-only
-CI-BENCH-001 and `pr-ci-required` keep their original contracts. Production
-generator, codec, Ada runtime and transport sources are not changed.
+uploaded. Existing main CI jobs, including Task102, are unchanged. Production
+generator, codec, Ada runtime, transport, authentic schemas and Sleet sources
+are not changed.
 
 ## Review stop and unsupported claims
 
@@ -209,6 +224,8 @@ network-stack IPv6 syntax beyond the authentic schema, alternative brokers,
 authentication/TLS deployment, lossless floating point, or all optional RDMA
 fields. It does not approve, merge, release or publish Task103.
 
-Delivery disposition and actual source/remote/PR parity, hosted run IDs and both
-artifact IDs must be independently recorded after qualification. Until those
-checks complete, the work is **not ready for independent-review approval**.
+Delivery records the exact source/tree, source/remote/PR parity, main base,
+focused test results and exact-head hosted `PR smoke` conclusion. Historical
+full-campaign findings remain historical; new main qualification evidence will
+carry its own actual run/attempt identities. No PR artifact reconciliation or
+retired aggregate gate is a pre-merge requirement.

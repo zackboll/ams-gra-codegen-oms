@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "task_id": "ci004-smoke",
+  "profile": "ada-test-v1",
+  "sources": ["owned_smoke.adb"],
+  "fixtures": [],
+  "tests": ["checked-arithmetic", "exception-propagation"],
+  "main": "owned_smoke.adb"
+}
