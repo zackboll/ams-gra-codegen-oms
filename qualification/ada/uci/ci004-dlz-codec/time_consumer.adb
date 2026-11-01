@@ -1,3 +1,4 @@
+--  CI-SELECT-004-A2: retain the registered codec execution contract.
 --  Task 098: batch consumer over a production-generated service codec.
 --
 --  The harness substitutes Programs.Oam and DLZ_MT. Each input
