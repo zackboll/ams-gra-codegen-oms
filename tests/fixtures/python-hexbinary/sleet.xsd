@@ -1,0 +1,12 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+ xmlns:t="https://www.vdl.afrl.af.mil/programs/oam"
+ targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified" version="002.5.0">
+ <xs:simpleType name="Exact"><xs:restriction base="xs:hexBinary"><xs:length value="2"/></xs:restriction></xs:simpleType>
+ <xs:complexType name="Payload"><xs:sequence>
+  <xs:element name="Required" type="xs:hexBinary"/>
+  <xs:element name="Optional" type="xs:hexBinary" minOccurs="0"/>
+  <xs:element name="Repeated" type="xs:hexBinary" minOccurs="0" maxOccurs="unbounded"/>
+  <xs:element name="Constrained" type="t:Exact" minOccurs="0"/>
+ </xs:sequence></xs:complexType>
+ <xs:element name="BinaryNotice" type="t:Payload" t:version="001.000.000.000"/>
+</xs:schema>
