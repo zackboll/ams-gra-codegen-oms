@@ -362,10 +362,13 @@ class FinalReportContract(unittest.TestCase):
                     patch.object(gate, 'git', return_value=('d' * 40 + '\n').encode()), \
                     patch.object(gate, 'reconcile_task100', return_value={}), \
                     patch.object(gate, 'reconcile_task101', return_value={}), \
+                    patch.object(gate, 'reconcile_owned', return_value={}), \
                     patch.object(gate, 'reconcile_primary', return_value={}), \
                     patch.object(gate, 'Path') as path, patch('builtins.print') as output:
                 gate.main()
-                path.assert_called_once_with('ci-required-result.json')
+                self.assertEqual(path.call_count, 2)
+                path.assert_called_with('ci-required-result.json')
+                path.return_value.unlink.assert_called_once_with(missing_ok=True)
                 report = json.loads(path.return_value.write_text.call_args.args[0])
                 printed = json.loads(output.call_args.args[1])
                 self.assertEqual(output.call_args.args[0], 'PR_CI_REQUIRED_COMPLETE')
@@ -379,6 +382,9 @@ class FinalReportContract(unittest.TestCase):
                 gate.verify_final_job.assert_called_once_with(
                     fixture.jobs, dict(id=123, run_attempt=1), 'pr-ci-required')
                 gate.reconcile_task100.assert_called_once_with(
+                    fixture.artifacts, manifest, 'c' * 40, 'd' * 40, '123', '1',
+                    jobs=fixture.jobs, attempts={})
+                gate.reconcile_owned.assert_called_once_with(
                     fixture.artifacts, manifest, 'c' * 40, 'd' * 40, '123', '1',
                     jobs=fixture.jobs, attempts={})
                 if docs:

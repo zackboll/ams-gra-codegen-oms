@@ -152,6 +152,13 @@ jobs:
           print('TASK101_HOSTED_VERIFIED', verify_bundle(files, os.environ['TASK101_COMPILER'],
                 os.environ['GITHUB_SHA'], tree, os.environ['GITHUB_RUN_ID'], os.environ['GITHUB_RUN_ATTEMPT']))
           EOF
+      - name: Execute source-bound Ada pinned registrations with shared broker
+        shell: bash
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          set -euo pipefail
+          /tmp/task101-venv/bin/python scripts/run-owned-ada.py pinned --compiler '${{ matrix.compiler }}' --setup /tmp/task101-evidence/setup --generator "$GITHUB_WORKSPACE/target/release/ams-gra-codegen-oms" --output /tmp/ci004-ada-pinned --sleet /tmp/task101-sleet --shared-campaign /tmp/task101-evidence/campaign --uci25 "$(cat /tmp/task101-evidence/uci25-root.txt)" --uci26 "$(cat /tmp/task101-evidence/uci26-root.txt)"
       - name: Upload mandatory source compiler and execution evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -174,6 +181,7 @@ jobs:
             /tmp/task101-evidence/campaign/**/*.gpr
             /tmp/task101-evidence/campaign/**/*.xsd
             /tmp/task101-evidence/campaign/**/*.yaml
+            /tmp/ci004-ada-pinned/**
           if-no-files-found: error
 
   ada-websocket-real-sleet:
@@ -634,6 +642,9 @@ jobs:
           printf 'DEEP_CI_SOURCE_SHA=%s\n' "$actual"
           printf 'DEEP_CI_SOURCE_TREE=%s\n' "$tree"
           printf 'DEEP_CI_EVENT=%s\n' "$GITHUB_EVENT_NAME"
+      - name: Prevent Python bytecode in source-bound qualification
+        shell: bash
+        run: echo 'PYTHONDONTWRITEBYTECODE=1' >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@stable
       - name: Install GNAT
         run: |
@@ -812,6 +823,19 @@ jobs:
           grep -Fqx 'UCI 2.6 DURATION MESSAGE IMPACT: RECORDED' <<<"$output"
           grep -Eqx '(test task057_real_uci_category_a_log_generates_and_compiles \.\.\. )?UCI 2\.5 REAL CATEGORY-A DURATION SERVICE: PASSED' <<<"$output"
           grep -qE '^test result: ok\. 4 passed' <<<"$output"
+      - name: Execute source-bound Python pinned UCI inventory in both interpreters
+        run: |
+          set -euo pipefail
+          for ci004_interpreter in python3.11 python3.13; do
+            "$ci004_interpreter" scripts/run-owned-python.py uci
+            "$ci004_interpreter" -O scripts/run-owned-python.py uci
+          done
+      - name: Upload mandatory source compiler and execution evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci004-python-uci
+          path: ${{ runner.temp }}/ci004-python-uci/**
+          if-no-files-found: error
 
   # Independent ASCII runner: fresh verified inputs and release CLI.
   real-uci-regressions-ascii:
@@ -1045,6 +1069,9 @@ jobs:
           printf 'DEEP_CI_SOURCE_SHA=%s\n' "$actual"
           printf 'DEEP_CI_SOURCE_TREE=%s\n' "$tree"
           printf 'DEEP_CI_EVENT=%s\n' "$GITHUB_EVENT_NAME"
+      - name: Prevent Python bytecode in source-bound qualification
+        shell: bash
+        run: echo 'PYTHONDONTWRITEBYTECODE=1' >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-python@v5
         with:
@@ -1123,6 +1150,13 @@ jobs:
         with:
           name: py010-sleet
           path: ${{ runner.temp }}/py010-sleet/**
+          if-no-files-found: error
+      - name: Upload mandatory source compiler and execution evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci004-python-sleet
+          path: ${{ runner.temp }}/ci004-python-sleet/**
           if-no-files-found: error
 
   ada-hexbinary-real:

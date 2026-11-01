@@ -40,6 +40,8 @@ for interpreter in ${PY006_PYTHONS:-${PYTHON:-python3}}; do
   PYTHON="$interpreter" bash "$ROOT/scripts/check-py010-sleet.sh"
   "$interpreter" "$ROOT/python/qualification/run.py" sleet
   "$interpreter" -O "$ROOT/python/qualification/run.py" sleet
+  "$interpreter" "$ROOT/scripts/run-owned-python.py" sleet
+  "$interpreter" -O "$ROOT/scripts/run-owned-python.py" sleet
 done
 
 cd "$ROOT"

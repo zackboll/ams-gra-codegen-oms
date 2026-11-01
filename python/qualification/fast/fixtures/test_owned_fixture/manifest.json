@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "test": "test_owned_fixture.py",
+  "files": ["oam.xsd", "service.yaml", "values.json"],
+  "tests": ["test_owned_fixture.OwnedFixture.test_generated_codec", "test_owned_fixture.OwnedFixture.test_required_values"]
+}
