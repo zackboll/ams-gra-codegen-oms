@@ -46,7 +46,7 @@ class CI(unittest.TestCase):
         text = (ROOT / ".github/workflows/ci.yml").read_text()
         optimized = placement.job(text, "ada-float32-codec")
         mutations = {
-            "comment": text.replace("# Task 055: Fast CI.", "# Harmless maintenance: Fast CI."),
+            "comment": text.replace("name: CI\n", "name: CI\n# Workflow maintenance note.\n", 1),
             "description": text.replace("Qualify Python model generation (runtime probes must execute)",
                                         "Qualify Python model generation and runtime probes"),
             "step": text.replace(

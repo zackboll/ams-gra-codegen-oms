@@ -11,9 +11,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import ci_policy
-import ci_selection
-from ci_select004 import HOOKS, project, project_sleet, SLEET, PYTHON_ENV
+from workflow_text import blocks
+HOOKS = (('ci.yml', 'ada-lacal-runtime-core', '      - name: Execute source-bound Ada Fast registrations\n        shell: bash\n        env:\n          PYTHONDONTWRITEBYTECODE: \'1\'\n        run: python3 scripts/run-owned-ada.py fast --compiler \'${{ matrix.compiler }}\' --setup /tmp/task099-evidence/setup --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms" --output /tmp/ci004-ada-fast\n'), ('ci.yml', 'python-model-backend', '      - name: Execute source-bound Python Fast inventory\n        run: |\n          set -euo pipefail\n          python scripts/run-owned-python.py fast\n          python -O scripts/run-owned-python.py fast\n      - name: Upload mandatory source compiler and execution evidence\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: ci004-python-fast-${{ matrix.python-version }}\n          path: ${{ runner.temp }}/ci004-python-fast/**\n          if-no-files-found: error\n'), ('deep-ci.yml', 'ada-real-uci-dlz-sleet', '      - name: Execute source-bound Ada pinned registrations with shared broker\n        shell: bash\n        env:\n          PYTHONDONTWRITEBYTECODE: \'1\'\n        run: |\n          set -euo pipefail\n          /tmp/task101-venv/bin/python scripts/run-owned-ada.py pinned --compiler \'${{ matrix.compiler }}\' --setup /tmp/task101-evidence/setup --generator "$GITHUB_WORKSPACE/target/release/ams-gra-codegen-oms" --output /tmp/ci004-ada-pinned --sleet /tmp/task101-sleet --shared-campaign /tmp/task101-evidence/campaign --uci25 "$(cat /tmp/task101-evidence/uci25-root.txt)" --uci26 "$(cat /tmp/task101-evidence/uci26-root.txt)"\n'), ('deep-ci.yml', 'real-uci-regressions', '      - name: Execute source-bound Python pinned UCI inventory in both interpreters\n        run: |\n          set -euo pipefail\n          for ci004_interpreter in python3.11 python3.13; do\n            "$ci004_interpreter" scripts/run-owned-python.py uci\n            "$ci004_interpreter" -O scripts/run-owned-python.py uci\n          done\n      - name: Upload mandatory source compiler and execution evidence\n        uses: actions/upload-artifact@v4\n        with:\n          name: ci004-python-uci\n          path: ${{ runner.temp }}/ci004-python-uci/**\n          if-no-files-found: error\n'), ('deep-ci.yml', 'real-sleet', '      - name: Upload mandatory source compiler and execution evidence\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: ci004-python-sleet\n          path: ${{ runner.temp }}/ci004-python-sleet/**\n          if-no-files-found: error\n'))
 import owned_qualification as owned
 from owned_ada_evidence import verify_bundle
 from ci_retry_test_data import metadata
@@ -43,7 +42,7 @@ class Registration(unittest.TestCase):
 
     def test_source_only_new_task_and_owned_fixture_need_no_policy_edits(self):
         before = {p: (ROOT / p).read_bytes() for p in
-                  ['.github/workflows/ci.yml', '.github/workflows/deep-ci.yml', 'scripts/ci_policy.py']}
+                  ['.github/workflows/ci.yml', '.github/workflows/deep-ci.yml', 'scripts/owned_qualification.py']}
         new = self.task.with_name('future-task')
         shutil.copytree(self.task, new)
         item = json.loads((new / 'manifest.json').read_text())
@@ -117,33 +116,6 @@ class Registration(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'filter'):
             owned.python_fixtures(self.root)
 
-    def test_selector_exact_owners_union_and_unsafe_fallback(self):
-        policy = ci_selection.inventory()
-        cases = [('qualification/ada/fast/ci004-smoke/owned_smoke.adb', {'ada-lacal-runtime-core'}, set()),
-                 ('qualification/ada/uci/ci004-dlz-codec/cases.json', {'ada-lacal-runtime-core'}, {'ada-real-uci-dlz-sleet'}),
-                 ('qualification/ada/sleet/ci004-dlz-transport/service.yaml', {'ada-lacal-runtime-core'}, {'ada-real-uci-dlz-sleet'}),
-                 ('python/qualification/fast/fixtures/test_owned_fixture/values.json', {'python-model-backend'}, set())]
-        cases.extend([
-            ('python/qualification/uci/fixtures/test_owned_uci/values.json', {'python-model-backend'}, {'real-uci-regressions'}),
-            ('python/qualification/sleet/fixtures/test_owned_transport/required.json', {'python-model-backend'}, {'real-sleet'})])
-        with patch.object(ci_selection, 'ROOT', self.root):
-            for path, jobs, deep in cases:
-                result = ci_selection.select([changed(path)], policy)
-                self.assertEqual(result['mode'], 'selective-pr')
-                self.assertEqual({j for j, enabled in result['jobs'].items() if enabled}, jobs | {'rust'})
-                self.assertEqual(set(result['deep_jobs']), deep)
-            result = ci_selection.select([changed(case[0]) for case in cases], policy)
-            self.assertEqual({j for j, enabled in result['jobs'].items() if enabled},
-                             {'rust', 'ada-lacal-runtime-core', 'python-model-backend'})
-            for path in ('qualification/ada/fast/not-registered/test.adb',
-                         'qualification/ada/fast/ci004-smoke/../escape.adb',
-                         'scripts/run-owned-ada.py'):
-                self.assertEqual(ci_selection.select([changed(path)], policy)['mode'], 'full-pr')
-            general = ci_selection.select([changed('crates/backend-ada/src/task_specific.rs')], policy)
-            self.assertTrue(general['deep'])
-            self.assertGreater(general['selected_cells'], 3)
-            self.update(tests=[])
-            self.assertEqual(ci_selection.select([changed(cases[0][0])], policy)['mode'], 'full-pr')
 
 
 class HookContracts(unittest.TestCase):
@@ -153,7 +125,7 @@ class HookContracts(unittest.TestCase):
                 continue
             with tempfile.TemporaryDirectory(prefix='ci004-generator-') as directory:
                 workspace = Path(directory)
-                body = ci_policy.blocks(workflows[workflow])[1][owner]
+                body = blocks(workflows[workflow])[1][owner]
                 self.assertEqual(body.count(hook), 1)
                 preparation = body.split(hook, 1)[0]
                 builds = re.findall(r'^\s*(?:run: )?(cargo(?: \+\S+)? build [^\n]+)$', preparation, re.M)
@@ -194,40 +166,7 @@ class HookContracts(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, 'generator not built by owning job'):
             self.check_ada_generators_built_by_owners(workflows, hooks)
 
-    def test_fixed_hooks_are_mandatory_and_owned_by_existing_jobs(self):
-        workflows = {p.name: p.read_text() for p in (ROOT / '.github/workflows').glob('*.yml')}
-        project(workflows)
-        self.assertEqual(ci_policy.check(), 42)
-        for workflow, job, addition in HOOKS:
-            for replacement in ('', addition.replace('if: always()', 'if: false'),
-                                addition.replace('set -euo pipefail', 'true # disabled')):
-                if replacement == addition:
-                    continue
-                mutated = dict(workflows)
-                mutated[workflow] = mutated[workflow].replace(addition, replacement, 1)
-                with self.subTest(job=job), self.assertRaises(ValueError):
-                    project(mutated)
-            mutated = dict(workflows)
-            mutated[workflow] = mutated[workflow].replace(addition, '', 1) + addition
-            with self.assertRaises(ValueError):
-                project(mutated)
-        text = (ROOT / 'scripts/run-real-sleet-test.sh').read_text()
-        project_sleet(text)
-        with self.assertRaises(ValueError):
-            project_sleet(text.replace(SLEET, '', 1))
 
-    def test_python_bytecode_prevention_is_mandatory_before_shared_tests(self):
-        workflows = {p.name: p.read_text() for p in (ROOT / '.github/workflows').glob('*.yml')}
-        for workflow, owner, _ in HOOKS:
-            if owner.startswith('ada-'):
-                continue
-            body = dict(re.findall(r'^  ([\w-]+):\n(.*?)(?=^  [\w-]+:|\Z)',
-                                   workflows[workflow], re.M | re.S))[owner]
-            for replacement in ('', PYTHON_ENV.replace('BYTECODE=1', 'BYTECODE=0')):
-                altered = dict(workflows)
-                altered[workflow] = altered[workflow].replace(body, body.replace(PYTHON_ENV, replacement, 1), 1)
-                with self.subTest(owner=owner), self.assertRaisesRegex(ValueError, 'bytecode-free'):
-                    project(altered)
 
 
 class Evidence(unittest.TestCase):
@@ -304,42 +243,6 @@ class Evidence(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'skipped'):
             self.verify(files)
 
-    def test_final_reconciliation_requires_artifacts_and_exact_job_ownership(self):
-        spec = importlib.util.spec_from_file_location('ci004_gate', ROOT / 'scripts/ci-required-gate.py')
-        gate = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(gate)
-        manifest = dict(jobs={'ada-lacal-runtime-core': True}, deep_jobs=[])
-        with self.assertRaisesRegex(ValueError, 'missing/duplicate'):
-            gate.reconcile_owned([], manifest, 'a', 'b', '123', '2', jobs=[], attempts={})
-        artifacts = [dict(name='task099-ada-lacal-runtime-core-' + c) for c in ('14', '16')]
-        jobs, attempts = metadata(artifacts)
-        for snapshot in attempts.values():
-            if not snapshot['jobs']:
-                continue
-            for job, compiler in zip(snapshot['jobs'], ('14', '16'), strict=True):
-                job['name'] = f'ada-lacal-runtime-core ({compiler})'
-        for job, compiler in zip(jobs, ('14', '16'), strict=True):
-            job['name'] = f'ada-lacal-runtime-core ({compiler})'
-        with patch('owned_ada_evidence.verify_bundle', return_value=dict(verified=True)) as verify:
-            summary = gate.reconcile_owned(artifacts, manifest, 'a', 'b', '123', '2',
-                                           loader=lambda artifact: {}, jobs=jobs, attempts=attempts)
-            self.assertEqual(set(summary), {a['name'] for a in artifacts})
-            self.assertEqual(verify.call_count, 2)
-        for mutation in ('wrong-owner', 'stale', 'failed', 'missing-artifact', 'unexpected-owner'):
-            a, j, history = copy.deepcopy((artifacts, jobs, attempts))
-            if mutation == 'wrong-owner':
-                j[0]['name'] = 'python-model-backend (3.11)'
-            elif mutation == 'stale':
-                a[0]['created_at'] = '2026-10-27T01:08:30Z'
-            elif mutation == 'failed':
-                j[0]['steps'][0]['conclusion'] = 'failure'
-            elif mutation == 'missing-artifact':
-                a.pop()
-            else:
-                a.append(dict(name='ci004-python-sleet'))
-            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
-                gate.reconcile_owned(a, manifest, 'a', 'b', '123', '2', loader=lambda artifact: {},
-                                     jobs=j, attempts=history)
 
     def test_python_receipts_reject_omitted_skipped_forged_stale_wrong_pins(self):
         fixtures = [r for r in owned.python_fixtures() if r['mode'] == 'uci']

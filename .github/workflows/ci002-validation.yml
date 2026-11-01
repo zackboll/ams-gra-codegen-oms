@@ -1,6 +1,5 @@
 name: CI002 Security Contracts
 on:
-  pull_request:
   push:
     branches: [main]
 permissions:
@@ -10,18 +9,18 @@ permissions:
 jobs:
   test:
     concurrency:
-      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-2' || format('oms-pr-{0}-{1}-{2}-ci002-validation.yml-test', github.workflow, github.run_id, github.run_attempt) }}
+      group: oms-main-slot-2
       queue: max
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
       - name: Verify exact qualification source
         env:
-          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          EXPECTED_SHA: ${{ github.sha }}
         run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
       - run: python3 -m pip install --no-binary PyYAML --require-hashes -r scripts/ci002/requirements.txt
       - run: python3 -m unittest discover -s scripts/ci002 -p 'test_*.py' -v

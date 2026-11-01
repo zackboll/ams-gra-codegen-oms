@@ -91,11 +91,9 @@ def placement(text):
 def float32_qualification(body):
     """Guard named qualification commands, not opaque whole-workflow bytes."""
     steps = re.split(r"(?m)^      - ", body)
-    # CI-SELECT-001 permits exactly the audited PR selection condition. Main
-    # remains unconditional; arbitrary/duplicate conditions remain forbidden.
+    # Main qualification is unconditional. No PR selector remains.
     conditions = re.findall(r"(?m)^    if: (.*)$", steps[0])
-    selected_if = "github.event_name != 'pull_request' || fromJSON(needs.changes.outputs.manifest).jobs['ada-float32-codec']"
-    if (conditions != [selected_if] or '    needs: [changes]\n' not in steps[0]
+    if (conditions or '    needs: [changes]\n' in steps[0]
             or re.search(r"(?m)^    continue-on-error:", steps[0])):
         raise ValueError("Float32 job must remain an enabled hard gate")
     required = {
@@ -180,11 +178,11 @@ class CompilerPlacement(unittest.TestCase):
     def test_actual_four_invocations_cover_120_executions(self):
         self.assertEqual(len(placement(self.text)) * 2 * 3 * len(runner.NAMES), 120)
 
-    def test_only_exact_pr_selector_can_condition_float32(self):
-        condition = "github.event_name != 'pull_request' || fromJSON(needs.changes.outputs.manifest).jobs['ada-float32-codec']"
+    def test_main_qualification_cannot_be_conditioned(self):
         for replacement in ('false', 'success()', "github.event_name == 'pull_request'"):
             with self.subTest(replacement=replacement), self.assertRaises(ValueError):
-                placement(self.text.replace(condition, replacement))
+                placement(self.text.replace('  ada-float32-codec:\n',
+                                            '  ada-float32-codec:\n    if: ' + replacement + '\n'))
         with self.assertRaises(ValueError):
             placement(self.text.replace('  ada-float32-codec:\n', '  ada-float32-codec:\n    if: false\n'))
 
