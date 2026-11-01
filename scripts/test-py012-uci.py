@@ -28,7 +28,7 @@ class ReadinessEvidence(unittest.TestCase):
             self.assertEqual(hashlib.sha256((EVIDENCE / name).read_bytes()).hexdigest(), digest, name)
 
     def test_incomplete_duplicate_and_forged_evidence(self):
-        for variant in range(10):
+        for variant in range(11):
             bad = copy.deepcopy(self.after)
             if variant == 0:
                 bad['completed'] = False
@@ -48,8 +48,10 @@ class ReadinessEvidence(unittest.TestCase):
                 bad['measurements'][0]['root_sha256'] = 'wrong'
             elif variant == 8:
                 bad['measurements'][0]['contract_sha256'] = 'different'
-            else:
+            elif variant == 9:
                 bad['measurements'][0]['stdout'] = 'status: READY\n'
+            else:
+                bad['schema_includes']['2.5']['sha256'] = 'wrong'
             with self.subTest(variant=variant), self.assertRaises(RuntimeError):
                 gate.validate(self.before, bad)
 

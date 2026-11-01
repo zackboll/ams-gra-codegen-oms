@@ -12,6 +12,8 @@ MAIN_TREE = '02c0df930e7af0c8e487994ac25e5a69d1104a33'
 spec = importlib.util.spec_from_file_location('py012_driver', ROOT / 'scripts/check-py006-uci.py')
 driver = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(driver)
+INCLUDES = {'2.5': '4a8056f1503234d423a0c2495844ab65387febced62bea58b87d4f343e9e7a0b',
+            '2.6': 'ee6e58d5db9fd80d526bc964b8244ec296d106301640d34c3cb2c5c00b710b88'}
 
 
 def validate(before, after):
@@ -23,6 +25,11 @@ def validate(before, after):
     stages, summaries = [], []
     for stage, value in [('before', before), ('after', after)]:
         driver.require(value.get('completed') is True, 'incomplete measurements')
+        driver.require(value['source']['base'] == MAIN and value['source']['base_tree'] == MAIN_TREE,
+                       'wrong verified main identity')
+        driver.require(value.get('schema_includes') == {
+            v: dict(name=f'UCI_SecurityMarkings_v2_{v[-1]}_0.xsd', sha256=digest)
+            for v, digest in INCLUDES.items()}, 'wrong include identity')
         rows = value['measurements']
         keys = [(r['version'], r['message'].split('}')[-1], r['world'], r['codec']) for r in rows]
         driver.require(len(rows) == 24 and set(keys) == expected, 'missing/duplicate selection')
