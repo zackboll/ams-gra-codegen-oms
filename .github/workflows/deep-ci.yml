@@ -1871,7 +1871,7 @@ jobs:
           name: py008-numeric
           path: ${{ runner.temp }}/py008-*.json
           if-no-files-found: error
-      - name: Fetch pinned UCI 2.5 and 2.6 for Rust Log (once)
+      - name: Fetch pinned UCI 2.5 and 2.6 for Rust Log and RDMA (once)
         run: |
           set -euo pipefail
           UCI25="$(scripts/fetch-pinned-uci-2.5.sh "$RUNNER_TEMP/uci-2.5")"
@@ -1879,6 +1879,7 @@ jobs:
           echo "AMS_GRA_UCI_2_5_ROOT=$UCI25" >> "$GITHUB_ENV"
           echo "AMS_GRA_UCI_2_6_ROOT=$UCI26" >> "$GITHUB_ENV"
           echo 'AMS_GRA_REQUIRE_REAL_UCI_LOG=1' >> "$GITHUB_ENV"
+          echo 'AMS_GRA_REQUIRE_REAL_UCI_RDMA=1' >> "$GITHUB_ENV"
       - name: Real UCI 2.5 codecs (Tasks 050/052, must execute)
         run: |
           set -euo pipefail

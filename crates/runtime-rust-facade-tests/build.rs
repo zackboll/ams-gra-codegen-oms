@@ -66,7 +66,7 @@ fn main() {
         .canonicalize()
         .expect("fixture directory");
     let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("OUT_DIR"));
-    real_uci_logs(&fixtures, &out);
+    real_uci_services(&fixtures, &out);
     for (stem, directory, with_codec) in SERVICES {
         let schema = fixtures.join(format!("{stem}.xsd"));
         let contract = fixtures.join(format!("{stem}.yaml"));
@@ -96,12 +96,14 @@ fn main() {
     real_uci_position_report(&fixtures, &out);
 }
 
-/// RUST-OMS-001: independently generated release identities, using the
-/// unchanged Task102 contracts. Ordinary builds need neither UCI release;
+/// RUST-OMS-001/002: independently generated release identities, using the
+/// unchanged Task102/103 contracts. Ordinary builds need neither UCI release;
 /// explicit qualification requires BOTH and cannot silently compile skips.
-fn real_uci_logs(fixtures: &Path, out: &Path) {
+fn real_uci_services(fixtures: &Path, out: &Path) {
     println!("cargo:rerun-if-env-changed=AMS_GRA_REQUIRE_REAL_UCI_LOG");
-    let required = std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_LOG").is_some();
+    println!("cargo:rerun-if-env-changed=AMS_GRA_REQUIRE_REAL_UCI_RDMA");
+    let required = std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_LOG").is_some()
+        || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_RDMA").is_some();
     for (version, root_hash, include_hash) in [
         (
             "5",
@@ -115,13 +117,14 @@ fn real_uci_logs(fixtures: &Path, out: &Path) {
         ),
     ] {
         let variable = format!("AMS_GRA_UCI_2_{version}_ROOT");
-        let cfg = format!("ams_gra_real_uci_log2{version}");
-        println!("cargo::rustc-check-cfg=cfg({cfg})");
+        for message in ["log", "rdma"] {
+            println!("cargo::rustc-check-cfg=cfg(ams_gra_real_uci_{message}2{version})");
+        }
         println!("cargo:rerun-if-env-changed={variable}");
         let Some(root) = std::env::var_os(&variable) else {
             assert!(
                 !required,
-                "{variable} is required for pinned Log qualification"
+                "{variable} is required for pinned real-UCI qualification"
             );
             continue;
         };
@@ -134,56 +137,64 @@ fn real_uci_logs(fixtures: &Path, out: &Path) {
                 .join(format!("UCI_SecurityMarkings_v2_{version}_0.xsd")),
             include_hash,
         );
-        let contract = fixtures.join(format!("../task102/uci2{version}-service.yaml"));
-        println!("cargo:rerun-if-changed={}", contract.display());
-        let target = out.join(format!("real_uci_log2{version}"));
-        let plain = out.join(format!("real_uci_log2{version}_no_codec"));
-        let common: Vec<OsString> = vec![
-            "--schema".into(),
-            root.clone().into(),
-            "--contract".into(),
-            contract.into(),
-            "--language".into(),
-            "rust".into(),
-            "--world".into(),
-            "closed-schema".into(),
-        ];
-        let mut check = vec!["service-check".into()];
-        check.extend(common.clone());
-        check.push("--with-codec".into());
-        let mut readiness = Vec::new();
-        generate("Log readiness", check, &mut readiness);
-        std::fs::create_dir_all(&target).expect("Log output");
-        std::fs::write(target.join("readiness.txt"), readiness).expect("readiness report");
-        for (directory, codec) in [(&plain, false), (&target, true)] {
-            let mut arguments = vec!["service-generate".into()];
-            arguments.extend(common.clone());
-            arguments.extend(["--output".into(), directory.clone().into()]);
-            if codec {
-                arguments.push("--with-codec".into());
+        for (message, task) in [("log", "task102"), ("rdma", "task103")] {
+            let cfg = format!("ams_gra_real_uci_{message}2{version}");
+            let contract = fixtures.join(format!("../{task}/uci2{version}-service.yaml"));
+            println!("cargo:rerun-if-changed={}", contract.display());
+            let target = out.join(format!("real_uci_{message}2{version}"));
+            let plain = out.join(format!("real_uci_{message}2{version}_no_codec"));
+            let common: Vec<OsString> = vec![
+                "--schema".into(),
+                root.clone().into(),
+                "--contract".into(),
+                contract.into(),
+                "--language".into(),
+                "rust".into(),
+                "--world".into(),
+                "closed-schema".into(),
+            ];
+            let mut check = vec!["service-check".into()];
+            check.extend(common.clone());
+            check.push("--with-codec".into());
+            let mut readiness = Vec::new();
+            generate(message, check, &mut readiness);
+            std::fs::create_dir_all(&target).expect("real-UCI output");
+            std::fs::write(target.join("readiness.txt"), readiness).expect("readiness report");
+            for (directory, codec) in [(&plain, false), (&target, true)] {
+                let mut arguments = vec!["service-generate".into()];
+                arguments.extend(common.clone());
+                arguments.extend(["--output".into(), directory.clone().into()]);
+                if codec {
+                    arguments.push("--with-codec".into());
+                }
+                generate(message, arguments, &mut Vec::new());
             }
-            generate("real UCI Log", arguments, &mut Vec::new());
-        }
-        // The codec must reuse the exact model and endpoint surface, with
-        // only its sibling-module declaration added to service_api.rs.
-        for entry in std::fs::read_dir(&plain).expect("no-codec output") {
-            let path = entry.expect("generated file").path();
-            if path.extension().is_some_and(|extension| extension == "rs") {
-                let name = path.file_name().unwrap();
-                let expected = std::fs::read_to_string(&path).expect("plain source");
-                let actual = std::fs::read_to_string(target.join(name)).expect("codec source");
-                let actual = if name == "service_api.rs" {
-                    actual.replace(
-                        "#[path = \"service_codec.rs\"]\npub mod service_codec;\n\n",
-                        "",
-                    )
-                } else {
-                    actual
-                };
-                assert_eq!(actual, expected, "Log model/API parity: {}", path.display());
+            // The codec must reuse the exact model and endpoint surface, with
+            // only its sibling-module declaration added to service_api.rs.
+            for entry in std::fs::read_dir(&plain).expect("no-codec output") {
+                let path = entry.expect("generated file").path();
+                if path.extension().is_some_and(|extension| extension == "rs") {
+                    let name = path.file_name().unwrap();
+                    let expected = std::fs::read_to_string(&path).expect("plain source");
+                    let actual = std::fs::read_to_string(target.join(name)).expect("codec source");
+                    let actual = if name == "service_api.rs" {
+                        actual.replace(
+                            "#[path = \"service_codec.rs\"]\npub mod service_codec;\n\n",
+                            "",
+                        )
+                    } else {
+                        actual
+                    };
+                    assert_eq!(
+                        actual,
+                        expected,
+                        "{message} model/API parity: {}",
+                        path.display()
+                    );
+                }
             }
+            println!("cargo:rustc-cfg={cfg}");
         }
-        println!("cargo:rustc-cfg={cfg}");
         println!("cargo:rustc-env={variable}_BUILD={}", root.display());
     }
 }
