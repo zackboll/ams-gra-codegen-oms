@@ -1,0 +1,9 @@
+{
+  "sha256": {
+    "after.json": "e9d8216217133185b35804e61018bc418da1eb7297bf9911f98bd62b70c31e56",
+    "before.json": "a40c44f35be773fdba1186419b239e6655652d9667c6a0869c10482a33c48f10",
+    "binary-free-parity.json": "0e9885bfac40e21a594241803edee2e59d5c074d3859f493808dfa082b102601",
+    "sleet-observations.json": "7a6ce0f58c3bcb9f0909fa9894f7550016c97c81386e3ff128e3e397e2f6ca46",
+    "uci-delta.json": "abadeca6af60eb4d1f46a1eaf36d852bf3251442596e799d2e8abe5309c8fa4c"
+  }
+}

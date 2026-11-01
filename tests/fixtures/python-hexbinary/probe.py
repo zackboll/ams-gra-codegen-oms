@@ -32,6 +32,14 @@ class BytesSubclass(bytes):
     pass
 
 
+class CarrierSubclass(m.HexBinaryType):
+    pass
+
+
+class TupleSubclass(tuple):
+    pass
+
+
 class Binary(unittest.TestCase):
     def test_models_exact_types_and_storage(self):
         for value in [b'', b'\x00', b'\x00\x0a\xee\xff', bytes(range(256))]:
@@ -69,6 +77,8 @@ class Binary(unittest.TestCase):
             m.Payload(required=b'', bounded=(b'',) * 4)
         with self.assertRaises(TypeError):
             m.Payload(required=b'', bounded=[b''])
+        with self.assertRaises(TypeError):
+            m.Payload(required=b'', bounded=TupleSubclass((b'',)))
 
     @unittest.skipIf(c is None, 'model-only selection')
     def test_independent_hex_vectors(self):
@@ -79,12 +89,17 @@ class Binary(unittest.TestCase):
             self.assertEqual(c.decode_Payload(wire(Required=expected.lower())).required, octets)
         self.assertEqual(c.encode_Payload(c.decode_Payload(wire(Required='aAbBcCdDeEfF'))),
                          wire(Required='AABBCCDDEEFF'))
+        self.assertEqual(len(ALL_HEX), 512)
 
     @unittest.skipIf(c is None, 'model-only selection')
     def test_whitespace_and_invalid_lexical_forms(self):
         for text in ['', ' \t\r\n', '\n00aAff\r\t ', '00AaFF']:
             expected = b'' if not text.strip(' \t\r\n') else b'\x00\xaa\xff'
             self.assertEqual(c.decode_Payload(wire(Required=text)).required, expected)
+        for whitespace in [' ', '\t', '\r', '\n']:
+            self.assertEqual(c.decode_Payload(wire(Required=whitespace + '00' + whitespace)).required, b'\0')
+            with self.assertRaises(c.CodecError):
+                c.decode_Payload(wire(Required='00' + whitespace + 'FF'))
         for bad in ['0', 'AAA', '0x00', '00 00', '0 0', '00\t00', '00\r\nAA',
                     '00-00', 'GG', 'éé', '１２', '٠٠', '\u00a000', '00\u00a0',
                     '\v00', '\f00', False, 0, [], {}, None]:
@@ -100,6 +115,16 @@ class Binary(unittest.TestCase):
         expected = wire(Required='', Named='FF', Min='00', Max='', Range='80FF', Empty='')
         self.assertEqual(c.encode_Payload(value), expected)
         self.assertEqual(c.decode_Payload(expected), value)
+        value = m.Payload(required=b'', named=m.HexBinaryType(b''))
+        object.__setattr__(value, 'named', CarrierSubclass(b''))
+        with self.assertRaises(c.CodecError):
+            c.encode_Payload(value)
+        for bad in [bytearray(b'a'), memoryview(b'a'), [0], '00', BytesSubclass(b'a'), 0, None]:
+            value = m.Payload(required=b'')
+            object.__setattr__(value, 'required', bad)
+            with self.assertRaises(c.CodecError) as caught:
+                c.encode_Payload(value)
+            self.assertIn('$.' + NS + 'Required', str(caught.exception))
         for key, text in [('Min', ''), ('Max', '000000'), ('Range', ''), ('Empty', '00')]:
             with self.assertRaises(c.CodecError) as caught:
                 c.decode_Payload(wire(Required='', **{key: text}))
