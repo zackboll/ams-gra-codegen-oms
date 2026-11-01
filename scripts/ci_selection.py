@@ -127,7 +127,8 @@ def close_prerequisites(selected, jobs):
         selected = expanded
 
 
-def _select(changes, policy, full_reason=None, full_main=False):
+def _select(changes, policy, full_reason=None, full_main=False, root=None):
+    root = ROOT if root is None else root
     jobs = ordinary_jobs(policy)
     registered = deep_jobs(policy)
     selected, reasons = set(), []
@@ -153,6 +154,34 @@ def _select(changes, policy, full_reason=None, full_main=False):
             full = deep = True
             reasons.append(dict(path=path, category="infrastructure"))
             continue
+        owned_rule = None
+        if (path.startswith('qualification/ada/') or '/qualification/' in path and '/fixtures/' in path or
+                path.startswith('python/qualification/') and path.endswith('.py') and
+                (root / Path(path).parent / 'fixtures' / Path(path).stem).exists()):
+            try:
+                from owned_qualification import ownership
+                owned_rule = ownership(path, root)
+                if change['new_mode'] != '100644':
+                    raise ValueError('executable owned input')
+            except (ValueError, OSError, SyntaxError) as error:
+                full = deep = True
+                reasons.append(dict(path=path, category='fallback', reason=str(error)))
+                continue
+        # Only a flat, registered Python test or evidence-only CLI example may
+        # inherit component ownership. fnmatch '*' also matches '/', so
+        # validate structure independently before the first-match rules.
+        if owned_rule is None and path.startswith('python/qualification/') and not re.fullmatch(
+                r'python/qualification/(fast|uci|sleet)/test_[a-z0-9_]+\.py', path):
+            full = deep = True
+            reasons.append(dict(path=path, category='fallback',
+                                reason='unregistered Python qualification source'))
+            continue
+        if path.startswith('crates/cli/examples/python_') and not re.fullmatch(
+                r'crates/cli/examples/python_[a-z0-9_]+\.rs', path):
+            full = deep = True
+            reasons.append(dict(path=path, category='fallback',
+                                reason='unregistered Python evidence example'))
+            continue
         docs = policy["documentation"]
         if (any(fnmatch.fnmatchcase(path, p) for p in docs["paths"])
                 and path not in docs["exclusions"] and change["new_mode"] == "100644"
@@ -176,7 +205,7 @@ def _select(changes, policy, full_reason=None, full_main=False):
             full = deep = True
             reasons.append(dict(path=path, category="fallback", reason="unmapped Task099 path"))
             continue
-        rule = next((r for r in policy["rules"] if any(fnmatch.fnmatchcase(path, p) for p in r["paths"])), None)
+        rule = owned_rule or next((r for r in policy["rules"] if any(fnmatch.fnmatchcase(path, p) for p in r["paths"])), None)
         if rule is None:
             full = deep = True
             reasons.append(dict(path=path, category="fallback", reason="unknown/unmapped path"))
@@ -217,15 +246,15 @@ def _select(changes, policy, full_reason=None, full_main=False):
                 skipped_cells=sum(len(jobs[j]["cells"]) for j in jobs if j not in selected))
 
 
-def select(changes, policy, full_reason=None, full_main=False):
+def select(changes, policy, full_reason=None, full_main=False, root=None):
     try:
-        result = _select(changes, policy, full_reason, full_main)
+        result = _select(changes, policy, full_reason, full_main, root)
         validate_deep(result, policy)
         return result
     except (KeyError, TypeError, ValueError, IndexError) as error:
         # Classification uncertainty cannot authorize a narrow run. Inventory
         # corruption is separately fatal in the mandatory baseline policy gate.
-        result = _select([], policy, 'incomplete classification: ' + str(error), full_main)
+        result = _select([], policy, 'incomplete classification: ' + str(error), full_main, root)
         validate_deep(result, policy)
         return result
 
@@ -240,7 +269,12 @@ def classify(root, event, event_name, sha, policy=None):
     base, head = pr.get("base", {}).get("sha", ""), pr.get("head", {}).get("sha", "")
     try:
         changes = complete_diff(root, base, head, sha)
-        manifest = select(changes, policy)
+        from owned_qualification import registrations
+        if (root / 'qualification').exists() or any(
+                path.startswith(('qualification/', 'python/qualification/'))
+                for change in changes for path in change['paths']):
+            registrations(root)
+        manifest = select(changes, policy, root=root)
     except (ValueError, OSError, UnicodeError, subprocess.SubprocessError) as error:
         manifest = select([], policy, full_reason=str(error))
     manifest["identities"] = dict(base=base, head=head, merge=sha)

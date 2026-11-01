@@ -2,6 +2,7 @@
 import copy
 import json
 import unittest
+from contextlib import ExitStack
 from unittest.mock import patch
 
 import ci_policy
@@ -353,20 +354,26 @@ class FinalReportContract(unittest.TestCase):
                                GITHUB_RUN_ATTEMPT='1', GITHUB_SHA='c' * 40,
                                GITHUB_EVENT_NAME='pull_request', GITHUB_JOB='pr-ci-required')
             records = dict(jobs=fixture.jobs, artifacts=fixture.artifacts, attempts={})
-            with self.subTest(docs=docs), patch.dict('os.environ', environment), \
-                    patch.object(gate, 'from_environment', return_value=manifest), \
-                    patch.object(gate, 'api', return_value=dict(id=123, run_attempt=1)), \
-                    patch.object(gate, 'verify_source'), patch.object(gate, 'verify_records'), \
-                    patch.object(gate, 'verify_final_job'), \
-                    patch.object(gate, 'evidence', return_value=records), \
-                    patch.object(gate, 'git', return_value=('d' * 40 + '\n').encode()), \
-                    patch.object(gate, 'reconcile_task100', return_value={}), \
-                    patch.object(gate, 'reconcile_task101', return_value={}), \
-                    patch.object(gate, 'reconcile_task102', return_value={}), \
-                    patch.object(gate, 'reconcile_primary', return_value={}), \
-                    patch.object(gate, 'Path') as path, patch('builtins.print') as output:
+            with self.subTest(docs=docs), ExitStack() as stack:
+                stack.enter_context(patch.dict('os.environ', environment))
+                stack.enter_context(patch.object(gate, 'from_environment', return_value=manifest))
+                stack.enter_context(patch.object(gate, 'api', return_value=dict(id=123, run_attempt=1)))
+                stack.enter_context(patch.object(gate, 'verify_source'))
+                stack.enter_context(patch.object(gate, 'verify_records'))
+                stack.enter_context(patch.object(gate, 'verify_final_job'))
+                stack.enter_context(patch.object(gate, 'evidence', return_value=records))
+                stack.enter_context(patch.object(gate, 'git', return_value=('d' * 40 + '\n').encode()))
+                stack.enter_context(patch.object(gate, 'reconcile_task100', return_value={}))
+                stack.enter_context(patch.object(gate, 'reconcile_task101', return_value={}))
+                stack.enter_context(patch.object(gate, 'reconcile_task102', return_value={}))
+                stack.enter_context(patch.object(gate, 'reconcile_owned', return_value={}))
+                stack.enter_context(patch.object(gate, 'reconcile_primary', return_value={}))
+                path = stack.enter_context(patch.object(gate, 'Path'))
+                output = stack.enter_context(patch('builtins.print'))
                 gate.main()
-                path.assert_called_once_with('ci-required-result.json')
+                self.assertEqual(path.call_count, 2)
+                path.assert_called_with('ci-required-result.json')
+                path.return_value.unlink.assert_called_once_with(missing_ok=True)
                 report = json.loads(path.return_value.write_text.call_args.args[0])
                 printed = json.loads(output.call_args.args[1])
                 self.assertEqual(output.call_args.args[0], 'PR_CI_REQUIRED_COMPLETE')
@@ -382,6 +389,17 @@ class FinalReportContract(unittest.TestCase):
                 gate.reconcile_task100.assert_called_once_with(
                     fixture.artifacts, manifest, 'c' * 40, 'd' * 40, '123', '1',
                     jobs=fixture.jobs, attempts={})
+                gate.reconcile_task101.assert_called_once_with(
+                    fixture.artifacts, manifest, 'c' * 40, 'd' * 40, '123', '1',
+                    jobs=fixture.jobs, attempts={})
+                gate.reconcile_task102.assert_called_once_with(
+                    fixture.artifacts, manifest, 'c' * 40, 'd' * 40, '123', '1',
+                    jobs=fixture.jobs, attempts={})
+                gate.reconcile_owned.assert_called_once_with(
+                    fixture.artifacts, manifest, 'c' * 40, 'd' * 40, '123', '1',
+                    jobs=fixture.jobs, attempts={})
+                for field in ('task100', 'task101', 'task102', 'owned_qualification'):
+                    self.assertEqual(report[field], {})
                 if docs:
                     gate.reconcile_primary.assert_not_called()
                 else:

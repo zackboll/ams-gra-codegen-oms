@@ -1,0 +1,1 @@
+{"valid": ["Alpha", "", "a b"], "invalid": ["line\nbreak", "é"]}
