@@ -262,14 +262,14 @@ fn single_connection_three_families() {
             .await
             .unwrap()
             .unwrap();
-            for other in 0..3 {
+            for (other, topic) in TOPICS.iter().enumerate() {
                 if family != other {
                     tokio::time::timeout(
                         WAIT,
                         observer.subscribe(
                             &format!("cross-{family}-{other}"),
                             MESSAGES[family],
-                            TOPICS[other],
+                            topic,
                             None,
                         ),
                     )
@@ -351,12 +351,12 @@ fn single_connection_three_families() {
     }
     assert_eq!(live.counts, [6, 12, 18]);
     // Every valid wrong-topic pairing is independently witnessed and never typed.
-    for family in 0..3 {
+    for (family, message) in MESSAGES.iter().enumerate() {
         for (other, topic) in TOPICS.iter().enumerate() {
             if family == other {
                 continue;
             }
-            let document = json!({MESSAGES[family]: golden(family)});
+            let document = json!({*message: golden(family)});
             live.executor
                 .block_on(raw_publish(&mut live.publisher, topic, &document))
                 .unwrap();
