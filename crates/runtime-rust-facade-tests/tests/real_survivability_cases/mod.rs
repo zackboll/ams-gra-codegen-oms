@@ -494,22 +494,29 @@ fn single_connection_three_families() {
     live.active[2] = false;
     assert_eq!(connections(&url), 3, "unsubscribe does not close runtime");
     assert!(original_socket.is_subset(&connection_inodes(&url)));
-    live.runtime
-        .close()
-        .expect("close joins actual runtime worker");
-    assert!(!live.runtime.is_running());
+    let Live {
+        runtime,
+        publisher,
+        observer,
+        executor,
+        counts,
+        ..
+    } = live;
+    runtime.close().expect("close joins actual runtime worker");
     assert_eq!(
         connections(&url),
         2,
         "runtime socket closed, external clients remain"
     );
     assert!(original_socket.is_disjoint(&connection_inodes(&url)));
-    assert_eq!(live.counts, [9, 16, 23]);
+    assert_eq!(counts, [9, 16, 23]);
     eprintln!(
         "RUST-OMS-004 {VERSION} typed counts Log={} RDMA={} Survivability={}; original SIDs={ids:?}",
-        live.counts[0], live.counts[1], live.counts[2]
+        counts[0], counts[1], counts[2]
     );
-    drop(live);
+    drop(observer);
+    drop(publisher);
+    drop(executor);
     assert_eq!(connections(&url), 0);
     server.shutdown();
     // Actual join is additionally proved by the existing TLS-barrier lifecycle
