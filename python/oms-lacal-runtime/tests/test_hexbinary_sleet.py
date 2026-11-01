@@ -27,7 +27,8 @@ class HexBinarySleetTests(unittest.IsolatedAsyncioTestCase):
         with TemporaryDirectory(prefix='py013-sleet-') as temporary:
             path = Path(temporary)
             schema = ROOT / 'tests/fixtures/python-hexbinary/sleet.xsd'
-            subprocess.run([os.environ['AMS_GRA_GENERATOR'], 'service-generate', '--schema', str(schema),
+            generator = os.environ.get('AMS_GRA_GENERATOR', str(ROOT / 'target/debug/ams-gra-codegen-oms'))
+            subprocess.run([generator, 'service-generate', '--schema', str(schema),
                 '--contract', str(schema.with_name('service.yaml')), '--language', 'python',
                 '--world', 'closed-schema', '--with-codec', '--output', str(path / 'binary_models')],
                 check=True, capture_output=True)

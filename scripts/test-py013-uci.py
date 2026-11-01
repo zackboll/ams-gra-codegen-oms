@@ -22,6 +22,11 @@ class Evidence(unittest.TestCase):
 
     def test_exact_delta_and_manifest(self):
         self.assertEqual(len(gate.validate(self.before, self.after)), 64)
+        legacy = json.loads((EVIDENCE / 'legacy-services.json').read_text())
+        self.assertEqual(legacy['source'], self.after['source'])
+        self.assertEqual(legacy['measurements'], [row for row in self.after['measurements']
+                                                 if row['message'].split('}')[-1] != 'Log'])
+        self.assertEqual(len(legacy['measurements']), 24)
         manifest = json.loads((EVIDENCE / 'manifest.json').read_text())
         self.assertEqual(set(manifest['sha256']), {p.name for p in EVIDENCE.iterdir()} - {'manifest.json'})
         for name, digest in manifest['sha256'].items():

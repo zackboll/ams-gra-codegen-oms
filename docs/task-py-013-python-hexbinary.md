@@ -155,6 +155,14 @@ lanes, selectors, gates or replacement PR matrices; merged ten-lane main policy
 is preserved. Formatting, locked workspace all-target check, focused
 warning-denied Clippy, local Python PR smoke and `git diff --check` passed.
 
+Existing Deep CI PY-007 through PY-010 profile campaigns now explicitly select
+`evidence/v1/legacy-services.json`: the exact 24 non-Log rows projected from the
+authenticated PY-013 AFTER measurement. This updates the current-service oracle
+without changing any historical fixture or historical test default. The main
+32-row evidence remains authoritative. Projection equality is tested. The
+existing Sleet harness exports its just-built generator path for PY-012/PY-013
+discovery; no transport implementation or broker source is changed.
+
 The first direct UCI discovery attempt rejected before execution because
 `RUNNER_TEMP` was missing. It is retained separately; source-bound receipt
 qualification supplies the required environment. Final source-bound receipts
