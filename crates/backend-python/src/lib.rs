@@ -78,6 +78,9 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     if uses_visible_ascii(schema) {
         output.push_str(include_str!("visible_ascii_runtime.py"));
     }
+    if uses_nato_special_words(schema) {
+        output.push_str(include_str!("nato_special_words_runtime.py"));
+    }
     if schema
         .types
         .iter()
@@ -128,6 +131,47 @@ fn visible_ascii_profile(declaration: &TypeDecl) -> Option<(u64, u64)> {
             max_length,
         })) => Some((min_length, max_length)),
         _ => None,
+    }
+}
+
+fn nato_special_words_profile(declaration: &TypeDecl) -> bool {
+    declaration.kind == TypeKind::Primitive(PrimitiveKind::String)
+        && matches!(
+            string_profile(PrimitiveKind::String, &declaration.constraints),
+            Ok(Some(StringProfile::NatoSpecialWords))
+        )
+}
+
+fn uses_nato_special_words(schema: &SchemaIr) -> bool {
+    schema.types.iter().any(nato_special_words_profile)
+}
+
+// A named edge must retain the same proven, fixed lexical domain. Do not
+// infer the parent's semantics from a leaf's effective facets or its name.
+fn nato_special_words_ancestry(
+    schema: &SchemaIr,
+    declaration: &TypeDecl,
+) -> Result<(), CodegenError> {
+    let mut current = declaration;
+    let mut seen = BTreeSet::new();
+    loop {
+        if current.is_abstract
+            || !seen.insert(&current.name)
+            || !nato_special_words_profile(current)
+        {
+            return Err(error("unproven NATO SpecialWords restriction ancestry"));
+        }
+        match current.base_type.as_ref().map(|base| &base.target) {
+            Some(TypeRefTarget::Primitive(PrimitiveKind::String)) | None => return Ok(()),
+            Some(TypeRefTarget::Named(name)) => {
+                current = schema
+                    .types
+                    .iter()
+                    .find(|candidate| candidate.name == *name)
+                    .ok_or_else(|| error("missing NATO SpecialWords restriction base"))?;
+            }
+            _ => return Err(error("incompatible NATO SpecialWords restriction base")),
+        }
     }
 }
 
@@ -419,6 +463,8 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
                 datetime_ancestry(schema, declaration)?;
             } else if visible_ascii_profile(declaration).is_some() {
                 visible_ascii_ancestry(schema, declaration)?;
+            } else if nato_special_words_profile(declaration) {
+                nato_special_words_ancestry(schema, declaration)?;
             } else if let Some(base) = &declaration.base_type {
                 match (&declaration.kind, &base.target) {
                     (TypeKind::Primitive(kind), TypeRefTarget::Primitive(base_kind))
@@ -439,11 +485,13 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
                         datetime_profile(&declaration.constraints)?;
                     } else if header_profile(declaration).is_none()
                         && visible_ascii_profile(declaration).is_none()
+                        && !nato_special_words_profile(declaration)
                     {
                         primitive(*kind, &declaration.constraints)?;
                     }
                     if *kind != PrimitiveKind::DateTime
                         && visible_ascii_profile(declaration).is_none()
+                        && !nato_special_words_profile(declaration)
                     {
                         scalar_names.insert(declaration.name.clone());
                     }
@@ -604,6 +652,10 @@ fn render(
             }
             if let Some((min, max)) = visible_ascii_profile(declaration) {
                 writeln!(output, "    value: str\n\n    def __post_init__(self) -> None:\n        _check_visible_ascii(self.value, {min}, {max})").unwrap();
+                return Ok(());
+            }
+            if nato_special_words_profile(declaration) {
+                writeln!(output, "    value: str\n\n    def __post_init__(self) -> None:\n        _check_nato_special_words(self.value)").unwrap();
                 return Ok(());
             }
             let (annotation, check) = match &declaration.kind {

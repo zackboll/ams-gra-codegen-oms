@@ -6,7 +6,9 @@ PR #147 remains on `feature/106-ada-multimessage-uci-sleet` and now targets
 `main`. TASK106-R1 incorporates verified main
 `bf6228ddee8b9e9fc70704c2fc68a409cdc37729` by ordinary merge, preserving the
 published Task106 head `3c60de269035ab5cc792e3b15988417fcab029e6` and merged
-Tasks102–105. Historical CI conflicts are resolved in favor of current main's
+Tasks102–105. A subsequent ordinary merge incorporates current main
+`ab438ea` after the externally merged Rust/Python PRs #157/#158; their merged
+sources are preserved without Task106 edits. Historical CI conflicts are resolved in favor of current main's
 CI-RESET-001 architecture. No rebase, amend or force push is used.
 
 The original campaign started from Task105 commit
