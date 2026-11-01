@@ -1,0 +1,13 @@
+service contract valid
+service: Python Duration
+language: python
+generation world: closed-schema
+
+selected oms messages: 1
+model status: READY
+service api status: READY
+status: READY
+selected type closure: 5
+generated support types: 0
+
+codec status: READY

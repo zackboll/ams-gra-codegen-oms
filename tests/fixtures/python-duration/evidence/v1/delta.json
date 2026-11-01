@@ -1,0 +1,726 @@
+{
+  "completed": true,
+  "real_ready": 0,
+  "selections": [
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "PositionReport",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "PositionReport",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "PositionReport",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "PositionReport",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "RDMA_InitializeSetup",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "RDMA_InitializeSetup",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "RDMA_InitializeSetup",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "RDMA_InitializeSetup",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "SubsystemStream",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "SubsystemStream",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "SubsystemStream",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "SubsystemStream",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "Log",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}LogMDT: unsupported Python IR construct: field ServiceUpTime: unsupported Python IR construct: primitive Duration"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "Log",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}LogMDT: unsupported Python IR construct: field ServiceUpTime: unsupported Python IR construct: primitive Duration"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "Log",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}LogMDT: unsupported Python IR construct: field ServiceUpTime: unsupported Python IR construct: primitive Duration"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "Log",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}LogMDT: unsupported Python IR construct: field ServiceUpTime: unsupported Python IR construct: primitive Duration"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "SurvivabilityRiskLevel",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}DurationType: unsupported Python IR construct: primitive Duration"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "SurvivabilityRiskLevel",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}DurationType: unsupported Python IR construct: primitive Duration"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "SurvivabilityRiskLevel",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}DurationType: unsupported Python IR construct: primitive Duration"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "SurvivabilityRiskLevel",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}DurationType: unsupported Python IR construct: primitive Duration"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "PositionReport",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "PositionReport",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "PositionReport",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "PositionReport",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "RDMA_InitializeSetup",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "RDMA_InitializeSetup",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "RDMA_InitializeSetup",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "RDMA_InitializeSetup",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "SubsystemStream",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "SubsystemStream",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "SubsystemStream",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "SubsystemStream",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "Log",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}DurationType: unsupported Python IR construct: primitive Duration"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "Log",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}DurationType: unsupported Python IR construct: primitive Duration"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "Log",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}DurationType: unsupported Python IR construct: primitive Duration"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "Log",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}DurationType: unsupported Python IR construct: primitive Duration"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "SurvivabilityRiskLevel",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}DurationType: unsupported Python IR construct: primitive Duration"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "SurvivabilityRiskLevel",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}DurationType: unsupported Python IR construct: primitive Duration"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "SurvivabilityRiskLevel",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}DurationType: unsupported Python IR construct: primitive Duration"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "SurvivabilityRiskLevel",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}DurationType: unsupported Python IR construct: primitive Duration"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "PositionReport",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "PositionReport",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "PositionReport",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "PositionReport",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "RDMA_InitializeSetup",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "RDMA_InitializeSetup",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "RDMA_InitializeSetup",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "RDMA_InitializeSetup",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "SubsystemStream",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "SubsystemStream",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "SubsystemStream",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "SubsystemStream",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "Log",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "Log",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "Log",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "Log",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "SurvivabilityRiskLevel",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "SurvivabilityRiskLevel",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "SurvivabilityRiskLevel",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "SurvivabilityRiskLevel",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "PositionReport",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "PositionReport",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "PositionReport",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "PositionReport",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "RDMA_InitializeSetup",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "RDMA_InitializeSetup",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "RDMA_InitializeSetup",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "RDMA_InitializeSetup",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "SubsystemStream",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "SubsystemStream",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "SubsystemStream",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "SubsystemStream",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "Log",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "Log",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "Log",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "Log",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "SurvivabilityRiskLevel",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "SurvivabilityRiskLevel",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "SurvivabilityRiskLevel",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "SurvivabilityRiskLevel",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "{https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    }
+  ]
+}

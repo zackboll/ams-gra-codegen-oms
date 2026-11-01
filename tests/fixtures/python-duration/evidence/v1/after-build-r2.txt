@@ -1,0 +1,32 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.26
+   Compiling serde_core v1.0.229
+   Compiling serde v1.0.229
+   Compiling zmij v1.0.23
+   Compiling hashbrown v0.17.1
+   Compiling itoa v1.0.18
+   Compiling serde_json v1.0.151
+   Compiling equivalent v1.0.2
+   Compiling memchr v2.8.3
+   Compiling ams-gra-oms-ir v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-014/crates/ir)
+   Compiling ryu v1.0.23
+   Compiling libyaml-rs v0.3.0
+   Compiling uuid v1.26.1
+   Compiling roxmltree v0.20.0
+   Compiling ams-gra-oms-schema-diff v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-014/crates/schema-diff)
+   Compiling ams-gra-oms-xsd-frontend v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-014/crates/xsd-frontend)
+   Compiling indexmap v2.14.2
+   Compiling syn v3.0.6
+   Compiling serde_derive v1.0.229
+   Compiling yaml_serde v0.10.7
+   Compiling ams-gra-oms-service-contract v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-014/crates/service-contract)
+   Compiling ams-gra-oms-codegen-core v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-014/crates/codegen-core)
+   Compiling ams-gra-oms-schema-docs v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-014/crates/schema-docs)
+   Compiling ams-gra-oms-service-routes v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-014/crates/service-routes)
+   Compiling ams-gra-oms-backend-python v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-014/crates/backend-python)
+   Compiling ams-gra-oms-backend-ada v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-014/crates/backend-ada)
+   Compiling ams-gra-oms-backend-cpp v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-014/crates/backend-cpp)
+   Compiling ams-gra-oms-backend-rust v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-014/crates/backend-rust)
+   Compiling ams-gra-codegen-oms v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-014/crates/cli)
+    Finished `release` profile [optimized] target(s) in 6.76s
