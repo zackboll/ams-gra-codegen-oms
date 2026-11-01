@@ -1,0 +1,190 @@
+{
+  "311-normal": [
+    {
+      "payload": "{}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":[]}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":null}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":\"scalar\"}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":[\"a\",3,\"b\"]}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":[\"a\"],\"Optional\":null}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":[\"a\"],\"Optional\":[\"a\",false]}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":[\"a\"],\"extra\":[]}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":[\"a\"],\"Times\":[\"2023-02-29T00:00:00Z\"]}",
+      "outcome": "generated decoder rejection",
+      "decoder_input": "{\"Required\":[\"a\"],\"Times\":[\"2023-02-29T00:00:00Z\"]}"
+    }
+  ],
+  "311-optimized": [
+    {
+      "payload": "{}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":[]}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":null}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":\"scalar\"}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":[\"a\",3,\"b\"]}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":[\"a\"],\"Optional\":null}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":[\"a\"],\"Optional\":[\"a\",false]}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":[\"a\"],\"extra\":[]}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":[\"a\"],\"Times\":[\"2023-02-29T00:00:00Z\"]}",
+      "outcome": "generated decoder rejection",
+      "decoder_input": "{\"Required\":[\"a\"],\"Times\":[\"2023-02-29T00:00:00Z\"]}"
+    }
+  ],
+  "313-normal": [
+    {
+      "payload": "{}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":[]}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":null}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":\"scalar\"}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":[\"a\",3,\"b\"]}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":[\"a\"],\"Optional\":null}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":[\"a\"],\"Optional\":[\"a\",false]}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":[\"a\"],\"extra\":[]}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":[\"a\"],\"Times\":[\"2023-02-29T00:00:00Z\"]}",
+      "outcome": "generated decoder rejection",
+      "decoder_input": "{\"Required\":[\"a\"],\"Times\":[\"2023-02-29T00:00:00Z\"]}"
+    }
+  ],
+  "313-optimized": [
+    {
+      "payload": "{}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":[]}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":null}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":\"scalar\"}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":[\"a\",3,\"b\"]}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":[\"a\"],\"Optional\":null}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":[\"a\"],\"Optional\":[\"a\",false]}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":[\"a\"],\"extra\":[]}",
+      "outcome": "broker rejection",
+      "code": "Invalid-Message"
+    },
+    {
+      "payload": "{\"Required\":[\"a\"],\"Times\":[\"2023-02-29T00:00:00Z\"]}",
+      "outcome": "generated decoder rejection",
+      "decoder_input": "{\"Required\":[\"a\"],\"Times\":[\"2023-02-29T00:00:00Z\"]}"
+    }
+  ]
+}
