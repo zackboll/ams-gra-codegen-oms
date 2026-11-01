@@ -34,6 +34,37 @@ class Routing(unittest.TestCase):
                      "tests/fixtures/service-generate/codec-ada-minimal.xsd"):
             self.assert_execution([path], ["ada"])
 
+    def test_task104_ada_only(self):
+        paths = ("scripts/task104/admission.py", "scripts/task104/cases.py",
+                 "scripts/task104/inventory.py", "scripts/task104/qualify.py",
+                 "scripts/task104/sleet.py", "scripts/task104/nested/new.py",
+                 "scripts/task104_evidence.py", "scripts/test_task104.py",
+                 "scripts/test_task104_evidence.py", "scripts/test_task104_new.py",
+                 "tests/ada-real-uci-survivability/survivability_consumer.adb",
+                 "tests/ada-real-uci-survivability/codec_probe.adb",
+                 "tests/fixtures/task104/uci25-service.yaml")
+        for path in paths:
+            with self.subTest(path=path):
+                self.assert_execution([path], ["ada"])
+        self.assert_execution(paths, ["ada"])
+        self.assert_execution([paths[0], "docs/task-104-ada-real-uci-survivability-sleet.md"], ["ada"])
+        self.assert_execution([paths[0], "crates/backend-rust/src/lib.rs"], ["rust", "ada"])
+
+    def test_task104_ownership_boundaries(self):
+        for path in ("scripts/task104_other.py", "scripts/task104_evidence.py.bak",
+                     "scripts/task104-other/new.py", "scripts/test_task104_evidence.txt",
+                     "scripts/test_task104/nested.py", "scripts/test_task104.py.bak",
+                     "tests/fixtures/task104-other/new.yaml", "tests/fixtures/task1040/new.yaml"):
+            with self.subTest(path=path):
+                self.assert_execution([path], list(smoke.BACKENDS))
+        # The existing broad tests/ada-* rule also owns similarly named Ada tests;
+        # they must not be mistaken for an unknown shared path.
+        self.assert_execution(["tests/ada-real-uci-survivability-other/probe.adb"], ["ada"])
+
+    def test_task104_reconciliation_runs_all_smoke_and_syntax(self):
+        self.assert_execution(["scripts/task104/qualify.py", "scripts/pr_smoke.py",
+                               ".github/workflows/deep-ci.yml"], list(smoke.BACKENDS), workflows=True)
+
     def test_shared_and_dependencies(self):
         for path in ("crates/ir/src/lib.rs", "crates/xsd-frontend/src/lib.rs",
                      "crates/codegen-core/src/lib.rs", "crates/cli/src/main.rs", "Cargo.lock",
