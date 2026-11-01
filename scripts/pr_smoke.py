@@ -13,7 +13,19 @@ import tempfile
 import time
 
 ROOT = Path(__file__).resolve().parents[1]
-BACKENDS = ("python", "rust", "ada")
+BACKENDS = ("python", "rust", "ada", "cpp")
+
+# CPP-OMS-001R1: strict C++17 flags for the generated-consumer smoke. Sanitizers
+# and clang++ stay in the full cpp_codec suite, not in PR smoke.
+CPP_STRICT = ("-std=c++17", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-Wconversion",
+              "-Wsign-conversion", "-Wshadow", "-Wold-style-cast", "-Wcast-align",
+              "-Wnon-virtual-dtor", "-Woverloaded-virtual", "-Wnull-dereference",
+              "-Wdouble-promotion", "-Wformat=2")
+# Exact registered tests: golden/determinism, codec-is-a-separate-artifact with
+# unchanged no-codec output, and explicit rejection of unsupported constructs.
+CPP_SMOKE_TESTS = ("generated_codec_matches_the_golden_and_is_deterministic",
+                   "codec_is_a_separate_artifact_and_leaves_the_model_and_api_unchanged",
+                   "unsupported_constructs_are_rejected_before_any_output")
 
 
 def classify(paths):
@@ -60,6 +72,10 @@ def classify(paths):
               or (path.startswith(("scripts/test_task104", "scripts/test_task105", "scripts/test_task106"))
                   and "/" not in path.removeprefix("scripts/") and path.endswith(".py"))):
             selected.add("ada")
+        elif (path.startswith(("crates/backend-cpp/", "tests/cpp-codec/", "tests/fixtures/cpp-codec/"))
+              or path in ("crates/cli/tests/cpp_codec.rs", "scripts/check-cpp-oms-001.sh",
+                          "scripts/check-cpp-oms-001-parity.sh")):
+            selected.add("cpp")
         else:
             selected.update(BACKENDS)
     return selected, workflows
@@ -103,12 +119,38 @@ def checked(command, *, cwd=ROOT, marker=None, tests=False, env=None):
 
 
 def generate(language, scratch, fixture):
-    contract = "python-codec/service" if fixture == "python-codec/oam" else fixture
+    contract = {"python-codec/oam": "python-codec/service",
+                "cpp-codec/oam": "cpp-codec/service"}.get(fixture, fixture)
     checked([ROOT / "target/debug/ams-gra-codegen-oms", "service-generate",
              "--schema", ROOT / f"tests/fixtures/{fixture}.xsd",
              "--contract", ROOT / f"tests/fixtures/{contract}.yaml",
              "--language", language, "--world", "closed-schema", "--with-codec",
              "--output", scratch])
+
+
+def cpp_smoke(scratch):
+    """Generate through the production CLI, compile the real consumer, execute it.
+
+    A missing compiler (FileNotFoundError), compile error, failed consumer or
+    consumer that did not actually run its checks all raise, failing the job.
+    """
+    checked(["g++", "--version"], marker="g++")
+    # Exact registered tests; the marker proves all three ran (none skipped).
+    checked(["cargo", "test", "--locked", "-p", "ams-gra-codegen-oms", "--test", "cpp_codec",
+             "--", "--exact", *CPP_SMOKE_TESTS, "--nocapture"],
+            marker="test result: ok. 3 passed; 0 failed", tests=True)
+    generate("cpp", scratch, "cpp-codec/oam")
+    for name in ("oam.hpp", "service_api.hpp", "service_codec.hpp"):
+        if not (scratch / name).is_file():
+            raise RuntimeError(f"C++ smoke: production CLI did not generate {name}")
+    consumer = scratch / "consumer"
+    checked(["g++", *CPP_STRICT, "-I", scratch, ROOT / "tests/cpp-codec/consumer.cpp",
+             "-o", consumer])
+    output = checked([consumer])
+    match = re.search(r"^(\d+) checks, 0 failures$", output, re.M)
+    if not match or int(match.group(1)) < 100:
+        raise RuntimeError("C++ smoke: consumer did not report its positive and negative checks")
+    print("CPP SMOKE PASSED", flush=True)
 
 
 def smoke(backend):
@@ -134,6 +176,8 @@ def smoke(backend):
             checked([sys.executable, ROOT / "crates/backend-python/tests/codec_runtime.py",
                      scratch, "flat", "https://www.vdl.afrl.af.mil/programs/oam",
                      ROOT / "tests/fixtures/python-codec"], marker="Ran 9 tests", env=env)
+        elif backend == "cpp":
+            cpp_smoke(scratch)
         elif backend == "rust":
             checked([ROOT / "target/debug/ams-gra-codegen-oms", "generate", "--schema",
                      ROOT / "crates/xsd-frontend/tests/fixtures/track.xsd", "--language", "rust",

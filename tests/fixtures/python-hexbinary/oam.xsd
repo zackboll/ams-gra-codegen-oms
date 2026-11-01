@@ -1,0 +1,30 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+ xmlns:t="https://www.vdl.afrl.af.mil/programs/oam"
+ targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified">
+ <xs:simpleType name="HexBinaryType"><xs:restriction base="xs:hexBinary"/></xs:simpleType>
+ <xs:simpleType name="Exact"><xs:restriction base="t:HexBinaryType"><xs:length value="2"/></xs:restriction></xs:simpleType>
+ <xs:simpleType name="IFF_RegisterType"><xs:restriction base="t:Exact"/></xs:simpleType>
+ <xs:simpleType name="Minimum"><xs:restriction base="t:HexBinaryType"><xs:minLength value="1"/></xs:restriction></xs:simpleType>
+ <xs:simpleType name="Maximum"><xs:restriction base="t:HexBinaryType"><xs:maxLength value="2"/></xs:restriction></xs:simpleType>
+ <xs:simpleType name="Interval"><xs:restriction base="t:HexBinaryType"><xs:minLength value="1"/><xs:maxLength value="3"/></xs:restriction></xs:simpleType>
+ <xs:simpleType name="Zero"><xs:restriction base="t:HexBinaryType"><xs:length value="0"/></xs:restriction></xs:simpleType>
+ <xs:complexType name="Base"><xs:sequence>
+  <xs:element name="Inherited" type="xs:hexBinary" minOccurs="0" maxOccurs="unbounded"/>
+ </xs:sequence></xs:complexType>
+ <xs:complexType name="Child"><xs:sequence>
+  <xs:element name="Data" type="t:IFF_RegisterType" maxOccurs="unbounded"/>
+ </xs:sequence></xs:complexType>
+ <xs:complexType name="Payload"><xs:complexContent><xs:extension base="t:Base"><xs:sequence>
+  <xs:element name="Required" type="xs:hexBinary"/>
+  <xs:element name="Optional" type="xs:hexBinary" minOccurs="0"/>
+  <xs:element name="Bounded" type="xs:hexBinary" minOccurs="0" maxOccurs="3"/>
+  <xs:element name="Many" type="t:IFF_RegisterType" minOccurs="0" maxOccurs="unbounded"/>
+  <xs:element name="Groups" type="t:Child" minOccurs="0" maxOccurs="unbounded"/>
+  <xs:element name="Named" type="t:HexBinaryType" minOccurs="0"/>
+  <xs:element name="Min" type="t:Minimum" minOccurs="0"/>
+  <xs:element name="Max" type="t:Maximum" minOccurs="0"/>
+  <xs:element name="Range" type="t:Interval" minOccurs="0"/>
+  <xs:element name="Empty" type="t:Zero" minOccurs="0"/>
+ </xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+ <xs:element name="BinaryNotice" type="t:Payload" t:version="001.000.000.000"/>
+</xs:schema>

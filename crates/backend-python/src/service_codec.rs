@@ -6,8 +6,8 @@ use ams_gra_oms_codegen_core::{
     plan_type_emissions,
 };
 use ams_gra_oms_ir::{
-    ConstraintSet, FieldDecl, OccurrenceShape, PrimitiveKind, SchemaIr, TypeKind, TypeRef,
-    TypeRefTarget,
+    BinaryLexicalEncoding, ConstraintSet, FieldDecl, OccurrenceShape, PrimitiveKind, SchemaIr,
+    TypeKind, TypeRef, TypeRefTarget, declaration_binary_encoding, resolve_binary_encoding,
 };
 use std::collections::BTreeSet;
 use std::fmt::Write as _;
@@ -49,6 +49,13 @@ fn reference(
             symbol = names::symbol(&name.local_name, false)
         )),
         TypeRefTarget::Primitive(kind) => {
+            if *kind == PrimitiveKind::Binary {
+                crate::primitive(*kind, constraints)?;
+                return Ok(format!(
+                    "_binary_{}({value}, {path})",
+                    if encode { "encode" } else { "decode" }
+                ));
+            }
             if *kind == PrimitiveKind::DateTime {
                 crate::primitive(*kind, constraints)?;
                 return Ok(format!("_checked_datetime({value}, {path})"));
@@ -84,6 +91,15 @@ pub fn generate_service_codec(
     let declarations = crate::emitted_declarations(&emissions)?;
     // Render-time wire preflight is the readiness decision too.
     for declaration in &declarations {
+        if declaration.kind == TypeKind::Primitive(PrimitiveKind::Binary)
+            && declaration_binary_encoding(schema, declaration)
+                != Some(BinaryLexicalEncoding::HexBinary)
+        {
+            return Err(error(format!(
+                "Python OMS JSON codec: {}: unsupported or unknown Binary lexical provenance",
+                declaration.name.local_name
+            )));
+        }
         // §6.1.4's special mapping requires both exact OAM wire identity and
         // the checked Task 038 value space. Name alone remains insufficient.
         if declaration.name.namespace_uri == OAM_NAMESPACE
@@ -97,6 +113,23 @@ pub fn generate_service_codec(
         if let TypeKind::Record { .. } = &declaration.kind {
             let mut keys = BTreeSet::new();
             for field in crate::record_fields(schema, declaration)? {
+                let binary = match &field.type_ref.target {
+                    TypeRefTarget::Primitive(PrimitiveKind::Binary) => true,
+                    TypeRefTarget::Named(name) => schema.types.iter().any(|candidate| {
+                        candidate.name == *name
+                            && candidate.kind == TypeKind::Primitive(PrimitiveKind::Binary)
+                    }),
+                    _ => false,
+                };
+                if binary
+                    && resolve_binary_encoding(schema, &field.type_ref)
+                        != Some(BinaryLexicalEncoding::HexBinary)
+                {
+                    return Err(error(format!(
+                        "Python OMS JSON codec: {}.{}: unsupported or unknown Binary lexical provenance",
+                        declaration.name.local_name, field.name
+                    )));
+                }
                 let key = wire_key(field)?;
                 if key == "$type" || !keys.insert(key) {
                     return Err(error(
@@ -122,6 +155,9 @@ pub fn generate_service_codec(
     if crate::uses_float64(schema) {
         output.push_str(include_str!("float64_codec_runtime.py"));
     }
+    if crate::uses_binary(schema) {
+        output.push_str(include_str!("binary_codec_runtime.py"));
+    }
     if schema.types.iter().any(|declaration| {
         crate::header_profile(declaration).is_some()
             || crate::visible_ascii_profile(declaration).is_some()
@@ -131,6 +167,11 @@ pub fn generate_service_codec(
     }
     for declaration in declarations {
         let symbol = names::symbol(&declaration.name.local_name, false);
+        if declaration.kind == TypeKind::Primitive(PrimitiveKind::Binary) {
+            let args = crate::binary_arguments(&declaration.constraints)?;
+            writeln!(output, "\n\ndef _encode_{symbol}(value, path):\n    _expect(value, _model.{symbol}, path)\n    try:\n        octets = value.value\n    except AttributeError as error:\n        raise CodecError(f'{{path}}: missing Binary value') from error\n    return _binary_encode(octets, path, {args})\n\n\ndef _decode_{symbol}(value, path):\n    return _model.{symbol}(_binary_decode(value, path, {args}))").unwrap();
+            continue;
+        }
         if declaration.kind == TypeKind::Primitive(PrimitiveKind::DateTime) {
             let access = if unbounded {
                 "    try:\n        text = value.value\n    except AttributeError as error:\n        raise CodecError(f'{path}: missing DateTime value') from error\n    return _checked_datetime(text, path, True)"

@@ -1185,8 +1185,11 @@ fn task050_zero_oms_service_needs_no_codec() {
     }
 }
 
-/// Ada and C++ have no generated codec: an OMS service is NOT READY with
-/// --with-codec at the codec boundary, and nothing is generated.
+/// The comprehensive Task 050 fixture is outside the initial Ada and C++ codec
+/// subsets: an OMS service is NOT READY with --with-codec at the codec
+/// boundary, and nothing is generated. (C++ gained a narrow codec in
+/// CPP-OMS-001; this fixture's named String profiles, floats, temporal types,
+/// Choice and polymorphic values remain outside it.)
 #[test]
 fn task050_ada_and_cpp_have_no_generated_codec() {
     for (language, name) in [("ada", "Ada"), ("cpp", "C++")] {
@@ -1197,9 +1200,12 @@ fn task050_ada_and_cpp_have_no_generated_codec() {
             "model stays READY: {report}"
         );
         if language == "cpp" {
-            assert!(report.contains(&format!(
-                "service codec boundary: generated OMS JSON codec is not implemented for {name}\n"
-            )));
+            assert!(
+                report.contains(&format!(
+                    "service codec boundary: UniversallyUniqueIdentifierType: named String has no {name} codec mapping in the initial subset\n"
+                )),
+                "{report}"
+            );
         } else {
             assert!(report.contains("service codec boundary:"), "{report}");
             assert!(

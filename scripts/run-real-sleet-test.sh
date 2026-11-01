@@ -173,6 +173,9 @@ fi
 # PY-005 reuses this exact unmodified broker build; no second broker checkout
 # or build. Python package with websockets==17.2 is installed by Deep CI.
 bash "$ROOT/scripts/check-py005-sleet.sh"
+# Bind the existing Python discovery tests to this harness's just-built CLI.
+# Required by the PY-012/PY-013 transport probes as well as source-bound receipts.
+export AMS_GRA_GENERATOR="$ROOT/target/debug/ams-gra-codegen-oms"
 for interpreter in ${PY006_PYTHONS:-${PYTHON:-python3}}; do
   PYTHON="$interpreter" bash "$ROOT/scripts/check-py006-sleet.sh"
   PYTHON="$interpreter" bash "$ROOT/scripts/check-py007-sleet.sh"
