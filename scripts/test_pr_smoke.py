@@ -99,6 +99,39 @@ class Routing(unittest.TestCase):
                                "scripts/test_pr_smoke.py", ".github/workflows/deep-ci.yml"],
                               list(smoke.BACKENDS), workflows=True)
 
+    def test_task106_ada_only(self):
+        paths = ("scripts/task106/admission.py", "scripts/task106/cases.py",
+                 "scripts/task106/qualify.py", "scripts/task106/sleet.py",
+                 "scripts/task106/nested/new.py", "scripts/task106_evidence.py",
+                 "scripts/test_task106.py", "scripts/test_task106_evidence.py",
+                 "scripts/test_task106_new.py",
+                 "tests/ada-real-uci-multimessage/multimessage_consumer.adb",
+                 "tests/ada-real-uci-multimessage/nested/probe.adb",
+                 "tests/fixtures/task106/uci25-service.yaml",
+                 "tests/fixtures/task106/nested/new.json")
+        for path in paths:
+            with self.subTest(path=path):
+                self.assert_execution([path], ["ada"])
+        self.assert_execution(paths, ["ada"])
+        self.assert_execution([paths[0], "docs/task-106-ada-multimessage-sleet.md"], ["ada"])
+        self.assert_execution([paths[0], "crates/backend-rust/src/lib.rs"], ["rust", "ada"])
+
+    def test_task106_ownership_boundaries(self):
+        for path in ("scripts/task106_other.py", "scripts/task106_evidence.py.bak",
+                     "scripts/task106-other/new.py", "scripts/task1060/new.py",
+                     "scripts/test_task106_evidence.txt", "scripts/test_task106/nested.py",
+                     "scripts/test_task106.py.bak", "tests/fixtures/task106-other/new.yaml",
+                     "tests/fixtures/task1060/new.yaml"):
+            with self.subTest(path=path):
+                self.assert_execution([path], list(smoke.BACKENDS))
+        # Preserve main's broader tests/ada-* ownership, including similar names.
+        self.assert_execution(["tests/ada-real-uci-multimessage-other/probe.adb"], ["ada"])
+
+    def test_task106_reconciliation_runs_all_smoke_and_syntax(self):
+        self.assert_execution(["scripts/task106/qualify.py", "scripts/pr_smoke.py",
+                               "scripts/test_pr_smoke.py", ".github/workflows/deep-ci.yml"],
+                              list(smoke.BACKENDS), workflows=True)
+
     def test_shared_and_dependencies(self):
         for path in ("crates/ir/src/lib.rs", "crates/xsd-frontend/src/lib.rs",
                      "crates/codegen-core/src/lib.rs", "crates/cli/src/main.rs", "Cargo.lock",
