@@ -35,6 +35,10 @@ Schema-driven, multi-language code generation for OMS/UCI services that preserve
 
 ## Quick start
 
+For an application consuming generated Rust APIs with the production LA-CAL
+runtime, see the [standalone Rust UCI client](examples/rust-uci-client/README.md)
+(UCI 2.5/2.6, typed Log and RDMA subscriptions/publications against pinned Sleet).
+
 Validate a standalone XSD or the root of a local include/import graph:
 
 ```bash
