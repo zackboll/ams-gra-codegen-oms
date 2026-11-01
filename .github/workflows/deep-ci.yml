@@ -1658,6 +1658,9 @@ jobs:
   # checkout with Sleet's own pinned toolchain), plus the real UCI 2.5
   # PositionReport / SubsystemStream codecs. Rust only: no GNAT.
   real-sleet:
+    env:
+      # build.rs invokes production generation repeatedly on authentic UCI.
+      CARGO_PROFILE_DEV_BUILD_OVERRIDE_OPT_LEVEL: '3'
     concurrency:
       group: ${{ 'oms-main-slot-4' }}
       queue: max
@@ -1681,7 +1684,7 @@ jobs:
       - name: Prevent Python bytecode in source-bound qualification
         shell: bash
         run: echo 'PYTHONDONTWRITEBYTECODE=1' >> "$GITHUB_ENV"
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.95.0
       - uses: actions/setup-python@v5
         with:
           python-version: |
@@ -1710,11 +1713,14 @@ jobs:
           name: py008-numeric
           path: ${{ runner.temp }}/py008-*.json
           if-no-files-found: error
-      - name: Fetch pinned UCI 2.5 (once)
+      - name: Fetch pinned UCI 2.5 and 2.6 for Rust Log (once)
         run: |
           set -euo pipefail
           UCI25="$(scripts/fetch-pinned-uci-2.5.sh "$RUNNER_TEMP/uci-2.5")"
+          UCI26="$(scripts/fetch-pinned-uci-2.6.sh "$RUNNER_TEMP/uci-2.6")"
           echo "AMS_GRA_UCI_2_5_ROOT=$UCI25" >> "$GITHUB_ENV"
+          echo "AMS_GRA_UCI_2_6_ROOT=$UCI26" >> "$GITHUB_ENV"
+          echo 'AMS_GRA_REQUIRE_REAL_UCI_LOG=1' >> "$GITHUB_ENV"
       - name: Real UCI 2.5 codecs (Tasks 050/052, must execute)
         run: |
           set -euo pipefail
@@ -1752,6 +1758,7 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$AMS_GRA_UCI_2_5_ROOT"
+          test -n "$AMS_GRA_UCI_2_6_ROOT"
           scripts/run-real-sleet-test.sh
       - name: Preserve PY-010 generated sources and observed broker events
         if: always()

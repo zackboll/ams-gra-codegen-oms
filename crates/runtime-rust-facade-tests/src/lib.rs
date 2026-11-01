@@ -203,6 +203,20 @@ pub mod real_uci_subsystem_stream {
 
 pub mod codec;
 
+/// RUST-OMS-001: authentic UCI 2.5 Log, never aliased to the 2.6 model.
+#[cfg(ams_gra_real_uci_log25)]
+#[allow(clippy::all, clippy::pedantic)]
+pub mod real_uci_log25 {
+    include!(concat!(env!("OUT_DIR"), "/real_uci_log25/service_api.rs"));
+}
+
+/// RUST-OMS-001: authentic UCI 2.6 Log with its own schema identity.
+#[cfg(ams_gra_real_uci_log26)]
+#[allow(clippy::all, clippy::pedantic)]
+pub mod real_uci_log26 {
+    include!(concat!(env!("OUT_DIR"), "/real_uci_log26/service_api.rs"));
+}
+
 /// Task 061 checked named Time model/API/codec, generated in the build.
 #[allow(clippy::all, clippy::pedantic)]
 pub mod codec_time_zulu {
