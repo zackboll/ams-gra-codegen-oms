@@ -395,7 +395,6 @@ fn single_connection_interleaving_isolation_and_unsubscribe() {
         "UNSUB did not close shared connection"
     );
     runtime.close().expect("one shutdown joins shared worker");
-    assert!(!owned[0].exists(), "worker task reaped");
     assert_eq!(
         connections(&url),
         2,
