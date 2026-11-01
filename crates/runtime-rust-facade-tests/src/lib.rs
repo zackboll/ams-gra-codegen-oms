@@ -7,6 +7,26 @@
 //! handwritten payload codec for the fixture types; it is evidence for the
 //! `OmsJsonCodec` boundary, not generated codec output.
 
+/// Three-message UCI 2.5 model, codec and service API.
+#[cfg(ams_gra_real_uci_survivability25)]
+#[allow(clippy::all, clippy::pedantic)]
+pub mod real_uci_survivability25 {
+    include!(concat!(
+        env!("OUT_DIR"),
+        "/real_uci_survivability25/service_api.rs"
+    ));
+}
+
+/// Independently generated three-message UCI 2.6 service.
+#[cfg(ams_gra_real_uci_survivability26)]
+#[allow(clippy::all, clippy::pedantic)]
+pub mod real_uci_survivability26 {
+    include!(concat!(
+        env!("OUT_DIR"),
+        "/real_uci_survivability26/service_api.rs"
+    ));
+}
+
 /// One combined UCI 2.5 model, codec and service API for Log and RDMA.
 #[cfg(ams_gra_real_uci_multimessage25)]
 #[allow(clippy::all, clippy::pedantic)]

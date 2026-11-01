@@ -1,0 +1,1578 @@
+{
+  "source": "scripts/task105/cases.py",
+  "positives": [
+    [
+      "full",
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "NONE"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "NONE"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    [
+      "medium-all",
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "MEDIUM",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "ALL"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "MEDIUM",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "ALL"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    [
+      "low-track",
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "LOW",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "TRACK"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "LOW",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "TRACK"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    [
+      "ordered",
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "NONE",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "NONE"
+                }
+              ]
+            },
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "ALL"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "NONE",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "NONE"
+                }
+              ]
+            },
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "ALL"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    [
+      "maximum",
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            },
+            {
+              "GovernmentIdentifier": "CAN"
+            },
+            {
+              "NATO_SpecialWord": "NATO:MORE"
+            }
+          ],
+          "DeclassDate": "2026-01-02T03:04:05Z",
+          "CUI_DecontrolDate": "2026-01-03T03:04:05Z",
+          "ClassifiedBy": "  Task105  authority  ",
+          "SAR_Identifier": [
+            "Task105 marking"
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "ACQUISITION",
+                  "MaximumContinuousExposure": {
+                    "CompositeExposureTime": "PT1S",
+                    "CumulativeExposureTime": "PT2S"
+                  }
+                },
+                {
+                  "AllowedRisk": "TRACK"
+                },
+                {
+                  "AllowedRisk": "LAUNCH"
+                },
+                {
+                  "AllowedRisk": "INTERCEPT"
+                },
+                {
+                  "AllowedRisk": "KILL"
+                }
+              ]
+            },
+            {
+              "RiskPrioritization": "MEDIUM",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "ACQUISITION"
+                },
+                {
+                  "AllowedRisk": "TRACK"
+                },
+                {
+                  "AllowedRisk": "LAUNCH"
+                },
+                {
+                  "AllowedRisk": "INTERCEPT"
+                },
+                {
+                  "AllowedRisk": "KILL"
+                }
+              ]
+            },
+            {
+              "RiskPrioritization": "LOW",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "ACQUISITION"
+                },
+                {
+                  "AllowedRisk": "TRACK"
+                },
+                {
+                  "AllowedRisk": "LAUNCH"
+                },
+                {
+                  "AllowedRisk": "INTERCEPT"
+                },
+                {
+                  "AllowedRisk": "KILL"
+                }
+              ]
+            },
+            {
+              "RiskPrioritization": "NONE",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "ACQUISITION"
+                },
+                {
+                  "AllowedRisk": "TRACK"
+                },
+                {
+                  "AllowedRisk": "LAUNCH"
+                },
+                {
+                  "AllowedRisk": "INTERCEPT"
+                },
+                {
+                  "AllowedRisk": "KILL"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            },
+            {
+              "GovernmentIdentifier": "CAN"
+            },
+            {
+              "NATO_SpecialWord": "NATO:MORE"
+            }
+          ],
+          "DeclassDate": "2026-01-02T03:04:05Z",
+          "CUI_DecontrolDate": "2026-01-03T03:04:05Z",
+          "ClassifiedBy": "  Task105  authority  ",
+          "SAR_Identifier": [
+            "Task105 marking"
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "ACQUISITION",
+                  "MaximumContinuousExposure": {
+                    "CompositeExposureTime": "PT1S",
+                    "CumulativeExposureTime": "PT2S"
+                  }
+                },
+                {
+                  "AllowedRisk": "TRACK"
+                },
+                {
+                  "AllowedRisk": "LAUNCH"
+                },
+                {
+                  "AllowedRisk": "INTERCEPT"
+                },
+                {
+                  "AllowedRisk": "KILL"
+                }
+              ]
+            },
+            {
+              "RiskPrioritization": "MEDIUM",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "ACQUISITION"
+                },
+                {
+                  "AllowedRisk": "TRACK"
+                },
+                {
+                  "AllowedRisk": "LAUNCH"
+                },
+                {
+                  "AllowedRisk": "INTERCEPT"
+                },
+                {
+                  "AllowedRisk": "KILL"
+                }
+              ]
+            },
+            {
+              "RiskPrioritization": "LOW",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "ACQUISITION"
+                },
+                {
+                  "AllowedRisk": "TRACK"
+                },
+                {
+                  "AllowedRisk": "LAUNCH"
+                },
+                {
+                  "AllowedRisk": "INTERCEPT"
+                },
+                {
+                  "AllowedRisk": "KILL"
+                }
+              ]
+            },
+            {
+              "RiskPrioritization": "NONE",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "ACQUISITION"
+                },
+                {
+                  "AllowedRisk": "TRACK"
+                },
+                {
+                  "AllowedRisk": "LAUNCH"
+                },
+                {
+                  "AllowedRisk": "INTERCEPT"
+                },
+                {
+                  "AllowedRisk": "KILL"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    [
+      "optional-empty",
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "NONE"
+                }
+              ]
+            }
+          ],
+          "AppliesToSystemID": []
+        }
+      },
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "NONE"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  ],
+  "invalid": [
+    [
+      "uuid-variant",
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-1234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "NONE"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "FacetViolation",
+      "MessageHeader.SystemID.UUID"
+    ],
+    [
+      "short-version",
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "NONE"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "FacetViolation",
+      "MessageHeader.SchemaVersion"
+    ],
+    [
+      "priority-invalid",
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "INVALID",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "NONE"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "FacetViolation",
+      "RiskPrioritization"
+    ],
+    [
+      "allowed-invalid",
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "INVALID"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "FacetViolation",
+      "AllowedRisk"
+    ],
+    [
+      "risk-member",
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "NONE",
+                  "NotARiskAlternative": {}
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "UnknownMember",
+      "NotARiskAlternative"
+    ],
+    [
+      "risk-kind",
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": 7
+            }
+          ]
+        }
+      },
+      "OccurrenceMismatch",
+      "expected_array: true"
+    ],
+    [
+      "owner-two-arms",
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA",
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "NONE"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "ChoiceViolation",
+      "present: 2"
+    ],
+    [
+      "missing-priority",
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "NONE"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "MissingRequiredMember",
+      "RiskPrioritization"
+    ],
+    [
+      "missing-allowed",
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": [
+                {}
+              ]
+            }
+          ]
+        }
+      },
+      "MissingRequiredMember",
+      "AllowedRisk"
+    ],
+    [
+      "empty-risk-setting",
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": []
+        }
+      },
+      "OccurrenceMismatch",
+      "RiskSetting"
+    ],
+    [
+      "empty-risk-level",
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": []
+            }
+          ]
+        }
+      },
+      "OccurrenceMismatch",
+      "RiskLevel"
+    ],
+    [
+      "too-many-settings",
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "NONE"
+                }
+              ]
+            },
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "NONE"
+                }
+              ]
+            },
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "NONE"
+                }
+              ]
+            },
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "NONE"
+                }
+              ]
+            },
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "NONE"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "OccurrenceMismatch",
+      "RiskSetting"
+    ],
+    [
+      "too-many-levels",
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "NONE"
+                },
+                {
+                  "AllowedRisk": "NONE"
+                },
+                {
+                  "AllowedRisk": "NONE"
+                },
+                {
+                  "AllowedRisk": "NONE"
+                },
+                {
+                  "AllowedRisk": "NONE"
+                },
+                {
+                  "AllowedRisk": "NONE"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "OccurrenceMismatch",
+      "RiskLevel"
+    ],
+    [
+      "empty-classified-by",
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ],
+          "ClassifiedBy": ""
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "NONE"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "FacetViolation",
+      "ClassifiedBy"
+    ],
+    [
+      "empty-sar",
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ],
+          "SAR_Identifier": [
+            ""
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "NONE"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "FacetViolation",
+      "SAR_Identifier"
+    ],
+    [
+      "declass-offset",
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ],
+          "DeclassDate": "2026-01-02T03:04:05+01:00"
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "NONE"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "FacetViolation",
+      "DeclassDate"
+    ],
+    [
+      "decontrol-offset",
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ],
+          "CUI_DecontrolDate": "2026-01-02T03:04:05+01:00"
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "NONE"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "FacetViolation",
+      "CUI_DecontrolDate"
+    ],
+    [
+      "settings-kind",
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": {
+            "RiskPrioritization": "HIGH",
+            "RiskLevel": [
+              {
+                "AllowedRisk": "NONE"
+              }
+            ]
+          }
+        }
+      },
+      "OccurrenceMismatch",
+      "RiskSetting"
+    ],
+    [
+      "owners-kind",
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": {
+            "GovernmentIdentifier": "USA"
+          }
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "NONE"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "OccurrenceMismatch",
+      "OwnerProducer"
+    ],
+    [
+      "owner-unknown",
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "NotAnOwner": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "NONE"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "UnknownMember",
+      "NotAnOwner"
+    ],
+    [
+      "missing-risk-id",
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "NONE"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "MissingRequiredMember",
+      "SurvivabilityRiskLevelID"
+    ],
+    [
+      "setting-member",
+      {
+        "SecurityInformation": {
+          "Classification": "U",
+          "OwnerProducer": [
+            {
+              "GovernmentIdentifier": "USA"
+            },
+            {
+              "NATO_SpecialWord": "NATO:EXAMPLE"
+            }
+          ]
+        },
+        "MessageHeader": {
+          "SystemID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "Timestamp": "2026-01-02T03:04:05Z",
+          "SchemaVersion": "002.6.0",
+          "Mode": "LIVE"
+        },
+        "MessageData": {
+          "SurvivabilityRiskLevelID": {
+            "UUID": "12345678-1234-1234-8234-123456789abc"
+          },
+          "RiskSetting": [
+            {
+              "RiskPrioritization": "HIGH",
+              "RiskLevel": [
+                {
+                  "AllowedRisk": "NONE"
+                }
+              ],
+              "NotASetting": "NONE"
+            }
+          ]
+        }
+      },
+      "UnknownMember",
+      "NotASetting"
+    ]
+  ]
+}
