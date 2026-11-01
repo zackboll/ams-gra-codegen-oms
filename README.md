@@ -939,15 +939,21 @@ The real UCI 2.5 `PositionReport` round-trips through unmodified Sleet as a
 typed `PositionReportMT`. Without the flag all output is unchanged. See
 [Task 050](docs/task-050-rust-oms-json-codecs.md).
 
-**C++ OMS JSON codec (CPP-OMS-001).** `--language cpp --with-codec` emits a
-separate, standard-library-only `service_codec.hpp` with typed
+**C++ OMS JSON codec (CPP-OMS-001, CPP-OMS-002).** `--language cpp --with-codec`
+emits a separate, standard-library-only `service_codec.hpp` with typed
 `encode_<Payload>` / `decode_<Payload>` functions returning `CodecResult<T>`,
-for an initial subset: Boolean, integral, plain String, enumeration and
-concrete Record (required, optional and repeated members). Float, temporal,
-Binary, constrained String, Choice and polymorphic constructs report a
-`service codec boundary:` and write nothing; the model and service API headers
-are byte-identical with and without the flag. No real UCI message is supported
-yet. See [CPP-OMS-001](docs/task-cpp-oms-001-cpp-oms-json-codecs.md).
+for: Boolean, integral, plain String, enumeration and concrete Record (required,
+optional and repeated members) plus, since CPP-OMS-002, the UUID, schema-version,
+visible-ASCII, whitespace-visible and NATO-special-words String profiles, named
+`DateTimeZulu` / `Duration` and direct `xs:dateTime` / `xs:duration`,
+unconstrained `xs:hexBinary`, and required-single Choices. The authentic pinned
+UCI `Log` message is READY in both UCI 2.5 (42 selected types, 41/41 codec
+declarations) and UCI 2.6 (44, 43/43). Float, `Time`, the other String
+profiles, constrained Binary, optional/repeated Choice alternatives and
+polymorphic constructs report a `service codec boundary:` and write nothing; the
+model and service API headers are byte-identical with and without the flag. See
+[CPP-OMS-001](docs/task-cpp-oms-001-cpp-oms-json-codecs.md) and
+[CPP-OMS-002](docs/task-cpp-oms-002-real-log.md).
 
 **hexBinary (Task 052).** Schema IR keeps each Binary value's XSD lexical
 primitive (`xs:hexBinary`) as provenance separate from its value kind, resolved
