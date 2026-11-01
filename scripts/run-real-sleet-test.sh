@@ -26,7 +26,14 @@ fi
 if [ "${AMS_GRA_RUST_MULTIMESSAGE_ONLY:-}" = 1 ]; then
   export AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE=1
 fi
-if [ -n "${AMS_GRA_REQUIRE_REAL_UCI_LOG:-}${AMS_GRA_REQUIRE_REAL_UCI_RDMA:-}${AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE:-}" ]; then
+if [ "${AMS_GRA_RUST_SURVIVABILITY_ONLY:-}" = 1 ]; then
+  # All inherited regressions use the same fail-closed build configuration.
+  export AMS_GRA_REQUIRE_REAL_UCI_LOG=1
+  export AMS_GRA_REQUIRE_REAL_UCI_RDMA=1
+  export AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE=1
+  export AMS_GRA_REQUIRE_REAL_UCI_SURVIVABILITY=1
+fi
+if [ -n "${AMS_GRA_REQUIRE_REAL_UCI_LOG:-}${AMS_GRA_REQUIRE_REAL_UCI_RDMA:-}${AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE:-}${AMS_GRA_REQUIRE_REAL_UCI_SURVIVABILITY:-}" ]; then
   : "${AMS_GRA_UCI_2_5_ROOT:?pinned UCI 2.5 root required}"
   : "${AMS_GRA_UCI_2_6_ROOT:?pinned UCI 2.6 root required}"
 fi
@@ -109,6 +116,45 @@ if [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] && [ -n "${AMS_GRA_UCI_2_6_ROOT:-}" ]; the
     grep -Fqx "RUST-OMS-003 $version SINGLE CONNECTION AND ISOLATION: PASSED" <<<"$output"
   done
   grep -qE '^test result: ok\. 2 passed; 0 failed; 0 ignored;' <<<"$output"
+fi
+if [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] && [ -n "${AMS_GRA_UCI_2_6_ROOT:-}" ]; then
+  # Keep the independent Task104/105 corpora byte-for-value authoritative.
+  # No generated encoding is used to author the expected documents.
+  PYTHONDONTWRITEBYTECODE=1 python3 - <<'PY'
+import importlib.util
+import json
+from pathlib import Path
+for version, task in [('25', '104'), ('26', '105')]:
+    source = f'scripts/task{task}/cases.py'
+    spec = importlib.util.spec_from_file_location('cases', source)
+    cases = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cases)
+    expected = dict(source=source, positives=cases.positives(version),
+                    invalid=[(label, doc, *cases.BROKER_DETAILS[label])
+                             for label, doc in cases.invalid_documents(version)])
+    actual = json.loads(Path(f'tests/fixtures/rust-oms-004/corpus{version}.json').read_text())
+    assert actual == json.loads(json.dumps(expected)), version
+PY
+  status=0
+  output="$(AMS_GRA_REQUIRE_REAL_UCI_SURVIVABILITY=1 CARGO_PROFILE_RELEASE_BUILD_OVERRIDE_OPT_LEVEL=3 \
+    cargo +1.95.0 test --release --locked -p ams-gra-oms-runtime-rust-facade-tests \
+    --test real_uci_survivability -- --show-output --test-threads=1 2>&1)" || status=$?
+  printf '%s\n' "$output"
+  if (( status != 0 )); then exit "$status"; fi
+  for version in 002.5.0 002.6.0; do
+    grep -Fqx "RUST-OMS-004 $version MODEL AND CODEC: PASSED" <<<"$output"
+    grep -Fqx "RUST-OMS-004 $version SINGLE CONNECTION AND ISOLATION: PASSED" <<<"$output"
+  done
+  grep -qE '^test result: ok\. 4 passed; 0 failed; 0 ignored;' <<<"$output"
+  # TLS teardown barriers prove actual joining, without a procfs exit race.
+  output="$(cargo +1.95.0 test --release --locked -p ams-gra-oms-runtime-rust-facade-tests \
+    --test runtime_lifecycle -- --show-output --test-threads=1 2>&1)"
+  printf '%s\n' "$output"
+  grep -qE '^test result: ok\. 7 passed; 0 failed; 0 ignored;' <<<"$output"
+fi
+if [ "${AMS_GRA_RUST_SURVIVABILITY_ONLY:-}" = 1 ]; then
+  echo "RUST-OMS-004 real pinned Sleet ($SLEET_REV): PASSED"
+  exit 0
 fi
 if [ "${AMS_GRA_RUST_MULTIMESSAGE_ONLY:-}" = 1 ]; then
   echo "RUST-OMS-003 real pinned Sleet ($SLEET_REV): PASSED"
