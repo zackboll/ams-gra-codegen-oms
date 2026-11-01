@@ -14,6 +14,17 @@ SLEET_REPO="https://github.com/open-arsenal/ams-gra-hello-world-sk-infra-sleet"
 SLEET_REV="e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
+# RUST-OMS-001: explicit qualification may not silently compile no-UCI stubs.
+# The focused mode reuses this exact checkout/build, without running unrelated
+# Python qualifications. Default invocation retains all existing tests.
+if [ "${AMS_GRA_RUST_LOG_ONLY:-}" = 1 ]; then
+  export AMS_GRA_REQUIRE_REAL_UCI_LOG=1
+fi
+if [ -n "${AMS_GRA_REQUIRE_REAL_UCI_LOG:-}" ]; then
+  : "${AMS_GRA_UCI_2_5_ROOT:?pinned UCI 2.5 root required}"
+  : "${AMS_GRA_UCI_2_6_ROOT:?pinned UCI 2.6 root required}"
+fi
+
 if [ $# -ge 1 ]; then
   CHECKOUT="$1"
 else
@@ -28,21 +39,6 @@ test -z "$(git -C "$CHECKOUT" status --porcelain)"
 # Build with Sleet's own pinned toolchain (rust-toolchain.toml).
 (cd "$CHECKOUT" && cargo build --release --locked -p sleet)
 export AMS_GRA_SLEET_BIN="$CHECKOUT/target/release/sleet"
-
-# PY-005 reuses this exact unmodified broker build; no second broker checkout
-# or build. Python package with websockets==17.2 is installed by Deep CI.
-bash "$ROOT/scripts/check-py005-sleet.sh"
-for interpreter in ${PY006_PYTHONS:-${PYTHON:-python3}}; do
-  PYTHON="$interpreter" bash "$ROOT/scripts/check-py006-sleet.sh"
-  PYTHON="$interpreter" bash "$ROOT/scripts/check-py007-sleet.sh"
-  PYTHON="$interpreter" bash "$ROOT/scripts/check-py008-sleet.sh"
-  PYTHON="$interpreter" bash "$ROOT/scripts/check-py009-sleet.sh"
-  PYTHON="$interpreter" bash "$ROOT/scripts/check-py010-sleet.sh"
-  "$interpreter" "$ROOT/python/qualification/run.py" sleet
-  "$interpreter" -O "$ROOT/python/qualification/run.py" sleet
-  "$interpreter" "$ROOT/scripts/run-owned-python.py" sleet
-  "$interpreter" -O "$ROOT/scripts/run-owned-python.py" sleet
-done
 
 cd "$ROOT"
 # run_one TEST_FILE TEST_NAME PASS_LINE: exactly one matching test must run,
@@ -60,6 +56,41 @@ run_one() {
   grep -Fqx -- "$3" <<<"$output"
   grep -qE '^test result: ok\. 1 passed' <<<"$output"
 }
+
+if [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] && [ -n "${AMS_GRA_UCI_2_6_ROOT:-}" ]; then
+  # Release keeps repeated authentic-schema parsing bounded; build.rs runs
+  # production readiness, generates each model twice and asserts source parity.
+  status=0
+  output="$(CARGO_PROFILE_RELEASE_BUILD_OVERRIDE_OPT_LEVEL=3 \
+    cargo +1.95.0 test --release --locked -p ams-gra-oms-runtime-rust-facade-tests \
+    --test real_uci_log -- --nocapture 2>&1)" || status=$?
+  printf '%s\n' "$output"
+  if (( status != 0 )); then exit "$status"; fi
+  for version in 002.5.0 002.6.0; do
+    grep -Fqx "RUST-OMS-001 $version GOLDEN: PASSED" <<<"$output"
+    grep -Fqx "RUST-OMS-001 $version SLEET AND RECOVERY: PASSED" <<<"$output"
+  done
+  grep -qE '^test result: ok\. 4 passed; 0 failed; 0 ignored;' <<<"$output"
+fi
+if [ "${AMS_GRA_RUST_LOG_ONLY:-}" = 1 ]; then
+  echo "RUST-OMS-001 real pinned Sleet ($SLEET_REV): PASSED"
+  exit 0
+fi
+
+# PY-005 reuses this exact unmodified broker build; no second broker checkout
+# or build. Python package with websockets==17.2 is installed by Deep CI.
+bash "$ROOT/scripts/check-py005-sleet.sh"
+for interpreter in ${PY006_PYTHONS:-${PYTHON:-python3}}; do
+  PYTHON="$interpreter" bash "$ROOT/scripts/check-py006-sleet.sh"
+  PYTHON="$interpreter" bash "$ROOT/scripts/check-py007-sleet.sh"
+  PYTHON="$interpreter" bash "$ROOT/scripts/check-py008-sleet.sh"
+  PYTHON="$interpreter" bash "$ROOT/scripts/check-py009-sleet.sh"
+  PYTHON="$interpreter" bash "$ROOT/scripts/check-py010-sleet.sh"
+  "$interpreter" "$ROOT/python/qualification/run.py" sleet
+  "$interpreter" -O "$ROOT/python/qualification/run.py" sleet
+  "$interpreter" "$ROOT/scripts/run-owned-python.py" sleet
+  "$interpreter" -O "$ROOT/scripts/run-owned-python.py" sleet
+done
 
 # Task 049: generated facade + HANDWRITTEN codec (proves the runtime seam).
 run_one real_sleet task049_generated_facade_round_trips_through_real_sleet \
