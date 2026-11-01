@@ -265,3 +265,51 @@ R1 execution logs and new-source measurements are stored separately in
 `/home/zboll/py012-r1-evidence/v1`. Original evidence under
 `tests/fixtures/python-unbounded-repetition/evidence/v1` and raw original logs
 under `/home/zboll/py012-evidence/v1` remain immutable historical results.
+
+### R1 qualification results (separate source-qualified execution)
+
+The clean R1 execution source is `ced74dd0a6e14c867ca83bc79ab34cd35217c165`,
+tree `2d2edaa238822917c1eb9593df72f3ea4fd95b3a`. The following delivery commit
+adds only this report and new `evidence/r1` files; it does not change the
+qualified production/test sources. Final-head acceptance results and hosted
+smoke identity are recorded in the PR delivery comment, not inferred from an
+older run. The R1 generator SHA-256 is
+`c688216aa5b269a9510004664970d9cc8d8fbb1ac6519cac719c14326cc56098`.
+
+| R1 check | Actual result |
+| --- | --- |
+| Historical PY-012 / PY-011 suites | 5 / 2 methods, both interpreters, normal and `-O` |
+| End-to-end evidence tampering, including recomputed manifest | 24 expected rejections: four inventory mutations plus commit/tree, both interpreters/policies |
+| Depth-one checkout with simulated future production change | Both historical suites pass on both interpreters/policies; no historical Git objects needed |
+| Python backend | 25 tests per interpreter, including two new exact-substitution guard methods |
+| Ten Python CLI regression targets | 34 tests per interpreter; generated normal/optimized probes, both worlds/import styles |
+| Fast / UCI / Sleet discovery | 7 / 4 / 4 tests respectively, four interpreter/policy combinations each |
+| Unbounded-free parity against original baseline | 32 selections, 80 sources byte-identical |
+| Unbounded-free parity against reviewed PY-012 | 32 selections, 80 sources byte-identical |
+| Unbounded fixtures parity against reviewed PY-012 | 8 selections, 20 sources byte-identical |
+| Existing VisibleAscii-free parity | 20 selections, 50 sources byte-identical |
+| Other-backend parity against reviewed executable | 6 generated selections, 12 readiness results, 2 coverage reports identical |
+| New pinned-UCI measurement | 24 selections, clean R1 source identity; exact historical AFTER verdicts/closures/contracts/atomic failures retained |
+| New explicit pinned synthetic Sleet | Four executions; each has eight broker rejections and one proven generated-decoder rejection, followed by recovery/clean teardown |
+| fmt / workspace all-target check / focused warning-denied Clippy | Passed |
+| Local Python PR smoke / router / main-lane tests | Passed; router 28 tests, main lanes one test |
+| Repository workflow validator | Passed via existing `check-ci-actionlint.sh` |
+
+All 15 production-file paths are retained; 14 have exact historical bytes. Only
+`service_codec.rs` differs, by the fail-closed guard and its tests. All runtime
+`.py` templates and model generation are byte-identical to the reviewed source.
+The generated-byte comparisons above authenticate the reviewed executable
+against the original historical generator digest before using it as an oracle.
+Current-source qualification has not been replaced by historical authentication.
+
+UCI results still mean NOT READY, not interoperability: PositionReport remains
+blocked by `FGI_SourceOpenChoiceType`, RDMA by `IPv4_AddressType`, UCI 2.5
+SubsystemStream by direct `SubsystemStreamBinary`, and UCI 2.6 by `HexBinaryType`.
+The synthetic Sleet results remain explicitly separate from these real services.
+
+An initial workspace-check attempt with inherited pinned inputs was terminated
+while performing expensive debug Rust facade generation; it is not a pass. The
+normal workspace check was rerun without those optional inputs and passed.
+An initial direct actionlint call rejected main's `queue: max`; the prescribed
+repository wrapper passed using main's existing narrow compatibility filter.
+Both initial logs are retained, distinct from the successful executions.

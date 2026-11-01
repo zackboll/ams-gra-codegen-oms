@@ -1,0 +1,194 @@
+[
+  {
+    "variant": "missing",
+    "interpreter": "311",
+    "policy": "normal",
+    "exit": 1,
+    "rebound_manifest": true,
+    "expected_rejection": "historical production inventory changed"
+  },
+  {
+    "variant": "missing",
+    "interpreter": "311",
+    "policy": "optimized",
+    "exit": 1,
+    "rebound_manifest": true,
+    "expected_rejection": "historical production inventory changed"
+  },
+  {
+    "variant": "missing",
+    "interpreter": "313",
+    "policy": "normal",
+    "exit": 1,
+    "rebound_manifest": true,
+    "expected_rejection": "historical production inventory changed"
+  },
+  {
+    "variant": "missing",
+    "interpreter": "313",
+    "policy": "optimized",
+    "exit": 1,
+    "rebound_manifest": true,
+    "expected_rejection": "historical production inventory changed"
+  },
+  {
+    "variant": "added",
+    "interpreter": "311",
+    "policy": "normal",
+    "exit": 1,
+    "rebound_manifest": true,
+    "expected_rejection": "historical production inventory changed"
+  },
+  {
+    "variant": "added",
+    "interpreter": "311",
+    "policy": "optimized",
+    "exit": 1,
+    "rebound_manifest": true,
+    "expected_rejection": "historical production inventory changed"
+  },
+  {
+    "variant": "added",
+    "interpreter": "313",
+    "policy": "normal",
+    "exit": 1,
+    "rebound_manifest": true,
+    "expected_rejection": "historical production inventory changed"
+  },
+  {
+    "variant": "added",
+    "interpreter": "313",
+    "policy": "optimized",
+    "exit": 1,
+    "rebound_manifest": true,
+    "expected_rejection": "historical production inventory changed"
+  },
+  {
+    "variant": "modified",
+    "interpreter": "311",
+    "policy": "normal",
+    "exit": 1,
+    "rebound_manifest": true,
+    "expected_rejection": "historical production inventory changed"
+  },
+  {
+    "variant": "modified",
+    "interpreter": "311",
+    "policy": "optimized",
+    "exit": 1,
+    "rebound_manifest": true,
+    "expected_rejection": "historical production inventory changed"
+  },
+  {
+    "variant": "modified",
+    "interpreter": "313",
+    "policy": "normal",
+    "exit": 1,
+    "rebound_manifest": true,
+    "expected_rejection": "historical production inventory changed"
+  },
+  {
+    "variant": "modified",
+    "interpreter": "313",
+    "policy": "optimized",
+    "exit": 1,
+    "rebound_manifest": true,
+    "expected_rejection": "historical production inventory changed"
+  },
+  {
+    "variant": "substituted",
+    "interpreter": "311",
+    "policy": "normal",
+    "exit": 1,
+    "rebound_manifest": true,
+    "expected_rejection": "historical production inventory changed"
+  },
+  {
+    "variant": "substituted",
+    "interpreter": "311",
+    "policy": "optimized",
+    "exit": 1,
+    "rebound_manifest": true,
+    "expected_rejection": "historical production inventory changed"
+  },
+  {
+    "variant": "substituted",
+    "interpreter": "313",
+    "policy": "normal",
+    "exit": 1,
+    "rebound_manifest": true,
+    "expected_rejection": "historical production inventory changed"
+  },
+  {
+    "variant": "substituted",
+    "interpreter": "313",
+    "policy": "optimized",
+    "exit": 1,
+    "rebound_manifest": true,
+    "expected_rejection": "historical production inventory changed"
+  },
+  {
+    "variant": "commit",
+    "interpreter": "311",
+    "policy": "normal",
+    "exit": 1,
+    "rebound_manifest": true,
+    "expected_rejection": "historical source provenance changed"
+  },
+  {
+    "variant": "commit",
+    "interpreter": "311",
+    "policy": "optimized",
+    "exit": 1,
+    "rebound_manifest": true,
+    "expected_rejection": "historical source provenance changed"
+  },
+  {
+    "variant": "commit",
+    "interpreter": "313",
+    "policy": "normal",
+    "exit": 1,
+    "rebound_manifest": true,
+    "expected_rejection": "historical source provenance changed"
+  },
+  {
+    "variant": "commit",
+    "interpreter": "313",
+    "policy": "optimized",
+    "exit": 1,
+    "rebound_manifest": true,
+    "expected_rejection": "historical source provenance changed"
+  },
+  {
+    "variant": "tree",
+    "interpreter": "311",
+    "policy": "normal",
+    "exit": 1,
+    "rebound_manifest": true,
+    "expected_rejection": "historical source provenance changed"
+  },
+  {
+    "variant": "tree",
+    "interpreter": "311",
+    "policy": "optimized",
+    "exit": 1,
+    "rebound_manifest": true,
+    "expected_rejection": "historical source provenance changed"
+  },
+  {
+    "variant": "tree",
+    "interpreter": "313",
+    "policy": "normal",
+    "exit": 1,
+    "rebound_manifest": true,
+    "expected_rejection": "historical source provenance changed"
+  },
+  {
+    "variant": "tree",
+    "interpreter": "313",
+    "policy": "optimized",
+    "exit": 1,
+    "rebound_manifest": true,
+    "expected_rejection": "historical source provenance changed"
+  }
+]
