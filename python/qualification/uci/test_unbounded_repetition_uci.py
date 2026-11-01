@@ -53,7 +53,7 @@ class UnboundedRepetitionUci(unittest.TestCase):
                     probe = '''import model as m, service_codec as c, unittest
 class PinnedMember(unittest.TestCase):
  def test_literal_wire_and_order(self):
-  v=m.Payload(subsystem_stream_string=(m.VisibleString1024Type('first'),m.VisibleString1024Type(' last '),m.VisibleString1024Type('first')))
+  v=m.Payload(subsystemstreamstring=(m.VisibleString1024Type('first'),m.VisibleString1024Type(' last '),m.VisibleString1024Type('first')))
   text='{"SubsystemStreamString":["first"," last ","first"]}'
   self.assertEqual(c.encode_Payload(v),text)
   self.assertEqual(c.decode_Payload(text),v)
