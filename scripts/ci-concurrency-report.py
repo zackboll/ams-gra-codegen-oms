@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 
 
-def report(jobs, limit=5, lanes=None):
+def report(jobs, limit=10, lanes=None):
     if len({j['id'] for j in jobs}) != len(jobs):
         raise ValueError('duplicate job identities')
     events=[]
@@ -18,7 +18,7 @@ def report(jobs, limit=5, lanes=None):
     minutes=0
     if lanes is not None and set(lanes) != {j['id'] for j in jobs}:
         raise ValueError('incomplete lane identity inventory')
-    if lanes is not None and any(type(lane) is not int or not 1 <= lane <= 5 for lane in lanes.values()):
+    if lanes is not None and any(type(lane) is not int or not 1 <= lane <= 10 for lane in lanes.values()):
         raise ValueError('invalid shared main lane')
     for job in jobs:
         if job['status']!='completed' or job['conclusion']!='success':
@@ -60,7 +60,7 @@ def report(jobs, limit=5, lanes=None):
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('jobs_json',nargs='+',type=Path)
-    parser.add_argument('--limit',type=int,default=5)
+    parser.add_argument('--limit',type=int,default=10)
     args=parser.parse_args()
     jobs=[j for p in args.jobs_json for j in json.loads(p.read_text())['jobs']]
     print(json.dumps(report(jobs,args.limit),indent=2))

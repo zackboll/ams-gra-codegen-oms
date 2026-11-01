@@ -26,9 +26,9 @@ jobs:
         compiler: ['14', '16']
         include:
           - compiler: '14'
-            slot: 2
+            slot: 10
           - compiler: '16'
-            slot: 4
+            slot: 5
     container:
       image: debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5
     timeout-minutes: 120
@@ -184,9 +184,9 @@ jobs:
         compiler: ['14', '16']
         include:
           - compiler: '14'
-            slot: 1
+            slot: 3
           - compiler: '16'
-            slot: 4
+            slot: 10
     container:
       image: debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5
     timeout-minutes: 120
@@ -340,9 +340,9 @@ jobs:
         compiler: ['14', '16']
         include:
           - compiler: '14'
-            slot: 4
+            slot: 5
           - compiler: '16'
-            slot: 1
+            slot: 4
     container:
       image: debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5
     timeout-minutes: 120
@@ -501,9 +501,9 @@ jobs:
         compiler: ['14', '16']
         include:
           - compiler: '14'
-            slot: 1
+            slot: 5
           - compiler: '16'
-            slot: 3
+            slot: 2
     container:
       image: debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5
     timeout-minutes: 120
@@ -657,9 +657,9 @@ jobs:
         compiler: ['14', '16']
         include:
           - compiler: '14'
-            slot: 5
+            slot: 3
           - compiler: '16'
-            slot: 2
+            slot: 8
     container:
       image: debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5
     timeout-minutes: 120
@@ -812,9 +812,9 @@ jobs:
         compiler: ['14', '16']
         include:
           - compiler: '14'
-            slot: 3
+            slot: 6
           - compiler: '16'
-            slot: 5
+            slot: 8
     container:
       image: debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5
     timeout-minutes: 120
@@ -975,7 +975,7 @@ jobs:
           - compiler: '14'
             slot: 4
           - compiler: '16'
-            slot: 2
+            slot: 9
     container:
       image: debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5
     timeout-minutes: 120
@@ -1112,7 +1112,7 @@ jobs:
 
   ada-repeated-choice-real-uci:
     concurrency:
-      group: ${{ 'oms-main-slot-5' }}
+      group: ${{ 'oms-main-slot-2' }}
       queue: max
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -1180,7 +1180,7 @@ jobs:
   # PERF-007: three independent hosted runners; unchanged seven task bodies.
   real-uci-temporal-naming:
     concurrency:
-      group: ${{ 'oms-main-slot-4' }}
+      group: ${{ 'oms-main-slot-8' }}
       queue: max
     runs-on: ubuntu-latest
     timeout-minutes: 240
@@ -1253,7 +1253,7 @@ jobs:
 
   real-uci-schema-ipv6:
     concurrency:
-      group: ${{ 'oms-main-slot-1' }}
+      group: ${{ 'oms-main-slot-3' }}
       queue: max
     runs-on: ubuntu-latest
     timeout-minutes: 240
@@ -1323,7 +1323,7 @@ jobs:
 
   real-uci-integral-unicode:
     concurrency:
-      group: ${{ 'oms-main-slot-3' }}
+      group: ${{ 'oms-main-slot-9' }}
       queue: max
     runs-on: ubuntu-latest
     timeout-minutes: 240
@@ -1394,7 +1394,7 @@ jobs:
   # Independent regression runners retain their original qualification.
   real-uci-regressions:
     concurrency:
-      group: ${{ 'oms-main-slot-1' }}
+      group: ${{ 'oms-main-slot-5' }}
       queue: max
     runs-on: ubuntu-latest
     timeout-minutes: 240
@@ -1611,7 +1611,7 @@ jobs:
   # Independent ASCII runner: fresh verified inputs and release CLI.
   real-uci-regressions-ascii:
     concurrency:
-      group: ${{ 'oms-main-slot-2' }}
+      group: ${{ 'oms-main-slot-7' }}
       queue: max
     runs-on: ubuntu-latest
     timeout-minutes: 240
@@ -1701,7 +1701,7 @@ jobs:
   # Admission and AFTER remain one mandatory gate on an independent runner.
   real-uci-regressions-alternating:
     concurrency:
-      group: ${{ 'oms-main-slot-3' }}
+      group: ${{ 'oms-main-slot-4' }}
       queue: max
     runs-on: ubuntu-latest
     timeout-minutes: 240
@@ -1776,7 +1776,7 @@ jobs:
   # when AMS_GRA_UCI_2_5_ROOT is set) under 1.95.0. Rust only: no GNAT.
   msrv-real-uci:
     concurrency:
-      group: ${{ 'oms-main-slot-5' }}
+      group: ${{ 'oms-main-slot-6' }}
       queue: max
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -1820,7 +1820,7 @@ jobs:
       # build.rs invokes production generation repeatedly on authentic UCI.
       CARGO_PROFILE_DEV_BUILD_OVERRIDE_OPT_LEVEL: '3'
     concurrency:
-      group: ${{ 'oms-main-slot-4' }}
+      group: ${{ 'oms-main-slot-10' }}
       queue: max
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -1936,7 +1936,7 @@ jobs:
 
   ada-hexbinary-real:
     concurrency:
-      group: ${{ 'oms-main-slot-5' }}
+      group: ${{ 'oms-main-slot-2' }}
       queue: max
     runs-on: ubuntu-24.04
     timeout-minutes: 40
