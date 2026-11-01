@@ -3,6 +3,10 @@ with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with OMS_LACAL.Envelopes;
 
 package body OMS_LACAL.Typed is
+   overriding function Is_For
+     (Self : Binding; Core : not null access Connections.Connection) return Boolean is
+     (Self.Core = Core);
+
    function Subscribe
      (Self : in out Binding; Namespace, Name, Topic : String;
       Has_Group : Boolean; Group : String;

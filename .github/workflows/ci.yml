@@ -269,6 +269,10 @@ jobs:
           EOF
           test "$(grep -c '^TASK099_CELL_COMPLETE ' /tmp/task099-evidence/qualify.log)" = 24
           grep -F 'TASK099_QUALIFICATION_COMPLETE' /tmp/task099-evidence/qualify.log
+      - name: Execute generated heterogeneous dispatch consumer
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python3 tests/ada-lacal-dispatch/run.py --scratch /tmp/task107-evidence --setup /tmp/task099-evidence/setup --compiler '${{ matrix.compiler }}' --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
       - name: Execute source-bound Ada Fast registrations
         shell: bash
         env:
@@ -293,6 +297,7 @@ jobs:
             /tmp/task099-evidence/campaign/*-generated/*.ad?
             /tmp/task099-evidence/campaign/*-O*-*/runtime_consumer.adb
             /tmp/task099-evidence/campaign/ada/oms-lacal-runtime/src/*.ad?
+            /tmp/task107-evidence/**
             /tmp/ci004-ada-fast/**
           if-no-files-found: error
 

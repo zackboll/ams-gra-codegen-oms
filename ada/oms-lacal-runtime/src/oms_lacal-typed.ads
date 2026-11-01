@@ -1,6 +1,7 @@
 with Ada.Finalization;
 with Ada.Exceptions;
 with OMS_LACAL.Connections;
+with OMS_LACAL.Dispatchers;
 
 --  Instantiate at the receiver's owning scope, once for each generated input
 --  Handler interface. The named receiver access type enforces that scope.
@@ -14,12 +15,14 @@ generic
      (Error : Ada.Exceptions.Exception_Occurrence) return Boolean;
 package OMS_LACAL.Typed is
    type Binding (Core : not null access Connections.Connection) is
-     new Ada.Finalization.Limited_Controlled with private;
+     new Ada.Finalization.Limited_Controlled and Dispatchers.Participant with private;
+   overriding function Is_For
+     (Self : Binding; Core : not null access Connections.Connection) return Boolean;
    function Subscribe
      (Self : in out Binding; Namespace, Name, Topic : String;
       Has_Group : Boolean; Group : String;
       Receiver : not null access Handler'Class) return Subscription_ID;
-   procedure Dispatch (Self : in out Binding; Message : Connections.Delivery);
+   overriding procedure Dispatch (Self : in out Binding; Message : Connections.Delivery);
    --  Only a SID registered by this binding may be removed. Unknown/foreign
    --  SIDs raise Runtime_Error before wire traffic or subscription changes.
    procedure Unsubscribe (Self : in out Binding; SID : Subscription_ID);
@@ -36,7 +39,7 @@ private
    end record;
    type Slots is array (1 .. Max_Subscriptions) of Slot;
    type Binding (Core : not null access Connections.Connection) is
-     new Ada.Finalization.Limited_Controlled with record
+     new Ada.Finalization.Limited_Controlled and Dispatchers.Participant with record
       Table : Slots;
       Dispatching : Boolean := False;
    end record;
