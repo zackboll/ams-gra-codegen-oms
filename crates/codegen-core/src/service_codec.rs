@@ -37,6 +37,7 @@ use ams_gra_oms_ir::{
     BinaryLexicalEncoding, FieldDecl, OccurrenceShape, PrimitiveKind, SchemaIr, TypeKind,
     TypeRefTarget, declaration_binary_encoding, resolve_binary_encoding,
 };
+use std::collections::BTreeSet;
 use std::fmt;
 
 const ADA_CODEC_FIXED_NAMES: &[&str] = &[
@@ -142,6 +143,14 @@ pub const RUST_SERVICE_CODEC_FILE: &str = "service_codec.rs";
 
 /// The Rust module `service_api.rs` mounts the codec file as.
 pub const RUST_SERVICE_CODEC_MODULE: &str = "service_codec";
+
+/// CPP-OMS-001: the C++17 codec header written beside the model header and
+/// `service_api.hpp`.
+pub const CPP_SERVICE_CODEC_FILE: &str = "service_codec.hpp";
+
+/// CPP-OMS-001: the top-level C++ namespace the codec header opens. The model
+/// namespace may not reuse it (a `Service_Codec` artifact collision).
+pub const CPP_SERVICE_CODEC_NAMESPACE: &str = "service_codec";
 
 /// Why a codec cannot be generated for a projected selected schema.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -454,6 +463,23 @@ pub fn analyze_service_codec_with_runtime(
         }
         return Ok(readiness);
     }
+    if language == BackendLanguage::Cpp {
+        if let Err(error) = check_cpp_codec_artifact(schema) {
+            readiness.blocker = Some(error);
+            return Ok(readiness);
+        }
+        for emission in emitted {
+            match cpp_emission_codec_support(schema, emission, world) {
+                Ok(()) => readiness.renderable_emitted_declarations += 1,
+                Err(error) => {
+                    if readiness.blocker.is_none() {
+                        readiness.blocker = Some(error);
+                    }
+                }
+            }
+        }
+        return Ok(readiness);
+    }
     if language != BackendLanguage::Rust {
         readiness.blocker = Some(ServiceCodecError::LanguageNotImplemented(language));
         return Ok(readiness);
@@ -499,6 +525,136 @@ fn check_rust_codec_artifact(schema: &SchemaIr) -> Result<(), ServiceCodecError>
         }
     }
     Ok(())
+}
+
+/// CPP-OMS-001: the codec header must be neither the model header nor the
+/// service API header (case-insensitively), and the model's outer namespace
+/// must not merge into the codec's own namespace.
+fn check_cpp_codec_artifact(schema: &SchemaIr) -> Result<(), ServiceCodecError> {
+    let fixed = service_api_fixed_names(BackendLanguage::Cpp);
+    let collision =
+        |what: String| unsupported("Service_Codec", format!("artifact collision: {what}"));
+    if fixed.file.eq_ignore_ascii_case(CPP_SERVICE_CODEC_FILE) {
+        return Err(collision(fixed.file.to_owned()));
+    }
+    if !schema.types.is_empty() {
+        let header = crate::cpp_model_header_name(schema)
+            .map_err(|error| ServiceCodecError::EmissionPlan(error.message))?;
+        if header.eq_ignore_ascii_case(CPP_SERVICE_CODEC_FILE) {
+            return Err(collision(header));
+        }
+        let namespace = crate::cpp_model_namespace(schema)
+            .map_err(|error| ServiceCodecError::EmissionPlan(error.message))?;
+        if namespace[0] == CPP_SERVICE_CODEC_NAMESPACE {
+            return Err(collision(format!("model namespace '{}'", namespace[0])));
+        }
+    }
+    Ok(())
+}
+
+/// CPP-OMS-001: the initial C++ codec subset, decided per emitted declaration.
+///
+/// Runs only after model readiness, so every construct reaching it is already
+/// renderable by the C++ model. The subset is deliberately smaller than the
+/// model: Boolean, integral, plain String, enumeration and concrete Record
+/// declarations with required, optional and repeated members. Everything else
+/// fails closed here, before any file is written.
+fn cpp_emission_codec_support(
+    schema: &SchemaIr,
+    emission: &TypeEmission<'_>,
+    world: GenerationWorld,
+) -> Result<(), ServiceCodecError> {
+    let declaration = match emission {
+        TypeEmission::Declaration(declaration) => *declaration,
+        TypeEmission::AbstractValue(projection) => {
+            return Err(unsupported(
+                &projection.declaration.name.local_name,
+                "abstract structural value needs a \"$type\" discriminator, which the C++ \
+                 codec subset does not implement"
+                    .into(),
+            ));
+        }
+    };
+    let owner = &declaration.name.local_name;
+    match &declaration.kind {
+        TypeKind::Primitive(
+            PrimitiveKind::Boolean | PrimitiveKind::SignedInteger | PrimitiveKind::UnsignedInteger,
+        )
+        | TypeKind::Enumeration { .. } => Ok(()),
+        TypeKind::Primitive(kind) => Err(unsupported(
+            owner,
+            format!("named {kind:?} has no C++ codec mapping in the initial subset"),
+        )),
+        TypeKind::Record { .. } => {
+            let fields = effective_record_fields(schema, &declaration.name).map_err(|error| {
+                unsupported(owner, format!("record projection failed: {error:?}"))
+            })?;
+            let mut keys = BTreeSet::new();
+            for field in fields {
+                let stored = field_storage_semantics(schema, field, world)
+                    .map_err(|error| unsupported(owner, error.to_string()))?;
+                let location = format!("{owner}.{}", field.name);
+                if matches!(stored, EffectiveValueMember::AbsentOnly(_)) {
+                    return Err(unsupported(
+                        &location,
+                        "uninhabited abstract structural member is not in the C++ codec subset"
+                            .into(),
+                    ));
+                }
+                cpp_member_support(field, &location)?;
+                let wire = field.wire_name();
+                let key =
+                    oms_json_member_name(wire.namespace_uri.unwrap_or_default(), wire.local_name);
+                if key == "$type" || !keys.insert(key) {
+                    return Err(unsupported(
+                        &location,
+                        "duplicate or reserved OMS JSON member name".into(),
+                    ));
+                }
+            }
+            Ok(())
+        }
+        TypeKind::Choice { .. } => Err(unsupported(
+            owner,
+            "Choice declarations are not in the C++ codec subset".into(),
+        )),
+        TypeKind::Alias(_) | TypeKind::List { .. } => Err(unsupported(
+            owner,
+            "alias/list declarations have no generated codec".into(),
+        )),
+    }
+}
+
+fn cpp_member_support(field: &FieldDecl, location: &str) -> Result<(), ServiceCodecError> {
+    if field.wire_name().namespace_uri.is_none() {
+        return Err(ServiceCodecError::UnqualifiedMember {
+            location: location.to_owned(),
+        });
+    }
+    if field.nillable {
+        return Err(unsupported(location, "nillable member".into()));
+    }
+    match field.cardinality.shape() {
+        OccurrenceShape::RequiredOne
+        | OccurrenceShape::OptionalOne
+        | OccurrenceShape::Unbounded { .. } => {}
+        OccurrenceShape::Bounded { max, .. } if max > 1 => {}
+        _ => return Err(unsupported(location, "unsupported occurrence shape".into())),
+    }
+    match &field.type_ref.target {
+        TypeRefTarget::Primitive(
+            PrimitiveKind::Boolean
+            | PrimitiveKind::SignedInteger
+            | PrimitiveKind::UnsignedInteger
+            | PrimitiveKind::String,
+        )
+        // A named member type is itself an emitted declaration, checked there.
+        | TypeRefTarget::Named(_) => Ok(()),
+        TypeRefTarget::Primitive(kind) => Err(ServiceCodecError::UnsupportedPrimitive {
+            location: location.to_owned(),
+            kind: *kind,
+        }),
+    }
 }
 
 fn emission_codec_support(
