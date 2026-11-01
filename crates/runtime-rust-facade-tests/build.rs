@@ -103,9 +103,11 @@ fn real_uci_services(fixtures: &Path, out: &Path) {
     println!("cargo:rerun-if-env-changed=AMS_GRA_REQUIRE_REAL_UCI_LOG");
     println!("cargo:rerun-if-env-changed=AMS_GRA_REQUIRE_REAL_UCI_RDMA");
     println!("cargo:rerun-if-env-changed=AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE");
+    println!("cargo:rerun-if-env-changed=AMS_GRA_REQUIRE_REAL_UCI_SURVIVABILITY");
     let required = std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_LOG").is_some()
         || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_RDMA").is_some()
-        || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE").is_some();
+        || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE").is_some()
+        || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_SURVIVABILITY").is_some();
     for (version, root_hash, include_hash) in [
         (
             "5",
@@ -119,7 +121,7 @@ fn real_uci_services(fixtures: &Path, out: &Path) {
         ),
     ] {
         let variable = format!("AMS_GRA_UCI_2_{version}_ROOT");
-        for message in ["log", "rdma", "multimessage"] {
+        for message in ["log", "rdma", "multimessage", "survivability"] {
             println!("cargo::rustc-check-cfg=cfg(ams_gra_real_uci_{message}2{version})");
         }
         println!("cargo:rerun-if-env-changed={variable}");
@@ -143,6 +145,7 @@ fn real_uci_services(fixtures: &Path, out: &Path) {
             ("log", "task102"),
             ("rdma", "task103"),
             ("multimessage", "rust-oms-003"),
+            ("survivability", "rust-oms-004"),
         ] {
             let cfg = format!("ams_gra_real_uci_{message}2{version}");
             let contract = fixtures.join(format!("../{task}/uci2{version}-service.yaml"));
@@ -164,6 +167,17 @@ fn real_uci_services(fixtures: &Path, out: &Path) {
             check.push("--with-codec".into());
             let mut readiness = Vec::new();
             generate(message, check, &mut readiness);
+            if message == "survivability" {
+                let report = String::from_utf8_lossy(&readiness);
+                for required in [
+                    "selected oms messages: 3",
+                    "renderable selected oms messages: 3",
+                    "status: READY",
+                    "codec status: READY",
+                ] {
+                    assert!(report.lines().any(|line| line == required), "{report}");
+                }
+            }
             std::fs::create_dir_all(&target).expect("real-UCI output");
             std::fs::write(target.join("readiness.txt"), readiness).expect("readiness report");
             for (directory, codec) in [(&plain, false), (&target, true)] {

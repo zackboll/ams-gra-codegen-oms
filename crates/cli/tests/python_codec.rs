@@ -326,6 +326,22 @@ fn all_model_boundaries_still_fail_closed_with_codec_requested() {
         for world in ["closed-schema", "open-extensions"] {
             let dest = temp.0.join(format!("absent-{primitive}-{world}"));
             let blocked = run(&schema, &fixture("service.yaml"), world, true, Some(&dest));
+            if primitive == "hexBinary" {
+                // PY-013 replaces the former blocker with an executed contract.
+                assert!(blocked.status.success(), "{blocked:?}");
+                for optimized in [false, true] {
+                    let mut command = Command::new(
+                        std::env::var_os("PYTHON").unwrap_or_else(|| "python3".into()),
+                    );
+                    if optimized {
+                        command.arg("-O");
+                    }
+                    let result = command.args(["-c", "import service_codec as c, unittest\nclass Binary(unittest.TestCase):\n def test_binary(self):\n  self.assertEqual(c._binary_decode(' \\t80ff\\r\\n', '$'), b'\\x80\\xff')\n  self.assertEqual(c._binary_encode(b'\\x00\\xff', '$'), '00FF')\n  with self.assertRaises(c.CodecError): c._binary_decode('00 00', '$')\nunittest.main()"])
+                        .current_dir(&dest).output().unwrap();
+                    assert!(result.status.success(), "{result:?}");
+                }
+                continue;
+            }
             if primitive == "dateTime" {
                 // PY-009 intentionally admits unconstrained direct members.
                 // Retain this historical control as a real positive/negative

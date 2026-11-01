@@ -78,6 +78,9 @@ pub(crate) fn validate(schema: &SchemaIr, declarations: &[&TypeDecl]) -> Result<
     .into_iter()
     .map(str::to_owned)
     .collect();
+    if crate::uses_binary(schema) {
+        top.insert("bytes".to_owned());
+    }
     if crate::uses_float64(schema) {
         top.insert("float".to_owned());
         // A lowercase declaration would collide with the private codec helper.
@@ -101,6 +104,9 @@ pub(crate) fn validate(schema: &SchemaIr, declarations: &[&TypeDecl]) -> Result<
                     .collect();
                 if crate::uses_float64(schema) {
                     members.insert("float".to_owned());
+                }
+                if crate::uses_binary(schema) {
+                    members.insert("bytes".to_owned());
                 }
                 for field in crate::record_fields(schema, declaration)? {
                     insert(&mut members, &field.name, true)?;
