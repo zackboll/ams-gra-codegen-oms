@@ -3873,3 +3873,5 @@ fn main() {
 
 #[cfg(test)]
 mod task060_probes;
+
+// CI-RESET-001 disposable hosted backend routing check.
