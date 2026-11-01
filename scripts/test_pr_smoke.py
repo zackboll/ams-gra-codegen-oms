@@ -65,6 +65,40 @@ class Routing(unittest.TestCase):
         self.assert_execution(["scripts/task104/qualify.py", "scripts/pr_smoke.py",
                                ".github/workflows/deep-ci.yml"], list(smoke.BACKENDS), workflows=True)
 
+    def test_task105_ada_only(self):
+        paths = ("scripts/task105/admission.py", "scripts/task105/cases.py",
+                 "scripts/task105/qualify.py", "scripts/task105/schema.py",
+                 "scripts/task105/sleet.py", "scripts/task105/nested/new.py",
+                 "scripts/task105_evidence.py", "scripts/test_task105.py",
+                 "scripts/test_task105_evidence.py", "scripts/test_task105_new.py",
+                 "tests/ada-real-uci-survivability26/survivability_consumer.adb",
+                 "tests/ada-real-uci-survivability26/codec_consumer.adb",
+                 "tests/ada-real-uci-survivability26/codec_probe.adb",
+                 "tests/fixtures/task105/uci26-service.yaml",
+                 "tests/fixtures/task105/nested/new.json")
+        for path in paths:
+            with self.subTest(path=path):
+                self.assert_execution([path], ["ada"])
+        self.assert_execution(paths, ["ada"])
+        self.assert_execution([paths[0], "docs/task-105-ada-survivability-uci26-sleet.md"], ["ada"])
+        self.assert_execution([paths[0], "crates/backend-rust/src/lib.rs"], ["rust", "ada"])
+
+    def test_task105_ownership_boundaries(self):
+        for path in ("scripts/task105_other.py", "scripts/task105_evidence.py.bak",
+                     "scripts/task105-other/new.py", "scripts/task1050/new.py",
+                     "scripts/test_task105_evidence.txt", "scripts/test_task105/nested.py",
+                     "scripts/test_task105.py.bak", "tests/fixtures/task105-other/new.yaml",
+                     "tests/fixtures/task1050/new.yaml"):
+            with self.subTest(path=path):
+                self.assert_execution([path], list(smoke.BACKENDS))
+        # Preserve main's broader tests/ada-* ownership, including similar names.
+        self.assert_execution(["tests/ada-real-uci-survivability26-other/probe.adb"], ["ada"])
+
+    def test_task105_reconciliation_runs_all_smoke_and_syntax(self):
+        self.assert_execution(["scripts/task105/qualify.py", "scripts/pr_smoke.py",
+                               "scripts/test_pr_smoke.py", ".github/workflows/deep-ci.yml"],
+                              list(smoke.BACKENDS), workflows=True)
+
     def test_shared_and_dependencies(self):
         for path in ("crates/ir/src/lib.rs", "crates/xsd-frontend/src/lib.rs",
                      "crates/codegen-core/src/lib.rs", "crates/cli/src/main.rs", "Cargo.lock",
