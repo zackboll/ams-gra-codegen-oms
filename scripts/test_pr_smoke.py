@@ -157,7 +157,8 @@ class Execution(unittest.TestCase):
     def test_pr_and_main_workflow_contract(self):
         workflows = smoke.ROOT / ".github/workflows"
         pr = (workflows / "pr-smoke.yml").read_text()
-        self.assertIn("branches: [main]", pr)
+        self.assertIn("  pull_request:\n", pr)
+        self.assertNotIn("branches:", pr)
         self.assertEqual(re.findall(r"^  ([\w-]+):$", pr.split("jobs:\n", 1)[1], re.M), ["smoke"])
         self.assertIn("name: PR smoke", pr)
         self.assertIn("ref: ${{ github.sha }}", pr)

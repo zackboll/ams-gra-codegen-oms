@@ -6,7 +6,10 @@ historical, not current PR requirements.
 
 ## Pull requests to main
 
-`.github/workflows/pr-smoke.yml` runs on every PR, without path filters. Its
+`.github/workflows/pr-smoke.yml` runs on every PR (including every PR to main),
+without branch or path filters. Allowing stacked PR targets lets the three
+temporary hosted routing checks isolate backend diffs before this cutover
+is merged. Its
 single stable job/check is **PR smoke**, on one GitHub-hosted Ubuntu runner.
 It checks out `github.sha` (the proposed merge), has read-only contents access,
 does not persist checkout credentials, and cancels superseded runs of that PR.
