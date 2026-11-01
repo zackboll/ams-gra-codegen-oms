@@ -414,6 +414,43 @@ void check_encode_rejections() {
     }
 }
 
+/// White-box: the integer readers cover the full 64-bit ranges even though the
+/// XSD frontend's widest unsigned built-in is 32 bits wide.
+void check_integer_boundaries_in_runtime() {
+    namespace d = sc::detail;
+    const auto read_u64 = [](const std::string& token) {
+        sc::CodecError error;
+        d::Value tree;
+        if (!d::parse_json(token, tree, error)) {
+            return std::optional<std::uint64_t>();
+        }
+        return d::get_u64(tree, error, nullptr);
+    };
+    const auto read_i64 = [](const std::string& token) {
+        sc::CodecError error;
+        d::Value tree;
+        if (!d::parse_json(token, tree, error)) {
+            return std::optional<std::int64_t>();
+        }
+        return d::get_i64(tree, error, nullptr);
+    };
+    CHECK(read_u64("0") == std::optional<std::uint64_t>(0));
+    CHECK(read_u64("-0") == std::optional<std::uint64_t>(0));
+    CHECK(read_u64("18446744073709551615") == std::optional<std::uint64_t>(UINT64_MAX));
+    CHECK(!read_u64("18446744073709551616"));
+    CHECK(!read_u64("99999999999999999999"));
+    CHECK(!read_u64("-1"));
+    CHECK(!read_u64("1.5"));
+    CHECK(!read_u64("\"1\""));
+    CHECK(read_i64("9223372036854775807") == std::optional<std::int64_t>(INT64_MAX));
+    CHECK(read_i64("-9223372036854775808") == std::optional<std::int64_t>(INT64_MIN));
+    CHECK(!read_i64("9223372036854775808"));
+    CHECK(!read_i64("-9223372036854775809"));
+    CHECK(!read_i64("18446744073709551615"));
+    std::string out;
+    CHECK(d::put_u64(out, UINT64_MAX) && out == "18446744073709551615");
+}
+
 /// Robustness without a sanitizer oracle: no proper prefix of a valid document
 /// is accepted, and single-byte corruption never crashes the decoder.
 void check_fuzz_style_robustness() {
@@ -443,6 +480,7 @@ int main() {
     check_syntax_rejections();
     check_model_rejections();
     check_encode_rejections();
+    check_integer_boundaries_in_runtime();
     check_fuzz_style_robustness();
     std::cout << checks << " checks, " << failures << " failures\n";
     return failures == 0 ? 0 : 1;

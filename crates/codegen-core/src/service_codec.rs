@@ -530,6 +530,11 @@ fn check_rust_codec_artifact(schema: &SchemaIr) -> Result<(), ServiceCodecError>
 /// CPP-OMS-001: the codec header must be neither the model header nor the
 /// service API header (case-insensitively), and the model's outer namespace
 /// must not merge into the codec's own namespace.
+///
+/// Under today's layout rule both are unreachable: namespace components are
+/// alphanumeric-only (`namespace_uri_components`), so no model header stem or
+/// namespace can spell `service_codec`. The check is kept so a future layout
+/// change cannot silently produce colliding artifacts.
 fn check_cpp_codec_artifact(schema: &SchemaIr) -> Result<(), ServiceCodecError> {
     let fixed = service_api_fixed_names(BackendLanguage::Cpp);
     let collision =

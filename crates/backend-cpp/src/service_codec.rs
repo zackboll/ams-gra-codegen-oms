@@ -226,8 +226,8 @@ impl Renderer<'_> {
                 },
             ),
             TypeRefTarget::Primitive(kind) => Err(error(format!(
-                "service codec boundary: {}.{} is {kind:?}, which has no C++ codec mapping",
-                "member", field.name
+                "service codec boundary: member {} is {kind:?}, which has no C++ codec mapping",
+                field.name
             ))),
             TypeRefTarget::Named(name) => Ok(Base::Named {
                 id: self.id(name)?,

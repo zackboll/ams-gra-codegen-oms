@@ -936,9 +936,18 @@ wire values, one-member Choices, `$type` on closed abstract values,
 `"NaN"`/`"Infinity"`/`"-Infinity"`), rejects unknown/missing/invalid members,
 and builds every value through the generated model's checked constructors.
 The real UCI 2.5 `PositionReport` round-trips through unmodified Sleet as a
-typed `PositionReportMT`. Without the flag all output is unchanged. Ada and
-C++ report a `service codec boundary:`. See
+typed `PositionReportMT`. Without the flag all output is unchanged. See
 [Task 050](docs/task-050-rust-oms-json-codecs.md).
+
+**C++ OMS JSON codec (CPP-OMS-001).** `--language cpp --with-codec` emits a
+separate, standard-library-only `service_codec.hpp` with typed
+`encode_<Payload>` / `decode_<Payload>` functions returning `CodecResult<T>`,
+for an initial subset: Boolean, integral, plain String, enumeration and
+concrete Record (required, optional and repeated members). Float, temporal,
+Binary, constrained String, Choice and polymorphic constructs report a
+`service codec boundary:` and write nothing; the model and service API headers
+are byte-identical with and without the flag. No real UCI message is supported
+yet. See [CPP-OMS-001](docs/task-cpp-oms-001-cpp-oms-json-codecs.md).
 
 **hexBinary (Task 052).** Schema IR keeps each Binary value's XSD lexical
 primitive (`xs:hexBinary`) as provenance separate from its value kind, resolved
