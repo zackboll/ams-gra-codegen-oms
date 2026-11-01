@@ -147,7 +147,8 @@ PY
   done
   grep -qE '^test result: ok\. 4 passed; 0 failed; 0 ignored;' <<<"$output"
   # TLS teardown barriers prove actual joining, without a procfs exit race.
-  output="$(cargo +1.95.0 test --release --locked -p ams-gra-oms-runtime-rust-facade-tests \
+  output="$(CARGO_PROFILE_RELEASE_BUILD_OVERRIDE_OPT_LEVEL=3 \
+    cargo +1.95.0 test --release --locked -p ams-gra-oms-runtime-rust-facade-tests \
     --test runtime_lifecycle -- --show-output --test-threads=1 2>&1)"
   printf '%s\n' "$output"
   grep -qE '^test result: ok\. 7 passed; 0 failed; 0 ignored;' <<<"$output"
