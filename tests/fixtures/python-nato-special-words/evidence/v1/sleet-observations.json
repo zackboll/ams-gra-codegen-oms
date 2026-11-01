@@ -1,0 +1,37 @@
+[
+  [
+    "'NATO:'",
+    "broker rejection",
+    "Invalid-Message"
+  ],
+  [
+    "'nato:A'",
+    "broker rejection",
+    "Invalid-Message"
+  ],
+  [
+    "'NATO:A1'",
+    "broker rejection",
+    "Invalid-Message"
+  ],
+  [
+    "'NATO:A '",
+    "broker rejection",
+    "Invalid-Message"
+  ],
+  [
+    "'NATO:A\\n'",
+    "broker rejection",
+    "Invalid-Message"
+  ],
+  [
+    "'NATO:\u0410'",
+    "broker rejection",
+    "Invalid-Message"
+  ],
+  [
+    "'NATO:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'",
+    "broker rejection",
+    "Invalid-Message"
+  ]
+]

@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "sha256": {
+    "after.json": "97cdb2a29f9d5583aa853db641bd3a61ec4c1fa840427baaf1312c2179f5a403",
+    "before.json": "6e0116102dff6c8eec7f85ac7d5235a0be7c9ccdaa52f3a14ff2f7a454075b8e",
+    "local-qualification.json": "48870d8d29c9cd6771991f2c67934b737c4da978765bc9be3ff025a388313d51",
+    "nato-free-parity.json": "9a790707fe549a42b742e44f2744fe997f43b15fff12e6c2d93001e64649e753",
+    "numeric-3.11-O.json": "f7d8c9e67faf2d2628332442e749957abb42836ad46acd0b98448e064349ae2c",
+    "numeric-3.11.json": "21fb1929f85bfdd48411932c70597094b1650a97432052964067e04d9adc9696",
+    "numeric-3.13-O.json": "bafed9bc682bb2d88ad0abf2285e941a45f61c0ceeb2bee51bddc3dc9f6e80f4",
+    "numeric-3.13.json": "1c93f000d645612412b36230ea0901734823b694eda3afc415b8534a882ac22b",
+    "readiness.json": "d4c4c70866fea991aadda38e421923f68f79aee08a79ac2971c6b068b8134248",
+    "sleet-observations.json": "b324e104cc60a56424c9eead77748e2f69768a3c2abd876de6c587d063326064"
+  }
+}
