@@ -100,11 +100,10 @@ pub fn generate_service_codec(
     if crate::uses_float64(schema) {
         output.push_str(include_str!("float64_codec_runtime.py"));
     }
-    if schema
-        .types
-        .iter()
-        .any(|declaration| crate::header_profile(declaration).is_some())
-    {
+    if schema.types.iter().any(|declaration| {
+        crate::header_profile(declaration).is_some()
+            || crate::visible_ascii_profile(declaration).is_some()
+    }) {
         output.push_str(include_str!("header_codec_runtime.py"));
     }
     for declaration in declarations {
@@ -113,7 +112,9 @@ pub fn generate_service_codec(
             writeln!(output, "\n\ndef _encode_{symbol}(value, path):\n    _expect(value, _model.{symbol}, path)\n    return _checked_datetime(value.value, path, True)\n\n\ndef _decode_{symbol}(value, path):\n    return _model.{symbol}(_checked_datetime(value, path, True))").unwrap();
             continue;
         }
-        if crate::header_profile(declaration).is_some() {
+        if crate::header_profile(declaration).is_some()
+            || crate::visible_ascii_profile(declaration).is_some()
+        {
             writeln!(output, "\n\ndef _encode_{symbol}(value, path):\n    return _header_text(value, path, _model.{symbol})\n\n\ndef _decode_{symbol}(value, path):\n    return _header_value(value, path, _model.{symbol})").unwrap();
             continue;
         }

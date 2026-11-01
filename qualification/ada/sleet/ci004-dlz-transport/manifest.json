@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "task_id": "ci004-dlz-transport",
+  "profile": "ada-dlz-sleet-v1",
+  "sources": ["dlz_consumer.adb"],
+  "fixtures": ["service.yaml"],
+  "tests": ["broker-rejection", "decoder-rejection", "transport-recovery"],
+  "main": "dlz_consumer.adb",
+  "release": "2.5",
+  "contract": "service.yaml"
+}

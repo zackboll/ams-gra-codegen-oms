@@ -1,22 +1,22 @@
 # Task 104 — real-UCI Ada SurvivabilityRiskLevel through pinned Sleet
 
-## Scope and stacked dependency
+## Scope and main integration
 
-Task104 starts directly from remote Task103, reviewed commit
-`454bac6332b03fd78e40fa547e56cafce62e8cb0`, tree
-`71597fa7fe70c748c722abf08cbd89952399eeba`. PR #142 was OPEN and targeted
-`feature/102-ada-real-uci-log-sleet`. The initial Task104 PR base is
-`feature/103-ada-real-uci-rdma-sleet`, not main. No Task104 branch, worktree or
-PR existed before creation. Task103/Task102 branches, worktrees, evidence and
-PR metadata are not modified. PR #133 remained independently owned and open
-during implementation; if merged, reconcile actual main with an ordinary merge.
+Task104 originally branched from Task103. TASK104-R1 reconciles the existing
+PR #144 starting at `660a680a856a6775eba937784ffa2f99c41d3f8f` with main
+`c1c81e315e27ac5612d1f73663d22b58d367927a` by an ordinary merge, preserving
+history. PR #144 now targets main, which contains CI-RESET-001 and Task102/103.
+Their source, tests, routing and existing Deep execution steps remain intact.
+Production generator, Ada runtime, authentic schemas and external pins are
+unchanged. Downstream PRs #145/#147 and PR #143 are not modified.
 
-Worktree: `/home/zboll/git/ams-gra-codegen-oms-task104`.
-Evidence: `/home/zboll/task104-scratch`. Exact committed source/tree, hosted
-run/attempt/artifact identities and final disposition are delivery evidence,
-not self-referential claims embedded in this document. Development evidence is
-never substituted for clean-source execution. No approval, merge, auto-merge,
-release or publication is authorized by this qualification.
+Historical full qualification evidence is at `/home/zboll/task104-scratch`.
+TASK104-R1 integration worktree:
+`/home/zboll/git/ams-gra-codegen-oms-task104-r1`; focused acceptance logs:
+`/tmp/task104-r1`. Historical campaigns are findings for their original source,
+not fresh qualification of this integration HEAD. Exact source/tree and hosted
+run identities are delivery evidence. No approval, merge, auto-merge, release
+or publication is authorized by this qualification.
 
 ## Authentic inputs and admission first
 
@@ -169,26 +169,36 @@ codec declarations READY for this exact selection. This is static inventory,
 **not GNAT or transport qualification**. No UCI 2.6 transport cell is included
 or claimed equivalent. `scripts/task104/inventory.py` records that boundary.
 
-## Additive CI and inherited security contracts
+## Simplified CI integration
 
 Task104 owns Deep job `ada-real-uci-survivability-sleet` and artifacts
-`task104-ada-real-uci-survivability-14` / `-16`. Current five-lane inventory and
-parent hosted timings were inspected before assigning GNAT14 to lane 4 and
-GNAT16 to lane 1. Parent run 41226112543 measured RDMA14 ~14m25s, RDMA16 ~23m40s,
-DLZ14 ~14m55s, DLZ16 ~24m25s and Log14 ~27m59s; other running jobs were not
-invented as completed timings. Existing lane assignments and queue:max remain.
+`task104-ada-real-uci-survivability-14` / `-16`. The job is main-only:
+`github.ref == 'refs/heads/main'`. GNAT14 uses main lane 4 and GNAT16 lane 1,
+sharing the existing five lanes with `queue: max`. Existing Deep jobs and their
+execution steps are unchanged. No PR Deep trigger or selection input is added.
 
-Task104 ownership projects back through unchanged Task103/Task102 contracts;
-original mandatory Task100/101/102/103 job bodies and verifier requirements are
-not replaced. Aggregate selection expands from 46 to 48 runner cells and 18 to
-20 Deep cells; test occupancy expectations change accordingly. Python selection,
-CI002, trusted dispatch, manual-only benchmark isolation, exact-path Git trust
-under isolated HOME and bounded hidden hash-listed provider uploads remain.
+Each compiler executes six UCI 2.5 real pinned-Sleet cells, the admission probe,
+original Task092 compatibility and generated-byte parity, direction-specific
+compiler negatives and independent codec/model probes. UCI 2.6 is separately
+inventoried without compiler or transport claims. The job independently runs
+`scripts/task104_evidence.py` against its own outcomes. Wrong source/tree/run/
+attempt/compiler, missing or duplicate inputs, schema/toolchain drift, missing
+observations, incorrect rejection stages, recovery or cleanup fail verification.
+Execution and verification failures fail the job; only diagnostic artifact upload
+uses `always()`, including hidden hash-listed provider sources.
 
-The final aggregate resolves each selected artifact using authoritative
-CI-RETRY-001 producer resolution before the Task104 independent verifier. Wrong
-source/tree/run/attempt/compiler, absent/duplicate/expired artifacts, missing
-matrix/steps, schema/toolchain drift, missing model observations, wrong rejection
-stage or missing cleanup fail closed. Synthetic unit-test bundles are explicitly
-not qualification evidence. Final hosted identities and any remaining merge
-conditions must be reported separately after actual execution.
+PR routing uses only `scripts/pr_smoke.py`. Task104 runners, evidence verifier,
+focused tests, Ada consumers and fixture independently select Ada smoke only.
+This reconciliation also edits the shared router and workflow, so its PR runs
+Python, Rust and Ada smoke plus actionlint 1.7.12. Focused verifier and Git trust
+controls live in `scripts/test_task104_evidence.py`; both portable and actual
+different-owner controls are retained. Synthetic test bundles are not transport
+qualification evidence.
+
+The retired Task104 ownership projection, selector, CI inventory and PR
+aggregate-gate tests are removed. CI-SELECT, `pr-ci-required` and mandatory PR
+artifact reconciliation are not pre-merge requirements. Focused Task104 and
+Task102/103 regressions, routing/execution tests, actual lightweight Ada smoke,
+actionlint, diff/preservation audits and exact-head hosted `PR smoke` are the
+integration acceptance. Full pinned-UCI/Sleet GNAT14/16 qualification runs after
+merge into main; this reconciliation does not repeat or dispatch that campaign.
