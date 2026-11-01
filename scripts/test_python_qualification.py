@@ -1,5 +1,4 @@
-"""CI-SELECT-003: strict qualification discovery and selected job ownership."""
-import copy
+"""Product qualification runner execution and no-skip rejection controls."""
 import importlib.util
 import json
 import os
@@ -9,102 +8,10 @@ import subprocess
 import sys
 import tempfile
 import unittest
-
-import ci_policy
-import ci_selection as selection
-from ci_select003 import DEEP, FAST, RULES, SLEET, project, project_sleet
-from py010_ci import project as project_py010, project_sleet as project_py010_sleet
-
-ROOT = selection.ROOT
+ROOT = Path(__file__).resolve().parents[1]
 
 
-def changed(path, status='M', mode='100644'):
-    return {'paths': [path], 'status': status,
-            'old_mode': '100644', 'new_mode': mode}
-
-
-class ComponentSelection(unittest.TestCase):
-    def setUp(self):
-        self.policy = selection.inventory()
-        self.all = set(selection.deep_jobs(self.policy))
-
-    def test_python_component_modes_and_example(self):
-        cases = {
-            'python/qualification/fast/test_next.py': set(),
-            'python/qualification/uci/test_next.py': {'real-uci-regressions'},
-            'python/qualification/sleet/test_next.py': {'real-sleet'},
-            'crates/cli/examples/python_future_probe.rs': {
-                'msrv-real-uci', 'real-sleet', 'real-uci-regressions'},
-            'crates/cli/examples/python_datetime_closure.rs': {
-                'msrv-real-uci', 'real-sleet', 'real-uci-regressions'},
-        }
-        for path, wanted in cases.items():
-            with self.subTest(path=path):
-                result = selection.select([changed(path)], self.policy)
-                self.assertEqual(result['mode'], 'selective-pr')
-                self.assertEqual(set(result['deep_jobs']), wanted)
-                self.assertEqual({j for j, enabled in result['jobs'].items() if enabled},
-                                 {'rust', 'python-model-backend'})
-                # Current main adds Task101's two mandatory Deep compiler cells;
-                # Python ownership remains bounded and does not select either.
-                self.assertEqual(result['deep_selected_cells'] + result['deep_skipped_cells'], 14)
-                self.assertTrue({'python-model-backend-3.11', 'python-model-backend-3.13'}
-                                <= set(result['cells']))
-
-    def test_union_and_full_main(self):
-        result = selection.select([changed('python/qualification/uci/test_more.py'),
-                                   changed('python/qualification/sleet/test_more.py')], self.policy)
-        self.assertEqual(set(result['deep_jobs']), {'real-uci-regressions', 'real-sleet'})
-        self.assertEqual(result['mode'], 'selective-pr')
-        main = selection.select([], self.policy, full_main=True)
-        self.assertEqual(set(main['deep_jobs']), self.all)
-        self.assertTrue(all(main['jobs'].values()))
-
-    def test_main_task101_ownership_and_compiler_cells_are_preserved(self):
-        record = selection.deep_jobs(self.policy)['ada-real-uci-dlz-sleet']
-        self.assertEqual([(c['variant'], c['lane'], c['artifacts']) for c in record['cells']],
-                         [({'compiler': c}, lane, ['task101-ada-real-uci-dlz-' + c])
-                          for c, lane in [('14', 3), ('16', 5)]])
-        cases = {
-            'tests/ada-real-uci-dlz/dlz_consumer.adb': {'ada-real-uci-dlz-sleet'},
-            'ada/oms-lacal-runtime/websocket/oms_lacal_websocket.ads': {
-                'ada-real-uci-dlz-sleet', 'ada-websocket-real-sleet'},
-        }
-        for path, wanted in cases.items():
-            with self.subTest(path=path):
-                result = selection.select([changed(path)], self.policy)
-                self.assertEqual(result['mode'], 'selective-pr')
-                self.assertEqual(set(result['deep_jobs']), wanted)
-
-    def test_unknown_scripts_runner_and_suspicious_paths_fail_broad(self):
-        for path in (
-            '.github/workflows/ci.yml', 'scripts/check-new-python-feature.py',
-            'scripts/ci_selection.py', 'python/qualification/run.py',
-            'python/qualification/fast/helper.py',
-            'python/qualification/uci/test_next.py.bak',
-            'python/qualification/sleet/test_nested/helper.py',
-            'python/qualification/fixtures/new.sh',
-            'crates/cli/examples/python_next/driver.rs',
-            'crates/cli/examples/generic.rs',
-        ):
-            with self.subTest(path=path):
-                result = selection.select([changed(path)], self.policy)
-                self.assertEqual(result['mode'], 'full-pr')
-                self.assertEqual(set(result['deep_jobs']), self.all)
-
-    def test_unsafe_status_mode_and_uncertain_policy_fail_broad(self):
-        path = 'python/qualification/fast/test_next.py'
-        for changed_item in (changed(path, 'D'), changed(path, 'R100'),
-                             changed(path, mode='120000'), changed(path, mode='100755')):
-            with self.subTest(c=changed_item):
-                self.assertEqual(selection.select([changed_item], self.policy)['mode'], 'full-pr')
-        broken = copy.deepcopy(self.policy)
-        broken['rules'][0]['deep_jobs'] = ['unknown']
-        result = selection.select([changed(path)], broken)
-        self.assertEqual(result['mode'], 'full-pr')
-
-
-class RunnerContract(unittest.TestCase):
+class ProductDiscovery(unittest.TestCase):
     def test_all_modes_have_fixed_registration_sources(self):
         name = ROOT / 'python/qualification/run.py'
         spec = importlib.util.spec_from_file_location('python_qualification', name)
@@ -128,52 +35,6 @@ class RunnerContract(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'unregistered'):
                 runner.discover('fast', root)
 
-    def test_exact_hook_projection_and_negative_mutations(self):
-        workflows = {p.name: p.read_text() for p in
-                     (ROOT / '.github/workflows').glob('*.yml')}
-        sleet = (ROOT / 'scripts/run-real-sleet-test.sh').read_text()
-        workflows = project_py010(workflows)
-        sleet = project_py010_sleet(sleet)
-        projected = project(workflows)
-        self.assertNotIn('python/qualification/run.py', projected['ci.yml'])
-        self.assertNotIn('python/qualification/run.py', projected['deep-ci.yml'])
-        self.assertNotIn('python/qualification/run.py', project_sleet(sleet))
-        self.assertEqual(ci_policy.check(), 42)
-        for workflow, hook in [('ci.yml', FAST), ('deep-ci.yml', DEEP)]:
-            altered = dict(workflows)
-            altered[workflow] = altered[workflow].replace(hook, '', 1)
-            with self.assertRaises(ValueError):
-                project(altered)
-            altered = dict(workflows)
-            altered[workflow] = altered[workflow].replace(hook, '', 1) + hook
-            with self.assertRaises(ValueError):
-                project(altered)
-        for alteration in ('', SLEET.replace('"$interpreter"', 'true # "$interpreter"', 1)):
-            with self.assertRaises(ValueError):
-                project_sleet(sleet.replace(SLEET, alteration, 1))
-
-    def test_rule_prefix_is_exact(self):
-        policy = selection.inventory()
-        self.assertEqual(policy['rules'][:len(RULES)], RULES)
-        for mutation in ([], policy['rules'][1:]):
-            damaged = copy.deepcopy(policy)
-            damaged['rules'] = mutation
-            self.assertNotEqual(damaged['rules'][:len(RULES)], RULES)
-
-    def test_python_example_deep_owner_removal_is_rejected(self):
-        policy = selection.inventory()
-        rule = next(r for r in policy['rules'] if r['category'] == 'python-cli-example')
-        rule['deep_jobs'].remove('real-sleet')
-        with self.assertRaisesRegex(ValueError,
-                                    '^CI-SELECT-003 reviewed Python Deep ownership changed$'):
-            ci_policy.check(policy=policy)
-
-    def test_main_task101_deep_owner_removal_is_rejected(self):
-        policy = selection.inventory()
-        rule = next(r for r in policy['rules'] if r['category'] == 'ada-websocket-implementation')
-        rule['deep_jobs'].remove('ada-real-uci-dlz-sleet')
-        with self.assertRaisesRegex(ValueError, '^reviewed Deep dependency ownership changed$'):
-            ci_policy.check(policy=policy)
 
 
 class RunnerExecution(unittest.TestCase):

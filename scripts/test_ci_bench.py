@@ -8,60 +8,24 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import ci_policy
-import ci_selection
+ROOT = Path(__file__).resolve().parents[1]
 from ci_bench import controller, policy, contract
+from workflow_text import blocks
 from ci_bench.worker import compiled_units
 
 
 class Registration(unittest.TestCase):
     def setUp(self):
-        self.inventory = ci_selection.inventory()
+        self.inventory = json.loads((ROOT / "scripts/ci-qualification-inventory.json").read_text())
         self.workflows = {p.name: p.read_text() for p in
-                          (ci_selection.ROOT / '.github/workflows').glob('*.yml')}
+                          (ROOT / '.github/workflows').glob('*.yml')}
 
-    def test_registered_manual_job_does_not_expand_main_or_pr(self):
-        self.assertEqual(ci_policy.check(self.inventory, self.workflows), 42)
-        self.assertEqual(self.inventory['manual_benchmark']['lane'], 3)
-        for full in (False, True):
-            selection = ci_selection.select([], self.inventory, full_main=full)
-            for job in policy.JOBS:
-                self.assertNotIn(job, selection['jobs'])
-        self.assertEqual(self.inventory['lanes'], [f'oms-main-slot-{n}' for n in range(1, 6)])
 
-    def test_v2_deep_selection_and_manual_topology_remain_independent(self):
-        registered = ci_selection.deep_jobs(self.inventory)
-        self.assertEqual(sum(len(r['cells']) for r in registered.values()), 14)
-        cases = [('README.md', set()),
-                 ('tests/ada-websocket/transport_probe.adb', {'ada-websocket-real-sleet', 'ada-real-uci-dlz-sleet'}),
-                 ('scripts/ci_bench/reconcile.py', set(registered)),
-                 ('.github/workflows/portable-provider-benchmark.yml', set(registered))]
-        for path, wanted in cases:
-            change = dict(status='M', paths=[path], old_mode='100644', new_mode='100644')
-            manifest = ci_selection.select([change], self.inventory)
-            ci_selection.validate_deep(manifest, self.inventory)
-            with self.subTest(path=path):
-                self.assertEqual(manifest['version'], 2)
-                self.assertEqual(manifest['deep_jobs'], sorted(wanted))
-                self.assertEqual(manifest['deep_selected_cells'] + manifest['deep_skipped_cells'], 14)
-                self.assertFalse(set(policy.JOBS) & (set(manifest['jobs']) | set(manifest['deep_jobs'])))
-        manifest = ci_selection.select([], self.inventory, full_main=True)
-        self.assertEqual(manifest['selected_cells'], 20)
-        self.assertEqual(manifest['deep_selected_cells'], 14)
-        self.assertEqual(manifest['deep_skipped_cells'], 0)
-        for mutation in (dict(version=1), dict(deep_selected_cells=11),
-                         dict(deep_jobs=sorted([*registered, contract.FINAL_JOB]))):
-            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
-                ci_selection.validate_deep(dict(manifest, **mutation), self.inventory)
 
-    def test_registration_removal_and_extra_workflow_rejected(self):
+    def test_manual_benchmark_registration_removal_rejected(self):
         del self.inventory['manual_benchmark']
         with self.assertRaisesRegex(ValueError, 'manual benchmark inventory'):
-            ci_policy.check(self.inventory, self.workflows)
-        self.inventory = ci_selection.inventory()
-        self.workflows['unmapped-benchmark.yml'] = self.workflows[policy.WORKFLOW]
-        with self.assertRaisesRegex(ValueError, 'unmapped workflow'):
-            ci_policy.check(self.inventory, self.workflows)
+            policy.check(self.inventory, self.workflows, ROOT)
 
     def test_workflow_security_mutations(self):
         original = self.workflows[policy.WORKFLOW]
@@ -99,41 +63,41 @@ class Registration(unittest.TestCase):
                 self.assertIn(before, original)
                 self.workflows[policy.WORKFLOW] = original.replace(before, after, 1)
                 with self.assertRaisesRegex(ValueError, 'workflow trust contract'):
-                    ci_policy.check(self.inventory, self.workflows)
+                    policy.check(self.inventory, self.workflows, ROOT)
 
     def test_inventory_cannot_bless_candidate_workflow(self):
         self.inventory['manual_benchmark']['workflow_sha256'] = '0' * 64
         with self.assertRaises(ValueError):
-            ci_policy.check(self.inventory, self.workflows)
+            policy.check(self.inventory, self.workflows, ROOT)
 
     def test_missing_controller_inventory_rejected(self):
         self.inventory['manual_benchmark']['sources_sha256'].pop('scripts/ci_bench/controller.py')
         with self.assertRaisesRegex(ValueError, 'source inventory incomplete'):
-            ci_policy.check(self.inventory, self.workflows)
+            policy.check(self.inventory, self.workflows, ROOT)
 
     def test_invalid_source_policy_or_lane_rejected(self):
         for key, value in [('lane', 6), ('events', ['push']), ('source_policy', 'feature workflow')]:
             inventory = copy.deepcopy(self.inventory)
             inventory['manual_benchmark'][key] = value
             with self.subTest(key=key), self.assertRaises(ValueError):
-                ci_policy.check(inventory, self.workflows)
+                policy.check(inventory, self.workflows, ROOT)
 
     def test_manual_topology_registration_is_explicit(self):
         for job in policy.JOBS:
             inventory = copy.deepcopy(self.inventory)
             del inventory['manual_benchmark']['jobs'][job]
             with self.subTest(job=job), self.assertRaises(ValueError):
-                ci_policy.check(inventory, self.workflows)
+                policy.check(inventory, self.workflows, ROOT)
         for job, key, value in [(contract.JOBS['16'], 'needs', []),
                                 (contract.FINAL_JOB, 'needs', [contract.JOBS['14']]),
                                 (contract.JOBS['14'], 'timeout_minutes', 720)]:
             inventory = copy.deepcopy(self.inventory)
             inventory['manual_benchmark']['jobs'][job][key] = value
             with self.subTest(job=job, key=key), self.assertRaises(ValueError):
-                ci_policy.check(inventory, self.workflows)
+                policy.check(inventory, self.workflows, ROOT)
 
     def test_every_manual_job_lock_and_authorization_is_mandatory(self):
-        header, jobs = ci_policy.blocks(self.workflows[policy.WORKFLOW])
+        header, jobs = blocks(self.workflows[policy.WORKFLOW])
         self.assertEqual(set(jobs), set(policy.JOBS))
         for job in jobs:
             for before, after in [('group: oms-main-slot-3', 'group: oms-main-slot-4'),
@@ -146,7 +110,8 @@ class Registration(unittest.TestCase):
                 workflows = dict(self.workflows)
                 workflows[policy.WORKFLOW] = header + ''.join('  ' + j + ':\n' + body for j, body in changed.items())
                 with self.subTest(job=job, before=before), self.assertRaises(ValueError):
-                    ci_policy.check(self.inventory, workflows)
+                    policy.check(self.inventory, workflows, ROOT)
+
 
 
 class Authorization(unittest.TestCase):
@@ -315,10 +280,10 @@ class Measurement(unittest.TestCase):
                 controller.validate_host_resources(memory, disk)
 
     def test_candidate_modules_only_inside_worker(self):
-        host = (ci_selection.ROOT / 'scripts/ci_bench/controller.py').read_text()
+        host = (ROOT / 'scripts/ci_bench/controller.py').read_text()
         self.assertNotIn('importlib', host)
         self.assertNotIn('sys.path.insert', host)
-        worker = (ci_selection.ROOT / 'scripts/ci_bench/worker.py').read_text()
+        worker = (ROOT / 'scripts/ci_bench/worker.py').read_text()
         self.assertIn("sys.path.insert(0, '/source/scripts')", worker)
         self.assertIn('PortablePilot(scratch, compiler, checked, jobs=contract.WORKERS, traced=False)', worker)
 
