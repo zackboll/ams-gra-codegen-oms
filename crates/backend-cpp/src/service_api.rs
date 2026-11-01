@@ -233,7 +233,7 @@ fn constant(output: &mut String, name: &str, value: &str) {
 /// last so no trigraph can form under older compilers). Every other byte
 /// becomes a three-digit octal escape, which can never absorb a following
 /// character the way a hexadecimal escape would.
-fn string_literal_body(text: &str) -> String {
+pub(crate) fn string_literal_body(text: &str) -> String {
     let mut body = String::with_capacity(text.len());
     for byte in text.bytes() {
         match byte {

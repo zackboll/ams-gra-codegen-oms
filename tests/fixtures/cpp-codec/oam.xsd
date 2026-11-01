@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic CPP-OMS-001 fixture, not a UCI declaration. It uses the OAM
+     namespace with elementFormDefault="qualified", so OMS JSON member names
+     are bare local names (OMSC-SPC-013 Rev B 6.1.2). It exercises the whole
+     initial C++ codec subset: Boolean, bounded/unbounded integers, plain
+     String, remapped enumeration, nested and inherited Records, optional,
+     bounded and unbounded repeated members, a schema-keyword member name. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="https://www.vdl.afrl.af.mil/programs/oam"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="https://www.vdl.afrl.af.mil/programs/oam"
+           elementFormDefault="qualified" version="000.1.0">
+  <xs:simpleType name="Flag"><xs:restriction base="xs:boolean"/></xs:simpleType>
+  <xs:simpleType name="Level">
+    <xs:restriction base="xs:int">
+      <xs:minInclusive value="-10"/>
+      <xs:maxInclusive value="10"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Wide"><xs:restriction base="xs:unsignedInt"/></xs:simpleType>
+  <xs:simpleType name="SignalCode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="NORMAL"/>
+      <xs:enumeration value="5G"/>
+      <xs:enumeration value="SOME_VALUE"/>
+      <xs:enumeration value="Self"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:complexType name="Child"><xs:sequence>
+    <xs:element name="Label" type="xs:string"/>
+    <xs:element name="Count" type="xs:unsignedByte"/>
+  </xs:sequence></xs:complexType>
+  <xs:complexType name="Empty"><xs:sequence/></xs:complexType>
+  <xs:complexType name="IdentityBase"><xs:sequence>
+    <xs:element name="Key" type="xs:unsignedInt"/>
+    <xs:element name="Name" type="xs:string" minOccurs="0"/>
+  </xs:sequence></xs:complexType>
+  <xs:complexType name="VersionedIdentity"><xs:complexContent>
+    <xs:extension base="t:IdentityBase"><xs:sequence>
+      <xs:element name="Version" type="xs:short" minOccurs="0"/>
+    </xs:sequence></xs:extension>
+  </xs:complexContent></xs:complexType>
+  <xs:complexType name="Payload"><xs:sequence>
+    <xs:element name="class" type="t:Flag"/>
+    <xs:element name="Enabled" type="xs:boolean"/>
+    <xs:element name="Level" type="t:Level"/>
+    <xs:element name="Wide" type="t:Wide"/>
+    <xs:element name="Offset" type="xs:long"/>
+    <xs:element name="Big" type="xs:unsignedInt"/>
+    <xs:element name="Small" type="xs:short"/>
+    <xs:element name="Signal" type="t:SignalCode"/>
+    <xs:element name="Child" type="t:Child"/>
+    <xs:element name="Identity" type="t:VersionedIdentity"/>
+    <xs:element name="Empty" type="t:Empty" minOccurs="0"/>
+    <xs:element name="Note" type="xs:string" minOccurs="0"/>
+    <xs:element name="Levels" type="t:Level" minOccurs="2" maxOccurs="3"/>
+    <xs:element name="Flags" type="xs:boolean" minOccurs="0" maxOccurs="3"/>
+    <xs:element name="Children" type="t:Child" minOccurs="0" maxOccurs="2"/>
+    <xs:element name="Signals" type="t:SignalCode" minOccurs="0" maxOccurs="4"/>
+    <xs:element name="Names" type="xs:string" minOccurs="1" maxOccurs="unbounded"/>
+    <xs:element name="Ids" type="xs:unsignedInt" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence></xs:complexType>
+  <xs:complexType name="Ack"><xs:sequence>
+    <xs:element name="Accepted" type="xs:boolean"/>
+  </xs:sequence></xs:complexType>
+  <xs:complexType name="Unselected"><xs:sequence>
+    <xs:element name="Reading" type="xs:double"/>
+  </xs:sequence></xs:complexType>
+  <xs:element name="SelectedReport" type="t:Payload" uci:version="001.000.000.000"/>
+  <xs:element name="OtherReport" type="t:Payload" uci:version="001.000.000.000"/>
+  <xs:element name="AckMessage" type="t:Ack" uci:version="001.000.000.000"/>
+  <xs:element name="UnselectedMessage" type="t:Unselected" uci:version="001.000.000.000"/>
+</xs:schema>

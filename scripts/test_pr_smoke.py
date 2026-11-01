@@ -189,6 +189,46 @@ class Routing(unittest.TestCase):
         # The existing broad tests/ada- rule remains Ada-owned independently.
         self.assert_execution(["tests/ada-real-uci-rdma-other/probe.adb"], ["ada"])
 
+    def test_cpp_only(self):
+        for path in ("crates/backend-cpp/src/lib.rs", "crates/backend-cpp/src/service_codec.rs",
+                     "crates/backend-cpp/src/codec_runtime.hpp", "crates/backend-cpp/tests/temporal.rs",
+                     "tests/cpp-codec/consumer.cpp", "tests/cpp-codec/new.cpp",
+                     "tests/fixtures/cpp-codec/oam.xsd", "tests/fixtures/cpp-codec/expected/service_codec.hpp",
+                     "crates/cli/tests/cpp_codec.rs", "scripts/check-cpp-oms-001.sh",
+                     "scripts/check-cpp-oms-001-parity.sh"):
+            with self.subTest(path=path):
+                self.assert_execution([path], ["cpp"])
+        self.assert_execution(["tests/cpp-codec/consumer.cpp", "crates/backend-cpp/src/lib.rs",
+                               "docs/task-cpp-oms-001-cpp-oms-json-codecs.md"], ["cpp"])
+        self.assert_execution(["crates/backend-cpp/src/lib.rs", ".github/workflows/pr-smoke.yml"], ["cpp"], True)
+
+    def test_cpp_ownership_boundaries(self):
+        for path in ("crates/backend-cpp-other/src/lib.rs", "crates/backend-cppx/a.rs",
+                     "tests/cpp-codec-other/a.cpp", "tests/cpp-codecs/a.cpp",
+                     "tests/fixtures/cpp-codec-other/a.xsd", "scripts/check-cpp-oms-001.sh.bak",
+                     "scripts/check-cpp-oms-002.sh", "crates/cli/tests/cpp_codec_extra.rs",
+                     "crates/cli/tests/cpp_codec.rs.bak", "crates/cli/tests/service_codec.rs"):
+            with self.subTest(path=path):
+                self.assert_execution([path], list(smoke.BACKENDS))
+
+    def test_cpp_mixed_shared_and_unknown(self):
+        self.assert_execution(["tests/cpp-codec/consumer.cpp", "crates/backend-python/src/lib.rs"],
+                              ["python", "cpp"])
+        self.assert_execution(["crates/backend-cpp/src/lib.rs", "crates/backend-rust/src/lib.rs"],
+                              ["rust", "cpp"])
+        self.assert_execution(["crates/backend-cpp/src/lib.rs", "ada/new.ads"], ["ada", "cpp"])
+        self.assert_execution(["crates/backend-cpp/src/lib.rs", "python/new.py", "ada/new.ads",
+                               "crates/backend-rust/src/lib.rs"], list(smoke.BACKENDS))
+        # Shared inputs run every suite, C++ included.
+        for shared in ("crates/codegen-core/src/service_codec.rs", "crates/cli/src/lib.rs",
+                       "crates/ir/src/lib.rs", "Cargo.lock"):
+            self.assert_execution(["crates/backend-cpp/src/lib.rs", shared], list(smoke.BACKENDS))
+        self.assert_execution(["new/implementation.xyz", "tests/cpp-codec/consumer.cpp"], list(smoke.BACKENDS))
+        # Previous routes are unchanged by the C++ route.
+        self.assert_execution(["crates/backend-python/src/lib.rs"], ["python"])
+        self.assert_execution(["crates/backend-rust/src/lib.rs"], ["rust"])
+        self.assert_execution(["crates/backend-ada/src/lib.rs"], ["ada"])
+
     def test_mixed(self):
         self.assert_execution(["crates/backend-python/src/lib.rs", "ada/new.ads"], ["python", "ada"])
         self.assert_execution(["crates/backend-rust/src/lib.rs", "python/new.py"], ["python", "rust"])
@@ -270,7 +310,12 @@ class Execution(unittest.TestCase):
             def checked(command, **kwargs):
                 commands.append(" ".join(map(str, command)))
                 if "--output" in command:
-                    Path(command[command.index("--output") + 1]).mkdir()
+                    out = Path(command[command.index("--output") + 1])
+                    out.mkdir()
+                    for name in ("oam.hpp", "service_api.hpp", "service_codec.hpp"):
+                        (out / name).write_text("")
+                if Path(str(command[0])).name == "consumer":
+                    return "6313 checks, 0 failures\n"
                 return ""
             with patch.object(smoke, "checked", side_effect=checked):
                 smoke.execute({backend}, False)
@@ -286,9 +331,83 @@ class Execution(unittest.TestCase):
                 self.assertIn("codec_runtime.py", joined)
             elif backend == "rust":
                 self.assertIn("rustc --edition=2024 main.rs", joined)
+            elif backend == "cpp":
+                self.assertIn("--language cpp", joined)
+                self.assertIn("--with-codec", joined)
+                self.assertIn("--test cpp_codec", joined)
+                for flag in ("-std=c++17", "-Werror", "-Wconversion", "-Wold-style-cast"):
+                    self.assertIn(flag, joined)
+                self.assertIn("tests/cpp-codec/consumer.cpp", joined)
+                self.assertNotIn("-fsanitize", joined)
+                self.assertNotIn("clang", joined)
+                self.assertNotIn("gnat", joined)
             else:
                 self.assertIn("gnat --version", joined)
                 self.assertIn("alr -n build", joined)
+
+    def run_cpp_smoke(self, consumer_output="6313 checks, 0 failures\n", write_codec=True,
+                      failing=None, missing=None):
+        seen = []
+        def checked(command, **kwargs):
+            seen.append((list(map(str, command)), kwargs))
+            name = Path(str(command[0])).name
+            if name == missing:
+                raise FileNotFoundError(name)
+            if failing and name == failing:
+                raise subprocess.CalledProcessError(1, command)
+            if "--output" in command:
+                out = Path(command[command.index("--output") + 1])
+                out.mkdir()
+                for file in ("oam.hpp", "service_api.hpp") + (("service_codec.hpp",) if write_codec else ()):
+                    (out / file).write_text("")
+            return consumer_output if name == "consumer" else ""
+        with tempfile.TemporaryDirectory() as directory, patch.object(smoke, "checked", side_effect=checked):
+            smoke.cpp_smoke(Path(directory) / "consumer")
+        return seen
+
+    def test_cpp_smoke_executes_generation_compile_and_consumer(self):
+        seen = self.run_cpp_smoke()
+        commands = [" ".join(command) for command, _ in seen]
+        self.assertEqual([c.split()[0] for c in commands if c.startswith(("g++", "cargo"))].count("g++"), 2)
+        cargo = [kwargs for command, kwargs in seen if command[0] == "cargo"][0]
+        self.assertTrue(cargo["tests"])
+        self.assertIn("3 passed; 0 failed", cargo["marker"])
+        cargo_command = [command for command, _ in seen if command[0] == "cargo"][0]
+        for name in smoke.CPP_SMOKE_TESTS:
+            self.assertIn(name, cargo_command)
+        self.assertIn("--exact", cargo_command)
+        generate = [c for c in commands if "--language cpp" in c][0]
+        self.assertIn("service-generate", generate)
+        self.assertIn("--with-codec", generate)
+        self.assertIn("tests/fixtures/cpp-codec/oam.xsd", generate)
+        self.assertIn("tests/fixtures/cpp-codec/service.yaml", generate)
+        # Order: tests, generate, compile, then execute the consumer.
+        order = [next(i for i, c in enumerate(commands) if needle in c)
+                 for needle in ("--test cpp_codec", "service-generate", "-Werror")]
+        order.append(next(i for i, c in enumerate(commands) if c.endswith("/consumer") and " " not in c))
+        self.assertEqual(order, sorted(order))
+        self.assertEqual(order[-1], len(commands) - 1)
+
+    def test_cpp_smoke_fails_closed(self):
+        with self.assertRaises(FileNotFoundError):  # no compiler
+            self.run_cpp_smoke(missing="g++")
+        with self.assertRaises(subprocess.CalledProcessError):  # compile error
+            self.run_cpp_smoke(failing="g++")
+        with self.assertRaises(subprocess.CalledProcessError):  # failed test run
+            self.run_cpp_smoke(failing="cargo")
+        with self.assertRaises(subprocess.CalledProcessError):  # failed consumer
+            self.run_cpp_smoke(failing="consumer")
+        with self.assertRaises(RuntimeError):  # codec not generated
+            self.run_cpp_smoke(write_codec=False)
+        for output in ("", "0 checks, 0 failures\n", "5 checks, 0 failures\n",
+                       "6313 checks, 2 failures\n", "no summary\n"):
+            with self.subTest(output=output), self.assertRaises(RuntimeError):
+                self.run_cpp_smoke(consumer_output=output)
+
+    def test_cpp_smoke_missing_compiler_is_red_for_real(self):
+        with patch.object(smoke.subprocess, "run", side_effect=FileNotFoundError("g++")), \
+                tempfile.TemporaryDirectory() as directory, self.assertRaises(FileNotFoundError):
+            smoke.cpp_smoke(Path(directory) / "consumer")
 
     def test_actual_main_outcome_gate_fails_on_every_unsuccessful_result(self):
         text = (smoke.ROOT / ".github/workflows/ci.yml").read_text()
@@ -309,6 +428,17 @@ class Execution(unittest.TestCase):
         self.assertNotIn("branches:", pr)
         self.assertEqual(re.findall(r"^  ([\w-]+):$", pr.split("jobs:\n", 1)[1], re.M), ["smoke"])
         self.assertIn("name: PR smoke", pr)
+        # CPP-OMS-001R1: one added step in the same single-runner job.
+        self.assertEqual(pr.count("runs-on:"), 1)
+        self.assertIn("      - name: C++ smoke\n        if: steps.route.outputs.cpp == 'true'\n"
+                      "        run: python3 scripts/pr_smoke.py run cpp", pr)
+        toolchain = pr.split("dtolnay/rust-toolchain", 1)[1].split("\n", 2)[1]
+        for backend in smoke.BACKENDS:
+            if backend != "python":
+                self.assertIn(f"steps.route.outputs.{backend} == 'true'", toolchain)
+        for backend in smoke.BACKENDS:
+            self.assertEqual(pr.count(f"run: python3 scripts/pr_smoke.py run {backend}")
+                             + pr.count(f"run: python scripts/pr_smoke.py run {backend}"), 1)
         self.assertIn("ref: ${{ github.sha }}", pr)
         for forbidden in ("paths:", "paths-ignore:", "matrix:", "secrets.", "pull_request_target", "continue-on-error"):
             self.assertNotIn(forbidden, pr)
