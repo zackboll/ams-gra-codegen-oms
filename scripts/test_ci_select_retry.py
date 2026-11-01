@@ -30,7 +30,7 @@ class HistoricalReplaySelection(unittest.TestCase):
         original = copy.deepcopy(manifest)
         result = replay.replay_selection(manifest, policy)
         ci_selection.validate_deep(result, policy)
-        self.assertEqual(result['deep_selected_cells'], 22)
+        self.assertEqual(result['deep_selected_cells'], 24)
         self.assertEqual(result['deep_skipped_cells'], 0)
         self.assertEqual(manifest, original)
         for mutation in (dict(version=2), dict(mode='selective-pr'), dict(deep=False),

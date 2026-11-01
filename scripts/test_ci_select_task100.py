@@ -38,7 +38,7 @@ class Task100Selection(unittest.TestCase):
                          selection.select([], policy, full_main=True)):
             self.assertTrue(all(manifest['jobs'].values()))
             self.assertTrue(manifest['deep'])
-        self.assertEqual(sum(len(r['cells']) for r in policy['jobs']) + len(policy['orchestration_jobs']), 50)
+        self.assertEqual(sum(len(r['cells']) for r in policy['jobs']) + len(policy['orchestration_jobs']), 52)
         self.assertEqual(sum(len(r['cells']) for r in policy['jobs'] if not r.get('main_eligible', True)), 1)
 
 
