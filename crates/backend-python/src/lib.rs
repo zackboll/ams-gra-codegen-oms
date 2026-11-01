@@ -12,9 +12,9 @@ pub use service_codec::{SERVICE_CODEC_FILE, generate_service_codec};
 use ams_gra_oms_codegen_core::{
     Backend, CodegenError, DirectTemporalProfile, FloatingBoundKind, FloatingDomain, GeneratedFile,
     GenerationWorld, InclusiveIntegralDomain, ServiceApiModel, StringProfile, TemporalProfile,
-    TypeEmission, abstract_value_targets, direct_temporal_profile, effective_record_fields,
-    floating_domain, inclusive_integral_domain, plan_type_emissions, string_profile,
-    temporal_profile,
+    TypeEmission, abstract_value_targets, binary_length_domain, direct_temporal_profile,
+    effective_record_fields, floating_domain, inclusive_integral_domain, plan_type_emissions,
+    string_profile, temporal_profile,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -74,6 +74,9 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     }
     if uses_float64(schema) {
         output.push_str(include_str!("float64_runtime.py"));
+    }
+    if uses_binary(schema) {
+        output.push_str(include_str!("binary_runtime.py"));
     }
     if uses_visible_ascii(schema) {
         output.push_str(include_str!("visible_ascii_runtime.py"));
@@ -374,12 +377,93 @@ fn float64_ancestry(schema: &SchemaIr, declaration: &TypeDecl) -> Result<(), Cod
     }
 }
 
+// Demand is semantic, independent of names and lexical provenance.
+fn uses_binary(schema: &SchemaIr) -> bool {
+    schema
+        .types
+        .iter()
+        .any(|declaration| match &declaration.kind {
+            TypeKind::Primitive(PrimitiveKind::Binary) => true,
+            TypeKind::Record { fields } => fields.iter().any(|field| {
+                field.type_ref.target == TypeRefTarget::Primitive(PrimitiveKind::Binary)
+            }),
+            _ => false,
+        })
+        || schema.messages.iter().any(|message| {
+            message.payload_type.target == TypeRefTarget::Primitive(PrimitiveKind::Binary)
+        })
+}
+
+fn binary_arguments(constraints: &ConstraintSet) -> Result<String, CodegenError> {
+    let domain = binary_length_domain(PrimitiveKind::Binary, constraints).map_err(error)?;
+    Ok(match domain {
+        Some(domain) => format!(
+            "{}, {}",
+            domain.min_octets,
+            domain
+                .max_octets
+                .map_or_else(|| "None".to_owned(), |max| max.to_string())
+        ),
+        None => "0, None".to_owned(),
+    })
+}
+
+fn binary_ancestry(schema: &SchemaIr, declaration: &TypeDecl) -> Result<(), CodegenError> {
+    let mut current = declaration;
+    let mut seen = BTreeSet::new();
+    loop {
+        if current.is_abstract
+            || current.kind != TypeKind::Primitive(PrimitiveKind::Binary)
+            || !seen.insert(&current.name)
+        {
+            return Err(error("unsupported Binary restriction ancestry"));
+        }
+        let child =
+            binary_length_domain(PrimitiveKind::Binary, &current.constraints).map_err(error)?;
+        match current.base_type.as_ref().map(|base| &base.target) {
+            None | Some(TypeRefTarget::Primitive(PrimitiveKind::Binary)) => return Ok(()),
+            Some(TypeRefTarget::Named(name)) => {
+                let parent = schema
+                    .types
+                    .iter()
+                    .find(|candidate| candidate.name == *name)
+                    .ok_or_else(|| error("missing Binary restriction base"))?;
+                let parent_domain =
+                    binary_length_domain(PrimitiveKind::Binary, &parent.constraints)
+                        .map_err(error)?;
+                if let Some(parent_domain) = parent_domain {
+                    let child_min = child.map_or(0, |domain| domain.min_octets);
+                    let child_max = child.and_then(|domain| domain.max_octets);
+                    if child_min < parent_domain.min_octets
+                        || parent_domain
+                            .max_octets
+                            .is_some_and(|max| child_max.is_none_or(|child| child > max))
+                    {
+                        return Err(error("unresolved effective Binary constraints"));
+                    }
+                }
+                current = parent;
+            }
+            _ => return Err(error("unsupported Binary restriction base")),
+        }
+    }
+}
+
 // Returns both the type annotation and the complete runtime check arguments.
 fn primitive(
     kind: PrimitiveKind,
     constraints: &ConstraintSet,
 ) -> Result<(String, String), CodegenError> {
     match kind {
+        PrimitiveKind::Binary => {
+            if binary_length_domain(kind, constraints)
+                .map_err(error)?
+                .is_some()
+            {
+                return Err(error("direct field-local Binary length constraints"));
+            }
+            Ok(("bytes".to_owned(), "bytes".to_owned()))
+        }
         PrimitiveKind::DateTime => {
             if direct_temporal_profile(kind, constraints)
                 .map_err(|reason| error(format!("{reason:?}")))?
@@ -457,7 +541,9 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
         let qualified = (|| -> Result<(), CodegenError> {
             // Primitive base provenance is not structural inheritance. Named
             // restriction ancestry is deferred rather than silently flattened.
-            if declaration.kind == TypeKind::Primitive(PrimitiveKind::Float64) {
+            if declaration.kind == TypeKind::Primitive(PrimitiveKind::Binary) {
+                binary_ancestry(schema, declaration)?;
+            } else if declaration.kind == TypeKind::Primitive(PrimitiveKind::Float64) {
                 float64_ancestry(schema, declaration)?;
             } else if declaration.kind == TypeKind::Primitive(PrimitiveKind::DateTime) {
                 datetime_ancestry(schema, declaration)?;
@@ -479,7 +565,9 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
             }
             match &declaration.kind {
                 TypeKind::Primitive(kind) => {
-                    if *kind == PrimitiveKind::Float64 {
+                    if *kind == PrimitiveKind::Binary {
+                        binary_arguments(&declaration.constraints)?;
+                    } else if *kind == PrimitiveKind::Float64 {
                         floating_domain(*kind, &declaration.constraints).map_err(error)?;
                     } else if *kind == PrimitiveKind::DateTime {
                         datetime_profile(&declaration.constraints)?;
@@ -490,6 +578,7 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
                         primitive(*kind, &declaration.constraints)?;
                     }
                     if *kind != PrimitiveKind::DateTime
+                        && *kind != PrimitiveKind::Binary
                         && visible_ascii_profile(declaration).is_none()
                         && !nato_special_words_profile(declaration)
                     {
@@ -497,8 +586,11 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
                     }
                 }
                 TypeKind::Alias(target) => {
-                    if target.target == TypeRefTarget::Primitive(PrimitiveKind::DateTime) {
-                        return Err(error("DateTime aliases are unsupported"));
+                    if matches!(
+                        target.target,
+                        TypeRefTarget::Primitive(PrimitiveKind::DateTime | PrimitiveKind::Binary)
+                    ) {
+                        return Err(error("DateTime / Binary aliases are unsupported"));
                     }
                     unconstrained(&declaration.constraints)?;
                     if let TypeRefTarget::Named(name) = &target.target
@@ -634,6 +726,11 @@ fn render(
     .unwrap();
     match &declaration.kind {
         TypeKind::Primitive(_) | TypeKind::Alias(_) => {
+            if declaration.kind == TypeKind::Primitive(PrimitiveKind::Binary) {
+                let args = binary_arguments(&declaration.constraints)?;
+                writeln!(output, "    value: bytes\n\n    def __post_init__(self) -> None:\n        _check_binary(self.value, {args})").unwrap();
+                return Ok(());
+            }
             if declaration.kind == TypeKind::Primitive(PrimitiveKind::DateTime) {
                 writeln!(output, "    value: str\n\n    def __post_init__(self) -> None:\n        object.__setattr__(self, 'value', _check_datetime(self.value, True))").unwrap();
                 return Ok(());
@@ -826,7 +923,6 @@ mod tests {
         for kind in [
             PrimitiveKind::Decimal,
             PrimitiveKind::Float32,
-            PrimitiveKind::Binary,
             PrimitiveKind::Time,
             PrimitiveKind::Duration,
         ] {

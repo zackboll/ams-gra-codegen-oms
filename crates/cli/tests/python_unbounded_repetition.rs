@@ -110,7 +110,7 @@ fn unsupported_repeated_elements_fail_atomically() {
         fs::read_to_string(root().join("tests/fixtures/python-unbounded-repetition/oam.xsd"))
             .unwrap();
     let cases = [
-        ("binary", original.replace("type=\"xs:string\"", "type=\"xs:hexBinary\"")),
+        ("binary-pattern", original.replace("<xs:element name=\"Strings\" type=\"xs:string\" minOccurs=\"0\" maxOccurs=\"unbounded\"/>", "<xs:element name=\"Strings\" minOccurs=\"0\" maxOccurs=\"unbounded\"><xs:simpleType><xs:restriction base=\"xs:hexBinary\"><xs:pattern value=\"[A-F]*\"/></xs:restriction></xs:simpleType></xs:element>")),
         ("nillable", original.replace("name=\"Strings\"", "name=\"Strings\" nillable=\"true\"")),
         ("abstract", original.replace("name=\"Groups\" type=\"t:Group\"", "name=\"Groups\" type=\"t:Ancestor\"")),
         ("choice", original.replace("<xs:complexType name=\"Group\"><xs:sequence>", "<xs:complexType name=\"Group\"><xs:choice>").replace("</xs:sequence></xs:complexType>\n  <xs:complexType name=\"Payload\">", "</xs:choice></xs:complexType>\n  <xs:complexType name=\"Payload\">")),

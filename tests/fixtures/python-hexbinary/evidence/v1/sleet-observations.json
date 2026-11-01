@@ -1,0 +1,37 @@
+[
+  {
+    "case": "valid two-octet carrier",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message"
+  },
+  {
+    "payload": "{\"Required\":\"0\"}",
+    "outcome": "generated decoder rejection",
+    "decoder_input": "{\"Required\":\"0\"}"
+  },
+  {
+    "payload": "{\"Required\":\"GG\"}",
+    "outcome": "generated decoder rejection",
+    "decoder_input": "{\"Required\":\"GG\"}"
+  },
+  {
+    "payload": "{\"Required\":[0]}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message"
+  },
+  {
+    "payload": "{\"Required\":\"00 00\"}",
+    "outcome": "generated decoder rejection",
+    "decoder_input": "{\"Required\":\"00 00\"}"
+  },
+  {
+    "payload": "{\"Required\":\"\",\"Repeated\":[\"00\",\"Z0\"]}",
+    "outcome": "generated decoder rejection",
+    "decoder_input": "{\"Required\":\"\",\"Repeated\":[\"00\",\"Z0\"]}"
+  },
+  {
+    "payload": "{\"Required\":\"\",\"Constrained\":\"80\"}",
+    "outcome": "generated decoder rejection",
+    "decoder_input": "{\"Required\":\"\",\"Constrained\":\"80\"}"
+  }
+]

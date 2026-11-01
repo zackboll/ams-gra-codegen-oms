@@ -233,7 +233,6 @@ fn unsupported_ir_semantics_fail_closed_without_artifacts() {
     for kind in [
         PrimitiveKind::Decimal,
         PrimitiveKind::Float32,
-        PrimitiveKind::Binary,
         PrimitiveKind::DateTime,
         PrimitiveKind::Time,
         PrimitiveKind::Duration,
