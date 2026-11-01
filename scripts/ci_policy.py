@@ -245,6 +245,8 @@ def check(policy=None, workflows=None, sleet=None):
             raise ValueError('inherited trusted-dispatch source changed: ' + path)
     if workflows is None:
         workflows = {p.name: p.read_text() for p in (ROOT / '.github/workflows').iterdir() if p.suffix in ('.yml', '.yaml')}
+    from owned_qualification import registrations
+    registrations(ROOT)
     from py010_ci import project as project_py010
     workflows = project_py010(workflows)
     from ci_select003 import project as project003

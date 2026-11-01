@@ -29,6 +29,8 @@ SLEET_ARTIFACT = '''      - name: Preserve PY-010 generated sources and observed
 
 
 def project(workflows):
+    from ci_select004 import project as project004
+    workflows = project004(workflows)
     result = dict(workflows)
     for workflow, addition, job, following in [
             ('ci.yml', FAST, 'python-model-backend', '          python scripts/test-py007-uci.py\n'),

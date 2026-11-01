@@ -99,6 +99,8 @@ def project(workflows):
 
 
 def project_sleet(text):
+    from ci_select004 import project_sleet as project004_sleet
+    text = project004_sleet(text)
     expected = SLEET_ANCHOR + SLEET + 'done\n'
     if text.count(expected) != 1:
         raise ValueError('CI-SELECT-003 mandatory per-interpreter pinned-Sleet gate missing/moved')
