@@ -183,8 +183,8 @@ class WorkflowControls(unittest.TestCase):
         self.assertIn("if: github.ref == 'refs/heads/main'", job)
         self.assertIn("group: ${{ format('oms-main-slot-{0}', matrix.slot) }}", job)
         self.assertIn('queue: max', job)
-        self.assertIn("compiler: '14'\n            slot: 2", job)
-        self.assertIn("compiler: '16'\n            slot: 4", job)
+        self.assertIn("compiler: '14'\n            slot: 10", job)
+        self.assertIn("compiler: '16'\n            slot: 5", job)
         for command in ('scripts/fetch-pinned-uci-2.5.sh', evidence.REV,
                         'scripts/task106/qualify.py', '--compiler', '--sleet', '--uci25',
                         'from task106_evidence import verify_bundle', 'TASK106_HOSTED_VERIFIED'):
