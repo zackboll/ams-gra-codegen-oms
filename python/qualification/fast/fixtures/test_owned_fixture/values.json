@@ -1,1 +1,1 @@
-{"valid": ["Alpha", "", "a b"], "invalid": ["line\nbreak", "é"]}
+{"valid": ["Alpha", "CI-SELECT-004-A4", "", "a b"], "invalid": ["line\nbreak", "é"]}
