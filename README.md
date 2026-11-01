@@ -1,5 +1,10 @@
 # ams-gra-codegen-oms
 
+**CI:** PRs run lightweight smoke tests for the changed backend; complete
+qualification runs after merge to main (also manual/nightly). The required
+PR check is **PR smoke**. See [current CI architecture](docs/ci-reset-001-backend-smoke.md);
+CI-SELECT design documents describe the retired architecture.
+
 Task071 adds read-only `service-routes --schema ROOT.xsd --contract SERVICE.yaml`
 TSV inventory and optional `--format sleet-toml --service-id ID --service-uuid UUID`
 preview. Every derived topic gets a nonempty message binding. Pinned Sleet

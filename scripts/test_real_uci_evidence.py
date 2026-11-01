@@ -10,10 +10,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import ci_policy
+from workflow_text import blocks
 import real_uci_evidence as evidence
-from ci_retry_test_data import metadata
-from test_ci_select import GateTests, gate
 
 
 def bundle(shard):
@@ -79,16 +77,6 @@ class RuntimeEvidence(unittest.TestCase):
         for shard in evidence.SHARDS:
             observed.extend(self.verify(bundle(shard), shard)['tasks'])
         self.assertCountEqual(observed, evidence.ORIGINAL)
-        artifacts = [dict(name='perf007-'+s, id=s, expired=False, size_in_bytes=1) for s in evidence.SHARDS]
-        jobs, attempts = metadata(artifacts, current=1)
-        loader = lambda a: bundle(a['name'].removeprefix('perf007-'))
-        result = gate.reconcile_primary(artifacts, 'a'*40, 'b'*40, '123', '1', loader,
-                                        jobs=jobs, attempts=attempts)
-        self.assertEqual(set(result), set(evidence.SHARDS))
-        for missing in artifacts:
-            with self.assertRaises(ValueError):
-                gate.reconcile_primary([a for a in artifacts if a != missing], 'a'*40, 'b'*40, '123', '1', loader,
-                                        jobs=jobs, attempts=attempts)
 
     def test_missing_duplicate_failed_skipped_truncated_stale_and_hash_mutations(self):
         for shard, tasks in evidence.SHARDS.items():
@@ -144,20 +132,6 @@ class RuntimeEvidence(unittest.TestCase):
                 self.assertIn('required-diagnostic', (out/'setup/gnat.log').read_text())
                 self.assertEqual(json.loads((out/'setup/gnat.json').read_text())['exit_status'], 23)
 
-    def test_archive_paths_and_duplicate_entries_fail_without_extraction(self):
-        for names in (['../escape.json'], ['/absolute.json'], ['same.json', 'same.json']):
-            stream = io.BytesIO()
-            import warnings
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', UserWarning)
-                with zipfile.ZipFile(stream, 'w') as archive:
-                    for name in names:
-                        archive.writestr(name, b'{}')
-            with patch.dict(gate.os.environ, GITHUB_REPOSITORY='fixture/repo', GH_TOKEN='fixture'), \
-                    patch.object(gate.urllib.request, 'build_opener') as opener:
-                opener.return_value.open.return_value = io.BytesIO(stream.getvalue())
-                with self.assertRaises(ValueError):
-                    gate.download_bundle(dict(id=1, digest='sha256:' + evidence.digest(stream.getvalue())))
 
     def test_incomplete_finalization_writes_failed_completion(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -174,34 +148,12 @@ class RuntimeEvidence(unittest.TestCase):
             self.assertTrue((out/'completion.sha256').is_file())
 
 
-class ShardJobs(GateTests):
-    def test_every_actual_shard_and_evidence_is_required(self):
-        for shard in evidence.SHARDS:
-            index = next(n for n, j in enumerate(self.jobs) if j['name'] == 'deep-qualification / '+shard)
-            original = copy.deepcopy(self.jobs[index])
-            for conclusion in ('failure', 'skipped', 'cancelled'):
-                self.jobs[index]['conclusion'] = conclusion
-                with self.assertRaises(ValueError):
-                    self.validate()
-            self.jobs[index] = copy.deepcopy(original)
-            self.jobs[index]['steps'] = [dict(name='successful placeholder', conclusion='success')]
-            with self.assertRaises(ValueError):
-                self.validate()
-            self.jobs.pop(index)
-            with self.assertRaises(ValueError):
-                self.validate()
-            self.jobs.insert(index, original)
-            artifact = next(a for a in self.artifacts if a['name'] == 'perf007-'+shard)
-            artifact['created_at'] = '2000-01-01T00:00:00Z'
-            with self.assertRaises(ValueError):
-                self.validate()
-            artifact['created_at'] = '2026-10-27T02:00:00Z'
 
 
 class StaticPartition(unittest.TestCase):
     def test_omission_duplication_missing_shard_and_placeholder(self):
         text = (evidence.ROOT/'.github/workflows/deep-ci.yml').read_text()
-        jobs = ci_policy.blocks(text)[1]
+        jobs = blocks(text)[1]
         evidence.check_layout(jobs)
         for shard, tasks in evidence.SHARDS.items():
             for task in tasks:

@@ -8,7 +8,7 @@ import unittest
 import zipfile
 
 from ci_bench import contract, reconcile
-from test_ci_select_bench import rows
+from test_ci_bench import rows
 
 
 def encoded(value):

@@ -1,5 +1,4 @@
-"""Task102 independently constructed verifier and selector rejection controls."""
-import copy
+"""Independent Task102 execution-verifier and qualification controls; no PR gates."""
 import hashlib
 import importlib.util
 import itertools
@@ -11,10 +10,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import ci_selection
-from ci_retry_test_data import metadata
-from test_ci_select import change, gate, GateTests
 import task102_evidence as evidence
+from workflow_text import blocks
 spec = importlib.util.spec_from_file_location('task102_test_cases', evidence.ROOT / 'scripts/task102/cases.py')
 cases = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(cases)
@@ -349,46 +346,7 @@ class EvidenceTests(unittest.TestCase):
             with self.subTest(path=path), self.assertRaises(ValueError):
                 self.verify(dict(files, **{path: modified}))
 
-
-class SelectionAndAggregate(GateTests):
-    def test_task102_and_manual_benchmark_integration_preserves_both_policies(self):
-        import ci_policy
-        from ci_bench import policy as benchmark
-        policy = ci_selection.inventory()
-        workflows = {p.name: p.read_text() for p in (evidence.ROOT / '.github/workflows').glob('*.yml')}
-        self.assertEqual(ci_policy.check(policy, workflows), 44)
-        registered = ci_selection.deep_jobs(policy)
-        self.assertEqual([c['variant']['compiler'] for c in registered[evidence.JOB]['cells']], ['14', '16'])
-        self.assertEqual(policy['manual_benchmark']['events'], ['workflow_dispatch'])
-        self.assertEqual(policy['manual_benchmark']['sources_sha256']['scripts/ci_artifact_provenance.py'],
-                         'f2f7cfe5dcde40cbd64832f8ac8be83ff229cfd760dc955364ec4f9b850158b2')
-        for path in ('scripts/task102/qualify.py', 'scripts/ci_bench/controller.py'):
-            selection = ci_selection.select([change(path)], policy)
-            self.assertIn(evidence.JOB, selection['deep_jobs'])
-            self.assertFalse(set(benchmark.JOBS) & (set(selection['jobs']) | set(selection['deep_jobs'])))
-        for mutation in ('remove-task102', 'automatic-benchmark', 'wildcard-trust'):
-            modified_policy, modified_workflows = copy.deepcopy(policy), dict(workflows)
-            if mutation == 'remove-task102':
-                modified_policy['jobs'] = [r for r in modified_policy['jobs'] if r['job_id'] != evidence.JOB]
-            elif mutation == 'automatic-benchmark':
-                modified_policy['manual_benchmark']['events'].append('pull_request')
-            else:
-                modified_workflows['portable-provider-benchmark.yml'] += '\ninvalid-trust: safe.directory=*\n'
-            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
-                ci_policy.check(modified_policy, modified_workflows)
-
     def test_hashed_hidden_provider_sources_cannot_be_omitted(self):
-        import ci_policy
-        workflows = {p.name: p.read_text() for p in (evidence.ROOT / '.github/workflows').glob('*.yml')}
-        addition = ('          name: task102-ada-real-uci-log-${{ matrix.compiler }}\n'
-                    '          include-hidden-files: true\n')
-        self.assertEqual(workflows['deep-ci.yml'].count(addition), 1)
-        for replacement in (addition.replace('          include-hidden-files: true\n', ''),
-                            addition.replace('true', 'false')):
-            modified = dict(workflows)
-            modified['deep-ci.yml'] = modified['deep-ci.yml'].replace(addition, replacement)
-            with self.subTest(replacement=replacement), self.assertRaises(ValueError):
-                ci_policy.check(workflows=modified)
         files = bundle()
         hidden = 'campaign/provider/gnatcoll/.github/workflows/main.yaml'
         files[hidden] = b'name: provider fixture\n'
@@ -400,57 +358,28 @@ class SelectionAndAggregate(GateTests):
         with self.assertRaisesRegex(ValueError, 'missing/duplicate Task102 evidence'):
             EvidenceTests().verify(files)
 
-    def test_task102_surfaces_select_both_families_and_deep(self):
-        policy = ci_selection.inventory()
-        for path in ('scripts/task102/qualify.py', 'scripts/task102/sleet.py', 'scripts/task102_evidence.py',
-                     'tests/ada-real-uci-log/log_consumer.adb', 'tests/fixtures/task102/uci25-service.yaml'):
-            result = ci_selection.select([change(path)], policy)
-            self.assertIn(evidence.JOB, result['deep_jobs'])
-            self.assertTrue({'ada-websocket-transport-14', 'ada-websocket-transport-16'} <= set(result['cells']))
 
-    def test_missing_duplicate_expired_stale_and_skipped_cells(self):
-        self.validate()
-        for compiler in ('14', '16'):
-            name = 'task102-ada-real-uci-log-' + compiler
-            item = next(a for a in self.artifacts if a['name'] == name)
-            for field, value in [('expired', True), ('created_at', '2000-01-01T00:00:00Z'), ('size_in_bytes', 0)]:
-                old = item[field]
-                item[field] = value
-                with self.subTest(field=field), self.assertRaises(ValueError): self.validate()
-                item[field] = old
-            self.artifacts.append(copy.deepcopy(item))
-            with self.assertRaises(ValueError): self.validate()
-            self.artifacts.pop()
-            self.artifacts.remove(item)
-            with self.assertRaises(ValueError): self.validate()
-            self.artifacts.append(item)
-            job = next(j for j in self.jobs if j['name'] == f'deep-qualification / {evidence.JOB} ({compiler})')
-            job['steps'][0]['conclusion'] = 'skipped'
-            with self.assertRaises(ValueError): self.validate()
-            job['steps'][0]['conclusion'] = 'success'
-
-    def test_artifact_producer_provenance_and_inner_verifier_are_required(self):
-        from unittest.mock import patch
-        artifacts = [dict(name='task102-ada-real-uci-log-' + c) for c in ('14', '16')]
-        jobs, attempts = metadata(artifacts)
-        manifest = dict(deep_jobs=[evidence.JOB])
-        with patch.object(gate, 'verify_task102_bundle', return_value=dict(cells=12)) as verify:
-            result = gate.reconcile_task102(artifacts, manifest, 'a'*40, 'b'*40, '123', '2',
-                                           lambda item: {}, jobs=jobs, attempts=attempts)
-            self.assertEqual(len(result), 2)
-            self.assertEqual(verify.call_count, 2)
-        for mutation in ('stale', 'expired', 'mismatched-head', 'skipped-step'):
-            changed, history, current = copy.deepcopy(artifacts), copy.deepcopy(attempts), copy.deepcopy(jobs)
-            if mutation == 'stale': changed[0]['created_at'] = '2000-01-01T00:00:00Z'
-            elif mutation == 'expired': changed[0]['expired'] = True
-            elif mutation == 'mismatched-head': changed[0]['workflow_run']['head_sha'] = '0'*40
-            else: current[0]['steps'][0]['conclusion'] = 'skipped'
-            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
-                gate.reconcile_task102(changed, manifest, 'a'*40, 'b'*40, '123', '2',
-                                      lambda item: {}, jobs=current, attempts=history)
-        with patch.object(gate, 'verify_task102_bundle', side_effect=ValueError('invalid source-bound bundle')), self.assertRaises(ValueError):
-            gate.reconcile_task102(artifacts, manifest, 'a'*40, 'b'*40, '123', '2',
-                                  lambda item: {}, jobs=jobs, attempts=attempts)
+class DeepQualification(unittest.TestCase):
+    def test_main_only_full_compiler_qualification(self):
+        header, jobs = blocks((evidence.ROOT / '.github/workflows/deep-ci.yml').read_text())
+        job = jobs[evidence.JOB]
+        self.assertIn("    if: github.ref == 'refs/heads/main'\n", job)
+        self.assertIn("group: ${{ format('oms-main-slot-{0}', matrix.slot) }}", job)
+        self.assertIn('      queue: max\n', job)
+        self.assertIn("        compiler: ['14', '16']\n", job)
+        self.assertIn("          - compiler: '14'\n            slot: 5\n", job)
+        self.assertIn("          - compiler: '16'\n            slot: 2\n", job)
+        for forbidden in ('pull_request', 'inputs.selection', 'oms-pr-', 'continue-on-error'):
+            self.assertNotIn(forbidden, header + job)
+        for required in ('e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b',
+                         'scripts/fetch-pinned-uci-2.5.sh', 'scripts/fetch-pinned-uci-2.6.sh',
+                         'scripts/task102/qualify.py', 'from task102_evidence import verify_bundle',
+                         "print('TASK102_HOSTED_VERIFIED', verify_bundle(",
+                         'include-hidden-files: true'):
+            self.assertIn(required, job)
+        # Only the diagnostic upload is unconditional; execution/verification must succeed.
+        self.assertEqual(job.count('        if:'), 1)
+        self.assertIn('name: Upload Task102 qualification diagnostics\n        if: always()', job)
 
 
 if __name__ == '__main__':
