@@ -1188,8 +1188,9 @@ fn task050_zero_oms_service_needs_no_codec() {
 /// The comprehensive Task 050 fixture is outside the initial Ada and C++ codec
 /// subsets: an OMS service is NOT READY with --with-codec at the codec
 /// boundary, and nothing is generated. (C++ gained a narrow codec in
-/// CPP-OMS-001; this fixture's named String profiles, floats, temporal types,
-/// Choice and polymorphic values remain outside it.)
+/// CPP-OMS-001 and extended for the Log profiles in CPP-OMS-002; this fixture's
+/// floats and polymorphic values remain outside it: the first C++ blocker is
+/// now `Angle`, a named Float64.)
 #[test]
 fn task050_ada_and_cpp_have_no_generated_codec() {
     for (language, name) in [("ada", "Ada"), ("cpp", "C++")] {
@@ -1202,7 +1203,7 @@ fn task050_ada_and_cpp_have_no_generated_codec() {
         if language == "cpp" {
             assert!(
                 report.contains(&format!(
-                    "service codec boundary: UniversallyUniqueIdentifierType: named String has no {name} codec mapping in the initial subset\n"
+                    "service codec boundary: Angle: named Float64 has no {name} codec mapping\n"
                 )),
                 "{report}"
             );

@@ -418,19 +418,19 @@ int main() {{
 /// Every construct outside the subset is rejected explicitly, by BOTH
 /// commands, while the MODEL stays READY (so the blocker is the codec's) and
 /// before the output directory exists.
+///
+/// CPP-OMS-002 moved DateTime, Duration, hexBinary, Choice and the Log String
+/// profiles into the subset (see `newly_supported_fixtures_*`); what remains
+/// here is still NOT READY.
 #[test]
 fn unsupported_constructs_are_rejected_before_any_output() {
     let cases: &[(&str, &str)] = &[
         ("codec-ada-float64", "Float64"),
         ("codec-ada-float32", "Float32"),
-        ("codec-ada-datetime-combined", "DateTime"),
-        ("codec-duration", "Duration"),
         ("codec-time-zulu", "Time"),
-        ("codec-hexbinary", "Binary"),
-        ("codec-binary", "Binary"),
-        ("codec-bounded-ascii", "named String"),
-        ("codec-ipv6", "named String"),
-        ("codec-choice", "Choice declarations"),
+        ("codec-bounded-ascii", "bounded ASCII"),
+        ("codec-alternating-ascii", "alternating ASCII"),
+        ("codec-ipv6", "IPv6 address"),
         ("codec-shape", "abstract structural value"),
         ("codec-form-unqualified", "unqualified local element"),
         ("codec-unqualified", "unqualified local element"),

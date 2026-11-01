@@ -42,6 +42,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "oam.hpp"
@@ -689,6 +690,96 @@ std::optional<Carrier> get_checked_u64(const Value& value, CodecError& error, co
     return checked;
 }
 
+/// A checked text carrier (`Carrier::create(std::string_view)`): a constrained
+/// String profile, DateTime or Duration. The generated model alone decides
+/// membership; `what` names the schema type for the error message.
+template <typename Carrier>
+std::optional<Carrier> get_checked_text(const Value& value, CodecError& error, const Path* path,
+                                        std::string_view what) {
+    const std::string* text = get_text(value, error, path);
+    if (text == nullptr) {
+        return std::nullopt;
+    }
+    std::optional<Carrier> checked = Carrier::create(std::string_view(*text));
+    if (!checked) {
+        return fail(error, path,
+                    "value rejected by the generated model's " + std::string(what) + " check");
+    }
+    return checked;
+}
+
+/// XML Schema 2E `hexBinary` lexical parse of one JSON string: first the fixed
+/// `whiteSpace=collapse` normalization (TAB/LF/CR become SPACE, runs collapse,
+/// leading/trailing SPACE removed), then pairs of case-insensitive ASCII
+/// hexadecimal digits. An internal SPACE survives collapse and is rejected.
+inline std::optional<std::vector<std::uint8_t>> get_hex_binary(const Value& value, CodecError& error,
+                                                               const Path* path) {
+    const std::string* text = get_text(value, error, path);
+    if (text == nullptr) {
+        return std::nullopt;
+    }
+    std::string collapsed;
+    collapsed.reserve(text->size());
+    bool pending_space = false;
+    for (const char c : *text) {
+        if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
+            pending_space = !collapsed.empty();
+        } else {
+            if (pending_space) {
+                collapsed += ' ';
+                pending_space = false;
+            }
+            collapsed += c;
+        }
+    }
+    const auto nibble = [](char c) -> int {
+        if (c >= '0' && c <= '9') {
+            return c - '0';
+        }
+        if (c >= 'a' && c <= 'f') {
+            return c - 'a' + 10;
+        }
+        if (c >= 'A' && c <= 'F') {
+            return c - 'A' + 10;
+        }
+        return -1;
+    };
+    for (const char c : collapsed) {
+        if (nibble(c) < 0) {
+            return fail(error, path, "not hexBinary: only hexadecimal digits [0-9A-Fa-f] are allowed");
+        }
+    }
+    if (collapsed.size() % 2 != 0) {
+        return fail(error, path, "not hexBinary: odd number of hexadecimal digits");
+    }
+    std::vector<std::uint8_t> octets;
+    octets.reserve(collapsed.size() / 2);
+    for (std::size_t i = 0; i < collapsed.size(); i += 2) {
+        octets.push_back(static_cast<std::uint8_t>((nibble(collapsed[i]) << 4) | nibble(collapsed[i + 1])));
+    }
+    return octets;
+}
+
+/// The one selected member of a Choice object (`"$type"` excluded). Zero or
+/// several selected members are rejected.
+inline const Member* find_choice_member(const Value& object, CodecError& error, const Path* path) {
+    const Member* selected = nullptr;
+    for (const Member& member : object.object) {
+        if (member.key == "$type") {
+            continue;
+        }
+        if (selected != nullptr) {
+            fail(error, path, "a Choice requires exactly one selected member");
+            return nullptr;
+        }
+        selected = &member;
+    }
+    if (selected == nullptr) {
+        fail(error, path, "a Choice requires exactly one selected member");
+    }
+    return selected;
+}
+
 inline std::nullopt_t fail_cardinality(CodecError& error, const Path* path, std::size_t count) {
     return fail(error, path,
                 std::to_string(count) + " occurrence(s) rejected by the generated sequence constructor");
@@ -749,6 +840,19 @@ inline bool put_string(std::string& out, std::string_view text, CodecError& erro
         } else {
             out += c;
         }
+    }
+    out += '"';
+    return true;
+}
+
+/// XML Schema 2E 3.2.15.2 canonical `hexBinary`: two UPPERCASE hexadecimal
+/// digits per octet, no separator, written as a JSON string.
+inline bool put_hex_binary(std::string& out, const std::vector<std::uint8_t>& octets) {
+    static const char digits[] = "0123456789ABCDEF";
+    out += '"';
+    for (const std::uint8_t octet : octets) {
+        out += digits[octet >> 4U];
+        out += digits[octet & 0x0FU];
     }
     out += '"';
     return true;
