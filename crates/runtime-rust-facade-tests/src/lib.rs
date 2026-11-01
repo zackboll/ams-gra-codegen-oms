@@ -7,6 +7,20 @@
 //! handwritten payload codec for the fixture types; it is evidence for the
 //! `OmsJsonCodec` boundary, not generated codec output.
 
+/// Authentic UCI 2.5 RDMA model, codec and input/output endpoints.
+#[cfg(ams_gra_real_uci_rdma25)]
+#[allow(clippy::all, clippy::pedantic)]
+pub mod real_uci_rdma25 {
+    include!(concat!(env!("OUT_DIR"), "/real_uci_rdma25/service_api.rs"));
+}
+
+/// Independently generated UCI 2.6 RDMA surface (not an alias of 2.5).
+#[cfg(ams_gra_real_uci_rdma26)]
+#[allow(clippy::all, clippy::pedantic)]
+pub mod real_uci_rdma26 {
+    include!(concat!(env!("OUT_DIR"), "/real_uci_rdma26/service_api.rs"));
+}
+
 /// Task 063 exact named patterned integral numeric carriers and production codec.
 #[allow(clippy::all, clippy::pedantic)]
 pub mod codec_patterned_integral {
