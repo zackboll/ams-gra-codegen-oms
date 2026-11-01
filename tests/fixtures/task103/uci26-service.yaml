@@ -1,0 +1,31 @@
+# Test-only real-UCI RDMA qualification; no hardware connection is established.
+contract_version: "0.1"
+service:
+  name: task103-rdma
+  version: "0.1.0"
+  kind: service
+standards:
+  oms_version: "2.6"
+  uci_schema_version: "2.6"
+functions:
+  - id: rdma
+    name: RDMA qualification
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: receive
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: RDMA_InitializeSetup
+        topic: task103-rdma
+        timing:
+          kind: asynchronous
+      - id: publish
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: RDMA_InitializeSetup
+        topic: task103-rdma
+        timing:
+          kind: asynchronous

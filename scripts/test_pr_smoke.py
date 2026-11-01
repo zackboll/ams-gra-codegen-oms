@@ -64,6 +64,33 @@ class Routing(unittest.TestCase):
             with self.subTest(path=path):
                 self.assert_execution([path], list(smoke.BACKENDS))
 
+    def test_task103_ada_only(self):
+        paths = ("scripts/task103/admission.py", "scripts/task103/cases.py",
+                 "scripts/task103/qualify.py", "scripts/task103/sleet.py",
+                 "scripts/task103/nested/new.py", "scripts/task103_evidence.py",
+                 "scripts/test_task103.py", "scripts/test_task103_evidence.py",
+                 "scripts/test_task103_new.py", "tests/ada-real-uci-rdma/rdma_consumer.adb",
+                 "tests/ada-real-uci-rdma/codec_probe.adb",
+                 "tests/fixtures/task103/uci25-service.yaml",
+                 "tests/fixtures/task103/uci26-service.yaml")
+        for path in paths:
+            with self.subTest(path=path):
+                self.assert_execution([path], ["ada"])
+        self.assert_execution(paths, ["ada"])
+        self.assert_execution([paths[0], "docs/task-103-ada-real-uci-rdma-sleet.md"], ["ada"])
+        self.assert_execution([paths[0], "crates/backend-rust/src/lib.rs"], ["rust", "ada"])
+        self.assert_execution([paths[0], "scripts/pr_smoke.py"], list(smoke.BACKENDS))
+
+    def test_task103_ownership_boundaries(self):
+        for path in ("scripts/task103_other.py", "scripts/task1030/qualify.py",
+                     "scripts/task103_evidence.py.bak", "scripts/task103_evidence_extra.py",
+                     "scripts/test_task103_evidence.txt", "scripts/test_task103_evidence.py.bak",
+                     "tests/fixtures/task103-other/new.yaml", "tests/fixtures/task1030/new.yaml"):
+            with self.subTest(path=path):
+                self.assert_execution([path], list(smoke.BACKENDS))
+        # The existing broad tests/ada- rule remains Ada-owned independently.
+        self.assert_execution(["tests/ada-real-uci-rdma-other/probe.adb"], ["ada"])
+
     def test_mixed(self):
         self.assert_execution(["crates/backend-python/src/lib.rs", "ada/new.ads"], ["python", "ada"])
         self.assert_execution(["crates/backend-rust/src/lib.rs", "python/new.py"], ["python", "rust"])
