@@ -15,6 +15,19 @@ use std::path::PathBuf;
 
 pub const SERVICE_CODEC_FILE: &str = "service_codec.py";
 
+fn unbounded_runtime(template: &str) -> Result<String, CodegenError> {
+    let bounded_check = "if not lower <= len(value) <= upper:";
+    if template.matches(bounded_check).count() != 1 {
+        return Err(error(
+            "Python OMS JSON codec: expected exactly one bounded sequence runtime check",
+        ));
+    }
+    Ok(template.replace(
+        bounded_check,
+        "if len(value) < lower or (upper is not None and len(value) > upper):",
+    ))
+}
+
 fn wire_key(field: &FieldDecl) -> Result<String, CodegenError> {
     let wire = field.wire_name();
     let namespace = wire.namespace_uri.filter(|namespace| !namespace.is_empty())
@@ -101,10 +114,7 @@ pub fn generate_service_codec(
             if fields.iter().any(|field| matches!(field.cardinality.shape(), OccurrenceShape::Unbounded { .. })))
     });
     if unbounded {
-        output = output.replace(
-            "if not lower <= len(value) <= upper:",
-            "if len(value) < lower or (upper is not None and len(value) > upper):",
-        );
+        output = unbounded_runtime(&output)?;
     }
     if crate::uses_datetime(schema) {
         output.push_str(include_str!("datetime_codec_runtime.py"));
@@ -322,5 +332,30 @@ fn sequence_bounds(shape: OccurrenceShape) -> (u64, String) {
         OccurrenceShape::Bounded { min, max } => (min, max.to_string()),
         OccurrenceShape::Unbounded { min } => (min, "None".to_owned()),
         _ => unreachable!("repeated member"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::unbounded_runtime;
+
+    #[test]
+    fn unbounded_runtime_replaces_exactly_one_check() {
+        let template = include_str!("codec_runtime.py");
+        let expected = template.replace(
+            "if not lower <= len(value) <= upper:",
+            "if len(value) < lower or (upper is not None and len(value) > upper):",
+        );
+        assert_eq!(unbounded_runtime(template).unwrap(), expected);
+    }
+
+    #[test]
+    fn unbounded_runtime_rejects_missing_or_duplicate_checks() {
+        let template = include_str!("codec_runtime.py");
+        let missing = template.replace("if not lower <= len(value) <= upper:", "if False:");
+        for invalid in [missing, template.repeat(2)] {
+            let failure = unbounded_runtime(&invalid).unwrap_err();
+            assert!(failure.to_string().contains("expected exactly one"));
+        }
     }
 }
