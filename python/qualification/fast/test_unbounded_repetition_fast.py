@@ -22,5 +22,5 @@ class UnboundedRepetition(unittest.TestCase):
         result = subprocess.run([sys.executable, str(root / 'scripts/test-py012-uci.py')],
                                 capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn('Ran 2 tests', result.stderr)
+        self.assertIn('Ran 5 tests', result.stderr)
         self.assertIn('\nOK\n', result.stderr)
