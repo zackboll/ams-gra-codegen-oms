@@ -127,13 +127,18 @@ fn authentic_model_and_codec() {
         let result: Result<m::SurvivabilityRiskLevelMT, _> = ServiceCodec.decode_payload(&body);
         assert!(result.unwrap_err().to_string().contains(missing));
     }
-    // Preserve string whitespace, but collapse schema date/time and duration text.
+    // 2.5 collapses whitespace-visible strings; 2.6 preserves their text.
     let text = "  authority  text  ";
+    let normalized = if VERSION == "002.5.0" {
+        "authority text"
+    } else {
+        text
+    };
     assert_eq!(
         m::WhitespaceVisibleString1024Type::new(text)
             .unwrap()
             .as_str(),
-        text
+        normalized
     );
     assert_eq!(m::DurationType::new(" \tPT1S\n").unwrap().as_str(), "PT1S");
     let mut input = risk_golden();
@@ -142,6 +147,7 @@ fn authentic_model_and_codec() {
     input["MessageData"]["RiskSetting"][0]["RiskLevel"][0]["MaximumContinuousExposure"] =
         json!({"CompositeExposureTime":" \tPT1S\n", "CumulativeExposureTime":" PT2S "});
     let mut expected = input.clone();
+    expected["SecurityInformation"]["ClassifiedBy"] = json!(normalized);
     expected["MessageHeader"]["Timestamp"] = json!("2026-01-02T03:04:05Z");
     expected["MessageData"]["RiskSetting"][0]["RiskLevel"][0]["MaximumContinuousExposure"] =
         json!({"CompositeExposureTime":"PT1S", "CumulativeExposureTime":"PT2S"});

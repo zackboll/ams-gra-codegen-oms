@@ -91,8 +91,9 @@ nonempty whitespace-visible strings, preserved ClassifiedBy whitespace and
 SAR identifiers. Compile-time field annotations distinguish 2.5
 `XmlSchemaDateTime` security members from 2.6 `DateTimeType`. Offset text is
 accepted by the unconstrained 2.5 carrier and rejected by the named 2.6 carrier.
-Whitespace tests distinguish preserved string text from collapsed DateTime and
-Duration text in both model construction and codec execution.
+Whitespace tests distinguish 2.5 collapsed versus 2.6 preserved whitespace-visible
+string text, and collapsed DateTime/Duration text in both model construction and
+codec execution.
 
 ## Single connection and failure boundaries
 
