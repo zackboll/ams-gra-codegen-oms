@@ -193,6 +193,8 @@ class Routing(unittest.TestCase):
         for path in ("crates/backend-cpp/src/lib.rs", "crates/backend-cpp/src/service_codec.rs",
                      "crates/backend-cpp/src/codec_runtime.hpp", "crates/backend-cpp/tests/temporal.rs",
                      "tests/cpp-codec/consumer.cpp", "tests/cpp-codec/new.cpp",
+                     "tests/cpp-codec/log_consumer.cpp", "tests/cpp-codec/shapes_consumer.cpp",
+                     "scripts/check-cpp-oms-002-real-log.sh",
                      "tests/fixtures/cpp-codec/oam.xsd", "tests/fixtures/cpp-codec/expected/service_codec.hpp",
                      "crates/cli/tests/cpp_codec.rs", "scripts/check-cpp-oms-001.sh",
                      "scripts/check-cpp-oms-001-parity.sh"):

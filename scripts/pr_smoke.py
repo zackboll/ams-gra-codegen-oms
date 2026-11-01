@@ -74,7 +74,8 @@ def classify(paths):
             selected.add("ada")
         elif (path.startswith(("crates/backend-cpp/", "tests/cpp-codec/", "tests/fixtures/cpp-codec/"))
               or path in ("crates/cli/tests/cpp_codec.rs", "scripts/check-cpp-oms-001.sh",
-                          "scripts/check-cpp-oms-001-parity.sh")):
+                          "scripts/check-cpp-oms-001-parity.sh",
+                          "scripts/check-cpp-oms-002-real-log.sh")):
             selected.add("cpp")
         else:
             selected.update(BACKENDS)

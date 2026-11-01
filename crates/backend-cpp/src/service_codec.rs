@@ -480,10 +480,16 @@ impl Renderer<'_> {
             let selected = format!("selected{index}");
             let expression = Self::encode(&base, &format!("{selected}->value"), "&p");
             let keyword = if index == 0 { "if" } else { "} else if" };
+            // Scalar alternatives never name their path; declaring it would
+            // trip -Wunused-variable under the strict consumer flags.
+            let path_decl = if expression.contains("&p") {
+                format!("        const Path p{{path, \"{key_literal}\", 0, false}};\n")
+            } else {
+                String::new()
+            };
             writeln!(
                 encode,
-                "    {keyword} (const auto* {selected} = std::get_if<{wrapper}>(&value.value)) {{\n        \
-                 const Path p{{path, \"{key_literal}\", 0, false}};\n        \
+                "    {keyword} (const auto* {selected} = std::get_if<{wrapper}>(&value.value)) {{\n{path_decl}        \
                  put_raw(out, std::string_view(\"{raw_key}\"));\n        \
                  if (!{expression}) {{\n            return false;\n        }}"
             )
