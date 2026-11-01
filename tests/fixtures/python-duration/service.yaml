@@ -1,0 +1,28 @@
+contract_version: "0.1"
+service:
+  name: Python Duration
+  version: "0.14.0"
+  kind: service
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+functions:
+  - id: loop
+    name: Duration Loop
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: input
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: DurationNotice
+        topic: duration.loop
+        timing: {kind: asynchronous}
+      - id: output
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: DurationNotice
+        topic: duration.loop
+        timing: {kind: asynchronous}

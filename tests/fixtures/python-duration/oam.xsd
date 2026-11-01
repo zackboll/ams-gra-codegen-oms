@@ -1,0 +1,26 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+ xmlns:t="https://www.vdl.afrl.af.mil/programs/oam"
+ targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified" version="002.5.0">
+  <!-- Independent synthetic qualification, not a complete UCI service. -->
+  <xs:simpleType name="Span"><xs:restriction base="xs:duration"/></xs:simpleType>
+  <xs:simpleType name="Restricted"><xs:restriction base="t:Span"/></xs:simpleType>
+  <xs:complexType name="Ancestor" abstract="true"><xs:sequence>
+    <xs:element name="Inherited" type="xs:duration"/>
+  </xs:sequence></xs:complexType>
+  <xs:complexType name="Nested"><xs:sequence>
+    <xs:element name="Value" type="t:Span"/>
+    <xs:element name="Directs" type="xs:duration" minOccurs="0" maxOccurs="3"/>
+  </xs:sequence></xs:complexType>
+  <xs:complexType name="Payload"><xs:complexContent><xs:extension base="t:Ancestor"><xs:sequence>
+    <xs:element name="Direct" type="xs:duration"/>
+    <xs:element name="Named" type="t:Span"/>
+    <xs:element name="Optional" type="xs:duration" minOccurs="0"/>
+    <xs:element name="Values" type="t:Span" minOccurs="1" maxOccurs="3"/>
+    <xs:element name="Nested" type="t:Nested"/>
+    <xs:element name="Unbounded" type="xs:duration" minOccurs="0" maxOccurs="unbounded"/>
+    <xs:element name="NamedUnbounded" type="t:Span" minOccurs="1" maxOccurs="unbounded"/>
+    <xs:element name="NamedOptional" type="t:Span" minOccurs="0"/>
+    <xs:element name="Restricted" type="t:Restricted" minOccurs="0"/>
+  </xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+  <xs:element name="DurationNotice" type="t:Payload" t:version="001.000.000.000"/>
+</xs:schema>

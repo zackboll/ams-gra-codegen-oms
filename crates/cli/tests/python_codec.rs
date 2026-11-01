@@ -326,6 +326,22 @@ fn all_model_boundaries_still_fail_closed_with_codec_requested() {
         for world in ["closed-schema", "open-extensions"] {
             let dest = temp.0.join(format!("absent-{primitive}-{world}"));
             let blocked = run(&schema, &fixture("service.yaml"), world, true, Some(&dest));
+            if primitive == "duration" {
+                // PY-014 replaces this boundary with checked direct lexical values.
+                assert!(blocked.status.success(), "{blocked:?}");
+                for optimized in [false, true] {
+                    let mut command = Command::new(
+                        std::env::var_os("PYTHON").unwrap_or_else(|| "python3".into()),
+                    );
+                    if optimized {
+                        command.arg("-O");
+                    }
+                    let result = command.args(["-c", "import service_codec as c, unittest\nclass Duration(unittest.TestCase):\n def test_duration(self):\n  self.assertEqual(c._checked_duration(' \\t-PT0.000S\\r\\n', '$'), '-PT0.000S')\n  with self.assertRaises(c.CodecError): c._checked_duration('PT', '$')\nunittest.main()"])
+                        .current_dir(&dest).output().unwrap();
+                    assert!(result.status.success(), "{result:?}");
+                }
+                continue;
+            }
             if primitive == "hexBinary" {
                 // PY-013 replaces the former blocker with an executed contract.
                 assert!(blocked.status.success(), "{blocked:?}");

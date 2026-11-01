@@ -235,7 +235,6 @@ fn unsupported_ir_semantics_fail_closed_without_artifacts() {
         PrimitiveKind::Float32,
         PrimitiveKind::DateTime,
         PrimitiveKind::Time,
-        PrimitiveKind::Duration,
     ] {
         let mut schema = baseline.clone();
         schema.types[0].kind = TypeKind::Primitive(kind);
