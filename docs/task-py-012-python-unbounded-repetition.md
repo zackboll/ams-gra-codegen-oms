@@ -20,6 +20,11 @@ qualification wiring, documentation and evidence; the evidence authenticates the
 exact production source hashes and executable SHA-256, rather than pretending
 that a document can contain its own final Git identity.
 
+At delivery, fetched and observed newer main
+`f1aa82782fd0b0f2b0ace1311d7f16afe8e11d7f`, tree
+`c2b4581d2c383245c1675537256b0ef95e711349` (unrelated Rust RDMA qualification).
+It is not merged into this task's qualified source; GitHub may report BEHIND.
+
 Clean detached source worktrees live under the task's ignored `target` directory.
 Raw logs, binaries and generated artifacts are retained separately in
 `/home/zboll/py012-evidence/v1`; the Cargo target is `/home/zboll/py012-build`.
@@ -88,6 +93,7 @@ trees and literal JSON, not only encoder-produced round trips.
 | Pinned Sleet discovery | 4 tests, both interpreters and optimization policies |
 | Earlier mock and PY-006–PY-011 Sleet scripts | passed for both interpreters, including their normal/optimized probes |
 | Historical PY-007–PY-011 evidence adversaries | passed; historical evidence unchanged |
+| Existing successor UCI harnesses | PY-007/PY-008 passed; PY-009 passed; PY-010 passed for both interpreters, 416 isolated profile tests each |
 | Unbounded-free Python parity | 32 selections, 80 Python sources byte-identical, including NATO |
 | Existing VisibleAscii-free parity | 20 selections, 50 sources byte-identical |
 | Ada/Rust/C++ parity | 6 generated selections, 12 readiness reports, 2 coverage reports identical |
