@@ -61,18 +61,6 @@ if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('jobs_json',nargs='+',type=Path)
     parser.add_argument('--limit',type=int,default=5)
-    parser.add_argument('--inventory-lanes', action='store_true',
-                        help='map each authoritative cell name to its reviewed common lane')
     args=parser.parse_args()
     jobs=[j for p in args.jobs_json for j in json.loads(p.read_text())['jobs']]
-    lanes = None
-    if args.inventory_lanes:
-        from ci_selection import inventory
-        policy = inventory()
-        names = {('deep-qualification / ' if r['workflow'] == 'deep-ci.yml' else '') + c['name']: c['lane']
-                 for r in policy['jobs'] for c in r['cells'] if c['lane'] is not None}
-        names.update({name: r['lane'] for name, r in policy['orchestration_jobs'].items()})
-        if any(j['name'] not in names for j in jobs):
-            raise ValueError('unmapped hosted cell in lane report')
-        lanes = {j['id']: names[j['name']] for j in jobs}
-    print(json.dumps(report(jobs,args.limit,lanes),indent=2))
+    print(json.dumps(report(jobs,args.limit),indent=2))

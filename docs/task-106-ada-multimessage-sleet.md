@@ -1,22 +1,22 @@
 # Task 106 — heterogeneous real-UCI Ada messages on one Sleet connection
 
-## Scope, stack and review boundary
+## Scope, reconciliation and review boundary
 
-Task106 starts from PR #145, open and unmerged at reviewed commit
+PR #147 remains on `feature/106-ada-multimessage-uci-sleet` and now targets
+`main`. TASK106-R1 incorporates verified main
+`bf6228ddee8b9e9fc70704c2fc68a409cdc37729` by ordinary merge, preserving the
+published Task106 head `3c60de269035ab5cc792e3b15988417fcab029e6` and merged
+Tasks102–105. Historical CI conflicts are resolved in favor of current main's
+CI-RESET-001 architecture. No rebase, amend or force push is used.
+
+The original campaign started from Task105 commit
 `334677f8e2f04d7cb89a098ba4bfa425796d2efd`, tree
-`6fd380454512636152511744e95038f9c000d7fa`. The freshly fetched remote matched
-both identities. No Task106 branch, worktree or PR existed. The isolated branch
-is `feature/106-ada-multimessage-uci-sleet`; its worktree is
-`/home/zboll/git/ams-gra-codegen-oms-task106`, and evidence is separate under
-`/home/zboll/task106-scratch`. The stacked PR must target the still-open
-`feature/105-ada-survivability-uci26-sleet`, not main.
-
-Parent PRs #134, #142, #144 and #145, their branches, source worktrees and
-evidence are not modified. Normal commits/merges only: no rebase, reset, amend,
-cherry-pick or force push. Approval, merge, auto-merge, release and publication
-are outside this task. Exact final source/tree, remote/PR parity, proposed merge,
-workflow attempts, artifact IDs and authoritative gate disposition belong in
-external delivery records, not a self-referential commit hash in this file.
+`6fd380454512636152511744e95038f9c000d7fa`; its historical evidence is separate
+under `/home/zboll/task106-scratch`. Those results below are not new
+reconciliation executions or combined UCI 2.6 qualification. Unrelated PRs #157
+and #158, their branches, tests and worktrees are outside this reconciliation.
+Approval, merge and auto-merge are outside delivery. Exact final identities and
+hosted check results belong in external delivery records.
 
 Only **UCI 2.5** is selected for the combined qualification. Task105's UCI 2.6
 Survivability campaign remains a separately owned inherited regression. A
@@ -191,38 +191,39 @@ was checked against Task106, including 516 inherited files with zero changes.
 These are fresh exact-parent executions, NOT historical runs relabeled as
 Task106-source execution. Task105 2.6 stays a separate inherited regression.
 
-## Additive CI and inherited policy preservation
+## Main-only Deep qualification and lightweight PR smoke
 
 Reusable Deep job: `ada-real-uci-multimessage-sleet`, with compiler artifacts
-`task106-ada-multimessage-14` and `task106-ada-multimessage-16`. Exact-parent
-successful run **41244320271** supplied measured assigned setup-to-completion
-occupancy (seconds) for lanes 1..5: **10036 / 9129 / 11275 / 9904 / 10653**.
-The new cells therefore use lanes **2 (GNAT14)** and **4 (GNAT16)**. Inherited
-cells do not move; all five shared lanes and `queue: max` remain. Registered
-runner topology expands 50→52 and Deep cells 22→24, not by removing a parent job.
+`task106-ada-multimessage-14` and `task106-ada-multimessage-16`. The job requires
+`github.ref == 'refs/heads/main'` and uses lanes **2 (GNAT14)** and **4 (GNAT16)**.
+All 16 pre-existing Deep jobs, their bodies, all five main lanes and `queue: max`
+remain unchanged. The full `CI` workflow includes Task106 through its existing
+Deep caller. Existing Deep nightly/manual/call triggers remain unchanged; there
+is no PR Deep trigger or PR selector input.
 
-Task106 owns a projection over unchanged Task105 and older policy pins. Owned
-consumer/contract/corpus/verifier paths and shared generator/runtime/codec
-dependencies select the new job. The mandatory aggregate resolves producer
-attempts through existing CI-RETRY-001, then runs the source-bound verifier.
-Missing, duplicate, expired, stale-source/wrong-attempt artifacts, incomplete
-matrix/commands, changed generated/schema/broker pins, bad SID/global routing,
-missing recovery/witnesses, lost events or cleanup fail closed. Synthetic
-adversarial fixtures are explicitly separate from live interoperability evidence.
+The original production qualification body still builds pinned UCI 2.5/Sleet
+and runs GNAT14/16 × Normal/Check/Ignore × O0/O2. Each compiler bundle is
+independently verified in its producer job against the exact source, tree and
+run identity. Actual execution or verification failures fail the job; diagnostic
+artifacts upload with `always()`. Incomplete matrix/commands, changed generated,
+schema or broker pins, bad SID/global routing, missing recovery/witnesses, lost
+events and failed cleanup are rejected. The verifier remains independent of
+retired selector, policy and GitHub artifact-aggregate modules.
 
-Inherited Task100–105 job bodies, source-bound verifiers and artifact producer
-contracts remain. CI002/trusted dispatch, command-scoped exact-path Git trust
-under isolated HOME, bounded hidden-file uploads, manual-only benchmark isolation,
-and mandatory `pr-ci-required` remain. Main already contains CI-SELECT-003 at
-`e4c73249d836114bc7585181b9557be6ae113011`; eventual ordinary integration must
-preserve its actual merged policy instead of copying this stacked inventory over it.
-During local qualification main also advanced to
-`528397be1a0a5a7a14873e63bfd47399424a2df6` through merged PR #132 (PY-010).
-Task105 remained open at the reviewed identity, so Task106 stays stacked rather
-than merging an unrelated moving main. Both CI-SELECT-003 and PY-010 policies
-remain reconciliation requirements, not changes to parent branches here.
+The obsolete `task106_ci.py` ownership projection is removed. Focused
+`test_task106_evidence.py` retains substantive cell and independent synthetic
+bundle controls, not selector/inventory/aggregate controls. Synthetic fixtures
+are never presented as live interoperability evidence.
+
+Task106 execution, evidence, test, consumer and fixture paths select Ada smoke
+only in the existing lightweight router. This reconciliation changes the shared
+router and workflow, so its PR runs Python, Rust and Ada smoke plus pinned
+actionlint 1.7.12. Focused acceptance also runs Task106 verifier tests and current
+Tasks102–105 unit regressions. Full UCI/Sleet campaigns are not repeated for
+reconciliation; comprehensive qualification runs after merge on main.
 
 This work does not qualify arbitrary UCI types/releases, shared topics, alternate
 brokers, network/hardware RDMA, TLS, authentication deployment, reconnect,
 background receive or lossless floating point. Readiness requires exact-source
-local gates and authoritative hosted aggregate; development success is not approval.
+focused checks, a clean incremental diff, mergeability and exact-head hosted
+`PR smoke` success; development success is not approval or full qualification.

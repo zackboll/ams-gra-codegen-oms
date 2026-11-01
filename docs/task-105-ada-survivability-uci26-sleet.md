@@ -1,26 +1,27 @@
 # Task 105 — UCI 2.6 Ada SurvivabilityRiskLevel through pinned Sleet
 
-## Stack, isolation and disposition boundary
+## Main integration, isolation and disposition boundary
 
-Task105 was created from freshly fetched Task104 commit
+Task105 originally branched from Task104 commit
 `660a680a856a6775eba937784ffa2f99c41d3f8f`, tree
-`068c24ccd4572425fe3fa3bda1cf8f48628f3a48`. PR #144 was OPEN, targeting
-`feature/103-ada-real-uci-rdma-sleet`. No Task105 branch, worktree, evidence
-directory or PR existed. The initial PR target is
-`feature/104-ada-real-uci-survivability-sleet`, not main.
+`068c24ccd4572425fe3fa3bda1cf8f48628f3a48`. Task104 is now merged.
+TASK105-R1 incorporates current main
+`070a9f8b8d40b7e8a48c093af655ca882034f987` with an ordinary merge and
+retargets PR #145 to `main`, preserving history and CI-RESET-001's simplified
+architecture. Tasks102–104, full-main CI and existing Deep jobs remain unchanged.
+PR #147 remains stacked on the Task105 branch; its branch, HEAD and base are
+not modified by this reconciliation.
 
-Worktree: `/home/zboll/git/ams-gra-codegen-oms-task105`.
-Evidence root: `/home/zboll/task105-scratch`. Parent branches, worktrees,
-evidence and PR metadata are not changed. PR #133 (CI-SELECT-003) is merged
-on remote main at `e4c73249d836114bc7585181b9557be6ae113011`. Its Python-owned
-qualification, runner and security architecture must survive ordinary main
-reconciliation after the dependency chain integrates. This stacked branch does
-not replace the Task104 baseline with a different main tree.
+Historical qualification evidence remains at `/home/zboll/task105-scratch`.
+Those executions retain their original source identities; they are not
+relabelled as executions of the reconciled HEAD. Task104's UCI 2.5 transport
+qualification is separate from Task105's UCI 2.6 transport qualification.
 
-Final source/tree, PR/proposed-merge identities, clean local execution summaries,
-hosted run/producer-attempt/artifact identities and authoritative gate outcome
-are external delivery evidence, not self-referential hashes in this document.
-Neither development cell success nor unit-test bundles authorize review readiness.
+Final source/tree, local focused regression results and exact-head hosted
+`PR smoke` outcome are external delivery evidence, not self-referential hashes
+in this document. Merge readiness requires a clean incremental diff, passing
+focused local checks, GitHub mergeability and exact-head `PR smoke` success.
+Full GNAT14/16 qualification runs on main after merge, not on this PR.
 Stop before approval, merge, auto-merge, release or publication.
 
 ## Authentic authorities
@@ -155,7 +156,7 @@ as a 2.6 typed positive or invented rejection. Conversely INIT requesting
 002.5.0 or abbreviated 002.6 is rejected as Unsupported-Schema with closure.
 The release-qualified Ada handler independently requires exact 002.6.0.
 
-## Mandatory execution and additive CI
+## Mandatory execution and main-only Deep CI
 
 The real-Sleet matrix is UCI **2.6 only** × GNAT 14.2.0/16.1.0 ×
 Normal/Check/Ignore × O0/O2 = **12 cells, six per compiler**. Each cell requires
@@ -164,7 +165,7 @@ compiler separately runs three policy-specific eight-check codec consumers,
 69 independent invalid-input rejections and 21 direct model rejections.
 Task104 retains its independent **2.5** 12-cell job; none is relabeled 2.6.
 
-New reusable Deep job: `ada-real-uci-survivability-26-sleet`; artifacts:
+New main-only Deep job: `ada-real-uci-survivability-26-sleet`; artifacts:
 `task105-ada-survivability-26-14` and `task105-ada-survivability-26-16`.
 Successful parent run 41233400825 yielded measured assigned execution totals
 of 7767/10053/11132/8915/10254 seconds on lanes 1..5. Accordingly Task105 assigns
@@ -172,16 +173,22 @@ GNAT14 to lane 1 and GNAT16 to lane 4. Measurements are job occupancy, not a
 prediction of future queue latency. Every inherited assignment, five shared
 main lanes, queue:max and manual-only benchmark boundary remain.
 
-Task105 owns selection, policy projection, artifact verification and adversarial
-tests. Aggregate totals expand 48→50 runner cells and 20→22 Deep cells; inherited
-2.5 counts and verifier do not change. Final pr-ci-required resolves artifact
-producer attempts using unchanged CI-RETRY-001 authority, then independently
-verifies each Task105 bundle against current source, schema, compiler/toolchain,
-commands/exits, generated source, actual wire delivery and cleanup. Wrong or
-duplicate cells, forged markers, missing commands, wrong source/tree/run/producer
-attempt and missing cleanup fail closed. Security hashes, exact-path Git trust
-under isolated HOME, and bounded hidden-file uploads are retained. No automatic
-benchmark or credential upload is added.
+The job requires `github.ref == 'refs/heads/main'`, with no PR selection input
+or aggregate-gate integration. Actual qualification failures fail the job;
+diagnostics upload with `always()`. Its independent verifier checks each
+Task105 bundle against current source, schema, compiler/toolchain, commands and
+exits, generated source, actual wire delivery and cleanup. Wrong or duplicate
+cells, forged markers, missing commands, wrong source/tree/run/attempt and
+missing cleanup fail closed. Exact-path Git trust under isolated HOME and
+bounded hidden-file uploads are retained. No policy modules, historical
+inventory changes, automatic benchmark or credential upload are added.
+
+Standalone verifier and Git trust-boundary controls live in
+`scripts/test_task105_evidence.py`. Task105 implementation, verifier, tests,
+Ada consumers and fixture paths independently select Ada smoke only through
+the existing lightweight `scripts/pr_smoke.py` router. This reconciliation
+also changes the shared router, so PR #145 runs Python, Rust and Ada smoke
+plus pinned workflow syntax validation. There is no PR Deep workflow.
 
 ## Evidence accounting
 
@@ -193,9 +200,10 @@ concurrent source edits. These are retained development evidence, not clean
 qualification. Standalone expanded negative/model and version-boundary controls
 subsequently passed; they do not substitute for the final clean matrix.
 
-Final clean-source campaign and regression summaries, ignored/filtered tests,
-exact source identities and hosted artifacts must be reported separately after
-execution. Required regressions include Rust 1.95 formatting, locked workspace
-build/check, warnings-denied Clippy, GNAT-required tests, inherited Task100–104
-qualification/verifiers, selector/benchmark/provenance/security controls,
-split/layout mutations, pinned actionlint 1.7.12 and whitespace validation.
+Historical clean-source campaigns retain their original source identities and
+limitations. Reconciliation acceptance runs the retained Task105 verifier and
+Git trust controls, Tasks102–104 verifier/unit regressions, PR routing/execution
+tests, actual lightweight Ada smoke, pinned actionlint 1.7.12, whitespace checks
+and an incremental-diff preservation audit. It does not repeat historical
+pinned-UCI/Sleet campaigns or treat synthetic unit bundles as transport execution.
+Full qualification remains the main-only Deep job's responsibility after merge.

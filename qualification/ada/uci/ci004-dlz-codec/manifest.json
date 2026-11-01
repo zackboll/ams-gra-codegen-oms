@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "task_id": "ci004-dlz-codec",
+  "profile": "ada-codec-v1",
+  "sources": ["time_consumer.adb"],
+  "fixtures": ["cases.json", "service.yaml"],
+  "tests": ["missing-time", "valid-full-dlz"],
+  "main": "time_consumer.adb",
+  "release": "2.5",
+  "contract": "service.yaml",
+  "cases": "cases.json",
+  "package": "Programs.Oam",
+  "payload": "DLZ_MT"
+}

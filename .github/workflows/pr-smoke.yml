@@ -1,0 +1,68 @@
+name: PR smoke
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-smoke-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: PR smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Route actual proposed merge diff
+        id: route
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          MERGE_SHA: ${{ github.sha }}
+        run: python3 scripts/pr_smoke.py route --base "$BASE_SHA" --head "$MERGE_SHA" --github-output "$GITHUB_OUTPUT"
+      - name: Router and execution regression tests
+        run: python3 -m unittest discover -s scripts -p test_pr_smoke.py -v
+      - name: Install workflow syntax validator
+        if: steps.route.outputs.workflows == 'true'
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --output "$RUNNER_TEMP/actionlint.tar.gz" https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+          echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  $RUNNER_TEMP/actionlint.tar.gz" | sha256sum --check --strict
+          mkdir -p "$RUNNER_TEMP/smoke-tools"
+          tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP/smoke-tools" actionlint
+          echo "$RUNNER_TEMP/smoke-tools" >> "$GITHUB_PATH"
+      - name: Validate workflow syntax
+        if: steps.route.outputs.workflows == 'true'
+        run: bash scripts/check-ci-actionlint.sh
+      - uses: dtolnay/rust-toolchain@1.95.0
+        if: steps.route.outputs.python == 'true' || steps.route.outputs.rust == 'true' || steps.route.outputs.ada == 'true'
+      - uses: actions/setup-python@v5
+        if: steps.route.outputs.python == 'true'
+        with:
+          python-version: '3.11'
+      - name: Install Alire for one Ada toolchain
+        if: steps.route.outputs.ada == 'true'
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --output "$RUNNER_TEMP/alire.zip" https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
+          echo "09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  $RUNNER_TEMP/alire.zip" | sha256sum --check --strict
+          unzip -q "$RUNNER_TEMP/alire.zip" -d "$RUNNER_TEMP/alire"
+          echo "$RUNNER_TEMP/alire/bin" >> "$GITHUB_PATH"
+      - name: Python smoke
+        if: steps.route.outputs.python == 'true'
+        run: python scripts/pr_smoke.py run python
+      - name: Rust smoke
+        if: steps.route.outputs.rust == 'true'
+        run: python3 scripts/pr_smoke.py run rust
+      - name: Ada smoke
+        if: steps.route.outputs.ada == 'true'
+        run: python3 scripts/pr_smoke.py run ada
