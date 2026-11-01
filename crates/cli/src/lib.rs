@@ -363,7 +363,10 @@ WITH CODEC (--with-codec, Task 050):
     is added (Y counts every emitted model type, including generated support
     types). A codec failure is reported on its own 'service codec boundary:'
     line, never as an unsupported UCI type. Rust and the initial Ada scalar /
-    concrete Record subset have generated codecs; C++ remains NOT READY.
+    concrete Record subset have generated codecs. C++ (CPP-OMS-001) supports
+    only Boolean, integral, plain String, enumeration and concrete Record
+    declarations with required, optional and repeated members; Float, temporal,
+    Binary, constrained String, Choice and polymorphic constructs are NOT READY.
     Python 3.11+ supports its qualified Boolean/integer/String/enum/concrete
     Record subset, reported as separate model, API and codec status lines.
     Python has no Binary, temporal, floating, polymorphic or transport support.
@@ -485,6 +488,10 @@ WITH CODEC (--with-codec, Task 050):
     A supported Python service gets standalone 'service_codec.py' with typed
     encode_<Payload> / decode_<Payload> JSON-text entrypoints and CodecError.
     Python model.py and service_api.py remain byte-identical with this flag.
+    A supported C++ service gets a standalone C++17 header 'service_codec.hpp'
+    (namespace service_codec; standard library only) with typed
+    encode_<Payload> / decode_<Payload> functions returning CodecResult<T>.
+    The C++ model and service_api headers are byte-identical with this flag.
     A service with no OMS exchange needs no codec and gets no codec file.
     Binary values with xs:hexBinary provenance (Task 052) are encoded as
     canonical uppercase hex strings and decoded with XML Schema hexBinary
@@ -1853,8 +1860,19 @@ fn service_generate<W: Write>(
             .map_err(|error| CliError::execution(error.to_string()))?,
         );
         files
+    } else if emit_codec && matches!(language, Language::Cpp) {
+        // CPP-OMS-001: the C++ codec is a separate header beside the
+        // unchanged model and service API headers.
+        let mut files = backend
+            .generate_service_api(&api_model, projection.schema())
+            .map_err(|error| CliError::execution(error.to_string()))?;
+        files.extend(
+            ams_gra_oms_backend_cpp::generate_service_codec(&api_model, projection.schema())
+                .map_err(|error| CliError::execution(error.to_string()))?,
+        );
+        files
     } else if emit_codec {
-        // Ada was handled above; C++ codec readiness remains NOT READY.
+        // Ada and C++ were handled above; the remaining codec language is Rust.
         vec![
             GeneratedFile {
                 relative_path: PathBuf::from(RUST_SERVICE_API_FILE),

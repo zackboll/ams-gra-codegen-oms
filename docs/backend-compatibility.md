@@ -1,5 +1,23 @@
 # Backend compatibility
 
+## C++ update — CPP-OMS-001 generated OMS JSON codec (initial subset)
+
+`--language cpp --with-codec` previously always reported `NOT READY` ("not
+implemented for C++"). It now emits a separate `service_codec.hpp` (C++17,
+standard library only, strict embedded reader/writer) for Boolean, integral,
+plain String, enumeration and concrete Record declarations with required,
+optional and repeated members. Readiness joins the shared service-codec
+analyzer; the C++ model and `service_api.hpp` are byte-identical with and
+without the flag (59 fixture pairs, 472 runs against `main` @ `a28cb1d`, 0
+differences). Float, DateTime/Time/Duration, Binary, constrained String
+profiles, Choice, abstract/polymorphic values, nillable and unqualified
+members stay `NOT READY` at the codec boundary before any output is written.
+Measured on pinned UCI 2.5: PositionReport 38/59, AMTI_Command 153/217,
+AO_CapabilityStatus 68/130, AMTI_CommandStatus 30/43 codec-renderable
+declarations — **no real UCI message is supported**, and no transport or
+LA-CAL runtime exists for C++. See
+[CPP-OMS-001](task-cpp-oms-001-cpp-oms-json-codecs.md).
+
 ## Python update — PY-010 checked visible-ASCII Strings
 
 Named `Primitive(String)` declarations are admitted only by the unchanged
