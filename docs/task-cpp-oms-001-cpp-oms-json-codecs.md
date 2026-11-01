@@ -160,6 +160,23 @@ What the tests cover (`crates/cli/tests/cpp_codec.rs`,
   working without the flag;
 * a zero-OMS service gets no codec file.
 
+## PR smoke (CPP-OMS-001R1)
+
+The existing single-job `PR smoke` workflow has a fourth, router-selected step,
+`python3 scripts/pr_smoke.py run cpp`. `scripts/pr_smoke.py` routes
+`crates/backend-cpp/`, `tests/cpp-codec/`, `tests/fixtures/cpp-codec/`,
+`crates/cli/tests/cpp_codec.rs` and the two `scripts/check-cpp-oms-001*.sh`
+files to C++ only; shared and unknown paths still run every suite (now
+including C++). The suite: the two focused `backend-cpp` golden tests; three
+exact `cpp_codec` tests (golden/determinism, separate artifact with unchanged
+no-codec output, unsupported constructs rejected before output); generation of
+the model and codec through the production CLI; a strict-flag `g++` build of
+`tests/cpp-codec/consumer.cpp`; and execution of that consumer. A missing
+compiler, a compile error, a failed or non-reporting consumer, a missing
+generated file or an unexecuted/skipped test all fail the job. clang++ and the
+sanitizer build stay in the full `cpp_codec` suite and
+`scripts/check-cpp-oms-001.sh`.
+
 ## No-codec generation is unchanged (parity evidence)
 
 `scripts/check-cpp-oms-001-parity.sh BASELINE_CLI CANDIDATE_CLI` runs a CLI
