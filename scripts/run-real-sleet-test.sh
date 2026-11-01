@@ -23,7 +23,10 @@ fi
 if [ "${AMS_GRA_RUST_RDMA_ONLY:-}" = 1 ]; then
   export AMS_GRA_REQUIRE_REAL_UCI_RDMA=1
 fi
-if [ -n "${AMS_GRA_REQUIRE_REAL_UCI_LOG:-}${AMS_GRA_REQUIRE_REAL_UCI_RDMA:-}" ]; then
+if [ "${AMS_GRA_RUST_MULTIMESSAGE_ONLY:-}" = 1 ]; then
+  export AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE=1
+fi
+if [ -n "${AMS_GRA_REQUIRE_REAL_UCI_LOG:-}${AMS_GRA_REQUIRE_REAL_UCI_RDMA:-}${AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE:-}" ]; then
   : "${AMS_GRA_UCI_2_5_ROOT:?pinned UCI 2.5 root required}"
   : "${AMS_GRA_UCI_2_6_ROOT:?pinned UCI 2.6 root required}"
 fi
@@ -94,6 +97,22 @@ if [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] && [ -n "${AMS_GRA_UCI_2_6_ROOT:-}" ]; the
     grep -Fqx "RUST-OMS-002 $version SLEET AND RECOVERY: PASSED" <<<"$output"
   done
   grep -qE '^test result: ok\. 4 passed; 0 failed; 0 ignored;' <<<"$output"
+fi
+if [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] && [ -n "${AMS_GRA_UCI_2_6_ROOT:-}" ]; then
+  status=0
+  output="$(AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE=1 CARGO_PROFILE_RELEASE_BUILD_OVERRIDE_OPT_LEVEL=3 \
+    cargo +1.95.0 test --release --locked -p ams-gra-oms-runtime-rust-facade-tests \
+    --test real_uci_multimessage -- --show-output --test-threads=1 2>&1)" || status=$?
+  printf '%s\n' "$output"
+  if (( status != 0 )); then exit "$status"; fi
+  for version in 002.5.0 002.6.0; do
+    grep -Fqx "RUST-OMS-003 $version SINGLE CONNECTION AND ISOLATION: PASSED" <<<"$output"
+  done
+  grep -qE '^test result: ok\. 2 passed; 0 failed; 0 ignored;' <<<"$output"
+fi
+if [ "${AMS_GRA_RUST_MULTIMESSAGE_ONLY:-}" = 1 ]; then
+  echo "RUST-OMS-003 real pinned Sleet ($SLEET_REV): PASSED"
+  exit 0
 fi
 if [ "${AMS_GRA_RUST_RDMA_ONLY:-}" = 1 ]; then
   echo "RUST-OMS-002 real pinned Sleet ($SLEET_REV): PASSED"

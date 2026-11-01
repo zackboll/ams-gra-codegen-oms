@@ -20,14 +20,19 @@ impl Drop for Server {
     }
 }
 
+#[allow(dead_code)] // Combined-service consumers use start_sleet_with_topics.
 fn start_sleet() -> (Server, String) {
+    start_sleet_with_topics(&[TOPIC])
+}
+
+fn start_sleet_with_topics(topics: &[&str]) -> (Server, String) {
     let binary = std::env::var_os("AMS_GRA_SLEET_BIN").expect("pinned Sleet binary required");
     let directory =
         std::env::temp_dir().join(format!("real-uci-{TOPIC}-{VERSION}-{}", std::process::id()));
     let services = directory.join("services");
     std::fs::create_dir_all(&services).unwrap();
     std::fs::write(services.join("service.toml"), format!(
-        "service_id = \"{TOPIC}\"\nservice_uuid = \"550e8400-e29b-41d4-a716-446655440102\"\nallowed_topics = [\"{TOPIC}\"]\n"
+        "service_id = \"{TOPIC}\"\nservice_uuid = \"550e8400-e29b-41d4-a716-446655440102\"\nallowed_topics = {topics:?}\n"
     )).unwrap();
     let port = TcpListener::bind("127.0.0.1:0")
         .unwrap()
