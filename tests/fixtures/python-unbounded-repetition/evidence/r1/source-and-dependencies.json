@@ -1,0 +1,62 @@
+{
+  "uci_inputs": [
+    {
+      "path": "/tmp/perf-001-uci25/OAC-STD-UCI_V2.5/UCI_MessageDefinitions_v2_5_0.xsd",
+      "sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27"
+    },
+    {
+      "path": "/tmp/perf-001-uci25/OAC-STD-UCI_V2.5/UCI_SecurityMarkings_v2_5_0.xsd",
+      "sha256": "4a8056f1503234d423a0c2495844ab65387febced62bea58b87d4f343e9e7a0b"
+    },
+    {
+      "path": "/tmp/perf-001-uci26.extracted/UCI_MessageDefinitions_v2_6_0.xsd",
+      "sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b"
+    },
+    {
+      "path": "/tmp/perf-001-uci26.extracted/UCI_SecurityMarkings_v2_6_0.xsd",
+      "sha256": "ee6e58d5db9fd80d526bc964b8244ec296d106301640d34c3cb2c5c00b710b88"
+    }
+  ],
+  "sleet": {
+    "commit": "e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b",
+    "tree": "7e705f4eb5f658957bd414b4abc8207311f3c1e4",
+    "dirty": false,
+    "binary_sha256": "4a2e9ee872d1deaa1a6ce1a1494a2f601660eb57c0df28a447b28a08eba21c94"
+  },
+  "unchanged_production_paths": [
+    "crates/backend-python/src/codec_runtime.py",
+    "crates/backend-python/src/datetime_codec_runtime.py",
+    "crates/backend-python/src/datetime_runtime.py",
+    "crates/backend-python/src/float64_codec_runtime.py",
+    "crates/backend-python/src/float64_runtime.py",
+    "crates/backend-python/src/header_codec_runtime.py",
+    "crates/backend-python/src/header_runtime.py",
+    "crates/backend-python/src/lib.rs",
+    "crates/backend-python/src/names.rs",
+    "crates/backend-python/src/nato_special_words_runtime.py",
+    "crates/backend-python/src/runtime.py",
+    "crates/backend-python/src/service_api.rs",
+    "crates/backend-python/src/service_runtime.py",
+    "crates/backend-python/src/visible_ascii_runtime.py"
+  ],
+  "changed_production_paths": [
+    "crates/backend-python/src/service_codec.rs"
+  ],
+  "current_production_sha256": {
+    "crates/backend-python/src/codec_runtime.py": "1cac581f877c18898a6a71c8bc06f138cb27a55a368a701278cb333c6c803565",
+    "crates/backend-python/src/datetime_codec_runtime.py": "acc5089ee783815e693b1a163eb7b537b81c4e79294bfc25bd1dd6301c0a4bb2",
+    "crates/backend-python/src/datetime_runtime.py": "1d255fcbdd35151c13c8ff49c28cc1ceceaa700049adb5a7631b84afa156b6ba",
+    "crates/backend-python/src/float64_codec_runtime.py": "706cfc7ca10a7b278a7f0b3e7c8d35412819791423a8099776bcd80f79f25f6a",
+    "crates/backend-python/src/float64_runtime.py": "14d20e12b631056782d3b7244ff42ee2a7c8fd3347f0193711eab46cdbe385e0",
+    "crates/backend-python/src/header_codec_runtime.py": "e00159fb1f1e0839db6275fa8fb20cf6c2150a03fe810282c378c49c8c045eaa",
+    "crates/backend-python/src/header_runtime.py": "3f21a05dc5badad30c100570bde6f49797a627c298214ab028dfc702b5d56571",
+    "crates/backend-python/src/lib.rs": "e7e723a2776a456d18bc56c8a3ca1f8e2f2cf349c113f69b28a897a1b932e5f5",
+    "crates/backend-python/src/names.rs": "62e3b3bf82628a41a05641325e85875a5293bf73bc5f3742df8f030742741539",
+    "crates/backend-python/src/nato_special_words_runtime.py": "53d1208cb4318573ddaee6410cad27709112aeb7340bcdbf770a10f95ec67628",
+    "crates/backend-python/src/runtime.py": "3515dde68d97418471258e354e41ceceb6911138644856fb81a4c5265b931d69",
+    "crates/backend-python/src/service_api.rs": "736f52a065b7ff06e2c24b74b998720a114ddd5988092c9c1838e54db3463778",
+    "crates/backend-python/src/service_codec.rs": "cce6713f965635edfdc7d0be93d7a6fe98717696c4fb3da4ae6fb442d3804e13",
+    "crates/backend-python/src/service_runtime.py": "5814cc0370b28cecd75b1f15b2f684550192dd2f7286e4981c8124ba24b84e49",
+    "crates/backend-python/src/visible_ascii_runtime.py": "2d2d661c5487069d3a95aa8f8e84bfedf03cb017f54f7a73a5f4c3d85e19a0fa"
+  }
+}

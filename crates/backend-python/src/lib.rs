@@ -519,9 +519,6 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
                         if field.nillable {
                             return Err(error(format!("nillable field {}", field.name)));
                         }
-                        if matches!(field.cardinality.shape(), OccurrenceShape::Unbounded { .. }) {
-                            return Err(error(format!("unbounded field {}", field.name)));
-                        }
                         reference(&field.type_ref, &field.constraints).map_err(|failure| {
                             if datetime_demand {
                                 error(format!("field {}: {}", field.name, failure.message))
@@ -675,7 +672,7 @@ fn render(
                     OccurrenceShape::OptionalOne => {
                         (format!("{base} | None"), "default=None, ".to_owned())
                     }
-                    OccurrenceShape::Bounded { min, .. } => (
+                    OccurrenceShape::Bounded { min, .. } | OccurrenceShape::Unbounded { min } => (
                         format!("tuple[{base}, ...]"),
                         if min == 0 {
                             "default=(), ".to_owned()
@@ -683,7 +680,6 @@ fn render(
                             String::new()
                         },
                     ),
-                    OccurrenceShape::Unbounded { .. } => unreachable!("preflight"),
                 };
                 let namespace = field
                     .wire_namespace_uri
@@ -704,7 +700,9 @@ fn render(
                     OccurrenceShape::Bounded { min, max } => {
                         writeln!(output, "        _check(self.{symbol}, tuple)\n        if not {min} <= len(self.{symbol}) <= {max}:\n            raise ValueError({})\n        for item in self.{symbol}:\n            _check(item, {check})", names::literal(&format!("{symbol}: expected {min}..{max} items"))).unwrap();
                     }
-                    OccurrenceShape::Unbounded { .. } => unreachable!("preflight"),
+                    OccurrenceShape::Unbounded { min } => {
+                        writeln!(output, "        _check(self.{symbol}, tuple)\n        if len(self.{symbol}) < {min}:\n            raise ValueError({})\n        for item in self.{symbol}:\n            _check(item, {check})", names::literal(&format!("{symbol}: expected at least {min} items"))).unwrap();
+                    }
                 }
                 if field.type_ref.target == TypeRefTarget::Primitive(PrimitiveKind::DateTime) {
                     let value = match field.cardinality.shape() {
@@ -712,10 +710,9 @@ fn render(
                         OccurrenceShape::OptionalOne => format!(
                             "_check_datetime(self.{symbol}) if self.{symbol} is not None else None"
                         ),
-                        OccurrenceShape::Bounded { .. } => {
+                        OccurrenceShape::Bounded { .. } | OccurrenceShape::Unbounded { .. } => {
                             format!("tuple(_check_datetime(item) for item in self.{symbol})")
                         }
-                        OccurrenceShape::Unbounded { .. } => unreachable!("preflight"),
                     };
                     writeln!(
                         output,

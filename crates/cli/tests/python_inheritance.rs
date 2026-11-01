@@ -124,10 +124,9 @@ fn unsupported_inherited_service_selections_fail_atomically() {
         ("generated-annotation", original.replace("name=\"Token\"", "name=\"token\"").replace("t:Token", "t:token").replace("name=\"Base_Required\"", "name=\"token\"")),
         ("inherited-primitive", original.replace(field, "<xs:element name=\"Base_Required\" type=\"xs:decimal\"/>")),
         ("inherited-facet", original.replace(field, "<xs:element name=\"Base_Required\"><xs:simpleType><xs:restriction base=\"xs:string\"><xs:pattern value=\"[A-Z]+\"/></xs:restriction></xs:simpleType></xs:element>")),
-        ("inherited-unbounded", original.replace("maxOccurs=\"3\"", "maxOccurs=\"unbounded\"")),
         ("inherited-nillable", original.replace(field, "<xs:element name=\"Base_Required\" type=\"xs:int\" nillable=\"true\"/>")),
     ];
-    assert_eq!(cases.len(), 14);
+    assert_eq!(cases.len(), 13);
     for (name, source) in cases {
         let schema = temp.join(format!("{name}.xsd"));
         fs::write(&schema, source).unwrap();

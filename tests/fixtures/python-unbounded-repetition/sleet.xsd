@@ -1,0 +1,11 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+ xmlns:t="https://www.vdl.afrl.af.mil/programs/oam"
+ targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified" version="002.5.0">
+  <!-- Independently authored transport fixture, not the model/codec probe schema. -->
+  <xs:complexType name="Payload"><xs:sequence>
+    <xs:element name="Required" type="xs:string" minOccurs="1" maxOccurs="unbounded"/>
+    <xs:element name="Optional" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+    <xs:element name="Times" type="xs:dateTime" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence></xs:complexType>
+  <xs:element name="SequenceNotice" type="t:Payload" t:version="001.000.000.000"/>
+</xs:schema>

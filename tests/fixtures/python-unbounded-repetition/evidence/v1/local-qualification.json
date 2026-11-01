@@ -1,0 +1,920 @@
+{
+  "completed": true,
+  "python_versions": [
+    "3.11.17",
+    "3.13.16"
+  ],
+  "source_head_before_evidence_commit": "b7df685fa5f40404a41038ab9556d7768ecfd624",
+  "source_tree_before_evidence_commit": "21441bd236091c71431a1e22aa017f38954ca88f",
+  "raw_root": "/home/zboll/py012-evidence/v1",
+  "commands": {
+    "fmt": "cargo +1.95.0 fmt --all -- --check",
+    "check": "cargo +1.95.0 check --locked --workspace --all-targets",
+    "clippy": "cargo +1.95.0 clippy --locked -p ams-gra-oms-backend-python -p ams-gra-codegen-oms --all-targets -- -D warnings",
+    "backend": "PYTHON=<interpreter> cargo +1.95.0 test --locked -p ams-gra-oms-backend-python --all-targets",
+    "cli": "PYTHON=<interpreter> cargo +1.95.0 test --locked -p ams-gra-codegen-oms --test python_cli --test python_service --test python_codec --test python_header_profiles --test python_inheritance --test python_float64 --test python_datetime --test python_visible_ascii --test python_nato_special_words --test python_unbounded_repetition -- --nocapture",
+    "discovery": "<interpreter> [-O] python/qualification/run.py <fast|uci|sleet>",
+    "smoke": "python3.11 scripts/pr_smoke.py run python"
+  },
+  "executions": [
+    {
+      "log": "merged-fmt.log",
+      "exit": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "rust_results": [],
+      "python_results": []
+    },
+    {
+      "log": "merged-workspace-check.log",
+      "exit": 0,
+      "sha256": "f0788aa36d1c86b6ccdfb7f4042a5574102d82061c046422a2d42e008a1e4710",
+      "rust_results": [],
+      "python_results": []
+    },
+    {
+      "log": "merged-clippy.log",
+      "exit": 0,
+      "sha256": "59639588a6f1826f129cbcd121edc07279dab94786f5fa5bde6b3439b2e845cc",
+      "rust_results": [],
+      "python_results": []
+    },
+    {
+      "log": "merged-backend-python3.11.log",
+      "exit": 0,
+      "sha256": "a838386b9f2ace6a1f5cadeeeb52deefac755f19d7254b469478112770428e87",
+      "rust_results": [
+        [
+          "4",
+          "0",
+          "0"
+        ],
+        [
+          "2",
+          "0",
+          "0"
+        ],
+        [
+          "1",
+          "0",
+          "0"
+        ],
+        [
+          "1",
+          "0",
+          "0"
+        ],
+        [
+          "12",
+          "0",
+          "0"
+        ],
+        [
+          "2",
+          "0",
+          "0"
+        ],
+        [
+          "1",
+          "0",
+          "0"
+        ],
+        [
+          "0",
+          "0",
+          "0"
+        ]
+      ],
+      "python_results": []
+    },
+    {
+      "log": "merged-backend-python3.13.log",
+      "exit": 0,
+      "sha256": "343c91214181a413e5d085baf84609a0c9f4ebbc5ebb3fa0f18506a1ef172b04",
+      "rust_results": [
+        [
+          "4",
+          "0",
+          "0"
+        ],
+        [
+          "2",
+          "0",
+          "0"
+        ],
+        [
+          "1",
+          "0",
+          "0"
+        ],
+        [
+          "1",
+          "0",
+          "0"
+        ],
+        [
+          "12",
+          "0",
+          "0"
+        ],
+        [
+          "2",
+          "0",
+          "0"
+        ],
+        [
+          "1",
+          "0",
+          "0"
+        ],
+        [
+          "0",
+          "0",
+          "0"
+        ]
+      ],
+      "python_results": []
+    },
+    {
+      "log": "merged-cli-python3.11.log",
+      "exit": 0,
+      "sha256": "a9c37259e37b2c66b57b87812ce06e281a2ffb530e70d39bcaadc40faaeb2f70",
+      "rust_results": [
+        [
+          "5",
+          "0",
+          "0"
+        ],
+        [
+          "5",
+          "0",
+          "0"
+        ],
+        [
+          "3",
+          "0",
+          "0"
+        ],
+        [
+          "2",
+          "0",
+          "0"
+        ],
+        [
+          "1",
+          "0",
+          "0"
+        ],
+        [
+          "2",
+          "0",
+          "0"
+        ],
+        [
+          "3",
+          "0",
+          "0"
+        ],
+        [
+          "8",
+          "0",
+          "0"
+        ],
+        [
+          "3",
+          "0",
+          "0"
+        ],
+        [
+          "2",
+          "0",
+          "0"
+        ]
+      ],
+      "python_results": [
+        "4",
+        "4",
+        "4",
+        "4",
+        "9",
+        "9",
+        "9",
+        "9",
+        "9",
+        "9",
+        "9",
+        "9",
+        "9",
+        "9",
+        "9",
+        "9",
+        "9",
+        "9",
+        "9",
+        "9",
+        "8",
+        "8",
+        "8",
+        "8",
+        "8",
+        "8",
+        "8",
+        "8",
+        "11",
+        "11",
+        "11",
+        "11",
+        "11",
+        "11",
+        "11",
+        "11",
+        "7",
+        "7",
+        "7",
+        "7",
+        "7",
+        "7",
+        "7",
+        "7",
+        "12",
+        "12",
+        "12",
+        "12",
+        "12",
+        "12",
+        "12",
+        "12",
+        "6",
+        "6",
+        "6",
+        "6",
+        "6",
+        "6",
+        "6",
+        "6",
+        "5",
+        "5",
+        "5",
+        "5",
+        "5",
+        "5",
+        "5",
+        "5",
+        "9",
+        "9",
+        "9",
+        "9",
+        "18",
+        "18",
+        "18",
+        "18",
+        "9",
+        "9",
+        "9",
+        "9",
+        "18",
+        "18",
+        "18",
+        "18",
+        "6",
+        "6",
+        "6",
+        "6",
+        "6",
+        "6",
+        "6",
+        "6"
+      ]
+    },
+    {
+      "log": "merged-cli-python3.13.log",
+      "exit": 0,
+      "sha256": "8b383426a393bf24e8d2c2fd878be90c4543d67296b6ec57dc8c3ff7b6f78355",
+      "rust_results": [
+        [
+          "5",
+          "0",
+          "0"
+        ],
+        [
+          "5",
+          "0",
+          "0"
+        ],
+        [
+          "3",
+          "0",
+          "0"
+        ],
+        [
+          "2",
+          "0",
+          "0"
+        ],
+        [
+          "1",
+          "0",
+          "0"
+        ],
+        [
+          "2",
+          "0",
+          "0"
+        ],
+        [
+          "3",
+          "0",
+          "0"
+        ],
+        [
+          "8",
+          "0",
+          "0"
+        ],
+        [
+          "3",
+          "0",
+          "0"
+        ],
+        [
+          "2",
+          "0",
+          "0"
+        ]
+      ],
+      "python_results": [
+        "4",
+        "4",
+        "4",
+        "4",
+        "9",
+        "9",
+        "9",
+        "9",
+        "9",
+        "9",
+        "9",
+        "9",
+        "9",
+        "9",
+        "9",
+        "9",
+        "9",
+        "9",
+        "9",
+        "9",
+        "8",
+        "8",
+        "8",
+        "8",
+        "8",
+        "8",
+        "8",
+        "8",
+        "11",
+        "11",
+        "11",
+        "11",
+        "11",
+        "11",
+        "11",
+        "11",
+        "7",
+        "7",
+        "7",
+        "7",
+        "7",
+        "7",
+        "7",
+        "7",
+        "12",
+        "12",
+        "12",
+        "12",
+        "12",
+        "12",
+        "12",
+        "12",
+        "6",
+        "6",
+        "6",
+        "6",
+        "6",
+        "6",
+        "6",
+        "6",
+        "5",
+        "5",
+        "5",
+        "5",
+        "5",
+        "5",
+        "5",
+        "5",
+        "9",
+        "9",
+        "9",
+        "9",
+        "18",
+        "18",
+        "18",
+        "18",
+        "9",
+        "9",
+        "9",
+        "9",
+        "18",
+        "18",
+        "18",
+        "18",
+        "6",
+        "6",
+        "6",
+        "6",
+        "6",
+        "6",
+        "6",
+        "6"
+      ]
+    },
+    {
+      "log": "merged-pr-smoke.log",
+      "exit": 0,
+      "sha256": "844eadc217ca32094107f27564e6b969b41e6f38f428f3980727174c08c26294",
+      "rust_results": [
+        [
+          "2",
+          "0",
+          "0"
+        ],
+        [
+          "12",
+          "0",
+          "0"
+        ]
+      ],
+      "python_results": [
+        "1",
+        "1",
+        "4",
+        "4",
+        "1",
+        "1",
+        "1",
+        "1",
+        "4",
+        "4",
+        "1",
+        "1",
+        "9"
+      ]
+    },
+    {
+      "log": "merged-router-tests.log",
+      "exit": 0,
+      "sha256": "1fb58e77d20d749399b65c3d1e44872de7062b9e32e5ac58ea38165a5f7a82ac",
+      "rust_results": [
+        [
+          "0",
+          "0",
+          "0"
+        ],
+        [
+          "0",
+          "0",
+          "0"
+        ],
+        [
+          "2",
+          "0",
+          "1"
+        ],
+        [
+          "2",
+          "0",
+          "1"
+        ],
+        [
+          "1",
+          "0",
+          "0"
+        ],
+        [
+          "1",
+          "0",
+          "0"
+        ]
+      ],
+      "python_results": [
+        "28"
+      ]
+    },
+    {
+      "log": "final-qualification-runner.log",
+      "exit": 0,
+      "sha256": "e43cf6bc953d3201121101f6c8112ce47a0e3cce43a1428720ee7125213b3918",
+      "rust_results": [],
+      "python_results": [
+        "4"
+      ]
+    },
+    {
+      "log": "actionlint-verified.log",
+      "exit": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "rust_results": [],
+      "python_results": []
+    },
+    {
+      "log": "parity-clean.log",
+      "exit": 0,
+      "sha256": "8177793853382c0c7f7a1866820b8993d3541d44bc6903318ae361f0042b985a",
+      "rust_results": [],
+      "python_results": []
+    },
+    {
+      "log": "other-backends.log",
+      "exit": 0,
+      "sha256": "89acf174a7a300ce66d0bce6a3ca4073cec149a805603733c3dc67287ec9112f",
+      "rust_results": [],
+      "python_results": []
+    },
+    {
+      "log": "visible-free-parity.log",
+      "exit": 0,
+      "sha256": "3a0af9b97ea1beccf8b5bf704bd86d176ebf69365e07b765902a6d20e5eebadb",
+      "rust_results": [],
+      "python_results": []
+    },
+    {
+      "log": "before-release.log",
+      "exit": 0,
+      "sha256": "16a91ef333af2a6599672ddcfaeaaec5158c9820d8366f5c89a1be5061bf3326",
+      "rust_results": [],
+      "python_results": []
+    },
+    {
+      "log": "after-clean.log",
+      "exit": 0,
+      "sha256": "d6a50c20dbcdbe6692e98f2b4aa1b42a7b8087a9c8bde2755f91d8e448a1d271",
+      "rust_results": [],
+      "python_results": []
+    },
+    {
+      "log": "legacy-007.log",
+      "exit": 0,
+      "sha256": "391a44d2066a8d8e007991ed7b521294360cb86af1172b1100dcbc1e1ef552f7",
+      "rust_results": [],
+      "python_results": []
+    },
+    {
+      "log": "legacy-008.log",
+      "exit": 0,
+      "sha256": "bc641c5244890250bc4a9df2ebade434073e0fa50c3f1d1b441b5815e477b4ba",
+      "rust_results": [],
+      "python_results": []
+    },
+    {
+      "log": "legacy-009-verified.log",
+      "exit": 0,
+      "sha256": "4adb902fe70325c2372c31bc1875aeb3d3230db227ebc88b89801fc08bebadb1",
+      "rust_results": [],
+      "python_results": []
+    },
+    {
+      "log": "legacy-010-python3.11.log",
+      "exit": 0,
+      "sha256": "63dff3417461ef6348febfbb265a705ed046e02223a67c3098a7e7d61ec719b9",
+      "rust_results": [],
+      "python_results": []
+    },
+    {
+      "log": "legacy-010-python3.13.log",
+      "exit": 0,
+      "sha256": "63dff3417461ef6348febfbb265a705ed046e02223a67c3098a7e7d61ec719b9",
+      "rust_results": [],
+      "python_results": []
+    },
+    {
+      "log": "ci-router-final.log",
+      "exit": 0,
+      "sha256": "51eb073c355da35c6d1b014b3feb04c37f8c59adbbd4ef94cf71ac00d8739269",
+      "rust_results": [
+        [
+          "0",
+          "0",
+          "0"
+        ],
+        [
+          "0",
+          "0",
+          "0"
+        ],
+        [
+          "2",
+          "0",
+          "1"
+        ],
+        [
+          "2",
+          "0",
+          "1"
+        ],
+        [
+          "1",
+          "0",
+          "0"
+        ],
+        [
+          "1",
+          "0",
+          "0"
+        ]
+      ],
+      "python_results": [
+        "28"
+      ]
+    },
+    {
+      "log": "py010-final.log",
+      "exit": 0,
+      "sha256": "c7898f18dd249b374a1833944d38eeddf70146cd940bf3f3e855c78d64db67d1",
+      "rust_results": [],
+      "python_results": [
+        "6"
+      ]
+    },
+    {
+      "log": "delivery-fast-311-normal.log",
+      "exit": 0,
+      "sha256": "80a00568f36a101e602127b08c9ff3678f7f181d14764a5634892d163c11438b",
+      "rust_results": [],
+      "python_results": [
+        "7"
+      ]
+    },
+    {
+      "log": "delivery-fast-311-optimized.log",
+      "exit": 0,
+      "sha256": "8e8ef966d9fdbd9192c1a5343fa11426ab902f9147dc6c56b4ede6b40a530d04",
+      "rust_results": [],
+      "python_results": [
+        "7"
+      ]
+    },
+    {
+      "log": "delivery-fast-313-normal.log",
+      "exit": 0,
+      "sha256": "85884d84709c3530dc1807d156c16c7da72ec672d3fb6a1a14bce6d5f44e13ab",
+      "rust_results": [],
+      "python_results": [
+        "7"
+      ]
+    },
+    {
+      "log": "delivery-fast-313-optimized.log",
+      "exit": 0,
+      "sha256": "ddd7de80d00486545fd9b9b2d88b57d8d614fe6b31e53a1c5f636fa0d36e4063",
+      "rust_results": [],
+      "python_results": [
+        "7"
+      ]
+    },
+    {
+      "log": "delivery-uci-311-normal.log",
+      "exit": 0,
+      "sha256": "806ffd0c7adf7fed99b711228ffdd7d5dc1aff6ff84c601a5ee833a78d538d9b",
+      "rust_results": [],
+      "python_results": [
+        "4"
+      ]
+    },
+    {
+      "log": "delivery-uci-311-optimized.log",
+      "exit": 0,
+      "sha256": "ecb1e640b3180506e5ed9c5d5b54bd6ac882ba62db328c2143dd3a5985a09336",
+      "rust_results": [],
+      "python_results": [
+        "4"
+      ]
+    },
+    {
+      "log": "delivery-uci-313-normal.log",
+      "exit": 0,
+      "sha256": "e665072185ad886867c678d63e8d029a71e68d5707343650377bcee920124fa9",
+      "rust_results": [],
+      "python_results": [
+        "4"
+      ]
+    },
+    {
+      "log": "delivery-uci-313-optimized.log",
+      "exit": 0,
+      "sha256": "e086a357b5e6ef25d98de011264eef6a93ea8e7a7919af0ddd12ea54cb9d1ad7",
+      "rust_results": [],
+      "python_results": [
+        "4"
+      ]
+    },
+    {
+      "log": "delivery-sleet-311-normal.log",
+      "exit": 0,
+      "sha256": "c89e9c7a79f669f39f75fd916390492319a4f03eefe79be87da9d590dd2a8ba3",
+      "rust_results": [],
+      "python_results": [
+        "4"
+      ]
+    },
+    {
+      "log": "delivery-sleet-311-optimized.log",
+      "exit": 0,
+      "sha256": "93267ed1bafc39e1a04f7da5af35f6dccbb0d898a667eb955e2ddb19e98b98ac",
+      "rust_results": [],
+      "python_results": [
+        "4"
+      ]
+    },
+    {
+      "log": "delivery-sleet-313-normal.log",
+      "exit": 0,
+      "sha256": "ff4e6d03ebe370c3a1f4d00aa5b10b05d44eb1f1bbf52e8e538b15ec8de1d95f",
+      "rust_results": [],
+      "python_results": [
+        "4"
+      ]
+    },
+    {
+      "log": "delivery-sleet-313-optimized.log",
+      "exit": 0,
+      "sha256": "54fc823c697107391d471a23016848dce517f6e8a513c66a32a54797b79d5b35",
+      "rust_results": [],
+      "python_results": [
+        "4"
+      ]
+    },
+    {
+      "log": "py006-sleet-311.log",
+      "exit": 0,
+      "sha256": "0072fb478a2c072afe2a7f54da0adc10a7e12fec4cfc277e0fd8bb9005395347",
+      "rust_results": [],
+      "python_results": [
+        "1",
+        "1"
+      ]
+    },
+    {
+      "log": "py006-sleet-313.log",
+      "exit": 0,
+      "sha256": "6d4d555a25b142cc6db4409a02f86cfd458a9bef2bf1a8e84c0d46604a16b3b8",
+      "rust_results": [],
+      "python_results": [
+        "1",
+        "1"
+      ]
+    },
+    {
+      "log": "py007-sleet-311.log",
+      "exit": 0,
+      "sha256": "69ce3a1b098fdac9f050eac7da4e72515d084231661ec005d275da4232b00a40",
+      "rust_results": [],
+      "python_results": [
+        "1",
+        "1"
+      ]
+    },
+    {
+      "log": "py007-sleet-313.log",
+      "exit": 0,
+      "sha256": "bbae5fd6278aa1ad3d8bfbba73f6cee5f41666bf30a3319c86bb6df57ab5a7cd",
+      "rust_results": [],
+      "python_results": [
+        "1",
+        "1"
+      ]
+    },
+    {
+      "log": "py008-sleet-311.log",
+      "exit": 0,
+      "sha256": "c4201e6f7feb62df381a7436a926f7ffbcfd21870d323935aaf7dd18dfc76354",
+      "rust_results": [],
+      "python_results": [
+        "1",
+        "1"
+      ]
+    },
+    {
+      "log": "py008-sleet-313.log",
+      "exit": 0,
+      "sha256": "32827b1b206df8fb767b878033f6d60548f8f916baeea450c398560cd0bdf3fe",
+      "rust_results": [],
+      "python_results": [
+        "1",
+        "1"
+      ]
+    },
+    {
+      "log": "py009-sleet-311.log",
+      "exit": 0,
+      "sha256": "c114dcc485a1b0b276187cce42becf97e8e813fe294f853750ae3246984a4928",
+      "rust_results": [],
+      "python_results": [
+        "1",
+        "1"
+      ]
+    },
+    {
+      "log": "py009-sleet-313.log",
+      "exit": 0,
+      "sha256": "74f3aee352a4d3da9d4b92b5d575167a7a557a2e9a2ef7cf8b35368f1fa38c4c",
+      "rust_results": [],
+      "python_results": [
+        "1",
+        "1"
+      ]
+    },
+    {
+      "log": "py010-sleet-311.log",
+      "exit": 0,
+      "sha256": "23ea0814df5b72bfafb9e035f3db252d6d458b37641c3536576df323cac4d8e3",
+      "rust_results": [],
+      "python_results": [
+        "1",
+        "1"
+      ]
+    },
+    {
+      "log": "py010-sleet-313.log",
+      "exit": 0,
+      "sha256": "e0faab6785a324a2deab6f22235091cd041692805ff1a239ddeb4c2748012bc5",
+      "rust_results": [],
+      "python_results": [
+        "1",
+        "1"
+      ]
+    },
+    {
+      "log": "py011-sleet-311.log",
+      "exit": 0,
+      "sha256": "4a874dbb1562bd5741eff130f01629ca0e312a324cdef7bbe0deeefa96d52999",
+      "rust_results": [],
+      "python_results": [
+        "1",
+        "1"
+      ]
+    },
+    {
+      "log": "py011-sleet-313.log",
+      "exit": 0,
+      "sha256": "3ffbe4e00d978f31abc6ac86a5049b6d28777a18c5225cdd642ccea4257c1d66",
+      "rust_results": [],
+      "python_results": [
+        "1",
+        "1"
+      ]
+    },
+    {
+      "log": "mock-311.log",
+      "exit": 0,
+      "sha256": "5a92e743b7471d0054f79e3357ce08442901b8221696d2d02c26d3a40ba9e416",
+      "rust_results": [],
+      "python_results": [
+        "19",
+        "19"
+      ]
+    },
+    {
+      "log": "mock-313.log",
+      "exit": 0,
+      "sha256": "7511292f2bcff0df34178dd15d6ec4c8fa5ce20a0fb60421d21e3f10fd92663f",
+      "rust_results": [],
+      "python_results": [
+        "19",
+        "19"
+      ]
+    },
+    {
+      "log": "sleet-verified-311.log",
+      "exit": 0,
+      "sha256": "8c59f071eea7af859429c2a42e847f4c75953f1c4e931ea709f5b157360dc0e8",
+      "rust_results": [],
+      "python_results": [
+        "1",
+        "1"
+      ]
+    },
+    {
+      "log": "sleet-verified-313.log",
+      "exit": 0,
+      "sha256": "8700959877884067b83149f7f6ec8af80e34dcb7b68d69c1471fad1c61d1a7de",
+      "rust_results": [],
+      "python_results": [
+        "1",
+        "1"
+      ]
+    }
+  ],
+  "limitations": [
+    "No complete real-UCI service is READY; no real-UCI Python interoperability claimed.",
+    "Initial debug measurement was terminated; initial fixture/harness failures retained in raw logs but not counted as passes.",
+    "Latest observed f1aa827 main is not incorporated; qualified branch includes 18e64c7 main."
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "sha256": {
+    "local-qualification.json": "f13b4905ff00b6ced274dcecf8d646998af71055a0623bb54c60e3f245f5638e",
+    "source-and-dependencies.json": "ff07e7d38182ebcddc9592018ee950bca5de21f941289f87ae96ce6daf96677c",
+    "tamper-controls.json": "a4c1beaa2feebcb6cfff704077db275dd33a7f458408742a5527cbc39653ef5d",
+    "uci-current.json": "87ad24d75bd88fd0d04bd087c71c61e6d910b6d76a272a6f19a69bd2e6ebe8b3"
+  }
+}

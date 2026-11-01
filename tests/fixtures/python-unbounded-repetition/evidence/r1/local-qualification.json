@@ -1,0 +1,269 @@
+{
+  "task": "PY-012-R1",
+  "qualification_source": {
+    "commit": "ced74dd0a6e14c867ca83bc79ab34cd35217c165",
+    "tree": "2d2edaa238822917c1eb9593df72f3ea4fd95b3a",
+    "dirty": false,
+    "production_sha256": {
+      "crates/backend-python/src/codec_runtime.py": "1cac581f877c18898a6a71c8bc06f138cb27a55a368a701278cb333c6c803565",
+      "crates/backend-python/src/datetime_codec_runtime.py": "acc5089ee783815e693b1a163eb7b537b81c4e79294bfc25bd1dd6301c0a4bb2",
+      "crates/backend-python/src/datetime_runtime.py": "1d255fcbdd35151c13c8ff49c28cc1ceceaa700049adb5a7631b84afa156b6ba",
+      "crates/backend-python/src/float64_codec_runtime.py": "706cfc7ca10a7b278a7f0b3e7c8d35412819791423a8099776bcd80f79f25f6a",
+      "crates/backend-python/src/float64_runtime.py": "14d20e12b631056782d3b7244ff42ee2a7c8fd3347f0193711eab46cdbe385e0",
+      "crates/backend-python/src/header_codec_runtime.py": "e00159fb1f1e0839db6275fa8fb20cf6c2150a03fe810282c378c49c8c045eaa",
+      "crates/backend-python/src/header_runtime.py": "3f21a05dc5badad30c100570bde6f49797a627c298214ab028dfc702b5d56571",
+      "crates/backend-python/src/lib.rs": "e7e723a2776a456d18bc56c8a3ca1f8e2f2cf349c113f69b28a897a1b932e5f5",
+      "crates/backend-python/src/names.rs": "62e3b3bf82628a41a05641325e85875a5293bf73bc5f3742df8f030742741539",
+      "crates/backend-python/src/nato_special_words_runtime.py": "53d1208cb4318573ddaee6410cad27709112aeb7340bcdbf770a10f95ec67628",
+      "crates/backend-python/src/runtime.py": "3515dde68d97418471258e354e41ceceb6911138644856fb81a4c5265b931d69",
+      "crates/backend-python/src/service_api.rs": "736f52a065b7ff06e2c24b74b998720a114ddd5988092c9c1838e54db3463778",
+      "crates/backend-python/src/service_codec.rs": "cce6713f965635edfdc7d0be93d7a6fe98717696c4fb3da4ae6fb442d3804e13",
+      "crates/backend-python/src/service_runtime.py": "5814cc0370b28cecd75b1f15b2f684550192dd2f7286e4981c8124ba24b84e49",
+      "crates/backend-python/src/visible_ascii_runtime.py": "2d2d661c5487069d3a95aa8f8e84bfedf03cb017f54f7a73a5f4c3d85e19a0fa"
+    }
+  },
+  "incorporated_main": {
+    "commit": "f2991de209b9fd7c7de1681e79411e75afd93784",
+    "tree": "0e712ad5477b3e7d5ce88cdb820a04a97f1bb9f8"
+  },
+  "raw_root": "/home/zboll/py012-r1-evidence/v1",
+  "python_versions": [
+    "3.11.17",
+    "3.13.16"
+  ],
+  "executions": [
+    {
+      "name": "fmt",
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "workspace-check",
+      "exit": 0,
+      "log_sha256": "e45a2c3f20b14b1235f69a757cb1cc2424047266383e03e4e86ac1836d1a2f6d"
+    },
+    {
+      "name": "clippy",
+      "exit": 0,
+      "log_sha256": "1ce9d5a3809e6ac030c9642f4415ad934aa1ac575664e6bdffe35a55c5608d0d"
+    },
+    {
+      "name": "backend-311",
+      "exit": 0,
+      "log_sha256": "3280e2d927ffc2914fce5df2c6f70559eeb088876a672881d53f6681e0cc94d3"
+    },
+    {
+      "name": "backend-313",
+      "exit": 0,
+      "log_sha256": "007c5248ea371cfea708eff40c372043fdd8d6617ca9bb3bce0b325df2ca95d5"
+    },
+    {
+      "name": "cli-311",
+      "exit": 0,
+      "log_sha256": "c159fc7e63eeb089b8725666a469250a308018e3bd847e2681f421ee424ce488"
+    },
+    {
+      "name": "cli-313",
+      "exit": 0,
+      "log_sha256": "86652678de5cd9f31899c4574cd07abb9042f29894a9377f1ca7525a6dd8e297"
+    },
+    {
+      "name": "release-build",
+      "exit": 0,
+      "log_sha256": "4fa63fa52b2adb5cb27629eafd6b42e2d7e83092d3f46fe57da323517b96b3e3"
+    },
+    {
+      "name": "historical-tests",
+      "exit": 0,
+      "log_sha256": "11ed573b3b198de76950ee3d95caac0c17d4ec1ca5e9b26ef37aa4793b670212"
+    },
+    {
+      "name": "shallow-future-source",
+      "exit": 0,
+      "log_sha256": "76ee0b73540d2cb9364d7bff80df139dd7d1b29a0e993bfeb7a14423f8e46f5f"
+    },
+    {
+      "name": "tamper-controls",
+      "exit": 0,
+      "log_sha256": "8244eba589c3a21df34eba163b65d86ae003d8868a59caaae07357927f58f647"
+    },
+    {
+      "name": "unbounded-free-parity",
+      "exit": 0,
+      "log_sha256": "8177793853382c0c7f7a1866820b8993d3541d44bc6903318ae361f0042b985a"
+    },
+    {
+      "name": "r1-vs-reviewed-parity",
+      "exit": 0,
+      "log_sha256": "8177793853382c0c7f7a1866820b8993d3541d44bc6903318ae361f0042b985a"
+    },
+    {
+      "name": "visible-free-parity",
+      "exit": 0,
+      "log_sha256": "3a0af9b97ea1beccf8b5bf704bd86d176ebf69365e07b765902a6d20e5eebadb"
+    },
+    {
+      "name": "other-backends-parity",
+      "exit": 0,
+      "log_sha256": "272a92ff98c7fa63439817fab8a900b4d8a8d992970ae639305f4c2938362923"
+    },
+    {
+      "name": "uci-measurement",
+      "exit": 0,
+      "log_sha256": "d6a50c20dbcdbe6692e98f2b4aa1b42a7b8087a9c8bde2755f91d8e448a1d271"
+    },
+    {
+      "name": "uci-delta",
+      "exit": 0,
+      "log_sha256": "6da48757caac4206c9be1347266bbf07c98875c2ca1dad25231dc1029fe08883"
+    },
+    {
+      "name": "sleet-311",
+      "exit": 0,
+      "log_sha256": "76434ec4b248cb05c00e4fe3908acb3261171020cd899c6048217d993f56c85c"
+    },
+    {
+      "name": "sleet-313",
+      "exit": 0,
+      "log_sha256": "021041ab73b9dad1a4258f5f08c709414472057b7defc9a698554ae9e7af30d1"
+    },
+    {
+      "name": "pr-smoke",
+      "exit": 0,
+      "log_sha256": "778a9926f3801d0150b69c8ed6144695c6008b8dd785ab3c211abbf3179ab8b4"
+    },
+    {
+      "name": "main-lanes",
+      "exit": 0,
+      "log_sha256": "a626407facf1102b512cc38f00f6e7d889aa6280a5c03d1722ac6d1c4eb08dc5"
+    },
+    {
+      "name": "actionlint",
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "router",
+      "exit": 0,
+      "log_sha256": "54fc967353d8f7aeee94cf1902040d1291e14ecc320d870f37a3e15a0b11aac7"
+    },
+    {
+      "name": "local-route",
+      "exit": 0,
+      "log_sha256": "dfca1a36d9e2444878754e268092274f08ea770b6dc33c0847152e747789c083"
+    },
+    {
+      "name": "fast-311-normal",
+      "exit": 0,
+      "log_sha256": "a9582a063137ee86499df3ef49fdb2ed9543f96d6c50d3513530e36cc95d6e2c"
+    },
+    {
+      "name": "fast-311-optimized",
+      "exit": 0,
+      "log_sha256": "73408da9cb70d41313430b860cd2aae08d1cd11bd8b24997758d7d5772a11fb1"
+    },
+    {
+      "name": "fast-313-normal",
+      "exit": 0,
+      "log_sha256": "fe70516e964e7b3b572adcde99f707926fd6537988dbcdea5f51747b79d2754d"
+    },
+    {
+      "name": "fast-313-optimized",
+      "exit": 0,
+      "log_sha256": "206721e715c3f0868aec8106f3c250efc344bc61fe4baf4bf8e8e7bc95fe76c0"
+    },
+    {
+      "name": "uci-311-normal",
+      "exit": 0,
+      "log_sha256": "734e7be690a08722c45eb61ceb716d2d1b260223f6ac84c6bcc327ea8dfa024c"
+    },
+    {
+      "name": "uci-311-optimized",
+      "exit": 0,
+      "log_sha256": "5ca6844d233aa92e857182a94f18f15b816c444bc1ca4fd188b45646efd26247"
+    },
+    {
+      "name": "uci-313-normal",
+      "exit": 0,
+      "log_sha256": "e1c54d45b560ca181569920ed7365f46c6ee515a8961012832415e82b7c7acc9"
+    },
+    {
+      "name": "uci-313-optimized",
+      "exit": 0,
+      "log_sha256": "9d9d59693b1a6084dc5476ad05a8665af9b07ef2c948101edbf4616431b187d0"
+    },
+    {
+      "name": "sleet-311-normal",
+      "exit": 0,
+      "log_sha256": "a3decd35dcd217e8244c3843321f25d9a3c8ebc4da6e9402592d597a275a8c24"
+    },
+    {
+      "name": "sleet-311-optimized",
+      "exit": 0,
+      "log_sha256": "03fd607eff8560c2e1119f69faba0adb240282a6eddc3ca4a1f0d8480040e0e2"
+    },
+    {
+      "name": "sleet-313-normal",
+      "exit": 0,
+      "log_sha256": "03fd607eff8560c2e1119f69faba0adb240282a6eddc3ca4a1f0d8480040e0e2"
+    },
+    {
+      "name": "sleet-313-optimized",
+      "exit": 0,
+      "log_sha256": "f4f32be26c98d49b3e2245153e4da6bb9b015aecd10da7b3e7b706484eaabc0d"
+    }
+  ],
+  "backend_tests_per_interpreter": 25,
+  "cli_tests_per_interpreter": 34,
+  "historical_inventory_digest": "5b9709087f851c80a80176065a0bb5ef112e2b4c4b157d40e2c916f258e5847e",
+  "historical_json_unchanged": true,
+  "tamper_controls": 24,
+  "shallow_git_commits": 1,
+  "production": {
+    "unchanged_files": 14,
+    "total_files": 15,
+    "only_changed_file": "crates/backend-python/src/service_codec.rs",
+    "change": "Fail-closed exact replacement count, plus unit tests; generated valid-template bytes identical."
+  },
+  "parity": {
+    "unbounded_free_baseline": {
+      "selections": 32,
+      "files": 80
+    },
+    "unbounded_free_reviewed": {
+      "selections": 32,
+      "files": 80
+    },
+    "unbounded_reviewed": {
+      "selections": 8,
+      "files": 20
+    },
+    "visible_free": {
+      "selections": 20,
+      "files": 50
+    },
+    "other_backends": {
+      "generated_selections": 6,
+      "readiness_reports": 12,
+      "coverage_reports": 2
+    }
+  },
+  "uci": {
+    "selections": 24,
+    "identical_to_historical_after": true,
+    "real_services_ready": 0,
+    "measurement_sha256": "87ad24d75bd88fd0d04bd087c71c61e6d910b6d76a272a6f19a69bd2e6ebe8b3"
+  },
+  "sleet": {
+    "explicit_executions": 4,
+    "broker_rejections_per_execution": 8,
+    "generated_decoder_rejections_per_execution": 1
+  },
+  "limitations": [
+    "Historical v1 UCI/Sleet results retain their original source identities.",
+    "No complete real-UCI service READY; no real-UCI Python interoperability claim.",
+    "Initial pinned debug workspace attempt was terminated; generic workspace check reran without pinned inputs and passed.",
+    "Initial direct actionlint invocation rejected main queue:max; repository check-ci-actionlint.sh passes using its existing narrow compatibility filter.",
+    "Hosted final-head smoke is recorded separately after final push; not inferred from local results."
+  ]
+}

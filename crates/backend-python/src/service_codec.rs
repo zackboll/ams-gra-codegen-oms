@@ -15,6 +15,19 @@ use std::path::PathBuf;
 
 pub const SERVICE_CODEC_FILE: &str = "service_codec.py";
 
+fn unbounded_runtime(template: &str) -> Result<String, CodegenError> {
+    let bounded_check = "if not lower <= len(value) <= upper:";
+    if template.matches(bounded_check).count() != 1 {
+        return Err(error(
+            "Python OMS JSON codec: expected exactly one bounded sequence runtime check",
+        ));
+    }
+    Ok(template.replace(
+        bounded_check,
+        "if len(value) < lower or (upper is not None and len(value) > upper):",
+    ))
+}
+
 fn wire_key(field: &FieldDecl) -> Result<String, CodegenError> {
     let wire = field.wire_name();
     let namespace = wire.namespace_uri.filter(|namespace| !namespace.is_empty())
@@ -94,6 +107,15 @@ pub fn generate_service_codec(
         }
     }
     let mut output = include_str!("codec_runtime.py").to_owned();
+    // Keep the established runtime bytes for schemas without unbounded members.
+    // The same sequence contract accepts None only for an absent upper bound.
+    let unbounded = schema.types.iter().any(|declaration| {
+        matches!(&declaration.kind, TypeKind::Record { fields }
+            if fields.iter().any(|field| matches!(field.cardinality.shape(), OccurrenceShape::Unbounded { .. })))
+    });
+    if unbounded {
+        output = unbounded_runtime(&output)?;
+    }
     if crate::uses_datetime(schema) {
         output.push_str(include_str!("datetime_codec_runtime.py"));
     }
@@ -110,7 +132,12 @@ pub fn generate_service_codec(
     for declaration in declarations {
         let symbol = names::symbol(&declaration.name.local_name, false);
         if declaration.kind == TypeKind::Primitive(PrimitiveKind::DateTime) {
-            writeln!(output, "\n\ndef _encode_{symbol}(value, path):\n    _expect(value, _model.{symbol}, path)\n    return _checked_datetime(value.value, path, True)\n\n\ndef _decode_{symbol}(value, path):\n    return _model.{symbol}(_checked_datetime(value, path, True))").unwrap();
+            let access = if unbounded {
+                "    try:\n        text = value.value\n    except AttributeError as error:\n        raise CodecError(f'{path}: missing DateTime value') from error\n    return _checked_datetime(text, path, True)"
+            } else {
+                "    return _checked_datetime(value.value, path, True)"
+            };
+            writeln!(output, "\n\ndef _encode_{symbol}(value, path):\n    _expect(value, _model.{symbol}, path)\n{access}\n\n\ndef _decode_{symbol}(value, path):\n    return _model.{symbol}(_checked_datetime(value, path, True))").unwrap();
             continue;
         }
         if crate::header_profile(declaration).is_some()
@@ -179,7 +206,9 @@ pub fn generate_service_codec(
                             "    if {access} is not None:\n        result[{key}] = {expr}"
                         )
                         .unwrap(),
-                        OccurrenceShape::Bounded { min, max } => {
+                        shape @ (OccurrenceShape::Bounded { .. }
+                        | OccurrenceShape::Unbounded { .. }) => {
+                            let (min, max) = sequence_bounds(shape);
                             let item_path = format!("({path}) + '[' + str(index) + ']' ");
                             let expr = reference(
                                 &field.type_ref,
@@ -190,7 +219,6 @@ pub fn generate_service_codec(
                             )?;
                             writeln!(output, "    items = _sequence({access}, tuple, {path}, {min}, {max})\n    if items:\n        result[{key}] = [{expr} for index, item in enumerate(items)]").unwrap();
                         }
-                        OccurrenceShape::Unbounded { .. } => unreachable!("model preflight"),
                     }
                 }
                 writeln!(output, "    return result").unwrap();
@@ -253,7 +281,9 @@ pub fn generate_service_codec(
                         OccurrenceShape::OptionalOne => {
                             format!("{expr} if {key} in value else None")
                         }
-                        OccurrenceShape::Bounded { min, max } => {
+                        shape @ (OccurrenceShape::Bounded { .. }
+                        | OccurrenceShape::Unbounded { .. }) => {
+                            let (min, max) = sequence_bounds(shape);
                             let item_path = format!("({path}) + '[' + str(index) + ']' ");
                             let expr = reference(
                                 &field.type_ref,
@@ -266,7 +296,6 @@ pub fn generate_service_codec(
                                 "tuple({expr} for index, item in enumerate(_array(value, {key}, path, {min}, {max})))"
                             )
                         }
-                        OccurrenceShape::Unbounded { .. } => unreachable!("model preflight"),
                     };
                     writeln!(
                         output,
@@ -296,4 +325,37 @@ pub fn generate_service_codec(
         relative_path: PathBuf::from(SERVICE_CODEC_FILE),
         contents: output,
     }])
+}
+
+fn sequence_bounds(shape: OccurrenceShape) -> (u64, String) {
+    match shape {
+        OccurrenceShape::Bounded { min, max } => (min, max.to_string()),
+        OccurrenceShape::Unbounded { min } => (min, "None".to_owned()),
+        _ => unreachable!("repeated member"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::unbounded_runtime;
+
+    #[test]
+    fn unbounded_runtime_replaces_exactly_one_check() {
+        let template = include_str!("codec_runtime.py");
+        let expected = template.replace(
+            "if not lower <= len(value) <= upper:",
+            "if len(value) < lower or (upper is not None and len(value) > upper):",
+        );
+        assert_eq!(unbounded_runtime(template).unwrap(), expected);
+    }
+
+    #[test]
+    fn unbounded_runtime_rejects_missing_or_duplicate_checks() {
+        let template = include_str!("codec_runtime.py");
+        let missing = template.replace("if not lower <= len(value) <= upper:", "if False:");
+        for invalid in [missing, template.repeat(2)] {
+            let failure = unbounded_runtime(&invalid).unwrap_err();
+            assert!(failure.to_string().contains("expected exactly one"));
+        }
+    }
 }
