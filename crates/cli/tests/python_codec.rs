@@ -364,10 +364,6 @@ fn all_model_boundaries_still_fail_closed_with_codec_requested() {
             source.replace("name=\"Note\"", "name=\"Note\" nillable=\"true\""),
         ),
         (
-            "unbounded",
-            source.replace("maxOccurs=\"3\"", "maxOccurs=\"unbounded\""),
-        ),
-        (
             "abstract",
             source.replace("name=\"Payload\"", "name=\"Payload\" abstract=\"true\""),
         ),

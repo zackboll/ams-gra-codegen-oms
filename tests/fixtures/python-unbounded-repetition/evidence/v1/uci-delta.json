@@ -1,0 +1,440 @@
+{
+  "completed": true,
+  "real_ready": 0,
+  "verified_main": "ab438eab77d0b202a033bec2b2fa99508bbebc8f",
+  "verified_main_tree": "02c0df930e7af0c8e487994ac25e5a69d1104a33",
+  "selections": [
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "PositionReport",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "PositionReport",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "PositionReport",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "PositionReport",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "RDMA_InitializeSetup",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "RDMA_InitializeSetup",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "RDMA_InitializeSetup",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "RDMA_InitializeSetup",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "SubsystemStream",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "SubsystemStreamMDT: unsupported Python IR construct: unbounded field SubsystemStreamString"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "SubsystemStream",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "SubsystemStreamMDT: unsupported Python IR construct: unbounded field SubsystemStreamString"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "SubsystemStream",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "SubsystemStreamMDT: unsupported Python IR construct: unbounded field SubsystemStreamString"
+    },
+    {
+      "stage": "before",
+      "version": "2.5",
+      "message": "SubsystemStream",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "SubsystemStreamMDT: unsupported Python IR construct: unbounded field SubsystemStreamString"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "PositionReport",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "PositionReport",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "PositionReport",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "PositionReport",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "RDMA_InitializeSetup",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "RDMA_InitializeSetup",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "RDMA_InitializeSetup",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "RDMA_InitializeSetup",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "SubsystemStream",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "HexBinaryType: unsupported Python IR construct: primitive Binary"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "SubsystemStream",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "HexBinaryType: unsupported Python IR construct: primitive Binary"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "SubsystemStream",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "HexBinaryType: unsupported Python IR construct: primitive Binary"
+    },
+    {
+      "stage": "before",
+      "version": "2.6",
+      "message": "SubsystemStream",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "HexBinaryType: unsupported Python IR construct: primitive Binary"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "PositionReport",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "PositionReport",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "PositionReport",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "PositionReport",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "RDMA_InitializeSetup",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "RDMA_InitializeSetup",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "RDMA_InitializeSetup",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "RDMA_InitializeSetup",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "SubsystemStream",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "SubsystemStreamMDT: unsupported Python IR construct: field SubsystemStreamBinary: unsupported Python IR construct: primitive Binary"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "SubsystemStream",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "SubsystemStreamMDT: unsupported Python IR construct: field SubsystemStreamBinary: unsupported Python IR construct: primitive Binary"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "SubsystemStream",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "SubsystemStreamMDT: unsupported Python IR construct: field SubsystemStreamBinary: unsupported Python IR construct: primitive Binary"
+    },
+    {
+      "stage": "after",
+      "version": "2.5",
+      "message": "SubsystemStream",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "SubsystemStreamMDT: unsupported Python IR construct: field SubsystemStreamBinary: unsupported Python IR construct: primitive Binary"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "PositionReport",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "PositionReport",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "PositionReport",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "PositionReport",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "RDMA_InitializeSetup",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "RDMA_InitializeSetup",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "RDMA_InitializeSetup",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "RDMA_InitializeSetup",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "IPv4_AddressType: unsupported Python IR construct: unsupported constraints"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "SubsystemStream",
+      "world": "closed-schema",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "HexBinaryType: unsupported Python IR construct: primitive Binary"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "SubsystemStream",
+      "world": "closed-schema",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "HexBinaryType: unsupported Python IR construct: primitive Binary"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "SubsystemStream",
+      "world": "open-extensions",
+      "codec": false,
+      "ready": false,
+      "first_blocker": "HexBinaryType: unsupported Python IR construct: primitive Binary"
+    },
+    {
+      "stage": "after",
+      "version": "2.6",
+      "message": "SubsystemStream",
+      "world": "open-extensions",
+      "codec": true,
+      "ready": false,
+      "first_blocker": "HexBinaryType: unsupported Python IR construct: primitive Binary"
+    }
+  ]
+}
