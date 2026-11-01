@@ -25,7 +25,7 @@ ADA_PINNED = '''      - name: Execute source-bound Ada pinned registrations with
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
           set -euo pipefail
-          /tmp/task101-venv/bin/python scripts/run-owned-ada.py pinned --compiler '${{ matrix.compiler }}' --setup /tmp/task101-evidence/setup --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms" --output /tmp/ci004-ada-pinned --sleet /tmp/task101-sleet --shared-campaign /tmp/task101-evidence/campaign --uci25 "$(cat /tmp/task101-evidence/uci25-root.txt)" --uci26 "$(cat /tmp/task101-evidence/uci26-root.txt)"
+          /tmp/task101-venv/bin/python scripts/run-owned-ada.py pinned --compiler '${{ matrix.compiler }}' --setup /tmp/task101-evidence/setup --generator "$GITHUB_WORKSPACE/target/release/ams-gra-codegen-oms" --output /tmp/ci004-ada-pinned --sleet /tmp/task101-sleet --shared-campaign /tmp/task101-evidence/campaign --uci25 "$(cat /tmp/task101-evidence/uci25-root.txt)" --uci26 "$(cat /tmp/task101-evidence/uci26-root.txt)"
 '''
 PYTHON_FAST = '''      - name: Execute source-bound Python Fast inventory
         run: |

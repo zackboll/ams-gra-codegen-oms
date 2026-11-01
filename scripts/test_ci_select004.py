@@ -5,6 +5,7 @@ import json
 import os
 import re
 from pathlib import Path
+import shlex
 import shutil
 import tempfile
 import unittest
@@ -146,6 +147,53 @@ class Registration(unittest.TestCase):
 
 
 class HookContracts(unittest.TestCase):
+    def check_ada_generators_built_by_owners(self, workflows, hooks):
+        for workflow, owner, hook in hooks:
+            if not owner.startswith('ada-'):
+                continue
+            with tempfile.TemporaryDirectory(prefix='ci004-generator-') as directory:
+                workspace = Path(directory)
+                body = ci_policy.blocks(workflows[workflow])[1][owner]
+                self.assertEqual(body.count(hook), 1)
+                preparation = body.split(hook, 1)[0]
+                builds = re.findall(r'^\s*(?:run: )?(cargo(?: \+\S+)? build [^\n]+)$', preparation, re.M)
+                generators = []
+                for build in builds:
+                    argv = shlex.split(build)
+                    if '-p' in argv and argv[argv.index('-p') + 1] == 'ams-gra-codegen-oms':
+                        profile = 'release' if '--release' in argv else 'debug'
+                        generators.append(workspace / 'target' / profile / 'ams-gra-codegen-oms')
+                self.assertEqual(len(generators), 1, 'expected one owning-job generator build')
+                built, = generators
+                built.parent.mkdir(parents=True)
+                built.write_bytes(b'owning-job build fixture, not an execution qualification\n')
+                paths = re.findall(r'--generator "\$GITHUB_WORKSPACE/([^"\n]+)"', hook)
+                self.assertEqual(len(paths), 1)
+                requested = workspace / paths[0]
+                # Never consult ROOT/target: a pre-existing developer build must
+                # not hide a hook requesting a profile its owner never built.
+                self.assertTrue(requested.is_file(), 'generator not built by owning job: ' + paths[0])
+                self.assertEqual(requested, built)
+
+    def test_fixed_ada_hooks_use_generators_built_by_owning_jobs(self):
+        workflows = {p.name: p.read_text() for p in (ROOT / '.github/workflows').glob('*.yml')}
+        self.check_ada_generators_built_by_owners(workflows, HOOKS)
+
+    def test_pinned_debug_generator_rejected_without_local_build_fallback(self):
+        workflows = {p.name: p.read_text() for p in (ROOT / '.github/workflows').glob('*.yml')}
+        hooks = []
+        for workflow, owner, hook in HOOKS:
+            if owner == 'ada-real-uci-dlz-sleet':
+                wrong = hook.replace('target/release/', 'target/debug/')
+                self.assertNotEqual(wrong, hook)
+                workflows[workflow] = workflows[workflow].replace(hook, wrong, 1)
+                hook = wrong
+            hooks.append((workflow, owner, hook))
+        # Mutate the workflow AND its fixed contract so exact-text agreement
+        # alone cannot bless a generator absent from the owning job's build.
+        with self.assertRaisesRegex(AssertionError, 'generator not built by owning job'):
+            self.check_ada_generators_built_by_owners(workflows, hooks)
+
     def test_fixed_hooks_are_mandatory_and_owned_by_existing_jobs(self):
         workflows = {p.name: p.read_text() for p in (ROOT / '.github/workflows').glob('*.yml')}
         project(workflows)
