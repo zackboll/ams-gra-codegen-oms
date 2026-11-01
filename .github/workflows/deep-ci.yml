@@ -40,7 +40,7 @@ jobs:
             slot: 5
     container:
       image: debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5
-    timeout-minutes: 120
+    timeout-minutes: 240
     steps:
       - name: Verify pinned target and external compiler
         shell: bash

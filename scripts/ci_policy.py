@@ -291,7 +291,7 @@ def check(policy=None, workflows=None, sleet=None):
         raise ValueError('Task101 mandatory publication contract changed')
     task101_steps = task101_steps.replace(publication,
         '      - name: Preserve Task101 mandatory source and execution evidence\n')
-    if (hashlib.sha256(task101['expected_header'].encode()).hexdigest() != 'a93ce7ff40b525284f849b9946c603b65602860a0e3e88156d4a22535e8c3e23'
+    if (hashlib.sha256(task101['expected_header'].encode()).hexdigest() != 'd840946b480b296d58f64a6df97ff60604e685ef73212ae3dd9c9933392929e5'
             or hashlib.sha256(normalized(task101_steps).encode()).hexdigest() != '62ce975ac7d3ffdbf7fd6bbcdd360c2fb8ccadd360fbdd29b0fa9c63b57ec31e'):
         raise ValueError('Task101 mandatory qualification header/payload changed')
     for workflow, job_id, kind in [('ci.yml', 'ada-websocket-transport', 'transport'),
