@@ -1,0 +1,197 @@
+#!/usr/bin/env python3
+"""Small, conservative PR diff router and backend smoke executor (stdlib only)."""
+import argparse
+import json
+import os
+from pathlib import Path, PurePosixPath
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+
+ROOT = Path(__file__).resolve().parents[1]
+BACKENDS = ("python", "rust", "ada")
+
+
+def classify(paths):
+    """Unknown/unsafe paths select every lightweight suite, never Deep CI."""
+    selected = set()
+    workflows = False
+    paths = list(paths)
+    if not paths:
+        return set(BACKENDS), True
+    for path in paths:
+        if (not isinstance(path, str) or not path or "\\" in path
+                or any(ord(c) < 32 or 0xD800 <= ord(c) <= 0xDFFF for c in path)
+                or PurePosixPath(path).is_absolute()
+                or any(p in ("", ".", "..") for p in path.split("/"))):
+            return set(BACKENDS), True
+        if path.startswith(".github/workflows/") and path.endswith((".yml", ".yaml")):
+            workflows = True
+        elif path.endswith((".md", ".rst", ".txt")) and (
+                path.startswith("docs/") or path.startswith(("README.", "CONTRIBUTING.", "CHANGELOG."))):
+            continue
+        elif path in ("LICENSE", "NOTICE"):
+            continue
+        elif PurePosixPath(path).name in ("Cargo.toml", "Cargo.lock", "rust-toolchain.toml"):
+            selected.update(BACKENDS)
+        elif path.startswith(("crates/backend-python/", "python/", "tests/fixtures/python-",
+                              "tests/python-", "crates/cli/tests/python_",
+                              "scripts/check-py", "scripts/test-py", "scripts/measure-py")):
+            selected.add("python")
+        elif path.startswith(("crates/backend-rust/", "crates/runtime-rust/",
+                              "crates/runtime-api-rust/", "crates/runtime-rust-facade-tests/",
+                              "tests/rust-", "tests/fixtures/rust-")):
+            selected.add("rust")
+        elif (path.startswith(("crates/backend-ada/", "ada/", "qualification/ada/",
+                               "tests/ada-", "tests/fixtures/ada-",
+                               "tests/fixtures/service-generate/codec-ada-",
+                               "crates/cli/tests/ada_", "scripts/task102/", "scripts/task103/",
+                               "tests/fixtures/task102/", "tests/fixtures/task103/"))
+              or path in ("scripts/task102_evidence.py", "scripts/task103_evidence.py")
+              or (path.startswith(("scripts/test_task102", "scripts/test_task103")) and path.endswith(".py"))):
+            selected.add("ada")
+        else:
+            selected.update(BACKENDS)
+    return selected, workflows
+
+
+def route(base, head):
+    try:
+        # --no-renames deliberately reports BOTH sides of every rename as D+A.
+        # NUL delimiting handles spaces/newlines; no path is evaluated by a shell.
+        for revision in (base, head):
+            if not re.fullmatch(r"[0-9a-f]{40}", revision):
+                raise ValueError("expected full Git object IDs")
+        data = subprocess.check_output(
+            ["git", "diff", "--no-ext-diff", "--no-renames", "--name-only", "-z", base, head, "--"],
+            cwd=ROOT)
+        if data and not data.endswith(b"\0"):
+            raise ValueError("unterminated diff")
+        return classify(data[:-1].decode("utf-8", errors="strict").split("\0") if data else [])
+    except (OSError, subprocess.CalledProcessError, UnicodeError, ValueError) as error:
+        print(f"Diff unavailable/unclassifiable: {error}; running all smoke suites", flush=True)
+        return set(BACKENDS), True
+
+
+def checked(command, *, cwd=ROOT, marker=None, tests=False, env=None):
+    print("+ " + shlex.join(map(str, command)), flush=True)
+    result = subprocess.run(command, cwd=cwd, env=env, stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT, text=True)
+    print(result.stdout, end="", flush=True)
+    if result.returncode:
+        raise subprocess.CalledProcessError(result.returncode, command)
+    if marker and marker not in result.stdout:
+        raise RuntimeError(f"Missing execution marker: {marker}")
+    if tests:
+        counts = re.findall(r"test result: ok\. (\d+) passed; (\d+) failed; (\d+) ignored", result.stdout)
+        if not counts or sum(int(row[0]) for row in counts) == 0 or any(
+                int(failed) or int(ignored) for _, failed, ignored in counts):
+            raise RuntimeError("Smoke tests missing, ignored, or not executed")
+        if re.search(r"\bskip(?:ped|ping)?\b", result.stdout, re.I):
+            raise RuntimeError("Unexpected smoke test skip")
+    return result.stdout
+
+
+def generate(language, scratch, fixture):
+    contract = "python-codec/service" if fixture == "python-codec/oam" else fixture
+    checked([ROOT / "target/debug/ams-gra-codegen-oms", "service-generate",
+             "--schema", ROOT / f"tests/fixtures/{fixture}.xsd",
+             "--contract", ROOT / f"tests/fixtures/{contract}.yaml",
+             "--language", language, "--world", "closed-schema", "--with-codec",
+             "--output", scratch])
+
+
+def smoke(backend):
+    started = time.monotonic()
+    print(f"SMOKE START {backend}", flush=True)
+    env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
+    if backend == "python":
+        checked([sys.executable, "-c", "import sys; assert sys.version_info[:2] == (3, 11); print(sys.version)"])
+        env["PYTHON"] = sys.executable
+        checked(["cargo", "test", "--locked", "-p", "ams-gra-oms-backend-python",
+                 "--test", "models", "--test", "codecs", "--", "--nocapture"], tests=True, env=env)
+    else:
+        # Focused deterministic renderer tests; no full backend/corpus campaign.
+        for name in ("track_matches_golden_and_is_deterministic", "schema_set_matches_dependency_order_golden"):
+            checked(["cargo", "test", "--locked", "-p", f"ams-gra-oms-backend-{backend}",
+                     "--lib", f"tests::{name}", "--", "--exact", "--nocapture"], tests=True)
+    checked(["cargo", "build", "--locked", "-p", "ams-gra-codegen-oms", "--bin", "ams-gra-codegen-oms"])
+    with tempfile.TemporaryDirectory(prefix=f"pr-smoke-{backend}-") as directory:
+        scratch = Path(directory) / "consumer"
+        if backend == "python":
+            # Public production CLI generates both the model and JSON codec.
+            generate("python", scratch, "python-codec/oam")
+            checked([sys.executable, ROOT / "crates/backend-python/tests/codec_runtime.py",
+                     scratch, "flat", "https://www.vdl.afrl.af.mil/programs/oam",
+                     ROOT / "tests/fixtures/python-codec"], marker="Ran 9 tests", env=env)
+        elif backend == "rust":
+            checked([ROOT / "target/debug/ams-gra-codegen-oms", "generate", "--schema",
+                     ROOT / "crates/xsd-frontend/tests/fixtures/track.xsd", "--language", "rust",
+                     "--world", "closed-schema", "--output", scratch])
+            shutil.copy2(ROOT / "tests/pr-smoke/rust_consumer.rs", scratch / "main.rs")
+            checked(["rustc", "--edition=2024", "main.rs", "-o", "consumer"], cwd=scratch)
+            checked([scratch / "consumer"], cwd=scratch, marker="RUST SMOKE PASSED")
+        else:
+            generate("ada", scratch, "service-generate/codec-ada-minimal")
+            shutil.copy2(ROOT / "tests/pr-smoke/ada_consumer.adb", scratch)
+            shutil.copytree(ROOT / "ada/oms-json-support", Path(directory) / "support")
+            (scratch / "alire.toml").write_text(
+                'name = "pr_smoke_consumer"\nversion = "0.1.0-dev"\n'
+                'description = "PR generated codec smoke"\nlicenses = "MIT"\n'
+                'project-files = ["consumer.gpr"]\n[[depends-on]]\n'
+                'ams_gra_oms_json = "=0.1.0-dev"\ngprbuild = "=26.0.1"\n'
+                'gnat_native = "=16.1.0"\n[[pins]]\n'
+                'ams_gra_oms_json = { path = "../support" }\n')
+            (scratch / "consumer.gpr").write_text(
+                'with "ams_gra_oms_json";\nproject Consumer is\n'
+                'for Source_Dirs use ("."); for Object_Dir use "obj";\n'
+                'for Exec_Dir use "bin"; for Main use ("ada_consumer.adb");\n'
+                'package Compiler is for Default_Switches ("Ada") use '
+                '("-gnat2022", "-gnato", "-O0"); end Compiler;\nend Consumer;\n')
+            checked(["alr", "--version"], marker="alr 2.1.1")
+            checked(["alr", "-n", "toolchain", "--select", "--local",
+                     "gnat_native=16.1.0", "gprbuild=26.0.1"], cwd=scratch)
+            checked(["alr", "-n", "exec", "--", "gnat", "--version"], cwd=scratch, marker="GNAT 16.1.0")
+            checked(["alr", "-n", "exec", "--", "gprbuild", "--version"], cwd=scratch, marker="26.0.0")
+            checked(["alr", "-n", "build"], cwd=scratch)
+            checked([scratch / "bin/ada_consumer"], cwd=scratch, marker="ADA SMOKE PASSED")
+    print(f"SMOKE PASS {backend} elapsed_seconds={time.monotonic() - started:.3f}", flush=True)
+
+
+def execute(backends, workflows, runner=smoke, validator=None):
+    if workflows:
+        (validator or (lambda: checked(["bash", ROOT / "scripts/check-ci-actionlint.sh"])))()
+    for backend in BACKENDS:
+        if backend in backends:
+            runner(backend)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest="command", required=True)
+    router = commands.add_parser("route")
+    router.add_argument("--base", required=True)
+    router.add_argument("--head", required=True)
+    router.add_argument("--github-output", type=Path)
+    run = commands.add_parser("run")
+    run.add_argument("backend", choices=BACKENDS)
+    args = parser.parse_args()
+    if args.command == "run":
+        smoke(args.backend)
+    else:
+        selected, workflows = route(args.base, args.head)
+        result = {backend: backend in selected for backend in BACKENDS}
+        result["workflows"] = workflows
+        print(json.dumps(result, sort_keys=True))
+        if args.github_output:
+            with args.github_output.open("a") as output:
+                for key, value in result.items():
+                    output.write(f"{key}={str(value).lower()}\n")
+
+
+if __name__ == "__main__":
+    main()

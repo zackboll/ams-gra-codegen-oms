@@ -1,17 +1,8 @@
 name: Deep CI
 
-# Task 055 evidence is preserved. CI-SELECT-002 selects individual jobs for
-# verified PR changes; main, nightly and manual qualification remain complete.
-# Nightly and manual qualification remain available; no duplicate push run.
-# See docs/ci-select-001-change-aware-qualification.md.
+# Complete product qualification, called by main CI; also nightly and manual.
 on:
   workflow_call:
-    inputs:
-      selection:
-        description: Verified canonical v2 CI selection manifest; empty only for direct full qualification
-        type: string
-        required: false
-        default: ''
   schedule:
     - cron: "0 6 * * *"
   workflow_dispatch:
@@ -19,13 +10,13 @@ on:
 permissions:
   contents: read
 
-# CI caller owns PR cancellation; no main cancellation group here.
+# No run-level cancellation: every qualification run is retained.
 
 jobs:
   ada-real-uci-rdma-sleet:
-    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'ada-real-uci-rdma-sleet')
+    if: github.ref == 'refs/heads/main'
     concurrency:
-      group: ${{ github.ref == 'refs/heads/main' && format('oms-main-slot-{0}', matrix.slot) || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-ada-real-uci-rdma-sleet-{3}', github.workflow, github.run_id, github.run_attempt, matrix.compiler) }}
+      group: ${{ format('oms-main-slot-{0}', matrix.slot) }}
       queue: max
     name: ada-real-uci-rdma-sleet (${{ matrix.compiler }})
     runs-on: ubuntu-24.04
@@ -152,7 +143,7 @@ jobs:
           print('TASK103_HOSTED_VERIFIED', verify_bundle(files, os.environ['TASK103_COMPILER'],
                 os.environ['GITHUB_SHA'], tree, os.environ['GITHUB_RUN_ID'], os.environ['GITHUB_RUN_ATTEMPT']))
           EOF
-      - name: Upload mandatory source compiler and execution evidence
+      - name: Upload Task103 qualification diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -179,9 +170,9 @@ jobs:
           if-no-files-found: error
 
   ada-real-uci-log-sleet:
-    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'ada-real-uci-log-sleet')
+    if: github.ref == 'refs/heads/main'
     concurrency:
-      group: ${{ github.ref == 'refs/heads/main' && format('oms-main-slot-{0}', matrix.slot) || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-ada-real-uci-log-sleet-{3}', github.workflow, github.run_id, github.run_attempt, matrix.compiler) }}
+      group: ${{ format('oms-main-slot-{0}', matrix.slot) }}
       queue: max
     name: ada-real-uci-log-sleet (${{ matrix.compiler }})
     runs-on: ubuntu-24.04
@@ -308,7 +299,7 @@ jobs:
           print('TASK102_HOSTED_VERIFIED', verify_bundle(files, os.environ['TASK102_COMPILER'],
                 os.environ['GITHUB_SHA'], tree, os.environ['GITHUB_RUN_ID'], os.environ['GITHUB_RUN_ATTEMPT']))
           EOF
-      - name: Upload mandatory source compiler and execution evidence
+      - name: Upload Task102 qualification diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -335,9 +326,8 @@ jobs:
           if-no-files-found: error
 
   ada-real-uci-dlz-sleet:
-    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'ada-real-uci-dlz-sleet')
     concurrency:
-      group: ${{ github.ref == 'refs/heads/main' && format('oms-main-slot-{0}', matrix.slot) || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-ada-real-uci-dlz-sleet-{3}', github.workflow, github.run_id, github.run_attempt, matrix.compiler) }}
+      group: ${{ format('oms-main-slot-{0}', matrix.slot) }}
       queue: max
     name: ada-real-uci-dlz-sleet (${{ matrix.compiler }})
     runs-on: ubuntu-24.04
@@ -464,6 +454,13 @@ jobs:
           print('TASK101_HOSTED_VERIFIED', verify_bundle(files, os.environ['TASK101_COMPILER'],
                 os.environ['GITHUB_SHA'], tree, os.environ['GITHUB_RUN_ID'], os.environ['GITHUB_RUN_ATTEMPT']))
           EOF
+      - name: Execute source-bound Ada pinned registrations with shared broker
+        shell: bash
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          set -euo pipefail
+          /tmp/task101-venv/bin/python scripts/run-owned-ada.py pinned --compiler '${{ matrix.compiler }}' --setup /tmp/task101-evidence/setup --generator "$GITHUB_WORKSPACE/target/release/ams-gra-codegen-oms" --output /tmp/ci004-ada-pinned --sleet /tmp/task101-sleet --shared-campaign /tmp/task101-evidence/campaign --uci25 "$(cat /tmp/task101-evidence/uci25-root.txt)" --uci26 "$(cat /tmp/task101-evidence/uci26-root.txt)"
       - name: Upload mandatory source compiler and execution evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -486,12 +483,12 @@ jobs:
             /tmp/task101-evidence/campaign/**/*.gpr
             /tmp/task101-evidence/campaign/**/*.xsd
             /tmp/task101-evidence/campaign/**/*.yaml
+            /tmp/ci004-ada-pinned/**
           if-no-files-found: error
 
   ada-websocket-real-sleet:
-    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'ada-websocket-real-sleet')
     concurrency:
-      group: ${{ github.ref == 'refs/heads/main' && format('oms-main-slot-{0}', matrix.slot) || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-ada-websocket-real-sleet-{3}', github.workflow, github.run_id, github.run_attempt, matrix.compiler) }}
+      group: ${{ format('oms-main-slot-{0}', matrix.slot) }}
       queue: max
     name: ada-websocket-real-sleet (${{ matrix.compiler }})
     runs-on: ubuntu-24.04
@@ -639,9 +636,8 @@ jobs:
           if-no-files-found: error
 
   ada-repeated-choice-real-uci:
-    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'ada-repeated-choice-real-uci')
     concurrency:
-      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-ada-repeated-choice-real-uci', github.workflow, github.run_id, github.run_attempt) }}
+      group: ${{ 'oms-main-slot-5' }}
       queue: max
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -708,9 +704,8 @@ jobs:
   # generated Ada (gnatmake -gnatc) and AMS_GRA_REQUIRE_GNAT forbids a skip.
   # PERF-007: three independent hosted runners; unchanged seven task bodies.
   real-uci-temporal-naming:
-    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'real-uci-temporal-naming')
     concurrency:
-      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-4' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-temporal-naming', github.workflow, github.run_id, github.run_attempt) }}
+      group: ${{ 'oms-main-slot-4' }}
       queue: max
     runs-on: ubuntu-latest
     timeout-minutes: 240
@@ -782,9 +777,8 @@ jobs:
           if-no-files-found: error
 
   real-uci-schema-ipv6:
-    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'real-uci-schema-ipv6')
     concurrency:
-      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-1' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-schema-ipv6', github.workflow, github.run_id, github.run_attempt) }}
+      group: ${{ 'oms-main-slot-1' }}
       queue: max
     runs-on: ubuntu-latest
     timeout-minutes: 240
@@ -853,9 +847,8 @@ jobs:
           if-no-files-found: error
 
   real-uci-integral-unicode:
-    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'real-uci-integral-unicode')
     concurrency:
-      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-3' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-integral-unicode', github.workflow, github.run_id, github.run_attempt) }}
+      group: ${{ 'oms-main-slot-3' }}
       queue: max
     runs-on: ubuntu-latest
     timeout-minutes: 240
@@ -925,9 +918,8 @@ jobs:
 
   # Independent regression runners retain their original qualification.
   real-uci-regressions:
-    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'real-uci-regressions')
     concurrency:
-      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-1' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-regressions', github.workflow, github.run_id, github.run_attempt) }}
+      group: ${{ 'oms-main-slot-1' }}
       queue: max
     runs-on: ubuntu-latest
     timeout-minutes: 240
@@ -946,6 +938,9 @@ jobs:
           printf 'DEEP_CI_SOURCE_SHA=%s\n' "$actual"
           printf 'DEEP_CI_SOURCE_TREE=%s\n' "$tree"
           printf 'DEEP_CI_EVENT=%s\n' "$GITHUB_EVENT_NAME"
+      - name: Prevent Python bytecode in source-bound qualification
+        shell: bash
+        run: echo 'PYTHONDONTWRITEBYTECODE=1' >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@stable
       - name: Install GNAT
         run: |
@@ -979,6 +974,12 @@ jobs:
           set -euo pipefail
           python3 scripts/test-task061-service-impact.py
           cargo test --release --locked -p ams-gra-codegen-oms --test service_check_batch
+      - name: Install PY-010 pinned-profile Python interpreters
+        uses: actions/setup-python@v5
+        with:
+          python-version: |
+            3.11
+            3.13
       - name: Python current services and immutable historical profiles (PY-007 and PY-008, must execute)
         run: |
           set -euo pipefail
@@ -986,11 +987,17 @@ jobs:
           python3 scripts/test-py007-uci.py
           python3 scripts/test-py008-uci.py
           python3 scripts/check-py007-uci.py --generator target/release/ams-gra-codegen-oms \
-            --output "$RUNNER_TEMP/py006-uci" --service-baseline tests/fixtures/python-datetime/after.json
+            --output "$RUNNER_TEMP/py006-uci" --service-baseline tests/fixtures/python-visible-ascii/after.json
           python3 scripts/check-py008-uci.py --generator target/release/ams-gra-codegen-oms \
-            --output "$RUNNER_TEMP/py006-uci" --existing-output --service-baseline tests/fixtures/python-datetime/after.json
+            --output "$RUNNER_TEMP/py006-uci" --existing-output --service-baseline tests/fixtures/python-visible-ascii/after.json
           python3 scripts/test-py009-uci.py
-          python3 scripts/check-py009-uci.py --generator target/release/ams-gra-codegen-oms --output "$RUNNER_TEMP/py006-uci/py009"
+          python3 scripts/check-py009-uci.py --generator target/release/ams-gra-codegen-oms --output "$RUNNER_TEMP/py006-uci/py009" --service-baseline tests/fixtures/python-visible-ascii/after.json
+          python3 python/qualification/run.py uci
+          cargo build --locked --release -p ams-gra-codegen-oms --example python_visible_ascii_profiles
+          python3 scripts/test-py010-uci.py
+          for py010_interpreter in python3.11 python3.13; do
+            "$py010_interpreter" scripts/check-py010-uci.py --generator target/release/ams-gra-codegen-oms --output "$RUNNER_TEMP/py006-uci/py010-$py010_interpreter"
+          done
       - name: Preserve Python pinned UCI measurements
         uses: actions/upload-artifact@v4
         with:
@@ -1112,12 +1119,24 @@ jobs:
           grep -Fqx 'UCI 2.6 DURATION MESSAGE IMPACT: RECORDED' <<<"$output"
           grep -Eqx '(test task057_real_uci_category_a_log_generates_and_compiles \.\.\. )?UCI 2\.5 REAL CATEGORY-A DURATION SERVICE: PASSED' <<<"$output"
           grep -qE '^test result: ok\. 4 passed' <<<"$output"
+      - name: Execute source-bound Python pinned UCI inventory in both interpreters
+        run: |
+          set -euo pipefail
+          for ci004_interpreter in python3.11 python3.13; do
+            "$ci004_interpreter" scripts/run-owned-python.py uci
+            "$ci004_interpreter" -O scripts/run-owned-python.py uci
+          done
+      - name: Upload mandatory source compiler and execution evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci004-python-uci
+          path: ${{ runner.temp }}/ci004-python-uci/**
+          if-no-files-found: error
 
   # Independent ASCII runner: fresh verified inputs and release CLI.
   real-uci-regressions-ascii:
-    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'real-uci-regressions-ascii')
     concurrency:
-      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-2' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-regressions-ascii', github.workflow, github.run_id, github.run_attempt) }}
+      group: ${{ 'oms-main-slot-2' }}
       queue: max
     runs-on: ubuntu-latest
     timeout-minutes: 240
@@ -1206,9 +1225,8 @@ jobs:
 
   # Admission and AFTER remain one mandatory gate on an independent runner.
   real-uci-regressions-alternating:
-    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'real-uci-regressions-alternating')
     concurrency:
-      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-3' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-uci-regressions-alternating', github.workflow, github.run_id, github.run_attempt) }}
+      group: ${{ 'oms-main-slot-3' }}
       queue: max
     runs-on: ubuntu-latest
     timeout-minutes: 240
@@ -1282,9 +1300,8 @@ jobs:
   # PositionReport and SubsystemStream codecs (build.rs generates them only
   # when AMS_GRA_UCI_2_5_ROOT is set) under 1.95.0. Rust only: no GNAT.
   msrv-real-uci:
-    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'msrv-real-uci')
     concurrency:
-      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-msrv-real-uci', github.workflow, github.run_id, github.run_attempt) }}
+      group: ${{ 'oms-main-slot-5' }}
       queue: max
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -1324,9 +1341,8 @@ jobs:
   # checkout with Sleet's own pinned toolchain), plus the real UCI 2.5
   # PositionReport / SubsystemStream codecs. Rust only: no GNAT.
   real-sleet:
-    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'real-sleet')
     concurrency:
-      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-4' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-real-sleet', github.workflow, github.run_id, github.run_attempt) }}
+      group: ${{ 'oms-main-slot-4' }}
       queue: max
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -1345,6 +1361,9 @@ jobs:
           printf 'DEEP_CI_SOURCE_SHA=%s\n' "$actual"
           printf 'DEEP_CI_SOURCE_TREE=%s\n' "$tree"
           printf 'DEEP_CI_EVENT=%s\n' "$GITHUB_EVENT_NAME"
+      - name: Prevent Python bytecode in source-bound qualification
+        shell: bash
+        run: echo 'PYTHONDONTWRITEBYTECODE=1' >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-python@v5
         with:
@@ -1417,11 +1436,24 @@ jobs:
           set -euo pipefail
           test -n "$AMS_GRA_UCI_2_5_ROOT"
           scripts/run-real-sleet-test.sh
+      - name: Preserve PY-010 generated sources and observed broker events
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: py010-sleet
+          path: ${{ runner.temp }}/py010-sleet/**
+          if-no-files-found: error
+      - name: Upload mandatory source compiler and execution evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci004-python-sleet
+          path: ${{ runner.temp }}/ci004-python-sleet/**
+          if-no-files-found: error
 
   ada-hexbinary-real:
-    if: github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'ada-hexbinary-real')
     concurrency:
-      group: ${{ github.ref == 'refs/heads/main' && 'oms-main-slot-5' || format('oms-pr-{0}-{1}-{2}-deep-ci.yml-ada-hexbinary-real', github.workflow, github.run_id, github.run_attempt) }}
+      group: ${{ 'oms-main-slot-5' }}
       queue: max
     runs-on: ubuntu-24.04
     timeout-minutes: 40
