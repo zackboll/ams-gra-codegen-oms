@@ -28,9 +28,9 @@ jobs:
         compiler: ['14', '16']
         include:
           - compiler: '14'
-            slot: 2
+            slot: 6
           - compiler: '16'
-            slot: 4
+            slot: 7
     container:
       image: debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5
     timeout-minutes: 90
@@ -151,7 +151,7 @@ jobs:
 
   baseline:
     concurrency:
-      group: ${{ 'oms-main-slot-5' }}
+      group: ${{ 'oms-main-slot-2' }}
       queue: max
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -195,7 +195,7 @@ jobs:
         compiler: ['14', '16']
         include:
           - compiler: '14'
-            slot: 1
+            slot: 8
           - compiler: '16'
             slot: 3
     container:
@@ -308,9 +308,9 @@ jobs:
         compiler: ['14', '16']
         include:
           - compiler: '14'
-            slot: 1
+            slot: 7
           - compiler: '16'
-            slot: 2
+            slot: 6
     container:
       image: debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5
     timeout-minutes: 90
@@ -416,9 +416,9 @@ jobs:
         compiler: ['14', '16']
         include:
           - compiler: '14'
-            slot: 4
+            slot: 1
           - compiler: '16'
-            slot: 3
+            slot: 9
     container:
       image: debian@sha256:bcf83fd8af414eda0c0a99d25a4e61dedd88e7aac7f7bc519d04555ff0c40ec5
     timeout-minutes: 60
@@ -522,9 +522,9 @@ jobs:
         python-version: ['3.11', '3.13']
         include:
           - python-version: '3.11'
-            slot: 1
+            slot: 4
           - python-version: '3.13'
-            slot: 2
+            slot: 7
     steps:
       - uses: actions/checkout@v4
       - name: Prevent Python bytecode in source-bound qualification
@@ -586,7 +586,7 @@ jobs:
 
   ada-float32-codec:
     concurrency:
-      group: ${{ 'oms-main-slot-3' }}
+      group: ${{ 'oms-main-slot-1' }}
       queue: max
     runs-on: ubuntu-24.04
     container:
@@ -699,7 +699,7 @@ jobs:
           if-no-files-found: error
   ada-repeated-temporal-codec:
     concurrency:
-      group: ${{ 'oms-main-slot-4' }}
+      group: ${{ 'oms-main-slot-9' }}
       queue: max
     needs: [ada-json-guard]
     runs-on: ubuntu-24.04
@@ -751,7 +751,7 @@ jobs:
           if-no-files-found: error
   ada-datetime-codec:
     concurrency:
-      group: ${{ 'oms-main-slot-5' }}
+      group: ${{ 'oms-main-slot-2' }}
       queue: max
     needs: [ada-json-guard]
     runs-on: ubuntu-24.04
@@ -800,7 +800,7 @@ jobs:
   # Task 087A: separate provider/toolchain environment; no generator/runtime work.
   ada-json-guard:
     concurrency:
-      group: ${{ 'oms-main-slot-5' }}
+      group: ${{ 'oms-main-slot-8' }}
       queue: max
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -833,7 +833,7 @@ jobs:
           if-no-files-found: error
   ada-generated-codec:
     concurrency:
-      group: ${{ 'oms-main-slot-2' }}
+      group: ${{ 'oms-main-slot-7' }}
       queue: max
     needs: [ada-json-guard]
     runs-on: ubuntu-24.04
@@ -921,7 +921,7 @@ jobs:
           if-no-files-found: error
   ada-duration-codec:
     concurrency:
-      group: ${{ 'oms-main-slot-5' }}
+      group: ${{ 'oms-main-slot-1' }}
       queue: max
     needs: [ada-json-guard]
     runs-on: ubuntu-24.04
@@ -967,7 +967,7 @@ jobs:
           if-no-files-found: error
   ada-hexbinary-codec:
     concurrency:
-      group: ${{ 'oms-main-slot-4' }}
+      group: ${{ 'oms-main-slot-10' }}
       queue: max
     needs: [ada-json-guard]
     runs-on: ubuntu-24.04
@@ -1040,7 +1040,7 @@ jobs:
           if-no-files-found: error
   ada-repeated-choice-codec:
     concurrency:
-      group: ${{ 'oms-main-slot-5' }}
+      group: ${{ 'oms-main-slot-6' }}
       queue: max
     needs: [ada-json-guard]
     runs-on: ubuntu-24.04
@@ -1090,7 +1090,7 @@ jobs:
           if-no-files-found: error
   rust:
     concurrency:
-      group: ${{ 'oms-main-slot-5' }}
+      group: ${{ 'oms-main-slot-4' }}
       queue: max
     runs-on: ubuntu-latest
     steps:

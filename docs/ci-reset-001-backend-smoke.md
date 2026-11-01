@@ -88,8 +88,14 @@ fetches UCI, builds the Sleet server, or invokes whole-workspace tests.
 one-time pre-merge dispatch against this implementation branch). It always
 calls complete `deep-ci.yml`, also available nightly/manual. All product
 qualification jobs and their commands, both GNAT versions, both Python
-versions, pinned real UCI/Sleet, historical regressions and the five
-`oms-main-slot-1` through `oms-main-slot-5` lanes remain.
+versions, pinned real UCI/Sleet and historical regressions remain unchanged.
+Main and Deep runner jobs share ten noncancelling `queue: max` lanes,
+`oms-main-slot-1` through `oms-main-slot-10`. CI002, the portable benchmark,
+UCI pages and trusted dispatch retain their existing shared lanes. The initial
+ten-lane placement balances historical job durations from successful run
+`41262591658`; it is a scheduling estimate, not a runtime guarantee. Scheduling
+takes effect on the next main push after merge; measure actual concurrency and
+elapsed completion time from that run, not from a manual pre-merge Deep campaign.
 
 `Main qualification outcome` inspects only `needs.*.result`. A failed,
 cancelled or skipped mandatory job makes it fail; it downloads no artifacts

@@ -367,8 +367,8 @@ class DeepQualification(unittest.TestCase):
         self.assertIn("group: ${{ format('oms-main-slot-{0}', matrix.slot) }}", job)
         self.assertIn('      queue: max\n', job)
         self.assertIn("        compiler: ['14', '16']\n", job)
-        self.assertIn("          - compiler: '14'\n            slot: 5\n", job)
-        self.assertIn("          - compiler: '16'\n            slot: 2\n", job)
+        self.assertIn("          - compiler: '14'\n            slot: 3\n", job)
+        self.assertIn("          - compiler: '16'\n            slot: 8\n", job)
         for forbidden in ('pull_request', 'inputs.selection', 'oms-pr-', 'continue-on-error'):
             self.assertNotIn(forbidden, header + job)
         for required in ('e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b',

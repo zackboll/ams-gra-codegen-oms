@@ -20,7 +20,10 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 if [ "${AMS_GRA_RUST_LOG_ONLY:-}" = 1 ]; then
   export AMS_GRA_REQUIRE_REAL_UCI_LOG=1
 fi
-if [ -n "${AMS_GRA_REQUIRE_REAL_UCI_LOG:-}" ]; then
+if [ "${AMS_GRA_RUST_RDMA_ONLY:-}" = 1 ]; then
+  export AMS_GRA_REQUIRE_REAL_UCI_RDMA=1
+fi
+if [ -n "${AMS_GRA_REQUIRE_REAL_UCI_LOG:-}${AMS_GRA_REQUIRE_REAL_UCI_RDMA:-}" ]; then
   : "${AMS_GRA_UCI_2_5_ROOT:?pinned UCI 2.5 root required}"
   : "${AMS_GRA_UCI_2_6_ROOT:?pinned UCI 2.6 root required}"
 fi
@@ -63,7 +66,7 @@ if [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] && [ -n "${AMS_GRA_UCI_2_6_ROOT:-}" ]; the
   status=0
   output="$(CARGO_PROFILE_RELEASE_BUILD_OVERRIDE_OPT_LEVEL=3 \
     cargo +1.95.0 test --release --locked -p ams-gra-oms-runtime-rust-facade-tests \
-    --test real_uci_log -- --nocapture 2>&1)" || status=$?
+    --test real_uci_log -- --show-output --test-threads=1 2>&1)" || status=$?
   printf '%s\n' "$output"
   if (( status != 0 )); then exit "$status"; fi
   for version in 002.5.0 002.6.0; do
@@ -71,6 +74,30 @@ if [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] && [ -n "${AMS_GRA_UCI_2_6_ROOT:-}" ]; the
     grep -Fqx "RUST-OMS-001 $version SLEET AND RECOVERY: PASSED" <<<"$output"
   done
   grep -qE '^test result: ok\. 4 passed; 0 failed; 0 ignored;' <<<"$output"
+  output="$(CARGO_PROFILE_RELEASE_BUILD_OVERRIDE_OPT_LEVEL=3 \
+    cargo +1.95.0 test --release --locked -p ams-gra-oms-runtime-rust-facade-tests \
+    --test real_rdma_consumer -- --show-output 2>&1)"
+  printf '%s\n' "$output"
+  grep -Fqx 'EXTERNAL RDMA 25: PASSED' <<<"$output"
+  grep -Fqx 'EXTERNAL RDMA 26: PASSED' <<<"$output"
+  grep -qE '^test result: ok\. 1 passed; 0 failed; 0 ignored;' <<<"$output"
+fi
+if [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] && [ -n "${AMS_GRA_UCI_2_6_ROOT:-}" ]; then
+  status=0
+  output="$(AMS_GRA_REQUIRE_REAL_UCI_RDMA=1 CARGO_PROFILE_RELEASE_BUILD_OVERRIDE_OPT_LEVEL=3 \
+    cargo +1.95.0 test --release --locked -p ams-gra-oms-runtime-rust-facade-tests \
+    --test real_uci_rdma -- --show-output --test-threads=1 2>&1)" || status=$?
+  printf '%s\n' "$output"
+  if (( status != 0 )); then exit "$status"; fi
+  for version in 002.5.0 002.6.0; do
+    grep -Fqx "RUST-OMS-002 $version GOLDEN: PASSED" <<<"$output"
+    grep -Fqx "RUST-OMS-002 $version SLEET AND RECOVERY: PASSED" <<<"$output"
+  done
+  grep -qE '^test result: ok\. 4 passed; 0 failed; 0 ignored;' <<<"$output"
+fi
+if [ "${AMS_GRA_RUST_RDMA_ONLY:-}" = 1 ]; then
+  echo "RUST-OMS-002 real pinned Sleet ($SLEET_REV): PASSED"
+  exit 0
 fi
 if [ "${AMS_GRA_RUST_LOG_ONLY:-}" = 1 ]; then
   echo "RUST-OMS-001 real pinned Sleet ($SLEET_REV): PASSED"
