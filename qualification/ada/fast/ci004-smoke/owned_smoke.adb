@@ -4,7 +4,7 @@ procedure Owned_Smoke is
    function Add (Left, Right : Integer) return Integer is (Left + Right);
    Raised : Boolean := False;
 begin
-   if Add (20, 22) /= 42 then
+   if Add (19, 23) /= 42 then
       raise Program_Error with "incorrect arithmetic";
    end if;
    Ada.Text_IO.Put_Line ("CI004_PASS checked-arithmetic");
