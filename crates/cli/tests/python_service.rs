@@ -179,14 +179,17 @@ fn unsupported_selected_types_and_oms_codecs_fail_atomically() {
             .replace("SelectedReport", "UnsupportedReport"),
     )
     .unwrap();
+    let unsupported_schema = temp.0.join("unsupported-choice.xsd");
+    fs::write(
+        &unsupported_schema,
+        fs::read_to_string(fixture("root.xsd")).unwrap().replace(
+            "name=\"Text\" type=\"xs:string\"",
+            "name=\"Text\" type=\"xs:string\" minOccurs=\"0\"",
+        ),
+    )
+    .unwrap();
     for world in ["closed-schema", "open-extensions"] {
-        blocked(
-            &fixture("root.xsd"),
-            &unsupported,
-            world,
-            false,
-            "Choice / List",
-        );
+        blocked(&unsupported_schema, &unsupported, world, false, "Choice");
         blocked(
             &unqualified,
             &fixture("service.yaml"),

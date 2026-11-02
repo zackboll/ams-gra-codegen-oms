@@ -144,7 +144,6 @@ fn rejected(schema: &SchemaIr) {
 #[test]
 fn negative_schema_fixtures_return_errors_and_no_artifacts() {
     for path in [
-        "tests/fixtures/unsupported-choice.xsd",
         "tests/fixtures/unsupported-nillable.xsd",
         "tests/fixtures/unsupported-pattern.xsd",
         "../xsd-frontend/tests/fixtures/backend-abstract-value-reference.xsd",
