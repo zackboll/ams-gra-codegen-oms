@@ -182,6 +182,10 @@ pub fn generate_service_codec(
     }
     for declaration in declarations {
         let symbol = names::symbol(&declaration.name.local_name, false);
+        if let Some((policy, min, max)) = crate::whitespace_visible_profile(declaration) {
+            writeln!(output, "\n\ndef _encode_{symbol}(value, path):\n    _expect(value, _model.{symbol}, path)\n    try:\n        return _model._check_whitespace_visible(value.value, {policy:?}, {min}, {max}, True)\n    except (AttributeError, TypeError, ValueError) as error:\n        raise CodecError(f'{{path}}: invalid whitespace-visible value: {{error}}') from error\n\n\ndef _decode_{symbol}(value, path):\n    try:\n        return _model.{symbol}(value)\n    except (TypeError, ValueError) as error:\n        raise CodecError(f'{{path}}: invalid whitespace-visible value: {{error}}') from error").unwrap();
+            continue;
+        }
         if declaration.kind == TypeKind::Primitive(PrimitiveKind::Duration) {
             writeln!(output, "\n\ndef _encode_{symbol}(value, path):\n    _expect(value, _model.{symbol}, path)\n    try:\n        text = value.value\n    except AttributeError as error:\n        raise CodecError(f'{{path}}: missing Duration value') from error\n    return _checked_duration(text, path)\n\n\ndef _decode_{symbol}(value, path):\n    return _model.{symbol}(_checked_duration(value, path))").unwrap();
             continue;

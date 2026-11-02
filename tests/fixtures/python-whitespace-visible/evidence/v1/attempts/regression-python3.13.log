@@ -1,0 +1,129 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.02s
+     Running tests/python_choice.rs (/home/zboll/py016-build/debug/deps/python_choice-62448cc4364ab05c)
+
+running 3 tests
+test clark_qualified_choice_and_repetition_paths ... ok
+test unsupported_choices_fail_atomically ... ok
+test choice_models_codecs_worlds_imports_and_optimization ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.63s
+
+     Running tests/python_cli.rs (/home/zboll/py016-build/debug/deps/python_cli-5adc43bde0b593e3)
+
+running 5 tests
+test invalid_language_and_world_are_usage_errors_without_output ... ok
+test help_separates_python_models_from_service_support_and_coverage ... ok
+test unsupported_schemas_fail_before_creating_or_changing_any_files ... ok
+test unsupported_python_selected_models_fail_without_writing ... ok
+test track_generates_deterministically_and_executes_in_both_worlds ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+     Running tests/python_codec.rs (/home/zboll/py016-build/debug/deps/python_codec-690501ff6db682a4)
+
+running 5 tests
+test name_specific_uuid_mapping_is_not_invented ... ok
+test shared_rendered_readiness_contains_exact_codec_artifacts_or_no_partial_files ... ok
+test unqualified_members_are_codec_only_blockers_without_writes ... ok
+test all_model_boundaries_still_fail_closed_with_codec_requested ... ok
+test qualified_oam_and_extension_codecs_execute_independent_vectors ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.70s
+
+     Running tests/python_datetime.rs (/home/zboll/py016-build/debug/deps/python_datetime-d8429fd47cd932a7)
+
+running 3 tests
+test established_task090_namespace_goldens_decode_and_reencode ... ok
+test unsupported_datetime_selections_fail_without_artifacts ... ok
+test generated_datetime_models_and_codecs_execute_in_both_worlds ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.64s
+
+     Running tests/python_duration.rs (/home/zboll/py016-build/debug/deps/python_duration-f52c079fa5f9e9ec)
+
+running 3 tests
+test unsupported_duration_selections_fail_without_artifacts ... ok
+test non_oam_duration_errors_retain_clark_member_paths ... ok
+test generated_duration_models_and_codecs_execute_in_both_worlds ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.74s
+
+     Running tests/python_float64.rs (/home/zboll/py016-build/debug/deps/python_float64-ac04f3a82738be59)
+
+running 2 tests
+test unsupported_float64_selections_fail_without_artifacts ... ok
+test generated_float64_models_and_codecs_execute_in_both_worlds ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.35s
+
+     Running tests/python_header_profiles.rs (/home/zboll/py016-build/debug/deps/python_header_profiles-9fb75dcc4ea78881)
+
+running 1 test
+test exact_profiles_execute_and_neighbours_fail_atomically ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.45s
+
+     Running tests/python_hexbinary.rs (/home/zboll/py016-build/debug/deps/python_hexbinary-8ba90e5ca76253de)
+
+running 2 tests
+test unsupported_facets_and_shadowing_fail_atomically ... ok
+test checked_binary_models_codecs_and_qualified_paths_execute ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.19s
+
+     Running tests/python_inheritance.rs (/home/zboll/py016-build/debug/deps/python_inheritance-cd210dd8ad7214fc)
+
+running 2 tests
+test unsupported_inherited_service_selections_fail_atomically ... ok
+test inherited_services_execute_literals_in_both_worlds_and_import_styles ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s
+
+     Running tests/python_nato_special_words.rs (/home/zboll/py016-build/debug/deps/python_nato_special_words-8bc0600731d89617)
+
+running 3 tests
+test qualified_member_diagnostics_preserve_namespace_and_index ... ok
+test unsupported_nato_special_words_selections_fail_without_artifacts ... ok
+test generated_nato_special_words_models_and_codecs_execute_in_both_worlds ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.66s
+
+     Running tests/python_service.rs (/home/zboll/py016-build/debug/deps/python_service-2ee779626d6cbc6f)
+
+running 8 tests
+test plan_schema_binding_defects_are_errors_not_ready_results ... ok
+test normalized_function_exchange_and_model_collisions_fail_before_output ... ok
+test abstract_values_remain_blocked_in_both_worlds ... ok
+test unsupported_selected_types_and_oms_codecs_fail_atomically ... ok
+test selected_subset_boundaries_are_truthful ... ok
+test all_exchange_kinds_preserve_metadata_without_fabricated_payloads ... ok
+test zero_oms_needs_neither_model_payload_facade_nor_codec ... ok
+test supported_selection_is_ready_and_runs_typed_facade_normally_and_optimized ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.29s
+
+     Running tests/python_unbounded_repetition.rs (/home/zboll/py016-build/debug/deps/python_unbounded_repetition-90b4686fdbe73c0f)
+
+running 3 tests
+test unsupported_repeated_elements_fail_atomically ... ok
+test qualified_inherited_and_nested_member_paths_preserve_indices ... ok
+test generated_unbounded_models_and_codecs_execute_in_both_worlds ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.78s
+
+     Running tests/python_visible_ascii.rs (/home/zboll/py016-build/debug/deps/python_visible_ascii-c450c67c89fc30c9)
+
+running 2 tests
+test unsupported_visible_ascii_selections_fail_without_artifacts ... ok
+test generated_visible_ascii_models_and_codecs_execute_in_both_worlds ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.70s
+
+     Running tests/python_whitespace_visible.rs (/home/zboll/py016-build/debug/deps/python_whitespace_visible-1e2cef6d0ee54719)
+
+running 2 tests
+test neighboring_profiles_and_bad_ancestry_reject_atomically ... ok
+test models_codecs_worlds_imports_optimization_and_clark_paths ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.42s
+

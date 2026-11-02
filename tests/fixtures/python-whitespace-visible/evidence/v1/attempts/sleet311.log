@@ -1,0 +1,42 @@
+test_generated_whitespace_visible_delivery_and_recovery (test_whitespace_visible_transport.WhitespaceVisibleTransport.test_generated_whitespace_visible_delivery_and_recovery) ... FAIL
+
+======================================================================
+FAIL: test_generated_whitespace_visible_delivery_and_recovery (test_whitespace_visible_transport.WhitespaceVisibleTransport.test_generated_whitespace_visible_delivery_and_recovery)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/zboll/git/ams-gra-codegen-oms-py-016/python/qualification/sleet/test_whitespace_visible_transport.py", line 21, in test_generated_whitespace_visible_delivery_and_recovery
+    self.assertTrue(result.wasSuccessful(), log.getvalue())
+AssertionError: False is not true : test_whitespace_visible_delivery_recovery_and_teardown (py016_transport.WhitespaceVisibleSleetTests.test_whitespace_visible_delivery_recovery_and_teardown) ... FAIL
+
+======================================================================
+FAIL: test_whitespace_visible_delivery_recovery_and_teardown (py016_transport.WhitespaceVisibleSleetTests.test_whitespace_visible_delivery_recovery_and_teardown)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/zboll/.local/share/uv/python/cpython-3.11.17-linux-x86_64-gnu/lib/python3.11/unittest/async_case.py", line 90, in _callTestMethod
+    if self._callMaybeAsync(method) is not None:
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zboll/.local/share/uv/python/cpython-3.11.17-linux-x86_64-gnu/lib/python3.11/unittest/async_case.py", line 112, in _callMaybeAsync
+    return self._asyncioRunner.run(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zboll/.local/share/uv/python/cpython-3.11.17-linux-x86_64-gnu/lib/python3.11/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zboll/.local/share/uv/python/cpython-3.11.17-linux-x86_64-gnu/lib/python3.11/asyncio/base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/zboll/git/ams-gra-codegen-oms-py-016/python/oms-lacal-runtime/tests/test_whitespace_visible_sleet.py", line 22, in test_whitespace_visible_delivery_recovery_and_teardown
+    await self.exercise_world(world)
+  File "/home/zboll/git/ams-gra-codegen-oms-py-016/python/oms-lacal-runtime/tests/test_whitespace_visible_sleet.py", line 151, in exercise_world
+    self.assertTrue(any(row['outcome'] == 'generated decoder rejection' for row in observations),
+AssertionError: False is not true : no actual transport-to-decoder rejection
+
+----------------------------------------------------------------------
+Ran 1 test in 0.211s
+
+FAILED (failures=1)
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.243s
+
+FAILED (failures=1)

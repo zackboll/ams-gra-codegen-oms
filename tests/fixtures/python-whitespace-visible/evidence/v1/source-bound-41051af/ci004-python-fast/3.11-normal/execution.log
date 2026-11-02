@@ -1,0 +1,19 @@
+test_authenticated_service_delta (test_choice.Choice.test_authenticated_service_delta) ... ok
+test_generated_models_and_codecs (test_choice.Choice.test_generated_models_and_codecs) ... ok
+test_generated_models_and_codecs (test_duration.Duration.test_generated_models_and_codecs) ... ok
+test_python_and_model_sources (test_fast_contract.FastRegistration.test_python_and_model_sources) ... ok
+test_authenticated_readiness_evidence (test_hexbinary.HexBinary.test_authenticated_readiness_evidence) ... ok
+test_generated_models_and_codecs (test_hexbinary.HexBinary.test_generated_models_and_codecs) ... ok
+test_cli_generated_models_and_codecs (test_nato_special_words_fast.NatoSpecialWords.test_cli_generated_models_and_codecs) ... ok
+test_versioned_readiness_evidence (test_nato_special_words_fast.NatoSpecialWords.test_versioned_readiness_evidence) ... ok
+test_generated_codec (test_owned_fixture.OwnedFixture.test_generated_codec) ... ok
+test_required_values (test_owned_fixture.OwnedFixture.test_required_values) ... ok
+test_generated_models_and_codecs (test_unbounded_repetition_fast.UnboundedRepetition.test_generated_models_and_codecs) ... ok
+test_versioned_readiness_evidence (test_unbounded_repetition_fast.UnboundedRepetition.test_versioned_readiness_evidence) ... ok
+test_authenticated_service_delta (test_whitespace_visible.WhitespaceVisible.test_authenticated_service_delta) ... ok
+test_generated_models_and_codecs (test_whitespace_visible.WhitespaceVisible.test_generated_models_and_codecs) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 6.209s
+
+OK

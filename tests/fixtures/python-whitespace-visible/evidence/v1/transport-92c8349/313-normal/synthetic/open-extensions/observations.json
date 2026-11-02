@@ -1,0 +1,96 @@
+[
+  {
+    "payload": "{\"Inherited\": [\"\"], \"Required\": \"a b\", \"Preserved\": \"\", \"Bounded\": [\"a\\nb\"], \"Repeated\": [{\"Nested\": {\"Fold\": \"a b\"}}, {\"Nested\": {\"Record\": {\"Text\": \" y \"}}}], \"Positive\": [\"\", \"x\"], \"Detail\": {\"Text\": \"\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message"
+  },
+  {
+    "payload": "{\"Inherited\": [\"\"], \"Required\": \"a b\", \"Preserved\": \"\\t\", \"Bounded\": [\"a\\nb\"], \"Repeated\": [{\"Nested\": {\"Fold\": \"a b\"}}, {\"Nested\": {\"Record\": {\"Text\": \" y \"}}}], \"Positive\": [\"\", \"x\"], \"Detail\": {\"Text\": \"\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message"
+  },
+  {
+    "payload": "{\"Inherited\": [\"\"], \"Required\": \"a b\", \"Preserved\": \"\\u0000\", \"Bounded\": [\"a\\nb\"], \"Repeated\": [{\"Nested\": {\"Fold\": \"a b\"}}, {\"Nested\": {\"Record\": {\"Text\": \" y \"}}}], \"Positive\": [\"\", \"x\"], \"Detail\": {\"Text\": \"\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message"
+  },
+  {
+    "payload": "{\"Inherited\": [\"\"], \"Required\": \"a b\", \"Preserved\": \"\\u000b\", \"Bounded\": [\"a\\nb\"], \"Repeated\": [{\"Nested\": {\"Fold\": \"a b\"}}, {\"Nested\": {\"Record\": {\"Text\": \" y \"}}}], \"Positive\": [\"\", \"x\"], \"Detail\": {\"Text\": \"\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message"
+  },
+  {
+    "payload": "{\"Inherited\": [\"\"], \"Required\": \"a b\", \"Preserved\": \"\\f\", \"Bounded\": [\"a\\nb\"], \"Repeated\": [{\"Nested\": {\"Fold\": \"a b\"}}, {\"Nested\": {\"Record\": {\"Text\": \" y \"}}}], \"Positive\": [\"\", \"x\"], \"Detail\": {\"Text\": \"\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message"
+  },
+  {
+    "payload": "{\"Inherited\": [\"\"], \"Required\": \"a b\", \"Preserved\": \"\\u007f\", \"Bounded\": [\"a\\nb\"], \"Repeated\": [{\"Nested\": {\"Fold\": \"a b\"}}, {\"Nested\": {\"Record\": {\"Text\": \" y \"}}}], \"Positive\": [\"\", \"x\"], \"Detail\": {\"Text\": \"\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message"
+  },
+  {
+    "payload": "{\"Inherited\": [\"\"], \"Required\": \"a b\", \"Preserved\": \"\\u00a0\", \"Bounded\": [\"a\\nb\"], \"Repeated\": [{\"Nested\": {\"Fold\": \"a b\"}}, {\"Nested\": {\"Record\": {\"Text\": \" y \"}}}], \"Positive\": [\"\", \"x\"], \"Detail\": {\"Text\": \"\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message"
+  },
+  {
+    "payload": "{\"Inherited\": [\"\"], \"Required\": \"a b\", \"Preserved\": null, \"Bounded\": [\"a\\nb\"], \"Repeated\": [{\"Nested\": {\"Fold\": \"a b\"}}, {\"Nested\": {\"Record\": {\"Text\": \" y \"}}}], \"Positive\": [\"\", \"x\"], \"Detail\": {\"Text\": \"\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message"
+  },
+  {
+    "payload": "{\"Inherited\": [\"\"], \"Required\": \"a b\", \"Preserved\": 1, \"Bounded\": [\"a\\nb\"], \"Repeated\": [{\"Nested\": {\"Fold\": \"a b\"}}, {\"Nested\": {\"Record\": {\"Text\": \" y \"}}}], \"Positive\": [\"\", \"x\"], \"Detail\": {\"Text\": \"\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message"
+  },
+  {
+    "payload": "{\"Inherited\": [\"\"], \"Required\": \"a b\", \"Preserved\": [], \"Bounded\": [\"a\\nb\"], \"Repeated\": [{\"Nested\": {\"Fold\": \"a b\"}}, {\"Nested\": {\"Record\": {\"Text\": \" y \"}}}], \"Positive\": [\"\", \"x\"], \"Detail\": {\"Text\": \"\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message"
+  },
+  {
+    "payload": "{\"Inherited\": [\"\"], \"Required\": \"\\u0000\", \"Preserved\": \" a\\n\\r  b \", \"Bounded\": [\"a\\nb\"], \"Repeated\": [{\"Nested\": {\"Fold\": \"a b\"}}, {\"Nested\": {\"Record\": {\"Text\": \" y \"}}}], \"Positive\": [\"\", \"x\"], \"Detail\": {\"Text\": \"\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message"
+  },
+  {
+    "payload": "{\"Inherited\": [\"\"], \"Required\": \"\\u000b\", \"Preserved\": \" a\\n\\r  b \", \"Bounded\": [\"a\\nb\"], \"Repeated\": [{\"Nested\": {\"Fold\": \"a b\"}}, {\"Nested\": {\"Record\": {\"Text\": \" y \"}}}], \"Positive\": [\"\", \"x\"], \"Detail\": {\"Text\": \"\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message"
+  },
+  {
+    "payload": "{\"Inherited\": [\"\"], \"Required\": \"\\f\", \"Preserved\": \" a\\n\\r  b \", \"Bounded\": [\"a\\nb\"], \"Repeated\": [{\"Nested\": {\"Fold\": \"a b\"}}, {\"Nested\": {\"Record\": {\"Text\": \" y \"}}}], \"Positive\": [\"\", \"x\"], \"Detail\": {\"Text\": \"\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message"
+  },
+  {
+    "payload": "{\"Inherited\": [\"\"], \"Required\": \"\\u007f\", \"Preserved\": \" a\\n\\r  b \", \"Bounded\": [\"a\\nb\"], \"Repeated\": [{\"Nested\": {\"Fold\": \"a b\"}}, {\"Nested\": {\"Record\": {\"Text\": \" y \"}}}], \"Positive\": [\"\", \"x\"], \"Detail\": {\"Text\": \"\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message"
+  },
+  {
+    "payload": "{\"Inherited\": [\"\"], \"Required\": \"\\u00a0\", \"Preserved\": \" a\\n\\r  b \", \"Bounded\": [\"a\\nb\"], \"Repeated\": [{\"Nested\": {\"Fold\": \"a b\"}}, {\"Nested\": {\"Record\": {\"Text\": \" y \"}}}], \"Positive\": [\"\", \"x\"], \"Detail\": {\"Text\": \"\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message"
+  },
+  {
+    "payload": "{\"Inherited\": [\"\"], \"Required\": \"a b\", \"Preserved\": \" a\\n\\r  b \", \"Bounded\": [\"a\\nb\"], \"Repeated\": [{\"Nested\": {\"Fold\": \"\\u0000\"}}], \"Positive\": [\"\", \"x\"], \"Detail\": {\"Text\": \"\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message"
+  },
+  {
+    "payload": "{\"Inherited\": [\"\"], \"Preserved\": \" a\\n\\r  b \", \"Bounded\": [\"a\\nb\"], \"Repeated\": [{\"Nested\": {\"Fold\": \"a b\"}}, {\"Nested\": {\"Record\": {\"Text\": \" y \"}}}], \"Positive\": [\"\", \"x\"], \"Detail\": {\"Text\": \"\"}}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message"
+  },
+  {
+    "payload": "{\"Inherited\": [\"\"], \"Required\": \"a b\", \"Preserved\": \" a\\n\\r  b \", \"Bounded\": [\"a\\nb\"], \"Repeated\": [{\"Nested\": {\"Fold\": \"a b\"}}, {\"Nested\": {\"Record\": {\"Text\": \" y \"}}}], \"Positive\": [\"\", \"x\"], \"Detail\": {\"Text\": \"\"}, \"Unknown\": \"x\"}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message"
+  },
+  {
+    "payload": "{\"Inherited\": [\"\"], \"Required\":\"a b\",\"Required\":\"a b\", \"Preserved\": \" a\\n\\r  b \", \"Bounded\": [\"a\\nb\"], \"Repeated\": [{\"Nested\": {\"Fold\": \"a b\"}}, {\"Nested\": {\"Record\": {\"Text\": \" y \"}}}], \"Positive\": [\"\", \"x\"], \"Detail\": {\"Text\": \"\"}}",
+    "outcome": "runtime envelope rejection"
+  }
+]

@@ -1,0 +1,153 @@
+SMOKE START python
++ /home/zboll/.local/bin/python3.11 -c 'import sys; assert sys.version_info[:2] == (3, 11); print(sys.version)'
+3.11.17 (main, Oct 14 2026, 01:05:33) [Clang 23.1.3 ]
++ cargo test --locked -p ams-gra-oms-backend-python --test models --test codecs -- --nocapture
+   Compiling ams-gra-oms-backend-python v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/backend-python)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.32s
+     Running tests/codecs.rs (/home/zboll/py016-build/debug/deps/codecs-d51c64e152111bd1)
+
+running 2 tests
+test inherited_wire_qnames_come_from_authored_members_not_the_concrete_owner ... ok
+test alias_chains_and_unique_scalar_payloads_preserve_exact_types_and_wire_values ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+     Running tests/models.rs (/home/zboll/py016-build/debug/deps/models-4c807e302ea62cb0)
+
+running 12 tests
+test zero_oms_service_api_is_generated_without_a_model ... ok
+test golden_output_is_byte_identical_and_world_is_explicit ... ok
+test float64_named_ancestry_requires_resolved_compatible_domains ... ok
+test negative_schema_fixtures_return_errors_and_no_artifacts ... ok
+test unsupported_ir_semantics_fail_closed_without_artifacts ... ok
+test python_specific_name_collisions_fail_closed ... ok
+Python runtime probe (optimized=false):
+
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+Python runtime probe (optimized=false):
+
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+Python runtime probe (optimized=false):
+
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.000s
+
+OK
+
+Python runtime probe (optimized=false):
+
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+Python runtime probe (optimized=false):
+
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.000s
+
+OK
+
+Python runtime probe (optimized=false):
+
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+Python runtime probe (optimized=true):
+
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+test base_only_abstract_ancestry_executes_without_an_abstract_class ... ok
+Python runtime probe (optimized=true):
+
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+test shared_four_level_fixture_executes_in_authored_field_order ... ok
+Python runtime probe (optimized=true):
+
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+Python runtime probe (optimized=true):
+
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.000s
+
+OK
+
+test real_track_compiles_imports_and_validates_at_runtime ... ok
+test ancestry_names_are_not_emitted_and_special_members_are_safely_prefixed ... ok
+Python runtime probe (optimized=true):
+
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.000s
+
+OK
+
+test scalar_subset_compiles_imports_and_validates_at_runtime ... ok
+Python runtime probe (optimized=true):
+
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+test generated_float64_comparisons_match_shared_domains_at_ieee_edges ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
++ cargo build --locked -p ams-gra-codegen-oms --bin ams-gra-codegen-oms
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.02s
++ /home/zboll/git/ams-gra-codegen-oms-py-016/target/debug/ams-gra-codegen-oms service-generate --schema /home/zboll/git/ams-gra-codegen-oms-py-016/tests/fixtures/python-codec/oam.xsd --contract /home/zboll/git/ams-gra-codegen-oms-py-016/tests/fixtures/python-codec/service.yaml --language python --world closed-schema --with-codec --output /tmp/pr-smoke-python-fkm195q_/consumer
+service contract valid
+service: Python Codec
+language: python
+generation world: closed-schema
+
+selected oms messages: 2
+contract-selected types: 9
+generated support types: 0
+projected schema types: 9
+generated model files: 1
+generated service api files: 1
+generated 2 file(s)
+output: /tmp/pr-smoke-python-fkm195q_/consumer
+generated service codec files: 1
+generated 3 file(s) including the codec
++ /home/zboll/.local/bin/python3.11 /home/zboll/git/ams-gra-codegen-oms-py-016/crates/backend-python/tests/codec_runtime.py /tmp/pr-smoke-python-fkm195q_/consumer flat https://www.vdl.afrl.af.mil/programs/oam /home/zboll/git/ams-gra-codegen-oms-py-016/tests/fixtures/python-codec
+.........
+----------------------------------------------------------------------
+Ran 9 tests in 0.004s
+
+OK
+SMOKE PASS python elapsed_seconds=0.629

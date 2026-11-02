@@ -1,0 +1,33 @@
+{
+  "SecurityInformation": {
+    "Classification": "U",
+    "OwnerProducer": [
+      {
+        "GovernmentIdentifier": "USA"
+      },
+      {
+        "NATO_SpecialWord": "NATO:EXAMPLE"
+      }
+    ],
+    "ClassifiedBy": " a\n\r  b "
+  },
+  "MessageHeader": {
+    "SystemID": {
+      "UUID": "12345678-1234-1234-8234-123456789abc"
+    },
+    "Timestamp": "2026-01-02T03:04:05Z",
+    "SchemaVersion": "002.6.0",
+    "Mode": "LIVE"
+  },
+  "MessageData": {
+    "SubsystemID": {
+      "UUID": "12345678-1234-1234-8234-123456789abc"
+    },
+    "SubsystemSetting": "LIVE",
+    "SubsystemStreamString": [
+      "first",
+      " last "
+    ],
+    "SubsystemStreamBinary": "00FF"
+  }
+}

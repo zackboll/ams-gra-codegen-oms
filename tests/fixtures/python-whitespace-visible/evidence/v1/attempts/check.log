@@ -1,0 +1,72 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+    Checking itoa v1.0.18
+    Checking ams-gra-oms-ir v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/ir)
+    Checking memchr v2.8.3
+    Checking equivalent v1.0.2
+    Checking hashbrown v0.17.1
+    Checking libyaml-rs v0.3.0
+    Checking ryu v1.0.23
+    Checking roxmltree v0.20.0
+   Compiling libc v0.2.189
+   Compiling version_check v0.9.5
+    Checking cfg-if v1.0.5
+   Compiling getrandom v0.3.4
+   Compiling zerocopy v0.8.59
+    Checking typenum v1.20.1
+   Compiling httparse v1.10.1
+   Compiling thiserror v2.0.21
+    Checking bytes v1.12.1
+    Checking cpufeatures v0.2.17
+    Checking pin-project-lite v0.2.17
+    Checking log v0.4.34
+    Checking futures-sink v0.3.34
+    Checking futures-task v0.3.34
+    Checking futures-core v0.3.34
+    Checking slab v0.4.12
+    Checking data-encoding v2.11.1
+    Checking ams-gra-oms-runtime-api v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/runtime-api-rust)
+    Checking serde_core v1.0.229
+    Checking zmij v1.0.23
+    Checking ams-gra-oms-schema-diff v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/schema-diff)
+   Compiling generic-array v0.14.7
+    Checking ams-gra-oms-xsd-frontend v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/xsd-frontend)
+    Checking http v1.5.0
+   Compiling indexmap v2.14.2
+   Compiling syn v3.0.6
+    Checking mio v1.2.3
+    Checking socket2 v0.6.5
+    Checking rand_core v0.9.5
+    Checking block-buffer v0.10.4
+    Checking crypto-common v0.1.7
+    Checking digest v0.10.7
+    Checking sha1 v0.10.7
+    Checking serde_json v1.0.151
+    Checking uuid v1.26.1
+   Compiling serde_derive v1.0.229
+   Compiling thiserror-impl v2.0.21
+   Compiling tokio-macros v2.7.2
+   Compiling futures-macro v0.3.34
+    Checking tokio v1.53.1
+    Checking ppv-lite86 v0.2.21
+    Checking futures-util v0.3.34
+    Checking rand_chacha v0.9.0
+    Checking rand v0.9.5
+    Checking tungstenite v0.29.0
+    Checking serde v1.0.229
+    Checking yaml_serde v0.10.7
+    Checking sleet-types v0.1.0 (https://github.com/open-arsenal/ams-gra-hello-world-sk-infra-sleet?rev=e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b#e38f61d8)
+    Checking ams-gra-oms-service-contract v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/service-contract)
+    Checking tokio-tungstenite v0.29.0
+    Checking ams-gra-oms-codegen-core v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/codegen-core)
+    Checking ams-gra-oms-backend-ada v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/backend-ada)
+    Checking ams-gra-oms-backend-rust v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/backend-rust)
+    Checking ams-gra-oms-backend-cpp v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/backend-cpp)
+    Checking ams-gra-oms-backend-python v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/backend-python)
+    Checking ams-gra-oms-schema-docs v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/schema-docs)
+    Checking ams-gra-oms-service-routes v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/service-routes)
+    Checking ams-gra-codegen-oms v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/cli)
+   Compiling ams-gra-oms-runtime-rust-facade-tests v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/runtime-rust-facade-tests)
+    Checking sleet-client v0.1.0 (https://github.com/open-arsenal/ams-gra-hello-world-sk-infra-sleet?rev=e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b#e38f61d8)
+    Checking ams-gra-oms-runtime-rust v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/runtime-rust)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 26.22s

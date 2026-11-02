@@ -1,0 +1,22 @@
+{
+  "3.11-normal": {
+    "selections": 52,
+    "sources": 130,
+    "sha256": "5b919572d55a467b146af8dca797ff2d92059033a6475f121238bf6137ce7587"
+  },
+  "3.11-optimized": {
+    "selections": 52,
+    "sources": 130,
+    "sha256": "5b919572d55a467b146af8dca797ff2d92059033a6475f121238bf6137ce7587"
+  },
+  "3.13-normal": {
+    "selections": 52,
+    "sources": 130,
+    "sha256": "5b919572d55a467b146af8dca797ff2d92059033a6475f121238bf6137ce7587"
+  },
+  "3.13-optimized": {
+    "selections": 52,
+    "sources": 130,
+    "sha256": "5b919572d55a467b146af8dca797ff2d92059033a6475f121238bf6137ce7587"
+  }
+}

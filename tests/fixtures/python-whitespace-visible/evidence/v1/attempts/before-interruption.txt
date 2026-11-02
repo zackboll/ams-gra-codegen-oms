@@ -1,0 +1,1 @@
+Interrupted debug measurement: closure extraction exceeded three minutes; retained attempt. Rerun uses optimized generator and closure tool.

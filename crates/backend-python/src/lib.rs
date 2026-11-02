@@ -12,9 +12,10 @@ pub use service_codec::{SERVICE_CODEC_FILE, generate_service_codec};
 use ams_gra_oms_codegen_core::{
     Backend, CodegenError, DirectTemporalProfile, FloatingBoundKind, FloatingDomain, GeneratedFile,
     GenerationWorld, InclusiveIntegralDomain, ServiceApiModel, StringProfile, TemporalProfile,
-    TypeEmission, abstract_value_targets, binary_length_domain, direct_temporal_profile,
-    effective_choice_alternatives, effective_record_fields, floating_domain,
-    inclusive_integral_domain, plan_type_emissions, string_profile, temporal_profile,
+    TypeEmission, WhitespaceVisiblePolicy, abstract_value_targets, binary_length_domain,
+    direct_temporal_profile, effective_choice_alternatives, effective_record_fields,
+    floating_domain, inclusive_integral_domain, plan_type_emissions, string_profile,
+    temporal_profile,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -96,6 +97,13 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     if schema
         .types
         .iter()
+        .any(|decl| whitespace_visible_profile(decl).is_some())
+    {
+        output.push_str(include_str!("whitespace_visible_runtime.py"));
+    }
+    if schema
+        .types
+        .iter()
         .any(|declaration| header_profile(declaration).is_some())
     {
         output.push_str(include_str!("header_runtime.py"));
@@ -108,7 +116,11 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
         for declaration in emitted_declarations(&emissions)? {
             if !matches!(declaration.kind, TypeKind::Enumeration { .. }) {
                 let symbol = names::symbol(&declaration.name.local_name, false);
-                writeln!(output, "    {symbol}: {symbol}.__post_init__,").unwrap();
+                if let Some((policy, min, max)) = whitespace_visible_profile(declaration) {
+                    writeln!(output, "    {symbol}: lambda value: _check_whitespace_visible(value.value, {policy:?}, {min}, {max}, True),").unwrap();
+                } else {
+                    writeln!(output, "    {symbol}: {symbol}.__post_init__,").unwrap();
+                }
             }
         }
         output.push_str("}\n");
@@ -153,6 +165,62 @@ fn visible_ascii_profile(declaration: &TypeDecl) -> Option<(u64, u64)> {
             max_length,
         })) => Some((min_length, max_length)),
         _ => None,
+    }
+}
+
+fn whitespace_visible_profile(declaration: &TypeDecl) -> Option<(&'static str, u64, u64)> {
+    if declaration.kind != TypeKind::Primitive(PrimitiveKind::String) {
+        return None;
+    }
+    match string_profile(PrimitiveKind::String, &declaration.constraints) {
+        Ok(Some(StringProfile::WhitespaceVisible {
+            white_space,
+            min_length,
+            max_length,
+        })) => {
+            let policy = match white_space {
+                WhitespaceVisiblePolicy::Collapse => "collapse",
+                WhitespaceVisiblePolicy::Preserve => "preserve",
+            };
+            Some((policy, min_length, max_length))
+        }
+        _ => None,
+    }
+}
+
+// Prove every effective domain and every named edge, not just matching bounds.
+// In particular, a restriction may not change the parent's normalization policy.
+fn whitespace_visible_ancestry(
+    schema: &SchemaIr,
+    declaration: &TypeDecl,
+) -> Result<(), CodegenError> {
+    let mut current = declaration;
+    let mut seen = BTreeSet::new();
+    loop {
+        if current.is_abstract || !seen.insert(&current.name) {
+            return Err(error("unproven whitespace-visible restriction ancestry"));
+        }
+        let (policy, min, max) = whitespace_visible_profile(current)
+            .ok_or_else(|| error("unproven whitespace-visible restriction profile"))?;
+        match current.base_type.as_ref().map(|base| &base.target) {
+            Some(TypeRefTarget::Primitive(PrimitiveKind::String)) | None => return Ok(()),
+            Some(TypeRefTarget::Named(name)) => {
+                let parent = schema
+                    .types
+                    .iter()
+                    .find(|candidate| candidate.name == *name)
+                    .ok_or_else(|| error("missing whitespace-visible restriction base"))?;
+                let (parent_policy, parent_min, parent_max) = whitespace_visible_profile(parent)
+                    .ok_or_else(|| error("unproven whitespace-visible restriction base"))?;
+                if policy != parent_policy || min < parent_min || max > parent_max {
+                    return Err(error(
+                        "incompatible effective whitespace-visible constraints",
+                    ));
+                }
+                current = parent;
+            }
+            _ => return Err(error("incompatible whitespace-visible restriction base")),
+        }
     }
 }
 
@@ -640,6 +708,8 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
                 datetime_ancestry(schema, declaration)?;
             } else if visible_ascii_profile(declaration).is_some() {
                 visible_ascii_ancestry(schema, declaration)?;
+            } else if whitespace_visible_profile(declaration).is_some() {
+                whitespace_visible_ancestry(schema, declaration)?;
             } else if nato_special_words_profile(declaration) {
                 nato_special_words_ancestry(schema, declaration)?;
             } else if let Some(base) = &declaration.base_type {
@@ -669,6 +739,7 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
                         datetime_profile(&declaration.constraints)?;
                     } else if header_profile(declaration).is_none()
                         && visible_ascii_profile(declaration).is_none()
+                        && whitespace_visible_profile(declaration).is_none()
                         && !nato_special_words_profile(declaration)
                     {
                         primitive(*kind, &declaration.constraints)?;
@@ -889,6 +960,10 @@ fn render(
             }
             if let Some((min, max)) = visible_ascii_profile(declaration) {
                 writeln!(output, "    value: str\n\n    def __post_init__(self) -> None:\n        _check_visible_ascii(self.value, {min}, {max})").unwrap();
+                return Ok(());
+            }
+            if let Some((policy, min, max)) = whitespace_visible_profile(declaration) {
+                writeln!(output, "    value: str\n\n    def __post_init__(self) -> None:\n        object.__setattr__(self, 'value', _check_whitespace_visible(self.value, {policy:?}, {min}, {max}))").unwrap();
                 return Ok(());
             }
             if nato_special_words_profile(declaration) {

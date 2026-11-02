@@ -1,0 +1,16 @@
+    Checking ams-gra-oms-ir v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/ir)
+    Checking uuid v1.26.1
+    Checking serde v1.0.229
+    Checking ams-gra-oms-xsd-frontend v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/xsd-frontend)
+    Checking ams-gra-oms-schema-diff v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/schema-diff)
+    Checking yaml_serde v0.10.7
+    Checking ams-gra-oms-service-contract v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/service-contract)
+    Checking ams-gra-oms-codegen-core v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/codegen-core)
+    Checking ams-gra-oms-backend-python v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/backend-python)
+    Checking ams-gra-oms-schema-docs v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/schema-docs)
+    Checking ams-gra-oms-backend-rust v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/backend-rust)
+    Checking ams-gra-oms-service-routes v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/service-routes)
+    Checking ams-gra-oms-backend-ada v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/backend-ada)
+    Checking ams-gra-oms-backend-cpp v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/backend-cpp)
+    Checking ams-gra-codegen-oms v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/cli)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.48s
