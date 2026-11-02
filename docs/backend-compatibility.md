@@ -17,6 +17,26 @@ AO_CapabilityStatus 68/130, AMTI_CommandStatus 30/43 codec-renderable
 declarations — **no real UCI message is supported**, and no transport or
 LA-CAL runtime exists for C++. See
 [CPP-OMS-001](task-cpp-oms-001-cpp-oms-json-codecs.md).
+## C++ update — CPP-OMS-002 authentic UCI Log codec
+
+`--language cpp --with-codec` is now **READY** for the authentic pinned UCI
+`Log` message in UCI 2.5 (`093610b…`, 42 selected types, 41/41 codec
+declarations) and UCI 2.6 (`78eb61b…`, 44 selected types, 43/43). Added to the
+CPP-OMS-001 subset: the UUID, schema-version, visible-ASCII, whitespace-visible
+and NATO-special-words String profiles, named `DateTimeZulu` / `Duration`,
+direct `xs:dateTime` / `xs:duration`, unconstrained `xs:hexBinary` and
+required-single Choices. Generated headers compile under strict g++ and clang++
+and the consumer round-trips the Task 093 goldens and rejects the malformed
+corpus under ASan+UBSan (g++). The model and service API headers remain
+byte-identical without the flag (59 pairs, 472 runs, 0 differences against the
+CPP-OMS-001 head `d7eda35` and `main` `c2dcca5`). PR smoke's C++ step also
+compiles and runs an offline Choice / temporal / hexBinary regression from
+existing synthetic fixtures. Float, `Time`, other String profiles, constrained
+Binary, optional/repeated Choice alternatives, polymorphism, nillable and
+unqualified members stay `NOT READY`; `PositionReport` and `AMTI_Command` now
+stop at the named Float64 `AccelerationType`. See
+[CPP-OMS-002](task-cpp-oms-002-real-log.md).
+
 
 ## Python update — PY-010 checked visible-ASCII Strings
 
