@@ -128,6 +128,13 @@ Python LA-CAL runtime under `python/oms-lacal-runtime`: async OWP/WebSocket
 publish/subscribe through explicit generated-codec registrations, with pinned
 `websockets==17.2`. Generated files remain transport-independent.
 
+[CPP-OMS-003](docs/task-cpp-oms-003-lacal-runtime.md) adds a separate,
+handwritten C++17 LA-CAL runtime under `cpp/oms-lacal-runtime`: the adapter the
+unchanged generated `service_api.hpp` forwards to, over Boost.Beast WebSocket
+(`owp` subprotocol, verbose OWP 1.0, `ws://` only), with payloads encoded and
+decoded by the generated `service_codec.hpp`. Authentic UCI 2.5/2.6 `Log`
+publish/subscribe is qualified against the unmodified pinned Sleet.
+
 [PY-006](docs/task-py-006-uci-header-profiles.md) adds exact checked UCI
 schema-version and UUID String carriers, preserving lexical spelling (including
 UUID case and nil), and generated JSON String codecs. The OAM UUID special
@@ -429,6 +436,8 @@ ams-gra-codegen-oms/
 │   ├── runtime-api-rust/  # Stable Rust adapter traits used by generated code
 │   ├── runtime-rust/      # Rust LA-CAL runtime over pinned sleet-client
 │   └── runtime-rust-facade-tests/  # Test-only: generated facade -> runtime
+├── cpp/
+│   └── oms-lacal-runtime/ # Handwritten C++17 LA-CAL runtime (CPP-OMS-003)
 ├── docs/
 │   ├── architecture.md
 │   ├── ir.md

@@ -197,7 +197,13 @@ class Routing(unittest.TestCase):
                      "scripts/check-cpp-oms-002-real-log.sh",
                      "tests/fixtures/cpp-codec/oam.xsd", "tests/fixtures/cpp-codec/expected/service_codec.hpp",
                      "crates/cli/tests/cpp_codec.rs", "scripts/check-cpp-oms-001.sh",
-                     "scripts/check-cpp-oms-001-parity.sh"):
+                     "scripts/check-cpp-oms-001-parity.sh",
+                     # CPP-OMS-003: the handwritten LA-CAL runtime and its tests/scripts.
+                     "cpp/oms-lacal-runtime/src/runtime.cpp", "cpp/oms-lacal-runtime/src/owp.cpp",
+                     "cpp/oms-lacal-runtime/include/ams_gra/lacal/runtime.hpp",
+                     "tests/cpp-lacal/runtime_mock_test.cpp", "tests/cpp-lacal/mock_peer.hpp",
+                     "tests/cpp-lacal/real_log_sleet.cpp", "scripts/check-cpp-oms-003-runtime.sh",
+                     "scripts/check-cpp-oms-003-real-log-sleet.sh"):
             with self.subTest(path=path):
                 self.assert_execution([path], ["cpp"])
         self.assert_execution(["tests/cpp-codec/consumer.cpp", "crates/backend-cpp/src/lib.rs",
@@ -209,7 +215,11 @@ class Routing(unittest.TestCase):
                      "tests/cpp-codec-other/a.cpp", "tests/cpp-codecs/a.cpp",
                      "tests/fixtures/cpp-codec-other/a.xsd", "scripts/check-cpp-oms-001.sh.bak",
                      "scripts/check-cpp-oms-002.sh", "crates/cli/tests/cpp_codec_extra.rs",
-                     "crates/cli/tests/cpp_codec.rs.bak", "crates/cli/tests/service_codec.rs"):
+                     "crates/cli/tests/cpp_codec.rs.bak", "crates/cli/tests/service_codec.rs",
+                     "cpp/oms-lacal-runtime-other/a.cpp", "cpp/other/a.cpp", "cpp/oms-lacal-runtime",
+                     "tests/cpp-lacal-other/a.cpp", "tests/cpp-lacalx/a.cpp",
+                     "scripts/check-cpp-oms-003.sh", "scripts/check-cpp-oms-003-runtime.sh.bak",
+                     "tests/fixtures/service-generate/runtime-test.yaml"):
             with self.subTest(path=path):
                 self.assert_execution([path], list(smoke.BACKENDS))
 
@@ -320,6 +330,9 @@ class Execution(unittest.TestCase):
                     return "6313 checks, 0 failures\n"
                 if Path(str(command[0])).name.startswith("shapes-"):
                     return "".join(smoke.cpp_shape_marker(*row[1:]) + "\n" for row in smoke.CPP_SHAPES)
+                for binary, _, _, marker in smoke.CPP_RUNTIME_SUITES:
+                    if Path(str(command[0])).name == binary:
+                        return marker + "\n"
                 return ""
             with patch.object(smoke, "checked", side_effect=checked):
                 smoke.execute({backend}, False)
@@ -345,8 +358,14 @@ class Execution(unittest.TestCase):
                 self.assertIn("tests/cpp-codec/shapes_consumer.cpp", joined)
                 for _, shape, _, _ in smoke.CPP_SHAPES:
                     self.assertIn(f"-DSHAPE_{shape}", joined)
-                # Offline: the C++ smoke never fetches or reads authentic UCI schemas.
-                for forbidden in ("fetch-pinned-uci", "UCI_MessageDefinitions", "check-cpp-oms-002-real-log"):
+                for _, source, _, _ in smoke.CPP_RUNTIME_SUITES:
+                    self.assertIn(source, joined)
+                self.assertIn("cpp/oms-lacal-runtime/src/runtime.cpp", joined)
+                self.assertIn("tests/fixtures/service-generate/runtime-test.xsd", joined)
+                # Offline: the C++ smoke never fetches or reads authentic UCI
+                # schemas and never starts Sleet.
+                for forbidden in ("fetch-pinned-uci", "UCI_MessageDefinitions", "check-cpp-oms-002-real-log",
+                                  "check-cpp-oms-003", "real_log_sleet", "sleet", "Sleet"):
                     self.assertNotIn(forbidden, joined)
                 self.assertNotIn("-fsanitize", joined)
                 self.assertNotIn("clang", joined)
@@ -356,10 +375,12 @@ class Execution(unittest.TestCase):
                 self.assertIn("alr -n build", joined)
 
     def run_cpp_smoke(self, consumer_output="6313 checks, 0 failures\n", write_codec=True,
-                      failing=None, missing=None, shape_outputs=None):
+                      failing=None, missing=None, shape_outputs=None, runtime_outputs=None):
         shape_outputs = dict({shape: smoke.cpp_shape_marker(shape, checks, rejections) + "\n"
                               for _, shape, checks, rejections in smoke.CPP_SHAPES},
                              **(shape_outputs or {}))
+        runtime_outputs = dict({binary: marker + "\n" for binary, _, _, marker in smoke.CPP_RUNTIME_SUITES},
+                               **(runtime_outputs or {}))
         seen = []
         def checked(command, **kwargs):
             seen.append((list(map(str, command)), kwargs))
@@ -371,10 +392,12 @@ class Execution(unittest.TestCase):
             if "--output" in command:
                 out = Path(command[command.index("--output") + 1])
                 out.mkdir()
-                for file in ("oam.hpp", "service_api.hpp") + (("service_codec.hpp",) if write_codec else ()):
+                for file in ("oam.hpp", "test.hpp", "service_api.hpp") + (("service_codec.hpp",) if write_codec else ()):
                     (out / file).write_text("")
             if name.startswith("shapes-"):
                 return shape_outputs[name.removeprefix("shapes-")]
+            if name in runtime_outputs:
+                return runtime_outputs[name]
             return consumer_output if name == "consumer" else ""
         with tempfile.TemporaryDirectory() as directory, patch.object(smoke, "checked", side_effect=checked):
             smoke.cpp_smoke(Path(directory) / "consumer")
@@ -384,7 +407,7 @@ class Execution(unittest.TestCase):
         seen = self.run_cpp_smoke()
         commands = [" ".join(command) for command, _ in seen]
         self.assertEqual([c.split()[0] for c in commands if c.startswith(("g++", "cargo"))].count("g++"),
-                         2 + len(smoke.CPP_SHAPES))
+                         2 + len(smoke.CPP_SHAPES) + len(smoke.CPP_RUNTIME_SUITES))
         cargo = [kwargs for command, kwargs in seen if command[0] == "cargo"][0]
         self.assertTrue(cargo["tests"])
         self.assertIn("3 passed; 0 failed", cargo["marker"])
@@ -393,8 +416,8 @@ class Execution(unittest.TestCase):
             self.assertIn(name, cargo_command)
         self.assertIn("--exact", cargo_command)
         generates = [c for c in commands if "--language cpp" in c]
-        self.assertEqual(len(generates), 1 + len(smoke.CPP_SHAPES))
-        for (fixture, shape, _, _), command in zip(smoke.CPP_SHAPES, generates[1:]):
+        self.assertEqual(len(generates), 1 + len(smoke.CPP_SHAPES) + 1)
+        for (fixture, shape, _, _), command in zip(smoke.CPP_SHAPES, generates[1:-1]):
             self.assertIn(f"tests/fixtures/{fixture}.xsd", command)
             self.assertIn(f"tests/fixtures/{fixture}.yaml", command)
             self.assertIn("--with-codec", command)
@@ -416,8 +439,26 @@ class Execution(unittest.TestCase):
                  for needle in ("--test cpp_codec", "service-generate", "-Werror")]
         order.append(next(i for i, c in enumerate(commands) if c.endswith("/consumer") and " " not in c))
         order.append(next(i for i, c in enumerate(commands) if "-DSHAPE_" in c))
+        # CPP-OMS-003 runtime: generated after the shapes, then each suite is
+        # strict-compiled and executed; the last command runs the mock suite.
+        runtime_generate = generates[-1]
+        self.assertIn("tests/fixtures/service-generate/runtime-test.xsd", runtime_generate)
+        self.assertIn("tests/fixtures/service-generate/runtime-test.yaml", runtime_generate)
+        self.assertIn("--with-codec", runtime_generate)
+        order.append(commands.index(runtime_generate))
+        for binary, source, needs_generated, _ in smoke.CPP_RUNTIME_SUITES:
+            compile_command = next(c for c in commands if source in c)
+            self.assertTrue(compile_command.startswith("g++ "))
+            for flag in (*smoke.CPP_STRICT, "-pthread"):
+                self.assertIn(flag, compile_command.split())
+            self.assertIn("cpp/oms-lacal-runtime/include", compile_command)
+            self.assertIn("cpp/oms-lacal-runtime/src/owp.cpp", compile_command)
+            self.assertEqual("cpp/oms-lacal-runtime/src/runtime.cpp" in compile_command, needs_generated)
+            self.assertEqual("/runtime-test" in compile_command.split(" -o ")[0], needs_generated)
+            order.append(commands.index(compile_command))
+            order.append(next(i for i, c in enumerate(commands) if c.endswith(f"/{binary}") and " " not in c))
         self.assertEqual(order, sorted(order))
-        self.assertTrue(commands[-1].endswith(f"/shapes-{smoke.CPP_SHAPES[-1][1]}"))
+        self.assertTrue(commands[-1].endswith(f"/{smoke.CPP_RUNTIME_SUITES[-1][0]}"))
 
     def test_cpp_smoke_fails_closed(self):
         with self.assertRaises(FileNotFoundError):  # no compiler
@@ -447,6 +488,16 @@ class Execution(unittest.TestCase):
                            f"CPP_OMS_002_SHAPES_FAILED failures=1 checks={checks}\n"):
                 with self.subTest(shape=shape, output=output), self.assertRaises(RuntimeError):
                     self.run_cpp_smoke(shape_outputs={shape: output})
+        # CPP-OMS-003 runtime suites: a failing binary, a compile error is
+        # covered above; any summary other than the exact one fails.
+        for binary, _, _, marker in smoke.CPP_RUNTIME_SUITES:
+            with self.subTest(failing=binary), self.assertRaises(subprocess.CalledProcessError):
+                self.run_cpp_smoke(failing=binary)
+            fewer = re.sub(r"checks=(\d+)", lambda m: f"checks={int(m.group(1)) - 1}", marker)
+            for output in ("", "no summary\n", fewer + "\n", marker + " trailing\n",
+                           marker.replace("COMPLETE", "FAILED") + "\n"):
+                with self.subTest(binary=binary, output=output), self.assertRaises(RuntimeError):
+                    self.run_cpp_smoke(runtime_outputs={binary: output})
 
     def test_cpp_smoke_missing_compiler_is_red_for_real(self):
         with patch.object(smoke.subprocess, "run", side_effect=FileNotFoundError("g++")), \
@@ -476,6 +527,14 @@ class Execution(unittest.TestCase):
         self.assertEqual(pr.count("runs-on:"), 1)
         self.assertIn("      - name: C++ smoke\n        if: steps.route.outputs.cpp == 'true'\n"
                       "        run: python3 scripts/pr_smoke.py run cpp", pr)
+        # CPP-OMS-003: the only package installation is Boost headers, gated by
+        # the C++ route, immediately before the C++ smoke in the same job.
+        boost = pr.split("      - name: Install Boost.Beast headers for the C++ LA-CAL runtime smoke\n", 1)[1]
+        boost = boost.split("      - name:", 1)
+        self.assertTrue(boost[0].startswith("        if: steps.route.outputs.cpp == 'true'\n"))
+        self.assertIn("sudo apt-get install --no-install-recommends -y libboost-dev\n", boost[0])
+        self.assertTrue(boost[1].startswith(" C++ smoke\n"))
+        self.assertEqual(pr.count("apt-get install"), 1)
         toolchain = pr.split("dtolnay/rust-toolchain", 1)[1].split("\n", 2)[1]
         for backend in smoke.BACKENDS:
             if backend != "python":

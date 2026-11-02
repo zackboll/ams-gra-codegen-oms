@@ -38,6 +38,22 @@ CPP_SHAPES = (
 )
 
 
+# CPP-OMS-003: offline regression for the handwritten C++17 LA-CAL runtime
+# (cpp/oms-lacal-runtime). The synthetic runtime-test service is generated
+# through the production CLI with its codec; each suite is compiled with
+# CPP_STRICT against Boost.Beast headers and run against the test-only
+# loopback mock peer, and must print exactly its summary. No Sleet, no UCI,
+# no sanitizers or clang++ (those stay in scripts/check-cpp-oms-003-*.sh).
+CPP_RUNTIME_SOURCES = ("cpp/oms-lacal-runtime/src/owp.cpp", "cpp/oms-lacal-runtime/src/runtime.cpp")
+CPP_RUNTIME_SUITES = (
+    # (binary, test source, needs the generated runtime-test headers, exact summary)
+    ("lacal-owp-unit", "tests/cpp-lacal/owp_unit_test.cpp", False,
+     "CPP_OMS_003_OWP_UNIT_COMPLETE tests=6 checks=101"),
+    ("lacal-mock", "tests/cpp-lacal/runtime_mock_test.cpp", True,
+     "CPP_OMS_003_MOCK_COMPLETE tests=30 checks=364"),
+)
+
+
 def cpp_shape_marker(shape, checks, rejections):
     return f"CPP_OMS_002_SHAPES_COMPLETE shape={shape} checks={checks} rejections={rejections}"
 
@@ -86,10 +102,13 @@ def classify(paths):
               or (path.startswith(("scripts/test_task104", "scripts/test_task105", "scripts/test_task106"))
                   and "/" not in path.removeprefix("scripts/") and path.endswith(".py"))):
             selected.add("ada")
-        elif (path.startswith(("crates/backend-cpp/", "tests/cpp-codec/", "tests/fixtures/cpp-codec/"))
+        elif (path.startswith(("crates/backend-cpp/", "tests/cpp-codec/", "tests/fixtures/cpp-codec/",
+                               "cpp/oms-lacal-runtime/", "tests/cpp-lacal/"))
               or path in ("crates/cli/tests/cpp_codec.rs", "scripts/check-cpp-oms-001.sh",
                           "scripts/check-cpp-oms-001-parity.sh",
-                          "scripts/check-cpp-oms-002-real-log.sh")):
+                          "scripts/check-cpp-oms-002-real-log.sh",
+                          "scripts/check-cpp-oms-003-runtime.sh",
+                          "scripts/check-cpp-oms-003-real-log-sleet.sh")):
             selected.add("cpp")
         else:
             selected.update(BACKENDS)
@@ -178,7 +197,30 @@ def cpp_smoke(scratch):
         if marker not in checked([binary]).splitlines():
             raise RuntimeError(f"C++ smoke: shapes consumer {shape} did not report exactly: {marker}")
     print("CPP OMS-002 SHAPES PASSED", flush=True)
+    cpp_runtime_smoke(scratch.parent / "cpp-lacal")
     print("CPP SMOKE PASSED", flush=True)
+
+
+def cpp_runtime_smoke(out):
+    """CPP-OMS-003: generate runtime-test, strict-compile and run the runtime suites."""
+    out.mkdir(parents=True, exist_ok=True)
+    generated = out / "runtime-test"
+    generate("cpp", generated, "service-generate/runtime-test")
+    for name in ("service_api.hpp", "service_codec.hpp"):  # model header: test.hpp
+        if not (generated / name).is_file():
+            raise RuntimeError(f"C++ smoke: production CLI did not generate {name} for runtime-test")
+    for binary_name, source, needs_generated, marker in CPP_RUNTIME_SUITES:
+        binary = out / binary_name
+        sources = [ROOT / source, ROOT / CPP_RUNTIME_SOURCES[0]]
+        if needs_generated:
+            sources.append(ROOT / CPP_RUNTIME_SOURCES[1])
+        include = ["-I", ROOT / "cpp/oms-lacal-runtime/include"]
+        if needs_generated:
+            include += ["-I", generated]
+        checked(["g++", *CPP_STRICT, "-pthread", *include, *sources, "-o", binary])
+        if marker not in checked([binary]).splitlines():
+            raise RuntimeError(f"C++ smoke: {binary_name} did not report exactly: {marker}")
+    print("CPP OMS-003 RUNTIME PASSED", flush=True)
 
 
 def smoke(backend):
