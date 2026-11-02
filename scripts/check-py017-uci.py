@@ -14,6 +14,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE = ROOT / 'tests/fixtures/python-network-addresses/evidence/v1'
+AUTHENTICATION_SHA256 = '1729d4beaf56d7149acc4a1070f82221ca2e1765f134101245d2165d9e37b5ac'
 
 
 def module(name, filename):
@@ -26,6 +27,23 @@ def module(name, filename):
 measurement = module('py017_measurement', 'measure-py017-uci.py')
 driver = measurement.driver
 historical = module('py017_historical', 'check-py016-uci.py')
+
+
+def authenticate(source, expected):
+    # Compare frozen production inventories with independently reconstructed
+    # immutable Git objects, never with future current source files.
+    historical.authenticate(source, expected)
+
+
+def frozen():
+    authentication_file = EVIDENCE / 'source-authentication.json'
+    driver.require(driver.digest(authentication_file) == AUTHENTICATION_SHA256,
+                   'independent historical authentication changed')
+    authentication = json.loads(authentication_file.read_text())
+    values = [json.loads((EVIDENCE / (stage + '.json')).read_text()) for stage in ['before', 'after']]
+    for stage, value in zip(['before', 'after'], values):
+        authenticate(value['source'], authentication[stage])
+    return values
 
 
 def validate(before, after):
@@ -57,9 +75,12 @@ def validate(before, after):
             # only install its READY oracle after the actual campaign passes.
             ready = stage == 'after' or message != 'RDMA_InitializeSetup'
             driver.require(row['exit'] == row['generation']['exit'] == (0 if ready else 1), 'unexpected process status')
-            for label in ['model', 'service api'] + (['codec'] if codec else []):
+            for label in ['model', 'service api'] + (['codec'] if codec and ready else []):
                 driver.require(f'{label} status: {"READY" if ready else "NOT READY"}' in row['stdout'],
                                'missing actual readiness status')
+            if codec and not ready:
+                driver.require('codec: not measured (selected model or service API is NOT READY)' in row['stdout'],
+                               'missing unmeasured codec boundary')
             if ready:
                 driver.require(set(row['artifacts']) == {'model.py', 'service_api.py'} |
                                ({'service_codec.py'} if codec else set()), 'wrong artifact inventory')
@@ -123,7 +144,9 @@ def main():
         args.output.mkdir(parents=True, exist_ok=False)
         execute_rdma(args.generator.resolve(), args.output.resolve())
         return
-    before = json.loads((args.before or EVIDENCE / 'before.json').read_text())
+    frozen_before, frozen_after = frozen()
+    validate(frozen_before, frozen_after)
+    before = json.loads(args.before.read_text()) if args.before else frozen_before
     if args.generator:
         driver.require(args.output is not None, 'live qualification requires output')
         subprocess.run([sys.executable, str(ROOT / 'scripts/measure-py017-uci.py'), '--generator',
@@ -131,6 +154,9 @@ def main():
             '--source-commit', 'HEAD', '--output', str(args.output.resolve())], check=True)
         after = json.loads((args.output / 'measurements.json').read_text())
         summaries = validate(before, after)
+        for measured, oracle in zip(after['measurements'], frozen_after['measurements']):
+            for field in ['exit', 'stdout', 'stderr', 'artifacts', 'closure_sha256', 'contract_sha256']:
+                driver.require(measured[field] == oracle[field], 'live successor baseline changed: ' + field)
         execute_rdma(args.generator.resolve(), args.output.resolve())
         # Keep the predecessor's isolated-profile, inheritance, header and full
         # service execution. Do not call its obsolete live readiness oracle.
@@ -154,7 +180,7 @@ def main():
                        cwd=ROOT, check=True, env={**os.environ, 'PYTHON': sys.executable})
         subprocess.run([sys.executable, str(ROOT / 'python/qualification/run.py'), 'uci'], check=True)
     else:
-        after = json.loads((EVIDENCE / 'after.json').read_text())
+        after = frozen_after
         summaries = validate(before, after)
     print('PY017 PINNED UCI DELTA: PASSED before_ready=' + str(sum(r['ready'] for r in summaries if r['stage'] == 'before')) +
           '/40 after_ready=' + str(sum(r['ready'] for r in summaries if r['stage'] == 'after')) + '/40')

@@ -17,8 +17,8 @@ EVIDENCE = ROOT / 'tests/fixtures/python-network-addresses/evidence/v1'
 
 class Evidence(unittest.TestCase):
     def setUp(self):
-        self.before, self.after = [json.loads((EVIDENCE / (stage + '.json')).read_text())
-                                   for stage in ['before', 'after']]
+        self.before, self.after = gate.frozen()
+        self.authentication = json.loads((EVIDENCE / 'source-authentication.json').read_text())
 
     def test_exact_delta_and_manifest(self):
         summary = gate.validate(self.before, self.after)
@@ -34,7 +34,26 @@ class Evidence(unittest.TestCase):
     def test_historical_oracles_do_not_depend_on_future_live_source(self):
         with mock.patch.object(gate, 'ROOT', Path('/unavailable-future-current-source')):
             self.assertEqual(len(gate.validate(self.before, self.after)), 80)
+            for stage, value in [('before', self.before), ('after', self.after)]:
+                gate.authenticate(value['source'], self.authentication[stage])
         self.assertEqual(len(gate.historical.validate(*gate.historical.frozen())), 80)
+
+    def test_source_inventory_and_executable_tampering(self):
+        for stage, value in [('before', self.before), ('after', self.after)]:
+            for variant in ['missing', 'extra', 'modified', 'commit', 'tree', 'generator_sha256', 'closure_tool_sha256']:
+                bad = copy.deepcopy(value['source'])
+                inventory = bad['production_sha256']
+                name = next(iter(inventory))
+                if variant == 'missing':
+                    del inventory[name]
+                elif variant == 'extra':
+                    inventory['extra.py'] = '0' * 64
+                elif variant == 'modified':
+                    inventory[name] = '0' * 64
+                else:
+                    bad[variant] = '0' * 64
+                with self.subTest(stage=stage, variant=variant), self.assertRaises(RuntimeError):
+                    gate.authenticate(bad, self.authentication[stage])
 
     def test_missing_duplicate_forged_or_changed_selections_fail(self):
         for variant in range(13):

@@ -1,0 +1,403 @@
+[
+  {
+    "language": "ada",
+    "world": "closed-schema",
+    "runs": [
+      {
+        "command": [
+          "/home/zboll/py017-build/main-target/release/ams-gra-codegen-oms",
+          "generate",
+          "--schema",
+          "/home/zboll/git/ams-gra-codegen-oms-py-017/crates/xsd-frontend/tests/fixtures/track.xsd",
+          "--language",
+          "ada",
+          "--world",
+          "closed-schema",
+          "--output",
+          "/home/zboll/py017-build/peer-before-ada-closed-schema"
+        ],
+        "exit": 0,
+        "stdout": "generated 3 file(s)\noutput: /home/zboll/py017-build/peer-before-ada-closed-schema\n",
+        "stderr": "",
+        "artifacts": {
+          "oms-track.adb": "82f8d629bbdc1c83030605628fe8f4c2faaee5911e0492650f08a3fe05f97ac7",
+          "oms-track.ads": "8bcc446dbb254c97c0b4e9ca3cadc0d8d047c7a45de898c67f0df5202134d955",
+          "oms.ads": "38b828c695b287d641b4b5915dea08f8ecbc47d59c77a90ec99ada5ee591148e"
+        }
+      },
+      {
+        "command": [
+          "/home/zboll/py017-build/release/ams-gra-codegen-oms",
+          "generate",
+          "--schema",
+          "/home/zboll/git/ams-gra-codegen-oms-py-017/crates/xsd-frontend/tests/fixtures/track.xsd",
+          "--language",
+          "ada",
+          "--world",
+          "closed-schema",
+          "--output",
+          "/home/zboll/py017-build/peer-after-ada-closed-schema"
+        ],
+        "exit": 0,
+        "stdout": "generated 3 file(s)\noutput: /home/zboll/py017-build/peer-after-ada-closed-schema\n",
+        "stderr": "",
+        "artifacts": {
+          "oms-track.adb": "82f8d629bbdc1c83030605628fe8f4c2faaee5911e0492650f08a3fe05f97ac7",
+          "oms-track.ads": "8bcc446dbb254c97c0b4e9ca3cadc0d8d047c7a45de898c67f0df5202134d955",
+          "oms.ads": "38b828c695b287d641b4b5915dea08f8ecbc47d59c77a90ec99ada5ee591148e"
+        }
+      }
+    ]
+  },
+  {
+    "language": "ada",
+    "world": "open-extensions",
+    "runs": [
+      {
+        "command": [
+          "/home/zboll/py017-build/main-target/release/ams-gra-codegen-oms",
+          "generate",
+          "--schema",
+          "/home/zboll/git/ams-gra-codegen-oms-py-017/crates/xsd-frontend/tests/fixtures/track.xsd",
+          "--language",
+          "ada",
+          "--world",
+          "open-extensions",
+          "--output",
+          "/home/zboll/py017-build/peer-before-ada-open-extensions"
+        ],
+        "exit": 0,
+        "stdout": "generated 3 file(s)\noutput: /home/zboll/py017-build/peer-before-ada-open-extensions\n",
+        "stderr": "",
+        "artifacts": {
+          "oms-track.adb": "82f8d629bbdc1c83030605628fe8f4c2faaee5911e0492650f08a3fe05f97ac7",
+          "oms-track.ads": "8bcc446dbb254c97c0b4e9ca3cadc0d8d047c7a45de898c67f0df5202134d955",
+          "oms.ads": "38b828c695b287d641b4b5915dea08f8ecbc47d59c77a90ec99ada5ee591148e"
+        }
+      },
+      {
+        "command": [
+          "/home/zboll/py017-build/release/ams-gra-codegen-oms",
+          "generate",
+          "--schema",
+          "/home/zboll/git/ams-gra-codegen-oms-py-017/crates/xsd-frontend/tests/fixtures/track.xsd",
+          "--language",
+          "ada",
+          "--world",
+          "open-extensions",
+          "--output",
+          "/home/zboll/py017-build/peer-after-ada-open-extensions"
+        ],
+        "exit": 0,
+        "stdout": "generated 3 file(s)\noutput: /home/zboll/py017-build/peer-after-ada-open-extensions\n",
+        "stderr": "",
+        "artifacts": {
+          "oms-track.adb": "82f8d629bbdc1c83030605628fe8f4c2faaee5911e0492650f08a3fe05f97ac7",
+          "oms-track.ads": "8bcc446dbb254c97c0b4e9ca3cadc0d8d047c7a45de898c67f0df5202134d955",
+          "oms.ads": "38b828c695b287d641b4b5915dea08f8ecbc47d59c77a90ec99ada5ee591148e"
+        }
+      }
+    ]
+  },
+  {
+    "language": "rust",
+    "world": "closed-schema",
+    "runs": [
+      {
+        "command": [
+          "/home/zboll/py017-build/main-target/release/ams-gra-codegen-oms",
+          "generate",
+          "--schema",
+          "/home/zboll/git/ams-gra-codegen-oms-py-017/crates/xsd-frontend/tests/fixtures/track.xsd",
+          "--language",
+          "rust",
+          "--world",
+          "closed-schema",
+          "--output",
+          "/home/zboll/py017-build/peer-before-rust-closed-schema"
+        ],
+        "exit": 0,
+        "stdout": "generated 1 file(s)\noutput: /home/zboll/py017-build/peer-before-rust-closed-schema\n",
+        "stderr": "",
+        "artifacts": {
+          "track.rs": "11adf3aace329f778dbaa0653bdbda3541014dc31d571a6f2079b2332af80e97"
+        }
+      },
+      {
+        "command": [
+          "/home/zboll/py017-build/release/ams-gra-codegen-oms",
+          "generate",
+          "--schema",
+          "/home/zboll/git/ams-gra-codegen-oms-py-017/crates/xsd-frontend/tests/fixtures/track.xsd",
+          "--language",
+          "rust",
+          "--world",
+          "closed-schema",
+          "--output",
+          "/home/zboll/py017-build/peer-after-rust-closed-schema"
+        ],
+        "exit": 0,
+        "stdout": "generated 1 file(s)\noutput: /home/zboll/py017-build/peer-after-rust-closed-schema\n",
+        "stderr": "",
+        "artifacts": {
+          "track.rs": "11adf3aace329f778dbaa0653bdbda3541014dc31d571a6f2079b2332af80e97"
+        }
+      }
+    ]
+  },
+  {
+    "language": "rust",
+    "world": "open-extensions",
+    "runs": [
+      {
+        "command": [
+          "/home/zboll/py017-build/main-target/release/ams-gra-codegen-oms",
+          "generate",
+          "--schema",
+          "/home/zboll/git/ams-gra-codegen-oms-py-017/crates/xsd-frontend/tests/fixtures/track.xsd",
+          "--language",
+          "rust",
+          "--world",
+          "open-extensions",
+          "--output",
+          "/home/zboll/py017-build/peer-before-rust-open-extensions"
+        ],
+        "exit": 0,
+        "stdout": "generated 1 file(s)\noutput: /home/zboll/py017-build/peer-before-rust-open-extensions\n",
+        "stderr": "",
+        "artifacts": {
+          "track.rs": "11adf3aace329f778dbaa0653bdbda3541014dc31d571a6f2079b2332af80e97"
+        }
+      },
+      {
+        "command": [
+          "/home/zboll/py017-build/release/ams-gra-codegen-oms",
+          "generate",
+          "--schema",
+          "/home/zboll/git/ams-gra-codegen-oms-py-017/crates/xsd-frontend/tests/fixtures/track.xsd",
+          "--language",
+          "rust",
+          "--world",
+          "open-extensions",
+          "--output",
+          "/home/zboll/py017-build/peer-after-rust-open-extensions"
+        ],
+        "exit": 0,
+        "stdout": "generated 1 file(s)\noutput: /home/zboll/py017-build/peer-after-rust-open-extensions\n",
+        "stderr": "",
+        "artifacts": {
+          "track.rs": "11adf3aace329f778dbaa0653bdbda3541014dc31d571a6f2079b2332af80e97"
+        }
+      }
+    ]
+  },
+  {
+    "language": "cpp",
+    "world": "closed-schema",
+    "runs": [
+      {
+        "command": [
+          "/home/zboll/py017-build/main-target/release/ams-gra-codegen-oms",
+          "generate",
+          "--schema",
+          "/home/zboll/git/ams-gra-codegen-oms-py-017/crates/xsd-frontend/tests/fixtures/track.xsd",
+          "--language",
+          "cpp",
+          "--world",
+          "closed-schema",
+          "--output",
+          "/home/zboll/py017-build/peer-before-cpp-closed-schema"
+        ],
+        "exit": 0,
+        "stdout": "generated 1 file(s)\noutput: /home/zboll/py017-build/peer-before-cpp-closed-schema\n",
+        "stderr": "",
+        "artifacts": {
+          "track.hpp": "bffe083a07f45c6f029f46d8403beb5148d1ea285ad14e74799e4c8549d90ffe"
+        }
+      },
+      {
+        "command": [
+          "/home/zboll/py017-build/release/ams-gra-codegen-oms",
+          "generate",
+          "--schema",
+          "/home/zboll/git/ams-gra-codegen-oms-py-017/crates/xsd-frontend/tests/fixtures/track.xsd",
+          "--language",
+          "cpp",
+          "--world",
+          "closed-schema",
+          "--output",
+          "/home/zboll/py017-build/peer-after-cpp-closed-schema"
+        ],
+        "exit": 0,
+        "stdout": "generated 1 file(s)\noutput: /home/zboll/py017-build/peer-after-cpp-closed-schema\n",
+        "stderr": "",
+        "artifacts": {
+          "track.hpp": "bffe083a07f45c6f029f46d8403beb5148d1ea285ad14e74799e4c8549d90ffe"
+        }
+      }
+    ]
+  },
+  {
+    "language": "cpp",
+    "world": "open-extensions",
+    "runs": [
+      {
+        "command": [
+          "/home/zboll/py017-build/main-target/release/ams-gra-codegen-oms",
+          "generate",
+          "--schema",
+          "/home/zboll/git/ams-gra-codegen-oms-py-017/crates/xsd-frontend/tests/fixtures/track.xsd",
+          "--language",
+          "cpp",
+          "--world",
+          "open-extensions",
+          "--output",
+          "/home/zboll/py017-build/peer-before-cpp-open-extensions"
+        ],
+        "exit": 0,
+        "stdout": "generated 1 file(s)\noutput: /home/zboll/py017-build/peer-before-cpp-open-extensions\n",
+        "stderr": "",
+        "artifacts": {
+          "track.hpp": "bffe083a07f45c6f029f46d8403beb5148d1ea285ad14e74799e4c8549d90ffe"
+        }
+      },
+      {
+        "command": [
+          "/home/zboll/py017-build/release/ams-gra-codegen-oms",
+          "generate",
+          "--schema",
+          "/home/zboll/git/ams-gra-codegen-oms-py-017/crates/xsd-frontend/tests/fixtures/track.xsd",
+          "--language",
+          "cpp",
+          "--world",
+          "open-extensions",
+          "--output",
+          "/home/zboll/py017-build/peer-after-cpp-open-extensions"
+        ],
+        "exit": 0,
+        "stdout": "generated 1 file(s)\noutput: /home/zboll/py017-build/peer-after-cpp-open-extensions\n",
+        "stderr": "",
+        "artifacts": {
+          "track.hpp": "bffe083a07f45c6f029f46d8403beb5148d1ea285ad14e74799e4c8549d90ffe"
+        }
+      }
+    ]
+  },
+  {
+    "language": "ada",
+    "readiness": [
+      {
+        "command": [
+          "/home/zboll/py017-build/main-target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/codec-ada-minimal.xsd",
+          "--contract",
+          "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/codec-ada-minimal.yaml",
+          "--language",
+          "ada",
+          "--world",
+          "closed-schema"
+        ],
+        "exit": 0,
+        "stdout": "service contract valid\nservice: codec-ada-minimal\nlanguage: ada\ngeneration world: closed-schema\n\nselected oms messages: 2\nrenderable selected oms messages: 2\nselected type closure: 5\nrenderable selected types: 5\nstatus: READY\n",
+        "stderr": ""
+      },
+      {
+        "command": [
+          "/home/zboll/py017-build/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/codec-ada-minimal.xsd",
+          "--contract",
+          "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/codec-ada-minimal.yaml",
+          "--language",
+          "ada",
+          "--world",
+          "closed-schema"
+        ],
+        "exit": 0,
+        "stdout": "service contract valid\nservice: codec-ada-minimal\nlanguage: ada\ngeneration world: closed-schema\n\nselected oms messages: 2\nrenderable selected oms messages: 2\nselected type closure: 5\nrenderable selected types: 5\nstatus: READY\n",
+        "stderr": ""
+      }
+    ]
+  },
+  {
+    "language": "rust",
+    "readiness": [
+      {
+        "command": [
+          "/home/zboll/py017-build/main-target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/codec-ada-minimal.xsd",
+          "--contract",
+          "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/codec-ada-minimal.yaml",
+          "--language",
+          "rust",
+          "--world",
+          "closed-schema"
+        ],
+        "exit": 0,
+        "stdout": "service contract valid\nservice: codec-ada-minimal\nlanguage: rust\ngeneration world: closed-schema\n\nselected oms messages: 2\nrenderable selected oms messages: 2\nselected type closure: 5\nrenderable selected types: 5\nstatus: READY\n",
+        "stderr": ""
+      },
+      {
+        "command": [
+          "/home/zboll/py017-build/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/codec-ada-minimal.xsd",
+          "--contract",
+          "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/codec-ada-minimal.yaml",
+          "--language",
+          "rust",
+          "--world",
+          "closed-schema"
+        ],
+        "exit": 0,
+        "stdout": "service contract valid\nservice: codec-ada-minimal\nlanguage: rust\ngeneration world: closed-schema\n\nselected oms messages: 2\nrenderable selected oms messages: 2\nselected type closure: 5\nrenderable selected types: 5\nstatus: READY\n",
+        "stderr": ""
+      }
+    ]
+  },
+  {
+    "language": "cpp",
+    "readiness": [
+      {
+        "command": [
+          "/home/zboll/py017-build/main-target/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/codec-ada-minimal.xsd",
+          "--contract",
+          "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/codec-ada-minimal.yaml",
+          "--language",
+          "cpp",
+          "--world",
+          "closed-schema"
+        ],
+        "exit": 0,
+        "stdout": "service contract valid\nservice: codec-ada-minimal\nlanguage: cpp\ngeneration world: closed-schema\n\nselected oms messages: 2\nrenderable selected oms messages: 2\nselected type closure: 5\nrenderable selected types: 5\nstatus: READY\n",
+        "stderr": ""
+      },
+      {
+        "command": [
+          "/home/zboll/py017-build/release/ams-gra-codegen-oms",
+          "service-check",
+          "--schema",
+          "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/codec-ada-minimal.xsd",
+          "--contract",
+          "/home/zboll/git/ams-gra-codegen-oms-py-017/tests/fixtures/service-generate/codec-ada-minimal.yaml",
+          "--language",
+          "cpp",
+          "--world",
+          "closed-schema"
+        ],
+        "exit": 0,
+        "stdout": "service contract valid\nservice: codec-ada-minimal\nlanguage: cpp\ngeneration world: closed-schema\n\nselected oms messages: 2\nrenderable selected oms messages: 2\nselected type closure: 5\nrenderable selected types: 5\nstatus: READY\n",
+        "stderr": ""
+      }
+    ]
+  }
+]

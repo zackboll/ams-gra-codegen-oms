@@ -56,3 +56,27 @@ not reported as generated-decoder rejection.
 Qualification results and immutable identities are recorded in the versioned
 PY-017 evidence bundle. Readiness alone is not a claim of executable RDMA or
 transport interoperability, nor does this selection campaign claim all UCI.
+
+## Measured implementation result
+
+The authenticated starting main is commit
+`86a9e6c971a7a1bad466dff2ada75f1f8e48bf66`, tree
+`5865616d70b8192be6e507c138c8c95fea3d7958`. The initial implementation measurement
+is commit `507a5398c411298f3c0fe4717bde2ef5ece9c5dd`, tree
+`693009a0b9d001c385c0295c35a72133d00be528`.
+
+The unchanged campaign measured **32/40 READY before and 40/40 READY after**.
+All eight RDMA cells became READY; the original 32 cells retained identical
+generated artifact hashes. Independent lexical qualification passed 4,457 IPv4
+vectors and all 26,946 Task 062 IPv6 vectors with no mismatches. Address-free
+parity passed 56 selections and 140 Python sources; representative peer parity
+passed six generation cells and three readiness comparisons. All twelve
+Fast/UCI/Sleet combinations passed on CPython 3.11/3.13, normal/optimized, with
+no skips. Full-schema RDMA typed construction and golden execution passed for
+both releases and worlds, as did synthetic and authentic transport with an
+independent raw observer. All malformed address/Choice transport probes were
+broker-rejected before decoder entry; no decoder rejection is claimed for them.
+
+An initial slow debug BEFORE attempt was explicitly interrupted and is not
+counted as a pass. The complete release-build BEFORE campaign supersedes it;
+both the interruption record and successful campaign are retained.

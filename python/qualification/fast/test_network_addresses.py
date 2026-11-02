@@ -7,6 +7,13 @@ import unittest
 
 
 class NetworkAddresses(unittest.TestCase):
+    def test_authenticated_successor_service_delta(self):
+        root = Path(__file__).resolve().parents[3]
+        result = subprocess.run([sys.executable, str(root / 'scripts/test-py017-uci.py')],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('Ran 4 tests', result.stderr)
+
     def test_generated_models_codecs_and_independent_corpora(self):
         root = Path(__file__).resolve().parents[3]
         result = subprocess.run(

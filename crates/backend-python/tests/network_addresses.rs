@@ -82,3 +82,45 @@ fn no_address_helpers_are_emitted_for_address_free_schemas() {
         assert!(!output.contains(name));
     }
 }
+
+#[test]
+fn addresses_revalidate_without_choice_and_other_alternating_profiles_stay_unsupported() {
+    let mut schema = fixture();
+    schema.messages.clear();
+    schema.types.retain(|decl| {
+        matches!(decl.kind, TypeKind::Primitive(_)) || decl.name.local_name == "IPv4_EndpointType"
+    });
+    let output = generate(&schema, GenerationWorld::ClosedSchemaSet).unwrap();
+    assert!(output.contains("_choice_carrier_validators = {"));
+    let directory = std::env::temp_dir().join(format!("py017-no-choice-{}", std::process::id()));
+    std::fs::create_dir(&directory).unwrap();
+    std::fs::write(directory.join("model.py"), output).unwrap();
+    let probe = "import model as m\na=m.Leaf('1.2.3.4')\nobject.__setattr__(a, 'value', '999.1.2.3')\ntry:\n m.IPv4_EndpointType(ipv4_address=a)\nexcept ValueError:\n pass\nelse:\n raise RuntimeError('corrupted address accepted without Choice')\n";
+    for optimized in [false, true] {
+        let mut command = std::process::Command::new(
+            std::env::var_os("PYTHON").unwrap_or_else(|| "python3".into()),
+        );
+        if optimized {
+            command.arg("-O");
+        }
+        let result = command
+            .args(["-c", probe])
+            .current_dir(&directory)
+            .env("PYTHONDONTWRITEBYTECODE", "1")
+            .output()
+            .unwrap();
+        assert!(result.status.success(), "{result:?}");
+    }
+    std::fs::remove_dir_all(directory).unwrap();
+    let address = schema
+        .types
+        .iter_mut()
+        .find(|decl| decl.name.local_name == "IPv4_AddressType")
+        .unwrap();
+    address.constraints.min_length = None;
+    address.constraints.max_length = None;
+    address.constraints.length = Some(2);
+    address.constraints.lexical.pattern_groups[0].alternatives[0].expression =
+        "[A-Z]{2}|[ ]{2}".into();
+    assert!(generate(&schema, GenerationWorld::ClosedSchemaSet).is_err());
+}

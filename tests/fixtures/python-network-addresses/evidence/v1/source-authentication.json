@@ -1,0 +1,20 @@
+{
+  "before": {
+    "commit": "86a9e6c971a7a1bad466dff2ada75f1f8e48bf66",
+    "tree": "5865616d70b8192be6e507c138c8c95fea3d7958",
+    "generator_sha256": "a2add0aa3c7fa534f3299d0f56b16a4057db2a41b125a00811ed905e15c45dd6",
+    "closure_tool_sha256": "9da3e2f87547276e9fd257d0bfa7a40131b66354cdd0a9a822ef0195b9fcbef2",
+    "base": "08ac2907dc3b2553085a638c8e1795c121ee1535",
+    "base_tree": "38f3b5d8ebd35f3d288b32bc7599583f6ec22626",
+    "production_inventory_sha256": "ef30b1bb39289a6834b2d1999f2281061caed028e0c586b894aec439c12fddf0"
+  },
+  "after": {
+    "commit": "507a5398c411298f3c0fe4717bde2ef5ece9c5dd",
+    "tree": "693009a0b9d001c385c0295c35a72133d00be528",
+    "generator_sha256": "736e7e8a4b4b6ce1157e640d24ff606dfb3bc74777cd2575c629f53416a573cf",
+    "closure_tool_sha256": "9da3e2f87547276e9fd257d0bfa7a40131b66354cdd0a9a822ef0195b9fcbef2",
+    "base": "86a9e6c971a7a1bad466dff2ada75f1f8e48bf66",
+    "base_tree": "5865616d70b8192be6e507c138c8c95fea3d7958",
+    "production_inventory_sha256": "3fe2e53a2afeb1a074e293e944fa2bbcaac86015aac9a5da10d1bb54cd57d6c9"
+  }
+}
