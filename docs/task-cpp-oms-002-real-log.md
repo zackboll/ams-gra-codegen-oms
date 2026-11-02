@@ -161,7 +161,10 @@ required, optional and repeated members.
 
 Still NOT READY, each with a `service codec boundary:` line and no output:
 
-* `xs:float` / `xs:double` (named or direct) — this is now the first blocker for
+* `xs:float` / `xs:double` (named or direct) — **superseded for Float64 by
+  [CPP-OMS-004](task-cpp-oms-004-float64-position-report.md)**, which makes
+  `PositionReport` READY (59/59) in both releases; Float32 stays NOT READY.
+  Historical text: this is now the first blocker for
   most real messages: `PositionReport` (50/59 declarations) and `AMTI_Command`
   (191/217 in 2.5, 192/218 in 2.6) stop at `AccelerationType` (named Float64);
 * named `Time` (`TimeZulu`) and any DateTime/Duration with unsupported facets;

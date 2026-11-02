@@ -135,6 +135,14 @@ unchanged generated `service_api.hpp` forwards to, over Boost.Beast WebSocket
 decoded by the generated `service_codec.hpp`. Authentic UCI 2.5/2.6 `Log`
 publish/subscribe is qualified against the unmodified pinned Sleet.
 
+[CPP-OMS-004](docs/task-cpp-oms-004-float64-position-report.md) adds Float64
+to the generated C++ codec (correctly rounded `std::from_chars` decode,
+shortest-digit `std::to_chars` encode, `"NaN"`/`"Infinity"`/`"-Infinity"`,
+overflow rejected, signed-zero underflow), qualified against the exact-rational
+Task 096 oracle. The authentic UCI 2.5/2.6 `PositionReport` is codec READY
+(59/59) and its typed publish/subscribe is qualified through the same runtime
+and pinned Sleet.
+
 [PY-006](docs/task-py-006-uci-header-profiles.md) adds exact checked UCI
 schema-version and UUID String carriers, preserving lexical spelling (including
 UUID case and nil), and generated JSON String codecs. The OAM UUID special
@@ -952,7 +960,7 @@ The real UCI 2.5 `PositionReport` round-trips through unmodified Sleet as a
 typed `PositionReportMT`. Without the flag all output is unchanged. See
 [Task 050](docs/task-050-rust-oms-json-codecs.md).
 
-**C++ OMS JSON codec (CPP-OMS-001, CPP-OMS-002).** `--language cpp --with-codec`
+**C++ OMS JSON codec (CPP-OMS-001, CPP-OMS-002, CPP-OMS-004).** `--language cpp --with-codec`
 emits a separate, standard-library-only `service_codec.hpp` with typed
 `encode_<Payload>` / `decode_<Payload>` functions returning `CodecResult<T>`,
 for: Boolean, integral, plain String, enumeration and concrete Record (required,
@@ -961,12 +969,16 @@ visible-ASCII, whitespace-visible and NATO-special-words String profiles, named
 `DateTimeZulu` / `Duration` and direct `xs:dateTime` / `xs:duration`,
 unconstrained `xs:hexBinary`, and required-single Choices. The authentic pinned
 UCI `Log` message is READY in both UCI 2.5 (42 selected types, 41/41 codec
-declarations) and UCI 2.6 (44, 43/43). Float, `Time`, the other String
+declarations) and UCI 2.6 (44, 43/43). Since CPP-OMS-004, named Float64
+(unconstrained or bound-only) and direct unconstrained `xs:double` are
+supported and the authentic `PositionReport` is READY in both releases (60
+selected types, 59/59). Float32, field-local constrained direct Float64, `Time`, the other String
 profiles, constrained Binary, optional/repeated Choice alternatives and
 polymorphic constructs report a `service codec boundary:` and write nothing; the
 model and service API headers are byte-identical with and without the flag. See
-[CPP-OMS-001](docs/task-cpp-oms-001-cpp-oms-json-codecs.md) and
-[CPP-OMS-002](docs/task-cpp-oms-002-real-log.md).
+[CPP-OMS-001](docs/task-cpp-oms-001-cpp-oms-json-codecs.md),
+[CPP-OMS-002](docs/task-cpp-oms-002-real-log.md) and
+[CPP-OMS-004](docs/task-cpp-oms-004-float64-position-report.md).
 
 **hexBinary (Task 052).** Schema IR keeps each Binary value's XSD lexical
 primitive (`xs:hexBinary`) as provenance separate from its value kind, resolved
