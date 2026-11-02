@@ -29,13 +29,15 @@
 //! preflight still rejects a projection spanning several namespaces.
 
 use crate::{
-    BackendLanguage, EffectiveValueMember, GenerationWorld, ServiceApiModel, TypeEmission,
+    BackendLanguage, EffectiveValueMember, GenerationWorld, ServiceApiModel, StringProfile,
+    TemporalProfile, TypeEmission, binary_length_domain, direct_temporal_profile,
     effective_choice_alternatives, effective_record_fields, field_storage_semantics,
-    plan_type_emissions, rust_model_file_name, service_api_fixed_names,
+    plan_type_emissions, rust_model_file_name, service_api_fixed_names, string_profile,
+    temporal_profile,
 };
 use ams_gra_oms_ir::{
-    BinaryLexicalEncoding, FieldDecl, OccurrenceShape, PrimitiveKind, SchemaIr, TypeKind,
-    TypeRefTarget, declaration_binary_encoding, resolve_binary_encoding,
+    BinaryLexicalEncoding, ConstraintSet, FieldDecl, OccurrenceShape, PrimitiveKind, SchemaIr,
+    TypeKind, TypeRefTarget, declaration_binary_encoding, resolve_binary_encoding,
 };
 use std::collections::BTreeSet;
 use std::fmt;
@@ -557,13 +559,23 @@ fn check_cpp_codec_artifact(schema: &SchemaIr) -> Result<(), ServiceCodecError> 
     Ok(())
 }
 
-/// CPP-OMS-001: the initial C++ codec subset, decided per emitted declaration.
+/// CPP-OMS-001/002: the C++ codec subset, decided per emitted declaration.
 ///
 /// Runs only after model readiness, so every construct reaching it is already
 /// renderable by the C++ model. The subset is deliberately smaller than the
-/// model: Boolean, integral, plain String, enumeration and concrete Record
-/// declarations with required, optional and repeated members. Everything else
-/// fails closed here, before any file is written.
+/// model: Boolean, integral, plain String, enumeration, concrete Record and
+/// required-single Choice declarations with required, optional and repeated
+/// members (CPP-OMS-001), plus the exact value profiles the authentic UCI `Log`
+/// closure needs (CPP-OMS-002):
+///
+/// * named Strings of the UUID, UCI schema-version, visible-ASCII,
+///   whitespace-visible and NATO special-words profiles (each a checked
+///   carrier with `create(std::string_view)`);
+/// * named `DateTimeZulu` and `Duration` declarations and the direct
+///   unconstrained `xs:dateTime` / `xs:duration` members;
+/// * unconstrained `xs:hexBinary`, direct or named, from IR provenance.
+///
+/// Everything else fails closed here, before any file is written.
 fn cpp_emission_codec_support(
     schema: &SchemaIr,
     emission: &TypeEmission<'_>,
@@ -586,9 +598,58 @@ fn cpp_emission_codec_support(
             PrimitiveKind::Boolean | PrimitiveKind::SignedInteger | PrimitiveKind::UnsignedInteger,
         )
         | TypeKind::Enumeration { .. } => Ok(()),
+        TypeKind::Primitive(PrimitiveKind::String) => {
+            match string_profile(PrimitiveKind::String, &declaration.constraints) {
+                Ok(Some(
+                    StringProfile::UciSchemaVersion
+                    | StringProfile::UniversallyUniqueIdentifier
+                    | StringProfile::VisibleAscii { .. }
+                    | StringProfile::WhitespaceVisible { .. }
+                    | StringProfile::NatoSpecialWords,
+                )) => Ok(()),
+                Ok(Some(other)) => Err(unsupported(
+                    owner,
+                    format!(
+                        "named String profile {} has no C++ codec mapping (supported: UUID, \
+                         schema-version, visible ASCII, whitespace-visible, NATO special words)",
+                        cpp_string_profile_label(&other)
+                    ),
+                )),
+                Ok(None) => Err(unsupported(
+                    owner,
+                    "unconstrained named String has no C++ codec mapping".into(),
+                )),
+                Err(reason) => Err(unsupported(owner, reason.to_string())),
+            }
+        }
+        TypeKind::Primitive(kind @ (PrimitiveKind::DateTime | PrimitiveKind::Duration)) => {
+            match (kind, temporal_profile(*kind, &declaration.constraints)) {
+                (PrimitiveKind::DateTime, Ok(Some(TemporalProfile::DateTimeZulu)))
+                | (PrimitiveKind::Duration, Ok(Some(TemporalProfile::Duration))) => Ok(()),
+                (_, Err(reason)) => Err(unsupported(owner, reason.to_string())),
+                (_, _) => Err(unsupported(
+                    owner,
+                    format!("named {kind:?} has no C++ codec mapping"),
+                )),
+            }
+        }
+        TypeKind::Primitive(PrimitiveKind::Binary) => {
+            // Length-constrained named Binary carriers (`create` over octets)
+            // are outside the CPP-OMS-002 Log vertical.
+            match binary_length_domain(PrimitiveKind::Binary, &declaration.constraints) {
+                Ok(None) => {}
+                Ok(Some(_)) | Err(_) => {
+                    return Err(unsupported(
+                        owner,
+                        "length-constrained named hexBinary has no C++ codec mapping".into(),
+                    ));
+                }
+            }
+            binary_support(declaration_binary_encoding(schema, declaration), owner)
+        }
         TypeKind::Primitive(kind) => Err(unsupported(
             owner,
-            format!("named {kind:?} has no C++ codec mapping in the initial subset"),
+            format!("named {kind:?} has no C++ codec mapping"),
         )),
         TypeKind::Record { .. } => {
             let fields = effective_record_fields(schema, &declaration.name).map_err(|error| {
@@ -606,23 +667,31 @@ fn cpp_emission_codec_support(
                             .into(),
                     ));
                 }
-                cpp_member_support(field, &location)?;
-                let wire = field.wire_name();
-                let key =
-                    oms_json_member_name(wire.namespace_uri.unwrap_or_default(), wire.local_name);
-                if key == "$type" || !keys.insert(key) {
-                    return Err(unsupported(
-                        &location,
-                        "duplicate or reserved OMS JSON member name".into(),
-                    ));
-                }
+                cpp_member_support(schema, field, &location)?;
+                cpp_unique_key(field, &location, &mut keys)?;
             }
             Ok(())
         }
-        TypeKind::Choice { .. } => Err(unsupported(
-            owner,
-            "Choice declarations are not in the C++ codec subset".into(),
-        )),
+        TypeKind::Choice { .. } => {
+            let alternatives =
+                effective_choice_alternatives(schema, &declaration.name).map_err(|error| {
+                    unsupported(owner, format!("choice projection failed: {error:?}"))
+                })?;
+            let mut keys = BTreeSet::new();
+            for alternative in alternatives {
+                let location = format!("{owner}.{}", alternative.name);
+                if alternative.cardinality.shape() != OccurrenceShape::RequiredOne {
+                    return Err(unsupported(
+                        &location,
+                        "only required single Choice alternatives are in the C++ codec subset"
+                            .into(),
+                    ));
+                }
+                cpp_member_support(schema, alternative, &location)?;
+                cpp_unique_key(alternative, &location, &mut keys)?;
+            }
+            Ok(())
+        }
         TypeKind::Alias(_) | TypeKind::List { .. } => Err(unsupported(
             owner,
             "alias/list declarations have no generated codec".into(),
@@ -630,7 +699,43 @@ fn cpp_emission_codec_support(
     }
 }
 
-fn cpp_member_support(field: &FieldDecl, location: &str) -> Result<(), ServiceCodecError> {
+fn cpp_string_profile_label(profile: &StringProfile) -> &'static str {
+    match profile {
+        StringProfile::UciSchemaVersion => "schema-version",
+        StringProfile::UniversallyUniqueIdentifier => "UUID",
+        StringProfile::VisibleAscii { .. } => "visible ASCII",
+        StringProfile::WhitespaceVisible { .. } => "whitespace-visible",
+        StringProfile::NatoSpecialWords => "NATO special words",
+        StringProfile::BoundedAscii { .. } => "bounded ASCII",
+        StringProfile::StructuredAscii(_) => "structured ASCII",
+        StringProfile::AlternatingAscii(_) => "alternating ASCII",
+        StringProfile::Ipv6Address => "IPv6 address",
+        StringProfile::Unicode(_) => "Unicode 3.1",
+    }
+}
+
+/// A member key must be unique inside its Record or Choice and never `$type`.
+fn cpp_unique_key(
+    field: &FieldDecl,
+    location: &str,
+    keys: &mut BTreeSet<String>,
+) -> Result<(), ServiceCodecError> {
+    let wire = field.wire_name();
+    let key = oms_json_member_name(wire.namespace_uri.unwrap_or_default(), wire.local_name);
+    if key == "$type" || !keys.insert(key) {
+        return Err(unsupported(
+            location,
+            "duplicate or reserved OMS JSON member name".into(),
+        ));
+    }
+    Ok(())
+}
+
+fn cpp_member_support(
+    schema: &SchemaIr,
+    field: &FieldDecl,
+    location: &str,
+) -> Result<(), ServiceCodecError> {
     if field.wire_name().namespace_uri.is_none() {
         return Err(ServiceCodecError::UnqualifiedMember {
             location: location.to_owned(),
@@ -655,6 +760,26 @@ fn cpp_member_support(field: &FieldDecl, location: &str) -> Result<(), ServiceCo
         )
         // A named member type is itself an emitted declaration, checked there.
         | TypeRefTarget::Named(_) => Ok(()),
+        // Direct members: exactly the unconstrained shapes the model carries
+        // as `XmlSchemaDateTime` / `XmlSchemaDuration`.
+        TypeRefTarget::Primitive(kind @ (PrimitiveKind::DateTime | PrimitiveKind::Duration)) => {
+            match direct_temporal_profile(*kind, &field.constraints) {
+                Ok(Some(_)) => Ok(()),
+                _ => Err(unsupported(
+                    location,
+                    format!("direct {kind:?} member carries unsupported facets"),
+                )),
+            }
+        }
+        TypeRefTarget::Primitive(PrimitiveKind::Binary) => {
+            if field.constraints != ConstraintSet::default() {
+                return Err(unsupported(
+                    location,
+                    "constrained direct hexBinary has no C++ codec mapping".into(),
+                ));
+            }
+            binary_support(resolve_binary_encoding(schema, &field.type_ref), location)
+        }
         TypeRefTarget::Primitive(kind) => Err(ServiceCodecError::UnsupportedPrimitive {
             location: location.to_owned(),
             kind: *kind,
