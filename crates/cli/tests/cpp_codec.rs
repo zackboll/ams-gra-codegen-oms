@@ -374,7 +374,9 @@ fn synthetic_shapes_for_the_new_value_kinds_pass_under_strict_flags() {
                 &format!("shape-{shape}-{compiler}"),
             );
             assert!(
-                out.starts_with("CPP_OMS_002_SHAPES_COMPLETE checks="),
+                out.starts_with(&format!(
+                    "CPP_OMS_002_SHAPES_COMPLETE shape={shape} checks="
+                )),
                 "{fixture}/{compiler}: {out}"
             );
         }
@@ -401,7 +403,9 @@ fn synthetic_shapes_for_the_new_value_kinds_are_clean_under_sanitizers() {
             &format!("shape-san-{shape}"),
         );
         assert!(
-            out.starts_with("CPP_OMS_002_SHAPES_COMPLETE checks="),
+            out.starts_with(&format!(
+                "CPP_OMS_002_SHAPES_COMPLETE shape={shape} checks="
+            )),
             "{fixture}: {out}"
         );
     }

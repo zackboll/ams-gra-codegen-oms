@@ -26,6 +26,7 @@ namespace {
 
 int failures = 0;
 int checks = 0;
+int rejections = 0;
 
 #define CHECK(condition)                                                   \
     do {                                                                   \
@@ -62,6 +63,7 @@ void reject(const char* name, const std::string& json, std::string_view path, st
             Decode decode) {
     const auto decoded = decode(json);
     ++checks;
+    ++rejections;
     if (decoded.ok()) {
         ++failures;
         std::cerr << name << ": accepted but must be rejected\n";
@@ -79,6 +81,7 @@ void reject(const char* name, const std::string& json, std::string_view path, st
 
 int main() {
 #if defined(SHAPE_HEX)
+    const char* const shape = "HEX";
     const auto decode = [](const std::string& json) { return sc::decode_BlobPayload(json); };
     const auto encode = [](const m::BlobPayload& v) { return sc::encode_BlobPayload(v); };
     const std::string full =
@@ -120,6 +123,7 @@ int main() {
            R"({"Id":1,"Data":"00","Blob":"00","Atomic":{"IntValue":1,"HexBinaryValue":"00"}})", "BlobPayload.Atomic",
            "exactly one selected member", decode);
 #elif defined(SHAPE_TEMPORAL)
+    const char* const shape = "TEMPORAL";
     const auto decode = [](const std::string& json) { return sc::decode_TemporalPayload(json); };
     const auto encode = [](const m::TemporalPayload& v) { return sc::encode_TemporalPayload(v); };
     const std::string full =
@@ -155,6 +159,7 @@ int main() {
            R"({"NamedDates":["2026-01-02T03:04:05Z"],"MoreNamedDates":["2026-01-02T03:04:05Z","2026-01-02T03:04:06Z"],"DirectSpans":[1],"MoreDirectSpans":["PT1S","PT2S"]})",
            "DirectSpans[0]", "expected string", decode);
 #elif defined(SHAPE_CHOICE)
+    const char* const shape = "CHOICE";
     const auto decode = [](const std::string& json) { return sc::decode_Selection(json); };
     const auto encode = [](const m::Selection& v) { return sc::encode_Selection(v); };
     const char* const documents[] = {
@@ -201,6 +206,8 @@ int main() {
         std::cerr << "CPP_OMS_002_SHAPES_FAILED failures=" << failures << " checks=" << checks << '\n';
         return 1;
     }
-    std::cout << "CPP_OMS_002_SHAPES_COMPLETE checks=" << checks << '\n';
+    // Exact, deterministic summary: PR smoke requires these counts verbatim.
+    std::cout << "CPP_OMS_002_SHAPES_COMPLETE shape=" << shape << " checks=" << checks
+              << " rejections=" << rejections << '\n';
     return 0;
 }

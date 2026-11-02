@@ -13,7 +13,9 @@
 #      and requires the model and service API headers to be byte-identical;
 #   4. compiles tests/cpp-codec/log_consumer.cpp against the generated headers
 #      under strict C++17 flags with g++ and clang++ (when installed) and under
-#      ASan+UBSan, and runs it on the existing Task 093 golden JSON.
+#      ASan+UBSan, and runs it on the existing Task 093 golden JSON, requiring
+#      the exact per-release check and rejection totals (2.5: 307/189,
+#      2.6: 307/192).
 #
 # Sanitizers run "where supported": every compiler/sanitizer combination that
 # cannot run is printed as SKIPPED and is NOT claimed as a pass. The script
@@ -83,8 +85,11 @@ run_consumer() { # label compiler version include-dir flags...
     tests/cpp-codec/log_consumer.cpp -o "$binary"
   local out
   out="$("$binary" "tests/fixtures/service-generate/task093-real-log$version.json")"
-  [[ "$out" == CPP_OMS_002_LOG_COMPLETE\ uci=$version\ checks=* ]] \
-    || { echo "$label: unexpected consumer output: $out" >&2; exit 1; }
+  # Exact counts for this release, not merely "some positive count": a consumer
+  # that silently skipped or added checks must not qualify.
+  local expected="CPP_OMS_002_LOG_COMPLETE uci=$version checks=$expect_checks rejections=$expect_rejections"
+  [[ "$out" == "$expected" ]] \
+    || { echo "$label: consumer output '$out' != expected '$expected'" >&2; exit 1; }
   echo "  $label: $out"
 }
 
@@ -95,9 +100,11 @@ expect() { # report pattern label
 for release in 2.5 2.6; do
   version="${release/./}"
   if [[ "$release" == 2.5 ]]; then
-    root="$root25"; closure=42; emitted=41
+    # Expected log_consumer.cpp totals per release (2.6 adds three release-
+    # specific rejections: the non-Zulu DeclassDate, empty and TAB ClassifiedBy).
+    root="$root25"; closure=42; emitted=41; expect_checks=307; expect_rejections=189
   else
-    root="$root26"; closure=44; emitted=43
+    root="$root26"; closure=44; emitted=43; expect_checks=307; expect_rejections=192
   fi
   common=(--schema "$root" --contract "$contract" --language cpp --world closed-schema)
   echo "== UCI $release Log"

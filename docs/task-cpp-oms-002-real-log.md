@@ -1,6 +1,7 @@
 # CPP-OMS-002 — Generated C++17 OMS JSON codec for the authentic UCI `Log`
 
-Stacked on CPP-OMS-001 (PR #164). Production
+Builds on CPP-OMS-001 (PR #164, merged to `main` as `c8bb8a5`; this work started
+from its head `d7eda351…` and was reconciled with `main` by merge). Production
 `service-check --language cpp --world closed-schema --with-codec` and
 `service-generate … --with-codec` now report **READY** and emit a compiling
 `service_codec.hpp` for the authentic pinned UCI `Log` message in **both** UCI
@@ -90,7 +91,9 @@ for each release:
    -Woverloaded-virtual -Wnull-dereference -Wdouble-promotion -Wformat=2`) with
    g++ and clang++, and with ASan+UBSan where a sanitizer runtime is usable, and
    runs it on the existing Task 093 golden (`task093-real-log25.json` /
-   `task093-real-log26.json`).
+   `task093-real-log26.json`), requiring the exact summary
+   `checks=307 rejections=189` (2.5) / `checks=307 rejections=192` (2.6) for
+   every compiler and sanitizer build, not merely a positive count.
 
 `log_consumer.cpp` (307 checks per release; 189 rejections in 2.5, 192 in 2.6):
 
@@ -141,8 +144,9 @@ and under ASan+UBSan. It found one real generator defect during development
 `scripts/check-cpp-oms-001-parity.sh` (baseline CLI vs this branch, 59 fixture
 pairs, 472 runs: `service-check` and `service-generate` in cpp, rust and ada
 without the flag; `service-check --with-codec` in rust and ada) reports **0
-mismatches** against both the parent head `d7eda351…` and current `main`
-`f14aa59`. The negative control (a candidate wrapper that silently appends
+mismatches** against the CPP-OMS-001 head `d7eda351…`, the earlier `main`
+`f14aa59`, and `main` `c2dcca5` (after #164, #165 and #166 merged). The
+negative control (a candidate wrapper that silently appends
 `--with-codec`) reports 292 mismatches. For Log specifically the script above
 also compares the model and service API headers byte for byte.
 
@@ -220,8 +224,22 @@ sanitizer coverage is **not** claimed.
 
 ## CI
 
-PR smoke routing now treats `scripts/check-cpp-oms-002-real-log.sh` as
-C++-owned, so editing it does not run every backend's smoke; the smoke test
-list and workflow are otherwise untouched. The authentic-UCI script needs the
-network pin fetch and is not wired into any workflow here (no new runner or CI
-infrastructure was added).
+The existing single-job `PR smoke` C++ step (`python3 scripts/pr_smoke.py run
+cpp`, CPP-OMS-002R1) now also runs an **offline** CPP-OMS-002 regression after
+the CPP-OMS-001 consumer. For each existing synthetic fixture it generates the
+model, service API and codec through the production CLI, compiles
+`tests/cpp-codec/shapes_consumer.cpp` with the strict g++ flags and runs it, and
+requires the exact deterministic summary line:
+
+| Fixture | Shape | Exercises | Required summary |
+| --- | --- | --- | --- |
+| `codec-hexbinary` | `HEX` | direct/optional/bounded/unbounded/named hexBinary, hexBinary Choice alternative | `checks=23 rejections=8` |
+| `codec-ada-repeated-temporal` | `TEMPORAL` | repeated direct/named dateTime and duration | `checks=15 rejections=6` |
+| `codec-ada-choice` | `CHOICE` | Choice incl. reserved-word member, nested Choice, Choice payload | `checks=36 rejections=13` |
+
+A failing or non-reporting shape binary, a compile error, a missing generated
+file or any other count fails the job. No UCI schema is fetched; clang++ and
+sanitizers stay in the full `cpp_codec` suite. Routing treats
+`scripts/check-cpp-oms-002-real-log.sh` as C++-owned. The authentic-UCI script
+needs the network pin fetch and is not wired into any workflow (no new runner,
+job or workflow was added).

@@ -29,7 +29,9 @@ required-single Choices. Generated headers compile under strict g++ and clang++
 and the consumer round-trips the Task 093 goldens and rejects the malformed
 corpus under ASan+UBSan (g++). The model and service API headers remain
 byte-identical without the flag (59 pairs, 472 runs, 0 differences against the
-parent head and `main`). Float, `Time`, other String profiles, constrained
+CPP-OMS-001 head `d7eda35` and `main` `c2dcca5`). PR smoke's C++ step also
+compiles and runs an offline Choice / temporal / hexBinary regression from
+existing synthetic fixtures. Float, `Time`, other String profiles, constrained
 Binary, optional/repeated Choice alternatives, polymorphism, nillable and
 unqualified members stay `NOT READY`; `PositionReport` and `AMTI_Command` now
 stop at the named Float64 `AccelerationType`. See

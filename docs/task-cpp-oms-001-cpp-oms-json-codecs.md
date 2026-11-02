@@ -183,7 +183,9 @@ the model and codec through the production CLI; a strict-flag `g++` build of
 compiler, a compile error, a failed or non-reporting consumer, a missing
 generated file or an unexecuted/skipped test all fail the job. clang++ and the
 sanitizer build stay in the full `cpp_codec` suite and
-`scripts/check-cpp-oms-001.sh`.
+`scripts/check-cpp-oms-001.sh`. CPP-OMS-002R1 appended an offline
+Choice / temporal / hexBinary shapes regression to the same step; see
+[CPP-OMS-002 § CI](task-cpp-oms-002-real-log.md#ci).
 
 ## No-codec generation is unchanged (parity evidence)
 
