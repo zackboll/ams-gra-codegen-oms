@@ -1,0 +1,878 @@
+PR smoke	Set up job	﻿2026-11-02T02:46:57.8658946Z Current runner version: '2.338.2'
+PR smoke	Set up job	2026-11-02T02:46:57.8696176Z ##[group]Runner Image Provisioner
+PR smoke	Set up job	2026-11-02T02:46:57.8697612Z Hosted Compute Agent
+PR smoke	Set up job	2026-11-02T02:46:57.8698729Z Version: 20261021.618
+PR smoke	Set up job	2026-11-02T02:46:57.8700305Z Commit: 21505ad2541d5be6135ed84fc33697146cf75b8e
+PR smoke	Set up job	2026-11-02T02:46:57.8701757Z Build Date: 2026-10-21T00:45:21Z
+PR smoke	Set up job	2026-11-02T02:46:57.8703107Z Worker ID: {16d2d680-064b-4f85-96e4-d96238685273}
+PR smoke	Set up job	2026-11-02T02:46:57.8704399Z Region: eastus
+PR smoke	Set up job	2026-11-02T02:46:57.8705540Z Cloud: Azure
+PR smoke	Set up job	2026-11-02T02:46:57.8706564Z ##[endgroup]
+PR smoke	Set up job	2026-11-02T02:46:57.8708933Z ##[group]Operating System
+PR smoke	Set up job	2026-11-02T02:46:57.8710469Z Ubuntu
+PR smoke	Set up job	2026-11-02T02:46:57.8711443Z 24.04.5
+PR smoke	Set up job	2026-11-02T02:46:57.8712576Z LTS
+PR smoke	Set up job	2026-11-02T02:46:57.8713573Z ##[endgroup]
+PR smoke	Set up job	2026-11-02T02:46:57.8714618Z ##[group]Runner Image
+PR smoke	Set up job	2026-11-02T02:46:57.8715896Z Image: ubuntu-24.04
+PR smoke	Set up job	2026-11-02T02:46:57.8716945Z Version: 20261025.353.1
+PR smoke	Set up job	2026-11-02T02:46:57.8718988Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261025.353/images/ubuntu/Ubuntu2404-Readme.md
+PR smoke	Set up job	2026-11-02T02:46:57.8722443Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261025.353
+PR smoke	Set up job	2026-11-02T02:46:57.8724229Z ##[endgroup]
+PR smoke	Set up job	2026-11-02T02:46:57.8726317Z ##[group]GITHUB_TOKEN Permissions
+PR smoke	Set up job	2026-11-02T02:46:57.8729248Z Contents: read
+PR smoke	Set up job	2026-11-02T02:46:57.8730778Z Metadata: read
+PR smoke	Set up job	2026-11-02T02:46:57.8731764Z ##[endgroup]
+PR smoke	Set up job	2026-11-02T02:46:57.8735762Z Secret source: Actions
+PR smoke	Set up job	2026-11-02T02:46:57.8737606Z Cache mode: write
+PR smoke	Set up job	2026-11-02T02:46:57.8739427Z Prepare workflow directory
+PR smoke	Set up job	2026-11-02T02:46:57.9330563Z Prepare all required actions
+PR smoke	Set up job	2026-11-02T02:46:57.9403488Z Getting action download info
+PR smoke	Set up job	2026-11-02T02:46:58.1021802Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+PR smoke	Set up job	2026-11-02T02:46:58.1954999Z Download action repository 'dtolnay/rust-toolchain@1.95.0' (SHA:035fceb3c12fb0c6a9461b52775e16473133e591)
+PR smoke	Set up job	2026-11-02T02:46:58.2887123Z Download action repository 'actions/setup-python@v5' (SHA:a26af69be951a213d495a4c3e4e4022e16d87065)
+PR smoke	Set up job	2026-11-02T02:46:58.4954597Z Complete job name: PR smoke
+PR smoke	Run actions/checkout@v4	﻿2026-11-02T02:46:58.5842925Z ##[group]Run actions/checkout@v4
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.5843821Z with:
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.5844311Z   ref: 9630134ed81f0ea98cecd9d77816404fe21150ed
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.5844905Z   fetch-depth: 0
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.5845366Z   persist-credentials: false
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.5845916Z   repository: zackboll/ams-gra-codegen-oms
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.5849795Z   token: ***
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.5850440Z   ssh-strict: true
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.5850888Z   ssh-user: git
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.5851305Z   clean: true
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.5851752Z   sparse-checkout-cone-mode: true
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.5852281Z   fetch-tags: false
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.5852732Z   show-progress: true
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.5853179Z   lfs: false
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.5853588Z   submodules: false
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.5854045Z   set-safe-directory: true
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.5854555Z   allow-unsafe-pr-checkout: false
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.5855373Z env:
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.5855901Z   PYTHONDONTWRITEBYTECODE: 1
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.5856468Z ##[endgroup]
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.8509494Z Syncing repository: zackboll/ams-gra-codegen-oms
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.8512584Z ##[group]Getting Git version info
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.8514126Z Working directory is '/home/runner/work/ams-gra-codegen-oms/ams-gra-codegen-oms'
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.8516268Z [command]/usr/bin/git version
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.8615339Z git version 2.56.0
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.8641696Z ##[endgroup]
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.8658638Z Temporarily overriding HOME='/home/runner/work/_temp/afbc9b95-12f3-4e13-a8ec-85dfdfc93a43' before making global git config changes
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.8662398Z Adding repository directory to the temporary git global config as a safe directory
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.8666402Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/ams-gra-codegen-oms/ams-gra-codegen-oms
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.8767686Z Deleting the contents of '/home/runner/work/ams-gra-codegen-oms/ams-gra-codegen-oms'
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.8771137Z ##[group]Initializing the repository
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.8779082Z [command]/usr/bin/git init /home/runner/work/ams-gra-codegen-oms/ams-gra-codegen-oms
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.8877935Z hint: Using 'master' as the name for the initial branch. This default branch name
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.8883819Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.8886441Z hint: to use in all of your new repositories, which will suppress this warning,
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.8890638Z hint: call:
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.9012253Z hint:
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.9014178Z hint: 	git config --global init.defaultBranch <name>
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.9019445Z hint:
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.9021517Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.9026810Z hint: 'development'. The just-created branch can be renamed via this command:
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.9027896Z hint:
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.9028411Z hint: 	git branch -m <name>
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.9029041Z hint:
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.9030008Z hint: Disable this message with "git config set advice.defaultBranchName false"
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.9032634Z Initialized empty Git repository in /home/runner/work/ams-gra-codegen-oms/ams-gra-codegen-oms/.git/
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.9036877Z [command]/usr/bin/git remote add origin https://github.com/zackboll/ams-gra-codegen-oms
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.9040952Z ##[endgroup]
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.9042542Z ##[group]Disabling automatic garbage collection
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.9044267Z [command]/usr/bin/git config --local gc.auto 0
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.9048241Z ##[endgroup]
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.9049846Z ##[group]Setting up auth
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.9051920Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.9089450Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.9587664Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.9632487Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.9883028Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:58.9926870Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.0163915Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.0213578Z ##[endgroup]
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.0214582Z ##[group]Fetching the repository
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.0227566Z [command]/usr/bin/git -c protocol.version=2 fetch --prune --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/* +refs/tags/*:refs/tags/*
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.8982538Z From https://github.com/zackboll/ams-gra-codegen-oms
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.8985519Z  * [new branch]      acceptance/ci-reset-001-ada -> origin/acceptance/ci-reset-001-ada
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.8987934Z  * [new branch]      acceptance/ci-reset-001-python -> origin/acceptance/ci-reset-001-python
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.8989821Z  * [new branch]      acceptance/ci-reset-001-rust -> origin/acceptance/ci-reset-001-rust
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.8992878Z  * [new branch]      acceptance/ci-select-002-final-docs -> origin/acceptance/ci-select-002-final-docs
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.8995242Z  * [new branch]      acceptance/ci-select-002-final-failure -> origin/acceptance/ci-select-002-final-failure
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.8997926Z  * [new branch]      acceptance/ci-select-002-final-python -> origin/acceptance/ci-select-002-final-python
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9001314Z  * [new branch]      acceptance/ci-select-002-final-websocket -> origin/acceptance/ci-select-002-final-websocket
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9004591Z  * [new branch]      acceptance/ci-select-003-cli-example -> origin/acceptance/ci-select-003-cli-example
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9009128Z  * [new branch]      acceptance/ci-select-003-docs-only -> origin/acceptance/ci-select-003-docs-only
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9013789Z  * [new branch]      acceptance/ci-select-003-fast-only -> origin/acceptance/ci-select-003-fast-only
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9018522Z  * [new branch]      acceptance/ci-select-003-infrastructure-full -> origin/acceptance/ci-select-003-infrastructure-full
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9024633Z  * [new branch]      acceptance/ci-select-003-intentional-failure -> origin/acceptance/ci-select-003-intentional-failure
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9029321Z  * [new branch]      acceptance/ci-select-003-sleet-only -> origin/acceptance/ci-select-003-sleet-only
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9032845Z  * [new branch]      acceptance/ci-select-003-uci-only -> origin/acceptance/ci-select-003-uci-only
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9035831Z  * [new branch]      acceptance/ci-select-004-a1-a1 -> origin/acceptance/ci-select-004-a1-a1
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9038980Z  * [new branch]      acceptance/ci-select-004-a1-a2 -> origin/acceptance/ci-select-004-a1-a2
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9042515Z  * [new branch]      acceptance/ci-select-004-a1-a3 -> origin/acceptance/ci-select-004-a1-a3
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9045143Z  * [new branch]      acceptance/ci-select-004-a1-a4 -> origin/acceptance/ci-select-004-a1-a4
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9047747Z  * [new branch]      acceptance/ci-select-004-a1-a5 -> origin/acceptance/ci-select-004-a1-a5
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9051068Z  * [new branch]      ci-pages-001-perf005-compiler-fixtures -> origin/ci-pages-001-perf005-compiler-fixtures
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9056115Z  * [new branch]      ci-select-001-five-lane-pilot -> origin/ci-select-001-five-lane-pilot
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9060854Z  * [new branch]      ci/002-trusted-pr-dispatch -> origin/ci/002-trusted-pr-dispatch
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9064242Z  * [new branch]      ci/ci-runner-001-ryzen-integration -> origin/ci/ci-runner-001-ryzen-integration
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9067047Z  * [new branch]      ci/main-ten-lanes       -> origin/ci/main-ten-lanes
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9070370Z  * [new branch]      corrective/040-validated-carrier-lifecycle -> origin/corrective/040-validated-carrier-lifecycle
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9074603Z  * [new branch]      corrective/ci-bench-004-cpu-accounting -> origin/corrective/ci-bench-004-cpu-accounting
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9078232Z  * [new branch]      corrective/ci-retry-001-evidence-attempts -> origin/corrective/ci-retry-001-evidence-attempts
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9082744Z  * [new branch]      corrective/post-033-integrity-cleanup -> origin/corrective/post-033-integrity-cleanup
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9087088Z  * [new branch]      corrective/rust-ci-001-worker-join-observation -> origin/corrective/rust-ci-001-worker-join-observation
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9091356Z  * [new branch]      feature/030-service-contract-message-plan -> origin/feature/030-service-contract-message-plan
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9095348Z  * [new branch]      feature/031-service-contract-backend-readiness -> origin/feature/031-service-contract-backend-readiness
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9099616Z  * [new branch]      feature/032-service-contract-selected-generation -> origin/feature/032-service-contract-selected-generation
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9103838Z  * [new branch]      feature/033-constrained-floating-ranges -> origin/feature/033-constrained-floating-ranges
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9107333Z  * [new branch]      feature/034-ada-optional-named-values -> origin/feature/034-ada-optional-named-values
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9111115Z  * [new branch]      feature/035-ada-optional-direct-primitives -> origin/feature/035-ada-optional-direct-primitives
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9114311Z  * [new branch]      feature/036-zulu-datetime -> origin/feature/036-zulu-datetime
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9117079Z  * [new branch]      feature/037-schema-version-string -> origin/feature/037-schema-version-string
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9119820Z  * [new branch]      feature/038-uuid-string -> origin/feature/038-uuid-string
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9122772Z  * [new branch]      feature/039-visible-ascii-string -> origin/feature/039-visible-ascii-string
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9126344Z  * [new branch]      feature/041-whitespace-visible-string -> origin/feature/041-whitespace-visible-string
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9129618Z  * [new branch]      feature/042-nato-special-words -> origin/feature/042-nato-special-words
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9132951Z  * [new branch]      feature/043-uci-html-type-browser -> origin/feature/043-uci-html-type-browser
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9136271Z  * [new branch]      feature/044-enum-identifier-remapping -> origin/feature/044-enum-identifier-remapping
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9139115Z  * [new branch]      feature/045-uci-pages   -> origin/feature/045-uci-pages
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9141864Z  * [new branch]      feature/046-direct-xs-datetime -> origin/feature/046-direct-xs-datetime
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9144740Z  * [new branch]      feature/047-service-api-wrappers -> origin/feature/047-service-api-wrappers
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9147842Z  * [new branch]      feature/048-publish-subscribe-facade -> origin/feature/048-publish-subscribe-facade
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9151132Z  * [new branch]      feature/049-rust-la-cal-runtime -> origin/feature/049-rust-la-cal-runtime
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9153989Z  * [new branch]      feature/050-rust-oms-json-codecs -> origin/feature/050-rust-oms-json-codecs
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9156996Z  * [new branch]      feature/051-member-qname-provenance -> origin/feature/051-member-qname-provenance
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9160446Z  * [new branch]      feature/052-hexbinary-provenance-codec -> origin/feature/052-hexbinary-provenance-codec
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9163847Z  * [new branch]      feature/053-constrained-binary-carriers -> origin/feature/053-constrained-binary-carriers
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9167287Z  * [new branch]      feature/054-member-identifier-remapping -> origin/feature/054-member-identifier-remapping
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9171223Z  * [new branch]      feature/055-ci-fast-deep-split -> origin/feature/055-ci-fast-deep-split
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9174870Z  * [new branch]      feature/056-generated-support-readiness -> origin/feature/056-generated-support-readiness
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9178263Z  * [new branch]      feature/057-duration-support -> origin/feature/057-duration-support
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9181666Z  * [new branch]      feature/058-bounded-ascii-string-profiles -> origin/feature/058-bounded-ascii-string-profiles
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9185387Z  * [new branch]      feature/059-structured-ascii-string-profiles -> origin/feature/059-structured-ascii-string-profiles
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9189237Z  * [new branch]      feature/060-alternating-ascii-string-profiles -> origin/feature/060-alternating-ascii-string-profiles
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9193125Z  * [new branch]      feature/061-time-zulu-support -> origin/feature/061-time-zulu-support
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9195939Z  * [new branch]      feature/062-ipv6-address-profile -> origin/feature/062-ipv6-address-profile
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9199057Z  * [new branch]      feature/063-patterned-integral-profile -> origin/feature/063-patterned-integral-profile
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9202797Z  * [new branch]      feature/064-generated-support-plan-binding -> origin/feature/064-generated-support-plan-binding
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9206067Z  * [new branch]      feature/065-ada-companion-naming -> origin/feature/065-ada-companion-naming
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9209075Z  * [new branch]      feature/066-unicode-string-profiles -> origin/feature/066-unicode-string-profiles
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9213025Z  * [new branch]      feature/068-open-world-abstract-values -> origin/feature/068-open-world-abstract-values
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9216184Z  * [new branch]      feature/069-semantic-schema-diff -> origin/feature/069-semantic-schema-diff
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9219100Z  * [new branch]      feature/070-initial-connect-retry -> origin/feature/070-initial-connect-retry
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9222687Z  * [new branch]      feature/071-service-route-allowlists -> origin/feature/071-service-route-allowlists
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9226404Z  * [new branch]      feature/072-open-world-value-contract -> origin/feature/072-open-world-value-contract
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9230456Z  * [new branch]      feature/077-duplicate-member-ingress -> origin/feature/077-duplicate-member-ingress
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9233701Z  * [new branch]      feature/078-schema-message-impact -> origin/feature/078-schema-message-impact
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9236774Z  * [new branch]      feature/079-service-schema-impact -> origin/feature/079-service-schema-impact
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9239793Z  * [new branch]      feature/080-uci-structure-explorer -> origin/feature/080-uci-structure-explorer
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9243046Z  * [new branch]      feature/081-explorer-field-search -> origin/feature/081-explorer-field-search
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9246189Z  * [new branch]      feature/082-uci-version-comparison -> origin/feature/082-uci-version-comparison
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9249068Z  * [new branch]      feature/083-schema-impact-json -> origin/feature/083-schema-impact-json
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9252553Z  * [new branch]      feature/084-comparison-field-deep-links -> origin/feature/084-comparison-field-deep-links
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9255682Z  * [new branch]      feature/085-service-impact-json -> origin/feature/085-service-impact-json
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9258643Z  * [new branch]      feature/086-ada-oms-json-codec -> origin/feature/086-ada-oms-json-codec
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9261552Z  * [new branch]      feature/087-ada-oms-json-codec -> origin/feature/087-ada-oms-json-codec
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9264118Z  * [new branch]      feature/087b-ada-oms-codec -> origin/feature/087b-ada-oms-codec
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9266593Z  * [new branch]      feature/088-ada-choice-codec -> origin/feature/088-ada-choice-codec
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9269228Z  * [new branch]      feature/089-ada-repeated-codec -> origin/feature/089-ada-repeated-codec
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9272280Z  * [new branch]      feature/090-ada-datetime-codec -> origin/feature/090-ada-datetime-codec
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9274915Z  * [new branch]      feature/091-ada-duration-codec -> origin/feature/091-ada-duration-codec
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9277789Z  * [new branch]      feature/092-ada-repeated-choice-codec -> origin/feature/092-ada-repeated-choice-codec
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9281174Z  * [new branch]      feature/093-ada-hexbinary-codec -> origin/feature/093-ada-hexbinary-codec
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9284325Z  * [new branch]      feature/094-ada-repeated-temporal-codec -> origin/feature/094-ada-repeated-temporal-codec
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9287217Z  * [new branch]      feature/095-ada-float32-codec -> origin/feature/095-ada-float32-codec
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9289706Z  * [new branch]      feature/097-ada-float64-codec -> origin/feature/097-ada-float64-codec
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9292505Z  * [new branch]      feature/098-ada-time-zulu-codec -> origin/feature/098-ada-time-zulu-codec
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9295251Z  * [new branch]      feature/099-ada-lacal-runtime-core -> origin/feature/099-ada-lacal-runtime-core
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9298133Z  * [new branch]      feature/100-ada-websocket-transport -> origin/feature/100-ada-websocket-transport
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9301259Z  * [new branch]      feature/101-ada-real-uci-dlz-sleet -> origin/feature/101-ada-real-uci-dlz-sleet
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9304155Z  * [new branch]      feature/102-ada-real-uci-log-sleet -> origin/feature/102-ada-real-uci-log-sleet
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9307013Z  * [new branch]      feature/103-ada-real-uci-rdma-sleet -> origin/feature/103-ada-real-uci-rdma-sleet
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9310503Z  * [new branch]      feature/104-ada-real-uci-survivability-sleet -> origin/feature/104-ada-real-uci-survivability-sleet
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9314000Z  * [new branch]      feature/105-ada-survivability-uci26-sleet -> origin/feature/105-ada-survivability-uci26-sleet
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9317994Z  * [new branch]      feature/106-ada-multimessage-uci-sleet -> origin/feature/106-ada-multimessage-uci-sleet
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9321346Z  * [new branch]      feature/107-ada-lacal-multi-dispatch -> origin/feature/107-ada-lacal-multi-dispatch
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9324506Z  * [new branch]      feature/ci-reset-001-backend-smoke -> origin/feature/ci-reset-001-backend-smoke
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9327836Z  * [new branch]      feature/ci-select-001-change-aware-pr-validation -> origin/feature/ci-select-001-change-aware-pr-validation
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9331488Z  * [new branch]      feature/ci-select-002-deep-job-selection -> origin/feature/ci-select-002-deep-job-selection
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9335028Z  * [new branch]      feature/ci-select-003-python-owned-qualification -> origin/feature/ci-select-003-python-owned-qualification
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9339308Z  * [new branch]      feature/ci-select-004-ada-python-owned-qualification -> origin/feature/ci-select-004-ada-python-owned-qualification
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9342880Z  * [new branch]      feature/cpp-oms-001-json-codec -> origin/feature/cpp-oms-001-json-codec
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9345339Z  * [new branch]      feature/cpp-oms-002-real-log -> origin/feature/cpp-oms-002-real-log
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9347930Z  * [new branch]      feature/cpp-oms-003-lacal-runtime -> origin/feature/cpp-oms-003-lacal-runtime
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9351177Z  * [new branch]      feature/perf-001-service-check-batching -> origin/feature/perf-001-service-check-batching
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9354329Z  * [new branch]      feature/perf-002-ada-float32-parallel -> origin/feature/perf-002-ada-float32-parallel
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9357209Z  * [new branch]      feature/perf-003-task062-parallel -> origin/feature/perf-003-task062-parallel
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9359929Z  * [new branch]      feature/perf-004-task065-parallel -> origin/feature/perf-004-task065-parallel
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9363323Z  * [new branch]      feature/perf-005-float32-provider-reuse-pilot -> origin/feature/perf-005-float32-provider-reuse-pilot
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9366795Z  * [new branch]      feature/perf-006-deep-uci-regression-shards -> origin/feature/perf-006-deep-uci-regression-shards
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9369811Z  * [new branch]      feature/perf-007-shard-real-uci -> origin/feature/perf-007-shard-real-uci
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9372989Z  * [new branch]      feature/perf-009-portable-provider-reuse -> origin/feature/perf-009-portable-provider-reuse
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9376247Z  * [new branch]      feature/py-001-python-model-backend -> origin/feature/py-001-python-model-backend
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9379162Z  * [new branch]      feature/py-002-python-cli-integration -> origin/feature/py-002-python-cli-integration
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9382176Z  * [new branch]      feature/py-003-python-service-api -> origin/feature/py-003-python-service-api
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9384991Z  * [new branch]      feature/py-004-python-oms-json-codecs -> origin/feature/py-004-python-oms-json-codecs
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9387857Z  * [new branch]      feature/py-005-python-lacal-runtime -> origin/feature/py-005-python-lacal-runtime
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9390903Z  * [new branch]      feature/py-006-uci-header-profiles -> origin/feature/py-006-uci-header-profiles
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9393634Z  * [new branch]      feature/py-007-record-inheritance -> origin/feature/py-007-record-inheritance
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9396194Z  * [new branch]      feature/py-008-python-float64 -> origin/feature/py-008-python-float64
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9398639Z  * [new branch]      feature/py-009-python-datetime -> origin/feature/py-009-python-datetime
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9401605Z  * [new branch]      feature/py-010-visible-ascii-strings -> origin/feature/py-010-visible-ascii-strings
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9404373Z  * [new branch]      feature/py-011-nato-special-words -> origin/feature/py-011-nato-special-words
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9407089Z  * [new branch]      feature/py-012-unbounded-repetition -> origin/feature/py-012-unbounded-repetition
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9409523Z  * [new branch]      feature/py-013-hexbinary -> origin/feature/py-013-hexbinary
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9411829Z  * [new branch]      feature/py-014-duration -> origin/feature/py-014-duration
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9413894Z  * [new branch]      feature/py-015-choice   -> origin/feature/py-015-choice
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9416417Z  * [new branch]      feature/py-016-whitespace-visible -> origin/feature/py-016-whitespace-visible
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9419062Z  * [new branch]      feature/rust-oms-001-real-log -> origin/feature/rust-oms-001-real-log
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9421736Z  * [new branch]      feature/rust-oms-002-real-rdma -> origin/feature/rust-oms-002-real-rdma
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9424292Z  * [new branch]      feature/rust-oms-003-multimessage -> origin/feature/rust-oms-003-multimessage
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9426957Z  * [new branch]      feature/rust-oms-004-survivability -> origin/feature/rust-oms-004-survivability
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9429787Z  * [new branch]      feature/rust-oms-005-standalone-client -> origin/feature/rust-oms-005-standalone-client
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9432741Z  * [new branch]      feature/rust-oms-006-real-dlz -> origin/feature/rust-oms-006-real-dlz
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9435472Z  * [new branch]      feature/rust-oms-007-four-message-client -> origin/feature/rust-oms-007-four-message-client
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9438151Z  * [new branch]      fix/020-integral-boundaries -> origin/fix/020-integral-boundaries
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9440849Z  * [new branch]      infra/ci-bench-001-portable-provider -> origin/infra/ci-bench-001-portable-provider
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9443058Z  * [new branch]      main                    -> origin/main
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9445298Z  * [new branch]      research/073-unknown-subtype-authority -> origin/research/073-unknown-subtype-authority
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9448252Z  * [new branch]      research/074-offline-schema-validation -> origin/research/074-offline-schema-validation
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9451252Z  * [new branch]      research/075-oms-json-xsd-mapping -> origin/research/075-oms-json-xsd-mapping
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9454728Z  * [new branch]      research/076-polymorphic-sleet-compatibility -> origin/research/076-polymorphic-sleet-compatibility
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9457710Z  * [new branch]      research/096-ada-float64-boundary -> origin/research/096-ada-float64-boundary
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9460275Z  * [new branch]      task/002-language-backends -> origin/task/002-language-backends
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9462702Z  * [new branch]      task/003-schema-set-loading -> origin/task/003-schema-set-loading
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9465069Z  * [new branch]      task/004-ir-validation-planning -> origin/task/004-ir-validation-planning
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9467195Z  * [new branch]      task/005-cli            -> origin/task/005-cli
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9469306Z  * [new branch]      task/006-real-uci-compatibility -> origin/task/006-real-uci-compatibility
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9472082Z  * [new branch]      task/007-attribute-form-default -> origin/task/007-attribute-form-default
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9474318Z  * [new branch]      task/008-xsd-annotation -> origin/task/008-xsd-annotation
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9476546Z  * [new branch]      task/009-global-elements -> origin/task/009-global-elements
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9478736Z  * [new branch]      task/010-declaration-version -> origin/task/010-declaration-version
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9481203Z  * [new branch]      task/011-floating-primitives -> origin/task/011-floating-primitives
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9483650Z  * [new branch]      task/012-core-structural-scalars -> origin/task/012-core-structural-scalars
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9486081Z  * [new branch]      task/013-complex-inheritance -> origin/task/013-complex-inheritance
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9488359Z  * [new branch]      task/014-scalar-restrictions -> origin/task/014-scalar-restrictions
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9491299Z  * [new branch]      task/015-floating-named-restrictions -> origin/task/015-floating-named-restrictions
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9493913Z  * [new branch]      task/016-lexical-constraints -> origin/task/016-lexical-constraints
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9496552Z  * [new branch]      task/017-backend-structural-projection -> origin/task/017-backend-structural-projection
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9499419Z  * [new branch]      task/018-record-inheritance-lowering -> origin/task/018-record-inheritance-lowering
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9502221Z  * [new branch]      task/019-choice-lowering -> origin/task/019-choice-lowering
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9504551Z  * [new branch]      task/020-integral-scalar-lowering -> origin/task/020-integral-scalar-lowering
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9507095Z  * [new branch]      task/021-unbounded-cardinality -> origin/task/021-unbounded-cardinality
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9509743Z  * [new branch]      task/022-floating-point-lowering -> origin/task/022-floating-point-lowering
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9512479Z  * [new branch]      task/023-ada-repeated-cardinality -> origin/task/023-ada-repeated-cardinality
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9515202Z  * [new branch]      task/024-abstract-structural-values -> origin/task/024-abstract-structural-values
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9517734Z  * [new branch]      task/025-unconstrained-binary -> origin/task/025-unconstrained-binary
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9520531Z  * [new branch]      task/026-uninhabited-abstract-optionals -> origin/task/026-uninhabited-abstract-optionals
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9523547Z  * [new branch]      task/027-open-extension-point-semantics -> origin/task/027-open-extension-point-semantics
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9526327Z  * [new branch]      task/028-generation-world-policy -> origin/task/028-generation-world-policy
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9528608Z  * [new branch]      task/029-schema-overlays -> origin/task/029-schema-overlays
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9532938Z [command]/usr/bin/git rev-parse --verify --quiet 9630134ed81f0ea98cecd9d77816404fe21150ed^{object}
+PR smoke	Run actions/checkout@v4	2026-11-02T02:46:59.9537330Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules origin 9630134ed81f0ea98cecd9d77816404fe21150ed
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.0606195Z From https://github.com/zackboll/ams-gra-codegen-oms
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.0608213Z  * branch            9630134ed81f0ea98cecd9d77816404fe21150ed -> FETCH_HEAD
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.0614391Z ##[endgroup]
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.0617085Z ##[group]Determining the checkout info
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.0620295Z ##[endgroup]
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.0622138Z [command]/usr/bin/git sparse-checkout disable
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.0692688Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.0736242Z ##[group]Checking out the ref
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.0739082Z [command]/usr/bin/git checkout --progress --force 9630134ed81f0ea98cecd9d77816404fe21150ed
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.2288260Z Note: switching to '9630134ed81f0ea98cecd9d77816404fe21150ed'.
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.2288771Z 
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.2289101Z You are in 'detached HEAD' state. You can look around, make experimental
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.2289598Z changes and commit them, and you can discard any commits you make in this
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.2290384Z state without impacting any branches by switching back to a branch.
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.2290679Z 
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.2290882Z If you want to create a new branch to retain commits you create, you may
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.2291340Z do so (now or later) by using -c with the switch command. Example:
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.2291605Z 
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.2291712Z   git switch -c <new-branch-name>
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.2291917Z 
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.2292035Z Or undo this operation with:
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.2292221Z 
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.2292313Z   git switch -
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.2292437Z 
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.2292674Z Turn off this advice by setting config variable advice.detachedHead to false
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.2292995Z 
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.2293352Z HEAD is now at 9630134 Merge 41051af57f6378e873b72ced6f37a8db1425a337 into 08ac2907dc3b2553085a638c8e1795c121ee1535
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.2313528Z ##[endgroup]
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.2368687Z [command]/usr/bin/git log -1 --format=%H
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.2405144Z 9630134ed81f0ea98cecd9d77816404fe21150ed
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.2415834Z ##[group]Removing auth
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.2420448Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.2458862Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.2701248Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.2736770Z http.https://github.com/.extraheader
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.2745309Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.2789140Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.3029676Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.3070021Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+PR smoke	Run actions/checkout@v4	2026-11-02T02:47:00.3305565Z ##[endgroup]
+PR smoke	Route actual proposed merge diff	﻿2026-11-02T02:47:00.3530563Z ##[group]Run python3 scripts/pr_smoke.py route --base "$BASE_SHA" --head "$MERGE_SHA" --github-output "$GITHUB_OUTPUT"
+PR smoke	Route actual proposed merge diff	2026-11-02T02:47:00.3531507Z [36;1mpython3 scripts/pr_smoke.py route --base "$BASE_SHA" --head "$MERGE_SHA" --github-output "$GITHUB_OUTPUT"[0m
+PR smoke	Route actual proposed merge diff	2026-11-02T02:47:00.3556036Z shell: /usr/bin/bash -e {0}
+PR smoke	Route actual proposed merge diff	2026-11-02T02:47:00.3556315Z env:
+PR smoke	Route actual proposed merge diff	2026-11-02T02:47:00.3556530Z   PYTHONDONTWRITEBYTECODE: 1
+PR smoke	Route actual proposed merge diff	2026-11-02T02:47:00.3556830Z   BASE_SHA: 08ac2907dc3b2553085a638c8e1795c121ee1535
+PR smoke	Route actual proposed merge diff	2026-11-02T02:47:00.3557185Z   MERGE_SHA: 9630134ed81f0ea98cecd9d77816404fe21150ed
+PR smoke	Route actual proposed merge diff	2026-11-02T02:47:00.3557483Z ##[endgroup]
+PR smoke	Route actual proposed merge diff	2026-11-02T02:47:00.4011117Z {"ada": false, "cpp": false, "python": true, "rust": false, "workflows": true}
+PR smoke	Router and execution regression tests	﻿2026-11-02T02:47:00.4121810Z ##[group]Run python3 -m unittest discover -s scripts -p test_pr_smoke.py -v
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.4122442Z [36;1mpython3 -m unittest discover -s scripts -p test_pr_smoke.py -v[0m
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.4142363Z shell: /usr/bin/bash -e {0}
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.4142622Z env:
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.4142838Z   PYTHONDONTWRITEBYTECODE: 1
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.4143109Z ##[endgroup]
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.6222681Z test_actual_main_outcome_gate_fails_on_every_unsuccessful_result (test_pr_smoke.Execution.test_actual_main_outcome_gate_fails_on_every_unsuccessful_result) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.6224407Z SMOKE START python
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.6235359Z SMOKE PASS python elapsed_seconds=0.001
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.6236960Z SMOKE START rust
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.6247352Z SMOKE PASS rust elapsed_seconds=0.001
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.6248908Z SMOKE START ada
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.6288754Z SMOKE PASS ada elapsed_seconds=0.004
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.6290447Z SMOKE START cpp
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.6310651Z CPP OMS-002 SHAPES PASSED
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.6311234Z CPP SMOKE PASSED
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.6315187Z SMOKE PASS cpp elapsed_seconds=0.002
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.6316729Z test_actual_suites_never_invoke_unrelated_backend (test_pr_smoke.Execution.test_actual_suites_never_invoke_unrelated_backend) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.6333629Z CPP OMS-002 SHAPES PASSED
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.6334117Z CPP SMOKE PASSED
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.6340605Z test_cpp_smoke_executes_generation_compile_and_consumer (test_pr_smoke.Execution.test_cpp_smoke_executes_generation_compile_and_consumer) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.6778730Z test_cpp_smoke_fails_closed (test_pr_smoke.Execution.test_cpp_smoke_fails_closed) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.6781178Z + g++ --version
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.6783172Z test_cpp_smoke_missing_compiler_is_red_for_real (test_pr_smoke.Execution.test_cpp_smoke_missing_compiler_is_red_for_real) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.6784191Z + /usr/bin/python3 -c 'raise SystemExit(7)'
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.6944525Z test_deliberate_failure_is_red (test_pr_smoke.Execution.test_deliberate_failure_is_red) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.6945844Z + /nonexistent/pr-smoke-executable
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.6947339Z + /usr/bin/python3 -c 'print('"'"'not executed'"'"')'
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.7108027Z not executed
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.7108506Z + /usr/bin/python3 -c 'print('"'"''"'"')'
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.7269667Z 
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.7272471Z + /usr/bin/python3 -c 'print('"'"'test result: ok. 0 passed; 0 failed; 0 ignored'"'"')'
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.7435697Z test result: ok. 0 passed; 0 failed; 0 ignored
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.7436686Z + /usr/bin/python3 -c 'print('"'"'test result: ok. 2 passed; 0 failed; 1 ignored'"'"')'
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.7598507Z test result: ok. 2 passed; 0 failed; 1 ignored
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.7599997Z + /usr/bin/python3 -c 'print('"'"'skipping required probe\ntest result: ok. 1 passed; 0 failed; 0 ignored'"'"')'
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.7761913Z skipping required probe
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.7762627Z test result: ok. 1 passed; 0 failed; 0 ignored
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.7771722Z test_missing_executable_marker_tests_and_skip_are_red (test_pr_smoke.Execution.test_missing_executable_marker_tests_and_skip_are_red) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.7773458Z test_pr_and_main_workflow_contract (test_pr_smoke.Execution.test_pr_and_main_workflow_contract) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8218675Z test_actual_added_deleted_and_renamed_diff (test_pr_smoke.Routing.test_actual_added_deleted_and_renamed_diff) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8219647Z test_ada_only (test_pr_smoke.Routing.test_ada_only) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8227306Z test_cpp_mixed_shared_and_unknown (test_pr_smoke.Routing.test_cpp_mixed_shared_and_unknown) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8231553Z test_cpp_only (test_pr_smoke.Routing.test_cpp_only) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8234429Z test_cpp_ownership_boundaries (test_pr_smoke.Routing.test_cpp_ownership_boundaries) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8236844Z Diff unavailable/unclassifiable: git absent; running all smoke suites
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8238844Z Diff unavailable/unclassifiable: Command 'git' returned non-zero exit status 128.; running all smoke suites
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8241441Z Diff unavailable/unclassifiable: 'utf-8' codec can't decode byte 0xff in position 7: invalid start byte; running all smoke suites
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8242929Z test_diff_errors_run_every_suite (test_pr_smoke.Routing.test_diff_errors_run_every_suite) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8243890Z test_docs (test_pr_smoke.Routing.test_docs) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8244569Z test_mixed (test_pr_smoke.Routing.test_mixed) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8245306Z test_python_only (test_pr_smoke.Routing.test_python_only) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8246097Z test_rust_only (test_pr_smoke.Routing.test_rust_only) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8248659Z test_shared_and_dependencies (test_pr_smoke.Routing.test_shared_and_dependencies) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8253699Z test_task102_ada_only (test_pr_smoke.Routing.test_task102_ada_only) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8255409Z test_task102_ownership_boundaries (test_pr_smoke.Routing.test_task102_ownership_boundaries) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8260602Z test_task103_ada_only (test_pr_smoke.Routing.test_task103_ada_only) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8262735Z test_task103_ownership_boundaries (test_pr_smoke.Routing.test_task103_ownership_boundaries) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8267093Z test_task104_ada_only (test_pr_smoke.Routing.test_task104_ada_only) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8269736Z test_task104_ownership_boundaries (test_pr_smoke.Routing.test_task104_ownership_boundaries) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8271425Z test_task104_reconciliation_runs_all_smoke_and_syntax (test_pr_smoke.Routing.test_task104_reconciliation_runs_all_smoke_and_syntax) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8277379Z test_task105_ada_only (test_pr_smoke.Routing.test_task105_ada_only) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8280876Z test_task105_ownership_boundaries (test_pr_smoke.Routing.test_task105_ownership_boundaries) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8282450Z test_task105_reconciliation_runs_all_smoke_and_syntax (test_pr_smoke.Routing.test_task105_reconciliation_runs_all_smoke_and_syntax) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8287568Z test_task106_ada_only (test_pr_smoke.Routing.test_task106_ada_only) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8291047Z test_task106_ownership_boundaries (test_pr_smoke.Routing.test_task106_ownership_boundaries) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8292613Z test_task106_reconciliation_runs_all_smoke_and_syntax (test_pr_smoke.Routing.test_task106_reconciliation_runs_all_smoke_and_syntax) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8294494Z test_unknown_ambiguous_and_unclassifiable (test_pr_smoke.Routing.test_unknown_ambiguous_and_unclassifiable) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8295566Z test_workflows (test_pr_smoke.Routing.test_workflows) ... ok
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8295991Z 
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8296236Z ----------------------------------------------------------------------
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8296741Z Ran 34 tests in 0.317s
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8296949Z 
+PR smoke	Router and execution regression tests	2026-11-02T02:47:00.8297067Z OK
+PR smoke	Install workflow syntax validator	﻿2026-11-02T02:47:00.8494979Z ##[group]Run set -euo pipefail
+PR smoke	Install workflow syntax validator	2026-11-02T02:47:00.8495312Z [36;1mset -euo pipefail[0m
+PR smoke	Install workflow syntax validator	2026-11-02T02:47:00.8496105Z [36;1mcurl --fail --location --retry 3 --output "$RUNNER_TEMP/actionlint.tar.gz" https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz[0m
+PR smoke	Install workflow syntax validator	2026-11-02T02:47:00.8497245Z [36;1mecho "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  $RUNNER_TEMP/actionlint.tar.gz" | sha256sum --check --strict[0m
+PR smoke	Install workflow syntax validator	2026-11-02T02:47:00.8497918Z [36;1mmkdir -p "$RUNNER_TEMP/smoke-tools"[0m
+PR smoke	Install workflow syntax validator	2026-11-02T02:47:00.8498374Z [36;1mtar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP/smoke-tools" actionlint[0m
+PR smoke	Install workflow syntax validator	2026-11-02T02:47:00.8498871Z [36;1mecho "$RUNNER_TEMP/smoke-tools" >> "$GITHUB_PATH"[0m
+PR smoke	Install workflow syntax validator	2026-11-02T02:47:00.8518892Z shell: /usr/bin/bash -e {0}
+PR smoke	Install workflow syntax validator	2026-11-02T02:47:00.8519146Z env:
+PR smoke	Install workflow syntax validator	2026-11-02T02:47:00.8519347Z   PYTHONDONTWRITEBYTECODE: 1
+PR smoke	Install workflow syntax validator	2026-11-02T02:47:00.8519592Z ##[endgroup]
+PR smoke	Install workflow syntax validator	2026-11-02T02:47:00.8634119Z   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+PR smoke	Install workflow syntax validator	2026-11-02T02:47:00.8634996Z                                  Dload  Upload   Total   Spent    Left  Speed
+PR smoke	Install workflow syntax validator	2026-11-02T02:47:00.8635354Z 
+PR smoke	Install workflow syntax validator	2026-11-02T02:47:00.8919898Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+PR smoke	Install workflow syntax validator	2026-11-02T02:47:00.8920887Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+PR smoke	Install workflow syntax validator	2026-11-02T02:47:00.9317296Z 
+PR smoke	Install workflow syntax validator	2026-11-02T02:47:00.9317771Z 100 2298k  100 2298k    0     0  32.7M      0 --:--:-- --:--:-- --:--:-- 32.7M
+PR smoke	Install workflow syntax validator	2026-11-02T02:47:00.9379988Z /home/runner/work/_temp/actionlint.tar.gz: OK
+PR smoke	Validate workflow syntax	﻿2026-11-02T02:47:00.9882876Z ##[group]Run bash scripts/check-ci-actionlint.sh
+PR smoke	Validate workflow syntax	2026-11-02T02:47:00.9883279Z [36;1mbash scripts/check-ci-actionlint.sh[0m
+PR smoke	Validate workflow syntax	2026-11-02T02:47:00.9905043Z shell: /usr/bin/bash -e {0}
+PR smoke	Validate workflow syntax	2026-11-02T02:47:00.9905293Z env:
+PR smoke	Validate workflow syntax	2026-11-02T02:47:00.9905504Z   PYTHONDONTWRITEBYTECODE: 1
+PR smoke	Validate workflow syntax	2026-11-02T02:47:00.9905750Z ##[endgroup]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	﻿2026-11-02T02:47:01.0301783Z ##[group]Run dtolnay/rust-toolchain@1.95.0
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0302109Z with:
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0302302Z env:
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0302509Z   PYTHONDONTWRITEBYTECODE: 1
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0302761Z ##[endgroup]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0365976Z ##[start-action display=Parse toolchain version;id=__dtolnay_rust-toolchain.parse]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0415000Z ##[group]Run if [[ -z $toolchain ]]; then
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0415332Z [36;1mif [[ -z $toolchain ]]; then[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0415866Z [36;1m  # GitHub does not enforce `required: true` inputs itself. https://github.com/actions/runner/issues/1070[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0416455Z [36;1m  echo "'toolchain' is a required input" >&2[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0416754Z [36;1m  exit 1[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0417087Z [36;1melif [[ $toolchain =~ ^stable' '[0-9]+' '(year|month|week|day)s?' 'ago$ ]]; then[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0417508Z [36;1m  if [[ Linux == macOS ]]; then[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0418048Z [36;1m    echo "toolchain=1.$((($(date -v-$(sed 's/stable \([0-9]*\) \(.\).*/\1\2/' <<< $toolchain) +%s)/60/60/24-16569)/7/6))" >> $GITHUB_OUTPUT[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0418596Z [36;1m  else[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0419008Z [36;1m    echo "toolchain=1.$((($(date --date "${toolchain#stable }" +%s)/60/60/24-16569)/7/6))" >> $GITHUB_OUTPUT[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0419480Z [36;1m  fi[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0419781Z [36;1melif [[ $toolchain =~ ^stable' 'minus' '[0-9]+' 'releases?$ ]]; then[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0420533Z [36;1m  echo "toolchain=1.$((($(date +%s)/60/60/24-16569)/7/6-${toolchain//[^0-9]/}))" >> $GITHUB_OUTPUT[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0421171Z [36;1melif [[ $toolchain =~ ^1\.[0-9]+$ ]]; then[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0421709Z [36;1m  echo "toolchain=1.$((i=${toolchain#1.}, c=($(date +%s)/60/60/24-16569)/7/6, i+9*i*(10*i<=c)+90*i*(100*i<=c)))" >> $GITHUB_OUTPUT[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0422216Z [36;1melse[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0422413Z [36;1m  delimiter=EOF[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0422724Z [36;1m  while [[ $toolchain == *$delimiter* ]]; do delimiter+=_; done[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0423245Z [36;1m  printf 'toolchain<<%s\n%s\n%s\n' "$delimiter" "$toolchain" "$delimiter" >> $GITHUB_OUTPUT[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0423668Z [36;1mfi[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0444191Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0444541Z env:
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0444747Z   PYTHONDONTWRITEBYTECODE: 1
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0444993Z   toolchain: 1.95.0
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0445193Z ##[endgroup]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0501182Z ##[end-action id=__dtolnay_rust-toolchain.parse;outcome=success;conclusion=success;duration_ms=13]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0503449Z ##[start-action display=Set $CARGO_HOME;id=__dtolnay_rust-toolchain.__run]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0527006Z ##[group]Run echo CARGO_HOME=${CARGO_HOME:-"$HOME/.cargo"} >> $GITHUB_ENV
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0527476Z [36;1mecho CARGO_HOME=${CARGO_HOME:-"$HOME/.cargo"} >> $GITHUB_ENV[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0546131Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0546471Z env:
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0546685Z   PYTHONDONTWRITEBYTECODE: 1
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0546926Z ##[endgroup]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0594790Z ##[end-action id=__dtolnay_rust-toolchain.__run;outcome=success;conclusion=success;duration_ms=9]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0596808Z ##[start-action display=Install rustup if needed;id=__dtolnay_rust-toolchain.__run_2]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0624342Z ##[group]Run if ! command -v rustup &>/dev/null; then
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0624715Z [36;1mif ! command -v rustup &>/dev/null; then[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0625483Z [36;1m  curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused --location --silent --show-error --fail https://sh.rustup.rs | sh -s -- --default-toolchain none -y[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0626209Z [36;1m  echo "$CARGO_HOME/bin" >> $GITHUB_PATH[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0626488Z [36;1mfi[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0644803Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0645143Z env:
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0645350Z   PYTHONDONTWRITEBYTECODE: 1
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0645808Z   CARGO_HOME: /home/runner/.cargo
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0646060Z ##[endgroup]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0692320Z ##[end-action id=__dtolnay_rust-toolchain.__run_2;outcome=success;conclusion=success;duration_ms=9]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0694478Z ##[start-action display=Install rustup if needed on windows;id=__dtolnay_rust-toolchain.__run_3]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0699273Z ##[end-action id=__dtolnay_rust-toolchain.__run_3;outcome=skipped;conclusion=skipped;duration_ms=0]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0711073Z ##[start-action display=rustup toolchain install 1.95.0;id=__dtolnay_rust-toolchain.__run_4]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0733964Z ##[group]Run set -f  # split targets and components on commas and whitespace, without glob expansion
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0734631Z [36;1mset -f  # split targets and components on commas and whitespace, without glob expansion[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0735064Z [36;1mflags=()[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0735341Z [36;1mfor t in ${targets//,/ }; do flags+=(--target "$t"); done[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0735760Z [36;1mfor c in ${components//,/ }; do flags+=(--component "$c"); done[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0736256Z [36;1mif [[ $toolchain == nightly && -n $components ]]; then flags+=(--allow-downgrade); fi[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0736675Z [36;1mlog=$(mktemp)[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0736911Z [36;1mtrap 'rm -f "$log"' EXIT[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0737169Z [36;1mfor attempt in 1 2 3 4 5; do[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0737742Z [36;1m  if rustup toolchain install "$toolchain" "${flags[@]}" --profile minimal --no-self-update --force-non-host 2>&1 | tee "$log"; then[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0738446Z [36;1m    break[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0738647Z [36;1m  else[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0738839Z [36;1m    status=$?[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0739049Z [36;1m  fi[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0739332Z [36;1m  if [[ $attempt == 5 ]] || ! grep -Fq 'checksum failed for ' "$log" \[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0739909Z [36;1m      || ! grep -Fq 'this is likely due to an ongoing update of the official release server' "$log"; then[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0740672Z [36;1m    exit "$status"[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0740899Z [36;1m  fi[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0741253Z [36;1m  echo "Retrying rustup toolchain install in 30 seconds (retry $attempt of 4)" >&2[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0741672Z [36;1m  sleep 30[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0741875Z [36;1mdone[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0759782Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0760442Z env:
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0760653Z   PYTHONDONTWRITEBYTECODE: 1
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0760941Z   CARGO_HOME: /home/runner/.cargo
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0761195Z   toolchain: 1.95.0
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0761400Z   targets: 
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0761583Z   components: 
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0761785Z   RUSTUP_PERMIT_COPY_RENAME: 1
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.0762017Z ##[endgroup]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.1209576Z info: syncing channel updates for 1.95.0-x86_64-unknown-linux-gnu
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.2531185Z info: latest update on 2026-04-16 for version 1.95.0 (59807616e 2026-04-14)
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:01.2533813Z info: downloading 3 components
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.8621620Z 
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.8696837Z   1.95.0-x86_64-unknown-linux-gnu installed - rustc 1.95.0 (59807616e 2026-04-14)
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.8697348Z 
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.8861545Z ##[end-action id=__dtolnay_rust-toolchain.__run_4;outcome=success;conclusion=success;duration_ms=7814]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.8869596Z ##[start-action display=rustup default 1.95.0;id=__dtolnay_rust-toolchain.__run_5]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.8916950Z ##[group]Run rustup default "$toolchain" --force-non-host
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.8917385Z [36;1mrustup default "$toolchain" --force-non-host[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.8938197Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.8938558Z env:
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.8938762Z   PYTHONDONTWRITEBYTECODE: 1
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.8939016Z   CARGO_HOME: /home/runner/.cargo
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.8939265Z   toolchain: 1.95.0
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.8939470Z ##[endgroup]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9025638Z info: using existing install for 1.95.0-x86_64-unknown-linux-gnu
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9032396Z info: default toolchain set to 1.95.0-x86_64-unknown-linux-gnu
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9032707Z 
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9101557Z   1.95.0-x86_64-unknown-linux-gnu unchanged - rustc 1.95.0 (59807616e 2026-04-14)
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9102169Z 
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9104719Z info: note that the toolchain 'stable-x86_64-unknown-linux-gnu' is currently in use (overridden by '/home/runner/work/ams-gra-codegen-oms/ams-gra-codegen-oms/rust-toolchain.toml')
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9121223Z ##[end-action id=__dtolnay_rust-toolchain.__run_5;outcome=success;conclusion=success;duration_ms=25]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9124784Z ##[start-action display=Create cachekey;id=__dtolnay_rust-toolchain.rustc-version]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9143646Z ##[group]Run DATE=$(rustc +"$toolchain" --version --verbose | sed -ne 's/^commit-date: \(20[0-9][0-9]\)-\([01][0-9]\)-\([0-3][0-9]\)$/\1\2\3/p')
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9144525Z [36;1mDATE=$(rustc +"$toolchain" --version --verbose | sed -ne 's/^commit-date: \(20[0-9][0-9]\)-\([01][0-9]\)-\([0-3][0-9]\)$/\1\2\3/p')[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9145221Z [36;1mHASH=$(rustc +"$toolchain" --version --verbose | sed -ne 's/^commit-hash: //p')[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9145758Z [36;1mecho "cachekey=$(echo $DATE$HASH | head -c12)" >> $GITHUB_OUTPUT[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9165440Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9165780Z env:
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9165983Z   PYTHONDONTWRITEBYTECODE: 1
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9166241Z   CARGO_HOME: /home/runner/.cargo
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9166646Z   toolchain: 1.95.0
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9166850Z ##[endgroup]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9471426Z ##[end-action id=__dtolnay_rust-toolchain.rustc-version;outcome=success;conclusion=success;duration_ms=34]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9473917Z ##[start-action display=Disable incremental compilation;id=__dtolnay_rust-toolchain.__run_6]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9493477Z ##[group]Run if [ -z "${CARGO_INCREMENTAL+set}" ]; then
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9493863Z [36;1mif [ -z "${CARGO_INCREMENTAL+set}" ]; then[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9494205Z [36;1m  echo CARGO_INCREMENTAL=0 >> $GITHUB_ENV[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9494490Z [36;1mfi[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9514109Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9514452Z env:
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9514653Z   PYTHONDONTWRITEBYTECODE: 1
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9514912Z   CARGO_HOME: /home/runner/.cargo
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9515157Z ##[endgroup]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9561043Z ##[end-action id=__dtolnay_rust-toolchain.__run_6;outcome=success;conclusion=success;duration_ms=8]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9563112Z ##[start-action display=Enable colors in Cargo output;id=__dtolnay_rust-toolchain.__run_7]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9580970Z ##[group]Run if [ -z "${CARGO_TERM_COLOR+set}" ]; then
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9581345Z [36;1mif [ -z "${CARGO_TERM_COLOR+set}" ]; then[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9581679Z [36;1m  echo CARGO_TERM_COLOR=always >> $GITHUB_ENV[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9581972Z [36;1mfi[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9600310Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9600673Z env:
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9600875Z   PYTHONDONTWRITEBYTECODE: 1
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9601132Z   CARGO_HOME: /home/runner/.cargo
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9601381Z   CARGO_INCREMENTAL: 0
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9601592Z ##[endgroup]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9647067Z ##[end-action id=__dtolnay_rust-toolchain.__run_7;outcome=success;conclusion=success;duration_ms=8]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9650516Z ##[start-action display=Enable Cargo sparse registry;id=__dtolnay_rust-toolchain.__run_8]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9670008Z ##[group]Run # implemented in 1.66, stabilized in 1.68, made default in 1.70
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9670827Z [36;1m# implemented in 1.66, stabilized in 1.68, made default in 1.70[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9671556Z [36;1mif [ -z "${CARGO_REGISTRIES_CRATES_IO_PROTOCOL+set}" -o -f "/home/runner/work/_temp"/.implicit_cargo_registries_crates_io_protocol ]; then[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9672325Z [36;1m  if rustc +"$toolchain" --version --verbose | grep -q '^release: 1\.6[89]\.'; then[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9673131Z [36;1m    touch "/home/runner/work/_temp"/.implicit_cargo_registries_crates_io_protocol || true[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9673677Z [36;1m    echo CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse >> $GITHUB_ENV[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9674209Z [36;1m  elif rustc +"$toolchain" --version --verbose | grep -q '^release: 1\.6[67]\.'; then[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9674834Z [36;1m    touch "/home/runner/work/_temp"/.implicit_cargo_registries_crates_io_protocol || true[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9675367Z [36;1m    echo CARGO_REGISTRIES_CRATES_IO_PROTOCOL=git >> $GITHUB_ENV[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9675715Z [36;1m  fi[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9675907Z [36;1mfi[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9694624Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9694968Z env:
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9695171Z   PYTHONDONTWRITEBYTECODE: 1
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9695441Z   CARGO_HOME: /home/runner/.cargo
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9695697Z   CARGO_INCREMENTAL: 0
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9695932Z   CARGO_TERM_COLOR: always
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9696153Z   toolchain: 1.95.0
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9696352Z ##[endgroup]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9974255Z ##[end-action id=__dtolnay_rust-toolchain.__run_8;outcome=success;conclusion=success;duration_ms=32]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9977771Z ##[start-action display=Work around spurious network errors in curl 8.0;id=__dtolnay_rust-toolchain.__run_9]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9997038Z ##[group]Run # https://rust-lang.zulipchat.com/#narrow/stream/246057-t-cargo/topic/timeout.20investigation
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9997952Z [36;1m# https://rust-lang.zulipchat.com/#narrow/stream/246057-t-cargo/topic/timeout.20investigation[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9998625Z [36;1mif rustc +"$toolchain" --version --verbose | grep -q '^release: 1\.7[01]\.'; then[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9999108Z [36;1m  echo CARGO_HTTP_MULTIPLEXING=false >> $GITHUB_ENV[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:08.9999422Z [36;1mfi[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:09.0020375Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:09.0020745Z env:
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:09.0020948Z   PYTHONDONTWRITEBYTECODE: 1
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:09.0021220Z   CARGO_HOME: /home/runner/.cargo
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:09.0021473Z   CARGO_INCREMENTAL: 0
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:09.0021690Z   CARGO_TERM_COLOR: always
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:09.0021909Z   toolchain: 1.95.0
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:09.0022112Z ##[endgroup]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:09.0184747Z ##[end-action id=__dtolnay_rust-toolchain.__run_9;outcome=success;conclusion=success;duration_ms=20]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:09.0188971Z ##[start-action display=rustc +1.95.0 --version --verbose;id=__dtolnay_rust-toolchain.__run_10]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:09.0207653Z ##[group]Run rustc +"$toolchain" --version --verbose
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:09.0208031Z [36;1mrustc +"$toolchain" --version --verbose[0m
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:09.0227629Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:09.0227978Z env:
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:09.0228180Z   PYTHONDONTWRITEBYTECODE: 1
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:09.0228450Z   CARGO_HOME: /home/runner/.cargo
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:09.0228714Z   CARGO_INCREMENTAL: 0
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:09.0228928Z   CARGO_TERM_COLOR: always
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:09.0229149Z   toolchain: 1.95.0
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:09.0229348Z ##[endgroup]
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:09.0370905Z rustc 1.95.0 (59807616e 2026-04-14)
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:09.0371244Z binary: rustc
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:09.0371543Z commit-hash: 59807616e1fa2540724bfbac14d7976d7e4a3860
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:09.0372020Z commit-date: 2026-04-14
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:09.0372297Z host: x86_64-unknown-linux-gnu
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:09.0372579Z release: 1.95.0
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:09.0372979Z LLVM version: 22.1.2
+PR smoke	Run dtolnay/rust-toolchain@1.95.0	2026-11-02T02:47:09.0387878Z ##[end-action id=__dtolnay_rust-toolchain.__run_10;outcome=success;conclusion=success;duration_ms=19]
+PR smoke	Run actions/setup-python@v5	﻿2026-11-02T02:47:09.0496002Z ##[group]Run actions/setup-python@v5
+PR smoke	Run actions/setup-python@v5	2026-11-02T02:47:09.0496311Z with:
+PR smoke	Run actions/setup-python@v5	2026-11-02T02:47:09.0496516Z   python-version: 3.11
+PR smoke	Run actions/setup-python@v5	2026-11-02T02:47:09.0496752Z   check-latest: false
+PR smoke	Run actions/setup-python@v5	2026-11-02T02:47:09.0499288Z   token: ***
+PR smoke	Run actions/setup-python@v5	2026-11-02T02:47:09.0499510Z   update-environment: true
+PR smoke	Run actions/setup-python@v5	2026-11-02T02:47:09.0499764Z   allow-prereleases: false
+PR smoke	Run actions/setup-python@v5	2026-11-02T02:47:09.0500313Z   freethreaded: false
+PR smoke	Run actions/setup-python@v5	2026-11-02T02:47:09.0500551Z env:
+PR smoke	Run actions/setup-python@v5	2026-11-02T02:47:09.0500749Z   PYTHONDONTWRITEBYTECODE: 1
+PR smoke	Run actions/setup-python@v5	2026-11-02T02:47:09.0501073Z   CARGO_HOME: /home/runner/.cargo
+PR smoke	Run actions/setup-python@v5	2026-11-02T02:47:09.0501421Z   CARGO_INCREMENTAL: 0
+PR smoke	Run actions/setup-python@v5	2026-11-02T02:47:09.0501831Z   CARGO_TERM_COLOR: always
+PR smoke	Run actions/setup-python@v5	2026-11-02T02:47:09.0502176Z ##[endgroup]
+PR smoke	Run actions/setup-python@v5	2026-11-02T02:47:09.1933214Z ##[group]Installed versions
+PR smoke	Run actions/setup-python@v5	2026-11-02T02:47:09.2048326Z (node:2547) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+PR smoke	Run actions/setup-python@v5	2026-11-02T02:47:09.2049649Z (Use `node --trace-deprecation ...` to show where the warning was created)
+PR smoke	Run actions/setup-python@v5	2026-11-02T02:47:09.2050750Z Successfully set up CPython (3.11.17)
+PR smoke	Run actions/setup-python@v5	2026-11-02T02:47:09.2051532Z ##[endgroup]
+PR smoke	Python smoke	﻿2026-11-02T02:47:09.2234797Z ##[group]Run python scripts/pr_smoke.py run python
+PR smoke	Python smoke	2026-11-02T02:47:09.2235225Z [36;1mpython scripts/pr_smoke.py run python[0m
+PR smoke	Python smoke	2026-11-02T02:47:09.2265997Z shell: /usr/bin/bash -e {0}
+PR smoke	Python smoke	2026-11-02T02:47:09.2266252Z env:
+PR smoke	Python smoke	2026-11-02T02:47:09.2266456Z   PYTHONDONTWRITEBYTECODE: 1
+PR smoke	Python smoke	2026-11-02T02:47:09.2266724Z   CARGO_HOME: /home/runner/.cargo
+PR smoke	Python smoke	2026-11-02T02:47:09.2266987Z   CARGO_INCREMENTAL: 0
+PR smoke	Python smoke	2026-11-02T02:47:09.2267207Z   CARGO_TERM_COLOR: always
+PR smoke	Python smoke	2026-11-02T02:47:09.2267498Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.17/x64
+PR smoke	Python smoke	2026-11-02T02:47:09.2267957Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.17/x64/lib/pkgconfig
+PR smoke	Python smoke	2026-11-02T02:47:09.2268394Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.17/x64
+PR smoke	Python smoke	2026-11-02T02:47:09.2268974Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.17/x64
+PR smoke	Python smoke	2026-11-02T02:47:09.2269370Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.17/x64
+PR smoke	Python smoke	2026-11-02T02:47:09.2269766Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.17/x64/lib
+PR smoke	Python smoke	2026-11-02T02:47:09.2270385Z ##[endgroup]
+PR smoke	Python smoke	2026-11-02T02:47:09.3144354Z SMOKE START python
+PR smoke	Python smoke	2026-11-02T02:47:09.3145730Z + /opt/hostedtoolcache/Python/3.11.17/x64/bin/python -c 'import sys; assert sys.version_info[:2] == (3, 11); print(sys.version)'
+PR smoke	Python smoke	2026-11-02T02:47:09.3256033Z 3.11.17 (main, Oct  1 2026, 14:32:31) [GCC 13.3.0]
+PR smoke	Python smoke	2026-11-02T02:47:09.3257154Z + cargo test --locked -p ams-gra-oms-backend-python --test models --test codecs -- --nocapture
+PR smoke	Python smoke	2026-11-02T02:47:29.5653720Z [1m[92m    Updating[0m crates.io index
+PR smoke	Python smoke	2026-11-02T02:47:29.5655087Z [1m[92m    Updating[0m git repository `https://github.com/open-arsenal/ams-gra-hello-world-sk-infra-sleet`
+PR smoke	Python smoke	2026-11-02T02:47:29.5656248Z [1m[92m Downloading[0m crates ...
+PR smoke	Python smoke	2026-11-02T02:47:29.5656905Z [1m[92m  Downloaded[0m itoa v1.0.18
+PR smoke	Python smoke	2026-11-02T02:47:29.5657403Z [1m[92m  Downloaded[0m indexmap v2.14.2
+PR smoke	Python smoke	2026-11-02T02:47:29.5657818Z [1m[92m  Downloaded[0m serde v1.0.229
+PR smoke	Python smoke	2026-11-02T02:47:29.5658389Z [1m[92m  Downloaded[0m serde_core v1.0.229
+PR smoke	Python smoke	2026-11-02T02:47:29.5659068Z [1m[92m  Downloaded[0m equivalent v1.0.2
+PR smoke	Python smoke	2026-11-02T02:47:29.5659745Z [1m[92m  Downloaded[0m memchr v2.8.3
+PR smoke	Python smoke	2026-11-02T02:47:29.5660523Z [1m[92m  Downloaded[0m zmij v1.0.23
+PR smoke	Python smoke	2026-11-02T02:47:29.5660961Z [1m[92m  Downloaded[0m proc-macro2 v1.0.107
+PR smoke	Python smoke	2026-11-02T02:47:29.5661422Z [1m[92m  Downloaded[0m libyaml-rs v0.3.0
+PR smoke	Python smoke	2026-11-02T02:47:29.5661841Z [1m[92m  Downloaded[0m syn v3.0.6
+PR smoke	Python smoke	2026-11-02T02:47:29.5662237Z [1m[92m  Downloaded[0m ryu v1.0.23
+PR smoke	Python smoke	2026-11-02T02:47:29.5662648Z [1m[92m  Downloaded[0m hashbrown v0.17.1
+PR smoke	Python smoke	2026-11-02T02:47:29.5663056Z [1m[92m  Downloaded[0m quote v1.0.47
+PR smoke	Python smoke	2026-11-02T02:47:29.5663480Z [1m[92m  Downloaded[0m serde_derive v1.0.229
+PR smoke	Python smoke	2026-11-02T02:47:29.5663928Z [1m[92m  Downloaded[0m roxmltree v0.20.0
+PR smoke	Python smoke	2026-11-02T02:47:29.5664360Z [1m[92m  Downloaded[0m unicode-ident v1.0.26
+PR smoke	Python smoke	2026-11-02T02:47:29.5664795Z [1m[92m  Downloaded[0m yaml_serde v0.10.7
+PR smoke	Python smoke	2026-11-02T02:47:29.5665223Z [1m[92m  Downloaded[0m serde_json v1.0.151
+PR smoke	Python smoke	2026-11-02T02:47:29.5665664Z [1m[92m   Compiling[0m proc-macro2 v1.0.107
+PR smoke	Python smoke	2026-11-02T02:47:29.5666124Z [1m[92m   Compiling[0m unicode-ident v1.0.26
+PR smoke	Python smoke	2026-11-02T02:47:29.5666549Z [1m[92m   Compiling[0m quote v1.0.47
+PR smoke	Python smoke	2026-11-02T02:47:29.5666998Z [1m[92m   Compiling[0m serde_core v1.0.229
+PR smoke	Python smoke	2026-11-02T02:47:29.5667409Z [1m[92m   Compiling[0m zmij v1.0.23
+PR smoke	Python smoke	2026-11-02T02:47:29.5667800Z [1m[92m   Compiling[0m serde v1.0.229
+PR smoke	Python smoke	2026-11-02T02:47:29.5668220Z [1m[92m   Compiling[0m serde_json v1.0.151
+PR smoke	Python smoke	2026-11-02T02:47:29.5668651Z [1m[92m   Compiling[0m hashbrown v0.17.1
+PR smoke	Python smoke	2026-11-02T02:47:29.5669055Z [1m[92m   Compiling[0m itoa v1.0.18
+PR smoke	Python smoke	2026-11-02T02:47:29.5669455Z [1m[92m   Compiling[0m equivalent v1.0.2
+PR smoke	Python smoke	2026-11-02T02:47:29.5669882Z [1m[92m   Compiling[0m indexmap v2.14.2
+PR smoke	Python smoke	2026-11-02T02:47:29.5670567Z [1m[92m   Compiling[0m ryu v1.0.23
+PR smoke	Python smoke	2026-11-02T02:47:29.5670989Z [1m[92m   Compiling[0m syn v3.0.6
+PR smoke	Python smoke	2026-11-02T02:47:29.5671389Z [1m[92m   Compiling[0m memchr v2.8.3
+PR smoke	Python smoke	2026-11-02T02:47:29.5671795Z [1m[92m   Compiling[0m libyaml-rs v0.3.0
+PR smoke	Python smoke	2026-11-02T02:47:29.5672775Z [1m[92m   Compiling[0m ams-gra-oms-ir v0.1.0 (/home/runner/work/ams-gra-codegen-oms/ams-gra-codegen-oms/crates/ir)
+PR smoke	Python smoke	2026-11-02T02:47:29.5673346Z [1m[92m   Compiling[0m roxmltree v0.20.0
+PR smoke	Python smoke	2026-11-02T02:47:29.5674016Z [1m[92m   Compiling[0m ams-gra-oms-xsd-frontend v0.1.0 (/home/runner/work/ams-gra-codegen-oms/ams-gra-codegen-oms/crates/xsd-frontend)
+PR smoke	Python smoke	2026-11-02T02:47:29.5674670Z [1m[92m   Compiling[0m serde_derive v1.0.229
+PR smoke	Python smoke	2026-11-02T02:47:29.5675010Z [1m[92m   Compiling[0m yaml_serde v0.10.7
+PR smoke	Python smoke	2026-11-02T02:47:29.5675734Z [1m[92m   Compiling[0m ams-gra-oms-service-contract v0.1.0 (/home/runner/work/ams-gra-codegen-oms/ams-gra-codegen-oms/crates/service-contract)
+PR smoke	Python smoke	2026-11-02T02:47:29.5676961Z [1m[92m   Compiling[0m ams-gra-oms-codegen-core v0.1.0 (/home/runner/work/ams-gra-codegen-oms/ams-gra-codegen-oms/crates/codegen-core)
+PR smoke	Python smoke	2026-11-02T02:47:29.5677980Z [1m[92m   Compiling[0m ams-gra-oms-backend-python v0.1.0 (/home/runner/work/ams-gra-codegen-oms/ams-gra-codegen-oms/crates/backend-python)
+PR smoke	Python smoke	2026-11-02T02:47:29.5678793Z [1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 16.89s
+PR smoke	Python smoke	2026-11-02T02:47:29.5679388Z [1m[92m     Running[0m tests/codecs.rs (target/debug/deps/codecs-cd4b8ceb3d248f0e)
+PR smoke	Python smoke	2026-11-02T02:47:29.5679696Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5679788Z running 2 tests
+PR smoke	Python smoke	2026-11-02T02:47:29.5680385Z test inherited_wire_qnames_come_from_authored_members_not_the_concrete_owner ... ok
+PR smoke	Python smoke	2026-11-02T02:47:29.5680968Z test alias_chains_and_unique_scalar_payloads_preserve_exact_types_and_wire_values ... ok
+PR smoke	Python smoke	2026-11-02T02:47:29.5681314Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5681550Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.05s
+PR smoke	Python smoke	2026-11-02T02:47:29.5681902Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5682187Z [1m[92m     Running[0m tests/models.rs (target/debug/deps/models-45f1887a3464560d)
+PR smoke	Python smoke	2026-11-02T02:47:29.5682492Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5682575Z running 12 tests
+PR smoke	Python smoke	2026-11-02T02:47:29.5682900Z test float64_named_ancestry_requires_resolved_compatible_domains ... ok
+PR smoke	Python smoke	2026-11-02T02:47:29.5683362Z test golden_output_is_byte_identical_and_world_is_explicit ... ok
+PR smoke	Python smoke	2026-11-02T02:47:29.5683794Z test negative_schema_fixtures_return_errors_and_no_artifacts ... ok
+PR smoke	Python smoke	2026-11-02T02:47:29.5684198Z test python_specific_name_collisions_fail_closed ... ok
+PR smoke	Python smoke	2026-11-02T02:47:29.5684532Z Python runtime probe (optimized=false):
+PR smoke	Python smoke	2026-11-02T02:47:29.5684719Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5684794Z .
+PR smoke	Python smoke	2026-11-02T02:47:29.5685038Z ----------------------------------------------------------------------
+PR smoke	Python smoke	2026-11-02T02:47:29.5685370Z Ran 1 test in 0.000s
+PR smoke	Python smoke	2026-11-02T02:47:29.5685498Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5685575Z OK
+PR smoke	Python smoke	2026-11-02T02:47:29.5685670Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5685776Z Python runtime probe (optimized=false):
+PR smoke	Python smoke	2026-11-02T02:47:29.5685966Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5686034Z .
+PR smoke	Python smoke	2026-11-02T02:47:29.5686264Z ----------------------------------------------------------------------
+PR smoke	Python smoke	2026-11-02T02:47:29.5686578Z Ran 1 test in 0.000s
+PR smoke	Python smoke	2026-11-02T02:47:29.5686705Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5686772Z OK
+PR smoke	Python smoke	2026-11-02T02:47:29.5686908Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5687013Z Python runtime probe (optimized=false):
+PR smoke	Python smoke	2026-11-02T02:47:29.5687191Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5687266Z ....
+PR smoke	Python smoke	2026-11-02T02:47:29.5687794Z ----------------------------------------------------------------------
+PR smoke	Python smoke	2026-11-02T02:47:29.5688287Z Ran 4 tests in 0.001s
+PR smoke	Python smoke	2026-11-02T02:47:29.5688416Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5688492Z OK
+PR smoke	Python smoke	2026-11-02T02:47:29.5688681Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5688868Z Python runtime probe (optimized=false):
+PR smoke	Python smoke	2026-11-02T02:47:29.5689412Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5689528Z .
+PR smoke	Python smoke	2026-11-02T02:47:29.5689777Z ----------------------------------------------------------------------
+PR smoke	Python smoke	2026-11-02T02:47:29.5690187Z Ran 1 test in 0.001s
+PR smoke	Python smoke	2026-11-02T02:47:29.5690475Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5690555Z OK
+PR smoke	Python smoke	2026-11-02T02:47:29.5690645Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5690752Z Python runtime probe (optimized=true):
+PR smoke	Python smoke	2026-11-02T02:47:29.5690928Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5691003Z ....
+PR smoke	Python smoke	2026-11-02T02:47:29.5691233Z ----------------------------------------------------------------------
+PR smoke	Python smoke	2026-11-02T02:47:29.5691554Z Ran 4 tests in 0.001s
+PR smoke	Python smoke	2026-11-02T02:47:29.5691988Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5692060Z OK
+PR smoke	Python smoke	2026-11-02T02:47:29.5692159Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5692257Z Python runtime probe (optimized=true):
+PR smoke	Python smoke	2026-11-02T02:47:29.5692436Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5692504Z .
+PR smoke	Python smoke	2026-11-02T02:47:29.5692733Z ----------------------------------------------------------------------
+PR smoke	Python smoke	2026-11-02T02:47:29.5693041Z Ran 1 test in 0.000s
+PR smoke	Python smoke	2026-11-02T02:47:29.5693160Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5693232Z OK
+PR smoke	Python smoke	2026-11-02T02:47:29.5693319Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5693490Z test real_track_compiles_imports_and_validates_at_runtime ... ok
+PR smoke	Python smoke	2026-11-02T02:47:29.5693942Z test base_only_abstract_ancestry_executes_without_an_abstract_class ... ok
+PR smoke	Python smoke	2026-11-02T02:47:29.5694617Z Python runtime probe (optimized=true):
+PR smoke	Python smoke	2026-11-02T02:47:29.5694797Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5694865Z .
+PR smoke	Python smoke	2026-11-02T02:47:29.5695088Z ----------------------------------------------------------------------
+PR smoke	Python smoke	2026-11-02T02:47:29.5695405Z Ran 1 test in 0.000s
+PR smoke	Python smoke	2026-11-02T02:47:29.5695525Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5695599Z OK
+PR smoke	Python smoke	2026-11-02T02:47:29.5695692Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5695918Z test ancestry_names_are_not_emitted_and_special_members_are_safely_prefixed ... ok
+PR smoke	Python smoke	2026-11-02T02:47:29.5696336Z Python runtime probe (optimized=true):
+PR smoke	Python smoke	2026-11-02T02:47:29.5696513Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5696581Z .
+PR smoke	Python smoke	2026-11-02T02:47:29.5696802Z ----------------------------------------------------------------------
+PR smoke	Python smoke	2026-11-02T02:47:29.5697121Z Ran 1 test in 0.001s
+PR smoke	Python smoke	2026-11-02T02:47:29.5697254Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5697320Z OK
+PR smoke	Python smoke	2026-11-02T02:47:29.5697413Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5697621Z test generated_float64_comparisons_match_shared_domains_at_ieee_edges ... ok
+PR smoke	Python smoke	2026-11-02T02:47:29.5698081Z test zero_oms_service_api_is_generated_without_a_model ... ok
+PR smoke	Python smoke	2026-11-02T02:47:29.5698506Z test unsupported_ir_semantics_fail_closed_without_artifacts ... ok
+PR smoke	Python smoke	2026-11-02T02:47:29.5698875Z Python runtime probe (optimized=false):
+PR smoke	Python smoke	2026-11-02T02:47:29.5699057Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5699129Z .
+PR smoke	Python smoke	2026-11-02T02:47:29.5699349Z ----------------------------------------------------------------------
+PR smoke	Python smoke	2026-11-02T02:47:29.5699662Z Ran 1 test in 0.000s
+PR smoke	Python smoke	2026-11-02T02:47:29.5699789Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5699859Z OK
+PR smoke	Python smoke	2026-11-02T02:47:29.5699955Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5700290Z Python runtime probe (optimized=false):
+PR smoke	Python smoke	2026-11-02T02:47:29.5700490Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5700565Z ....
+PR smoke	Python smoke	2026-11-02T02:47:29.5700795Z ----------------------------------------------------------------------
+PR smoke	Python smoke	2026-11-02T02:47:29.5701107Z Ran 4 tests in 0.001s
+PR smoke	Python smoke	2026-11-02T02:47:29.5701240Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5701314Z OK
+PR smoke	Python smoke	2026-11-02T02:47:29.5701408Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5701512Z Python runtime probe (optimized=true):
+PR smoke	Python smoke	2026-11-02T02:47:29.5701710Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5701778Z .
+PR smoke	Python smoke	2026-11-02T02:47:29.5702002Z ----------------------------------------------------------------------
+PR smoke	Python smoke	2026-11-02T02:47:29.5702315Z Ran 1 test in 0.000s
+PR smoke	Python smoke	2026-11-02T02:47:29.5702440Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5702514Z OK
+PR smoke	Python smoke	2026-11-02T02:47:29.5702602Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5702783Z test shared_four_level_fixture_executes_in_authored_field_order ... ok
+PR smoke	Python smoke	2026-11-02T02:47:29.5703154Z Python runtime probe (optimized=true):
+PR smoke	Python smoke	2026-11-02T02:47:29.5703331Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5703405Z ....
+PR smoke	Python smoke	2026-11-02T02:47:29.5703628Z ----------------------------------------------------------------------
+PR smoke	Python smoke	2026-11-02T02:47:29.5703938Z Ran 4 tests in 0.001s
+PR smoke	Python smoke	2026-11-02T02:47:29.5704069Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5704137Z OK
+PR smoke	Python smoke	2026-11-02T02:47:29.5704232Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5704405Z test scalar_subset_compiles_imports_and_validates_at_runtime ... ok
+PR smoke	Python smoke	2026-11-02T02:47:29.5704677Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5704921Z test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.90s
+PR smoke	Python smoke	2026-11-02T02:47:29.5705259Z 
+PR smoke	Python smoke	2026-11-02T02:47:29.5705460Z + cargo build --locked -p ams-gra-codegen-oms --bin ams-gra-codegen-oms
+PR smoke	Python smoke	2026-11-02T02:47:32.1332482Z [1m[92m Downloading[0m crates ...
+PR smoke	Python smoke	2026-11-02T02:47:32.1333144Z [1m[92m  Downloaded[0m uuid v1.26.1
+PR smoke	Python smoke	2026-11-02T02:47:32.1333544Z [1m[92m   Compiling[0m uuid v1.26.1
+PR smoke	Python smoke	2026-11-02T02:47:32.1334247Z [1m[92m   Compiling[0m ams-gra-oms-schema-diff v0.1.0 (/home/runner/work/ams-gra-codegen-oms/ams-gra-codegen-oms/crates/schema-diff)
+PR smoke	Python smoke	2026-11-02T02:47:32.1335589Z [1m[92m   Compiling[0m ams-gra-oms-backend-cpp v0.1.0 (/home/runner/work/ams-gra-codegen-oms/ams-gra-codegen-oms/crates/backend-cpp)
+PR smoke	Python smoke	2026-11-02T02:47:32.1337158Z [1m[92m   Compiling[0m ams-gra-oms-schema-docs v0.1.0 (/home/runner/work/ams-gra-codegen-oms/ams-gra-codegen-oms/crates/schema-docs)
+PR smoke	Python smoke	2026-11-02T02:47:32.1338163Z [1m[92m   Compiling[0m ams-gra-oms-service-routes v0.1.0 (/home/runner/work/ams-gra-codegen-oms/ams-gra-codegen-oms/crates/service-routes)
+PR smoke	Python smoke	2026-11-02T02:47:32.1339158Z [1m[92m   Compiling[0m ams-gra-oms-backend-rust v0.1.0 (/home/runner/work/ams-gra-codegen-oms/ams-gra-codegen-oms/crates/backend-rust)
+PR smoke	Python smoke	2026-11-02T02:47:32.1340561Z [1m[92m   Compiling[0m ams-gra-oms-backend-ada v0.1.0 (/home/runner/work/ams-gra-codegen-oms/ams-gra-codegen-oms/crates/backend-ada)
+PR smoke	Python smoke	2026-11-02T02:47:32.1341492Z [1m[92m   Compiling[0m ams-gra-codegen-oms v0.1.0 (/home/runner/work/ams-gra-codegen-oms/ams-gra-codegen-oms/crates/cli)
+PR smoke	Python smoke	2026-11-02T02:47:32.1342213Z [1m[92m    Finished[0m `dev` profile [unoptimized + debuginfo] target(s) in 2.52s
+PR smoke	Python smoke	2026-11-02T02:47:32.1344022Z + /home/runner/work/ams-gra-codegen-oms/ams-gra-codegen-oms/target/debug/ams-gra-codegen-oms service-generate --schema /home/runner/work/ams-gra-codegen-oms/ams-gra-codegen-oms/tests/fixtures/python-codec/oam.xsd --contract /home/runner/work/ams-gra-codegen-oms/ams-gra-codegen-oms/tests/fixtures/python-codec/service.yaml --language python --world closed-schema --with-codec --output /tmp/pr-smoke-python-lhpn_v69/consumer
+PR smoke	Python smoke	2026-11-02T02:47:32.1386024Z service contract valid
+PR smoke	Python smoke	2026-11-02T02:47:32.1386426Z service: Python Codec
+PR smoke	Python smoke	2026-11-02T02:47:32.1386805Z language: python
+PR smoke	Python smoke	2026-11-02T02:47:32.1387172Z generation world: closed-schema
+PR smoke	Python smoke	2026-11-02T02:47:32.1387380Z 
+PR smoke	Python smoke	2026-11-02T02:47:32.1387483Z selected oms messages: 2
+PR smoke	Python smoke	2026-11-02T02:47:32.1387725Z contract-selected types: 9
+PR smoke	Python smoke	2026-11-02T02:47:32.1387966Z generated support types: 0
+PR smoke	Python smoke	2026-11-02T02:47:32.1388205Z projected schema types: 9
+PR smoke	Python smoke	2026-11-02T02:47:32.1388432Z generated model files: 1
+PR smoke	Python smoke	2026-11-02T02:47:32.1388656Z generated service api files: 1
+PR smoke	Python smoke	2026-11-02T02:47:32.1388889Z generated 2 file(s)
+PR smoke	Python smoke	2026-11-02T02:47:32.1389133Z output: /tmp/pr-smoke-python-lhpn_v69/consumer
+PR smoke	Python smoke	2026-11-02T02:47:32.1389446Z generated service codec files: 1
+PR smoke	Python smoke	2026-11-02T02:47:32.1389720Z generated 3 file(s) including the codec
+PR smoke	Python smoke	2026-11-02T02:47:32.1391261Z + /opt/hostedtoolcache/Python/3.11.17/x64/bin/python /home/runner/work/ams-gra-codegen-oms/ams-gra-codegen-oms/crates/backend-python/tests/codec_runtime.py /tmp/pr-smoke-python-lhpn_v69/consumer flat https://www.vdl.afrl.af.mil/programs/oam /home/runner/work/ams-gra-codegen-oms/ams-gra-codegen-oms/tests/fixtures/python-codec
+PR smoke	Python smoke	2026-11-02T02:47:32.2137521Z .........
+PR smoke	Python smoke	2026-11-02T02:47:32.2138116Z ----------------------------------------------------------------------
+PR smoke	Python smoke	2026-11-02T02:47:32.2138854Z Ran 9 tests in 0.010s
+PR smoke	Python smoke	2026-11-02T02:47:32.2139063Z 
+PR smoke	Python smoke	2026-11-02T02:47:32.2139177Z OK
+PR smoke	Python smoke	2026-11-02T02:47:32.2141371Z SMOKE PASS python elapsed_seconds=22.900
+PR smoke	Post Run actions/setup-python@v5	﻿2026-11-02T02:47:32.2312064Z Post job cleanup.
+PR smoke	Post Run actions/setup-python@v5	2026-11-02T02:47:32.3596091Z (node:3168) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+PR smoke	Post Run actions/setup-python@v5	2026-11-02T02:47:32.3596846Z (Use `node --trace-deprecation ...` to show where the warning was created)
+PR smoke	Post Run actions/checkout@v4	﻿2026-11-02T02:47:32.3783497Z Post job cleanup.
+PR smoke	Post Run actions/checkout@v4	2026-11-02T02:47:32.4756843Z [command]/usr/bin/git version
+PR smoke	Post Run actions/checkout@v4	2026-11-02T02:47:32.4805619Z git version 2.56.0
+PR smoke	Post Run actions/checkout@v4	2026-11-02T02:47:32.4844649Z Temporarily overriding HOME='/home/runner/work/_temp/a4d3ae31-ede2-4196-baf2-2fa3be7f3c1a' before making global git config changes
+PR smoke	Post Run actions/checkout@v4	2026-11-02T02:47:32.4846324Z Adding repository directory to the temporary git global config as a safe directory
+PR smoke	Post Run actions/checkout@v4	2026-11-02T02:47:32.4849952Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/ams-gra-codegen-oms/ams-gra-codegen-oms
+PR smoke	Post Run actions/checkout@v4	2026-11-02T02:47:32.4892060Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+PR smoke	Post Run actions/checkout@v4	2026-11-02T02:47:32.4931901Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+PR smoke	Post Run actions/checkout@v4	2026-11-02T02:47:32.5254965Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+PR smoke	Post Run actions/checkout@v4	2026-11-02T02:47:32.5304097Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+PR smoke	Post Run actions/checkout@v4	2026-11-02T02:47:32.5596814Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+PR smoke	Post Run actions/checkout@v4	2026-11-02T02:47:32.5647141Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+PR smoke	Complete job	﻿2026-11-02T02:47:32.6084230Z Cleaning up orphan processes
+PR smoke	Complete job	2026-11-02T02:47:32.6553796Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-python@v5. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

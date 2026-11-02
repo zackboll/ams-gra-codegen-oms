@@ -1,0 +1,59 @@
+2.5 PositionReport closed-schema False 0 []
+2.5 PositionReport closed-schema True 0 []
+2.5 PositionReport open-extensions False 0 []
+2.5 PositionReport open-extensions True 0 []
+2.5 RDMA_InitializeSetup closed-schema False 1 ['model boundary: {https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints', 'service api boundary: {https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints']
+2.5 RDMA_InitializeSetup closed-schema True 1 ['model boundary: {https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints', 'service api boundary: {https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints']
+2.5 RDMA_InitializeSetup open-extensions False 1 ['model boundary: {https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints', 'service api boundary: {https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints']
+2.5 RDMA_InitializeSetup open-extensions True 1 ['model boundary: {https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints', 'service api boundary: {https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints']
+2.5 SubsystemStream closed-schema False 0 []
+2.5 SubsystemStream closed-schema True 0 []
+2.5 SubsystemStream open-extensions False 0 []
+2.5 SubsystemStream open-extensions True 0 []
+2.5 Log closed-schema False 0 []
+2.5 Log closed-schema True 0 []
+2.5 Log open-extensions False 0 []
+2.5 Log open-extensions True 0 []
+2.5 SurvivabilityRiskLevel closed-schema False 0 []
+2.5 SurvivabilityRiskLevel closed-schema True 0 []
+2.5 SurvivabilityRiskLevel open-extensions False 0 []
+2.5 SurvivabilityRiskLevel open-extensions True 0 []
+2.6 PositionReport closed-schema False 0 []
+2.6 PositionReport closed-schema True 0 []
+2.6 PositionReport open-extensions False 0 []
+2.6 PositionReport open-extensions True 0 []
+2.6 RDMA_InitializeSetup closed-schema False 1 ['model boundary: {https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints', 'service api boundary: {https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints']
+2.6 RDMA_InitializeSetup closed-schema True 1 ['model boundary: {https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints', 'service api boundary: {https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints']
+2.6 RDMA_InitializeSetup open-extensions False 1 ['model boundary: {https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints', 'service api boundary: {https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints']
+2.6 RDMA_InitializeSetup open-extensions True 1 ['model boundary: {https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints', 'service api boundary: {https://www.vdl.afrl.af.mil/programs/oam}IPv4_AddressType: unsupported Python IR construct: unsupported constraints']
+2.6 SubsystemStream closed-schema False 0 []
+2.6 SubsystemStream closed-schema True 0 []
+2.6 SubsystemStream open-extensions False 0 []
+2.6 SubsystemStream open-extensions True 0 []
+2.6 Log closed-schema False 0 []
+2.6 Log closed-schema True 0 []
+2.6 Log open-extensions False 0 []
+2.6 Log open-extensions True 0 []
+2.6 SurvivabilityRiskLevel closed-schema False 0 []
+2.6 SurvivabilityRiskLevel closed-schema True 0 []
+2.6 SurvivabilityRiskLevel open-extensions False 0 []
+2.6 SurvivabilityRiskLevel open-extensions True 0 []
+PY016 MEASUREMENTS COMPLETE: selections=40; not an interoperability claim
+   Compiling ams-gra-codegen-oms v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-016/crates/cli)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.27s
+     Running tests/python_header_profiles.rs (/home/zboll/py016-build/debug/deps/python_header_profiles-377883b19e803370)
+
+running 1 test
+test exact_profiles_execute_and_neighbours_fail_atomically ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.44s
+
+CI_SELECT_003_INVALID: missing existing pinned-UCI evidence directory; tests_run=0 tests_registered=unknown
+Traceback (most recent call last):
+  File "/home/zboll/git/ams-gra-codegen-oms-py-016/scripts/check-py016-uci.py", line 158, in <module>
+    main()
+  File "/home/zboll/git/ams-gra-codegen-oms-py-016/scripts/check-py016-uci.py", line 152, in main
+    subprocess.run([sys.executable, str(ROOT / 'python/qualification/run.py'), 'uci'], check=True)
+  File "/home/zboll/.local/share/uv/python/cpython-3.11.17-linux-x86_64-gnu/lib/python3.11/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['/home/zboll/.local/bin/python3.11', '/home/zboll/git/ams-gra-codegen-oms-py-016/python/qualification/run.py', 'uci']' returned non-zero exit status 1.
