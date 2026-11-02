@@ -71,7 +71,7 @@ class MutationOwnership(unittest.TestCase):
                     layout.self_test(str(path))
                 # Every primary shard now receives the same source/setup
                 # mutations as each independent regression runner.
-                self.assertEqual(len(observed), 364)
+                self.assertEqual(len(observed), 376)
                 self.assertEqual(observed.count(text), 1)  # Healthy case only.
 
     def test_source_gate_executes_fail_closed(self):

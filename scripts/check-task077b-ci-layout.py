@@ -75,6 +75,7 @@ GATES = [(name, next((job for job, tasks in PRIMARY_SHARDS.items()
           if owner == 'real-uci' else owner, digest) for name, owner, digest in GATES]
 SOURCE_JOBS = QUALIFICATION_JOBS + ('msrv-real-uci', 'real-sleet',
                                   'ada-repeated-choice-real-uci', 'ada-hexbinary-real')
+SLEET_ENV = "    env:\n      CARGO_PROFILE_DEV_BUILD_OVERRIDE_OPT_LEVEL: '3'\n"
 CHECKOUT = '''uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}'''
@@ -136,6 +137,10 @@ def check(path):
                 sum(run_command(step + '\n') == SOURCE_COMMAND for step in steps) == 1,
                 'source identity gate before qualification: ' + job)
         header = body.split('    steps:', 1)[0]
+        if job == 'real-sleet':
+            require(re.findall(r'^    env:\n(?:^      .*\n)*', header, re.M) == [SLEET_ENV],
+                    'mandatory source identity: ' + job)
+            header = header.replace(SLEET_ENV, '', 1)
         require(not re.search(r'^\s+(if:|continue-on-error:|env:|defaults:)', header, re.M),
                 'mandatory source identity: ' + job)
         # No later action or shell checkout may replace the verified source.
@@ -146,7 +151,7 @@ def check(path):
     for job in ('ada-repeated-choice-real-uci', 'ada-hexbinary-real'):
         require(job in jobs, 'missing job: ' + job)
     for job, releases in (tuple((j, ('2.5', '2.6')) for j in QUALIFICATION_JOBS) + (
-                          ("msrv-real-uci", ("2.5",)), ("real-sleet", ("2.5",)))):
+                          ("msrv-real-uci", ("2.5",)), ("real-sleet", ("2.5", "2.6")))):
         body = jobs.get(job, "")
         require(bool(body), "missing job: " + job)
         for release in ("2.5", "2.6"):
@@ -311,6 +316,29 @@ def self_test(path):
             add(job + ' optional job ' + field, job_mutation(job, lambda b: replace_once(
                 b, '    runs-on:', '    ' + field + '\n    runs-on:')),
                 'mandatory source identity: ' + job)
+    # Exercise the exact job-local optimization allowlist, not a general env
+    # exemption. Comments are immaterial to the validator's block grammar.
+    sleet_env = ('    env:\n'
+                 '      # build.rs invokes production generation repeatedly on authentic UCI.\n'
+                 "      CARGO_PROFILE_DEV_BUILD_OVERRIDE_OPT_LEVEL: '3'\n")
+    for label, replacement in (
+            ('missing', ''),
+            ('wrong value', SLEET_ENV.replace("'3'", "'0'")),
+            ('wrong key', SLEET_ENV.replace('CARGO_PROFILE_DEV_BUILD_OVERRIDE_OPT_LEVEL', 'PYTHONOPTIMIZE')),
+            ('extra optimization', SLEET_ENV + "      PYTHONOPTIMIZE: '1'\n"),
+            ('source override', SLEET_ENV + "      GITHUB_SHA: main\n"),
+            ('duplicate', SLEET_ENV + SLEET_ENV),
+            ('flow mapping', "    env: {CARGO_PROFILE_DEV_BUILD_OVERRIDE_OPT_LEVEL: '3'}\n"),
+            ('expression', SLEET_ENV.replace("'3'", '${{ vars.OPT_LEVEL }}'))):
+        add('real-sleet environment ' + label, job_mutation('real-sleet',
+            lambda b: replace_once(b, sleet_env, replacement)),
+            'mandatory source identity: real-sleet')
+    for release in ('2.5', '2.6'):
+        line = command_line('real-sleet', f'scripts/fetch-pinned-uci-{release}.sh "$')
+        for label, replacement in (('missing', ''), ('duplicate', line + line)):
+            add(f'real-sleet {label} {release}', job_mutation('real-sleet',
+                lambda b: replace_once(b, line, replacement)),
+                f'fetch ownership: real-sleet {release}')
     for job in SHARDS:
         add('missing shard ' + job, job_mutation(job, lambda b: ''), 'missing job: ' + job)
     for job in QUALIFICATION_JOBS:
