@@ -138,7 +138,8 @@ def check(path):
                 'source identity gate before qualification: ' + job)
         header = body.split('    steps:', 1)[0]
         if job == 'real-sleet':
-            require(re.findall(r'^    env:\n(?:^      .*\n)*', header, re.M) == [SLEET_ENV],
+            environments = re.findall(r'^    env:\n.*?(?=^    \S|\Z)', header, re.M | re.S)
+            require([block.rstrip() + '\n' for block in environments] == [SLEET_ENV],
                     'mandatory source identity: ' + job)
             header = header.replace(SLEET_ENV, '', 1)
         require(not re.search(r'^\s+(if:|continue-on-error:|env:|defaults:)', header, re.M),
@@ -327,6 +328,7 @@ def self_test(path):
             ('wrong key', SLEET_ENV.replace('CARGO_PROFILE_DEV_BUILD_OVERRIDE_OPT_LEVEL', 'PYTHONOPTIMIZE')),
             ('extra optimization', SLEET_ENV + "      PYTHONOPTIMIZE: '1'\n"),
             ('source override', SLEET_ENV + "      GITHUB_SHA: main\n"),
+            ('separated source override', SLEET_ENV + "\n      GITHUB_SHA: main\n"),
             ('duplicate', SLEET_ENV + SLEET_ENV),
             ('flow mapping', "    env: {CARGO_PROFILE_DEV_BUILD_OVERRIDE_OPT_LEVEL: '3'}\n"),
             ('expression', SLEET_ENV.replace("'3'", '${{ vars.OPT_LEVEL }}'))):
