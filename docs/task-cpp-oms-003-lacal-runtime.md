@@ -176,7 +176,8 @@ configuration, four programs whose exact summaries are required:
 * `runtime_oam_test.cpp` — `tests=1 checks=13`: bare `MessageA` on the wire;
   the Clark-notated OAM name is a different element.
 
-Result with `CPP_OMS_003_REPEAT=3` (mock suite run three times per configuration):
+Result with `CPP_OMS_003_REPEAT=5` (mock and shutdown suites run five times per
+configuration; CPP-OMS-003R1 head):
 
 | Configuration | Result |
 | --- | --- |
@@ -184,7 +185,7 @@ Result with `CPP_OMS_003_REPEAT=3` (mock suite run three times per configuration
 | g++ ASan + UBSan | PASS |
 | g++ TSan | PASS |
 | clang++ strict | PASS |
-| clang++ ASan+UBSan, clang++ TSan | **SKIPPED — not claimed** (no clang sanitizer runtime in this container) |
+| clang++ ASan+UBSan, clang++ TSan | **SKIPPED — not claimed** (no clang sanitizer runtime in this container: `libclang_rt.asan_cxx-x86_64.a` missing) |
 
 TSan note: GCC warns that Asio's `std::atomic_thread_fence` is not modelled
 (`-Wno-tsan` silences it); every cross-thread hand-off in the runtime itself is
