@@ -28,7 +28,8 @@ def inventory(directory):
             raise ValueError('redirected/nonregular generated input')
         if path.is_file():
             files[path.relative_to(directory).as_posix()] = digest(path)
-    required = {'__init__.py', 'model.py', 'service_api.py', 'service_codec.py'}
+    # Production emits a namespace package, not an __init__.py package.
+    required = {'model.py', 'service_api.py', 'service_codec.py'}
     if not required <= files.keys():
         raise ValueError('incomplete generated Python package')
     return files
@@ -99,7 +100,8 @@ def generate(generator, schema, contract, release, world, output):
             staging.rename(slot)
     if (slot.is_symlink() or not slot.is_dir()
             or {p.name for p in slot.iterdir()} != {'manifest.json', 'generated'}
-            or (slot / 'manifest.json').is_symlink() or (slot / 'generated').is_symlink()):
+            or (slot / 'manifest.json').is_symlink() or not (slot / 'manifest.json').is_file()
+            or (slot / 'generated').is_symlink()):
         raise ValueError('incomplete/redirected generation cache entry')
     manifest = json.loads((slot / 'manifest.json').read_text())
     files = inventory(slot / 'generated')

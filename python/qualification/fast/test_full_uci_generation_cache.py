@@ -36,7 +36,7 @@ class FullUciGenerationCache(unittest.TestCase):
         self.generator.write_text('#!' + sys.executable + '\n'
             'from pathlib import Path\nimport sys\n'
             'p=Path(sys.argv[-1]); p.mkdir()\n'
-            'for n in ["__init__.py", "model.py", "service_api.py", "service_codec.py"]:\n'
+            'for n in ["model.py", "service_api.py", "service_codec.py"]:\n'
             ' (p/n).write_text("# generated fixture\\n")\n')
         self.generator.chmod(0o755)
         self.schema = self.base / 'root.xsd'
@@ -136,14 +136,17 @@ class FullUciGenerationCache(unittest.TestCase):
 
     def test_missing_and_changed_generated_files_rejected(self):
         self.generate()
-        path = self.slot / 'generated/model.py'
-        original = path.read_bytes()
-        path.unlink()
-        with self.assertRaisesRegex(ValueError, 'incomplete generated'):
-            self.generate('again')
-        path.write_bytes(original + b'# changed')
-        with self.assertRaisesRegex(ValueError, 'identity/content mismatch'):
-            self.generate('again')
+        for name in ('model.py', 'service_api.py', 'service_codec.py'):
+            with self.subTest(module=name):
+                path = self.slot / 'generated' / name
+                original = path.read_bytes()
+                path.unlink()
+                with self.assertRaisesRegex(ValueError, 'incomplete generated'):
+                    self.generate('again')
+                path.write_bytes(original + b'# changed')
+                with self.assertRaisesRegex(ValueError, 'identity/content mismatch'):
+                    self.generate('again')
+                path.write_bytes(original)
 
     def test_redirected_generated_files_rejected(self):
         self.generate()
@@ -189,6 +192,79 @@ class FullUciGenerationCache(unittest.TestCase):
         with patch.dict(os.environ, AMS_GRA_PY016_GENERATION_CACHE=''):
             self.assertEqual(self.generate()['cache'], 'disabled')
         self.assertFalse(self.slot.exists())
+
+    def test_namespace_package_without_init_is_complete(self):
+        self.generate()
+        self.assertFalse((self.base / 'output/__init__.py').exists())
+        self.assertEqual(set(cache.inventory(self.base / 'output')),
+                         {'model.py', 'service_api.py', 'service_codec.py'})
+
+    def test_uncached_miss_and_hit_have_identical_source_hashes(self):
+        with patch.dict(os.environ, AMS_GRA_PY016_GENERATION_CACHE=''):
+            self.generate('original')
+        self.generate('miss')
+        self.generate('hit')
+        original = cache.inventory(self.base / 'original')
+        self.assertEqual(cache.inventory(self.base / 'miss'), original)
+        self.assertEqual(cache.inventory(self.base / 'hit'), original)
+        manifest = json.loads((self.slot / 'manifest.json').read_text())
+        self.assertEqual(manifest['files'], original)
+
+    def test_corrupted_and_wrong_shape_manifests_rejected(self):
+        self.generate()
+        path = self.slot / 'manifest.json'
+        for text in ('', '{', 'null', '[]', '{}', '{"identity": {}}'):
+            with self.subTest(manifest=text):
+                path.write_text(text)
+                with self.assertRaises(ValueError):
+                    self.generate('again')
+
+    def test_incomplete_successful_generation_never_published(self):
+        original = self.generator.read_text()
+        for name in ('model.py', 'service_api.py', 'service_codec.py'):
+            with self.subTest(module=name):
+                self.generator.write_text(original + f'(p/{name!r}).unlink()\n')
+                with self.assertRaisesRegex(ValueError, 'incomplete generated'):
+                    self.generate()
+                self.assertEqual(list(self.directory.iterdir()), [])
+                self.assertFalse((self.base / 'output').exists())
+
+    def test_distinct_pinned_releases_never_share_output(self):
+        first = self.generate()
+        include26 = self.base / 'UCI_SecurityMarkings_v2_6_0.xsd'
+        include26.write_text('<schema version="2.6"/>')
+        self.schema.write_text('<schema xmlns="http://www.w3.org/2001/XMLSchema">'
+                              '<include schemaLocation="' + include26.name + '"/></schema>')
+        with patch.dict(cache.pins.PINS, {'26': cache.digest(self.schema)}), \
+                patch.dict(cache.pins.INCLUDES, {'26': cache.digest(include26)}):
+            second = self.generate('release26', release='2.6')
+            self.assertEqual(second['cache'], 'miss')
+            self.assertNotEqual(first['identity']['release'], second['identity']['release'])
+            self.assertNotEqual(first['identity']['schema_sha256'], second['identity']['schema_sha256'])
+            self.assertEqual(self.generate('release26hit', release='2.6')['cache'], 'hit')
+        self.assertTrue(self.slot.is_dir())
+        self.assertTrue((self.directory / '26-closed-schema').is_dir())
+
+    def test_nonregular_generated_input_rejected(self):
+        self.generate()
+        path = self.slot / 'generated/model.py'
+        path.unlink()
+        os.mkfifo(path)
+        with self.assertRaisesRegex(ValueError, 'redirected/nonregular'):
+            self.generate('again')
+
+    def test_redirected_and_nonregular_manifests_rejected(self):
+        self.generate()
+        path = self.slot / 'manifest.json'
+        original = self.base / 'manifest.json'
+        path.rename(original)
+        path.symlink_to(original)
+        with self.assertRaisesRegex(ValueError, 'incomplete/redirected'):
+            self.generate('again')
+        path.unlink()
+        os.mkfifo(path)
+        with self.assertRaisesRegex(ValueError, 'incomplete/redirected'):
+            self.generate('again')
 
 
 if __name__ == '__main__':
