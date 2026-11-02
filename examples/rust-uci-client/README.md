@@ -163,8 +163,8 @@ validation, not a claim of complete XSD validation by the application.
 Expected output (SIDs/order can differ):
 
 ```text
-CONNECTED service=rust-uci-client UCI=2.5 INIT.schema=002.5.0
-SUBSCRIBED Log sid=... RDMA_InitializeSetup sid=... SurvivabilityRiskLevel sid=... DLZ sid=... (frames written)
+CONNECTED session=1 service=rust-uci-client UCI=2.5 INIT.schema=002.5.0
+SUBSCRIBED session=1 Log sid=... RDMA_InitializeSetup sid=... SurvivabilityRiskLevel sid=... DLZ sid=... (frames written)
 PUBLISHED Log: frame written; broker acceptance not acknowledged
 PUBLISHED RDMA_InitializeSetup: frame written; broker acceptance not acknowledged
 PUBLISHED SurvivabilityRiskLevel: frame written; broker acceptance not acknowledged
@@ -191,7 +191,65 @@ An external OWP client
 authorized for these topics can publish the corresponding enveloped documents;
 the same four typed handlers print them. `--duration-seconds` defaults to 5 and
 accepts integers 1..=3600. Unknown/duplicate flags and missing values are errors.
-No CLI framework, reconnect, replay, TLS or authentication policy is added.
+No CLI framework, replay, TLS or authentication policy is added.
+
+### Optional bounded recovery
+
+```bash
+"$CLIENT_BIN" --url ws://127.0.0.1:9000 --service-id rust-uci-client \
+  --duration-seconds 30 --reconnect-attempts 3 --reconnect-delay-ms 250
+```
+
+`--reconnect-attempts` accepts **0..=8**, default **0** (the existing fail-fast
+behavior). It is the total process-wide budget of **additional** connection
+attempts after established-session loss, not a per-disconnect budget. A successful
+recovery does not replenish it. Initial connect/INIT still fails immediately.
+`--reconnect-delay-ms` accepts **50..=2000**, default **250**, and applies before
+each recovery attempt. Malformed, duplicate and out-of-range options fail before
+connecting, even with recovery disabled.
+
+Recovery begins only for `RuntimeEvent::ConnectionClosed`. The application closes
+and joins that session's runtime, drops its connection-local handles and queued
+typed messages, and only then opens a fresh runtime on the same URL/service/schema.
+Each session owns four new typed subscriptions and a private epoch-tagged channel.
+Textual SIDs can repeat across connections; handles are never reused. Remaining
+old-session runtime errors other than connection loss are terminal, not discarded.
+There is never more than one application-owned runtime worker or connection.
+
+Only typed refused-connection and timeout establishment errors are retried.
+INIT rejection, incompatible schema, unauthorized service, `ServerError`, decode
+errors, protocol errors, handler panic, unknown subscription and unexplained worker
+termination remain terminal. This is application policy; the production runtime's
+initial retry policy is unchanged and is not enabled by this application.
+
+The receive deadline starts after initial setup/publications, as before, and
+includes all recovery downtime. It is never reset. Delays and connect/INIT timeouts
+are capped by the remaining receive period. Exhaustion or expiry while unavailable
+exits nonzero with the original connection-loss context and the recovery failure.
+Normal completion unsubscribes all four current handles and joins the worker.
+
+Lifecycle output distinguishes successful INIT from non-verbose SUB frame writes:
+
+```text
+CONNECTED session=1 service=rust-uci-client UCI=2.5 INIT.schema=002.5.0
+SUBSCRIBED session=1 Log sid=sub-1 ... (frames written)
+DISCONNECTED session=1 ConnectionClosed: ...
+CLOSED runtime; worker joined; session=1
+RECONNECT_ATTEMPT 1/3 after-session=1
+CONNECTED session=2 service=rust-uci-client UCI=2.5 INIT.schema=002.5.0
+SUBSCRIBED session=2 Log sid=sub-1 ... (frames written)
+RECONNECT_COMPLETE session=2
+```
+
+Typed `RECEIVED` lines retain their existing fields and append `session=N`.
+`SUBSCRIBED` and `RECONNECT_COMPLETE` do **not** claim broker acceptance: routing
+requires independent broker or actual typed-delivery evidence.
+
+**Publications are never replayed.** The optional four CLI files are submitted
+only in the initial established session. Recovery restores subscriptions only;
+there is no outgoing queue or invented delivery acknowledgment. A PUB frame written
+before failure has **unknown acceptance status**, unless independently witnessed.
+Recovery cannot guarantee delivery during downtime or exactly-once delivery.
 
 Failed input example (nonzero exit; no connection or publication):
 
@@ -205,8 +263,8 @@ printf '{}\n' > "$CLIENT_SCRATCH/bad.json"
 Invalid JSON syntax is reported separately as `invalid input JSON`. Connection,
 subscription, publication, unsubscribe and shutdown errors return nonzero.
 `ServerError`, `SubscriptionDecodeError` (SID/message/cause, no typed delivery),
-protocol errors and connection closure are printed as failures. The application
-does not retry them. All four subscriptions are explicitly removed on the normal
+protocol errors and connection closure are printed visibly. Only established
+connection loss may enter the opt-in recovery policy above. All four subscriptions are explicitly removed on the normal
 path; errors after setup also attempt all four removals and close. Early setup errors
 drop the runtime, whose production Drop signals and joins its worker.
 
@@ -257,6 +315,18 @@ goldens are reused. It intentionally does not duplicate historical codec corpora
 The existing main-only real-Sleet job invokes it with the same Sleet build; no new
 runner lane or qualification framework is introduced. Root-workspace Rust
 backend/runtime regressions and lightweight PR smoke remain unchanged.
+
+The same executable harness also stops and restarts that unmodified server on
+the same port for each release. It independently witnesses four distinct messages
+before and after recovery, observes fresh broker-side subscription registration,
+four final UNSUB dispatches, different procfs worker IDs with zero workers and
+connections between sessions, and no replayed PUB frames. Negative controls cover
+default fail-fast, outage exhaustion, a budget that stays consumed after recovery,
+incompatible INIT schema, denied topics, near-deadline loss and decoder errors with
+recovery enabled, plus a stalled upgrade capped by the remaining deadline and
+initial failure with recovery enabled. Both authentic root variables are needed
+even for an individual live-test run: the incompatible-schema control restarts
+with the other release's authentic schema. No second Sleet build or CI lane is needed.
 
 When finished with the manual server:
 
