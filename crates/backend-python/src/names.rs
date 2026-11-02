@@ -78,6 +78,10 @@ pub(crate) fn validate(schema: &SchemaIr, declarations: &[&TypeDecl]) -> Result<
     .into_iter()
     .map(str::to_owned)
     .collect();
+    if crate::uses_choice(schema) {
+        top.insert("staticmethod".to_owned());
+        top.insert("value".to_owned());
+    }
     if crate::uses_binary(schema) {
         top.insert("bytes".to_owned());
     }
@@ -89,6 +93,40 @@ pub(crate) fn validate(schema: &SchemaIr, declarations: &[&TypeDecl]) -> Result<
     for declaration in declarations {
         insert(&mut top, &declaration.name.local_name, false)?;
         match &declaration.kind {
+            TypeKind::Choice { .. } => {
+                // Factory annotations execute in the class body; reserve both
+                // storage and every name used by generated methods/annotations.
+                // Leading underscores are escaped by symbol(), including dunders.
+                let mut members: BTreeSet<String> = [
+                    "alternative",
+                    "value",
+                    "self",
+                    "bool",
+                    "str",
+                    "int",
+                    "tuple",
+                    "bytes",
+                    "float",
+                    "object",
+                    "type",
+                    "staticmethod",
+                    "TypeError",
+                    "ValueError",
+                    "len",
+                    "mro",
+                ]
+                .into_iter()
+                .map(str::to_owned)
+                .chain(
+                    declarations
+                        .iter()
+                        .map(|item| symbol(&item.name.local_name, false)),
+                )
+                .collect();
+                for field in crate::choice_alternatives(schema, declaration)? {
+                    insert(&mut members, &field.name, false)?;
+                }
+            }
             TypeKind::Record { .. } => {
                 // An annotation is evaluated in the class body. A field named
                 // `int`, `tuple`, or a lowercase schema type would shadow a

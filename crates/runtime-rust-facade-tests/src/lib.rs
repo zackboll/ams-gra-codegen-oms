@@ -257,6 +257,20 @@ pub mod real_uci_subsystem_stream {
 
 pub mod codec;
 
+/// Authentic UCI 2.5 DLZ model, codec and bidirectional service endpoints.
+#[cfg(ams_gra_real_uci_dlz25)]
+#[allow(clippy::all, clippy::pedantic)]
+pub mod real_uci_dlz25 {
+    include!(concat!(env!("OUT_DIR"), "/real_uci_dlz25/service_api.rs"));
+}
+
+/// Independently generated UCI 2.6 DLZ surface, not a 2.5 alias.
+#[cfg(ams_gra_real_uci_dlz26)]
+#[allow(clippy::all, clippy::pedantic)]
+pub mod real_uci_dlz26 {
+    include!(concat!(env!("OUT_DIR"), "/real_uci_dlz26/service_api.rs"));
+}
+
 /// RUST-OMS-001: authentic UCI 2.5 Log, never aliased to the 2.6 model.
 #[cfg(ams_gra_real_uci_log25)]
 #[allow(clippy::all, clippy::pedantic)]

@@ -407,10 +407,6 @@ fn all_model_boundaries_still_fail_closed_with_codec_requested() {
             ),
         ),
         (
-            "choice",
-            source.replace("type=\"t:Payload\"", "type=\"t:UnusedUnsupported\""),
-        ),
-        (
             "choice-inheritance",
             source.replace("<xs:complexType name=\"Empty\"><xs:sequence/></xs:complexType>",
                 "<xs:complexType name=\"Empty\"><xs:complexContent><xs:extension base=\"t:UnusedUnsupported\"><xs:sequence/></xs:extension></xs:complexContent></xs:complexType>"),

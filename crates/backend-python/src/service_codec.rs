@@ -114,9 +114,17 @@ pub fn generate_service_codec(
                 "Python OMS JSON codec: OAM UniversallyUniqueIdentifierType RFC 4122 mapping is unsupported",
             ));
         }
-        if let TypeKind::Record { .. } = &declaration.kind {
+        if matches!(
+            declaration.kind,
+            TypeKind::Record { .. } | TypeKind::Choice { .. }
+        ) {
             let mut keys = BTreeSet::new();
-            for field in crate::record_fields(schema, declaration)? {
+            let fields = if matches!(declaration.kind, TypeKind::Choice { .. }) {
+                crate::choice_alternatives(schema, declaration)?
+            } else {
+                crate::record_fields(schema, declaration)?
+            };
+            for field in fields {
                 let binary = match &field.type_ref.target {
                     TypeRefTarget::Primitive(PrimitiveKind::Binary) => true,
                     TypeRefTarget::Named(name) => schema.types.iter().any(|candidate| {
@@ -197,6 +205,42 @@ pub fn generate_service_codec(
             || crate::nato_special_words_profile(declaration)
         {
             writeln!(output, "\n\ndef _encode_{symbol}(value, path):\n    return _header_text(value, path, _model.{symbol})\n\n\ndef _decode_{symbol}(value, path):\n    return _header_value(value, path, _model.{symbol})").unwrap();
+            continue;
+        }
+        if matches!(declaration.kind, TypeKind::Choice { .. }) {
+            let alternatives = crate::choice_alternatives(schema, declaration)?;
+            writeln!(output, "\n\ndef _encode_{symbol}(value, path):\n    _expect(value, _model.{symbol}, path)\n    try:\n        alternative = value.alternative\n        payload = value.value\n    except AttributeError as error:\n        raise CodecError(f'{{path}}: missing Choice storage') from error\n    _expect(alternative, str, path)").unwrap();
+            for field in &alternatives {
+                let tag = names::literal(&names::symbol(&field.name, false));
+                let key = names::literal(&wire_key(field)?);
+                let path = format!("path + '.' + {key}");
+                let expr = reference(&field.type_ref, &field.constraints, "payload", &path, true)?;
+                writeln!(output, "    if alternative == {tag}:\n        try:\n            return {{{key}: {expr}}}\n        except CodecError:\n            raise\n        except (AttributeError, TypeError, ValueError) as error:\n            raise CodecError({path} + f': invalid Choice payload: {{error}}') from error").unwrap();
+            }
+            writeln!(output, "    raise CodecError(f'{{path}}: unknown Choice alternative')\n\n\ndef _decode_{symbol}(value, path):").unwrap();
+            let keys = alternatives
+                .iter()
+                .map(|field| wire_key(field).map(|key| names::literal(&key)))
+                .collect::<Result<Vec<_>, _>>()?
+                .join(", ");
+            writeln!(output, "    _object(value, {{{keys}}}, path)\n    if len(value) != 1:\n        raise CodecError(f'{{path}}: expected exactly one Choice alternative')").unwrap();
+            for field in alternatives {
+                let key = names::literal(&wire_key(field)?);
+                let path = format!("path + '.' + {key}");
+                let expr = reference(
+                    &field.type_ref,
+                    &field.constraints,
+                    &format!("value[{key}]"),
+                    &path,
+                    false,
+                )?;
+                writeln!(
+                    output,
+                    "    if {key} in value:\n        return _model.{symbol}.{}({expr})",
+                    names::symbol(&field.name, false)
+                )
+                .unwrap();
+            }
             continue;
         }
         writeln!(
