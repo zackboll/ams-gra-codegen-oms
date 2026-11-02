@@ -12,7 +12,9 @@
 //!
 //! The supported subset is decided ONCE, in codegen-core
 //! (`analyze_service_codec`): Boolean, integral, plain String, enumeration and
-//! concrete Record declarations with required, optional and repeated members.
+//! concrete Record declarations with required, optional and repeated members,
+//! plus the value profiles added by CPP-OMS-002/004/005 (checked String
+//! profiles including Task 058 bounded ASCII, temporal, hexBinary, Float64).
 //! This renderer calls that analyzer first and refuses anything it rejects, so
 //! readiness (`service-check`) and generation can never disagree.
 //!
@@ -34,9 +36,10 @@ use crate::{
 };
 use ams_gra_oms_codegen_core::{
     BackendLanguage, CPP_SERVICE_CODEC_FILE, CodegenError, GeneratedFile, InclusiveIntegralDomain,
-    ServiceApiModel, TypeEmission, analyze_service_codec, cpp_model_header_name,
-    effective_choice_alternatives, effective_record_fields, floating_domain,
+    ServiceApiModel, TypeEmission, analyze_service_codec, cpp_codec_admits_string_profile,
+    cpp_model_header_name, effective_choice_alternatives, effective_record_fields, floating_domain,
     generated_enum_variant_name, oms_json_member_name, oms_json_type_name, plan_type_emissions,
+    string_profile,
 };
 use ams_gra_oms_ir::{
     FieldDecl, OccurrenceShape, PrimitiveKind, QualifiedName, SchemaIr, TypeDecl, TypeKind,
@@ -459,8 +462,25 @@ impl Renderer<'_> {
                 kind @ (PrimitiveKind::String | PrimitiveKind::DateTime | PrimitiveKind::Duration),
             ) => {
                 // A checked text carrier: UUID / schema-version / visible-ASCII /
-                // whitespace-visible / NATO profile, DateTimeZulu or Duration.
-                // The generated `create(std::string_view)` is the only authority.
+                // whitespace-visible / NATO / bounded-ASCII profile,
+                // DateTimeZulu or Duration. The generated
+                // `create(std::string_view)` is the only authority; the codec
+                // restates no character class, length or whitespace rule.
+                //
+                // Defensive: the renderer re-asks the SHARED admission
+                // predicate the analyzer used, so a direct caller can never
+                // obtain a codec for a String profile outside the subset.
+                if *kind == PrimitiveKind::String {
+                    match string_profile(PrimitiveKind::String, &declaration.constraints) {
+                        Ok(Some(profile)) if cpp_codec_admits_string_profile(&profile) => {}
+                        _ => {
+                            return Err(error(format!(
+                                "service codec boundary: {local}: named String profile is not in \
+                                 the C++ codec subset"
+                            )));
+                        }
+                    }
+                }
                 let what = match kind {
                     PrimitiveKind::String => "String profile",
                     PrimitiveKind::DateTime => "dateTime",
