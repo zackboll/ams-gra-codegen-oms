@@ -530,7 +530,10 @@ fn unsupported_constructs_are_rejected_before_any_output() {
         // CPP-OMS-004: Float64 is now in the subset; this fixture's blocker
         // is its direct xs:float member, not its Float64 members.
         ("codec-ada-float64", "PathLength.Single is Float32"),
-        ("codec-ada-float32", "named Float32 has no C++ codec mapping"),
+        (
+            "codec-ada-float32",
+            "named Float32 has no C++ codec mapping",
+        ),
         ("constrained-float", "ThrustRatio: named Float32"),
         ("codec-time-zulu", "Time"),
         (
@@ -605,4 +608,218 @@ fn zero_oms_service_gets_no_codec_file() {
     let without = generate(&case, false, "zero-without");
     assert_eq!(listing(&with), listing(&without));
     assert!(!listing(&with).contains(&"service_codec.hpp".to_owned()));
+}
+
+// ---- CPP-OMS-004: Float64 ------------------------------------------------
+
+fn float64_case() -> Case {
+    Case {
+        schema: fixtures().join("cpp-codec/float64/float64.xsd"),
+        contract: fixtures().join("cpp-codec/float64/service.yaml"),
+    }
+}
+
+/// The exact edge-suite summary of `tests/cpp-codec/float64_consumer.cpp`.
+const FLOAT64_EDGE_SUMMARY: &str = "CPP_OMS_004_FLOAT64 checks=305 rejections=103\n";
+
+fn compile(compiler: &str, flags: &[&str], include: &Path, source: &Path, label: &str) -> PathBuf {
+    let dir = scratch(&format!("build-{label}"));
+    std::fs::create_dir_all(&dir).unwrap();
+    let program = dir.join("program");
+    let compiled = Command::new(compiler)
+        .args(flags)
+        .arg("-I")
+        .arg(include)
+        .arg(source)
+        .arg("-o")
+        .arg(&program)
+        .output()
+        .expect("compiler runs");
+    assert!(
+        compiled.status.success(),
+        "{compiler} failed for {label}:\n{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    program
+}
+
+fn run_ok(program: &Path, args: &[&Path], label: &str) -> String {
+    let ran = Command::new(program).args(args).output().expect("runs");
+    assert!(
+        ran.status.success(),
+        "{label} failed:\n{}{}",
+        String::from_utf8_lossy(&ran.stdout),
+        String::from_utf8_lossy(&ran.stderr)
+    );
+    String::from_utf8(ran.stdout).unwrap()
+}
+
+/// Regenerate the frozen Task 096 corpus with the unchanged exact oracle (its
+/// hashes are checked against the committed manifest by the driver).
+fn float64_corpus(label: &str) -> PathBuf {
+    let dir = scratch(&format!("corpus-{label}"));
+    std::fs::create_dir_all(&dir).unwrap();
+    let out = Command::new("python3")
+        .arg("-I")
+        .arg(root().join("tests/cpp-codec/float64_oracle.py"))
+        .arg("corpus")
+        .arg(&dir)
+        .output()
+        .expect("python3 runs");
+    assert!(
+        out.status.success(),
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&out.stdout).starts_with(
+            "CPP_OMS_004_CORPUS conversions=27167 encodings=20474 \
+             sha256-conversions=14c86c5fa674d279d198947dad03f71f517a40b583729df1184bbf6596a6451b"
+        ),
+        "{}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+    dir.join("full")
+}
+
+/// The Float64 runtime section and its headers appear only for a Float64
+/// selection; the model and service API stay byte-identical with and without
+/// `--with-codec`; generation is deterministic.
+#[test]
+fn float64_section_is_emitted_only_for_float64_selections() {
+    let case = float64_case();
+    let with = generate(&case, true, "f64-with");
+    let again = generate(&case, true, "f64-again");
+    let without = generate(&case, false, "f64-without");
+    for file in ["oam.hpp", "service_api.hpp"] {
+        assert_eq!(
+            std::fs::read(with.join(file)).unwrap(),
+            std::fs::read(without.join(file)).unwrap(),
+            "{file}"
+        );
+    }
+    let codec = std::fs::read_to_string(with.join("service_codec.hpp")).unwrap();
+    assert_eq!(
+        codec,
+        std::fs::read_to_string(again.join("service_codec.hpp")).unwrap()
+    );
+    for needle in [
+        "#include <charconv>\n#include <cmath>\n#include <system_error>\n\n#include \"oam.hpp\"",
+        "inline std::optional<double> get_f64(",
+        "std::from_chars(first, last, result, std::chars_format::general)",
+        "std::chars_format::scientific",
+        "return put_checked_f64<M::AngleDegreesType>(out, value, error, path);",
+        "return get_checked_f64<M::TinyType>(value, error, path);",
+        "return M::UnboundedDoubleType(*number);",
+    ] {
+        assert!(codec.contains(needle), "missing {needle}");
+    }
+    // No bound is restated by the codec: the model owns every limit.
+    for bound in [
+        "6378237",
+        "180.0",
+        "3.5",
+        "5.0e-324",
+        "min_value",
+        "max_value",
+    ] {
+        assert!(!codec.contains(bound), "codec restates the bound {bound}");
+    }
+    let plain = generate(&codec_case(), true, "f64-free");
+    let plain = std::fs::read_to_string(plain.join("service_codec.hpp")).unwrap();
+    for needle in ["charconv", "get_f64", "put_f64", "Float64"] {
+        assert!(
+            !plain.contains(needle),
+            "Float64-free codec contains {needle}"
+        );
+    }
+}
+
+/// CPP-OMS-004 numerical qualification: the generated decoder and encoder
+/// against the exact-rational oracle, with strict g++ and clang++.
+#[test]
+fn float64_numerics_match_the_independent_oracle() {
+    let dir = generate(&float64_case(), true, "f64-numerics");
+    let consumer = root().join("tests/cpp-codec/float64_consumer.cpp");
+    let corpus = float64_corpus("numerics");
+    let mut compilers = vec!["g++"];
+    if compiler_available("clang++") {
+        compilers.push("clang++");
+    }
+    let selftest = Command::new("python3")
+        .arg("-I")
+        .arg(root().join("tests/cpp-codec/float64_oracle.py"))
+        .arg("selftest")
+        .output()
+        .unwrap();
+    assert_eq!(
+        String::from_utf8_lossy(&selftest.stdout),
+        "CPP_OMS_004_ORACLE_SELFTEST cases=18 failures=0\n"
+    );
+    for compiler in compilers {
+        let mut flags = STRICT.to_vec();
+        flags.push("-O2");
+        let program = compile(
+            compiler,
+            &flags,
+            &dir,
+            &consumer,
+            &format!("f64-{compiler}"),
+        );
+        assert_eq!(run_ok(&program, &[], compiler), FLOAT64_EDGE_SUMMARY);
+        let decode = run_ok(
+            &program,
+            &[Path::new("decode"), &corpus.join("conversions.tsv")],
+            compiler,
+        );
+        assert_eq!(
+            decode,
+            "CPP_OMS_004_DECODE rows=27167 finite=27162 overflow=5 mismatches=0\n"
+        );
+        let tokens = program.with_file_name("tokens.tsv");
+        let encode = run_ok(
+            &program,
+            &[Path::new("encode"), &corpus.join("encoding.tsv"), &tokens],
+            compiler,
+        );
+        assert_eq!(
+            encode,
+            "CPP_OMS_004_ENCODE rows=20474 roundtrip_mismatches=0\n"
+        );
+        let checked = Command::new("python3")
+            .arg("-I")
+            .arg(root().join("tests/cpp-codec/float64_oracle.py"))
+            .arg("check-encoding")
+            .arg(&tokens)
+            .output()
+            .unwrap();
+        assert_eq!(
+            String::from_utf8_lossy(&checked.stdout),
+            "CPP_OMS_004_ORACLE_ENCODING rows=20474 mismatches=0\n",
+            "{compiler}: {}",
+            String::from_utf8_lossy(&checked.stderr)
+        );
+    }
+}
+
+#[test]
+fn float64_numerics_are_clean_under_sanitizers() {
+    if !sanitizer_flags_usable("g++", "f64") {
+        sanitizers_unavailable("g++");
+        return;
+    }
+    let dir = generate(&float64_case(), true, "f64-san");
+    let consumer = root().join("tests/cpp-codec/float64_consumer.cpp");
+    let corpus = float64_corpus("san");
+    let program = compile("g++", SANITIZE, &dir, &consumer, "f64-san");
+    assert_eq!(run_ok(&program, &[], "f64-san"), FLOAT64_EDGE_SUMMARY);
+    assert_eq!(
+        run_ok(
+            &program,
+            &[Path::new("decode"), &corpus.join("conversions.tsv")],
+            "f64-san"
+        ),
+        "CPP_OMS_004_DECODE rows=27167 finite=27162 overflow=5 mismatches=0\n"
+    );
 }

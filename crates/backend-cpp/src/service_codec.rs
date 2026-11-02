@@ -188,8 +188,9 @@ fn uses_float64(schema: &SchemaIr, declaration: &TypeDecl) -> bool {
     };
     match &declaration.kind {
         TypeKind::Primitive(PrimitiveKind::Float64) => true,
-        TypeKind::Record { .. } => effective_record_fields(schema, &declaration.name)
-            .is_ok_and(|fields| direct(&fields)),
+        TypeKind::Record { .. } => {
+            effective_record_fields(schema, &declaration.name).is_ok_and(|fields| direct(&fields))
+        }
         TypeKind::Choice { .. } => effective_choice_alternatives(schema, &declaration.name)
             .is_ok_and(|fields| direct(&fields)),
         _ => false,
