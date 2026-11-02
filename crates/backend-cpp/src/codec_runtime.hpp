@@ -44,7 +44,7 @@
 #include <utility>
 #include <variant>
 #include <vector>
-
+@FLOAT64_INCLUDES@
 @MODEL_INCLUDE@
 
 namespace service_codec {

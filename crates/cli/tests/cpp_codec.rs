@@ -522,13 +522,16 @@ int main() {{
 /// before the output directory exists.
 ///
 /// CPP-OMS-002 moved DateTime, Duration, hexBinary, Choice and the Log String
-/// profiles into the subset (see `newly_supported_fixtures_*`); what remains
-/// here is still NOT READY.
+/// profiles into the subset (see `newly_supported_fixtures_*`), and CPP-OMS-004
+/// moved Float64; what remains here is still NOT READY.
 #[test]
 fn unsupported_constructs_are_rejected_before_any_output() {
     let cases: &[(&str, &str)] = &[
-        ("codec-ada-float64", "Float64"),
-        ("codec-ada-float32", "Float32"),
+        // CPP-OMS-004: Float64 is now in the subset; this fixture's blocker
+        // is its direct xs:float member, not its Float64 members.
+        ("codec-ada-float64", "PathLength.Single is Float32"),
+        ("codec-ada-float32", "named Float32 has no C++ codec mapping"),
+        ("constrained-float", "ThrustRatio: named Float32"),
         ("codec-time-zulu", "Time"),
         (
             "codec-ada-hexbinary-single",

@@ -35,8 +35,8 @@ use crate::{
 use ams_gra_oms_codegen_core::{
     BackendLanguage, CPP_SERVICE_CODEC_FILE, CodegenError, GeneratedFile, InclusiveIntegralDomain,
     ServiceApiModel, TypeEmission, analyze_service_codec, cpp_model_header_name,
-    effective_choice_alternatives, effective_record_fields, generated_enum_variant_name,
-    oms_json_member_name, oms_json_type_name, plan_type_emissions,
+    effective_choice_alternatives, effective_record_fields, floating_domain,
+    generated_enum_variant_name, oms_json_member_name, oms_json_type_name, plan_type_emissions,
 };
 use ams_gra_oms_ir::{
     FieldDecl, OccurrenceShape, PrimitiveKind, QualifiedName, SchemaIr, TypeDecl, TypeKind,
@@ -52,6 +52,15 @@ pub const SERVICE_CODEC_FILE: &str = CPP_SERVICE_CODEC_FILE;
 /// Fixed runtime: reader, writer, result types. Opens (and leaves open)
 /// `namespace service_codec { namespace detail {`.
 const RUNTIME: &str = include_str!("codec_runtime.hpp");
+
+/// CPP-OMS-004 Float64 helpers, appended to the runtime (still inside
+/// `service_codec::detail`) ONLY when an emitted declaration needs them, so a
+/// Float64-free codec stays byte-identical.
+const FLOAT64_RUNTIME: &str = include_str!("codec_float64.hpp");
+
+/// Standard headers the Float64 helpers need, spliced into the runtime's
+/// include block under the same condition.
+const FLOAT64_INCLUDES: &str = "#include <charconv>\n#include <cmath>\n#include <system_error>\n";
 
 /// Render `service_codec.hpp` for a service with at least one OMS exchange.
 ///
@@ -92,10 +101,23 @@ pub fn generate_service_codec(
     }
     let renderer = Renderer { schema, ids };
 
-    let mut output = RUNTIME.replace(
-        "@MODEL_INCLUDE@",
-        &format!("#include \"{}\"", cpp_model_header_name(schema)?),
-    );
+    let float64 = emitted.iter().any(|emission| match emission {
+        TypeEmission::Declaration(declaration) => uses_float64(schema, declaration),
+        TypeEmission::AbstractValue(_) => false,
+    });
+    let mut output = RUNTIME
+        .replace(
+            "@FLOAT64_INCLUDES@",
+            if float64 { FLOAT64_INCLUDES } else { "" },
+        )
+        .replace(
+            "@MODEL_INCLUDE@",
+            &format!("#include \"{}\"", cpp_model_header_name(schema)?),
+        );
+    if float64 {
+        output.push('\n');
+        output.push_str(FLOAT64_RUNTIME);
+    }
     let namespace = namespace_name(schema)?;
     writeln!(output, "namespace M = ::{namespace};\n").expect("infallible");
     for (index, emission) in emitted.iter().enumerate() {
@@ -152,6 +174,28 @@ pub fn generate_service_codec(
     }])
 }
 
+/// Does this emitted declaration store a Float64 value (a named Float64, or a
+/// Record/Choice with a direct `xs:double` member)? Named Float64 member
+/// types are emitted declarations themselves and answer for themselves.
+fn uses_float64(schema: &SchemaIr, declaration: &TypeDecl) -> bool {
+    let direct = |fields: &[&FieldDecl]| {
+        fields.iter().any(|field| {
+            matches!(
+                field.type_ref.target,
+                TypeRefTarget::Primitive(PrimitiveKind::Float64)
+            )
+        })
+    };
+    match &declaration.kind {
+        TypeKind::Primitive(PrimitiveKind::Float64) => true,
+        TypeKind::Record { .. } => effective_record_fields(schema, &declaration.name)
+            .is_ok_and(|fields| direct(&fields)),
+        TypeKind::Choice { .. } => effective_choice_alternatives(schema, &declaration.name)
+            .is_ok_and(|fields| direct(&fields)),
+        _ => false,
+    }
+}
+
 /// The OMS JSON member key of one stored Record field, from its OWN element
 /// QName through the shared formatter.
 fn member_key(field: &FieldDecl) -> Result<String, CodegenError> {
@@ -198,6 +242,8 @@ enum Base {
     },
     /// A direct `xs:hexBinary` member: `std::vector<std::uint8_t>`.
     Hex,
+    /// A direct unconstrained `xs:double` member: `double` (CPP-OMS-004).
+    Float64,
     Named {
         id: usize,
         cpp: String,
@@ -246,6 +292,7 @@ impl Renderer<'_> {
                 what: "duration",
             }),
             TypeRefTarget::Primitive(PrimitiveKind::Binary) => Ok(Base::Hex),
+            TypeRefTarget::Primitive(PrimitiveKind::Float64) => Ok(Base::Float64),
             TypeRefTarget::Primitive(kind) => Err(error(format!(
                 "service codec boundary: member {} is {kind:?}, which has no C++ codec mapping",
                 field.name
@@ -276,6 +323,7 @@ impl Renderer<'_> {
             ),
             Base::Text { cpp, .. } => (*cpp).to_owned(),
             Base::Hex => "std::vector<std::uint8_t>".to_owned(),
+            Base::Float64 => "double".to_owned(),
             Base::Named { cpp, .. } => cpp.clone(),
         }
     }
@@ -291,6 +339,7 @@ impl Renderer<'_> {
             Base::Unsigned(Some(_)) => format!("put_u64(out, {access}.value())"),
             Base::Text { .. } => format!("put_string(out, {access}.value(), error, {path})"),
             Base::Hex => format!("put_hex_binary(out, {access})"),
+            Base::Float64 => format!("put_f64(out, {access}, error, {path})"),
             Base::Named { id, .. } => format!("encode_t{id:03}({access}, out, error, {path})"),
         }
     }
@@ -314,6 +363,7 @@ impl Renderer<'_> {
                 format!("get_checked_text<{cpp}>({value}, error, {path}, \"{what}\")")
             }
             Base::Hex => format!("get_hex_binary({value}, error, {path})"),
+            Base::Float64 => format!("get_f64({value}, error, {path})"),
             Base::Named { id, .. } => format!("decode_t{id:03}({value}, error, {path})"),
         }
     }
@@ -435,6 +485,37 @@ impl Renderer<'_> {
                      std::optional<std::vector<std::uint8_t>> octets = get_hex_binary(value, error, path);\n    \
                      if (!octets) {{\n        return std::nullopt;\n    }}\n    return {cpp}(std::move(*octets));\n}}\n"
                 )
+                .expect("infallible");
+            }
+            TypeKind::Primitive(PrimitiveKind::Float64) => {
+                // The SHARED classifier decides the model shape: unconstrained
+                // (public explicit constructor, every double legal) or checked
+                // (`create`). No bound is restated here.
+                let checked = floating_domain(PrimitiveKind::Float64, &declaration.constraints)
+                    .map_err(|reason| {
+                        error(format!("service codec boundary: {reason} on {local}"))
+                    })?
+                    .is_some();
+                if checked {
+                    writeln!(
+                        output,
+                        "// {local} (named Float64, checked domain; the generated factory validates)\n\
+                         inline bool encode_t{id:03}(const {cpp}& value, std::string& out, CodecError& error, const Path* path) {{\n    \
+                         return put_checked_f64<{cpp}>(out, value, error, path);\n}}\n\n\
+                         inline std::optional<{cpp}> decode_t{id:03}(const Value& value, CodecError& error, const Path* path) {{\n    \
+                         return get_checked_f64<{cpp}>(value, error, path);\n}}\n"
+                    )
+                } else {
+                    writeln!(
+                        output,
+                        "// {local} (named Float64, unconstrained)\n\
+                         inline bool encode_t{id:03}(const {cpp}& value, std::string& out, CodecError& error, const Path* path) {{\n    \
+                         return put_f64(out, value.value(), error, path);\n}}\n\n\
+                         inline std::optional<{cpp}> decode_t{id:03}(const Value& value, CodecError& error, const Path* path) {{\n    \
+                         const std::optional<double> number = get_f64(value, error, path);\n    \
+                         if (!number) {{\n        return std::nullopt;\n    }}\n    return {cpp}(*number);\n}}\n"
+                    )
+                }
                 .expect("infallible");
             }
             TypeKind::Choice { .. } => self.choice(output, id, declaration, &cpp)?,
