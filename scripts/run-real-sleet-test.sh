@@ -33,6 +33,10 @@ if [ "${AMS_GRA_RUST_SURVIVABILITY_ONLY:-}" = 1 ]; then
   export AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE=1
   export AMS_GRA_REQUIRE_REAL_UCI_SURVIVABILITY=1
 fi
+if [ "${AMS_GRA_RUST_CLIENT_ONLY:-}" = 1 ]; then
+  : "${AMS_GRA_UCI_2_5_ROOT:?pinned UCI 2.5 root required}"
+  : "${AMS_GRA_UCI_2_6_ROOT:?pinned UCI 2.6 root required}"
+fi
 if [ -n "${AMS_GRA_REQUIRE_REAL_UCI_LOG:-}${AMS_GRA_REQUIRE_REAL_UCI_RDMA:-}${AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE:-}${AMS_GRA_REQUIRE_REAL_UCI_SURVIVABILITY:-}" ]; then
   : "${AMS_GRA_UCI_2_5_ROOT:?pinned UCI 2.5 root required}"
   : "${AMS_GRA_UCI_2_6_ROOT:?pinned UCI 2.6 root required}"
@@ -54,6 +58,34 @@ test -z "$(git -C "$CHECKOUT" status --porcelain)"
 export AMS_GRA_SLEET_BIN="$CHECKOUT/target/release/sleet"
 
 cd "$ROOT"
+# RUST-OMS-005: genuine standalone executable acceptance, using this same
+# unmodified broker build and the existing independent Task092/093 goldens.
+# The existing main-only real-sleet job supplies both roots; no new runner lane.
+if [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] && [ -n "${AMS_GRA_UCI_2_6_ROOT:-}" ]; then
+  manifest="$ROOT/examples/rust-uci-client/Cargo.toml"
+  cargo +1.95.0 fmt --manifest-path "$manifest" -- --check
+  for release in 2.5 2.6; do
+    export AMS_GRA_UCI_RELEASE="$release"
+    if [ "$release" = 2.5 ]; then
+      export AMS_GRA_UCI_ROOT="$AMS_GRA_UCI_2_5_ROOT"
+    else
+      export AMS_GRA_UCI_ROOT="$AMS_GRA_UCI_2_6_ROOT"
+    fi
+    cargo +1.95.0 build --locked --manifest-path "$manifest"
+    cargo +1.95.0 check --locked --all-targets --manifest-path "$manifest"
+    cargo +1.95.0 clippy --locked --all-targets --manifest-path "$manifest" -- -D warnings
+    status=0
+    output="$(cargo +1.95.0 test --locked --manifest-path "$manifest" -- \
+      --include-ignored --nocapture --test-threads=1 2>&1)" || status=$?
+    printf '%s\n' "$output"
+    if (( status != 0 )); then exit "$status"; fi
+    grep -Fqx "RUST-OMS-005 002.${release#2.}.0 standalone typed/external/OWP/error/unsubscribe/process cleanup: PASSED" <<<"$output"
+  done
+fi
+if [ "${AMS_GRA_RUST_CLIENT_ONLY:-}" = 1 ]; then
+  echo "RUST-OMS-005 real pinned Sleet ($SLEET_REV): PASSED"
+  exit 0
+fi
 # run_one TEST_FILE TEST_NAME PASS_LINE: exactly one matching test must run,
 # pass, and print its PASSED line (a skip prints SKIPPED and fails here).
 run_one() {

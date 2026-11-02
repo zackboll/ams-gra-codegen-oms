@@ -1,0 +1,34 @@
+[package]
+name = "rust-uci-client"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95"
+license = "Apache-2.0"
+publish = false
+
+# Deliberately standalone: unrelated workspace builds need no external schemas.
+[workspace]
+
+[dependencies]
+ams-gra-oms-runtime-api = { path = "../../crates/runtime-api-rust" }
+ams-gra-oms-runtime-rust = { path = "../../crates/runtime-rust" }
+serde_json = "1"
+
+[build-dependencies]
+ams-gra-codegen-oms = { path = "../../crates/cli" }
+
+# Independent real-Sleet witnesses only; the application uses no client API
+# except the production runtime. No test-only facade crate is linked.
+[dev-dependencies]
+sleet-client = { git = "https://github.com/open-arsenal/ams-gra-hello-world-sk-infra-sleet", rev = "e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b" }
+tokio = { version = "1", features = ["rt", "time"] }
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = "warn"
+
+# Authentic-schema parsing in build.rs should not dominate developer builds.
+[profile.dev.build-override]
+opt-level = 3
