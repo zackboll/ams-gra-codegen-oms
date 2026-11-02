@@ -128,8 +128,17 @@ struct Config {
     std::chrono::milliseconds operation_timeout{10000};  // each acknowledged command
     std::chrono::milliseconds close_timeout{2000};       // WebSocket close handshake
     std::size_t max_message_bytes = 16U * 1024U * 1024U; // largest accepted incoming frame
-    std::size_t max_pending_deliveries = 4096;           // undelivered MSG backlog bound
+    std::size_t max_pending_deliveries = 4096;           // undelivered MSG backlog bound (count)
+    /// Aggregate payload bytes of MSGs received but not yet fully dispatched
+    /// (queued plus the one being delivered). Exceeding it, like exceeding
+    /// max_pending_deliveries, fails the connection with delivery_overflow:
+    /// nothing is dropped silently. Must be >= max_message_bytes.
+    std::size_t max_pending_delivery_bytes = 64U * 1024U * 1024U;
     std::size_t max_pending_events = 1024;               // unread event bound (then counted)
+    /// Aggregate text bytes held by unread events. An event that does not fit
+    /// keeps its kind/error but loses its raw payload (payload_omitted); one
+    /// that still does not fit is dropped and counted (events_dropped).
+    std::size_t max_pending_event_bytes = 1024U * 1024U;
 };
 
 // ---- asynchronous events -----------------------------------------------------
@@ -151,6 +160,8 @@ struct Event {
     std::string sid;           // decode_error / unknown_subscription / handler_exception
     std::string message_name;  // decode_error: the subscribed global element name
     std::string payload;       // unknown_subscription / decode_error / info: raw text
+    std::size_t payload_bytes = 0;  // size of the raw text as received
+    bool payload_omitted = false;   // raw text not kept: max_pending_event_bytes was reached
     Error error;               // server_error, decode_error, connection_closed, handler_exception
     std::uint64_t count = 0;   // events_dropped
 };
@@ -162,6 +173,9 @@ struct Stats {
     std::uint64_t handler_exceptions = 0;
     std::uint64_t discarded_on_close = 0;    // queued MSGs not dispatched because close() ran
     std::uint64_t events_dropped = 0;
+    std::uint64_t event_payloads_omitted = 0;   // events queued without their raw payload
+    std::uint64_t unsent_frames_discarded = 0;  // queued outgoing frames never started (connection ended)
+    std::uint64_t writes_aborted = 0;           // outgoing frames whose WebSocket write did not complete
 };
 
 // ---- payload codec binding (customisation point) ---------------------------
@@ -173,8 +187,26 @@ struct payload_codec {
     static constexpr bool bound = false;
 };
 
+class Runtime;
+
 namespace detail {
 class Core;
+
+/// TEST-ONLY observation seam used by tests/cpp-lacal to place assertions at
+/// exact points of the I/O state machine. Not part of the supported API.
+struct IoSnapshot {
+    bool write_in_flight = false;       // an async_write owns its frame
+    std::size_t in_flight_bytes = 0;
+    std::size_t queued_frames = 0;      // unsent frames behind it
+    bool shutdown_started = false;      // the transport is being ended
+    bool close_deferred = false;        // close handshake waits for the in-flight write
+    bool close_handshake_started = false;
+    bool transport_closed = false;
+};
+struct TestAccess {
+    /// Runs on the I/O thread; nullopt if it did not run within `timeout`.
+    static std::optional<IoSnapshot> io_snapshot(Runtime& runtime, std::chrono::milliseconds timeout);
+};
 
 /// Type-erased typed delivery: decodes one payload body and invokes the
 /// handler. Returns false and fills `error` when the codec rejected it.
@@ -306,6 +338,7 @@ public:
     const std::string& server_info() const;
 
 private:
+    friend struct detail::TestAccess;
     explicit Runtime(std::shared_ptr<detail::Core> core) : core_(std::move(core)) {}
     Status publish_body(std::string element, std::string_view topic, const std::string& body);
     Result<Subscription> subscribe_delivery(std::string element, std::string_view topic,

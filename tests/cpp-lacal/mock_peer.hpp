@@ -5,6 +5,9 @@
 // 400 by default, and can be told to misbehave (no/wrong subprotocol, accept
 // TCP but never upgrade, ignore commands, drop the TCP connection, send
 // binary or malformed frames) so the runtime's failure paths are exercised.
+// It can also stop reading after N frames (with a small receive buffer) so a
+// large client frame keeps the runtime's asynchronous write outstanding, and
+// resume later so that write completes successfully.
 #pragma once
 
 #include <boost/asio/ip/tcp.hpp>
@@ -17,6 +20,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <deque>
+#include <future>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -63,11 +67,17 @@ class Peer {
 public:
     enum class Handshake { owp, reject_400, omit_subprotocol, wrong_subprotocol, never_upgrade };
 
-    explicit Peer(Responder responder = acknowledge_everything, Handshake handshake = Handshake::owp)
+    /// `receive_buffer_bytes` > 0 sets SO_RCVBUF on the listening socket
+    /// (inherited by accepted sockets; fixes the advertised window).
+    explicit Peer(Responder responder = acknowledge_everything, Handshake handshake = Handshake::owp,
+                  int receive_buffer_bytes = 0)
         : responder_(std::move(responder)), handshake_(handshake), acceptor_(ioc_) {
         tcp::endpoint endpoint(net::ip::make_address("127.0.0.1"), 0);
         acceptor_.open(endpoint.protocol());
         acceptor_.set_option(net::socket_base::reuse_address(true));
+        if (receive_buffer_bytes > 0) {
+            acceptor_.set_option(net::socket_base::receive_buffer_size(receive_buffer_bytes));
+        }
         acceptor_.bind(endpoint);
         acceptor_.listen();
         port_ = acceptor_.local_endpoint().port();
@@ -115,6 +125,68 @@ public:
     bool client_sent_close() {
         std::lock_guard<std::mutex> lock(mutex_);
         return client_close_;
+    }
+
+    /// Close code of the client's close frame (0 if none was received).
+    unsigned client_close_code() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return client_close_code_;
+    }
+
+    bool wait_client_close(std::chrono::milliseconds timeout = std::chrono::seconds(5)) {
+        std::unique_lock<std::mutex> lock(mutex_);
+        return cv_.wait_for(lock, timeout, [&] { return client_close_; });
+    }
+
+    /// Stop issuing reads once `count` frames have been received (set before
+    /// the client connects). Bytes then accumulate in the kernel only.
+    void pause_reading_after(std::size_t count) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        pause_after_ = count;
+    }
+
+    /// True once reading is paused on the current connection.
+    bool wait_paused(std::chrono::milliseconds timeout = std::chrono::seconds(5)) {
+        std::unique_lock<std::mutex> lock(mutex_);
+        return cv_.wait_for(lock, timeout, [&] { return paused_; });
+    }
+
+    void resume_reading() {
+        net::post(ioc_, [this] {
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                pause_after_ = 0;
+                if (!paused_) {
+                    return;
+                }
+                paused_ = false;
+            }
+            if (session_ && !session_->dead) {
+                read(session_);
+            }
+        });
+    }
+
+    /// Bytes the kernel holds unread on the current connection (-1 on error
+    /// or if the peer thread did not answer within `timeout`).
+    long unread_bytes(std::chrono::milliseconds timeout = std::chrono::seconds(5)) {
+        auto promise = std::make_shared<std::promise<long>>();
+        std::future<long> result = promise->get_future();
+        net::post(ioc_, [this, promise] {
+            long value = -1;
+            if (session_) {
+                beast::error_code ec;
+                const std::size_t available = beast::get_lowest_layer(session_->ws).socket().available(ec);
+                if (!ec) {
+                    value = static_cast<long>(available);
+                }
+            }
+            promise->set_value(value);
+        });
+        if (result.wait_for(timeout) != std::future_status::ready) {
+            return -1;
+        }
+        return result.get();
     }
 
     std::string requested_subprotocol() {
@@ -214,6 +286,7 @@ private:
                                      return finish(session);
                                  }
                                  session->buffer.consume(session->buffer.size());
+                                 session->ws.read_message_max(std::uint64_t{1} << 30);  // large-frame tests
                                  read(session);
                              });
                          });
@@ -223,22 +296,31 @@ private:
         session->ws.async_read(session->buffer, [this, session](beast::error_code ec, std::size_t) {
             if (ec) {
                 if (ec == websocket::error::closed) {
-                    std::lock_guard<std::mutex> lock(mutex_);
-                    client_close_ = true;
+                    {
+                        std::lock_guard<std::mutex> lock(mutex_);
+                        client_close_ = true;
+                        client_close_code_ = session->ws.reason().code;
+                    }
+                    cv_.notify_all();
                 }
                 return finish(session);
             }
             std::string frame = beast::buffers_to_string(session->buffer.data());
             session->buffer.consume(session->buffer.size());
             Responder responder;
+            bool pause = false;
             {
                 std::lock_guard<std::mutex> lock(mutex_);
                 frames_.push_back(frame);
                 responder = responder_;
+                pause = pause_after_ != 0 && frames_.size() >= pause_after_;
+                paused_ = pause;
             }
             cv_.notify_all();
             enqueue(session, responder(frame));
-            read(session);
+            if (!pause) {
+                read(session);
+            }
         });
     }
 
@@ -318,6 +400,9 @@ private:
     int connections_ = 0;
     bool disconnected_ = false;
     bool client_close_ = false;
+    unsigned client_close_code_ = 0;
+    std::size_t pause_after_ = 0;
+    bool paused_ = false;
 };
 
 }  // namespace mock

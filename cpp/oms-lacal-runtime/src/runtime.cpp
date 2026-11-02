@@ -4,6 +4,15 @@
 // Ownership and locking rules (checked by tests/cpp-lacal):
 //  * The I/O thread owns `io_->ws`, the resolver, timers, the read buffer and the
 //    write queue. No other thread touches them; other threads `post` work.
+//  * Outgoing frames (see "write ownership" below): at most one async_write
+//    is outstanding, and its completion handler owns the frame's bytes, so
+//    shutdown can discard the *unsent* queue at any time without touching
+//    the buffer Beast is writing from. The close handshake is started only
+//    when no write is outstanding (deferred to the write's completion);
+//    close_timer bounds that wait and closes the socket, which completes the
+//    write with an error. Pending operations abandoned by io_context::stop()
+//    are destroyed -- with the frame they own -- only when io_ is destroyed,
+//    after the I/O thread has been joined.
 //  * `mutex_` guards every field shared between threads (state, pending
 //    command, subscriptions, inbound backlog, events, stats). It is never held
 //    while a handler, a codec, a user destructor or a blocking wait other than
@@ -214,6 +223,12 @@ struct Inbound {
     std::string payload;
 };
 
+/// Text bytes an event holds while queued (bounded by max_pending_event_bytes).
+std::size_t event_bytes(const Event& event) {
+    return event.sid.size() + event.message_name.size() + event.payload.size() + event.error.message.size() +
+           event.error.owp_code.size() + event.error.owp_details.size() + event.error.codec_path.size();
+}
+
 }  // namespace
 
 class Core {
@@ -419,9 +434,44 @@ public:
         if (events_.empty()) {
             return std::nullopt;
         }
+        event_bytes_ -= event_bytes(events_.front());
         Event event = std::move(events_.front());
         events_.pop_front();
         return event;
+    }
+
+    /// TEST-ONLY: a snapshot of the I/O-thread write/shutdown state.
+    std::optional<IoSnapshot> io_snapshot(std::chrono::milliseconds timeout) {
+        struct Shared {
+            std::mutex mutex;
+            std::condition_variable cv;
+            std::optional<IoSnapshot> value;
+        };
+        auto shared = std::make_shared<Shared>();
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            if (joined_ || !io_) {
+                return std::nullopt;
+            }
+            net::post(io_->ioc, [this, shared] {
+                IoSnapshot snapshot;
+                snapshot.write_in_flight = writing_;
+                snapshot.in_flight_bytes = in_flight_bytes_;
+                snapshot.queued_frames = write_queue_.size();
+                snapshot.shutdown_started = shutdown_started_;
+                snapshot.close_deferred = close_deferred_;
+                snapshot.close_handshake_started = close_handshake_started_;
+                snapshot.transport_closed = transport_closed_;
+                {
+                    std::lock_guard<std::mutex> inner(shared->mutex);
+                    shared->value = snapshot;
+                }
+                shared->cv.notify_all();
+            });
+        }
+        std::unique_lock<std::mutex> lock(shared->mutex);
+        shared->cv.wait_for(lock, timeout, [&] { return shared->value.has_value(); });
+        return shared->value;
     }
 
     bool connected() const {
@@ -483,7 +533,7 @@ private:
             }
             end_locked(error);
             if (state_ != State::closed) {
-                net::post(io_->ioc, [this] { abort_transport(websocket::close_code::policy_error); });
+                net::post(io_->ioc, [this] { begin_shutdown(websocket::close_code::policy_error); });
             }
             return Status::failure(std::move(error));
         }
@@ -556,10 +606,19 @@ private:
     }
 
     void push_event_locked(Event event) {
-        if (events_.size() >= config_.max_pending_events) {
+        event.payload_bytes = event.payload.size();
+        if (events_.size() < config_.max_pending_events && !event.payload.empty() &&
+            event_bytes_ + event_bytes(event) > config_.max_pending_event_bytes) {
+            std::string().swap(event.payload);  // keep the event, not its raw text
+            event.payload_omitted = true;
+            ++stats_.event_payloads_omitted;
+        }
+        const std::size_t cost = event_bytes(event);
+        if (events_.size() >= config_.max_pending_events || event_bytes_ + cost > config_.max_pending_event_bytes) {
             ++stats_.events_dropped;
             ++dropped_unreported_;
         } else {
+            event_bytes_ += cost;
             events_.push_back(std::move(event));
         }
         event_cv_.notify_all();
@@ -605,7 +664,7 @@ private:
             if (!ec && phase_ != Phase::active && phase_ != Phase::ended) {
                 connect_timed_out_ = true;
                 io_->resolver.cancel();
-                beast::get_lowest_layer(io_->ws).close();
+                close_transport();  // completes any pending connect/handshake/INIT write with an error
             }
         });
         beast::error_code literal_ec;
@@ -681,9 +740,8 @@ private:
             error.kind = ErrorKind::timeout;
             error.message = "connect did not complete within connect_timeout (" + error.message + ")";
         }
-        phase_ = Phase::ended;
         io_->connect_timer.cancel();
-        abort_transport(websocket::close_code::normal);
+        begin_shutdown(websocket::close_code::normal);
         std::lock_guard<std::mutex> lock(mutex_);
         connect_finished_ = true;
         connect_error_ = error;
@@ -692,8 +750,22 @@ private:
         cv_.notify_all();
     }
 
+    // ---- write ownership ---------------------------------------------------
+    //
+    // write_queue_ holds frames not yet handed to Beast; it may be discarded at
+    // any time. A frame handed to async_write moves into a shared_ptr that only
+    // the completion handler holds, so its bytes live exactly as long as the
+    // operation (until the handler runs, or until the abandoned operation is
+    // destroyed with io_ after the I/O thread has stopped). writing_ guards
+    // Beast's one-write-at-a-time rule; nothing else starts a write or a close
+    // while it is set.
+
     void send(std::string frame) {
-        if (phase_ == Phase::ended) {
+        if (phase_ == Phase::ended || shutdown_started_) {
+            // The connection ended before this frame was started; its command
+            // has already been failed by end_locked/connect failure.
+            std::lock_guard<std::mutex> lock(mutex_);
+            ++stats_.unsent_frames_discarded;
             return;
         }
         write_queue_.push_back(std::move(frame));
@@ -703,23 +775,49 @@ private:
     }
 
     void write_next() {
+        auto frame = std::make_shared<const std::string>(std::move(write_queue_.front()));
+        write_queue_.pop_front();
         writing_ = true;
-        io_->ws.async_write(net::buffer(write_queue_.front()), [this](beast::error_code ec, std::size_t) {
-            if (ec) {
-                writing_ = false;
-                write_queue_.clear();
-                return transport_lost("write failed: " + ec.message());
+        in_flight_bytes_ = frame->size();
+        io_->ws.async_write(net::buffer(*frame), [this, frame](beast::error_code ec, std::size_t) {
+            on_write(ec);
+        });  // `frame` is released when this handler is destroyed
+    }
+
+    void on_write(beast::error_code ec) {
+        writing_ = false;
+        in_flight_bytes_ = 0;
+        if (ec) {
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                ++stats_.writes_aborted;
             }
-            write_queue_.pop_front();
-            if (write_queue_.empty() || phase_ == Phase::ended) {
-                writing_ = false;
-                if (phase_ == Phase::ended) {
-                    write_queue_.clear();
-                }
-                return;
+            if (shutdown_started_) {
+                return close_transport();  // expected: the bounded close cut the write short
             }
+            return transport_lost("write failed: " + ec.message());
+        }
+        if (shutdown_started_) {
+            if (close_deferred_) {
+                close_deferred_ = false;
+                start_close_handshake(deferred_close_code_);
+            }
+            return;
+        }
+        if (!write_queue_.empty()) {
             write_next();
-        });
+        }
+    }
+
+    void discard_unsent() {
+        if (write_queue_.empty()) {
+            return;
+        }
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            stats_.unsent_frames_discarded += write_queue_.size();
+        }
+        write_queue_.clear();  // never the in-flight frame: the write handler owns that
     }
 
     void read_next() {
@@ -845,16 +943,25 @@ private:
                 return true;
             }
             case Kind::msg: {
+                const std::size_t bytes = frame.payload.size();
+                std::string bound;
                 if (inbound_.size() >= config_.max_pending_deliveries) {
+                    bound = "max_pending_deliveries (" + std::to_string(config_.max_pending_deliveries) + " messages)";
+                } else if (bytes > config_.max_pending_delivery_bytes - inbound_bytes_) {
+                    bound = "max_pending_delivery_bytes (" + std::to_string(config_.max_pending_delivery_bytes) +
+                            " bytes; " + std::to_string(inbound_bytes_) + " pending, " + std::to_string(bytes) +
+                            " arriving)";
+                }
+                if (!bound.empty()) {
                     lock.unlock();
                     fail_active(make_error(ErrorKind::delivery_overflow,
-                                           "MSG backlog reached max_pending_deliveries (" +
-                                               std::to_string(config_.max_pending_deliveries) +
-                                               "); connection closed instead of dropping messages; the MSG for '" +
+                                           "MSG backlog reached " + bound +
+                                               "; connection closed instead of dropping messages; the MSG for '" +
                                                frame.sid + "' that overflowed was not delivered"),
                                 websocket::close_code::policy_error);
                     return false;
                 }
+                inbound_bytes_ += bytes;
                 inbound_.push_back(Inbound{std::move(frame.sid), std::move(frame.payload)});
                 lock.unlock();
                 dispatch_cv_.notify_one();
@@ -876,12 +983,17 @@ private:
         if (phase_ != Phase::active) {
             return connect_failed(ErrorKind::connect_failed, std::move(message));
         }
-        phase_ = Phase::ended;
         {
             std::lock_guard<std::mutex> lock(mutex_);
             end_locked(make_error(ErrorKind::connection_closed, std::move(message)));
         }
-        beast::get_lowest_layer(io_->ws).close();
+        // The transport is already broken: no close handshake. Closing the
+        // socket completes an in-flight write (with an error) and the read.
+        phase_ = Phase::ended;
+        shutdown_started_ = true;
+        close_deferred_ = false;
+        discard_unsent();
+        close_transport();
     }
 
     void fail_active(Error reason, websocket::close_code code) {
@@ -889,41 +1001,60 @@ private:
             std::lock_guard<std::mutex> lock(mutex_);
             end_locked(reason);
         }
-        abort_transport(code);
+        begin_shutdown(code);
     }
 
-    /// Ends the transport from the I/O thread: a bounded close handshake when
-    /// the WebSocket is open, then the TCP socket is closed.
-    void abort_transport(websocket::close_code code) {
-        if (phase_ == Phase::ended && closing_started_) {
-            return;
-        }
+    /// Ends the transport from the I/O thread (once). Unsent frames are
+    /// discarded; an in-flight write keeps its frame and is allowed to finish
+    /// before the close frame is written (Beast permits one write-side
+    /// operation at a time). close_timer bounds the whole shutdown: when it
+    /// fires the socket is closed, which completes every pending operation.
+    void begin_shutdown(websocket::close_code code) {
         phase_ = Phase::ended;
-        if (closing_started_) {
+        if (shutdown_started_) {
             return;
         }
-        closing_started_ = true;
-        write_queue_.clear();
-        if (!io_->ws.is_open()) {
-            beast::get_lowest_layer(io_->ws).close();
+        shutdown_started_ = true;
+        discard_unsent();
+        if (transport_closed_) {
             return;
         }
         io_->close_timer.expires_after(config_.close_timeout);
         io_->close_timer.async_wait([this](beast::error_code ec) {
             if (!ec) {
-                beast::get_lowest_layer(io_->ws).close();
+                close_transport();
             }
         });
-        io_->ws.async_close(code, [this](beast::error_code) {
-            io_->close_timer.cancel();
-            beast::get_lowest_layer(io_->ws).close();
-        });
+        if (writing_) {
+            close_deferred_ = true;
+            deferred_close_code_ = code;
+            return;
+        }
+        start_close_handshake(code);
+    }
+
+    void start_close_handshake(websocket::close_code code) {
+        if (transport_closed_ || !io_->ws.is_open()) {
+            return close_transport();
+        }
+        close_handshake_started_ = true;
+        io_->ws.async_close(code, [this](beast::error_code) { close_transport(); });
+    }
+
+    /// Closes the TCP socket (idempotent); cancels the shutdown bound.
+    void close_transport() {
+        if (transport_closed_) {
+            return;
+        }
+        transport_closed_ = true;
+        io_->close_timer.cancel();
+        beast::get_lowest_layer(io_->ws).close();
     }
 
     void begin_close() {
         io_->connect_timer.cancel();
         io_->resolver.cancel();
-        abort_transport(websocket::close_code::normal);
+        begin_shutdown(websocket::close_code::normal);
     }
 
     // ---- dispatcher thread -----------------------------------------------------
@@ -935,12 +1066,16 @@ private:
             if (stop_dispatch_) {
                 stats_.discarded_on_close += inbound_.size();
                 inbound_.clear();
+                inbound_bytes_ = 0;
                 return;
             }
             Inbound message = std::move(inbound_.front());
             inbound_.pop_front();
+            // Counted against max_pending_delivery_bytes until dispatch ends.
+            const std::size_t message_bytes = message.payload.size();
             auto it = subs_.find(message.sid);
             if (it == subs_.end() || !it->second->active) {
+                inbound_bytes_ -= message_bytes;
                 ++stats_.unknown_subscription;
                 Event event;
                 event.kind = EventKind::unknown_subscription;
@@ -972,6 +1107,7 @@ private:
             }
 
             lock.lock();
+            inbound_bytes_ -= message_bytes;
             entry->running = false;
             sub_cv_.notify_all();
             Event event;
@@ -1017,9 +1153,14 @@ private:
     std::unique_ptr<Io> io_;  // reset only by close(), after the I/O thread joined
     websocket::response_type handshake_response_;
     beast::flat_buffer read_buffer_;
-    std::deque<std::string> write_queue_;
-    bool writing_ = false;
-    bool closing_started_ = false;
+    std::deque<std::string> write_queue_;  // unsent frames only (discardable)
+    bool writing_ = false;                 // one async_write outstanding; it owns its frame
+    std::size_t in_flight_bytes_ = 0;
+    bool shutdown_started_ = false;        // begin_shutdown/transport_lost ran (once)
+    bool close_deferred_ = false;          // close handshake waits for the in-flight write
+    websocket::close_code deferred_close_code_ = websocket::close_code::normal;
+    bool close_handshake_started_ = false;
+    bool transport_closed_ = false;        // TCP socket closed by us
     bool connect_timed_out_ = false;
     Phase phase_ = Phase::connecting;
     std::string info_;
@@ -1048,7 +1189,9 @@ private:
     std::uint64_t next_sid_ = 1;
     std::map<std::string, std::shared_ptr<SubEntry>> subs_;
     std::deque<Inbound> inbound_;
+    std::size_t inbound_bytes_ = 0;  // queued + dispatching payload bytes
     std::deque<Event> events_;
+    std::size_t event_bytes_ = 0;    // text bytes of queued events
     std::uint64_t dropped_unreported_ = 0;
     Stats stats_;
 
@@ -1087,8 +1230,14 @@ Result<Runtime> Runtime::connect(Config config) {
         config.close_timeout <= milliseconds(0)) {
         return Result<Runtime>::failure(make_error(ErrorKind::invalid_argument, "timeouts must be positive"));
     }
-    if (config.max_message_bytes == 0 || config.max_pending_deliveries == 0 || config.max_pending_events == 0) {
+    if (config.max_message_bytes == 0 || config.max_pending_deliveries == 0 || config.max_pending_events == 0 ||
+        config.max_pending_delivery_bytes == 0 || config.max_pending_event_bytes == 0) {
         return Result<Runtime>::failure(make_error(ErrorKind::invalid_argument, "bounds must be positive"));
+    }
+    if (config.max_pending_delivery_bytes < config.max_message_bytes) {
+        return Result<Runtime>::failure(make_error(
+            ErrorKind::invalid_argument,
+            "max_pending_delivery_bytes must be at least max_message_bytes (one admissible MSG must fit)"));
     }
     auto endpoint = detail::parse_url(config.url);
     if (!endpoint.ok()) {
@@ -1145,6 +1294,14 @@ Stats Runtime::stats() const { return core_ ? core_->stats() : Stats{}; }
 const std::string& Runtime::server_info() const {
     static const std::string empty;
     return core_ ? core_->server_info() : empty;
+}
+
+std::optional<detail::IoSnapshot> detail::TestAccess::io_snapshot(Runtime& runtime,
+                                                                   std::chrono::milliseconds timeout) {
+    if (!runtime.core_) {
+        return std::nullopt;
+    }
+    return runtime.core_->io_snapshot(timeout);
 }
 
 Status Runtime::publish_body(std::string element, std::string_view topic, const std::string& body) {

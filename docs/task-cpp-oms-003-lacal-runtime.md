@@ -70,7 +70,8 @@ runtime->close();
 | `Subscription::unsubscribe()` | one-shot; removes local dispatch first, waits for an in-flight handler (unless called from it), sends `UNSUB`, returns its acknowledgment. Destroying an active handle does the same (outcome not reported). |
 | `poll_event(timeout)` | asynchronous `Event`s: `server_error`, `decode_error`, `unknown_subscription`, `handler_exception`, `info`, `connection_closed`, `events_dropped`. |
 | `close()` / `~Runtime` | WebSocket close (bounded by `close_timeout`), dispatcher stopped after the running handler returns, both threads joined, every Asio object destroyed. Idempotent. Refused inside a handler. |
-| `stats()` | `delivered`, `decode_errors`, `unknown_subscription`, `handler_exceptions`, `discarded_on_close`, `events_dropped`. |
+| `stats()` | `delivered`, `decode_errors`, `unknown_subscription`, `handler_exceptions`, `discarded_on_close`, `events_dropped`, `event_payloads_omitted`, `unsent_frames_discarded`, `writes_aborted`. |
+| Memory bounds (`Config`) | `max_message_bytes` (16 MiB, one incoming frame); `max_pending_deliveries` (4096 MSGs) **and** `max_pending_delivery_bytes` (64 MiB of payload, queued plus the one being dispatched; must be ≥ `max_message_bytes`) — crossing either fails the connection with `delivery_overflow`; `max_pending_events` (1024) and `max_pending_event_bytes` (1 MiB of event text) — an event that does not fit keeps its kind and error but not its raw payload (`payload_omitted`, original size in `payload_bytes`), and one that still does not fit is counted in `events_dropped`. |
 
 `ErrorKind` separates every failure class: `invalid_argument` (config,
 non-identifier topic/group/service ID, unrepresentable QName — no frame sent),
@@ -108,6 +109,7 @@ INFO check) for testing without a network.
 | Concern | Mechanism |
 | --- | --- |
 | Socket ownership | One I/O thread runs a private `io_context` and owns the WebSocket, resolver, timers, buffers and write queue. Other threads only `post`, always under the state lock while the state is active, so `close()` can never race a post. |
+| Write ownership (CPP-OMS-003R1) | At most one `async_write` is outstanding. The frame it writes is moved out of the queue into a `shared_ptr` held **only by its completion handler**, so the bytes live until the handler runs — or, if `io_context::stop()` abandoned the operation, until the operation is destroyed with the I/O objects after the I/O thread has been joined. Shutdown discards only the *unsent* queue (`unsent_frames_discarded`). The close handshake is never started while a write is outstanding: it is deferred to that write's completion (Beast allows one write-side operation at a time and only reads alongside a close). `close_timeout` bounds the wait: on expiry the socket is closed, the write completes with an error (`writes_aborted`), and the I/O thread exits. A failed write during shutdown is expected and is not reported as a second connection loss. The same path is used for application close, command timeout, protocol failure, delivery overflow and connect failure; connection loss closes the socket directly (no handshake on a broken transport). |
 | Callbacks and locks | A separate dispatcher thread decodes and runs handlers with **no runtime lock held**. Internal bookkeeping (SUB activation) never calls user code. Handler destructors run outside locks. Handlers may publish, subscribe and unsubscribe (including their own subscription); `close()` from a handler returns `called_from_runtime_thread`. |
 | Real acknowledgments | Verbose OWP and a bounded command slot: exactly one command awaits `+OK`/`-ERR`, so each status is paired with its command (Sleet replies in order per connection). An unpaired `-ERR` is a `server_error` event; an unpaired `+OK` is a protocol violation. Success is never reported for an unacknowledged frame. |
 | Bounded waits | `connect_timeout`, `operation_timeout` (slot wait and ack wait), `close_timeout`; joins are bounded by forcing the `io_context` to stop. A missing ack **fails the connection** (a late ack could otherwise be mis-paired). |
@@ -115,7 +117,7 @@ INFO check) for testing without a network.
 | Shutdown | No detached threads. `close()` joins both threads and destroys all Asio objects, which also joins Asio's internal resolver thread (IP literals skip DNS entirely). Destroying the core with running threads terminates loudly instead of risking use-after-free. |
 | Connection loss | Transport errors, peer close frames, oversized frames, binary frames and invalid OWP frames end the connection explicitly (`connection_closed` event with the reason; the outstanding command fails immediately). MSGs already received are still delivered. No reconnect. |
 | Malformed payloads | Envelope or generated-codec rejection is a `decode_error` event (with codec path and raw payload); the subscription stays active and other subscriptions are unaffected. Handler exceptions are contained. |
-| No silent loss | Bounded MSG backlog (`max_pending_deliveries`); overflow closes the connection with `delivery_overflow` rather than dropping. Events beyond `max_pending_events` are counted and reported as `events_dropped`. MSGs queued at `close()` are counted in `discarded_on_close`. |
+| No silent loss, bounded memory | MSG backlog bounded by count (`max_pending_deliveries`) and by aggregate payload bytes (`max_pending_delivery_bytes`); crossing either closes the connection with `delivery_overflow` (the message names the bound) rather than dropping, and everything admitted earlier is still dispatched. Queued event text is bounded by `max_pending_event_bytes`: payloads are omitted first (`payload_omitted`, `event_payloads_omitted`), then whole events are counted and reported as `events_dropped`. MSGs queued at `close()` are counted in `discarded_on_close`. Outgoing: one command at a time, so at most one frame is in flight. |
 | TLS | Not implemented; `wss://` is refused explicitly before any network activity. Only loopback `ws://` is qualified. |
 
 ## 5. Qualification evidence (local, this branch)
@@ -127,7 +129,7 @@ Rust 1.97.0 for the CLI, Sleet built with its own pinned Rust 1.95.0.
 
 Generates the synthetic `runtime-test` (`urn:test`) and `runtime-oam` (OAM)
 services with the production CLI `--with-codec`, then builds and runs, per
-configuration, three programs whose exact summaries are required:
+configuration, four programs whose exact summaries are required:
 
 * `owp_unit_test.cpp` — `tests=6 checks=101`: identifier grammar, name
   formatter incl. near-miss namespaces, exact client frames, server-frame
@@ -153,6 +155,24 @@ configuration, three programs whose exact summaries are required:
   `-ERR`s on every third and interleaved MSGs — every thread gets its own
   acknowledgment; close/move/destructor leave no `ams-lacal-*` thread; close
   counts the undispatched backlog.
+* `runtime_shutdown_test.cpp` — `tests=12 checks=217` (CPP-OMS-003R1), through
+  the generated facade. The peer stops reading after the frames a case needs
+  and advertises a 64 KiB receive window; the PUB is ≥ 16 MiB and at least four
+  times the kernel's maximum send buffer plus that window (read from
+  `/proc/sys/net`), so the write **cannot** complete until the peer resumes.
+  `detail::TestAccess::io_snapshot` (test-only, runs on the I/O thread) places
+  each assertion at an exact I/O state — write outstanding, close deferred
+  behind it, transport closed — instead of sleeping. Cases: application close
+  and command timeout while the write is pending, each with an **error**
+  completion (peer never drains; `close_timeout` cuts the write; no close frame
+  interleaved; `writes_aborted == 1`) and a **success** completion (peer drains;
+  the frame arrives byte-for-byte; the deferred close frame then carries 1000 /
+  1008); connection loss (peer drops TCP) while pending; protocol failure while
+  pending (deferred close, frame intact, 1002); delivery overflow while pending;
+  six back-to-back connections alternating both completions; byte-bound
+  validation; aggregate delivery-byte overflow (fails closed, earlier MSGs still
+  dispatched); delivery bytes released after dispatch; event-byte bound
+  (payload omitted, then dropped and counted, budget returned on read).
 * `runtime_oam_test.cpp` — `tests=1 checks=13`: bare `MessageA` on the wire;
   the Clark-notated OAM name is a different element.
 
@@ -229,15 +249,32 @@ exact outcomes are recorded in the PR.
 
 The existing single-job `PR smoke` C++ step gains an offline runtime
 regression (`CPP_RUNTIME_SUITES` in `scripts/pr_smoke.py`): `runtime-test` is
-generated through the production CLI, `owp_unit_test.cpp` and
-`runtime_mock_test.cpp` are compiled with the strict g++ flags and run, and
-the exact summaries `tests=6 checks=101` and `tests=30 checks=364` are
-required. The only workflow change is one step that installs Ubuntu's
+generated through the production CLI, `owp_unit_test.cpp`,
+`runtime_mock_test.cpp` and `runtime_shutdown_test.cpp` are compiled with the
+strict g++ flags and run, and the exact summaries `tests=6 checks=101`,
+`tests=30 checks=364` and `tests=12 checks=217` are required (the shutdown
+suite is loopback-only and bounded: it runs in a few seconds). The only workflow change is one step that installs Ubuntu's
 `libboost-dev` (Boost.Beast headers) when the C++ route is selected. No new
 job, runner, matrix, Sleet build or UCI fetch; sanitizers, clang++ and Stage C
 stay in the scripts. Routing treats `cpp/oms-lacal-runtime/`,
 `tests/cpp-lacal/` and both CPP-OMS-003 scripts as C++-owned. Locally the
 whole C++ step took about 70 s.
+
+### CPP-OMS-003R1 regression proof
+
+Before the correction, `write_next()` passed `net::buffer(write_queue_.front())`
+to `async_write`, and the shutdown path cleared `write_queue_` while that write
+was outstanding; a later successful completion then popped an empty deque, and
+`async_close` was started while the write was still pending. The shutdown
+suite was also built against a copy of the corrected runtime with only the old
+buffer ownership re-introduced (queue element as the buffer, cleared during
+shutdown). Under g++ ASan both `close_while_write_pending_*` cases then abort
+with `heap-use-after-free` (`READ of size 4096`) inside Beast's
+`websocket::stream::write_some_op` while it masks the next chunk of the freed
+frame. With the corrected runtime the same cases pass under ASan+UBSan and
+TSan. (Re-introducing only the immediate `async_close` is not shown to crash:
+Beast suspends it internally, so the deferral rests on Beast's documented rule,
+which permits only reads alongside a close, not on a reproduced failure.)
 
 ## 7. Limitations (not claimed)
 
@@ -255,6 +292,12 @@ whole C++ step took about 70 s.
   messages depend on C++ codec readiness (CPP-OMS-002 limits).
 * clang++ sanitizers were not exercised in this environment. Hosted PR smoke
   runs strict g++ only.
+* Outgoing frame size is not limited by the runtime (the peer's own limit
+  applies); a write to a peer that stops reading is bounded only through
+  `operation_timeout` and then `close_timeout`.
+* `max_pending_event_bytes` bounds event *text*; a `connection_closed` event can
+  itself be counted as dropped if the event queue is full when the connection
+  ends (`connected()` and every later operation still report the failure).
 
 ## Reproduce
 

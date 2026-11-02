@@ -9,15 +9,17 @@
 #      namespace) services with the production CLI, --with-codec;
 #   3. for every usable build configuration -- strict g++, strict clang++,
 #      ASan+UBSan and TSan with each compiler -- compiles the runtime and the
-#      three test programs and requires their EXACT summary lines:
+#      four test programs and requires their EXACT summary lines:
 #        CPP_OMS_003_OWP_UNIT_COMPLETE tests=6 checks=101
 #        CPP_OMS_003_MOCK_COMPLETE tests=30 checks=364
+#        CPP_OMS_003_SHUTDOWN_COMPLETE tests=12 checks=217
 #        CPP_OMS_003_OAM_COMPLETE tests=1 checks=13
 #
 # Every configuration that cannot run is printed as SKIPPED and is NOT
 # claimed. Exit 3 if clang++ is missing (unless CPP_OMS_ALLOW_CLANG_SKIP=1) or
 # no sanitizer configuration ran (unless CPP_OMS_ALLOW_SANITIZER_SKIP=1).
-# CPP_OMS_003_REPEAT=N reruns the mock suite N times in every configuration.
+# CPP_OMS_003_REPEAT=N reruns the mock and shutdown suites N times in every
+# configuration.
 #
 # Usage: scripts/check-cpp-oms-003-runtime.sh [scratch-directory]
 set -euo pipefail
@@ -103,6 +105,8 @@ run_config() { # name compiler flags...
   "$compiler" "$@" -O1 -pthread -I "$runtime_include" -c tests/cpp-lacal/owp_unit_test.cpp -o "$out/owp_unit.o" & pids+=($!)
   "$compiler" "$@" -O1 -pthread -I "$runtime_include" -I "$scratch/gen-runtime-test" \
     -c tests/cpp-lacal/runtime_mock_test.cpp -o "$out/mock.o" & pids+=($!)
+  "$compiler" "$@" -O1 -pthread -I "$runtime_include" -I "$scratch/gen-runtime-test" \
+    -c tests/cpp-lacal/runtime_shutdown_test.cpp -o "$out/shutdown.o" & pids+=($!)
   "$compiler" "$@" -O1 -pthread -I "$runtime_include" -I "$scratch/gen-runtime-oam" \
     -c tests/cpp-lacal/runtime_oam_test.cpp -o "$out/oam.o" & pids+=($!)
   local pid
@@ -111,6 +115,7 @@ run_config() { # name compiler flags...
   done
   "$compiler" "$@" -pthread "$out/owp_unit.o" "$out/owp.o" -o "$out/owp_unit"
   "$compiler" "$@" -pthread "$out/mock.o" "$out/owp.o" "$out/runtime.o" -o "$out/mock"
+  "$compiler" "$@" -pthread "$out/shutdown.o" "$out/owp.o" "$out/runtime.o" -o "$out/shutdown"
   "$compiler" "$@" -pthread "$out/oam.o" "$out/owp.o" "$out/runtime.o" -o "$out/oam"
   local env=(ASAN_OPTIONS=detect_leaks=1:abort_on_error=1 UBSAN_OPTIONS=print_stacktrace=1
              TSAN_OPTIONS=halt_on_error=1:second_deadlock_stack=1)
@@ -118,9 +123,10 @@ run_config() { # name compiler flags...
   local i
   for ((i = 0; i < repeat; i++)); do
     expect_line "$out/mock" "CPP_OMS_003_MOCK_COMPLETE tests=30 checks=364" "${env[@]}"
+    expect_line "$out/shutdown" "CPP_OMS_003_SHUTDOWN_COMPLETE tests=12 checks=217" "${env[@]}"
   done
   expect_line "$out/oam" "CPP_OMS_003_OAM_COMPLETE tests=1 checks=13" "${env[@]}"
-  echo "  $name: owp_unit 6/101, mock 30/364 (x$repeat), oam 1/13 PASS"
+  echo "  $name: owp_unit 6/101, mock 30/364 (x$repeat), shutdown 12/217 (x$repeat), oam 1/13 PASS"
   ran+=("$name")
 }
 

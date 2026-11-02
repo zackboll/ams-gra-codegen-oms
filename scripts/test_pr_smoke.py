@@ -202,6 +202,7 @@ class Routing(unittest.TestCase):
                      "cpp/oms-lacal-runtime/src/runtime.cpp", "cpp/oms-lacal-runtime/src/owp.cpp",
                      "cpp/oms-lacal-runtime/include/ams_gra/lacal/runtime.hpp",
                      "tests/cpp-lacal/runtime_mock_test.cpp", "tests/cpp-lacal/mock_peer.hpp",
+                     "tests/cpp-lacal/runtime_shutdown_test.cpp",
                      "tests/cpp-lacal/real_log_sleet.cpp", "scripts/check-cpp-oms-003-runtime.sh",
                      "scripts/check-cpp-oms-003-real-log-sleet.sh"):
             with self.subTest(path=path):

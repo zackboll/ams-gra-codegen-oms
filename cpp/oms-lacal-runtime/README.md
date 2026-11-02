@@ -17,6 +17,8 @@ AMS_GRA_LACAL_PAYLOAD_CODEC(::programs::oam::LogMT,
 * `include/ams_gra/lacal/runtime.hpp` — public API (`Runtime`, `Subscription`,
   `Config`, `Status`/`Result`, `Error`/`ErrorKind`, `Event`, `Stats`).
 * `include/ams_gra/lacal/owp.hpp` — pure OWP 1.0 framing and envelope helpers.
+* `detail::TestAccess` / `detail::IoSnapshot` in `runtime.hpp` are a test-only
+  observation seam for `tests/cpp-lacal`; they are not part of the supported API.
 * `src/owp.cpp`, `src/runtime.cpp` — compile both (C++17, `-pthread`).
 
 Dependency: Boost.Beast headers, Boost >= 1.81 (qualified on 1.83.0; Ubuntu

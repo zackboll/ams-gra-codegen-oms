@@ -51,6 +51,10 @@ CPP_RUNTIME_SUITES = (
      "CPP_OMS_003_OWP_UNIT_COMPLETE tests=6 checks=101"),
     ("lacal-mock", "tests/cpp-lacal/runtime_mock_test.cpp", True,
      "CPP_OMS_003_MOCK_COMPLETE tests=30 checks=364"),
+    # CPP-OMS-003R1: close/timeout/loss while a large async write is pending
+    # (paused loopback peer), plus the delivery/event byte bounds.
+    ("lacal-shutdown", "tests/cpp-lacal/runtime_shutdown_test.cpp", True,
+     "CPP_OMS_003_SHUTDOWN_COMPLETE tests=12 checks=217"),
 )
 
 
