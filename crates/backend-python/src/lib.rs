@@ -72,6 +72,9 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     if uses_datetime(schema) {
         output.push_str(include_str!("datetime_runtime.py"));
     }
+    if uses_duration(schema) {
+        output.push_str(include_str!("duration_runtime.py"));
+    }
     if uses_float64(schema) {
         output.push_str(include_str!("float64_runtime.py"));
     }
@@ -255,6 +258,55 @@ fn uses_datetime(schema: &SchemaIr) -> bool {
             }
             _ => false,
         })
+}
+
+fn uses_duration(schema: &SchemaIr) -> bool {
+    schema
+        .types
+        .iter()
+        .any(|declaration| match &declaration.kind {
+            TypeKind::Primitive(PrimitiveKind::Duration) => true,
+            TypeKind::Record { .. } if !declaration.is_abstract => {
+                record_fields(schema, declaration).is_ok_and(|fields| {
+                    fields.iter().any(|field| {
+                        field.type_ref.target == TypeRefTarget::Primitive(PrimitiveKind::Duration)
+                    })
+                })
+            }
+            _ => false,
+        })
+}
+
+fn duration_profile(constraints: &ConstraintSet) -> Result<(), CodegenError> {
+    match temporal_profile(PrimitiveKind::Duration, constraints).map_err(error)? {
+        Some(TemporalProfile::Duration) => Ok(()),
+        _ => Err(error("unproven named Duration profile")),
+    }
+}
+
+fn duration_ancestry(schema: &SchemaIr, declaration: &TypeDecl) -> Result<(), CodegenError> {
+    let mut current = declaration;
+    let mut seen = BTreeSet::new();
+    loop {
+        if !seen.insert(&current.name)
+            || current.is_abstract
+            || current.kind != TypeKind::Primitive(PrimitiveKind::Duration)
+        {
+            return Err(error("unproven Duration named restriction ancestry"));
+        }
+        duration_profile(&current.constraints)?;
+        match current.base_type.as_ref().map(|base| &base.target) {
+            Some(TypeRefTarget::Primitive(PrimitiveKind::Duration)) | None => return Ok(()),
+            Some(TypeRefTarget::Named(name)) => {
+                current = schema
+                    .types
+                    .iter()
+                    .find(|item| item.name == *name)
+                    .ok_or_else(|| error("missing Duration restriction base"))?;
+            }
+            _ => return Err(error("incompatible Duration restriction base")),
+        }
+    }
 }
 
 fn datetime_profile(constraints: &ConstraintSet) -> Result<(), CodegenError> {
@@ -455,6 +507,15 @@ fn primitive(
     constraints: &ConstraintSet,
 ) -> Result<(String, String), CodegenError> {
     match kind {
+        PrimitiveKind::Duration => {
+            if direct_temporal_profile(kind, constraints)
+                .map_err(|reason| error(format!("{reason:?}")))?
+                != Some(DirectTemporalProfile::Duration)
+            {
+                return Err(error("unproven direct Duration profile"));
+            }
+            Ok(("str".to_owned(), "str".to_owned()))
+        }
         PrimitiveKind::Binary => {
             if binary_length_domain(kind, constraints)
                 .map_err(error)?
@@ -534,14 +595,16 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
     }
     let declarations = emitted_declarations(emissions)?;
     names::validate(schema, &declarations)?;
-    let datetime_demand = uses_datetime(schema);
+    let datetime_demand = uses_datetime(schema) || uses_duration(schema);
     let mut scalar_names = BTreeSet::new();
     let mut available = BTreeSet::new();
     for declaration in declarations {
         let qualified = (|| -> Result<(), CodegenError> {
             // Primitive base provenance is not structural inheritance. Named
             // restriction ancestry is deferred rather than silently flattened.
-            if declaration.kind == TypeKind::Primitive(PrimitiveKind::Binary) {
+            if declaration.kind == TypeKind::Primitive(PrimitiveKind::Duration) {
+                duration_ancestry(schema, declaration)?;
+            } else if declaration.kind == TypeKind::Primitive(PrimitiveKind::Binary) {
                 binary_ancestry(schema, declaration)?;
             } else if declaration.kind == TypeKind::Primitive(PrimitiveKind::Float64) {
                 float64_ancestry(schema, declaration)?;
@@ -565,7 +628,9 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
             }
             match &declaration.kind {
                 TypeKind::Primitive(kind) => {
-                    if *kind == PrimitiveKind::Binary {
+                    if *kind == PrimitiveKind::Duration {
+                        duration_profile(&declaration.constraints)?;
+                    } else if *kind == PrimitiveKind::Binary {
                         binary_arguments(&declaration.constraints)?;
                     } else if *kind == PrimitiveKind::Float64 {
                         floating_domain(*kind, &declaration.constraints).map_err(error)?;
@@ -578,6 +643,7 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
                         primitive(*kind, &declaration.constraints)?;
                     }
                     if *kind != PrimitiveKind::DateTime
+                        && *kind != PrimitiveKind::Duration
                         && *kind != PrimitiveKind::Binary
                         && visible_ascii_profile(declaration).is_none()
                         && !nato_special_words_profile(declaration)
@@ -588,9 +654,15 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
                 TypeKind::Alias(target) => {
                     if matches!(
                         target.target,
-                        TypeRefTarget::Primitive(PrimitiveKind::DateTime | PrimitiveKind::Binary)
+                        TypeRefTarget::Primitive(
+                            PrimitiveKind::DateTime
+                                | PrimitiveKind::Binary
+                                | PrimitiveKind::Duration
+                        )
                     ) {
-                        return Err(error("DateTime / Binary aliases are unsupported"));
+                        return Err(error(
+                            "DateTime / Binary / Duration aliases are unsupported",
+                        ));
                     }
                     unconstrained(&declaration.constraints)?;
                     if let TypeRefTarget::Named(name) = &target.target
@@ -726,6 +798,10 @@ fn render(
     .unwrap();
     match &declaration.kind {
         TypeKind::Primitive(_) | TypeKind::Alias(_) => {
+            if declaration.kind == TypeKind::Primitive(PrimitiveKind::Duration) {
+                writeln!(output, "    value: str\n\n    def __post_init__(self) -> None:\n        object.__setattr__(self, 'value', _check_duration(self.value))").unwrap();
+                return Ok(());
+            }
             if declaration.kind == TypeKind::Primitive(PrimitiveKind::Binary) {
                 let args = binary_arguments(&declaration.constraints)?;
                 writeln!(output, "    value: bytes\n\n    def __post_init__(self) -> None:\n        _check_binary(self.value, {args})").unwrap();
@@ -801,14 +877,24 @@ fn render(
                         writeln!(output, "        _check(self.{symbol}, tuple)\n        if len(self.{symbol}) < {min}:\n            raise ValueError({})\n        for item in self.{symbol}:\n            _check(item, {check})", names::literal(&format!("{symbol}: expected at least {min} items"))).unwrap();
                     }
                 }
-                if field.type_ref.target == TypeRefTarget::Primitive(PrimitiveKind::DateTime) {
+                if matches!(
+                    field.type_ref.target,
+                    TypeRefTarget::Primitive(PrimitiveKind::DateTime | PrimitiveKind::Duration)
+                ) {
+                    let validator = if field.type_ref.target
+                        == TypeRefTarget::Primitive(PrimitiveKind::Duration)
+                    {
+                        "_check_duration"
+                    } else {
+                        "_check_datetime"
+                    };
                     let value = match field.cardinality.shape() {
-                        OccurrenceShape::RequiredOne => format!("_check_datetime(self.{symbol})"),
+                        OccurrenceShape::RequiredOne => format!("{validator}(self.{symbol})"),
                         OccurrenceShape::OptionalOne => format!(
-                            "_check_datetime(self.{symbol}) if self.{symbol} is not None else None"
+                            "{validator}(self.{symbol}) if self.{symbol} is not None else None"
                         ),
                         OccurrenceShape::Bounded { .. } | OccurrenceShape::Unbounded { .. } => {
-                            format!("tuple(_check_datetime(item) for item in self.{symbol})")
+                            format!("tuple({validator}(item) for item in self.{symbol})")
                         }
                     };
                     writeln!(
@@ -924,7 +1010,6 @@ mod tests {
             PrimitiveKind::Decimal,
             PrimitiveKind::Float32,
             PrimitiveKind::Time,
-            PrimitiveKind::Duration,
         ] {
             assert!(primitive(kind, &ConstraintSet::default()).is_err());
         }

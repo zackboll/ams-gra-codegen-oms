@@ -1,0 +1,37 @@
+[
+  {
+    "payload": "{\"Inherited\": \"P12M\", \"Direct\": \"P\", \"Named\": \"-P0D\", \"Values\": [\"PT0.000S\", \"-PT0.00S\"], \"Nested\": {\"Value\": \"P1Y\", \"Directs\": [\"P1D\"]}, \"Unbounded\": [\"P0D\", \"-PT0.000S\"], \"NamedUnbounded\": [\"PT36H\"]}",
+    "outcome": "generated decoder rejection",
+    "decoder_input": "{\"Inherited\": \"P12M\", \"Direct\": \"P\", \"Named\": \"-P0D\", \"Values\": [\"PT0.000S\", \"-PT0.00S\"], \"Nested\": {\"Value\": \"P1Y\", \"Directs\": [\"P1D\"]}, \"Unbounded\": [\"P0D\", \"-PT0.000S\"], \"NamedUnbounded\": [\"PT36H\"]}"
+  },
+  {
+    "payload": "{\"Inherited\": \"P12M\", \"Direct\": \"P1DT\", \"Named\": \"-P0D\", \"Values\": [\"PT0.000S\", \"-PT0.00S\"], \"Nested\": {\"Value\": \"P1Y\", \"Directs\": [\"P1D\"]}, \"Unbounded\": [\"P0D\", \"-PT0.000S\"], \"NamedUnbounded\": [\"PT36H\"]}",
+    "outcome": "generated decoder rejection",
+    "decoder_input": "{\"Inherited\": \"P12M\", \"Direct\": \"P1DT\", \"Named\": \"-P0D\", \"Values\": [\"PT0.000S\", \"-PT0.00S\"], \"Nested\": {\"Value\": \"P1Y\", \"Directs\": [\"P1D\"]}, \"Unbounded\": [\"P0D\", \"-PT0.000S\"], \"NamedUnbounded\": [\"PT36H\"]}"
+  },
+  {
+    "payload": "{\"Inherited\": \"P12M\", \"Direct\": \"PT.5S\", \"Named\": \"-P0D\", \"Values\": [\"PT0.000S\", \"-PT0.00S\"], \"Nested\": {\"Value\": \"P1Y\", \"Directs\": [\"P1D\"]}, \"Unbounded\": [\"P0D\", \"-PT0.000S\"], \"NamedUnbounded\": [\"PT36H\"]}",
+    "outcome": "generated decoder rejection",
+    "decoder_input": "{\"Inherited\": \"P12M\", \"Direct\": \"PT.5S\", \"Named\": \"-P0D\", \"Values\": [\"PT0.000S\", \"-PT0.00S\"], \"Nested\": {\"Value\": \"P1Y\", \"Directs\": [\"P1D\"]}, \"Unbounded\": [\"P0D\", \"-PT0.000S\"], \"NamedUnbounded\": [\"PT36H\"]}"
+  },
+  {
+    "payload": "{\"Inherited\": \"P12M\", \"Direct\": \"PT1M1H\", \"Named\": \"-P0D\", \"Values\": [\"PT0.000S\", \"-PT0.00S\"], \"Nested\": {\"Value\": \"P1Y\", \"Directs\": [\"P1D\"]}, \"Unbounded\": [\"P0D\", \"-PT0.000S\"], \"NamedUnbounded\": [\"PT36H\"]}",
+    "outcome": "generated decoder rejection",
+    "decoder_input": "{\"Inherited\": \"P12M\", \"Direct\": \"PT1M1H\", \"Named\": \"-P0D\", \"Values\": [\"PT0.000S\", \"-PT0.00S\"], \"Nested\": {\"Value\": \"P1Y\", \"Directs\": [\"P1D\"]}, \"Unbounded\": [\"P0D\", \"-PT0.000S\"], \"NamedUnbounded\": [\"PT36H\"]}"
+  },
+  {
+    "payload": "{\"Inherited\": \"P12M\", \"Direct\": \"P1Y1Y\", \"Named\": \"-P0D\", \"Values\": [\"PT0.000S\", \"-PT0.00S\"], \"Nested\": {\"Value\": \"P1Y\", \"Directs\": [\"P1D\"]}, \"Unbounded\": [\"P0D\", \"-PT0.000S\"], \"NamedUnbounded\": [\"PT36H\"]}",
+    "outcome": "generated decoder rejection",
+    "decoder_input": "{\"Inherited\": \"P12M\", \"Direct\": \"P1Y1Y\", \"Named\": \"-P0D\", \"Values\": [\"PT0.000S\", \"-PT0.00S\"], \"Nested\": {\"Value\": \"P1Y\", \"Directs\": [\"P1D\"]}, \"Unbounded\": [\"P0D\", \"-PT0.000S\"], \"NamedUnbounded\": [\"PT36H\"]}"
+  },
+  {
+    "payload": "{\"Inherited\": \"P12M\", \"Direct\": \"P\\uff11D\", \"Named\": \"-P0D\", \"Values\": [\"PT0.000S\", \"-PT0.00S\"], \"Nested\": {\"Value\": \"P1Y\", \"Directs\": [\"P1D\"]}, \"Unbounded\": [\"P0D\", \"-PT0.000S\"], \"NamedUnbounded\": [\"PT36H\"]}",
+    "outcome": "generated decoder rejection",
+    "decoder_input": "{\"Inherited\": \"P12M\", \"Direct\": \"P\\uff11D\", \"Named\": \"-P0D\", \"Values\": [\"PT0.000S\", \"-PT0.00S\"], \"Nested\": {\"Value\": \"P1Y\", \"Directs\": [\"P1D\"]}, \"Unbounded\": [\"P0D\", \"-PT0.000S\"], \"NamedUnbounded\": [\"PT36H\"]}"
+  },
+  {
+    "payload": "{\"Inherited\": \"P12M\", \"Direct\": \"PT1.2300S\", \"Named\": \"-P0D\", \"Values\": [\"PT0.000S\", \"-PT0.00S\"], \"Nested\": {\"Value\": \"P1Y\", \"Directs\": [\"P1D\"]}, \"Unbounded\": [\"P0D\", \"-PT0.000S\"], \"NamedUnbounded\": [\"PT36H\"], \"Unknown\": \"P0D\"}",
+    "outcome": "broker rejection",
+    "code": "Invalid-Message"
+  }
+]

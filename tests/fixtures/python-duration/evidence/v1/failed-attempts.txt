@@ -1,0 +1,11 @@
+PY-014 retained failed attempts; not qualifying evidence:
+1. initial-backend.log: historical unsupported-Duration case accepted; converted to admitted support.
+2. duration-clark.log: synthetic non-OAM attribute incorrectly requalified; corrected OAM version namespace.
+3. before/: superseded slow debug baseline stopped; complete release baseline is before-release/.
+4. after/: invalid AFTER executable was identical to baseline (Cargo target cache reuse after archive build in shared target); stopped.
+5. parity.log: invalid comparison used baseline as AFTER; superseded by parity-r2.log with independently isolated AFTER build and READY probe.
+6. owned-source.log: generator changed during execution due concurrent smoke build; receipt correctly failed.
+7. owned-source-r2.log: Duration UCI probe detected stale release executable; no complete receipt claim.
+8. after-build-r2.log / after-identity-probe.log: isolated target build and READY probe authenticate corrected executable.
+9. sleet-311-normal.log initially contained zero discovered tests following fixture-script editing failure; superseded by explicit one-test runs and complete source-discovery receipts.
+No failed attempt is promoted as successful qualification. Raw attempts retained at /home/zboll/py014-evidence/v1.

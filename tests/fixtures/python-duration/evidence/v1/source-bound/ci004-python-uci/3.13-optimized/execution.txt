@@ -1,0 +1,13 @@
+test_pinned_direct_and_named_duration (test_duration_uci.DurationUci.test_pinned_direct_and_named_duration) ... ok
+test_pinned_direct_named_and_constrained_binary (test_hexbinary_uci.HexBinaryUci.test_pinned_direct_named_and_constrained_binary) ... ok
+test_pinned_declarations (test_nato_special_words_uci.NatoSpecialWordsUci.test_pinned_declarations) ... PY011 PINNED DECLARATIONS: PASSED releases=2 generated_tests=32
+ok
+test_generated_pinned_datetime (test_owned_uci.OwnedUci.test_generated_pinned_datetime) ... ok
+test_pinned_inputs_available (test_uci_contract.UciRegistration.test_pinned_inputs_available) ... ok
+test_pinned_subsystem_string_member (test_unbounded_repetition_uci.UnboundedRepetitionUci.test_pinned_subsystem_string_member) ... PY012 PINNED ISOLATED MEMBER: PASSED releases=2 worlds=2 policies=2; NOT full-service interoperability
+ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 2.789s
+
+OK
