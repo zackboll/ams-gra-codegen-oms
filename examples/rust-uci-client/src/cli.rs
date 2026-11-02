@@ -10,6 +10,8 @@ Options:
   --duration-seconds N      Receive for 1..=3600 seconds (default: 5)
   --publish-log FILE        OMS JSON Log payload BODY (no global envelope)
   --publish-rdma FILE       OMS JSON RDMA_InitializeSetup payload BODY
+  --publish-survivability FILE  OMS JSON SurvivabilityRiskLevel payload BODY
+  --publish-dlz FILE        OMS JSON DLZ payload BODY
   --help                    Print this usage without connecting
 
 Build with AMS_GRA_UCI_ROOT and AMS_GRA_UCI_RELEASE=2.5 or 2.6.
@@ -24,6 +26,8 @@ pub struct Options {
     pub duration: Duration,
     pub log: Option<PathBuf>,
     pub rdma: Option<PathBuf>,
+    pub survivability: Option<PathBuf>,
+    pub dlz: Option<PathBuf>,
 }
 
 impl Options {
@@ -38,6 +42,8 @@ impl Options {
             duration: Duration::from_secs(5),
             log: None,
             rdma: None,
+            survivability: None,
+            dlz: None,
         };
         let mut seen = BTreeSet::new();
         let mut args = args.into_iter();
@@ -49,6 +55,8 @@ impl Options {
                     | "--duration-seconds"
                     | "--publish-log"
                     | "--publish-rdma"
+                    | "--publish-survivability"
+                    | "--publish-dlz"
             ) {
                 return Err(format!("unknown argument {flag:?}; use --help"));
             }
@@ -64,6 +72,8 @@ impl Options {
                 "--service-id" => options.service_id = value,
                 "--publish-log" => options.log = Some(value.into()),
                 "--publish-rdma" => options.rdma = Some(value.into()),
+                "--publish-survivability" => options.survivability = Some(value.into()),
+                "--publish-dlz" => options.dlz = Some(value.into()),
                 "--duration-seconds" => {
                     let seconds = value
                         .parse::<u64>()
@@ -130,12 +140,18 @@ mod tests {
             "log.json",
             "--publish-rdma",
             "rdma.json",
+            "--publish-survivability",
+            "survivability.json",
+            "--publish-dlz",
+            "dlz.json",
         ])
         .unwrap()
         .unwrap();
         assert_eq!(options.duration, Duration::from_secs(1));
         assert_eq!(options.log, Some("log.json".into()));
         assert_eq!(options.rdma, Some("rdma.json".into()));
+        assert_eq!(options.survivability, Some("survivability.json".into()));
+        assert_eq!(options.dlz, Some("dlz.json".into()));
         assert_eq!(
             parse(&[]).unwrap().unwrap().duration,
             Duration::from_secs(5)
@@ -148,6 +164,15 @@ mod tests {
             vec!["--wat"],
             vec!["--publish-log"],
             vec!["--publish-rdma", "--help"],
+            vec!["--publish-survivability"],
+            vec!["--publish-dlz", "--help"],
+            vec!["--publish-dlz", "a.json", "--publish-dlz", "b.json"],
+            vec![
+                "--publish-survivability",
+                "a.json",
+                "--publish-survivability",
+                "b.json",
+            ],
             vec!["--duration-seconds", "0"],
             vec!["--duration-seconds", "3601"],
             vec!["--duration-seconds", "-1"],
