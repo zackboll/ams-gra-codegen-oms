@@ -5,7 +5,10 @@ include!(concat!(env!("OUT_DIR"), "/generated.rs"));
 use ams_gra_oms_runtime_rust::{OmsJsonCodec, RuntimeConfig, RuntimeEvent, SleetRuntime};
 use generated::{
     model as m,
-    service_api::{function_log as log, function_rdma as rdma},
+    service_api::{
+        function_dlz as dlz, function_log as log, function_rdma as rdma,
+        function_survivability as survivability,
+    },
     service_codec::ServiceCodec,
 };
 use std::path::Path;
@@ -19,6 +22,9 @@ const SCHEMA: &str = env!("AMS_GRA_SCHEMA_VERSION_BUILD");
 enum Received {
     Log(Box<m::LogMT>),
     Rdma(Box<m::RDMAInitializeSetupMT>),
+    Survivability(Box<m::SurvivabilityRiskLevelMT>),
+    #[allow(clippy::upper_case_acronyms)] // Preserve the UCI global message identity.
+    DLZ(Box<m::DLZMT>),
 }
 
 fn load<P>(path: &Path) -> Result<P, String>
@@ -61,6 +67,33 @@ fn print_received(value: Received) {
             value.messagedata.rdma_provider,
             value.messagedata.endpoint.as_slice().len(),
         ),
+        Received::Survivability(value) => {
+            let settings = value.messagedata.risksetting.as_slice();
+            let levels: usize = settings.iter().map(|s| s.risklevel.as_slice().len()).sum();
+            println!(
+                "RECEIVED {} id={} settings={} risk-levels={levels} detail={settings:?}",
+                survivability::exchange_receive::MESSAGE_NAME,
+                value.messagedata.survivabilityrisklevelid.uuid.as_str(),
+                settings.len(),
+            );
+        }
+        Received::DLZ(value) => {
+            let data = &value.messagedata.dlz_data;
+            println!(
+                "RECEIVED {} id={} type={:?} time-of-intercept={} range-poi-bits={:016x} loft-bits={:016x?} vector-bits={:08x?}",
+                dlz::exchange_receive::MESSAGE_NAME,
+                value.messagedata.dlz_id.uuid.as_str(),
+                value.messagedata.dlz_type,
+                data.timeofintercept.as_str(),
+                data.rangeprobabilityofintercept.get().to_bits(),
+                data.loftangle.as_ref().map(|v| v.get().to_bits()),
+                data.steeringunitvector.as_ref().map(|v| [
+                    v.los_unitvector.x.get().to_bits(),
+                    v.los_unitvector.y.get().to_bits(),
+                    v.los_unitvector.z.get().to_bits(),
+                ]),
+            );
+        }
     }
 }
 
@@ -83,13 +116,22 @@ fn report_event(event: RuntimeEvent) -> String {
 }
 
 fn run(options: cli::Options) -> Result<(), String> {
-    // Validate both selected files before connecting or publishing either one.
+    // Decode every selected file before connecting or publishing any of them.
     let log: Option<m::LogMT> = options.log.as_deref().map(load).transpose()?;
     let rdma: Option<m::RDMAInitializeSetupMT> = options.rdma.as_deref().map(load).transpose()?;
+    let survivability: Option<m::SurvivabilityRiskLevelMT> =
+        options.survivability.as_deref().map(load).transpose()?;
+    let dlz: Option<m::DLZMT> = options.dlz.as_deref().map(load).transpose()?;
     if let Some(value) = &log {
         validate_schema(value.messageheader.schemaversion.as_str())?;
     }
     if let Some(value) = &rdma {
+        validate_schema(value.messageheader.schemaversion.as_str())?;
+    }
+    if let Some(value) = &survivability {
+        validate_schema(value.messageheader.schemaversion.as_str())?;
+    }
+    if let Some(value) = &dlz {
         validate_schema(value.messageheader.schemaversion.as_str())?;
     }
     let mut runtime: SleetRuntime<ServiceCodec> = SleetRuntime::connect(
@@ -110,18 +152,31 @@ fn run(options: cli::Options) -> Result<(), String> {
         let _ = logs.send(Received::Log(Box::new(value.clone())));
     })
     .map_err(|error| format!("subscribe Log: {error}"))?;
+    let rdmas = sender.clone();
     let rdma_sub = rdma::exchange_receive::subscribe(&mut runtime, move |value| {
-        let _ = sender.send(Received::Rdma(Box::new(value.clone())));
+        let _ = rdmas.send(Received::Rdma(Box::new(value.clone())));
     })
     .map_err(|error| format!("subscribe RDMA_InitializeSetup: {error}"))?;
+    let risks = sender.clone();
+    let survivability_sub =
+        survivability::exchange_receive::subscribe(&mut runtime, move |value| {
+            let _ = risks.send(Received::Survivability(Box::new(value.clone())));
+        })
+        .map_err(|error| format!("subscribe SurvivabilityRiskLevel: {error}"))?;
+    let dlz_sub = dlz::exchange_receive::subscribe(&mut runtime, move |value| {
+        let _ = sender.send(Received::DLZ(Box::new(value.clone())));
+    })
+    .map_err(|error| format!("subscribe DLZ: {error}"))?;
     println!(
-        "SUBSCRIBED Log sid={} RDMA_InitializeSetup sid={} (frames written)",
+        "SUBSCRIBED Log sid={} RDMA_InitializeSetup sid={} SurvivabilityRiskLevel sid={} DLZ sid={} (frames written)",
         log_sub.id(),
-        rdma_sub.id()
+        rdma_sub.id(),
+        survivability_sub.id(),
+        dlz_sub.id(),
     );
 
     // The closure retains runtime ownership here, so publication/receive errors
-    // still go through both unsubscribe attempts and explicit close below.
+    // still go through all unsubscribe attempts and explicit close below.
     let result = (|| {
         if let Some(value) = &log {
             log::exchange_publish::publish(&mut runtime, value)
@@ -134,6 +189,18 @@ fn run(options: cli::Options) -> Result<(), String> {
             println!(
                 "PUBLISHED RDMA_InitializeSetup: frame written; broker acceptance not acknowledged"
             );
+        }
+        if let Some(value) = &survivability {
+            survivability::exchange_publish::publish(&mut runtime, value)
+                .map_err(|error| format!("publish SurvivabilityRiskLevel: {error}"))?;
+            println!(
+                "PUBLISHED SurvivabilityRiskLevel: frame written; broker acceptance not acknowledged"
+            );
+        }
+        if let Some(value) = &dlz {
+            dlz::exchange_publish::publish(&mut runtime, value)
+                .map_err(|error| format!("publish DLZ: {error}"))?;
+            println!("PUBLISHED DLZ: frame written; broker acceptance not acknowledged");
         }
         let deadline = Instant::now() + options.duration;
         while Instant::now() < deadline {
@@ -164,7 +231,12 @@ fn run(options: cli::Options) -> Result<(), String> {
         Ok(())
     })();
     let mut errors: Vec<String> = result.err().into_iter().collect();
-    for (name, subscription) in [("Log", log_sub), ("RDMA_InitializeSetup", rdma_sub)] {
+    for (name, subscription) in [
+        ("Log", log_sub),
+        ("RDMA_InitializeSetup", rdma_sub),
+        ("SurvivabilityRiskLevel", survivability_sub),
+        ("DLZ", dlz_sub),
+    ] {
         match subscription.unsubscribe() {
             Ok(()) => println!("UNSUBSCRIBED {name}: frame written; handler removed"),
             Err(error) => errors.push(format!("unsubscribe {name}: {error}")),
@@ -215,6 +287,19 @@ fn main() -> std::process::ExitCode {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn one_codec_supports_all_four_payloads() {
+        fn compatible<C>()
+        where
+            C: OmsJsonCodec<m::LogMT>
+                + OmsJsonCodec<m::RDMAInitializeSetupMT>
+                + OmsJsonCodec<m::SurvivabilityRiskLevelMT>
+                + OmsJsonCodec<m::DLZMT>,
+        {
+        }
+        compatible::<ServiceCodec>();
+    }
 
     #[test]
     fn header_version_must_match_build() {

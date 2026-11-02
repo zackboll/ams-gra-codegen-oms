@@ -1,9 +1,10 @@
 # Standalone generated Rust LA-CAL client
 
 A real Cargo application, not a test facade. One
-`SleetRuntime<ServiceCodec>` connects to Sleet and hosts both generated Log and
-RDMA input endpoints. Optional publications use their matching generated output
-endpoints. Handlers receive generated `LogMT`/`RDMAInitializeSetupMT` values and
+`SleetRuntime<ServiceCodec>` connects to Sleet with one connection and one worker
+hosting four independently typed subscriptions: Log, RDMA_InitializeSetup,
+SurvivabilityRiskLevel and DLZ. Optional publications use their matching generated
+output endpoints. Handlers receive generated model values and
 clone them into a channel; the application thread prints typed fields and owns
 all blocking runtime operations.
 
@@ -12,10 +13,26 @@ Its path dependencies are **production** runtime API/runtime/generator crates.
 Build from a complete checkout of this repository; it is not a crates.io package.
 No UCI schemas or generated UCI model source are committed. `build.rs` calls the
 production `service-generate --language rust --world closed-schema --with-codec`
-on the existing `tests/fixtures/rust-oms-003/uci25-service.yaml` or
-`uci26-service.yaml`, then compiles the actual generated source from `OUT_DIR`.
+on `examples/rust-uci-client/contracts/uci25-service.yaml` or
+`examples/rust-uci-client/contracts/uci26-service.yaml`, then compiles the actual
+generated source from `OUT_DIR`.
 No test-only facade package is linked. The acceptance test reuses existing test
-source helpers and independent Task092/093 goldens, not their generated facade.
+source helpers and independent Task092/093, Task104/105 and Task101 fixtures,
+not their generated facade.
+
+Production `service-check --language rust --world closed-schema --with-codec`
+on these combined contracts reports the following actual closure counts (not
+sums of the individual services):
+
+| Release | Selected/renderable messages | Selected/renderable model types | Available/required codec declarations | Status |
+| --- | --- | --- | --- | --- |
+| 2.5 | 4/4 | 81/81 | 80/80 | model and codec READY |
+| 2.6 | 4/4 | 82/82 | 81/81 | model and codec READY |
+
+Each release generates one combined model, API and `ServiceCodec` implementing
+`OmsJsonCodec` for `LogMT`, `RDMAInitializeSetupMT`,
+`SurvivabilityRiskLevelMT` and `DLZMT`. Each function has input `receive` and
+output `publish` exchanges. No handwritten codec or alternate runtime is used.
 
 ## Prerequisites and authentic inputs
 
@@ -64,6 +81,18 @@ export CLIENT_BIN="$PWD/examples/rust-uci-client/target/debug/rust-uci-client"
 "$CLIENT_BIN" --help
 ```
 
+To reproduce readiness for either selected release:
+
+```bash
+cargo +1.95.0 run --release --locked -p ams-gra-codegen-oms -- service-check \
+  --schema "$AMS_GRA_UCI_ROOT" \
+  --contract "examples/rust-uci-client/contracts/uci${CLIENT_SUFFIX}-service.yaml" \
+  --language rust --world closed-schema --with-codec
+```
+
+The same Cargo target supports a 2.5 → 2.6 → 2.5 build sequence without cleaning:
+change `AMS_GRA_UCI_RELEASE` and `AMS_GRA_UCI_ROOT` together before each build.
+
 The binary's INIT schema is compiled as `002.5.0` or `002.6.0`, matching the
 selected release. There is no CLI/environment override at runtime. A payload's
 `MessageHeader.SchemaVersion` must also agree. To use a different Cargo target
@@ -81,7 +110,7 @@ mkdir -p "$CLIENT_SCRATCH/services"
 cat > "$CLIENT_SCRATCH/services/client.toml" <<'TOML'
 service_id = "rust-uci-client"
 service_uuid = "550e8400-e29b-41d4-a716-446655440005"
-allowed_topics = ["rust-oms-003-log", "rust-oms-003-rdma"]
+allowed_topics = ["rust-oms-003-log", "rust-oms-003-rdma", "rust-oms-004-survivability", "task098-dlz"]
 TOML
 cat > "$CLIENT_SCRATCH/server.toml" <<TOML
 bind_addr = "127.0.0.1:9000"
@@ -102,45 +131,65 @@ tail -f "$CLIENT_SCRATCH/sleet.stdout"
 Stop **tail only** with Ctrl-C once Sleet reports listening. If it exits early,
 inspect both log files. Choose an unused port if 9000 is occupied and update
 `--url`. Pinned Sleet's `allowed_topics` grants both PUB and SUB; it is not
-direction-specific authorization. Both message names are authored by the
+direction-specific authorization. All four message names are authored by the
 generated contracts, not inferred from Rust type names. Restart Sleet with a
 matching schema/config after switching releases.
 
 ## Run and publish
 
 ```bash
+# Select the existing independent Survivability payload for this release:
+if [ "$CLIENT_SUFFIX" = 25 ]; then
+  CLIENT_SURVIVABILITY=tests/fixtures/service-generate/task092-real-survivability25.json
+else
+  CLIENT_SURVIVABILITY=tests/fixtures/task105/survivability26.json
+fi
 "$CLIENT_BIN" --url ws://127.0.0.1:9000 --service-id rust-uci-client \
   --duration-seconds 5 \
   --publish-log "tests/fixtures/service-generate/task093-real-log${CLIENT_SUFFIX}.json" \
-  --publish-rdma "tests/fixtures/service-generate/task092-real-rdma${CLIENT_SUFFIX}.json"
+  --publish-rdma "tests/fixtures/service-generate/task092-real-rdma${CLIENT_SUFFIX}.json" \
+  --publish-survivability "$CLIENT_SURVIVABILITY" \
+  --publish-dlz "tests/fixtures/task101/uci${CLIENT_SUFFIX}-full-dlz.json"
 ```
 
-Files contain OMS JSON **payload bodies**, without `{"Log": ...}` or
-`{"RDMA_InitializeSetup": ...}` envelopes. The runtime owns envelopes and OWP.
+Files contain OMS JSON **payload bodies**, without global-element envelopes
+such as `{"Log": ...}` or `{"DLZ": ...}`. The runtime owns envelopes and OWP.
 The generated `ServiceCodec` validates values through checked model constructors;
 generated models have no separate `Validate` trait. All selected files are
 decoded and their typed header versions checked **before connecting**, so a bad
-second file cannot cause a partial first publication. This is generated-model
+fourth file cannot cause partial publication of the first three. This is generated-model
 validation, not a claim of complete XSD validation by the application.
 
 Expected output (SIDs/order can differ):
 
 ```text
 CONNECTED service=rust-uci-client UCI=2.5 INIT.schema=002.5.0
-SUBSCRIBED Log sid=... RDMA_InitializeSetup sid=... (frames written)
+SUBSCRIBED Log sid=... RDMA_InitializeSetup sid=... SurvivabilityRiskLevel sid=... DLZ sid=... (frames written)
 PUBLISHED Log: frame written; broker acceptance not acknowledged
 PUBLISHED RDMA_InitializeSetup: frame written; broker acceptance not acknowledged
+PUBLISHED SurvivabilityRiskLevel: frame written; broker acceptance not acknowledged
+PUBLISHED DLZ: frame written; broker acceptance not acknowledged
 RECEIVED Log system=12345678-1234-1234-8234-123456789abc severity=INFO label="Task093"
 RECEIVED RDMA_InitializeSetup setup=12345678-1234-1234-8234-123456789abc provider=TCP endpoints=2
+RECEIVED SurvivabilityRiskLevel id=12345678-1234-1234-8234-123456789abc settings=1 risk-levels=1 detail=[SurvivabilityRiskSettingType { riskprioritization: HIGH, risklevel: BoundedVec([RiskSettingType { allowedrisk: NONE, maximumcontinuousexposure: None }]) }]
+RECEIVED DLZ id=550e8400-e29b-41d4-a716-446655440000 type=DLZSTAPLE time-of-intercept=12:34:56.5000Z range-poi-bits=3ff0000000000001 loft-bits=Some(8000000000000000) vector-bits=Some([3f000000, bf000000, 3f800000])
 UNSUBSCRIBED Log: frame written; handler removed
 UNSUBSCRIBED RDMA_InitializeSetup: frame written; handler removed
+UNSUBSCRIBED SurvivabilityRiskLevel: frame written; handler removed
+UNSUBSCRIBED DLZ: frame written; handler removed
 CLOSED runtime; worker joined
 COMPLETE bounded execution; no runtime errors observed (not a broker acceptance guarantee)
 ```
 
-Omit both publication options for a receive-only run. An external OWP client
+Omit all publication options for a receive-only run:
+
+```bash
+"$CLIENT_BIN" --url ws://127.0.0.1:9000 --service-id rust-uci-client --duration-seconds 30
+```
+
+An external OWP client
 authorized for these topics can publish the corresponding enveloped documents;
-the same two typed handlers print them. `--duration-seconds` defaults to 5 and
+the same four typed handlers print them. `--duration-seconds` defaults to 5 and
 accepts integers 1..=3600. Unknown/duplicate flags and missing values are errors.
 No CLI framework, reconnect, replay, TLS or authentication policy is added.
 
@@ -157,9 +206,17 @@ Invalid JSON syntax is reported separately as `invalid input JSON`. Connection,
 subscription, publication, unsubscribe and shutdown errors return nonzero.
 `ServerError`, `SubscriptionDecodeError` (SID/message/cause, no typed delivery),
 protocol errors and connection closure are printed as failures. The application
-does not retry them. Both subscriptions are explicitly removed on the normal
-path; errors after setup also attempt both removals and close. Early setup errors
+does not retry them. All four subscriptions are explicitly removed on the normal
+path; errors after setup also attempt all four removals and close. Early setup errors
 drop the runtime, whose production Drop signals and joins its worker.
+
+Malformed Survivability, invalid DLZ Time and mismatched header versions fail
+before INIT. Pinned Sleet admits `not-a-timeZ` in DLZ TimeOfIntercept; admission
+is not successful decoding. The generated decoder rejects it with a contextual
+`SubscriptionDecodeError` carrying the original DLZ SID, global message identity
+and TimeOfIntercept path. The application fails fast, removes all handlers and
+closes; it does not deliver an invalid typed value. DLZ output reports checked
+lexical Time and representative numeric bits, not operational calculations.
 
 **Non-verbose OWP caveat:** successful operations mean frames were written, not
 acknowledged by Sleet. Polling is bounded (finite batches and 20 ms waits), and
@@ -187,12 +244,16 @@ git diff --check
 ```
 
 The test starts isolated servers, executes the actual application CLI, witnesses
-both published OWP MSG documents with an independent pinned CalClient, externally
-publishes distinct Log/RDMA values and checks typed output. It also covers broker
-rejection, codec/decode rejection, server permission errors and connection closure,
+all four published OWP MSG documents with an independent pinned CalClient, externally
+publishes four distinct values and checks typed output, including nested risk
+priorities/AllowedRisk/exposure durations and DLZ Float64/Float32 bits and exact
+Time text. Linux procfs witnesses exactly one application worker/connection and
+four distinct SIDs. It also covers broker
+rejection separately from decoder rejection, preconnection validation of every
+family, server permission errors and connection closure,
 then verifies bounded exit, explicit unsubscribe, joined worker output and reaped
 application/server processes. Existing Linux socket/worker helpers and independent
-goldens are reused. It is intentionally not the RUST-OMS-004 qualification corpus.
+goldens are reused. It intentionally does not duplicate historical codec corpora.
 The existing main-only real-Sleet job invokes it with the same Sleet build; no new
 runner lane or qualification framework is introduced. Root-workspace Rust
 backend/runtime regressions and lightweight PR smoke remain unchanged.

@@ -71,9 +71,8 @@ fn generate() -> Result<(), String> {
             .join(format!("UCI_SecurityMarkings_v2_{minor}_0.xsd")),
         security_hash,
     )?;
-    let contract = Path::new(env!("CARGO_MANIFEST_DIR")).join(format!(
-        "../../tests/fixtures/rust-oms-003/uci2{minor}-service.yaml"
-    ));
+    let contract =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("contracts/uci2{minor}-service.yaml"));
     println!("cargo:rerun-if-changed={}", contract.display());
     let out = PathBuf::from(std::env::var_os("OUT_DIR").ok_or("Cargo did not set OUT_DIR")?);
     let generated = out.join("generated");
