@@ -1,0 +1,103 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running unittests src/lib.rs (/home/zboll/py016-build/debug/deps/ams_gra_oms_backend_python-cd653041f165c900)
+
+running 6 tests
+test names::tests::python_symbols_and_literals_are_deterministic ... ok
+test service_codec::tests::unbounded_runtime_replaces_exactly_one_check ... ok
+test service_codec::tests::unbounded_runtime_rejects_missing_or_duplicate_checks ... ok
+test tests::float64_bounds_are_shared_classifications_and_exact_bits ... ok
+test tests::unsupported_primitives_and_facets_fail_closed ... ok
+test tests::backend_identity_and_empty_schema_fail_closed ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/choice.rs (/home/zboll/py016-build/debug/deps/choice-dcdbcf2a543d4a29)
+
+running 1 test
+test effective_choice_ancestry_and_codec_provenance_fail_closed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/codecs.rs (/home/zboll/py016-build/debug/deps/codecs-0aa08fc36d11eb93)
+
+running 2 tests
+test inherited_wire_qnames_come_from_authored_members_not_the_concrete_owner ... ok
+test alias_chains_and_unique_scalar_payloads_preserve_exact_types_and_wire_values ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+     Running tests/datetime.rs (/home/zboll/py016-build/debug/deps/datetime-b01f4afbf743bbf6)
+
+running 1 test
+test datetime_ancestry_is_proven_not_flattened ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/duration.rs (/home/zboll/py016-build/debug/deps/duration-73c653039cc61825)
+
+running 1 test
+test duration_ancestry_and_aliases_fail_closed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/header_profiles.rs (/home/zboll/py016-build/debug/deps/header_profiles-ef7dfc32d0a051d2)
+
+running 1 test
+test normalized_neighbours_and_pattern_alternatives_stay_unsupported ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/hexbinary.rs (/home/zboll/py016-build/debug/deps/hexbinary-23aeaeaa5682ab88)
+
+running 2 tests
+test unsupported_effective_domains_aliases_and_field_facets_fail_closed ... ok
+test unknown_and_base64_provenance_fail_before_codec_artifacts ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/models.rs (/home/zboll/py016-build/debug/deps/models-e6f3aec35e1d2f2d)
+
+running 12 tests
+test golden_output_is_byte_identical_and_world_is_explicit ... ok
+test zero_oms_service_api_is_generated_without_a_model ... ok
+test float64_named_ancestry_requires_resolved_compatible_domains ... ok
+test negative_schema_fixtures_return_errors_and_no_artifacts ... ok
+test unsupported_ir_semantics_fail_closed_without_artifacts ... ok
+test python_specific_name_collisions_fail_closed ... ok
+test base_only_abstract_ancestry_executes_without_an_abstract_class ... ok
+test ancestry_names_are_not_emitted_and_special_members_are_safely_prefixed ... ok
+test shared_four_level_fixture_executes_in_authored_field_order ... ok
+test real_track_compiles_imports_and_validates_at_runtime ... ok
+test scalar_subset_compiles_imports_and_validates_at_runtime ... ok
+test generated_float64_comparisons_match_shared_domains_at_ieee_edges ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+     Running tests/nato_special_words.rs (/home/zboll/py016-build/debug/deps/nato_special_words-86043c2241a9957e)
+
+running 2 tests
+test helper_is_absent_without_profile ... ok
+test exact_profile_and_named_ancestry_fail_closed ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/visible_ascii.rs (/home/zboll/py016-build/debug/deps/visible_ascii-e515fe925ff075a9)
+
+running 1 test
+test effective_facets_and_named_ancestry_fail_closed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/whitespace_visible.rs (/home/zboll/py016-build/debug/deps/whitespace_visible-8d6dcff11dfffb46)
+
+running 1 test
+test effective_profile_and_every_named_edge_are_proven ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/track.rs (/home/zboll/py016-build/debug/examples/track-5f3a39e1ff23a58c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
