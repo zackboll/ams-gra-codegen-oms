@@ -143,6 +143,14 @@ Task 096 oracle. The authentic UCI 2.5/2.6 `PositionReport` is codec READY
 (59/59) and its typed publish/subscribe is qualified through the same runtime
 and pinned Sleet.
 
+[CPP-OMS-005](docs/task-cpp-oms-005-bounded-ascii-amti-settings.md) adds the
+Task 058 bounded-ASCII String profiles to the generated C++ codec (decode
+through the model carrier's checked `create`, encode its `value()`; nothing is
+restated). The authentic UCI 2.5/2.6 `AMTI_SettingsCommand` is codec READY
+(59/59), including the zero-length `EmptyType` `UnassignAll` (present `""` and
+absent stay distinct), and its typed publish/subscribe is qualified through the
+same runtime and pinned Sleet.
+
 [PY-006](docs/task-py-006-uci-header-profiles.md) adds exact checked UCI
 schema-version and UUID String carriers, preserving lexical spelling (including
 UUID case and nil), and generated JSON String codecs. The OAM UUID special
@@ -960,7 +968,7 @@ The real UCI 2.5 `PositionReport` round-trips through unmodified Sleet as a
 typed `PositionReportMT`. Without the flag all output is unchanged. See
 [Task 050](docs/task-050-rust-oms-json-codecs.md).
 
-**C++ OMS JSON codec (CPP-OMS-001, CPP-OMS-002, CPP-OMS-004).** `--language cpp --with-codec`
+**C++ OMS JSON codec (CPP-OMS-001, CPP-OMS-002, CPP-OMS-004, CPP-OMS-005).** `--language cpp --with-codec`
 emits a separate, standard-library-only `service_codec.hpp` with typed
 `encode_<Payload>` / `decode_<Payload>` functions returning `CodecResult<T>`,
 for: Boolean, integral, plain String, enumeration and concrete Record (required,
@@ -972,13 +980,17 @@ UCI `Log` message is READY in both UCI 2.5 (42 selected types, 41/41 codec
 declarations) and UCI 2.6 (44, 43/43). Since CPP-OMS-004, named Float64
 (unconstrained or bound-only) and direct unconstrained `xs:double` are
 supported and the authentic `PositionReport` is READY in both releases (60
-selected types, 59/59). Float32, field-local constrained direct Float64, `Time`, the other String
-profiles, constrained Binary, optional/repeated Choice alternatives and
+selected types, 59/59). Since CPP-OMS-005, the Task 058 bounded-ASCII String
+profiles are supported and the authentic `AMTI_SettingsCommand` is READY in both
+releases (61 selected types, 59/59). Float32, field-local constrained direct
+Float64, `Time`, the structured-ASCII, alternating-ASCII, IPv6 and Unicode 3.1
+String profiles, constrained Binary, optional/repeated Choice alternatives and
 polymorphic constructs report a `service codec boundary:` and write nothing; the
 model and service API headers are byte-identical with and without the flag. See
 [CPP-OMS-001](docs/task-cpp-oms-001-cpp-oms-json-codecs.md),
-[CPP-OMS-002](docs/task-cpp-oms-002-real-log.md) and
-[CPP-OMS-004](docs/task-cpp-oms-004-float64-position-report.md).
+[CPP-OMS-002](docs/task-cpp-oms-002-real-log.md),
+[CPP-OMS-004](docs/task-cpp-oms-004-float64-position-report.md) and
+[CPP-OMS-005](docs/task-cpp-oms-005-bounded-ascii-amti-settings.md).
 
 **hexBinary (Task 052).** Schema IR keeps each Binary value's XSD lexical
 primitive (`xs:hexBinary`) as provenance separate from its value kind, resolved
