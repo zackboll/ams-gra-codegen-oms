@@ -61,8 +61,8 @@ test -z "$(git -C "$CHECKOUT" status --porcelain)"
 export AMS_GRA_SLEET_BIN="$CHECKOUT/target/release/sleet"
 
 cd "$ROOT"
-# RUST-OMS-005: genuine standalone executable acceptance, using this same
-# unmodified broker build and the existing independent Task092/093 goldens.
+# Four-message standalone acceptance uses this same unmodified broker build
+# and independent Task092/093, Task104/105 and Task101 fixtures.
 # The existing main-only real-sleet job supplies both roots; no new runner lane.
 if [ "${AMS_GRA_RUST_DLZ_ONLY:-}" != 1 ] && [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] && [ -n "${AMS_GRA_UCI_2_6_ROOT:-}" ]; then
   manifest="$ROOT/examples/rust-uci-client/Cargo.toml"
@@ -82,11 +82,12 @@ if [ "${AMS_GRA_RUST_DLZ_ONLY:-}" != 1 ] && [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] &
       --include-ignored --nocapture --test-threads=1 2>&1)" || status=$?
     printf '%s\n' "$output"
     if (( status != 0 )); then exit "$status"; fi
-    grep -Fqx "RUST-OMS-005 002.${release#2.}.0 standalone typed/external/OWP/error/unsubscribe/process cleanup: PASSED" <<<"$output"
+    grep -Fqx "RUST-OMS-007 002.${release#2.}.0 standalone four-message typed/external/OWP/error/unsubscribe/process cleanup: PASSED" <<<"$output"
+    grep -qE '^test result: ok\. 1 passed; 0 failed; 0 ignored;' <<<"$output"
   done
 fi
 if [ "${AMS_GRA_RUST_CLIENT_ONLY:-}" = 1 ]; then
-  echo "RUST-OMS-005 real pinned Sleet ($SLEET_REV): PASSED"
+  echo "RUST-OMS-007 real pinned Sleet ($SLEET_REV): PASSED"
   exit 0
 fi
 # run_one TEST_FILE TEST_NAME PASS_LINE: exactly one matching test must run,
