@@ -168,10 +168,12 @@ Result with `CPP_OMS_003_REPEAT=3` (mock suite run three times per configuration
 
 TSan note: GCC warns that Asio's `std::atomic_thread_fence` is not modelled
 (`-Wno-tsan` silences it); every cross-thread hand-off in the runtime itself is
-mutex/condition-variable based and therefore visible to TSan. TSan found two
-real issues during development (a non-atomic test counter, and libtsan's blind
-spot for `std::timed_mutex::try_lock_for`, which led to replacing it with a
-condition-variable command slot).
+mutex/condition-variable based and therefore visible to TSan. During
+development TSan found one real race (a non-atomic counter in the test
+harness, fixed) and reported a false positive on `std::timed_mutex::try_lock_for`
+(libtsan does not intercept `pthread_mutex_clocklock`); the command slot was
+changed to a mutex/condition variable so TSan models it fully, rather than
+suppressing the report.
 
 ### Stage C — `scripts/check-cpp-oms-003-real-log-sleet.sh`
 
