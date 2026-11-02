@@ -13,7 +13,7 @@ def arguments(args):
             args = [*args, "--"]
         index = args.index("--") + 1
         args = [*args[:index], "-j1", *args[index:]]
-    return [os.environ["PACK_REAL_ALR"], "--settings", os.environ["PACK_SETTINGS"], *args]
+    return [os.environ["PACK_REAL_ALR"], "--settings=" + os.environ["PACK_SETTINGS"], *args]
 
 
 if __name__ == "__main__":

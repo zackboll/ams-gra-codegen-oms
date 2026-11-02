@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import signal
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -58,7 +59,7 @@ class PackTests(unittest.TestCase):
         with patch.dict(os.environ, PACK_REAL_ALR='/verified/alr', PACK_SETTINGS='/worker/settings'):
             for command in (['-n', 'build'], ['-n', 'build', '--', '-f', '-cargs:Ada', '-gnatec=x']):
                 actual = alr.arguments(command)
-                self.assertEqual(actual[:3], ['/verified/alr', '--settings', '/worker/settings'])
+                self.assertEqual(actual[:2], ['/verified/alr', '--settings=/worker/settings'])
                 self.assertEqual(actual[actual.index('--') + 1], '-j1')
                 if '-cargs:Ada' in command:
                     self.assertLess(actual.index('-j1'), actual.index('-cargs:Ada'))
@@ -66,7 +67,20 @@ class PackTests(unittest.TestCase):
     def test_no_rewriting_toolchain_pins(self):
         command = ['-n', 'toolchain', '--select', '--local', 'gnat_native=16.1.0', 'gprbuild=26.0.1']
         with patch.dict(os.environ, PACK_REAL_ALR='/verified/alr', PACK_SETTINGS='/worker/settings'):
-            self.assertEqual(alr.arguments(command)[3:], command)
+            self.assertEqual(alr.arguments(command)[2:], command)
+
+    @unittest.skipUnless(shutil.which('alr'), 'live Alire unavailable; hosted qualification still mandatory')
+    def test_live_alire_private_configuration_and_wrapper(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / 'private'
+            env = pack.environment(root, shutil.which('alr'))
+            self.assertEqual(subprocess.check_output(['alr', '--version'], env=env).strip(), b'alr 2.1.1')
+            version = subprocess.check_output(['alr', 'version'], env=env, text=True)
+            self.assertIn(str(root / 'settings'), version)
+            self.assertIn(str(root / 'cache'), version)
+            self.assertIn(str(root / 'cache/toolchains'), version)
+            self.assertEqual(subprocess.check_output(['alr', '-n', 'settings', '--global', '--get',
+                                                     'dependencies.shared'], env=env).strip().lower(), b'false')
 
     def test_success_and_failure_exit_capture(self):
         with tempfile.TemporaryDirectory() as tmp:
