@@ -13,8 +13,8 @@ use ams_gra_oms_codegen_core::{
     Backend, CodegenError, DirectTemporalProfile, FloatingBoundKind, FloatingDomain, GeneratedFile,
     GenerationWorld, InclusiveIntegralDomain, ServiceApiModel, StringProfile, TemporalProfile,
     TypeEmission, abstract_value_targets, binary_length_domain, direct_temporal_profile,
-    effective_record_fields, floating_domain, inclusive_integral_domain, plan_type_emissions,
-    string_profile, temporal_profile,
+    effective_choice_alternatives, effective_record_fields, floating_domain,
+    inclusive_integral_domain, plan_type_emissions, string_profile, temporal_profile,
 };
 use ams_gra_oms_ir::{
     ConstraintSet, OccurrenceShape, PrimitiveKind, SchemaIr, TypeDecl, TypeKind, TypeRef,
@@ -69,6 +69,12 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     let emissions = plan_type_emissions(schema, world)?;
     preflight(schema, &emissions)?;
     let mut output = include_str!("runtime.py").to_owned();
+    if uses_choice(schema) {
+        // Only Choice schemas acquire recursive carrier revalidation. The
+        // generated table below uses exact classes and explicit validators;
+        // no dataclass introspection or payload-type alternative selection.
+        output.push_str("\n\n_check_scalar = _check\n\ndef _check(value, expected, lower=None, upper=None):\n    _check_scalar(value, expected, lower, upper)\n    validator = _choice_carrier_validators.get(expected)\n    if validator is not None:\n        validator(value)\n");
+    }
     if uses_datetime(schema) {
         output.push_str(include_str!("datetime_runtime.py"));
     }
@@ -96,6 +102,16 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     }
     for declaration in emitted_declarations(&emissions)? {
         render(&mut output, schema, declaration)?;
+    }
+    if uses_choice(schema) {
+        output.push_str("\n\n_choice_carrier_validators = {\n");
+        for declaration in emitted_declarations(&emissions)? {
+            if !matches!(declaration.kind, TypeKind::Enumeration { .. }) {
+                let symbol = names::symbol(&declaration.name.local_name, false);
+                writeln!(output, "    {symbol}: {symbol}.__post_init__,").unwrap();
+            }
+        }
+        output.push_str("}\n");
     }
     Ok(output)
 }
@@ -238,7 +254,10 @@ fn uses_float64(schema: &SchemaIr) -> bool {
             .any(|declaration| match &declaration.kind {
                 TypeKind::Primitive(PrimitiveKind::Float64) => true,
                 TypeKind::Alias(target) => direct(target),
-                TypeKind::Record { fields } => fields.iter().any(|field| direct(&field.type_ref)),
+                TypeKind::Record { fields }
+                | TypeKind::Choice {
+                    alternatives: fields,
+                } => fields.iter().any(|field| direct(&field.type_ref)),
                 _ => false,
             })
 }
@@ -249,6 +268,9 @@ fn uses_datetime(schema: &SchemaIr) -> bool {
         .iter()
         .any(|declaration| match &declaration.kind {
             TypeKind::Primitive(PrimitiveKind::DateTime) => true,
+            TypeKind::Choice { alternatives } => alternatives.iter().any(|field| {
+                field.type_ref.target == TypeRefTarget::Primitive(PrimitiveKind::DateTime)
+            }),
             TypeKind::Record { .. } if !declaration.is_abstract => {
                 record_fields(schema, declaration).is_ok_and(|fields| {
                     fields.iter().any(|field| {
@@ -266,6 +288,9 @@ fn uses_duration(schema: &SchemaIr) -> bool {
         .iter()
         .any(|declaration| match &declaration.kind {
             TypeKind::Primitive(PrimitiveKind::Duration) => true,
+            TypeKind::Choice { alternatives } => alternatives.iter().any(|field| {
+                field.type_ref.target == TypeRefTarget::Primitive(PrimitiveKind::Duration)
+            }),
             TypeKind::Record { .. } if !declaration.is_abstract => {
                 record_fields(schema, declaration).is_ok_and(|fields| {
                     fields.iter().any(|field| {
@@ -436,7 +461,10 @@ fn uses_binary(schema: &SchemaIr) -> bool {
         .iter()
         .any(|declaration| match &declaration.kind {
             TypeKind::Primitive(PrimitiveKind::Binary) => true,
-            TypeKind::Record { fields } => fields.iter().any(|field| {
+            TypeKind::Record { fields }
+            | TypeKind::Choice {
+                alternatives: fields,
+            } => fields.iter().any(|field| {
                 field.type_ref.target == TypeRefTarget::Primitive(PrimitiveKind::Binary)
             }),
             _ => false,
@@ -595,7 +623,7 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
     }
     let declarations = emitted_declarations(emissions)?;
     names::validate(schema, &declarations)?;
-    let datetime_demand = uses_datetime(schema) || uses_duration(schema);
+    let datetime_demand = uses_datetime(schema) || uses_duration(schema) || uses_choice(schema);
     let mut scalar_names = BTreeSet::new();
     let mut available = BTreeSet::new();
     for declaration in declarations {
@@ -622,7 +650,10 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
                         TypeKind::Enumeration { .. },
                         TypeRefTarget::Primitive(PrimitiveKind::String),
                     ) => {}
-                    (TypeKind::Record { .. }, TypeRefTarget::Named(_)) => {}
+                    (
+                        TypeKind::Record { .. } | TypeKind::Choice { .. },
+                        TypeRefTarget::Named(_),
+                    ) => {}
                     _ => return Err(error("inheritance / named restriction ancestry")),
                 }
             }
@@ -700,7 +731,29 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
                         }
                     }
                 }
-                TypeKind::Choice { .. } | TypeKind::List { .. } => {
+                TypeKind::Choice { .. } => {
+                    unconstrained(&declaration.constraints)?;
+                    for alternative in choice_alternatives(schema, declaration)? {
+                        if alternative.nillable
+                            || alternative.cardinality.shape() != OccurrenceShape::RequiredOne
+                        {
+                            return Err(error(format!(
+                                "Choice alternative {} must be required, singular and non-nillable",
+                                alternative.name
+                            )));
+                        }
+                        reference(&alternative.type_ref, &alternative.constraints)?;
+                        if let TypeRefTarget::Named(name) = &alternative.type_ref.target
+                            && !available.contains(name)
+                        {
+                            return Err(error(format!(
+                                "Choice alternative {} requires a preceding concrete emitted type {}",
+                                alternative.name, name.local_name
+                            )));
+                        }
+                    }
+                }
+                TypeKind::List { .. } => {
                     return Err(error("Choice / List declarations"));
                 }
             }
@@ -754,6 +807,20 @@ fn record_fields<'a>(
     declaration: &TypeDecl,
 ) -> Result<Vec<&'a ams_gra_oms_ir::FieldDecl>, CodegenError> {
     effective_record_fields(schema, &declaration.name).map_err(error)
+}
+
+fn uses_choice(schema: &SchemaIr) -> bool {
+    schema
+        .types
+        .iter()
+        .any(|declaration| matches!(declaration.kind, TypeKind::Choice { .. }))
+}
+
+fn choice_alternatives<'a>(
+    schema: &'a SchemaIr,
+    declaration: &TypeDecl,
+) -> Result<Vec<&'a ams_gra_oms_ir::FieldDecl>, CodegenError> {
+    effective_choice_alternatives(schema, &declaration.name).map_err(error)
 }
 
 fn render(
@@ -834,6 +901,55 @@ fn render(
                 _ => unreachable!(),
             };
             writeln!(output, "    value: {annotation}\n\n    def __post_init__(self) -> None:\n        _check(self.value, {check})").unwrap();
+        }
+        TypeKind::Choice { .. } => {
+            let alternatives = choice_alternatives(schema, declaration)?;
+            let annotations = alternatives
+                .iter()
+                .map(|field| {
+                    reference(&field.type_ref, &field.constraints).map(|(annotation, _)| annotation)
+                })
+                .collect::<Result<BTreeSet<_>, _>>()?
+                .into_iter()
+                .collect::<Vec<_>>()
+                .join(" | ");
+            writeln!(output, "    alternative: str\n    value: {annotations}\n\n    def __post_init__(self) -> None:\n        _check(self.alternative, str)").unwrap();
+            for field in &alternatives {
+                let tag = names::literal(&names::symbol(&field.name, false));
+                let (_, check) = reference(&field.type_ref, &field.constraints)?;
+                writeln!(
+                    output,
+                    "        if self.alternative == {tag}:\n            _check(self.value, {check})"
+                )
+                .unwrap();
+                if let TypeRefTarget::Primitive(PrimitiveKind::DateTime | PrimitiveKind::Duration) =
+                    field.type_ref.target
+                {
+                    let validator = if field.type_ref.target
+                        == TypeRefTarget::Primitive(PrimitiveKind::Duration)
+                    {
+                        "_check_duration"
+                    } else {
+                        "_check_datetime"
+                    };
+                    writeln!(
+                        output,
+                        "            object.__setattr__(self, 'value', {validator}(self.value))"
+                    )
+                    .unwrap();
+                }
+                writeln!(output, "            return").unwrap();
+            }
+            writeln!(
+                output,
+                "        raise ValueError('unknown Choice alternative')"
+            )
+            .unwrap();
+            for field in alternatives {
+                let factory = names::symbol(&field.name, false);
+                let (annotation, _) = reference(&field.type_ref, &field.constraints)?;
+                writeln!(output, "\n    @staticmethod\n    def {factory}(value: {annotation}) -> \"{name}\":\n        return {name}({}, value)", names::literal(&factory)).unwrap();
+            }
         }
         TypeKind::Record { .. } => {
             let fields = record_fields(schema, declaration)?;

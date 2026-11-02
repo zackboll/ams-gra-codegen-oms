@@ -136,10 +136,6 @@ fn unsupported_schemas_fail_before_creating_or_changing_any_files() {
     for (world, _) in WORLDS {
         for (path, diagnostic) in [
             (
-                "../backend-python/tests/fixtures/unsupported-choice.xsd",
-                "Choice / List",
-            ),
-            (
                 "../backend-python/tests/fixtures/unsupported-nillable.xsd",
                 "nillable field",
             ),
