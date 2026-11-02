@@ -1,0 +1,177 @@
+SMOKE START python
++ /home/zboll/.local/bin/python3.11 -c 'import sys; assert sys.version_info[:2] == (3, 11); print(sys.version)'
+3.11.17 (main, Oct 14 2026, 01:05:33) [Clang 23.1.3 ]
++ cargo test --locked -p ams-gra-oms-backend-python --test models --test codecs -- --nocapture
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.26
+   Compiling serde_core v1.0.229
+   Compiling serde v1.0.229
+   Compiling zmij v1.0.23
+   Compiling serde_json v1.0.151
+   Compiling itoa v1.0.18
+   Compiling equivalent v1.0.2
+   Compiling hashbrown v0.17.1
+   Compiling memchr v2.8.3
+   Compiling libyaml-rs v0.3.0
+   Compiling ryu v1.0.23
+   Compiling ams-gra-oms-ir v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-014/crates/ir)
+   Compiling roxmltree v0.20.0
+   Compiling ams-gra-oms-xsd-frontend v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-014/crates/xsd-frontend)
+   Compiling indexmap v2.14.2
+   Compiling syn v3.0.6
+   Compiling serde_derive v1.0.229
+   Compiling yaml_serde v0.10.7
+   Compiling ams-gra-oms-service-contract v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-014/crates/service-contract)
+   Compiling ams-gra-oms-codegen-core v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-014/crates/codegen-core)
+   Compiling ams-gra-oms-backend-python v0.1.0 (/home/zboll/git/ams-gra-codegen-oms-py-014/crates/backend-python)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.47s
+     Running tests/codecs.rs (/home/zboll/py014-build/debug/deps/codecs-d51c64e152111bd1)
+
+running 2 tests
+test inherited_wire_qnames_come_from_authored_members_not_the_concrete_owner ... ok
+test alias_chains_and_unique_scalar_payloads_preserve_exact_types_and_wire_values ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
+
+     Running tests/models.rs (/home/zboll/py014-build/debug/deps/models-4c807e302ea62cb0)
+
+running 12 tests
+test zero_oms_service_api_is_generated_without_a_model ... ok
+test golden_output_is_byte_identical_and_world_is_explicit ... ok
+test float64_named_ancestry_requires_resolved_compatible_domains ... ok
+test negative_schema_fixtures_return_errors_and_no_artifacts ... ok
+test unsupported_ir_semantics_fail_closed_without_artifacts ... ok
+test python_specific_name_collisions_fail_closed ... ok
+Python runtime probe (optimized=false):
+
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+Python runtime probe (optimized=false):
+
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+Python runtime probe (optimized=false):
+
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.000s
+
+OK
+
+Python runtime probe (optimized=false):
+
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.000s
+
+OK
+
+Python runtime probe (optimized=false):
+
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+Python runtime probe (optimized=false):
+
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+Python runtime probe (optimized=true):
+
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+test ancestry_names_are_not_emitted_and_special_members_are_safely_prefixed ... ok
+Python runtime probe (optimized=true):
+
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+test base_only_abstract_ancestry_executes_without_an_abstract_class ... ok
+Python runtime probe (optimized=true):
+
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.000s
+
+OK
+
+test real_track_compiles_imports_and_validates_at_runtime ... ok
+Python runtime probe (optimized=true):
+
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.001s
+
+OK
+
+test scalar_subset_compiles_imports_and_validates_at_runtime ... ok
+Python runtime probe (optimized=true):
+
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+OK
+
+test generated_float64_comparisons_match_shared_domains_at_ieee_edges ... ok
+Python runtime probe (optimized=true):
+
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+test shared_four_level_fixture_executes_in_authored_field_order ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
++ cargo build --locked -p ams-gra-codegen-oms --bin ams-gra-codegen-oms
+    Blocking waiting for file lock on build directory
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.04s
++ /home/zboll/git/ams-gra-codegen-oms-py-014/target/debug/ams-gra-codegen-oms service-generate --schema /home/zboll/git/ams-gra-codegen-oms-py-014/tests/fixtures/python-codec/oam.xsd --contract /home/zboll/git/ams-gra-codegen-oms-py-014/tests/fixtures/python-codec/service.yaml --language python --world closed-schema --with-codec --output /tmp/pr-smoke-python-0p502dqu/consumer
+service contract valid
+service: Python Codec
+language: python
+generation world: closed-schema
+
+selected oms messages: 2
+contract-selected types: 9
+generated support types: 0
+projected schema types: 9
+generated model files: 1
+generated service api files: 1
+generated 2 file(s)
+output: /tmp/pr-smoke-python-0p502dqu/consumer
+generated service codec files: 1
+generated 3 file(s) including the codec
++ /home/zboll/.local/bin/python3.11 /home/zboll/git/ams-gra-codegen-oms-py-014/crates/backend-python/tests/codec_runtime.py /tmp/pr-smoke-python-0p502dqu/consumer flat https://www.vdl.afrl.af.mil/programs/oam /home/zboll/git/ams-gra-codegen-oms-py-014/tests/fixtures/python-codec
+.........
+----------------------------------------------------------------------
+Ran 9 tests in 0.004s
+
+OK
+SMOKE PASS python elapsed_seconds=6.893
+PY014_LOCAL_SMOKE_COMPLETE

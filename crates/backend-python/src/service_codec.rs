@@ -49,6 +49,10 @@ fn reference(
             symbol = names::symbol(&name.local_name, false)
         )),
         TypeRefTarget::Primitive(kind) => {
+            if *kind == PrimitiveKind::Duration {
+                crate::primitive(*kind, constraints)?;
+                return Ok(format!("_checked_duration({value}, {path})"));
+            }
             if *kind == PrimitiveKind::Binary {
                 crate::primitive(*kind, constraints)?;
                 return Ok(format!(
@@ -152,6 +156,9 @@ pub fn generate_service_codec(
     if crate::uses_datetime(schema) {
         output.push_str(include_str!("datetime_codec_runtime.py"));
     }
+    if crate::uses_duration(schema) {
+        output.push_str(include_str!("duration_codec_runtime.py"));
+    }
     if crate::uses_float64(schema) {
         output.push_str(include_str!("float64_codec_runtime.py"));
     }
@@ -167,6 +174,10 @@ pub fn generate_service_codec(
     }
     for declaration in declarations {
         let symbol = names::symbol(&declaration.name.local_name, false);
+        if declaration.kind == TypeKind::Primitive(PrimitiveKind::Duration) {
+            writeln!(output, "\n\ndef _encode_{symbol}(value, path):\n    _expect(value, _model.{symbol}, path)\n    try:\n        text = value.value\n    except AttributeError as error:\n        raise CodecError(f'{{path}}: missing Duration value') from error\n    return _checked_duration(text, path)\n\n\ndef _decode_{symbol}(value, path):\n    return _model.{symbol}(_checked_duration(value, path))").unwrap();
+            continue;
+        }
         if declaration.kind == TypeKind::Primitive(PrimitiveKind::Binary) {
             let args = crate::binary_arguments(&declaration.constraints)?;
             writeln!(output, "\n\ndef _encode_{symbol}(value, path):\n    _expect(value, _model.{symbol}, path)\n    try:\n        octets = value.value\n    except AttributeError as error:\n        raise CodecError(f'{{path}}: missing Binary value') from error\n    return _binary_encode(octets, path, {args})\n\n\ndef _decode_{symbol}(value, path):\n    return _model.{symbol}(_binary_decode(value, path, {args}))").unwrap();

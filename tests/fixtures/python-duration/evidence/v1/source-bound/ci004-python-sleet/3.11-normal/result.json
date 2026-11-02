@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "identity": {
+    "sha": "56a9fb2309b73ff56e9d5777ec8fc1ef2df71759",
+    "tree": "e24c7dc89053d40392b0f99a8f493a448cd807da",
+    "run_id": "local",
+    "run_attempt": "1",
+    "mode": "sleet",
+    "python": "3.11",
+    "python_version": "3.11.17 (main, Oct 14 2026, 01:05:33) [Clang 23.1.3 ]",
+    "optimization": "normal",
+    "interpreter_sha256": "879c4d45969ab4c5b91a2d05bc089fb8556b866a877a25b3b62167302a54b36e",
+    "generator_sha256": "4fc429eb9fe140b4f77bb15ebdaacae87c6d0b87705cc625978b6da76ffeda9f",
+    "uci_roots": {
+      "25": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27"
+    },
+    "uci_includes": {
+      "25": "4a8056f1503234d423a0c2495844ab65387febced62bea58b87d4f343e9e7a0b"
+    },
+    "sleet_revision": "e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b",
+    "sleet_tree": "7e705f4eb5f658957bd414b4abc8207311f3c1e4",
+    "sleet_binary_sha256": "4a2e9ee872d1deaa1a6ce1a1494a2f601660eb57c0df28a447b28a08eba21c94"
+  },
+  "hashes": {
+    "python/qualification/sleet/test_duration_transport.py": "0becc4285b36248408807853b4e1d1cdf7ad0c3d78e6ecd658c9e06642972e8e",
+    "python/qualification/sleet/test_hexbinary_transport.py": "f48f0b08038d17e5d00e88a3ecd2d95f9707308c2396ba005ec7a2c88009ae58",
+    "python/qualification/sleet/test_nato_special_words_transport.py": "f7e36e53f962eaaad9816232a82d9263957adccbc8e52c9d175b4058e77d6e21",
+    "python/qualification/sleet/test_owned_transport.py": "362d41722bdf356d7d50acef24eb062895fc8f2a0af5ec1961f5fd6956a1db0e",
+    "python/qualification/sleet/test_sleet_contract.py": "00a375da58d8b6b94bb0203c568c0c213c3b6e696826f72312b8a3534381b8c8",
+    "python/qualification/sleet/test_unbounded_repetition_transport.py": "2476355f4622371c88bb5d50073cfce2381150685318f020f60ed7da80baed46",
+    "python/qualification/sleet/fixtures/test_owned_transport/manifest.json": "fe0dfc9ef963b4af71ac5f6d5e89e9d4c5eda114cdf6cce53b33260d24a43244",
+    "python/qualification/sleet/fixtures/test_owned_transport/required.json": "dfc05c529475f738c9bb6c202b80162ac0d1550d7fcf6536024ea17a40598a8c"
+  },
+  "fixtures": [
+    {
+      "language": "python",
+      "mode": "sleet",
+      "path": "python/qualification/sleet/fixtures/test_owned_transport",
+      "manifest": {
+        "version": 1,
+        "test": "test_owned_transport.py",
+        "files": [
+          "required.json"
+        ],
+        "tests": [
+          "test_owned_transport.OwnedTransport.test_actual_transport_and_decoder_recovery"
+        ]
+      },
+      "hashes": {
+        "python/qualification/sleet/test_owned_transport.py": "362d41722bdf356d7d50acef24eb062895fc8f2a0af5ec1961f5fd6956a1db0e",
+        "python/qualification/sleet/fixtures/test_owned_transport/manifest.json": "fe0dfc9ef963b4af71ac5f6d5e89e9d4c5eda114cdf6cce53b33260d24a43244",
+        "python/qualification/sleet/fixtures/test_owned_transport/required.json": "dfc05c529475f738c9bb6c202b80162ac0d1550d7fcf6536024ea17a40598a8c"
+      }
+    }
+  ],
+  "test_ids": [
+    "test_duration_transport.DurationTransport.test_generated_duration_delivery_and_recovery",
+    "test_hexbinary_transport.HexBinaryTransport.test_generated_binary_delivery_and_recovery",
+    "test_nato_special_words_transport.NatoSpecialWordsTransport.test_generated_transport_and_recovery",
+    "test_owned_transport.OwnedTransport.test_actual_transport_and_decoder_recovery",
+    "test_sleet_contract.SleetRegistration.test_shared_pinned_broker_available",
+    "test_unbounded_repetition_transport.UnboundedRepetitionTransport.test_generated_transport_and_recovery"
+  ],
+  "execution": {
+    "status": "success",
+    "reasons": [],
+    "tests_registered": 6,
+    "tests_run": 6,
+    "tests_passed": 6,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "expected_failures": 0,
+    "unexpected_successes": 0,
+    "executed_test_ids": [
+      "test_duration_transport.DurationTransport.test_generated_duration_delivery_and_recovery",
+      "test_hexbinary_transport.HexBinaryTransport.test_generated_binary_delivery_and_recovery",
+      "test_nato_special_words_transport.NatoSpecialWordsTransport.test_generated_transport_and_recovery",
+      "test_owned_transport.OwnedTransport.test_actual_transport_and_decoder_recovery",
+      "test_sleet_contract.SleetRegistration.test_shared_pinned_broker_available",
+      "test_unbounded_repetition_transport.UnboundedRepetitionTransport.test_generated_transport_and_recovery"
+    ],
+    "passed_test_ids": [
+      "test_duration_transport.DurationTransport.test_generated_duration_delivery_and_recovery",
+      "test_hexbinary_transport.HexBinaryTransport.test_generated_binary_delivery_and_recovery",
+      "test_nato_special_words_transport.NatoSpecialWordsTransport.test_generated_transport_and_recovery",
+      "test_owned_transport.OwnedTransport.test_actual_transport_and_decoder_recovery",
+      "test_sleet_contract.SleetRegistration.test_shared_pinned_broker_available",
+      "test_unbounded_repetition_transport.UnboundedRepetitionTransport.test_generated_transport_and_recovery"
+    ],
+    "skipped_test_ids": [],
+    "expected_failure_test_ids": [],
+    "unexpected_success_test_ids": [],
+    "failed_test_ids": [],
+    "error_test_ids": []
+  },
+  "log_sha256": "d92a2245e22ed2d10805721bd63624eaa29e6f95f9e3185bb751b06ab508a2cd"
+}

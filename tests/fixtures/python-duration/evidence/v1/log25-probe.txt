@@ -1,0 +1,18 @@
+service contract valid
+service: PY006 Log
+language: python
+generation world: closed-schema
+
+selected oms messages: 1
+model status: NOT READY
+service api status: NOT READY
+status: NOT READY
+selected type closure: 42
+generated support types: 0
+
+model boundary: {https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations
+
+service api boundary: {https://www.vdl.afrl.af.mil/programs/oam}FGI_SourceOpenChoiceType: unsupported Python IR construct: Choice / List declarations
+
+codec: not measured (selected model or service API is NOT READY)
+error: service selection is not renderable for python under closed-schema; no files were generated
