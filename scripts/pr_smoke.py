@@ -26,6 +26,20 @@ CPP_STRICT = ("-std=c++17", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-Wconv
 CPP_SMOKE_TESTS = ("generated_codec_matches_the_golden_and_is_deterministic",
                    "codec_is_a_separate_artifact_and_leaves_the_model_and_api_unchanged",
                    "unsupported_constructs_are_rejected_before_any_output")
+# CPP-OMS-002R1: offline regression for the authentic-Log value kinds. Each
+# existing synthetic fixture is generated through the production CLI and
+# tests/cpp-codec/shapes_consumer.cpp is compiled with CPP_STRICT and run; its
+# deterministic summary (positive round trips plus negative rejections) must
+# match exactly. No UCI schema is fetched.
+CPP_SHAPES = (
+    ("service-generate/codec-hexbinary", "HEX", 23, 8),          # hexBinary + hexBinary Choice
+    ("service-generate/codec-ada-repeated-temporal", "TEMPORAL", 15, 6),  # dateTime/duration
+    ("service-generate/codec-ada-choice", "CHOICE", 36, 13),     # Choice, nested Choice
+)
+
+
+def cpp_shape_marker(shape, checks, rejections):
+    return f"CPP_OMS_002_SHAPES_COMPLETE shape={shape} checks={checks} rejections={rejections}"
 
 
 def classify(paths):
@@ -74,7 +88,8 @@ def classify(paths):
             selected.add("ada")
         elif (path.startswith(("crates/backend-cpp/", "tests/cpp-codec/", "tests/fixtures/cpp-codec/"))
               or path in ("crates/cli/tests/cpp_codec.rs", "scripts/check-cpp-oms-001.sh",
-                          "scripts/check-cpp-oms-001-parity.sh")):
+                          "scripts/check-cpp-oms-001-parity.sh",
+                          "scripts/check-cpp-oms-002-real-log.sh")):
             selected.add("cpp")
         else:
             selected.update(BACKENDS)
@@ -150,6 +165,19 @@ def cpp_smoke(scratch):
     match = re.search(r"^(\d+) checks, 0 failures$", output, re.M)
     if not match or int(match.group(1)) < 100:
         raise RuntimeError("C++ smoke: consumer did not report its positive and negative checks")
+    for fixture, shape, checks, rejections in CPP_SHAPES:
+        out = scratch.parent / f"cpp-shape-{shape.lower()}"
+        generate("cpp", out, fixture)
+        for name in ("oam.hpp", "service_api.hpp", "service_codec.hpp"):
+            if not (out / name).is_file():
+                raise RuntimeError(f"C++ smoke: production CLI did not generate {name} for {fixture}")
+        binary = out / f"shapes-{shape}"
+        checked(["g++", *CPP_STRICT, f"-DSHAPE_{shape}", "-I", out,
+                 ROOT / "tests/cpp-codec/shapes_consumer.cpp", "-o", binary])
+        marker = cpp_shape_marker(shape, checks, rejections)
+        if marker not in checked([binary]).splitlines():
+            raise RuntimeError(f"C++ smoke: shapes consumer {shape} did not report exactly: {marker}")
+    print("CPP OMS-002 SHAPES PASSED", flush=True)
     print("CPP SMOKE PASSED", flush=True)
 
 

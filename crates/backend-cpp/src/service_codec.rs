@@ -29,13 +29,14 @@
 
 use crate::service_api::string_literal_body;
 use crate::{
-    error, integral_domain, named_integral_domain, namespace_name, record_field_name, upper_camel,
+    choice_alternative_name, error, integral_domain, named_integral_domain, namespace_name,
+    record_field_name, upper_camel,
 };
 use ams_gra_oms_codegen_core::{
     BackendLanguage, CPP_SERVICE_CODEC_FILE, CodegenError, GeneratedFile, InclusiveIntegralDomain,
     ServiceApiModel, TypeEmission, analyze_service_codec, cpp_model_header_name,
-    effective_record_fields, generated_enum_variant_name, oms_json_member_name, oms_json_type_name,
-    plan_type_emissions,
+    effective_choice_alternatives, effective_record_fields, generated_enum_variant_name,
+    oms_json_member_name, oms_json_type_name, plan_type_emissions,
 };
 use ams_gra_oms_ir::{
     FieldDecl, OccurrenceShape, PrimitiveKind, QualifiedName, SchemaIr, TypeDecl, TypeKind,
@@ -189,7 +190,18 @@ enum Base {
     String,
     Signed(Option<(i64, i64)>),
     Unsigned(Option<(u64, u64)>),
-    Named { id: usize, cpp: String },
+    /// A direct `xs:dateTime` / `xs:duration` member: the model's
+    /// `XmlSchemaDateTime` / `XmlSchemaDuration` checked text carrier.
+    Text {
+        cpp: &'static str,
+        what: &'static str,
+    },
+    /// A direct `xs:hexBinary` member: `std::vector<std::uint8_t>`.
+    Hex,
+    Named {
+        id: usize,
+        cpp: String,
+    },
 }
 
 struct Renderer<'a> {
@@ -225,6 +237,15 @@ impl Renderer<'_> {
                     None => Base::Unsigned(None),
                 },
             ),
+            TypeRefTarget::Primitive(PrimitiveKind::DateTime) => Ok(Base::Text {
+                cpp: "M::XmlSchemaDateTime",
+                what: "dateTime",
+            }),
+            TypeRefTarget::Primitive(PrimitiveKind::Duration) => Ok(Base::Text {
+                cpp: "M::XmlSchemaDuration",
+                what: "duration",
+            }),
+            TypeRefTarget::Primitive(PrimitiveKind::Binary) => Ok(Base::Hex),
             TypeRefTarget::Primitive(kind) => Err(error(format!(
                 "service codec boundary: member {} is {kind:?}, which has no C++ codec mapping",
                 field.name
@@ -253,6 +274,8 @@ impl Renderer<'_> {
                 crate::cpp_unsigned_bound(*min),
                 crate::cpp_unsigned_bound(*max)
             ),
+            Base::Text { cpp, .. } => (*cpp).to_owned(),
+            Base::Hex => "std::vector<std::uint8_t>".to_owned(),
             Base::Named { cpp, .. } => cpp.clone(),
         }
     }
@@ -266,6 +289,8 @@ impl Renderer<'_> {
             Base::Unsigned(None) => format!("put_u64(out, {access})"),
             Base::Signed(Some(_)) => format!("put_i64(out, {access}.value())"),
             Base::Unsigned(Some(_)) => format!("put_u64(out, {access}.value())"),
+            Base::Text { .. } => format!("put_string(out, {access}.value(), error, {path})"),
+            Base::Hex => format!("put_hex_binary(out, {access})"),
             Base::Named { id, .. } => format!("encode_t{id:03}({access}, out, error, {path})"),
         }
     }
@@ -285,6 +310,10 @@ impl Renderer<'_> {
                 "get_checked_u64<{}>({value}, error, {path})",
                 Self::cpp(base)
             ),
+            Base::Text { cpp, what } => {
+                format!("get_checked_text<{cpp}>({value}, error, {path}, \"{what}\")")
+            }
+            Base::Hex => format!("get_hex_binary({value}, error, {path})"),
             Base::Named { id, .. } => format!("decode_t{id:03}({value}, error, {path})"),
         }
     }
@@ -375,6 +404,40 @@ impl Renderer<'_> {
                 )
                 .expect("infallible");
             }
+            TypeKind::Primitive(
+                kind @ (PrimitiveKind::String | PrimitiveKind::DateTime | PrimitiveKind::Duration),
+            ) => {
+                // A checked text carrier: UUID / schema-version / visible-ASCII /
+                // whitespace-visible / NATO profile, DateTimeZulu or Duration.
+                // The generated `create(std::string_view)` is the only authority.
+                let what = match kind {
+                    PrimitiveKind::String => "String profile",
+                    PrimitiveKind::DateTime => "dateTime",
+                    _ => "duration",
+                };
+                writeln!(
+                    output,
+                    "// {local} (checked {what}; the generated factory validates)\n\
+                     inline bool encode_t{id:03}(const {cpp}& value, std::string& out, CodecError& error, const Path* path) {{\n    \
+                     return put_string(out, value.value(), error, path);\n}}\n\n\
+                     inline std::optional<{cpp}> decode_t{id:03}(const Value& value, CodecError& error, const Path* path) {{\n    \
+                     return get_checked_text<{cpp}>(value, error, path, \"{local}\");\n}}\n"
+                )
+                .expect("infallible");
+            }
+            TypeKind::Primitive(PrimitiveKind::Binary) => {
+                writeln!(
+                    output,
+                    "// {local} (named hexBinary: canonical uppercase, case-insensitive on input)\n\
+                     inline bool encode_t{id:03}(const {cpp}& value, std::string& out, CodecError& error, const Path* path) {{\n    \
+                     static_cast<void>(error);\n    static_cast<void>(path);\n    return put_hex_binary(out, value.value());\n}}\n\n\
+                     inline std::optional<{cpp}> decode_t{id:03}(const Value& value, CodecError& error, const Path* path) {{\n    \
+                     std::optional<std::vector<std::uint8_t>> octets = get_hex_binary(value, error, path);\n    \
+                     if (!octets) {{\n        return std::nullopt;\n    }}\n    return {cpp}(std::move(*octets));\n}}\n"
+                )
+                .expect("infallible");
+            }
+            TypeKind::Choice { .. } => self.choice(output, id, declaration, &cpp)?,
             TypeKind::Record { .. } => self.record(output, id, declaration, &cpp)?,
             other => {
                 return Err(error(format!(
@@ -382,6 +445,87 @@ impl Renderer<'_> {
                 )));
             }
         }
+        Ok(())
+    }
+
+    /// A Choice is an object with exactly one selected member, keyed by the
+    /// alternative's own element QName (OMSC-SPC-013 Rev B section 6.1). The
+    /// model's variant alternative is selected by its nested wrapper type.
+    fn choice(
+        &self,
+        output: &mut String,
+        id: usize,
+        declaration: &TypeDecl,
+        cpp: &str,
+    ) -> Result<(), CodegenError> {
+        let local = &declaration.name.local_name;
+        let alternatives = effective_choice_alternatives(self.schema, &declaration.name)
+            .map_err(|failure| error(format!("service codec: {local}: {failure:?}")))?;
+        let mut encode = String::new();
+        let mut decode = String::new();
+        let mut allowed = Vec::new();
+        for (index, alternative) in alternatives.into_iter().enumerate() {
+            if alternative.cardinality.shape() != OccurrenceShape::RequiredOne {
+                return Err(error(format!(
+                    "service codec boundary: {local}.{} is not a required single Choice alternative",
+                    alternative.name
+                )));
+            }
+            let wrapper = format!("{cpp}::{}", choice_alternative_name(&alternative.name)?);
+            let key = member_key(alternative)?;
+            let key_literal = string_literal_body(&key);
+            let raw_key = string_literal_body(&format!("{}:", json_quoted(&key)));
+            allowed.push(format!("std::string_view(\"{key_literal}\")"));
+            let base = self.base(alternative)?;
+            let selected = format!("selected{index}");
+            let expression = Self::encode(&base, &format!("{selected}->value"), "&p");
+            let keyword = if index == 0 { "if" } else { "} else if" };
+            // Scalar alternatives never name their path; declaring it would
+            // trip -Wunused-variable under the strict consumer flags.
+            let path_decl = if expression.contains("&p") {
+                format!("        const Path p{{path, \"{key_literal}\", 0, false}};\n")
+            } else {
+                String::new()
+            };
+            writeln!(
+                encode,
+                "    {keyword} (const auto* {selected} = std::get_if<{wrapper}>(&value.value)) {{\n{path_decl}        \
+                 put_raw(out, std::string_view(\"{raw_key}\"));\n        \
+                 if (!{expression}) {{\n            return false;\n        }}"
+            )
+            .expect("infallible");
+            let decoded = Self::decode(&base, "chosen->value", "&p");
+            let single = Self::cpp(&base);
+            writeln!(
+                decode,
+                "    if (chosen->key == \"{key_literal}\") {{\n        \
+                 const Path p{{path, \"{key_literal}\", 0, false}};\n        \
+                 std::optional<{single}> item = {decoded};\n        \
+                 if (!item) {{\n            return std::nullopt;\n        }}\n        \
+                 return {cpp}{{{wrapper}{{std::move(*item)}}}};\n    }}"
+            )
+            .expect("infallible");
+        }
+        let own_type = string_literal_body(&oms_json_type_name(
+            &declaration.name.namespace_uri,
+            &declaration.name.local_name,
+        ));
+        writeln!(
+            output,
+            "// {local} (Choice: exactly one selected member)\n\
+             inline bool encode_t{id:03}(const {cpp}& value, std::string& out, CodecError& error, const Path* path) {{\n    \
+             out += '{{';\n{encode}    }} else {{\n        \
+             return fail_bool(error, path, \"Choice holds no alternative\");\n    }}\n    \
+             out += '}}';\n    return true;\n}}\n\n\
+             inline std::optional<{cpp}> decode_t{id:03}(const Value& value, CodecError& error, const Path* path) {{\n    \
+             if (!expect_kind(value, Value::Kind::Object, error, path)) {{\n        return std::nullopt;\n    }}\n    \
+             if (!check_members(value, error, path, \"{own_type}\", {{{}}})) {{\n        return std::nullopt;\n    }}\n    \
+             const Member* chosen = find_choice_member(value, error, path);\n    \
+             if (chosen == nullptr) {{\n        return std::nullopt;\n    }}\n{decode}    \
+             return fail(error, path, \"unknown member\");\n}}\n",
+            allowed.join(", "),
+        )
+        .expect("infallible");
         Ok(())
     }
 

@@ -302,7 +302,7 @@ fn consumer_is_clean_under_address_and_undefined_behavior_sanitizers() {
         .output()
         .is_ok_and(|output| output.status.success());
     if !usable {
-        eprintln!("skipping: this g++ cannot build with -fsanitize=address,undefined");
+        sanitizers_unavailable("g++");
         return;
     }
     let out = compile_and_run(
@@ -314,6 +314,108 @@ fn consumer_is_clean_under_address_and_undefined_behavior_sanitizers() {
     );
     assert!(out.ends_with(" 0 failures\n"), "{out}");
 }
+
+/// Sanitizer coverage that cannot run is NOT a pass. It fails the test unless
+/// the environment explicitly opts out with `CPP_OMS_ALLOW_SANITIZER_SKIP=1`,
+/// in which case a loud SKIPPED line is printed (the harness cannot mark a
+/// Rust test as skipped, so the opt-out is the only way to proceed).
+fn sanitizers_unavailable(compiler: &str) {
+    assert!(
+        std::env::var_os("CPP_OMS_ALLOW_SANITIZER_SKIP").is_some(),
+        "{compiler} cannot build with -fsanitize=address,undefined; install the sanitizer runtime \
+         or set CPP_OMS_ALLOW_SANITIZER_SKIP=1 to record an explicit SKIP (not a pass)"
+    );
+    eprintln!("SANITIZER SKIPPED: {compiler} cannot build with -fsanitize=address,undefined");
+}
+
+fn sanitizer_flags_usable(compiler: &str, label: &str) -> bool {
+    let probe = scratch(&format!("sanitize-probe-{label}"));
+    std::fs::create_dir_all(&probe).unwrap();
+    std::fs::write(probe.join("probe.cpp"), "int main() { return 0; }\n").unwrap();
+    Command::new(compiler)
+        .args(SANITIZE)
+        .arg(probe.join("probe.cpp"))
+        .arg("-o")
+        .arg(probe.join("probe"))
+        .output()
+        .is_ok_and(|output| output.status.success())
+}
+
+const SANITIZE: &[&str] = &[
+    "-std=c++17",
+    "-O1",
+    "-g",
+    "-fsanitize=address,undefined",
+    "-fno-sanitize-recover=all",
+];
+
+/// CPP-OMS-002: the synthetic shapes the authentic Log closure does not use
+/// (repeated hexBinary / dateTime / duration, a named hexBinary chain, a Choice
+/// with a reserved-word member and a nested Choice) compile under strict flags
+/// with every available compiler and pass.
+#[test]
+fn synthetic_shapes_for_the_new_value_kinds_pass_under_strict_flags() {
+    let consumer = root().join("tests/cpp-codec/shapes_consumer.cpp");
+    let mut compilers = vec!["g++"];
+    if compiler_available("clang++") {
+        compilers.push("clang++");
+    }
+    for (fixture, shape) in SHAPE_FIXTURES {
+        let dir = generate(&shared_case(fixture), true, &format!("shape-{fixture}"));
+        for compiler in &compilers {
+            let define = format!("-DSHAPE_{shape}");
+            let mut flags = STRICT.to_vec();
+            flags.push(&define);
+            let out = compile_and_run(
+                compiler,
+                &flags,
+                &dir,
+                std::slice::from_ref(&consumer),
+                &format!("shape-{shape}-{compiler}"),
+            );
+            assert!(
+                out.starts_with(&format!(
+                    "CPP_OMS_002_SHAPES_COMPLETE shape={shape} checks="
+                )),
+                "{fixture}/{compiler}: {out}"
+            );
+        }
+    }
+}
+
+#[test]
+fn synthetic_shapes_for_the_new_value_kinds_are_clean_under_sanitizers() {
+    if !sanitizer_flags_usable("g++", "shapes") {
+        sanitizers_unavailable("g++");
+        return;
+    }
+    let consumer = root().join("tests/cpp-codec/shapes_consumer.cpp");
+    for (fixture, shape) in SHAPE_FIXTURES {
+        let dir = generate(&shared_case(fixture), true, &format!("shape-san-{fixture}"));
+        let define = format!("-DSHAPE_{shape}");
+        let mut flags = SANITIZE.to_vec();
+        flags.push(&define);
+        let out = compile_and_run(
+            "g++",
+            &flags,
+            &dir,
+            std::slice::from_ref(&consumer),
+            &format!("shape-san-{shape}"),
+        );
+        assert!(
+            out.starts_with(&format!(
+                "CPP_OMS_002_SHAPES_COMPLETE shape={shape} checks="
+            )),
+            "{fixture}: {out}"
+        );
+    }
+}
+
+const SHAPE_FIXTURES: &[(&str, &str)] = &[
+    ("codec-hexbinary", "HEX"),
+    ("codec-ada-repeated-temporal", "TEMPORAL"),
+    ("codec-ada-choice", "CHOICE"),
+];
 
 /// Non-OAM namespace: member keys are Clark-qualified, a Record's own "$type"
 /// is Clark-qualified too, inheritance is flattened, and a local element with
@@ -418,19 +520,27 @@ int main() {{
 /// Every construct outside the subset is rejected explicitly, by BOTH
 /// commands, while the MODEL stays READY (so the blocker is the codec's) and
 /// before the output directory exists.
+///
+/// CPP-OMS-002 moved DateTime, Duration, hexBinary, Choice and the Log String
+/// profiles into the subset (see `newly_supported_fixtures_*`); what remains
+/// here is still NOT READY.
 #[test]
 fn unsupported_constructs_are_rejected_before_any_output() {
     let cases: &[(&str, &str)] = &[
         ("codec-ada-float64", "Float64"),
         ("codec-ada-float32", "Float32"),
-        ("codec-ada-datetime-combined", "DateTime"),
-        ("codec-duration", "Duration"),
         ("codec-time-zulu", "Time"),
-        ("codec-hexbinary", "Binary"),
-        ("codec-binary", "Binary"),
-        ("codec-bounded-ascii", "named String"),
-        ("codec-ipv6", "named String"),
-        ("codec-choice", "Choice declarations"),
+        (
+            "codec-ada-hexbinary-single",
+            "length-constrained named hexBinary",
+        ),
+        (
+            "codec-ada-hexbinary-combined",
+            "length-constrained named hexBinary",
+        ),
+        ("codec-bounded-ascii", "bounded ASCII"),
+        ("codec-alternating-ascii", "alternating ASCII"),
+        ("codec-ipv6", "IPv6 address"),
         ("codec-shape", "abstract structural value"),
         ("codec-form-unqualified", "unqualified local element"),
         ("codec-unqualified", "unqualified local element"),
