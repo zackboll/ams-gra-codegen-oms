@@ -130,7 +130,7 @@ fn unsupported_float64_selections_fail_without_artifacts() {
             ),
         ),
         (
-            "choice",
+            "optional-choice-alternative",
             original
                 .replace(
                     "<xs:complexType name=\"Nested\"><xs:sequence>",
@@ -139,6 +139,10 @@ fn unsupported_float64_selections_fail_without_artifacts() {
                 .replace(
                     "</xs:sequence></xs:complexType>\n  <xs:complexType name=\"Payload\">",
                     "</xs:choice></xs:complexType>\n  <xs:complexType name=\"Payload\">",
+                )
+                .replace(
+                    "name=\"Value\" type=\"t:Bounded\"",
+                    "name=\"Value\" type=\"t:Bounded\" minOccurs=\"0\"",
                 ),
         ),
         (
