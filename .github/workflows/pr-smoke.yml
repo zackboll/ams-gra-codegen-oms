@@ -66,6 +66,13 @@ jobs:
       - name: Ada smoke
         if: steps.route.outputs.ada == 'true'
         run: python3 scripts/pr_smoke.py run ada
+      - name: Install Boost.Beast headers for the C++ LA-CAL runtime smoke
+        if: steps.route.outputs.cpp == 'true'
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libboost-dev
+          dpkg-query -W libboost-dev libboost1.83-dev
       - name: C++ smoke
         if: steps.route.outputs.cpp == 'true'
         run: python3 scripts/pr_smoke.py run cpp

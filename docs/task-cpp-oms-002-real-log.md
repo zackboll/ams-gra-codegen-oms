@@ -176,7 +176,8 @@ Still NOT READY, each with a `service codec boundary:` line and no output:
 * anything the C++ **model** itself cannot render.
 
 Not claimed: any transport, LA-CAL/Sleet runtime or OWP framing for C++ (the
-codec handles the payload body only, never the global-element envelope); XML
+codec handles the payload body only, never the global-element envelope; the
+separate runtime is [CPP-OMS-003](task-cpp-oms-003-lacal-runtime.md)); XML
 1.0 `Char` restrictions on plain strings; any message other than `Log`.
 
 ### Other messages (measured, not qualified)
