@@ -246,16 +246,32 @@ bash "$ROOT/scripts/check-py005-sleet.sh"
 # Bind the existing Python discovery tests to this harness's just-built CLI.
 # Required by the PY-012/PY-013 transport probes as well as source-bound receipts.
 export AMS_GRA_GENERATOR="$ROOT/target/debug/ams-gra-codegen-oms"
+# One private, fresh cache per harness invocation, shared only by its sequential
+# interpreters/policies/runners. Reuse generated sources, never test results.
+: "${RUNNER_TEMP:?job-local evidence directory required}"
+export AMS_GRA_PY016_GENERATION_CACHE
+AMS_GRA_PY016_GENERATION_CACHE="$(mktemp -d "$RUNNER_TEMP/py016-generation.XXXXXXXX")"
 for interpreter in ${PY006_PYTHONS:-${PYTHON:-python3}}; do
   PYTHON="$interpreter" bash "$ROOT/scripts/check-py006-sleet.sh"
   PYTHON="$interpreter" bash "$ROOT/scripts/check-py007-sleet.sh"
   PYTHON="$interpreter" bash "$ROOT/scripts/check-py008-sleet.sh"
   PYTHON="$interpreter" bash "$ROOT/scripts/check-py009-sleet.sh"
   PYTHON="$interpreter" bash "$ROOT/scripts/check-py010-sleet.sh"
-  "$interpreter" "$ROOT/python/qualification/run.py" sleet
-  "$interpreter" -O "$ROOT/python/qualification/run.py" sleet
-  "$interpreter" "$ROOT/scripts/run-owned-python.py" sleet
-  "$interpreter" -O "$ROOT/scripts/run-owned-python.py" sleet
+  version="$("$interpreter" -c 'import sys; print(str(sys.version_info.major) + "." + str(sys.version_info.minor))')"
+  for runner in registered owned; do
+    for policy in normal optimized; do
+      options=()
+      if [ "$policy" = optimized ]; then options=(-O); fi
+      # Keep ci004-python-sleet's exact receipt inventory unchanged; the existing
+      # PY-010 source/broker artifact also retains the full-schema PY-016 traces.
+      export AMS_GRA_PY016_FULL_SLEET_EVIDENCE="$RUNNER_TEMP/py010-sleet/py016/$version-$policy/$runner"
+      if [ "$runner" = registered ]; then
+        "$interpreter" "${options[@]}" "$ROOT/python/qualification/run.py" sleet
+      else
+        "$interpreter" "${options[@]}" "$ROOT/scripts/run-owned-python.py" sleet
+      fi
+    done
+  done
 done
 
 # Task 049: generated facade + HANDWRITTEN codec (proves the runtime seam).
