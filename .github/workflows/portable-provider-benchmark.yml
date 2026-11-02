@@ -41,6 +41,8 @@ jobs:
           echo "$RUNNER_TEMP/alire/bin" >> "$GITHUB_PATH"
       - name: Execute one four-worker benchmark with full prerequisite guard
         run: python3 scripts/ada_ci_pack/run.py --pack a --workers 4 --expected-sha "$GITHUB_SHA" --scratch "$RUNNER_TEMP/ada-codec-pack-a"
+      - name: Independently verify every constituent exit and original evidence
+        run: python3 scripts/ada_ci_pack/verify.py --pack a --expected-sha "$GITHUB_SHA" --expected-tree "$(git rev-parse 'HEAD^{tree}')" --scratch "$RUNNER_TEMP/ada-codec-pack-a"
       - name: Preserve pilot measurements and every worker exit
         if: always()
         uses: actions/upload-artifact@v4

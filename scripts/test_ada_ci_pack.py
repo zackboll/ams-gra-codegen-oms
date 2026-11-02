@@ -14,6 +14,7 @@ from unittest.mock import patch
 
 from ada_ci_pack import run as pack
 from ada_ci_pack import alr
+from ada_ci_pack import verify
 
 
 class PackTests(unittest.TestCase):
@@ -142,6 +143,58 @@ class PackTests(unittest.TestCase):
             for name in pack.INVENTORY['suites']:
                 with self.subTest(suite=name), self.assertRaisesRegex(RuntimeError, 'completion evidence'):
                     pack.verify_markers(name, Path(tmp))
+
+    def test_exact_marker_inventory_and_missing_cell(self):
+        # Exercise the real independent verifier, including all original profiles/policies.
+        names = {'ada-generated-codec': [
+            ('task087b-codec', ['normal', 'Check', 'Ignore'], 'TASK087B_CODEC_COMPLETE cases= 41', '-run.log'),
+            ('task087b-codec', ['subset-normal', 'subset-Check', 'subset-Ignore'], 'TASK087B_SUBSET_COMPLETE cases= 7', '-run.log'),
+            ('task088-choice', ['oam-normal', 'oam-Check', 'oam-Ignore'], 'TASK088_CODEC_COMPLETE cases= 172', '-run.log'),
+            ('task088-choice', ['qualified-normal', 'qualified-Check', 'qualified-Ignore'], 'TASK088_QUALIFIED_COMPLETE cases= 2', '-run.log')],
+            'ada-repeated-temporal-codec': [(folder, [str(i) for i in range(6)], marker, '-execute.log')
+                for folder, marker in [('task094', 'TASK094_CODEC_COMPLETE checks= 54 rejections= 17'),
+                                       ('task094-composition', 'TASK094_COMPOSITION_COMPLETE checks= 19 rejections= 3'),
+                                       ('task094-combined', 'TASK094_COMBINED_COMPLETE checks= 26 rejections= 2')]],
+            'ada-datetime-codec': [
+                ('task090', ['named-normal', 'named-Check', 'named-Ignore'], 'TASK090_NAMED_COMPLETE cases= 161', '-run.log'),
+                ('task090', ['direct-normal', 'direct-Check', 'direct-Ignore'], 'TASK090_DIRECT_COMPLETE cases= 205', '-run.log'),
+                ('task090r', ['normal', 'Check', 'Ignore'], 'TASK090R_COMBINED_PASS', '-run.log')]}
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name, specs in names.items():
+                cell_root = root / name
+                files = []
+                for folder, cells, marker, suffix in specs:
+                    (cell_root / folder).mkdir(parents=True, exist_ok=True)
+                    for cell in cells:
+                        file = cell_root / folder / (cell + suffix)
+                        file.write_text(marker + '\n')
+                        files.append(file)
+                self.assertEqual(len(pack.verify_markers(name, cell_root)), len(files))
+                file = files[0]
+                original = file.read_text()
+                for mutated in ('', original.replace('COMPLETE', 'SKIPPED'), original + original):
+                    file.write_text(mutated)
+                    with self.subTest(suite=name, mutated=mutated), self.assertRaises(RuntimeError):
+                        pack.verify_markers(name, cell_root)
+                file.write_text(original)
+
+    def test_independent_verifier_rejects_failed_or_missing_constituent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = {'sha': 'head', 'tree': 'tree'}
+            summary = dict(source=source, exit=0, pack='a', runner_slots=1,
+                           generator_sha256='generator', workers=[])
+            pack.write(root / 'summary.json', summary)
+            with patch.object(verify.run, 'sha', return_value='generator'):
+                with self.assertRaisesRegex(RuntimeError, 'missing/duplicate constituent'):
+                    verify.verify(root, 'head', 'tree', 'a')
+                summary['exit'] = 1
+                pack.write(root / 'summary.json', summary)
+                with self.assertRaisesRegex(RuntimeError, 'did not complete'):
+                    verify.verify(root, 'head', 'tree', 'a')
+                with self.assertRaisesRegex(RuntimeError, 'source identity mismatch'):
+                    verify.verify(root, 'wrong', 'tree', 'a')
 
     def test_each_original_artifact_pattern_is_required(self):
         with tempfile.TemporaryDirectory() as tmp:

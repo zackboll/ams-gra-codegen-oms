@@ -207,6 +207,9 @@ def main():
     parser.add_argument("--scratch", type=Path, required=True)
     args = parser.parse_args()
     source = identity(args.expected_sha)
+    rust = subprocess.check_output(["rustc", "+1.95.0", "--version"], text=True).strip()
+    if not rust.startswith("rustc 1.95.0 "):
+        raise RuntimeError("Rust 1.95.0 required")
     cpus = sorted(os.sched_getaffinity(0))
     if os.environ.get("GITHUB_ACTIONS") == "true" and len(cpus) != 4:
         raise RuntimeError(f"benchmark/pack requires hosted four-vCPU affinity, got {cpus}")
@@ -224,7 +227,7 @@ def main():
     sampler.start()
     started = time.monotonic()
     summary = dict(source=source, pack=args.pack, concurrency=args.workers, allowed_cpus=cpus,
-                   runner_slots=1, workers=[], exit=1)
+                   runner_slots=1, rust=rust, alire_sha256=sha(Path(real_alr)), workers=[], exit=1)
     try:
         seed = directory / "seed"
         env = environment(seed, real_alr)
@@ -270,6 +273,10 @@ def main():
         summary["minimum_disk_free_bytes"] = min((s["disk_free_bytes"] for s in measurements), default=0)
         summary["child_maxrss_kib"] = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
         summary["mean_host_cpu_busy_fraction"] = sum(s["cpu_busy_fraction"] or 0 for s in measurements) / max(1, len(measurements) - 1)
+        summary["disk_used_growth_bytes"] = summary["peak_disk_used_bytes"] - (measurements[0]["disk_used_bytes"] if measurements else 0)
+        if len(measurements) < 2 or not summary["minimum_disk_free_bytes"]:
+            summary["exit"] = 1
+            summary["error"] = "missing mandatory resource measurements"
         write(directory / "summary.json", summary)
     raise SystemExit(summary["exit"])
 
