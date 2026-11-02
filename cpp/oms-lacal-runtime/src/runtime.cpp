@@ -8,7 +8,7 @@
 //    command, subscriptions, inbound backlog, events, stats). It is never held
 //    while a handler, a codec, a user destructor or a blocking wait other than
 //    a condition variable runs.
-//  * `command_mutex_` serialises acknowledged commands: at most one OWP
+//  * The command slot (`command_busy_`) serialises acknowledged commands: at most one OWP
 //    command awaits +OK/-ERR at a time, so every status is paired with the
 //    command that caused it. Waits on it and for the status are bounded.
 //  * Both threads are joined by close(); Core is never destroyed while either
@@ -94,10 +94,13 @@ Error make_error(ErrorKind kind, std::string message) {
     return error;
 }
 
-void name_thread(const char* name) {
+/// Names a runtime thread from its creator, so the name is visible as soon
+/// as the creating call returns (diagnostics, leak checks in tests).
+void name_thread(std::thread& thread, const char* name) {
 #if defined(__linux__)
-    pthread_setname_np(pthread_self(), name);
+    pthread_setname_np(thread.native_handle(), name);
 #else
+    (void)thread;
     (void)name;
 #endif
 }
@@ -232,6 +235,7 @@ public:
 
     Status start() {
         io_thread_ = std::thread([this] { io_main(); });
+        name_thread(io_thread_, "ams-lacal-io");
         io_id_.store(io_thread_.get_id());
         net::post(io_->ioc, [this] { begin_connect(); });
         std::unique_lock<std::mutex> lock(mutex_);
@@ -251,6 +255,7 @@ public:
         }
         lock.unlock();
         dispatch_thread_ = std::thread([this] { dispatch_main(); });
+        name_thread(dispatch_thread_, "ams-lacal-dsp");
         dispatch_id_.store(dispatch_thread_.get_id());
         return Status::success();
     }
@@ -446,8 +451,8 @@ private:
         if (on_io_thread()) {
             return Status::failure(make_error(ErrorKind::called_from_runtime_thread, "command from the I/O thread"));
         }
-        std::unique_lock<std::timed_mutex> serial(command_mutex_, std::defer_lock);
-        if (!serial.try_lock_for(config_.operation_timeout)) {
+        CommandSlot slot(*this);
+        if (!slot.acquired) {
             return Status::failure(make_error(ErrorKind::timeout,
                                               "another operation was still awaiting acknowledgment; nothing was sent"));
         }
@@ -487,6 +492,33 @@ private:
         }
         return Status::success();
     }
+
+    /// Bounded exclusive right to have one command awaiting its +OK/-ERR.
+    /// (A mutex/condition-variable pair rather than std::timed_mutex, so the
+    /// wait is bounded and fully visible to ThreadSanitizer.)
+    struct CommandSlot {
+        explicit CommandSlot(Core& core) : owner(core) {
+            std::unique_lock<std::mutex> lock(owner.mutex_);
+            acquired = owner.slot_cv_.wait_for(lock, owner.config_.operation_timeout,
+                                               [this] { return !owner.command_busy_; });
+            if (acquired) {
+                owner.command_busy_ = true;
+            }
+        }
+        ~CommandSlot() {
+            if (acquired) {
+                {
+                    std::lock_guard<std::mutex> lock(owner.mutex_);
+                    owner.command_busy_ = false;
+                }
+                owner.slot_cv_.notify_one();
+            }
+        }
+        CommandSlot(const CommandSlot&) = delete;
+        CommandSlot& operator=(const CommandSlot&) = delete;
+        Core& owner;
+        bool acquired = false;
+    };
 
     Error closed_error_locked() const {
         if (state_ == State::closed) {
@@ -536,7 +568,6 @@ private:
     // ---- I/O thread ----------------------------------------------------------
 
     void io_main() {
-        name_thread("ams-lacal-io");
         for (;;) {
             try {
                 io_->ioc.run();
@@ -898,7 +929,6 @@ private:
     // ---- dispatcher thread -----------------------------------------------------
 
     void dispatch_main() {
-        name_thread("ams-lacal-dsp");
         std::unique_lock<std::mutex> lock(mutex_);
         for (;;) {
             dispatch_cv_.wait(lock, [this] { return stop_dispatch_ || !inbound_.empty(); });
@@ -1005,6 +1035,8 @@ private:
     std::condition_variable dispatch_cv_;  // inbound backlog
     std::condition_variable event_cv_;     // events
     std::condition_variable sub_cv_;       // entry->running changes
+    std::condition_variable slot_cv_;      // command_busy_ changes
+    bool command_busy_ = false;            // one acknowledged command at a time
     State state_ = State::connecting;
     Error failure_;
     bool connect_finished_ = false;
@@ -1020,7 +1052,6 @@ private:
     std::uint64_t dropped_unreported_ = 0;
     Stats stats_;
 
-    std::timed_mutex command_mutex_;
     std::mutex close_mutex_;
 };
 

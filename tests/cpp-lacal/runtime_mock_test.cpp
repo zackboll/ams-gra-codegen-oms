@@ -838,9 +838,12 @@ TEST_CASE(close_discards_and_counts_the_undispatched_backlog) {
         std::unique_lock<std::mutex> lock(mutex);
         CHECK(cv.wait_for(lock, milliseconds(5000), [&] { return entered; }));
     }
-    peer.inject({mock::Action::text(msg("sub-1", 2)), mock::Action::text(msg("sub-1", 3))});
-    CHECK(peer.wait_frames(2));
-    std::this_thread::sleep_for(milliseconds(100));  // let both MSGs reach the backlog
+    // Frames are processed in order, so once the trailing unpaired -ERR is
+    // visible as an event both MSGs are already in the backlog.
+    peer.inject({mock::Action::text(msg("sub-1", 2)), mock::Action::text(msg("sub-1", 3)),
+                 mock::Action::text("-ERR Internal-Error marker")});
+    auto marker = next_event(runtime);
+    CHECK(marker && marker->kind == EventKind::server_error);
     std::thread closer([&] { CHECK(runtime.close().ok()); });
     std::this_thread::sleep_for(milliseconds(100));
     {

@@ -1,6 +1,7 @@
 // CPP-OMS-003 test harness: counted checks, named tests, exact summary line.
 #pragma once
 
+#include <atomic>
 #include <chrono>
 #include <cstdlib>
 #include <dirent.h>
@@ -13,8 +14,9 @@
 
 namespace check {
 
-inline int failures = 0;
-inline int checks = 0;
+// Atomic: CHECK is also used on helper threads inside tests.
+inline std::atomic<int> failures{0};
+inline std::atomic<int> checks{0};
 inline int tests = 0;
 
 #define CHECK(condition)                                                                  \
@@ -104,18 +106,18 @@ inline int run_all(const char* marker, int argc, char** argv) {
         if (!selected) {
             continue;
         }
-        const int before = failures;
+        const int before = failures.load();
         const auto start = std::chrono::steady_clock::now();
         test.body();
         ++tests;
         const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
-        std::cerr << (failures == before ? "ok   " : "FAIL ") << test.name << " (" << elapsed.count() << " ms)\n";
+        std::cerr << (failures.load() == before ? "ok   " : "FAIL ") << test.name << " (" << elapsed.count() << " ms)\n";
     }
     if (failures != 0 || tests == 0) {
-        std::cerr << failures << " of " << checks << " checks failed\n";
+        std::cerr << failures.load() << " of " << checks.load() << " checks failed\n";
         return 1;
     }
-    std::cout << marker << " tests=" << tests << " checks=" << checks << '\n';
+    std::cout << marker << " tests=" << tests << " checks=" << checks.load() << '\n';
     return 0;
 }
 
