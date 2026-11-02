@@ -1,4 +1,5 @@
 mod cli;
+mod session;
 
 include!(concat!(env!("OUT_DIR"), "/generated.rs"));
 
@@ -51,17 +52,17 @@ fn validate_schema(actual: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn print_received(value: Received) {
+fn print_received(epoch: u8, value: Received) {
     match value {
         Received::Log(value) => println!(
-            "RECEIVED {} system={} severity={:?} label={:?}",
+            "RECEIVED {} system={} severity={:?} label={:?} session={epoch}",
             log::exchange_receive::MESSAGE_NAME,
             value.messageheader.systemid.uuid.as_str(),
             value.messagedata.severity,
             value.messagedata.label.as_str(),
         ),
         Received::Rdma(value) => println!(
-            "RECEIVED {} setup={} provider={:?} endpoints={}",
+            "RECEIVED {} setup={} provider={:?} endpoints={} session={epoch}",
             rdma::exchange_receive::MESSAGE_NAME,
             value.messagedata.rdma_initializesetupid.uuid.as_str(),
             value.messagedata.rdma_provider,
@@ -71,7 +72,7 @@ fn print_received(value: Received) {
             let settings = value.messagedata.risksetting.as_slice();
             let levels: usize = settings.iter().map(|s| s.risklevel.as_slice().len()).sum();
             println!(
-                "RECEIVED {} id={} settings={} risk-levels={levels} detail={settings:?}",
+                "RECEIVED {} id={} settings={} risk-levels={levels} detail={settings:?} session={epoch}",
                 survivability::exchange_receive::MESSAGE_NAME,
                 value.messagedata.survivabilityrisklevelid.uuid.as_str(),
                 settings.len(),
@@ -80,7 +81,7 @@ fn print_received(value: Received) {
         Received::DLZ(value) => {
             let data = &value.messagedata.dlz_data;
             println!(
-                "RECEIVED {} id={} type={:?} time-of-intercept={} range-poi-bits={:016x} loft-bits={:016x?} vector-bits={:08x?}",
+                "RECEIVED {} id={} type={:?} time-of-intercept={} range-poi-bits={:016x} loft-bits={:016x?} vector-bits={:08x?} session={epoch}",
                 dlz::exchange_receive::MESSAGE_NAME,
                 value.messagedata.dlz_id.uuid.as_str(),
                 value.messagedata.dlz_type,
@@ -134,137 +135,50 @@ fn run(options: cli::Options) -> Result<(), String> {
     if let Some(value) = &dlz {
         validate_schema(value.messageheader.schemaversion.as_str())?;
     }
-    let mut runtime: SleetRuntime<ServiceCodec> = SleetRuntime::connect(
-        RuntimeConfig::new(&options.url, &options.service_id, SCHEMA),
-        ServiceCodec,
-    )
-    .map_err(|error| format!("connect/INIT: {error}"))?;
-    println!(
-        "CONNECTED service={} UCI={} INIT.schema={SCHEMA}",
-        options.service_id,
-        env!("AMS_GRA_UCI_RELEASE_BUILD")
-    );
-    let (sender, receiver) = mpsc::channel();
-    let logs = sender.clone();
-    let log_sub = log::exchange_receive::subscribe(&mut runtime, move |value| {
-        // Receiver outlives the runtime. A failed send during unwinding needs
-        // no runtime call; Drop still signals and joins the worker.
-        let _ = logs.send(Received::Log(Box::new(value.clone())));
-    })
-    .map_err(|error| format!("subscribe Log: {error}"))?;
-    let rdmas = sender.clone();
-    let rdma_sub = rdma::exchange_receive::subscribe(&mut runtime, move |value| {
-        let _ = rdmas.send(Received::Rdma(Box::new(value.clone())));
-    })
-    .map_err(|error| format!("subscribe RDMA_InitializeSetup: {error}"))?;
-    let risks = sender.clone();
-    let survivability_sub =
-        survivability::exchange_receive::subscribe(&mut runtime, move |value| {
-            let _ = risks.send(Received::Survivability(Box::new(value.clone())));
-        })
-        .map_err(|error| format!("subscribe SurvivabilityRiskLevel: {error}"))?;
-    let dlz_sub = dlz::exchange_receive::subscribe(&mut runtime, move |value| {
-        let _ = sender.send(Received::DLZ(Box::new(value.clone())));
-    })
-    .map_err(|error| format!("subscribe DLZ: {error}"))?;
-    println!(
-        "SUBSCRIBED Log sid={} RDMA_InitializeSetup sid={} SurvivabilityRiskLevel sid={} DLZ sid={} (frames written)",
-        log_sub.id(),
-        rdma_sub.id(),
-        survivability_sub.id(),
-        dlz_sub.id(),
-    );
-
-    // The closure retains runtime ownership here, so publication/receive errors
-    // still go through all unsubscribe attempts and explicit close below.
+    let mut session = session::Session::connect(
+        &options,
+        1,
+        ams_gra_oms_runtime_rust::DEFAULT_CONNECT_TIMEOUT,
+    )?;
     let result = (|| {
         if let Some(value) = &log {
-            log::exchange_publish::publish(&mut runtime, value)
+            log::exchange_publish::publish(&mut session.runtime, value)
                 .map_err(|error| format!("publish Log: {error}"))?;
             println!("PUBLISHED Log: frame written; broker acceptance not acknowledged");
         }
         if let Some(value) = &rdma {
-            rdma::exchange_publish::publish(&mut runtime, value)
+            rdma::exchange_publish::publish(&mut session.runtime, value)
                 .map_err(|error| format!("publish RDMA_InitializeSetup: {error}"))?;
             println!(
                 "PUBLISHED RDMA_InitializeSetup: frame written; broker acceptance not acknowledged"
             );
         }
         if let Some(value) = &survivability {
-            survivability::exchange_publish::publish(&mut runtime, value)
+            survivability::exchange_publish::publish(&mut session.runtime, value)
                 .map_err(|error| format!("publish SurvivabilityRiskLevel: {error}"))?;
             println!(
                 "PUBLISHED SurvivabilityRiskLevel: frame written; broker acceptance not acknowledged"
             );
         }
         if let Some(value) = &dlz {
-            dlz::exchange_publish::publish(&mut runtime, value)
+            dlz::exchange_publish::publish(&mut session.runtime, value)
                 .map_err(|error| format!("publish DLZ: {error}"))?;
             println!("PUBLISHED DLZ: frame written; broker acceptance not acknowledged");
         }
-        let deadline = Instant::now() + options.duration;
-        while Instant::now() < deadline {
-            // Finite batches prevent message/event floods from starving the
-            // other queue or the execution deadline. Any runtime event fails
-            // this demo visibly; it does not introduce a recovery policy.
-            for _ in 0..64 {
-                if let Some(event) = runtime.try_recv_event() {
-                    return Err(report_event(event));
-                }
-                let Ok(value) = receiver.try_recv() else {
-                    break;
-                };
-                print_received(value);
-                if Instant::now() >= deadline {
-                    break;
-                }
-            }
-            if let Some(event) = runtime.recv_event_timeout(
-                Duration::from_millis(20).min(deadline.saturating_duration_since(Instant::now())),
-            ) {
-                return Err(report_event(event));
-            }
-            if !runtime.is_running() {
-                return Err("runtime worker stopped before duration elapsed".into());
-            }
-        }
         Ok(())
     })();
-    let mut errors: Vec<String> = result.err().into_iter().collect();
-    for (name, subscription) in [
-        ("Log", log_sub),
-        ("RDMA_InitializeSetup", rdma_sub),
-        ("SurvivabilityRiskLevel", survivability_sub),
-        ("DLZ", dlz_sub),
-    ] {
-        match subscription.unsubscribe() {
-            Ok(()) => println!("UNSUBSCRIBED {name}: frame written; handler removed"),
-            Err(error) => errors.push(format!("unsubscribe {name}: {error}")),
-        }
-    }
-    // Drain a bounded final batch before close consumes the runtime. OWP has
-    // no non-verbose acceptance barrier: a quiet queue is not an ACK.
-    for _ in 0..64 {
-        let Some(event) = runtime.try_recv_event() else {
-            break;
+    if let Err(error) = result {
+        return match session.close(false) {
+            Ok(()) => Err(error),
+            Err(shutdown) => Err(format!("{error}\n{shutdown}")),
         };
-        errors.push(report_event(event));
     }
-    if runtime.try_recv_event().is_some() {
-        errors.push("additional runtime events beyond bounded shutdown report".into());
-    }
-    match runtime.close() {
-        Ok(()) => println!("CLOSED runtime; worker joined"),
-        Err(error) => errors.push(format!("shutdown: {error}")),
-    }
-    if errors.is_empty() {
-        println!(
-            "COMPLETE bounded execution; no runtime errors observed (not a broker acceptance guarantee)"
-        );
-        Ok(())
-    } else {
-        Err(errors.join("\n"))
-    }
+    // One deadline and one additional-attempt budget for the entire receive period.
+    session::receive_sessions(session, &options, Instant::now() + options.duration)?;
+    println!(
+        "COMPLETE bounded execution; no runtime errors observed (not a broker acceptance guarantee)"
+    );
+    Ok(())
 }
 
 fn main() -> std::process::ExitCode {

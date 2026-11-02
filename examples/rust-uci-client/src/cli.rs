@@ -8,6 +8,8 @@ Options:
   --url URL                 Sleet WebSocket endpoint (ws://, no TLS)
   --service-id ID           OWP service identity authorized by Sleet
   --duration-seconds N      Receive for 1..=3600 seconds (default: 5)
+  --reconnect-attempts N    Process-wide additional attempts, 0..=8 (default: 0)
+  --reconnect-delay-ms N    Delay between attempts, 50..=2000 (default: 250)
   --publish-log FILE        OMS JSON Log payload BODY (no global envelope)
   --publish-rdma FILE       OMS JSON RDMA_InitializeSetup payload BODY
   --publish-survivability FILE  OMS JSON SurvivabilityRiskLevel payload BODY
@@ -24,6 +26,8 @@ pub struct Options {
     pub url: String,
     pub service_id: String,
     pub duration: Duration,
+    pub reconnect_attempts: u8,
+    pub reconnect_delay: Duration,
     pub log: Option<PathBuf>,
     pub rdma: Option<PathBuf>,
     pub survivability: Option<PathBuf>,
@@ -40,6 +44,8 @@ impl Options {
             url: String::new(),
             service_id: String::new(),
             duration: Duration::from_secs(5),
+            reconnect_attempts: 0,
+            reconnect_delay: Duration::from_millis(250),
             log: None,
             rdma: None,
             survivability: None,
@@ -53,6 +59,8 @@ impl Options {
                 "--url"
                     | "--service-id"
                     | "--duration-seconds"
+                    | "--reconnect-attempts"
+                    | "--reconnect-delay-ms"
                     | "--publish-log"
                     | "--publish-rdma"
                     | "--publish-survivability"
@@ -74,6 +82,21 @@ impl Options {
                 "--publish-rdma" => options.rdma = Some(value.into()),
                 "--publish-survivability" => options.survivability = Some(value.into()),
                 "--publish-dlz" => options.dlz = Some(value.into()),
+                "--reconnect-attempts" => {
+                    options.reconnect_attempts = value
+                        .parse::<u8>()
+                        .ok()
+                        .filter(|n| *n <= 8)
+                        .ok_or("--reconnect-attempts must be an integer in 0..=8")?;
+                }
+                "--reconnect-delay-ms" => {
+                    let millis = value
+                        .parse::<u64>()
+                        .ok()
+                        .filter(|n| (50..=2000).contains(n))
+                        .ok_or("--reconnect-delay-ms must be an integer in 50..=2000")?;
+                    options.reconnect_delay = Duration::from_millis(millis);
+                }
                 "--duration-seconds" => {
                     let seconds = value
                         .parse::<u64>()
@@ -156,6 +179,46 @@ mod tests {
             parse(&[]).unwrap().unwrap().duration,
             Duration::from_secs(5)
         );
+    }
+
+    #[test]
+    fn bounded_reconnect_configuration() {
+        let defaults = parse(&[]).unwrap().unwrap();
+        assert_eq!(defaults.reconnect_attempts, 0);
+        assert_eq!(defaults.reconnect_delay, Duration::from_millis(250));
+        for attempts in ["0", "8"] {
+            for delay in ["50", "2000"] {
+                let options = parse(&[
+                    "--reconnect-attempts",
+                    attempts,
+                    "--reconnect-delay-ms",
+                    delay,
+                ])
+                .unwrap()
+                .unwrap();
+                assert_eq!(options.reconnect_attempts, attempts.parse::<u8>().unwrap());
+                assert_eq!(
+                    options.reconnect_delay,
+                    Duration::from_millis(delay.parse().unwrap())
+                );
+            }
+        }
+        for (flag, invalid) in [
+            (
+                "--reconnect-attempts",
+                vec!["-1", "9", "256", "1.5", "oops", ""],
+            ),
+            (
+                "--reconnect-delay-ms",
+                vec!["-1", "0", "49", "2001", "1.5", "oops", ""],
+            ),
+        ] {
+            assert!(parse(&[flag]).is_err());
+            for value in invalid {
+                assert!(parse(&[flag, value]).is_err());
+            }
+            assert!(parse(&[flag, "1", flag, "1"]).is_err());
+        }
     }
 
     #[test]
