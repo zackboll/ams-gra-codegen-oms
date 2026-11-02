@@ -1,0 +1,38 @@
+{
+  "status": "interrupted; not counted as pass",
+  "reason": "complete 40-selection release BEFORE supersedes slow debug attempt",
+  "processes": [
+    {
+      "pid": 3609175,
+      "args": [
+        "python3.11",
+        "scripts/measure-py016-uci.py",
+        "--generator",
+        "/home/zboll/py017-build/before-generator",
+        "--closure-tool",
+        "/home/zboll/py017-build/before-closure",
+        "--output",
+        "/home/zboll/py017-build/before",
+        "--source-commit",
+        "86a9e6c971a7a1bad466dff2ada75f1f8e48bf66"
+      ]
+    },
+    {
+      "pid": 3737027,
+      "args": [
+        "/home/zboll/py017-build/before-generator",
+        "service-generate",
+        "--schema",
+        "/home/zboll/rust-oms-002-evidence/uci25/03_OAC-STD-002_RevE_UCI_Schema_v2_5/UCI_MessageDefinitions_v2_5_0.xsd",
+        "--contract",
+        "/home/zboll/py017-build/before/2.5-PositionReport.yaml",
+        "--language",
+        "python",
+        "--world",
+        "open-extensions",
+        "--output",
+        "/home/zboll/py017-build/before/2.5-PositionReport-open-extensions-False"
+      ]
+    }
+  ]
+}
