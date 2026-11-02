@@ -58,6 +58,28 @@ CPP_RUNTIME_SUITES = (
 )
 
 
+# CPP-OMS-004: offline Float64 numerical regression. The synthetic Float64
+# fixture is generated through the production CLI; the unchanged Task 096
+# exact-rational oracle regenerates its frozen corpus (hashes checked) and the
+# focused subset (every non-exhaustive conversion row, every 128th encoding);
+# tests/cpp-codec/float64_consumer.cpp is compiled with CPP_STRICT and must
+# report exactly its edge, decode and encode summaries, and the oracle must
+# accept every encoder token. No UCI, no Sleet; clang++, sanitizers and the
+# full corpus stay in cpp_codec.rs and scripts/check-cpp-oms-004-*.sh.
+CPP_FLOAT64_FIXTURE = "cpp-codec/float64/float64"
+CPP_FLOAT64_ORACLE = "tests/cpp-codec/float64_oracle.py"
+CPP_FLOAT64_MARKERS = {
+    # The focused subset's SHA-256 is pinned too: a changed oracle or subset fails.
+    "focused": ("CPP_OMS_004_FOCUSED conversions=6693 encodings=161 "
+                "sha256-conversions=ae2c40fb1d3e01634f97470f0367f4f90461912770a99328c43b80ccea799c8a"),
+    "selftest": "CPP_OMS_004_ORACLE_SELFTEST cases=18 failures=0",
+    "edge": "CPP_OMS_004_FLOAT64 checks=305 rejections=103",
+    "decode": "CPP_OMS_004_DECODE rows=6693 finite=6688 overflow=5 mismatches=0",
+    "encode": "CPP_OMS_004_ENCODE rows=161 roundtrip_mismatches=0",
+    "check-encoding": "CPP_OMS_004_ORACLE_ENCODING rows=161 mismatches=0",
+}
+
+
 def cpp_shape_marker(shape, checks, rejections):
     return f"CPP_OMS_002_SHAPES_COMPLETE shape={shape} checks={checks} rejections={rejections}"
 
@@ -112,7 +134,8 @@ def classify(paths):
                           "scripts/check-cpp-oms-001-parity.sh",
                           "scripts/check-cpp-oms-002-real-log.sh",
                           "scripts/check-cpp-oms-003-runtime.sh",
-                          "scripts/check-cpp-oms-003-real-log-sleet.sh")):
+                          "scripts/check-cpp-oms-003-real-log-sleet.sh",
+                          "scripts/check-cpp-oms-004-position-report.sh")):
             selected.add("cpp")
         else:
             selected.update(BACKENDS)
@@ -158,7 +181,8 @@ def checked(command, *, cwd=ROOT, marker=None, tests=False, env=None):
 
 def generate(language, scratch, fixture):
     contract = {"python-codec/oam": "python-codec/service",
-                "cpp-codec/oam": "cpp-codec/service"}.get(fixture, fixture)
+                "cpp-codec/oam": "cpp-codec/service",
+                CPP_FLOAT64_FIXTURE: "cpp-codec/float64/service"}.get(fixture, fixture)
     checked([ROOT / "target/debug/ams-gra-codegen-oms", "service-generate",
              "--schema", ROOT / f"tests/fixtures/{fixture}.xsd",
              "--contract", ROOT / f"tests/fixtures/{contract}.yaml",
@@ -202,6 +226,7 @@ def cpp_smoke(scratch):
             raise RuntimeError(f"C++ smoke: shapes consumer {shape} did not report exactly: {marker}")
     print("CPP OMS-002 SHAPES PASSED", flush=True)
     cpp_runtime_smoke(scratch.parent / "cpp-lacal")
+    cpp_float64_smoke(scratch.parent / "cpp-float64")
     print("CPP SMOKE PASSED", flush=True)
 
 
@@ -225,6 +250,34 @@ def cpp_runtime_smoke(out):
         if marker not in checked([binary]).splitlines():
             raise RuntimeError(f"C++ smoke: {binary_name} did not report exactly: {marker}")
     print("CPP OMS-003 RUNTIME PASSED", flush=True)
+
+
+def cpp_float64_smoke(out):
+    """CPP-OMS-004: generated Float64 codec against the exact oracle (focused corpus)."""
+    out.mkdir(parents=True, exist_ok=True)
+    generated = out / "float64"
+    generate("cpp", generated, CPP_FLOAT64_FIXTURE)
+    for name in ("oam.hpp", "service_api.hpp", "service_codec.hpp"):
+        if not (generated / name).is_file():
+            raise RuntimeError(f"C++ smoke: production CLI did not generate {name} for the Float64 fixture")
+    oracle = [sys.executable, "-I", ROOT / CPP_FLOAT64_ORACLE]
+
+    def exactly(output, key):
+        if CPP_FLOAT64_MARKERS[key] not in output.splitlines():
+            raise RuntimeError(f"C++ smoke: Float64 {key} did not report exactly: {CPP_FLOAT64_MARKERS[key]}")
+
+    corpus = out / "corpus"
+    exactly(checked([*oracle, "corpus", corpus, "--focused"]), "focused")
+    exactly(checked([*oracle, "selftest"]), "selftest")
+    binary = out / "float64-consumer"
+    checked(["g++", *CPP_STRICT, "-O2", "-I", generated, ROOT / "tests/cpp-codec/float64_consumer.cpp",
+             "-o", binary])
+    exactly(checked([binary]), "edge")
+    exactly(checked([binary, "decode", corpus / "focused-conversions.tsv"]), "decode")
+    tokens = out / "tokens.tsv"
+    exactly(checked([binary, "encode", corpus / "focused-encoding.tsv", tokens]), "encode")
+    exactly(checked([*oracle, "check-encoding", tokens]), "check-encoding")
+    print("CPP OMS-004 FLOAT64 PASSED", flush=True)
 
 
 def smoke(backend):

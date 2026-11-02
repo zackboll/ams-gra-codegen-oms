@@ -204,7 +204,13 @@ class Routing(unittest.TestCase):
                      "tests/cpp-lacal/runtime_mock_test.cpp", "tests/cpp-lacal/mock_peer.hpp",
                      "tests/cpp-lacal/runtime_shutdown_test.cpp",
                      "tests/cpp-lacal/real_log_sleet.cpp", "scripts/check-cpp-oms-003-runtime.sh",
-                     "scripts/check-cpp-oms-003-real-log-sleet.sh"):
+                     "scripts/check-cpp-oms-003-real-log-sleet.sh",
+                     "crates/backend-cpp/src/codec_float64.hpp", "tests/cpp-codec/float64_consumer.cpp",
+                     "tests/cpp-codec/float64_oracle.py", "tests/cpp-codec/position_report_consumer.cpp",
+                     "tests/cpp-codec/position_report_documents.hpp",
+                     "tests/fixtures/cpp-codec/float64/float64.xsd",
+                     "tests/cpp-lacal/real_position_report_sleet.cpp",
+                     "scripts/check-cpp-oms-004-position-report.sh"):
             with self.subTest(path=path):
                 self.assert_execution([path], ["cpp"])
         self.assert_execution(["tests/cpp-codec/consumer.cpp", "crates/backend-cpp/src/lib.rs",
@@ -220,6 +226,7 @@ class Routing(unittest.TestCase):
                      "cpp/oms-lacal-runtime-other/a.cpp", "cpp/other/a.cpp", "cpp/oms-lacal-runtime",
                      "tests/cpp-lacal-other/a.cpp", "tests/cpp-lacalx/a.cpp",
                      "scripts/check-cpp-oms-003.sh", "scripts/check-cpp-oms-003-runtime.sh.bak",
+                     "scripts/check-cpp-oms-004.sh", "scripts/check-cpp-oms-004-position-report.sh.bak",
                      "tests/fixtures/service-generate/runtime-test.yaml"):
             with self.subTest(path=path):
                 self.assert_execution([path], list(smoke.BACKENDS))
@@ -300,6 +307,23 @@ class Routing(unittest.TestCase):
             self.assertEqual(smoke.route("a" * 40, "b" * 40), (set(smoke.BACKENDS), True))
 
 
+def float64_key(command):
+    """Which CPP-OMS-004 Float64 smoke step a command is (a CPP_FLOAT64_MARKERS key), or None."""
+    args = [str(part) for part in command]
+    if Path(args[0]).name == "float64-consumer":
+        return args[1] if len(args) > 1 else "edge"
+    script = next((i for i, part in enumerate(args) if part.endswith(smoke.CPP_FLOAT64_ORACLE)), None)
+    if script is not None:
+        return "focused" if args[script + 1] == "corpus" else args[script + 1]
+    return None
+
+
+def float64_output(command):
+    """Mocked exact Float64 smoke output, or None for other commands."""
+    key = float64_key(command)
+    return None if key is None else smoke.CPP_FLOAT64_MARKERS[key] + "\n"
+
+
 class Execution(unittest.TestCase):
     def test_deliberate_failure_is_red(self):
         with self.assertRaises(subprocess.CalledProcessError):
@@ -329,6 +353,8 @@ class Execution(unittest.TestCase):
                         (out / name).write_text("")
                 if Path(str(command[0])).name == "consumer":
                     return "6313 checks, 0 failures\n"
+                if float64_output(command) is not None:
+                    return float64_output(command)
                 if Path(str(command[0])).name.startswith("shapes-"):
                     return "".join(smoke.cpp_shape_marker(*row[1:]) + "\n" for row in smoke.CPP_SHAPES)
                 for binary, _, _, marker in smoke.CPP_RUNTIME_SUITES:
@@ -363,10 +389,15 @@ class Execution(unittest.TestCase):
                     self.assertIn(source, joined)
                 self.assertIn("cpp/oms-lacal-runtime/src/runtime.cpp", joined)
                 self.assertIn("tests/fixtures/service-generate/runtime-test.xsd", joined)
+                self.assertIn("tests/fixtures/cpp-codec/float64/float64.xsd", joined)
+                self.assertIn("tests/cpp-codec/float64_consumer.cpp", joined)
+                self.assertIn("float64_oracle.py corpus", joined)
+                self.assertIn("float64_oracle.py check-encoding", joined)
                 # Offline: the C++ smoke never fetches or reads authentic UCI
                 # schemas and never starts Sleet.
                 for forbidden in ("fetch-pinned-uci", "UCI_MessageDefinitions", "check-cpp-oms-002-real-log",
-                                  "check-cpp-oms-003", "real_log_sleet", "sleet", "Sleet"):
+                                  "check-cpp-oms-003", "check-cpp-oms-004", "real_log_sleet",
+                                  "real_position_report", "position_report", "sleet", "Sleet"):
                     self.assertNotIn(forbidden, joined)
                 self.assertNotIn("-fsanitize", joined)
                 self.assertNotIn("clang", joined)
@@ -376,7 +407,9 @@ class Execution(unittest.TestCase):
                 self.assertIn("alr -n build", joined)
 
     def run_cpp_smoke(self, consumer_output="6313 checks, 0 failures\n", write_codec=True,
-                      failing=None, missing=None, shape_outputs=None, runtime_outputs=None):
+                      failing=None, missing=None, shape_outputs=None, runtime_outputs=None,
+                      float64_outputs=None):
+        float64_outputs = float64_outputs or {}
         shape_outputs = dict({shape: smoke.cpp_shape_marker(shape, checks, rejections) + "\n"
                               for _, shape, checks, rejections in smoke.CPP_SHAPES},
                              **(shape_outputs or {}))
@@ -399,6 +432,10 @@ class Execution(unittest.TestCase):
                 return shape_outputs[name.removeprefix("shapes-")]
             if name in runtime_outputs:
                 return runtime_outputs[name]
+            if float64_key(command) in float64_outputs:
+                return float64_outputs[float64_key(command)]
+            if float64_output(command) is not None:
+                return float64_output(command)
             return consumer_output if name == "consumer" else ""
         with tempfile.TemporaryDirectory() as directory, patch.object(smoke, "checked", side_effect=checked):
             smoke.cpp_smoke(Path(directory) / "consumer")
@@ -408,7 +445,7 @@ class Execution(unittest.TestCase):
         seen = self.run_cpp_smoke()
         commands = [" ".join(command) for command, _ in seen]
         self.assertEqual([c.split()[0] for c in commands if c.startswith(("g++", "cargo"))].count("g++"),
-                         2 + len(smoke.CPP_SHAPES) + len(smoke.CPP_RUNTIME_SUITES))
+                         2 + len(smoke.CPP_SHAPES) + len(smoke.CPP_RUNTIME_SUITES) + 1)
         cargo = [kwargs for command, kwargs in seen if command[0] == "cargo"][0]
         self.assertTrue(cargo["tests"])
         self.assertIn("3 passed; 0 failed", cargo["marker"])
@@ -417,8 +454,8 @@ class Execution(unittest.TestCase):
             self.assertIn(name, cargo_command)
         self.assertIn("--exact", cargo_command)
         generates = [c for c in commands if "--language cpp" in c]
-        self.assertEqual(len(generates), 1 + len(smoke.CPP_SHAPES) + 1)
-        for (fixture, shape, _, _), command in zip(smoke.CPP_SHAPES, generates[1:-1]):
+        self.assertEqual(len(generates), 1 + len(smoke.CPP_SHAPES) + 1 + 1)
+        for (fixture, shape, _, _), command in zip(smoke.CPP_SHAPES, generates[1:-2]):
             self.assertIn(f"tests/fixtures/{fixture}.xsd", command)
             self.assertIn(f"tests/fixtures/{fixture}.yaml", command)
             self.assertIn("--with-codec", command)
@@ -442,7 +479,7 @@ class Execution(unittest.TestCase):
         order.append(next(i for i, c in enumerate(commands) if "-DSHAPE_" in c))
         # CPP-OMS-003 runtime: generated after the shapes, then each suite is
         # strict-compiled and executed; the last command runs the mock suite.
-        runtime_generate = generates[-1]
+        runtime_generate = generates[-2]
         self.assertIn("tests/fixtures/service-generate/runtime-test.xsd", runtime_generate)
         self.assertIn("tests/fixtures/service-generate/runtime-test.yaml", runtime_generate)
         self.assertIn("--with-codec", runtime_generate)
@@ -458,8 +495,25 @@ class Execution(unittest.TestCase):
             self.assertEqual("/runtime-test" in compile_command.split(" -o ")[0], needs_generated)
             order.append(commands.index(compile_command))
             order.append(next(i for i, c in enumerate(commands) if c.endswith(f"/{binary}") and " " not in c))
+        # CPP-OMS-004 Float64: generated after the runtime suites; corpus,
+        # oracle self-test, strict compile, the three consumer modes, and the
+        # oracle check of the encoder tokens comes last.
+        float64_generate = generates[-1]
+        self.assertIn("tests/fixtures/cpp-codec/float64/float64.xsd", float64_generate)
+        self.assertIn("tests/fixtures/cpp-codec/float64/service.yaml", float64_generate)
+        self.assertIn("--with-codec", float64_generate)
+        order.append(commands.index(float64_generate))
+        for needle in ("float64_oracle.py corpus", "float64_oracle.py selftest", "float64_consumer.cpp"):
+            order.append(next(i for i, c in enumerate(commands) if needle in c))
+        compile_command = next(c for c in commands if "float64_consumer.cpp" in c)
+        for flag in smoke.CPP_STRICT:
+            self.assertIn(flag, compile_command.split())
+        for mode in ("", " decode ", " encode "):
+            order.append(next(i for i, c in enumerate(commands)
+                              if c.split()[0].endswith("/float64-consumer") and (mode in c if mode else " " not in c)))
+        self.assertIn("focused-conversions.tsv", next(c for c in commands if " decode " in c))
         self.assertEqual(order, sorted(order))
-        self.assertTrue(commands[-1].endswith(f"/{smoke.CPP_RUNTIME_SUITES[-1][0]}"))
+        self.assertIn("float64_oracle.py check-encoding", commands[-1])
 
     def test_cpp_smoke_fails_closed(self):
         with self.assertRaises(FileNotFoundError):  # no compiler
@@ -499,6 +553,19 @@ class Execution(unittest.TestCase):
                            marker.replace("COMPLETE", "FAILED") + "\n"):
                 with self.subTest(binary=binary, output=output), self.assertRaises(RuntimeError):
                     self.run_cpp_smoke(runtime_outputs={binary: output})
+        # CPP-OMS-004 Float64: a failing consumer, or any step whose summary
+        # is not exactly the expected one (including any mismatch count).
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.run_cpp_smoke(failing="float64-consumer")
+        for key, marker in smoke.CPP_FLOAT64_MARKERS.items():
+            worse = re.sub(r"(mismatches|failures)=0", r"\1=1", marker)
+            fewer = re.sub(r"(rows|checks|conversions)=(\d+)", lambda m: f"{m.group(1)}={int(m.group(2)) - 1}",
+                           marker, count=1)
+            for output in ("", "no summary\n", worse + "\n", fewer + "\n", marker + " trailing\n"):
+                if output == marker + "\n":
+                    continue
+                with self.subTest(step=key, output=output), self.assertRaises(RuntimeError):
+                    self.run_cpp_smoke(float64_outputs={key: output})
 
     def test_cpp_smoke_missing_compiler_is_red_for_real(self):
         with patch.object(smoke.subprocess, "run", side_effect=FileNotFoundError("g++")), \
