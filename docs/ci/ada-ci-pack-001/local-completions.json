@@ -1,0 +1,178 @@
+[
+  {
+    "suite": "ada-json-guard",
+    "cpu": 0,
+    "source": {
+      "sha": "46156b704d5ee3ab484bb4e5b44c5f96e13f7136",
+      "tree": "0126a321bfd1fb560a10ad336801a88343c16783",
+      "run_id": null,
+      "attempt": null
+    },
+    "exit": 0,
+    "steps": [
+      {
+        "name": "Guard qualification wrapper negative controls",
+        "command": [
+          "taskset",
+          "--cpu-list",
+          "0",
+          "bash",
+          "-euo",
+          "pipefail",
+          "-c",
+          "python3 scripts/test-task087a-wrapper.py"
+        ],
+        "exit": 0,
+        "reason": null,
+        "elapsed_seconds": 0.20056207000743598
+      },
+      {
+        "name": "Production guard and clean consumer (GNAT 16.1.0, all policies)",
+        "command": [
+          "taskset",
+          "--cpu-list",
+          "0",
+          "bash",
+          "-euo",
+          "pipefail",
+          "-c",
+          "python3 scripts/check-task087a.py --compiler 16 --scratch \"$RUNNER_TEMP/task087a-qualification\""
+        ],
+        "exit": 0,
+        "reason": null,
+        "elapsed_seconds": 290.6245880020142
+      }
+    ],
+    "evidence": [
+      {
+        "path": "task087a-qualification/ignore-run.log",
+        "sha256": "67a60d687e5fa1ad660a9b0322a4f9588f0107925e6abd4fe15353f8777c3036",
+        "marker": "GUARDED CORPUS PASSED cases= 199"
+      },
+      {
+        "path": "task087a-qualification/check-run.log",
+        "sha256": "67a60d687e5fa1ad660a9b0322a4f9588f0107925e6abd4fe15353f8777c3036",
+        "marker": "GUARDED CORPUS PASSED cases= 199"
+      },
+      {
+        "path": "task087a-qualification/normal-run.log",
+        "sha256": "67a60d687e5fa1ad660a9b0322a4f9588f0107925e6abd4fe15353f8777c3036",
+        "marker": "GUARDED CORPUS PASSED cases= 199"
+      },
+      {
+        "path": "task087a-qualification/consumer-run.log",
+        "sha256": "c19fba1a0ca65ed2e52eb3dc2b6db3b308e5f5ab5cd2ad4a21af3a2f3c329874",
+        "marker": "TASK087A CLEAN CONSUMER: PASSED"
+      }
+    ],
+    "elapsed_seconds": 290.8268685039948
+  },
+  {
+    "suite": "ada-generated-codec",
+    "cpu": 0,
+    "source": {
+      "sha": "46156b704d5ee3ab484bb4e5b44c5f96e13f7136",
+      "tree": "0126a321bfd1fb560a10ad336801a88343c16783",
+      "run_id": null,
+      "attempt": null
+    },
+    "exit": 0,
+    "steps": [
+      {
+        "name": "Task 088 generated Ada Choice execution (GNAT 16.1.0, all policies)",
+        "command": [
+          "taskset",
+          "--cpu-list",
+          "0",
+          "bash",
+          "-euo",
+          "pipefail",
+          "-c",
+          "python3 scripts/check-task088.py --compiler 16 --scratch \"$RUNNER_TEMP/task088-choice\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+        ],
+        "exit": 0,
+        "reason": null,
+        "elapsed_seconds": 313.16697308199946
+      },
+      {
+        "name": "Execute generated Ada codec, all assertion policies",
+        "command": [
+          "taskset",
+          "--cpu-list",
+          "0",
+          "bash",
+          "-euo",
+          "pipefail",
+          "-c",
+          "python3 scripts/check-task087b.py --compiler 16 --scratch \"$RUNNER_TEMP/task087b-codec\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+        ],
+        "exit": 0,
+        "reason": null,
+        "elapsed_seconds": 311.95976211199013
+      }
+    ],
+    "evidence": [
+      {
+        "path": "task087b-codec/Ignore-run.log",
+        "sha256": "020e5829eebd2354f49fb2abe0c954f5375372c7a872b43302366b8a44a183b0",
+        "marker": "TASK087B_CODEC_COMPLETE cases= 41"
+      },
+      {
+        "path": "task087b-codec/Check-run.log",
+        "sha256": "020e5829eebd2354f49fb2abe0c954f5375372c7a872b43302366b8a44a183b0",
+        "marker": "TASK087B_CODEC_COMPLETE cases= 41"
+      },
+      {
+        "path": "task087b-codec/normal-run.log",
+        "sha256": "020e5829eebd2354f49fb2abe0c954f5375372c7a872b43302366b8a44a183b0",
+        "marker": "TASK087B_CODEC_COMPLETE cases= 41"
+      },
+      {
+        "path": "task087b-codec/subset-Ignore-run.log",
+        "sha256": "4f4a3c914f20fc4381e3c714f1d2e2ddd14eed4cf5490057d608b24e0e1a1046",
+        "marker": "TASK087B_SUBSET_COMPLETE cases= 7"
+      },
+      {
+        "path": "task087b-codec/subset-Check-run.log",
+        "sha256": "4f4a3c914f20fc4381e3c714f1d2e2ddd14eed4cf5490057d608b24e0e1a1046",
+        "marker": "TASK087B_SUBSET_COMPLETE cases= 7"
+      },
+      {
+        "path": "task087b-codec/subset-normal-run.log",
+        "sha256": "4f4a3c914f20fc4381e3c714f1d2e2ddd14eed4cf5490057d608b24e0e1a1046",
+        "marker": "TASK087B_SUBSET_COMPLETE cases= 7"
+      },
+      {
+        "path": "task088-choice/codec-ada-choice-Ignore-run.log",
+        "sha256": "a5866875175a89a7b31eaad957d12a8e95303bea8d9d43646825345beeaa288b",
+        "marker": "TASK088_CODEC_COMPLETE cases= 172"
+      },
+      {
+        "path": "task088-choice/codec-ada-choice-Check-run.log",
+        "sha256": "a5866875175a89a7b31eaad957d12a8e95303bea8d9d43646825345beeaa288b",
+        "marker": "TASK088_CODEC_COMPLETE cases= 172"
+      },
+      {
+        "path": "task088-choice/codec-ada-choice-normal-run.log",
+        "sha256": "a5866875175a89a7b31eaad957d12a8e95303bea8d9d43646825345beeaa288b",
+        "marker": "TASK088_CODEC_COMPLETE cases= 172"
+      },
+      {
+        "path": "task088-choice/codec-choice-Ignore-run.log",
+        "sha256": "e7ca86b41795749bf809636c3c33fc249a9a786be7f7d23366e8f6a0361fe3ee",
+        "marker": "TASK088_QUALIFIED_COMPLETE cases= 2"
+      },
+      {
+        "path": "task088-choice/codec-choice-Check-run.log",
+        "sha256": "e7ca86b41795749bf809636c3c33fc249a9a786be7f7d23366e8f6a0361fe3ee",
+        "marker": "TASK088_QUALIFIED_COMPLETE cases= 2"
+      },
+      {
+        "path": "task088-choice/codec-choice-normal-run.log",
+        "sha256": "e7ca86b41795749bf809636c3c33fc249a9a786be7f7d23366e8f6a0361fe3ee",
+        "marker": "TASK088_QUALIFIED_COMPLETE cases= 2"
+      }
+    ],
+    "elapsed_seconds": 625.1555583699956
+  }
+]

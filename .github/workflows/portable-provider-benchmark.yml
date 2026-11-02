@@ -1,119 +1,163 @@
 name: Portable Provider Benchmark
 
-# Temporary bounded ADA-CI-PACK-001 pilot on the task branch only.
+# Authorization is manual AND main-only; candidate contents are never host code.
 on:
   workflow_dispatch:
     inputs:
       source_sha:
-        description: Exact pilot commit (must equal the workflow commit)
+        description: Exact reviewed PERF-009 commit (controller allowlist; 40 lowercase hex)
         required: true
         type: string
+
 permissions:
   contents: read
+
 jobs:
-  ada-codec-pack-pilot:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/perf/ada-ci-pack-001'
+  benchmark-gnat-14:
+    env:
+      BENCH_COMPILER: '14'
     concurrency:
       group: oms-main-slot-3
       queue: max
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.repository == 'zackboll/ams-gra-codegen-oms'
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
-    env:
-      PYTHONDONTWRITEBYTECODE: '1'
+    timeout-minutes: 360
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Require exact dispatched source
+      - name: Authorize exact main controller and candidate commit
         env:
           SOURCE_SHA: ${{ inputs.source_sha }}
-        run: test "$SOURCE_SHA" = "$GITHUB_SHA"
-      - uses: dtolnay/rust-toolchain@1.95.0
-      - name: Install verified Alire 2.1.1
-        run: |
-          set -euo pipefail
-          curl --fail --location --retry 3 --output "$RUNNER_TEMP/alire.zip" https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
-          echo "09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  $RUNNER_TEMP/alire.zip" | sha256sum --check --strict
-          unzip -q "$RUNNER_TEMP/alire.zip" -d "$RUNNER_TEMP/alire"
-          test "$("$RUNNER_TEMP/alire/bin/alr" --version)" = 'alr 2.1.1'
-          sha256sum "$RUNNER_TEMP/alire/bin/alr"
-          echo "$RUNNER_TEMP/alire/bin" >> "$GITHUB_PATH"
-      - name: Execute one four-worker benchmark with full prerequisite guard
-        run: python3 scripts/ada_ci_pack/run.py --pack a --workers 4 --expected-sha "$GITHUB_SHA" --scratch "$RUNNER_TEMP/ada-codec-pack-a"
-      - name: Independently verify every constituent exit and original evidence
-        run: python3 scripts/ada_ci_pack/verify.py --pack a --expected-sha "$GITHUB_SHA" --expected-tree "$(git rev-parse 'HEAD^{tree}')" --scratch "$RUNNER_TEMP/ada-codec-pack-a"
-      - name: Preserve pilot measurements and every worker exit
+          EXPECTED_WORKFLOW_SHA: ${{ github.sha }}
+        run: python3 scripts/ci_bench/controller.py prepare
+      - name: Build trusted pinned tool and dependency image
+        run: python3 scripts/ci_bench/controller.py image
+      - name: Execute isolated compiler A B B A
+        run: python3 scripts/ci_bench/controller.py campaign
+      - name: Package bounded mandatory evidence
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ada-ci-pack-001-pilot
-          path: |
-            ${{ runner.temp }}/ada-codec-pack-a/*.json
-            ${{ runner.temp }}/ada-codec-pack-a/*.jsonl
-            ${{ runner.temp }}/ada-codec-pack-a/*.log
-            ${{ runner.temp }}/ada-codec-pack-a/*/completion.json
-            ${{ runner.temp }}/ada-codec-pack-a/*/step-*
-            ${{ runner.temp }}/ada-codec-pack-a/*/alr.jsonl
-          if-no-files-found: error
-      - name: Preserve ada-json-guard original evidence
+        run: python3 scripts/ci_bench/controller.py package
+      - name: Upload mandatory measurements
+        id: measurements
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: task087a-ada-json-guard
-          path: |
-            ${{ runner.temp }}/ada-codec-pack-a/seed/task087a-qualification/*.log
-            ${{ runner.temp }}/ada-codec-pack-a/seed/task087a-qualification/qualified-alire.lock
+          name: ci-bench-001-gnat-14-measurements
+          path: ${{ runner.temp }}/ci-bench-001/public/
           if-no-files-found: error
-      - name: Preserve ada-generated-codec original evidence
+          retention-days: 30
+          compression-level: 0
+      - name: Account for actual packaging and upload step
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: task087b-generated-codec
-          path: |
-            ${{ runner.temp }}/ada-codec-pack-a/ada-generated-codec/task087b-codec/*.log
-            ${{ runner.temp }}/ada-codec-pack-a/ada-generated-codec/task087b-codec/qualified-alire.lock
-            ${{ runner.temp }}/ada-codec-pack-a/ada-generated-codec/task087b-codec/**/alire.lock
-            ${{ runner.temp }}/ada-codec-pack-a/ada-generated-codec/task088-choice/*.log
-            ${{ runner.temp }}/ada-codec-pack-a/ada-generated-codec/task088-choice/source-hashes.txt
-            ${{ runner.temp }}/ada-codec-pack-a/ada-generated-codec/task088-choice/**/alire.lock
-          if-no-files-found: error
-      - name: Preserve ada-repeated-temporal-codec original evidence
+        env:
+          MEASUREMENTS_OUTCOME: ${{ steps.measurements.outcome }}
+          MEASUREMENTS_ID: ${{ steps.measurements.outputs.artifact-id }}
+          MEASUREMENTS_DIGEST: ${{ steps.measurements.outputs.artifact-digest }}
+        run: python3 scripts/ci_bench/controller.py receipt
+      - name: Upload mandatory transport receipt
+        id: transport
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: task094-ada-repeated-temporal-codec
-          path: |
-            ${{ runner.temp }}/ada-codec-pack-a/ada-repeated-temporal-codec/task094/**
-            ${{ runner.temp }}/ada-codec-pack-a/ada-repeated-temporal-codec/task094-composition/**
-            ${{ runner.temp }}/ada-codec-pack-a/ada-repeated-temporal-codec/task094-combined/**
+          name: ci-bench-001-gnat-14-upload-receipt
+          path: ${{ runner.temp }}/ci-bench-001/upload-receipt.json
           if-no-files-found: error
-      - name: Preserve ada-datetime-codec original evidence
+          retention-days: 30
+      - name: Enforce complete campaign and acceptance gates
         if: always()
-        uses: actions/upload-artifact@v4
+        env:
+          RECEIPT_OUTCOME: ${{ steps.transport.outcome }}
+        run: python3 scripts/ci_bench/controller.py gate
+
+  benchmark-gnat-16:
+    needs: [benchmark-gnat-14]
+    env:
+      BENCH_COMPILER: '16'
+    concurrency:
+      group: oms-main-slot-3
+      queue: max
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.repository == 'zackboll/ams-gra-codegen-oms'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          name: task090-ada-datetime-codec
-          path: |
-            ${{ runner.temp }}/ada-codec-pack-a/ada-datetime-codec/task090/*.log
-            ${{ runner.temp }}/ada-codec-pack-a/ada-datetime-codec/task090/*.lock
-            ${{ runner.temp }}/ada-codec-pack-a/ada-datetime-codec/task090/*.sha256
-            ${{ runner.temp }}/ada-codec-pack-a/ada-datetime-codec/task090/*.exit
-            ${{ runner.temp }}/ada-codec-pack-a/ada-datetime-codec/task090/*.command.json
-            ${{ runner.temp }}/ada-codec-pack-a/ada-datetime-codec/task090/*-corpus.txt
-            ${{ runner.temp }}/ada-codec-pack-a/ada-datetime-codec/task090r/*.log
-            ${{ runner.temp }}/ada-codec-pack-a/ada-datetime-codec/task090r/*.lock
-            ${{ runner.temp }}/ada-codec-pack-a/ada-datetime-codec/task090r/*.sha256
-            ${{ runner.temp }}/ada-codec-pack-a/ada-datetime-codec/task090r/*.exit
-            ${{ runner.temp }}/ada-codec-pack-a/ada-datetime-codec/task090r/*.command.json
-          if-no-files-found: error
-      - name: Preserve ada-hexbinary-codec original evidence
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Authorize exact main controller and candidate commit
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          EXPECTED_WORKFLOW_SHA: ${{ github.sha }}
+        run: python3 scripts/ci_bench/controller.py prepare
+      - name: Build trusted pinned tool and dependency image
+        run: python3 scripts/ci_bench/controller.py image
+      - name: Execute isolated compiler A B B A
+        run: python3 scripts/ci_bench/controller.py campaign
+      - name: Package bounded mandatory evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        run: python3 scripts/ci_bench/controller.py package
+      - name: Upload mandatory measurements
+        id: measurements
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: task093-ada-hexbinary-codec
-          path: |
-            ${{ runner.temp }}/ada-codec-pack-a/ada-hexbinary-codec/task093-c4-*/**
-            ${{ runner.temp }}/ada-codec-pack-a/ada-hexbinary-codec/task093-hexbinary/**
-            ${{ runner.temp }}/ada-codec-pack-a/ada-hexbinary-codec/task093-qualified/**
-            ${{ runner.temp }}/ada-codec-pack-a/ada-hexbinary-codec/task093-combined/**
+          name: ci-bench-001-gnat-16-measurements
+          path: ${{ runner.temp }}/ci-bench-001/public/
           if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+      - name: Account for actual packaging and upload step
+        if: always()
+        env:
+          MEASUREMENTS_OUTCOME: ${{ steps.measurements.outcome }}
+          MEASUREMENTS_ID: ${{ steps.measurements.outputs.artifact-id }}
+          MEASUREMENTS_DIGEST: ${{ steps.measurements.outputs.artifact-digest }}
+        run: python3 scripts/ci_bench/controller.py receipt
+      - name: Upload mandatory transport receipt
+        id: transport
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ci-bench-001-gnat-16-upload-receipt
+          path: ${{ runner.temp }}/ci-bench-001/upload-receipt.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Enforce complete campaign and acceptance gates
+        if: always()
+        env:
+          RECEIPT_OUTCOME: ${{ steps.transport.outcome }}
+        run: python3 scripts/ci_bench/controller.py gate
+
+  benchmark-evidence:
+    needs: [benchmark-gnat-14, benchmark-gnat-16]
+    if: always() && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.repository == 'zackboll/ams-gra-codegen-oms'
+    concurrency:
+      group: oms-main-slot-3
+      queue: max
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Independently reconcile both compiler executions and uploads
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          EXPECTED_WORKFLOW_SHA: ${{ github.sha }}
+          BENCH_NEEDS: ${{ toJSON(needs) }}
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/ci_bench/reconcile.py
+      - name: Publish mandatory independent reconciliation
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ci-bench-001-reconciliation
+          path: ${{ runner.temp }}/ci-bench-001/reconciliation.json
+          if-no-files-found: error
+          retention-days: 30
