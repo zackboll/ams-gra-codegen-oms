@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic CPP-OMS-004 fixture (not UCI). Every C++ codec Float64 shape:
+     direct unconstrained xs:double (required, optional, repeated, Choice
+     alternative, nested), an unconstrained named Float64, and named Float64
+     domains with inclusive, exclusive, one-sided, mixed, subnormal and
+     restriction-chain bounds. The bounds live only in the generated model;
+     the codec must reach them through `create`. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+           targetNamespace="https://www.vdl.afrl.af.mil/programs/oam"
+           elementFormDefault="qualified">
+  <xs:simpleType name="UnboundedDoubleType">
+    <xs:restriction base="xs:double"/>
+  </xs:simpleType>
+  <xs:simpleType name="AngleDegreesType">
+    <xs:restriction base="xs:double">
+      <xs:minInclusive value="-180"/>
+      <xs:maxInclusive value="180"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="AltitudeMetersType">
+    <xs:restriction base="xs:double">
+      <xs:minInclusive value="-6378237"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="PositiveType">
+    <xs:restriction base="xs:double">
+      <xs:minExclusive value="0"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="BelowOneType">
+    <xs:restriction base="xs:double">
+      <xs:maxExclusive value="1"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="MixedRangeType">
+    <xs:restriction base="xs:double">
+      <xs:minInclusive value="-3.5"/>
+      <xs:maxExclusive value="3.5"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="OpenUnitType">
+    <xs:restriction base="xs:double">
+      <xs:minExclusive value="0"/>
+      <xs:maxExclusive value="1"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="TinyType">
+    <xs:restriction base="xs:double">
+      <xs:minInclusive value="4.9406564584124654e-324"/>
+      <xs:maxExclusive value="2.2250738585072014e-308"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="BaseRateType">
+    <xs:restriction base="xs:double">
+      <xs:minInclusive value="0"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="DerivedRateType">
+    <xs:restriction base="uci:BaseRateType">
+      <xs:maxInclusive value="10"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:complexType name="InnerType">
+    <xs:sequence>
+      <xs:element name="Value" type="xs:double"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="FloatChoiceType">
+    <xs:choice>
+      <xs:element name="Value" type="xs:double"/>
+      <xs:element name="Angle" type="uci:AngleDegreesType"/>
+      <xs:element name="Flag" type="xs:boolean"/>
+    </xs:choice>
+  </xs:complexType>
+  <xs:complexType name="Float64PayloadType">
+    <xs:sequence>
+      <xs:element name="Direct" type="xs:double"/>
+      <xs:element name="Optional" type="xs:double" minOccurs="0"/>
+      <xs:element name="Named" type="uci:UnboundedDoubleType"/>
+      <xs:element name="Angle" type="uci:AngleDegreesType"/>
+      <xs:element name="Altitude" type="uci:AltitudeMetersType" minOccurs="0"/>
+      <xs:element name="Positive" type="uci:PositiveType" minOccurs="0"/>
+      <xs:element name="BelowOne" type="uci:BelowOneType" minOccurs="0"/>
+      <xs:element name="Mixed" type="uci:MixedRangeType" minOccurs="0"/>
+      <xs:element name="Open" type="uci:OpenUnitType" minOccurs="0"/>
+      <xs:element name="Tiny" type="uci:TinyType" minOccurs="0"/>
+      <xs:element name="Derived" type="uci:DerivedRateType" minOccurs="0"/>
+      <xs:element name="Samples" type="xs:double" minOccurs="0" maxOccurs="4"/>
+      <xs:element name="NamedSamples" type="uci:AngleDegreesType" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="Pick" type="uci:FloatChoiceType" minOccurs="0"/>
+      <xs:element name="Inner" type="uci:InnerType" minOccurs="0"/>
+      <xs:element name="Count" type="xs:int" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="Float64Report" type="uci:Float64PayloadType" uci:version="001.000.000.000"/>
+</xs:schema>

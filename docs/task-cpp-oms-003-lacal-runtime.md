@@ -291,6 +291,8 @@ which permits only reads alongside a close, not on a reproduced failure.)
   then reports `timeout`. `close()` waits for a running handler without bound.
 * Only the authentic `Log` message is qualified against Sleet; other UCI
   messages depend on C++ codec readiness (CPP-OMS-002 limits).
+  [CPP-OMS-004](task-cpp-oms-004-float64-position-report.md) adds the
+  authentic `PositionReport` (Float64) through this unchanged runtime.
 * clang++ sanitizers were not exercised in this environment. Hosted PR smoke
   runs strict g++ only.
 * Outgoing frame size is not limited by the runtime (the peer's own limit
