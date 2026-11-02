@@ -129,6 +129,14 @@ class WhitespaceVisible(unittest.TestCase):
         object.__delattr__(payload.required, 'value')
         with self.assertRaises(c.CodecError):
             c.encode_Payload(payload)
+        class TextSubclass(str):
+            pass
+        with self.assertRaises(c.CodecError):
+            c._decode_FoldShort(TextSubclass('x'), '$.Required')
+        payload = self.payload()
+        object.__setattr__(payload.required, 'value', TextSubclass('x'))
+        with self.assertRaises(c.CodecError):
+            c.encode_Payload(payload)
         class Sub(m.FoldShort):
             pass
         payload = self.payload()

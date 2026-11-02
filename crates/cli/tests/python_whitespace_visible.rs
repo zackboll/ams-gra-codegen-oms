@@ -118,7 +118,17 @@ fn neighboring_profiles_and_bad_ancestry_reject_atomically() {
     let temp = std::env::temp_dir().join(format!("py016-negative-{}", std::process::id()));
     fs::create_dir(&temp).unwrap();
     let original = fs::read_to_string(fixture().join("oam.xsd")).unwrap();
+    let collapse_short = "<xs:whiteSpace value=\"collapse\"/><xs:minLength value=\"0\"/><xs:maxLength value=\"1024\"/>\n    <xs:pattern value=\"[ -~\\n\\r]{0,1024}\"/>";
+    let collapse_long = collapse_short.replace("1024", "4096");
     let cases = [
+        (
+            "collapse-one-short",
+            original.replace(collapse_short, &collapse_short.replace("value=\"0\"", "value=\"1\"").replace("{0,", "{1,")),
+        ),
+        (
+            "collapse-one-long",
+            original.replace(&collapse_long, &collapse_long.replace("value=\"0\"", "value=\"1\"").replace("{0,", "{1,")),
+        ),
         ("collapse-min-one", original.replace("value=\"0\"", "value=\"1\"").replace("{0,", "{1,")),
         ("preserve-zero-short", original.replace("<xs:whiteSpace value=\"collapse\"/>", "")),
         ("explicit-preserve", original.replace("value=\"collapse\"", "value=\"preserve\"")),

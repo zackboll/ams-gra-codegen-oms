@@ -1,0 +1,30 @@
+{
+  "SecurityInformation": {
+    "Classification": "U",
+    "OwnerProducer": [
+      {
+        "GovernmentIdentifier": "USA"
+      },
+      {
+        "NATO_SpecialWord": "NATO:EXAMPLE"
+      }
+    ],
+    "ClassifiedBy": "a b"
+  },
+  "MessageHeader": {
+    "SystemID": {
+      "UUID": "12345678-1234-1234-8234-123456789abc"
+    },
+    "Timestamp": "2026-01-02T03:04:05Z",
+    "SchemaVersion": "002.5.0",
+    "Mode": "LIVE"
+  },
+  "MessageData": {
+    "Timestamp": "2026-01-02T03:04:05Z",
+    "Severity": "INFO",
+    "Label": "PY016",
+    "Details": "Independent full-schema golden",
+    "ServiceUpTime": "PT1.2300S",
+    "Data": "00FF"
+  }
+}
