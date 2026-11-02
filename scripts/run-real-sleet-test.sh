@@ -37,7 +37,10 @@ if [ "${AMS_GRA_RUST_CLIENT_ONLY:-}" = 1 ]; then
   : "${AMS_GRA_UCI_2_5_ROOT:?pinned UCI 2.5 root required}"
   : "${AMS_GRA_UCI_2_6_ROOT:?pinned UCI 2.6 root required}"
 fi
-if [ -n "${AMS_GRA_REQUIRE_REAL_UCI_LOG:-}${AMS_GRA_REQUIRE_REAL_UCI_RDMA:-}${AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE:-}${AMS_GRA_REQUIRE_REAL_UCI_SURVIVABILITY:-}" ]; then
+if [ "${AMS_GRA_RUST_DLZ_ONLY:-}" = 1 ]; then
+  export AMS_GRA_REQUIRE_REAL_UCI_DLZ=1
+fi
+if [ -n "${AMS_GRA_REQUIRE_REAL_UCI_LOG:-}${AMS_GRA_REQUIRE_REAL_UCI_RDMA:-}${AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE:-}${AMS_GRA_REQUIRE_REAL_UCI_SURVIVABILITY:-}${AMS_GRA_REQUIRE_REAL_UCI_DLZ:-}" ]; then
   : "${AMS_GRA_UCI_2_5_ROOT:?pinned UCI 2.5 root required}"
   : "${AMS_GRA_UCI_2_6_ROOT:?pinned UCI 2.6 root required}"
 fi
@@ -61,7 +64,7 @@ cd "$ROOT"
 # RUST-OMS-005: genuine standalone executable acceptance, using this same
 # unmodified broker build and the existing independent Task092/093 goldens.
 # The existing main-only real-sleet job supplies both roots; no new runner lane.
-if [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] && [ -n "${AMS_GRA_UCI_2_6_ROOT:-}" ]; then
+if [ "${AMS_GRA_RUST_DLZ_ONLY:-}" != 1 ] && [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] && [ -n "${AMS_GRA_UCI_2_6_ROOT:-}" ]; then
   manifest="$ROOT/examples/rust-uci-client/Cargo.toml"
   cargo +1.95.0 fmt --manifest-path "$manifest" -- --check
   for release in 2.5 2.6; do
@@ -101,6 +104,40 @@ run_one() {
   grep -Fqx -- "$3" <<<"$output"
   grep -qE '^test result: ok\. 1 passed' <<<"$output"
 }
+
+if [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] && [ -n "${AMS_GRA_UCI_2_6_ROOT:-}" ]; then
+  # Task101's independent corpus remains the oracle, not generated output.
+  PYTHONDONTWRITEBYTECODE=1 python3 - <<'PY'
+import importlib.util
+import json
+from pathlib import Path
+spec = importlib.util.spec_from_file_location('task101_cases', 'scripts/task101/cases.py')
+cases = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(cases)
+for version in ['25', '26']:
+    expected = dict(positives=cases.positives(version), negatives=cases.negatives(version))
+    actual = json.loads(Path(f'tests/fixtures/rust-oms-006/corpus{version}.json').read_text())
+    assert actual == json.loads(json.dumps(expected)), version
+PY
+  status=0
+  output="$(AMS_GRA_REQUIRE_REAL_UCI_DLZ=1 CARGO_PROFILE_RELEASE_BUILD_OVERRIDE_OPT_LEVEL=3 \
+    cargo +1.95.0 test --release --locked -p ams-gra-oms-runtime-rust-facade-tests \
+    --test real_uci_dlz --test real_dlz_consumer -- --show-output --test-threads=1 2>&1)" || status=$?
+  printf '%s\n' "$output"
+  if (( status != 0 )); then exit "$status"; fi
+  for version in 002.5.0 002.6.0; do
+    grep -Fqx "RUST-OMS-006 $version MODEL CODEC BITS AND TIME: PASSED" <<<"$output"
+    grep -Fqx "RUST-OMS-006 $version SLEET AND RECOVERY: PASSED" <<<"$output"
+  done
+  grep -Fqx 'EXTERNAL DLZ 25: PASSED' <<<"$output"
+  grep -Fqx 'EXTERNAL DLZ 26: PASSED' <<<"$output"
+  grep -qE '^test result: ok\. 5 passed; 0 failed; 0 ignored;' <<<"$output"
+  grep -qE '^test result: ok\. 1 passed; 0 failed; 0 ignored;' <<<"$output"
+fi
+if [ "${AMS_GRA_RUST_DLZ_ONLY:-}" = 1 ]; then
+  echo "RUST-OMS-006 real pinned Sleet ($SLEET_REV): PASSED"
+  exit 0
+fi
 
 if [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] && [ -n "${AMS_GRA_UCI_2_6_ROOT:-}" ]; then
   # Release keeps repeated authentic-schema parsing bounded; build.rs runs
