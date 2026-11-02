@@ -34,6 +34,7 @@ fn choice_models_codecs_worlds_imports_and_optimization() {
     let temp = std::env::temp_dir().join(format!("py015-positive-{}", std::process::id()));
     fs::create_dir(&temp).unwrap();
     let mut previous = None;
+    let mut previous_codec = None;
     for world in ["closed-schema", "open-extensions"] {
         for codec in [false, true] {
             let dest = temp.join(format!("{}_{}", world.replace('-', "_"), codec));
@@ -55,6 +56,19 @@ fn choice_models_codecs_worlds_imports_and_optimization() {
             );
             assert_eq!(before, fs::read(dest.join("model.py")).unwrap());
             assert_eq!(dest.join("service_codec.py").exists(), codec);
+            if codec {
+                let source = fs::read(dest.join("service_codec.py")).unwrap();
+                if let Some(previous) = &previous_codec {
+                    assert_eq!(previous, &source);
+                }
+                assert!(
+                    run(&fixture().join("oam.xsd"), world, codec, Some(&dest))
+                        .status
+                        .success()
+                );
+                assert_eq!(source, fs::read(dest.join("service_codec.py")).unwrap());
+                previous_codec = Some(source);
+            }
             for optimized in [false, true] {
                 for style in ["standalone", "package"] {
                     let mut command = Command::new(
@@ -94,6 +108,7 @@ fn unsupported_choices_fail_atomically() {
         ("collision", original.replace("name=\"OtherText\"", "name=\"Text\"")),
         ("normalized-collision", original.replace("name=\"Text\"", "name=\"A-B\"").replace("name=\"OtherText\"", "name=\"A_B\"")),
         ("storage-collision", original.replace("name=\"Text\"", "name=\"value\"")),
+        ("tag-collision", original.replace("name=\"Text\"", "name=\"alternative\"")),
         ("type-collision", original.replace("name=\"Text\"", "name=\"Country\"")),
         ("builtin-collision", original.replace("name=\"Text\"", "name=\"staticmethod\"")),
         ("recursive", original.replace("name=\"Text\" type=\"xs:string\"", "name=\"Text\" type=\"t:Selection\"")),

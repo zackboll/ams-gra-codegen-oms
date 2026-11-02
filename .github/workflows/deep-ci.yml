@@ -1462,16 +1462,16 @@ jobs:
           python3 scripts/test-py007-uci.py
           python3 scripts/test-py008-uci.py
           python3 scripts/check-py007-uci.py --generator target/release/ams-gra-codegen-oms \
-            --output "$RUNNER_TEMP/py006-uci" --service-baseline tests/fixtures/python-hexbinary/evidence/v1/legacy-services.json
+            --output "$RUNNER_TEMP/py006-uci" --service-baseline tests/fixtures/python-choice/evidence/v1/legacy-services.json
           python3 scripts/check-py008-uci.py --generator target/release/ams-gra-codegen-oms \
-            --output "$RUNNER_TEMP/py006-uci" --existing-output --service-baseline tests/fixtures/python-hexbinary/evidence/v1/legacy-services.json
+            --output "$RUNNER_TEMP/py006-uci" --existing-output --service-baseline tests/fixtures/python-choice/evidence/v1/legacy-services.json
           python3 scripts/test-py009-uci.py
-          python3 scripts/check-py009-uci.py --generator target/release/ams-gra-codegen-oms --output "$RUNNER_TEMP/py006-uci/py009" --service-baseline tests/fixtures/python-hexbinary/evidence/v1/legacy-services.json
+          python3 scripts/check-py009-uci.py --generator target/release/ams-gra-codegen-oms --output "$RUNNER_TEMP/py006-uci/py009" --service-baseline tests/fixtures/python-choice/evidence/v1/legacy-services.json
           python3 python/qualification/run.py uci
           cargo build --locked --release -p ams-gra-codegen-oms --example python_visible_ascii_profiles
           python3 scripts/test-py010-uci.py
           for py010_interpreter in python3.11 python3.13; do
-            "$py010_interpreter" scripts/check-py010-uci.py --generator target/release/ams-gra-codegen-oms --output "$RUNNER_TEMP/py006-uci/py010-$py010_interpreter" --service-baseline tests/fixtures/python-hexbinary/evidence/v1/legacy-services.json
+            "$py010_interpreter" scripts/check-py010-uci.py --generator target/release/ams-gra-codegen-oms --output "$RUNNER_TEMP/py006-uci/py010-$py010_interpreter" --service-baseline tests/fixtures/python-choice/evidence/v1/legacy-services.json
           done
       - name: Preserve Python pinned UCI measurements
         uses: actions/upload-artifact@v4

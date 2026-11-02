@@ -18,6 +18,10 @@ from support import ROOT, OAM
 
 class ChoiceSleetTests(unittest.IsolatedAsyncioTestCase):
     async def test_choice_delivery_recovery_and_teardown(self):
+        for world in ['closed-schema', 'open-extensions']:
+            await self.exercise_world(world)
+
+    async def exercise_world(self, world):
         choice = os.environ['AMS_GRA_SLEET_BIN']
         checkout = Path(choice).resolve().parents[2]
         self.assertEqual(subprocess.check_output(
@@ -29,16 +33,17 @@ class ChoiceSleetTests(unittest.IsolatedAsyncioTestCase):
             path = Path(temporary)
             schema = ROOT / 'tests/fixtures/python-choice/oam.xsd'
             generator = os.environ.get('AMS_GRA_GENERATOR', str(ROOT / 'target/debug/ams-gra-codegen-oms'))
+            package = 'choice_models_' + world.replace('-', '_')
             subprocess.run([generator, 'service-generate', '--schema', str(schema),
                 '--contract', str(schema.with_name('service.yaml')), '--language', 'python',
-                '--world', 'closed-schema', '--with-codec', '--output', str(path / 'choice_models')],
+                '--world', world, '--with-codec', '--output', str(path / package)],
                 check=True, capture_output=True)
             sys.path.insert(0, temporary)
             self.addCleanup(sys.path.remove, temporary)
-            m = importlib.import_module('choice_models.model')
-            c = importlib.import_module('choice_models.service_codec')
-            api = importlib.import_module('choice_models.service_api')
-            for name in ['choice_models', 'choice_models.model', 'choice_models.service_codec', 'choice_models.service_api']:
+            m = importlib.import_module(package + '.model')
+            c = importlib.import_module(package + '.service_codec')
+            api = importlib.import_module(package + '.service_api')
+            for name in [package, package + '.model', package + '.service_codec', package + '.service_api']:
                 self.addCleanup(sys.modules.pop, name, None)
             decoder_calls = []
 
@@ -97,7 +102,8 @@ class ChoiceSleetTests(unittest.IsolatedAsyncioTestCase):
                                              optional=optional, repeated=(m.Selection.Text('x'), m.Selection.Nested(b)))
 
                         alternatives = [m.Selection.Text('x'), m.Selection.OtherText('x'),
-                            m.Selection.Number(-3), m.Selection.Binary(m.Octets(b'\x00\xff')),
+                            m.Selection.Number(-3), m.Selection.Flag(True), m.Selection.Real(1.5),
+                            m.Selection.Binary(m.Octets(b'\x00\xff')),
                             m.Selection.DirectBinary(b'\xff'), m.Selection.When('2026-01-02T03:04:05Z'),
                             m.Selection.Span('PT1.2300S'), m.Selection.Record(m.Detail(count=2)),
                             m.Selection.OtherRecord(m.Detail(count=2)), m.Selection.Nested(a),
@@ -105,6 +111,8 @@ class ChoiceSleetTests(unittest.IsolatedAsyncioTestCase):
                         for selected in alternatives:
                             for optional in [None, a, b]:
                                 value = sample(selected, optional)
+                                self.assertEqual(json.loads(c.encode_Payload(value))['Positive'],
+                                    [{'GovernmentIdentifier': 'USA'}, {'NATO_SpecialWord': 'NATO:EXAMPLE'}])
                                 await api.function_loop.exchange_output.publish(publisher, value)
                                 actual = await asyncio.wait_for(received.get(), 5)
                                 self.assertEqual(actual, value)
@@ -152,7 +160,7 @@ class ChoiceSleetTests(unittest.IsolatedAsyncioTestCase):
                         self.assertEqual(len(subscriber._subscriptions), 0)
                     self.assertFalse(subscriber.is_connected)
                     self.assertFalse(publisher.is_connected)
-                    print('PY015 SLEET OBSERVATIONS: ' + json.dumps(observations), flush=True)
+                    print('PY015 SLEET OBSERVATIONS ' + world + ': ' + json.dumps(observations), flush=True)
                 finally:
                     broker.terminate()
                     try:
@@ -162,11 +170,11 @@ class ChoiceSleetTests(unittest.IsolatedAsyncioTestCase):
                         broker.wait(timeout=5)
                     evidence = os.environ.get('AMS_GRA_PY015_SLEET_EVIDENCE')
                     if evidence:
-                        destination = Path(evidence)
+                        destination = Path(evidence) / world
                         destination.mkdir(parents=True, exist_ok=False)
                         log.flush()
                         shutil.copyfile(path / 'broker.log', destination / 'broker.log')
-                        shutil.copytree(path / 'choice_models', destination / 'generated')
+                        shutil.copytree(path / package, destination / 'generated')
                         (destination / 'observations.json').write_text(json.dumps(observations, indent=2) + '\n')
             await asyncio.sleep(0)
             self.assertEqual([task for task in asyncio.all_tasks() - initial_tasks if not task.done()], [])

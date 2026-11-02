@@ -1,0 +1,122 @@
+[
+  {
+    "language": "ada",
+    "world": "closed-schema",
+    "codec": false,
+    "artifacts": {
+      "service_api.ads": "b043c44b4a716b9a394d481339499871e84bd71a6e87c0a5239df60972ad1345",
+      "urn.ads": "a570571230ee7f3b7e29252e195d265275f36a23f265eb374ace3eca72a8bfb5",
+      "urn-test.ads": "2adfebd0738a64ff324736737ab53f0da6bbbf36b604b6a2ddc51fe62b03c307"
+    }
+  },
+  {
+    "language": "ada",
+    "world": "closed-schema",
+    "codec": true,
+    "artifacts": {
+      "service_api.ads": "b043c44b4a716b9a394d481339499871e84bd71a6e87c0a5239df60972ad1345",
+      "service_codec.adb": "faa6a1933c2865c7edded23188dfc6165b69f8c4fde705878c356b54f26fd037",
+      "urn.ads": "a570571230ee7f3b7e29252e195d265275f36a23f265eb374ace3eca72a8bfb5",
+      "service_codec.ads": "0a5f62f04a8f0335e0b52d47b77090d5e7afd6802cae916d826665abedd805ff",
+      "urn-test.ads": "2adfebd0738a64ff324736737ab53f0da6bbbf36b604b6a2ddc51fe62b03c307"
+    }
+  },
+  {
+    "language": "ada",
+    "world": "open-extensions",
+    "codec": false,
+    "artifacts": {
+      "service_api.ads": "b043c44b4a716b9a394d481339499871e84bd71a6e87c0a5239df60972ad1345",
+      "urn.ads": "a570571230ee7f3b7e29252e195d265275f36a23f265eb374ace3eca72a8bfb5",
+      "urn-test.ads": "2adfebd0738a64ff324736737ab53f0da6bbbf36b604b6a2ddc51fe62b03c307"
+    }
+  },
+  {
+    "language": "ada",
+    "world": "open-extensions",
+    "codec": true,
+    "artifacts": {
+      "service_api.ads": "b043c44b4a716b9a394d481339499871e84bd71a6e87c0a5239df60972ad1345",
+      "service_codec.adb": "faa6a1933c2865c7edded23188dfc6165b69f8c4fde705878c356b54f26fd037",
+      "urn.ads": "a570571230ee7f3b7e29252e195d265275f36a23f265eb374ace3eca72a8bfb5",
+      "service_codec.ads": "0a5f62f04a8f0335e0b52d47b77090d5e7afd6802cae916d826665abedd805ff",
+      "urn-test.ads": "2adfebd0738a64ff324736737ab53f0da6bbbf36b604b6a2ddc51fe62b03c307"
+    }
+  },
+  {
+    "language": "rust",
+    "world": "closed-schema",
+    "codec": false,
+    "artifacts": {
+      "test.rs": "58940f459d07fae8e7c1c3058e27adbe599b509397b8da8ce60bc64825021883",
+      "service_api.rs": "ecb3e0b43bf78d5261431f31ed26545c71dcd6cf476f5e5b05562f08652e57e0"
+    }
+  },
+  {
+    "language": "rust",
+    "world": "closed-schema",
+    "codec": true,
+    "artifacts": {
+      "test.rs": "58940f459d07fae8e7c1c3058e27adbe599b509397b8da8ce60bc64825021883",
+      "service_api.rs": "4be02b303709aefe049cad858b767e6a5e3f71677ab6bdc7e69d0463ecc60704",
+      "service_codec.rs": "e8c6ecde793567b58ddd5768c8b8571ca916f457def9563813f6eb3fbe01e383"
+    }
+  },
+  {
+    "language": "rust",
+    "world": "open-extensions",
+    "codec": false,
+    "artifacts": {
+      "test.rs": "58940f459d07fae8e7c1c3058e27adbe599b509397b8da8ce60bc64825021883",
+      "service_api.rs": "ecb3e0b43bf78d5261431f31ed26545c71dcd6cf476f5e5b05562f08652e57e0"
+    }
+  },
+  {
+    "language": "rust",
+    "world": "open-extensions",
+    "codec": true,
+    "artifacts": {
+      "test.rs": "58940f459d07fae8e7c1c3058e27adbe599b509397b8da8ce60bc64825021883",
+      "service_api.rs": "4be02b303709aefe049cad858b767e6a5e3f71677ab6bdc7e69d0463ecc60704",
+      "service_codec.rs": "e8c6ecde793567b58ddd5768c8b8571ca916f457def9563813f6eb3fbe01e383"
+    }
+  },
+  {
+    "language": "cpp",
+    "world": "closed-schema",
+    "codec": false,
+    "artifacts": {
+      "test.hpp": "4e57dfa8fbdbdb85b99f7c8ccee9843f4a1de5b93c4cf628007225f63e726105",
+      "service_api.hpp": "eb921e0224bdae2826b1cdd231a102a7898242992dbb0e551f3d4712bcbc394c"
+    }
+  },
+  {
+    "language": "cpp",
+    "world": "closed-schema",
+    "codec": true,
+    "artifacts": {
+      "service_codec.hpp": "9bd9b162b91cb0396f2225420489d225d82ca22ff6fc87b65be85a911df636a1",
+      "test.hpp": "4e57dfa8fbdbdb85b99f7c8ccee9843f4a1de5b93c4cf628007225f63e726105",
+      "service_api.hpp": "eb921e0224bdae2826b1cdd231a102a7898242992dbb0e551f3d4712bcbc394c"
+    }
+  },
+  {
+    "language": "cpp",
+    "world": "open-extensions",
+    "codec": false,
+    "artifacts": {
+      "test.hpp": "4e57dfa8fbdbdb85b99f7c8ccee9843f4a1de5b93c4cf628007225f63e726105",
+      "service_api.hpp": "eb921e0224bdae2826b1cdd231a102a7898242992dbb0e551f3d4712bcbc394c"
+    }
+  },
+  {
+    "language": "cpp",
+    "world": "open-extensions",
+    "codec": true,
+    "artifacts": {
+      "service_codec.hpp": "9bd9b162b91cb0396f2225420489d225d82ca22ff6fc87b65be85a911df636a1",
+      "test.hpp": "4e57dfa8fbdbdb85b99f7c8ccee9843f4a1de5b93c4cf628007225f63e726105",
+      "service_api.hpp": "eb921e0224bdae2826b1cdd231a102a7898242992dbb0e551f3d4712bcbc394c"
+    }
+  }
+]

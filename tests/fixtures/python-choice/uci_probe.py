@@ -1,5 +1,6 @@
 """Literal authentic alternative spellings, not generated encoder oracles."""
 import importlib
+import json
 from pathlib import Path
 import sys
 import unittest
@@ -56,6 +57,18 @@ class OriginalChoices(unittest.TestCase):
                                  ((b, a), '[{"NATO_SpecialWord":"NATO:EXAMPLE"},{"GovernmentIdentifier":"USA"}]'),
                                  ((b, b), '[{"NATO_SpecialWord":"NATO:EXAMPLE"},{"NATO_SpecialWord":"NATO:EXAMPLE"}]')]:
                 self.assertEqual(c.encode_Payload(m.Payload(ownerproducer=owners)), '{"OwnerProducer":' + text + '}')
+            # Reuse independently authored authentic documents without claiming
+            # that their complete, currently blocked service models can decode.
+            root = Path(sys.argv[3])
+            for source in ['tests/fixtures/service-generate/task093-real-log25.json',
+                           'tests/fixtures/service-generate/task093-real-log26.json',
+                           'tests/fixtures/oms-json/sleet-e38f61d8/PositionReport.json']:
+                document = json.loads((root / source).read_text())
+                security = document.get('PositionReport', document)['SecurityInformation']
+                for index, original in enumerate(security['OwnerProducer']):
+                    path = '$.SecurityInformation.OwnerProducer[' + str(index) + ']'
+                    choice = c._decode_OwnerProducerChoiceType(original, path)
+                    self.assertEqual(c._encode_OwnerProducerChoiceType(choice, path), original)
 
 
 unittest.main(argv=[sys.argv[0]], verbosity=2)

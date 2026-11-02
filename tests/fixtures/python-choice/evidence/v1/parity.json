@@ -1,0 +1,458 @@
+[
+  {
+    "schema": "tests/fixtures/python-service/root.xsd",
+    "world": "closed-schema",
+    "codec": false,
+    "files": {
+      "model.py": "4088b5dff30ba758eeda2ca4b055177fe61aee8ff4df030a9a89b5ff362be4ad",
+      "service_api.py": "b3c7de8944013b2e138e94e8754940822bd7eac7631da77b50c7d63631cb4dae"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-service/root.xsd",
+    "world": "closed-schema",
+    "codec": true,
+    "files": {
+      "model.py": "4088b5dff30ba758eeda2ca4b055177fe61aee8ff4df030a9a89b5ff362be4ad",
+      "service_api.py": "b3c7de8944013b2e138e94e8754940822bd7eac7631da77b50c7d63631cb4dae",
+      "service_codec.py": "b57794d80cfbffab9eec97457d83511ba853db65f271bcf8c86ebbbd2b5e7d82"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-service/root.xsd",
+    "world": "open-extensions",
+    "codec": false,
+    "files": {
+      "model.py": "4088b5dff30ba758eeda2ca4b055177fe61aee8ff4df030a9a89b5ff362be4ad",
+      "service_api.py": "b3c7de8944013b2e138e94e8754940822bd7eac7631da77b50c7d63631cb4dae"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-service/root.xsd",
+    "world": "open-extensions",
+    "codec": true,
+    "files": {
+      "model.py": "4088b5dff30ba758eeda2ca4b055177fe61aee8ff4df030a9a89b5ff362be4ad",
+      "service_api.py": "b3c7de8944013b2e138e94e8754940822bd7eac7631da77b50c7d63631cb4dae",
+      "service_codec.py": "b57794d80cfbffab9eec97457d83511ba853db65f271bcf8c86ebbbd2b5e7d82"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-codec/oam.xsd",
+    "world": "closed-schema",
+    "codec": false,
+    "files": {
+      "model.py": "4265e331c658598f9a77136732be124c38db1e0f750807cf3533559b1060ea8e",
+      "service_api.py": "cbe144ad31079b59cdf95e944e5daf14d4832547827a8f201ee9de4f633b23d7"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-codec/oam.xsd",
+    "world": "closed-schema",
+    "codec": true,
+    "files": {
+      "model.py": "4265e331c658598f9a77136732be124c38db1e0f750807cf3533559b1060ea8e",
+      "service_api.py": "cbe144ad31079b59cdf95e944e5daf14d4832547827a8f201ee9de4f633b23d7",
+      "service_codec.py": "f2f539ac3eb0e73789dd5c6baa977f974f4069e674a7200a8b9c21a6b7a36148"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-codec/oam.xsd",
+    "world": "open-extensions",
+    "codec": false,
+    "files": {
+      "model.py": "4265e331c658598f9a77136732be124c38db1e0f750807cf3533559b1060ea8e",
+      "service_api.py": "cbe144ad31079b59cdf95e944e5daf14d4832547827a8f201ee9de4f633b23d7"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-codec/oam.xsd",
+    "world": "open-extensions",
+    "codec": true,
+    "files": {
+      "model.py": "4265e331c658598f9a77136732be124c38db1e0f750807cf3533559b1060ea8e",
+      "service_api.py": "cbe144ad31079b59cdf95e944e5daf14d4832547827a8f201ee9de4f633b23d7",
+      "service_codec.py": "f2f539ac3eb0e73789dd5c6baa977f974f4069e674a7200a8b9c21a6b7a36148"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-header-profiles/oam.xsd",
+    "world": "closed-schema",
+    "codec": false,
+    "files": {
+      "model.py": "16fa390c490cd596eb54eb90191691afaa896f05541b4d39d33d7bb892c62dd2",
+      "service_api.py": "d94e675e4285be6b013367dde7ec6f18e21099096f3c219602c2d82c8b7a246c"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-header-profiles/oam.xsd",
+    "world": "closed-schema",
+    "codec": true,
+    "files": {
+      "model.py": "16fa390c490cd596eb54eb90191691afaa896f05541b4d39d33d7bb892c62dd2",
+      "service_api.py": "d94e675e4285be6b013367dde7ec6f18e21099096f3c219602c2d82c8b7a246c",
+      "service_codec.py": "48820cc0f96f4cc4f47676bc8c59d9be131523535723116edde0893fddf91bc6"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-header-profiles/oam.xsd",
+    "world": "open-extensions",
+    "codec": false,
+    "files": {
+      "model.py": "16fa390c490cd596eb54eb90191691afaa896f05541b4d39d33d7bb892c62dd2",
+      "service_api.py": "d94e675e4285be6b013367dde7ec6f18e21099096f3c219602c2d82c8b7a246c"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-header-profiles/oam.xsd",
+    "world": "open-extensions",
+    "codec": true,
+    "files": {
+      "model.py": "16fa390c490cd596eb54eb90191691afaa896f05541b4d39d33d7bb892c62dd2",
+      "service_api.py": "d94e675e4285be6b013367dde7ec6f18e21099096f3c219602c2d82c8b7a246c",
+      "service_codec.py": "48820cc0f96f4cc4f47676bc8c59d9be131523535723116edde0893fddf91bc6"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-inheritance/oam.xsd",
+    "world": "closed-schema",
+    "codec": false,
+    "files": {
+      "model.py": "8465cb22b684239a80f0322880cd1615730d8ca0074d041a6ebbe259cd6e8df0",
+      "service_api.py": "9a41b219c18206e3792c223bda0e80e847f62a8e0c780bfb7a1f444dcffd05c4"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-inheritance/oam.xsd",
+    "world": "closed-schema",
+    "codec": true,
+    "files": {
+      "model.py": "8465cb22b684239a80f0322880cd1615730d8ca0074d041a6ebbe259cd6e8df0",
+      "service_api.py": "9a41b219c18206e3792c223bda0e80e847f62a8e0c780bfb7a1f444dcffd05c4",
+      "service_codec.py": "9eb7b0480337b573c0ee1f9d1afca3288a08fc9a684fb5dbd263dcd76b88e030"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-inheritance/oam.xsd",
+    "world": "open-extensions",
+    "codec": false,
+    "files": {
+      "model.py": "8465cb22b684239a80f0322880cd1615730d8ca0074d041a6ebbe259cd6e8df0",
+      "service_api.py": "9a41b219c18206e3792c223bda0e80e847f62a8e0c780bfb7a1f444dcffd05c4"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-inheritance/oam.xsd",
+    "world": "open-extensions",
+    "codec": true,
+    "files": {
+      "model.py": "8465cb22b684239a80f0322880cd1615730d8ca0074d041a6ebbe259cd6e8df0",
+      "service_api.py": "9a41b219c18206e3792c223bda0e80e847f62a8e0c780bfb7a1f444dcffd05c4",
+      "service_codec.py": "9eb7b0480337b573c0ee1f9d1afca3288a08fc9a684fb5dbd263dcd76b88e030"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-float64/oam.xsd",
+    "world": "closed-schema",
+    "codec": false,
+    "files": {
+      "model.py": "aae03e940d2f9a4a27221f00be1e0801a9c18845bae4a93877d6f75600c4ea51",
+      "service_api.py": "70c15532aeb2f1426f44d0bc4793c562a7b423ebadf410288ade5020f877164a"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-float64/oam.xsd",
+    "world": "closed-schema",
+    "codec": true,
+    "files": {
+      "model.py": "aae03e940d2f9a4a27221f00be1e0801a9c18845bae4a93877d6f75600c4ea51",
+      "service_api.py": "70c15532aeb2f1426f44d0bc4793c562a7b423ebadf410288ade5020f877164a",
+      "service_codec.py": "df20aed6085a84b858582fcb635b36d109d9ccdcd3caa52fb732592670a1e687"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-float64/oam.xsd",
+    "world": "open-extensions",
+    "codec": false,
+    "files": {
+      "model.py": "aae03e940d2f9a4a27221f00be1e0801a9c18845bae4a93877d6f75600c4ea51",
+      "service_api.py": "70c15532aeb2f1426f44d0bc4793c562a7b423ebadf410288ade5020f877164a"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-float64/oam.xsd",
+    "world": "open-extensions",
+    "codec": true,
+    "files": {
+      "model.py": "aae03e940d2f9a4a27221f00be1e0801a9c18845bae4a93877d6f75600c4ea51",
+      "service_api.py": "70c15532aeb2f1426f44d0bc4793c562a7b423ebadf410288ade5020f877164a",
+      "service_codec.py": "df20aed6085a84b858582fcb635b36d109d9ccdcd3caa52fb732592670a1e687"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-datetime/oam.xsd",
+    "world": "closed-schema",
+    "codec": false,
+    "files": {
+      "model.py": "7b4b2a8cbcffd7f1c039670f710440de695611739302ca55e8daad76125fb482",
+      "service_api.py": "ed34f99f5ddb63efe45581a2b26449878702a2d710adeb98211b93f627f7755e"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-datetime/oam.xsd",
+    "world": "closed-schema",
+    "codec": true,
+    "files": {
+      "model.py": "7b4b2a8cbcffd7f1c039670f710440de695611739302ca55e8daad76125fb482",
+      "service_api.py": "ed34f99f5ddb63efe45581a2b26449878702a2d710adeb98211b93f627f7755e",
+      "service_codec.py": "98759863a8715326af5e95f08e181f6908794f34a8fcbf5ea5f84bce7a91e4cb"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-datetime/oam.xsd",
+    "world": "open-extensions",
+    "codec": false,
+    "files": {
+      "model.py": "7b4b2a8cbcffd7f1c039670f710440de695611739302ca55e8daad76125fb482",
+      "service_api.py": "ed34f99f5ddb63efe45581a2b26449878702a2d710adeb98211b93f627f7755e"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-datetime/oam.xsd",
+    "world": "open-extensions",
+    "codec": true,
+    "files": {
+      "model.py": "7b4b2a8cbcffd7f1c039670f710440de695611739302ca55e8daad76125fb482",
+      "service_api.py": "ed34f99f5ddb63efe45581a2b26449878702a2d710adeb98211b93f627f7755e",
+      "service_codec.py": "98759863a8715326af5e95f08e181f6908794f34a8fcbf5ea5f84bce7a91e4cb"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-duration/oam.xsd",
+    "world": "closed-schema",
+    "codec": false,
+    "files": {
+      "model.py": "e72b6f2ef151e978dfd1a49e104b35252437055d2f6c66bc9655e6655b5e1fe5",
+      "service_api.py": "6e12f12c20cdadbb337676fdff3b56357e2890eefbc6e933599e47786a0b8a4e"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-duration/oam.xsd",
+    "world": "closed-schema",
+    "codec": true,
+    "files": {
+      "model.py": "e72b6f2ef151e978dfd1a49e104b35252437055d2f6c66bc9655e6655b5e1fe5",
+      "service_api.py": "6e12f12c20cdadbb337676fdff3b56357e2890eefbc6e933599e47786a0b8a4e",
+      "service_codec.py": "187eed3f06c9f069cedb2be885685c2e8ad7b9636513aa07e2f354773738bbc6"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-duration/oam.xsd",
+    "world": "open-extensions",
+    "codec": false,
+    "files": {
+      "model.py": "e72b6f2ef151e978dfd1a49e104b35252437055d2f6c66bc9655e6655b5e1fe5",
+      "service_api.py": "6e12f12c20cdadbb337676fdff3b56357e2890eefbc6e933599e47786a0b8a4e"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-duration/oam.xsd",
+    "world": "open-extensions",
+    "codec": true,
+    "files": {
+      "model.py": "e72b6f2ef151e978dfd1a49e104b35252437055d2f6c66bc9655e6655b5e1fe5",
+      "service_api.py": "6e12f12c20cdadbb337676fdff3b56357e2890eefbc6e933599e47786a0b8a4e",
+      "service_codec.py": "187eed3f06c9f069cedb2be885685c2e8ad7b9636513aa07e2f354773738bbc6"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-hexbinary/oam.xsd",
+    "world": "closed-schema",
+    "codec": false,
+    "files": {
+      "model.py": "35cdcc9a340e85a623327c2a422ff47810f11aa28514c794798fce211e0d7131",
+      "service_api.py": "762a6243765249898ceef13e1a275c6597f88d0be11b7e69d02134535cf64ad3"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-hexbinary/oam.xsd",
+    "world": "closed-schema",
+    "codec": true,
+    "files": {
+      "model.py": "35cdcc9a340e85a623327c2a422ff47810f11aa28514c794798fce211e0d7131",
+      "service_api.py": "762a6243765249898ceef13e1a275c6597f88d0be11b7e69d02134535cf64ad3",
+      "service_codec.py": "f61e30f3abd0df62874bc0d02360e2be9e8ab4b0fe54ff11789136557c1df468"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-hexbinary/oam.xsd",
+    "world": "open-extensions",
+    "codec": false,
+    "files": {
+      "model.py": "35cdcc9a340e85a623327c2a422ff47810f11aa28514c794798fce211e0d7131",
+      "service_api.py": "762a6243765249898ceef13e1a275c6597f88d0be11b7e69d02134535cf64ad3"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-hexbinary/oam.xsd",
+    "world": "open-extensions",
+    "codec": true,
+    "files": {
+      "model.py": "35cdcc9a340e85a623327c2a422ff47810f11aa28514c794798fce211e0d7131",
+      "service_api.py": "762a6243765249898ceef13e1a275c6597f88d0be11b7e69d02134535cf64ad3",
+      "service_codec.py": "f61e30f3abd0df62874bc0d02360e2be9e8ab4b0fe54ff11789136557c1df468"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-visible-ascii/oam.xsd",
+    "world": "closed-schema",
+    "codec": false,
+    "files": {
+      "model.py": "1107a1018a401e035f0e164d9691fba115f120d61a8637134c41c459ef93307c",
+      "service_api.py": "705af8def447db0f6b80adc1d76eb1f8224bd743fd9e68a605cc3c3933b31bf0"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-visible-ascii/oam.xsd",
+    "world": "closed-schema",
+    "codec": true,
+    "files": {
+      "model.py": "1107a1018a401e035f0e164d9691fba115f120d61a8637134c41c459ef93307c",
+      "service_api.py": "705af8def447db0f6b80adc1d76eb1f8224bd743fd9e68a605cc3c3933b31bf0",
+      "service_codec.py": "f249f09b6cb6727eca0b199b4980bcf9550baab09a254204e390942f6707f313"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-visible-ascii/oam.xsd",
+    "world": "open-extensions",
+    "codec": false,
+    "files": {
+      "model.py": "1107a1018a401e035f0e164d9691fba115f120d61a8637134c41c459ef93307c",
+      "service_api.py": "705af8def447db0f6b80adc1d76eb1f8224bd743fd9e68a605cc3c3933b31bf0"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-visible-ascii/oam.xsd",
+    "world": "open-extensions",
+    "codec": true,
+    "files": {
+      "model.py": "1107a1018a401e035f0e164d9691fba115f120d61a8637134c41c459ef93307c",
+      "service_api.py": "705af8def447db0f6b80adc1d76eb1f8224bd743fd9e68a605cc3c3933b31bf0",
+      "service_codec.py": "f249f09b6cb6727eca0b199b4980bcf9550baab09a254204e390942f6707f313"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-nato-special-words/oam.xsd",
+    "world": "closed-schema",
+    "codec": false,
+    "files": {
+      "model.py": "b2f7de417f79bd8cbff985244bb7ad8d239a97995b11bc635f94656e72f38c40",
+      "service_api.py": "2c4727d08ba1b2b3dd9d51f216a547c1b1e21c8d7d6ff0ab19d4e2dfe563acae"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-nato-special-words/oam.xsd",
+    "world": "closed-schema",
+    "codec": true,
+    "files": {
+      "model.py": "b2f7de417f79bd8cbff985244bb7ad8d239a97995b11bc635f94656e72f38c40",
+      "service_api.py": "2c4727d08ba1b2b3dd9d51f216a547c1b1e21c8d7d6ff0ab19d4e2dfe563acae",
+      "service_codec.py": "5604b78307cba5b8ae27aeba336fa0ad7a0a2222c274a9534252338e15c4e3c3"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-nato-special-words/oam.xsd",
+    "world": "open-extensions",
+    "codec": false,
+    "files": {
+      "model.py": "b2f7de417f79bd8cbff985244bb7ad8d239a97995b11bc635f94656e72f38c40",
+      "service_api.py": "2c4727d08ba1b2b3dd9d51f216a547c1b1e21c8d7d6ff0ab19d4e2dfe563acae"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-nato-special-words/oam.xsd",
+    "world": "open-extensions",
+    "codec": true,
+    "files": {
+      "model.py": "b2f7de417f79bd8cbff985244bb7ad8d239a97995b11bc635f94656e72f38c40",
+      "service_api.py": "2c4727d08ba1b2b3dd9d51f216a547c1b1e21c8d7d6ff0ab19d4e2dfe563acae",
+      "service_codec.py": "5604b78307cba5b8ae27aeba336fa0ad7a0a2222c274a9534252338e15c4e3c3"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-unbounded-repetition/oam.xsd",
+    "world": "closed-schema",
+    "codec": false,
+    "files": {
+      "model.py": "401b02f99c346a2ec1fe1001826429ce4539ff5c14e268733372938f8f30e6e5",
+      "service_api.py": "5b4f7c459454b11ae15d97f76dfade9e58eca20c8b5bde5d0ff8b43046956f6d"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-unbounded-repetition/oam.xsd",
+    "world": "closed-schema",
+    "codec": true,
+    "files": {
+      "model.py": "401b02f99c346a2ec1fe1001826429ce4539ff5c14e268733372938f8f30e6e5",
+      "service_api.py": "5b4f7c459454b11ae15d97f76dfade9e58eca20c8b5bde5d0ff8b43046956f6d",
+      "service_codec.py": "b299603574c0dccd1dc56d7568d7ec3b4aaa18efba972fbec3f6f1a46f0023e3"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-unbounded-repetition/oam.xsd",
+    "world": "open-extensions",
+    "codec": false,
+    "files": {
+      "model.py": "401b02f99c346a2ec1fe1001826429ce4539ff5c14e268733372938f8f30e6e5",
+      "service_api.py": "5b4f7c459454b11ae15d97f76dfade9e58eca20c8b5bde5d0ff8b43046956f6d"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-unbounded-repetition/oam.xsd",
+    "world": "open-extensions",
+    "codec": true,
+    "files": {
+      "model.py": "401b02f99c346a2ec1fe1001826429ce4539ff5c14e268733372938f8f30e6e5",
+      "service_api.py": "5b4f7c459454b11ae15d97f76dfade9e58eca20c8b5bde5d0ff8b43046956f6d",
+      "service_codec.py": "b299603574c0dccd1dc56d7568d7ec3b4aaa18efba972fbec3f6f1a46f0023e3"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-unbounded-repetition/sleet.xsd",
+    "world": "closed-schema",
+    "codec": false,
+    "files": {
+      "model.py": "159f18efd3cbd3e6a37839e45bd682bd28ed975b400ab1a6f9ce88cf054940ea",
+      "service_api.py": "5b4f7c459454b11ae15d97f76dfade9e58eca20c8b5bde5d0ff8b43046956f6d"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-unbounded-repetition/sleet.xsd",
+    "world": "closed-schema",
+    "codec": true,
+    "files": {
+      "model.py": "159f18efd3cbd3e6a37839e45bd682bd28ed975b400ab1a6f9ce88cf054940ea",
+      "service_api.py": "5b4f7c459454b11ae15d97f76dfade9e58eca20c8b5bde5d0ff8b43046956f6d",
+      "service_codec.py": "0228b883d38fa1f66985e0c9d2ff7ce2f5592873bb8905602f444f3023cfcc9e"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-unbounded-repetition/sleet.xsd",
+    "world": "open-extensions",
+    "codec": false,
+    "files": {
+      "model.py": "159f18efd3cbd3e6a37839e45bd682bd28ed975b400ab1a6f9ce88cf054940ea",
+      "service_api.py": "5b4f7c459454b11ae15d97f76dfade9e58eca20c8b5bde5d0ff8b43046956f6d"
+    }
+  },
+  {
+    "schema": "tests/fixtures/python-unbounded-repetition/sleet.xsd",
+    "world": "open-extensions",
+    "codec": true,
+    "files": {
+      "model.py": "159f18efd3cbd3e6a37839e45bd682bd28ed975b400ab1a6f9ce88cf054940ea",
+      "service_api.py": "5b4f7c459454b11ae15d97f76dfade9e58eca20c8b5bde5d0ff8b43046956f6d",
+      "service_codec.py": "0228b883d38fa1f66985e0c9d2ff7ce2f5592873bb8905602f444f3023cfcc9e"
+    }
+  }
+]

@@ -70,7 +70,7 @@ class ChoiceUci(unittest.TestCase):
                         for optimized in [False, True]:
                             for style in ['standalone', 'package']:
                                 result = subprocess.run([sys.executable] + (['-O'] if optimized else []) +
-                                    [str(root / 'tests/fixtures/python-choice/uci_probe.py'), str(dest), style],
+                                    [str(root / 'tests/fixtures/python-choice/uci_probe.py'), str(dest), style, str(root)],
                                     capture_output=True, text=True)
                                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                                 self.assertIn('Ran 2 tests', result.stderr)

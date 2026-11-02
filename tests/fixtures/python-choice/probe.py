@@ -24,6 +24,8 @@ class Choice(unittest.TestCase):
         self.assertEqual(m.Owner.__schema_name__[1], 'Owner')
         self.assertNotEqual(m.Selection.Text('x'), m.Selection.OtherText('x'))
         self.assertEqual(m.Selection.schema_class('x').alternative, 'schema_class')
+        self.assertEqual(m.Selection.When(' 2026-01-02T03:04:05Z ').value, '2026-01-02T03:04:05Z')
+        self.assertEqual(m.Selection.Span(' PT1.2300S ').value, 'PT1.2300S')
         with self.assertRaises(FrozenInstanceError):
             a.value = m.Country.GBR
         self.assertFalse(hasattr(a, '__dict__'))
@@ -62,6 +64,8 @@ class Choice(unittest.TestCase):
             (m.Selection.Text('x'), '{"Text":"x"}'),
             (m.Selection.OtherText('x'), '{"OtherText":"x"}'),
             (m.Selection.Number(-3), '{"Number":-3}'),
+            (m.Selection.Flag(True), '{"Flag":true}'),
+            (m.Selection.Real(1.5), '{"Real":1.5}'),
             (m.Selection.Binary(m.Octets(b'\0\xff')), '{"Binary":"00FF"}'),
             (m.Selection.DirectBinary(b'\xff'), '{"DirectBinary":"FF"}'),
             (m.Selection.When('2026-01-02T03:04:05Z'), '{"When":"2026-01-02T03:04:05Z"}'),
@@ -107,6 +111,15 @@ class Choice(unittest.TestCase):
             object.__setattr__(broken, attr, bad)
             with self.assertRaises(c.CodecError):
                 c._encode_Selection(broken, '$.Required')
+        for value, attribute, bad in [
+            (m.Selection.Real(1.5), 'value', True),
+            (m.Selection.When('2026-01-02T03:04:05Z'), 'value', 'BAD'),
+            (m.Selection.Span('PT1S'), 'value', 'PT'),
+            (m.Selection.DirectBinary(b'x'), 'value', '78'),
+        ]:
+            object.__setattr__(value, attribute, bad)
+            with self.assertRaises(c.CodecError):
+                c._encode_Selection(value, '$')
         empty = object.__new__(m.Selection)
         with self.assertRaises(c.CodecError):
             c._encode_Selection(empty, '$.Required')

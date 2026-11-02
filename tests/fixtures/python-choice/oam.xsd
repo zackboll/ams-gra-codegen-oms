@@ -20,6 +20,8 @@
     <xs:element name="Text" type="xs:string"/>
     <xs:element name="OtherText" type="xs:string"/>
     <xs:element name="Number" type="xs:int"/>
+    <xs:element name="Flag" type="xs:boolean"/>
+    <xs:element name="Real" type="xs:double"/>
     <xs:element name="Binary" type="t:Octets"/>
     <xs:element name="DirectBinary" type="xs:hexBinary"/>
     <xs:element name="When" type="xs:dateTime"/>
