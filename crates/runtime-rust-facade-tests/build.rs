@@ -104,10 +104,12 @@ fn real_uci_services(fixtures: &Path, out: &Path) {
     println!("cargo:rerun-if-env-changed=AMS_GRA_REQUIRE_REAL_UCI_RDMA");
     println!("cargo:rerun-if-env-changed=AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE");
     println!("cargo:rerun-if-env-changed=AMS_GRA_REQUIRE_REAL_UCI_SURVIVABILITY");
+    println!("cargo:rerun-if-env-changed=AMS_GRA_REQUIRE_REAL_UCI_DLZ");
     let required = std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_LOG").is_some()
         || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_RDMA").is_some()
         || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE").is_some()
-        || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_SURVIVABILITY").is_some();
+        || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_SURVIVABILITY").is_some()
+        || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_DLZ").is_some();
     for (version, root_hash, include_hash) in [
         (
             "5",
@@ -121,7 +123,7 @@ fn real_uci_services(fixtures: &Path, out: &Path) {
         ),
     ] {
         let variable = format!("AMS_GRA_UCI_2_{version}_ROOT");
-        for message in ["log", "rdma", "multimessage", "survivability"] {
+        for message in ["log", "rdma", "multimessage", "survivability", "dlz"] {
             println!("cargo::rustc-check-cfg=cfg(ams_gra_real_uci_{message}2{version})");
         }
         println!("cargo:rerun-if-env-changed={variable}");
@@ -146,6 +148,7 @@ fn real_uci_services(fixtures: &Path, out: &Path) {
             ("rdma", "task103"),
             ("multimessage", "rust-oms-003"),
             ("survivability", "rust-oms-004"),
+            ("dlz", "rust-oms-006"),
         ] {
             let cfg = format!("ams_gra_real_uci_{message}2{version}");
             let contract = fixtures.join(format!("../{task}/uci2{version}-service.yaml"));
@@ -167,6 +170,20 @@ fn real_uci_services(fixtures: &Path, out: &Path) {
             check.push("--with-codec".into());
             let mut readiness = Vec::new();
             generate(message, check, &mut readiness);
+            if message == "dlz" {
+                let report = String::from_utf8_lossy(&readiness);
+                for required in [
+                    "selected oms messages: 1",
+                    "renderable selected oms messages: 1",
+                    "selected type closure: 54",
+                    "renderable selected types: 54",
+                    "status: READY",
+                    "codec renderable emitted declarations: 53/53",
+                    "codec status: READY",
+                ] {
+                    assert!(report.lines().any(|line| line == required), "{report}");
+                }
+            }
             if message == "survivability" {
                 let report = String::from_utf8_lossy(&readiness);
                 for required in [

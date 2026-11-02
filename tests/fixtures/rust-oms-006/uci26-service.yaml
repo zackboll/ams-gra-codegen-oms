@@ -1,0 +1,30 @@
+contract_version: "0.1"
+service:
+  name: task098-dlz
+  version: "0.1.0"
+  kind: service
+standards:
+  oms_version: "2.6"
+  uci_schema_version: "2.6"
+functions:
+  - id: f
+    name: F
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: e
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: DLZ
+        topic: task098-dlz
+        timing:
+          kind: asynchronous
+      - id: publish
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: DLZ
+        topic: task098-dlz
+        timing:
+          kind: asynchronous
