@@ -1,0 +1,122 @@
+{
+  "version": 1,
+  "identity": {
+    "sha": "92c834929543b96227332879b4bbef84f5a15a37",
+    "tree": "f395a12f6d92cae1d8efc1a324ddcb6e4f76fe8b",
+    "run_id": "local",
+    "run_attempt": "1",
+    "mode": "fast",
+    "python": "3.11",
+    "python_version": "3.11.17 (main, Oct 14 2026, 01:05:33) [Clang 23.1.3 ]",
+    "optimization": "optimized",
+    "interpreter_sha256": "879c4d45969ab4c5b91a2d05bc089fb8556b866a877a25b3b62167302a54b36e",
+    "generator_sha256": "b237f8131455e03878a3888ed5f611295d20a195d55ad717c949db1e07dba4af"
+  },
+  "hashes": {
+    "python/qualification/fast/test_choice.py": "ea866c2842dd1e836ac3ba10218662c7f2151818da1c7a988e4e242d524366c5",
+    "python/qualification/fast/test_duration.py": "7912402f521cb1c89534cf99c81da837907d5ee78da6aa0c684e512ae12fca37",
+    "python/qualification/fast/test_fast_contract.py": "269447d9b78b107e12c284ea81fc86f3d9ebc55b87dd7c420ed3298dffc5e411",
+    "python/qualification/fast/test_hexbinary.py": "035b49e0f3fedf2db726a8ef31bd81cc2dcba4eec0d86082cf76be224478be6e",
+    "python/qualification/fast/test_nato_special_words_fast.py": "51f138377d80b680cad635e95a4094d05b9ea5fd2b3e73ed98c3ba5b78908500",
+    "python/qualification/fast/test_owned_fixture.py": "270ee19865252244c0f1362321fd6ed9c243d429ee3638dd2c6ded42e6fd8c96",
+    "python/qualification/fast/test_unbounded_repetition_fast.py": "705359d62c320e50e4a63f73ee57ffa928ee369f9934933e1972ae4c2ccb45d7",
+    "python/qualification/fast/test_whitespace_visible.py": "0c020e0d75cd4402c8af383828490aeebe7b6a2d9c218138066bc22ff282c30a",
+    "python/qualification/fast/fixtures/test_owned_fixture/manifest.json": "1c76794a904d287e55686108910657d2f5bb7895a1c51846fdd80f6c78bbbda7",
+    "python/qualification/fast/fixtures/test_owned_fixture/oam.xsd": "505d2c2f73d98ff84eece8cf1ec59d1b548a959fa748c5411422114f47f2c7d8",
+    "python/qualification/fast/fixtures/test_owned_fixture/service.yaml": "81038642b5d424d50c374ee09a1da9e6b6af1ad6739b87fdee1c981065769669",
+    "python/qualification/fast/fixtures/test_owned_fixture/values.json": "75c4dda0a242f53e52aa7f4b9c0531fdd95dfb8ec4e3e77eaa6f5183775a3644"
+  },
+  "fixtures": [
+    {
+      "language": "python",
+      "mode": "fast",
+      "path": "python/qualification/fast/fixtures/test_owned_fixture",
+      "manifest": {
+        "version": 1,
+        "test": "test_owned_fixture.py",
+        "files": [
+          "oam.xsd",
+          "service.yaml",
+          "values.json"
+        ],
+        "tests": [
+          "test_owned_fixture.OwnedFixture.test_generated_codec",
+          "test_owned_fixture.OwnedFixture.test_required_values"
+        ]
+      },
+      "hashes": {
+        "python/qualification/fast/test_owned_fixture.py": "270ee19865252244c0f1362321fd6ed9c243d429ee3638dd2c6ded42e6fd8c96",
+        "python/qualification/fast/fixtures/test_owned_fixture/manifest.json": "1c76794a904d287e55686108910657d2f5bb7895a1c51846fdd80f6c78bbbda7",
+        "python/qualification/fast/fixtures/test_owned_fixture/oam.xsd": "505d2c2f73d98ff84eece8cf1ec59d1b548a959fa748c5411422114f47f2c7d8",
+        "python/qualification/fast/fixtures/test_owned_fixture/service.yaml": "81038642b5d424d50c374ee09a1da9e6b6af1ad6739b87fdee1c981065769669",
+        "python/qualification/fast/fixtures/test_owned_fixture/values.json": "75c4dda0a242f53e52aa7f4b9c0531fdd95dfb8ec4e3e77eaa6f5183775a3644"
+      }
+    }
+  ],
+  "test_ids": [
+    "test_choice.Choice.test_authenticated_service_delta",
+    "test_choice.Choice.test_generated_models_and_codecs",
+    "test_duration.Duration.test_generated_models_and_codecs",
+    "test_fast_contract.FastRegistration.test_python_and_model_sources",
+    "test_hexbinary.HexBinary.test_authenticated_readiness_evidence",
+    "test_hexbinary.HexBinary.test_generated_models_and_codecs",
+    "test_nato_special_words_fast.NatoSpecialWords.test_cli_generated_models_and_codecs",
+    "test_nato_special_words_fast.NatoSpecialWords.test_versioned_readiness_evidence",
+    "test_owned_fixture.OwnedFixture.test_generated_codec",
+    "test_owned_fixture.OwnedFixture.test_required_values",
+    "test_unbounded_repetition_fast.UnboundedRepetition.test_generated_models_and_codecs",
+    "test_unbounded_repetition_fast.UnboundedRepetition.test_versioned_readiness_evidence",
+    "test_whitespace_visible.WhitespaceVisible.test_authenticated_service_delta",
+    "test_whitespace_visible.WhitespaceVisible.test_generated_models_and_codecs"
+  ],
+  "execution": {
+    "status": "success",
+    "reasons": [],
+    "tests_registered": 14,
+    "tests_run": 14,
+    "tests_passed": 14,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "expected_failures": 0,
+    "unexpected_successes": 0,
+    "executed_test_ids": [
+      "test_choice.Choice.test_authenticated_service_delta",
+      "test_choice.Choice.test_generated_models_and_codecs",
+      "test_duration.Duration.test_generated_models_and_codecs",
+      "test_fast_contract.FastRegistration.test_python_and_model_sources",
+      "test_hexbinary.HexBinary.test_authenticated_readiness_evidence",
+      "test_hexbinary.HexBinary.test_generated_models_and_codecs",
+      "test_nato_special_words_fast.NatoSpecialWords.test_cli_generated_models_and_codecs",
+      "test_nato_special_words_fast.NatoSpecialWords.test_versioned_readiness_evidence",
+      "test_owned_fixture.OwnedFixture.test_generated_codec",
+      "test_owned_fixture.OwnedFixture.test_required_values",
+      "test_unbounded_repetition_fast.UnboundedRepetition.test_generated_models_and_codecs",
+      "test_unbounded_repetition_fast.UnboundedRepetition.test_versioned_readiness_evidence",
+      "test_whitespace_visible.WhitespaceVisible.test_authenticated_service_delta",
+      "test_whitespace_visible.WhitespaceVisible.test_generated_models_and_codecs"
+    ],
+    "passed_test_ids": [
+      "test_choice.Choice.test_authenticated_service_delta",
+      "test_choice.Choice.test_generated_models_and_codecs",
+      "test_duration.Duration.test_generated_models_and_codecs",
+      "test_fast_contract.FastRegistration.test_python_and_model_sources",
+      "test_hexbinary.HexBinary.test_authenticated_readiness_evidence",
+      "test_hexbinary.HexBinary.test_generated_models_and_codecs",
+      "test_nato_special_words_fast.NatoSpecialWords.test_cli_generated_models_and_codecs",
+      "test_nato_special_words_fast.NatoSpecialWords.test_versioned_readiness_evidence",
+      "test_owned_fixture.OwnedFixture.test_generated_codec",
+      "test_owned_fixture.OwnedFixture.test_required_values",
+      "test_unbounded_repetition_fast.UnboundedRepetition.test_generated_models_and_codecs",
+      "test_unbounded_repetition_fast.UnboundedRepetition.test_versioned_readiness_evidence",
+      "test_whitespace_visible.WhitespaceVisible.test_authenticated_service_delta",
+      "test_whitespace_visible.WhitespaceVisible.test_generated_models_and_codecs"
+    ],
+    "skipped_test_ids": [],
+    "expected_failure_test_ids": [],
+    "unexpected_success_test_ids": [],
+    "failed_test_ids": [],
+    "error_test_ids": []
+  },
+  "log_sha256": "44ec565f1d3e6142484a53658e6de0c588afdf1ab5f796ee7a5f00836164c8cd"
+}

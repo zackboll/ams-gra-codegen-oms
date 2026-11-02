@@ -1,0 +1,49 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+ xmlns:t="https://www.vdl.afrl.af.mil/programs/oam"
+ targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified" version="002.5.0">
+  <!-- Independently authored semantic fixtures, not complete UCI services. -->
+  <xs:simpleType name="FoldShort"><xs:restriction base="xs:string">
+    <xs:whiteSpace value="collapse"/><xs:minLength value="0"/><xs:maxLength value="1024"/>
+    <xs:pattern value="[ -~\n\r]{0,1024}"/>
+  </xs:restriction></xs:simpleType>
+  <xs:simpleType name="FoldLong"><xs:restriction base="xs:string">
+    <xs:whiteSpace value="collapse"/><xs:minLength value="0"/><xs:maxLength value="4096"/>
+    <xs:pattern value="[ -~\n\r]{0,4096}"/>
+  </xs:restriction></xs:simpleType>
+  <xs:simpleType name="KeepEmpty"><xs:restriction base="xs:string">
+    <xs:minLength value="0"/><xs:maxLength value="4096"/><xs:pattern value="[ -~\n\r]{0,4096}"/>
+  </xs:restriction></xs:simpleType>
+  <xs:simpleType name="KeepShort"><xs:restriction base="xs:string">
+    <xs:minLength value="1"/><xs:maxLength value="1024"/><xs:pattern value="[ -~\n\r]{1,1024}"/>
+  </xs:restriction></xs:simpleType>
+  <xs:simpleType name="KeepLong"><xs:restriction base="xs:string">
+    <xs:minLength value="1"/><xs:maxLength value="4096"/><xs:pattern value="[ -~\n\r]{1,4096}"/>
+  </xs:restriction></xs:simpleType>
+  <xs:simpleType name="Derived"><xs:restriction base="t:FoldShort"/></xs:simpleType>
+  <xs:simpleType name="Leaf"><xs:restriction base="t:Derived"/></xs:simpleType>
+  <xs:complexType name="Detail"><xs:sequence>
+    <xs:element name="Text" type="t:KeepEmpty"/>
+  </xs:sequence></xs:complexType>
+  <xs:complexType name="Selection"><xs:choice>
+    <xs:element name="Fold" type="t:Leaf"/>
+    <xs:element name="Keep" type="t:KeepLong"/>
+    <xs:element name="Record" type="t:Detail"/>
+  </xs:choice></xs:complexType>
+  <xs:complexType name="Outer"><xs:choice>
+    <xs:element name="Nested" type="t:Selection"/>
+    <xs:element name="Keep" type="t:KeepShort"/>
+  </xs:choice></xs:complexType>
+  <xs:complexType name="Ancestor" abstract="true"><xs:sequence>
+    <xs:element name="Inherited" type="t:FoldLong" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence></xs:complexType>
+  <xs:complexType name="Payload"><xs:complexContent><xs:extension base="t:Ancestor"><xs:sequence>
+    <xs:element name="Required" type="t:FoldShort"/>
+    <xs:element name="Preserved" type="t:KeepShort"/>
+    <xs:element name="Optional" type="t:KeepEmpty" minOccurs="0"/>
+    <xs:element name="Bounded" type="t:KeepLong" minOccurs="0" maxOccurs="3"/>
+    <xs:element name="Repeated" type="t:Outer" minOccurs="0" maxOccurs="unbounded"/>
+    <xs:element name="Positive" type="t:Leaf" minOccurs="1" maxOccurs="unbounded"/>
+    <xs:element name="Detail" type="t:Detail" minOccurs="0"/>
+  </xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+  <xs:element name="WhitespaceNotice" type="t:Payload" t:version="001.000.000.000"/>
+</xs:schema>

@@ -1,0 +1,112 @@
+{
+  "version": 1,
+  "identity": {
+    "sha": "92c834929543b96227332879b4bbef84f5a15a37",
+    "tree": "f395a12f6d92cae1d8efc1a324ddcb6e4f76fe8b",
+    "run_id": "local",
+    "run_attempt": "1",
+    "mode": "uci",
+    "python": "3.13",
+    "python_version": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+    "optimization": "normal",
+    "interpreter_sha256": "6e9b7d27499f26dbec3c8687728f3a0500b9b61688664f03678242744567c461",
+    "generator_sha256": "a2add0aa3c7fa534f3299d0f56b16a4057db2a41b125a00811ed905e15c45dd6",
+    "uci_roots": {
+      "25": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+      "26": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b"
+    },
+    "uci_includes": {
+      "25": "4a8056f1503234d423a0c2495844ab65387febced62bea58b87d4f343e9e7a0b",
+      "26": "ee6e58d5db9fd80d526bc964b8244ec296d106301640d34c3cb2c5c00b710b88"
+    }
+  },
+  "hashes": {
+    "python/qualification/uci/test_choice_uci.py": "5d337b5b0cc102c3ff4df565d7d0dc89f1a10b161bf83434609dfbc40220ce20",
+    "python/qualification/uci/test_duration_uci.py": "62cfbdc4e695117075a589f48462fa16ced753e52ec11c448ca5b4da7c3d3418",
+    "python/qualification/uci/test_hexbinary_uci.py": "1e074c9f5d14955a5d5db1089a9d37efd2e71011212194d437ad88fa2856cc41",
+    "python/qualification/uci/test_nato_special_words_uci.py": "6530050f6394b70054d35b2ae53f864715ebf3ef5de3eba55371f7ceb89f1578",
+    "python/qualification/uci/test_owned_uci.py": "3047cc921b68ee71c2fb579ce96adbd90438fbf36e07286b5e72d10bd88896ba",
+    "python/qualification/uci/test_uci_contract.py": "8881dc5689abfaf6464f1faf71182907ff2302123f8c62e24e79cd70568af02d",
+    "python/qualification/uci/test_unbounded_repetition_uci.py": "a907b1a1bff57e4da174b8bb11d12ae3b8782a4ea939063123a9ba902f59f8bf",
+    "python/qualification/uci/test_whitespace_visible_services.py": "86d602c2a2dd4660b6148f98d5fcabf8f54e5d23d708136c83d3aea01ea40827",
+    "python/qualification/uci/test_whitespace_visible_uci.py": "11277d6eff0c92dd21b2ed80178242f8a659449ec30cfb790397b9073f4a582f",
+    "python/qualification/uci/fixtures/test_owned_uci/manifest.json": "72b062b20e95c339b78eaf2624e0d1b6725b92f6f1577f667891045b8d41dbf5",
+    "python/qualification/uci/fixtures/test_owned_uci/service.yaml": "b0eda4302c424fef281d4e7ef211980ca714daa9aefd16fa5f8ee64543edd865",
+    "python/qualification/uci/fixtures/test_owned_uci/values.json": "64aee9a8fa099e4f2427b38eac908bda32d155edddc653ec7abebec6d1ae4f1e"
+  },
+  "fixtures": [
+    {
+      "language": "python",
+      "mode": "uci",
+      "path": "python/qualification/uci/fixtures/test_owned_uci",
+      "manifest": {
+        "version": 1,
+        "test": "test_owned_uci.py",
+        "files": [
+          "service.yaml",
+          "values.json"
+        ],
+        "tests": [
+          "test_owned_uci.OwnedUci.test_generated_pinned_datetime"
+        ]
+      },
+      "hashes": {
+        "python/qualification/uci/test_owned_uci.py": "3047cc921b68ee71c2fb579ce96adbd90438fbf36e07286b5e72d10bd88896ba",
+        "python/qualification/uci/fixtures/test_owned_uci/manifest.json": "72b062b20e95c339b78eaf2624e0d1b6725b92f6f1577f667891045b8d41dbf5",
+        "python/qualification/uci/fixtures/test_owned_uci/service.yaml": "b0eda4302c424fef281d4e7ef211980ca714daa9aefd16fa5f8ee64543edd865",
+        "python/qualification/uci/fixtures/test_owned_uci/values.json": "64aee9a8fa099e4f2427b38eac908bda32d155edddc653ec7abebec6d1ae4f1e"
+      }
+    }
+  ],
+  "test_ids": [
+    "test_choice_uci.ChoiceUci.test_original_security_choices",
+    "test_duration_uci.DurationUci.test_pinned_direct_and_named_duration",
+    "test_hexbinary_uci.HexBinaryUci.test_pinned_direct_named_and_constrained_binary",
+    "test_nato_special_words_uci.NatoSpecialWordsUci.test_pinned_declarations",
+    "test_owned_uci.OwnedUci.test_generated_pinned_datetime",
+    "test_uci_contract.UciRegistration.test_pinned_inputs_available",
+    "test_unbounded_repetition_uci.UnboundedRepetitionUci.test_pinned_subsystem_string_member",
+    "test_whitespace_visible_services.CompleteWhitespaceVisibleServices.test_ready_complete_services",
+    "test_whitespace_visible_uci.WhitespaceVisibleUci.test_original_declarations"
+  ],
+  "execution": {
+    "status": "success",
+    "reasons": [],
+    "tests_registered": 9,
+    "tests_run": 9,
+    "tests_passed": 9,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "expected_failures": 0,
+    "unexpected_successes": 0,
+    "executed_test_ids": [
+      "test_choice_uci.ChoiceUci.test_original_security_choices",
+      "test_duration_uci.DurationUci.test_pinned_direct_and_named_duration",
+      "test_hexbinary_uci.HexBinaryUci.test_pinned_direct_named_and_constrained_binary",
+      "test_nato_special_words_uci.NatoSpecialWordsUci.test_pinned_declarations",
+      "test_owned_uci.OwnedUci.test_generated_pinned_datetime",
+      "test_uci_contract.UciRegistration.test_pinned_inputs_available",
+      "test_unbounded_repetition_uci.UnboundedRepetitionUci.test_pinned_subsystem_string_member",
+      "test_whitespace_visible_services.CompleteWhitespaceVisibleServices.test_ready_complete_services",
+      "test_whitespace_visible_uci.WhitespaceVisibleUci.test_original_declarations"
+    ],
+    "passed_test_ids": [
+      "test_choice_uci.ChoiceUci.test_original_security_choices",
+      "test_duration_uci.DurationUci.test_pinned_direct_and_named_duration",
+      "test_hexbinary_uci.HexBinaryUci.test_pinned_direct_named_and_constrained_binary",
+      "test_nato_special_words_uci.NatoSpecialWordsUci.test_pinned_declarations",
+      "test_owned_uci.OwnedUci.test_generated_pinned_datetime",
+      "test_uci_contract.UciRegistration.test_pinned_inputs_available",
+      "test_unbounded_repetition_uci.UnboundedRepetitionUci.test_pinned_subsystem_string_member",
+      "test_whitespace_visible_services.CompleteWhitespaceVisibleServices.test_ready_complete_services",
+      "test_whitespace_visible_uci.WhitespaceVisibleUci.test_original_declarations"
+    ],
+    "skipped_test_ids": [],
+    "expected_failure_test_ids": [],
+    "unexpected_success_test_ids": [],
+    "failed_test_ids": [],
+    "error_test_ids": []
+  },
+  "log_sha256": "96bf2d1189170f957a2e9786591dfa4b2b8321fd0ba3a0262e8389d6e42aa5f8"
+}
