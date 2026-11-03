@@ -60,7 +60,7 @@ receive explicitly using the existing connection's `Poll`.
 
 Add the clean AHT fork checkout's directory to `GPR_PROJECT_PATH`, pinned to
 `https://github.com/zackboll/aht` commit
-`4361ba5c9f4d187955dcd484fffef9296a49362a`. Set `OMS_WS_CODEC_SOURCE` to the clean
+`827b0c17dd964e935f8e88912ce0611ee92b6f16`. Set `OMS_WS_CODEC_SOURCE` to the clean
 websocket-ada checkout at `765d9cd612838eb00645037977c8cc9af7171c3e`. The
 qualification runner provisions these pins itself. AHT's own GPR project owns
 framing and TLS exactly once; no high-level client is elaborated. The default
