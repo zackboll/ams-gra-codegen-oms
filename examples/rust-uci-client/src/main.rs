@@ -176,7 +176,7 @@ fn run(options: cli::Options) -> Result<(), String> {
     // One deadline and one additional-attempt budget for the entire receive period.
     session::receive_sessions(session, &options, Instant::now() + options.duration)?;
     println!(
-        "COMPLETE bounded execution; no runtime errors observed (not a broker acceptance guarantee)"
+        "COMPLETE bounded execution; no unrecovered runtime errors (not a broker acceptance guarantee)"
     );
     Ok(())
 }

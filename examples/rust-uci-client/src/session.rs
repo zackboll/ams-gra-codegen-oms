@@ -184,9 +184,20 @@ fn transient(error: &RuntimeError) -> bool {
 }
 
 pub(super) fn receive_sessions(
+    session: Session,
+    options: &cli::Options,
+    deadline: Instant,
+) -> Result<(), String> {
+    receive_sessions_with_activation_time(session, options, deadline, |_| Instant::now())
+}
+
+// The seam samples only the final activation decision, after all four SUBs.
+// Tests can select either boundary without delaying production subscription setup.
+fn receive_sessions_with_activation_time(
     mut session: Session,
     options: &cli::Options,
     deadline: Instant,
+    mut activation_time: impl FnMut(&mut Session) -> Instant,
 ) -> Result<(), String> {
     let mut attempts = 0;
     loop {
@@ -251,9 +262,20 @@ pub(super) fn receive_sessions(
                             "execution deadline expired during connect/INIT".into(),
                         ));
                     }
-                    session = Session::subscribe(runtime, options, epoch + 1).map_err(|error| {
-                        failure(format!("terminal subscription setup: {error}"))
-                    })?;
+                    let mut replacement =
+                        Session::subscribe(runtime, options, epoch + 1).map_err(|error| {
+                            failure(format!("terminal subscription setup: {error}"))
+                        })?;
+                    if activation_time(&mut replacement) >= deadline {
+                        let cleanup = replacement.close(false);
+                        let mut detail =
+                            "execution deadline expired during subscription setup".to_owned();
+                        if let Err(error) = cleanup {
+                            detail.push_str(&format!("\n{error}"));
+                        }
+                        return Err(failure(detail));
+                    }
+                    session = replacement;
                     println!("RECONNECT_COMPLETE session={}", epoch + 1);
                     break;
                 }
@@ -273,6 +295,9 @@ pub(super) fn receive_sessions(
         }
     }
 }
+
+#[cfg(test)]
+mod deadline_tests;
 
 #[cfg(test)]
 mod tests {

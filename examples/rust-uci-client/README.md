@@ -178,7 +178,7 @@ UNSUBSCRIBED RDMA_InitializeSetup: frame written; handler removed
 UNSUBSCRIBED SurvivabilityRiskLevel: frame written; handler removed
 UNSUBSCRIBED DLZ: frame written; handler removed
 CLOSED runtime; worker joined
-COMPLETE bounded execution; no runtime errors observed (not a broker acceptance guarantee)
+COMPLETE bounded execution; no unrecovered runtime errors (not a broker acceptance guarantee)
 ```
 
 Omit all publication options for a receive-only run:
@@ -327,6 +327,11 @@ recovery enabled, plus a stalled upgrade capped by the remaining deadline and
 initial failure with recovery enabled. Both authentic root variables are needed
 even for an individual live-test run: the incompatible-schema control restarts
 with the other release's authentic schema. No second Sleet build or CI lane is needed.
+
+`src/session/deadline_tests.rs` deterministically checks activation before, at and
+after the deadline, including cleanup-error preservation. It uses a loopback OWP
+peer and the real session cleanup path, without a timed subscription race or
+production delay.
 
 When finished with the manual server:
 
