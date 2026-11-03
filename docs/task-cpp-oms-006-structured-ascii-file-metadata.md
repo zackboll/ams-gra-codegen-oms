@@ -308,7 +308,26 @@ Generated header identities (SHA-256): synthetic shared fixture `oam.hpp`
 
 ## Regressions
 
-REGRESSIONS_TABLE
+| Check | Result |
+| --- | --- |
+| `scripts/check-cpp-oms-001-parity.sh` (CLI at `55469a2` vs this branch: cpp/rust/ada `service-check` + `service-generate` without the flag, rust/ada `--with-codec` readiness) | 59 pairs, 472 runs, **0 mismatches** |
+| C++ `--with-codec` and Python (with and without `--with-codec`) `service-check` + `service-generate` over every fixture pair (63, incl. `tests/fixtures/cpp-codec/*`), baseline vs branch | 756 runs, **0 mismatches**; C++ codecs READY before: 33/33 byte-identical (CPP-OMS-001 golden, Float64, bounded ASCII, …); newly READY only `codec-structured-ascii` and `cpp-codec/structured-ascii`; none lost |
+| Authentic FileMetadata model + API (no codec), 2.5 and 2.6, baseline vs branch | byte-identical |
+| `scripts/check-cpp-oms-002-real-log.sh` | PASS: `checks=307 rejections=189` (2.5) / `192` (2.6), g++, clang++, g++ and clang++ ASan+UBSan |
+| `scripts/check-cpp-oms-003-runtime.sh` | PASS: g++ and clang++ strict, ASan+UBSan, TSan (owp 6/101, mock 30/364, shutdown 12/217, oam 1/13) |
+| `scripts/check-cpp-oms-003-real-log-sleet.sh` (pinned Sleet) | PASS for 2.5 and 2.6: `tests=2 checks=407`, g++ strict, clang++ strict, g++ ASan+UBSan |
+| `scripts/check-cpp-oms-004-position-report.sh` (pinned Sleet) | PASS: edge `checks=305 rejections=103`, 27,167 decode / 20,474 encode rows 0 mismatches, mutation controls detected; consumer `checks=253 rejections=35` and Sleet `tests=2 checks=247` for 2.5 and 2.6, all six configurations |
+| `scripts/check-cpp-oms-005-amti-settings.sh` (pinned Sleet) | PASS: `CPP_OMS_005_BOUNDED_ASCII checks=289 rejections=148` in six configurations, `detected=13/13`, AMTI `uci=25 checks=68 rejections=47` / `uci=26 checks=70 rejections=46`, Sleet `tests=2 checks=206` for 2.5 and 2.6 in six configurations |
+| `cargo test -p ams-gra-oms-codegen-core -p ams-gra-oms-backend-cpp` | 598 passed, 0 failed (incl. `cpp_oms_006_structured_ascii_admission_boundary`) |
+| `cargo test -p ams-gra-codegen-oms --test cpp_codec` | 23 passed (5 new `structured_ascii_*` / `task059_shared_*`) |
+| `cargo test -p ams-gra-codegen-oms --test uci_structured_ascii cpp_oms_006` with both pinned roots | 1 passed (both releases) |
+| `cargo test --no-fail-fast -p ams-gra-codegen-oms -p ams-gra-oms-backend-{python,rust,ada}` (GNAT 13.3.0) | 634 passed, 0 failed, 6 ignored (pre-existing `#[ignore]`) |
+| `cargo clippy --workspace --all-targets -- -D warnings`, `cargo fmt --all -- --check` | clean |
+| `python3 scripts/test_pr_smoke.py` / hosted `PR smoke` | 34 tests OK / success: `CPP_OMS_006_STRUCTURED_ASCII checks=323 rejections=166`, `CPP SMOKE PASSED` |
+
+Default C++, Rust, Python and Ada generation (without `--with-codec`) is
+unchanged, per the parity rows above. The only report-text change is the
+"supported:" list in C++ codec NOT READY boundary lines.
 
 ## CI
 
