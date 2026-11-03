@@ -166,7 +166,7 @@ def verify_bundle(files, compiler, sha, tree, run_id, attempt):
         if label == 'admission' and (not any(a.endswith('/scripts/task105/admission.py') for a in argv)
                 or not {'--evidence', '--sleet', '--uci26'} <= set(argv)):
             raise ValueError('Task105 independent admission command absent')
-    for name, revision in [('aht', '664d5ddeb568626b2f9ff66054c7091894b3b8d4'),
+    for name, revision in [('aht', '827b0c17dd964e935f8e88912ce0611ee92b6f16'),
                            ('websocket-ada', '765d9cd612838eb00645037977c8cc9af7171c3e')]:
         if text(f'campaign/{name}-identity.stdout').strip() != revision or text(f'campaign/{name}-clean.stdout').strip():
             raise ValueError('Task105 transport dependency source pin/cleanliness mismatch')
