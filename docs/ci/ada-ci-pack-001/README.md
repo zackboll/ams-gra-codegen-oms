@@ -73,6 +73,29 @@ longer or hit the retained original suite timeouts. No performance savings are
 claimed. The optional historical pilot is not an acceptance gate; do not dispatch
 another benchmark or wait for it. Existing queued main runs keep their old graphs.
 
+### Completed R1 live qualification
+
+Both full packs **and both independent verifiers passed** on corrective commit
+`40a5281d46cbea5fb9e2abf9be0147c936ca844f`, tree
+`dfb8e67b1da0b73e77c2778699b3ac3fb9ede387`. This includes all seven codec
+workers, two complete guards, every original profile/assertion policy, and all
+30 portable helper-demand cells. Every pack/worker/step exit was zero; both
+verifier exit files contain zero. The additional Ada-backend library run passed
+all 64 tests, none ignored. The complete summaries, constituent exits, marker
+hashes, source identities and resource-sample hashes are retained in
+`local-pack-completions.json`; full logs and scratch remain at the paths above.
+Local timings are not hosted performance evidence, and host-wide memory/disk
+measurements must not be presented as isolated pack resource requirements.
+
+After qualification, main advanced to
+`27e9c3d3d656e3724490f0743f9ab93f9060bae1` with Rust-client reconnect changes.
+Strict branch protection requires an up-to-date branch, so main was incorporated
+by ordinary merge `ba742cbf102af7b21b3a6a0c6853dd92c6cadef1`. That merge changes
+no generator crate, root lockfile, Ada source, workflow or frozen qualification
+input. Full live pack evidence remains explicitly bound to the corrective head,
+not relabeled as a final-head execution. Final-head focused checks and hosted
+smoke/signals are requalified separately. No amend/rebase/reset/force-push used.
+
 ## Historical pilot handoff (superseded; not an acceptance gate)
 
 The following records describe the pre-authorization pilot only. Its former
