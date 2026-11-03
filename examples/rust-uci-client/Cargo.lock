@@ -420,9 +420,11 @@ dependencies = [
  "ams-gra-codegen-oms",
  "ams-gra-oms-runtime-api",
  "ams-gra-oms-runtime-rust",
+ "futures-util",
  "serde_json",
  "sleet-client",
  "tokio",
+ "tokio-tungstenite",
 ]
 
 [[package]]

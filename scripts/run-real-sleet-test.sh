@@ -67,6 +67,7 @@ cd "$ROOT"
 if [ "${AMS_GRA_RUST_DLZ_ONLY:-}" != 1 ] && [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] && [ -n "${AMS_GRA_UCI_2_6_ROOT:-}" ]; then
   manifest="$ROOT/examples/rust-uci-client/Cargo.toml"
   cargo +1.95.0 fmt --manifest-path "$manifest" -- --check
+  rustfmt +1.95.0 --edition 2024 --check "$ROOT/examples/rust-uci-client/tests/support/reconnect.rs"
   for release in 2.5 2.6; do
     export AMS_GRA_UCI_RELEASE="$release"
     if [ "$release" = 2.5 ]; then
@@ -83,11 +84,12 @@ if [ "${AMS_GRA_RUST_DLZ_ONLY:-}" != 1 ] && [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] &
     printf '%s\n' "$output"
     if (( status != 0 )); then exit "$status"; fi
     grep -Fqx "RUST-OMS-007 002.${release#2.}.0 standalone four-message typed/external/OWP/error/unsubscribe/process cleanup: PASSED" <<<"$output"
+    grep -Fqx "RUST-OMS-008 002.${release#2.}.0 bounded reconnection and terminal controls: PASSED" <<<"$output"
     grep -qE '^test result: ok\. 1 passed; 0 failed; 0 ignored;' <<<"$output"
   done
 fi
 if [ "${AMS_GRA_RUST_CLIENT_ONLY:-}" = 1 ]; then
-  echo "RUST-OMS-007 real pinned Sleet ($SLEET_REV): PASSED"
+  echo "RUST-OMS-008 real pinned Sleet ($SLEET_REV): PASSED"
   exit 0
 fi
 # run_one TEST_FILE TEST_NAME PASS_LINE: exactly one matching test must run,
