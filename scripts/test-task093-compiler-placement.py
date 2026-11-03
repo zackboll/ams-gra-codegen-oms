@@ -25,14 +25,35 @@ def job(text, name):
     return match[0]
 
 
-def placement(text):
+def placement(text, inventory=None):
     # Reuse this bounded workflow reader for PERF-005; comments and unrelated
     # jobs are not qualification inputs.
     text = "\n".join(line for line in text.splitlines() if not line.lstrip().startswith("#"))
     float32_qualification(job(text, "ada-float32-codec"))
     actual = []
     for name in ["ada-hexbinary-codec", "ada-float32-codec"]:
-        body = job(text, name)
+        if name == "ada-hexbinary-codec" and "  ada-codec-pack-a:" in text:
+            body = job(text, "ada-codec-pack-a")
+            if inventory is None:
+                inventory = json.loads((ROOT / "scripts/ada_ci_pack/inventory.json").read_text())
+            if inventory['packs']['a'].count(name) != 1:
+                raise ValueError("missing/duplicate portable compiler 16 suite")
+            for command in (
+                'python3 scripts/ada_ci_pack/run.py --pack a --workers 4 --expected-sha "$GITHUB_SHA"',
+                'python3 scripts/ada_ci_pack/verify.py --pack a --expected-sha "$GITHUB_SHA"',
+            ):
+                if command not in body:
+                    raise ValueError("missing mandatory pack execution/verification")
+            # Only evidence uploads may be conditional; execution must remain a hard gate.
+            for line in body.splitlines():
+                if ('continue-on-error:' in line or
+                        (line.strip().startswith('if:') and line.strip() != 'if: always()')):
+                    raise ValueError("packed qualification cannot be bypassed")
+            body += ''.join('\n      - name: ' + step['name'] + '\n        run: |\n' +
+                            '\n'.join('          ' + line for line in step['run'].splitlines())
+                            for step in inventory['suites'][name]['steps'])
+        else:
+            body = job(text, name)
         if "runs-on: ubuntu-24.04" not in body:
             raise ValueError("unexpected runner")
         if name == "ada-hexbinary-codec" and "container:" in body:
@@ -187,9 +208,10 @@ class CompilerPlacement(unittest.TestCase):
             placement(self.text.replace('  ada-float32-codec:\n', '  ada-float32-codec:\n    if: false\n'))
 
     def test_portable_14_cannot_return_to_ubuntu(self):
-        text = self.text.replace("--family portable --compiler 16", "--family portable --compiler 14")
+        inventory = json.loads((ROOT / "scripts/ada_ci_pack/inventory.json").read_text().replace(
+            "--family portable --compiler 16", "--family portable --compiler 14"))
         with self.assertRaises(ValueError):
-            placement(text)
+            placement(self.text, inventory)
 
     def test_portable_14_cannot_disappear(self):
         text = self.text.replace("python3 scripts/check-task093-helper-demand.py --family portable --compiler 14", "echo removed --family portable --compiler 14")
@@ -203,7 +225,7 @@ class CompilerPlacement(unittest.TestCase):
                 placement(text)
 
     def test_portable_16_cannot_move_into_container(self):
-        text = self.text.replace("  ada-hexbinary-codec:\n", "  ada-hexbinary-codec:\n    container: debian\n")
+        text = self.text.replace("  ada-codec-pack-a:\n", "  ada-codec-pack-a:\n    container: debian\n")
         with self.assertRaises(ValueError):
             placement(text)
 
@@ -215,8 +237,24 @@ class CompilerPlacement(unittest.TestCase):
     def test_naming_matrix_cannot_be_narrowed_or_ignored(self):
         line = "python3 scripts/check-task093-helper-demand.py --family portable --compiler 16"
         for extra in [" --profiles oam", " --policies normal", " --red"]:
+            inventory = json.loads((ROOT / "scripts/ada_ci_pack/inventory.json").read_text())
+            for step in inventory['suites']['ada-hexbinary-codec']['steps']:
+                step['run'] = step['run'].replace(line, line + extra)
             with self.subTest(extra=extra), self.assertRaises(ValueError):
-                placement(self.text.replace(line, line + extra))
+                placement(self.text, inventory)
+
+    def test_packed_portable_16_cannot_disappear_or_be_bypassed(self):
+        for command in ('run.py --pack a --workers 4', 'verify.py --pack a'):
+            with self.subTest(command=command), self.assertRaises(ValueError):
+                placement(self.text.replace(command, 'removed'))
+        for condition in ('if: false', 'continue-on-error: true'):
+            with self.subTest(condition=condition), self.assertRaises(ValueError):
+                placement(self.text.replace('  ada-codec-pack-a:\n',
+                                            '  ada-codec-pack-a:\n    ' + condition + '\n'))
+        inventory = json.loads((ROOT / "scripts/ada_ci_pack/inventory.json").read_text())
+        inventory['packs']['a'].remove('ada-hexbinary-codec')
+        with self.assertRaises(ValueError):
+            placement(self.text, inventory)
 
     def test_five_cases_and_seven_check_marker_retained(self):
         self.assertEqual(runner.NAMES, ["ArraySample", "Array_Encode_Hex_Binary", "Encode_Hex_Binary", "Array_encode_hex_binary", "Array_Decode_Hex_Binary"])

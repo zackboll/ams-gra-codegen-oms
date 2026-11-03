@@ -27,7 +27,56 @@ runs were canceled by this implementation.
 Incorporated main: `afe0c510866c08fc188fef335e74879840794a70`, tree
 `a384c4375098fb5293c0a4fa11595f5de7bbe014`.
 
-## Historical pilot handoff: HOSTED_CI_PENDING
+## R1 independent review (2026-11-03)
+
+Reviewed owner-authorized implementation `aa6372f38d34f52a26e015d598b1656d83be5c9b`
+(tree `f8d4ff2aed6d66c780855cadddf83c04c2d17257`). The eight old jobs are absent;
+exactly `ada-codec-pack-a` and `ada-codec-pack-b` replace them. All other jobs
+are unchanged except `main-ci-required`, which requires both packs and fails
+on any non-successful dependency. The existing ten-slot policy is unchanged.
+
+Found and corrected a real integration defect: the mandatory compiler-placement
+regression still looked for the removed `ada-hexbinary-codec` workflow block,
+so pack A would fail. It now follows pack A into the frozen command inventory,
+retaining the four-invocation / 120-execution compiler/profile/policy matrix.
+Its negative controls mutate the real inventory instead of an absent workflow
+command, and reject missing execution, verification, suite membership, changed
+compiler placement, narrowed policies/profiles, and conditional/error bypasses.
+No Ada production code, corpus, qualification command, or expected result changed.
+
+The independent artifact comparison confirms every original upload glob/name
+is retained with a task-private prefix; only the duplicated guard name changes
+to `task087a-ada-json-guard-pack-a` / `task087a-ada-json-guard-pack-b`. There are
+no active workflow artifact consumers requiring an update. Lane regressions
+now also check every original artifact glob, not just artifact names.
+
+Initial R1 checks: 19 pack, two lane, 34 routing, 13 compiler-placement, and 11
+PERF-005 CI regressions pass; pinned actionlint 1.7.12, Rust 1.95.0 formatting,
+locked CLI/Ada all-target checks, and diff checks pass. PR smoke and trusted
+signals passed on the reviewed head; corrective-head checks must pass separately.
+Live local pack qualification evidence is retained outside the checkout under
+`/tmp/ada-ci-pack-001r1-evidence/` (logs) and
+`/home/zboll/ada-ci-pack-001r1-evidence/` (pack scratch). It is correctness
+qualification, not a benchmark or a substitute for mandatory hosted main jobs.
+
+Isolation review: Alire settings, caches, toolchains, dependency builds, TMPDIR,
+and generated consumers are private copies; the generator is shared read-only
+after its one build. Each worker inherits one allowed CPU and inner GPRbuild
+`-j1`; Cargo is not invoked concurrently by workers. The full guard precedes
+every pack's workers. Every worker must have successful step exits, artifacts,
+markers and matching source identity; timeouts/cancellation terminate its
+process group and cannot become success. Resource evidence is mandatory.
+
+Operational risks remain: hosted 4-vCPU/16-GB packs have not yet completed as
+main jobs, toolchain copies consume disk, and serialized inner builds may take
+longer or hit the retained original suite timeouts. No performance savings are
+claimed. The optional historical pilot is not an acceptance gate; do not dispatch
+another benchmark or wait for it. Existing queued main runs keep their old graphs.
+
+## Historical pilot handoff (superseded; not an acceptance gate)
+
+The following records describe the pre-authorization pilot only. Its former
+performance gate and continuation instructions no longer apply.
 
 PR: https://github.com/zackboll/ams-gra-codegen-oms/pull/181
 
@@ -109,22 +158,22 @@ most 2,920 seconds for twice the longest individual baseline. Use
 setup/build, worker times, CPU utilization, peak memory/disk, runner-minute
 savings and resource-contention assessment are **pending**, not zero.
 
-## Job/artifact inventory and intended implementation
+## Job/artifact inventory
 
-Current (unchanged): `ada-json-guard` plus `ada-generated-codec`,
+Replaced: `ada-json-guard` plus `ada-generated-codec`,
 `ada-repeated-temporal-codec`, `ada-datetime-codec`, `ada-hexbinary-codec`,
 `ada-repeated-codec`, `ada-duration-codec`, `ada-repeated-choice-codec`: eight
-scheduled runner jobs. Proposed after a positive gate: `ada-codec-pack-a`
+scheduled runner jobs. Implemented: `ada-codec-pack-a`
 (first four suites), `ada-codec-pack-b` (last three), each with its own complete
-JSON guard prerequisite: two runner jobs, **8 to 2 is not implemented yet**.
-`main-ci-required` must then require both and remove the superseded eight jobs.
+JSON guard prerequisite: **eight to two scheduled runner jobs**.
+`main-ci-required` requires both and no longer references the superseded jobs.
 
 The frozen inventory retains all eight original artifact specifications.
 The pilot preserves the four constituent original artifact names plus
 `task087a-ada-json-guard`; it adds `ada-ci-pack-001-pilot` for resource samples,
 source identities, step exits, and worker completions. In two production jobs
 the guard artifacts must become pack-specific to avoid upload-artifact v4 name
-collisions. Every consumer must be checked explicitly before that rename.
+collisions; those names are implemented and the consumer search is complete.
 
 No original test/assertion or script has been removed or changed. The inventory
 contains the exact original shell steps and 271 qualification input hashes;

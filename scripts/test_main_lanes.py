@@ -73,6 +73,12 @@ class MainLanes(unittest.TestCase):
                 for suite in suites:
                     self.assertIn('/' + suite + '/', jobs[name])
                     self.assertIn('name: ' + inventory['suites'][suite]['artifact']['name'], jobs[name])
+                for suite in ['ada-json-guard', *suites]:
+                    artifact = inventory['suites'][suite]['artifact']
+                    directory = 'seed' if suite == 'ada-json-guard' else suite
+                    prefix = '${{ runner.temp }}/' + name + '/' + directory
+                    for pattern in artifact['path'].splitlines():
+                        self.assertIn(pattern.replace('${{ runner.temp }}', prefix), jobs[name])
 
 
 if __name__ == '__main__':
