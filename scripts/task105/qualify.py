@@ -16,7 +16,7 @@ sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
 PINS = {'25': 'ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27',
         '26': 'af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b'}
-DEPS = {'aht': ('https://github.com/zackboll/aht.git', '4361ba5c9f4d187955dcd484fffef9296a49362a'),
+DEPS = {'aht': ('https://github.com/zackboll/aht.git', '827b0c17dd964e935f8e88912ce0611ee92b6f16'),
         'websocket-ada': ('https://github.com/kokhlo/websocket-ada.git', '765d9cd612838eb00645037977c8cc9af7171c3e')}
 TOOL_IDENTITIES = ('for tool in gcc gnat gprbuild ld; do path=$(command -v "$tool"); '
                    'printf "%s\\n" "$path"; sha256sum "$path"; done; gcc -print-prog-name=ld')

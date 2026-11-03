@@ -15,7 +15,7 @@ import shutil
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
-AHT = "4361ba5c9f4d187955dcd484fffef9296a49362a"
+AHT = "827b0c17dd964e935f8e88912ce0611ee92b6f16"
 CODEC = "765d9cd612838eb00645037977c8cc9af7171c3e"
 
 

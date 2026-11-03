@@ -13,7 +13,7 @@ import sys
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
 PINS = {
-    "aht": ("https://github.com/zackboll/aht.git", "4361ba5c9f4d187955dcd484fffef9296a49362a"),
+    "aht": ("https://github.com/zackboll/aht.git", "827b0c17dd964e935f8e88912ce0611ee92b6f16"),
     "websocket-ada": ("https://github.com/kokhlo/websocket-ada.git", "765d9cd612838eb00645037977c8cc9af7171c3e"),
 }
 OAM = "https://www.vdl.afrl.af.mil/programs/oam"
