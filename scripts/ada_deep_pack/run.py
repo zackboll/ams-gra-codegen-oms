@@ -145,7 +145,7 @@ def prepare(root, names, compiler, source):
     env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1", CARGO_BUILD_JOBS="4")
 
     def run(label, command, cwd=ROOT, timeout=3600):
-        return execute(command, env, cwd, root / label, timeout)
+        return execute(list(map(str, command)), env, cwd, root / label, timeout)
 
     profiles = ["debug", "release"] if "ada-websocket-real-sleet" in names else ["release"]
     generators = {}
