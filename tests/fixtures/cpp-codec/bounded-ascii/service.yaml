@@ -1,0 +1,38 @@
+# SYNTHETIC CPP-OMS-005 fixture. Authored for this repository only.
+#
+# Selects BoundedNotice from bounded-ascii.xsd as one input and one output
+# exchange on the same topic. Every selected constrained String is a pinned
+# Task 058 bounded-ASCII row: model READY and C++ --with-codec codec READY.
+contract_version: "0.1"
+
+service:
+  name: cpp-oms-005-bounded-ascii
+  version: "0.1.0"
+  kind: service
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: notice
+    name: Notice
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: input-notice
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: BoundedNotice
+        topic: bounded-notice
+        timing:
+          kind: asynchronous
+      - id: output-notice
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: BoundedNotice
+        topic: bounded-notice
+        timing:
+          kind: asynchronous
