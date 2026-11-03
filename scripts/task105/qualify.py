@@ -16,7 +16,7 @@ sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
 PINS = {'25': 'ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27',
         '26': 'af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b'}
-DEPS = {'aht': ('https://github.com/ovenpasta/aht.git', '664d5ddeb568626b2f9ff66054c7091894b3b8d4'),
+DEPS = {'aht': ('https://github.com/zackboll/aht.git', '4361ba5c9f4d187955dcd484fffef9296a49362a'),
         'websocket-ada': ('https://github.com/kokhlo/websocket-ada.git', '765d9cd612838eb00645037977c8cc9af7171c3e')}
 TOOL_IDENTITIES = ('for tool in gcc gnat gprbuild ld; do path=$(command -v "$tool"); '
                    'printf "%s\\n" "$path"; sha256sum "$path"; done; gcc -print-prog-name=ld')
@@ -103,6 +103,8 @@ def main():
         assert not campaign.run(name + '-clean', ['git', '-C', directory, 'status', '--porcelain'])
     campaign.env.update(OMS_WS_AHT_SOURCE=str(scratch / 'deps/aht'),
                         OMS_WS_CODEC_SOURCE=str(scratch / 'deps/websocket-ada'), PYTHONDONTWRITEBYTECODE='1')
+    with campaign.environment.open('a') as stream:
+        stream.write(f'export GPR_PROJECT_PATH="{scratch}/deps/aht:$GPR_PROJECT_PATH"\n')
     cells = []
     schema_sources = {}
     for release, schema in [('26', args.uci26.resolve())]:

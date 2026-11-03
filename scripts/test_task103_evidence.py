@@ -56,7 +56,7 @@ def bundle(compiler='14'):
     labels = {'source', 'source-status', 'platform', 'gnat-version', 'gprbuild-version', 'printenv', 'admission'}
     labels |= {f'{name}-{step}' for name in ('aht', 'websocket-ada')
                for step in ('clone', 'pin', 'identity', 'clean')}
-    for name, revision in [('aht', '664d5ddeb568626b2f9ff66054c7091894b3b8d4'),
+    for name, revision in [('aht', '4361ba5c9f4d187955dcd484fffef9296a49362a'),
                            ('websocket-ada', '765d9cd612838eb00645037977c8cc9af7171c3e')]:
         put(f'campaign/{name}-identity.stdout', revision + '\n')
         put(f'campaign/{name}-clean.stdout', '')

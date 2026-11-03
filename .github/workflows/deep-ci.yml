@@ -38,7 +38,7 @@ jobs:
         run: |
           set -euo pipefail
           apt-get update
-          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14
+          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14 libssl-dev
           test "$(uname -m)" = x86_64
           test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.41'
           mkdir -p /tmp/task106-evidence
@@ -196,7 +196,7 @@ jobs:
         run: |
           set -euo pipefail
           apt-get update
-          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14
+          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14 libssl-dev
           test "$(uname -m)" = x86_64
           test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.41'
           mkdir -p /tmp/task105-evidence
@@ -352,7 +352,7 @@ jobs:
         run: |
           set -euo pipefail
           apt-get update
-          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14
+          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14 libssl-dev
           test "$(uname -m)" = x86_64
           test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.41'
           mkdir -p /tmp/task104-evidence
@@ -513,7 +513,7 @@ jobs:
         run: |
           set -euo pipefail
           apt-get update
-          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14
+          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14 libssl-dev
           test "$(uname -m)" = x86_64
           test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.41'
           mkdir -p /tmp/task103-evidence
@@ -669,7 +669,7 @@ jobs:
         run: |
           set -euo pipefail
           apt-get update
-          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14
+          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14 libssl-dev
           test "$(uname -m)" = x86_64
           test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.41'
           mkdir -p /tmp/task102-evidence
@@ -824,7 +824,7 @@ jobs:
         run: |
           set -euo pipefail
           apt-get update
-          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14
+          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14 libssl-dev
           test "$(uname -m)" = x86_64
           test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.41'
           mkdir -p /tmp/task101-evidence
@@ -985,7 +985,7 @@ jobs:
         run: |
           set -euo pipefail
           apt-get update
-          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14
+          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14 libssl-dev
           test "$(uname -m)" = x86_64
           test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.41'
           mkdir -p /tmp/task100-evidence

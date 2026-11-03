@@ -19,7 +19,7 @@ UPSTREAM_SOURCES = {
         'websocket-base64.ads', 'websocket-base64.adb')),
 }
 DEPENDENCIES = {
-    'aht': ('664d5ddeb568626b2f9ff66054c7091894b3b8d4',
+    'aht': ('4361ba5c9f4d187955dcd484fffef9296a49362a',
             'cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30'),
     'websocket-ada': ('765d9cd612838eb00645037977c8cc9af7171c3e',
                       '7202d55f00bedb98266732087979628545c6bd24bd84815597d8d0b45c8249fd'),

@@ -113,6 +113,8 @@ def main():
                     raise ValueError('missing authenticated shared transport dependencies')
                 campaign.env.update(OMS_WS_AHT_SOURCE=str(args.shared_campaign / 'deps/aht'),
                                     OMS_WS_CODEC_SOURCE=str(args.shared_campaign / 'deps/websocket-ada'))
+                with campaign.environment.open('a') as stream:
+                    stream.write(f'export GPR_PROJECT_PATH="{args.shared_campaign}/deps/aht:$GPR_PROJECT_PATH"\n')
             (build / 'consumer.gpr').write_text(extra + 'project Consumer is\n'
                 'for Source_Dirs use (".", "generated"); for Object_Dir use "obj";\n'
                 f'for Exec_Dir use "bin"; for Main use ("{item["main"]}");\n'

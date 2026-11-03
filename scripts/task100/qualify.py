@@ -13,7 +13,7 @@ import sys
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
 PINS = {
-    "aht": ("https://github.com/ovenpasta/aht.git", "664d5ddeb568626b2f9ff66054c7091894b3b8d4"),
+    "aht": ("https://github.com/zackboll/aht.git", "4361ba5c9f4d187955dcd484fffef9296a49362a"),
     "websocket-ada": ("https://github.com/kokhlo/websocket-ada.git", "765d9cd612838eb00645037977c8cc9af7171c3e"),
 }
 OAM = "https://www.vdl.afrl.af.mil/programs/oam"
@@ -74,6 +74,10 @@ def main():
         assert run(f"{name}-identity", ["git", "-C", dest, "rev-parse", "HEAD"]).strip() == revision
         assert not run(f"{name}-clean", ["git", "-C", dest, "status", "--porcelain"])
     env["OMS_WS_AHT_SOURCE"] = str(scratch / "deps/aht")
+    # Import the library once, rather than compiling its framing units again
+    # through the OMS codec project. printenv supplies the rest of the graph.
+    with environment.open("a") as stream:
+        stream.write(f'export GPR_PROJECT_PATH={shlex.quote(str(scratch / "deps/aht"))}:"$GPR_PROJECT_PATH"\n')
     env["OMS_WS_CODEC_SOURCE"] = str(scratch / "deps/websocket-ada")
     shim = scratch / "partial_send.so"
     run("partial-send-shim", ["cc", "-shared", "-fPIC", "-Wall", "-Wextra", "-Werror", "-O2",

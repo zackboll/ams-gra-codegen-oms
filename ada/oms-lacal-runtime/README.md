@@ -58,19 +58,32 @@ The core project remains transport-independent. Import the separate
 transport interface; call `Open` before `Connections.Initialize` and drive
 receive explicitly using the existing connection's `Poll`.
 
-Set `OMS_WS_AHT_SOURCE` to the clean AHT checkout at
-`664d5ddeb568626b2f9ff66054c7091894b3b8d4` and `OMS_WS_CODEC_SOURCE` to the clean
+Add the clean AHT fork checkout's directory to `GPR_PROJECT_PATH`, pinned to
+`https://github.com/zackboll/aht` commit
+`4361ba5c9f4d187955dcd484fffef9296a49362a`. Set `OMS_WS_CODEC_SOURCE` to the clean
 websocket-ada checkout at `765d9cd612838eb00645037977c8cc9af7171c3e`. The
-qualification runner provisions these pins itself. Only standalone framing,
-UTF-8, randomness, bytes and handshake units are compiled, not either library's
-high-level client. GNATCOLL 26 remains the unchanged support dependency.
+qualification runner provisions these pins itself. AHT's own GPR project owns
+framing and TLS exactly once; no high-level client is elaborated. The default
+OpenSSL backend requires OpenSSL 3 development headers/libraries. Alternatively
+set `AHT_TLS_BACKEND=mbedtls` and provision AHT's pinned mbedTLS build.
+GNATCOLL 26 remains the unchanged support dependency.
 
-This adapter supports explicit IPv4 loopback `ws://` URLs only. `wss://` and
-remote hosts are rejected. It is not secure for remote deployments. Poll is
+Plaintext `ws://` remains restricted to IPv4 loopback. Verified `wss://` supports
+DNS/IPv4 hosts with an explicit port. `Open (Client, URL)` uses backend trust
+defaults; `Open (Client, URL, CA_Path => "test-ca.pem")` supplies explicit trust.
+`CA_PEM` alternatively supplies PEM in memory; do not supply both CA arguments.
+There is no insecure mode or plaintext downgrade. URLs with userinfo, fragments,
+or control characters are rejected; IPv6 URL syntax is not supported. Poll is
 nonblocking/bounded-work, never calls application handlers, and has no
 background task. See the complete contract, limits, compiler/Sleet evidence,
-license identities and unsupported features in
-`docs/task-100-ada-websocket-transport.md` at the repository root.
+license identities and unsupported features in `docs/task-100-ada-websocket-transport.md`
+and `docs/task-108r1-ada-wss-aht-qualification.md` at the repository root.
+The same single-task owner must drive all transport operations. TLS control
+responses are retained in one bounded queue and continued Poll calls flush them
+even without incoming traffic. Send may block for its two-second budget and
+returns only after the whole publication is written; a failure closes the
+uncertain session. Finalization and abandoned/failed sessions use Abortive_Close,
+not a blocking TLS close_notify exchange.
 
 ## Transport-independent core (Task 099)
 
