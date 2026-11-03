@@ -45,6 +45,7 @@ mod support {
     use super::*;
     include!("../../../crates/runtime-rust-facade-tests/tests/real_sleet_support/mod.rs");
     include!("../../../crates/runtime-rust-facade-tests/tests/real_sleet_support/connections.rs");
+    include!("support/reconnect.rs");
 
     pub fn accept() {
         let (mut server, url) = start_sleet_with_topics(&TOPICS);
@@ -360,7 +361,12 @@ mod support {
             let family = if name == "Log" { 0 } else { 3 };
             let mut decoder = Application::start(
                 &decoder_url,
-                &[FLAGS[family], files[family].to_str().unwrap()],
+                &[
+                    FLAGS[family],
+                    files[family].to_str().unwrap(),
+                    "--reconnect-attempts",
+                    "8",
+                ],
             );
             // SUB is non-verbose: its local frame write is not an admission
             // barrier. A real self-echo proves this subscription is active.
@@ -402,6 +408,7 @@ mod support {
             );
             assert!(decoder.output.contains(diagnostic));
             assert!(decoder.output.contains("no typed delivery"));
+            assert!(!decoder.output.contains("RECONNECT_ATTEMPT"));
             assert_eq!(
                 decoder.output.matches("RECEIVED ").count(),
                 1,
@@ -428,6 +435,7 @@ mod support {
             closed.output
         );
         assert!(closed.output.contains("CLOSED runtime; worker joined"));
+        assert!(!closed.output.contains("RECONNECT_ATTEMPT"));
         drop(observer);
         drop(publisher);
         drop(executor);
@@ -476,6 +484,10 @@ impl Application {
     }
 
     fn start(url: &str, extra: &[&str]) -> Self {
+        Self::start_for(url, extra, "4")
+    }
+
+    fn start_for(url: &str, extra: &[&str], seconds: &str) -> Self {
         let mut child = Command::new(env!("CARGO_BIN_EXE_rust-uci-client"))
             .args([
                 "--url",
@@ -483,7 +495,7 @@ impl Application {
                 "--service-id",
                 TOPIC,
                 "--duration-seconds",
-                "4",
+                seconds,
             ])
             .args(extra)
             .stdout(Stdio::piped())
@@ -595,4 +607,5 @@ fn standalone_real_sleet() {
         "pinned Sleet binary required"
     );
     support::accept();
+    support::reconnection();
 }
