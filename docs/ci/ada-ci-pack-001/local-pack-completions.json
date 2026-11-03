@@ -1,0 +1,1264 @@
+{
+  "a": {
+    "summary": {
+      "source": {
+        "sha": "40a5281d46cbea5fb9e2abf9be0147c936ca844f",
+        "tree": "dfb8e67b1da0b73e77c2778699b3ac3fb9ede387",
+        "run_id": null,
+        "attempt": null
+      },
+      "pack": "a",
+      "concurrency": 4,
+      "allowed_cpus": [
+        8,
+        9,
+        10,
+        11
+      ],
+      "runner_slots": 1,
+      "rust": "rustc 1.95.0 (59807616e 2026-04-14)",
+      "alire_sha256": "2e2b8de009b793ad2aed10096e162649bbcc5b0711e3c21785ebe8a1261c5d64",
+      "workers": [
+        {
+          "suite": "ada-generated-codec",
+          "cpu": 8,
+          "source": {
+            "sha": "40a5281d46cbea5fb9e2abf9be0147c936ca844f",
+            "tree": "dfb8e67b1da0b73e77c2778699b3ac3fb9ede387",
+            "run_id": null,
+            "attempt": null
+          },
+          "exit": 0,
+          "steps": [
+            {
+              "name": "Task 088 generated Ada Choice execution (GNAT 16.1.0, all policies)",
+              "command": [
+                "taskset",
+                "--cpu-list",
+                "8",
+                "bash",
+                "-euo",
+                "pipefail",
+                "-c",
+                "python3 scripts/check-task088.py --compiler 16 --scratch \"$RUNNER_TEMP/task088-choice\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+              ],
+              "exit": 0,
+              "reason": null,
+              "elapsed_seconds": 410.13946762699925
+            },
+            {
+              "name": "Execute generated Ada codec, all assertion policies",
+              "command": [
+                "taskset",
+                "--cpu-list",
+                "8",
+                "bash",
+                "-euo",
+                "pipefail",
+                "-c",
+                "python3 scripts/check-task087b.py --compiler 16 --scratch \"$RUNNER_TEMP/task087b-codec\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+              ],
+              "exit": 0,
+              "reason": null,
+              "elapsed_seconds": 368.22003977499844
+            }
+          ],
+          "evidence": [
+            {
+              "path": "task087b-codec/normal-run.log",
+              "sha256": "020e5829eebd2354f49fb2abe0c954f5375372c7a872b43302366b8a44a183b0",
+              "marker": "TASK087B_CODEC_COMPLETE cases= 41"
+            },
+            {
+              "path": "task087b-codec/Ignore-run.log",
+              "sha256": "020e5829eebd2354f49fb2abe0c954f5375372c7a872b43302366b8a44a183b0",
+              "marker": "TASK087B_CODEC_COMPLETE cases= 41"
+            },
+            {
+              "path": "task087b-codec/Check-run.log",
+              "sha256": "020e5829eebd2354f49fb2abe0c954f5375372c7a872b43302366b8a44a183b0",
+              "marker": "TASK087B_CODEC_COMPLETE cases= 41"
+            },
+            {
+              "path": "task087b-codec/subset-Check-run.log",
+              "sha256": "4f4a3c914f20fc4381e3c714f1d2e2ddd14eed4cf5490057d608b24e0e1a1046",
+              "marker": "TASK087B_SUBSET_COMPLETE cases= 7"
+            },
+            {
+              "path": "task087b-codec/subset-normal-run.log",
+              "sha256": "4f4a3c914f20fc4381e3c714f1d2e2ddd14eed4cf5490057d608b24e0e1a1046",
+              "marker": "TASK087B_SUBSET_COMPLETE cases= 7"
+            },
+            {
+              "path": "task087b-codec/subset-Ignore-run.log",
+              "sha256": "4f4a3c914f20fc4381e3c714f1d2e2ddd14eed4cf5490057d608b24e0e1a1046",
+              "marker": "TASK087B_SUBSET_COMPLETE cases= 7"
+            },
+            {
+              "path": "task088-choice/codec-ada-choice-Check-run.log",
+              "sha256": "a5866875175a89a7b31eaad957d12a8e95303bea8d9d43646825345beeaa288b",
+              "marker": "TASK088_CODEC_COMPLETE cases= 172"
+            },
+            {
+              "path": "task088-choice/codec-ada-choice-Ignore-run.log",
+              "sha256": "a5866875175a89a7b31eaad957d12a8e95303bea8d9d43646825345beeaa288b",
+              "marker": "TASK088_CODEC_COMPLETE cases= 172"
+            },
+            {
+              "path": "task088-choice/codec-ada-choice-normal-run.log",
+              "sha256": "a5866875175a89a7b31eaad957d12a8e95303bea8d9d43646825345beeaa288b",
+              "marker": "TASK088_CODEC_COMPLETE cases= 172"
+            },
+            {
+              "path": "task088-choice/codec-choice-normal-run.log",
+              "sha256": "e7ca86b41795749bf809636c3c33fc249a9a786be7f7d23366e8f6a0361fe3ee",
+              "marker": "TASK088_QUALIFIED_COMPLETE cases= 2"
+            },
+            {
+              "path": "task088-choice/codec-choice-Ignore-run.log",
+              "sha256": "e7ca86b41795749bf809636c3c33fc249a9a786be7f7d23366e8f6a0361fe3ee",
+              "marker": "TASK088_QUALIFIED_COMPLETE cases= 2"
+            },
+            {
+              "path": "task088-choice/codec-choice-Check-run.log",
+              "sha256": "e7ca86b41795749bf809636c3c33fc249a9a786be7f7d23366e8f6a0361fe3ee",
+              "marker": "TASK088_QUALIFIED_COMPLETE cases= 2"
+            }
+          ],
+          "elapsed_seconds": 778.3938208069885
+        },
+        {
+          "suite": "ada-repeated-temporal-codec",
+          "cpu": 9,
+          "source": {
+            "sha": "40a5281d46cbea5fb9e2abf9be0147c936ca844f",
+            "tree": "dfb8e67b1da0b73e77c2778699b3ac3fb9ede387",
+            "run_id": null,
+            "attempt": null
+          },
+          "exit": 0,
+          "steps": [
+            {
+              "name": "Execute repeated temporal codecs, both profiles and all policies",
+              "command": [
+                "taskset",
+                "--cpu-list",
+                "9",
+                "bash",
+                "-euo",
+                "pipefail",
+                "-c",
+                "python3 scripts/check-task094.py --compiler 16 --scratch \"$RUNNER_TEMP/task094\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+              ],
+              "exit": 0,
+              "reason": null,
+              "elapsed_seconds": 416.6270712130063
+            },
+            {
+              "name": "Execute inherited nested and Choice temporal composition",
+              "command": [
+                "taskset",
+                "--cpu-list",
+                "9",
+                "bash",
+                "-euo",
+                "pipefail",
+                "-c",
+                "python3 scripts/check-task094.py --composition --compiler 16 --scratch \"$RUNNER_TEMP/task094-composition\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+              ],
+              "exit": 0,
+              "reason": null,
+              "elapsed_seconds": 370.48879822698655
+            },
+            {
+              "name": "Execute combined repeated Choice and temporal codecs",
+              "command": [
+                "taskset",
+                "--cpu-list",
+                "9",
+                "bash",
+                "-euo",
+                "pipefail",
+                "-c",
+                "python3 scripts/check-task094.py --combined --compiler 16 --scratch \"$RUNNER_TEMP/task094-combined\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+              ],
+              "exit": 0,
+              "reason": null,
+              "elapsed_seconds": 343.21466745299404
+            },
+            {
+              "name": "Verify completed execution evidence",
+              "command": [
+                "taskset",
+                "--cpu-list",
+                "9",
+                "bash",
+                "-euo",
+                "pipefail",
+                "-c",
+                "set -euo pipefail\ntest -s \"$RUNNER_TEMP/task094/sources.sha256\"\ntest -s \"$RUNNER_TEMP/task094-composition/sources.sha256\"\ntest -s \"$RUNNER_TEMP/task094-combined/sources.sha256\"\ntest \"$(grep -lFx 'TASK094_CODEC_COMPLETE checks= 54 rejections= 17' \"$RUNNER_TEMP/task094/\"*-execute.log | wc -l)\" -eq 6\ntest \"$(grep -lFx 'TASK094_COMPOSITION_COMPLETE checks= 19 rejections= 3' \"$RUNNER_TEMP/task094-composition/\"*-execute.log | wc -l)\" -eq 6\ntest \"$(grep -lFx 'TASK094_COMBINED_COMPLETE checks= 26 rejections= 2' \"$RUNNER_TEMP/task094-combined/\"*-execute.log | wc -l)\" -eq 6\n"
+              ],
+              "exit": 0,
+              "reason": null,
+              "elapsed_seconds": 0.10049434400571045
+            }
+          ],
+          "evidence": [
+            {
+              "path": "task094/qualified-gnat16.1.0-Ignore-repeated_temporal_codec_consumer-execute.log",
+              "sha256": "459e16f8a10b65a574cb902d482720d6f075f2c38f43bdcff8939056a31aa5a7",
+              "marker": "TASK094_CODEC_COMPLETE checks= 54 rejections= 17"
+            },
+            {
+              "path": "task094/qualified-gnat16.1.0-Check-repeated_temporal_codec_consumer-execute.log",
+              "sha256": "459e16f8a10b65a574cb902d482720d6f075f2c38f43bdcff8939056a31aa5a7",
+              "marker": "TASK094_CODEC_COMPLETE checks= 54 rejections= 17"
+            },
+            {
+              "path": "task094/oam-gnat16.1.0-normal-repeated_temporal_codec_consumer-execute.log",
+              "sha256": "459e16f8a10b65a574cb902d482720d6f075f2c38f43bdcff8939056a31aa5a7",
+              "marker": "TASK094_CODEC_COMPLETE checks= 54 rejections= 17"
+            },
+            {
+              "path": "task094/oam-gnat16.1.0-Check-repeated_temporal_codec_consumer-execute.log",
+              "sha256": "459e16f8a10b65a574cb902d482720d6f075f2c38f43bdcff8939056a31aa5a7",
+              "marker": "TASK094_CODEC_COMPLETE checks= 54 rejections= 17"
+            },
+            {
+              "path": "task094/oam-gnat16.1.0-Ignore-repeated_temporal_codec_consumer-execute.log",
+              "sha256": "459e16f8a10b65a574cb902d482720d6f075f2c38f43bdcff8939056a31aa5a7",
+              "marker": "TASK094_CODEC_COMPLETE checks= 54 rejections= 17"
+            },
+            {
+              "path": "task094/qualified-gnat16.1.0-normal-repeated_temporal_codec_consumer-execute.log",
+              "sha256": "459e16f8a10b65a574cb902d482720d6f075f2c38f43bdcff8939056a31aa5a7",
+              "marker": "TASK094_CODEC_COMPLETE checks= 54 rejections= 17"
+            },
+            {
+              "path": "task094-composition/oam-gnat16.1.0-Ignore-repeated_temporal_composition_consumer-execute.log",
+              "sha256": "d8f6bfe2f224be305574e2ef1d42c9fd611b99fa988ca577c93d1b70e2c0c439",
+              "marker": "TASK094_COMPOSITION_COMPLETE checks= 19 rejections= 3"
+            },
+            {
+              "path": "task094-composition/qualified-gnat16.1.0-Ignore-repeated_temporal_composition_consumer-execute.log",
+              "sha256": "d8f6bfe2f224be305574e2ef1d42c9fd611b99fa988ca577c93d1b70e2c0c439",
+              "marker": "TASK094_COMPOSITION_COMPLETE checks= 19 rejections= 3"
+            },
+            {
+              "path": "task094-composition/oam-gnat16.1.0-Check-repeated_temporal_composition_consumer-execute.log",
+              "sha256": "d8f6bfe2f224be305574e2ef1d42c9fd611b99fa988ca577c93d1b70e2c0c439",
+              "marker": "TASK094_COMPOSITION_COMPLETE checks= 19 rejections= 3"
+            },
+            {
+              "path": "task094-composition/oam-gnat16.1.0-normal-repeated_temporal_composition_consumer-execute.log",
+              "sha256": "d8f6bfe2f224be305574e2ef1d42c9fd611b99fa988ca577c93d1b70e2c0c439",
+              "marker": "TASK094_COMPOSITION_COMPLETE checks= 19 rejections= 3"
+            },
+            {
+              "path": "task094-composition/qualified-gnat16.1.0-normal-repeated_temporal_composition_consumer-execute.log",
+              "sha256": "d8f6bfe2f224be305574e2ef1d42c9fd611b99fa988ca577c93d1b70e2c0c439",
+              "marker": "TASK094_COMPOSITION_COMPLETE checks= 19 rejections= 3"
+            },
+            {
+              "path": "task094-composition/qualified-gnat16.1.0-Check-repeated_temporal_composition_consumer-execute.log",
+              "sha256": "d8f6bfe2f224be305574e2ef1d42c9fd611b99fa988ca577c93d1b70e2c0c439",
+              "marker": "TASK094_COMPOSITION_COMPLETE checks= 19 rejections= 3"
+            },
+            {
+              "path": "task094-combined/qualified-gnat16.1.0-Ignore-repeated_choice_temporal_consumer-execute.log",
+              "sha256": "da3aaed7ee5a040a3b3e2156e65e85be2cacb298d3fdf27ebcaa4b10ee865087",
+              "marker": "TASK094_COMBINED_COMPLETE checks= 26 rejections= 2"
+            },
+            {
+              "path": "task094-combined/qualified-gnat16.1.0-Check-repeated_choice_temporal_consumer-execute.log",
+              "sha256": "da3aaed7ee5a040a3b3e2156e65e85be2cacb298d3fdf27ebcaa4b10ee865087",
+              "marker": "TASK094_COMBINED_COMPLETE checks= 26 rejections= 2"
+            },
+            {
+              "path": "task094-combined/oam-gnat16.1.0-normal-repeated_choice_temporal_consumer-execute.log",
+              "sha256": "da3aaed7ee5a040a3b3e2156e65e85be2cacb298d3fdf27ebcaa4b10ee865087",
+              "marker": "TASK094_COMBINED_COMPLETE checks= 26 rejections= 2"
+            },
+            {
+              "path": "task094-combined/oam-gnat16.1.0-Check-repeated_choice_temporal_consumer-execute.log",
+              "sha256": "da3aaed7ee5a040a3b3e2156e65e85be2cacb298d3fdf27ebcaa4b10ee865087",
+              "marker": "TASK094_COMBINED_COMPLETE checks= 26 rejections= 2"
+            },
+            {
+              "path": "task094-combined/oam-gnat16.1.0-Ignore-repeated_choice_temporal_consumer-execute.log",
+              "sha256": "da3aaed7ee5a040a3b3e2156e65e85be2cacb298d3fdf27ebcaa4b10ee865087",
+              "marker": "TASK094_COMBINED_COMPLETE checks= 26 rejections= 2"
+            },
+            {
+              "path": "task094-combined/qualified-gnat16.1.0-normal-repeated_choice_temporal_consumer-execute.log",
+              "sha256": "da3aaed7ee5a040a3b3e2156e65e85be2cacb298d3fdf27ebcaa4b10ee865087",
+              "marker": "TASK094_COMBINED_COMPLETE checks= 26 rejections= 2"
+            }
+          ],
+          "elapsed_seconds": 1130.5682672249968
+        },
+        {
+          "suite": "ada-datetime-codec",
+          "cpu": 10,
+          "source": {
+            "sha": "40a5281d46cbea5fb9e2abf9be0147c936ca844f",
+            "tree": "dfb8e67b1da0b73e77c2778699b3ac3fb9ede387",
+            "run_id": null,
+            "attempt": null
+          },
+          "exit": 0,
+          "steps": [
+            {
+              "name": "Execute named and direct DateTime codecs, all policies",
+              "command": [
+                "taskset",
+                "--cpu-list",
+                "10",
+                "bash",
+                "-euo",
+                "pipefail",
+                "-c",
+                "python3 scripts/check-task090.py --compiler 16 --scratch \"$RUNNER_TEMP/task090\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+              ],
+              "exit": 0,
+              "reason": null,
+              "elapsed_seconds": 407.91206253299606
+            },
+            {
+              "name": "Execute combined DateTime Choice and repeated Record codecs",
+              "command": [
+                "taskset",
+                "--cpu-list",
+                "10",
+                "bash",
+                "-euo",
+                "pipefail",
+                "-c",
+                "python3 scripts/check-task090r.py --compiler 16 --scratch \"$RUNNER_TEMP/task090r\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+              ],
+              "exit": 0,
+              "reason": null,
+              "elapsed_seconds": 197.59110850999423
+            }
+          ],
+          "evidence": [
+            {
+              "path": "task090/named-Ignore-run.log",
+              "sha256": "f3d0730cdda36d04c925ee6e0d7cb0b2c17f87bca5ae6dcb18f106c9d80d4cd5",
+              "marker": "TASK090_NAMED_COMPLETE cases= 161"
+            },
+            {
+              "path": "task090/named-Check-run.log",
+              "sha256": "f3d0730cdda36d04c925ee6e0d7cb0b2c17f87bca5ae6dcb18f106c9d80d4cd5",
+              "marker": "TASK090_NAMED_COMPLETE cases= 161"
+            },
+            {
+              "path": "task090/named-normal-run.log",
+              "sha256": "f3d0730cdda36d04c925ee6e0d7cb0b2c17f87bca5ae6dcb18f106c9d80d4cd5",
+              "marker": "TASK090_NAMED_COMPLETE cases= 161"
+            },
+            {
+              "path": "task090/direct-normal-run.log",
+              "sha256": "6835e3ca43ad9764a3804aeb167902d5b8b843f06694f0d5ffe58f841d46ff76",
+              "marker": "TASK090_DIRECT_COMPLETE cases= 205"
+            },
+            {
+              "path": "task090/direct-Ignore-run.log",
+              "sha256": "6835e3ca43ad9764a3804aeb167902d5b8b843f06694f0d5ffe58f841d46ff76",
+              "marker": "TASK090_DIRECT_COMPLETE cases= 205"
+            },
+            {
+              "path": "task090/direct-Check-run.log",
+              "sha256": "6835e3ca43ad9764a3804aeb167902d5b8b843f06694f0d5ffe58f841d46ff76",
+              "marker": "TASK090_DIRECT_COMPLETE cases= 205"
+            },
+            {
+              "path": "task090r/normal-run.log",
+              "sha256": "10230f817df34b1dadca5d4bf0b9f4f0a31dfe9fae11ce599d168a36dc751afb",
+              "marker": "TASK090R_COMBINED_PASS"
+            },
+            {
+              "path": "task090r/Ignore-run.log",
+              "sha256": "10230f817df34b1dadca5d4bf0b9f4f0a31dfe9fae11ce599d168a36dc751afb",
+              "marker": "TASK090R_COMBINED_PASS"
+            },
+            {
+              "path": "task090r/Check-run.log",
+              "sha256": "10230f817df34b1dadca5d4bf0b9f4f0a31dfe9fae11ce599d168a36dc751afb",
+              "marker": "TASK090R_COMBINED_PASS"
+            }
+          ],
+          "elapsed_seconds": 605.505638845003
+        },
+        {
+          "suite": "ada-hexbinary-codec",
+          "cpu": 11,
+          "source": {
+            "sha": "40a5281d46cbea5fb9e2abf9be0147c936ca844f",
+            "tree": "dfb8e67b1da0b73e77c2778699b3ac3fb9ede387",
+            "run_id": null,
+            "attempt": null
+          },
+          "exit": 0,
+          "steps": [
+            {
+              "name": "Execute generated hexBinary consumer, all policies",
+              "command": [
+                "taskset",
+                "--cpu-list",
+                "11",
+                "bash",
+                "-euo",
+                "pipefail",
+                "-c",
+                "python3 scripts/check-task093.py --compiler 16 --scratch \"$RUNNER_TEMP/task093-hexbinary\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+              ],
+              "exit": 0,
+              "reason": null,
+              "elapsed_seconds": 199.54320999700576
+            },
+            {
+              "name": "Execute qualified non-OAM hexBinary consumer, all policies",
+              "command": [
+                "taskset",
+                "--cpu-list",
+                "11",
+                "bash",
+                "-euo",
+                "pipefail",
+                "-c",
+                "python3 scripts/check-task093.py --compiler 16 --qualified --scratch \"$RUNNER_TEMP/task093-qualified\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+              ],
+              "exit": 0,
+              "reason": null,
+              "elapsed_seconds": 204.86274504000903
+            },
+            {
+              "name": "Execute combined Binary Choice temporal consumers, both namespaces and all policies",
+              "command": [
+                "taskset",
+                "--cpu-list",
+                "11",
+                "bash",
+                "-euo",
+                "pipefail",
+                "-c",
+                "python3 scripts/check-task093-combined.py --compiler 16 --scratch \"$RUNNER_TEMP/task093-combined\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+              ],
+              "exit": 0,
+              "reason": null,
+              "elapsed_seconds": 372.6988194400037
+            },
+            {
+              "name": "Portable helper-demand naming regression",
+              "command": [
+                "taskset",
+                "--cpu-list",
+                "11",
+                "bash",
+                "-euo",
+                "pipefail",
+                "-c",
+                "set -euo pipefail\npython3 scripts/test-task093-compiler-placement.py\npython3 scripts/check-task093-helper-demand.py --family portable --compiler 16 --scratch \"$RUNNER_TEMP/task093-c4-16\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\"\nsha256sum --check --quiet \"$RUNNER_TEMP/task093-c4-16/sources.sha256\"\n"
+              ],
+              "exit": 0,
+              "reason": null,
+              "elapsed_seconds": 1614.1185854330106
+            },
+            {
+              "name": "Validate mandatory evidence",
+              "command": [
+                "taskset",
+                "--cpu-list",
+                "11",
+                "bash",
+                "-euo",
+                "pipefail",
+                "-c",
+                "set -euo pipefail\nroot=\"$RUNNER_TEMP/task093-hexbinary\"\ntest -s \"$root/sources.json\"\ntest -s \"$root/model-byte-parity.json\"\nfor policy in normal Check Ignore; do\n  test -s \"$root/$policy-alire.lock\"\n  test -s \"$root/$policy-build.command.json\"\n  test -s \"$root/$policy-gnat.log\"\n  grep -Fx 'TASK093_CODEC_COMPLETE cases= 33' \"$root/$policy-run.log\"\n  grep -Fx 'TASK093_MODEL_COMPLETE cases= 6' \"$root/$policy-model-run.log\"\n  grep -Fx 'TASK093_CODEC_COMPLETE cases= 33' \"$RUNNER_TEMP/task093-qualified/$policy-run.log\"\n  grep -Fx 'TASK093_MODEL_COMPLETE cases= 6' \"$RUNNER_TEMP/task093-qualified/$policy-model-run.log\"\ndone\ntest -s \"$RUNNER_TEMP/task093-combined/sources.json\"\ntest -s \"$RUNNER_TEMP/task093-combined/qualification.json\"\nfor profile in oam qualified; do\n  for policy in normal Check Ignore; do\n    grep -Fx 'TASK093_COMBINED_COMPLETE checks= 49 rejections= 9' \"$RUNNER_TEMP/task093-combined/$profile-$policy-run.log\"\n  done\ndone\n"
+              ],
+              "exit": 0,
+              "reason": null,
+              "elapsed_seconds": 0.10059974298928864
+            }
+          ],
+          "evidence": [
+            {
+              "path": "task093-hexbinary/normal-run.log",
+              "sha256": "6e367ed604aa65b616538ccaa7acd733869fecb82acf7756c4de02de97ecbd15",
+              "marker": "TASK093_CODEC_COMPLETE cases= 33"
+            },
+            {
+              "path": "task093-hexbinary/Ignore-run.log",
+              "sha256": "6e367ed604aa65b616538ccaa7acd733869fecb82acf7756c4de02de97ecbd15",
+              "marker": "TASK093_CODEC_COMPLETE cases= 33"
+            },
+            {
+              "path": "task093-hexbinary/Check-run.log",
+              "sha256": "6e367ed604aa65b616538ccaa7acd733869fecb82acf7756c4de02de97ecbd15",
+              "marker": "TASK093_CODEC_COMPLETE cases= 33"
+            },
+            {
+              "path": "task093-hexbinary/Ignore-model-run.log",
+              "sha256": "574aa715840c24db2da7fe44083c0d65f1ddfc8ba69278bfee2f45f2394b8437",
+              "marker": "TASK093_MODEL_COMPLETE cases= 6"
+            },
+            {
+              "path": "task093-hexbinary/Check-model-run.log",
+              "sha256": "574aa715840c24db2da7fe44083c0d65f1ddfc8ba69278bfee2f45f2394b8437",
+              "marker": "TASK093_MODEL_COMPLETE cases= 6"
+            },
+            {
+              "path": "task093-hexbinary/normal-model-run.log",
+              "sha256": "574aa715840c24db2da7fe44083c0d65f1ddfc8ba69278bfee2f45f2394b8437",
+              "marker": "TASK093_MODEL_COMPLETE cases= 6"
+            },
+            {
+              "path": "task093-qualified/normal-run.log",
+              "sha256": "6e367ed604aa65b616538ccaa7acd733869fecb82acf7756c4de02de97ecbd15",
+              "marker": "TASK093_CODEC_COMPLETE cases= 33"
+            },
+            {
+              "path": "task093-qualified/Ignore-run.log",
+              "sha256": "6e367ed604aa65b616538ccaa7acd733869fecb82acf7756c4de02de97ecbd15",
+              "marker": "TASK093_CODEC_COMPLETE cases= 33"
+            },
+            {
+              "path": "task093-qualified/Check-run.log",
+              "sha256": "6e367ed604aa65b616538ccaa7acd733869fecb82acf7756c4de02de97ecbd15",
+              "marker": "TASK093_CODEC_COMPLETE cases= 33"
+            },
+            {
+              "path": "task093-qualified/Ignore-model-run.log",
+              "sha256": "574aa715840c24db2da7fe44083c0d65f1ddfc8ba69278bfee2f45f2394b8437",
+              "marker": "TASK093_MODEL_COMPLETE cases= 6"
+            },
+            {
+              "path": "task093-qualified/Check-model-run.log",
+              "sha256": "574aa715840c24db2da7fe44083c0d65f1ddfc8ba69278bfee2f45f2394b8437",
+              "marker": "TASK093_MODEL_COMPLETE cases= 6"
+            },
+            {
+              "path": "task093-qualified/normal-model-run.log",
+              "sha256": "574aa715840c24db2da7fe44083c0d65f1ddfc8ba69278bfee2f45f2394b8437",
+              "marker": "TASK093_MODEL_COMPLETE cases= 6"
+            },
+            {
+              "path": "task093-combined/qualified-Check-run.log",
+              "sha256": "fa07fe87769ae83622991ff8f4a9805c85f3bcd993231f76004115094e9e9612",
+              "marker": "TASK093_COMBINED_COMPLETE checks= 49 rejections= 9"
+            },
+            {
+              "path": "task093-combined/oam-Ignore-run.log",
+              "sha256": "fa07fe87769ae83622991ff8f4a9805c85f3bcd993231f76004115094e9e9612",
+              "marker": "TASK093_COMBINED_COMPLETE checks= 49 rejections= 9"
+            },
+            {
+              "path": "task093-combined/qualified-Ignore-run.log",
+              "sha256": "fa07fe87769ae83622991ff8f4a9805c85f3bcd993231f76004115094e9e9612",
+              "marker": "TASK093_COMBINED_COMPLETE checks= 49 rejections= 9"
+            },
+            {
+              "path": "task093-combined/oam-Check-run.log",
+              "sha256": "fa07fe87769ae83622991ff8f4a9805c85f3bcd993231f76004115094e9e9612",
+              "marker": "TASK093_COMBINED_COMPLETE checks= 49 rejections= 9"
+            },
+            {
+              "path": "task093-combined/oam-normal-run.log",
+              "sha256": "fa07fe87769ae83622991ff8f4a9805c85f3bcd993231f76004115094e9e9612",
+              "marker": "TASK093_COMBINED_COMPLETE checks= 49 rejections= 9"
+            },
+            {
+              "path": "task093-combined/qualified-normal-run.log",
+              "sha256": "fa07fe87769ae83622991ff8f4a9805c85f3bcd993231f76004115094e9e9612",
+              "marker": "TASK093_COMBINED_COMPLETE checks= 49 rejections= 9"
+            },
+            {
+              "path": "task093-c4-16/qualified-Array_Decode_Hex_Binary-Ignore-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/oam-Array_encode_hex_binary-Ignore-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/oam-ArraySample-Ignore-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/oam-Array_Decode_Hex_Binary-Check-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/oam-Array_Decode_Hex_Binary-normal-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/qualified-Array_Encode_Hex_Binary-Check-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/qualified-Array_Encode_Hex_Binary-Ignore-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/qualified-Array_encode_hex_binary-Check-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/qualified-ArraySample-Check-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/oam-Array_encode_hex_binary-normal-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/qualified-Array_Encode_Hex_Binary-normal-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/qualified-Encode_Hex_Binary-normal-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/qualified-ArraySample-Ignore-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/oam-Array_Encode_Hex_Binary-Check-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/oam-Encode_Hex_Binary-Check-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/oam-Array_Decode_Hex_Binary-Ignore-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/qualified-Encode_Hex_Binary-Ignore-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/oam-Array_Encode_Hex_Binary-normal-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/qualified-Array_encode_hex_binary-normal-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/oam-Encode_Hex_Binary-normal-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/oam-ArraySample-normal-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/qualified-Encode_Hex_Binary-Check-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/oam-ArraySample-Check-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/qualified-Array_Decode_Hex_Binary-Check-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/oam-Array_Encode_Hex_Binary-Ignore-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/oam-Encode_Hex_Binary-Ignore-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/qualified-Array_encode_hex_binary-Ignore-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/oam-Array_encode_hex_binary-Check-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/qualified-Array_Decode_Hex_Binary-normal-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            },
+            {
+              "path": "task093-c4-16/qualified-ArraySample-normal-execute.log",
+              "sha256": "b55710f9006337737ce4cbd35c6cfd5944e06d2d2a5e3621df6a6b1c00ca1fdf",
+              "marker": "TASK093_C4_HELPER_DEMAND_COMPLETE checks= 7"
+            }
+          ],
+          "elapsed_seconds": 2391.6373390030058
+        }
+      ],
+      "exit": 0,
+      "generator_build_seconds": 0.10387706200708635,
+      "generator_sha256": "5782d0e10139370ee1f2af799aa1a815b4fae272e2406205c945256f1cb26af5",
+      "guard": {
+        "suite": "ada-json-guard",
+        "cpu": 8,
+        "source": {
+          "sha": "40a5281d46cbea5fb9e2abf9be0147c936ca844f",
+          "tree": "dfb8e67b1da0b73e77c2778699b3ac3fb9ede387",
+          "run_id": null,
+          "attempt": null
+        },
+        "exit": 0,
+        "steps": [
+          {
+            "name": "Guard qualification wrapper negative controls",
+            "command": [
+              "taskset",
+              "--cpu-list",
+              "8",
+              "bash",
+              "-euo",
+              "pipefail",
+              "-c",
+              "python3 scripts/test-task087a-wrapper.py"
+            ],
+            "exit": 0,
+            "reason": null,
+            "elapsed_seconds": 0.2010673000040697
+          },
+          {
+            "name": "Production guard and clean consumer (GNAT 16.1.0, all policies)",
+            "command": [
+              "taskset",
+              "--cpu-list",
+              "8",
+              "bash",
+              "-euo",
+              "pipefail",
+              "-c",
+              "python3 scripts/check-task087a.py --compiler 16 --scratch \"$RUNNER_TEMP/task087a-qualification\""
+            ],
+            "exit": 0,
+            "reason": null,
+            "elapsed_seconds": 304.2763774310006
+          }
+        ],
+        "evidence": [
+          {
+            "path": "task087a-qualification/normal-run.log",
+            "sha256": "67a60d687e5fa1ad660a9b0322a4f9588f0107925e6abd4fe15353f8777c3036",
+            "marker": "GUARDED CORPUS PASSED cases= 199"
+          },
+          {
+            "path": "task087a-qualification/check-run.log",
+            "sha256": "67a60d687e5fa1ad660a9b0322a4f9588f0107925e6abd4fe15353f8777c3036",
+            "marker": "GUARDED CORPUS PASSED cases= 199"
+          },
+          {
+            "path": "task087a-qualification/ignore-run.log",
+            "sha256": "67a60d687e5fa1ad660a9b0322a4f9588f0107925e6abd4fe15353f8777c3036",
+            "marker": "GUARDED CORPUS PASSED cases= 199"
+          },
+          {
+            "path": "task087a-qualification/consumer-run.log",
+            "sha256": "c19fba1a0ca65ed2e52eb3dc2b6db3b308e5f5ab5cd2ad4a21af3a2f3c329874",
+            "marker": "TASK087A CLEAN CONSUMER: PASSED"
+          }
+        ],
+        "elapsed_seconds": 304.4790331469994
+      },
+      "setup_seconds": 304.75023161500576,
+      "isolation_copy_seconds": 4.696629582991591,
+      "elapsed_seconds": 2701.0972044340015,
+      "peak_host_memory_used_bytes": 52555440128,
+      "peak_disk_used_bytes": 1417780428800,
+      "minimum_disk_free_bytes": 448570904576,
+      "child_maxrss_kib": 312584,
+      "mean_host_cpu_busy_fraction": 0.2509417061451242,
+      "disk_used_growth_bytes": 28400340992
+    },
+    "independently_verified": {
+      "source": {
+        "sha": "40a5281d46cbea5fb9e2abf9be0147c936ca844f",
+        "tree": "dfb8e67b1da0b73e77c2778699b3ac3fb9ede387",
+        "run_id": null,
+        "attempt": null
+      },
+      "pack": "a",
+      "verified_suites": [
+        "ada-json-guard",
+        "ada-generated-codec",
+        "ada-repeated-temporal-codec",
+        "ada-datetime-codec",
+        "ada-hexbinary-codec"
+      ],
+      "concurrency": 4,
+      "generator_sha256": "5782d0e10139370ee1f2af799aa1a815b4fae272e2406205c945256f1cb26af5"
+    },
+    "resource_samples_sha256": "8e16b70fe72a9723ba0a71f8bfc6e0918d706d2cf35c32ee9f939e5bd1e6e7e3",
+    "scratch": "/home/zboll/ada-ci-pack-001r1-evidence/pack-a"
+  },
+  "b": {
+    "summary": {
+      "source": {
+        "sha": "40a5281d46cbea5fb9e2abf9be0147c936ca844f",
+        "tree": "dfb8e67b1da0b73e77c2778699b3ac3fb9ede387",
+        "run_id": null,
+        "attempt": null
+      },
+      "pack": "b",
+      "concurrency": 3,
+      "allowed_cpus": [
+        12,
+        13,
+        14,
+        15
+      ],
+      "runner_slots": 1,
+      "rust": "rustc 1.95.0 (59807616e 2026-04-14)",
+      "alire_sha256": "2e2b8de009b793ad2aed10096e162649bbcc5b0711e3c21785ebe8a1261c5d64",
+      "workers": [
+        {
+          "suite": "ada-repeated-codec",
+          "cpu": 12,
+          "source": {
+            "sha": "40a5281d46cbea5fb9e2abf9be0147c936ca844f",
+            "tree": "dfb8e67b1da0b73e77c2778699b3ac3fb9ede387",
+            "run_id": null,
+            "attempt": null
+          },
+          "exit": 0,
+          "steps": [
+            {
+              "name": "Execute bounded and unbounded repeated Record codecs",
+              "command": [
+                "taskset",
+                "--cpu-list",
+                "12",
+                "bash",
+                "-euo",
+                "pipefail",
+                "-c",
+                "python3 scripts/check-task089.py --compiler 16 --scratch \"$RUNNER_TEMP/task089-codec\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+              ],
+              "exit": 0,
+              "reason": null,
+              "elapsed_seconds": 209.35704592800175
+            },
+            {
+              "name": "Execute combined Choice and repeated Record codecs",
+              "command": [
+                "taskset",
+                "--cpu-list",
+                "12",
+                "bash",
+                "-euo",
+                "pipefail",
+                "-c",
+                "python3 scripts/check-task089r.py --compiler 16 --scratch \"$RUNNER_TEMP/task089r-codec\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+              ],
+              "exit": 0,
+              "reason": null,
+              "elapsed_seconds": 202.7183067110018
+            }
+          ],
+          "evidence": [
+            {
+              "path": "task089-codec/Check-codec-run.log",
+              "sha256": "5f6fcbf27f288bea2251a66eee51f5c208ad52008765b060a745321fa26c09a2",
+              "marker": "TASK089_CODEC_COMPLETE cases= 121"
+            },
+            {
+              "path": "task089-codec/Ignore-codec-run.log",
+              "sha256": "5f6fcbf27f288bea2251a66eee51f5c208ad52008765b060a745321fa26c09a2",
+              "marker": "TASK089_CODEC_COMPLETE cases= 121"
+            },
+            {
+              "path": "task089-codec/normal-codec-run.log",
+              "sha256": "5f6fcbf27f288bea2251a66eee51f5c208ad52008765b060a745321fa26c09a2",
+              "marker": "TASK089_CODEC_COMPLETE cases= 121"
+            },
+            {
+              "path": "task089-codec/Ignore-model-run.log",
+              "sha256": "1212607b4f2aaaae0dfc0f6da07584ab54c9d918370994adfa6f141658b5f911",
+              "marker": "TASK089_MODEL_BASELINE_PASS"
+            },
+            {
+              "path": "task089-codec/Check-model-run.log",
+              "sha256": "1212607b4f2aaaae0dfc0f6da07584ab54c9d918370994adfa6f141658b5f911",
+              "marker": "TASK089_MODEL_BASELINE_PASS"
+            },
+            {
+              "path": "task089-codec/normal-model-run.log",
+              "sha256": "1212607b4f2aaaae0dfc0f6da07584ab54c9d918370994adfa6f141658b5f911",
+              "marker": "TASK089_MODEL_BASELINE_PASS"
+            },
+            {
+              "path": "task089r-codec/normal-run.log",
+              "sha256": "ea9035f418ab465836673e5548350097c97a499611d8fc12d5e8e30e6851b193",
+              "marker": "TASK089R_COMBINED_PASS"
+            },
+            {
+              "path": "task089r-codec/Ignore-run.log",
+              "sha256": "ea9035f418ab465836673e5548350097c97a499611d8fc12d5e8e30e6851b193",
+              "marker": "TASK089R_COMBINED_PASS"
+            },
+            {
+              "path": "task089r-codec/Check-run.log",
+              "sha256": "ea9035f418ab465836673e5548350097c97a499611d8fc12d5e8e30e6851b193",
+              "marker": "TASK089R_COMBINED_PASS"
+            }
+          ],
+          "elapsed_seconds": 412.07729801798996
+        },
+        {
+          "suite": "ada-duration-codec",
+          "cpu": 13,
+          "source": {
+            "sha": "40a5281d46cbea5fb9e2abf9be0147c936ca844f",
+            "tree": "dfb8e67b1da0b73e77c2778699b3ac3fb9ede387",
+            "run_id": null,
+            "attempt": null
+          },
+          "exit": 0,
+          "steps": [
+            {
+              "name": "Execute generated Duration consumers, all policies",
+              "command": [
+                "taskset",
+                "--cpu-list",
+                "13",
+                "bash",
+                "-euo",
+                "pipefail",
+                "-c",
+                "python3 scripts/check-task091.py --compiler 16 --scratch \"$RUNNER_TEMP/task091-duration\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+              ],
+              "exit": 0,
+              "reason": null,
+              "elapsed_seconds": 774.5244639790035
+            },
+            {
+              "name": "Execute combined Choice repeated DateTime Duration qualification",
+              "command": [
+                "taskset",
+                "--cpu-list",
+                "13",
+                "bash",
+                "-euo",
+                "pipefail",
+                "-c",
+                "python3 scripts/check-task091r.py --compiler 16 --scratch \"$RUNNER_TEMP/task091r-integrated\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+              ],
+              "exit": 0,
+              "reason": null,
+              "elapsed_seconds": 167.59010339400265
+            }
+          ],
+          "evidence": [
+            {
+              "path": "task091-duration/qualified-Check-run.log",
+              "sha256": "32345f124ed86fae4c719588ec3599421739e14e609996bca33b6107459cfb68",
+              "marker": "TASK091_CODEC_COMPLETE cases= 650"
+            },
+            {
+              "path": "task091-duration/named-Ignore-run.log",
+              "sha256": "32345f124ed86fae4c719588ec3599421739e14e609996bca33b6107459cfb68",
+              "marker": "TASK091_CODEC_COMPLETE cases= 650"
+            },
+            {
+              "path": "task091-duration/qualified-Ignore-run.log",
+              "sha256": "32345f124ed86fae4c719588ec3599421739e14e609996bca33b6107459cfb68",
+              "marker": "TASK091_CODEC_COMPLETE cases= 650"
+            },
+            {
+              "path": "task091-duration/codec-Check-run.log",
+              "sha256": "32345f124ed86fae4c719588ec3599421739e14e609996bca33b6107459cfb68",
+              "marker": "TASK091_CODEC_COMPLETE cases= 650"
+            },
+            {
+              "path": "task091-duration/qualified-normal-run.log",
+              "sha256": "32345f124ed86fae4c719588ec3599421739e14e609996bca33b6107459cfb68",
+              "marker": "TASK091_CODEC_COMPLETE cases= 650"
+            },
+            {
+              "path": "task091-duration/named-Check-run.log",
+              "sha256": "32345f124ed86fae4c719588ec3599421739e14e609996bca33b6107459cfb68",
+              "marker": "TASK091_CODEC_COMPLETE cases= 650"
+            },
+            {
+              "path": "task091-duration/codec-Ignore-run.log",
+              "sha256": "32345f124ed86fae4c719588ec3599421739e14e609996bca33b6107459cfb68",
+              "marker": "TASK091_CODEC_COMPLETE cases= 650"
+            },
+            {
+              "path": "task091-duration/named-normal-run.log",
+              "sha256": "32345f124ed86fae4c719588ec3599421739e14e609996bca33b6107459cfb68",
+              "marker": "TASK091_CODEC_COMPLETE cases= 650"
+            },
+            {
+              "path": "task091-duration/codec-normal-run.log",
+              "sha256": "32345f124ed86fae4c719588ec3599421739e14e609996bca33b6107459cfb68",
+              "marker": "TASK091_CODEC_COMPLETE cases= 650"
+            },
+            {
+              "path": "task091-duration/model-normal-run.log",
+              "sha256": "b6d53194d4aec374f773f1e4eabcb5cb3d1afbd65d42479246d61334f508bda1",
+              "marker": "TASK091_MODEL_COMPLETE cases= 10"
+            },
+            {
+              "path": "task091-duration/model-Check-run.log",
+              "sha256": "b6d53194d4aec374f773f1e4eabcb5cb3d1afbd65d42479246d61334f508bda1",
+              "marker": "TASK091_MODEL_COMPLETE cases= 10"
+            },
+            {
+              "path": "task091-duration/model-Ignore-run.log",
+              "sha256": "b6d53194d4aec374f773f1e4eabcb5cb3d1afbd65d42479246d61334f508bda1",
+              "marker": "TASK091_MODEL_COMPLETE cases= 10"
+            },
+            {
+              "path": "task091r-integrated/normal-run.log",
+              "sha256": "a892f0a1c3f0e70ce4bf94e4aebba65b17ec1439a31a3de72941d4b9d19b3d6a",
+              "marker": "TASK091R_COMBINED_PASS checks= 52 rejections= 20"
+            },
+            {
+              "path": "task091r-integrated/Ignore-run.log",
+              "sha256": "a892f0a1c3f0e70ce4bf94e4aebba65b17ec1439a31a3de72941d4b9d19b3d6a",
+              "marker": "TASK091R_COMBINED_PASS checks= 52 rejections= 20"
+            },
+            {
+              "path": "task091r-integrated/Check-run.log",
+              "sha256": "a892f0a1c3f0e70ce4bf94e4aebba65b17ec1439a31a3de72941d4b9d19b3d6a",
+              "marker": "TASK091R_COMBINED_PASS checks= 52 rejections= 20"
+            }
+          ],
+          "elapsed_seconds": 942.1404317340057
+        },
+        {
+          "suite": "ada-repeated-choice-codec",
+          "cpu": 14,
+          "source": {
+            "sha": "40a5281d46cbea5fb9e2abf9be0147c936ca844f",
+            "tree": "dfb8e67b1da0b73e77c2778699b3ac3fb9ede387",
+            "run_id": null,
+            "attempt": null
+          },
+          "exit": 0,
+          "steps": [
+            {
+              "name": "Execute generated repeated Choice consumers, all policies",
+              "command": [
+                "taskset",
+                "--cpu-list",
+                "14",
+                "bash",
+                "-euo",
+                "pipefail",
+                "-c",
+                "python3 scripts/check-task092.py --compiler 16 --scratch \"$RUNNER_TEMP/task092-codec\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+              ],
+              "exit": 0,
+              "reason": null,
+              "elapsed_seconds": 205.86936607799726
+            },
+            {
+              "name": "Execute qualified non-OAM repeated Choice consumers",
+              "command": [
+                "taskset",
+                "--cpu-list",
+                "14",
+                "bash",
+                "-euo",
+                "pipefail",
+                "-c",
+                "python3 scripts/check-task092.py --compiler 16 --profile qualified --scratch \"$RUNNER_TEMP/task092-qualified\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+              ],
+              "exit": 0,
+              "reason": null,
+              "elapsed_seconds": 204.003877946001
+            },
+            {
+              "name": "Require complete qualification artifacts",
+              "command": [
+                "taskset",
+                "--cpu-list",
+                "14",
+                "bash",
+                "-euo",
+                "pipefail",
+                "-c",
+                "set -euo pipefail\nfor profile in task092-codec task092-qualified; do\n  test -s \"$RUNNER_TEMP/$profile/sources.sha256\"\n  test -s \"$RUNNER_TEMP/$profile/model-byte-parity.json\"\n  for policy in normal Check Ignore; do\n    test -s \"$RUNNER_TEMP/$profile/$policy-alire.lock\"\n    grep -Fx 'TASK092_CODEC_PASS checks= 63 rejections= 17' \"$RUNNER_TEMP/$profile/$policy-run.log\"\n  done\ndone\n"
+              ],
+              "exit": 0,
+              "reason": null,
+              "elapsed_seconds": 0.10054358799243346
+            }
+          ],
+          "evidence": [
+            {
+              "path": "task092-codec/normal-run.log",
+              "sha256": "d87056f6e794ff32bffab4136d45aa74d6e1dfce61bae9dfc45c1490a70bef48",
+              "marker": "TASK092_CODEC_PASS checks= 63 rejections= 17"
+            },
+            {
+              "path": "task092-codec/Ignore-run.log",
+              "sha256": "d87056f6e794ff32bffab4136d45aa74d6e1dfce61bae9dfc45c1490a70bef48",
+              "marker": "TASK092_CODEC_PASS checks= 63 rejections= 17"
+            },
+            {
+              "path": "task092-codec/Check-run.log",
+              "sha256": "d87056f6e794ff32bffab4136d45aa74d6e1dfce61bae9dfc45c1490a70bef48",
+              "marker": "TASK092_CODEC_PASS checks= 63 rejections= 17"
+            },
+            {
+              "path": "task092-qualified/normal-run.log",
+              "sha256": "d87056f6e794ff32bffab4136d45aa74d6e1dfce61bae9dfc45c1490a70bef48",
+              "marker": "TASK092_CODEC_PASS checks= 63 rejections= 17"
+            },
+            {
+              "path": "task092-qualified/Ignore-run.log",
+              "sha256": "d87056f6e794ff32bffab4136d45aa74d6e1dfce61bae9dfc45c1490a70bef48",
+              "marker": "TASK092_CODEC_PASS checks= 63 rejections= 17"
+            },
+            {
+              "path": "task092-qualified/Check-run.log",
+              "sha256": "d87056f6e794ff32bffab4136d45aa74d6e1dfce61bae9dfc45c1490a70bef48",
+              "marker": "TASK092_CODEC_PASS checks= 63 rejections= 17"
+            }
+          ],
+          "elapsed_seconds": 410.02512537600705
+        }
+      ],
+      "exit": 0,
+      "generator_build_seconds": 0.1006439320044592,
+      "generator_sha256": "5782d0e10139370ee1f2af799aa1a815b4fae272e2406205c945256f1cb26af5",
+      "guard": {
+        "suite": "ada-json-guard",
+        "cpu": 12,
+        "source": {
+          "sha": "40a5281d46cbea5fb9e2abf9be0147c936ca844f",
+          "tree": "dfb8e67b1da0b73e77c2778699b3ac3fb9ede387",
+          "run_id": null,
+          "attempt": null
+        },
+        "exit": 0,
+        "steps": [
+          {
+            "name": "Guard qualification wrapper negative controls",
+            "command": [
+              "taskset",
+              "--cpu-list",
+              "12",
+              "bash",
+              "-euo",
+              "pipefail",
+              "-c",
+              "python3 scripts/test-task087a-wrapper.py"
+            ],
+            "exit": 0,
+            "reason": null,
+            "elapsed_seconds": 0.10063464500126429
+          },
+          {
+            "name": "Production guard and clean consumer (GNAT 16.1.0, all policies)",
+            "command": [
+              "taskset",
+              "--cpu-list",
+              "12",
+              "bash",
+              "-euo",
+              "pipefail",
+              "-c",
+              "python3 scripts/check-task087a.py --compiler 16 --scratch \"$RUNNER_TEMP/task087a-qualification\""
+            ],
+            "exit": 0,
+            "reason": null,
+            "elapsed_seconds": 324.30179499599035
+          }
+        ],
+        "evidence": [
+          {
+            "path": "task087a-qualification/normal-run.log",
+            "sha256": "67a60d687e5fa1ad660a9b0322a4f9588f0107925e6abd4fe15353f8777c3036",
+            "marker": "GUARDED CORPUS PASSED cases= 199"
+          },
+          {
+            "path": "task087a-qualification/check-run.log",
+            "sha256": "67a60d687e5fa1ad660a9b0322a4f9588f0107925e6abd4fe15353f8777c3036",
+            "marker": "GUARDED CORPUS PASSED cases= 199"
+          },
+          {
+            "path": "task087a-qualification/ignore-run.log",
+            "sha256": "67a60d687e5fa1ad660a9b0322a4f9588f0107925e6abd4fe15353f8777c3036",
+            "marker": "GUARDED CORPUS PASSED cases= 199"
+          },
+          {
+            "path": "task087a-qualification/consumer-run.log",
+            "sha256": "c19fba1a0ca65ed2e52eb3dc2b6db3b308e5f5ab5cd2ad4a21af3a2f3c329874",
+            "marker": "TASK087A CLEAN CONSUMER: PASSED"
+          }
+        ],
+        "elapsed_seconds": 324.40381639800034
+      },
+      "setup_seconds": 324.58323254699644,
+      "isolation_copy_seconds": 3.6344604629994137,
+      "elapsed_seconds": 1270.3778181700036,
+      "peak_host_memory_used_bytes": 52576538624,
+      "peak_disk_used_bytes": 1411362566144,
+      "minimum_disk_free_bytes": 454988767232,
+      "child_maxrss_kib": 312632,
+      "mean_host_cpu_busy_fraction": 0.309611300739738,
+      "disk_used_growth_bytes": 21803077632
+    },
+    "independently_verified": {
+      "source": {
+        "sha": "40a5281d46cbea5fb9e2abf9be0147c936ca844f",
+        "tree": "dfb8e67b1da0b73e77c2778699b3ac3fb9ede387",
+        "run_id": null,
+        "attempt": null
+      },
+      "pack": "b",
+      "verified_suites": [
+        "ada-json-guard",
+        "ada-repeated-codec",
+        "ada-duration-codec",
+        "ada-repeated-choice-codec"
+      ],
+      "concurrency": 3,
+      "generator_sha256": "5782d0e10139370ee1f2af799aa1a815b4fae272e2406205c945256f1cb26af5"
+    },
+    "resource_samples_sha256": "c7cf8f4e04fef500539f582ec72f84a5cb7f72c573c899718cf1e54a607508bb",
+    "scratch": "/home/zboll/ada-ci-pack-001r1-evidence/pack-b"
+  }
+}
