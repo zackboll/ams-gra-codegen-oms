@@ -456,10 +456,10 @@
     "tests/fixtures/service-generate/visible-ascii.yaml": "22272f12fc633640c3c86ebecb48abfa2c2d897a2e360eb555f2484efa49d895",
     "tests/fixtures/service-generate/whitespace-visible.xsd": "d1f619e28d8966277823bcdc99e9747004b482c330750d101c3cd03e6c463297",
     "tests/fixtures/service-generate/whitespace-visible.yaml": "0de6365e540280a4159cb45fb983ee1cf637b729e0185f6351a32dbb439b94c6",
-    "scripts/perf009-ci.py": "0f341e8ad7e5b60da0e642b9a7f5c3424f8d8a133bcc377698ab062e695ac62a",
-    "scripts/perf009_ci.py": "5c33b978ccfc77aee615d41e111a30de47b23b52e878a175d48c70ba6b838fee",
+    "scripts/perf009-ci.py": "29fd7963f1af95d241b780e7bf31f68da909e1f66977587b6531b0bb78c5f022",
+    "scripts/perf009_ci.py": "75bde35505f68ca242a31bc0b18727b010f5d72fc1c35632610f09ecbb7ccdd1",
     "scripts/perf009_provider.py": "de070252e7a596382fe3dc4727f44ec3d97dad40034a550b5bd4c5e96ab381bb",
-    "scripts/perf009_portable.py": "7273f1242016103ae63818809587e5b0a37918bd0db182f61eb4da5730927680",
+    "scripts/perf009_portable.py": "ab7cf8847c9349cdbd26fdf1d3b6d7b1dc8b1af4d7afa206bdd0b986da4d3984",
     "scripts/perf009_evidence.py": "7cbd3df9541aa8eaa358080a0dada6e182b575d1440088cda6e0e48ce03f8178",
     "scripts/perf009_equivalence.py": "5e2a3b0f68e3185be82946195c96835e1f94e73a6ba32c7dd80390847127446f"
   },

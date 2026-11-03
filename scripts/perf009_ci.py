@@ -11,9 +11,37 @@ import time
 from perf005_profile import run
 from perf005_sandbox import consumer_layout
 from perf009_evidence import verify_execution, verify_preparation, verify_trace
-from perf009_portable import MARKER, cells, validate_build, validate_result
+from perf009_portable import MARKER, cells, inventory, validate_build, validate_result
 from perf009_provider import PortablePilot, validate_lock, verify_live_identity
 from perf005_provider import Pilot, digest, sources
+
+
+def verify_consumer_reads(data, trace, consumer, identity):
+    """Reconcile compiler read-time mappings against exact deployed provider ABI."""
+    from perf005_mapping import parse_mapping, source_reads
+    pids = frozenset(r["pid"] for r in data["executions"] if Path(r["executable"]).name == "gnat1"
+                     and any(str(p) in r["argv"] for p in inventory(consumer)))
+    reads = source_reads(trace, pids)
+    if set(reads) != set(pids):
+        raise RuntimeError("missing consumer compiler source-read evidence")
+    roots = sources(consumer)
+    providers = {str(root / relative): h for name, root in roots.items()
+                 for relative, h in identity["sources"][name].items()}
+    checked = set()
+    for pid, files in reads.items():
+        for path, digest_read in files.items():
+            if "/alire/cache/dependencies/gnatcoll_" in path:
+                if providers.get(path) != digest_read:
+                    raise RuntimeError("consumer read changed provider source")
+                checked.add(path)
+    if not checked:
+        raise RuntimeError("no provider ABI source reads witnessed")
+    for mapping in data["pre_execution_mapping_inputs"].values():
+        for unit, filename, path in parse_mapping(mapping):
+            if "/alire/cache/dependencies/gnatcoll_" in path:
+                if path not in providers or digest(Path(path)) != providers[path]:
+                    raise RuntimeError("consumer read-time provider mapping changed")
+    return dict(compiler_backends=len(pids), provider_source_reads=len(checked))
 
 
 class Campaign:
@@ -43,10 +71,19 @@ class Campaign:
             data = verify_trace(Path(str(stem) + ".profile.json"))
             policy = stem.name.removesuffix("-build").rsplit("-", 1)[1]
             record = validate_build(command, cwd, data, self.compiler, policy, started_ns)
+            record["source_reads"] = verify_consumer_reads(
+                data, Path(str(stem) + ".strace"), cwd, self.pilot.identity)
             record["started_ns"] = started_ns
             Path(str(stem) + ".verification.json").write_text(json.dumps(record, indent=2) + "\n")
         if executing:
             verify_execution(Path(str(stem) + ".profile.json"), Path(command[0]), MARKER)
+        if building and not self.reuse and stem.name.endswith("-build"):
+            if stem.name.endswith("-normal-build"):
+                self.pilot.configuration(cwd, sources(cwd))
+            data = verify_trace(Path(str(stem) + ".profile.json"))
+            policy = stem.name.removesuffix("-build").rsplit("-", 1)[1]
+            record = validate_build(command, cwd, data, self.compiler, policy, started_ns, original=True)
+            Path(str(stem) + ".verification.json").write_text(json.dumps(record, indent=2) + "\n")
         return code, text
 
     def __call__(self, command, cwd, stem, expected=0):
@@ -60,8 +97,6 @@ class Campaign:
         for profile, name, policy in cells():
             consumer = self.scratch / f"{profile}-{name}"
             validate_lock(consumer / "alire/alire.lock", self.compiler)
-            if not self.reuse and policy == "normal":
-                Pilot(self.scratch, self.compiler, self.checked).configuration(consumer, sources(consumer))
             path = self.scratch / f"{profile}-{name}-{policy}-build.profile.json"
             data = verify_trace(path)
             from perf005_evidence import drivers, successful

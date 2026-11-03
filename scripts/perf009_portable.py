@@ -38,8 +38,8 @@ def inventory(consumer):
     return paths
 
 
-def validate_build(command, consumer, data, compiler, policy, started_ns):
-    if "-f" not in command or "-XEXTERNALLY_BUILT=true" not in command or data["exit"] != 0:
+def validate_build(command, consumer, data, compiler, policy, started_ns, original=False):
+    if "-f" not in command or (not original and "-XEXTERNALLY_BUILT=true" not in command) or data["exit"] != 0:
         raise RuntimeError("forced portable provider build required")
     expected = {str(p): digest(p) for p in inventory(consumer)}
     version, gcc_hash, _, _, _ = COMPILERS[compiler]
@@ -59,6 +59,8 @@ def validate_build(command, consumer, data, compiler, policy, started_ns):
         if len(inputs) != 1:
             raise RuntimeError("ambiguous portable compiler input")
         source = inputs[0]
+        if original and "/alire/cache/dependencies/gnatcoll_" in source:
+            continue  # Counted independently: exactly 106 genuine invocations per original cell.
         if not Path(source).is_absolute() and source == "b__helper_demand_consumer.adb":
             binder_compilations += 1
             continue

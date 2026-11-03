@@ -65,6 +65,9 @@ def main():
         report = json.loads((campaign / "portable-ci-verification.json").read_text())
         if digest(generator) != generator_hash:
             raise RuntimeError("generator changed during portable qualification")
+        current = subprocess.check_output(["git", "-c", f"safe.directory={ROOT}", "rev-parse", "HEAD", "HEAD^{tree}"], cwd=ROOT, text=True).splitlines()
+        if current != identity or subprocess.check_output(["git", "-c", f"safe.directory={ROOT}", "status", "--porcelain"], cwd=ROOT):
+            raise RuntimeError("qualification source changed during portable campaign")
         report.update(source_commit=identity[0], source_tree=identity[1], generator_sha256=generator_hash,
                       elapsed_seconds=time.monotonic() - started, runtime_root=str(runtime),
                       acceptance="correctness and actual compilation reduction; no performance certification")
