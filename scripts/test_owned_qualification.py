@@ -125,6 +125,15 @@ class HookContracts(unittest.TestCase):
                 continue
             with tempfile.TemporaryDirectory(prefix='ci004-generator-') as directory:
                 workspace = Path(directory)
+                if owner == 'ada-real-uci-dlz-sleet':
+                    from ada_deep_pack import run as deep_pack
+                    from ada_deep_pack.contracts import check
+                    check(self, owner)
+                    command = deep_pack.INVENTORY['suites'][owner]['steps'][-1]['run']
+                    self.assertIn('--generator "$GITHUB_WORKSPACE/target/release/ams-gra-codegen-oms"', command)
+                    self.assertIn('"release"', (ROOT / 'scripts/ada_deep_pack/run.py').read_text())
+                    self.assertEqual(hook, HOOKS[2][2], 'generator not built by owning job')
+                    continue
                 body = blocks(workflows[workflow])[1][owner]
                 self.assertEqual(body.count(hook), 1)
                 preparation = body.split(hook, 1)[0]

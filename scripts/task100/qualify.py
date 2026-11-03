@@ -61,6 +61,9 @@ def main():
     environment.write_text(printed.replace(str(provider), str(scratch / "provider")))
 
     def shell(command):
+        if os.environ.get("AMS_GRA_ADA_BUILD_JOBS") == "1" and str(command[0]) == "gprbuild":
+            command = [command[0], "-j1", *[arg for arg in command[1:]
+                       if not str(arg).startswith("-j")]]
         return ["sh", "-ec", f". {shlex.quote(str(environment))}; exec " + shlex.join(map(str, command))]
 
     version = "14.2.0" if args.compiler == "14" else "16.1.0"
