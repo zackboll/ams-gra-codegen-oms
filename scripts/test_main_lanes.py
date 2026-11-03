@@ -49,5 +49,31 @@ class MainLanes(unittest.TestCase):
         self.assertEqual(used, set(range(1, 11)))
 
 
+    def test_ada_codec_packs_are_mandatory(self):
+        import json
+        inventory = json.loads((ROOT / 'scripts/ada_ci_pack/inventory.json').read_text())
+        _, jobs = blocks((ROOT / '.github/workflows/ci.yml').read_text())
+        former = {'ada-json-guard', *inventory['packs']['a'], *inventory['packs']['b']}
+        self.assertTrue(former.isdisjoint(jobs))
+        mandatory = re.search(r'^    needs: \[([^\n]+)\]$', jobs['main-ci-required'], re.M)
+        self.assertIsNotNone(mandatory)
+        required = set(mandatory[1].split(', '))
+        self.assertTrue(former.isdisjoint(required))
+        for pack, suites in inventory['packs'].items():
+            name = 'ada-codec-pack-' + pack
+            with self.subTest(pack=pack):
+                self.assertIn(name, jobs)
+                self.assertIn(name, required)
+                self.assertIn('scripts/ada_ci_pack/run.py --pack ' + pack +
+                              ' --workers ' + str(len(suites)), jobs[name])
+                self.assertIn('scripts/ada_ci_pack/verify.py --pack ' + pack, jobs[name])
+                self.assertIn('task087a-ada-json-guard-pack-' + pack, jobs[name])
+                self.assertIn('if-no-files-found: error', jobs[name])
+                self.assertIn('queue: max', jobs[name])
+                for suite in suites:
+                    self.assertIn('/' + suite + '/', jobs[name])
+                    self.assertIn('name: ' + inventory['suites'][suite]['artifact']['name'], jobs[name])
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -1,9 +1,33 @@
 # ADA-CI-PACK-001
 
+## Owner-directed implementation (2026-11-02)
+
+The repository owner explicitly authorized implementing the two packed GNAT 16
+qualification jobs **without waiting for the queued performance pilot**.
+The earlier 15% runner-minute threshold is no longer a prerequisite. Four
+independent suites run in pack A (four workers on one 4-vCPU hosted runner);
+three run in pack B (three workers on another runner). Each pack runs the full
+original JSON guard, builds the generator once, uses independently isolated
+Alire/compiler workspaces, verifies every original success marker, and uploads
+both its own receipts and the original suite artifacts. Both packs are
+mandatory dependencies of `main-ci-required`.
+
+This replaces eight independent runner jobs with two, freeing six *potential*
+runner allocations for future main workflow runs. It is a structural runner-slot
+reduction, **not yet measured wall-clock or runner-minute savings**. The
+immutable existing pilot remains a separate historical experiment; no new
+benchmark was dispatched or treated as a gate. Exact-head hosted smoke and
+subsequent main qualification must still prove the new workflow valid.
+
+Existing main jobs already in GitHub's backlog retain their original workflow
+graphs; this change applies to new runs after integration. No existing main
+runs were canceled by this implementation.
+
+
 Incorporated main: `afe0c510866c08fc188fef335e74879840794a70`, tree
 `a384c4375098fb5293c0a4fa11595f5de7bbe014`.
 
-## Disposition: HOSTED_CI_PENDING
+## Historical pilot handoff: HOSTED_CI_PENDING
 
 PR: https://github.com/zackboll/ams-gra-codegen-oms/pull/181
 
