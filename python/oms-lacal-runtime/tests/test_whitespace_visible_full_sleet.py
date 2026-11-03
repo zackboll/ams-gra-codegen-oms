@@ -8,12 +8,14 @@ import shutil
 import socket
 import subprocess
 import sys
+import time
 from tempfile import TemporaryDirectory
 import unittest
 
 from oms_lacal import CodecBinding, CodecFailure, CodecRegistry, LacalRuntime, RuntimeConfig, ServerRejection
 from oms_lacal.wire import ProtocolError
 from support import ROOT, OAM
+from full_uci_generation import generate
 
 
 class FullUciWhitespaceVisibleSleetTests(unittest.IsolatedAsyncioTestCase):
@@ -44,15 +46,15 @@ class FullUciWhitespaceVisibleSleetTests(unittest.IsolatedAsyncioTestCase):
             contract.write_text(measure.driver.contract('Log', release))
             generator = os.environ.get('AMS_GRA_GENERATOR', str(ROOT / 'target/debug/ams-gra-codegen-oms'))
             package = 'full_log_' + release.replace('.', '') + '_' + world.replace('-', '_')
-            subprocess.run([generator, 'service-generate', '--schema', str(schema),
-                '--contract', str(contract), '--language', 'python',
-                '--world', world, '--with-codec', '--output', str(path / package)],
-                check=True, capture_output=True)
+            timings = dict(generation=generate(generator, schema, contract, release,
+                                               world, path / package))
+            phase = time.monotonic()
             sys.path.insert(0, temporary)
             self.addCleanup(sys.path.remove, temporary)
             m = importlib.import_module(package + '.model')
             c = importlib.import_module(package + '.service_codec')
             api = importlib.import_module(package + '.service_api')
+            timings['python_import_seconds'] = time.monotonic() - phase
             for name in [package, package + '.model', package + '.service_codec', package + '.service_api']:
                 self.addCleanup(sys.modules.pop, name, None)
             decoder_calls = []
@@ -79,6 +81,7 @@ class FullUciWhitespaceVisibleSleetTests(unittest.IsolatedAsyncioTestCase):
                 f'services_dir={json.dumps(str(services))}\n')
             observations = []
             with (path / 'broker.log').open('w+') as log:
+                phase = time.monotonic()
                 broker = subprocess.Popen([choice, str(config)], stdout=log, stderr=log,
                                           env={**os.environ, 'RUST_LOG': 'sleet=debug'})
                 try:
@@ -92,6 +95,8 @@ class FullUciWhitespaceVisibleSleetTests(unittest.IsolatedAsyncioTestCase):
                                 break
                             except ConnectionRefusedError:
                                 await asyncio.sleep(.05)
+                    timings['broker_startup_seconds'] = time.monotonic() - phase
+                    phase = time.monotonic()
                     runtime_config = RuntimeConfig(f'ws://127.0.0.1:{port}', 'python-whitespace-visible', '002.' + release[-1] + '.0')
                     async with LacalRuntime(runtime_config, registry) as subscriber, \
                             LacalRuntime(runtime_config, registry) as publisher:
@@ -148,14 +153,19 @@ class FullUciWhitespaceVisibleSleetTests(unittest.IsolatedAsyncioTestCase):
                         self.assertEqual(len(subscriber._subscriptions), 0)
                     self.assertFalse(subscriber.is_connected)
                     self.assertFalse(publisher.is_connected)
+                    timings['exchange_and_runtime_teardown_seconds'] = time.monotonic() - phase
                     print('PY016 FULL LOG SLEET OBSERVATIONS ' + release + ' ' + world + ': ' + json.dumps(observations), flush=True)
                 finally:
+                    phase = time.monotonic()
                     broker.terminate()
                     try:
                         broker.wait(timeout=5)
                     except subprocess.TimeoutExpired:
                         broker.kill()
                         broker.wait(timeout=5)
+                    timings['broker_teardown_seconds'] = time.monotonic() - phase
+                    print('PY016 FULL LOG TIMINGS ' + release + ' ' + world + ': '
+                          + json.dumps(timings, sort_keys=True), flush=True)
                     evidence = os.environ.get('AMS_GRA_PY016_FULL_SLEET_EVIDENCE')
                     if evidence:
                         destination = Path(evidence) / release / world
@@ -164,6 +174,7 @@ class FullUciWhitespaceVisibleSleetTests(unittest.IsolatedAsyncioTestCase):
                         shutil.copyfile(path / 'broker.log', destination / 'broker.log')
                         shutil.copytree(path / package, destination / 'generated')
                         (destination / 'observations.json').write_text(json.dumps(observations, indent=2) + '\n')
+                        (destination / 'generation-and-timing.json').write_text(json.dumps(timings, indent=2) + '\n')
             await asyncio.sleep(0)
             self.assertEqual([task for task in asyncio.all_tasks() - initial_tasks if not task.done()], [])
 
