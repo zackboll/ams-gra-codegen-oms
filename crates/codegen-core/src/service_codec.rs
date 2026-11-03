@@ -573,9 +573,13 @@ fn check_cpp_codec_artifact(schema: &SchemaIr) -> Result<(), ServiceCodecError> 
 ///   carrier with `create(std::string_view)`);
 /// * named `DateTimeZulu` and `Duration` declarations and the direct
 ///   unconstrained `xs:dateTime` / `xs:duration` members;
-/// * unconstrained `xs:hexBinary`, direct or named, from IR provenance.
+/// * unconstrained `xs:hexBinary`, direct or named, from IR provenance;
+/// * (CPP-OMS-004) named Float64 declarations whose effective constraints the
+///   shared `floating_domain` classifier accepts (unconstrained or bound-only,
+///   inclusive or exclusive), and direct unconstrained `xs:double` members.
 ///
-/// Everything else fails closed here, before any file is written.
+/// Float32 (named or direct) and field-local constrained direct Float64 stay
+/// NOT READY. Everything else fails closed here, before any file is written.
 fn cpp_emission_codec_support(
     schema: &SchemaIr,
     emission: &TypeEmission<'_>,
@@ -646,6 +650,15 @@ fn cpp_emission_codec_support(
                 }
             }
             binary_support(declaration_binary_encoding(schema, declaration), owner)
+        }
+        // CPP-OMS-004: a named Float64, unconstrained (public explicit
+        // constructor) or with the bound-only effective domain the SHARED
+        // classifier accepts (checked `create`). The codec never restates a
+        // bound: decode calls the model's `create`, encode re-checks with it.
+        TypeKind::Primitive(PrimitiveKind::Float64) => {
+            crate::floating_domain(PrimitiveKind::Float64, &declaration.constraints)
+                .map(|_| ())
+                .map_err(|reason| unsupported(owner, reason.to_string()))
         }
         TypeKind::Primitive(kind) => Err(unsupported(
             owner,
@@ -779,6 +792,18 @@ fn cpp_member_support(
                 ));
             }
             binary_support(resolve_binary_encoding(schema, &field.type_ref), location)
+        }
+        // CPP-OMS-004: a direct, unconstrained `xs:double` member is the
+        // model's plain `double`. A field-local constrained direct Float64 has
+        // no checked model carrier and stays outside the subset.
+        TypeRefTarget::Primitive(PrimitiveKind::Float64) => {
+            if field.constraints != ConstraintSet::default() {
+                return Err(unsupported(
+                    location,
+                    "field-local constrained direct Float64 has no C++ codec mapping".into(),
+                ));
+            }
+            Ok(())
         }
         TypeRefTarget::Primitive(kind) => Err(ServiceCodecError::UnsupportedPrimitive {
             location: location.to_owned(),
@@ -1680,6 +1705,139 @@ mod tests {
                     .is_ok()
             );
         }
+    }
+
+    /// CPP-OMS-004: the C++ analyzer admits named Float64 declarations whose
+    /// effective constraints the shared classifier accepts and direct
+    /// unconstrained Float64 members; Float32, field-local constrained direct
+    /// Float64 and classifier-rejected facets stay NOT READY.
+    #[test]
+    fn cpp_oms_004_float64_admission_boundary() {
+        use ams_gra_oms_ir::{Float64Value, NumericValue};
+        let f64v = |value: f64| Some(NumericValue::Float64(Float64Value::from_value(value)));
+        // An IR the planner itself refuses (e.g. an empty range) is also "not
+        // admitted"; either way no codec can be produced.
+        let cpp = |schema: &SchemaIr| -> Result<(), ServiceCodecError> {
+            let emissions = plan_type_emissions(schema, GenerationWorld::ClosedSchemaSet)
+                .map_err(|error| ServiceCodecError::EmissionPlan(error.message))?;
+            emissions.iter().try_for_each(|emission| {
+                cpp_emission_codec_support(schema, emission, GenerationWorld::ClosedSchemaSet)
+            })
+        };
+        let named = |kind: PrimitiveKind, constraints: ConstraintSet| {
+            let mut schema = record(
+                OAM_NAMESPACE,
+                vec![field(
+                    "F",
+                    TypeRef::named(QualifiedName::new(OAM_NAMESPACE, "N")),
+                )],
+            );
+            schema.types.push(TypeDecl {
+                name: QualifiedName::new(OAM_NAMESPACE, "N"),
+                is_abstract: false,
+                base_type: None,
+                kind: TypeKind::Primitive(kind),
+                constraints,
+                documentation: None,
+                source: source(),
+            });
+            schema
+        };
+        let admitted = [
+            ConstraintSet::default(),
+            ConstraintSet {
+                min_inclusive: f64v(-180.0),
+                max_inclusive: f64v(180.0),
+                ..Default::default()
+            },
+            ConstraintSet {
+                min_exclusive: f64v(0.0),
+                ..Default::default()
+            },
+            ConstraintSet {
+                max_exclusive: f64v(1.0),
+                ..Default::default()
+            },
+            ConstraintSet {
+                min_inclusive: f64v(-3.5),
+                max_exclusive: f64v(3.5),
+                ..Default::default()
+            },
+        ];
+        for constraints in admitted {
+            assert_eq!(
+                cpp(&named(PrimitiveKind::Float64, constraints.clone())),
+                Ok(()),
+                "{constraints:?}"
+            );
+            // Float32 stays outside the C++ codec, whatever its facets.
+            assert!(cpp(&named(PrimitiveKind::Float32, constraints)).is_err());
+        }
+        for rejected in [
+            ConstraintSet {
+                length: Some(1),
+                ..Default::default()
+            },
+            ConstraintSet {
+                min_inclusive: f64v(2.0),
+                max_inclusive: f64v(1.0),
+                ..Default::default()
+            },
+        ] {
+            assert!(
+                cpp(&named(PrimitiveKind::Float64, rejected.clone())).is_err(),
+                "{rejected:?}"
+            );
+        }
+        // Direct members: unconstrained Float64 in every occurrence shape and
+        // as a Choice alternative; constrained direct Float64 and Float32 no.
+        for cardinality in [
+            Cardinality::REQUIRED_ONE,
+            Cardinality {
+                min_occurs: 0,
+                max_occurs: Some(1),
+            },
+            Cardinality {
+                min_occurs: 0,
+                max_occurs: Some(3),
+            },
+            Cardinality {
+                min_occurs: 1,
+                max_occurs: None,
+            },
+        ] {
+            let mut f = field("F", TypeRef::primitive(PrimitiveKind::Float64));
+            f.cardinality = cardinality;
+            assert_eq!(cpp(&record(OAM_NAMESPACE, vec![f])), Ok(()));
+        }
+        let mut constrained = field("F", TypeRef::primitive(PrimitiveKind::Float64));
+        constrained.constraints.min_inclusive = f64v(0.0);
+        let failure = cpp(&record(OAM_NAMESPACE, vec![constrained])).unwrap_err();
+        assert!(
+            failure
+                .to_string()
+                .contains("field-local constrained direct Float64"),
+            "{failure}"
+        );
+        let direct32 = field("F", TypeRef::primitive(PrimitiveKind::Float32));
+        assert!(matches!(
+            cpp(&record(OAM_NAMESPACE, vec![direct32])),
+            Err(ServiceCodecError::UnsupportedPrimitive {
+                kind: PrimitiveKind::Float32,
+                ..
+            })
+        ));
+        let mut choice = record(
+            OAM_NAMESPACE,
+            vec![field("F", TypeRef::primitive(PrimitiveKind::Float64))],
+        );
+        let TypeKind::Record { fields } = choice.types[0].kind.clone() else {
+            unreachable!()
+        };
+        choice.types[0].kind = TypeKind::Choice {
+            alternatives: fields,
+        };
+        assert_eq!(cpp(&choice), Ok(()));
     }
 
     #[test]
