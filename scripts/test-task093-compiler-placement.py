@@ -78,12 +78,12 @@ def placement(text, inventory=None):
                     raise ValueError("qualified optimized Float32 CI selection missing/weakened")
                 actual.extend((name, "float32", c) for c in ("14", "16"))
                 continue
-            if "scripts/check-task093-helper-demand.py" not in step:
+            if not any(path in step for path in ("scripts/check-task093-helper-demand.py", "scripts/perf009-ci.py")):
                 continue
             if "continue-on-error" in step or "--profiles" in step or "--policies" in step or "--red" in step:
                 raise ValueError("naming coverage weakened")
             for line in step.splitlines():
-                if not line.strip().startswith("python3 scripts/check-task093-helper-demand.py "):
+                if not line.strip().startswith(("python3 scripts/check-task093-helper-demand.py ", "python3 scripts/perf009-ci.py ")):
                     continue
                 variants = [line]
                 if '"$compiler"' in line:
@@ -159,7 +159,7 @@ def float32_qualification(body):
             'sha256sum --check --quiet /tmp/task095-evidence/perf005-ci/evidence.sha256',
         ],
         "Portable GNAT 14 helper-demand naming regression": [
-            'python3 scripts/check-task093-helper-demand.py --family portable --compiler 14 --scratch /tmp/task095-evidence/task093-c5-portable-14 --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"',
+            'python3 scripts/perf009-ci.py --family portable --compiler 14 --scratch /tmp/task095-evidence/task093-c5-portable-14 --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"',
             'sha256sum --check --quiet /tmp/task095-evidence/task093-c5-portable-14/sources.sha256',
         ],
         "Preserve qualification evidence": [
@@ -214,7 +214,7 @@ class CompilerPlacement(unittest.TestCase):
             placement(self.text, inventory)
 
     def test_portable_14_cannot_disappear(self):
-        text = self.text.replace("python3 scripts/check-task093-helper-demand.py --family portable --compiler 14", "echo removed --family portable --compiler 14")
+        text = self.text.replace("python3 scripts/perf009-ci.py --family portable --compiler 14", "echo removed --family portable --compiler 14")
         with self.assertRaises(ValueError):
             placement(text)
 
@@ -235,7 +235,7 @@ class CompilerPlacement(unittest.TestCase):
                 placement(self.text.replace(required, "removed"))
 
     def test_naming_matrix_cannot_be_narrowed_or_ignored(self):
-        line = "python3 scripts/check-task093-helper-demand.py --family portable --compiler 16"
+        line = "python3 scripts/perf009-ci.py --family portable --compiler 16"
         for extra in [" --profiles oam", " --policies normal", " --red"]:
             inventory = json.loads((ROOT / "scripts/ada_ci_pack/inventory.json").read_text())
             for step in inventory['suites']['ada-hexbinary-codec']['steps']:
