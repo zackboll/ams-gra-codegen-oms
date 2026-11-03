@@ -65,12 +65,17 @@ def manifest(root):
 
 
 def relocate_setup(seed, destination):
-    """Private workspace/settings/cache; only immutable tool distributions shared."""
-    shutil.copytree(seed, destination, ignore=shutil.ignore_patterns("toolchains"))
-    (destination / "cache/toolchains").symlink_to(seed / "cache/toolchains", target_is_directory=True)
+    """Private Alire state; Alire 2.1.1 cannot traverse a symlinked toolchain root.
+
+    Copy the already provisioned, immutable distribution (never download/build
+    again). Keep executable/runtime bytes read-only in every private copy.
+    """
+    shutil.copytree(seed, destination)
     old, new = str(seed).encode(), str(destination).encode()
     for path in destination.rglob("*"):
         if not path.is_file() or path.is_symlink():
+            continue
+        if "toolchains" in path.relative_to(destination).parts:
             continue
         data = path.read_bytes()
         if b"\0" not in data and old in data:

@@ -61,6 +61,8 @@ def verify(root, expected_sha, expected_tree, pack, compiler, main):
             raise RuntimeError("UCI root/include mismatch")
     for name, recorded in zip(names, summary["workers"]):
         directory = root / name
+        if run.manifest(directory / "evidence/setup/cache/toolchains") != preparation["toolchain_manifest"]:
+            raise RuntimeError("worker compiler distribution changed")
         completed = json.loads((directory / "completion.json").read_text())
         steps = run.INVENTORY["suites"][name]["steps"]
         if (completed != recorded or completed["exit"] != 0 or completed["source"] != source

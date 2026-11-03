@@ -80,14 +80,17 @@ class DeepPack(unittest.TestCase):
                 for name in ('one', 'two'):
                     run.relocate_setup(seed, root / name)
                     self.assertIn(str(root / name / 'cache'), (root / name / 'settings/settings.toml').read_text())
-                    self.assertTrue((root / name / 'cache/toolchains').is_symlink())
+                    self.assertFalse((root / name / 'cache/toolchains').is_symlink())
+                    self.assertEqual(run.manifest(root / name / 'cache/toolchains'),
+                                     run.manifest(seed / 'cache/toolchains'))
                     self.assertFalse((root / name / 'consumer/obj').exists())
                 (root / 'one/settings/settings.toml').write_text('private')
                 self.assertNotEqual((root / 'two/settings/settings.toml').read_text(), 'private')
             finally:
-                for p in (seed / 'cache/toolchains').rglob('*'):
-                    p.chmod(0o755 if p.is_dir() else 0o644)
-                (seed / 'cache/toolchains').chmod(0o755)
+                for tree in (seed, root / 'one', root / 'two'):
+                    for p in (tree / 'cache/toolchains').rglob('*'):
+                        p.chmod(0o755 if p.is_dir() else 0o644)
+                    (tree / 'cache/toolchains').chmod(0o755)
 
     def test_failed_worker_does_not_erase_other_completions(self):
         with tempfile.TemporaryDirectory() as tmp:
