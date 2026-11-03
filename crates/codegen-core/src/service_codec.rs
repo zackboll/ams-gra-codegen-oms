@@ -570,8 +570,9 @@ fn check_cpp_codec_artifact(schema: &SchemaIr) -> Result<(), ServiceCodecError> 
 ///
 /// * named Strings of the UUID, UCI schema-version, visible-ASCII,
 ///   whitespace-visible and NATO special-words profiles (each a checked
-///   carrier with `create(std::string_view)`), and (CPP-OMS-005) the Task 058
-///   bounded-ASCII profiles — see [`cpp_codec_admits_string_profile`];
+///   carrier with `create(std::string_view)`), (CPP-OMS-005) the Task 058
+///   bounded-ASCII profiles and (CPP-OMS-006) the Task 059 structured-ASCII
+///   profiles — see [`cpp_codec_admits_string_profile`];
 /// * named `DateTimeZulu` and `Duration` declarations and the direct
 ///   unconstrained `xs:dateTime` / `xs:duration` members;
 /// * unconstrained `xs:hexBinary`, direct or named, from IR provenance;
@@ -611,7 +612,7 @@ fn cpp_emission_codec_support(
                     format!(
                         "named String profile {} has no C++ codec mapping (supported: UUID, \
                          schema-version, visible ASCII, whitespace-visible, NATO special words, \
-                         bounded ASCII)",
+                         bounded ASCII, structured ASCII)",
                         cpp_string_profile_label(&other)
                     ),
                 )),
@@ -708,9 +709,9 @@ fn cpp_emission_codec_support(
     }
 }
 
-/// The named String profiles the generated C++ codec maps (CPP-OMS-002 and
-/// CPP-OMS-005), decided once, here, for both the readiness analyzer and the
-/// C++ renderer's own defensive check.
+/// The named String profiles the generated C++ codec maps (CPP-OMS-002,
+/// CPP-OMS-005 and CPP-OMS-006), decided once, here, for both the readiness
+/// analyzer and the C++ renderer's own defensive check.
 ///
 /// Every admitted profile is a checked model carrier whose
 /// `create(std::string_view)` is the sole validation authority and whose
@@ -721,11 +722,16 @@ fn cpp_emission_codec_support(
 ///   special words (CPP-OMS-002);
 /// * Task 058 bounded ASCII: exactly the pinned `(alphabet, spelling, length)`
 ///   rows the shared classifier recognizes, including the zero-length
-///   `EmptyType` shape (CPP-OMS-005).
+///   `EmptyType` shape (CPP-OMS-005);
+/// * Task 059 structured ASCII: exactly the pinned expression/facet rows of
+///   [`crate::structured_ascii_profiles`] (CPP-OMS-006). A
+///   `StringProfile::StructuredAscii` value that is not one of those rows
+///   (one built by hand rather than by the shared classifier) is refused, so
+///   the codec cannot be widened past what the classifier recognizes.
 ///
-/// Structured ASCII, alternating ASCII, IPv6 and Unicode 3.1 profiles have
-/// model carriers too but stay outside the codec subset; they are matched
-/// explicitly so a new profile cannot become codec-ready by default.
+/// Alternating ASCII, IPv6 and Unicode 3.1 profiles have model carriers too
+/// but stay outside the codec subset; they are matched explicitly so a new
+/// profile cannot become codec-ready by default.
 #[must_use]
 pub fn cpp_codec_admits_string_profile(profile: &StringProfile) -> bool {
     match profile {
@@ -735,8 +741,10 @@ pub fn cpp_codec_admits_string_profile(profile: &StringProfile) -> bool {
         | StringProfile::WhitespaceVisible { .. }
         | StringProfile::NatoSpecialWords
         | StringProfile::BoundedAscii { .. } => true,
-        StringProfile::StructuredAscii(_)
-        | StringProfile::AlternatingAscii(_)
+        StringProfile::StructuredAscii(structured) => crate::structured_ascii_profiles()
+            .iter()
+            .any(|(_, row)| row == structured),
+        StringProfile::AlternatingAscii(_)
         | StringProfile::Ipv6Address
         | StringProfile::Unicode(_) => false,
     }
@@ -1990,10 +1998,21 @@ mod tests {
             // Quantifier and facet disagree.
             constrained("[a-zA-Z]{0}".into(), exact(1)),
         ];
-        // maxLength only: minLength is never inferred from the quantifier.
+        // maxLength only: minLength is never inferred from the quantifier, so
+        // this is not bounded ASCII. It is exactly the pinned Task 059
+        // structured row `Link16_SpecificTypeModelType`, which CPP-OMS-006
+        // admits as structured ASCII (see
+        // `cpp_oms_006_structured_ascii_admission_boundary`).
         let mut max_only = constrained("[A-Za-z0-9]{1,4}".into(), range(1, 4));
         max_only.min_length = None;
-        near_misses.push(max_only);
+        assert!(matches!(
+            string_profile(PrimitiveKind::String, &max_only),
+            Ok(Some(StringProfile::StructuredAscii(_)))
+        ));
+        assert_eq!(
+            cpp(&named(max_only, Cardinality::REQUIRED_ONE, false)),
+            Ok(())
+        );
         // An explicit whiteSpace facet, even `preserve`.
         let mut white_space = constrained("[a-zA-Z]{0}".into(), exact(0));
         white_space.lexical.white_space = Some(WhiteSpacePolicy::Preserve);
@@ -2025,6 +2044,203 @@ mod tests {
         ))
         .unwrap_err();
         assert!(failure.to_string().contains("IPv6 address"), "{failure}");
+    }
+
+    /// CPP-OMS-006: the C++ codec admits exactly the String profiles the
+    /// shared classifier recognizes as Task 059 structured ASCII (all 27
+    /// pinned expression/facet rows), in every occurrence shape and as a
+    /// Choice alternative. Unpinned neighbours never classify as structured
+    /// ASCII and stay NOT READY. A hand-built `StructuredAscii` profile that
+    /// is not one of the pinned rows is refused by the predicate itself, and
+    /// alternating ASCII, IPv6 and Unicode 3.1 stay outside the codec subset.
+    #[test]
+    fn cpp_oms_006_structured_ascii_admission_boundary() {
+        use crate::{
+            StructuredAsciiFacets, StructuredAsciiProfile, StructuredAsciiRepetition,
+            StructuredAsciiSegment,
+        };
+        use ams_gra_oms_ir::{PatternExpression, PatternGroup, WhiteSpacePolicy};
+        let cpp = |schema: &SchemaIr| -> Result<(), ServiceCodecError> {
+            let emissions = plan_type_emissions(schema, GenerationWorld::ClosedSchemaSet)
+                .map_err(|error| ServiceCodecError::EmissionPlan(error.message))?;
+            emissions.iter().try_for_each(|emission| {
+                cpp_emission_codec_support(schema, emission, GenerationWorld::ClosedSchemaSet)
+            })
+        };
+        let named = |constraints: ConstraintSet, cardinality: Cardinality, choice: bool| {
+            let mut member = field("F", TypeRef::named(QualifiedName::new(OAM_NAMESPACE, "N")));
+            member.cardinality = cardinality;
+            let mut schema = record(OAM_NAMESPACE, vec![member]);
+            if choice {
+                let TypeKind::Record { fields } = schema.types[0].kind.clone() else {
+                    unreachable!()
+                };
+                schema.types[0].kind = TypeKind::Choice {
+                    alternatives: fields,
+                };
+            }
+            schema.types.push(TypeDecl {
+                name: QualifiedName::new(OAM_NAMESPACE, "N"),
+                is_abstract: false,
+                base_type: None,
+                kind: TypeKind::Primitive(PrimitiveKind::String),
+                constraints,
+                documentation: None,
+                source: source(),
+            });
+            schema
+        };
+        let constrained = |expressions: &[&str], facets: StructuredAsciiFacets| {
+            let mut constraints = ConstraintSet::default();
+            match facets {
+                StructuredAsciiFacets::Exact(n) => constraints.length = Some(n),
+                StructuredAsciiFacets::Range(min, max) => {
+                    constraints.min_length = Some(min);
+                    constraints.max_length = Some(max);
+                }
+                StructuredAsciiFacets::Max(max) => constraints.max_length = Some(max),
+            }
+            constraints.lexical.pattern_groups = vec![PatternGroup {
+                alternatives: expressions
+                    .iter()
+                    .map(|e| PatternExpression::xml_schema(*e))
+                    .collect(),
+            }];
+            constraints
+        };
+        let shapes = [
+            Cardinality::REQUIRED_ONE,
+            Cardinality {
+                min_occurs: 0,
+                max_occurs: Some(1),
+            },
+            Cardinality {
+                min_occurs: 0,
+                max_occurs: Some(3),
+            },
+            Cardinality {
+                min_occurs: 1,
+                max_occurs: None,
+            },
+        ];
+        let rows = crate::structured_ascii_profiles();
+        assert_eq!(rows.len(), 27, "the pinned Task 059 domain");
+        for &(expression, row) in rows {
+            let constraints = constrained(&[expression], row.facets);
+            assert_eq!(
+                string_profile(PrimitiveKind::String, &constraints),
+                Ok(Some(StringProfile::StructuredAscii(row))),
+                "{expression}"
+            );
+            assert!(cpp_codec_admits_string_profile(
+                &StringProfile::StructuredAscii(row)
+            ));
+            for cardinality in shapes {
+                assert_eq!(
+                    cpp(&named(constraints.clone(), cardinality, false)),
+                    Ok(()),
+                    "{expression} {cardinality:?}"
+                );
+            }
+            assert_eq!(
+                cpp(&named(constraints, Cardinality::REQUIRED_ONE, true)),
+                Ok(()),
+                "{expression} as a Choice alternative"
+            );
+        }
+
+        // Near misses of admitted rows: the shared classifier refuses them as
+        // structured ASCII, so the codec analyzer refuses them too.
+        let file_name = r"[a-zA-Z0-9_\-]+\.[a-zA-Z0-9_\.\-]+";
+        let mut near_misses = vec![
+            // FileNameType with an unobserved maxLength.
+            constrained(&[file_name], StructuredAsciiFacets::Range(1, 256)),
+            // FileNameType with only maxLength (minLength is never inferred).
+            constrained(&[file_name], StructuredAsciiFacets::Max(255)),
+            // IMO_NumberType with the wrong length.
+            constrained(&["IMO[0-9]{7}"], StructuredAsciiFacets::Exact(11)),
+            // An unobserved prefix.
+            constrained(&["IMX[0-9]{7}"], StructuredAsciiFacets::Exact(10)),
+            // AO_PRF_CodeType with a widened range: the length-guided prefix
+            // is only sound for exactly 3..4.
+            constrained(&["1?[1-7][1-8]{2}"], StructuredAsciiFacets::Range(3, 5)),
+            constrained(&["1?[1-7][1-8]{2}"], StructuredAsciiFacets::Max(4)),
+            // A similar optional overlap that was never pinned.
+            constrained(&["2?[1-7][1-8]{2}"], StructuredAsciiFacets::Range(3, 4)),
+            // The pinned expression split across two alternatives.
+            constrained(
+                &["IMO[0-9]{7}", "IMO[0-9]{7}"],
+                StructuredAsciiFacets::Exact(10),
+            ),
+        ];
+        let mut white_space = constrained(&["IMO[0-9]{7}"], StructuredAsciiFacets::Exact(10));
+        white_space.lexical.white_space = Some(WhiteSpacePolicy::Preserve);
+        near_misses.push(white_space);
+        for constraints in near_misses {
+            assert!(
+                !matches!(
+                    string_profile(PrimitiveKind::String, &constraints),
+                    Ok(Some(StringProfile::StructuredAscii(_)))
+                ),
+                "{constraints:?}"
+            );
+            assert!(
+                cpp(&named(
+                    constraints.clone(),
+                    Cardinality::REQUIRED_ONE,
+                    false
+                ))
+                .is_err(),
+                "{constraints:?}"
+            );
+        }
+
+        // A StructuredAscii value the classifier never produces is refused by
+        // the shared predicate (and therefore by the C++ renderer's check).
+        static WIDENED: &[StructuredAsciiSegment] = &[
+            StructuredAsciiSegment::Literal("IMO"),
+            StructuredAsciiSegment::Class(
+                crate::StructuredAsciiAlphabet::Existing(crate::BoundedAsciiAlphabet::Digits),
+                StructuredAsciiRepetition::OneOrMore,
+            ),
+        ];
+        let forged = StructuredAsciiProfile {
+            segments: WIDENED,
+            facets: StructuredAsciiFacets::Exact(10),
+        };
+        assert!(!rows.iter().any(|(_, row)| *row == forged));
+        assert!(!cpp_codec_admits_string_profile(
+            &StringProfile::StructuredAscii(forged)
+        ));
+        let (_, imo) = rows
+            .iter()
+            .find(|(expression, _)| *expression == "IMO[0-9]{7}")
+            .unwrap();
+        let wrong_facets = StructuredAsciiProfile {
+            segments: imo.segments,
+            facets: StructuredAsciiFacets::Exact(11),
+        };
+        assert!(!cpp_codec_admits_string_profile(
+            &StringProfile::StructuredAscii(wrong_facets)
+        ));
+
+        // Other model-backed profiles stay NOT READY, each with its label.
+        let alternating = constrained(&["[A-Z]{2}|[ ]{2}"], StructuredAsciiFacets::Exact(2));
+        assert!(matches!(
+            string_profile(PrimitiveKind::String, &alternating),
+            Ok(Some(StringProfile::AlternatingAscii(_)))
+        ));
+        for (constraints, label) in [
+            (alternating, "alternating ASCII"),
+            (crate::ipv6_address_constraints(), "IPv6 address"),
+            (
+                crate::UnicodeStringProfile::Date.constraints(),
+                "Unicode 3.1",
+            ),
+        ] {
+            let failure = cpp(&named(constraints, Cardinality::REQUIRED_ONE, false)).unwrap_err();
+            assert!(failure.to_string().contains(label), "{failure}");
+        }
     }
 
     #[test]
