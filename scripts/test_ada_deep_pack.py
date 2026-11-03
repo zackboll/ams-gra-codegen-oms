@@ -74,6 +74,7 @@ class DeepPack(unittest.TestCase):
             for folder in ('cache/toolchains/compiler', 'settings', 'home', 'consumer/obj', 'consumer/bin'):
                 (seed / folder).mkdir(parents=True)
             (seed / 'cache/toolchains/compiler/gnat').write_text('compiler')
+            (seed / 'cache/toolchains/compiler/gnat-link').symlink_to('gnat')
             (seed / 'settings/settings.toml').write_text('cache=' + str(seed / 'cache'))
             run.freeze(seed / 'cache/toolchains')
             try:

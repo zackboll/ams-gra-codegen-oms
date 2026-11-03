@@ -70,7 +70,7 @@ def relocate_setup(seed, destination):
     Copy the already provisioned, immutable distribution (never download/build
     again). Keep executable/runtime bytes read-only in every private copy.
     """
-    shutil.copytree(seed, destination)
+    shutil.copytree(seed, destination, symlinks=True)
     old, new = str(seed).encode(), str(destination).encode()
     for path in destination.rglob("*"):
         if not path.is_file() or path.is_symlink():
