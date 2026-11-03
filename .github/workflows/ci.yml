@@ -40,7 +40,7 @@ jobs:
         run: |
           set -euo pipefail
           apt-get update
-          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14
+          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 strace make gcc g++ gnat gnat-14
           test "$(uname -m)" = x86_64
           test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.41'
           mkdir -p /tmp/task100-evidence
@@ -207,7 +207,7 @@ jobs:
         run: |
           set -euo pipefail
           apt-get update
-          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14
+          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 strace make gcc g++ gnat gnat-14
           test "$(uname -m)" = x86_64
           test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.41'
           mkdir -p /tmp/task099-evidence
@@ -325,7 +325,7 @@ jobs:
         run: |
           set -euo pipefail
           apt-get update
-          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14 locales
+          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 strace make gcc g++ gnat gnat-14 locales
           test "$(uname -m)" = x86_64
           test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.41'
           localedef -i de_DE -f UTF-8 de_DE.UTF-8
@@ -433,7 +433,7 @@ jobs:
         run: |
           set -euo pipefail
           apt-get update
-          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14 locales
+          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 strace make gcc g++ gnat gnat-14 locales
           test "$(uname -m)" = x86_64
           test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.41'
           localedef -i de_DE -f UTF-8 de_DE.UTF-8
@@ -603,7 +603,7 @@ jobs:
         run: |
           set -euo pipefail
           apt-get update
-          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14 locales
+          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 strace make gcc g++ gnat gnat-14 locales
           test "$(uname -m)" = x86_64
           test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.41'
           localedef -i de_DE -f UTF-8 de_DE.UTF-8
@@ -677,7 +677,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 scripts/check-task093-helper-demand.py --family portable --compiler 14 --scratch /tmp/task095-evidence/task093-c5-portable-14 --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
+          python3 scripts/perf009-ci.py --family portable --compiler 14 --scratch /tmp/task095-evidence/task093-c5-portable-14 --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
           sha256sum --check --quiet /tmp/task095-evidence/task093-c5-portable-14/sources.sha256
       - name: Preserve qualification evidence
         if: always()
@@ -722,6 +722,8 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test -z "$(git status --porcelain)"
       - uses: dtolnay/rust-toolchain@1.95.0
+      - name: Install mandatory portable compiler evidence tracer
+        run: sudo apt-get update && sudo apt-get install -y strace
       - name: Install verified Alire 2.1.1
         shell: bash
         run: |
@@ -917,6 +919,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy

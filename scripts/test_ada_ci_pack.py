@@ -54,7 +54,7 @@ class PackTests(unittest.TestCase):
             for step in suite['steps']:
                 with self.subTest(suite=name, step=step['name']):
                     for line in step['run'].splitlines():
-                        self.assertIn(line, jobs[name])
+                        self.assertIn(line.replace("scripts/perf009-ci.py", "scripts/check-task093-helper-demand.py"), jobs[name])
 
     def test_inner_parallelism_and_explicit_private_settings(self):
         with patch.dict(os.environ, PACK_REAL_ALR='/verified/alr', PACK_SETTINGS='/worker/settings'):

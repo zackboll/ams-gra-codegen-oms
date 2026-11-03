@@ -111,7 +111,7 @@
         },
         {
           "name": "Portable helper-demand naming regression",
-          "run": "set -euo pipefail\npython3 scripts/test-task093-compiler-placement.py\npython3 scripts/check-task093-helper-demand.py --family portable --compiler 16 --scratch \"$RUNNER_TEMP/task093-c4-16\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\"\nsha256sum --check --quiet \"$RUNNER_TEMP/task093-c4-16/sources.sha256\"\n"
+          "run": "set -euo pipefail\npython3 scripts/test-task093-compiler-placement.py\npython3 scripts/perf009-ci.py --family portable --compiler 16 --scratch \"$RUNNER_TEMP/task093-c4-16\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\"\nsha256sum --check --quiet \"$RUNNER_TEMP/task093-c4-16/sources.sha256\"\n"
         },
         {
           "name": "Validate mandatory evidence",
@@ -217,7 +217,7 @@
     "scripts/check-task092-real.py": "cd5d1e44fab3763a33b93fce9951834c82651bed0496dc1b9e73b22857ddbdef",
     "scripts/check-task092.py": "a41aa6e83df6c07d56792507348bc0d4f95af972f2b782c0ee90af52e62d9cc2",
     "scripts/check-task093-combined.py": "ed76b5242d7817e03cbf0b5b2a198a0564ca724a83b6cb3ed0c843dcc7fec675",
-    "scripts/check-task093-helper-demand.py": "ba04c69a6b645433cc2521d3e86ee889f788ed7c736a77648bc1d5250b5429f5",
+    "scripts/check-task093-helper-demand.py": "bf5639eec33e9e2a28c9e3dbcb252c32fdd05ba8df39dfafe76daf8b937e55ea",
     "scripts/check-task093-log.py": "f50fbdda553e3a8ffb8d5aa916978c7802b716202e9e5aa58f0c14a1d066df30",
     "scripts/check-task093-mixed.py": "5f63a9e9d32aeac116b42da7d4400c6865aef3fb7186b1b5f0a5bdba72c9bd06",
     "scripts/check-task093-real.py": "39d592cd893189b04260859052372d7ba330a09d32181982bdb8c53d84645f34",
@@ -455,6 +455,20 @@
     "tests/fixtures/service-generate/visible-ascii.xsd": "7df2f513d87668be8ad82deb96c235de5437df1d32ae2f2884b4fe92affac578",
     "tests/fixtures/service-generate/visible-ascii.yaml": "22272f12fc633640c3c86ebecb48abfa2c2d897a2e360eb555f2484efa49d895",
     "tests/fixtures/service-generate/whitespace-visible.xsd": "d1f619e28d8966277823bcdc99e9747004b482c330750d101c3cd03e6c463297",
-    "tests/fixtures/service-generate/whitespace-visible.yaml": "0de6365e540280a4159cb45fb983ee1cf637b729e0185f6351a32dbb439b94c6"
+    "tests/fixtures/service-generate/whitespace-visible.yaml": "0de6365e540280a4159cb45fb983ee1cf637b729e0185f6351a32dbb439b94c6",
+    "scripts/perf009-ci.py": "0f341e8ad7e5b60da0e642b9a7f5c3424f8d8a133bcc377698ab062e695ac62a",
+    "scripts/perf009_ci.py": "5c33b978ccfc77aee615d41e111a30de47b23b52e878a175d48c70ba6b838fee",
+    "scripts/perf009_provider.py": "de070252e7a596382fe3dc4727f44ec3d97dad40034a550b5bd4c5e96ab381bb",
+    "scripts/perf009_portable.py": "7273f1242016103ae63818809587e5b0a37918bd0db182f61eb4da5730927680",
+    "scripts/perf009_evidence.py": "7cbd3df9541aa8eaa358080a0dada6e182b575d1440088cda6e0e48ce03f8178",
+    "scripts/perf009_equivalence.py": "5e2a3b0f68e3185be82946195c96835e1f94e73a6ba32c7dd80390847127446f"
+  },
+  "production_portable_reuse": {
+    "authority_commit": "06f33bdda655b37f578a81bbca99ef7567407926",
+    "suite": "ada-hexbinary-codec",
+    "compiler": "16",
+    "entrypoint": "scripts/perf009-ci.py",
+    "original_entrypoint": "scripts/check-task093-helper-demand.py",
+    "cells": 30
   }
 }
