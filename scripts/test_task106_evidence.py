@@ -178,23 +178,8 @@ class CellControls(unittest.TestCase):
 
 class WorkflowControls(unittest.TestCase):
     def test_main_only_real_qualification_and_independent_verification(self):
-        header, jobs = blocks((evidence.ROOT / '.github/workflows/deep-ci.yml').read_text())
-        job = jobs[evidence.JOB]
-        self.assertIn("if: github.ref == 'refs/heads/main'", job)
-        self.assertIn("group: ${{ format('oms-main-slot-{0}', matrix.slot) }}", job)
-        self.assertIn('queue: max', job)
-        self.assertIn("compiler: '14'\n            slot: 10", job)
-        self.assertIn("compiler: '16'\n            slot: 5", job)
-        for command in ('scripts/fetch-pinned-uci-2.5.sh', evidence.REV,
-                        'scripts/task106/qualify.py', '--compiler', '--sleet', '--uci25',
-                        'from task106_evidence import verify_bundle', 'TASK106_HOSTED_VERIFIED'):
-            self.assertIn(command, job)
-        self.assertIn('if: always()\n        uses: actions/upload-artifact@v4', job)
-        for retired in ('inputs.selection', 'pull_request', 'continue-on-error', 'needs:'):
-            self.assertNotIn(retired, header + job)
-        main = (evidence.ROOT / '.github/workflows/ci.yml').read_text()
-        self.assertIn('uses: ./.github/workflows/deep-ci.yml', main)
-        self.assertNotIn('  pull_request:', main)
+        from ada_deep_pack.contracts import check
+        check(self, evidence.JOB)
 
 
 class BundleControls(unittest.TestCase):

@@ -213,7 +213,7 @@ def ownership(path, root=ROOT):
     language, mode = record['language'], record['mode']
     jobs = ['rust', 'ada-lacal-runtime-core' if language == 'ada' else 'python-model-backend']
     deep = [] if mode == 'fast' else [
-        'ada-real-uci-dlz-sleet' if language == 'ada' else
+        'ada-deep-pack-a' if language == 'ada' else
         'real-uci-regressions' if mode == 'uci' else 'real-sleet']
     return dict(category=language + '-owned-' + mode, jobs=jobs, deep_jobs=deep,
                 rationale='Validated source-bound CI-SELECT-004 registration', deep=bool(deep),

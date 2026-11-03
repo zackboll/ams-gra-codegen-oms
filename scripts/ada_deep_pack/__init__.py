@@ -1,0 +1,1 @@
+"""Source-bound Deep Ada runner packing (ADA-CI-PACK-002)."""

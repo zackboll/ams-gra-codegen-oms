@@ -368,25 +368,8 @@ class EvidenceTests(unittest.TestCase):
 
 class DeepQualification(unittest.TestCase):
     def test_main_only_full_compiler_qualification(self):
-        header, jobs = blocks((evidence.ROOT / '.github/workflows/deep-ci.yml').read_text())
-        job = jobs[evidence.JOB]
-        self.assertIn("    if: github.ref == 'refs/heads/main'\n", job)
-        self.assertIn("group: ${{ format('oms-main-slot-{0}', matrix.slot) }}", job)
-        self.assertIn('      queue: max\n', job)
-        self.assertIn("        compiler: ['14', '16']\n", job)
-        self.assertIn("          - compiler: '14'\n            slot: 5\n", job)
-        self.assertIn("          - compiler: '16'\n            slot: 2\n", job)
-        for forbidden in ('pull_request', 'inputs.selection', 'oms-pr-', 'continue-on-error'):
-            self.assertNotIn(forbidden, header + job)
-        for required in (evidence.REV,
-                         'scripts/fetch-pinned-uci-2.5.sh', 'scripts/fetch-pinned-uci-2.6.sh',
-                         'scripts/task103/qualify.py', 'from task103_evidence import verify_bundle',
-                         "print('TASK103_HOSTED_VERIFIED', verify_bundle(",
-                         'include-hidden-files: true'):
-            self.assertIn(required, job)
-        # Only diagnostics are unconditional; execution/verification must succeed.
-        self.assertEqual(job.count('        if:'), 1)
-        self.assertIn('name: Upload Task103 qualification diagnostics\n        if: always()', job)
+        from ada_deep_pack.contracts import check
+        check(self, evidence.JOB)
 
 
 if __name__ == '__main__':
