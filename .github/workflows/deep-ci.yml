@@ -1838,7 +1838,11 @@ jobs:
           printf 'DEEP_CI_EVENT=%s\n' "$GITHUB_EVENT_NAME"
       - name: Prevent Python bytecode in source-bound qualification
         shell: bash
-        run: echo 'PYTHONDONTWRITEBYTECODE=1' >> "$GITHUB_ENV"
+        run: |
+          echo 'PYTHONDONTWRITEBYTECODE=1' >> "$GITHUB_ENV"
+          # Optimize the CLI itself, not only build.rs: PY-016 parses the full
+          # unchanged schema. Dev debug assertions and overflow checks remain on.
+          echo 'CARGO_PROFILE_DEV_OPT_LEVEL=3' >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@1.95.0
       - uses: actions/setup-python@v5
         with:
