@@ -144,7 +144,10 @@ its actual length facet. No admitted alphabet contains controls, DEL or non-ASCI
 SPACE is stored unchanged only when a particular profile permits it.
 
 Generated Rust/C++/Ada model probes compile and run the shared corpus; the
-Rust generated codec accepts JSON strings only and calls `new`. A synthetic
+Rust generated codec accepts JSON strings only and calls `new`. (Later:
+[CPP-OMS-006](task-cpp-oms-006-structured-ascii-file-metadata.md) adds the C++
+codec for exactly these 27 rows; the shared `codec-structured-ascii` fixture is
+C++ codec READY too.) A synthetic
 mock-OWP round trip and rejection test pass. Existing Task 040 lifecycle
 composition remains unchanged; the new synthetic fixture covers required,
 optional, bounded and unbounded members.

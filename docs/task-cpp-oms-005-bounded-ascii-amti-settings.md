@@ -390,7 +390,8 @@ scripts/check-cpp-oms-001-parity.sh BASELINE_CLI target/release/ams-gra-codegen-
 
 * Structured ASCII, alternating ASCII, IPv6, Unicode 3.1, Float32, `Time`,
   constrained Binary, optional/repeated Choice alternatives and polymorphic
-  constructs remain NOT READY for the C++ codec. `AMTI_Command` and
+  constructs remain NOT READY for the C++ codec. (Structured ASCII is added by
+  [CPP-OMS-006](task-cpp-oms-006-structured-ascii-file-metadata.md).) `AMTI_Command` and
   `AO_CapabilityStatus` are not claimed.
 * The pinned Sleet keeps the last of duplicate JSON members; the generated
   C++ client rejects such a document as a subscription decode error. That

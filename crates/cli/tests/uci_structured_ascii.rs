@@ -191,7 +191,7 @@ fn task059_real_uci_message_impact() {
 ///   declaration counts.
 /// * `FileMetadata` gets past `FileNameType` but stays NOT READY. Its one
 ///   remaining codec blocker is the length-constrained named hexBinary
-///   `SHA_2_256_HashType` (`MessageData.FileHash.SHA_2_Hash`), which is
+///   `SHA_2_256_HashType` (the optional `MessageData.SHA_2_Hash`), which is
 ///   outside the C++ codec subset, so `service-generate --with-codec` writes
 ///   nothing.
 #[test]
