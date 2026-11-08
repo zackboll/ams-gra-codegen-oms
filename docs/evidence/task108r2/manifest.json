@@ -1,0 +1,3280 @@
+{
+  "aht": "827b0c17dd964e935f8e88912ce0611ee92b6f16",
+  "aht_tree": "d137b924a7b0fa8b71c1ee8c582749e97294335b",
+  "audit_conclusion": "MINOR_SCOPE_REDUCTION_RECOMMENDED",
+  "audit_path": "/home/zboll/task108r2-scratch/aht-upstream-minimality.md",
+  "audit_sha256": "a26d57e545f14cac4dea281cf2b6a320db9f72664587c75d719ff72d6a5d0c7a",
+  "campaigns": {
+    "compat101-14-venv": {
+      "artifact_count": 419,
+      "compiler": "14",
+      "kind": "101",
+      "result": {
+        "cells": [
+          {
+            "optimization": "0",
+            "policy": "Normal",
+            "release": "25"
+          },
+          {
+            "optimization": "2",
+            "policy": "Normal",
+            "release": "25"
+          },
+          {
+            "optimization": "0",
+            "policy": "Check",
+            "release": "25"
+          },
+          {
+            "optimization": "2",
+            "policy": "Check",
+            "release": "25"
+          },
+          {
+            "optimization": "0",
+            "policy": "Ignore",
+            "release": "25"
+          },
+          {
+            "optimization": "2",
+            "policy": "Ignore",
+            "release": "25"
+          },
+          {
+            "optimization": "0",
+            "policy": "Normal",
+            "release": "26"
+          },
+          {
+            "optimization": "2",
+            "policy": "Normal",
+            "release": "26"
+          },
+          {
+            "optimization": "0",
+            "policy": "Check",
+            "release": "26"
+          },
+          {
+            "optimization": "2",
+            "policy": "Check",
+            "release": "26"
+          },
+          {
+            "optimization": "0",
+            "policy": "Ignore",
+            "release": "26"
+          },
+          {
+            "optimization": "2",
+            "policy": "Ignore",
+            "release": "26"
+          }
+        ],
+        "compiler": "14.2.0",
+        "completed": true,
+        "real_sleet": true,
+        "real_uci": true,
+        "steps": [
+          {
+            "exit": 0,
+            "label": "printenv"
+          },
+          {
+            "exit": 0,
+            "label": "gnat-version"
+          },
+          {
+            "exit": 0,
+            "label": "gprbuild-version"
+          },
+          {
+            "exit": 0,
+            "label": "source"
+          },
+          {
+            "exit": 0,
+            "label": "source-status"
+          },
+          {
+            "exit": 0,
+            "label": "platform"
+          },
+          {
+            "exit": 0,
+            "label": "aht-clone"
+          },
+          {
+            "exit": 0,
+            "label": "aht-pin"
+          },
+          {
+            "exit": 0,
+            "label": "aht-identity"
+          },
+          {
+            "exit": 0,
+            "label": "aht-clean"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-clone"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-pin"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-identity"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-clean"
+          },
+          {
+            "exit": 0,
+            "label": "25-check"
+          },
+          {
+            "exit": 0,
+            "label": "25-generate"
+          },
+          {
+            "exit": 0,
+            "label": "25-original"
+          },
+          {
+            "exit": 0,
+            "label": "25-model"
+          },
+          {
+            "exit": 0,
+            "label": "25-dlz-Normal-build"
+          },
+          {
+            "exit": 0,
+            "label": "25-dlz-Normal-execute"
+          },
+          {
+            "exit": 0,
+            "label": "25-dlz-Check-build"
+          },
+          {
+            "exit": 0,
+            "label": "25-dlz-Check-execute"
+          },
+          {
+            "exit": 0,
+            "label": "25-dlz-Ignore-build"
+          },
+          {
+            "exit": 0,
+            "label": "25-dlz-Ignore-execute"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Normal-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Normal-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Normal-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Normal-O2-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Check-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Check-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Check-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Check-O2-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Ignore-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Ignore-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Ignore-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Ignore-O2-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "26-check"
+          },
+          {
+            "exit": 0,
+            "label": "26-generate"
+          },
+          {
+            "exit": 0,
+            "label": "26-original"
+          },
+          {
+            "exit": 0,
+            "label": "26-model"
+          },
+          {
+            "exit": 0,
+            "label": "26-dlz-Normal-build"
+          },
+          {
+            "exit": 0,
+            "label": "26-dlz-Normal-execute"
+          },
+          {
+            "exit": 0,
+            "label": "26-dlz-Check-build"
+          },
+          {
+            "exit": 0,
+            "label": "26-dlz-Check-execute"
+          },
+          {
+            "exit": 0,
+            "label": "26-dlz-Ignore-build"
+          },
+          {
+            "exit": 0,
+            "label": "26-dlz-Ignore-execute"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Normal-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Normal-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Normal-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Normal-O2-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Check-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Check-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Check-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Check-O2-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Ignore-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Ignore-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Ignore-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Ignore-O2-sleet"
+          }
+        ]
+      },
+      "source": [
+        "740441b587aa8b20f70ecfee90b6ab133e51a631",
+        "6473cded7c155272c7c7ff2a1573f2fae5e5cb09"
+      ]
+    },
+    "compat102-16": {
+      "artifact_count": 552,
+      "compiler": "16",
+      "kind": "102",
+      "result": {
+        "cells": [
+          {
+            "optimization": "0",
+            "policy": "Normal",
+            "release": "25"
+          },
+          {
+            "optimization": "2",
+            "policy": "Normal",
+            "release": "25"
+          },
+          {
+            "optimization": "0",
+            "policy": "Check",
+            "release": "25"
+          },
+          {
+            "optimization": "2",
+            "policy": "Check",
+            "release": "25"
+          },
+          {
+            "optimization": "0",
+            "policy": "Ignore",
+            "release": "25"
+          },
+          {
+            "optimization": "2",
+            "policy": "Ignore",
+            "release": "25"
+          },
+          {
+            "optimization": "0",
+            "policy": "Normal",
+            "release": "26"
+          },
+          {
+            "optimization": "2",
+            "policy": "Normal",
+            "release": "26"
+          },
+          {
+            "optimization": "0",
+            "policy": "Check",
+            "release": "26"
+          },
+          {
+            "optimization": "2",
+            "policy": "Check",
+            "release": "26"
+          },
+          {
+            "optimization": "0",
+            "policy": "Ignore",
+            "release": "26"
+          },
+          {
+            "optimization": "2",
+            "policy": "Ignore",
+            "release": "26"
+          }
+        ],
+        "compiler": "16.1.0",
+        "completed": true,
+        "real_sleet": true,
+        "real_uci": true,
+        "steps": [
+          {
+            "exit": 0,
+            "label": "printenv"
+          },
+          {
+            "exit": 0,
+            "label": "gnat-version"
+          },
+          {
+            "exit": 0,
+            "label": "gprbuild-version"
+          },
+          {
+            "exit": 0,
+            "label": "source"
+          },
+          {
+            "exit": 0,
+            "label": "source-status"
+          },
+          {
+            "exit": 0,
+            "label": "platform"
+          },
+          {
+            "exit": 0,
+            "label": "admission"
+          },
+          {
+            "exit": 0,
+            "label": "aht-clone"
+          },
+          {
+            "exit": 0,
+            "label": "aht-pin"
+          },
+          {
+            "exit": 0,
+            "label": "aht-identity"
+          },
+          {
+            "exit": 0,
+            "label": "aht-clean"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-clone"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-pin"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-identity"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-clean"
+          },
+          {
+            "exit": 0,
+            "label": "25-check"
+          },
+          {
+            "exit": 0,
+            "label": "25-generate"
+          },
+          {
+            "exit": 0,
+            "label": "25-original"
+          },
+          {
+            "exit": 0,
+            "label": "25-model"
+          },
+          {
+            "exit": 0,
+            "label": "25-constrained-ada"
+          },
+          {
+            "exit": 0,
+            "label": "25-hash-Normal-build"
+          },
+          {
+            "exit": 0,
+            "label": "25-hash-Normal-execute"
+          },
+          {
+            "exit": 0,
+            "label": "25-hash-Check-build"
+          },
+          {
+            "exit": 0,
+            "label": "25-hash-Check-execute"
+          },
+          {
+            "exit": 0,
+            "label": "25-hash-Ignore-build"
+          },
+          {
+            "exit": 0,
+            "label": "25-hash-Ignore-execute"
+          },
+          {
+            "exit": 4,
+            "label": "25-direction-input"
+          },
+          {
+            "exit": 4,
+            "label": "25-direction-output"
+          },
+          {
+            "exit": 0,
+            "label": "25-codec-Normal-build"
+          },
+          {
+            "exit": 0,
+            "label": "25-codec-Normal-execute"
+          },
+          {
+            "exit": 0,
+            "label": "25-codec-Check-build"
+          },
+          {
+            "exit": 0,
+            "label": "25-codec-Check-execute"
+          },
+          {
+            "exit": 0,
+            "label": "25-codec-Ignore-build"
+          },
+          {
+            "exit": 0,
+            "label": "25-codec-Ignore-execute"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Normal-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Normal-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Normal-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Normal-O2-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Check-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Check-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Check-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Check-O2-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Ignore-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Ignore-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Ignore-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Ignore-O2-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "26-check"
+          },
+          {
+            "exit": 0,
+            "label": "26-generate"
+          },
+          {
+            "exit": 0,
+            "label": "26-original"
+          },
+          {
+            "exit": 0,
+            "label": "26-model"
+          },
+          {
+            "exit": 0,
+            "label": "26-constrained-ada"
+          },
+          {
+            "exit": 0,
+            "label": "26-hash-Normal-build"
+          },
+          {
+            "exit": 0,
+            "label": "26-hash-Normal-execute"
+          },
+          {
+            "exit": 0,
+            "label": "26-hash-Check-build"
+          },
+          {
+            "exit": 0,
+            "label": "26-hash-Check-execute"
+          },
+          {
+            "exit": 0,
+            "label": "26-hash-Ignore-build"
+          },
+          {
+            "exit": 0,
+            "label": "26-hash-Ignore-execute"
+          },
+          {
+            "exit": 4,
+            "label": "26-direction-input"
+          },
+          {
+            "exit": 4,
+            "label": "26-direction-output"
+          },
+          {
+            "exit": 0,
+            "label": "26-codec-Normal-build"
+          },
+          {
+            "exit": 0,
+            "label": "26-codec-Normal-execute"
+          },
+          {
+            "exit": 0,
+            "label": "26-codec-Check-build"
+          },
+          {
+            "exit": 0,
+            "label": "26-codec-Check-execute"
+          },
+          {
+            "exit": 0,
+            "label": "26-codec-Ignore-build"
+          },
+          {
+            "exit": 0,
+            "label": "26-codec-Ignore-execute"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Normal-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Normal-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Normal-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Normal-O2-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Check-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Check-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Check-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Check-O2-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Ignore-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Ignore-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Ignore-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Ignore-O2-sleet"
+          }
+        ]
+      },
+      "source": [
+        "740441b587aa8b20f70ecfee90b6ab133e51a631",
+        "6473cded7c155272c7c7ff2a1573f2fae5e5cb09"
+      ]
+    },
+    "compat103-16": {
+      "artifact_count": 513,
+      "compiler": "16",
+      "kind": "103",
+      "result": {
+        "cells": [
+          {
+            "optimization": "0",
+            "policy": "Normal",
+            "release": "25"
+          },
+          {
+            "optimization": "2",
+            "policy": "Normal",
+            "release": "25"
+          },
+          {
+            "optimization": "0",
+            "policy": "Check",
+            "release": "25"
+          },
+          {
+            "optimization": "2",
+            "policy": "Check",
+            "release": "25"
+          },
+          {
+            "optimization": "0",
+            "policy": "Ignore",
+            "release": "25"
+          },
+          {
+            "optimization": "2",
+            "policy": "Ignore",
+            "release": "25"
+          },
+          {
+            "optimization": "0",
+            "policy": "Normal",
+            "release": "26"
+          },
+          {
+            "optimization": "2",
+            "policy": "Normal",
+            "release": "26"
+          },
+          {
+            "optimization": "0",
+            "policy": "Check",
+            "release": "26"
+          },
+          {
+            "optimization": "2",
+            "policy": "Check",
+            "release": "26"
+          },
+          {
+            "optimization": "0",
+            "policy": "Ignore",
+            "release": "26"
+          },
+          {
+            "optimization": "2",
+            "policy": "Ignore",
+            "release": "26"
+          }
+        ],
+        "compiler": "16.1.0",
+        "completed": true,
+        "real_sleet": true,
+        "real_uci": true,
+        "steps": [
+          {
+            "exit": 0,
+            "label": "printenv"
+          },
+          {
+            "exit": 0,
+            "label": "gnat-version"
+          },
+          {
+            "exit": 0,
+            "label": "gprbuild-version"
+          },
+          {
+            "exit": 0,
+            "label": "source"
+          },
+          {
+            "exit": 0,
+            "label": "source-status"
+          },
+          {
+            "exit": 0,
+            "label": "platform"
+          },
+          {
+            "exit": 0,
+            "label": "admission"
+          },
+          {
+            "exit": 0,
+            "label": "aht-clone"
+          },
+          {
+            "exit": 0,
+            "label": "aht-pin"
+          },
+          {
+            "exit": 0,
+            "label": "aht-identity"
+          },
+          {
+            "exit": 0,
+            "label": "aht-clean"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-clone"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-pin"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-identity"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-clean"
+          },
+          {
+            "exit": 0,
+            "label": "25-check"
+          },
+          {
+            "exit": 0,
+            "label": "25-generate"
+          },
+          {
+            "exit": 0,
+            "label": "25-original"
+          },
+          {
+            "exit": 0,
+            "label": "25-model"
+          },
+          {
+            "exit": 4,
+            "label": "25-direction-input"
+          },
+          {
+            "exit": 4,
+            "label": "25-direction-output"
+          },
+          {
+            "exit": 0,
+            "label": "25-codec-Normal-build"
+          },
+          {
+            "exit": 0,
+            "label": "25-codec-Normal-execute"
+          },
+          {
+            "exit": 0,
+            "label": "25-independent-Normal-build"
+          },
+          {
+            "exit": 0,
+            "label": "25-independent-Normal-execute"
+          },
+          {
+            "exit": 0,
+            "label": "25-codec-Check-build"
+          },
+          {
+            "exit": 0,
+            "label": "25-codec-Check-execute"
+          },
+          {
+            "exit": 0,
+            "label": "25-independent-Check-build"
+          },
+          {
+            "exit": 0,
+            "label": "25-independent-Check-execute"
+          },
+          {
+            "exit": 0,
+            "label": "25-codec-Ignore-build"
+          },
+          {
+            "exit": 0,
+            "label": "25-codec-Ignore-execute"
+          },
+          {
+            "exit": 0,
+            "label": "25-independent-Ignore-build"
+          },
+          {
+            "exit": 0,
+            "label": "25-independent-Ignore-execute"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Normal-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Normal-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Normal-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Normal-O2-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Check-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Check-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Check-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Check-O2-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Ignore-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Ignore-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Ignore-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Ignore-O2-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "26-check"
+          },
+          {
+            "exit": 0,
+            "label": "26-generate"
+          },
+          {
+            "exit": 0,
+            "label": "26-original"
+          },
+          {
+            "exit": 0,
+            "label": "26-model"
+          },
+          {
+            "exit": 4,
+            "label": "26-direction-input"
+          },
+          {
+            "exit": 4,
+            "label": "26-direction-output"
+          },
+          {
+            "exit": 0,
+            "label": "26-codec-Normal-build"
+          },
+          {
+            "exit": 0,
+            "label": "26-codec-Normal-execute"
+          },
+          {
+            "exit": 0,
+            "label": "26-independent-Normal-build"
+          },
+          {
+            "exit": 0,
+            "label": "26-independent-Normal-execute"
+          },
+          {
+            "exit": 0,
+            "label": "26-codec-Check-build"
+          },
+          {
+            "exit": 0,
+            "label": "26-codec-Check-execute"
+          },
+          {
+            "exit": 0,
+            "label": "26-independent-Check-build"
+          },
+          {
+            "exit": 0,
+            "label": "26-independent-Check-execute"
+          },
+          {
+            "exit": 0,
+            "label": "26-codec-Ignore-build"
+          },
+          {
+            "exit": 0,
+            "label": "26-codec-Ignore-execute"
+          },
+          {
+            "exit": 0,
+            "label": "26-independent-Ignore-build"
+          },
+          {
+            "exit": 0,
+            "label": "26-independent-Ignore-execute"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Normal-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Normal-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Normal-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Normal-O2-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Check-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Check-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Check-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Check-O2-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Ignore-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Ignore-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Ignore-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Ignore-O2-sleet"
+          }
+        ]
+      },
+      "source": [
+        "740441b587aa8b20f70ecfee90b6ab133e51a631",
+        "6473cded7c155272c7c7ff2a1573f2fae5e5cb09"
+      ]
+    },
+    "compat104-14": {
+      "artifact_count": 290,
+      "compiler": "14",
+      "kind": "104",
+      "result": {
+        "cells": [
+          {
+            "optimization": "0",
+            "policy": "Normal",
+            "release": "25"
+          },
+          {
+            "optimization": "2",
+            "policy": "Normal",
+            "release": "25"
+          },
+          {
+            "optimization": "0",
+            "policy": "Check",
+            "release": "25"
+          },
+          {
+            "optimization": "2",
+            "policy": "Check",
+            "release": "25"
+          },
+          {
+            "optimization": "0",
+            "policy": "Ignore",
+            "release": "25"
+          },
+          {
+            "optimization": "2",
+            "policy": "Ignore",
+            "release": "25"
+          }
+        ],
+        "compiler": "14.2.0",
+        "completed": true,
+        "real_sleet": true,
+        "real_uci": true,
+        "steps": [
+          {
+            "exit": 0,
+            "label": "printenv"
+          },
+          {
+            "exit": 0,
+            "label": "gnat-version"
+          },
+          {
+            "exit": 0,
+            "label": "gprbuild-version"
+          },
+          {
+            "exit": 0,
+            "label": "source"
+          },
+          {
+            "exit": 0,
+            "label": "source-status"
+          },
+          {
+            "exit": 0,
+            "label": "platform"
+          },
+          {
+            "exit": 0,
+            "label": "admission"
+          },
+          {
+            "exit": 0,
+            "label": "aht-clone"
+          },
+          {
+            "exit": 0,
+            "label": "aht-pin"
+          },
+          {
+            "exit": 0,
+            "label": "aht-identity"
+          },
+          {
+            "exit": 0,
+            "label": "aht-clean"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-clone"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-pin"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-identity"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-clean"
+          },
+          {
+            "exit": 0,
+            "label": "25-check"
+          },
+          {
+            "exit": 0,
+            "label": "25-generate"
+          },
+          {
+            "exit": 0,
+            "label": "25-original"
+          },
+          {
+            "exit": 0,
+            "label": "25-model"
+          },
+          {
+            "exit": 4,
+            "label": "25-direction-input"
+          },
+          {
+            "exit": 4,
+            "label": "25-direction-output"
+          },
+          {
+            "exit": 0,
+            "label": "25-codec-Normal-build"
+          },
+          {
+            "exit": 0,
+            "label": "25-codec-Normal-execute"
+          },
+          {
+            "exit": 0,
+            "label": "25-independent-Normal-build"
+          },
+          {
+            "exit": 0,
+            "label": "25-independent-Normal-execute"
+          },
+          {
+            "exit": 0,
+            "label": "25-codec-Check-build"
+          },
+          {
+            "exit": 0,
+            "label": "25-codec-Check-execute"
+          },
+          {
+            "exit": 0,
+            "label": "25-independent-Check-build"
+          },
+          {
+            "exit": 0,
+            "label": "25-independent-Check-execute"
+          },
+          {
+            "exit": 0,
+            "label": "25-codec-Ignore-build"
+          },
+          {
+            "exit": 0,
+            "label": "25-codec-Ignore-execute"
+          },
+          {
+            "exit": 0,
+            "label": "25-independent-Ignore-build"
+          },
+          {
+            "exit": 0,
+            "label": "25-independent-Ignore-execute"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Normal-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Normal-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Normal-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Normal-O2-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Check-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Check-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Check-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Check-O2-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Ignore-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Ignore-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Ignore-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Ignore-O2-sleet"
+          }
+        ]
+      },
+      "source": [
+        "740441b587aa8b20f70ecfee90b6ab133e51a631",
+        "6473cded7c155272c7c7ff2a1573f2fae5e5cb09"
+      ]
+    },
+    "compat105-14": {
+      "artifact_count": 312,
+      "compiler": "14",
+      "kind": "105",
+      "result": {
+        "cells": [
+          {
+            "optimization": "0",
+            "policy": "Normal",
+            "release": "26"
+          },
+          {
+            "optimization": "2",
+            "policy": "Normal",
+            "release": "26"
+          },
+          {
+            "optimization": "0",
+            "policy": "Check",
+            "release": "26"
+          },
+          {
+            "optimization": "2",
+            "policy": "Check",
+            "release": "26"
+          },
+          {
+            "optimization": "0",
+            "policy": "Ignore",
+            "release": "26"
+          },
+          {
+            "optimization": "2",
+            "policy": "Ignore",
+            "release": "26"
+          }
+        ],
+        "compiler": "14.2.0",
+        "completed": true,
+        "real_sleet": true,
+        "real_uci": true,
+        "steps": [
+          {
+            "exit": 0,
+            "label": "printenv"
+          },
+          {
+            "exit": 0,
+            "label": "gnat-version"
+          },
+          {
+            "exit": 0,
+            "label": "gprbuild-version"
+          },
+          {
+            "exit": 0,
+            "label": "source"
+          },
+          {
+            "exit": 0,
+            "label": "source-status"
+          },
+          {
+            "exit": 0,
+            "label": "platform"
+          },
+          {
+            "exit": 0,
+            "label": "alire-version"
+          },
+          {
+            "exit": 0,
+            "label": "rustc-version"
+          },
+          {
+            "exit": 0,
+            "label": "cargo-version"
+          },
+          {
+            "exit": 0,
+            "label": "admission"
+          },
+          {
+            "exit": 0,
+            "label": "schema-comparison"
+          },
+          {
+            "exit": 0,
+            "label": "inherited25-generate"
+          },
+          {
+            "exit": 0,
+            "label": "aht-clone"
+          },
+          {
+            "exit": 0,
+            "label": "aht-pin"
+          },
+          {
+            "exit": 0,
+            "label": "aht-identity"
+          },
+          {
+            "exit": 0,
+            "label": "aht-clean"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-clone"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-pin"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-identity"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-clean"
+          },
+          {
+            "exit": 0,
+            "label": "26-check"
+          },
+          {
+            "exit": 0,
+            "label": "26-generate"
+          },
+          {
+            "exit": 0,
+            "label": "26-original"
+          },
+          {
+            "exit": 0,
+            "label": "26-model"
+          },
+          {
+            "exit": 4,
+            "label": "26-direction-input"
+          },
+          {
+            "exit": 4,
+            "label": "26-direction-output"
+          },
+          {
+            "exit": 0,
+            "label": "26-codec-Normal-build"
+          },
+          {
+            "exit": 0,
+            "label": "26-codec-Normal-execute"
+          },
+          {
+            "exit": 0,
+            "label": "26-independent-Normal-build"
+          },
+          {
+            "exit": 0,
+            "label": "26-independent-Normal-execute"
+          },
+          {
+            "exit": 0,
+            "label": "26-codec-Check-build"
+          },
+          {
+            "exit": 0,
+            "label": "26-codec-Check-execute"
+          },
+          {
+            "exit": 0,
+            "label": "26-independent-Check-build"
+          },
+          {
+            "exit": 0,
+            "label": "26-independent-Check-execute"
+          },
+          {
+            "exit": 0,
+            "label": "26-codec-Ignore-build"
+          },
+          {
+            "exit": 0,
+            "label": "26-codec-Ignore-execute"
+          },
+          {
+            "exit": 0,
+            "label": "26-independent-Ignore-build"
+          },
+          {
+            "exit": 0,
+            "label": "26-independent-Ignore-execute"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Normal-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Normal-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Normal-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Normal-O2-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Check-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Check-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Check-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Check-O2-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Ignore-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Ignore-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Ignore-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci26-Ignore-O2-sleet"
+          }
+        ]
+      },
+      "source": [
+        "740441b587aa8b20f70ecfee90b6ab133e51a631",
+        "6473cded7c155272c7c7ff2a1573f2fae5e5cb09"
+      ]
+    },
+    "compat106-16-venv": {
+      "artifact_count": 372,
+      "compiler": "16",
+      "kind": "106",
+      "result": {
+        "cells": [
+          {
+            "optimization": "0",
+            "policy": "Normal",
+            "release": "25"
+          },
+          {
+            "optimization": "2",
+            "policy": "Normal",
+            "release": "25"
+          },
+          {
+            "optimization": "0",
+            "policy": "Check",
+            "release": "25"
+          },
+          {
+            "optimization": "2",
+            "policy": "Check",
+            "release": "25"
+          },
+          {
+            "optimization": "0",
+            "policy": "Ignore",
+            "release": "25"
+          },
+          {
+            "optimization": "2",
+            "policy": "Ignore",
+            "release": "25"
+          }
+        ],
+        "compiler": "16.1.0",
+        "completed": true,
+        "development": false,
+        "steps": [
+          {
+            "exit": 0,
+            "label": "printenv"
+          },
+          {
+            "exit": 0,
+            "label": "gnat-version"
+          },
+          {
+            "exit": 0,
+            "label": "gprbuild-version"
+          },
+          {
+            "exit": 0,
+            "label": "source"
+          },
+          {
+            "exit": 0,
+            "label": "source-status"
+          },
+          {
+            "exit": 0,
+            "label": "tool-identities"
+          },
+          {
+            "exit": 0,
+            "label": "alire-version"
+          },
+          {
+            "exit": 0,
+            "label": "check"
+          },
+          {
+            "exit": 0,
+            "label": "generate"
+          },
+          {
+            "exit": 0,
+            "label": "model"
+          },
+          {
+            "exit": 0,
+            "label": "baseline-log"
+          },
+          {
+            "exit": 0,
+            "label": "baseline-rdma"
+          },
+          {
+            "exit": 0,
+            "label": "baseline-survivability"
+          },
+          {
+            "exit": 4,
+            "label": "direction-log-receive"
+          },
+          {
+            "exit": 4,
+            "label": "direction-log-publish"
+          },
+          {
+            "exit": 4,
+            "label": "direction-rdma-receive"
+          },
+          {
+            "exit": 4,
+            "label": "direction-rdma-publish"
+          },
+          {
+            "exit": 4,
+            "label": "direction-survivability-receive"
+          },
+          {
+            "exit": 4,
+            "label": "direction-survivability-publish"
+          },
+          {
+            "exit": 0,
+            "label": "codec-Normal-build"
+          },
+          {
+            "exit": 0,
+            "label": "codec-Normal-log"
+          },
+          {
+            "exit": 0,
+            "label": "codec-Normal-rdma"
+          },
+          {
+            "exit": 0,
+            "label": "codec-Normal-survivability"
+          },
+          {
+            "exit": 0,
+            "label": "independent-Normal-rdma-build"
+          },
+          {
+            "exit": 0,
+            "label": "independent-Normal-rdma-execute"
+          },
+          {
+            "exit": 0,
+            "label": "independent-Normal-survivability-build"
+          },
+          {
+            "exit": 0,
+            "label": "independent-Normal-survivability-execute"
+          },
+          {
+            "exit": 0,
+            "label": "codec-Check-build"
+          },
+          {
+            "exit": 0,
+            "label": "codec-Check-log"
+          },
+          {
+            "exit": 0,
+            "label": "codec-Check-rdma"
+          },
+          {
+            "exit": 0,
+            "label": "codec-Check-survivability"
+          },
+          {
+            "exit": 0,
+            "label": "independent-Check-rdma-build"
+          },
+          {
+            "exit": 0,
+            "label": "independent-Check-rdma-execute"
+          },
+          {
+            "exit": 0,
+            "label": "independent-Check-survivability-build"
+          },
+          {
+            "exit": 0,
+            "label": "independent-Check-survivability-execute"
+          },
+          {
+            "exit": 0,
+            "label": "codec-Ignore-build"
+          },
+          {
+            "exit": 0,
+            "label": "codec-Ignore-log"
+          },
+          {
+            "exit": 0,
+            "label": "codec-Ignore-rdma"
+          },
+          {
+            "exit": 0,
+            "label": "codec-Ignore-survivability"
+          },
+          {
+            "exit": 0,
+            "label": "independent-Ignore-rdma-build"
+          },
+          {
+            "exit": 0,
+            "label": "independent-Ignore-rdma-execute"
+          },
+          {
+            "exit": 0,
+            "label": "independent-Ignore-survivability-build"
+          },
+          {
+            "exit": 0,
+            "label": "independent-Ignore-survivability-execute"
+          },
+          {
+            "exit": 0,
+            "label": "admission"
+          },
+          {
+            "exit": 0,
+            "label": "aht-clone"
+          },
+          {
+            "exit": 0,
+            "label": "aht-pin"
+          },
+          {
+            "exit": 0,
+            "label": "aht-identity"
+          },
+          {
+            "exit": 0,
+            "label": "aht-clean"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-clone"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-pin"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-identity"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-clean"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Normal-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Normal-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Normal-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Normal-O2-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Check-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Check-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Check-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Check-O2-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Ignore-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Ignore-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Ignore-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "uci25-Ignore-O2-sleet"
+          }
+        ]
+      },
+      "source": [
+        "740441b587aa8b20f70ecfee90b6ab133e51a631",
+        "6473cded7c155272c7c7ff2a1573f2fae5e5cb09"
+      ]
+    },
+    "dispatch14": {
+      "artifact_count": 69,
+      "compiler": "14",
+      "kind": "dispatch",
+      "result": {
+        "cells": [
+          {
+            "checks": 64,
+            "optimization": "0",
+            "policy": "Normal"
+          },
+          {
+            "checks": 64,
+            "optimization": "0",
+            "policy": "Check"
+          },
+          {
+            "checks": 64,
+            "optimization": "0",
+            "policy": "Ignore"
+          },
+          {
+            "checks": 64,
+            "optimization": "2",
+            "policy": "Normal"
+          },
+          {
+            "checks": 64,
+            "optimization": "2",
+            "policy": "Check"
+          },
+          {
+            "checks": 64,
+            "optimization": "2",
+            "policy": "Ignore"
+          }
+        ],
+        "compiler": "14.2.0",
+        "completed": true,
+        "directionality_rejections": 2
+      },
+      "source": null
+    },
+    "dispatch16": {
+      "artifact_count": 69,
+      "compiler": "16",
+      "kind": "dispatch",
+      "result": {
+        "cells": [
+          {
+            "checks": 64,
+            "optimization": "0",
+            "policy": "Normal"
+          },
+          {
+            "checks": 64,
+            "optimization": "0",
+            "policy": "Check"
+          },
+          {
+            "checks": 64,
+            "optimization": "0",
+            "policy": "Ignore"
+          },
+          {
+            "checks": 64,
+            "optimization": "2",
+            "policy": "Normal"
+          },
+          {
+            "checks": 64,
+            "optimization": "2",
+            "policy": "Check"
+          },
+          {
+            "checks": 64,
+            "optimization": "2",
+            "policy": "Ignore"
+          }
+        ],
+        "compiler": "16.1.0",
+        "completed": true,
+        "directionality_rejections": 2
+      },
+      "source": null
+    },
+    "plaintext14": {
+      "artifact_count": 3523,
+      "compiler": "14",
+      "kind": "100",
+      "result": {
+        "cells": [
+          {
+            "namespace": "oam",
+            "optimization": "0",
+            "policy": "Normal",
+            "profile": "portable"
+          },
+          {
+            "namespace": "oam",
+            "optimization": "2",
+            "policy": "Normal",
+            "profile": "portable"
+          },
+          {
+            "namespace": "oam",
+            "optimization": "0",
+            "policy": "Check",
+            "profile": "portable"
+          },
+          {
+            "namespace": "oam",
+            "optimization": "2",
+            "policy": "Check",
+            "profile": "portable"
+          },
+          {
+            "namespace": "oam",
+            "optimization": "0",
+            "policy": "Ignore",
+            "profile": "portable"
+          },
+          {
+            "namespace": "oam",
+            "optimization": "2",
+            "policy": "Ignore",
+            "profile": "portable"
+          },
+          {
+            "namespace": "oam",
+            "optimization": "0",
+            "policy": "Normal",
+            "profile": "lossless"
+          },
+          {
+            "namespace": "oam",
+            "optimization": "2",
+            "policy": "Normal",
+            "profile": "lossless"
+          },
+          {
+            "namespace": "oam",
+            "optimization": "0",
+            "policy": "Check",
+            "profile": "lossless"
+          },
+          {
+            "namespace": "oam",
+            "optimization": "2",
+            "policy": "Check",
+            "profile": "lossless"
+          },
+          {
+            "namespace": "oam",
+            "optimization": "0",
+            "policy": "Ignore",
+            "profile": "lossless"
+          },
+          {
+            "namespace": "oam",
+            "optimization": "2",
+            "policy": "Ignore",
+            "profile": "lossless"
+          },
+          {
+            "namespace": "qualified",
+            "optimization": "0",
+            "policy": "Normal",
+            "profile": "portable"
+          },
+          {
+            "namespace": "qualified",
+            "optimization": "2",
+            "policy": "Normal",
+            "profile": "portable"
+          },
+          {
+            "namespace": "qualified",
+            "optimization": "0",
+            "policy": "Check",
+            "profile": "portable"
+          },
+          {
+            "namespace": "qualified",
+            "optimization": "2",
+            "policy": "Check",
+            "profile": "portable"
+          },
+          {
+            "namespace": "qualified",
+            "optimization": "0",
+            "policy": "Ignore",
+            "profile": "portable"
+          },
+          {
+            "namespace": "qualified",
+            "optimization": "2",
+            "policy": "Ignore",
+            "profile": "portable"
+          },
+          {
+            "namespace": "qualified",
+            "optimization": "0",
+            "policy": "Normal",
+            "profile": "lossless"
+          },
+          {
+            "namespace": "qualified",
+            "optimization": "2",
+            "policy": "Normal",
+            "profile": "lossless"
+          },
+          {
+            "namespace": "qualified",
+            "optimization": "0",
+            "policy": "Check",
+            "profile": "lossless"
+          },
+          {
+            "namespace": "qualified",
+            "optimization": "2",
+            "policy": "Check",
+            "profile": "lossless"
+          },
+          {
+            "namespace": "qualified",
+            "optimization": "0",
+            "policy": "Ignore",
+            "profile": "lossless"
+          },
+          {
+            "namespace": "qualified",
+            "optimization": "2",
+            "policy": "Ignore",
+            "profile": "lossless"
+          }
+        ],
+        "compiler": "14.2.0",
+        "completed": true,
+        "real_sleet": true,
+        "steps": [
+          {
+            "exit": 0,
+            "label": "source"
+          },
+          {
+            "exit": 0,
+            "label": "source-status"
+          },
+          {
+            "exit": 0,
+            "label": "printenv"
+          },
+          {
+            "exit": 0,
+            "label": "compiler"
+          },
+          {
+            "exit": 0,
+            "label": "platform"
+          },
+          {
+            "exit": 0,
+            "label": "aht-clone"
+          },
+          {
+            "exit": 0,
+            "label": "aht-pin"
+          },
+          {
+            "exit": 0,
+            "label": "aht-identity"
+          },
+          {
+            "exit": 0,
+            "label": "aht-clean"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-clone"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-pin"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-identity"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-clean"
+          },
+          {
+            "exit": 0,
+            "label": "partial-send-shim"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-model"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-generate"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Normal-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Normal-O0-local"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Normal-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Normal-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Normal-O2-local"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Normal-O2-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Check-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Check-O0-local"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Check-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Check-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Check-O2-local"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Check-O2-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Ignore-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Ignore-O0-local"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Ignore-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Ignore-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Ignore-O2-local"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Ignore-O2-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "oam-lossless-model"
+          },
+          {
+            "exit": 0,
+            "label": "oam-lossless-generate"
+          },
+          {
+            "exit": 0,
+            "label": "oam-lossless-Normal-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "oam-lossless-Normal-O0-local"
+          },
+          {
+            "exit": 0,
+            "label": "oam-lossless-Normal-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "oam-lossless-Normal-O2-local"
+          },
+          {
+            "exit": 0,
+            "label": "oam-lossless-Check-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "oam-lossless-Check-O0-local"
+          },
+          {
+            "exit": 0,
+            "label": "oam-lossless-Check-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "oam-lossless-Check-O2-local"
+          },
+          {
+            "exit": 0,
+            "label": "oam-lossless-Ignore-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "oam-lossless-Ignore-O0-local"
+          },
+          {
+            "exit": 0,
+            "label": "oam-lossless-Ignore-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "oam-lossless-Ignore-O2-local"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-portable-model"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-portable-generate"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-portable-Normal-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-portable-Normal-O0-local"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-portable-Normal-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-portable-Normal-O2-local"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-portable-Check-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-portable-Check-O0-local"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-portable-Check-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-portable-Check-O2-local"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-portable-Ignore-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-portable-Ignore-O0-local"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-portable-Ignore-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-portable-Ignore-O2-local"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-lossless-model"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-lossless-generate"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-lossless-Normal-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-lossless-Normal-O0-local"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-lossless-Normal-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-lossless-Normal-O2-local"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-lossless-Check-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-lossless-Check-O0-local"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-lossless-Check-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-lossless-Check-O2-local"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-lossless-Ignore-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-lossless-Ignore-O0-local"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-lossless-Ignore-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-lossless-Ignore-O2-local"
+          }
+        ]
+      },
+      "source": [
+        "740441b587aa8b20f70ecfee90b6ab133e51a631",
+        "6473cded7c155272c7c7ff2a1573f2fae5e5cb09"
+      ]
+    },
+    "plaintext16": {
+      "artifact_count": 3523,
+      "compiler": "16",
+      "kind": "100",
+      "result": {
+        "cells": [
+          {
+            "namespace": "oam",
+            "optimization": "0",
+            "policy": "Normal",
+            "profile": "portable"
+          },
+          {
+            "namespace": "oam",
+            "optimization": "2",
+            "policy": "Normal",
+            "profile": "portable"
+          },
+          {
+            "namespace": "oam",
+            "optimization": "0",
+            "policy": "Check",
+            "profile": "portable"
+          },
+          {
+            "namespace": "oam",
+            "optimization": "2",
+            "policy": "Check",
+            "profile": "portable"
+          },
+          {
+            "namespace": "oam",
+            "optimization": "0",
+            "policy": "Ignore",
+            "profile": "portable"
+          },
+          {
+            "namespace": "oam",
+            "optimization": "2",
+            "policy": "Ignore",
+            "profile": "portable"
+          },
+          {
+            "namespace": "oam",
+            "optimization": "0",
+            "policy": "Normal",
+            "profile": "lossless"
+          },
+          {
+            "namespace": "oam",
+            "optimization": "2",
+            "policy": "Normal",
+            "profile": "lossless"
+          },
+          {
+            "namespace": "oam",
+            "optimization": "0",
+            "policy": "Check",
+            "profile": "lossless"
+          },
+          {
+            "namespace": "oam",
+            "optimization": "2",
+            "policy": "Check",
+            "profile": "lossless"
+          },
+          {
+            "namespace": "oam",
+            "optimization": "0",
+            "policy": "Ignore",
+            "profile": "lossless"
+          },
+          {
+            "namespace": "oam",
+            "optimization": "2",
+            "policy": "Ignore",
+            "profile": "lossless"
+          },
+          {
+            "namespace": "qualified",
+            "optimization": "0",
+            "policy": "Normal",
+            "profile": "portable"
+          },
+          {
+            "namespace": "qualified",
+            "optimization": "2",
+            "policy": "Normal",
+            "profile": "portable"
+          },
+          {
+            "namespace": "qualified",
+            "optimization": "0",
+            "policy": "Check",
+            "profile": "portable"
+          },
+          {
+            "namespace": "qualified",
+            "optimization": "2",
+            "policy": "Check",
+            "profile": "portable"
+          },
+          {
+            "namespace": "qualified",
+            "optimization": "0",
+            "policy": "Ignore",
+            "profile": "portable"
+          },
+          {
+            "namespace": "qualified",
+            "optimization": "2",
+            "policy": "Ignore",
+            "profile": "portable"
+          },
+          {
+            "namespace": "qualified",
+            "optimization": "0",
+            "policy": "Normal",
+            "profile": "lossless"
+          },
+          {
+            "namespace": "qualified",
+            "optimization": "2",
+            "policy": "Normal",
+            "profile": "lossless"
+          },
+          {
+            "namespace": "qualified",
+            "optimization": "0",
+            "policy": "Check",
+            "profile": "lossless"
+          },
+          {
+            "namespace": "qualified",
+            "optimization": "2",
+            "policy": "Check",
+            "profile": "lossless"
+          },
+          {
+            "namespace": "qualified",
+            "optimization": "0",
+            "policy": "Ignore",
+            "profile": "lossless"
+          },
+          {
+            "namespace": "qualified",
+            "optimization": "2",
+            "policy": "Ignore",
+            "profile": "lossless"
+          }
+        ],
+        "compiler": "16.1.0",
+        "completed": true,
+        "real_sleet": true,
+        "steps": [
+          {
+            "exit": 0,
+            "label": "source"
+          },
+          {
+            "exit": 0,
+            "label": "source-status"
+          },
+          {
+            "exit": 0,
+            "label": "printenv"
+          },
+          {
+            "exit": 0,
+            "label": "compiler"
+          },
+          {
+            "exit": 0,
+            "label": "platform"
+          },
+          {
+            "exit": 0,
+            "label": "aht-clone"
+          },
+          {
+            "exit": 0,
+            "label": "aht-pin"
+          },
+          {
+            "exit": 0,
+            "label": "aht-identity"
+          },
+          {
+            "exit": 0,
+            "label": "aht-clean"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-clone"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-pin"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-identity"
+          },
+          {
+            "exit": 0,
+            "label": "websocket-ada-clean"
+          },
+          {
+            "exit": 0,
+            "label": "partial-send-shim"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-model"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-generate"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Normal-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Normal-O0-local"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Normal-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Normal-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Normal-O2-local"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Normal-O2-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Check-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Check-O0-local"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Check-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Check-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Check-O2-local"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Check-O2-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Ignore-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Ignore-O0-local"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Ignore-O0-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Ignore-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Ignore-O2-local"
+          },
+          {
+            "exit": 0,
+            "label": "oam-portable-Ignore-O2-sleet"
+          },
+          {
+            "exit": 0,
+            "label": "oam-lossless-model"
+          },
+          {
+            "exit": 0,
+            "label": "oam-lossless-generate"
+          },
+          {
+            "exit": 0,
+            "label": "oam-lossless-Normal-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "oam-lossless-Normal-O0-local"
+          },
+          {
+            "exit": 0,
+            "label": "oam-lossless-Normal-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "oam-lossless-Normal-O2-local"
+          },
+          {
+            "exit": 0,
+            "label": "oam-lossless-Check-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "oam-lossless-Check-O0-local"
+          },
+          {
+            "exit": 0,
+            "label": "oam-lossless-Check-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "oam-lossless-Check-O2-local"
+          },
+          {
+            "exit": 0,
+            "label": "oam-lossless-Ignore-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "oam-lossless-Ignore-O0-local"
+          },
+          {
+            "exit": 0,
+            "label": "oam-lossless-Ignore-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "oam-lossless-Ignore-O2-local"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-portable-model"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-portable-generate"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-portable-Normal-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-portable-Normal-O0-local"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-portable-Normal-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-portable-Normal-O2-local"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-portable-Check-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-portable-Check-O0-local"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-portable-Check-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-portable-Check-O2-local"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-portable-Ignore-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-portable-Ignore-O0-local"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-portable-Ignore-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-portable-Ignore-O2-local"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-lossless-model"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-lossless-generate"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-lossless-Normal-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-lossless-Normal-O0-local"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-lossless-Normal-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-lossless-Normal-O2-local"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-lossless-Check-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-lossless-Check-O0-local"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-lossless-Check-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-lossless-Check-O2-local"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-lossless-Ignore-O0-build"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-lossless-Ignore-O0-local"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-lossless-Ignore-O2-build"
+          },
+          {
+            "exit": 0,
+            "label": "qualified-lossless-Ignore-O2-local"
+          }
+        ]
+      },
+      "source": [
+        "740441b587aa8b20f70ecfee90b6ab133e51a631",
+        "6473cded7c155272c7c7ff2a1573f2fae5e5cb09"
+      ]
+    },
+    "wss-14-mbedtls": {
+      "artifact_count": 348,
+      "compiler": "14",
+      "kind": "wss",
+      "result": {
+        "aht": "827b0c17dd964e935f8e88912ce0611ee92b6f16",
+        "backend": "mbedtls",
+        "codec": "765d9cd612838eb00645037977c8cc9af7171c3e",
+        "compiler": "14",
+        "completed": true,
+        "needs_read_runtime_exercised": false,
+        "steps": [
+          {
+            "exit": 0,
+            "label": "source"
+          },
+          {
+            "exit": 0,
+            "label": "source-status"
+          },
+          {
+            "exit": 0,
+            "label": "aht-identity"
+          },
+          {
+            "exit": 0,
+            "label": "aht-clean"
+          },
+          {
+            "exit": 0,
+            "label": "codec-identity"
+          },
+          {
+            "exit": 0,
+            "label": "codec-clean"
+          },
+          {
+            "exit": 0,
+            "label": "compiler"
+          },
+          {
+            "exit": 0,
+            "label": "platform"
+          },
+          {
+            "exit": 0,
+            "label": "generate-model"
+          },
+          {
+            "exit": 0,
+            "label": "generate-codec"
+          },
+          {
+            "exit": 0,
+            "label": "build"
+          },
+          {
+            "exit": 0,
+            "label": "shim"
+          },
+          {
+            "exit": 0,
+            "label": "control-peer-build"
+          },
+          {
+            "exit": 0,
+            "label": "api"
+          },
+          {
+            "exit": 0,
+            "label": "control"
+          },
+          {
+            "exit": 0,
+            "label": "poll"
+          },
+          {
+            "exit": 0,
+            "label": "poll-control"
+          },
+          {
+            "exit": 0,
+            "label": "wss-regression"
+          },
+          {
+            "exit": 0,
+            "label": "sleet"
+          }
+        ]
+      },
+      "source": [
+        "740441b587aa8b20f70ecfee90b6ab133e51a631",
+        "6473cded7c155272c7c7ff2a1573f2fae5e5cb09"
+      ]
+    },
+    "wss-14-openssl": {
+      "artifact_count": 348,
+      "compiler": "14",
+      "kind": "wss",
+      "result": {
+        "aht": "827b0c17dd964e935f8e88912ce0611ee92b6f16",
+        "backend": "openssl",
+        "codec": "765d9cd612838eb00645037977c8cc9af7171c3e",
+        "compiler": "14",
+        "completed": true,
+        "needs_read_runtime_exercised": false,
+        "steps": [
+          {
+            "exit": 0,
+            "label": "source"
+          },
+          {
+            "exit": 0,
+            "label": "source-status"
+          },
+          {
+            "exit": 0,
+            "label": "aht-identity"
+          },
+          {
+            "exit": 0,
+            "label": "aht-clean"
+          },
+          {
+            "exit": 0,
+            "label": "codec-identity"
+          },
+          {
+            "exit": 0,
+            "label": "codec-clean"
+          },
+          {
+            "exit": 0,
+            "label": "compiler"
+          },
+          {
+            "exit": 0,
+            "label": "platform"
+          },
+          {
+            "exit": 0,
+            "label": "generate-model"
+          },
+          {
+            "exit": 0,
+            "label": "generate-codec"
+          },
+          {
+            "exit": 0,
+            "label": "build"
+          },
+          {
+            "exit": 0,
+            "label": "shim"
+          },
+          {
+            "exit": 0,
+            "label": "control-peer-build"
+          },
+          {
+            "exit": 0,
+            "label": "api"
+          },
+          {
+            "exit": 0,
+            "label": "control"
+          },
+          {
+            "exit": 0,
+            "label": "poll"
+          },
+          {
+            "exit": 0,
+            "label": "poll-control"
+          },
+          {
+            "exit": 0,
+            "label": "wss-regression"
+          },
+          {
+            "exit": 0,
+            "label": "sleet"
+          }
+        ]
+      },
+      "source": [
+        "740441b587aa8b20f70ecfee90b6ab133e51a631",
+        "6473cded7c155272c7c7ff2a1573f2fae5e5cb09"
+      ]
+    },
+    "wss-16-mbedtls": {
+      "artifact_count": 348,
+      "compiler": "16",
+      "kind": "wss",
+      "result": {
+        "aht": "827b0c17dd964e935f8e88912ce0611ee92b6f16",
+        "backend": "mbedtls",
+        "codec": "765d9cd612838eb00645037977c8cc9af7171c3e",
+        "compiler": "16",
+        "completed": true,
+        "needs_read_runtime_exercised": false,
+        "steps": [
+          {
+            "exit": 0,
+            "label": "source"
+          },
+          {
+            "exit": 0,
+            "label": "source-status"
+          },
+          {
+            "exit": 0,
+            "label": "aht-identity"
+          },
+          {
+            "exit": 0,
+            "label": "aht-clean"
+          },
+          {
+            "exit": 0,
+            "label": "codec-identity"
+          },
+          {
+            "exit": 0,
+            "label": "codec-clean"
+          },
+          {
+            "exit": 0,
+            "label": "compiler"
+          },
+          {
+            "exit": 0,
+            "label": "platform"
+          },
+          {
+            "exit": 0,
+            "label": "generate-model"
+          },
+          {
+            "exit": 0,
+            "label": "generate-codec"
+          },
+          {
+            "exit": 0,
+            "label": "build"
+          },
+          {
+            "exit": 0,
+            "label": "shim"
+          },
+          {
+            "exit": 0,
+            "label": "control-peer-build"
+          },
+          {
+            "exit": 0,
+            "label": "api"
+          },
+          {
+            "exit": 0,
+            "label": "control"
+          },
+          {
+            "exit": 0,
+            "label": "poll"
+          },
+          {
+            "exit": 0,
+            "label": "poll-control"
+          },
+          {
+            "exit": 0,
+            "label": "wss-regression"
+          },
+          {
+            "exit": 0,
+            "label": "sleet"
+          }
+        ]
+      },
+      "source": [
+        "740441b587aa8b20f70ecfee90b6ab133e51a631",
+        "6473cded7c155272c7c7ff2a1573f2fae5e5cb09"
+      ]
+    },
+    "wss-16-openssl-rerun": {
+      "artifact_count": 348,
+      "compiler": "16",
+      "kind": "wss",
+      "result": {
+        "aht": "827b0c17dd964e935f8e88912ce0611ee92b6f16",
+        "backend": "openssl",
+        "codec": "765d9cd612838eb00645037977c8cc9af7171c3e",
+        "compiler": "16",
+        "completed": true,
+        "needs_read_runtime_exercised": false,
+        "steps": [
+          {
+            "exit": 0,
+            "label": "source"
+          },
+          {
+            "exit": 0,
+            "label": "source-status"
+          },
+          {
+            "exit": 0,
+            "label": "aht-identity"
+          },
+          {
+            "exit": 0,
+            "label": "aht-clean"
+          },
+          {
+            "exit": 0,
+            "label": "codec-identity"
+          },
+          {
+            "exit": 0,
+            "label": "codec-clean"
+          },
+          {
+            "exit": 0,
+            "label": "compiler"
+          },
+          {
+            "exit": 0,
+            "label": "platform"
+          },
+          {
+            "exit": 0,
+            "label": "generate-model"
+          },
+          {
+            "exit": 0,
+            "label": "generate-codec"
+          },
+          {
+            "exit": 0,
+            "label": "build"
+          },
+          {
+            "exit": 0,
+            "label": "shim"
+          },
+          {
+            "exit": 0,
+            "label": "control-peer-build"
+          },
+          {
+            "exit": 0,
+            "label": "api"
+          },
+          {
+            "exit": 0,
+            "label": "control"
+          },
+          {
+            "exit": 0,
+            "label": "poll"
+          },
+          {
+            "exit": 0,
+            "label": "poll-control"
+          },
+          {
+            "exit": 0,
+            "label": "wss-regression"
+          },
+          {
+            "exit": 0,
+            "label": "sleet"
+          }
+        ]
+      },
+      "source": [
+        "740441b587aa8b20f70ecfee90b6ab133e51a631",
+        "6473cded7c155272c7c7ff2a1573f2fae5e5cb09"
+      ]
+    }
+  },
+  "limitations": [
+    "Needs_Read runtime branch not exercised",
+    "Generator reused from existing TASK106 setup; hash captured per campaign",
+    "Local campaigns are not hosted exact-final-head CI receipts"
+  ],
+  "main": "65dd473ea2deb8ea0472383e7e245ea7069eb753",
+  "scratch": "/home/zboll/task108r2-scratch",
+  "tested_oms_head": "740441b587aa8b20f70ecfee90b6ab133e51a631",
+  "tested_oms_tree": "6473cded7c155272c7c7ff2a1573f2fae5e5cb09",
+  "unsuccessful_attempts": {
+    "compat101-14": "System Python lacks websockets; fresh pinned-venv rerun retained",
+    "compat106-16": "System Python lacks websockets; fresh pinned-venv rerun retained",
+    "wss-16-openssl": "Interrupted by 30-second command wrapper timeout; fresh complete rerun retained"
+  }
+}

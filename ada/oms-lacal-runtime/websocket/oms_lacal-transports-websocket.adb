@@ -3,6 +3,8 @@ with Ada.Exceptions;
 with Ada.Real_Time;
 with Ada.Streams;
 with Ada.Strings.Fixed;
+with Ada.Unchecked_Deallocation;
+with AHT.URL;
 with AHT.Random;
 with AHT.Websocket.UTF8;
 with OMS_WS_Handshake;
@@ -17,6 +19,11 @@ package body OMS_LACAL.Transports.WebSocket is
    use type AHT.Websocket.Frames.Inbound_Close_Status;
    use type OMS_WS_Handshake.Status_Kind;
    use type AHT.Bytes.Octet;
+   use type AHT.Transport.TLS.Try_Read_Status;
+   use type AHT.Transport.TLS.Try_Write_Status;
+   use type AHT.Transport.TLS.Try_Flush_Status;
+   procedure Free_TLS is new Ada.Unchecked_Deallocation
+     (AHT.Transport.TLS.TLS_Transport, TLS_Access);
    package F renames AHT.Websocket.Frames;
    CRLF : constant String := ASCII.CR & ASCII.LF;
 
@@ -39,6 +46,13 @@ package body OMS_LACAL.Transports.WebSocket is
       Self.Input.Clear;
       Self.Fragments.Clear;
       Self.Fragment := F.No_Message;
+      Self.Output.Clear;
+      Self.Output_Pos := 1;
+      Self.Peer_Closing := False;
+      if Self.TLS /= null then
+         Self.TLS.Abortive_Close;
+         Free_TLS (Self.TLS);
+      end if;
       if S /= No_Socket then Close_Socket (S); end if;
    end Drop;
 
@@ -49,6 +63,19 @@ package body OMS_LACAL.Transports.WebSocket is
       Wire : Stream_Element_Array (1 .. Stream_Element_Offset (Data'Length));
       Last : Stream_Element_Offset;
    begin
+      if Self.TLS /= null then
+         --  Send is explicitly allowed to block. Drain queued controls before
+         --  this publication, and fail closed on any uncertain/incomplete write.
+         Self.TLS.Set_Write_Deadline (2.0);
+         if not Self.Output.Is_Empty then
+            Self.TLS.Write (Self.Output.To_Array
+              (Self.Output_Pos, Self.Output.Length));
+            Self.Output.Clear;
+            Self.Output_Pos := 1;
+         end if;
+         Self.TLS.Write (Data);
+         return;
+      end if;
       for I in Data'Range loop
          Wire (Stream_Element_Offset (I - Data'First + 1)) := Stream_Element (Data (I));
       end loop;
@@ -82,14 +109,48 @@ package body OMS_LACAL.Transports.WebSocket is
       Write_All (Self, F.Encode (Header, Data));
    end Send_Control;
 
+   --  Exactly one flush and at most one engine write per call. Needs_Read
+   --  leaves plaintext untouched: Poll takes its one receive step afterwards,
+   --  never recursively invoking this procedure or spinning on readiness.
+   procedure Progress_Output (Self : in out Client) is
+      Flush : AHT.Transport.TLS.Try_Flush_Status;
+      Result : AHT.Transport.TLS.Try_Write_Status;
+      Count : Natural;
+   begin
+      Self.TLS.Try_Flush (Flush);
+      if Flush = AHT.Transport.TLS.Would_Block or else Self.Output.Is_Empty then
+         return;
+      end if;
+      Self.TLS.Try_Write
+        (Self.Output.To_Array (Self.Output_Pos, Self.Output.Length), Count, Result);
+      case Result is
+         when AHT.Transport.TLS.Accepted =>
+            Self.Output_Pos := Self.Output_Pos + Count;
+            if Self.Output_Pos > Self.Output.Length then
+               Self.Output.Clear;
+               Self.Output_Pos := 1;
+            end if;
+         when AHT.Transport.TLS.Would_Block | AHT.Transport.TLS.Needs_Read =>
+            if Count /= 0 then raise Transport_Error with "invalid TLS acceptance"; end if;
+      end case;
+   end Progress_Output;
+
    procedure Reply_Control
      (Self : in out Client; Op : AHT.Websocket.Opcode; Data : AHT.Bytes.Byte_Array)
    is
       Header : F.Frame_Header := (Op => Op, Masked => True, others => <>);
    begin
-      --  Control output never waits in Poll and never remains queued. A short
-      --  or failed nonblocking send poisons the connection in Poll's handler.
+      --  Plaintext keeps its all-or-error send policy; TLS retains one bounded
+      --  frame and progresses it on subsequent Poll calls without waiting.
       AHT.Random.Fill (Header.Mask_Key);
+      if Self.TLS /= null then
+         if not Self.Output.Is_Empty then
+            raise Transport_Error with "control output queue full";
+         end if;
+         Self.Output.Set (F.Encode (Header, Data));
+         Self.Output_Pos := 1;
+         return;
+      end if;
       declare
          Bytes : constant AHT.Bytes.Byte_Array := F.Encode (Header, Data);
          Wire : Stream_Element_Array (1 .. Stream_Element_Offset (Bytes'Length));
@@ -106,6 +167,12 @@ package body OMS_LACAL.Transports.WebSocket is
    end Reply_Control;
 
    procedure Open (Self : in out Client; URL : String) is
+   begin
+      Open (Self, URL, CA_Path => "");
+   end Open;
+
+   procedure Open
+     (Self : in out Client; URL : String; CA_Path : String; CA_PEM : String := "") is
       use Ada.Strings.Fixed;
       use Ada.Characters.Handling;
       Colon, Slash : Natural := 0;
@@ -117,24 +184,32 @@ package body OMS_LACAL.Transports.WebSocket is
       Response : Unbounded_String;
       One : Stream_Element_Array (1 .. 1);
       Last : Stream_Element_Offset;
-      Deadline : constant Ada.Real_Time.Time :=
+      Secure : constant Boolean := URL'Length >= 6 and then
+        URL (URL'First .. URL'First + 5) = "wss://";
+      Prefix : constant Natural := (if Secure then 6 else 5);
+      TLS_One : AHT.Bytes.Byte_Array (1 .. 1);
+      TLS_Last : Natural;
+      Deadline : Ada.Real_Time.Time :=
         Ada.Real_Time.Clock + Ada.Real_Time.Seconds (2);
    begin
-      if Self.Socket /= No_Socket then
+      if Self.Socket /= No_Socket or else Self.TLS /= null then
          raise Transport_Error with "already open; close before reopening";
       end if;
       if URL'Length > 2_048 or else URL'Length < 6 or else
-        URL (URL'First .. URL'First + 4) /= "ws://"
-      then raise Transport_Error with "only loopback ws:// supported; no TLS"; end if;
+        (not Secure and then URL (URL'First .. URL'First + 4) /= "ws://")
+      then raise Transport_Error with "expected ws:// or wss://"; end if;
       for I in URL'Range loop
          if URL (I) < '!' or else URL (I) > '~' or else URL (I) = '#' then
             raise Transport_Error with "invalid URL";
          end if;
       end loop;
-      Colon := Index (URL (URL'First + 5 .. URL'Last), ":");
+      Colon := Index (URL (URL'First + Prefix .. URL'Last), ":");
       if Colon = 0 then raise Transport_Error with "explicit port required"; end if;
-      declare Host : constant String := URL (URL'First + 5 .. Colon - 1); begin
-         if Host /= "127.0.0.1" and then Host /= "localhost" then
+      declare Host : constant String := URL (URL'First + Prefix .. Colon - 1); begin
+         if Host'Length = 0 or else Index (Host, "@") /= 0 then
+            raise Transport_Error with "invalid host";
+         end if;
+         if not Secure and then Host /= "127.0.0.1" and then Host /= "localhost" then
             raise Transport_Error with "plaintext restricted to loopback";
          end if;
       end;
@@ -146,18 +221,30 @@ package body OMS_LACAL.Transports.WebSocket is
       end loop;
       Port := Port_Type'Value (URL (Colon + 1 .. Slash - 1));
       if Port = 0 then raise Transport_Error with "zero port"; end if;
-      Create_Socket (Self.Socket);
-      Set_Close_On_Exec (Self.Socket, True, Exec_OK);
-      if not Exec_OK then raise Transport_Error with "close-on-exec failed"; end if;
-      Connect_Socket (Self.Socket, (Family_Inet, Inet_Addr ("127.0.0.1"), Port), 2.0,
-                      Status => Status);
-      if Status /= Completed then raise Transport_Error with "connect deadline"; end if;
-      Control_Socket (Self.Socket, Nonblocking);
+      if Secure then
+         Self.TLS := new AHT.Transport.TLS.TLS_Transport;
+         Self.TLS.Connect
+           (Host => URL (URL'First + Prefix .. Colon - 1),
+            Port => AHT.URL.Port_Number (Port), CA_Path => CA_Path, CA_PEM => CA_PEM,
+            Resolve_Timeout => 2.0, Connect_Timeout => 2.0, Handshake_Deadline => 2.0);
+         Deadline := Ada.Real_Time.Clock + Ada.Real_Time.Seconds (2);
+      else
+         if CA_Path /= "" or else CA_PEM /= "" then
+            raise Transport_Error with "CA configuration requires wss://";
+         end if;
+         Create_Socket (Self.Socket);
+         Set_Close_On_Exec (Self.Socket, True, Exec_OK);
+         if not Exec_OK then raise Transport_Error with "close-on-exec failed"; end if;
+         Connect_Socket (Self.Socket, (Family_Inet, Inet_Addr ("127.0.0.1"), Port), 2.0,
+                         Status => Status);
+         if Status /= Completed then raise Transport_Error with "connect deadline"; end if;
+         Control_Socket (Self.Socket, Nonblocking);
+      end if;
       AHT.Random.Fill (Nonce);
       declare
          Key : constant String := AHT.Bytes.Base64_Encode (Nonce);
          Request : constant String := OMS_WS_Handshake.Build_Client_Request
-           (URL (URL'First + 5 .. Colon - 1), Natural (Port),
+           (URL (URL'First + Prefix .. Colon - 1), Natural (Port),
             (if Slash > URL'Last then "/" else URL (Slash .. URL'Last)), Key);
       begin
          Write_All (Self, AHT.Bytes.From_String
@@ -165,13 +252,19 @@ package body OMS_LACAL.Transports.WebSocket is
          loop
             if Length (Response) >= 16_384 then raise Transport_Error with "excessive headers"; end if;
             if Ada.Real_Time.Clock >= Deadline then raise Transport_Error with "upgrade deadline"; end if;
-            if Ready (Self, False, 0.01) then
+            if Secure then
+               Self.TLS.Set_Read_Deadline
+                 (Ada.Real_Time.To_Duration (Deadline - Ada.Real_Time.Clock));
+               Self.TLS.Read (TLS_One, TLS_Last);
+               if TLS_Last = 0 then raise Transport_Error with "EOF in upgrade"; end if;
+               Append (Response, Character'Val (TLS_One (1)));
+            elsif Ready (Self, False, 0.01) then
                Receive_Socket (Self.Socket, One, Last);
                if Last = 0 then raise Transport_Error with "EOF in upgrade"; end if;
                Append (Response, Character'Val (One (1)));
-               exit when Length (Response) >= 4 and then
-                 Slice (Response, Length (Response) - 3, Length (Response)) = CRLF & CRLF;
             end if;
+            exit when Length (Response) >= 4 and then
+              Slice (Response, Length (Response) - 3, Length (Response)) = CRLF & CRLF;
          end loop;
          declare
             S : constant String := To_String (Response);
@@ -238,7 +331,9 @@ package body OMS_LACAL.Transports.WebSocket is
    overriding procedure Send (Self : in out Client; Frame : String) is
       Message : String renames Frame;
    begin
-      if not Self.Upgraded then raise Transport_Error with "not open"; end if;
+      if not Self.Upgraded or else Self.Peer_Closing then
+         raise Transport_Error with "not open";
+      end if;
       if Message'Length > Max_Frame_Bytes or else not AHT.Websocket.UTF8.Is_Valid
         (AHT.Bytes.From_String (Message))
       then raise Transport_Error with "invalid text/size before publication"; end if;
@@ -259,10 +354,50 @@ package body OMS_LACAL.Transports.WebSocket is
       Last : Natural;
       Chunk : Stream_Element_Array (1 .. 4_096);
       Got : Stream_Element_Offset;
+      TLS_Chunk : AHT.Bytes.Byte_Array (1 .. 4_096);
+      TLS_Last : Natural := 0;
+      TLS_Status : AHT.Transport.TLS.Try_Read_Status;
+      Paused : Boolean := False;
+      procedure Read_TLS is
+      begin
+         Self.TLS.Try_Read (TLS_Chunk, TLS_Last, TLS_Status);
+         if TLS_Status = AHT.Transport.TLS.Peer_Closed then
+            if Self.Peer_Closing and then
+              (not Self.Output.Is_Empty or else Self.TLS.Pending_Output > 0)
+            then
+               --  Authenticated EOF does not discard an unsent WS Close reply.
+               return;
+            end if;
+            Drop (Self);
+            Status := Peer_Closed;
+         elsif TLS_Status = AHT.Transport.TLS.Data_Ready then
+            if Self.Input.Length + TLS_Last > Max_Frame_Bytes + 4_110 then
+               raise Transport_Error with "input limit";
+            end if;
+            Self.Input.Append (TLS_Chunk (1 .. TLS_Last));
+         end if;
+         if Self.TLS /= null and then Self.TLS.Pending_Output > 65_536 then
+            raise Transport_Error with "TLS control output limit";
+         end if;
+      end Read_TLS;
    begin
       Message := Null_Unbounded_String;
       Status := Idle;
       if not Self.Upgraded then Status := Peer_Closed; return; end if;
+      if Self.TLS /= null then
+         Progress_Output (Self);
+         Paused := not Self.Output.Is_Empty or else Self.TLS.Pending_Output > 0;
+         if Self.Peer_Closing and then not Paused then
+            Drop (Self); Status := Peer_Closed; return;
+         end if;
+         --  Receive even under backpressure (including Needs_Read), but
+         --  bounded storage, one receive step, and no additional frame/control
+         --  consumption until the previous response is handed off in order.
+         if Paused then
+            if Self.Input.Length <= Max_Frame_Bytes + 14 then Read_TLS; end if;
+            return;
+         end if;
+      end if;
       --  At most one nonblocking 4 KiB read and one frame decode per call.
       if Self.Input.Length >= 2 and then
         (Self.Input.Element (2) and 16#80#) /= 0
@@ -271,25 +406,34 @@ package body OMS_LACAL.Transports.WebSocket is
                 Allowance => Max_Frame_Bytes - Self.Fragments.Length,
                 Fragment => Self.Fragment);
       if Last = 0 then
-         if not Ready (Self, False, 0.0) then return; end if;
-         begin
-            Receive_Socket (Self.Socket, Chunk, Got);
-         exception when E : Socket_Error =>
-            if Resolve_Exception (E) = Resource_Temporarily_Unavailable then return; end if;
-            raise;
-         end;
-         if Got = 0 then Drop (Self); Status := Peer_Closed; return; end if;
-         if Self.Input.Length + Natural (Got) > Max_Frame_Bytes + 4_110 then
-            raise Transport_Error with "input limit";
+         if Self.TLS /= null then
+            Read_TLS;
+            if not Self.Upgraded then return; end if;
+            F.Decode (Self.Input.To_Array, Header, Payload, Last,
+                      Allowance => Max_Frame_Bytes - Self.Fragments.Length,
+                      Fragment => Self.Fragment);
+            if Last = 0 then return; end if;
+         else
+            if not Ready (Self, False, 0.0) then return; end if;
+            begin
+               Receive_Socket (Self.Socket, Chunk, Got);
+            exception when E : Socket_Error =>
+               if Resolve_Exception (E) = Resource_Temporarily_Unavailable then return; end if;
+               raise;
+            end;
+            if Got = 0 then Drop (Self); Status := Peer_Closed; return; end if;
+            if Self.Input.Length + Natural (Got) > Max_Frame_Bytes + 4_110 then
+               raise Transport_Error with "input limit";
+            end if;
+            for I in 1 .. Got loop Self.Input.Append (AHT.Bytes.Octet (Chunk (I))); end loop;
+            if Self.Input.Length >= 2 and then
+              (Self.Input.Element (2) and 16#80#) /= 0
+            then raise Transport_Error with "masked server frame"; end if;
+            F.Decode (Self.Input.To_Array, Header, Payload, Last,
+                      Allowance => Max_Frame_Bytes - Self.Fragments.Length,
+                      Fragment => Self.Fragment);
+            if Last = 0 then return; end if;
          end if;
-         for I in 1 .. Got loop Self.Input.Append (AHT.Bytes.Octet (Chunk (I))); end loop;
-         if Self.Input.Length >= 2 and then
-           (Self.Input.Element (2) and 16#80#) /= 0
-         then raise Transport_Error with "masked server frame"; end if;
-         F.Decode (Self.Input.To_Array, Header, Payload, Last,
-                   Allowance => Max_Frame_Bytes - Self.Fragments.Length,
-                   Fragment => Self.Fragment);
-         if Last = 0 then return; end if;
       end if;
       if Header.Masked then raise Transport_Error with "masked server frame"; end if;
       Self.Input := Self.Input.Slice (Last + 1, Self.Input.Length);
@@ -303,11 +447,15 @@ package body OMS_LACAL.Transports.WebSocket is
             if F.Classify_Inbound_Close (Payload) /= F.Accept_Close then
                raise Transport_Error with "invalid close";
             end if;
-            --  Echo close with the same nonblocking all-or-error policy.
+            --  Retain the TLS session until its Close echo is flushed.
             if not Self.Close_Sent then
                Reply_Control (Self, AHT.Websocket.Close_Op, Payload.To_Array);
             end if;
-            Drop (Self); Status := Peer_Closed;
+            if Self.TLS /= null then
+               Self.Peer_Closing := True;
+            else
+               Drop (Self); Status := Peer_Closed;
+            end if;
          when AHT.Websocket.Text | AHT.Websocket.Continuation =>
             Self.Fragments.Append (Payload);
             if Header.FIN then
@@ -333,12 +481,14 @@ package body OMS_LACAL.Transports.WebSocket is
       Message : Unbounded_String;
    begin
       if Self.Upgraded then
-         begin Send_Control (Self, AHT.Websocket.Close_Op, [16#03#, 16#E8#]);
-         exception when E : others =>
-            Drop (Self);
-            raise Transport_Error with Ada.Exceptions.Exception_Message (E);
-         end;
-         Self.Close_Sent := True;
+         if not Self.Peer_Closing then
+            begin Send_Control (Self, AHT.Websocket.Close_Op, [16#03#, 16#E8#]);
+            exception when E : others =>
+               Drop (Self);
+               raise Transport_Error with Ada.Exceptions.Exception_Message (E);
+            end;
+            Self.Close_Sent := True;
+         end if;
          while Self.Upgraded and then Ada.Real_Time.Clock < Deadline loop
             Poll (Self, Status, Message);
             if Self.Upgraded then delay 0.001; end if;
