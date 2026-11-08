@@ -51,6 +51,17 @@ class Acceptance(unittest.TestCase):
                 bad['schema_includes']['2.5']['sha256'] = 'wrong'
             with self.subTest(mutation=mutation), self.assertRaises(RuntimeError):
                 compat.validate(after, bad)
+        relocated = copy.deepcopy(after)
+        row = relocated['measurements'][0]
+        command = row['generation']['command']
+        index = command.index('--output') + 1
+        old = command[index]
+        command[index] = '/independent/qualification/output'
+        row['generation']['stdout'] = row['generation']['stdout'].replace(old, command[index])
+        compat.validate(after, relocated)
+        row['generation']['stdout'] += 'unexpected diagnostic\n'
+        with self.assertRaises(RuntimeError):
+            compat.validate(after, relocated)
 
     def test_unexecuted_ao_cannot_be_promoted_ready(self):
         rows = [dict(version=v, world=w, codec=c, exit=1, artifacts={},

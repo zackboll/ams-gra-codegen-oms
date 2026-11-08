@@ -15,6 +15,22 @@ prior = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(prior)
 
 
+def generation_stdout(row):
+    # The only location-dependent diagnostic is the requested output directory.
+    # Validate it against the recorded actual argv before canonicalizing it;
+    # do not filter arbitrary lines or change the historical receipt.
+    generation = row['generation']
+    command = generation['command']
+    prior.driver.require(command.count('--output') == 1, 'missing/duplicate generation output')
+    destination = command[command.index('--output') + 1]
+    line = 'output: ' + destination + '\n'
+    lines = generation['stdout'].splitlines(keepends=True)
+    prior.driver.require(lines.count(line) == 1 and
+                         sum(item.startswith('output: ') for item in lines) == 1,
+                         'generation output diagnostic differs from argv')
+    return ''.join('output: <requested-output>\n' if item == line else item for item in lines)
+
+
 def validate(before, after):
     frozen_before, frozen_after = prior.frozen()
     prior.validate(frozen_before, frozen_after)
@@ -32,7 +48,7 @@ def validate(before, after):
                           'closure_sha256', 'exit', 'stdout', 'stderr', 'artifacts']:
                 prior.driver.require(row[field] == oracle[field], 'historical success changed: ' + field)
             prior.driver.require(row['exit'] == row['generation']['exit'] == 0, 'READY regression')
-            prior.driver.require(row['generation']['stdout'] == oracle['generation']['stdout']
+            prior.driver.require(generation_stdout(row) == generation_stdout(oracle)
                                  and row['generation']['stderr'] == oracle['generation']['stderr'],
                                  'generation diagnostic changed')
         stages.append(actual)
