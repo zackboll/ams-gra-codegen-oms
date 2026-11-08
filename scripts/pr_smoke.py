@@ -140,7 +140,7 @@ def classify(paths):
                                "tests/fixtures/service-generate/codec-ada-",
                                "crates/cli/tests/ada_", "scripts/task102/", "scripts/task103/",
                                "scripts/task104/", "scripts/task105/", "scripts/task106/", "scripts/task109/",
-                               "scripts/task110/", "tests/fixtures/task110/", "tests/fixtures/task102/",
+                               "scripts/task110/", "scripts/task111/", "tests/fixtures/task110/", "tests/fixtures/task102/",
                                "tests/fixtures/task103/", "tests/fixtures/task104/",
                                "tests/fixtures/task105/", "tests/fixtures/task106/"))
               or path in ("scripts/task102_evidence.py", "scripts/task103_evidence.py",
@@ -376,6 +376,8 @@ def smoke(backend):
             checked([sys.executable, "-m", "unittest", "discover", "-s", "scripts/task109",
                      "-p", "test_qualification.py", "-v"], env=env, marker="Ran 5 tests")
             checked([sys.executable, "-m", "unittest", "discover", "-s", "scripts/task110",
+                     "-p", "test_qualification.py", "-v"], env=env, marker="OK")
+            checked([sys.executable, "-m", "unittest", "discover", "-s", "scripts/task111",
                      "-p", "test_qualification.py", "-v"], env=env, marker="OK")
             generate("ada", scratch, "service-generate/codec-ada-minimal")
             shutil.copy2(ROOT / "tests/pr-smoke/ada_consumer.adb", scratch)

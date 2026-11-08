@@ -1,0 +1,598 @@
+{
+  "external_directory": "/home/zboll/task111-evidence/final16-openssl",
+  "source": [
+    "ab5c415e562b529ea49cbb56747ad701e2fb60e7",
+    "b992b58814d8b644f1f98f25899cadf817017036"
+  ],
+  "source_status": "",
+  "result": {
+    "completed": true,
+    "development": false,
+    "compiler": "16.1.0",
+    "backend": "openssl",
+    "steps": [
+      {
+        "label": "source",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "source-status",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "aht-identity",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "aht-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "aht-archive",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "aht-extract",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "codec-identity",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "codec-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "codec-archive",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "codec-extract",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "sleet-identity",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "sleet-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "uci25-identity",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "uci25-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "uci26-identity",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "uci26-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "printenv",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "compiler",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "platform",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "cert",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "cert-identity",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "unrelated",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "unrelated-identity",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "focused-build",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "focused",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "memcheck",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "generate25",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "build25",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "wss25",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "verify25",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "generate26",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "build26",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "wss26",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "verify26",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "aht-final-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "codec-final-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "sleet-final-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "uci25-final-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "uci26-final-clean",
+        "exit": 0,
+        "timed_out": false
+      }
+    ],
+    "integration": [
+      "25",
+      "26"
+    ],
+    "needs_read_runtime_exercised": false
+  },
+  "identities": {
+    "aht": [
+      "827b0c17dd964e935f8e88912ce0611ee92b6f16",
+      "d137b924a7b0fa8b71c1ee8c582749e97294335b"
+    ],
+    "codec": [
+      "765d9cd612838eb00645037977c8cc9af7171c3e",
+      "6198cf7b10346003b91b379b568f26b378654565"
+    ],
+    "sleet": [
+      "e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b",
+      "7e705f4eb5f658957bd414b4abc8207311f3c1e4"
+    ],
+    "uci25": [
+      "093610b7753944059360d3236770ab446d039556",
+      "f811683ce81a3fcc5c306627cb43c3df5b525b54"
+    ],
+    "uci26": [
+      "78eb61b6112c8bffa40820c33124b57787fc5bd9",
+      "43a8a74b15d2e20d00d4d8ed8543590dd9789046"
+    ]
+  },
+  "trust": {
+    "attempts": 147,
+    "modes": {
+      "untrusted": 24,
+      "pem": 93,
+      "path": 4,
+      "malformed": 1,
+      "hostname": 1,
+      "both": 1,
+      "plaintext": 1,
+      "handshake-close": 1,
+      "upgrade": 1,
+      "untrusted-close": 20
+    },
+    "tls": [
+      "TLSv1.3"
+    ],
+    "max_case_seconds": 0.0641,
+    "baseline": "RESOURCES fd= 5 tasks= 1\nDONE baseline",
+    "final": "RESOURCES fd= 5 tasks= 1\nCOMPLETE",
+    "same_client": true,
+    "lifecycle_cycles": 20,
+    "negatives": {
+      "untrusted": {
+        "mode": "untrusted",
+        "url": "wss://localhost:37393/",
+        "trust_source": "CA_PEM contents",
+        "seconds": 0.0025,
+        "output": "REJECTED category=Transport_Error detail=TLS handshake: certificate verify failed: self-signed certificate [error:0A000086:SSL routines::certificate verify failed]\nRESOURCES fd= 5 tasks= 1\nDONE untrusted",
+        "peer": {
+          "accepted": true,
+          "application": [],
+          "prefix_hex": "160301060a",
+          "clienthello": true,
+          "handshake_failed": "TLSV1_ALERT_UNKNOWN_CA"
+        }
+      },
+      "malformed": {
+        "mode": "malformed",
+        "url": "wss://localhost:47645/",
+        "trust_source": "CA_PEM contents",
+        "seconds": 0.001,
+        "output": "REJECTED category=Transport_Error detail=TLS connect (CA_PEM load): trailing or malformed data after the last certificate; the bundle is rejected whole rather than in part [error:04800064:PEM routines::bad base64 decode]\nRESOURCES fd= 5 tasks= 1\nDONE malformed",
+        "peer": {
+          "accepted": true,
+          "application": [],
+          "prefix_hex": "",
+          "pre_tls_eof": true
+        }
+      },
+      "hostname": {
+        "mode": "hostname",
+        "url": "wss://127.0.0.1:39905/",
+        "trust_source": "CA_PEM contents",
+        "seconds": 0.0025,
+        "output": "REJECTED category=Transport_Error detail=TLS handshake: certificate verify failed: IP address mismatch [error:0A000086:SSL routines::certificate verify failed]\nRESOURCES fd= 5 tasks= 1\nDONE hostname",
+        "peer": {
+          "accepted": true,
+          "application": [],
+          "prefix_hex": "16030105f8",
+          "clienthello": true,
+          "handshake_failed": "SSLV3_ALERT_BAD_CERTIFICATE"
+        }
+      },
+      "both": {
+        "mode": "both",
+        "url": "wss://localhost:56535/",
+        "trust_source": "CA_PEM contents",
+        "seconds": 0.0502,
+        "output": "REJECTED category=Transport_Error detail=TLS connect: CA_Path and CA_PEM are mutually exclusive; supply the trust anchors either as a path or as PEM data, not both\nRESOURCES fd= 5 tasks= 1\nDONE both",
+        "peer": {
+          "accepted": false,
+          "application": []
+        }
+      },
+      "plaintext": {
+        "mode": "plaintext",
+        "url": "ws://127.0.0.1:41737/",
+        "trust_source": "CA_PEM contents",
+        "seconds": 0.0502,
+        "output": "REJECTED category=Transport_Error detail=CA configuration requires wss://\nRESOURCES fd= 5 tasks= 1\nDONE plaintext",
+        "peer": {
+          "accepted": false,
+          "application": []
+        }
+      },
+      "handshake-close": {
+        "mode": "handshake-close",
+        "url": "wss://localhost:36643/",
+        "trust_source": "CA_PEM contents",
+        "seconds": 0.0013,
+        "output": "REJECTED category=Transport_Error detail=TCP read failed: [104] Connection reset by peer\nRESOURCES fd= 5 tasks= 1\nDONE handshake-close",
+        "peer": {
+          "accepted": true,
+          "application": [],
+          "prefix_hex": "160301060a",
+          "clienthello": true,
+          "handshake_failed": "server closed after ClientHello"
+        }
+      },
+      "upgrade": {
+        "mode": "upgrade",
+        "url": "wss://localhost:50397/",
+        "trust_source": "CA_PEM contents",
+        "seconds": 0.0439,
+        "output": "REJECTED category=Transport_Error detail=required negotiated owp\nRESOURCES fd= 5 tasks= 1\nDONE upgrade",
+        "peer": {
+          "accepted": true,
+          "application": [],
+          "prefix_hex": "160301060a",
+          "clienthello": true,
+          "tls": "TLSv1.3",
+          "cipher": "TLS_AES_256_GCM_SHA384",
+          "owp_offer": true,
+          "invalid_upgrade": "not-owp",
+          "eof": true
+        }
+      }
+    }
+  },
+  "integrations": {
+    "25": {
+      "verified": {
+        "completed": true,
+        "task106": {
+          "completed": true,
+          "cleanup": true,
+          "counts": {
+            "log": 17,
+            "rdma": 19,
+            "survivability": 19
+          },
+          "decode_errors": 5,
+          "broker_rejections": 39,
+          "steps": 62,
+          "consumer_exit": 0,
+          "server_exit": 0,
+          "witness_deliveries": 61
+        },
+        "actual_wss_deliveries": 60
+      },
+      "broker": {
+        "completed": true,
+        "cleanup": true,
+        "counts": {
+          "log": 17,
+          "rdma": 19,
+          "survivability": 19
+        },
+        "decode_errors": 5,
+        "broker_rejections": 39,
+        "steps": 62,
+        "consumer_exit": 0,
+        "witness_deliveries": 61,
+        "server_exit": 0,
+        "ada_connection_id": "1",
+        "registrations": [
+          [
+            "1",
+            "1",
+            "task106-log",
+            "Log"
+          ],
+          [
+            "1",
+            "2",
+            "task106-rdma",
+            "RDMA_InitializeSetup"
+          ],
+          [
+            "1",
+            "3",
+            "task106-survivability",
+            "SurvivabilityRiskLevel"
+          ]
+        ]
+      },
+      "tls": {
+        "tls": "TLSv1.3",
+        "cipher": [
+          "TLS_AES_256_GCM_SHA384",
+          "TLSv1.3",
+          256
+        ],
+        "records": 189,
+        "partial_writes": 93,
+        "record_batches": 92,
+        "consumer_exit": 0,
+        "cleanup": true,
+        "errors": [],
+        "ada_sha256": "1369b9153384c104455e7bee4cb5a2bd6ed2bba1a3ca299f967e82caf230d9f8",
+        "sleet_sha256": "4b25d4eecc31b9dce7d4264a7b754dc43569c8a92cd8d8382db923111b3377c4",
+        "completed": true
+      }
+    },
+    "26": {
+      "verified": {
+        "completed": true,
+        "task110": {
+          "completed": true,
+          "cleanup": true,
+          "counts": {
+            "log": 17,
+            "rdma": 19,
+            "survivability": 19
+          },
+          "decode_errors": 5,
+          "broker_rejections": 48,
+          "steps": 62,
+          "consumer_exit": 0,
+          "server_exit": 0,
+          "witness_deliveries": 61
+        },
+        "actual_wss_deliveries": 60
+      },
+      "broker": {
+        "completed": true,
+        "cleanup": true,
+        "counts": {
+          "log": 17,
+          "rdma": 19,
+          "survivability": 19
+        },
+        "decode_errors": 5,
+        "broker_rejections": 48,
+        "steps": 62,
+        "consumer_exit": 0,
+        "witness_deliveries": 61,
+        "server_exit": 0,
+        "ada_connection_id": "1",
+        "registrations": [
+          [
+            "1",
+            "1",
+            "task110-log",
+            "Log"
+          ],
+          [
+            "1",
+            "2",
+            "task110-rdma",
+            "RDMA_InitializeSetup"
+          ],
+          [
+            "1",
+            "3",
+            "task110-survivability",
+            "SurvivabilityRiskLevel"
+          ]
+        ]
+      },
+      "tls": {
+        "tls": "TLSv1.3",
+        "cipher": [
+          "TLS_AES_256_GCM_SHA384",
+          "TLSv1.3",
+          256
+        ],
+        "records": 189,
+        "partial_writes": 93,
+        "record_batches": 92,
+        "consumer_exit": 0,
+        "cleanup": true,
+        "errors": [],
+        "ada_sha256": "54654e8a8d70322d2128812b0ad99a772c56ef8a6ec03dc96ab3cdb40912a980",
+        "sleet_sha256": "5a14fb9aab9b5da5360cb3ad032a18295f1cc17a80c89560e37b134044005c30",
+        "completed": true
+      }
+    }
+  },
+  "memcheck": "==1310821== Memcheck, a memory error detector\n==1310821== Copyright (C) 2002-2024, and GNU GPL'd, by Julian Seward et al.\n==1310821== Using Valgrind-3.24.0 and LibVEX; rerun with -h for copyright info\n==1310821== Command: /home/zboll/task111-evidence/final16-openssl/focused-build/bin/trust_probe /home/zboll/task111-evidence/final16-openssl/cert.pem /home/zboll/task111-evidence/final16-openssl/unrelated.pem\n==1310821== Parent PID: 1310752\n==1310821== \n==1310821== \n==1310821== HEAP SUMMARY:\n==1310821==     in use at exit: 3,694 bytes in 5 blocks\n==1310821==   total heap usage: 212,330 allocs, 212,325 frees, 67,416,981 bytes allocated\n==1310821== \n==1310821== LEAK SUMMARY:\n==1310821==    definitely lost: 0 bytes in 0 blocks\n==1310821==    indirectly lost: 0 bytes in 0 blocks\n==1310821==      possibly lost: 0 bytes in 0 blocks\n==1310821==    still reachable: 3,694 bytes in 5 blocks\n==1310821==         suppressed: 0 bytes in 0 blocks\n==1310821== Reachable blocks (those to which a pointer was found) are not shown.\n==1310821== To see them, rerun with: --leak-check=full --show-leak-kinds=all\n==1310821== \n==1310821== For lists of detected and suppressed errors, rerun with: -s\n==1310821== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)\n",
+  "artifacts": {
+    "build26.command.json": "872670c8369d897d26e50813ae45f56e1a6e79c63d48e8344e988e91ed1aeda0",
+    "build25.command.json": "05c3040104b74b0b1f43eca73f1f335764b4db94a3dd23baeffd52cf7ce0610f",
+    "sleet-identity.command.json": "5b975b239ca9c4b46fe835aba21cd5c38c015ae4a2788bab7ed4644e6c5f9555",
+    "cert-identity.stdout": "f94d4db9bd44da55c4a68e7a7e7862037b09b780992c2d6515a5881222dbac7c",
+    "uci25-final-clean.command.json": "cb5d401ab7c5b0193c47f996fcadbe4edbebd6537190fe147f643d57b2d80cbf",
+    "unrelated-identity.command.json": "0be2369398ec596dfcece8b01f43117c3805412994678c7a3dcd33999f8b420c",
+    "source-status.command.json": "7a396842e1e96231c8551cc4903dd679a3f8d70e271e8f9dd6794dbdcc477575",
+    "unrelated.command.json": "945f0f5fc419868ba968f2bd54b2d5cebecc5ad89d1ea3e98f19298245c98e11",
+    "platform.command.json": "ae1bd08f983b6ca5bf7e56ac372eeb492e2b2d3884568ab698283dca9f534293",
+    "uci26-identity.stdout": "632fe55dbfd65c9610fd81f71fe117be78df24d49e8215e8cb6814ae3b474ef2",
+    "aht-clean.command.json": "9f2104bf74f195f0c7a61e03bbe10cba10b39066c5b0a847187cf1c2362240e5",
+    "codec-archive.command.json": "1b7b6a3354ee00af8465e38ed1b504099248a17607e0a415a8b48b725e19f229",
+    "wss25.command.json": "c0f01f90dc077c6149648649ef250666ec44e99d9aef30777d54b15bbce321c8",
+    "result.json": "ee9403d292a6c05fbdc9632043c57f2436eff6e36a196ccd4d99b69ab05a8b17",
+    "sleet-final-clean.command.json": "2825ac920f61c47dcc9566e000d395f9fc5cf8ea3a6bc36f1106088c839876b7",
+    "aht-extract.command.json": "8b7247c670c5196e58a82c4291996abe6f49ad8063e42716549a3405a3a14b13",
+    "compiler.command.json": "2736ad5659ef0fb26f4f2c4d8be6f1c2002c47b987adc40acf10083d74d67a40",
+    "uci25-identity.stdout": "ae7da64ee489cfb30250c8f923c3c4526d4f00fae96665c9b8d25c5bca7b955c",
+    "generate25.command.json": "bca6298631c50cb44b72c7b0ba3f8797f623ff34886ff0ac8483ad555f089864",
+    "unrelated-identity.stdout": "88981ee3a66343d29acb42cc86a1f2858bc56f88565f52ce9d8deaf5b79ff5e5",
+    "codec-extract.command.json": "86e14a920660483f164d4dd2473a2242abb5bd4e5ab7f1a3fca6a11c78a7300f",
+    "codec-identity.stdout": "a9edf35639587b6fc713c0748f2ba729db0dd41c7babd26c6183815eaa97e6bd",
+    "generate26.command.json": "0a913b28448159c411dd9c505837fa4011a0dfad5f7f0e2e065ccb69a1b76a54",
+    "focused.command.json": "ba098f77c571f07007bcbcd642effa2d8e16a7bc919862fffe346b41c5f7e881",
+    "uci26-clean.command.json": "468af807dec119aecc58cb2144185f9b5f57b0b0bd5045b8e258377bdc736c71",
+    "aht-archive.command.json": "f063768673d1f459576f70f29a9342f324ad64d9ca8080bb39dd28d58da95b1d",
+    "codec-final-clean.command.json": "efc1809c975f8a62788dedc7106d8f149830d92c0cb7c343a9b8fb92b8d4e7a9",
+    "source.command.json": "d2a8f4e24f5ee2c80d481b54380dea4521e079996c3a2c2a1b1c43b94b6aa23f",
+    "codec-clean.command.json": "efc1809c975f8a62788dedc7106d8f149830d92c0cb7c343a9b8fb92b8d4e7a9",
+    "sleet-identity.stdout": "cfbbf31bd8ad5e35897fd98d227c0d82ea0f40d3f45e7832129fc12aea13d7a5",
+    "uci25-clean.command.json": "cb5d401ab7c5b0193c47f996fcadbe4edbebd6537190fe147f643d57b2d80cbf",
+    "input-sources.json": "6cdcbdf08633a8df432dee48735f8434c37fea424d2b0762d5a2a385d78099fc",
+    "uci25-identity.command.json": "24bd661291e29954397e9a6d5b0662442510b19828773778ce55f0958fcb8606",
+    "cert-identity.command.json": "1f6c7ff42541b8e3e4ed186ff9a8649455a6fbf0b46a9395de3a13c1edbe06e5",
+    "wss26.command.json": "2f27d54476e31bd6eaea4385f75f22b00085a630e5409090dba646965d631c3b",
+    "schema-sources.json": "7ba9cb35d51392830cbe2bdd2c97aa02a1f36d2c1840557f1b8d74c361002e7c",
+    "uci26-final-clean.command.json": "468af807dec119aecc58cb2144185f9b5f57b0b0bd5045b8e258377bdc736c71",
+    "sleet-clean.command.json": "2825ac920f61c47dcc9566e000d395f9fc5cf8ea3a6bc36f1106088c839876b7",
+    "alire.lock": "532b439128f97b3ee28302e2393f409004608e898ceabe40b3bda6bc929926a6",
+    "aht-identity.stdout": "1ec2599294987fb4469de588c0938be74ba160efa9a089418f2bee021abf9516",
+    "codec-identity.command.json": "b6cbef5839c2131a6ffdc3f02f4618b385e5ca5b6bb65490986d8a3fa41899e2",
+    "focused-build.command.json": "d2db8a5fa9a68bcf8b1a126bc6bd481953bfdd67bd871f7b647e6a18d2ebab57",
+    "printenv.command.json": "484382565c7d913315bc12074e9472d996327bf225bba3d67d842feab8569ccf",
+    "verify26.command.json": "ff660482c909ecfc988fdf1f949a2990e92653f142ed08bfb9d4413bed322710",
+    "memcheck.command.json": "2d77cea61f56bab8a67d6e352d6b47a5e9895f3caa4bb4fcfd23354eac73c12c",
+    "uci26-identity.command.json": "650f37d0569376d2c6ba80536e7fa1bb0957f11643cb78e69f05ddd36405cdc9",
+    "verify25.command.json": "e87ae8a97066139223de52c9319bac8038e5998b538258ed307b8ec6931da229",
+    "aht-final-clean.command.json": "9f2104bf74f195f0c7a61e03bbe10cba10b39066c5b0a847187cf1c2362240e5",
+    "aht-identity.command.json": "5e52d7e93d6f1823955bf71888ea150f6e44278cc76d1ed57261684025838c6a",
+    "cert.command.json": "bc0d9189bc92e3e9fa76e7587c1a3726302ceca8174d2174441e3a53565a6090",
+    "focused/probe.command.json": "47ef49b45bb6424bee8b2ea9eb95164aa793097dbe24eb08cf74dfda2bde26fe",
+    "focused/result.json": "1807262904eddb0e9597a1729988c11dd943212e2cb6fbad9c85ef7b1d47df39",
+    "focused/attempts.json": "e251fc5e0d2274199a3844cf502ce0da451138ff439588553e8ce390b3f70a6f",
+    "focused/probe.stdout": "5aa73e84b7ce78960fe80da06aeee55478fc2d9cf276328c7e306777da5ed2f2",
+    "uci26/generated-sources.json": "1c5de7a804ebfedfd7856e236b3e560a005a3acbd4d6450f91efcbfe385e9da8",
+    "memcheck/memcheck.log": "6dd821047989acf7a11203e865b3927d6629574b15180fc414d59981bdea27c0",
+    "memcheck/probe.command.json": "aeedc5a099213fd499a6e8645a00f32319b6ac57c6ce1eed419c820d349d3172",
+    "memcheck/result.json": "a6e1d00a12f8cad57de4afd78346996ee0e12ca4ca02b36500e3e7e92bd47633",
+    "memcheck/attempts.json": "5bfc0baaaf0cf8853f763bb6f252b463c0b7b7b11c406f1de2fdb8b5eb109f14",
+    "memcheck/probe.stdout": "485481ba7b0e62c4bc4c99000105a15b496b8a34d01c06cc5670b6e851bdf7a2",
+    "uci25/generated-sources.json": "c255c771bf9e4ce56e9bdb360a548cf475766a9913246ff3cb24a7e4f91c8051",
+    "uci25/tls/result.json": "45e6522e2e6c084d4b83fdaf086ed8e403e1c0e98bc40deb93b09011996117fb",
+    "uci25/tls/consumer.command.json": "8f9fc99a3a55c8eaf74c11e525b9498a59be438c454a356a68dc313e55691e2a",
+    "uci25/tls/wire.json": "00767e1d42f987508a3fbb12771ab45d3db5e8793f43831c5f58c22b77511b78",
+    "uci25/wss/plan.jsonl": "e65cbef656baf3eb584a178a09392062e9a63ed56bc543b83c4df6e0b90717ce",
+    "uci25/wss/result.json": "e366a62b730f260ec0ade82062cd39efdc03e444f75f39464c94be876a29de71",
+    "uci25/wss/consumer.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "uci25/wss/server.command.json": "9c49ea9aede392a2dcb51206be83284928b2ee90b42e146ef5514ecabc57d30c",
+    "uci25/wss/consumer.stdout": "7d25e64bc8de5d3b60fb1b61ff191dbb2ee91056ad299cc3759f3bfb46492851",
+    "uci25/wss/observations.json": "d5b04c76b2396706cf96cef888d7208d4572bab4d5c37e927bae6a13bd1ee44d",
+    "uci25/wss/consumer.command.json": "b15eb32a5c907d760f757c978417b5a06c97edafc25f809af0a26a82ca622650",
+    "uci25/wss/wire.json": "eecd42cb8acbac679bce2c572e4d388d7d151116e55fca413c3f3ae866b25c98",
+    "uci25/wss/server.stdout": "233cfa597a8771990d536a08022503281bc7a4463edee375b0835c30eb8c4da7",
+    "uci25/wss/server.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "uci26/tls/result.json": "cdd1291e1d144a39f273c797a1b765877243c07dfc9e1399fc999e75226150ae",
+    "uci26/tls/consumer.command.json": "6b53872995646793ee3550b8912cd0f8ce5b66c46c9523a1b21879992eec01ce",
+    "uci26/tls/wire.json": "e36f6c00ce76a8f6ba6637ae229762320b0ee47845dd32697f126ea40dd4b759",
+    "uci26/wss/plan.jsonl": "24495490f2deec52f6b0558808870b80de71b60699f8e13f2bd7b6fddceb7b17",
+    "uci26/wss/result.json": "73718212d4896d74d9f21ee8caa0cca52406f589821fbb2c0b013b2e58c5c449",
+    "uci26/wss/consumer.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "uci26/wss/server.command.json": "6c985f665438148cb9b04c18b0beff9fb37bfac18877127c85e1331f08b97208",
+    "uci26/wss/consumer.stdout": "4d44d3bfae579909f1ce8e8505684e0c6703f754825ed950c4ca5d15c0394382",
+    "uci26/wss/observations.json": "673919e420e743cc25e73b9b15f66c7c2277b90e41b5d6928debf30ddaced660",
+    "uci26/wss/consumer.command.json": "58ff078b51e1eb06afc52a6a5dbc7933cee12c5a4d0b8cba1aab9c53ea5fc0c2",
+    "uci26/wss/wire.json": "02b16cc104c82df417e11dda7c61f68f815cb2c0b0f09e7fc358af61465bade5",
+    "uci26/wss/server.stdout": "95c07a8eb954915ebbe924ae469984b8fa978a73bdc86569c008cd98294c71c5",
+    "uci26/wss/server.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  }
+}
