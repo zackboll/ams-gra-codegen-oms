@@ -90,8 +90,11 @@ for entry in "${configs[@]}"; do
     "$compiler" "${flags[@]}" -I "$scratch/synthetic" tests/cpp-codec/constrained_hex_consumer.cpp -o "$out/synthetic"
     summary="$("$out/synthetic")"
     [[ "$summary" == 'CPP_OMS_007_HEX checks=272 rejections=67' ]]; echo "$label $summary"
-    "$compiler" "${flags[@]}" -pthread -I cpp/oms-lacal-runtime/include -c cpp/oms-lacal-runtime/src/owp.cpp -o "$out/owp.o" & p1=$!
-    "$compiler" "${flags[@]}" -pthread -I cpp/oms-lacal-runtime/include -c cpp/oms-lacal-runtime/src/runtime.cpp -o "$out/runtime.o" & p2=$!
+    compile_flags=()
+    # -no-pie is a linker option; clang rejects it with -c under -Werror.
+    for flag in "${flags[@]}"; do [[ "$flag" == -no-pie ]] || compile_flags+=("$flag"); done
+    "$compiler" "${compile_flags[@]}" -pthread -I cpp/oms-lacal-runtime/include -c cpp/oms-lacal-runtime/src/owp.cpp -o "$out/owp.o" & p1=$!
+    "$compiler" "${compile_flags[@]}" -pthread -I cpp/oms-lacal-runtime/include -c cpp/oms-lacal-runtime/src/runtime.cpp -o "$out/runtime.o" & p2=$!
     wait "$p1"; wait "$p2"
     for v in 25 26; do
         if [[ "$v" == 25 ]]; then root="$root25"; count=50; else root="$root26"; count=52; fi
