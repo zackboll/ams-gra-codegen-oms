@@ -23,66 +23,72 @@ fn workers() -> BTreeSet<String> {
 
 #[test]
 fn post_subscription_deadline_boundaries() {
-    for mode in ["at", "after", "before", "cleanup-error"] {
-        let output = Command::new(std::env::current_exe().unwrap())
-            .args(["--exact", CHILD, "--nocapture"])
-            // Test-harness subprocess only; the production executable has no hook.
-            .env("RUST_OMS_008_TEST_BOUNDARY", mode)
-            .output()
-            .unwrap();
-        let text = format!(
-            "{}{}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-        println!("boundary={mode}\n{text}");
-        assert_eq!(output.status.success(), mode == "before", "{text}");
-        assert!(
-            text.contains("CONNECTED session=2"),
-            "INIT succeeded: {text}"
-        );
-        assert!(text.contains("SUBSCRIBED session=2"), "{text}");
-        assert_eq!(text.matches("RECONNECT_ATTEMPT").count(), 1, "{text}");
-        assert_eq!(
-            text.matches("RECONNECT_COMPLETE").count(),
-            usize::from(mode == "before"),
-            "{text}"
-        );
-        assert!(
-            !text.contains("RECEIVED "),
-            "queued old value was presented: {text}"
-        );
-        assert!(!text.contains("PUBLISHED "), "publication replay: {text}");
-        assert!(
-            text.contains("PEER connections=2 INIT=2 SUB=8 PUB=1"),
-            "{text}"
-        );
-        assert!(
-            text.contains("replacement worker gone; typed queue dropped"),
-            "{text}"
-        );
-        if mode != "before" {
-            assert!(text.contains("ERROR: ConnectionClosed:"), "{text}");
-            assert!(
-                text.contains("execution deadline expired during subscription setup"),
-                "{text}"
+    for count in [4, 5] {
+        for mode in ["at", "after", "before", "cleanup-error"] {
+            let output = Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", CHILD, "--nocapture"])
+                // Test-harness subprocess only; the production executable has no hook.
+                .env("RUST_OMS_008_TEST_BOUNDARY", mode)
+                .env("RUST_OMS_011_TEST_SUBSCRIPTIONS", count.to_string())
+                .output()
+                .unwrap();
+            let text = format!(
+                "{}{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
             );
-        }
-        if mode == "cleanup-error" {
+            println!("boundary={mode}\n{text}");
+            assert_eq!(output.status.success(), mode == "before", "{text}");
             assert!(
-                text.contains("unsubscribe Log:"),
-                "cleanup error lost: {text}"
+                text.contains("CONNECTED session=2"),
+                "INIT succeeded: {text}"
             );
-        } else {
-            assert!(
-                text.contains("CLOSED runtime; worker joined; session=2"),
-                "{text}"
-            );
+            assert!(text.contains("SUBSCRIBED session=2"), "{text}");
+            assert_eq!(text.matches("RECONNECT_ATTEMPT").count(), 1, "{text}");
             assert_eq!(
-                text.matches("handler removed; session=2").count(),
-                4,
+                text.matches("RECONNECT_COMPLETE").count(),
+                usize::from(mode == "before"),
                 "{text}"
             );
+            assert!(
+                !text.contains("RECEIVED "),
+                "queued old value was presented: {text}"
+            );
+            assert!(!text.contains("PUBLISHED "), "publication replay: {text}");
+            assert!(
+                text.contains(&format!(
+                    "PEER connections=2 INIT=2 SUB={} PUB=1",
+                    count * 2
+                )),
+                "{text}"
+            );
+            assert!(
+                text.contains("replacement worker gone; typed queue dropped"),
+                "{text}"
+            );
+            if mode != "before" {
+                assert!(text.contains("ERROR: ConnectionClosed:"), "{text}");
+                assert!(
+                    text.contains("execution deadline expired during subscription setup"),
+                    "{text}"
+                );
+            }
+            if mode == "cleanup-error" {
+                assert!(
+                    text.contains("unsubscribe Log:"),
+                    "cleanup error lost: {text}"
+                );
+            } else {
+                assert!(
+                    text.contains("CLOSED runtime; worker joined; session=2"),
+                    "{text}"
+                );
+                assert_eq!(
+                    text.matches("handler removed; session=2").count(),
+                    count,
+                    "{text}"
+                );
+            }
         }
     }
 }
@@ -92,6 +98,10 @@ fn activation_child() {
     let Ok(mode) = std::env::var("RUST_OMS_008_TEST_BOUNDARY") else {
         return;
     };
+    let count: usize = std::env::var("RUST_OMS_011_TEST_SUBSCRIPTIONS")
+        .unwrap()
+        .parse()
+        .unwrap();
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let url = format!("ws://{}", listener.local_addr().unwrap());
     listener.set_nonblocking(true).unwrap();
@@ -125,7 +135,7 @@ fn activation_child() {
                                 ws.send(Message::Text(r#"INFO {"version":"1.0","server_id":"mock","uuids":{"system":"s","service":"v"},"system_label":"mock"}"#.into())).await.unwrap();
                             } else if text.starts_with("SUB ") {
                                 subs += 1;
-                                if epoch == 2 && subs == 4 {
+                                if epoch == 2 && subs == count {
                                     ready_tx.send(()).unwrap();
                                     if cleanup_error {
                                         close_rx.recv_timeout(WAIT).unwrap();
@@ -133,25 +143,25 @@ fn activation_child() {
                                     }
                                 }
                             } else if text.starts_with("PUB ") && epoch == 1 {
-                                assert_eq!(subs, 4);
+                                assert_eq!(subs, count);
                                 break; // Original ConnectionClosed, after initial-only publication.
                             } else if text.starts_with("UNSUB ") {
                                 unsubs += 1;
                             }
                         }
-                        if epoch == 2 && !cleanup_error { assert_eq!(unsubs, 4); }
+                        if epoch == 2 && !cleanup_error { assert_eq!(unsubs, count); }
                     }
                     // No third connection is even queued once the owner returns.
                     done.recv_timeout(WAIT).unwrap();
                     assert!(matches!(listener.into_std().unwrap().accept(), Err(error) if error.kind() == ErrorKind::WouldBlock));
                     assert_eq!(frames.iter().filter(|frame| frame.starts_with("INIT ")).count(), 2);
-                    assert_eq!(frames.iter().filter(|frame| frame.starts_with("SUB ")).count(), 8);
+                    assert_eq!(frames.iter().filter(|frame| frame.starts_with("SUB ")).count(), count * 2);
                     assert_eq!(frames.iter().filter(|frame| frame.starts_with("PUB ")).count(), 1);
-                    println!("PEER connections=2 INIT=2 SUB=8 PUB=1");
+                    println!("PEER connections=2 INIT=2 SUB={} PUB=1", count * 2);
                 }).await.unwrap();
             });
     });
-    let options = cli::Options::parse(
+    let mut options = cli::Options::parse(
         [
             "--url",
             &url,
@@ -166,6 +176,7 @@ fn activation_child() {
     )
     .unwrap()
     .unwrap();
+    options.enable_file_metadata = count == 5;
     let mut session = Session::connect(&options, 1, WAIT).unwrap();
     let old_workers = workers();
     assert_eq!(old_workers.len(), 1);
@@ -208,7 +219,7 @@ fn activation_child() {
                 "old queue not dropped"
             );
             assert_eq!(replacement.epoch, 2);
-            assert_eq!(replacement.subscriptions.len(), 4);
+            assert_eq!(replacement.subscriptions.len(), count);
             let (sender, receiver) = mpsc::channel();
             replacement.receiver = receiver;
             queue_witness = Some(sender);
