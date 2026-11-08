@@ -87,10 +87,18 @@ def frames(data):
     return dict(upgrade=header.decode(), frames=result)
 
 
+def validate_init(init, schema_version="002.5.0", service_id="task106-multimessage"):
+    """Release-specific assertion only; never rewrite any forwarded bytes."""
+    if init.get("schema") != schema_version or init.get("service_id") != service_id:
+        raise ValueError("incorrect Ada INIT schema/service")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("consumer", "cert", "key", "evidence"):
         parser.add_argument("--" + name, type=Path, required=True)
+    parser.add_argument("--schema-version", default="002.5.0")
+    parser.add_argument("--service-id", default="task106-multimessage")
     parser.add_argument("url")
     parser.add_argument("plan", type=Path)
     args = parser.parse_args()
@@ -190,8 +198,7 @@ def main():
             or stats.get("partial_writes", 0) < 2 or stats.get("record_batches", 0) < 2):
         raise ValueError("missing actual Ada WSS wire/progression evidence")
     init = json.loads(next(text[5:] for text in client if text.startswith("INIT ")))
-    if init.get("schema") != "002.5.0" or init.get("service_id") != "task106-multimessage":
-        raise ValueError("incorrect Ada INIT schema/service")
+    validate_init(init, args.schema_version, args.service_id)
     # Pinned Sleet breaks immediately on received Close, without flushing a
     # reciprocal WS frame. Do not invent a broker reply: record the Ada Close
     # and supply only authenticated TLS EOF. Task108 owns ordered Close tests.

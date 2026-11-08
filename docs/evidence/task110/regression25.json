@@ -1,0 +1,837 @@
+{
+  "external_directory": "/home/zboll/task110-evidence/regression25",
+  "source": [
+    "65eaeca07af5acc7252aefa1da6365e04bd2ce1a",
+    "1ded5a7e02472ee96e0eabd4741ce0297607334a"
+  ],
+  "source_status": "",
+  "result": {
+    "completed": true,
+    "development": false,
+    "compiler": "16.1.0",
+    "backend": "openssl",
+    "authentic_uci": "2.5",
+    "plaintext": true,
+    "steps": [
+      {
+        "label": "source",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "source-status",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "aht-identity",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "aht-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "aht-archive",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "aht-extract",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "codec-identity",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "codec-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "codec-archive",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "codec-extract",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "sleet-identity",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "sleet-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "printenv",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "compiler",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "platform",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "check",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "generate",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "model",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "admission",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "build",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "certificate",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "wss",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "plaintext-build",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "plaintext",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "verify",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "aht-final-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "codec-final-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "sleet-final-clean",
+        "exit": 0,
+        "timed_out": false
+      }
+    ],
+    "needs_read_runtime_exercised": false
+  },
+  "artifact_sha256": {
+    "admission.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "source-status.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "compiler.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "sleet-clean.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "generated-sources.json": "61531b5673073a9531d01ede3fc2972ea6cc1aff03065cc1cb519175190f0735",
+    "sleet-identity.command.json": "4caf079fbade864d3558b7d89a5ea73efb83b51dc0f0517906834a47d3bd85b1",
+    "aht-final-clean.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "build.stdout": "d1ec54e890840c8b0fc478166f58657a1305acf56dde6a1324d54221ae96b470",
+    "platform.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "generate.stdout": "73f5d45a39735c26401a0f79e4b52dd1d6cb3cc4b55d5d6b03a77cdeb381cb09",
+    "aht-clean.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "plaintext.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "aht-final-clean.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "aht-identity.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "source-status.command.json": "c65ed7743e72c2bfcd2d547332f04dca433c988137e1113cc0f09eb451495779",
+    "plaintext-build.command.json": "5dfa7b45cdef44b266f4d405a0bcd2ea76d4aeae538073f6c28e06cdf3ed529d",
+    "sleet-final-clean.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "platform.command.json": "26879c5b5f0ac2d4e17d02a234a32083f7ee14d40ec428dd25423a64a4b2cc5d",
+    "plaintext.stdout": "b24656387d22a099e33732996a76056b784bc47d9f286030d1d417a444f3949a",
+    "aht-clean.command.json": "76a2888cb632aafd9fde6aed9fd768f213f4da81b52982ef47da63a7ea82a310",
+    "codec-archive.command.json": "282a43393342901964311d09859afdb1871ee4ab0bc7b72fc4cb8a4975f035d9",
+    "sleet-identity.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "result.json": "155da2a206a8f51561c1bb75b8de267501a2ee3a26f555ba694f243c4319f5c4",
+    "source-status.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "sleet-final-clean.command.json": "67c8d0617d9f64bce440c7534ce07e879637f3ea5b6ea352e5b801a5dc0c62c6",
+    "check.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "aht-extract.command.json": "f987b30e5a433466bcf28345aee506b551afff6c26adbd01e82dde39a6c8e516",
+    "compiler.command.json": "11774e7cb3ae9ccbc4b08f7de060d3fcb61df99af7508c4099fb6900e88bad53",
+    "compiler.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "sleet-clean.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "check.stdout": "3c5063a51d36a274432bb60de4c2e37325db8ff1a6f7b48328c2022eb66cce6b",
+    "aht-extract.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "codec-extract.command.json": "8943c2bc3f3bb8011f9dfdb787ebf3a9f4b99bf09106bad7c5e8a7ea3bdffee8",
+    "build.command.json": "5dfa7b45cdef44b266f4d405a0bcd2ea76d4aeae538073f6c28e06cdf3ed529d",
+    "sources.json": "82356dbc3bedef1c2d5023ca8c912a16ffef40478764482f4c63fba89d1e1929",
+    "verify.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "codec-identity.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "certificate.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "certificate.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "codec-identity.stdout": "a9edf35639587b6fc713c0748f2ba729db0dd41c7babd26c6183815eaa97e6bd",
+    "codec-archive.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "codec-extract.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "codec-final-clean.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "model.stdout": "3bf5b1522239f0b72f616bc5236d50f9338687e6c9ca176dd03cb8a91c2ca95f",
+    "verify.command.json": "3915db7c11adb3f65aba11be94c1243f8636a04ee3a0e1089526aaf95fc07e08",
+    "aht-extract.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "codec-archive.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "aht-archive.command.json": "e7063964711525ae284f265e2dba7be21f00f4b3ab7ef1604f14944b76881d7a",
+    "plaintext-build.stdout": "b5dd49505c5fddc093fc66f5b5554a04b11a601f0e0c78393ea4ae00fce45054",
+    "codec-extract.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "codec-final-clean.command.json": "e5dbb768a00dd7920fffb35cb6609ef302a7fba89bf0b7bc3ef78c2fd80fba36",
+    "aht-extract.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "certificate.command.json": "972b53a713290db89b35153eebf87084d7ded809bd6a169d1aa29f2c50569c45",
+    "source.command.json": "ec9a3093b82ab416235ee8eb6e606550b9efc75ecbc85a919d26b31ffbca4332",
+    "admission.stdout": "79d57e4b21454e41b5811855ee9bcc4446a0cfc084eac9aa761c2511b1c1e396",
+    "aht-archive.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "codec-final-clean.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "plaintext-build.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "codec-clean.command.json": "e5dbb768a00dd7920fffb35cb6609ef302a7fba89bf0b7bc3ef78c2fd80fba36",
+    "admission.command.json": "de1cae267d6d5999b03bba2d456f513a3c08a1eb7900a4781e3dbcc567a3de48",
+    "sleet-identity.stdout": "cfbbf31bd8ad5e35897fd98d227c0d82ea0f40d3f45e7832129fc12aea13d7a5",
+    "compiler.stdout": "0017b5544d754e87af5e1e3097ecb777c53c6c1fda879f7cd02a77b67b110936",
+    "platform.stdout": "e90c718cb538e38e2fd56a463a6a9902b06ce042d158f348dd582a4e8aef787d",
+    "input-sources.json": "4b1e21f9f6b9b4157265393b73c9e67033a9611cdc6efe602ca3a47dd43aeec7",
+    "wss.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "wss.command.json": "21cc870a734c4b81ad3538198ba690ba561834da7349724d841fbbba91efadbf",
+    "sleet-final-clean.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "sleet-clean.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "model.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "check.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "verify.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "wss.stdout": "b24656387d22a099e33732996a76056b784bc47d9f286030d1d417a444f3949a",
+    "schema-sources.json": "91598e690bbb3b00f03246df3d5b50f1e8249ae001f29ba4a099cdcab1da80cf",
+    "codec-clean.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "aht-archive.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "plaintext.command.json": "8e00bc2e990fab4af191ac4cbba37a5b6f80e77bfaffe0d38ea70e3f77b9fb8d",
+    "model.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "codec-archive.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "codec-extract.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "sleet-clean.command.json": "67c8d0617d9f64bce440c7534ce07e879637f3ea5b6ea352e5b801a5dc0c62c6",
+    "alire.lock": "532b439128f97b3ee28302e2393f409004608e898ceabe40b3bda6bc929926a6",
+    "codec-final-clean.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "wss.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "printenv.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "aht-identity.stdout": "1ec2599294987fb4469de588c0938be74ba160efa9a089418f2bee021abf9516",
+    "printenv.stdout": "52c755a02652fcb0440bcf163519e5446069543379d0aeeaf0e8771179b73ccb",
+    "codec-identity.command.json": "3f6476fb1fa9b6fdd1ad7ec16eaba0518c5775fa1ea096fd57f7fc92f2d1ebc4",
+    "sleet-identity.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "environment.sh": "0b55f62083beaf0bf5aa09a27f7be5cc85a1836ab750dc5f04216ab1e6b2838c",
+    "admission.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "source.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "sleet-final-clean.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "printenv.command.json": "484382565c7d913315bc12074e9472d996327bf225bba3d67d842feab8569ccf",
+    "aht-identity.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "aht-archive.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "aht-final-clean.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "printenv.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "model.command.json": "b6f085d61f04488b0496c84cc044e500cce40c98a1f49991fb56d8d89fbb9abc",
+    "generate.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "platform.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "codec-identity.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "source.stdout": "5e5db4b21917726a8dcd42a4259e5321ae1e716efac8588df5eba04491feeb5b",
+    "plaintext-build.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "plaintext.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "check.command.json": "8692744e3ecf352560435fcea759c0c6cddb1291023dcd454b95372ff644ac52",
+    "source.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "codec-clean.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "aht-final-clean.command.json": "76a2888cb632aafd9fde6aed9fd768f213f4da81b52982ef47da63a7ea82a310",
+    "verify.stdout": "1b97f43d790be7a4664d7f48e26e160e9519ab593c9f854be8d6162775e53042",
+    "aht-identity.command.json": "cabf9acbef55bae45d5a23a68f8e5e70d2999d75d454388080ed9e9fd55d8c35",
+    "generate.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "certificate.stderr": "fca3f6e33f2978bf3ddfd51112a5e0cb71018d2c7cab93b93af6a37d286026cb",
+    "codec-clean.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "source-status.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "generate.command.json": "c722e08653d229e12610689dbe2ed26beb4e2dfa4504ad6556198e884987aadb",
+    "aht-clean.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "build.stderr": "483087e0ad9a7a8e03f3a6fb56142b496daaacbac672d2090ddbf649ac3728c7",
+    "aht-clean.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "build.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "plaintext/plan.jsonl": "e65cbef656baf3eb584a178a09392062e9a63ed56bc543b83c4df6e0b90717ce",
+    "plaintext/result.json": "e366a62b730f260ec0ade82062cd39efdc03e444f75f39464c94be876a29de71",
+    "plaintext/consumer.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "plaintext/server.command.json": "e6b4456e9c9e4b1a4c713f590fcf304986d9b638641e738481c783f039a02807",
+    "plaintext/consumer.stdout": "7d25e64bc8de5d3b60fb1b61ff191dbb2ee91056ad299cc3759f3bfb46492851",
+    "plaintext/observations.json": "d5b04c76b2396706cf96cef888d7208d4572bab4d5c37e927bae6a13bd1ee44d",
+    "plaintext/consumer.command.json": "e1b36e8a9d48a0e7ed316f94b22f85d93b9ae1011d210012f6b6e044638b3499",
+    "plaintext/consumer.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "plaintext/wire.json": "eecd42cb8acbac679bce2c572e4d388d7d151116e55fca413c3f3ae866b25c98",
+    "plaintext/server.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "plaintext/server.stdout": "901831d0a3ecd22d1dca94e93f196b491d6ce13cef7921dad99290b7be66b331",
+    "plaintext/server.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "tls/result.json": "cbb002b5c298402c14b9e25927a623a14b853836cb1d8a6972c7e4ea99e2fe84",
+    "tls/sleet.bin": "b3b73ba3cb255d7459512e4757c419eb65bcd828e22a5cec44da89205b9818a8",
+    "tls/consumer.command.json": "900fd5da5af4964fad5e0b07f76ec4d0c98b2da39e0bd185331e9b40e90df3bc",
+    "tls/ada.bin": "570f8b82ae5d508bfc2ac9d6e3bde9b7ebe8a543eb40d8db094e7eb26768ae2c",
+    "tls/wire.json": "3991f30151f9e04df7af34a30a8194efdd6a107320f97172e226d8c92d1777f8",
+    "wss/plan.jsonl": "e65cbef656baf3eb584a178a09392062e9a63ed56bc543b83c4df6e0b90717ce",
+    "wss/result.json": "e366a62b730f260ec0ade82062cd39efdc03e444f75f39464c94be876a29de71",
+    "wss/consumer.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "wss/server.command.json": "b21017e850b9d7bdcab35006c5f48ca89b82b9cde103b91fe7574de8c675522a",
+    "wss/consumer.stdout": "7d25e64bc8de5d3b60fb1b61ff191dbb2ee91056ad299cc3759f3bfb46492851",
+    "wss/observations.json": "d5b04c76b2396706cf96cef888d7208d4572bab4d5c37e927bae6a13bd1ee44d",
+    "wss/consumer.command.json": "564a163bc6975745c3e89c9c453456acca307225567756898bd2549296c31e1e",
+    "wss/consumer.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss/wire.json": "eecd42cb8acbac679bce2c572e4d388d7d151116e55fca413c3f3ae866b25c98",
+    "wss/server.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss/server.stdout": "199fd7e09d1f411bbcfcb1a48aae55c2e776751dfd7f14aec86d2fb26ad54313",
+    "wss/server.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "admission/info.json": "19d5569d8358adfe1477d612179e107f5d2f1298447f82d43ab13cb9cd5b84f2",
+    "admission/task092-real-rdma25.json": "a23d639a9833035b6a2d23fbfb93924a881d6fb7cdd0edccfad78e100d1c548d",
+    "admission/result.json": "a430556c176365d932b3974d2fdf5fcf23b4ce5a254a738c699440699da1e059",
+    "admission/server.command.json": "e90957a7c6c952d4be9cd26ea1ea543b58d31455f3f9e7415e7b38b8c0d800da",
+    "admission/task092-real-survivability25.json": "996ac91fa9eb177d14a6fc3fd7169e781a2bd206b62a410dd908f0d0750f2349",
+    "admission/task093-real-log25.json": "a76510ff8d2b6e2c3fcad91fec18905bb1bb0fcf3f75694fdcb0c831aac48bb0",
+    "admission/schema-sources.json": "91598e690bbb3b00f03246df3d5b50f1e8249ae001f29ba4a099cdcab1da80cf",
+    "admission/goldens.json": "0c6924120e576b812a0cf9e3fda1cba731d6562a6ef346be8529200df62db0cc",
+    "admission/wire.json": "8dd08549bf60ad6885db8b5a3e3c41af86e1c4105a0309d40b3e117d87df8e61",
+    "admission/server.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "admission/server.stdout": "b817cea2e0e30c40e31e98943a5747e8980195f7b431d3cc9851ccce966ec12a",
+    "admission/server.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "commands": {
+    "sleet-identity.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/task110-evidence/deps/sleet",
+        "rev-parse",
+        "HEAD",
+        "HEAD^{tree}"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "source-status.command.json": {
+      "argv": [
+        "git",
+        "status",
+        "--porcelain"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "plaintext-build.command.json": {
+      "argv": [
+        "sh",
+        "-ec",
+        ". /home/zboll/task110-evidence/regression25/environment.sh; exec gprbuild -p -j4 -P /home/zboll/task110-evidence/regression25/build/consumer.gpr"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "platform.command.json": {
+      "argv": [
+        "sh",
+        "-ec",
+        ". /home/zboll/task110-evidence/regression25/environment.sh; exec sh -ec 'uname -a; getconf GNU_LIBC_VERSION; gprbuild --version; openssl version; sha256sum $(command -v gcc) $(command -v gnat) $(command -v gprbuild)'"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "aht-clean.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/task110-evidence/deps/aht",
+        "status",
+        "--porcelain"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "codec-archive.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/task110-evidence/deps/codec",
+        "archive",
+        "--output",
+        "/home/zboll/task110-evidence/regression25/codec.tar",
+        "765d9cd612838eb00645037977c8cc9af7171c3e"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "sleet-final-clean.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/task110-evidence/deps/sleet",
+        "status",
+        "--porcelain"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "aht-extract.command.json": {
+      "argv": [
+        "tar",
+        "-xf",
+        "/home/zboll/task110-evidence/regression25/aht.tar",
+        "-C",
+        "/home/zboll/task110-evidence/regression25/aht"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "compiler.command.json": {
+      "argv": [
+        "sh",
+        "-ec",
+        ". /home/zboll/task110-evidence/regression25/environment.sh; exec gnat --version"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "codec-extract.command.json": {
+      "argv": [
+        "tar",
+        "-xf",
+        "/home/zboll/task110-evidence/regression25/codec.tar",
+        "-C",
+        "/home/zboll/task110-evidence/regression25/codec"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "build.command.json": {
+      "argv": [
+        "sh",
+        "-ec",
+        ". /home/zboll/task110-evidence/regression25/environment.sh; exec gprbuild -p -j4 -P /home/zboll/task110-evidence/regression25/build/consumer.gpr"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "verify.command.json": {
+      "argv": [
+        "/home/zboll/task110-evidence/venv/bin/python",
+        "/home/zboll/git/ams-gra-codegen-oms-task110/scripts/task109/verify.py",
+        "/home/zboll/task110-evidence/regression25"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "aht-archive.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/task110-evidence/deps/aht",
+        "archive",
+        "--output",
+        "/home/zboll/task110-evidence/regression25/aht.tar",
+        "827b0c17dd964e935f8e88912ce0611ee92b6f16"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "codec-final-clean.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/task110-evidence/deps/codec",
+        "status",
+        "--porcelain"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "certificate.command.json": {
+      "argv": [
+        "openssl",
+        "req",
+        "-x509",
+        "-newkey",
+        "rsa:2048",
+        "-nodes",
+        "-keyout",
+        "/home/zboll/task110-evidence/regression25/key.pem",
+        "-out",
+        "/home/zboll/task110-evidence/regression25/cert.pem",
+        "-days",
+        "2",
+        "-subj",
+        "/CN=localhost",
+        "-addext",
+        "subjectAltName=DNS:localhost"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "source.command.json": {
+      "argv": [
+        "git",
+        "rev-parse",
+        "HEAD",
+        "HEAD^{tree}"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "codec-clean.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/task110-evidence/deps/codec",
+        "status",
+        "--porcelain"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "admission.command.json": {
+      "argv": [
+        "/home/zboll/task110-evidence/venv/bin/python",
+        "/home/zboll/git/ams-gra-codegen-oms-task110/scripts/task106/admission.py",
+        "--evidence",
+        "/home/zboll/task110-evidence/regression25/admission",
+        "--sleet",
+        "/home/zboll/task110-evidence/deps/sleet",
+        "--uci25",
+        "/home/zboll/task110-evidence/regression25/uci25/UCI_MessageDefinitions_v2_5_0.xsd"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "wss.command.json": {
+      "argv": [
+        "/home/zboll/task110-evidence/venv/bin/python",
+        "/home/zboll/git/ams-gra-codegen-oms-task110/scripts/task106/sleet.py",
+        "--checkout",
+        "/home/zboll/task110-evidence/deps/sleet",
+        "--schema",
+        "/home/zboll/task110-evidence/regression25/uci25/UCI_MessageDefinitions_v2_5_0.xsd",
+        "--evidence",
+        "/home/zboll/task110-evidence/regression25/wss",
+        "--consumer",
+        "/home/zboll/task110-evidence/regression25/wss-consumer"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "plaintext.command.json": {
+      "argv": [
+        "/home/zboll/task110-evidence/venv/bin/python",
+        "/home/zboll/git/ams-gra-codegen-oms-task110/scripts/task106/sleet.py",
+        "--checkout",
+        "/home/zboll/task110-evidence/deps/sleet",
+        "--schema",
+        "/home/zboll/task110-evidence/regression25/uci25/UCI_MessageDefinitions_v2_5_0.xsd",
+        "--evidence",
+        "/home/zboll/task110-evidence/regression25/plaintext",
+        "--consumer",
+        "/home/zboll/task110-evidence/regression25/build/bin/multimessage_consumer"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "sleet-clean.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/task110-evidence/deps/sleet",
+        "status",
+        "--porcelain"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "codec-identity.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/task110-evidence/deps/codec",
+        "rev-parse",
+        "HEAD",
+        "HEAD^{tree}"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "printenv.command.json": {
+      "argv": [
+        "alr",
+        "-s",
+        "/home/zboll/task110-evidence/setup16/settings",
+        "-n",
+        "printenv"
+      ],
+      "cwd": "/home/zboll/task110-evidence/setup16/consumer"
+    },
+    "model.command.json": {
+      "argv": [
+        "/home/zboll/task110-evidence/target/release/ams-gra-codegen-oms",
+        "service-generate",
+        "--schema",
+        "/home/zboll/task110-evidence/regression25/uci25/UCI_MessageDefinitions_v2_5_0.xsd",
+        "--contract",
+        "/home/zboll/git/ams-gra-codegen-oms-task110/tests/fixtures/task106/uci25-service.yaml",
+        "--language",
+        "ada",
+        "--world",
+        "closed-schema",
+        "--output",
+        "/home/zboll/task110-evidence/regression25/model"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "check.command.json": {
+      "argv": [
+        "/home/zboll/task110-evidence/target/release/ams-gra-codegen-oms",
+        "service-check",
+        "--schema",
+        "/home/zboll/task110-evidence/regression25/uci25/UCI_MessageDefinitions_v2_5_0.xsd",
+        "--contract",
+        "/home/zboll/git/ams-gra-codegen-oms-task110/tests/fixtures/task106/uci25-service.yaml",
+        "--language",
+        "ada",
+        "--world",
+        "closed-schema",
+        "--with-codec"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "aht-final-clean.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/task110-evidence/deps/aht",
+        "status",
+        "--porcelain"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "aht-identity.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/task110-evidence/deps/aht",
+        "rev-parse",
+        "HEAD",
+        "HEAD^{tree}"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "generate.command.json": {
+      "argv": [
+        "/home/zboll/task110-evidence/target/release/ams-gra-codegen-oms",
+        "service-generate",
+        "--schema",
+        "/home/zboll/task110-evidence/regression25/uci25/UCI_MessageDefinitions_v2_5_0.xsd",
+        "--contract",
+        "/home/zboll/git/ams-gra-codegen-oms-task110/tests/fixtures/task106/uci25-service.yaml",
+        "--language",
+        "ada",
+        "--world",
+        "closed-schema",
+        "--with-codec",
+        "--output",
+        "/home/zboll/task110-evidence/regression25/generated"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    }
+  },
+  "generated-sources.json": {
+    "service_api.ads": "c9542a84957be6566b7e32a2242cd93d3b91097c8dba8e5e85685808ebc61112",
+    "service_codec.adb": "ef0c13406dd70fbe87d683eb1a357ea3a6723b0a33bff74bfaf311c56a512e8d",
+    "programs.ads": "a5d92d26a18c03999588818e68c5a8b3426ff1c780a7582bf21121727b4a0d16",
+    "service_codec.ads": "60bbec5768703bad5bdf276764b9db89837d0d7be918de2d23d793a8259731b1",
+    "programs-oam.ads": "0e4d1e92a632883c5de4db44649313325ea155ae0515866c919b0976f7ead6e3",
+    "programs-oam.adb": "e1f7bc6fe7d2f422e058219cd58bae7ae1496fc722fb64516f5baf02003ee70d"
+  },
+  "schema-sources.json": {
+    "UCI_MessageDefinitions_v2_5_0.xsd": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+    "UCI_SecurityMarkings_v2_5_0.xsd": "4a8056f1503234d423a0c2495844ab65387febced62bea58b87d4f343e9e7a0b"
+  },
+  "admission/result.json": {
+    "status": "PASS",
+    "generated_ada_decoder_executed": false,
+    "subscriptions": [
+      {
+        "sid": 1,
+        "name": "Log",
+        "topic": "task106-log"
+      },
+      {
+        "sid": 2,
+        "name": "RDMA_InitializeSetup",
+        "topic": "task106-rdma"
+      },
+      {
+        "sid": 3,
+        "name": "SurvivabilityRiskLevel",
+        "topic": "task106-survivability"
+      }
+    ],
+    "deliveries": [
+      {
+        "sid": 1,
+        "name": "Log",
+        "topic": "task106-log"
+      },
+      {
+        "sid": 2,
+        "name": "RDMA_InitializeSetup",
+        "topic": "task106-rdma"
+      },
+      {
+        "sid": 3,
+        "name": "SurvivabilityRiskLevel",
+        "topic": "task106-survivability"
+      },
+      {
+        "sid": 2,
+        "name": "RDMA_InitializeSetup",
+        "topic": "task106-rdma"
+      },
+      {
+        "sid": 1,
+        "name": "Log",
+        "topic": "task106-log"
+      },
+      {
+        "sid": 3,
+        "name": "SurvivabilityRiskLevel",
+        "topic": "task106-survivability"
+      },
+      {
+        "sid": 2,
+        "name": "RDMA_InitializeSetup",
+        "topic": "task106-rdma"
+      },
+      {
+        "sid": 3,
+        "name": "SurvivabilityRiskLevel",
+        "topic": "task106-survivability"
+      }
+    ],
+    "owp_negotiated": true,
+    "init_count": 1,
+    "info_validated": true,
+    "survivor_deliveries": true,
+    "unsubscribed": true,
+    "websocket_closed": true,
+    "cleanup": true
+  },
+  "wss/result.json": {
+    "completed": true,
+    "cleanup": true,
+    "counts": {
+      "log": 17,
+      "rdma": 19,
+      "survivability": 19
+    },
+    "decode_errors": 5,
+    "broker_rejections": 39,
+    "steps": 62,
+    "consumer_exit": 0,
+    "witness_deliveries": 61,
+    "server_exit": 0,
+    "ada_connection_id": "1",
+    "registrations": [
+      [
+        "1",
+        "1",
+        "task106-log",
+        "Log"
+      ],
+      [
+        "1",
+        "2",
+        "task106-rdma",
+        "RDMA_InitializeSetup"
+      ],
+      [
+        "1",
+        "3",
+        "task106-survivability",
+        "SurvivabilityRiskLevel"
+      ]
+    ]
+  },
+  "tls/result.json": {
+    "tls": "TLSv1.3",
+    "cipher": [
+      "TLS_AES_256_GCM_SHA384",
+      "TLSv1.3",
+      256
+    ],
+    "records": 189,
+    "partial_writes": 93,
+    "record_batches": 92,
+    "consumer_exit": 0,
+    "cleanup": true,
+    "errors": [],
+    "ada_sha256": "570f8b82ae5d508bfc2ac9d6e3bde9b7ebe8a543eb40d8db094e7eb26768ae2c",
+    "sleet_sha256": "b3b73ba3cb255d7459512e4757c419eb65bcd828e22a5cec44da89205b9818a8",
+    "completed": true
+  },
+  "tls/consumer.command.json": [
+    "/home/zboll/task110-evidence/regression25/build/bin/multimessage_consumer",
+    "wss://localhost:39669/",
+    "/home/zboll/task110-evidence/regression25/wss/plan.jsonl"
+  ],
+  "plaintext/result.json": {
+    "completed": true,
+    "cleanup": true,
+    "counts": {
+      "log": 17,
+      "rdma": 19,
+      "survivability": 19
+    },
+    "decode_errors": 5,
+    "broker_rejections": 39,
+    "steps": 62,
+    "consumer_exit": 0,
+    "witness_deliveries": 61,
+    "server_exit": 0,
+    "ada_connection_id": "1",
+    "registrations": [
+      [
+        "1",
+        "1",
+        "task106-log",
+        "Log"
+      ],
+      [
+        "1",
+        "2",
+        "task106-rdma",
+        "RDMA_InitializeSetup"
+      ],
+      [
+        "1",
+        "3",
+        "task106-survivability",
+        "SurvivabilityRiskLevel"
+      ]
+    ]
+  },
+  "independent_reverification": {
+    "completed": true,
+    "task106": {
+      "completed": true,
+      "cleanup": true,
+      "counts": {
+        "log": 17,
+        "rdma": 19,
+        "survivability": 19
+      },
+      "decode_errors": 5,
+      "broker_rejections": 39,
+      "steps": 62,
+      "consumer_exit": 0,
+      "server_exit": 0,
+      "witness_deliveries": 61
+    },
+    "actual_wss_deliveries": 60
+  }
+}
