@@ -80,6 +80,9 @@ class Campaign:
         return (self.scratch / f"{label}.stdout").read_text()
 
     def shell(self, command):
+        if os.environ.get("AMS_GRA_ADA_BUILD_JOBS") == "1" and str(command[0]) == "gprbuild":
+            command = [command[0], "-j1", *[arg for arg in command[1:]
+                       if not str(arg).startswith("-j")]]
         return ["sh", "-ec", f". {shlex.quote(str(self.environment))}; exec " + shlex.join(map(str, command))]
 
     def provision(self):
