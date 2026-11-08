@@ -1,0 +1,175 @@
+[
+  {
+    "name": "terminal-dot",
+    "field": "FileName",
+    "value": "report.",
+    "boundary": "broker",
+    "diagnostic": "FacetViolation"
+  },
+  {
+    "name": "empty",
+    "field": "FileName",
+    "value": "",
+    "boundary": "broker",
+    "diagnostic": "FacetViolation"
+  },
+  {
+    "name": "missing-base",
+    "field": "FileName",
+    "value": ".txt",
+    "boundary": "broker",
+    "diagnostic": "FacetViolation"
+  },
+  {
+    "name": "missing-extension",
+    "field": "FileName",
+    "value": "report",
+    "boundary": "broker",
+    "diagnostic": "FacetViolation"
+  },
+  {
+    "name": "space",
+    "field": "FileName",
+    "value": "report name.txt",
+    "boundary": "broker",
+    "diagnostic": "FacetViolation"
+  },
+  {
+    "name": "slash",
+    "field": "FileName",
+    "value": "dir/file.txt",
+    "boundary": "broker",
+    "diagnostic": "FacetViolation"
+  },
+  {
+    "name": "control",
+    "field": "FileName",
+    "value": "report\t.txt",
+    "boundary": "broker",
+    "diagnostic": "FacetViolation"
+  },
+  {
+    "name": "non-ascii",
+    "field": "FileName",
+    "value": "r\u00e9port.txt",
+    "boundary": "broker",
+    "diagnostic": "FacetViolation"
+  },
+  {
+    "name": "overlong",
+    "field": "FileName",
+    "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.txt",
+    "boundary": "broker",
+    "diagnostic": "FacetViolation"
+  },
+  {
+    "name": "filename-null",
+    "field": "FileName",
+    "value": null,
+    "boundary": "broker",
+    "diagnostic": "TypeMismatch"
+  },
+  {
+    "name": "filename-number",
+    "field": "FileName",
+    "value": 42,
+    "boundary": "broker",
+    "diagnostic": "TypeMismatch"
+  },
+  {
+    "name": "invalid-hex",
+    "field": "SHA_2_Hash",
+    "value": "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+    "boundary": "broker",
+    "diagnostic": "FacetViolation"
+  },
+  {
+    "name": "odd-hex",
+    "field": "SHA_2_Hash",
+    "value": "000000000000000000000000000000000000000000000000000000000000000",
+    "boundary": "broker",
+    "diagnostic": "FacetViolation"
+  },
+  {
+    "name": "short-hash",
+    "field": "SHA_2_Hash",
+    "value": "00000000000000000000000000000000000000000000000000000000000000",
+    "boundary": "broker",
+    "diagnostic": "FacetViolation"
+  },
+  {
+    "name": "long-hash",
+    "field": "SHA_2_Hash",
+    "value": "000000000000000000000000000000000000000000000000000000000000000000",
+    "boundary": "broker",
+    "diagnostic": "FacetViolation"
+  },
+  {
+    "name": "hash-null",
+    "field": "SHA_2_Hash",
+    "value": null,
+    "boundary": "broker",
+    "diagnostic": "TypeMismatch"
+  },
+  {
+    "name": "hash-number",
+    "field": "SHA_2_Hash",
+    "value": 42,
+    "boundary": "broker",
+    "diagnostic": "TypeMismatch"
+  },
+  {
+    "name": "hash-array",
+    "field": "SHA_2_Hash",
+    "value": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "boundary": "broker",
+    "diagnostic": "TypeMismatch"
+  },
+  {
+    "name": "sixteen-byte-hash",
+    "field": "SHA_2_Hash",
+    "value": "000102030405060708090A0B0C0D0E0F",
+    "boundary": "decoder",
+    "diagnostic": "SHA_2_Hash"
+  },
+  {
+    "name": "admitted-invalid-hex",
+    "field": "SHA_2_Hash",
+    "value": "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+    "boundary": "decoder",
+    "diagnostic": "SHA_2_Hash"
+  }
+]

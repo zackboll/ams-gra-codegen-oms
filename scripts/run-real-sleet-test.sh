@@ -40,7 +40,10 @@ fi
 if [ "${AMS_GRA_RUST_DLZ_ONLY:-}" = 1 ]; then
   export AMS_GRA_REQUIRE_REAL_UCI_DLZ=1
 fi
-if [ -n "${AMS_GRA_REQUIRE_REAL_UCI_LOG:-}${AMS_GRA_REQUIRE_REAL_UCI_RDMA:-}${AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE:-}${AMS_GRA_REQUIRE_REAL_UCI_SURVIVABILITY:-}${AMS_GRA_REQUIRE_REAL_UCI_DLZ:-}" ]; then
+if [ "${AMS_GRA_RUST_FILE_METADATA_ONLY:-}" = 1 ]; then
+  export AMS_GRA_REQUIRE_REAL_UCI_FILE_METADATA=1
+fi
+if [ -n "${AMS_GRA_REQUIRE_REAL_UCI_LOG:-}${AMS_GRA_REQUIRE_REAL_UCI_RDMA:-}${AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE:-}${AMS_GRA_REQUIRE_REAL_UCI_SURVIVABILITY:-}${AMS_GRA_REQUIRE_REAL_UCI_DLZ:-}${AMS_GRA_REQUIRE_REAL_UCI_FILE_METADATA:-}" ]; then
   : "${AMS_GRA_UCI_2_5_ROOT:?pinned UCI 2.5 root required}"
   : "${AMS_GRA_UCI_2_6_ROOT:?pinned UCI 2.6 root required}"
 fi
@@ -64,7 +67,7 @@ cd "$ROOT"
 # Four-message standalone acceptance uses this same unmodified broker build
 # and independent Task092/093, Task104/105 and Task101 fixtures.
 # The existing main-only real-sleet job supplies both roots; no new runner lane.
-if [ "${AMS_GRA_RUST_DLZ_ONLY:-}" != 1 ] && [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] && [ -n "${AMS_GRA_UCI_2_6_ROOT:-}" ]; then
+if [ "${AMS_GRA_RUST_FILE_METADATA_ONLY:-}" != 1 ] && [ "${AMS_GRA_RUST_DLZ_ONLY:-}" != 1 ] && [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] && [ -n "${AMS_GRA_UCI_2_6_ROOT:-}" ]; then
   manifest="$ROOT/examples/rust-uci-client/Cargo.toml"
   cargo +1.95.0 fmt --manifest-path "$manifest" -- --check
   rustfmt +1.95.0 --edition 2024 --check "$ROOT/examples/rust-uci-client/tests/support/reconnect.rs"
@@ -92,6 +95,29 @@ if [ "${AMS_GRA_RUST_CLIENT_ONLY:-}" = 1 ]; then
   echo "RUST-OMS-008 real pinned Sleet ($SLEET_REV): PASSED"
   exit 0
 fi
+if [ -n "${AMS_GRA_UCI_2_5_ROOT:-}" ] && [ -n "${AMS_GRA_UCI_2_6_ROOT:-}" ]; then
+  status=0
+  output="$(AMS_GRA_REQUIRE_REAL_UCI_FILE_METADATA=1 CARGO_PROFILE_RELEASE_BUILD_OVERRIDE_OPT_LEVEL=3 \
+    cargo +1.95.0 test --release --locked -p ams-gra-oms-runtime-rust-facade-tests \
+    --test real_file_metadata --test real_file_metadata_consumer -- --show-output --test-threads=1 2>&1)" || status=$?
+  printf '%s\n' "$output"
+  if (( status != 0 )); then exit "$status"; fi
+  for version in 002.5.0 002.6.0; do
+    for marker in 'MODEL CODEC' 'PINNED SLEET' 'SUBSCRIPTION REMOVAL AND CLEANUP'; do
+      grep -Fqx "RUST-OMS-010 $version $marker: PASSED" <<<"$output"
+    done
+  done
+  grep -Fqx 'EXTERNAL FILEMETADATA 25: PASSED' <<<"$output"
+  grep -Fqx 'EXTERNAL FILEMETADATA 26: PASSED' <<<"$output"
+  grep -Fqx 'RUST-OMS-010 INDEPENDENT CARGO CONSUMER: PASSED' <<<"$output"
+  grep -qE '^test result: ok\. 5 passed; 0 failed; 0 ignored;' <<<"$output"
+  grep -qE '^test result: ok\. 1 passed; 0 failed; 0 ignored;' <<<"$output"
+fi
+if [ "${AMS_GRA_RUST_FILE_METADATA_ONLY:-}" = 1 ]; then
+  echo "RUST-OMS-010 real pinned Sleet ($SLEET_REV): PASSED"
+  exit 0
+fi
+
 # run_one TEST_FILE TEST_NAME PASS_LINE: exactly one matching test must run,
 # pass, and print its PASSED line (a skip prints SKIPPED and fails here).
 run_one() {

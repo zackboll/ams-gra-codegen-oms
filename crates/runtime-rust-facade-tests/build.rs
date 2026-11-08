@@ -105,11 +105,13 @@ fn real_uci_services(fixtures: &Path, out: &Path) {
     println!("cargo:rerun-if-env-changed=AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE");
     println!("cargo:rerun-if-env-changed=AMS_GRA_REQUIRE_REAL_UCI_SURVIVABILITY");
     println!("cargo:rerun-if-env-changed=AMS_GRA_REQUIRE_REAL_UCI_DLZ");
+    println!("cargo:rerun-if-env-changed=AMS_GRA_REQUIRE_REAL_UCI_FILE_METADATA");
     let required = std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_LOG").is_some()
         || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_RDMA").is_some()
         || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_MULTIMESSAGE").is_some()
         || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_SURVIVABILITY").is_some()
-        || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_DLZ").is_some();
+        || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_DLZ").is_some()
+        || std::env::var_os("AMS_GRA_REQUIRE_REAL_UCI_FILE_METADATA").is_some();
     for (version, root_hash, include_hash) in [
         (
             "5",
@@ -123,7 +125,14 @@ fn real_uci_services(fixtures: &Path, out: &Path) {
         ),
     ] {
         let variable = format!("AMS_GRA_UCI_2_{version}_ROOT");
-        for message in ["log", "rdma", "multimessage", "survivability", "dlz"] {
+        for message in [
+            "log",
+            "rdma",
+            "multimessage",
+            "survivability",
+            "dlz",
+            "file_metadata",
+        ] {
             println!("cargo::rustc-check-cfg=cfg(ams_gra_real_uci_{message}2{version})");
         }
         println!("cargo:rerun-if-env-changed={variable}");
@@ -149,6 +158,7 @@ fn real_uci_services(fixtures: &Path, out: &Path) {
             ("multimessage", "rust-oms-003"),
             ("survivability", "rust-oms-004"),
             ("dlz", "rust-oms-006"),
+            ("file_metadata", "rust-oms-010"),
         ] {
             let cfg = format!("ams_gra_real_uci_{message}2{version}");
             let contract = fixtures.join(format!("../{task}/uci2{version}-service.yaml"));
@@ -170,6 +180,25 @@ fn real_uci_services(fixtures: &Path, out: &Path) {
             check.push("--with-codec".into());
             let mut readiness = Vec::new();
             generate(message, check, &mut readiness);
+            if message == "file_metadata" {
+                let report = String::from_utf8_lossy(&readiness);
+                for required in [
+                    "selected oms messages: 1",
+                    "renderable selected oms messages: 1",
+                    "status: READY",
+                    "codec status: READY",
+                ] {
+                    assert!(report.lines().any(|line| line == required), "{report}");
+                }
+                let (types, codecs) = if version == "5" { (52, 50) } else { (54, 52) };
+                for required in [
+                    format!("selected type closure: {types}"),
+                    format!("renderable selected types: {types}"),
+                    format!("codec renderable emitted declarations: {codecs}/{codecs}"),
+                ] {
+                    assert!(report.lines().any(|line| line == required), "{report}");
+                }
+            }
             if message == "dlz" {
                 let report = String::from_utf8_lossy(&readiness);
                 for required in [
@@ -204,7 +233,12 @@ fn real_uci_services(fixtures: &Path, out: &Path) {
                 if codec {
                     arguments.push("--with-codec".into());
                 }
-                generate(message, arguments, &mut Vec::new());
+                let mut generation = Vec::new();
+                generate(message, arguments, &mut generation);
+                if message == "file_metadata" {
+                    std::fs::write(directory.join("generation.txt"), generation)
+                        .expect("FileMetadata generation report");
+                }
             }
             // The codec must reuse the exact model and endpoint surface, with
             // only its sibling-module declaration added to service_api.rs.
