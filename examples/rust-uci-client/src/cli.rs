@@ -2,10 +2,10 @@ use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::time::Duration;
 
-pub const HELP: &str = "rust-uci-client --url ws://HOST:PORT --service-id ID [OPTIONS]
+pub const HELP: &str = "rust-uci-client --url ws[s]://HOST[:PORT][/PATH] --service-id ID [OPTIONS]
 
 Options:
-  --url URL                 Sleet WebSocket endpoint (ws://, no TLS)
+  --url URL                 Sleet endpoint (ws:// or certificate-validated wss://)
   --service-id ID           OWP service identity authorized by Sleet
   --duration-seconds N      Receive for 1..=3600 seconds (default: 5)
   --reconnect-attempts N    Process-wide additional attempts, 0..=8 (default: 0)
@@ -111,14 +111,37 @@ impl Options {
         let authority = options
             .url
             .strip_prefix("ws://")
+            .or_else(|| options.url.strip_prefix("wss://"))
             .and_then(|rest| rest.split(['/', '?', '#']).next())
             .unwrap_or("");
         if authority.is_empty()
             || authority.contains('@')
             || options.url.chars().any(char::is_whitespace)
             || options.url.contains('#')
+            || options.url.parse::<http::Uri>().ok().is_none_or(|uri| {
+                uri.authority().is_none_or(|authority| {
+                    let host = authority.host();
+                    let port = authority.as_str().strip_prefix(host).unwrap_or("");
+                    host.is_empty()
+                        || if host.starts_with('[') {
+                            host.strip_prefix('[')
+                                .and_then(|h| h.strip_suffix(']'))
+                                .and_then(|h| h.parse::<std::net::Ipv6Addr>().ok())
+                                .is_none()
+                        } else {
+                            !host
+                                .bytes()
+                                .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'.'))
+                        }
+                        || (!port.is_empty()
+                            && port
+                                .strip_prefix(':')
+                                .and_then(|p| p.parse::<u16>().ok())
+                                .is_none_or(|p| p == 0))
+                })
+            })
         {
-            return Err("--url must be a ws://HOST[:PORT][/PATH] endpoint without credentials, whitespace or fragment".into());
+            return Err("--url must be a ws://HOST[:PORT][/PATH] or wss://HOST[:PORT][/PATH] endpoint without credentials, whitespace or fragment and with a valid authority".into());
         }
         if options.service_id.is_empty()
             || !options
@@ -179,6 +202,42 @@ mod tests {
             parse(&[]).unwrap().unwrap().duration,
             Duration::from_secs(5)
         );
+    }
+
+    #[test]
+    fn websocket_url_validation() {
+        for scheme in ["ws", "wss"] {
+            for authority in ["localhost", "localhost:443", "127.0.0.1:9000", "[::1]:9000"] {
+                for path in ["", "/owp", "/owp?test=1"] {
+                    let url = format!("{scheme}://{authority}{path}");
+                    assert!(
+                        Options::parse(["--url", &url, "--service-id", "ok"].map(str::to_owned))
+                            .is_ok(),
+                        "{url}"
+                    );
+                }
+            }
+            for rest in [
+                "",
+                "user:pass@host",
+                "host/#x",
+                "host:",
+                "host:0",
+                "host:65536",
+                "host:abc",
+                "[broken]",
+                "::1",
+                "host\\evil",
+                "host/path\n",
+            ] {
+                let url = format!("{scheme}://{rest}");
+                assert!(
+                    Options::parse(["--url", &url, "--service-id", "ok"].map(str::to_owned))
+                        .is_err(),
+                    "{url}"
+                );
+            }
+        }
     }
 
     #[test]

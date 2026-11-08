@@ -23,6 +23,10 @@
 //! * **`sleet-client`**: WebSocket upgrade (`Sec-WebSocket-Protocol: owp`),
 //!   `INIT`/`INFO`, OWP framing, and authoritative OWP lexical validation of
 //!   topics, groups, service and subscription IDs. Not copied or forked.
+//! * **TLS**: the pinned client's tokio-tungstenite transport enables rustls with
+//!   native trust roots and the ring provider through Cargo feature unification.
+//!   `wss://` verifies chain, validity and hostname; `ws://` remains plaintext.
+//!   No custom connector, verifier, fallback or application certificate parser.
 //!
 //! # Worker
 //!
