@@ -50,7 +50,22 @@ def main():
     parser.add_argument("--profiles", nargs="+", choices=["oam", "qualified"], default=["oam", "qualified"])
     parser.add_argument("--policies", nargs="+", choices=["normal", "Check", "Ignore"], default=["normal", "Check", "Ignore"])
     parser.add_argument("--red", action="store_true", help="record intentional reviewed-head compile failures for the trigger")
+    providers = parser.add_mutually_exclusive_group()
+    providers.add_argument("--portable-provider-reuse", action="store_true")
+    providers.add_argument("--portable-provider-original", action="store_true")
+    parser.add_argument("--provider-state", type=Path)
+    parser.add_argument("--provider-jobs", type=int, default=1)
     args = parser.parse_args()
+    provider = None
+    if args.portable_provider_reuse or args.portable_provider_original:
+        if (args.family != "portable" or args.red or args.profiles != ["oam", "qualified"]
+                or args.policies != ["normal", "Check", "Ignore"] or args.provider_state is None):
+            parser.error("provider reuse requires the complete original portable inventory")
+        if args.provider_jobs not in range(1, 5):
+            parser.error("provider compiler budget must be 1..4")
+        from perf009_ci import Campaign
+        provider = Campaign(args.scratch.resolve(), args.compiler, args.provider_state.resolve(),
+                            args.provider_jobs, args.portable_provider_reuse)
     scratch = args.scratch.resolve()
     scratch.mkdir(parents=True, exist_ok=False)
     compiler = "gnat_external" if args.compiler == "14" else "gnat_native"
@@ -61,7 +76,7 @@ def main():
     records = []
 
     def run(command, cwd, label, expected=0):
-        return checked(command, cwd, scratch / label, expected)
+        return (provider or checked)(command, cwd, scratch / label, expected)
 
     run(["sh", "-ec", "uname -m; getconf GNU_LIBC_VERSION; dpkg-query -W libc6; sha256sum /usr/lib/x86_64-linux-gnu/libc.so.6; alr --version"], ROOT, "runtime")
     # Fail before any long naming campaign if this environment cannot supply
@@ -187,6 +202,8 @@ def main():
     temporary = scratch / "result.json.tmp"
     temporary.write_text(json.dumps(dict(completed=True, red=args.red, records=records), indent=2) + "\n")
     temporary.replace(scratch / "result.json")
+    if provider:
+        provider.finish()
     print(f"TASK093_C4_HELPER_QUALIFICATION_COMPLETE family={args.family} compiler={version} naming_executions={len(records)} red={args.red}")
 
 

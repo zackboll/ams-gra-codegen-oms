@@ -1,0 +1,36 @@
+[
+  {
+    "world": "closed-schema",
+    "codec": false,
+    "artifacts": {
+      "service_api.py": "f7c13c02a76af7190cf2401f1f32c8aba8082da54af8bc24cf00d3d7f76c798c",
+      "model.py": "0639dc7d5a54fdc4b9f716886ac89f3747d60fd2d1b45b17139b266124e9d4bf"
+    }
+  },
+  {
+    "world": "closed-schema",
+    "codec": true,
+    "artifacts": {
+      "service_codec.py": "b4a5b2d73c1ebb7804835cf925778e2f1056159a4261af00843cefdc4bf52a9a",
+      "service_api.py": "f7c13c02a76af7190cf2401f1f32c8aba8082da54af8bc24cf00d3d7f76c798c",
+      "model.py": "0639dc7d5a54fdc4b9f716886ac89f3747d60fd2d1b45b17139b266124e9d4bf"
+    }
+  },
+  {
+    "world": "open-extensions",
+    "codec": false,
+    "artifacts": {
+      "service_api.py": "f7c13c02a76af7190cf2401f1f32c8aba8082da54af8bc24cf00d3d7f76c798c",
+      "model.py": "0639dc7d5a54fdc4b9f716886ac89f3747d60fd2d1b45b17139b266124e9d4bf"
+    }
+  },
+  {
+    "world": "open-extensions",
+    "codec": true,
+    "artifacts": {
+      "service_codec.py": "b4a5b2d73c1ebb7804835cf925778e2f1056159a4261af00843cefdc4bf52a9a",
+      "service_api.py": "f7c13c02a76af7190cf2401f1f32c8aba8082da54af8bc24cf00d3d7f76c798c",
+      "model.py": "0639dc7d5a54fdc4b9f716886ac89f3747d60fd2d1b45b17139b266124e9d4bf"
+    }
+  }
+]

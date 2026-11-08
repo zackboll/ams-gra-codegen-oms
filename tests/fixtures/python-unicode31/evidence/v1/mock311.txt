@@ -1,0 +1,24 @@
+test_close_while_connecting_pending_or_from_handler (test_mock.MockTests.test_close_while_connecting_pending_or_from_handler) ... ok
+test_codec_failure_and_internal_error_distinction (test_mock.MockTests.test_codec_failure_and_internal_error_distinction) ... ok
+test_connect_and_dispatch_cancellation_and_close (test_mock.MockTests.test_connect_and_dispatch_cancellation_and_close) ... ok
+test_envelope_duplicates_lexemes_qnames_and_recovery (test_mock.MockTests.test_envelope_duplicates_lexemes_qnames_and_recovery) ... ok
+test_handler_cancellation_and_outgoing_limit (test_mock.MockTests.test_handler_cancellation_and_outgoing_limit) ... ok
+test_handler_failure_and_async_isolation (test_mock.MockTests.test_handler_failure_and_async_isolation) ... ok
+test_handler_timeout_event_bound_and_rejected_sub_cleanup (test_mock.MockTests.test_handler_timeout_event_bound_and_rejected_sub_cleanup) ... ok
+test_handshake_failures_and_connect_timeout (test_mock.MockTests.test_handshake_failures_and_connect_timeout) ... ok
+test_init_info_publish_generated_facade_and_closure (test_mock.MockTests.test_init_info_publish_generated_facade_and_closure) ... ok
+test_input_validation_and_registry_before_frames (test_mock.MockTests.test_input_validation_and_registry_before_frames) ... ok
+test_msg_before_ack_and_serialized_pending_operations (test_mock.MockTests.test_msg_before_ack_and_serialized_pending_operations) ... ok
+test_non_oam_clark_identity_mock_only (test_mock.MockTests.test_non_oam_clark_identity_mock_only) ... ok
+test_operation_timeout_and_cancellation_are_terminal (test_mock.MockTests.test_operation_timeout_and_cancellation_are_terminal) ... ok
+test_server_rejection_does_not_poison_following_operations (test_mock.MockTests.test_server_rejection_does_not_poison_following_operations) ... ok
+test_subscribe_sid_groups_interleaved_info_unsubscribe (test_mock.MockTests.test_subscribe_sid_groups_interleaved_info_unsubscribe) ... ok
+test_subscription_limit_and_bounded_queues (test_mock.MockTests.test_subscription_limit_and_bounded_queues) ... ok
+test_transport_binary_and_message_size_failures (test_mock.MockTests.test_transport_binary_and_message_size_failures) ... ok
+test_unsolicited_error_bad_protocol_and_unsubscribe_cancellation (test_mock.MockTests.test_unsolicited_error_bad_protocol_and_unsubscribe_cancellation) ... ok
+test_wss_trust_and_hostname_verification (test_mock.MockTests.test_wss_trust_and_hostname_verification) ... ok
+
+----------------------------------------------------------------------
+Ran 19 tests in 0.755s
+
+OK

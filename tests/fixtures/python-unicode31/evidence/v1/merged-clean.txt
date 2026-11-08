@@ -1,0 +1,130 @@
+Previous HEAD position was 8f305b2 Add checked Python Unicode 3.1 string models and OMS codecs
+HEAD is now at 820b6c7 Merge remote-tracking branch 'origin/main' into feature/py-018-unicode31-strings
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running unittests src/lib.rs (target/debug/deps/ams_gra_oms_backend_python-2f4b12a97ad01de0)
+
+running 6 tests
+test service_codec::tests::unbounded_runtime_replaces_exactly_one_check ... ok
+test service_codec::tests::unbounded_runtime_rejects_missing_or_duplicate_checks ... ok
+test tests::float64_bounds_are_shared_classifications_and_exact_bits ... ok
+test tests::unsupported_primitives_and_facets_fail_closed ... ok
+test tests::backend_identity_and_empty_schema_fail_closed ... ok
+test names::tests::python_symbols_and_literals_are_deterministic ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/choice.rs (target/debug/deps/choice-d9da8b3c7a7aefc3)
+
+running 1 test
+test effective_choice_ancestry_and_codec_provenance_fail_closed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/codecs.rs (target/debug/deps/codecs-d51c64e152111bd1)
+
+running 2 tests
+test inherited_wire_qnames_come_from_authored_members_not_the_concrete_owner ... ok
+test alias_chains_and_unique_scalar_payloads_preserve_exact_types_and_wire_values ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+
+     Running tests/datetime.rs (target/debug/deps/datetime-09d3eab42cb73b34)
+
+running 1 test
+test datetime_ancestry_is_proven_not_flattened ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/duration.rs (target/debug/deps/duration-8c3bb6f3660a0a60)
+
+running 1 test
+test duration_ancestry_and_aliases_fail_closed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/header_profiles.rs (target/debug/deps/header_profiles-8e7eeba330265b04)
+
+running 1 test
+test normalized_neighbours_and_pattern_alternatives_stay_unsupported ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/hexbinary.rs (target/debug/deps/hexbinary-b1369859f9875b90)
+
+running 2 tests
+test unsupported_effective_domains_aliases_and_field_facets_fail_closed ... ok
+test unknown_and_base64_provenance_fail_before_codec_artifacts ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/models.rs (target/debug/deps/models-4c807e302ea62cb0)
+
+running 12 tests
+test golden_output_is_byte_identical_and_world_is_explicit ... ok
+test float64_named_ancestry_requires_resolved_compatible_domains ... ok
+test negative_schema_fixtures_return_errors_and_no_artifacts ... ok
+test zero_oms_service_api_is_generated_without_a_model ... ok
+test python_specific_name_collisions_fail_closed ... ok
+test unsupported_ir_semantics_fail_closed_without_artifacts ... ok
+test ancestry_names_are_not_emitted_and_special_members_are_safely_prefixed ... ok
+test base_only_abstract_ancestry_executes_without_an_abstract_class ... ok
+test shared_four_level_fixture_executes_in_authored_field_order ... ok
+test scalar_subset_compiles_imports_and_validates_at_runtime ... ok
+test real_track_compiles_imports_and_validates_at_runtime ... ok
+test generated_float64_comparisons_match_shared_domains_at_ieee_edges ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
+
+     Running tests/nato_special_words.rs (target/debug/deps/nato_special_words-7174cbf266d4000e)
+
+running 2 tests
+test helper_is_absent_without_profile ... ok
+test exact_profile_and_named_ancestry_fail_closed ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/network_addresses.rs (target/debug/deps/network_addresses-6a3d5a915b32edf4)
+
+running 3 tests
+test no_address_helpers_are_emitted_for_address_free_schemas ... ok
+test addresses_revalidate_without_choice_and_other_alternating_profiles_stay_unsupported ... ok
+test profile_ancestry_is_proven_at_every_edge_and_aliases_remain_unsupported ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+     Running tests/unicode_strings.rs (target/debug/deps/unicode_strings-3baaa54da9682ce5)
+
+running 2 tests
+test runtime_absent_without_admitted_profiles ... ok
+test exact_facets_ancestry_and_names_fail_closed ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/visible_ascii.rs (target/debug/deps/visible_ascii-88dfbdd63a2ea415)
+
+running 1 test
+test effective_facets_and_named_ancestry_fail_closed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/whitespace_visible.rs (target/debug/deps/whitespace_visible-abb9a4774ef33665)
+
+running 1 test
+test effective_profile_and_every_named_edge_are_proven ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+   Doc-tests ams_gra_oms_backend_python
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running tests/python_unicode_strings.rs (target/debug/deps/python_unicode_strings-7e117ed6f79130be)
+
+running 2 tests
+test neighboring_profiles_reject_atomically_and_names_do_not_authorize ... ok
+test independent_lexical_models_codecs_worlds_imports_and_optimization ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.12s

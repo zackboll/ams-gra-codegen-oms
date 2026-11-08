@@ -1,0 +1,314 @@
+[
+  {
+    "version": "2.5",
+    "world": "closed-schema",
+    "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+    "include_sha256": "4a8056f1503234d423a0c2495844ab65387febced62bea58b87d4f343e9e7a0b",
+    "profiles": [
+      {
+        "constraints_debug": "ConstraintSet { min_inclusive: None, max_inclusive: None, min_exclusive: None, max_exclusive: None, length: Some(12), min_length: None, max_length: None, lexical: LexicalConstraintSet { pattern_groups: [PatternGroup { alternatives: [PatternExpression { dialect: XmlSchema, expression: \"(([12]\\\\d\\\\d\\\\d)((0[1-9])|(1[012]))(0[1-9]|[12][0-9]|3[01])([01][0-9]|[2][0-3])([0-5][0-9]))\" }, PatternExpression { dialect: XmlSchema, expression: \" {12}\" }] }], white_space: None } }",
+        "length": 12,
+        "name": "NITF_DateAndTimeType",
+        "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+        "patterns": [
+          [
+            "(([12]\\d\\d\\d)((0[1-9])|(1[012]))(0[1-9]|[12][0-9]|3[01])([01][0-9]|[2][0-3])([0-5][0-9]))",
+            " {12}"
+          ]
+        ],
+        "profile": 0,
+        "white_space": "None"
+      },
+      {
+        "constraints_debug": "ConstraintSet { min_inclusive: None, max_inclusive: None, min_exclusive: None, max_exclusive: None, length: Some(8), min_length: None, max_length: None, lexical: LexicalConstraintSet { pattern_groups: [PatternGroup { alternatives: [PatternExpression { dialect: XmlSchema, expression: \"([12]\\\\d\\\\d\\\\d((0[1-9])|(1[012]))(0[1-9]|[12][0-9]|3[01]))\" }, PatternExpression { dialect: XmlSchema, expression: \" {8}\" }] }], white_space: None } }",
+        "length": 8,
+        "name": "NITF_DateType",
+        "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+        "patterns": [
+          [
+            "([12]\\d\\d\\d((0[1-9])|(1[012]))(0[1-9]|[12][0-9]|3[01]))",
+            " {8}"
+          ]
+        ],
+        "profile": 1,
+        "white_space": "None"
+      },
+      {
+        "constraints_debug": "ConstraintSet { min_inclusive: None, max_inclusive: None, min_exclusive: None, max_exclusive: None, length: Some(21), min_length: None, max_length: None, lexical: LexicalConstraintSet { pattern_groups: [PatternGroup { alternatives: [PatternExpression { dialect: XmlSchema, expression: \"([0-8]\\\\d([0-5]\\\\d){2}\\\\.\\\\d{2}(N|S)(0\\\\d{2}|1[0-7]\\\\d)([0-5]\\\\d){2}\\\\.\\\\d{2}(E|W))\" }, PatternExpression { dialect: XmlSchema, expression: \"([\\\\+\\\\-]{1}[0-8]\\\\d\\\\.\\\\d{6}[\\\\+\\\\-]{1}(0\\\\d{2}|1[0-7]\\\\d)\\\\.\\\\d{6})\" }] }], white_space: None } }",
+        "length": 21,
+        "name": "NITF_MSTGTA_TargetLocationType",
+        "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+        "patterns": [
+          [
+            "([0-8]\\d([0-5]\\d){2}\\.\\d{2}(N|S)(0\\d{2}|1[0-7]\\d)([0-5]\\d){2}\\.\\d{2}(E|W))",
+            "([\\+\\-]{1}[0-8]\\d\\.\\d{6}[\\+\\-]{1}(0\\d{2}|1[0-7]\\d)\\.\\d{6})"
+          ]
+        ],
+        "profile": 2,
+        "white_space": "None"
+      }
+    ],
+    "extracted_sha256": "179321250e59651f3f9c1aec3ef8277942daf058c185becb32d938857b53540d",
+    "artifacts": {
+      "model.py": "729f0f0942959dde0339b14caa577c60ce7692439d3696c6c28b993249eb77e8",
+      "service_api.py": "6795eaa732bcc8f1e3b6aed282f73b0ff519f721ba05a88694bdec762ac3a83f",
+      "service_codec.py": "705dd33ebbbbcfc3d8edd31c9afec01ada94df12a5aef745e719b6e4e7ab884f"
+    },
+    "executions": [
+      {
+        "optimized": false,
+        "style": "standalone",
+        "tests": 4
+      },
+      {
+        "optimized": false,
+        "style": "package",
+        "tests": 4
+      },
+      {
+        "optimized": true,
+        "style": "standalone",
+        "tests": 4
+      },
+      {
+        "optimized": true,
+        "style": "package",
+        "tests": 4
+      }
+    ]
+  },
+  {
+    "version": "2.5",
+    "world": "open-extensions",
+    "root_sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+    "include_sha256": "4a8056f1503234d423a0c2495844ab65387febced62bea58b87d4f343e9e7a0b",
+    "profiles": [
+      {
+        "constraints_debug": "ConstraintSet { min_inclusive: None, max_inclusive: None, min_exclusive: None, max_exclusive: None, length: Some(12), min_length: None, max_length: None, lexical: LexicalConstraintSet { pattern_groups: [PatternGroup { alternatives: [PatternExpression { dialect: XmlSchema, expression: \"(([12]\\\\d\\\\d\\\\d)((0[1-9])|(1[012]))(0[1-9]|[12][0-9]|3[01])([01][0-9]|[2][0-3])([0-5][0-9]))\" }, PatternExpression { dialect: XmlSchema, expression: \" {12}\" }] }], white_space: None } }",
+        "length": 12,
+        "name": "NITF_DateAndTimeType",
+        "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+        "patterns": [
+          [
+            "(([12]\\d\\d\\d)((0[1-9])|(1[012]))(0[1-9]|[12][0-9]|3[01])([01][0-9]|[2][0-3])([0-5][0-9]))",
+            " {12}"
+          ]
+        ],
+        "profile": 0,
+        "white_space": "None"
+      },
+      {
+        "constraints_debug": "ConstraintSet { min_inclusive: None, max_inclusive: None, min_exclusive: None, max_exclusive: None, length: Some(8), min_length: None, max_length: None, lexical: LexicalConstraintSet { pattern_groups: [PatternGroup { alternatives: [PatternExpression { dialect: XmlSchema, expression: \"([12]\\\\d\\\\d\\\\d((0[1-9])|(1[012]))(0[1-9]|[12][0-9]|3[01]))\" }, PatternExpression { dialect: XmlSchema, expression: \" {8}\" }] }], white_space: None } }",
+        "length": 8,
+        "name": "NITF_DateType",
+        "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+        "patterns": [
+          [
+            "([12]\\d\\d\\d((0[1-9])|(1[012]))(0[1-9]|[12][0-9]|3[01]))",
+            " {8}"
+          ]
+        ],
+        "profile": 1,
+        "white_space": "None"
+      },
+      {
+        "constraints_debug": "ConstraintSet { min_inclusive: None, max_inclusive: None, min_exclusive: None, max_exclusive: None, length: Some(21), min_length: None, max_length: None, lexical: LexicalConstraintSet { pattern_groups: [PatternGroup { alternatives: [PatternExpression { dialect: XmlSchema, expression: \"([0-8]\\\\d([0-5]\\\\d){2}\\\\.\\\\d{2}(N|S)(0\\\\d{2}|1[0-7]\\\\d)([0-5]\\\\d){2}\\\\.\\\\d{2}(E|W))\" }, PatternExpression { dialect: XmlSchema, expression: \"([\\\\+\\\\-]{1}[0-8]\\\\d\\\\.\\\\d{6}[\\\\+\\\\-]{1}(0\\\\d{2}|1[0-7]\\\\d)\\\\.\\\\d{6})\" }] }], white_space: None } }",
+        "length": 21,
+        "name": "NITF_MSTGTA_TargetLocationType",
+        "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+        "patterns": [
+          [
+            "([0-8]\\d([0-5]\\d){2}\\.\\d{2}(N|S)(0\\d{2}|1[0-7]\\d)([0-5]\\d){2}\\.\\d{2}(E|W))",
+            "([\\+\\-]{1}[0-8]\\d\\.\\d{6}[\\+\\-]{1}(0\\d{2}|1[0-7]\\d)\\.\\d{6})"
+          ]
+        ],
+        "profile": 2,
+        "white_space": "None"
+      }
+    ],
+    "extracted_sha256": "179321250e59651f3f9c1aec3ef8277942daf058c185becb32d938857b53540d",
+    "artifacts": {
+      "model.py": "729f0f0942959dde0339b14caa577c60ce7692439d3696c6c28b993249eb77e8",
+      "service_api.py": "6795eaa732bcc8f1e3b6aed282f73b0ff519f721ba05a88694bdec762ac3a83f",
+      "service_codec.py": "705dd33ebbbbcfc3d8edd31c9afec01ada94df12a5aef745e719b6e4e7ab884f"
+    },
+    "executions": [
+      {
+        "optimized": false,
+        "style": "standalone",
+        "tests": 4
+      },
+      {
+        "optimized": false,
+        "style": "package",
+        "tests": 4
+      },
+      {
+        "optimized": true,
+        "style": "standalone",
+        "tests": 4
+      },
+      {
+        "optimized": true,
+        "style": "package",
+        "tests": 4
+      }
+    ]
+  },
+  {
+    "version": "2.6",
+    "world": "closed-schema",
+    "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+    "include_sha256": "ee6e58d5db9fd80d526bc964b8244ec296d106301640d34c3cb2c5c00b710b88",
+    "profiles": [
+      {
+        "constraints_debug": "ConstraintSet { min_inclusive: None, max_inclusive: None, min_exclusive: None, max_exclusive: None, length: Some(12), min_length: None, max_length: None, lexical: LexicalConstraintSet { pattern_groups: [PatternGroup { alternatives: [PatternExpression { dialect: XmlSchema, expression: \"(([12]\\\\d\\\\d\\\\d)((0[1-9])|(1[012]))(0[1-9]|[12][0-9]|3[01])([01][0-9]|[2][0-3])([0-5][0-9]))\" }, PatternExpression { dialect: XmlSchema, expression: \" {12}\" }] }], white_space: None } }",
+        "length": 12,
+        "name": "NITF_DateAndTimeType",
+        "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+        "patterns": [
+          [
+            "(([12]\\d\\d\\d)((0[1-9])|(1[012]))(0[1-9]|[12][0-9]|3[01])([01][0-9]|[2][0-3])([0-5][0-9]))",
+            " {12}"
+          ]
+        ],
+        "profile": 0,
+        "white_space": "None"
+      },
+      {
+        "constraints_debug": "ConstraintSet { min_inclusive: None, max_inclusive: None, min_exclusive: None, max_exclusive: None, length: Some(8), min_length: None, max_length: None, lexical: LexicalConstraintSet { pattern_groups: [PatternGroup { alternatives: [PatternExpression { dialect: XmlSchema, expression: \"([12]\\\\d\\\\d\\\\d((0[1-9])|(1[012]))(0[1-9]|[12][0-9]|3[01]))\" }, PatternExpression { dialect: XmlSchema, expression: \" {8}\" }] }], white_space: None } }",
+        "length": 8,
+        "name": "NITF_DateType",
+        "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+        "patterns": [
+          [
+            "([12]\\d\\d\\d((0[1-9])|(1[012]))(0[1-9]|[12][0-9]|3[01]))",
+            " {8}"
+          ]
+        ],
+        "profile": 1,
+        "white_space": "None"
+      },
+      {
+        "constraints_debug": "ConstraintSet { min_inclusive: None, max_inclusive: None, min_exclusive: None, max_exclusive: None, length: Some(21), min_length: None, max_length: None, lexical: LexicalConstraintSet { pattern_groups: [PatternGroup { alternatives: [PatternExpression { dialect: XmlSchema, expression: \"([0-8]\\\\d([0-5]\\\\d){2}\\\\.\\\\d{2}(N|S)(0\\\\d{2}|1[0-7]\\\\d)([0-5]\\\\d){2}\\\\.\\\\d{2}(E|W))\" }, PatternExpression { dialect: XmlSchema, expression: \"([\\\\+\\\\-]{1}[0-8]\\\\d\\\\.\\\\d{6}[\\\\+\\\\-]{1}(0\\\\d{2}|1[0-7]\\\\d)\\\\.\\\\d{6})\" }] }], white_space: None } }",
+        "length": 21,
+        "name": "NITF_MSTGTA_TargetLocationType",
+        "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+        "patterns": [
+          [
+            "([0-8]\\d([0-5]\\d){2}\\.\\d{2}(N|S)(0\\d{2}|1[0-7]\\d)([0-5]\\d){2}\\.\\d{2}(E|W))",
+            "([\\+\\-]{1}[0-8]\\d\\.\\d{6}[\\+\\-]{1}(0\\d{2}|1[0-7]\\d)\\.\\d{6})"
+          ]
+        ],
+        "profile": 2,
+        "white_space": "None"
+      }
+    ],
+    "extracted_sha256": "06b04571a2bd50d9955e31efc0fdd3c66e4ce20ed461af6d09e9a2fd2c0f2a30",
+    "artifacts": {
+      "model.py": "729f0f0942959dde0339b14caa577c60ce7692439d3696c6c28b993249eb77e8",
+      "service_api.py": "6795eaa732bcc8f1e3b6aed282f73b0ff519f721ba05a88694bdec762ac3a83f",
+      "service_codec.py": "705dd33ebbbbcfc3d8edd31c9afec01ada94df12a5aef745e719b6e4e7ab884f"
+    },
+    "executions": [
+      {
+        "optimized": false,
+        "style": "standalone",
+        "tests": 4
+      },
+      {
+        "optimized": false,
+        "style": "package",
+        "tests": 4
+      },
+      {
+        "optimized": true,
+        "style": "standalone",
+        "tests": 4
+      },
+      {
+        "optimized": true,
+        "style": "package",
+        "tests": 4
+      }
+    ]
+  },
+  {
+    "version": "2.6",
+    "world": "open-extensions",
+    "root_sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+    "include_sha256": "ee6e58d5db9fd80d526bc964b8244ec296d106301640d34c3cb2c5c00b710b88",
+    "profiles": [
+      {
+        "constraints_debug": "ConstraintSet { min_inclusive: None, max_inclusive: None, min_exclusive: None, max_exclusive: None, length: Some(12), min_length: None, max_length: None, lexical: LexicalConstraintSet { pattern_groups: [PatternGroup { alternatives: [PatternExpression { dialect: XmlSchema, expression: \"(([12]\\\\d\\\\d\\\\d)((0[1-9])|(1[012]))(0[1-9]|[12][0-9]|3[01])([01][0-9]|[2][0-3])([0-5][0-9]))\" }, PatternExpression { dialect: XmlSchema, expression: \" {12}\" }] }], white_space: None } }",
+        "length": 12,
+        "name": "NITF_DateAndTimeType",
+        "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+        "patterns": [
+          [
+            "(([12]\\d\\d\\d)((0[1-9])|(1[012]))(0[1-9]|[12][0-9]|3[01])([01][0-9]|[2][0-3])([0-5][0-9]))",
+            " {12}"
+          ]
+        ],
+        "profile": 0,
+        "white_space": "None"
+      },
+      {
+        "constraints_debug": "ConstraintSet { min_inclusive: None, max_inclusive: None, min_exclusive: None, max_exclusive: None, length: Some(8), min_length: None, max_length: None, lexical: LexicalConstraintSet { pattern_groups: [PatternGroup { alternatives: [PatternExpression { dialect: XmlSchema, expression: \"([12]\\\\d\\\\d\\\\d((0[1-9])|(1[012]))(0[1-9]|[12][0-9]|3[01]))\" }, PatternExpression { dialect: XmlSchema, expression: \" {8}\" }] }], white_space: None } }",
+        "length": 8,
+        "name": "NITF_DateType",
+        "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+        "patterns": [
+          [
+            "([12]\\d\\d\\d((0[1-9])|(1[012]))(0[1-9]|[12][0-9]|3[01]))",
+            " {8}"
+          ]
+        ],
+        "profile": 1,
+        "white_space": "None"
+      },
+      {
+        "constraints_debug": "ConstraintSet { min_inclusive: None, max_inclusive: None, min_exclusive: None, max_exclusive: None, length: Some(21), min_length: None, max_length: None, lexical: LexicalConstraintSet { pattern_groups: [PatternGroup { alternatives: [PatternExpression { dialect: XmlSchema, expression: \"([0-8]\\\\d([0-5]\\\\d){2}\\\\.\\\\d{2}(N|S)(0\\\\d{2}|1[0-7]\\\\d)([0-5]\\\\d){2}\\\\.\\\\d{2}(E|W))\" }, PatternExpression { dialect: XmlSchema, expression: \"([\\\\+\\\\-]{1}[0-8]\\\\d\\\\.\\\\d{6}[\\\\+\\\\-]{1}(0\\\\d{2}|1[0-7]\\\\d)\\\\.\\\\d{6})\" }] }], white_space: None } }",
+        "length": 21,
+        "name": "NITF_MSTGTA_TargetLocationType",
+        "namespace": "https://www.vdl.afrl.af.mil/programs/oam",
+        "patterns": [
+          [
+            "([0-8]\\d([0-5]\\d){2}\\.\\d{2}(N|S)(0\\d{2}|1[0-7]\\d)([0-5]\\d){2}\\.\\d{2}(E|W))",
+            "([\\+\\-]{1}[0-8]\\d\\.\\d{6}[\\+\\-]{1}(0\\d{2}|1[0-7]\\d)\\.\\d{6})"
+          ]
+        ],
+        "profile": 2,
+        "white_space": "None"
+      }
+    ],
+    "extracted_sha256": "06b04571a2bd50d9955e31efc0fdd3c66e4ce20ed461af6d09e9a2fd2c0f2a30",
+    "artifacts": {
+      "model.py": "729f0f0942959dde0339b14caa577c60ce7692439d3696c6c28b993249eb77e8",
+      "service_api.py": "6795eaa732bcc8f1e3b6aed282f73b0ff519f721ba05a88694bdec762ac3a83f",
+      "service_codec.py": "705dd33ebbbbcfc3d8edd31c9afec01ada94df12a5aef745e719b6e4e7ab884f"
+    },
+    "executions": [
+      {
+        "optimized": false,
+        "style": "standalone",
+        "tests": 4
+      },
+      {
+        "optimized": false,
+        "style": "package",
+        "tests": 4
+      },
+      {
+        "optimized": true,
+        "style": "standalone",
+        "tests": 4
+      },
+      {
+        "optimized": true,
+        "style": "package",
+        "tests": 4
+      }
+    ]
+  }
+]

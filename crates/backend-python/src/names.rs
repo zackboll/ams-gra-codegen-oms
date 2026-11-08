@@ -82,6 +82,11 @@ pub(crate) fn validate(schema: &SchemaIr, declarations: &[&TypeDecl]) -> Result<
         top.insert("staticmethod".to_owned());
         top.insert("value".to_owned());
     }
+    if crate::unicode_string::uses(schema) {
+        for name in ["ord", "any", "enumerate"] {
+            top.insert(name.to_owned());
+        }
+    }
     if crate::uses_binary(schema) {
         top.insert("bytes".to_owned());
     }

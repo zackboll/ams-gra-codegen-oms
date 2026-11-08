@@ -1,0 +1,9 @@
+test_all_modes_have_fixed_registration_sources (test_python_qualification.ProductDiscovery.test_all_modes_have_fixed_registration_sources) ... ok
+test_actual_runner_adversarial_matrix (test_python_qualification.RunnerExecution.test_actual_runner_adversarial_matrix) ... ok
+test_uci_invalid_inputs_clear_previous_success (test_python_qualification.RunnerExecution.test_uci_invalid_inputs_clear_previous_success) ... ok
+test_uci_receipt_requires_existing_artifact_directory_and_atomic_publication (test_python_qualification.RunnerExecution.test_uci_receipt_requires_existing_artifact_directory_and_atomic_publication) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 9.860s
+
+OK
