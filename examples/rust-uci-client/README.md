@@ -2,8 +2,9 @@
 
 A real Cargo application, not a test facade. One
 `SleetRuntime<ServiceCodec>` connects to Sleet with one connection and one worker
-hosting four independently typed subscriptions: Log, RDMA_InitializeSetup,
-SurvivabilityRiskLevel and DLZ. Optional publications use their matching generated
+hosting four independently typed subscriptions by default: Log, RDMA_InitializeSetup,
+SurvivabilityRiskLevel and DLZ. `--enable-file-metadata` adds a fifth generated
+FileMetadata subscription on `file.metadata`, using the same runtime. Optional publications use their matching generated
 output endpoints. Handlers receive generated model values and
 clone them into a channel; the application thread prints typed fields and owns
 all blocking runtime operations.
@@ -26,13 +27,93 @@ sums of the individual services):
 
 | Release | Selected/renderable messages | Selected/renderable model types | Available/required codec declarations | Status |
 | --- | --- | --- | --- | --- |
-| 2.5 | 4/4 | 81/81 | 80/80 | model and codec READY |
-| 2.6 | 4/4 | 82/82 | 81/81 | model and codec READY |
+| 2.5 | 5/5 | 95/95 | 93/93 | model and codec READY |
+| 2.6 | 5/5 | 98/98 | 96/96 | model and codec READY |
 
 Each release generates one combined model, API and `ServiceCodec` implementing
 `OmsJsonCodec` for `LogMT`, `RDMAInitializeSetupMT`,
-`SurvivabilityRiskLevelMT` and `DLZMT`. Each function has input `receive` and
+`SurvivabilityRiskLevelMT`, `DLZMT` and `FileMetadataMT`. Each function has input `receive` and
 output `publish` exchanges. No handwritten codec or alternate runtime is used.
+
+## Optional FileMetadata (RUST-OMS-011)
+
+Without `--enable-file-metadata`, every session still establishes **exactly four**
+subscriptions; no FileMetadata subscription or publication is attempted. The
+value-less opt-in adds exactly one fifth subscription in initial and restored
+sessions. `--publish-file-metadata FILE` requires that switch and reads an OMS JSON
+payload **body**, not a `{"FileMetadata": ...}` envelope. All selected publications
+are decoded by the generated codec and checked for the build-selected header
+version before any connection or publication.
+
+Both releases generate these exact endpoints:
+
+- `service_api::function_file_metadata::exchange_receive::subscribe`
+- `service_api::function_file_metadata::exchange_publish::publish`
+- Payload: `model::FileMetadataMT`; global name `FileMetadata`; namespace
+  `https://www.vdl.afrl.af.mil/programs/oam`; topic `file.metadata`; no group.
+
+Authorize `file.metadata` in the existing broker service's `allowed_topics`, in
+addition to the four topics below. After selecting/building a release as described
+below, author a hash-free payload independently (no model encoder is needed):
+
+```bash
+cat > "$CLIENT_SCRATCH/file-metadata.json" <<EOF
+{
+  "SecurityInformation": {"Classification":"U", "OwnerProducer":[{"GovernmentIdentifier":"USA"}]},
+  "MessageHeader": {
+    "SystemID":{"UUID":"550e8400-e29b-41d4-a716-446655440000"},
+    "Timestamp":"2026-01-01T00:00:00Z",
+    "SchemaVersion":"002.${AMS_GRA_UCI_RELEASE#2.}.0", "Mode":"LIVE"
+  },
+  "MessageData": {
+    "FileMetadataID":{"UUID":"550e8400-e29b-41d4-a716-446655440011"},
+    "FileDescription":{"FileType":["OTHER"], "FileFormat":{"NonMIME":{"Key":"META", "SystemName":"Independent"}}},
+    "FileName":"Report_011.txt",
+    "FileSource":{"SystemID":[{"UUID":"550e8400-e29b-41d4-a716-446655440030"}]},
+    "CreationSource":"OTHER", "UntrustedModification":false,
+    "Timestamp":"2026-02-03T04:05:06Z",
+    "SecurityInformation":{"Classification":"U", "OwnerProducer":[{"GovernmentIdentifier":"USA"}]}
+  }
+}
+EOF
+"$CLIENT_BIN" --url ws://127.0.0.1:9000 --service-id rust-uci-client \
+  --enable-file-metadata --publish-file-metadata "$CLIENT_SCRATCH/file-metadata.json"
+
+# Certificate-verified WSS; trust provisioning is described in the WSS section.
+"$CLIENT_BIN" --url wss://localhost:9443 --service-id rust-uci-client \
+  --enable-file-metadata --publish-file-metadata "$CLIENT_SCRATCH/file-metadata.json" \
+  --reconnect-attempts 2 --reconnect-delay-ms 250
+```
+
+The fifth handler receives the actual generated `FileMetadataMT`. Output includes
+FileMetadataID, checked FileName, CreationSource, Timestamp, optional-hash presence,
+and owning session epoch, not the full metadata body. This application never reads,
+transfers or hashes the described file.
+
+**Pinned-Sleet optional-hash limitation:** an authentic `SHA_2_Hash` is 32 octets,
+represented by 64 hex characters. The generated model correctly accepts it;
+pinned Sleet incorrectly counts hex characters for its length facet and rejects
+that publication. Do not truncate the value or weaken the carrier. **Hash-free
+FileMetadata is the qualified positive interoperability path.** Local codec
+acceptance (`VALIDATED`) and transport write (`PUBLISHED ... frame written`) are
+not broker acceptance or delivery acknowledgements. The asynchronous `ServerError`
+is retained, reported and terminal; rejected values produce no typed callback.
+Non-verbose OWP cannot attribute an error to a particular operation. Only an
+independent actual OWP `MSG` witness establishes observed delivery.
+
+Recovery uses the existing single process-wide attempt budget and unchanged
+execution deadline. All five subscriptions must be restored before the deadline
+check; old-worker join precedes replacement INIT, old typed queues are discarded,
+and initial publications are never replayed. Recovery is **not lossless**: there
+is no resume cursor, durable queue, offline buffering, exactly-once guarantee or
+recovery of messages sent during downtime. See the reconnect policy below.
+
+The existing standalone executable acceptance path now also runs five-message WS
+and verified-WSS cases for both releases, with independently authored FileMetadata,
+four-family ingress, TLS restart/capture, fresh INIT/INFO and five SUBs, no replay,
+five final UNSUBs, and procfs worker/socket cleanup. The original four-message
+acceptance and WSS certificate-negative controls remain in place. No second TLS
+transport, broker build, runner or workflow is introduced.
 
 ## Prerequisites and authentic inputs
 
@@ -157,7 +238,7 @@ such as `{"Log": ...}` or `{"DLZ": ...}`. The runtime owns envelopes and OWP.
 The generated `ServiceCodec` validates values through checked model constructors;
 generated models have no separate `Validate` trait. All selected files are
 decoded and their typed header versions checked **before connecting**, so a bad
-fourth file cannot cause partial publication of the first three. This is generated-model
+later file cannot cause partial publication of earlier files. This is generated-model
 validation, not a claim of complete XSD validation by the application.
 
 Expected output (SIDs/order can differ):
@@ -211,7 +292,7 @@ connecting, even with recovery disabled.
 Recovery begins only for `RuntimeEvent::ConnectionClosed`. The application closes
 and joins that session's runtime, drops its connection-local handles and queued
 typed messages, and only then opens a fresh runtime on the same URL/service/schema.
-Each session owns four new typed subscriptions and a private epoch-tagged channel.
+Each session owns four (or, with FileMetadata enabled, five) new typed subscriptions and a private epoch-tagged channel.
 Textual SIDs can repeat across connections; handles are never reused. Remaining
 old-session runtime errors other than connection loss are terminal, not discarded.
 There is never more than one application-owned runtime worker or connection.
@@ -226,7 +307,7 @@ The receive deadline starts after initial setup/publications, as before, and
 includes all recovery downtime. It is never reset. Delays and connect/INIT timeouts
 are capped by the remaining receive period. Exhaustion or expiry while unavailable
 exits nonzero with the original connection-loss context and the recovery failure.
-Normal completion unsubscribes all four current handles and joins the worker.
+Normal completion unsubscribes all active named handles and joins the worker.
 
 Lifecycle output distinguishes successful INIT from non-verbose SUB frame writes:
 
@@ -245,7 +326,7 @@ Typed `RECEIVED` lines retain their existing fields and append `session=N`.
 `SUBSCRIBED` and `RECONNECT_COMPLETE` do **not** claim broker acceptance: routing
 requires independent broker or actual typed-delivery evidence.
 
-**Publications are never replayed.** The optional four CLI files are submitted
+**Publications are never replayed.** The optional CLI publication files are submitted
 only in the initial established session. Recovery restores subscriptions only;
 there is no outgoing queue or invented delivery acknowledgment. A PUB frame written
 before failure has **unknown acceptance status**, unless independently witnessed.
@@ -264,9 +345,10 @@ Invalid JSON syntax is reported separately as `invalid input JSON`. Connection,
 subscription, publication, unsubscribe and shutdown errors return nonzero.
 `ServerError`, `SubscriptionDecodeError` (SID/message/cause, no typed delivery),
 protocol errors and connection closure are printed visibly. Only established
-connection loss may enter the opt-in recovery policy above. All four subscriptions are explicitly removed on the normal
-path; errors after setup also attempt all four removals and close. Early setup errors
-drop the runtime, whose production Drop signals and joins its worker.
+connection loss may enter the opt-in recovery policy above. All active subscriptions are explicitly removed on the normal
+path; errors also attempt every registered removal and close. Partial setup errors,
+including fifth-subscription registration failure, explicitly clean up earlier
+handles and close/join the runtime, preserving setup and cleanup errors.
 
 Malformed Survivability, invalid DLZ Time and mismatched header versions fail
 before INIT. Pinned Sleet admits `not-a-timeZ` in DLZ TimeOfIntercept; admission
