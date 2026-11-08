@@ -176,6 +176,7 @@ pub fn generate_service_codec(
     if schema.types.iter().any(|declaration| {
         crate::header_profile(declaration).is_some()
             || crate::network_address::profile(declaration).is_some()
+            || crate::unicode_string::profile(declaration).is_some()
             || crate::visible_ascii_profile(declaration).is_some()
             || crate::nato_special_words_profile(declaration)
     }) {
@@ -207,6 +208,7 @@ pub fn generate_service_codec(
         }
         if crate::header_profile(declaration).is_some()
             || crate::network_address::profile(declaration).is_some()
+            || crate::unicode_string::profile(declaration).is_some()
             || crate::visible_ascii_profile(declaration).is_some()
             || crate::nato_special_words_profile(declaration)
         {

@@ -1,0 +1,30 @@
+[
+  {
+    "attempt": "initial tool workspace",
+    "result": "missing configured directory; recovered via existing checkout and new worktree"
+  },
+  {
+    "attempt": "initial fixture",
+    "result": "missing version attribute/type-factory collision; corrected fixture, reruns passed"
+  },
+  {
+    "attempt": "initial incompatible XSD mutation",
+    "result": "changed ancestry inherited a valid alternate profile; corrected to explicitly incompatible effective length; reruns passed"
+  },
+  {
+    "attempt": "pinned-r1",
+    "result": "over-specific AO gate assumed closed-world diagnostic for open world; exact per-world boundary corrected; full rerun pinned-r2 passed"
+  },
+  {
+    "attempt": "clean-qualification",
+    "result": "parallel worktree creation/read race; no source change; completed clean reruns passed"
+  },
+  {
+    "attempt": "runtime.log",
+    "result": "wrong discovery pattern ran zero tests; not counted; test_mock.py ran 18 tests in both replacement runs"
+  },
+  {
+    "attempt": "initial compatibility gate",
+    "result": "independent output directories differ; exact argv-bound single-line canonicalization added and negative controls passed"
+  }
+]

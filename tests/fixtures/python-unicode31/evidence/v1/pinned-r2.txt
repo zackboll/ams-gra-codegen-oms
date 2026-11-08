@@ -1,0 +1,18 @@
+PY018 REAL PINNED PROFILES PASSED releases=2 profiles=3 worlds=2 executions=16 tests=64
+PY018 AO 2.5 closed-schema False 1
+PY018 AO 2.5 closed-schema True 1
+PY018 AO 2.5 open-extensions False 1
+PY018 AO 2.5 open-extensions True 1
+PY018 AO 2.6 closed-schema False 1
+PY018 AO 2.6 closed-schema True 1
+PY018 AO 2.6 open-extensions False 1
+PY018 AO 2.6 open-extensions True 1
+PY018 AO 2.5 closed-schema False 1
+PY018 AO 2.5 closed-schema True 1
+PY018 AO 2.5 open-extensions False 1
+PY018 AO 2.5 open-extensions True 1
+PY018 AO 2.6 closed-schema False 1
+PY018 AO 2.6 closed-schema True 1
+PY018 AO 2.6 open-extensions False 1
+PY018 AO 2.6 open-extensions True 1
+PY018 AO ACTUAL READINESS before=0/8 after=0/8 blocker=NITF_PackingPlanPET

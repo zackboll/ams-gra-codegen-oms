@@ -1,0 +1,158 @@
+{
+  "starting_main": {
+    "head": "1c48bcbff22535ef92b870d7a12ef6be7fdbf90b",
+    "tree": "7059845473ad84876760a38995c838341a04bd92"
+  },
+  "reconciled_main": {
+    "head": "ebb25de9c15f7dd26ce2ce319bc800191d7d9cfc",
+    "tree": "735ab7537274d5851598f464359cea1c68a80130"
+  },
+  "measured_implementation": {
+    "head": "8f305b2a354077f1e61ae6d0d7565afe3fb81b42",
+    "tree": "92228b2619f343006d1aea2645ca1ba4186bfcf6"
+  },
+  "production_sha256": {
+    "crates/backend-python/src/binary_codec_runtime.py": "d4e042d0ff427e67f781c39b340ca669e59877bd032afa1cfe9996f753e66014",
+    "crates/backend-python/src/binary_runtime.py": "4eb63ca4a477a3c326b1a8483245b56457ddc0c616e27b50da6450f783d74c47",
+    "crates/backend-python/src/codec_runtime.py": "1cac581f877c18898a6a71c8bc06f138cb27a55a368a701278cb333c6c803565",
+    "crates/backend-python/src/datetime_codec_runtime.py": "acc5089ee783815e693b1a163eb7b537b81c4e79294bfc25bd1dd6301c0a4bb2",
+    "crates/backend-python/src/datetime_runtime.py": "1d255fcbdd35151c13c8ff49c28cc1ceceaa700049adb5a7631b84afa156b6ba",
+    "crates/backend-python/src/duration_codec_runtime.py": "5752f502eeafc48299f973a973007e495b5aee1c713c0820c2205cf063cf663e",
+    "crates/backend-python/src/duration_runtime.py": "3f8426c9a2e361462bbece7b7d8f12f2129a4797c6766875bbf209b72b695d2f",
+    "crates/backend-python/src/float64_codec_runtime.py": "706cfc7ca10a7b278a7f0b3e7c8d35412819791423a8099776bcd80f79f25f6a",
+    "crates/backend-python/src/float64_runtime.py": "14d20e12b631056782d3b7244ff42ee2a7c8fd3347f0193711eab46cdbe385e0",
+    "crates/backend-python/src/header_codec_runtime.py": "e00159fb1f1e0839db6275fa8fb20cf6c2150a03fe810282c378c49c8c045eaa",
+    "crates/backend-python/src/header_runtime.py": "3f21a05dc5badad30c100570bde6f49797a627c298214ab028dfc702b5d56571",
+    "crates/backend-python/src/ipv4_runtime.py": "bd506b895a06067c68335c3269f1366f38620d12cd76741119b63db507b333e5",
+    "crates/backend-python/src/ipv6_runtime.py": "687d8dff843484094e491365f868010f2b1dba7a1df5b8cc00ba1bede80f8f6c",
+    "crates/backend-python/src/lib.rs": "710c9086bab9db620a651c2a38c5c9eac7e1a087ea27d72844fa7bea2d238b7e",
+    "crates/backend-python/src/names.rs": "31289e17421398e389bb31c7a88231b2453828de7d71fda3f0f672b78083cd99",
+    "crates/backend-python/src/nato_special_words_runtime.py": "53d1208cb4318573ddaee6410cad27709112aeb7340bcdbf770a10f95ec67628",
+    "crates/backend-python/src/network_address.rs": "439a377e9264261f3dbb653ea7c0649a7027f58592af0caaeb4706ad20fc814f",
+    "crates/backend-python/src/runtime.py": "3515dde68d97418471258e354e41ceceb6911138644856fb81a4c5265b931d69",
+    "crates/backend-python/src/service_api.rs": "736f52a065b7ff06e2c24b74b998720a114ddd5988092c9c1838e54db3463778",
+    "crates/backend-python/src/service_codec.rs": "d413a2e79c174c880b8a3debf8d183895c846985710ea11abc987d65978e0da1",
+    "crates/backend-python/src/service_runtime.py": "5814cc0370b28cecd75b1f15b2f684550192dd2f7286e4981c8124ba24b84e49",
+    "crates/backend-python/src/unicode31_runtime.py": "be0133e9d87e851b747210ad193b93b2b8877e6af64d9f88608e07678718ab90",
+    "crates/backend-python/src/unicode_string.rs": "4c50f9b7cd5397aa9b7139b98ff7e68913f1baef61d6dd03e63710a54dbe3f77",
+    "crates/backend-python/src/visible_ascii_runtime.py": "2d2d661c5487069d3a95aa8f8e84bfedf03cb017f54f7a73a5f4c3d85e19a0fa",
+    "crates/backend-python/src/whitespace_visible_runtime.py": "76239fbe39f5a1f876f52e38f09e369cd35db813b3f58d8b5ec56d5147cb3374"
+  },
+  "independent_lexical_cases": {
+    "total": 3099,
+    "date_and_time": 2267,
+    "date": 651,
+    "target_location": 181,
+    "positive": 2492,
+    "negative": 607,
+    "shared_rust_mismatches": 0
+  },
+  "historical_compatibility": {
+    "before_ready": 40,
+    "after_ready": 40,
+    "artifact_hashes_unchanged": 100,
+    "selected_support_identities_unchanged": 12,
+    "historical_evidence_files_unchanged": 36
+  },
+  "artifact_parity": {
+    "unicode_free_selections": 56,
+    "unicode_free_sources": 140,
+    "address_selections": 4,
+    "address_sources": 10,
+    "peer_generation": 6,
+    "peer_readiness": 12,
+    "peer_coverage": 2
+  },
+  "authentic_uci": {
+    "releases": [
+      "2.5",
+      "2.6"
+    ],
+    "profiles": 3,
+    "worlds": 2,
+    "import_styles": 2,
+    "optimization_policies": 2,
+    "python_versions": [
+      "3.11",
+      "3.13"
+    ],
+    "isolated_only": true
+  },
+  "ao_actual_readiness": {
+    "before": 0,
+    "after": 0,
+    "selections": 8,
+    "selected_types": 64,
+    "closed_support_types": 68,
+    "blocker": "NITF_PackingPlanPET abstract value",
+    "open_projection": "not closed under open-extensions; support closure unavailable"
+  },
+  "rust_tests": {
+    "backend": 35,
+    "cli": 416,
+    "clean_checkout": true,
+    "merged_clean_cli": 416
+  },
+  "qualification": [
+    {
+      "source": "976ba22103e0c8d98ec1ab596e9f5b84cd1353a5",
+      "tree": "fb11413efa6e18b295876e571cfdb4682accbb33",
+      "mode": "fast",
+      "versions": [
+        "3.11",
+        "3.13"
+      ],
+      "policies": [
+        "normal",
+        "optimized"
+      ],
+      "tests": 40
+    },
+    {
+      "source": "820b6c7c113b0ce4b33b20b8a874d3f522bfaf31",
+      "tree": "a5c1de744390adcf50e290b284f6cd490b13141f",
+      "mode": "uci",
+      "versions": [
+        "3.11",
+        "3.13"
+      ],
+      "policies": [
+        "normal",
+        "optimized"
+      ],
+      "tests": 11
+    },
+    {
+      "source": "820b6c7c113b0ce4b33b20b8a874d3f522bfaf31",
+      "tree": "a5c1de744390adcf50e290b284f6cd490b13141f",
+      "mode": "sleet",
+      "versions": [
+        "3.11",
+        "3.13"
+      ],
+      "policies": [
+        "normal",
+        "optimized"
+      ],
+      "tests": 11
+    }
+  ],
+  "qualification_totals": {
+    "fast": 160,
+    "uci": 44,
+    "sleet": 44,
+    "total": 248,
+    "skipped": 0
+  },
+  "sleet": {
+    "revision": "e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b",
+    "tree": "7e705f4eb5f658957bd414b4abc8207311f3c1e4",
+    "unicode31_valid_1369": "broker rejection before decoder",
+    "unicode31_invalid_1e950": "broker delivered; generated decoder rejection",
+    "recovery": true,
+    "unsubscribe": true,
+    "teardown": true
+  },
+  "shared_ir_and_peer_backend_production_changes": false,
+  "hosted": "not yet published"
+}

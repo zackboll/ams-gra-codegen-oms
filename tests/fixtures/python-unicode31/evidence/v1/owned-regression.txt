@@ -1,0 +1,13 @@
+test_omitted_skipped_forged_wrong_compiler_stale_and_masked_receipts (test_owned_qualification.Evidence.test_omitted_skipped_forged_wrong_compiler_stale_and_masked_receipts) ... ok
+test_python_receipts_reject_omitted_skipped_forged_stale_wrong_pins (test_owned_qualification.Evidence.test_python_receipts_reject_omitted_skipped_forged_stale_wrong_pins) ... ok
+test_fixed_ada_hooks_use_generators_built_by_owning_jobs (test_owned_qualification.HookContracts.test_fixed_ada_hooks_use_generators_built_by_owning_jobs) ... ok
+test_pinned_debug_generator_rejected_without_local_build_fallback (test_owned_qualification.HookContracts.test_pinned_debug_generator_rejected_without_local_build_fallback) ... ok
+test_missing_duplicate_unknown_and_unsafe_inputs_rejected (test_owned_qualification.Registration.test_missing_duplicate_unknown_and_unsafe_inputs_rejected) ... ok
+test_python_fixture_inventory_and_source_test_omission (test_owned_qualification.Registration.test_python_fixture_inventory_and_source_test_omission) ... ok
+test_source_only_new_task_and_owned_fixture_need_no_policy_edits (test_owned_qualification.Registration.test_source_only_new_task_and_owned_fixture_need_no_policy_edits) ... ok
+test_symlinks_hardlinks_executables_and_ambiguous_owners_rejected (test_owned_qualification.Registration.test_symlinks_hardlinks_executables_and_ambiguous_owners_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.777s
+
+OK

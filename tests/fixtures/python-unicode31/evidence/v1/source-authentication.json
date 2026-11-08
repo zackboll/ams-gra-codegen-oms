@@ -1,0 +1,10 @@
+{
+  "measured_commits": {
+    "1c48bcb": "7059845473ad84876760a38995c838341a04bd92",
+    "8f305b2": "92228b2619f343006d1aea2645ca1ba4186bfcf6",
+    "820b6c7": "a5c1de744390adcf50e290b284f6cd490b13141f",
+    "976ba22": "fb11413efa6e18b295876e571cfdb4682accbb33"
+  },
+  "generator_sha256": "a39f463e1cbc26b2e57355f3a06fc2b91602f57a1634ccc6a016872e863b7a6e",
+  "baseline_generator_sha256": "9bf13020e1cb970da73c8004c3ff417ad6bb71533336cf122feeda90ff7c039f"
+}

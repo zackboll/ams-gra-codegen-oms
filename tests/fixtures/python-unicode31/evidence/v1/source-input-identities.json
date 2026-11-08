@@ -1,0 +1,30 @@
+{
+  "source": [
+    "820b6c7c113b0ce4b33b20b8a874d3f522bfaf31",
+    "a5c1de744390adcf50e290b284f6cd490b13141f"
+  ],
+  "files": {
+    "crates/backend-python/src/lib.rs": "710c9086bab9db620a651c2a38c5c9eac7e1a087ea27d72844fa7bea2d238b7e",
+    "crates/backend-python/src/names.rs": "31289e17421398e389bb31c7a88231b2453828de7d71fda3f0f672b78083cd99",
+    "crates/backend-python/src/service_codec.rs": "d413a2e79c174c880b8a3debf8d183895c846985710ea11abc987d65978e0da1",
+    "crates/backend-python/src/unicode31_runtime.py": "be0133e9d87e851b747210ad193b93b2b8877e6af64d9f88608e07678718ab90",
+    "crates/backend-python/src/unicode_string.rs": "4c50f9b7cd5397aa9b7139b98ff7e68913f1baef61d6dd03e63710a54dbe3f77",
+    "crates/backend-python/tests/unicode_strings.rs": "82cbbc8c9b1e541e0d04ff7366560202e25cc693ca4b6621b42da91e60ea0bfd",
+    "crates/cli/examples/python_unicode_closure.rs": "4fbbf58583c22d02f5c2126764abef9844d25cd17762e89c813ca36ad236e67f",
+    "crates/cli/examples/python_unicode_profiles.rs": "f97e744e553437d0ebfa4108f222136e5ab64327ff66c7aff0b982d7b25aaee3",
+    "crates/cli/tests/python_unicode_strings.rs": "9c0eb4b0be49fb2d4f5b27845a15e2b6c6476ae7a0062e9478f26ae760cac4b4",
+    "docs/py-018-unicode31-strings.md": "1297c8fb1376f4c22377c083dccc219b35a72c31131f291d26cb02f1943fc3b0",
+    "python/oms-lacal-runtime/tests/test_unicode31_sleet.py": "4d5d37d0a3b114c8490bc94653a669b9715e00e3c11615f4fec6e8c794a4a97d",
+    "python/qualification/fast/test_unicode31.py": "f9eda0425d879f80b879a4d1492d6a7d6998272e14a8bbff2b098b7f2a5e9b78",
+    "python/qualification/sleet/test_unicode31_transport.py": "82ce033f8b53090b2890d7f0f26068f94286d88708b46f60caca8f5ed5fa5de1",
+    "python/qualification/uci/test_unicode31_uci.py": "36313987451cfc6c9191a7e512f088e3bca7cbb9d2aa24436d48dd953a3fb229",
+    "scripts/check-py018-compatibility.py": "c6c0761f5bf5bc21e347e796b1f7f3f08092bbf5a9b0937a1a77ed0a5a7be09c",
+    "scripts/check-py018-uci.py": "14d6268b1a060cfd658eac3244f53b63b31c757999702e883190ca90e47a9b9a",
+    "scripts/measure-py018-uci.py": "56289cb451aa8ed5dac8ca45983c0d3fa9723918af85af5b1d01234f0c21b45a",
+    "scripts/test-py018-uci.py": "04951ca7678dfe0a6a3d776bc634288fac741f5bced061eda940590e7f62e7fa",
+    "tests/fixtures/python-unicode31/cases.py": "17735f712f6a58c86e08dc355b54f90ac97d47f07b93dfc95d74b660314ba6e7",
+    "tests/fixtures/python-unicode31/oam.xsd": "7da6edf9abc45a8d2281d220052cf558b7ca8bed3eef278a12e65901c6aa7d0b",
+    "tests/fixtures/python-unicode31/probe.py": "0659d6cd710f1c7b4b6b4133772f22a2c445758d1765fb99bc26d53c2bf64f0b",
+    "tests/fixtures/python-unicode31/service.yaml": "72b8e94e922c604aa35659ad49cf97488937464a0584d9c07142ff676293024f"
+  }
+}
