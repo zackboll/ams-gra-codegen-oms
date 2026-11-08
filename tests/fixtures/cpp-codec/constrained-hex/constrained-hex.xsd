@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<!-- Synthetic CPP-OMS-007 fixture, not an authentic UCI schema. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:uci="https://www.vdl.afrl.af.mil/programs/oam"
+ targetNamespace="https://www.vdl.afrl.af.mil/programs/oam" elementFormDefault="qualified">
+ <xs:simpleType name="Digest"><xs:restriction base="xs:hexBinary"><xs:length value="32"/></xs:restriction></xs:simpleType>
+ <xs:complexType name="Nested"><xs:sequence><xs:element name="Hash" type="uci:Digest"/></xs:sequence></xs:complexType>
+ <xs:complexType name="Selection"><xs:choice><xs:element name="Hash" type="uci:Digest"/><xs:element name="Record" type="uci:Nested"/></xs:choice></xs:complexType>
+ <xs:complexType name="HexPayload"><xs:sequence>
+  <xs:element name="Required" type="uci:Digest"/>
+  <xs:element name="Optional" type="uci:Digest" minOccurs="0"/>
+  <xs:element name="Nested" type="uci:Nested"/>
+  <xs:element name="Choice" type="uci:Selection"/>
+ </xs:sequence></xs:complexType>
+ <xs:element name="HexNotice" type="uci:HexPayload" uci:version="001.000.000.000"/>
+</xs:schema>

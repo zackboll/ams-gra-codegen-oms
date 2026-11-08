@@ -61,6 +61,98 @@ fn codec_case() -> Case {
     }
 }
 
+fn constrained_hex_case() -> Case {
+    Case {
+        schema: fixtures().join("cpp-codec/constrained-hex/constrained-hex.xsd"),
+        contract: fixtures().join("cpp-codec/constrained-hex/service.yaml"),
+    }
+}
+
+#[test]
+fn constrained_hex_codec_delegates_to_checked_carriers() {
+    let case = constrained_hex_case();
+    let with = generate(&case, true, "hex-with");
+    let again = generate(&case, true, "hex-again");
+    let plain = generate(&case, false, "hex-plain");
+    for file in ["oam.hpp", "service_api.hpp"] {
+        assert_eq!(
+            std::fs::read(with.join(file)).unwrap(),
+            std::fs::read(plain.join(file)).unwrap()
+        );
+    }
+    assert_eq!(
+        std::fs::read(with.join("service_codec.hpp")).unwrap(),
+        std::fs::read(again.join("service_codec.hpp")).unwrap()
+    );
+    let source = root().join("tests/cpp-codec/constrained_hex_consumer.cpp");
+    for compiler in ["g++", "clang++"] {
+        assert!(
+            compiler_available(compiler),
+            "{compiler} required for qualification"
+        );
+        assert_eq!(
+            compile_and_run(
+                compiler,
+                STRICT,
+                &with,
+                std::slice::from_ref(&source),
+                &format!("hex-{compiler}")
+            ),
+            "CPP_OMS_007_HEX checks=272 rejections=67\n"
+        );
+    }
+    for name in ["codec-ada-hexbinary-single", "codec-ada-hexbinary-combined"] {
+        let output = run("service-check", &shared_case(name), true, None);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+        generate(&shared_case(name), true, name);
+    }
+}
+
+#[test]
+fn constrained_hex_mutations_are_detected() {
+    let dir = generate(&constrained_hex_case(), true, "hex-mutants-src");
+    let result = Command::new("python3")
+        .arg("-I")
+        .arg(root().join("tests/cpp-codec/constrained_hex_mutations.py"))
+        .arg(dir)
+        .arg(root().join("tests/cpp-codec/constrained_hex_consumer.cpp"))
+        .arg(scratch("hex-mutants"))
+        .output()
+        .unwrap();
+    assert!(
+        result.status.success(),
+        "{}{}",
+        String::from_utf8_lossy(&result.stdout),
+        String::from_utf8_lossy(&result.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&result.stdout).ends_with("CPP_OMS_007_MUTATIONS detected=5/5\n")
+    );
+}
+
+#[test]
+fn constrained_hex_carriers_are_clean_under_sanitizers() {
+    let dir = generate(&constrained_hex_case(), true, "hex-sanitizers");
+    let source = root().join("tests/cpp-codec/constrained_hex_consumer.cpp");
+    for compiler in ["g++", "clang++"] {
+        assert!(compiler_available(compiler), "{compiler} required");
+        assert_eq!(
+            compile_and_run(
+                compiler,
+                SANITIZE,
+                &dir,
+                std::slice::from_ref(&source),
+                &format!("hex-san-{compiler}")
+            ),
+            "CPP_OMS_007_HEX checks=272 rejections=67\n"
+        );
+    }
+}
+
 fn shared_case(name: &str) -> Case {
     Case {
         schema: fixtures().join(format!("service-generate/{name}.xsd")),
@@ -537,14 +629,6 @@ fn unsupported_constructs_are_rejected_before_any_output() {
         ),
         ("constrained-float", "ThrustRatio: named Float32"),
         ("codec-time-zulu", "Time"),
-        (
-            "codec-ada-hexbinary-single",
-            "length-constrained named hexBinary",
-        ),
-        (
-            "codec-ada-hexbinary-combined",
-            "length-constrained named hexBinary",
-        ),
         // CPP-OMS-005 moved bounded ASCII and CPP-OMS-006 structured ASCII
         // into the subset (`codec-bounded-ascii` and `codec-structured-ascii`
         // are READY, see `bounded_ascii_*` and `structured_ascii_*`); every

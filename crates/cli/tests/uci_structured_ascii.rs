@@ -189,11 +189,9 @@ fn task059_real_uci_message_impact() {
 /// * The six messages whose only C++ codec blocker was a Task 059 structured
 ///   ASCII declaration are codec READY, with their exact closures and
 ///   declaration counts.
-/// * `FileMetadata` gets past `FileNameType` but stays NOT READY. Its one
-///   remaining codec blocker is the length-constrained named hexBinary
-///   `SHA_2_256_HashType` (the optional `MessageData.SHA_2_Hash`), which is
-///   outside the C++ codec subset, so `service-generate --with-codec` writes
-///   nothing.
+/// * CPP-OMS-007 completes `FileMetadata` through the checked constrained
+///   hexBinary carrier. This regression now requires full readiness, not the
+///   historical CPP-OMS-006 boundary. Behavioral qualification is separate.
 #[test]
 fn cpp_oms_006_real_uci_cpp_codec_readiness() {
     let cli = env!("CARGO_BIN_EXE_ams-gra-codegen-oms");
@@ -223,9 +221,9 @@ fn cpp_oms_006_real_uci_cpp_codec_readiness() {
             ("StrikeCommand", strike_command.0, strike_command.1),
         ];
         let (file_closure, file_codec) = if version == "2.5" {
-            ("52", "49/50")
+            ("52", "50/50")
         } else {
-            ("54", "51/52")
+            ("54", "52/52")
         };
         let dir = std::env::temp_dir().join(format!(
             "ams-gra-cpp-oms-006-{version}-{}",
@@ -293,7 +291,7 @@ fn cpp_oms_006_real_uci_cpp_codec_readiness() {
         let file = &results[6];
         assert_eq!(file["request"]["id"], "FileMetadata");
         let stdout = file["stdout"].as_str().unwrap();
-        assert_eq!(file["exit_code"], 1, "{stdout}");
+        assert_eq!(file["exit_code"], 0, "{stdout}");
         assert!(
             stdout.contains(&format!("selected type closure: {file_closure}\n")),
             "{stdout}"
@@ -305,18 +303,9 @@ fn cpp_oms_006_real_uci_cpp_codec_readiness() {
             )),
             "{version}: {stdout}"
         );
-        assert!(stdout.contains("codec status: NOT READY\n"), "{stdout}");
-        assert!(
-            stdout.contains(
-                "service codec boundary: SHA_2_256_HashType: length-constrained named hexBinary \
-                 has no C++ codec mapping"
-            ),
-            "{version}: {stdout}"
-        );
+        assert!(stdout.ends_with("codec status: READY\n"), "{stdout}");
         assert!(!stdout.contains("FileNameType"), "{stdout}");
-        println!(
-            "UCI {version} CPP-OMS-006 FileMetadata C++ codec NOT READY {file_codec} at SHA_2_256_HashType"
-        );
+        println!("UCI {version} CPP-OMS-007 FileMetadata C++ codec READY {file_codec}");
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

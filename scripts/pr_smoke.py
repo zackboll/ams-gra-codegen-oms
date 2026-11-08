@@ -100,6 +100,9 @@ CPP_BOUNDED_ASCII_MARKER = "CPP_OMS_005_BOUNDED_ASCII checks=289 rejections=148"
 CPP_STRUCTURED_ASCII_FIXTURE = "service-generate/codec-structured-ascii"
 CPP_STRUCTURED_ASCII_MARKER = "CPP_OMS_006_STRUCTURED_ASCII checks=323 rejections=166"
 
+CPP_HEX_FIXTURE = "cpp-codec/constrained-hex/constrained-hex"
+CPP_HEX_MARKER = "CPP_OMS_007_HEX checks=272 rejections=67"
+
 
 def cpp_shape_marker(shape, checks, rejections):
     return f"CPP_OMS_002_SHAPES_COMPLETE shape={shape} checks={checks} rejections={rejections}"
@@ -157,6 +160,7 @@ def classify(paths):
                           "scripts/check-cpp-oms-002-real-log.sh",
                           "scripts/check-cpp-oms-003-runtime.sh",
                           "scripts/check-cpp-oms-003-real-log-sleet.sh",
+                          "scripts/check-cpp-oms-007-file-metadata.sh",
                           "scripts/check-cpp-oms-004-position-report.sh",
                           "scripts/check-cpp-oms-005-amti-settings.sh",
                           "scripts/check-cpp-oms-006-file-metadata.sh",
@@ -208,7 +212,8 @@ def generate(language, scratch, fixture):
     contract = {"python-codec/oam": "python-codec/service",
                 "cpp-codec/oam": "cpp-codec/service",
                 CPP_FLOAT64_FIXTURE: "cpp-codec/float64/service",
-                CPP_BOUNDED_ASCII_FIXTURE: "cpp-codec/bounded-ascii/service"}.get(fixture, fixture)
+                CPP_BOUNDED_ASCII_FIXTURE: "cpp-codec/bounded-ascii/service",
+                CPP_HEX_FIXTURE: "cpp-codec/constrained-hex/service"}.get(fixture, fixture)
     checked([ROOT / "target/debug/ams-gra-codegen-oms", "service-generate",
              "--schema", ROOT / f"tests/fixtures/{fixture}.xsd",
              "--contract", ROOT / f"tests/fixtures/{contract}.yaml",
@@ -255,6 +260,7 @@ def cpp_smoke(scratch):
     cpp_float64_smoke(scratch.parent / "cpp-float64")
     cpp_bounded_ascii_smoke(scratch.parent / "cpp-bounded-ascii")
     cpp_structured_ascii_smoke(scratch.parent / "cpp-structured-ascii")
+    cpp_hex_smoke(scratch.parent / "cpp-constrained-hex")
     print("CPP SMOKE PASSED", flush=True)
 
 
@@ -338,6 +344,22 @@ def cpp_structured_ascii_smoke(out):
     if CPP_STRUCTURED_ASCII_MARKER not in checked([binary]).splitlines():
         raise RuntimeError(f"C++ smoke: structured-ASCII consumer did not report exactly: {CPP_STRUCTURED_ASCII_MARKER}")
     print("CPP OMS-006 STRUCTURED ASCII PASSED", flush=True)
+
+
+def cpp_hex_smoke(out):
+    """CPP-OMS-007: offline checked hexBinary regression, no UCI or Sleet."""
+    out.mkdir(parents=True, exist_ok=True)
+    generated = out / "generated"
+    generate("cpp", generated, CPP_HEX_FIXTURE)
+    for name in ("oam.hpp", "service_api.hpp", "service_codec.hpp"):
+        if not (generated / name).is_file():
+            raise RuntimeError(f"C++ smoke: production CLI did not generate {name} for constrained hexBinary")
+    binary = out / "constrained-hex-consumer"
+    checked(["g++", *CPP_STRICT, "-I", generated, ROOT / "tests/cpp-codec/constrained_hex_consumer.cpp",
+             "-o", binary])
+    if checked([binary]).strip() != CPP_HEX_MARKER:
+        raise RuntimeError(f"C++ smoke: constrained-hex consumer did not report exactly: {CPP_HEX_MARKER}")
+    print("CPP OMS-007 CONSTRAINED HEX PASSED", flush=True)
 
 
 def smoke(backend):

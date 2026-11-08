@@ -248,7 +248,14 @@ class Routing(unittest.TestCase):
                      "tests/cpp-codec/structured_ascii_mutations.py",
                      "tests/fixtures/cpp-codec/structured-ascii/structured-ascii.xsd",
                      "scripts/check-cpp-oms-006-file-metadata.sh",
-                     "scripts/check-cpp-oms-006-codec-sweep.py"):
+                     "scripts/check-cpp-oms-006-codec-sweep.py",
+                     "scripts/check-cpp-oms-007-file-metadata.sh",
+                     "tests/cpp-codec/constrained_hex_consumer.cpp",
+                     "tests/cpp-codec/constrained_hex_mutations.py",
+                     "tests/cpp-codec/file_metadata_consumer.cpp",
+                     "tests/cpp-codec/file_metadata_documents.hpp",
+                     "tests/cpp-lacal/real_file_metadata_sleet.cpp",
+                     "tests/fixtures/cpp-codec/constrained-hex/constrained-hex.xsd"):
             with self.subTest(path=path):
                 self.assert_execution([path], ["cpp"])
         self.assert_execution(["tests/cpp-codec/consumer.cpp", "crates/backend-cpp/src/lib.rs",
@@ -397,6 +404,8 @@ class Execution(unittest.TestCase):
                     return smoke.CPP_BOUNDED_ASCII_MARKER + "\n"
                 if Path(str(command[0])).name == "structured-ascii-consumer":
                     return smoke.CPP_STRUCTURED_ASCII_MARKER + "\n"
+                if Path(str(command[0])).name == "constrained-hex-consumer":
+                    return smoke.CPP_HEX_MARKER + "\n"
                 if Path(str(command[0])).name.startswith("shapes-"):
                     return "".join(smoke.cpp_shape_marker(*row[1:]) + "\n" for row in smoke.CPP_SHAPES)
                 for binary, _, _, marker in smoke.CPP_RUNTIME_SUITES:
@@ -439,6 +448,7 @@ class Execution(unittest.TestCase):
                 self.assertIn("tests/cpp-codec/bounded_ascii_consumer.cpp", joined)
                 self.assertIn("tests/fixtures/service-generate/codec-structured-ascii.xsd", joined)
                 self.assertIn("tests/cpp-codec/structured_ascii_consumer.cpp", joined)
+                self.assertIn("tests/cpp-codec/constrained_hex_consumer.cpp", joined)
                 # Offline: the C++ smoke never fetches or reads authentic UCI
                 # schemas and never starts Sleet.
                 for forbidden in ("fetch-pinned-uci", "UCI_MessageDefinitions", "check-cpp-oms-002-real-log",
@@ -446,7 +456,7 @@ class Execution(unittest.TestCase):
                                   "real_position_report", "position_report", "sleet", "Sleet",
                                   "check-cpp-oms-005", "amti", "AMTI", "bounded_ascii_mutations",
                                   "check-cpp-oms-006", "structured_ascii_mutations", "structured_ascii_rows",
-                                  "FileMetadata", "file_metadata"):
+                                  "FileMetadata", "file_metadata", "constrained_hex_mutations"):
                     self.assertNotIn(forbidden, joined)
                 self.assertNotIn("-fsanitize", joined)
                 self.assertNotIn("clang", joined)
@@ -457,12 +467,14 @@ class Execution(unittest.TestCase):
 
     def run_cpp_smoke(self, consumer_output="6313 checks, 0 failures\n", write_codec=True,
                       failing=None, missing=None, shape_outputs=None, runtime_outputs=None,
-                      float64_outputs=None, bounded_ascii_output=None, structured_ascii_output=None):
+                      float64_outputs=None, bounded_ascii_output=None, structured_ascii_output=None, hex_output=None):
         float64_outputs = float64_outputs or {}
         if bounded_ascii_output is None:
             bounded_ascii_output = smoke.CPP_BOUNDED_ASCII_MARKER + "\n"
         if structured_ascii_output is None:
             structured_ascii_output = smoke.CPP_STRUCTURED_ASCII_MARKER + "\n"
+        if hex_output is None:
+            hex_output = smoke.CPP_HEX_MARKER + "\n"
         shape_outputs = dict({shape: smoke.cpp_shape_marker(shape, checks, rejections) + "\n"
                               for _, shape, checks, rejections in smoke.CPP_SHAPES},
                              **(shape_outputs or {}))
@@ -487,6 +499,8 @@ class Execution(unittest.TestCase):
                 return bounded_ascii_output
             if name == "structured-ascii-consumer":
                 return structured_ascii_output
+            if name == "constrained-hex-consumer":
+                return hex_output
             if name in runtime_outputs:
                 return runtime_outputs[name]
             if float64_key(command) in float64_outputs:
@@ -502,7 +516,7 @@ class Execution(unittest.TestCase):
         seen = self.run_cpp_smoke()
         commands = [" ".join(command) for command, _ in seen]
         self.assertEqual([c.split()[0] for c in commands if c.startswith(("g++", "cargo"))].count("g++"),
-                         2 + len(smoke.CPP_SHAPES) + len(smoke.CPP_RUNTIME_SUITES) + 1 + 1 + 1)
+                         2 + len(smoke.CPP_SHAPES) + len(smoke.CPP_RUNTIME_SUITES) + 1 + 1 + 1 + 1)
         cargo = [kwargs for command, kwargs in seen if command[0] == "cargo"][0]
         self.assertTrue(cargo["tests"])
         self.assertIn("3 passed; 0 failed", cargo["marker"])
@@ -511,7 +525,7 @@ class Execution(unittest.TestCase):
             self.assertIn(name, cargo_command)
         self.assertIn("--exact", cargo_command)
         generates = [c for c in commands if "--language cpp" in c]
-        self.assertEqual(len(generates), 1 + len(smoke.CPP_SHAPES) + 1 + 1 + 1 + 1)
+        self.assertEqual(len(generates), 1 + len(smoke.CPP_SHAPES) + 1 + 1 + 1 + 1 + 1)
         for (fixture, shape, _, _), command in zip(smoke.CPP_SHAPES, generates[1:-4]):
             self.assertIn(f"tests/fixtures/{fixture}.xsd", command)
             self.assertIn(f"tests/fixtures/{fixture}.yaml", command)
@@ -536,7 +550,7 @@ class Execution(unittest.TestCase):
         order.append(next(i for i, c in enumerate(commands) if "-DSHAPE_" in c))
         # CPP-OMS-003 runtime: generated after the shapes, then each suite is
         # strict-compiled and executed; the last command runs the mock suite.
-        runtime_generate = generates[-4]
+        runtime_generate = generates[-5]
         self.assertIn("tests/fixtures/service-generate/runtime-test.xsd", runtime_generate)
         self.assertIn("tests/fixtures/service-generate/runtime-test.yaml", runtime_generate)
         self.assertIn("--with-codec", runtime_generate)
@@ -555,7 +569,7 @@ class Execution(unittest.TestCase):
         # CPP-OMS-004 Float64: generated after the runtime suites; corpus,
         # oracle self-test, strict compile, the three consumer modes, and the
         # oracle check of the encoder tokens comes last.
-        float64_generate = generates[-3]
+        float64_generate = generates[-4]
         self.assertIn("tests/fixtures/cpp-codec/float64/float64.xsd", float64_generate)
         self.assertIn("tests/fixtures/cpp-codec/float64/service.yaml", float64_generate)
         self.assertIn("--with-codec", float64_generate)
@@ -572,7 +586,7 @@ class Execution(unittest.TestCase):
         order.append(next(i for i, c in enumerate(commands) if "float64_oracle.py check-encoding" in c))
         # CPP-OMS-005 bounded ASCII: generated after Float64, strict compile,
         # and executing the consumer is the last command.
-        bounded_generate = generates[-2]
+        bounded_generate = generates[-3]
         self.assertIn("tests/fixtures/cpp-codec/bounded-ascii/bounded-ascii.xsd", bounded_generate)
         self.assertIn("tests/fixtures/cpp-codec/bounded-ascii/service.yaml", bounded_generate)
         self.assertIn("--with-codec", bounded_generate)
@@ -586,7 +600,7 @@ class Execution(unittest.TestCase):
                           if c.endswith("/bounded-ascii-consumer") and " " not in c))
         # CPP-OMS-006 structured ASCII: generated after bounded ASCII, strict
         # compile, and executing the consumer is the last command.
-        structured_generate = generates[-1]
+        structured_generate = generates[-2]
         self.assertIn("tests/fixtures/service-generate/codec-structured-ascii.xsd", structured_generate)
         self.assertIn("tests/fixtures/service-generate/codec-structured-ascii.yaml", structured_generate)
         self.assertIn("--with-codec", structured_generate)
@@ -597,7 +611,9 @@ class Execution(unittest.TestCase):
             self.assertIn(flag, compile_command.split())
         order.append(commands.index(compile_command))
         self.assertEqual(order, sorted(order))
-        self.assertTrue(commands[-1].endswith("/structured-ascii-consumer") and " " not in commands[-1])
+        self.assertIn("tests/fixtures/cpp-codec/constrained-hex/constrained-hex.xsd", generates[-1])
+        self.assertIn("tests/cpp-codec/constrained_hex_consumer.cpp", "\n".join(commands))
+        self.assertTrue(commands[-1].endswith("/constrained-hex-consumer") and " " not in commands[-1])
 
     def test_cpp_smoke_fails_closed(self):
         with self.assertRaises(FileNotFoundError):  # no compiler
@@ -676,6 +692,14 @@ class Execution(unittest.TestCase):
         with patch.object(smoke.subprocess, "run", side_effect=FileNotFoundError("g++")), \
                 tempfile.TemporaryDirectory() as directory, self.assertRaises(FileNotFoundError):
             smoke.cpp_smoke(Path(directory) / "consumer")
+
+    def test_cpp_hex_smoke_fails_closed(self):
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.run_cpp_smoke(failing="constrained-hex-consumer")
+        for output in ("", "no summary\n", smoke.CPP_HEX_MARKER.replace("272", "271"),
+                       smoke.CPP_HEX_MARKER.replace("67", "0"), smoke.CPP_HEX_MARKER + " trailing\n"):
+            with self.subTest(output=output), self.assertRaises(RuntimeError):
+                self.run_cpp_smoke(hex_output=output)
 
     def test_actual_main_outcome_gate_fails_on_every_unsuccessful_result(self):
         text = (smoke.ROOT / ".github/workflows/ci.yml").read_text()
