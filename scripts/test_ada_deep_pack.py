@@ -49,6 +49,15 @@ class DeepPack(unittest.TestCase):
         self.assertEqual(report['unchanged_inputs'], 310)
         self.assertEqual(len(report['main_changes']), 20)
         main = report['incorporated_main']['sha']
+        self.assertEqual(report['incorporated_main']['tree'], subprocess.check_output([
+            'git', 'rev-parse', main + '^{tree}'], cwd=run.ROOT, text=True).strip())
+        for update in report.get('main_updates', []):
+            changed = subprocess.check_output([
+                'git', 'diff', '--name-only', update['previous_main']['sha'],
+                update['main']['sha']], cwd=run.ROOT, text=True).splitlines()
+            self.assertEqual(changed, update['changed_files'])
+            self.assertEqual(update['qualification_inputs_changed'], 0)
+            self.assertFalse(set(changed) & set(run.INVENTORY['qualification_sha256']))
         for path, digest in run.INVENTORY['qualification_sha256'].items():
             with self.subTest(path=path):
                 original = subprocess.check_output([
@@ -67,6 +76,20 @@ class DeepPack(unittest.TestCase):
                     self.assertEqual(report['retained_pack_changes'][path]['current_sha256'], digest)
         for key in ('origin_commit', 'origin_tree', 'packs', 'suites'):
             self.assertEqual(run.INVENTORY[key], previous[key])
+
+    def test_unrelated_deep_jobs_remain_exactly_current_main(self):
+        from workflow_text import blocks
+        report = json.loads((run.ROOT / run.INVENTORY['source_reconciliation']).read_text())
+        original = blocks(subprocess.check_output([
+            'git', 'show', report['incorporated_main']['sha'] + ':.github/workflows/deep-ci.yml'],
+            cwd=run.ROOT, text=True))[1]
+        current = blocks((run.ROOT / '.github/workflows/deep-ci.yml').read_text())[1]
+        suites = set(run.INVENTORY['suites'])
+        self.assertEqual(set(current), (set(original) - suites) | {'ada-deep-pack-a', 'ada-deep-pack-b'})
+        for name, body in original.items():
+            if name not in suites:
+                with self.subTest(job=name):
+                    self.assertEqual(current[name], body)
 
     def test_task108_dependencies_and_packed_compilation_are_preserved(self):
         from workflow_text import blocks

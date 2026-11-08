@@ -17,6 +17,133 @@ spec.loader.exec_module(layout)
 
 
 class MutationOwnership(unittest.TestCase):
+    def test_exact_evidence_exceptions(self):
+        from real_uci_evidence import evidence_steps
+        original = (ROOT / '.github/workflows/deep-ci.yml').read_text()
+        independent = '''  independent-evidence-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Overlapping independent setup
+        run: |
+          cargo fetch --locked
+          cargo build --release --locked -p ams-gra-codegen-oms
+'''
+        negatives = positives = 0
+        for text in (original, original.replace('jobs:\n', 'jobs:\n' + independent, 1)):
+            with tempfile.TemporaryDirectory() as tmp:
+                path = pathlib.Path(tmp) / 'deep.yml'
+                path.write_text(text)
+                self.assertEqual(layout.check(path), [])
+                positives += 1
+                for job in (*layout.PRIMARY_SHARDS, 'real-uci-regressions'):
+                    match = re.search(r'^  ' + re.escape(job) + r':\n.*?(?=^  [\w-]+:|\Z)',
+                                      text, re.M | re.S)
+                    body = match[0]
+                    evidence = evidence_steps(job) if job in layout.PRIMARY_SHARDS else layout.EVIDENCE
+                    self.assertEqual(body.count(evidence), 1)
+                    conditional = ('      - name: Reconcile complete shard evidence\n'
+                                   '        if : false\n        run: echo unauthorized\n')
+                    variants = [
+                        ('before', conditional + evidence, 'enabled hard gate: '),
+                        ('after', evidence + conditional, 'enabled hard gate: '),
+                        ('duplicate', evidence + evidence, 'exact evidence exception: '),
+                        ('action', evidence.replace('actions/upload-artifact@v4',
+                                                    'actions/upload-artifact@v4.6.2'),
+                         'exact evidence exception: '),
+                        ('spaced condition', evidence.replace('if:', 'if :', 1),
+                         'exact evidence exception: '),
+                        ('quoted condition', evidence.replace('if:', "'if':", 1),
+                         'exact evidence exception: '),
+                        ('optional evidence', evidence.replace('        if: always()',
+                            '        continue-on-error : true\n        if: always()', 1),
+                         'exact evidence exception: '),
+                        ('extra property', evidence.rstrip() + '\n        continue-on-error: true\n',
+                         'exact evidence exception: '),
+                    ]
+                    if job in layout.PRIMARY_SHARDS:
+                        variants.append(('command', evidence.replace(
+                            'real_uci_evidence.py finish', 'real_uci_evidence.py init'),
+                            'exact evidence exception: '))
+                    for label, replacement, diagnostic in variants:
+                        with self.subTest(job=job, mutation=label):
+                            changed = body.replace(evidence, replacement, 1)
+                            self.assertNotEqual(changed, body)
+                            path.write_text(text[:match.start()] + changed + text[match.end():])
+                            self.assertIn('Task077B ' + diagnostic + job, layout.check(path))
+                            negatives += 1
+                    # Add conditions to an existing mandatory qualification,
+                    # not the evidence or immutable source-verification steps.
+                    name = next(name for name, owner, _ in layout.GATES if owner == job)
+                    target = '      - name: ' + name + '\n'
+                    self.assertEqual(body.count(target), 1)
+                    for field in ('if : false', "'if': false", 'continue-on-error : true'):
+                        changed = body.replace(target, target + '        ' + field + '\n', 1)
+                        path.write_text(text[:match.start()] + changed + text[match.end():])
+                        self.assertIn('Task077B enabled hard gate: ' + job, layout.check(path))
+                        negatives += 1
+        self.assertEqual(positives, 2)
+        self.assertEqual(negatives, 94)
+
+    def test_job_environment_mutation_preserves_steps(self):
+        original = (ROOT / '.github/workflows/deep-ci.yml').read_text()
+        body = re.search(r'^  real-sleet:\n.*?(?=^  [\w-]+:|\Z)',
+                         original, re.M | re.S)[0]
+        header, steps = body.split('    steps:\n', 1)
+        self.assertIn('        env:\n', steps)
+        self.assertEqual(len(re.findall(r'^    env:\n', header, re.M)), 1)
+        for spelling in ('{} :', '{}   :', "'{}':", '"{}":', "'{}' :", '"{}"   :'):
+            with self.subTest(spelling=spelling):
+                changed = layout.mutate_job_environment(body, spelling)
+                changed_header, changed_steps = changed.split('    steps:\n', 1)
+                self.assertEqual(changed_steps, steps)
+                self.assertEqual(changed_header, header.replace(
+                    '\n    env:\n', '\n    ' + spelling.format('env')
+                    + '\n      GITHUB_SHA: main\n', 1))
+        for invalid_header in (header.replace('    env:\n', '    other:\n'),
+                               header + '    env:\n      EXTRA: value\n',
+                               header.replace('    env:\n', '     env:\n')):
+            with self.assertRaisesRegex(AssertionError, 'job environment'):
+                layout.mutate_job_environment(invalid_header + '    steps:\n' + steps, '{} :')
+
+    def test_protected_block_key_spellings(self):
+        for key in ('if', 'continue-on-error', 'env', 'defaults', 'needs'):
+            for spelling in (key + ':', key + ' :', key + '   :',
+                             "'" + key + "':", '"' + key + '":',
+                             "'" + key + "' :", '"' + key + '"   :'):
+                for prefix in ('    ', '        ', '      - ', ''):
+                    with self.subTest(key=key, spelling=spelling, prefix=prefix):
+                        self.assertTrue(layout.has_key(prefix + spelling + ' false', key))
+            for text in ('    # ' + key + ' : false',
+                         '    not-' + key + ' : false',
+                         '    name: ' + key + ' : false',
+                         '    ' + key + '-suffix: false'):
+                self.assertFalse(layout.has_key(text, key), text)
+
+    def test_step_environment_spelling_does_not_disable_qualification(self):
+        # GITHUB_* defaults cannot be overwritten by env assignments (GitHub
+        # variables reference). This is not an if/continue-on-error bypass:
+        # canonical env: is accepted too. Do not ban legitimate step env maps
+        # merely to turn every exploratory trial into a negative mutation.
+        original = (ROOT / '.github/workflows/deep-ci.yml').read_text()
+        for job, name in (
+                ('real-uci-regressions-alternating', layout.GATES[-1][0]),
+                ('real-sleet', 'Real UCI 2.5 codecs (Tasks 050/052, must execute)')):
+            match = re.search(r'^  ' + re.escape(job) + r':\n.*?(?=^  [\w-]+:|\Z)',
+                              original, re.M | re.S)
+            target = '      - name: ' + name + '\n'
+            self.assertEqual(match[0].count(target), 1)
+            for spelling in ('{}:', '{} :', '{}   :', "'{}':", '"{}":',
+                             "'{}' :", '"{}"   :'):
+                changed_body = match[0].replace(target, target + '        '
+                    + spelling.format('env') + '\n          GITHUB_SHA: main\n', 1)
+                changed = original[:match.start()] + changed_body + original[match.end():]
+                with self.subTest(job=job, spelling=spelling), tempfile.TemporaryDirectory() as tmp:
+                    path = pathlib.Path(tmp) / 'deep.yml'
+                    path.write_text(changed)
+                    self.assertEqual(layout.check(path), [])
+                    self.assertEqual(changed[:match.start()], original[:match.start()])
+                    self.assertTrue(changed.endswith(original[match.end():]))
+
     def test_only_exact_evidence_upload_is_exempt(self):
         original = (ROOT / ".github/workflows/deep-ci.yml").read_text()
         for changed in [
@@ -52,6 +179,7 @@ class MutationOwnership(unittest.TestCase):
                 self.assertEqual(layout.check(path), [])
                 actual_run = subprocess.run
                 observed = []
+                outcomes = []
 
                 def inspect_mutation(command, **kwargs):
                     mutated = pathlib.Path(command[2]).read_text()
@@ -61,8 +189,15 @@ class MutationOwnership(unittest.TestCase):
                                               mutated, re.M | re.S))
                     for job in jobs.keys() - set(layout.SOURCE_JOBS):
                         self.assertEqual(changed.get(job), jobs[job], job)
+                    changed_jobs = {job for job in jobs.keys() | changed.keys()
+                                    if changed.get(job) != jobs.get(job)}
+                    # The inherited separated-Task060 fixture intentionally
+                    # changes two owners; every other job mutation is local.
+                    self.assertLessEqual(len(changed_jobs), 2)
                     observed.append(mutated)
-                    return actual_run(command, **kwargs)
+                    result = actual_run(command, **kwargs)
+                    outcomes.append(result.returncode)
+                    return result
 
                 # The expanded sharding self-test still runs the real
                 # guard and checks each attributed diagnostic and non-no-op.
@@ -71,7 +206,11 @@ class MutationOwnership(unittest.TestCase):
                     layout.self_test(str(path))
                 # Every primary shard now receives the same source/setup
                 # mutations as each independent regression runner.
-                self.assertEqual(len(observed), 377)
+                # 373 inherited negatives + 876 equivalent-key negatives;
+                # the original and five semantics-preserving controls.
+                self.assertEqual(len(observed), 1255)
+                self.assertEqual(outcomes.count(0), 6)
+                self.assertEqual(sum(code != 0 for code in outcomes), 1249)
                 self.assertEqual(observed.count(text), 1)  # Healthy case only.
 
     def test_source_gate_executes_fail_closed(self):

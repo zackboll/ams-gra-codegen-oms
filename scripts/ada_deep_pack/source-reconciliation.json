@@ -8,9 +8,13 @@
     "policy": "Historical run receipts retain their original source/tree; they are not evidence for the merged source."
   },
   "incorporated_main": {
-    "sha": "e62818ef22d250189a12c83a8b51274d6a085723",
-    "tree": "f373a3857aaaadbf9f16197a09d21443eeb65460",
-    "pull_request": 183
+    "sha": "5fb4e8c85f74ad8aed9c1b2a6096ffd757275e54",
+    "tree": "e56a4de0f9fa52ba1e995edbd4fd1f655a2d3282",
+    "pull_requests": [
+      183,
+      186,
+      187
+    ]
   },
   "reviewed_inputs": 330,
   "unchanged_inputs": 310,
@@ -484,5 +488,32 @@
     "tests/fixtures/task105/uci26-input-service.yaml": "607b2288a5fc2df457bdc2c9e5da4880e3ac38a9a57b0d2e54745c122384bd47",
     "tests/fixtures/task105/uci26-service.yaml": "4ed8891c2603da5d6262ef3626158a57896f28112fa1c4ce9b78516ca288faf6",
     "tests/fixtures/task106/uci25-service.yaml": "ba062a40a57261a1462ee2b562bf5c1239934d44017ef29f8d0a965da6f28323"
-  }
+  },
+  "main_updates": [
+    {
+      "previous_main": {
+        "sha": "e62818ef22d250189a12c83a8b51274d6a085723",
+        "tree": "f373a3857aaaadbf9f16197a09d21443eeb65460",
+        "pull_request": 183
+      },
+      "main": {
+        "sha": "5fb4e8c85f74ad8aed9c1b2a6096ffd757275e54",
+        "tree": "e56a4de0f9fa52ba1e995edbd4fd1f655a2d3282",
+        "pull_requests": [
+          183,
+          186,
+          187
+        ]
+      },
+      "changed_files": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/deep-ci.yml",
+        "scripts/ada_ci_pack/inventory.json",
+        "scripts/check-task077b-ci-layout.py",
+        "scripts/test-task077b-ci-layout.py"
+      ],
+      "qualification_inputs_changed": 0,
+      "review": "PR186 strengthens YAML-equivalent hard-gate keys and exact evidence exceptions. PR187 retains full checkout history already present in this pack branch, raises two existing unrelated Deep deadlines to 120 minutes, and increases four existing main codec-pack suite deadlines. No qualification input identities, suite commands, artifacts, production source or runner allocations change."
+    }
+  ]
 }
