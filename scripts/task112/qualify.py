@@ -34,18 +34,21 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def inputs():
+def inputs(test_directory="tests/ada-wss-session-recovery"):
     return {str(p.relative_to(ROOT)): digest(p) for folder in
-            ("ada", "scripts", "tests/ada-wss-session-recovery", "tests/fixtures")
+            ("ada", "scripts", test_directory, "tests/fixtures")
             for p in (ROOT / folder).rglob("*") if p.is_file() and "__pycache__" not in p.parts}
 
 
-def execute(args):
+def execute(args, profile=None):
+    test_directory = getattr(profile, "TEST_DIRECTORY", "tests/ada-wss-session-recovery")
+    recovery_script = getattr(profile, "RECOVERY_SCRIPT", "scripts/task112/recovery.py")
+    task_name = getattr(profile, "TASK_NAME", "TASK112")
     out = args.scratch.resolve()
     out.mkdir(parents=True, exist_ok=False)
     env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1", AHT_TLS_BACKEND=args.backend)
     steps = []
-    before = inputs()
+    before = inputs(test_directory)
     (out / "input-sources.json").write_text(json.dumps(before, indent=2) + "\n")
 
     def run(label, command, cwd=ROOT, extra_env=None):
@@ -130,7 +133,7 @@ def execute(args):
         (out / ("generated" + release + "-sources.json")).write_text(json.dumps(pins, indent=2) + "\n")
         build = out / ("build" + release)
         shutil.copytree(ROOT / "ada", build / "ada", ignore=IGNORE)
-        shutil.copytree(ROOT / "tests/ada-wss-session-recovery", build / "test")
+        shutil.copytree(ROOT / test_directory, build / "test")
         shutil.copytree(generated, build / "generated")
         (build / "consumer.gpr").write_text('with "ada/oms-lacal-runtime/oms_lacal_websocket";\n'
             'with "ada/oms-json-support/ams_gra_oms_json";\nproject Consumer is\n'
@@ -138,20 +141,20 @@ def execute(args):
             'for Main use ("recovery_consumer.adb"); package Compiler is\n'
             'for Default_Switches ("Ada") use ("-gnat2022", "-gnata", "-gnato", "-O0"); end Compiler; end Consumer;\n')
         run("build" + release, shell(["gprbuild", "-p", "-j4", "-P", build / "consumer.gpr"]))
-        run("recovery" + release, [sys.executable, ROOT / "scripts/task112/recovery.py", "--release", release,
+        run("recovery" + release, [sys.executable, ROOT / recovery_script, "--release", release,
             "--evidence", out / ("recovery" + release), "--consumer", build / "bin/recovery_consumer",
             "--sleet", args.deps / "sleet", "--schema", schema, "--cert", out / "cert.pem", "--key", out / "key.pem"])
     for name in PINS:
         if run(name + "-final-clean", ["git", "-C", args.deps / name, "status", "--porcelain"]).strip():
             raise ValueError("dependency dirtied " + name)
-    if inputs() != before:
+    if inputs(test_directory) != before:
         raise ValueError("sources changed during qualification")
     result = dict(completed=not args.development, development=args.development, compiler=version,
                   backend=args.backend, releases=args.release, source=source, steps=steps)
     (out / "result.json").write_text(json.dumps(result, indent=2) + "\n")
     (out / "artifacts.json").write_text(json.dumps({str(p.relative_to(out)): digest(p) for p in out.rglob("*")
         if p.is_file() and p.name != "artifacts.json"}, indent=2) + "\n")
-    print("TASK112_QUALIFICATION_COMPLETE", version, args.backend, flush=True)
+    print(task_name + "_QUALIFICATION_COMPLETE", version, args.backend, flush=True)
 
 
 if __name__ == "__main__":
