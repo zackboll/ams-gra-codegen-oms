@@ -47,6 +47,7 @@ mod support {
     include!("../../../crates/runtime-rust-facade-tests/tests/real_sleet_support/connections.rs");
     include!("support/reconnect.rs");
     include!("support/wss.rs");
+    include!("support/file_metadata.rs");
 
     pub fn accept() {
         let (mut server, url) = start_sleet_with_topics(&TOPICS);
@@ -625,6 +626,7 @@ fn standalone_real_sleet() {
     support::accept();
     support::reconnection();
     support::wss();
+    support::file_metadata_acceptance();
 }
 
 // A fresh process gets isolated native trust without mutating the test runner's
