@@ -139,7 +139,7 @@ def classify(paths):
                                "tests/ada-", "tests/fixtures/ada-",
                                "tests/fixtures/service-generate/codec-ada-",
                                "crates/cli/tests/ada_", "scripts/task102/", "scripts/task103/",
-                               "scripts/task104/", "scripts/task105/", "scripts/task106/", "tests/fixtures/task102/",
+                               "scripts/task104/", "scripts/task105/", "scripts/task106/", "scripts/task109/", "tests/fixtures/task102/",
                                "tests/fixtures/task103/", "tests/fixtures/task104/",
                                "tests/fixtures/task105/", "tests/fixtures/task106/"))
               or path in ("scripts/task102_evidence.py", "scripts/task103_evidence.py",
@@ -372,6 +372,8 @@ def smoke(backend):
             checked(["rustc", "--edition=2024", "main.rs", "-o", "consumer"], cwd=scratch)
             checked([scratch / "consumer"], cwd=scratch, marker="RUST SMOKE PASSED")
         else:
+            checked([sys.executable, "-m", "unittest", "discover", "-s", "scripts/task109",
+                     "-p", "test_qualification.py", "-v"], env=env, marker="Ran 5 tests")
             generate("ada", scratch, "service-generate/codec-ada-minimal")
             shutil.copy2(ROOT / "tests/pr-smoke/ada_consumer.adb", scratch)
             shutil.copytree(ROOT / "ada/oms-json-support", Path(directory) / "support")
