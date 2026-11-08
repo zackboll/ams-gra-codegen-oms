@@ -202,6 +202,7 @@ noninteractive sudo installation was unavailable. No dependency was vendored.
 | standalone CPP-OMS-001 | PASS: 6313 checks under g++, clang++, g++ ASan+UBSan |
 | CPP-OMS-002 authentic Log | PASS both releases, four compiler configurations; 307 checks, 189/192 rejections |
 | CPP-OMS-003 offline LA-CAL | PASS all six configurations (both compilers, strict/ASan+UBSan/TSan): 49 tests, 695 checks per configuration |
+| CPP-OMS-003 real Log through pinned Sleet | PASS both releases, g++ strict, clang++ strict, g++ ASan+UBSan: 2 tests, 407 checks per release/configuration |
 | baseline parity without codec + Ada/Rust codec readiness | **59 pairs, 472 comparisons, 0 mismatches** |
 | previously supported synthetic C++ generated output | **32 pairs, 96 files byte-identical**, 0 mismatches |
 | Python generation with and without codec | **118 comparisons**, 0 mismatches |
@@ -212,7 +213,7 @@ noninteractive sudo installation was unavailable. No dependency was vendored.
 | Python PR smoke | Initial system Python failed version gate; rerun under required Python 3.11 PASS (9 consumer tests) |
 | workspace clippy all targets / fmt / diff whitespace | PASS |
 | complete workspace library tests | In progress; initial pinned-root build interrupted after expensive authentic generation, not counted as pass; offline retry pending |
-| CPP-OMS-003 real Log Sleet / 004 PositionReport / 005 AMTI / 006 structured ASCII deep scripts | In progress, not yet claimed complete |
+| CPP-OMS-004 PositionReport / 005 AMTI / 006 structured ASCII deep scripts | In progress, not yet claimed complete |
 | 007 full compiler/sanitizer authentic qualification | In progress; hash-present Sleet failures above already make acceptance FAIL |
 | hosted exact-head CI | Not yet available at documentation time; final PR receipt records actual status |
 

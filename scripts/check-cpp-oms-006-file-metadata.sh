@@ -1,8 +1,4 @@
 #!/usr/bin/env bash
-# CPP-OMS-007 update: FileMetadata must now be fully READY and generate its
-# codec. The historical stage-3/4 description below records CPP-OMS-006's
-# original boundary; executable assertions now require 50/50 and 52/52.
-# Authentic behavioral and pinned-Sleet checks live in check-cpp-oms-007-file-metadata.sh.
 # CPP-OMS-006: qualify the generated C++17 structured-ASCII OMS JSON codec and
 # record what it changes for the AUTHENTIC UCI FileMetadata and the other
 # affected messages, for UCI 2.5 AND UCI 2.6. Not part of routine PR smoke
@@ -17,17 +13,12 @@
 #      (tests/fixtures/cpp-codec/structured-ascii, all 27 pinned rows), each
 #      with an exact summary; the negative controls of
 #      tests/cpp-codec/structured_ascii_mutations.py (all must be detected);
-#   3. per release, AUTHENTIC FileMetadata: production `service-check
-#      --with-codec` must report model READY and codec NOT READY with exactly
-#      one remaining codec blocker, the length-constrained hexBinary
-#      SHA_2_256_HashType (FileNameType is no longer a blocker);
-#      `service-generate --with-codec` must write nothing; the plain model is
-#      generated and tests/cpp-codec/file_metadata_model_probe.cpp checks the
-#      authentic checked FileNameType carrier. Because the codec is NOT READY,
-#      FileMetadata codec round trips and pinned-Sleet interoperability are
-#      NOT APPLICABLE in either release and are not run or claimed. If a
-#      future change makes FileMetadata codec READY, this script stops so the
-#      qualification can be added instead of silently passing;
+#   3. per release, AUTHENTIC FileMetadata: CPP-OMS-007 advances this regression
+#      to require codec READY (50/50 and 52/52), generation with --with-codec,
+#      and byte-identical model/API with and without the flag. The model probe
+#      still checks the authentic FileNameType carrier. Independent codec and
+#      real pinned-Sleet qualification live in check-cpp-oms-007-file-metadata.sh;
+#      this script does not claim those behavioral results;
 #   4. per release, the messages that become codec READY through structured
 #      ASCII: exact readiness, model and service API byte-identical with and
 #      without --with-codec, and a strict g++ COMPILE SMOKE of model + API +
@@ -282,7 +273,7 @@ for release in 2.5 2.6; do
       || { echo "UCI $release $name: model probe '$summary'" >&2; exit 1; }
     echo "  [$name] $summary"
   done
-  echo "  FileMetadata codec round trip and pinned-Sleet interoperability: NOT APPLICABLE (codec NOT READY); not run, not claimed"
+  echo "  FileMetadata codec/Sleet behavior is qualified separately by CPP-OMS-007; not claimed by this regression"
 
   # ---- 4. newly READY messages: compile smoke ---------------------------------------
   echo "== UCI $release messages made C++ codec READY by structured ASCII (compile smoke only)"
