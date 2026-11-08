@@ -20,6 +20,9 @@ def verify(directory):
         recovery.validate_observer(json.loads((folder / "observer.json").read_text()), release)
         for row in cell["epochs"]:
             epoch = row["epoch"]
+            recovery.require((folder / f"epoch{epoch}-sleet.bin").read_bytes() ==
+                             (folder / f"epoch{epoch}-delivered.bin").read_bytes(),
+                             "exact real broker bytes delivered without fabrication")
             recovery.validate_boundary((folder / f"epoch{epoch}-ada.bin").read_bytes(),
                                        (folder / f"epoch{epoch}-forwarded.bin").read_bytes(), row)
         output = (folder / "consumer.stdout").read_text()

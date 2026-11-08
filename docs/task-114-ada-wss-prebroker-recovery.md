@@ -113,7 +113,46 @@ source; development runs are explicitly non-acceptance. Full command JSON,
 stdout/stderr, hashes and artifacts are retained externally. Compact checked
 receipts belong under `/docs/evidence/task114/`.
 
-## Limits
+## Qualification results
+
+All four authentic UCI2.6 cells passed on clean committed implementation
+`5fc2f7ee7c81e772935d11a407cc2a30aa4506ce`, tree
+`0984c070e4935d14a2bd371b0bfbf40fe777fbd5`. GNAT16/OpenSSL ran first and
+also passed the UCI2.5 five-epoch regression. Compact receipts include the
+source identities, dependency trees, schema/generated hashes, artifact-manifest
+hashes, exact wire boundaries, broker operation counts/logs and application
+observations. Full artifacts remain outside Git.
+
+| Compiler | OpenSSL / UCI2.6 | mbedTLS / UCI2.6 |
+| --- | --- | --- |
+| 14.2.0 | PASS | PASS |
+| 16.1.0 | PASS | PASS |
+
+Every campaign has five terminal events, 24 typed callbacks, zero lost events,
+no stale ACKs/replay, and restoration to 8 FDs / 3 tasks at every retirement.
+The complete SUB3 frame is withheld at byte offset 356 (56 bytes); UNSUB3 is
+withheld at byte offset 1991 (13 bytes). These offsets refer to decrypted raw
+WebSocket streams including the genuine HTTP upgrade. No target byte is in the
+forwarded capture. Broker connection3 receives INIT/SUB/SUB only (three ACKs).
+Connection5 receives INIT/three SUBs/three PUBs only (seven ACKs), retains SID3
+for the independently published probe, then performs disconnect cleanup.
+Normal connections2/4/6 register SID3, process UNSUB3 and emit eight real ACKs.
+
+Historical GNAT16/OpenSSL TASK113 passes unchanged (five epochs, 24 callbacks),
+and TASK112 default controller passes unchanged (eight epochs, 48 callbacks).
+Parser/mutation tests: 12 PASS; TASK112: 12 PASS; TASK113: 10 PASS; TASK109: 5
+PASS; TASK110: 12 PASS; PR smoke selector: 39 PASS. Sixteen additional mutations
+of actual UCI2.6/2.5 artifacts reject missing/truncated targets, partial forwarding,
+missing probes and duplicate independent publications. `git diff --check` passes.
+
+Main advanced to `aadf62203761bdafb0d89f8b3c714b97bdd7c5f0` (merged PR196).
+It was incorporated by ordinary merge `4eb1feddb99b5f0b6b92e7e4f184c5ba827d1b10`,
+tree `4196c35f4bffc033b373f066c1080b7044ad9cfb`. No open unrelated branch was
+incorporated. Final revision qualification and hosted CI are separately recorded
+outside Git and in the PR; these earlier receipts are not relabeled as final-HEAD
+runs.
+
+## Limitations
 
 The TLS endpoint is the relay, not Sleet; the unchanged upstream is loopback WS.
 Normal teardown forwards genuine TLS EOF because pinned Sleet does not reciprocate
