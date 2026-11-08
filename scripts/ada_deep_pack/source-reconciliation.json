@@ -8,8 +8,8 @@
     "policy": "Historical run receipts retain their original source/tree; they are not evidence for the merged source."
   },
   "incorporated_main": {
-    "sha": "9528fd852be74beddcebe00b9d52af8123a2e9a0",
-    "tree": "15290fb3ba314612d7ed4420231448c47d4f6ba5",
+    "sha": "3986bb19df44cdd841c82c250b4214ce2f0a8206",
+    "tree": "b7319947b0029c359e4d9f1704ae93db9cb06d2f",
     "pull_requests": [
       183,
       186,
@@ -19,7 +19,8 @@
       182,
       188,
       189,
-      190
+      190,
+      191
     ]
   },
   "reviewed_inputs": 330,
@@ -726,6 +727,57 @@
       ],
       "qualification_inputs_changed": 0,
       "review": "Preserve PR189 authentic UCI2.6 multi-message WSS qualification, release-parameterized Task109 relay with identical 2.5 defaults, and Ada smoke routing/tests. Preserve PR190 Rust verified-WSS runtime, examples and locked TLS dependencies unchanged. None of the 330 original Ada campaign inputs changes. Rebuild the generator with the merged lockfile, rerun the complete original pack campaign, and require exact-new-head smoke including current main routing."
+    },
+    {
+      "previous_main": {
+        "sha": "9528fd852be74beddcebe00b9d52af8123a2e9a0",
+        "tree": "15290fb3ba314612d7ed4420231448c47d4f6ba5",
+        "pull_requests": [
+          183,
+          186,
+          187,
+          176,
+          178,
+          182,
+          188,
+          189,
+          190
+        ]
+      },
+      "main": {
+        "sha": "3986bb19df44cdd841c82c250b4214ce2f0a8206",
+        "tree": "b7319947b0029c359e4d9f1704ae93db9cb06d2f",
+        "pull_requests": [
+          183,
+          186,
+          187,
+          176,
+          178,
+          182,
+          188,
+          189,
+          190,
+          191
+        ]
+      },
+      "changed_files": [
+        "docs/evidence/task111/final14-mbedtls.json",
+        "docs/evidence/task111/final14-openssl.json",
+        "docs/evidence/task111/final16-mbedtls.json",
+        "docs/evidence/task111/final16-openssl.json",
+        "docs/evidence/task111/validation.json",
+        "docs/task-111-ada-wss-pem-recovery.md",
+        "scripts/pr_smoke.py",
+        "scripts/task111/qualify.py",
+        "scripts/task111/receipt.py",
+        "scripts/task111/test_qualification.py",
+        "scripts/task111/trust.py",
+        "tests/ada-wss-trust/test_pem.adb",
+        "tests/ada-wss-trust/test_pem.ads",
+        "tests/ada-wss-trust/trust_probe.adb"
+      ],
+      "qualification_inputs_changed": 0,
+      "review": "Preserve PR191 in-memory PEM trust/recovery qualification, offline mutation regressions and Ada smoke routing unchanged. Production Ada, generator/compiler sources, workspace lockfile, workflow allocations and all 330 campaign inputs are unchanged. Retain preceding full campaign receipts under their original identity and rerun existing qualifications for the final merge identity."
     }
   ]
 }

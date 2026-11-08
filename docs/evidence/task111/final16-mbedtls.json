@@ -1,0 +1,485 @@
+{
+  "external_directory": "/home/zboll/task111-evidence/final16-mbedtls",
+  "source": [
+    "ab5c415e562b529ea49cbb56747ad701e2fb60e7",
+    "b992b58814d8b644f1f98f25899cadf817017036"
+  ],
+  "source_status": "",
+  "result": {
+    "completed": true,
+    "development": false,
+    "compiler": "16.1.0",
+    "backend": "mbedtls",
+    "steps": [
+      {
+        "label": "source",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "source-status",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "aht-identity",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "aht-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "aht-archive",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "aht-extract",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "codec-identity",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "codec-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "codec-archive",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "codec-extract",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "sleet-identity",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "sleet-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "uci25-identity",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "uci25-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "uci26-identity",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "uci26-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "printenv",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "compiler",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "platform",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "cert",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "cert-identity",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "unrelated",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "unrelated-identity",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "focused-build",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "focused",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "memcheck",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "generate26",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "build26",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "wss26",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "verify26",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "aht-final-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "codec-final-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "sleet-final-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "uci25-final-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "uci26-final-clean",
+        "exit": 0,
+        "timed_out": false
+      }
+    ],
+    "integration": [
+      "26"
+    ],
+    "needs_read_runtime_exercised": false
+  },
+  "identities": {
+    "aht": [
+      "827b0c17dd964e935f8e88912ce0611ee92b6f16",
+      "d137b924a7b0fa8b71c1ee8c582749e97294335b"
+    ],
+    "codec": [
+      "765d9cd612838eb00645037977c8cc9af7171c3e",
+      "6198cf7b10346003b91b379b568f26b378654565"
+    ],
+    "sleet": [
+      "e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b",
+      "7e705f4eb5f658957bd414b4abc8207311f3c1e4"
+    ],
+    "uci25": [
+      "093610b7753944059360d3236770ab446d039556",
+      "f811683ce81a3fcc5c306627cb43c3df5b525b54"
+    ],
+    "uci26": [
+      "78eb61b6112c8bffa40820c33124b57787fc5bd9",
+      "43a8a74b15d2e20d00d4d8ed8543590dd9789046"
+    ]
+  },
+  "trust": {
+    "attempts": 147,
+    "modes": {
+      "untrusted": 24,
+      "pem": 93,
+      "path": 4,
+      "malformed": 1,
+      "hostname": 1,
+      "both": 1,
+      "plaintext": 1,
+      "handshake-close": 1,
+      "upgrade": 1,
+      "untrusted-close": 20
+    },
+    "tls": [
+      "TLSv1.2"
+    ],
+    "max_case_seconds": 0.0502,
+    "baseline": "RESOURCES fd= 5 tasks= 1\nDONE baseline",
+    "final": "RESOURCES fd= 5 tasks= 1\nCOMPLETE",
+    "same_client": true,
+    "lifecycle_cycles": 20,
+    "negatives": {
+      "untrusted": {
+        "mode": "untrusted",
+        "url": "wss://localhost:46069/",
+        "trust_source": "CA_PEM contents",
+        "seconds": 0.0016,
+        "output": "REJECTED category=Transport_Error detail=TLS handshake: mbedTLS error-9984 (X509 - Certificate verification failed, e.g. CRL, CA or signature check failed)\nRESOURCES fd= 5 tasks= 1\nDONE untrusted",
+        "peer": {
+          "accepted": true,
+          "application": [],
+          "prefix_hex": "1603030149",
+          "clienthello": true,
+          "handshake_failed": "TLSV1_ALERT_UNKNOWN_CA"
+        }
+      },
+      "malformed": {
+        "mode": "malformed",
+        "url": "wss://localhost:43029/",
+        "trust_source": "CA_PEM contents",
+        "seconds": 0.0004,
+        "output": "REJECTED category=Transport_Error detail=TLS connect (CA_PEM parse; the bundle is rejected whole rather than in part): mbedTLS error-4396 (PEM - PEM string is not as expected : BASE64 - Invalid character in input)\nRESOURCES fd= 5 tasks= 1\nDONE malformed",
+        "peer": {
+          "accepted": true,
+          "application": [],
+          "prefix_hex": "",
+          "pre_tls_eof": true
+        }
+      },
+      "hostname": {
+        "mode": "hostname",
+        "url": "wss://127.0.0.1:54121/",
+        "trust_source": "CA_PEM contents",
+        "seconds": 0.001,
+        "output": "REJECTED category=Transport_Error detail=TLS handshake: mbedTLS error-9984 (X509 - Certificate verification failed, e.g. CRL, CA or signature check failed)\nRESOURCES fd= 5 tasks= 1\nDONE hostname",
+        "peer": {
+          "accepted": true,
+          "application": [],
+          "prefix_hex": "1603030149",
+          "clienthello": true,
+          "handshake_failed": "SSLV3_ALERT_BAD_CERTIFICATE"
+        }
+      },
+      "both": {
+        "mode": "both",
+        "url": "wss://localhost:36793/",
+        "trust_source": "CA_PEM contents",
+        "seconds": 0.0502,
+        "output": "REJECTED category=Transport_Error detail=TLS connect: CA_Path and CA_PEM are mutually exclusive; supply the trust anchors either as a path or as PEM data, not both\nRESOURCES fd= 5 tasks= 1\nDONE both",
+        "peer": {
+          "accepted": false,
+          "application": []
+        }
+      },
+      "plaintext": {
+        "mode": "plaintext",
+        "url": "ws://127.0.0.1:33983/",
+        "trust_source": "CA_PEM contents",
+        "seconds": 0.0502,
+        "output": "REJECTED category=Transport_Error detail=CA configuration requires wss://\nRESOURCES fd= 5 tasks= 1\nDONE plaintext",
+        "peer": {
+          "accepted": false,
+          "application": []
+        }
+      },
+      "handshake-close": {
+        "mode": "handshake-close",
+        "url": "wss://localhost:50803/",
+        "trust_source": "CA_PEM contents",
+        "seconds": 0.0006,
+        "output": "REJECTED category=Transport_Error detail=TCP read failed: [104] Connection reset by peer\nRESOURCES fd= 5 tasks= 1\nDONE handshake-close",
+        "peer": {
+          "accepted": true,
+          "application": [],
+          "prefix_hex": "1603030149",
+          "clienthello": true,
+          "handshake_failed": "server closed after ClientHello"
+        }
+      },
+      "upgrade": {
+        "mode": "upgrade",
+        "url": "wss://localhost:34851/",
+        "trust_source": "CA_PEM contents",
+        "seconds": 0.0031,
+        "output": "REJECTED category=Transport_Error detail=required negotiated owp\nRESOURCES fd= 5 tasks= 1\nDONE upgrade",
+        "peer": {
+          "accepted": true,
+          "application": [],
+          "prefix_hex": "1603030149",
+          "clienthello": true,
+          "tls": "TLSv1.2",
+          "cipher": "ECDHE-RSA-AES256-GCM-SHA384",
+          "owp_offer": true,
+          "invalid_upgrade": "not-owp",
+          "eof": true
+        }
+      }
+    }
+  },
+  "integrations": {
+    "26": {
+      "verified": {
+        "completed": true,
+        "task110": {
+          "completed": true,
+          "cleanup": true,
+          "counts": {
+            "log": 17,
+            "rdma": 19,
+            "survivability": 19
+          },
+          "decode_errors": 5,
+          "broker_rejections": 48,
+          "steps": 62,
+          "consumer_exit": 0,
+          "server_exit": 0,
+          "witness_deliveries": 61
+        },
+        "actual_wss_deliveries": 60
+      },
+      "broker": {
+        "completed": true,
+        "cleanup": true,
+        "counts": {
+          "log": 17,
+          "rdma": 19,
+          "survivability": 19
+        },
+        "decode_errors": 5,
+        "broker_rejections": 48,
+        "steps": 62,
+        "consumer_exit": 0,
+        "witness_deliveries": 61,
+        "server_exit": 0,
+        "ada_connection_id": "1",
+        "registrations": [
+          [
+            "1",
+            "1",
+            "task110-log",
+            "Log"
+          ],
+          [
+            "1",
+            "2",
+            "task110-rdma",
+            "RDMA_InitializeSetup"
+          ],
+          [
+            "1",
+            "3",
+            "task110-survivability",
+            "SurvivabilityRiskLevel"
+          ]
+        ]
+      },
+      "tls": {
+        "tls": "TLSv1.2",
+        "cipher": [
+          "ECDHE-RSA-AES256-GCM-SHA384",
+          "TLSv1.2",
+          256
+        ],
+        "records": 188,
+        "partial_writes": 93,
+        "record_batches": 92,
+        "consumer_exit": 0,
+        "cleanup": true,
+        "errors": [],
+        "ada_sha256": "17d4e0c5620f18989185567d2d3561b6200c4a41ce38f02a31b57a1a029a834b",
+        "sleet_sha256": "df1ae6698954c6fb2ff3640a713342fecbce449e3a61626ad385961c9497a354",
+        "completed": true
+      }
+    }
+  },
+  "memcheck": "==1310157== Memcheck, a memory error detector\n==1310157== Copyright (C) 2002-2024, and GNU GPL'd, by Julian Seward et al.\n==1310157== Using Valgrind-3.24.0 and LibVEX; rerun with -h for copyright info\n==1310157== Command: /home/zboll/task111-evidence/final16-mbedtls/focused-build/bin/trust_probe /home/zboll/task111-evidence/final16-mbedtls/cert.pem /home/zboll/task111-evidence/final16-mbedtls/unrelated.pem\n==1310157== Parent PID: 1310153\n==1310157== \n==1310157== \n==1310157== HEAP SUMMARY:\n==1310157==     in use at exit: 3,694 bytes in 5 blocks\n==1310157==   total heap usage: 617,254 allocs, 617,249 frees, 38,838,584 bytes allocated\n==1310157== \n==1310157== LEAK SUMMARY:\n==1310157==    definitely lost: 0 bytes in 0 blocks\n==1310157==    indirectly lost: 0 bytes in 0 blocks\n==1310157==      possibly lost: 0 bytes in 0 blocks\n==1310157==    still reachable: 3,694 bytes in 5 blocks\n==1310157==         suppressed: 0 bytes in 0 blocks\n==1310157== Reachable blocks (those to which a pointer was found) are not shown.\n==1310157== To see them, rerun with: --leak-check=full --show-leak-kinds=all\n==1310157== \n==1310157== For lists of detected and suppressed errors, rerun with: -s\n==1310157== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)\n",
+  "artifacts": {
+    "build26.command.json": "75a25b0ad9589d40bda43441f19a3330e43740cc1a9d38562b7829af232a2ae5",
+    "sleet-identity.command.json": "5b975b239ca9c4b46fe835aba21cd5c38c015ae4a2788bab7ed4644e6c5f9555",
+    "cert-identity.stdout": "6c399fef26b616ae961397a288dbe7ebcfd9eb8ee22a12efca88895e31ec7bb4",
+    "uci25-final-clean.command.json": "cb5d401ab7c5b0193c47f996fcadbe4edbebd6537190fe147f643d57b2d80cbf",
+    "unrelated-identity.command.json": "017f2667384661a278484e7be2ce87ba056c69cb1297d8c9967bc00799d37842",
+    "source-status.command.json": "7a396842e1e96231c8551cc4903dd679a3f8d70e271e8f9dd6794dbdcc477575",
+    "unrelated.command.json": "08c29525b3297cbc676e1710ffe6940ac5e6441c99c6a59edbf50bbf903c15ee",
+    "platform.command.json": "ee5af2a0e4b6f55b6eaf4842c9fbf0094994b2abdb99da38f9182f10aee0771b",
+    "uci26-identity.stdout": "632fe55dbfd65c9610fd81f71fe117be78df24d49e8215e8cb6814ae3b474ef2",
+    "aht-clean.command.json": "9f2104bf74f195f0c7a61e03bbe10cba10b39066c5b0a847187cf1c2362240e5",
+    "codec-archive.command.json": "c28cec146dbdc17f2106bde1b058b1fdfdacaa5cacb5ff45151fc4f3df37a121",
+    "result.json": "7db97644ff53be55b9f2690b09d55230be72a4b56c064609c9856be15e54061a",
+    "sleet-final-clean.command.json": "2825ac920f61c47dcc9566e000d395f9fc5cf8ea3a6bc36f1106088c839876b7",
+    "aht-extract.command.json": "b9320413767c213b0b2de50b1bb0aa4b048d5377983380ea300cdddca2ee4be5",
+    "compiler.command.json": "027bcd858554c47b68195555aa7b80d6cba633acd07e60d108bdd72104ca5565",
+    "uci25-identity.stdout": "ae7da64ee489cfb30250c8f923c3c4526d4f00fae96665c9b8d25c5bca7b955c",
+    "unrelated-identity.stdout": "c3483b8f49ba06185597ed8afa0d814323e4d775ad84f4bae0652440f5342f4b",
+    "codec-extract.command.json": "faf32a456e8a4a6d82c47b09bbd1d9d070114328fde792533f5659b94578a2eb",
+    "codec-identity.stdout": "a9edf35639587b6fc713c0748f2ba729db0dd41c7babd26c6183815eaa97e6bd",
+    "generate26.command.json": "37ec5c65f3c3f4565812e2731bedab239cf93200bdb6656af56dafbba8c71552",
+    "focused.command.json": "1c520a69b5d0905b1fac93a9222357199c3cbe0af39440a8c1ed2fa27e05022d",
+    "uci26-clean.command.json": "468af807dec119aecc58cb2144185f9b5f57b0b0bd5045b8e258377bdc736c71",
+    "aht-archive.command.json": "5f3954e7fd2276d8d037b7e8dbea94ef852db71240c2455ce35919dc97140546",
+    "codec-final-clean.command.json": "efc1809c975f8a62788dedc7106d8f149830d92c0cb7c343a9b8fb92b8d4e7a9",
+    "source.command.json": "d2a8f4e24f5ee2c80d481b54380dea4521e079996c3a2c2a1b1c43b94b6aa23f",
+    "codec-clean.command.json": "efc1809c975f8a62788dedc7106d8f149830d92c0cb7c343a9b8fb92b8d4e7a9",
+    "sleet-identity.stdout": "cfbbf31bd8ad5e35897fd98d227c0d82ea0f40d3f45e7832129fc12aea13d7a5",
+    "uci25-clean.command.json": "cb5d401ab7c5b0193c47f996fcadbe4edbebd6537190fe147f643d57b2d80cbf",
+    "input-sources.json": "6cdcbdf08633a8df432dee48735f8434c37fea424d2b0762d5a2a385d78099fc",
+    "uci25-identity.command.json": "24bd661291e29954397e9a6d5b0662442510b19828773778ce55f0958fcb8606",
+    "cert-identity.command.json": "95d1258f8bd8611bc5050cc1edbeef69c15b4ffd32b7f434dcd1846b8d011d83",
+    "wss26.command.json": "2fb742322eb58315882ac521462c4f066b13d034e2caf51b36a08a3ee7e010eb",
+    "schema-sources.json": "7ba9cb35d51392830cbe2bdd2c97aa02a1f36d2c1840557f1b8d74c361002e7c",
+    "uci26-final-clean.command.json": "468af807dec119aecc58cb2144185f9b5f57b0b0bd5045b8e258377bdc736c71",
+    "sleet-clean.command.json": "2825ac920f61c47dcc9566e000d395f9fc5cf8ea3a6bc36f1106088c839876b7",
+    "alire.lock": "532b439128f97b3ee28302e2393f409004608e898ceabe40b3bda6bc929926a6",
+    "aht-identity.stdout": "1ec2599294987fb4469de588c0938be74ba160efa9a089418f2bee021abf9516",
+    "codec-identity.command.json": "b6cbef5839c2131a6ffdc3f02f4618b385e5ca5b6bb65490986d8a3fa41899e2",
+    "focused-build.command.json": "720ab30246d88ea729656460d5e4ce8a6ebdb943782cd1c25ddef7ada985cd20",
+    "printenv.command.json": "484382565c7d913315bc12074e9472d996327bf225bba3d67d842feab8569ccf",
+    "verify26.command.json": "a64e53ba927dcd6f55e24f0ad9cd8d4c8e9babf88dec1cc99b456e4b218c1b02",
+    "memcheck.command.json": "62cc29b36bbbd0ef5b3ab0d59ac3bce90431ee151ea53a3d00099cc2ca1dc935",
+    "uci26-identity.command.json": "650f37d0569376d2c6ba80536e7fa1bb0957f11643cb78e69f05ddd36405cdc9",
+    "aht-final-clean.command.json": "9f2104bf74f195f0c7a61e03bbe10cba10b39066c5b0a847187cf1c2362240e5",
+    "aht-identity.command.json": "5e52d7e93d6f1823955bf71888ea150f6e44278cc76d1ed57261684025838c6a",
+    "cert.command.json": "b18596ae507e56855e46c44eec80c5b1698f6122b1c38bdc6d26a08b953ee9e6",
+    "focused/probe.command.json": "df3f2690ae52cdb457d69f7ec1d58cf21714b0708f5bc94d4008db5ed9b5b04a",
+    "focused/result.json": "3272be35b4d941eaf7c50e68992e99b16b7c125bba033389390878c09ea38e33",
+    "focused/attempts.json": "9b481f74eae65a650fc3eb4e91d2b4db69dae042b4cc3884389d6e7769f0a76d",
+    "focused/probe.stdout": "0d1f4fcd3af8321f15d797ed77f7931e3364765574c80707511e30d3dee827b1",
+    "uci26/generated-sources.json": "1c5de7a804ebfedfd7856e236b3e560a005a3acbd4d6450f91efcbfe385e9da8",
+    "memcheck/memcheck.log": "45852a4023a27e961615f5c676775850cf2212f05c55ce75c3ac95ccabb5565f",
+    "memcheck/probe.command.json": "ccf6e20630941199cd48f481a327d241542f6b361982903473e570edbdf3cc7f",
+    "memcheck/result.json": "81b6ac1964f359ad636074014467ff14c830d9324e74a6dd6fcb7636d0c77b36",
+    "memcheck/attempts.json": "3acf98eed72f501bf62c0649ef7fe3ec0737be7a13c2582cbfc348f7d24adff5",
+    "memcheck/probe.stdout": "54495ef263bbc54e75b2509c5cbc17e837389cb99e09375d24345e21e7265574",
+    "uci26/tls/result.json": "5fba02e2dc47033203d2481d67be36f670be28313a4f9fd9b08a4a03b10abfc1",
+    "uci26/tls/consumer.command.json": "4ab53ac3b805bb01ef7fcd40608316026c10e574c73b2fd05a89d31ad67d5763",
+    "uci26/tls/wire.json": "c4e9207856173dc619609f427098a484eb20cacc2139638ba994f5a18ea24a5b",
+    "uci26/wss/plan.jsonl": "24495490f2deec52f6b0558808870b80de71b60699f8e13f2bd7b6fddceb7b17",
+    "uci26/wss/result.json": "73718212d4896d74d9f21ee8caa0cca52406f589821fbb2c0b013b2e58c5c449",
+    "uci26/wss/consumer.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "uci26/wss/server.command.json": "5f5d36d5d6f40f4db996c84e0f359651c03ddc9e6ccd40fd06b3817839e6100e",
+    "uci26/wss/consumer.stdout": "4d44d3bfae579909f1ce8e8505684e0c6703f754825ed950c4ca5d15c0394382",
+    "uci26/wss/observations.json": "673919e420e743cc25e73b9b15f66c7c2277b90e41b5d6928debf30ddaced660",
+    "uci26/wss/consumer.command.json": "3c54efb93b677ea6bd9daed04867b9a92b6bffc3ad7279d724f7049f6e2710eb",
+    "uci26/wss/wire.json": "02b16cc104c82df417e11dda7c61f68f815cb2c0b0f09e7fc358af61465bade5",
+    "uci26/wss/server.stdout": "d402e4fdf74aab42820d6264078817d4ec36efcb0bcf6c60cb112120bf331399",
+    "uci26/wss/server.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  }
+}
