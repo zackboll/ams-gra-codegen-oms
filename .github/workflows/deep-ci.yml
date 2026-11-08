@@ -38,7 +38,7 @@ jobs:
         run: |
           set -euo pipefail
           apt-get update
-          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14
+          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14 libssl-dev
           test "$(uname -m)" = x86_64
           test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.41'
           mkdir -p /tmp/task106-evidence
@@ -196,7 +196,7 @@ jobs:
         run: |
           set -euo pipefail
           apt-get update
-          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14
+          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14 libssl-dev
           test "$(uname -m)" = x86_64
           test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.41'
           mkdir -p /tmp/task105-evidence
@@ -352,7 +352,7 @@ jobs:
         run: |
           set -euo pipefail
           apt-get update
-          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14
+          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14 libssl-dev
           test "$(uname -m)" = x86_64
           test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.41'
           mkdir -p /tmp/task104-evidence
@@ -513,7 +513,7 @@ jobs:
         run: |
           set -euo pipefail
           apt-get update
-          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14
+          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14 libssl-dev
           test "$(uname -m)" = x86_64
           test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.41'
           mkdir -p /tmp/task103-evidence
@@ -669,7 +669,7 @@ jobs:
         run: |
           set -euo pipefail
           apt-get update
-          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14
+          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14 libssl-dev
           test "$(uname -m)" = x86_64
           test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.41'
           mkdir -p /tmp/task102-evidence
@@ -824,7 +824,7 @@ jobs:
         run: |
           set -euo pipefail
           apt-get update
-          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14
+          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14 libssl-dev
           test "$(uname -m)" = x86_64
           test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.41'
           mkdir -p /tmp/task101-evidence
@@ -985,7 +985,7 @@ jobs:
         run: |
           set -euo pipefail
           apt-get update
-          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14
+          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14 libssl-dev
           test "$(uname -m)" = x86_64
           test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.41'
           mkdir -p /tmp/task100-evidence
@@ -1461,14 +1461,15 @@ jobs:
           cargo build --locked --release -p ams-gra-codegen-oms --example python_datetime_closure
           python3 scripts/test-py007-uci.py
           python3 scripts/test-py008-uci.py
-          # PY-016 is the executable READY successor. Historical PY-007/008
+          # PY-017 is the executable READY successor. Historical PY-007/008
           # defaults and fixtures remain immutable, including their NOT READY oracle.
           python3 scripts/test-py009-uci.py
           cargo build --locked --release -p ams-gra-codegen-oms --example python_visible_ascii_profiles
           python3 scripts/test-py010-uci.py
           python3 scripts/test-py016-uci.py
+          python3 scripts/test-py017-uci.py
           for py010_interpreter in python3.11 python3.13; do
-            "$py010_interpreter" scripts/check-py016-uci.py --generator target/release/ams-gra-codegen-oms --output "$RUNNER_TEMP/py006-uci/py016-$py010_interpreter"
+            "$py010_interpreter" scripts/check-py017-uci.py --generator target/release/ams-gra-codegen-oms --output "$RUNNER_TEMP/py006-uci/py017-$py010_interpreter"
           done
       - name: Preserve Python pinned UCI measurements
         uses: actions/upload-artifact@v4
@@ -1776,7 +1777,7 @@ jobs:
       group: ${{ 'oms-main-slot-6' }}
       queue: max
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
         with:
@@ -1820,7 +1821,7 @@ jobs:
       group: ${{ 'oms-main-slot-10' }}
       queue: max
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
         with:
@@ -1838,7 +1839,11 @@ jobs:
           printf 'DEEP_CI_EVENT=%s\n' "$GITHUB_EVENT_NAME"
       - name: Prevent Python bytecode in source-bound qualification
         shell: bash
-        run: echo 'PYTHONDONTWRITEBYTECODE=1' >> "$GITHUB_ENV"
+        run: |
+          echo 'PYTHONDONTWRITEBYTECODE=1' >> "$GITHUB_ENV"
+          # Optimize the CLI itself, not only build.rs: PY-016 parses the full
+          # unchanged schema. Dev debug assertions and overflow checks remain on.
+          echo 'CARGO_PROFILE_DEV_OPT_LEVEL=3' >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@1.95.0
       - uses: actions/setup-python@v5
         with:

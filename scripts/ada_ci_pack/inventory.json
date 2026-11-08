@@ -1,0 +1,460 @@
+{
+  "origin_commit": "afe0c510866c08fc188fef335e74879840794a70",
+  "origin_tree": "a384c4375098fb5293c0a4fa11595f5de7bbe014",
+  "packs": {
+    "a": [
+      "ada-generated-codec",
+      "ada-repeated-temporal-codec",
+      "ada-datetime-codec",
+      "ada-hexbinary-codec"
+    ],
+    "b": [
+      "ada-repeated-codec",
+      "ada-duration-codec",
+      "ada-repeated-choice-codec"
+    ]
+  },
+  "suites": {
+    "ada-json-guard": {
+      "steps": [
+        {
+          "name": "Guard qualification wrapper negative controls",
+          "run": "python3 scripts/test-task087a-wrapper.py"
+        },
+        {
+          "name": "Production guard and clean consumer (GNAT 16.1.0, all policies)",
+          "run": "python3 scripts/check-task087a.py --compiler 16 --scratch \"$RUNNER_TEMP/task087a-qualification\""
+        }
+      ],
+      "artifact": {
+        "name": "task087a-ada-json-guard",
+        "path": "${{ runner.temp }}/task087a-qualification/*.log\n${{ runner.temp }}/task087a-qualification/qualified-alire.lock\n",
+        "if-no-files-found": "error"
+      },
+      "timeout_seconds": 1800
+    },
+    "ada-generated-codec": {
+      "steps": [
+        {
+          "name": "Task 088 generated Ada Choice execution (GNAT 16.1.0, all policies)",
+          "run": "python3 scripts/check-task088.py --compiler 16 --scratch \"$RUNNER_TEMP/task088-choice\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+        },
+        {
+          "name": "Execute generated Ada codec, all assertion policies",
+          "run": "python3 scripts/check-task087b.py --compiler 16 --scratch \"$RUNNER_TEMP/task087b-codec\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+        }
+      ],
+      "artifact": {
+        "name": "task087b-generated-codec",
+        "path": "${{ runner.temp }}/task087b-codec/*.log\n${{ runner.temp }}/task087b-codec/qualified-alire.lock\n${{ runner.temp }}/task087b-codec/**/alire.lock\n${{ runner.temp }}/task088-choice/*.log\n${{ runner.temp }}/task088-choice/source-hashes.txt\n${{ runner.temp }}/task088-choice/**/alire.lock\n",
+        "if-no-files-found": "error"
+      },
+      "timeout_seconds": 3600
+    },
+    "ada-repeated-temporal-codec": {
+      "steps": [
+        {
+          "name": "Execute repeated temporal codecs, both profiles and all policies",
+          "run": "python3 scripts/check-task094.py --compiler 16 --scratch \"$RUNNER_TEMP/task094\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+        },
+        {
+          "name": "Execute inherited nested and Choice temporal composition",
+          "run": "python3 scripts/check-task094.py --composition --compiler 16 --scratch \"$RUNNER_TEMP/task094-composition\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+        },
+        {
+          "name": "Execute combined repeated Choice and temporal codecs",
+          "run": "python3 scripts/check-task094.py --combined --compiler 16 --scratch \"$RUNNER_TEMP/task094-combined\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+        },
+        {
+          "name": "Verify completed execution evidence",
+          "run": "set -euo pipefail\ntest -s \"$RUNNER_TEMP/task094/sources.sha256\"\ntest -s \"$RUNNER_TEMP/task094-composition/sources.sha256\"\ntest -s \"$RUNNER_TEMP/task094-combined/sources.sha256\"\ntest \"$(grep -lFx 'TASK094_CODEC_COMPLETE checks= 54 rejections= 17' \"$RUNNER_TEMP/task094/\"*-execute.log | wc -l)\" -eq 6\ntest \"$(grep -lFx 'TASK094_COMPOSITION_COMPLETE checks= 19 rejections= 3' \"$RUNNER_TEMP/task094-composition/\"*-execute.log | wc -l)\" -eq 6\ntest \"$(grep -lFx 'TASK094_COMBINED_COMPLETE checks= 26 rejections= 2' \"$RUNNER_TEMP/task094-combined/\"*-execute.log | wc -l)\" -eq 6\n"
+        }
+      ],
+      "artifact": {
+        "name": "task094-ada-repeated-temporal-codec",
+        "path": "${{ runner.temp }}/task094/**\n${{ runner.temp }}/task094-composition/**\n${{ runner.temp }}/task094-combined/**\n",
+        "if-no-files-found": "error"
+      },
+      "timeout_seconds": 3600
+    },
+    "ada-datetime-codec": {
+      "steps": [
+        {
+          "name": "Execute named and direct DateTime codecs, all policies",
+          "run": "python3 scripts/check-task090.py --compiler 16 --scratch \"$RUNNER_TEMP/task090\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+        },
+        {
+          "name": "Execute combined DateTime Choice and repeated Record codecs",
+          "run": "python3 scripts/check-task090r.py --compiler 16 --scratch \"$RUNNER_TEMP/task090r\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+        }
+      ],
+      "artifact": {
+        "name": "task090-ada-datetime-codec",
+        "path": "${{ runner.temp }}/task090/*.log\n${{ runner.temp }}/task090/*.lock\n${{ runner.temp }}/task090/*.sha256\n${{ runner.temp }}/task090/*.exit\n${{ runner.temp }}/task090/*.command.json\n${{ runner.temp }}/task090/*-corpus.txt\n${{ runner.temp }}/task090r/*.log\n${{ runner.temp }}/task090r/*.lock\n${{ runner.temp }}/task090r/*.sha256\n${{ runner.temp }}/task090r/*.exit\n${{ runner.temp }}/task090r/*.command.json\n",
+        "if-no-files-found": "error"
+      },
+      "timeout_seconds": 1800
+    },
+    "ada-hexbinary-codec": {
+      "steps": [
+        {
+          "name": "Execute generated hexBinary consumer, all policies",
+          "run": "python3 scripts/check-task093.py --compiler 16 --scratch \"$RUNNER_TEMP/task093-hexbinary\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+        },
+        {
+          "name": "Execute qualified non-OAM hexBinary consumer, all policies",
+          "run": "python3 scripts/check-task093.py --compiler 16 --qualified --scratch \"$RUNNER_TEMP/task093-qualified\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+        },
+        {
+          "name": "Execute combined Binary Choice temporal consumers, both namespaces and all policies",
+          "run": "python3 scripts/check-task093-combined.py --compiler 16 --scratch \"$RUNNER_TEMP/task093-combined\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+        },
+        {
+          "name": "Portable helper-demand naming regression",
+          "run": "set -euo pipefail\npython3 scripts/test-task093-compiler-placement.py\npython3 scripts/check-task093-helper-demand.py --family portable --compiler 16 --scratch \"$RUNNER_TEMP/task093-c4-16\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\"\nsha256sum --check --quiet \"$RUNNER_TEMP/task093-c4-16/sources.sha256\"\n"
+        },
+        {
+          "name": "Validate mandatory evidence",
+          "run": "set -euo pipefail\nroot=\"$RUNNER_TEMP/task093-hexbinary\"\ntest -s \"$root/sources.json\"\ntest -s \"$root/model-byte-parity.json\"\nfor policy in normal Check Ignore; do\n  test -s \"$root/$policy-alire.lock\"\n  test -s \"$root/$policy-build.command.json\"\n  test -s \"$root/$policy-gnat.log\"\n  grep -Fx 'TASK093_CODEC_COMPLETE cases= 33' \"$root/$policy-run.log\"\n  grep -Fx 'TASK093_MODEL_COMPLETE cases= 6' \"$root/$policy-model-run.log\"\n  grep -Fx 'TASK093_CODEC_COMPLETE cases= 33' \"$RUNNER_TEMP/task093-qualified/$policy-run.log\"\n  grep -Fx 'TASK093_MODEL_COMPLETE cases= 6' \"$RUNNER_TEMP/task093-qualified/$policy-model-run.log\"\ndone\ntest -s \"$RUNNER_TEMP/task093-combined/sources.json\"\ntest -s \"$RUNNER_TEMP/task093-combined/qualification.json\"\nfor profile in oam qualified; do\n  for policy in normal Check Ignore; do\n    grep -Fx 'TASK093_COMBINED_COMPLETE checks= 49 rejections= 9' \"$RUNNER_TEMP/task093-combined/$profile-$policy-run.log\"\n  done\ndone\n"
+        }
+      ],
+      "artifact": {
+        "name": "task093-ada-hexbinary-codec",
+        "path": "${{ runner.temp }}/task093-c4-*/**\n${{ runner.temp }}/task093-hexbinary/**\n${{ runner.temp }}/task093-qualified/**\n${{ runner.temp }}/task093-combined/**\n",
+        "if-no-files-found": "error"
+      },
+      "timeout_seconds": 4200
+    },
+    "ada-repeated-codec": {
+      "steps": [
+        {
+          "name": "Execute bounded and unbounded repeated Record codecs",
+          "run": "python3 scripts/check-task089.py --compiler 16 --scratch \"$RUNNER_TEMP/task089-codec\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+        },
+        {
+          "name": "Execute combined Choice and repeated Record codecs",
+          "run": "python3 scripts/check-task089r.py --compiler 16 --scratch \"$RUNNER_TEMP/task089r-codec\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+        }
+      ],
+      "artifact": {
+        "name": "task089-generated-repeated-codec",
+        "path": "${{ runner.temp }}/task089-codec/*.log\n${{ runner.temp }}/task089-codec/*.exit\n${{ runner.temp }}/task089-codec/*-alire.lock\n${{ runner.temp }}/task089-codec/generated-source-hashes.json\n${{ runner.temp }}/task089r-codec/*.log\n${{ runner.temp }}/task089r-codec/*.exit\n${{ runner.temp }}/task089r-codec/*-alire.lock\n${{ runner.temp }}/task089r-codec/source-hashes.json\n",
+        "if-no-files-found": "error"
+      },
+      "timeout_seconds": 1800
+    },
+    "ada-duration-codec": {
+      "steps": [
+        {
+          "name": "Execute generated Duration consumers, all policies",
+          "run": "python3 scripts/check-task091.py --compiler 16 --scratch \"$RUNNER_TEMP/task091-duration\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+        },
+        {
+          "name": "Execute combined Choice repeated DateTime Duration qualification",
+          "run": "python3 scripts/check-task091r.py --compiler 16 --scratch \"$RUNNER_TEMP/task091r-integrated\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+        }
+      ],
+      "artifact": {
+        "name": "task091-ada-duration-codec",
+        "path": "${{ runner.temp }}/task091r-integrated/**\n${{ runner.temp }}/task091-duration/*.log\n${{ runner.temp }}/task091-duration/*.command.json\n${{ runner.temp }}/task091-duration/*.lock\n${{ runner.temp }}/task091-duration/*.sha256\n${{ runner.temp }}/task091-duration/model/*.ad?\n${{ runner.temp }}/task091-duration/codec/*.ad?\n${{ runner.temp }}/task091-duration/qualified/*.ad?\n${{ runner.temp }}/task091-duration/named/*.ad?\n",
+        "if-no-files-found": "error"
+      },
+      "timeout_seconds": 3600
+    },
+    "ada-repeated-choice-codec": {
+      "steps": [
+        {
+          "name": "Execute generated repeated Choice consumers, all policies",
+          "run": "python3 scripts/check-task092.py --compiler 16 --scratch \"$RUNNER_TEMP/task092-codec\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+        },
+        {
+          "name": "Execute qualified non-OAM repeated Choice consumers",
+          "run": "python3 scripts/check-task092.py --compiler 16 --profile qualified --scratch \"$RUNNER_TEMP/task092-qualified\" --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\""
+        },
+        {
+          "name": "Require complete qualification artifacts",
+          "run": "set -euo pipefail\nfor profile in task092-codec task092-qualified; do\n  test -s \"$RUNNER_TEMP/$profile/sources.sha256\"\n  test -s \"$RUNNER_TEMP/$profile/model-byte-parity.json\"\n  for policy in normal Check Ignore; do\n    test -s \"$RUNNER_TEMP/$profile/$policy-alire.lock\"\n    grep -Fx 'TASK092_CODEC_PASS checks= 63 rejections= 17' \"$RUNNER_TEMP/$profile/$policy-run.log\"\n  done\ndone\n"
+        }
+      ],
+      "artifact": {
+        "name": "task092-ada-repeated-choice-codec",
+        "path": "${{ runner.temp }}/task092-codec/**\n${{ runner.temp }}/task092-qualified/**\n",
+        "if-no-files-found": "error"
+      },
+      "timeout_seconds": 1800
+    }
+  },
+  "qualification_sha256": {
+    "ada/oms-json-support/README.md": "1260c80ae5123431ad4519ded834eaf01fd8834157c41878cb3e896ff658d2c2",
+    "ada/oms-json-support/alire.toml": "958316eeeec7132a7abbdc4ffdfe5529c6963984ab0c99028e3241f8c656e642",
+    "ada/oms-json-support/ams_gra_oms_json.gpr": "6a282866dabb9dad48fdc11895ba886bab4240763923686bb14d50de85486ead",
+    "ada/oms-json-support/ams_gra_oms_json_float32.gpr": "24529c82e40ac8bda8b7221c27e4f357c670e1b2fb3fe379abee8f6f5b21aa9b",
+    "ada/oms-json-support/ams_gra_oms_json_lossless.gpr": "6979be3b6a8300500fb557a9f62108ae55381f75711fe92d13a10587a4be1a37",
+    "ada/oms-json-support/float32/ams_gra_float32.c": "ec7217befcf053dfd133d836c983c0153f82099caaa273fffd34553b4c8b5320",
+    "ada/oms-json-support/float32/ams_gra_oms_json_float32.adb": "f3d77a4858a3fb08677b403ee792ba8ee74a0ff69266292838638354a22d18e5",
+    "ada/oms-json-support/float32/ams_gra_oms_json_float32.ads": "f5bb00faf0529105f13550ba96ff87f5b2f11909518cac91f9dfaa460f84f289",
+    "ada/oms-json-support/float32/ams_gra_oms_json_occurrences.adb": "72a0f820dc794efadda510046ea4bea5e3cc5277468457b0cb460c1f447bba06",
+    "ada/oms-json-support/float32/ams_gra_oms_json_occurrences.ads": "9ed6b94a3861c9de2ea9a2186e9d48f69b668ca8469e8650201392a16ddeac59",
+    "ada/oms-json-support/lossless/ams_gra_float64.c": "637ac60a28da1226ffa208d89897d0132df12d7c4da88d77de8f23bad04d9840",
+    "ada/oms-json-support/lossless/ams_gra_float64.h": "c4946cfe544e0516125e0fddc16139b7c97f92a0ff7553e7240670796bd13d3a",
+    "ada/oms-json-support/lossless/ams_gra_oms_json_emitter.adb": "87f3c0cdc95d3d4d36c406a805d10790674582322635560742e47e5b9e62f644",
+    "ada/oms-json-support/lossless/ams_gra_oms_json_emitter.ads": "9c675c822c43a12e3312fdd6c4591bfd4b3b887e57fbc7d682090e187d3fe7ca",
+    "ada/oms-json-support/lossless/ams_gra_oms_json_float64.adb": "92d9b838fd5ee9e2774b6f177902d079148d269226d5911372302827d100cfd1",
+    "ada/oms-json-support/lossless/ams_gra_oms_json_float64.ads": "4b3f3e749e36bed8cb29533e8baac5e6368037e038882f67b3ce3f4c2170acdd",
+    "ada/oms-json-support/lossless/ams_gra_oms_json_lossless_ingress.adb": "28beb3505c086944d3d2b37e584378f1ad826ac6502e491187a9ca4ca83f77a3",
+    "ada/oms-json-support/lossless/ams_gra_oms_json_lossless_ingress.ads": "fad3d03b983ec8b640879ef7b6c7829f32b05664adbb1c445a5a5728eb3810d7",
+    "ada/oms-json-support/src/ams_gra_oms_json_guard.adb": "ff4fe37bc4efb7d5f620f0e5fe2a77b708118f525a2af70c407b3c00edd6006a",
+    "ada/oms-json-support/src/ams_gra_oms_json_guard.ads": "e5175601265338eea218b10467f26ffc19cb24bc181d8386359affefef5a6a47",
+    "scripts/check-task087a.py": "b1b531319589f6ee08b8e06c3d911c535b4e163b2073bdcef2e37b0cba3c2542",
+    "scripts/check-task087b.py": "1112fead87c55caebc4e933e509b74b1f56cdd774f93edb58005647828c9adb5",
+    "scripts/check-task088.py": "701d4d3dd88fdac234803cc9d2186bed08568450ce467ae5ac862ec27a7834a9",
+    "scripts/check-task089.py": "bc4a3b067ece91755d903f1a3ef36859267d86ac38170d496df9bb29499c1183",
+    "scripts/check-task089r.py": "9acf63048e68b9320180510ff1f66afe357455122d55ad0cde9fee78d73e2f83",
+    "scripts/check-task090.py": "561f0b06e706fd358b912f0b947ed68b309da767914806c73cc2b1596562f7ae",
+    "scripts/check-task090r.py": "ad55efe1afc3a14627e67c182c2d209960dbe028759341b8e8111270ca17b30b",
+    "scripts/check-task091.py": "0a3cf3807efdd95ebaed13a6e7c46ab91b24a1746e8035f5e604f3cb172dd84b",
+    "scripts/check-task091r.py": "7ec0ad60b022f62c0de0cb6f57002615da4c8442c4f091c4f907f9cf3809eb2f",
+    "scripts/check-task092-real.py": "cd5d1e44fab3763a33b93fce9951834c82651bed0496dc1b9e73b22857ddbdef",
+    "scripts/check-task092.py": "a41aa6e83df6c07d56792507348bc0d4f95af972f2b782c0ee90af52e62d9cc2",
+    "scripts/check-task093-combined.py": "ed76b5242d7817e03cbf0b5b2a198a0564ca724a83b6cb3ed0c843dcc7fec675",
+    "scripts/check-task093-helper-demand.py": "ba04c69a6b645433cc2521d3e86ee889f788ed7c736a77648bc1d5250b5429f5",
+    "scripts/check-task093-log.py": "f50fbdda553e3a8ffb8d5aa916978c7802b716202e9e5aa58f0c14a1d066df30",
+    "scripts/check-task093-mixed.py": "5f63a9e9d32aeac116b42da7d4400c6865aef3fb7186b1b5f0a5bdba72c9bd06",
+    "scripts/check-task093-real.py": "39d592cd893189b04260859052372d7ba330a09d32181982bdb8c53d84645f34",
+    "scripts/check-task093.py": "4f2607cba92eb02119e98a11b2adffa4602a625d43cff4c606f1fd295339505f",
+    "scripts/check-task094.py": "13a576ca61caa2adee5f826f2208527664c13e4b2b716a477d34aa21e3c0d978",
+    "scripts/test-task087a-wrapper.py": "3830f7c89d7886e8d3d38ad52aee16af7bad4be991b2ae03b6e6e141f54c5b60",
+    "tests/ada-generated-codec/choice_consumer.adb": "9fe1470ec89550aba6e5f068818779cd1edeccf146b952ae4620916171b1fdee",
+    "tests/ada-generated-codec/choice_model_consumer.adb": "94d66b6a6c56ff2fc707e7f1625fae5844ca3380d41f9c3fadaa1ef325651115",
+    "tests/ada-generated-codec/codec_consumer.adb": "c1def089fc3bb19932aff0e028e5a910b17fe38a1122ef1df47a4d438d2a1ef5",
+    "tests/ada-generated-codec/combined_consumer.adb": "bf83fd9e159b87412c4729303405d185f0bf8cc91e549736a6a4627522ba24c9",
+    "tests/ada-generated-codec/datetime_combined_consumer.adb": "2624cb5f61a64d0c4275e28340e4dbcf0a515bbba4a69340fed88f74a2653c29",
+    "tests/ada-generated-codec/datetime_direct_consumer.adb": "10fb6d1c243fcee62f3b608880812018fcbd94c3ae17c2abbda61aa83a70a813",
+    "tests/ada-generated-codec/datetime_named_consumer.adb": "98d71451da37962e5793fdafc55031a5ee2c3b68aa70910e6a5252faf98bfe8b",
+    "tests/ada-generated-codec/duration_codec_consumer.adb": "fa84c31715b028514f7fc0569983f71c6e29f0467f59490b940028e2eb922db8",
+    "tests/ada-generated-codec/duration_combined_consumer.adb": "be55a3e2c5845077ceea8e299318eb3dccfdc60f68e9c8e839ed8763dd0fc308",
+    "tests/ada-generated-codec/duration_model_consumer.adb": "5b72ee8424312e70d1b3b47e46e084d5df4d0a659d5f972565063622d74ff0da",
+    "tests/ada-generated-codec/float32_consumer.adb": "f29ad1aa78b589947fb5b6772e16ce20df75c0e37c4ab8ceeed849b74a3045dd",
+    "tests/ada-generated-codec/float32_environment.adb": "02e399c3464ca1c7ee4ad0482da09af4d3cb698ab8330bfed07a76713a75b3a5",
+    "tests/ada-generated-codec/float32_identifiers.adb": "d62e76ba705b6cccac4762cfd661da1ba8d1fcf5b156523046632d2f8c055582",
+    "tests/ada-generated-codec/float32_rounding.adb": "5da7be915a7ac584485ef0003ad195f938261521bd8c3d5a1bc0c10df1b2e34f",
+    "tests/ada-generated-codec/helper_demand_consumer.adb": "f352d30fce90e07679b9ff6d01cf42a761b8fd73cfab5a9dd3f20590b08430dd",
+    "tests/ada-generated-codec/hexbinary_combined_consumer.adb": "115615328015eb283b338f006b710f4510f6694ee6f3b947d046f8567aefe14a",
+    "tests/ada-generated-codec/hexbinary_consumer.adb": "d5cc47b3f90647b823918f8559d9e38c8c8e709ba30af8924a1de427b57bb760",
+    "tests/ada-generated-codec/hexbinary_float32_consumer.adb": "7367e00187cab3985fea977eed871a0b5f54403a80f5b3bc5ed13b566525b26e",
+    "tests/ada-generated-codec/hexbinary_float32_environment.adb": "310136c4284b40957f90e37cab66e12e89c32a6e5161ea44eb787ff485c89f97",
+    "tests/ada-generated-codec/hexbinary_log_consumer.adb": "4f303464617c589d39659c25a738aed715bfe578c95b5e8ab990aced2ab68d89",
+    "tests/ada-generated-codec/hexbinary_model_consumer.adb": "dca613f789a7fac8a3c5f95416dbe6d246448c0351f9d9b95d8ff71c12fb1008",
+    "tests/ada-generated-codec/hexbinary_real_consumer.adb": "5ed5f48f0feec56a4ad86db4598958826cb622461e4e61e11dc74bf12ac87954",
+    "tests/ada-generated-codec/model_consumer.adb": "df474379b036fa20a83e29e5d9c65e3ef563cb8c607384d7a72990b99407cafc",
+    "tests/ada-generated-codec/qualified_choice_consumer.adb": "4f0d9552a55c0f68179a419469dfa2c6c525b1c2a236e72458288fe986cc7532",
+    "tests/ada-generated-codec/repeated_choice_consumer.adb": "c1cb4a068d191532354fabbb840082c2ec5f0e1d50af083788ccea46aee15093",
+    "tests/ada-generated-codec/repeated_choice_model_consumer.adb": "4de602257c119e61d01dde903e17284c809331a17b0de77f180211d6765ecf5f",
+    "tests/ada-generated-codec/repeated_choice_temporal_consumer.adb": "4bf6f8f4b465ddde9f38ce5d37f6a6b884fa3bdfaf039d3e5fe20411c91d2d94",
+    "tests/ada-generated-codec/repeated_codec_consumer.adb": "a5a87d9d3071ae76d7a34f2db6f22869689bb08d9c41060c1fda76653728ea7c",
+    "tests/ada-generated-codec/repeated_model_consumer.adb": "167cb5e4928af490412285b478112d015992e3bcee521b60ba77f33579f20e52",
+    "tests/ada-generated-codec/repeated_temporal_codec_consumer.adb": "b31ef998645736eca8ade1216ac6cb4da75ae87ce8187288db038fab4bab412f",
+    "tests/ada-generated-codec/repeated_temporal_composition_consumer.adb": "139a3dd5bda5ff5003b5ce4b395f89320c89314614167e1fa99544da528d22b0",
+    "tests/ada-generated-codec/repeated_temporal_model_consumer.adb": "421d46318aab140b06bd2ab5b35c4be96975a5c656aa3fab5e05bb2e1f6bddd9",
+    "tests/ada-generated-codec/subset_consumer.adb": "161c1d339a30a356ecfdf0f7696b2d5b2686d7a26c3f733a6b274e9686695d31",
+    "tests/ada-generated-codec/task092_real_rdma.adb": "747c036c218c833f74000de76263fefe4cbcf32c57bc8a2b8daf29deac38ff5a",
+    "tests/ada-generated-codec/task092_real_survivability.adb": "5853126f0cfe5b14425db50d50ead4a79a47bfe482122d107238e69bf539cb71",
+    "tests/ada-json-probe/alire.toml": "48150a24288f235cd2f779487d279139e018fcd13b04b5f67ff2f105217de2a6",
+    "tests/ada-json-probe/json_guard.ads": "69f4b4035aed31270e79d41d133feb2b81378852a64820c6d345b774b74d87c7",
+    "tests/ada-json-probe/json_probe.adb": "a336b8904e4afaf4ea271165ec29f964ecdbfd4853a2ef9a525360cce9c89165",
+    "tests/ada-json-probe/json_probe.gpr": "97faaeda3367c3b20d976b61758bca7afcea1d2271b33de9b5843768f1b783f8",
+    "tests/fixtures/service-generate/abstract.xsd": "ffb0cf98b4a09d949b291a595821c200edf60e301b14c96f8d2789542b3304f7",
+    "tests/fixtures/service-generate/abstract.yaml": "b11a14dcd189d41b4bfd3202bd738c4712de9ef85e866a122a186c5b7ab3bd26",
+    "tests/fixtures/service-generate/api-all-kinds-reordered.yaml": "90a142d1dc118f029f506ed87659637a47ce00a759bea29c04667ac5edd55d88",
+    "tests/fixtures/service-generate/api-all-kinds.yaml": "b0b2dc674925c8c719af9e743d7124e937e000c7f2cd91c588303ee0e68ab815",
+    "tests/fixtures/service-generate/api-exchange-collision.yaml": "4258b64934e079e87dabfe168c3af90d4f4d03d418a453db0cf7cf15c1fb55e8",
+    "tests/fixtures/service-generate/api-function-collision.yaml": "e865b48f76b450f8a18e8acdc42ea037a1aaff6cfc1c9d521d1b6576ee160459",
+    "tests/fixtures/service-generate/api-reserved-ids.yaml": "297c1de623d64eb326b2b39e4d4b276cae12fec838ccb75ad58960b50dd190f6",
+    "tests/fixtures/service-generate/artifact-ada-name-parent.xsd": "1572511811d9fb3355ce490d1a80444c4e776ffe1d1afe549906dfb8582bff1b",
+    "tests/fixtures/service-generate/artifact-ada-payload-parent.xsd": "6eae5d5f56837befdde329677501aabc374efe0f362e73964fb06a535c3c7601",
+    "tests/fixtures/service-generate/artifact-boundary.yaml": "40d51d5f368d1f6af5742377a4780a83dbcfee28bf39a54450a541b026024dde",
+    "tests/fixtures/service-generate/artifact-service-api-namespace.xsd": "de28fbb69a72134aa13b28b72566b7c973ba985eccefaf4d90dc6a51b24341ea",
+    "tests/fixtures/service-generate/artifact-service-api-stem.xsd": "19160f91e6e518963c6b29b608b173c7b70644e49d76b55be545ef8be95d3728",
+    "tests/fixtures/service-generate/both-reversed.yaml": "5186edf82d6e2b3086056600da3224784ed59b25163b334ce7ab3f13238c7e01",
+    "tests/fixtures/service-generate/both.yaml": "61e5be725d6cb381c25c4909088f7811edacb18aa388eb54b85820b0523952f0",
+    "tests/fixtures/service-generate/codec-ada-choice-temporal.xsd": "d72841765307e50fb2f82a6bb01be303f8bc66262b4f1d259bed359bbcdd52e3",
+    "tests/fixtures/service-generate/codec-ada-choice.json": "f46bbb07d2619289ea6ab06d8301080651f3f58d5fda4c491c8170a407b80d19",
+    "tests/fixtures/service-generate/codec-ada-choice.xsd": "9bc76f4a50b48d186ae6f81256dd46ce6cbcbd797e99762db6aac00adad74547",
+    "tests/fixtures/service-generate/codec-ada-choice.yaml": "bf39d32014c937c759b567a2a3e61b1a8ff12eab19deb1c4d3008e961d51ac65",
+    "tests/fixtures/service-generate/codec-ada-combined.xsd": "65adb7d6829b15df2b6a294456bd508466875afd5c694671c78ae2ac92db36bc",
+    "tests/fixtures/service-generate/codec-ada-combined.yaml": "884a3748a5174cc5a808c4d070a498850f6e1b6748201e2f48e927a0adb9b298",
+    "tests/fixtures/service-generate/codec-ada-copy-views.xsd": "0bb4fa9b3ff4f4d9a56db7e1b041d1f500ba604b3f274d63597d80f4d0b6cf35",
+    "tests/fixtures/service-generate/codec-ada-datetime-combined.xsd": "68328191eae9d1fcc49dba3ce884152a6a141695e203cc009ce364fc5d12ccf8",
+    "tests/fixtures/service-generate/codec-ada-datetime-combined.yaml": "5180013105ee4fe47553e73433248eaa3b2da9d65800fa975b1952161fb55701",
+    "tests/fixtures/service-generate/codec-ada-duration-combined.xsd": "ffdc84abcd3d51af01cc0221c31730c65865dfd79ec4a885a31aaa4c7211918e",
+    "tests/fixtures/service-generate/codec-ada-duration-combined.yaml": "88659d5e529b5964679845da824979ef51afad17d69d176a64679669789c3631",
+    "tests/fixtures/service-generate/codec-ada-duration.xsd": "fe6579283a10315c7afa3988b2b560abf48841a0a1337f1cad13206b40520c75",
+    "tests/fixtures/service-generate/codec-ada-duration.yaml": "b867c9fc5142c68540d84d0193549b7a9ff242a0f0d0b6bb72d2d3f565ee8b76",
+    "tests/fixtures/service-generate/codec-ada-float32-identifiers.xsd": "50deadefb0217691c7f4eefe742120276c94720e9cef63c78c78195f0ff2ce5d",
+    "tests/fixtures/service-generate/codec-ada-float32-identifiers.yaml": "b27d5e6eedce432330b03d42db21f7b43f49778337c2aed76a9874a56e49d7b0",
+    "tests/fixtures/service-generate/codec-ada-float32.xsd": "d47f42aa9811083290f6eec0d5d9149d122fa215863fe2c6f3a7cf987ade31e0",
+    "tests/fixtures/service-generate/codec-ada-float32.yaml": "54594ca96cfb8fdd7ec0079c6776f3811cfdd231b1d6c01befe14f94fd7aeef5",
+    "tests/fixtures/service-generate/codec-ada-float64.xsd": "b925761dc0b2c4e2a94a7c5ae05f0f1748296b5aef88cc482466c785b93f308b",
+    "tests/fixtures/service-generate/codec-ada-float64.yaml": "bc2dc1ed7a8e504e83298ced116218f04207a22d9136c569a8030799231154e8",
+    "tests/fixtures/service-generate/codec-ada-helper-demand-float32.xsd": "739b994068e8a2e5e4e08b8e34e12ee61adc853189163af50ea24a082a75b783",
+    "tests/fixtures/service-generate/codec-ada-helper-demand.xsd": "aeb0f26863803bbb3ab18e582bcad3509a5b580f62b00e8c167f1609da280a78",
+    "tests/fixtures/service-generate/codec-ada-helper-demand.yaml": "297395e590a21fe950f655ae35a04844648622d6699c370493544020d164ddce",
+    "tests/fixtures/service-generate/codec-ada-hexbinary-combined.xsd": "ae6b25b10743ba75ac042451380d89e1cbf24186816e05724efe6bb6348b9b83",
+    "tests/fixtures/service-generate/codec-ada-hexbinary-combined.yaml": "e07194ad250ec4bb418ac27df4db12df133e48864a35d868dace5dfbbfca1cb9",
+    "tests/fixtures/service-generate/codec-ada-hexbinary-float32.xsd": "7b9d462cd8eead51d771a926edde975a511fe7f19302ec66e7588ad91e02fe32",
+    "tests/fixtures/service-generate/codec-ada-hexbinary-float32.yaml": "b3e79981a6758982444b120ecf49cb1e0cb887d2d7364f79ffefd34c22fc91c3",
+    "tests/fixtures/service-generate/codec-ada-hexbinary-single.xsd": "dfc7def3178c358414732ca50a12d9d70a5e6d277287d61ea25f4585dbcdf48d",
+    "tests/fixtures/service-generate/codec-ada-hexbinary-single.yaml": "f9e274aaa479a240f8a8ca9a853c2de1993989855227fef7b18e0b3274320e89",
+    "tests/fixtures/service-generate/codec-ada-minimal.json": "b0c314c15f3033ae45bb3334ff8ce54f754c9730ea7dba0254829ed3947d4bc7",
+    "tests/fixtures/service-generate/codec-ada-minimal.xsd": "2de35f6674261c589019353c3f24756c6d3dfa01174247231d8b9e45ad5d0f6c",
+    "tests/fixtures/service-generate/codec-ada-minimal.yaml": "61ce3f28d1d8c12d95e87d74eff05d38f9358913604808d3fe1112f3ad8c8649",
+    "tests/fixtures/service-generate/codec-ada-repeated-choice-qualified.xsd": "2c664fbfde6858debf0e53719eaf892543599f6169b4a71ea4b2786b2f7e05c1",
+    "tests/fixtures/service-generate/codec-ada-repeated-choice.xsd": "a92f9dbdbb8a9fa69226092b7f2792f486a6f38827fd73524084681b3813aeaa",
+    "tests/fixtures/service-generate/codec-ada-repeated-choice.yaml": "f455272f0ba3fe030d7d27f0480053030249530956ecb190f278bd7272cefb3b",
+    "tests/fixtures/service-generate/codec-ada-repeated-temporal-composition.xsd": "8ab0753ddb5f5b85e820e5672546716138f2b32ee9cf5c4a945565e8008a48a5",
+    "tests/fixtures/service-generate/codec-ada-repeated-temporal.xsd": "27a1cd97c26377d44fcd5d412df1d14cd87d93b01245b5c62cadac013168ff4c",
+    "tests/fixtures/service-generate/codec-ada-repeated-temporal.yaml": "d3899950c2159f20a2d0afa633ceeb3340645532c8664893500593b899ce41e1",
+    "tests/fixtures/service-generate/codec-ada-repeated-zero.json": "d762de8dcdef1437c88761db1428945c968d863879918b30d65c4a4850f3023e",
+    "tests/fixtures/service-generate/codec-ada-repeated.json": "1276edb292d0064dbd410753546c2ef1cb2a8ba50a7e552245a25727c471493e",
+    "tests/fixtures/service-generate/codec-ada-repeated.xsd": "e3572f3f9a6806fcc4230eb47382bcee2619f53c7e5877954e6bb99566f73488",
+    "tests/fixtures/service-generate/codec-ada-repeated.yaml": "cd9ba6c43e8a7b5b651689a57aa09f75e25a16ee6b482e8c03c4e289b2e240a7",
+    "tests/fixtures/service-generate/codec-ada-time-zulu-float32.xsd": "013b19f3ec00d0c1efc4c06b2ba91f7ba46c6e562234d97c0c626a8b4ea1ef44",
+    "tests/fixtures/service-generate/codec-ada-time-zulu-float32.yaml": "8841e00e5b6790ce20c921a65589817c90dd6ebfca34e90bdb9025e35a06a352",
+    "tests/fixtures/service-generate/codec-ada-time-zulu-mixed.xsd": "314fa9950a971a030dd2bc6aa9ebc2628fbd4733a409164de3829dee19bee6a3",
+    "tests/fixtures/service-generate/codec-ada-time-zulu-mixed.yaml": "28926c3ab53b6eccc1d74cac85e0deb6276260cde1dc3b8f771ecd906dc2d1fd",
+    "tests/fixtures/service-generate/codec-ada-time-zulu.xsd": "f9868ec7705805ef86b97ddf9c7fbcefa5d1a696f33fd660c281e7b91efd01a5",
+    "tests/fixtures/service-generate/codec-ada-time-zulu.yaml": "5a00f7a39070a0c013091974c7ea61a822aac807a2af39d47c9670ccdf671153",
+    "tests/fixtures/service-generate/codec-alternating-ascii.xsd": "4f33c09a84b4988789c1d005cab5d2dfa2a302d714d84a55236032a355b3edd5",
+    "tests/fixtures/service-generate/codec-alternating-ascii.yaml": "8d4078efa1ac1729b74ef70405796f124db9cd1a94768ccf35a864fa0ff6b803",
+    "tests/fixtures/service-generate/codec-binary.xsd": "ff15b8c13d9a5a60a5e175602fdd63684dca46c33b57e970d57e91c4dc46b745",
+    "tests/fixtures/service-generate/codec-binary.yaml": "319592b04ed436cd4010c7586246cea56a9907f324c3feb9de2da7d421e86bdd",
+    "tests/fixtures/service-generate/codec-bounded-ascii.xsd": "c301112e4b09f4af634af42f7d8b85f83aa0833f6dcd51f080b93e4103861339",
+    "tests/fixtures/service-generate/codec-bounded-ascii.yaml": "ae2a1f1624994e50dffdde078a49c22684d4d4e8b99d8d9917a84e8a2de117ec",
+    "tests/fixtures/service-generate/codec-choice.xsd": "514e17614e7eb5adb4f1ecb7622651ff0ac5ad442f1cbc2033f17055cdfab2db",
+    "tests/fixtures/service-generate/codec-choice.yaml": "782d3fef8d483bd94fe6eb5a7bc276187386934928126eb50de52f3619edec3f",
+    "tests/fixtures/service-generate/codec-duration.xsd": "a0425a72437afe1fb4694f21bc13d4c816983d6eff271c907a892a7d09be2f11",
+    "tests/fixtures/service-generate/codec-duration.yaml": "11c2560c5b36cb5f6139c78a5daf2f9a661c5ff475568e82fd28d19181c658d2",
+    "tests/fixtures/service-generate/codec-form-qualified.xsd": "301ea1b007e2a7c747c695927d716ba3ad954c8af94776d347cb628cb317cc67",
+    "tests/fixtures/service-generate/codec-form-qualified.yaml": "79bc806e6974a53088c3c7f61284680d009806b19f99f7489b38ca54bd2fef2c",
+    "tests/fixtures/service-generate/codec-form-unqualified.xsd": "21896dc1d7b0c4f7a9bcd02d969e9f7dd08201d3ac34fbbcaabc58ffa57eb3bb",
+    "tests/fixtures/service-generate/codec-form-unqualified.yaml": "4ed4e762c556a920122c3a2cb6e4f3b267e0d089453df51dbe8a60bcce83fce9",
+    "tests/fixtures/service-generate/codec-hexbinary.xsd": "06b066745b6c23a8ada5c07d8cc96309ecd5bfb0377007a6fcd69fdbd00177a1",
+    "tests/fixtures/service-generate/codec-hexbinary.yaml": "9fba9b588e884253745203f5a68489bb03e7e158591c2203d219072014de367c",
+    "tests/fixtures/service-generate/codec-inherit.xsd": "f9d0dfe132c844933d61976e6686b3f2ea2da655fdef9ce9a608d195c224beda",
+    "tests/fixtures/service-generate/codec-inherit.yaml": "3f6740049d6770294a9b9da1320681bf05d356bc01d255e77a6070ebf1ab2d1b",
+    "tests/fixtures/service-generate/codec-ipv6.xsd": "2897148dcf98ee055663d0912378c6fd46e0cbf0de8578d84905723a75a14bf8",
+    "tests/fixtures/service-generate/codec-ipv6.yaml": "df919c400591ba2041f7c3f00464198985d9f1310c9984bf5e560935dd38d164",
+    "tests/fixtures/service-generate/codec-oam.xsd": "5f13e6ce88d1345fe1ae65030cce52317de483a66a9a666e58f800adc444fd9c",
+    "tests/fixtures/service-generate/codec-oam.yaml": "bc891f2cdef4ce03b045253b1129b9242a88668c78610d7f81eb12453c76cc52",
+    "tests/fixtures/service-generate/codec-patterned-integral.xsd": "d5f12aa08bb435faf3ec44d8b837681fc187984903fe6f5922ee094e7d89c571",
+    "tests/fixtures/service-generate/codec-patterned-integral.yaml": "8844c998d88afd6550b70706b2e44d770e205ddfdb080884cd8ac176139e67e8",
+    "tests/fixtures/service-generate/codec-shape.xsd": "50fff5a12dfe7ebaf67ca2f7697b5f63c19caac03841baa371a2d86449199c4b",
+    "tests/fixtures/service-generate/codec-shape.yaml": "9f31e35fb72dcc90d720f65a96f97f8914cce4cba741c35882e31de10d66f5d0",
+    "tests/fixtures/service-generate/codec-structured-ascii.xsd": "e0d867fd012d49e26fc9fcb10a7f2c6550ca0fd369383fe96e74a32a026dd778",
+    "tests/fixtures/service-generate/codec-structured-ascii.yaml": "81facd4c7796de6336ff37eb4445d0926ecec9819538d2160a1f690cba80736d",
+    "tests/fixtures/service-generate/codec-time-zulu.xsd": "496ded4699d7b2a6ef69c636848ebde3ad28102b0ed1a7d8e34f84f698b504ea",
+    "tests/fixtures/service-generate/codec-time-zulu.yaml": "c4224d35ef19e26b1b3fcd61aa52802a4dbe45fe3016617316ba1878d7ae2b88",
+    "tests/fixtures/service-generate/codec-unicode31.xsd": "440d2d2aaba4bd061f0eaefcc9d57874b05a6b1a14382e5c2fb2544108a75f9e",
+    "tests/fixtures/service-generate/codec-unicode31.yaml": "ccb4e657d8ad368363ef6708ba34e0256f6e07453ed7ff278a17e1586a5fd72f",
+    "tests/fixtures/service-generate/codec-unqualified.xsd": "43164be504cfe59f8097e5b453028a7c56d88e69660cabca755da9e8fd50dca7",
+    "tests/fixtures/service-generate/codec-unqualified.yaml": "4193df741874b682fef7057bb3a7a2b44af6a428d45114b1515768cff56e913d",
+    "tests/fixtures/service-generate/companion-collision.xsd": "3817fd60abbb6946f3b42dc63b54c5d19b168cdec85bc93eab5be08c76896787",
+    "tests/fixtures/service-generate/constrained-binary-sleet.xsd": "168572b612a85b4e5c1012729d34e287ce1cea5ec77e8735a419041886227018",
+    "tests/fixtures/service-generate/constrained-binary-sleet.yaml": "16fcb9f092f8fa661e33ab354e1187bf8c452ee2c7fd5d204ff6882d76e19c3d",
+    "tests/fixtures/service-generate/constrained-binary.xsd": "bd664e2cdfbf59ccc514df791f3aa397c0d43db96b046a90e2de0776b3573116",
+    "tests/fixtures/service-generate/constrained-binary.yaml": "cb088d7d431e12fb17bfcacffad5d1e00862893981f2088809e05c9de4205e7f",
+    "tests/fixtures/service-generate/constrained-float.xsd": "f346eb7e3a41f008acddf660fc236d45f52021db7e05027efd265cf708f7460b",
+    "tests/fixtures/service-generate/constrained-float.yaml": "60b7a8d85ddfc22edcf0f32eaa41717410b1c9949581a0588857b31e19ca026f",
+    "tests/fixtures/service-generate/direct-datetime-neighbor.yaml": "9e4148446b9347fe904b25f37520b593a430ceb0526071e7233fc56c0a7eecc2",
+    "tests/fixtures/service-generate/direct-datetime.xsd": "8abe72c30461b4625760af21b2c2f95241c4b3e882acf857110c052886901e6c",
+    "tests/fixtures/service-generate/direct-datetime.yaml": "8582b49c13a324367f2b1223348c2f79e07ab0559d3af6c63154059b01047e3f",
+    "tests/fixtures/service-generate/duration-clock.yaml": "5402874259ab7c29d320c7d5f8dbd474ced8ad48a6a30038d5125d61f3d945c0",
+    "tests/fixtures/service-generate/duration-constrained.xsd": "5ac72cc862ca242c43702ada24af0907c53a7501158924072105756f01514122",
+    "tests/fixtures/service-generate/duration-constrained.yaml": "a5b2ddf994f80b29d448a1f7c2f02a7007f5f114188c348215cd2ca7acddcce1",
+    "tests/fixtures/service-generate/duration-duration.yaml": "bd5800846d7b924a7fe48eebaf26da05b4a0a333e148e695497fa56ac60ed832",
+    "tests/fixtures/service-generate/duration.xsd": "e58b2d71c63076918bdd85c26baec32a6e0370297935c2bc2411ff636ae0e08a",
+    "tests/fixtures/service-generate/enum-remapping.xsd": "07aacb4211b56c8183598725f6953a4e74e9d75055bb1a189bd203b990ff8831",
+    "tests/fixtures/service-generate/enum-remapping.yaml": "62846d6954469f6ba60debc2fb439265e607ee63233a1411ddd15a2333a487a7",
+    "tests/fixtures/service-generate/enum-reserved.xsd": "f2ec74247bc89273c48437b125d740b8b02306c6ef4e68fe43418111f1192d80",
+    "tests/fixtures/service-generate/facade-bidirectional.yaml": "072859d383409db6ffb79d2e25005be2c38ae6b317b9e13ff2917578265d5651",
+    "tests/fixtures/service-generate/facade-repeated-reversed.yaml": "c3f65507332a3681ad36fa543572c8c8902d5b4e758eed6ff7d11306ba98a8bc",
+    "tests/fixtures/service-generate/facade-repeated.yaml": "2952a21f9df92d2d455f6b26ea1069be9d04db047f6c69f2cdea0bfb4b0f06fb",
+    "tests/fixtures/service-generate/lacal-runtime.xsd": "6d7c13e9c5dd893821f163dc5d50ffce50ff6b0f84bb0a0fcaba2d952b4a210b",
+    "tests/fixtures/service-generate/lacal-runtime.yaml": "f5308ba57408f0f004f299ab08a677d7a7ca89b40866753affc8a6234165671e",
+    "tests/fixtures/service-generate/lacal-websocket.xsd": "75301c0748496fd979fdf56d6a32113b28bf0965a5eab73de6508c3f9709c6f5",
+    "tests/fixtures/service-generate/member-collision-inherited-clash.yaml": "272eb8346ffa880bde9ac8b8aa9ffdf1691ea9e3e322d3631cd27bd37092a1ca",
+    "tests/fixtures/service-generate/member-collision-local-clash.yaml": "b1d9e9d7f16bf2ed87699396f0a5749dce262ff1b957ca3177b28a621914f9be",
+    "tests/fixtures/service-generate/member-collision.xsd": "e0804e0a22dbfbb298a72b25bea08a1f5a810c385348e662480b5e1164cc61be",
+    "tests/fixtures/service-generate/member-keywords-qualified.xsd": "40cb87235ec657378d29eb8da1099b3bbaefa0a0a76fe97c66f47c3f24f2c804",
+    "tests/fixtures/service-generate/member-keywords-qualified.yaml": "07ae2fffce0dc9cdad67b42465ecf4d901d3e64b9e3ea40bc9723f429698c309",
+    "tests/fixtures/service-generate/member-keywords.xsd": "e2df03e37040a614fa76b36b25c02057cd57ff2ebab1a2a659f5da99c9e08b4a",
+    "tests/fixtures/service-generate/member-keywords.yaml": "6fdbecc7308943dc692b483c572c17dd4ce0509a0320bab3a50e52eb635690c0",
+    "tests/fixtures/service-generate/member-malformed.xsd": "10aac53d6387236a1e8cac0fb8f1940a55f5fe897770b8fc47197d8152de2a60",
+    "tests/fixtures/service-generate/member-malformed.yaml": "4af0864388798fdcec27acfe97fe388e6e6d84b974665269beeb3d60d5f2842a",
+    "tests/fixtures/service-generate/nato-special-words.xsd": "125360797203471a8c0465dd5bb0ec752c6d024f3032ef352cb2f80fb858dfc0",
+    "tests/fixtures/service-generate/nato-special-words.yaml": "c061b2dfa1a42608f1a1123ddc18fb38d0496660730cd6a0883a85fe67f730e0",
+    "tests/fixtures/service-generate/non-uci.yaml": "92244e63a873f10476e3822267888b020d8988dd58dd06f0af72ae489342b988",
+    "tests/fixtures/service-generate/only-a.yaml": "561344cc5ab0e33c7f35e444693f5f62d84c62550579d43f444ad5227f4b9ec7",
+    "tests/fixtures/service-generate/optional-named.xsd": "84db2c31be0fe3af8e9bb184524aa4efd81ae9eb510557788b551417a1a36bbc",
+    "tests/fixtures/service-generate/optional-named.yaml": "70827072b9a7a23aafa981d57ffb3dac1e568d161b2daa757db2d4e76bcb0db7",
+    "tests/fixtures/service-generate/optional-primitive.xsd": "95b148168fbcce0640ec27686be94ed893cdf678ac281418821f38bbd519475b",
+    "tests/fixtures/service-generate/optional-primitive.yaml": "79eb334a0d16acc5b58d09b113b907e060ff6c911fb429175ac08f7a8def6447",
+    "tests/fixtures/service-generate/position-report-loop.yaml": "b1223aabdcb385edac9eb573c4f5892a049cec7aaf1c2b76dd9af1ccafa06243",
+    "tests/fixtures/service-generate/position-report.xsd": "f5eebbe96cc25d8c9eef22c9550b7556ea97fbd1a075d6fbc704d93fc269b28c",
+    "tests/fixtures/service-generate/real-bounded-ascii-amti-settings.yaml": "27358b4beed74e0e5f90aa2dcc96ba254fe2271eec6714790cf3ee0715406ccb",
+    "tests/fixtures/service-generate/real-duration-log.yaml": "6cf41dd222fb24cb4b0c6ec62c340de2e12e326020f36faaebb7564b3257b434",
+    "tests/fixtures/service-generate/real-member-remapping.yaml": "484173d6009af9cab8d32bf746edc9d086feb5dc9172370f7795776b553240de",
+    "tests/fixtures/service-generate/real-structured-ascii-file-metadata.yaml": "5f131b00380ec810162c0f6bffe965c072a96be5c57a47e9ffcd8065c3104743",
+    "tests/fixtures/service-generate/root.xsd": "3da60ebfcc70796507697ba438c16bf582c3094a538c8a347fb87a2ded042047",
+    "tests/fixtures/service-generate/runtime-oam.xsd": "5047be88967333a4f1d5b52cd09ec6338f287bd84a123b2053d72e9bdcefcd0c",
+    "tests/fixtures/service-generate/runtime-oam.yaml": "d447fc0b3232bdb90966e3f8dfb92666aa94e95f01a06fd7e843a011aeed038b",
+    "tests/fixtures/service-generate/runtime-test.xsd": "621274db86d72894f0e411aab05805cff1721f885336b9cbaf0947b44f3c3417",
+    "tests/fixtures/service-generate/runtime-test.yaml": "0c848c241569463b2666db13d68c896f0e8a4a2729498ef52dbb776559abe77b",
+    "tests/fixtures/service-generate/service-status.xsd": "7ca616325bdae70e2422f0246e3e1fedce8d0e00c0b028290ccc812b1882e4bc",
+    "tests/fixtures/service-generate/shared-payload.xsd": "6c931a4a6d49116e747e76ddb4b558aca464cffa6ea65dad1b198187b0bf40e4",
+    "tests/fixtures/service-generate/shared-payload.yaml": "c5f5542aa23da0c1b113ab165878a33d6e8dc5963b60671831ec038de1868ea9",
+    "tests/fixtures/service-generate/string-profile.xsd": "4318d92c2934e66ddf7649baeae27c1415afae7a96cc8c4d306d50531c5847f6",
+    "tests/fixtures/service-generate/string-profile.yaml": "a15e53d87123a5065d9fdfc1b65297de36b4573530636048e8b01188520ace60",
+    "tests/fixtures/service-generate/subsystem-stream-loop.yaml": "9e6c662133c071e916725bb0250026575531eee18a8918986a19adb77badb6e2",
+    "tests/fixtures/service-generate/support-blocked.yaml": "c4b8fad9511795bc957bf0cc19fac4f601b10fa5beced2469fb48c97f6cd3395",
+    "tests/fixtures/service-generate/support-readiness.xsd": "c7e9ec16d56461a2ccf0785c09e5cf3f7721a74c1aba2dfb5d243068757dab10",
+    "tests/fixtures/service-generate/support-ready.yaml": "282840840b8a7b96eb1c338b064447296d360f383e7fc6ba0cef6ad6a6c2773f",
+    "tests/fixtures/service-generate/support-selected-unsupported.yaml": "00d8f5218e8e05bf142aeec3ac6adc6893823eadd66a2471722895f4a50f77d5",
+    "tests/fixtures/service-generate/task090-direct.json": "8570a2861202e2c52953e8d5ec0d69b458a63e7e0ec6de1fff6d1f4cd481b49f",
+    "tests/fixtures/service-generate/task090-named.json": "7b035c6dd636931249e471d1e7673b48b18a0a057d9d7a9215b398b9464467d8",
+    "tests/fixtures/service-generate/task090r-combined.json": "976ea56e4cbdaf321fac5693a22e7481ffe3fcf3b22be7f3c8c8b1b0e648af48",
+    "tests/fixtures/service-generate/task091-duration-absent.json": "a4f48e0c14ced9707deea8baf7892b49916e18f60fb58b6e73a965c5ceb1c9f9",
+    "tests/fixtures/service-generate/task091-duration.json": "a958ea60b574517bc4092c94c54e03a858214eb01f5d7997e811f4ce2e45288f",
+    "tests/fixtures/service-generate/task091r-combined.json": "85de7ea37fbcc456aadaa2ac000f313555fe732d88bdc3ebaebb633c1307b24b",
+    "tests/fixtures/service-generate/task092-populated.json": "d3730041b28db55eef5d83079350b927af097f9f892947425a525203dcd30f35",
+    "tests/fixtures/service-generate/task092-qualified.json": "07716de2cbeb5d50e2fc50401dccb7a449ba38def4255ee929094dc4e9a3252c",
+    "tests/fixtures/service-generate/task092-real-rdma25-invalid-original.json": "c11f738b643f331621b76fce3e6f31d71c53d1ba26be84449595b7e6574767a3",
+    "tests/fixtures/service-generate/task092-real-rdma25.json": "a23d639a9833035b6a2d23fbfb93924a881d6fb7cdd0edccfad78e100d1c548d",
+    "tests/fixtures/service-generate/task092-real-rdma26.json": "aeda83da46cdf8b847bb48e1d59a41b21faedfdd7fbb585c9fa4857f913affa3",
+    "tests/fixtures/service-generate/task092-real-survivability25.json": "996ac91fa9eb177d14a6fc3fd7169e781a2bd206b62a410dd908f0d0750f2349",
+    "tests/fixtures/service-generate/task093-combined.json": "01de41fb4a8d25f3c8aace60efad01f29bd19bce751531a7ef0ccb3b6a091651",
+    "tests/fixtures/service-generate/task093-helper-demand-float32.json": "81d807bd9ef75022e90af6917807023d1cd4cf175b7c252765ceb7e98b0726f3",
+    "tests/fixtures/service-generate/task093-helper-demand.json": "aeaae5632b504315f9669248c3221c42169e8be271fa60ff9b5b1fe7a7fef2a7",
+    "tests/fixtures/service-generate/task093-hexbinary.json": "095865e8eab85247528968c29b7dc6717c414fa7700e9d1cf2bbc8efcb564f1f",
+    "tests/fixtures/service-generate/task093-mixed-canonical.json": "b77066a09569837c924c06e8db65f8e4f61628a3b022cea2f6e088d4419f26ea",
+    "tests/fixtures/service-generate/task093-mixed.json": "d62de36f79dc1b40113ae08f2a24d560c7e89b0a8d756d1b83edc16684d2d1e1",
+    "tests/fixtures/service-generate/task093-real-log25.json": "a76510ff8d2b6e2c3fcad91fec18905bb1bb0fcf3f75694fdcb0c831aac48bb0",
+    "tests/fixtures/service-generate/task093-real-log26.json": "28179164c621716995ccf715652c720dc8c1dbbfe64229ac36eca0e74fe7b401",
+    "tests/fixtures/service-generate/task094-choice-temporal.json": "26a6eafb3a4b10776f991ebcef8a376869fc11dbe6b0a53871a3017a09ad8269",
+    "tests/fixtures/service-generate/task094-composition.json": "0ebd388e335aaf7c6ca4b0e98f9c6d6625d5a31ede65a8771f5840759f9edeac",
+    "tests/fixtures/service-generate/task094-temporal-minimum.json": "500a538b2e5d22466b870c0f4dd5687144f27472f1a6e2f4636a082425b12cbc",
+    "tests/fixtures/service-generate/task094-temporal.json": "3e4b88ee9d3161b75d2d65e8e4bc581a67c2e3f1ef32add9624887a6a3cec73c",
+    "tests/fixtures/service-generate/task095-identifiers.json": "fc83623a5f33cd62ace747ad0ae6195aa49650906e9910e300fccbb84b89b884",
+    "tests/fixtures/service-generate/task095-populated.json": "cbd58bf12931a0ec929832b41fe6390dba3115abcb9c786ef002c3cf374e0527",
+    "tests/fixtures/service-generate/temporal.xsd": "d7c7db850fc24cf8a2f051abe4a72f9042b5e9d3bbaceaa02c85c673389a643f",
+    "tests/fixtures/service-generate/temporal.yaml": "58c9059d9e20be7b570b62d50b420f5f07cf7d2c176ad8a50752e52b67992523",
+    "tests/fixtures/service-generate/uninhabited.xsd": "71086aa025a3d4d19f19f5ffd825384b640e32003eefc71a367e5bd72ab7c16a",
+    "tests/fixtures/service-generate/uninhabited.yaml": "f6815b8c0f3d6c2722516034d389c47936e332afc6b828cfe7ce2ed007bd889a",
+    "tests/fixtures/service-generate/uuid.xsd": "e08718333215a7a4fb552923e21f4fea87f8d4498d64e560893df9067ff01552",
+    "tests/fixtures/service-generate/uuid.yaml": "eea482dcbe422290ecfeff5cc8caeaedd86182c3261b8c46d0e530dbe140caa6",
+    "tests/fixtures/service-generate/visible-ascii.xsd": "7df2f513d87668be8ad82deb96c235de5437df1d32ae2f2884b4fe92affac578",
+    "tests/fixtures/service-generate/visible-ascii.yaml": "22272f12fc633640c3c86ebecb48abfa2c2d897a2e360eb555f2484efa49d895",
+    "tests/fixtures/service-generate/whitespace-visible.xsd": "d1f619e28d8966277823bcdc99e9747004b482c330750d101c3cd03e6c463297",
+    "tests/fixtures/service-generate/whitespace-visible.yaml": "0de6365e540280a4159cb45fb983ee1cf637b729e0185f6351a32dbb439b94c6"
+  }
+}

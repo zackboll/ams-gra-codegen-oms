@@ -40,7 +40,7 @@ jobs:
         run: |
           set -euo pipefail
           apt-get update
-          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14
+          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14 libssl-dev
           test "$(uname -m)" = x86_64
           test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.41'
           mkdir -p /tmp/task100-evidence
@@ -702,396 +702,213 @@ jobs:
             /tmp/task095-evidence/perf005-ci/**
             /tmp/task095-evidence/task093-c5-portable-14/**
           if-no-files-found: error
-  ada-repeated-temporal-codec:
-    concurrency:
-      group: ${{ 'oms-main-slot-9' }}
-      queue: max
-    needs: [ada-json-guard]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-      - uses: dtolnay/rust-toolchain@1.95.0
-      - name: Install verified Alire 2.1.1
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/task094-tools"
-          cd "$RUNNER_TEMP/task094-tools"
-          curl --fail --location --retry 3 --output alire.zip \
-            https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
-          echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  alire.zip' | sha256sum --check --strict
-          unzip -q alire.zip
-          test "$(bin/alr --version)" = 'alr 2.1.1'
-          echo "$PWD/bin" >> "$GITHUB_PATH"
-      - name: Build production generator
-        run: cargo build --locked -p ams-gra-codegen-oms
-      - name: Execute repeated temporal codecs, both profiles and all policies
-        run: python3 scripts/check-task094.py --compiler 16 --scratch "$RUNNER_TEMP/task094" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
-      - name: Execute inherited nested and Choice temporal composition
-        run: python3 scripts/check-task094.py --composition --compiler 16 --scratch "$RUNNER_TEMP/task094-composition" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
-      - name: Execute combined repeated Choice and temporal codecs
-        run: python3 scripts/check-task094.py --combined --compiler 16 --scratch "$RUNNER_TEMP/task094-combined" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
-      - name: Verify completed execution evidence
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -s "$RUNNER_TEMP/task094/sources.sha256"
-          test -s "$RUNNER_TEMP/task094-composition/sources.sha256"
-          test -s "$RUNNER_TEMP/task094-combined/sources.sha256"
-          test "$(grep -lFx 'TASK094_CODEC_COMPLETE checks= 54 rejections= 17' "$RUNNER_TEMP/task094/"*-execute.log | wc -l)" -eq 6
-          test "$(grep -lFx 'TASK094_COMPOSITION_COMPLETE checks= 19 rejections= 3' "$RUNNER_TEMP/task094-composition/"*-execute.log | wc -l)" -eq 6
-          test "$(grep -lFx 'TASK094_COMBINED_COMPLETE checks= 26 rejections= 2' "$RUNNER_TEMP/task094-combined/"*-execute.log | wc -l)" -eq 6
-      - name: Preserve repeated temporal qualification evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: task094-ada-repeated-temporal-codec
-          path: |
-            ${{ runner.temp }}/task094/**
-            ${{ runner.temp }}/task094-composition/**
-            ${{ runner.temp }}/task094-combined/**
-          if-no-files-found: error
-  ada-datetime-codec:
-    concurrency:
-      group: ${{ 'oms-main-slot-2' }}
-      queue: max
-    needs: [ada-json-guard]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-      - uses: dtolnay/rust-toolchain@1.95.0
-      - name: Install verified Alire 2.1.1
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/task090-tools"
-          cd "$RUNNER_TEMP/task090-tools"
-          curl --fail --location --retry 3 --output alire.zip \
-            https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
-          echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  alire.zip' | sha256sum --check --strict
-          unzip -q alire.zip
-          test "$(bin/alr --version)" = 'alr 2.1.1'
-          echo "$PWD/bin" >> "$GITHUB_PATH"
-      - name: Build production generator
-        run: cargo build --locked -p ams-gra-codegen-oms
-      - name: Execute named and direct DateTime codecs, all policies
-        run: python3 scripts/check-task090.py --compiler 16 --scratch "$RUNNER_TEMP/task090" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
-      - name: Execute combined DateTime Choice and repeated Record codecs
-        run: python3 scripts/check-task090r.py --compiler 16 --scratch "$RUNNER_TEMP/task090r" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
-      - name: Preserve DateTime qualification evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: task090-ada-datetime-codec
-          path: |
-            ${{ runner.temp }}/task090/*.log
-            ${{ runner.temp }}/task090/*.lock
-            ${{ runner.temp }}/task090/*.sha256
-            ${{ runner.temp }}/task090/*.exit
-            ${{ runner.temp }}/task090/*.command.json
-            ${{ runner.temp }}/task090/*-corpus.txt
-            ${{ runner.temp }}/task090r/*.log
-            ${{ runner.temp }}/task090r/*.lock
-            ${{ runner.temp }}/task090r/*.sha256
-            ${{ runner.temp }}/task090r/*.exit
-            ${{ runner.temp }}/task090r/*.command.json
-          if-no-files-found: error
-  # Task 087A: separate provider/toolchain environment; no generator/runtime work.
-  ada-json-guard:
-    concurrency:
-      group: ${{ 'oms-main-slot-8' }}
-      queue: max
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install verified Alire 2.1.1
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/task087a-tools"
-          cd "$RUNNER_TEMP/task087a-tools"
-          curl --fail --location --retry 3 --output alire.zip \
-            https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
-          echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  alire.zip' | sha256sum --check --strict
-          unzip -q alire.zip
-          test "$(bin/alr --version)" = 'alr 2.1.1'
-          echo "$PWD/bin" >> "$GITHUB_PATH"
-      - name: Guard qualification wrapper negative controls
-        run: python3 scripts/test-task087a-wrapper.py
-      - name: Production guard and clean consumer (GNAT 16.1.0, all policies)
-        run: python3 scripts/check-task087a.py --compiler 16 --scratch "$RUNNER_TEMP/task087a-qualification"
-      - name: Preserve exact qualification evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: task087a-ada-json-guard
-          path: |
-            ${{ runner.temp }}/task087a-qualification/*.log
-            ${{ runner.temp }}/task087a-qualification/qualified-alire.lock
-          if-no-files-found: error
-  ada-generated-codec:
+  ada-codec-pack-a:
     concurrency:
       group: ${{ 'oms-main-slot-7' }}
       queue: max
-    needs: [ada-json-guard]
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 120
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Require exact checked-out source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain)"
       - uses: dtolnay/rust-toolchain@1.95.0
       - name: Install verified Alire 2.1.1
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/task087b-tools"
-          cd "$RUNNER_TEMP/task087b-tools"
-          curl --fail --location --retry 3 --output alire.zip \
-            https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
-          echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  alire.zip' | sha256sum --check --strict
-          unzip -q alire.zip
-          test "$(bin/alr --version)" = 'alr 2.1.1'
-          echo "$PWD/bin" >> "$GITHUB_PATH"
-      - name: Build production generator
-        run: cargo build --locked -p ams-gra-codegen-oms
-      - name: Task 088 generated Ada Choice execution (GNAT 16.1.0, all policies)
-        run: python3 scripts/check-task088.py --compiler 16 --scratch "$RUNNER_TEMP/task088-choice" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
-      - name: Execute generated Ada codec, all assertion policies
-        run: python3 scripts/check-task087b.py --compiler 16 --scratch "$RUNNER_TEMP/task087b-codec" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
-      - name: Preserve qualification evidence
+          curl --fail --location --retry 3 --output "$RUNNER_TEMP/alire.zip" https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
+          echo "09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  $RUNNER_TEMP/alire.zip" | sha256sum --check --strict
+          unzip -q "$RUNNER_TEMP/alire.zip" -d "$RUNNER_TEMP/alire"
+          test "$("$RUNNER_TEMP/alire/bin/alr" --version)" = 'alr 2.1.1'
+          echo "$RUNNER_TEMP/alire/bin" >> "$GITHUB_PATH"
+      - name: Run complete original JSON guard and packed Ada qualifications
+        shell: bash
+        run: python3 scripts/ada_ci_pack/run.py --pack a --workers 4 --expected-sha "$GITHUB_SHA" --scratch "$RUNNER_TEMP/ada-codec-pack-a"
+      - name: Independently verify every original constituent qualification
+        shell: bash
+        run: python3 scripts/ada_ci_pack/verify.py --pack a --expected-sha "$GITHUB_SHA" --expected-tree "$(git rev-parse 'HEAD^{tree}')" --scratch "$RUNNER_TEMP/ada-codec-pack-a"
+      - name: Preserve pack execution and resource receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ada-ci-pack-001-a
+          path: |
+            ${{ runner.temp }}/ada-codec-pack-a/*.json
+            ${{ runner.temp }}/ada-codec-pack-a/*.jsonl
+            ${{ runner.temp }}/ada-codec-pack-a/*.log
+            ${{ runner.temp }}/ada-codec-pack-a/*.exit
+            ${{ runner.temp }}/ada-codec-pack-a/*/completion.json
+            ${{ runner.temp }}/ada-codec-pack-a/*/step-*
+            ${{ runner.temp }}/ada-codec-pack-a/*/alr.jsonl
+          if-no-files-found: error
+      - name: Preserve ada-json-guard evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: task087a-ada-json-guard-pack-a
+          path: |
+            ${{ runner.temp }}/ada-codec-pack-a/seed/task087a-qualification/*.log
+            ${{ runner.temp }}/ada-codec-pack-a/seed/task087a-qualification/qualified-alire.lock
+          if-no-files-found: error
+      - name: Preserve ada-generated-codec evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: task087b-generated-codec
           path: |
-            ${{ runner.temp }}/task087b-codec/*.log
-            ${{ runner.temp }}/task087b-codec/qualified-alire.lock
-            ${{ runner.temp }}/task087b-codec/**/alire.lock
-            ${{ runner.temp }}/task088-choice/*.log
-            ${{ runner.temp }}/task088-choice/source-hashes.txt
-            ${{ runner.temp }}/task088-choice/**/alire.lock
+            ${{ runner.temp }}/ada-codec-pack-a/ada-generated-codec/task087b-codec/*.log
+            ${{ runner.temp }}/ada-codec-pack-a/ada-generated-codec/task087b-codec/qualified-alire.lock
+            ${{ runner.temp }}/ada-codec-pack-a/ada-generated-codec/task087b-codec/**/alire.lock
+            ${{ runner.temp }}/ada-codec-pack-a/ada-generated-codec/task088-choice/*.log
+            ${{ runner.temp }}/ada-codec-pack-a/ada-generated-codec/task088-choice/source-hashes.txt
+            ${{ runner.temp }}/ada-codec-pack-a/ada-generated-codec/task088-choice/**/alire.lock
           if-no-files-found: error
-  ada-repeated-codec:
-    concurrency:
-      group: ${{ 'oms-main-slot-1' }}
-      queue: max
-    needs: [ada-json-guard]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-      - uses: dtolnay/rust-toolchain@1.95.0
-      - name: Install verified Alire 2.1.1
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/task089-tools"
-          cd "$RUNNER_TEMP/task089-tools"
-          curl --fail --location --retry 3 --output alire.zip \
-            https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
-          echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  alire.zip' | sha256sum --check --strict
-          unzip -q alire.zip
-          test "$(bin/alr --version)" = 'alr 2.1.1'
-          echo "$PWD/bin" >> "$GITHUB_PATH"
-      - name: Build production generator
-        run: cargo build --locked -p ams-gra-codegen-oms
-      - name: Execute bounded and unbounded repeated Record codecs
-        run: python3 scripts/check-task089.py --compiler 16 --scratch "$RUNNER_TEMP/task089-codec" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
-      - name: Execute combined Choice and repeated Record codecs
-        run: python3 scripts/check-task089r.py --compiler 16 --scratch "$RUNNER_TEMP/task089r-codec" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
-      - name: Preserve qualification evidence
+      - name: Preserve ada-repeated-temporal-codec evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: task089-generated-repeated-codec
+          name: task094-ada-repeated-temporal-codec
           path: |
-            ${{ runner.temp }}/task089-codec/*.log
-            ${{ runner.temp }}/task089-codec/*.exit
-            ${{ runner.temp }}/task089-codec/*-alire.lock
-            ${{ runner.temp }}/task089-codec/generated-source-hashes.json
-            ${{ runner.temp }}/task089r-codec/*.log
-            ${{ runner.temp }}/task089r-codec/*.exit
-            ${{ runner.temp }}/task089r-codec/*-alire.lock
-            ${{ runner.temp }}/task089r-codec/source-hashes.json
+            ${{ runner.temp }}/ada-codec-pack-a/ada-repeated-temporal-codec/task094/**
+            ${{ runner.temp }}/ada-codec-pack-a/ada-repeated-temporal-codec/task094-composition/**
+            ${{ runner.temp }}/ada-codec-pack-a/ada-repeated-temporal-codec/task094-combined/**
           if-no-files-found: error
-  ada-duration-codec:
-    concurrency:
-      group: ${{ 'oms-main-slot-1' }}
-      queue: max
-    needs: [ada-json-guard]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-      - uses: dtolnay/rust-toolchain@1.95.0
-      - name: Install verified Alire 2.1.1
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/task091-tools"
-          cd "$RUNNER_TEMP/task091-tools"
-          curl --fail --location --retry 3 --output alire.zip \
-            https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
-          echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  alire.zip' | sha256sum --check --strict
-          unzip -q alire.zip
-          test "$(bin/alr --version)" = 'alr 2.1.1'
-          echo "$PWD/bin" >> "$GITHUB_PATH"
-      - name: Build production generator
-        run: cargo build --locked -p ams-gra-codegen-oms
-      - name: Execute generated Duration consumers, all policies
-        run: python3 scripts/check-task091.py --compiler 16 --scratch "$RUNNER_TEMP/task091-duration" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
-      - name: Execute combined Choice repeated DateTime Duration qualification
-        run: python3 scripts/check-task091r.py --compiler 16 --scratch "$RUNNER_TEMP/task091r-integrated" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
-      - name: Preserve qualification evidence
+      - name: Preserve ada-datetime-codec evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: task091-ada-duration-codec
+          name: task090-ada-datetime-codec
           path: |
-            ${{ runner.temp }}/task091r-integrated/**
-            ${{ runner.temp }}/task091-duration/*.log
-            ${{ runner.temp }}/task091-duration/*.command.json
-            ${{ runner.temp }}/task091-duration/*.lock
-            ${{ runner.temp }}/task091-duration/*.sha256
-            ${{ runner.temp }}/task091-duration/model/*.ad?
-            ${{ runner.temp }}/task091-duration/codec/*.ad?
-            ${{ runner.temp }}/task091-duration/qualified/*.ad?
-            ${{ runner.temp }}/task091-duration/named/*.ad?
+            ${{ runner.temp }}/ada-codec-pack-a/ada-datetime-codec/task090/*.log
+            ${{ runner.temp }}/ada-codec-pack-a/ada-datetime-codec/task090/*.lock
+            ${{ runner.temp }}/ada-codec-pack-a/ada-datetime-codec/task090/*.sha256
+            ${{ runner.temp }}/ada-codec-pack-a/ada-datetime-codec/task090/*.exit
+            ${{ runner.temp }}/ada-codec-pack-a/ada-datetime-codec/task090/*.command.json
+            ${{ runner.temp }}/ada-codec-pack-a/ada-datetime-codec/task090/*-corpus.txt
+            ${{ runner.temp }}/ada-codec-pack-a/ada-datetime-codec/task090r/*.log
+            ${{ runner.temp }}/ada-codec-pack-a/ada-datetime-codec/task090r/*.lock
+            ${{ runner.temp }}/ada-codec-pack-a/ada-datetime-codec/task090r/*.sha256
+            ${{ runner.temp }}/ada-codec-pack-a/ada-datetime-codec/task090r/*.exit
+            ${{ runner.temp }}/ada-codec-pack-a/ada-datetime-codec/task090r/*.command.json
           if-no-files-found: error
-  ada-hexbinary-codec:
-    concurrency:
-      group: ${{ 'oms-main-slot-10' }}
-      queue: max
-    needs: [ada-json-guard]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-      - uses: dtolnay/rust-toolchain@1.95.0
-      - name: Install verified Alire 2.1.1
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/task093-tools"
-          cd "$RUNNER_TEMP/task093-tools"
-          curl --fail --location --retry 3 --output alire.zip \
-            https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
-          echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  alire.zip' | sha256sum --check --strict
-          unzip -q alire.zip
-          test "$(bin/alr --version)" = 'alr 2.1.1'
-          echo "$PWD/bin" >> "$GITHUB_PATH"
-      - name: Build production generator
-        run: cargo build --locked -p ams-gra-codegen-oms
-      - name: Execute generated hexBinary consumer, all policies
-        run: python3 scripts/check-task093.py --compiler 16 --scratch "$RUNNER_TEMP/task093-hexbinary" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
-      - name: Execute qualified non-OAM hexBinary consumer, all policies
-        run: python3 scripts/check-task093.py --compiler 16 --qualified --scratch "$RUNNER_TEMP/task093-qualified" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
-      - name: Execute combined Binary Choice temporal consumers, both namespaces and all policies
-        run: python3 scripts/check-task093-combined.py --compiler 16 --scratch "$RUNNER_TEMP/task093-combined" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
-      - name: Portable helper-demand naming regression
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 scripts/test-task093-compiler-placement.py
-          python3 scripts/check-task093-helper-demand.py --family portable --compiler 16 --scratch "$RUNNER_TEMP/task093-c4-16" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
-          sha256sum --check --quiet "$RUNNER_TEMP/task093-c4-16/sources.sha256"
-      - name: Validate mandatory evidence
-        shell: bash
-        run: |
-          set -euo pipefail
-          root="$RUNNER_TEMP/task093-hexbinary"
-          test -s "$root/sources.json"
-          test -s "$root/model-byte-parity.json"
-          for policy in normal Check Ignore; do
-            test -s "$root/$policy-alire.lock"
-            test -s "$root/$policy-build.command.json"
-            test -s "$root/$policy-gnat.log"
-            grep -Fx 'TASK093_CODEC_COMPLETE cases= 33' "$root/$policy-run.log"
-            grep -Fx 'TASK093_MODEL_COMPLETE cases= 6' "$root/$policy-model-run.log"
-            grep -Fx 'TASK093_CODEC_COMPLETE cases= 33' "$RUNNER_TEMP/task093-qualified/$policy-run.log"
-            grep -Fx 'TASK093_MODEL_COMPLETE cases= 6' "$RUNNER_TEMP/task093-qualified/$policy-model-run.log"
-          done
-          test -s "$RUNNER_TEMP/task093-combined/sources.json"
-          test -s "$RUNNER_TEMP/task093-combined/qualification.json"
-          for profile in oam qualified; do
-            for policy in normal Check Ignore; do
-              grep -Fx 'TASK093_COMBINED_COMPLETE checks= 49 rejections= 9' "$RUNNER_TEMP/task093-combined/$profile-$policy-run.log"
-            done
-          done
-      - name: Preserve qualification evidence
+      - name: Preserve ada-hexbinary-codec evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: task093-ada-hexbinary-codec
           path: |
-            ${{ runner.temp }}/task093-c4-*/**
-            ${{ runner.temp }}/task093-hexbinary/**
-            ${{ runner.temp }}/task093-qualified/**
-            ${{ runner.temp }}/task093-combined/**
+            ${{ runner.temp }}/ada-codec-pack-a/ada-hexbinary-codec/task093-c4-*/**
+            ${{ runner.temp }}/ada-codec-pack-a/ada-hexbinary-codec/task093-hexbinary/**
+            ${{ runner.temp }}/ada-codec-pack-a/ada-hexbinary-codec/task093-qualified/**
+            ${{ runner.temp }}/ada-codec-pack-a/ada-hexbinary-codec/task093-combined/**
           if-no-files-found: error
-  ada-repeated-choice-codec:
+  ada-codec-pack-b:
     concurrency:
-      group: ${{ 'oms-main-slot-6' }}
+      group: ${{ 'oms-main-slot-1' }}
       queue: max
-    needs: [ada-json-guard]
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 120
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Require exact checked-out source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain)"
       - uses: dtolnay/rust-toolchain@1.95.0
       - name: Install verified Alire 2.1.1
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/task092-tools"
-          cd "$RUNNER_TEMP/task092-tools"
-          curl --fail --location --retry 3 --output alire.zip \
-            https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
-          echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  alire.zip' | sha256sum --check --strict
-          unzip -q alire.zip
-          test "$(bin/alr --version)" = 'alr 2.1.1'
-          echo "$PWD/bin" >> "$GITHUB_PATH"
-      - name: Build production generator
-        run: cargo build --locked -p ams-gra-codegen-oms
-      - name: Execute generated repeated Choice consumers, all policies
-        run: python3 scripts/check-task092.py --compiler 16 --scratch "$RUNNER_TEMP/task092-codec" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
-      - name: Execute qualified non-OAM repeated Choice consumers
-        run: python3 scripts/check-task092.py --compiler 16 --profile qualified --scratch "$RUNNER_TEMP/task092-qualified" --generator "$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms"
-      - name: Require complete qualification artifacts
-        run: |
-          set -euo pipefail
-          for profile in task092-codec task092-qualified; do
-            test -s "$RUNNER_TEMP/$profile/sources.sha256"
-            test -s "$RUNNER_TEMP/$profile/model-byte-parity.json"
-            for policy in normal Check Ignore; do
-              test -s "$RUNNER_TEMP/$profile/$policy-alire.lock"
-              grep -Fx 'TASK092_CODEC_PASS checks= 63 rejections= 17' "$RUNNER_TEMP/$profile/$policy-run.log"
-            done
-          done
-      - name: Preserve qualification evidence
+          curl --fail --location --retry 3 --output "$RUNNER_TEMP/alire.zip" https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
+          echo "09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  $RUNNER_TEMP/alire.zip" | sha256sum --check --strict
+          unzip -q "$RUNNER_TEMP/alire.zip" -d "$RUNNER_TEMP/alire"
+          test "$("$RUNNER_TEMP/alire/bin/alr" --version)" = 'alr 2.1.1'
+          echo "$RUNNER_TEMP/alire/bin" >> "$GITHUB_PATH"
+      - name: Run complete original JSON guard and packed Ada qualifications
+        shell: bash
+        run: python3 scripts/ada_ci_pack/run.py --pack b --workers 3 --expected-sha "$GITHUB_SHA" --scratch "$RUNNER_TEMP/ada-codec-pack-b"
+      - name: Independently verify every original constituent qualification
+        shell: bash
+        run: python3 scripts/ada_ci_pack/verify.py --pack b --expected-sha "$GITHUB_SHA" --expected-tree "$(git rev-parse 'HEAD^{tree}')" --scratch "$RUNNER_TEMP/ada-codec-pack-b"
+      - name: Preserve pack execution and resource receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ada-ci-pack-001-b
+          path: |
+            ${{ runner.temp }}/ada-codec-pack-b/*.json
+            ${{ runner.temp }}/ada-codec-pack-b/*.jsonl
+            ${{ runner.temp }}/ada-codec-pack-b/*.log
+            ${{ runner.temp }}/ada-codec-pack-b/*.exit
+            ${{ runner.temp }}/ada-codec-pack-b/*/completion.json
+            ${{ runner.temp }}/ada-codec-pack-b/*/step-*
+            ${{ runner.temp }}/ada-codec-pack-b/*/alr.jsonl
+          if-no-files-found: error
+      - name: Preserve ada-json-guard evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: task087a-ada-json-guard-pack-b
+          path: |
+            ${{ runner.temp }}/ada-codec-pack-b/seed/task087a-qualification/*.log
+            ${{ runner.temp }}/ada-codec-pack-b/seed/task087a-qualification/qualified-alire.lock
+          if-no-files-found: error
+      - name: Preserve ada-repeated-codec evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: task089-generated-repeated-codec
+          path: |
+            ${{ runner.temp }}/ada-codec-pack-b/ada-repeated-codec/task089-codec/*.log
+            ${{ runner.temp }}/ada-codec-pack-b/ada-repeated-codec/task089-codec/*.exit
+            ${{ runner.temp }}/ada-codec-pack-b/ada-repeated-codec/task089-codec/*-alire.lock
+            ${{ runner.temp }}/ada-codec-pack-b/ada-repeated-codec/task089-codec/generated-source-hashes.json
+            ${{ runner.temp }}/ada-codec-pack-b/ada-repeated-codec/task089r-codec/*.log
+            ${{ runner.temp }}/ada-codec-pack-b/ada-repeated-codec/task089r-codec/*.exit
+            ${{ runner.temp }}/ada-codec-pack-b/ada-repeated-codec/task089r-codec/*-alire.lock
+            ${{ runner.temp }}/ada-codec-pack-b/ada-repeated-codec/task089r-codec/source-hashes.json
+          if-no-files-found: error
+      - name: Preserve ada-duration-codec evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: task091-ada-duration-codec
+          path: |
+            ${{ runner.temp }}/ada-codec-pack-b/ada-duration-codec/task091r-integrated/**
+            ${{ runner.temp }}/ada-codec-pack-b/ada-duration-codec/task091-duration/*.log
+            ${{ runner.temp }}/ada-codec-pack-b/ada-duration-codec/task091-duration/*.command.json
+            ${{ runner.temp }}/ada-codec-pack-b/ada-duration-codec/task091-duration/*.lock
+            ${{ runner.temp }}/ada-codec-pack-b/ada-duration-codec/task091-duration/*.sha256
+            ${{ runner.temp }}/ada-codec-pack-b/ada-duration-codec/task091-duration/model/*.ad?
+            ${{ runner.temp }}/ada-codec-pack-b/ada-duration-codec/task091-duration/codec/*.ad?
+            ${{ runner.temp }}/ada-codec-pack-b/ada-duration-codec/task091-duration/qualified/*.ad?
+            ${{ runner.temp }}/ada-codec-pack-b/ada-duration-codec/task091-duration/named/*.ad?
+          if-no-files-found: error
+      - name: Preserve ada-repeated-choice-codec evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: task092-ada-repeated-choice-codec
           path: |
-            ${{ runner.temp }}/task092-codec/**
-            ${{ runner.temp }}/task092-qualified/**
+            ${{ runner.temp }}/ada-codec-pack-b/ada-repeated-choice-codec/task092-codec/**
+            ${{ runner.temp }}/ada-codec-pack-b/ada-repeated-choice-codec/task092-qualified/**
           if-no-files-found: error
   rust:
     concurrency:
@@ -1100,6 +917,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
@@ -1776,7 +1595,7 @@ jobs:
   main-ci-required:
     name: Main qualification outcome
     if: ${{ always() }}
-    needs: [baseline, deep-qualification, ada-lacal-runtime-core, ada-float64-codec, ada-time-zulu-codec, python-model-backend, ada-float32-codec, ada-repeated-temporal-codec, ada-datetime-codec, ada-json-guard, ada-generated-codec, ada-repeated-codec, ada-duration-codec, ada-hexbinary-codec, ada-repeated-choice-codec, rust, ada-websocket-transport]
+    needs: [baseline, deep-qualification, ada-lacal-runtime-core, ada-float64-codec, ada-time-zulu-codec, python-model-backend, ada-float32-codec, ada-codec-pack-a, ada-codec-pack-b, rust, ada-websocket-transport]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:

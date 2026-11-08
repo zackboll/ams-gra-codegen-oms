@@ -1,5 +1,6 @@
 with Ada.Command_Line;
 with Ada.Exceptions;
+with Ada.Environment_Variables;
 with Ada.Real_Time;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Text_IO;
@@ -123,7 +124,8 @@ procedure Generated_Consumer is
      (Body_Text);
    Sent : Boolean;
 begin
-   WS.Open (Wire, Ada.Command_Line.Argument (1));
+   WS.Open (Wire, Ada.Command_Line.Argument (1),
+     CA_Path => Ada.Environment_Variables.Value ("OMS_WSS_TEST_CA", ""));
    if WS.Protocol (Wire) /= "owp" then raise Program_Error; end if;
    Ada.Text_IO.Put_Line ("GENERATED_UPGRADE_OWP_COMPLETE");
    C.Initialize (Core, "000.1.0", "task100", True);

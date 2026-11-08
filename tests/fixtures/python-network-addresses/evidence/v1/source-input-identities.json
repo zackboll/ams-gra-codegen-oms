@@ -1,0 +1,26 @@
+{
+  "source_commit": "507a5398c411298f3c0fe4717bde2ef5ece9c5dd",
+  "source_tree": "693009a0b9d001c385c0295c35a72133d00be528",
+  "releases": {
+    "2.5": {
+      "commit": "093610b7753944059360d3236770ab446d039556",
+      "tree": "f811683ce81a3fcc5c306627cb43c3df5b525b54",
+      "checkout": "/home/zboll/rust-oms-002-evidence/uci25",
+      "clean": true,
+      "root": "/home/zboll/rust-oms-002-evidence/uci25/03_OAC-STD-002_RevE_UCI_Schema_v2_5/UCI_MessageDefinitions_v2_5_0.xsd",
+      "sha256": "ac9430499e1107371345e04430895c8c9f18578c1a6b022958ca43ae8aa7bf27",
+      "include_sha256": "4a8056f1503234d423a0c2495844ab65387febced62bea58b87d4f343e9e7a0b"
+    },
+    "2.6": {
+      "commit": "78eb61b6112c8bffa40820c33124b57787fc5bd9",
+      "tree": "43a8a74b15d2e20d00d4d8ed8543590dd9789046",
+      "checkout": "/home/zboll/rust-oms-002-evidence/uci26",
+      "clean": true,
+      "root": "/home/zboll/rust-oms-002-evidence/uci26.extracted/UCI_MessageDefinitions_v2_6_0.xsd",
+      "sha256": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+      "include_sha256": "ee6e58d5db9fd80d526bc964b8244ec296d106301640d34c3cb2c5c00b710b88"
+    }
+  },
+  "task062_corpus_sha256": "62a9d8814cef000b05e44747130a394b3e7277244940b83bed4f4eaf6ef15e5e",
+  "python_fixture_sha256": "c4461662124503a1425afe27d18e0905acab1710c43b64f580e7f5b8fcd7a9e7"
+}
