@@ -235,8 +235,7 @@ fn pinned_sleet_interoperability() {
             .await
             .unwrap()
         })
-        .err()
-        .expect("broker rejects incorrect INIT schema version");
+        .expect_err("broker rejects incorrect INIT schema version");
     assert!(matches!(error, ClientError::Server { .. }), "{error}");
     assert!(error.to_string().contains("does not match"), "{error}");
     eprintln!("RUST-OMS-010 {VERSION} incorrect INIT schema: broker rejected connection: {error}");
