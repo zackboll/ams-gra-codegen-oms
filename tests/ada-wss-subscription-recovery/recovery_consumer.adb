@@ -79,9 +79,9 @@ procedure Recovery_Consumer is
       Last_SID : Subscription_ID := No_Subscription;
       Last_Name : Text;
       Retired, Failing : Boolean := False;
-       Saved : C.Delivery;
-       Expected_Acks : Natural := 7;
-       Expected_Calls : Counts := (others => 2);
+      Saved : array (1 .. 3) of C.Delivery;
+      Expected_Acks : Natural := 7;
+      Expected_Calls : Counts := (others => 2);
       type Log_Receiver is new LI.Handler with null record;
       type Rdma_Receiver is new RI.Handler with null record;
       type Risk_Receiver is new SI.Handler with null record;
@@ -150,9 +150,12 @@ procedure Recovery_Consumer is
                       "unexpected transport exception");
                Say ("TRANSPORT_EXCEPTION" & Number'Image & " " & Ada.Exceptions.Exception_Information (Error));
          end;
-          if Delivery.Available then
-             Last_SID := Delivery.SID; Last_Name := Delivery.Name; Saved := Delivery;
-          end if;
+         if Delivery.Available then
+            Last_SID := Delivery.SID; Last_Name := Delivery.Name;
+            for Family in SIDs'Range loop
+               if Delivery.SID = SIDs (Family) then Saved (Family) := Delivery; end if;
+            end loop;
+         end if;
          L.Dispatch (LB, Delivery); R.Dispatch (RB, Delivery); S.Dispatch (SB, Delivery);
          loop
             C.Next_Event (Core, Available, E); exit when not Available;
@@ -211,61 +214,65 @@ procedure Recovery_Consumer is
       Check (Init_Count = 1, "one fresh INFO");
       SIDs (1) := LS.Subscribe (LH'Access); Await_Command;
       SIDs (2) := RS.Subscribe (RH'Access); Await_Command;
-       --  A SID alone is not authority to unsubscribe another binding.
-       begin
-          S.Unsubscribe (SB, SIDs (1));
-          raise Program_Error with "foreign ownership accepted";
-       exception
-          when Runtime_Error => null;
-       end;
-       SIDs (3) := SS.Subscribe (SH'Access);
+      --  A SID alone is not authority to unsubscribe another binding.
+      begin
+         S.Unsubscribe (SB, SIDs (1));
+         raise Program_Error with "foreign ownership accepted";
+      exception
+         when Runtime_Error => null;
+      end;
+      SIDs (3) := SS.Subscribe (SH'Access);
       Check (SIDs (1) = 1 and then SIDs (2) = 2 and then SIDs (3) = 3, "epoch-local SIDs");
-       Check (C.Busy (Core) and then not C.Is_Active (Core, SIDs (3)), "SUB awaits positive ACK");
-       Check (C.Is_Active (Core, SIDs (1)) and then C.Is_Active (Core, SIDs (2)), "existing SUB ownership");
-       if Mode = "sub" then
-          Expected_Acks := 3;
-          Expected_Calls := (others => 0);
-          Check (Ack_Count = Expected_Acks, "only INIT and two accepted SUBs");
-          Say ("PENDING" & Number'Image & " sub sid=3 busy=true active=true,true,false acks=3");
-       else
-       Await_Command;
-      Check (Ack_Count = 4, "fresh INIT and three SUB acknowledgments");
-      for SID of SIDs loop Check (C.Is_Active (Core, SID), "accepted subscription"); end loop;
-      Say ("SUBSCRIBED" & Number'Image & " 1 2 3");
-      for Phase in 1 .. 2 loop
-         for Family in 1 .. 3 loop
-            Expected (Family) := Get (Get (Item.Get (if Phase = 1 then "publish" else "external")), Family);
-         end loop;
-         Say ("READY" & Number'Image & Phase'Image);
-         if Phase = 1 then
-            for Family in 1 .. 3 loop Publish (Family, Expected (Family)); Await_Command; end loop;
-         end if;
-         declare Deadline : constant Ada.Real_Time.Time := Ada.Real_Time.Clock + Ada.Real_Time.Seconds (5);
-         begin
-            while Calls /= Counts'(others => Phase) loop
-               Step; Check (C.State (Core) = Active, "closed during delivery");
-               Check (Ada.Real_Time.Clock < Deadline, "application delivery deadline"); delay 0.001;
+      Check (C.Busy (Core) and then not C.Is_Active (Core, SIDs (3)), "SUB awaits positive ACK");
+      Check (C.Is_Active (Core, SIDs (1)) and then C.Is_Active (Core, SIDs (2)), "existing SUB ownership");
+      if Mode = "sub" then
+         Expected_Acks := 3;
+         Expected_Calls := (others => 0);
+         Check (Ack_Count = Expected_Acks, "only INIT and two accepted SUBs");
+         Say ("PENDING" & Number'Image & " sub sid=3 busy=true active=true,true,false acks=3");
+      else
+         Await_Command;
+         Check (Ack_Count = 4, "fresh INIT and three SUB acknowledgments");
+         for SID of SIDs loop Check (C.Is_Active (Core, SID), "accepted subscription"); end loop;
+         Say ("SUBSCRIBED" & Number'Image & " 1 2 3");
+         for Phase in 1 .. 2 loop
+            for Family in 1 .. 3 loop
+               Expected (Family) := Get (Get (Item.Get (if Phase = 1 then "publish" else "external")), Family);
             end loop;
-         end;
-      end loop;
-      Check (Ack_Count = 7, "no phantom acknowledgments");
-       if Mode = "unsub" then
-          S.Unsubscribe (SB, SIDs (3));
-          Check (C.Busy (Core) and then not C.Is_Active (Core, SIDs (3)), "UNSUB removes local ownership before ACK");
-          Check (C.Is_Active (Core, SIDs (1)) and then C.Is_Active (Core, SIDs (2)), "remaining UNSUB ownership");
-          --  Even a previously delivered authentic message cannot invoke the
-          --  receiver after typed Unsubscribe has removed its binding.
-          S.Dispatch (SB, Saved);
-          Check (Calls = Expected_Calls, "unsubscribed callback");
-          Say ("PENDING" & Number'Image & " unsub sid=3 busy=true active=true,true,false acks=7");
-       end if;
-       end if;
+            Say ("READY" & Number'Image & Phase'Image);
+            if Phase = 1 then
+               for Family in 1 .. 3 loop Publish (Family, Expected (Family)); Await_Command; end loop;
+            end if;
+            declare Deadline : constant Ada.Real_Time.Time := Ada.Real_Time.Clock + Ada.Real_Time.Seconds (5);
+            begin
+               while Calls /= Counts'(others => Phase) loop
+                  Step; Check (C.State (Core) = Active, "closed during delivery");
+                  Check (Ada.Real_Time.Clock < Deadline, "application delivery deadline"); delay 0.001;
+               end loop;
+            end;
+         end loop;
+         Check (Ack_Count = 7, "no phantom acknowledgments");
+         for Family in Saved'Range loop
+            Check (Saved (Family).Available and then Saved (Family).SID = SIDs (Family),
+                   "retain authentic delivery for every retired binding control");
+         end loop;
+         if Mode = "unsub" then
+            S.Unsubscribe (SB, SIDs (3));
+            Check (C.Busy (Core) and then not C.Is_Active (Core, SIDs (3)), "UNSUB removes local ownership before ACK");
+            Check (C.Is_Active (Core, SIDs (1)) and then C.Is_Active (Core, SIDs (2)), "remaining UNSUB ownership");
+            --  A previously delivered authentic message cannot invoke the
+            --  receiver after typed Unsubscribe has removed its binding.
+            S.Dispatch (SB, Saved (3));
+            Check (Calls = Expected_Calls, "unsubscribed callback");
+            Say ("PENDING" & Number'Image & " unsub sid=3 busy=true active=true,true,false acks=7");
+         end if;
+      end if;
       Retired := True;
-       if Mode = "normal" then
+      if Mode = "normal" then
          C.Close (Core); Step;
       else
          Failing := True;
-          Check (C.Busy (Core), "subscription command outstanding before reset");
+         Check (C.Busy (Core), "subscription command outstanding before reset");
          Say ("ARMED" & Number'Image & " " & Mode);
          declare Deadline : constant Ada.Real_Time.Time := Ada.Real_Time.Clock + Ada.Real_Time.Seconds (5);
          begin
@@ -275,17 +282,17 @@ procedure Recovery_Consumer is
          end;
       end if;
       Check (C.State (Core) = Closed and then not C.Busy (Core), "terminal clears command");
-       Check (Close_Count = 1 and then Ack_Count = Expected_Acks, "one close, no stale ACK");
+      Check (Close_Count = 1 and then Ack_Count = Expected_Acks, "one close, no stale ACK");
       for SID of SIDs loop Check (not C.Is_Active (Core, SID), "terminal subscription"); end loop;
       for Attempt in 1 .. 10 loop Step; end loop;
-       L.Dispatch (LB, Saved); R.Dispatch (RB, Saved); S.Dispatch (SB, Saved);
-       L.Close (LB); R.Close (RB); S.Close (SB);
-       L.Dispatch (LB, Saved); R.Dispatch (RB, Saved); S.Dispatch (SB, Saved);
-       C.Close (Core); Step;
-       Check (Calls = Expected_Calls and then Close_Count = 1 and then Ack_Count = Expected_Acks,
-              "post-retirement isolation");
-       Say ("RETIRED" & Number'Image & " callbacks=" & Calls (1)'Image & Calls (2)'Image & Calls (3)'Image &
-            " acks=" & Ack_Count'Image & " close=1 active=0 lost=0 busy=false");
+      L.Dispatch (LB, Saved (1)); R.Dispatch (RB, Saved (2)); S.Dispatch (SB, Saved (3));
+      L.Close (LB); R.Close (RB); S.Close (SB);
+      L.Dispatch (LB, Saved (1)); R.Dispatch (RB, Saved (2)); S.Dispatch (SB, Saved (3));
+      C.Close (Core); Step;
+      Check (Calls = Expected_Calls and then Close_Count = 1 and then Ack_Count = Expected_Acks,
+             "post-retirement isolation");
+      Say ("RETIRED" & Number'Image & " callbacks=" & Calls (1)'Image & Calls (2)'Image & Calls (3)'Image &
+           " acks=" & Ack_Count'Image & " close=1 active=0 lost=0 busy=false");
       --  Automatic finalization: SB/RB/LB, receivers, Core, then Wire.
    end Epoch;
 begin
@@ -293,7 +300,7 @@ begin
    begin AHT.Random.Fill (Nonce); end;
    Ada.Text_IO.Open (Plan, Ada.Text_IO.In_File, Ada.Command_Line.Argument (2));
    Baseline_Tasks := Entries ("/proc/self/task");
-    for Number in 1 .. 5 loop
+   for Number in 1 .. 5 loop
       declare Item : constant JSON_Value := Guard.Read (Ada.Text_IO.Get_Line (Plan));
       begin Epoch (Number, Item); end;
       --  The first complete TLS epoch warms process-owned provider resources.
@@ -319,9 +326,9 @@ begin
       Say ("CLEANUP" & Number'Image & " fd=" & Baseline_FD'Image & " tasks=" & Baseline_Tasks'Image);
    end loop;
    Ada.Text_IO.Close (Plan);
-    Say ("TASK113_COMPLETE epochs=5");
+   Say ("TASK113_COMPLETE epochs=5");
 exception
    when E : others =>
-       Say ("TASK113_FAILED " & Ada.Exceptions.Exception_Information (E));
+      Say ("TASK113_FAILED " & Ada.Exceptions.Exception_Information (E));
       Ada.Command_Line.Set_Exit_Status (1);
 end Recovery_Consumer;
