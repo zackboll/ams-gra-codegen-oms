@@ -41,6 +41,14 @@ class Routing(unittest.TestCase):
         for path in ("scripts/task109_other.py", "scripts/task1090/new.py", "scripts/task109-other/new.py"):
             self.assert_execution([path], list(smoke.BACKENDS))
 
+    def test_task112_ada_only_and_boundaries(self):
+        for path in ("scripts/task112/qualify.py", "scripts/task112/recovery.py",
+                     "scripts/task112/test_recovery.py", "scripts/task112/nested/new.py",
+                     "tests/ada-wss-session-recovery/recovery_consumer.adb"):
+            self.assert_execution([path], ["ada"])
+        for path in ("scripts/task112_other.py", "scripts/task1120/new.py", "scripts/task112-other/new.py"):
+            self.assert_execution([path], list(smoke.BACKENDS))
+
     def test_task104_ada_only(self):
         paths = ("scripts/task104/admission.py", "scripts/task104/cases.py",
                  "scripts/task104/inventory.py", "scripts/task104/qualify.py",
