@@ -191,7 +191,7 @@ An external OWP client
 authorized for these topics can publish the corresponding enveloped documents;
 the same four typed handlers print them. `--duration-seconds` defaults to 5 and
 accepts integers 1..=3600. Unknown/duplicate flags and missing values are errors.
-No CLI framework, replay, TLS or authentication policy is added.
+No CLI framework, replay or application-specific authentication policy is added.
 
 ### Optional bounded recovery
 
@@ -283,6 +283,81 @@ without evidence. A quiet final queue is not an acceptance barrier; events that
 arrive after the bounded observation window can race with close. Independent MSG
 observation is the delivery evidence, not the application's `PUBLISHED` line.
 
+## Verified WSS and trusted roots
+
+`--url` accepts `ws://HOST[:PORT][/PATH]` and `wss://HOST[:PORT][/PATH]`,
+including bracketed IPv6 authorities. Credentials, fragments, malformed authorities
+and unsupported schemes are rejected before connecting. `ws://` stays plaintext.
+Both schemes use the same `SleetRuntime<ServiceCodec>`, generated endpoints and
+application-owned session recovery; there is no separate TLS connection loop.
+
+The production runtime enables `tokio-tungstenite` 0.29's
+`rustls-tls-native-roots` feature by normal Cargo feature unification with the
+unchanged `sleet-client` revision `e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b`.
+An explicit rustls `ring` provider feature is necessary: tokio-tungstenite does
+not select a provider itself. There is no application TLS implementation,
+certificate parser, custom connector or permissive verifier. The CLI's direct
+`http` dependency uses the same URI parser already used by the pinned transport.
+Only the relevant manifests and two lockfiles change dependencies; additions
+are rustls/native-root loading, ring and their build/platform transitive crates.
+
+The server chain must lead to a configured trusted CA, be currently valid, and
+match the URL hostname/SAN. Native/system trust roots are used by default.
+On Linux, `SSL_CERT_FILE` and `SSL_CERT_DIR` can select isolated roots **for that
+process**. Use PEM CA certificates, not a private key. Missing roots, untrusted
+issuers, expired/not-yet-valid certificates, hostname mismatches and incomplete
+chains fail closed, with the underlying rustls diagnostic (for example
+`UnknownIssuer`, `certificate expired`, `certificate not valid yet`,
+`certificate not valid for name`). Certificate failures
+are terminal even with a nonzero recovery budget; neither the runtime's refused-TCP
+retry nor application recovery treats them as temporary unavailability. There is
+no WSS-to-WS fallback and no `--insecure` option. TLS does not replace OWP service
+authorization. An established-session outage can still lose messages as described
+above; recovery never replays initial CLI publications.
+
+### Reproducible local TLS test (not a deployment architecture)
+
+After building the selected release and starting the unmodified Sleet process
+above on port 9000, use the **test-only** Python stdlib `ssl`/OpenSSL terminator.
+Python 3 and the `openssl` executable are required by the live acceptance tests.
+The helper generates temporary keys and a local CA without changing the host's
+global CA store. Do not reuse these test keys/certificates outside qualification.
+
+```bash
+export TEST_TLS="$CLIENT_SCRATCH/tls"
+python3 examples/rust-uci-client/tests/support/tls_endpoint.py "$TEST_TLS" --generate
+python3 examples/rust-uci-client/tests/support/tls_endpoint.py "$TEST_TLS" \
+  --backend 9000 --port 9443 --identity valid --epoch manual \
+  > "$CLIENT_SCRATCH/tls.stdout" 2> "$CLIENT_SCRATCH/tls.stderr" &
+TLS_PID=$!
+# Wait for READY 9443 in tls.stdout; inspect tls.stderr if the process exits.
+SSL_CERT_FILE="$TEST_TLS/ca.pem" SSL_CERT_DIR="$TEST_TLS/empty-roots" \
+  "$CLIENT_BIN" --url wss://localhost:9443 --service-id rust-uci-client \
+  --duration-seconds 5
+# The same four --publish-* options shown above work with this WSS URL.
+kill "$TLS_PID"
+wait "$TLS_PID" || true
+```
+
+The terminator forwards decrypted bytes transparently, including the actual
+`owp` subprotocol negotiation; it does not manufacture upgrade/OWP replies or
+rewrite frames/JSON. TLS protects **only client → terminator**. Its plain WS
+terminator → Sleet backend hop is **not TLS-protected**. This local helper is
+not a production deployment architecture. Captures in the temporary directory
+contain decrypted test traffic. Remove that directory after qualification.
+
+The focused acceptance command below separately builds both authentic releases,
+reuses the same authenticated clean Sleet checkout/build, and requires verified
+WSS four-message publication and independent typed ingress. It stops/restarts
+only the TLS endpoint to qualify session recovery, fresh INIT/INFO and four SUBs,
+worker join/replacement, four final UNSUBs and absence of publication replay.
+It also checks untrusted CA, wrong SAN, fixed past/future validity, missing
+intermediate chain, WSS to plain WS and unsupported scheme controls; bad identities
+on restart must terminate recovery on its first attempt. Worker cleanup is
+checked immediately after failed connect returns, not just after process exit.
+The fixed leaf validity windows are 2000–2001 (expired), 2090–2091 (future), and
+2020–2040 (valid); locally generated CAs/intermediates last ten years.
+
 ## Focused real-Sleet acceptance and local checks
 
 On Linux, with both fetched roots exported as above:
@@ -316,7 +391,7 @@ The existing main-only real-Sleet job invokes it with the same Sleet build; no n
 runner lane or qualification framework is introduced. Root-workspace Rust
 backend/runtime regressions and lightweight PR smoke remain unchanged.
 
-The same executable harness also stops and restarts that unmodified server on
+The WS part of the same executable harness also stops and restarts that unmodified server on
 the same port for each release. It independently witnesses four distinct messages
 before and after recovery, observes fresh broker-side subscription registration,
 four final UNSUB dispatches, different procfs worker IDs with zero workers and

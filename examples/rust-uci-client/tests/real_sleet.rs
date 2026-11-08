@@ -46,6 +46,7 @@ mod support {
     include!("../../../crates/runtime-rust-facade-tests/tests/real_sleet_support/mod.rs");
     include!("../../../crates/runtime-rust-facade-tests/tests/real_sleet_support/connections.rs");
     include!("support/reconnect.rs");
+    include!("support/wss.rs");
 
     pub fn accept() {
         let (mut server, url) = start_sleet_with_topics(&TOPICS);
@@ -488,7 +489,22 @@ impl Application {
     }
 
     fn start_for(url: &str, extra: &[&str], seconds: &str) -> Self {
-        let mut child = Command::new(env!("CARGO_BIN_EXE_rust-uci-client"))
+        Self::start_trusted(url, extra, seconds, None)
+    }
+
+    fn start_trusted(
+        url: &str,
+        extra: &[&str],
+        seconds: &str,
+        trust: Option<&std::path::Path>,
+    ) -> Self {
+        let mut command = Command::new(env!("CARGO_BIN_EXE_rust-uci-client"));
+        if let Some(directory) = trust {
+            command
+                .env("SSL_CERT_FILE", directory.join("ca.pem"))
+                .env("SSL_CERT_DIR", directory.join("empty-roots"));
+        }
+        let mut child = command
             .args([
                 "--url",
                 url,
@@ -608,4 +624,14 @@ fn standalone_real_sleet() {
     );
     support::accept();
     support::reconnection();
+    support::wss();
+}
+
+// A fresh process gets isolated native trust without mutating the test runner's
+// environment. Inspect immediately after connect returns, before process exit.
+#[test]
+fn tls_failure_worker_probe() {
+    if let Ok(url) = std::env::var("AMS_GRA_TLS_FAILURE_URL") {
+        support::tls_failure_worker_probe(&url);
+    }
 }
