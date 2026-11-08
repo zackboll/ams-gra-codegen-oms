@@ -7,6 +7,7 @@ mod names;
 mod network_address;
 mod service_api;
 mod service_codec;
+mod unicode_string;
 pub use service_api::{SERVICE_API_FILE, generate_service_api};
 pub use service_codec::{SERVICE_CODEC_FILE, generate_service_codec};
 
@@ -71,8 +72,8 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     let emissions = plan_type_emissions(schema, world)?;
     preflight(schema, &emissions)?;
     let mut output = include_str!("runtime.py").to_owned();
-    if uses_choice(schema) || network_address::uses(schema) {
-        // Choice and address schemas acquire recursive carrier revalidation. The
+    if uses_choice(schema) || network_address::uses(schema) || unicode_string::uses(schema) {
+        // Choice and checked lexical schemas acquire recursive revalidation. The
         // generated table below uses exact classes and explicit validators;
         // no dataclass introspection or payload-type alternative selection.
         output.push_str("\n\n_check_scalar = _check\n\ndef _check(value, expected, lower=None, upper=None):\n    _check_scalar(value, expected, lower, upper)\n    validator = _choice_carrier_validators.get(expected)\n    if validator is not None:\n        validator(value)\n");
@@ -95,6 +96,7 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     if uses_nato_special_words(schema) {
         output.push_str(include_str!("nato_special_words_runtime.py"));
     }
+    unicode_string::render_runtime(&mut output, schema);
     if schema
         .types
         .iter()
@@ -126,7 +128,7 @@ pub fn generate(schema: &SchemaIr, world: GenerationWorld) -> Result<String, Cod
     for declaration in emitted_declarations(&emissions)? {
         render(&mut output, schema, declaration)?;
     }
-    if uses_choice(schema) || network_address::uses(schema) {
+    if uses_choice(schema) || network_address::uses(schema) || unicode_string::uses(schema) {
         output.push_str("\n\n_choice_carrier_validators = {\n");
         for declaration in emitted_declarations(&emissions)? {
             if !matches!(declaration.kind, TypeKind::Enumeration { .. }) {
@@ -727,6 +729,8 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
                 whitespace_visible_ancestry(schema, declaration)?;
             } else if network_address::profile(declaration).is_some() {
                 network_address::ancestry(schema, declaration)?;
+            } else if unicode_string::profile(declaration).is_some() {
+                unicode_string::ancestry(schema, declaration)?;
             } else if nato_special_words_profile(declaration) {
                 nato_special_words_ancestry(schema, declaration)?;
             } else if let Some(base) = &declaration.base_type {
@@ -756,6 +760,7 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
                         datetime_profile(&declaration.constraints)?;
                     } else if header_profile(declaration).is_none()
                         && network_address::profile(declaration).is_none()
+                        && unicode_string::profile(declaration).is_none()
                         && visible_ascii_profile(declaration).is_none()
                         && whitespace_visible_profile(declaration).is_none()
                         && !nato_special_words_profile(declaration)
@@ -766,6 +771,7 @@ fn preflight(schema: &SchemaIr, emissions: &[TypeEmission<'_>]) -> Result<(), Co
                         && *kind != PrimitiveKind::Duration
                         && *kind != PrimitiveKind::Binary
                         && network_address::profile(declaration).is_none()
+                        && unicode_string::profile(declaration).is_none()
                         && visible_ascii_profile(declaration).is_none()
                         && !nato_special_words_profile(declaration)
                     {
@@ -955,6 +961,10 @@ fn render(
     .unwrap();
     match &declaration.kind {
         TypeKind::Primitive(_) | TypeKind::Alias(_) => {
+            if let Some(profile) = unicode_string::profile(declaration) {
+                writeln!(output, "    value: str\n\n    def __post_init__(self) -> None:\n        _check_unicode31(self.value, {})", profile.id()).unwrap();
+                return Ok(());
+            }
             if let Some(validator) = network_address::profile(declaration) {
                 writeln!(output, "    value: str\n\n    def __post_init__(self) -> None:\n        {validator}(self.value)").unwrap();
                 return Ok(());
