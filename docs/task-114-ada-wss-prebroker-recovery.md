@@ -115,6 +115,13 @@ receipts belong under `/docs/evidence/task114/`.
 
 ## Qualification results
 
+The full matrix was repeated after the ordinary main merge and final verifier
+hardening, on `ec4c95b3ad073a181784a10b684f511710bffad4`, tree
+`bd2b3bcaff073b015606c1455c90b33ab7e862d3`. All four UCI2.6 cells and
+the GNAT16/OpenSSL UCI2.5 campaign passed again. Committed receipts below
+`/docs/evidence/task114/` refer to this later source, not the initial run.
+The subsequent receipt-only commit does not change qualification inputs.
+
 All four authentic UCI2.6 cells passed on clean committed implementation
 `5fc2f7ee7c81e772935d11a407cc2a30aa4506ce`, tree
 `0984c070e4935d14a2bd371b0bfbf40fe777fbd5`. GNAT16/OpenSSL ran first and
