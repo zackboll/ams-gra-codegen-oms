@@ -89,3 +89,39 @@ python scripts/check-py018-uci.py --generator target/release/ams-gra-codegen-oms
 Set the established pinned root/broker environment variables, use real Python
 3.11/3.13 and both normal/optimized execution. No hosted runner, CI lane, source
 pin, shared IR or peer backend semantics are changed.
+
+## Measured delivery result
+
+Implementation commit `8f305b2a354077f1e61ae6d0d7565afe3fb81b42`, tree
+`92228b2619f343006d1aea2645ca1ba4186bfcf6`, was reconciled by ordinary merge with
+main `ebb25de9c15f7dd26ce2ce319bc800191d7d9cfc`, tree
+`735ab7537274d5851598f464359cea1c68a80130`. The merge retained every Python
+production byte. A subsequent evidence-tool correction authenticates the one
+location-dependent `output:` diagnostic against recorded `--output` argv before
+canonicalization; all other diagnostics and historical receipts remain exact.
+
+The independent corpus has 2,267 DateAndTime, 651 Date and 181 TargetLocation
+cases: 2,492 positive and 607 negative, zero shared-Rust mismatches. Additional
+runtime tests cover Python-only surrogates, exact classes and forged storage.
+The backend suite passed 35 tests; the CLI suite passed 416, including independent
+clean-checkout execution. Both pinned releases' three exact real profiles passed
+both worlds/import styles/policies on Python 3.11 and 3.13. Actual AO service
+readiness remains 0/8 before and after for the precisely recorded abstract-value
+boundary; no new complete UCI service is claimed.
+
+PY-017 stayed 40/40 READY and retained all 100 artifact hashes. All twelve
+selected/support projection records and 36 historical evidence files are
+unchanged. Separate parity retained 56 Unicode-free selections/140 sources,
+four address selections/ten sources, and peer generation/readiness/coverage.
+
+The reconciled source-bound matrix passed **160 Fast, 44 UCI and 44 Sleet tests**
+(40/11/11 per interpreter-policy cell), with no skips or expected failures. The
+versioned bundle records the exact measured commits for each receipt rather than
+claiming that later evidence-only commits existed when execution occurred.
+The broker/runtime pin is unchanged; generated-decoder rejection of U+1E950,
+broker rejection of U+1369, recovery, unsubscribe and teardown were observed.
+
+The separate evidence bundle is `tests/fixtures/python-unicode31/evidence/v1`.
+It includes actual before/after results, source inventories, selected/support
+identities, pinned facet/artifact inventories, source-bound execution logs and
+receipts, negative/superseded-attempt attribution and a SHA-256 file manifest.
