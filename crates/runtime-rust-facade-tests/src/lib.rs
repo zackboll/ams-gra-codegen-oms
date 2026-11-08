@@ -257,6 +257,26 @@ pub mod real_uci_subsystem_stream {
 
 pub mod codec;
 
+/// Authentic UCI 2.5 FileMetadata with independently generated endpoints.
+#[cfg(ams_gra_real_uci_file_metadata25)]
+#[allow(clippy::all, clippy::pedantic)]
+pub mod real_uci_file_metadata25 {
+    include!(concat!(
+        env!("OUT_DIR"),
+        "/real_uci_file_metadata25/service_api.rs"
+    ));
+}
+
+/// Authentic UCI 2.6 FileMetadata, not an alias of the UCI 2.5 model.
+#[cfg(ams_gra_real_uci_file_metadata26)]
+#[allow(clippy::all, clippy::pedantic)]
+pub mod real_uci_file_metadata26 {
+    include!(concat!(
+        env!("OUT_DIR"),
+        "/real_uci_file_metadata26/service_api.rs"
+    ));
+}
+
 /// Authentic UCI 2.5 DLZ model, codec and bidirectional service endpoints.
 #[cfg(ams_gra_real_uci_dlz25)]
 #[allow(clippy::all, clippy::pedantic)]

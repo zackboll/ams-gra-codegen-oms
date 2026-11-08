@@ -1,0 +1,1628 @@
+{
+  "captured_at": "2026-11-08 initial inspection; not a live result",
+  "incorporated_main": {
+    "sha": "55b4cf1a35c7fc9dd1008deff28fea76a41ad39d",
+    "tree": "71245afe416697b424b25647937fa0bf1cd3f836"
+  },
+  "runs": [
+    {
+      "id": 42510678267,
+      "name": "CI",
+      "head_sha": "55b4cf1a35c7fc9dd1008deff28fea76a41ad39d",
+      "status": "pending",
+      "conclusion": null,
+      "updated_at": "2026-11-08T18:34:25Z",
+      "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267",
+      "jobs": [
+        {
+          "id": 128822842179,
+          "name": "ada-float64-codec (14)",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842179"
+        },
+        {
+          "id": 128822842287,
+          "name": "ada-lacal-runtime-core (16)",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842287"
+        },
+        {
+          "id": 128822842288,
+          "name": "ada-float64-codec (16)",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842288"
+        },
+        {
+          "id": 128822842290,
+          "name": "python-model-backend (3.11)",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842290"
+        },
+        {
+          "id": 128822842300,
+          "name": "baseline",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842300"
+        },
+        {
+          "id": 128822842338,
+          "name": "ada-websocket-transport (14)",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842338"
+        },
+        {
+          "id": 128822842346,
+          "name": "ada-websocket-transport (16)",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842346"
+        },
+        {
+          "id": 128822842366,
+          "name": "ada-lacal-runtime-core (14)",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842366"
+        },
+        {
+          "id": 128822842371,
+          "name": "ada-codec-pack-a",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842371"
+        },
+        {
+          "id": 128822842380,
+          "name": "python-model-backend (3.13)",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842380"
+        },
+        {
+          "id": 128822842448,
+          "name": "ada-time-zulu-codec (14)",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842448"
+        },
+        {
+          "id": 128822842452,
+          "name": "ada-codec-pack-b",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842452"
+        },
+        {
+          "id": 128822842455,
+          "name": "deep-qualification / ada-repeated-choice-real-uci",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842455"
+        },
+        {
+          "id": 128822842471,
+          "name": "deep-qualification / real-uci-integral-unicode",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842471"
+        },
+        {
+          "id": 128822842495,
+          "name": "rust",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842495"
+        },
+        {
+          "id": 128822842516,
+          "name": "ada-float32-codec",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842516"
+        },
+        {
+          "id": 128822842577,
+          "name": "deep-qualification / real-uci-temporal-naming",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842577"
+        },
+        {
+          "id": 128822842615,
+          "name": "ada-time-zulu-codec (16)",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842615"
+        },
+        {
+          "id": 128822842639,
+          "name": "deep-qualification / ada-deep-pack-b (16)",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842639"
+        },
+        {
+          "id": 128822842677,
+          "name": "deep-qualification / real-uci-schema-ipv6",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842677"
+        },
+        {
+          "id": 128822842684,
+          "name": "deep-qualification / real-uci-regressions",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842684"
+        },
+        {
+          "id": 128822842696,
+          "name": "deep-qualification / ada-deep-pack-a (14)",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842696"
+        },
+        {
+          "id": 128822842725,
+          "name": "deep-qualification / real-sleet",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842725"
+        },
+        {
+          "id": 128822842770,
+          "name": "deep-qualification / ada-deep-pack-b (14)",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842770"
+        },
+        {
+          "id": 128822842781,
+          "name": "deep-qualification / msrv-real-uci",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842781"
+        },
+        {
+          "id": 128822842790,
+          "name": "deep-qualification / real-uci-regressions-ascii",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842790"
+        },
+        {
+          "id": 128822842807,
+          "name": "deep-qualification / ada-deep-pack-a (16)",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842807"
+        },
+        {
+          "id": 128822842837,
+          "name": "deep-qualification / ada-hexbinary-real",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842837"
+        },
+        {
+          "id": 128822842927,
+          "name": "deep-qualification / real-uci-regressions-alternating",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42510678267/job/128822842927"
+        }
+      ]
+    },
+    {
+      "id": 42509397852,
+      "name": "CI",
+      "head_sha": "b412920dc33a965464a7e6359d98a3c3698f8560",
+      "status": "pending",
+      "conclusion": null,
+      "updated_at": "2026-11-08T18:19:10Z",
+      "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852",
+      "jobs": [
+        {
+          "id": 128818958564,
+          "name": "ada-float32-codec",
+          "status": "in_progress",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818958564"
+        },
+        {
+          "id": 128818958760,
+          "name": "ada-websocket-transport (14)",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818958760"
+        },
+        {
+          "id": 128818958763,
+          "name": "python-model-backend (3.11)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818958763"
+        },
+        {
+          "id": 128818958832,
+          "name": "baseline",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818958832"
+        },
+        {
+          "id": 128818958994,
+          "name": "ada-lacal-runtime-core (14)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818958994"
+        },
+        {
+          "id": 128818959012,
+          "name": "ada-lacal-runtime-core (16)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818959012"
+        },
+        {
+          "id": 128818959180,
+          "name": "ada-websocket-transport (16)",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818959180"
+        },
+        {
+          "id": 128818959198,
+          "name": "ada-time-zulu-codec (16)",
+          "status": "in_progress",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818959198"
+        },
+        {
+          "id": 128818959267,
+          "name": "ada-codec-pack-a",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818959267"
+        },
+        {
+          "id": 128818959414,
+          "name": "python-model-backend (3.13)",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818959414"
+        },
+        {
+          "id": 128818959423,
+          "name": "ada-float64-codec (14)",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818959423"
+        },
+        {
+          "id": 128818959464,
+          "name": "ada-float64-codec (16)",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818959464"
+        },
+        {
+          "id": 128818959505,
+          "name": "ada-time-zulu-codec (14)",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818959505"
+        },
+        {
+          "id": 128818959897,
+          "name": "deep-qualification / ada-hexbinary-real",
+          "status": "in_progress",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818959897"
+        },
+        {
+          "id": 128818959903,
+          "name": "deep-qualification / ada-deep-pack-b (16)",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818959903"
+        },
+        {
+          "id": 128818959987,
+          "name": "ada-codec-pack-b",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818959987"
+        },
+        {
+          "id": 128818960083,
+          "name": "deep-qualification / real-sleet",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818960083"
+        },
+        {
+          "id": 128818960090,
+          "name": "deep-qualification / real-uci-temporal-naming",
+          "status": "in_progress",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818960090"
+        },
+        {
+          "id": 128818960100,
+          "name": "rust",
+          "status": "in_progress",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818960100"
+        },
+        {
+          "id": 128818960103,
+          "name": "deep-qualification / ada-deep-pack-b (14)",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818960103"
+        },
+        {
+          "id": 128818960116,
+          "name": "deep-qualification / real-uci-regressions",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818960116"
+        },
+        {
+          "id": 128818960133,
+          "name": "deep-qualification / real-uci-regressions-alternating",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818960133"
+        },
+        {
+          "id": 128818960170,
+          "name": "deep-qualification / msrv-real-uci",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818960170"
+        },
+        {
+          "id": 128818960234,
+          "name": "deep-qualification / ada-repeated-choice-real-uci",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818960234"
+        },
+        {
+          "id": 128818960260,
+          "name": "deep-qualification / real-uci-schema-ipv6",
+          "status": "in_progress",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818960260"
+        },
+        {
+          "id": 128818960313,
+          "name": "deep-qualification / real-uci-integral-unicode",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818960313"
+        },
+        {
+          "id": 128818960391,
+          "name": "deep-qualification / real-uci-regressions-ascii",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818960391"
+        },
+        {
+          "id": 128818960400,
+          "name": "deep-qualification / ada-deep-pack-a (16)",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818960400"
+        },
+        {
+          "id": 128818960513,
+          "name": "deep-qualification / ada-deep-pack-a (14)",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42509397852/job/128818960513"
+        }
+      ]
+    },
+    {
+      "id": 42447617726,
+      "name": "CI",
+      "head_sha": "1c48bcbff22535ef92b870d7a12ef6be7fdbf90b",
+      "status": "completed",
+      "conclusion": "failure",
+      "updated_at": "2026-11-08T18:18:59Z",
+      "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726",
+      "jobs": [
+        {
+          "id": 128629774152,
+          "name": "baseline",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774152"
+        },
+        {
+          "id": 128629774203,
+          "name": "ada-time-zulu-codec (14)",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774203",
+          "failed_steps": [
+            {
+              "number": 7,
+              "name": "Install verified Alire 2.1.1",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            22
+          ],
+          "error_lines": [
+            "Process completed with exit code 22."
+          ],
+          "preserved_log_sha256": "cd7c2b0d27756ee1fcc90c6daa399044f074cea3bb4c22a25292d1cecfc45204",
+          "classification": "external transport failure; shared pinned recovery applies"
+        },
+        {
+          "id": 128629774207,
+          "name": "ada-time-zulu-codec (16)",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774207",
+          "failed_steps": [
+            {
+              "number": 7,
+              "name": "Install verified Alire 2.1.1",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            22
+          ],
+          "error_lines": [
+            "Process completed with exit code 22."
+          ],
+          "preserved_log_sha256": "d0761b1a0b4bc13a934364262cd43565dd54b2ce2457f26e5f1b6ee09d45f319",
+          "classification": "external transport failure; shared pinned recovery applies"
+        },
+        {
+          "id": 128629774221,
+          "name": "ada-float64-codec (16)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774221"
+        },
+        {
+          "id": 128629774243,
+          "name": "ada-lacal-runtime-core (16)",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774243",
+          "failed_steps": [
+            {
+              "number": 9,
+              "name": "Provision pinned compiler and GNATCOLL inputs",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            1
+          ],
+          "error_lines": [
+            "Process completed with exit code 1."
+          ],
+          "preserved_log_sha256": "c7bbe3d6b61ccc638282e8b3e38e3f5a5bbeb98560c047342447953582c0b432",
+          "classification": "provisioning failure; preserved setup logs inspected (see report); do not infer compiler defect"
+        },
+        {
+          "id": 128629774251,
+          "name": "ada-websocket-transport (14)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774251"
+        },
+        {
+          "id": 128629774276,
+          "name": "ada-lacal-runtime-core (14)",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774276",
+          "failed_steps": [
+            {
+              "number": 7,
+              "name": "Install verified Alire 2.1.1",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            22
+          ],
+          "error_lines": [
+            "Process completed with exit code 22."
+          ],
+          "preserved_log_sha256": "f26383701a33f345dbd6021805fd343ca8ef9af7e3d959fbf2a7217ae6d0257b",
+          "classification": "external transport failure; shared pinned recovery applies"
+        },
+        {
+          "id": 128629774393,
+          "name": "rust",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774393"
+        },
+        {
+          "id": 128629774401,
+          "name": "ada-codec-pack-b",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774401",
+          "failed_steps": [
+            {
+              "number": 5,
+              "name": "Install verified Alire 2.1.1",
+              "conclusion": "failure"
+            },
+            {
+              "number": 8,
+              "name": "Preserve pack execution and resource receipts",
+              "conclusion": "failure"
+            },
+            {
+              "number": 9,
+              "name": "Preserve ada-json-guard evidence",
+              "conclusion": "failure"
+            },
+            {
+              "number": 10,
+              "name": "Preserve ada-repeated-codec evidence",
+              "conclusion": "failure"
+            },
+            {
+              "number": 11,
+              "name": "Preserve ada-duration-codec evidence",
+              "conclusion": "failure"
+            },
+            {
+              "number": 12,
+              "name": "Preserve ada-repeated-choice-codec evidence",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            22
+          ],
+          "error_lines": [
+            "Process completed with exit code 22.",
+            "No files were found with the provided path: /home/runner/work/_temp/ada-codec-pack-b/*.json",
+            "No files were found with the provided path: /home/runner/work/_temp/ada-codec-pack-b/seed/task087a-qualification/*.log",
+            "No files were found with the provided path: /home/runner/work/_temp/ada-codec-pack-b/ada-repeated-codec/task089-codec/*.log",
+            "No files were found with the provided path: /home/runner/work/_temp/ada-codec-pack-b/ada-duration-codec/task091r-integrated/**",
+            "No files were found with the provided path: /home/runner/work/_temp/ada-codec-pack-b/ada-repeated-choice-codec/task092-codec/**"
+          ],
+          "preserved_log_sha256": "c7d79cf0f1e6238b8141ee8d6edda11926ed368c5f12504539176661533a260c",
+          "classification": "external transport failure; shared pinned recovery applies"
+        },
+        {
+          "id": 128629774411,
+          "name": "ada-codec-pack-a",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774411",
+          "failed_steps": [
+            {
+              "number": 6,
+              "name": "Run complete original JSON guard and packed Ada qualifications",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            1
+          ],
+          "error_lines": [
+            "Process completed with exit code 1."
+          ],
+          "preserved_log_sha256": "8364118d9175ec21921652abd8a16ea9c9dc20b7664696f0d3882c77dca6a468",
+          "classification": "historical packed execution; predates PERF-009R; no current-source timeout inference"
+        },
+        {
+          "id": 128629774412,
+          "name": "ada-float64-codec (14)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774412"
+        },
+        {
+          "id": 128629774436,
+          "name": "ada-websocket-transport (16)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774436"
+        },
+        {
+          "id": 128629774455,
+          "name": "python-model-backend (3.11)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774455"
+        },
+        {
+          "id": 128629774478,
+          "name": "python-model-backend (3.13)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774478"
+        },
+        {
+          "id": 128629774480,
+          "name": "ada-float32-codec",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774480",
+          "failed_steps": [
+            {
+              "number": 6,
+              "name": "Install verified Alire 2.1.1",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            22
+          ],
+          "error_lines": [
+            "Process completed with exit code 22."
+          ],
+          "preserved_log_sha256": "d90616370e6ba2a738e6a4608fff208572d6d741ba79b3669a68ccf837e91192",
+          "classification": "external transport failure; shared pinned recovery applies"
+        },
+        {
+          "id": 128629774592,
+          "name": "deep-qualification / ada-real-uci-multimessage-sleet (16)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774592"
+        },
+        {
+          "id": 128629774599,
+          "name": "deep-qualification / ada-real-uci-multimessage-sleet (14)",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774599",
+          "failed_steps": [
+            {
+              "number": 9,
+              "name": "Provision pinned compiler and GNATCOLL inputs",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            1
+          ],
+          "error_lines": [
+            "Process completed with exit code 1."
+          ],
+          "preserved_log_sha256": "8fee0e020af72a0c48f6c0733bb8d3d634647b85f05aaf7a5b73b3ee016c1656",
+          "classification": "provisioning failure; preserved setup logs inspected (see report); do not infer compiler defect"
+        },
+        {
+          "id": 128629774621,
+          "name": "deep-qualification / real-uci-integral-unicode",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774621"
+        },
+        {
+          "id": 128629774627,
+          "name": "deep-qualification / ada-real-uci-dlz-sleet (16)",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774627",
+          "failed_steps": [
+            {
+              "number": 9,
+              "name": "Provision pinned compiler and GNATCOLL inputs",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            1
+          ],
+          "error_lines": [
+            "Process completed with exit code 1."
+          ],
+          "preserved_log_sha256": "a5e2d6f025975c27eaa290ed365c732e411026974713eb1bd432bcdfd5b0da02",
+          "classification": "provisioning failure; preserved setup logs inspected (see report); do not infer compiler defect"
+        },
+        {
+          "id": 128629774638,
+          "name": "deep-qualification / real-uci-regressions",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774638"
+        },
+        {
+          "id": 128629774673,
+          "name": "deep-qualification / real-uci-schema-ipv6",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774673"
+        },
+        {
+          "id": 128629774674,
+          "name": "deep-qualification / ada-real-uci-rdma-sleet (14)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774674"
+        },
+        {
+          "id": 128629774678,
+          "name": "deep-qualification / ada-real-uci-dlz-sleet (14)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774678"
+        },
+        {
+          "id": 128629774703,
+          "name": "deep-qualification / real-uci-temporal-naming",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774703"
+        },
+        {
+          "id": 128629774711,
+          "name": "deep-qualification / ada-real-uci-log-sleet (16)",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774711",
+          "failed_steps": [
+            {
+              "number": 7,
+              "name": "Install verified Alire 2.1.1",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            22
+          ],
+          "error_lines": [
+            "Process completed with exit code 22."
+          ],
+          "preserved_log_sha256": "129c84e1ff07240ed6cf1aa988e5b30f4f970e51bfcd890f6a61ef8c2c730dbc",
+          "classification": "external transport failure; shared pinned recovery applies"
+        },
+        {
+          "id": 128629774726,
+          "name": "deep-qualification / ada-real-uci-log-sleet (14)",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774726",
+          "failed_steps": [
+            {
+              "number": 7,
+              "name": "Install verified Alire 2.1.1",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            22
+          ],
+          "error_lines": [
+            "Process completed with exit code 22."
+          ],
+          "preserved_log_sha256": "b0bd5a4486236a375d236405b973f634b346c1943db7b6d127f450f01e570ce0",
+          "classification": "external transport failure; shared pinned recovery applies"
+        },
+        {
+          "id": 128629774755,
+          "name": "deep-qualification / ada-real-uci-survivability-26-sleet (16)",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774755",
+          "failed_steps": [
+            {
+              "number": 9,
+              "name": "Provision pinned compiler and GNATCOLL inputs",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            1
+          ],
+          "error_lines": [
+            "Process completed with exit code 1."
+          ],
+          "preserved_log_sha256": "f2ee23e8d832f0cb4f7cc3f5c225f0e2e9e1b1aa6c41a691420819e3dd2f4a65",
+          "classification": "provisioning failure; preserved setup logs inspected (see report); do not infer compiler defect"
+        },
+        {
+          "id": 128629774759,
+          "name": "deep-qualification / ada-websocket-real-sleet (14)",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774759",
+          "failed_steps": [
+            {
+              "number": 7,
+              "name": "Install verified Alire 2.1.1",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            22
+          ],
+          "error_lines": [
+            "Process completed with exit code 22."
+          ],
+          "preserved_log_sha256": "dff1c626f180c053e6a2788c36ef7c70f0bdd8491642d2efd2d6fb4483212184",
+          "classification": "external transport failure; shared pinned recovery applies"
+        },
+        {
+          "id": 128629774767,
+          "name": "deep-qualification / ada-websocket-real-sleet (16)",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774767",
+          "failed_steps": [
+            {
+              "number": 9,
+              "name": "Provision pinned compiler and GNATCOLL inputs",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            1
+          ],
+          "error_lines": [
+            "Process completed with exit code 1."
+          ],
+          "preserved_log_sha256": "8ceb11912dd9dbbe90184f0de9fb040548d0b2d807daff8cedac96fa6f546313",
+          "classification": "provisioning failure; preserved setup logs inspected (see report); do not infer compiler defect"
+        },
+        {
+          "id": 128629774772,
+          "name": "deep-qualification / ada-hexbinary-real",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774772",
+          "failed_steps": [
+            {
+              "number": 5,
+              "name": "Install verified Alire 2.1.1",
+              "conclusion": "failure"
+            },
+            {
+              "number": 9,
+              "name": "Preserve real Binary qualification evidence",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            22
+          ],
+          "error_lines": [
+            "Process completed with exit code 22.",
+            "No files were found with the provided path: /home/runner/work/_temp/task093-real25/**"
+          ],
+          "preserved_log_sha256": "b653fa7ae1e181b884152b890655070e516d45e72388c5f23bedecea6653a671",
+          "classification": "external transport failure; shared pinned recovery applies"
+        },
+        {
+          "id": 128629774785,
+          "name": "deep-qualification / ada-real-uci-survivability-sleet (14)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774785"
+        },
+        {
+          "id": 128629774798,
+          "name": "deep-qualification / real-uci-regressions-ascii",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774798",
+          "failed_steps": [
+            {
+              "number": 10,
+              "name": "Real UCI structured ASCII evidence (Task 059, must execute)",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            1
+          ],
+          "error_lines": [
+            "Process completed with exit code 1."
+          ],
+          "preserved_log_sha256": "2a4c48628d60cffd799924b744335e8224b2e942a1f676ac0bc3254bbf95512a",
+          "classification": "confirmed source defect: stale two-test completion assertion"
+        },
+        {
+          "id": 128629774806,
+          "name": "deep-qualification / ada-repeated-choice-real-uci",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774806"
+        },
+        {
+          "id": 128629774812,
+          "name": "deep-qualification / ada-real-uci-survivability-sleet (16)",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774812",
+          "failed_steps": [
+            {
+              "number": 9,
+              "name": "Provision pinned compiler and GNATCOLL inputs",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            1
+          ],
+          "error_lines": [
+            "Process completed with exit code 1."
+          ],
+          "preserved_log_sha256": "f2b681084afb32c84d7574854a4f45f119f8d0bd37cece95a9fc7956cdb5cf5d",
+          "classification": "provisioning failure; preserved setup logs inspected (see report); do not infer compiler defect"
+        },
+        {
+          "id": 128629774815,
+          "name": "deep-qualification / msrv-real-uci",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774815"
+        },
+        {
+          "id": 128629774832,
+          "name": "deep-qualification / real-sleet",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774832"
+        },
+        {
+          "id": 128629774844,
+          "name": "deep-qualification / ada-real-uci-survivability-26-sleet (14)",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774844",
+          "failed_steps": [
+            {
+              "number": 7,
+              "name": "Install verified Alire 2.1.1",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            22
+          ],
+          "error_lines": [
+            "Process completed with exit code 22."
+          ],
+          "preserved_log_sha256": "7e81e48c1c0a9fee48a74f16e7c22af37a2e161498142cb2198598f27ac233b9",
+          "classification": "external transport failure; shared pinned recovery applies"
+        },
+        {
+          "id": 128629774925,
+          "name": "deep-qualification / ada-real-uci-rdma-sleet (16)",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774925",
+          "failed_steps": [
+            {
+              "number": 7,
+              "name": "Install verified Alire 2.1.1",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            22
+          ],
+          "error_lines": [
+            "Process completed with exit code 22."
+          ],
+          "preserved_log_sha256": "e9a321fedfc53cb011ecb9d5f3b004e493bfd4679afebc6415b441f76c64fa03",
+          "classification": "external transport failure; shared pinned recovery applies"
+        },
+        {
+          "id": 128629774976,
+          "name": "deep-qualification / real-uci-regressions-alternating",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128629774976"
+        },
+        {
+          "id": 128818883801,
+          "name": "Main qualification outcome",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42447617726/job/128818883801",
+          "failed_steps": [
+            {
+              "number": 2,
+              "name": "Require every mandatory job to succeed",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            1
+          ],
+          "error_lines": [
+            "Process completed with exit code 1."
+          ],
+          "preserved_log_sha256": "b9af5d4c61c4d09d83844dcc19ae3700a2b2d34ae86453eb615764481f3cd274",
+          "classification": "correct fail-closed propagation of mandatory failures"
+        }
+      ]
+    },
+    {
+      "id": 42451014054,
+      "name": "CI",
+      "head_sha": "9528fd852be74beddcebe00b9d52af8123a2e9a0",
+      "status": "pending",
+      "conclusion": null,
+      "updated_at": "2026-11-08T05:30:13Z",
+      "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054",
+      "jobs": [
+        {
+          "id": 128640059236,
+          "name": "ada-float64-codec (14)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640059236"
+        },
+        {
+          "id": 128640059591,
+          "name": "ada-codec-pack-a",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640059591",
+          "failed_steps": [
+            {
+              "number": 6,
+              "name": "Run complete original JSON guard and packed Ada qualifications",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            1
+          ],
+          "error_lines": [
+            "Process completed with exit code 1."
+          ],
+          "preserved_log_sha256": "614549481976863475e8447bca38997c706ea81ddb9188566fc01c601ceac057",
+          "classification": "historical packed execution; predates PERF-009R; no current-source timeout inference"
+        },
+        {
+          "id": 128640059805,
+          "name": "ada-float64-codec (16)",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640059805"
+        },
+        {
+          "id": 128640059809,
+          "name": "ada-lacal-runtime-core (14)",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640059809",
+          "failed_steps": [
+            {
+              "number": 9,
+              "name": "Provision pinned compiler and GNATCOLL inputs",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            1
+          ],
+          "error_lines": [
+            "Process completed with exit code 1."
+          ],
+          "preserved_log_sha256": "983e4999f49238f87b35f40beaa6d578faa75183b76e144698d5cf542babe70d",
+          "classification": "provisioning failure; preserved setup logs inspected (see report); do not infer compiler defect"
+        },
+        {
+          "id": 128640059818,
+          "name": "ada-websocket-transport (16)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640059818"
+        },
+        {
+          "id": 128640059835,
+          "name": "ada-lacal-runtime-core (16)",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640059835",
+          "failed_steps": [
+            {
+              "number": 9,
+              "name": "Provision pinned compiler and GNATCOLL inputs",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            1
+          ],
+          "error_lines": [
+            "Process completed with exit code 1."
+          ],
+          "preserved_log_sha256": "694c46b52b1b0fe82e905e51e37445c82483cc6ae4b6d2f8e1b8fdc11d1cf8be",
+          "classification": "provisioning failure; preserved setup logs inspected (see report); do not infer compiler defect"
+        },
+        {
+          "id": 128640059878,
+          "name": "python-model-backend (3.11)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640059878"
+        },
+        {
+          "id": 128640059902,
+          "name": "python-model-backend (3.13)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640059902"
+        },
+        {
+          "id": 128640059907,
+          "name": "ada-websocket-transport (14)",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640059907"
+        },
+        {
+          "id": 128640059911,
+          "name": "ada-time-zulu-codec (16)",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640059911",
+          "failed_steps": [
+            {
+              "number": 7,
+              "name": "Install verified Alire 2.1.1",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            22
+          ],
+          "error_lines": [
+            "Process completed with exit code 22."
+          ],
+          "preserved_log_sha256": "1e80e522671d6fa09bde87ea29d56382966d42a7ae5405ffb6d4baf37d55278f",
+          "classification": "external transport failure; shared pinned recovery applies"
+        },
+        {
+          "id": 128640059913,
+          "name": "ada-time-zulu-codec (14)",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640059913",
+          "failed_steps": [
+            {
+              "number": 9,
+              "name": "Fresh compiler provisioning",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            1
+          ],
+          "error_lines": [
+            "Process completed with exit code 1."
+          ],
+          "preserved_log_sha256": "886530dc7fa7ac7aa1ea703701701655a0f21868f73d68c4a0212ceccb6e01f6",
+          "classification": "provisioning failure; preserved setup logs inspected (see report); do not infer compiler defect"
+        },
+        {
+          "id": 128640059996,
+          "name": "deep-qualification / ada-real-uci-log-sleet (14)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640059996"
+        },
+        {
+          "id": 128640060032,
+          "name": "ada-codec-pack-b",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640060032",
+          "failed_steps": [
+            {
+              "number": 6,
+              "name": "Run complete original JSON guard and packed Ada qualifications",
+              "conclusion": "failure"
+            },
+            {
+              "number": 10,
+              "name": "Preserve ada-repeated-codec evidence",
+              "conclusion": "failure"
+            },
+            {
+              "number": 11,
+              "name": "Preserve ada-duration-codec evidence",
+              "conclusion": "failure"
+            },
+            {
+              "number": 12,
+              "name": "Preserve ada-repeated-choice-codec evidence",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            1
+          ],
+          "error_lines": [
+            "Process completed with exit code 1.",
+            "No files were found with the provided path: /home/runner/work/_temp/ada-codec-pack-b/ada-repeated-codec/task089-codec/*.log",
+            "No files were found with the provided path: /home/runner/work/_temp/ada-codec-pack-b/ada-duration-codec/task091r-integrated/**",
+            "No files were found with the provided path: /home/runner/work/_temp/ada-codec-pack-b/ada-repeated-choice-codec/task092-codec/**"
+          ],
+          "preserved_log_sha256": "0a70c3d55018d568fafbc983b49f741adb9767f18e7a99ca94333c5b471b80e4",
+          "classification": "historical packed execution; predates PERF-009R; no current-source timeout inference"
+        },
+        {
+          "id": 128640060037,
+          "name": "ada-float32-codec",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640060037",
+          "failed_steps": [
+            {
+              "number": 6,
+              "name": "Install verified Alire 2.1.1",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            22
+          ],
+          "error_lines": [
+            "Process completed with exit code 22."
+          ],
+          "preserved_log_sha256": "17b4dacfbc28ee2bbe7a9278b164cbe01516c7edb07b003ecb7aa8db3b3dee3a",
+          "classification": "external transport failure; shared pinned recovery applies"
+        },
+        {
+          "id": 128640060038,
+          "name": "rust",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640060038"
+        },
+        {
+          "id": 128640060045,
+          "name": "deep-qualification / ada-real-uci-survivability-26-sleet (14)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640060045"
+        },
+        {
+          "id": 128640060075,
+          "name": "baseline",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640060075",
+          "failed_steps": [
+            {
+              "number": 4,
+              "name": "Actionlint (pinned)",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            22
+          ],
+          "error_lines": [
+            "Process completed with exit code 22."
+          ],
+          "preserved_log_sha256": "c7971858b0b359a963f73a439a20575e9addaaaa98be549eff6b7679cc530e0e",
+          "classification": "external transport failure; shared pinned recovery applies"
+        },
+        {
+          "id": 128640060213,
+          "name": "deep-qualification / ada-real-uci-multimessage-sleet (16)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640060213"
+        },
+        {
+          "id": 128640060224,
+          "name": "deep-qualification / ada-real-uci-dlz-sleet (16)",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640060224",
+          "failed_steps": [
+            {
+              "number": 9,
+              "name": "Provision pinned compiler and GNATCOLL inputs",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            1
+          ],
+          "error_lines": [
+            "Process completed with exit code 1."
+          ],
+          "preserved_log_sha256": "797e152dc5e8c94bb0690124749d8a26cdaf4c3d1558eebb0045c94154250706",
+          "classification": "provisioning failure; preserved setup logs inspected (see report); do not infer compiler defect"
+        },
+        {
+          "id": 128640060225,
+          "name": "deep-qualification / ada-real-uci-dlz-sleet (14)",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640060225"
+        },
+        {
+          "id": 128640060236,
+          "name": "deep-qualification / real-uci-schema-ipv6",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640060236"
+        },
+        {
+          "id": 128640060266,
+          "name": "deep-qualification / ada-real-uci-rdma-sleet (16)",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640060266",
+          "failed_steps": [
+            {
+              "number": 9,
+              "name": "Provision pinned compiler and GNATCOLL inputs",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            1
+          ],
+          "error_lines": [
+            "Process completed with exit code 1."
+          ],
+          "preserved_log_sha256": "de333111af0dba28583b1ad28d699e943fcfe606009fc6069a52eb1ca6859043",
+          "classification": "provisioning failure; preserved setup logs inspected (see report); do not infer compiler defect"
+        },
+        {
+          "id": 128640060282,
+          "name": "deep-qualification / real-uci-regressions-ascii",
+          "status": "in_progress",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640060282"
+        },
+        {
+          "id": 128640060293,
+          "name": "deep-qualification / ada-real-uci-survivability-sleet (14)",
+          "status": "in_progress",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640060293"
+        },
+        {
+          "id": 128640060321,
+          "name": "deep-qualification / msrv-real-uci",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640060321"
+        },
+        {
+          "id": 128640060323,
+          "name": "deep-qualification / real-uci-temporal-naming",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640060323"
+        },
+        {
+          "id": 128640060336,
+          "name": "deep-qualification / ada-hexbinary-real",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640060336",
+          "failed_steps": [
+            {
+              "number": 5,
+              "name": "Install verified Alire 2.1.1",
+              "conclusion": "failure"
+            },
+            {
+              "number": 9,
+              "name": "Preserve real Binary qualification evidence",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            22
+          ],
+          "error_lines": [
+            "Process completed with exit code 22.",
+            "No files were found with the provided path: /home/runner/work/_temp/task093-real25/**"
+          ],
+          "preserved_log_sha256": "5713fb808c88ac15ec7817b7a1eb5951775e3aa1ecf56feb8bead0e7ddd85af3",
+          "classification": "external transport failure; shared pinned recovery applies"
+        },
+        {
+          "id": 128640060338,
+          "name": "deep-qualification / ada-real-uci-multimessage-sleet (14)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640060338"
+        },
+        {
+          "id": 128640060341,
+          "name": "deep-qualification / ada-websocket-real-sleet (14)",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640060341",
+          "failed_steps": [
+            {
+              "number": 9,
+              "name": "Provision pinned compiler and GNATCOLL inputs",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            1
+          ],
+          "error_lines": [
+            "Process completed with exit code 1."
+          ],
+          "preserved_log_sha256": "51f3b9761ef35756d8e4de2bbcd8c19273ffc8eea5de7df45482f9407eb68d0b",
+          "classification": "provisioning failure; preserved setup logs inspected (see report); do not infer compiler defect"
+        },
+        {
+          "id": 128640060345,
+          "name": "deep-qualification / ada-repeated-choice-real-uci",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640060345",
+          "failed_steps": [
+            {
+              "number": 5,
+              "name": "Install verified Alire 2.1.1",
+              "conclusion": "failure"
+            },
+            {
+              "number": 10,
+              "name": "Preserve qualification evidence",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            22
+          ],
+          "error_lines": [
+            "Process completed with exit code 22.",
+            "No files were found with the provided path: /home/runner/work/_temp/task092-real/**. No artifacts will be uploaded."
+          ],
+          "preserved_log_sha256": "f946cda22a4c357b9797e3a8b2fa0132d51d4f08b19f4a1ae802c7fa9a7ad314",
+          "classification": "external transport failure; shared pinned recovery applies"
+        },
+        {
+          "id": 128640060352,
+          "name": "deep-qualification / real-uci-regressions-alternating",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640060352"
+        },
+        {
+          "id": 128640060356,
+          "name": "deep-qualification / ada-real-uci-rdma-sleet (14)",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640060356"
+        },
+        {
+          "id": 128640060357,
+          "name": "deep-qualification / ada-real-uci-survivability-26-sleet (16)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640060357"
+        },
+        {
+          "id": 128640060367,
+          "name": "deep-qualification / ada-real-uci-log-sleet (16)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640060367"
+        },
+        {
+          "id": 128640060376,
+          "name": "deep-qualification / real-sleet",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640060376"
+        },
+        {
+          "id": 128640060378,
+          "name": "deep-qualification / ada-real-uci-survivability-sleet (16)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640060378"
+        },
+        {
+          "id": 128640060384,
+          "name": "deep-qualification / real-uci-regressions",
+          "status": "pending",
+          "conclusion": null,
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640060384"
+        },
+        {
+          "id": 128640060388,
+          "name": "deep-qualification / real-uci-integral-unicode",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640060388"
+        },
+        {
+          "id": 128640060432,
+          "name": "deep-qualification / ada-websocket-real-sleet (16)",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014054/job/128640060432",
+          "failed_steps": [
+            {
+              "number": 7,
+              "name": "Install verified Alire 2.1.1",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            22
+          ],
+          "error_lines": [
+            "Process completed with exit code 22."
+          ],
+          "preserved_log_sha256": "2daab08711d27737f983b94111a7d879612dcc76656c070d5a8890c57ad8c4f0",
+          "classification": "external transport failure; shared pinned recovery applies"
+        }
+      ]
+    },
+    {
+      "id": 42451014117,
+      "name": "UCI Pages",
+      "head_sha": "9528fd852be74beddcebe00b9d52af8123a2e9a0",
+      "status": "completed",
+      "conclusion": "failure",
+      "updated_at": "2026-11-08T11:52:28Z",
+      "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014117",
+      "jobs": [
+        {
+          "id": 128640060724,
+          "name": "build",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014117/job/128640060724",
+          "failed_steps": [
+            {
+              "number": 4,
+              "name": "Validate archive and link checks",
+              "conclusion": "failure"
+            }
+          ],
+          "process_exit_codes": [
+            1
+          ],
+          "error_lines": [
+            "Process completed with exit code 1."
+          ],
+          "preserved_log_sha256": "59d1f8036c760f2615f9285c8860ea6549f9a4d9a5bfc042f76fea58f8e2b6bb",
+          "classification": "confirmed source defect: shallow history"
+        },
+        {
+          "id": 128722416208,
+          "name": "deploy",
+          "status": "completed",
+          "conclusion": "skipped",
+          "html_url": "https://github.com/zackboll/ams-gra-codegen-oms/actions/runs/42451014117/job/128722416208"
+        }
+      ]
+    }
+  ]
+}

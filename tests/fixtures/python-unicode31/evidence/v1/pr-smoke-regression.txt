@@ -1,0 +1,200 @@
+test_actual_main_outcome_gate_fails_on_every_unsuccessful_result (test_pr_smoke.Execution.test_actual_main_outcome_gate_fails_on_every_unsuccessful_result) ... ok
+test_actual_suites_never_invoke_unrelated_backend (test_pr_smoke.Execution.test_actual_suites_never_invoke_unrelated_backend) ... SMOKE START python
+SMOKE PASS python elapsed_seconds=0.001
+SMOKE START rust
+SMOKE PASS rust elapsed_seconds=0.001
+SMOKE START ada
+SMOKE PASS ada elapsed_seconds=0.002
+SMOKE START cpp
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-004 FLOAT64 PASSED
+CPP OMS-005 BOUNDED ASCII PASSED
+CPP OMS-006 STRUCTURED ASCII PASSED
+CPP SMOKE PASSED
+SMOKE PASS cpp elapsed_seconds=0.006
+ok
+test_cpp_smoke_executes_generation_compile_and_consumer (test_pr_smoke.Execution.test_cpp_smoke_executes_generation_compile_and_consumer) ... CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-004 FLOAT64 PASSED
+CPP OMS-005 BOUNDED ASCII PASSED
+CPP OMS-006 STRUCTURED ASCII PASSED
+CPP SMOKE PASSED
+ok
+test_cpp_smoke_fails_closed (test_pr_smoke.Execution.test_cpp_smoke_fails_closed) ... CPP OMS-002 SHAPES PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-004 FLOAT64 PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-004 FLOAT64 PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-004 FLOAT64 PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-004 FLOAT64 PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-004 FLOAT64 PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-004 FLOAT64 PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-004 FLOAT64 PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-004 FLOAT64 PASSED
+CPP OMS-005 BOUNDED ASCII PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-004 FLOAT64 PASSED
+CPP OMS-005 BOUNDED ASCII PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-004 FLOAT64 PASSED
+CPP OMS-005 BOUNDED ASCII PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-004 FLOAT64 PASSED
+CPP OMS-005 BOUNDED ASCII PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-004 FLOAT64 PASSED
+CPP OMS-005 BOUNDED ASCII PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-004 FLOAT64 PASSED
+CPP OMS-005 BOUNDED ASCII PASSED
+CPP OMS-002 SHAPES PASSED
+CPP OMS-003 RUNTIME PASSED
+CPP OMS-004 FLOAT64 PASSED
+CPP OMS-005 BOUNDED ASCII PASSED
+ok
+test_cpp_smoke_missing_compiler_is_red_for_real (test_pr_smoke.Execution.test_cpp_smoke_missing_compiler_is_red_for_real) ... + g++ --version
+ok
+test_deliberate_failure_is_red (test_pr_smoke.Execution.test_deliberate_failure_is_red) ... + /tmp/py018-evidence/venv311/bin/python -c 'raise SystemExit(7)'
+ok
+test_missing_executable_marker_tests_and_skip_are_red (test_pr_smoke.Execution.test_missing_executable_marker_tests_and_skip_are_red) ... + /nonexistent/pr-smoke-executable
++ /tmp/py018-evidence/venv311/bin/python -c 'print('"'"'not executed'"'"')'
+not executed
++ /tmp/py018-evidence/venv311/bin/python -c 'print('"'"''"'"')'
+
++ /tmp/py018-evidence/venv311/bin/python -c 'print('"'"'test result: ok. 0 passed; 0 failed; 0 ignored'"'"')'
+test result: ok. 0 passed; 0 failed; 0 ignored
++ /tmp/py018-evidence/venv311/bin/python -c 'print('"'"'test result: ok. 2 passed; 0 failed; 1 ignored'"'"')'
+test result: ok. 2 passed; 0 failed; 1 ignored
++ /tmp/py018-evidence/venv311/bin/python -c 'print('"'"'skipping required probe\ntest result: ok. 1 passed; 0 failed; 0 ignored'"'"')'
+skipping required probe
+test result: ok. 1 passed; 0 failed; 0 ignored
+ok
+test_pr_and_main_workflow_contract (test_pr_smoke.Execution.test_pr_and_main_workflow_contract) ... ok
+test_actual_added_deleted_and_renamed_diff (test_pr_smoke.Routing.test_actual_added_deleted_and_renamed_diff) ... ok
+test_ada_only (test_pr_smoke.Routing.test_ada_only) ... ok
+test_cpp_mixed_shared_and_unknown (test_pr_smoke.Routing.test_cpp_mixed_shared_and_unknown) ... ok
+test_cpp_only (test_pr_smoke.Routing.test_cpp_only) ... ok
+test_cpp_ownership_boundaries (test_pr_smoke.Routing.test_cpp_ownership_boundaries) ... ok
+test_diff_errors_run_every_suite (test_pr_smoke.Routing.test_diff_errors_run_every_suite) ... Diff unavailable/unclassifiable: git absent; running all smoke suites
+Diff unavailable/unclassifiable: Command 'git' returned non-zero exit status 128.; running all smoke suites
+Diff unavailable/unclassifiable: 'utf-8' codec can't decode byte 0xff in position 7: invalid start byte; running all smoke suites
+ok
+test_docs (test_pr_smoke.Routing.test_docs) ... ok
+test_mixed (test_pr_smoke.Routing.test_mixed) ... ok
+test_python_only (test_pr_smoke.Routing.test_python_only) ... ok
+test_rust_only (test_pr_smoke.Routing.test_rust_only) ... ok
+test_shared_and_dependencies (test_pr_smoke.Routing.test_shared_and_dependencies) ... ok
+test_task102_ada_only (test_pr_smoke.Routing.test_task102_ada_only) ... ok
+test_task102_ownership_boundaries (test_pr_smoke.Routing.test_task102_ownership_boundaries) ... ok
+test_task103_ada_only (test_pr_smoke.Routing.test_task103_ada_only) ... ok
+test_task103_ownership_boundaries (test_pr_smoke.Routing.test_task103_ownership_boundaries) ... ok
+test_task104_ada_only (test_pr_smoke.Routing.test_task104_ada_only) ... ok
+test_task104_ownership_boundaries (test_pr_smoke.Routing.test_task104_ownership_boundaries) ... ok
+test_task104_reconciliation_runs_all_smoke_and_syntax (test_pr_smoke.Routing.test_task104_reconciliation_runs_all_smoke_and_syntax) ... ok
+test_task105_ada_only (test_pr_smoke.Routing.test_task105_ada_only) ... ok
+test_task105_ownership_boundaries (test_pr_smoke.Routing.test_task105_ownership_boundaries) ... ok
+test_task105_reconciliation_runs_all_smoke_and_syntax (test_pr_smoke.Routing.test_task105_reconciliation_runs_all_smoke_and_syntax) ... ok
+test_task106_ada_only (test_pr_smoke.Routing.test_task106_ada_only) ... ok
+test_task106_ownership_boundaries (test_pr_smoke.Routing.test_task106_ownership_boundaries) ... ok
+test_task106_reconciliation_runs_all_smoke_and_syntax (test_pr_smoke.Routing.test_task106_reconciliation_runs_all_smoke_and_syntax) ... ok
+test_task109_ada_only_and_boundaries (test_pr_smoke.Routing.test_task109_ada_only_and_boundaries) ... ok
+test_unknown_ambiguous_and_unclassifiable (test_pr_smoke.Routing.test_unknown_ambiguous_and_unclassifiable) ... ok
+test_workflows (test_pr_smoke.Routing.test_workflows) ... ok
+
+----------------------------------------------------------------------
+Ran 35 tests in 0.709s
+
+OK

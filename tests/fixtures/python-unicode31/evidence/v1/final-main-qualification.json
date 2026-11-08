@@ -1,0 +1,67 @@
+{
+  "source": [
+    "edc2385e3979d04f6ef51d80029e17e619245ee9",
+    "aed7255a618b3200b7dbd83e14bb1e0c7cc1a1c3"
+  ],
+  "main": [
+    "9528fd852be74beddcebe00b9d52af8123a2e9a0",
+    "15290fb3ba314612d7ed4420231448c47d4f6ba5"
+  ],
+  "receipts": [
+    {
+      "source": "edc2385e3979d04f6ef51d80029e17e619245ee9",
+      "tree": "aed7255a618b3200b7dbd83e14bb1e0c7cc1a1c3",
+      "mode": "fast",
+      "versions": [
+        "3.11",
+        "3.13"
+      ],
+      "policies": [
+        "normal",
+        "optimized"
+      ],
+      "tests": 40
+    },
+    {
+      "source": "edc2385e3979d04f6ef51d80029e17e619245ee9",
+      "tree": "aed7255a618b3200b7dbd83e14bb1e0c7cc1a1c3",
+      "mode": "uci",
+      "versions": [
+        "3.11",
+        "3.13"
+      ],
+      "policies": [
+        "normal",
+        "optimized"
+      ],
+      "tests": 11
+    },
+    {
+      "source": "edc2385e3979d04f6ef51d80029e17e619245ee9",
+      "tree": "aed7255a618b3200b7dbd83e14bb1e0c7cc1a1c3",
+      "mode": "sleet",
+      "versions": [
+        "3.11",
+        "3.13"
+      ],
+      "policies": [
+        "normal",
+        "optimized"
+      ],
+      "tests": 11
+    }
+  ],
+  "qualification_totals": {
+    "fast": 160,
+    "uci": 44,
+    "sleet": 44,
+    "skips": 0
+  },
+  "rust_tests": {
+    "backend": 35,
+    "cli": 416
+  },
+  "clean_checkout": true,
+  "production_bytes_unchanged": true,
+  "generator_sha256": "a39f463e1cbc26b2e57355f3a06fc2b91602f57a1634ccc6a016872e863b7a6e"
+}

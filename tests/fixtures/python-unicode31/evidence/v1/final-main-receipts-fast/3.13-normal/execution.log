@@ -1,0 +1,45 @@
+test_authenticated_service_delta (test_choice.Choice.test_authenticated_service_delta) ... ok
+test_generated_models_and_codecs (test_choice.Choice.test_generated_models_and_codecs) ... ok
+test_generated_models_and_codecs (test_duration.Duration.test_generated_models_and_codecs) ... ok
+test_python_and_model_sources (test_fast_contract.FastRegistration.test_python_and_model_sources) ... ok
+test_absent_cache_retains_real_generation (test_full_uci_generation_cache.FullUciGenerationCache.test_absent_cache_retains_real_generation) ... ok
+test_changed_contract_rejected (test_full_uci_generation_cache.FullUciGenerationCache.test_changed_contract_rejected) ... ok
+test_changed_generator_rejected (test_full_uci_generation_cache.FullUciGenerationCache.test_changed_generator_rejected) ... ok
+test_changed_source_tree_rejected (test_full_uci_generation_cache.FullUciGenerationCache.test_changed_source_tree_rejected) ... ok
+test_corrupted_and_wrong_shape_manifests_rejected (test_full_uci_generation_cache.FullUciGenerationCache.test_corrupted_and_wrong_shape_manifests_rejected) ... ok
+test_cross_run_and_attempt_rejected (test_full_uci_generation_cache.FullUciGenerationCache.test_cross_run_and_attempt_rejected) ... ok
+test_dirty_and_wrong_source_rejected (test_full_uci_generation_cache.FullUciGenerationCache.test_dirty_and_wrong_source_rejected) ... ok
+test_distinct_pinned_releases_never_share_output (test_full_uci_generation_cache.FullUciGenerationCache.test_distinct_pinned_releases_never_share_output) ... ok
+test_failed_generation_not_published (test_full_uci_generation_cache.FullUciGenerationCache.test_failed_generation_not_published) ... ok
+test_identical_inputs_reuse_output_not_execution (test_full_uci_generation_cache.FullUciGenerationCache.test_identical_inputs_reuse_output_not_execution) ... ok
+test_incomplete_successful_generation_never_published (test_full_uci_generation_cache.FullUciGenerationCache.test_incomplete_successful_generation_never_published) ... ok
+test_inputs_changed_during_generation_not_published (test_full_uci_generation_cache.FullUciGenerationCache.test_inputs_changed_during_generation_not_published) ... ok
+test_missing_and_changed_generated_files_rejected (test_full_uci_generation_cache.FullUciGenerationCache.test_missing_and_changed_generated_files_rejected) ... ok
+test_missing_or_changed_manifest_rejected (test_full_uci_generation_cache.FullUciGenerationCache.test_missing_or_changed_manifest_rejected) ... ok
+test_namespace_package_without_init_is_complete (test_full_uci_generation_cache.FullUciGenerationCache.test_namespace_package_without_init_is_complete) ... ok
+test_nonregular_generated_input_rejected (test_full_uci_generation_cache.FullUciGenerationCache.test_nonregular_generated_input_rejected) ... ok
+test_redirected_and_nonregular_manifests_rejected (test_full_uci_generation_cache.FullUciGenerationCache.test_redirected_and_nonregular_manifests_rejected) ... ok
+test_redirected_generated_files_rejected (test_full_uci_generation_cache.FullUciGenerationCache.test_redirected_generated_files_rejected) ... ok
+test_uncached_miss_and_hit_have_identical_source_hashes (test_full_uci_generation_cache.FullUciGenerationCache.test_uncached_miss_and_hit_have_identical_source_hashes) ... ok
+test_unregistered_include_rejected_even_with_matching_root_hash (test_full_uci_generation_cache.FullUciGenerationCache.test_unregistered_include_rejected_even_with_matching_root_hash) ... ok
+test_world_and_release_are_separate_selections (test_full_uci_generation_cache.FullUciGenerationCache.test_world_and_release_are_separate_selections) ... ok
+test_wrong_root_and_include_rejected (test_full_uci_generation_cache.FullUciGenerationCache.test_wrong_root_and_include_rejected) ... ok
+test_authenticated_readiness_evidence (test_hexbinary.HexBinary.test_authenticated_readiness_evidence) ... ok
+test_generated_models_and_codecs (test_hexbinary.HexBinary.test_generated_models_and_codecs) ... ok
+test_cli_generated_models_and_codecs (test_nato_special_words_fast.NatoSpecialWords.test_cli_generated_models_and_codecs) ... ok
+test_versioned_readiness_evidence (test_nato_special_words_fast.NatoSpecialWords.test_versioned_readiness_evidence) ... ok
+test_authenticated_successor_service_delta (test_network_addresses.NetworkAddresses.test_authenticated_successor_service_delta) ... ok
+test_generated_models_codecs_and_independent_corpora (test_network_addresses.NetworkAddresses.test_generated_models_codecs_and_independent_corpora) ... ok
+test_generated_codec (test_owned_fixture.OwnedFixture.test_generated_codec) ... ok
+test_required_values (test_owned_fixture.OwnedFixture.test_required_values) ... ok
+test_generated_models_and_codecs (test_unbounded_repetition_fast.UnboundedRepetition.test_generated_models_and_codecs) ... ok
+test_versioned_readiness_evidence (test_unbounded_repetition_fast.UnboundedRepetition.test_versioned_readiness_evidence) ... ok
+test_independent_languages_models_codecs_and_boundaries (test_unicode31.Unicode31Fast.test_independent_languages_models_codecs_and_boundaries) ... ok
+test_separate_acceptance_gate_negative_controls (test_unicode31.Unicode31Fast.test_separate_acceptance_gate_negative_controls) ... ok
+test_authenticated_service_delta (test_whitespace_visible.WhitespaceVisible.test_authenticated_service_delta) ... ok
+test_generated_models_and_codecs (test_whitespace_visible.WhitespaceVisible.test_generated_models_and_codecs) ... ok
+
+----------------------------------------------------------------------
+Ran 40 tests in 28.245s
+
+OK

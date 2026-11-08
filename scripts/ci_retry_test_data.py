@@ -4,10 +4,10 @@ import copy
 
 def job_name(name):
     if name.startswith('task101-'):
-        return 'deep-qualification / ada-real-uci-dlz-sleet' + f' ({name[-2:]})'
+        return 'deep-qualification / ada-deep-pack-a' + f' ({name[-2:]})'
     if name.startswith('perf007-'):
         return 'deep-qualification / ' + name.removeprefix('perf007-')
-    return ('deep-qualification / ada-websocket-real-sleet' if '-sleet-' in name
+    return ('deep-qualification / ada-deep-pack-a' if '-sleet-' in name
             else 'ada-websocket-transport') + f' ({name[-2:]})'
 
 

@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 
 
 def main():
@@ -47,6 +48,13 @@ def main():
         raise RuntimeError("wrong Alire")
     run(alr + ["settings", "--global", "--set", "cache.dir", str(root / "cache")])
     run(alr + ["settings", "--global", "--set", "dependencies.shared", "false"])
+    # Task-owned settings only; unchanged index hashes remain mandatory. This
+    # retries archive transport, never toolchain selection or build execution.
+    downloader = Path(__file__).resolve().parents[1] / "pinned_download.py"
+    if any(any(c.isspace() for c in str(p)) for p in (sys.executable, downloader, root)):
+        raise RuntimeError("Alire download command requires whitespace-free paths")
+    run(alr + ["settings", "--global", "--set", "origins.archive.download_cmd",
+               f'{sys.executable} {downloader} ${{URL}} ${{DEST}}'])
     compiler, version = ("gnat_external", "14.2.0") if args.compiler == "14" else ("gnat_native", "16.1.0")
     (consumer / "alire.toml").write_text(
         'name = "task096_probe"\nversion = "0.1.0-dev"\n'

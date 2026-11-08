@@ -106,7 +106,7 @@
       ],
       "deep": true,
       "deep_jobs": [
-        "ada-real-uci-dlz-sleet"
+        "ada-deep-pack-a"
       ],
       "rationale": "Real UCI DLZ campaign, fixtures, consumer and evidence verifier",
       "deep_rationale": "Task101 actual generated DLZ transport under both compiler families"
@@ -127,8 +127,7 @@
       "deep": true,
       "rationale": "Optional WebSocket sources/projects are consumed only by Task100, not the shared transport interface or Rust/Python pinned broker clients.",
       "deep_jobs": [
-        "ada-real-uci-dlz-sleet",
-        "ada-websocket-real-sleet"
+        "ada-deep-pack-a"
       ],
       "deep_rationale": "Optional WebSocket sources/projects are consumed only by Task100, not the shared transport interface or Rust/Python pinned broker clients."
     },
@@ -149,8 +148,7 @@
       "deep": true,
       "rationale": "Task100 fixtures and generated consumers share Task099 runtime and OMS JSON",
       "deep_jobs": [
-        "ada-real-uci-dlz-sleet",
-        "ada-websocket-real-sleet"
+        "ada-deep-pack-a"
       ],
       "deep_rationale": "Task100 fixtures and generated consumers share Task099 runtime and OMS JSON"
     },
@@ -170,8 +168,7 @@
       "deep": true,
       "rationale": "Task099 mock transport and typed OMS JSON integration require both compilers; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification",
       "deep_jobs": [
-        "ada-real-uci-dlz-sleet",
-        "ada-websocket-real-sleet"
+        "ada-deep-pack-a"
       ],
       "deep_rationale": "Task100 compiles shared Ada runtime plus typed consumers; no Rust/Python or UCI Ada driver imports the LA-CAL runtime."
     },
@@ -231,10 +228,9 @@
       "rationale": "task097/inherited.py reruns Float32 campaigns; task098/qualify.py covers Float32 composition; task097 boundary/environment reuse Float32 probes; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification",
       "deep": true,
       "deep_jobs": [
+        "ada-deep-pack-a",
         "ada-hexbinary-real",
-        "ada-real-uci-dlz-sleet",
         "ada-repeated-choice-real-uci",
-        "ada-websocket-real-sleet",
         "msrv-real-uci",
         "real-sleet",
         "real-uci-integral-unicode",
@@ -266,10 +262,9 @@
       "rationale": "Float64 ABI/rounding and GNAT14/16 qualification; TimeZulu lossless profile composes this support; Task100 runtime/OMS JSON consumers require transport and independent pinned-Sleet qualification; frozen Task096 oracle/corpus also qualifies Python Float64 in both versions and all Deep numerical cells",
       "deep": true,
       "deep_jobs": [
+        "ada-deep-pack-a",
         "ada-hexbinary-real",
-        "ada-real-uci-dlz-sleet",
         "ada-repeated-choice-real-uci",
-        "ada-websocket-real-sleet",
         "msrv-real-uci",
         "real-sleet",
         "real-uci-integral-unicode",
@@ -308,10 +303,9 @@
       "rationale": "Guard/support is imported by all Ada campaigns; generated consumer and backend changes lack proven independence; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification",
       "deep": true,
       "deep_jobs": [
+        "ada-deep-pack-a",
         "ada-hexbinary-real",
-        "ada-real-uci-dlz-sleet",
         "ada-repeated-choice-real-uci",
-        "ada-websocket-real-sleet",
         "msrv-real-uci",
         "real-sleet",
         "real-uci-integral-unicode",
@@ -342,10 +336,9 @@
       "rationale": "Temporal composition and inherited task097 temporal campaigns; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification",
       "deep": true,
       "deep_jobs": [
+        "ada-deep-pack-a",
         "ada-hexbinary-real",
-        "ada-real-uci-dlz-sleet",
         "ada-repeated-choice-real-uci",
-        "ada-websocket-real-sleet",
         "msrv-real-uci",
         "real-sleet",
         "real-uci-integral-unicode",
@@ -381,10 +374,9 @@
       "rationale": "DateTime/Duration frozen corpora shared by generated consumers, repeated temporal and inherited Float64 campaigns; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification",
       "deep": true,
       "deep_jobs": [
+        "ada-deep-pack-a",
         "ada-hexbinary-real",
-        "ada-real-uci-dlz-sleet",
         "ada-repeated-choice-real-uci",
-        "ada-websocket-real-sleet",
         "msrv-real-uci",
         "real-sleet",
         "real-uci-integral-unicode",
@@ -408,10 +400,9 @@
       "rationale": "Generated Rust is exercised across pinned qualification drivers; retain all Deep jobs until each generator dependency is independently narrowed.",
       "deep": true,
       "deep_jobs": [
+        "ada-deep-pack-a",
         "ada-hexbinary-real",
-        "ada-real-uci-dlz-sleet",
         "ada-repeated-choice-real-uci",
-        "ada-websocket-real-sleet",
         "msrv-real-uci",
         "real-sleet",
         "real-uci-integral-unicode",
@@ -500,10 +491,9 @@
       "rationale": "Generator binary links every backend; shared parsing/planning/contracts and dependency configuration lack proven independence; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification",
       "deep": true,
       "deep_jobs": [
+        "ada-deep-pack-a",
         "ada-hexbinary-real",
-        "ada-real-uci-dlz-sleet",
         "ada-repeated-choice-real-uci",
-        "ada-websocket-real-sleet",
         "msrv-real-uci",
         "real-sleet",
         "real-uci-integral-unicode",
@@ -545,10 +535,9 @@
       "rationale": "CI/security/shared harness and selector changes must qualify their own orchestration; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification",
       "deep": true,
       "deep_jobs": [
+        "ada-deep-pack-a",
         "ada-hexbinary-real",
-        "ada-real-uci-dlz-sleet",
         "ada-repeated-choice-real-uci",
-        "ada-websocket-real-sleet",
         "msrv-real-uci",
         "real-sleet",
         "real-uci-integral-unicode",
@@ -585,10 +574,9 @@
       "rationale": "Frozen schema/golden inputs are consumed across languages; no component-only proof; Task100 runtime/OMS JSON consumers require transport and pinned-Sleet qualification",
       "deep": true,
       "deep_jobs": [
+        "ada-deep-pack-a",
         "ada-hexbinary-real",
-        "ada-real-uci-dlz-sleet",
         "ada-repeated-choice-real-uci",
-        "ada-websocket-real-sleet",
         "msrv-real-uci",
         "real-sleet",
         "real-uci-integral-unicode",
@@ -4889,7 +4877,9 @@
       "integration_steps_yaml": "    steps:\n      - name: Verify pinned target and external compiler\n        shell: bash\n        run: |\n          set -euo pipefail\n          apt-get update\n          apt-get install --no-install-recommends -y ca-certificates curl unzip git python3 make gcc g++ gnat gnat-14\n          test \"$(uname -m)\" = x86_64\n          test \"$(getconf GNU_LIBC_VERSION)\" = 'glibc 2.41'\n          mkdir -p /tmp/task100-evidence\n          dpkg-query -W libc6 libc6-dev gnat-14 gcc-14 | tee /tmp/task100-evidence/platform.txt\n          sha256sum /usr/lib/x86_64-linux-gnu/libc.so.6 /usr/bin/gnat /usr/bin/gcc | tee -a /tmp/task100-evidence/platform.txt\n          gnat --version | tee -a /tmp/task100-evidence/platform.txt\n          gnat --version | grep -E '^GNAT 14\\.2\\.0([[:space:]]|$)'\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n      - name: Record exact source identity\n        shell: bash\n        run: |\n          set -euo pipefail\n          test \"$(pwd -P)\" = \"$(realpath \"$GITHUB_WORKSPACE\")\"\n          git config --global --add safe.directory \"$GITHUB_WORKSPACE\"\n          git rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task100-evidence/source.txt\n          test \"$(git rev-parse HEAD)\" = '${{ github.sha }}'\n          status=\"$(git status --porcelain)\"\n          test -z \"$status\"\n      - uses: dtolnay/rust-toolchain@1.95.0\n      - name: Install verified Alire 2.1.1\n        shell: bash\n        run: |\n          set -euo pipefail\n          curl --fail --location --retry 3 --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip\n          echo '09c66bcd8c35dd4b97b72c3d9b76e44caa6964a2db35aba069f396f00f1f64c7  /tmp/alire.zip' | sha256sum --check --strict\n          unzip -q /tmp/alire.zip -d /opt/alire\n          test \"$(/opt/alire/bin/alr --version)\" = 'alr 2.1.1'\n          sha256sum /opt/alire/bin/alr | tee -a /tmp/task100-evidence/platform.txt\n          echo /opt/alire/bin >> \"$GITHUB_PATH\"\n      - name: Build exact-head generator\n        run: cargo +1.95.0 build --locked -p ams-gra-codegen-oms\n      - name: Provision pinned compiler and GNATCOLL inputs\n        env:\n          PYTHONDONTWRITEBYTECODE: '1'\n        run: python3 scripts/task096/setup.py --scratch /tmp/task100-evidence/setup --compiler '${{ matrix.compiler }}'\n      - name: Build unmodified pinned Sleet\n        shell: bash\n        run: |\n          set -euo pipefail\n          git clone --quiet https://github.com/open-arsenal/ams-gra-hello-world-sk-infra-sleet /tmp/task100-sleet\n          git -C /tmp/task100-sleet checkout --quiet --detach e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b\n          test \"$(git -C /tmp/task100-sleet rev-parse HEAD)\" = e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b\n          test -z \"$(git -C /tmp/task100-sleet status --porcelain)\"\n          git -C /tmp/task100-sleet rev-parse HEAD 'HEAD^{tree}' | tee /tmp/task100-evidence/sleet-source.txt\n          (cd /tmp/task100-sleet && cargo build --release --locked -p sleet) 2>&1 | tee /tmp/task100-evidence/sleet-build.log\n      - name: Execute generated runtime consumers and require all cells\n        shell: bash\n        env:\n          PYTHONDONTWRITEBYTECODE: '1'\n        run: |\n          set -euo pipefail\n          python3 scripts/task100/qualify.py --scratch /tmp/task100-evidence/campaign --setup /tmp/task100-evidence/setup --compiler '${{ matrix.compiler }}' --generator \"$GITHUB_WORKSPACE/target/debug/ams-gra-codegen-oms\" --sleet /tmp/task100-sleet | tee /tmp/task100-evidence/qualify.log\n          python3 - <<'EOF'\n          import json\n          result = json.load(open('/tmp/task100-evidence/campaign/result.json'))\n          cells = result['cells']\n          expected = {(n, p, a, o) for n in ['oam', 'qualified'] for p in ['portable', 'lossless']\n                      for a in ['Normal', 'Check', 'Ignore'] for o in ['0', '2']}\n          actual = {(c['namespace'], c['profile'], c['policy'], c['optimization']) for c in cells}\n          if not result.get('completed') or len(cells) != 24 or actual != expected:\n              raise SystemExit('incomplete Task 100 execution matrix')\n          if any(s['exit'] != 0 for s in result['steps']):\n              raise SystemExit('failed Task 100 step')\n          if not result.get('real_sleet'):\n              raise SystemExit('real Sleet not requested')\n          from pathlib import Path\n          evidence = list(Path('/tmp/task100-evidence/campaign').glob('oam-portable-*/sleet/result.json'))\n          if len(evidence) != 6 or any(not json.loads(p.read_text()).get('completed') for p in evidence):\n              raise SystemExit('missing real pinned Sleet execution')\n          print('TASK100_HOSTED_REQUIRED_CELLS', len(cells))\n          EOF\n          test \"$(grep -c '^TASK100_CELL_COMPLETE ' /tmp/task100-evidence/qualify.log)\" = 24\n          grep -F 'TASK100_QUALIFICATION_COMPLETE' /tmp/task100-evidence/qualify.log\n      - name: Record Task100 integration run identity\n        shell: bash\n        env:\n          TASK100_COMPILER: ${{ matrix.compiler }}\n        run: |\n          python3 - <<'EOF'\n          import json, os, subprocess\n          from pathlib import Path\n          git = lambda ref: subprocess.check_output(['git', 'rev-parse', ref], text=True).strip()\n          sha = git('HEAD')\n          if sha != os.environ['GITHUB_SHA']:\n              raise SystemExit('Task100 source is not qualified workflow source')\n          Path('/tmp/task100-evidence/integration-identity.json').write_text(json.dumps(dict(\n              sha=sha, tree=git('HEAD^{tree}'), run_id=os.environ['GITHUB_RUN_ID'],\n              run_attempt=os.environ['GITHUB_RUN_ATTEMPT'], compiler=os.environ['TASK100_COMPILER'])) + '\\n')\n          EOF\n      - name: Upload mandatory source compiler and execution evidence\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: task100-ada-websocket-sleet-${{ matrix.compiler }}\n          path: |\n            scripts/task100/**\n            tests/ada-websocket/**\n            tests/fixtures/service-generate/lacal-websocket.xsd\n            tests/fixtures/service-generate/lacal-runtime.yaml\n            /tmp/task100-evidence/*.txt\n            /tmp/task100-evidence/integration-identity.json\n            /tmp/task100-evidence/*.log\n            /tmp/task100-evidence/setup/step-*\n            /tmp/task100-evidence/setup/identities.json\n            /tmp/task100-evidence/setup/consumer/alire/alire.lock\n            /tmp/task100-evidence/campaign/**/*.json\n            /tmp/task100-evidence/campaign/**/*.txt\n            /tmp/task100-evidence/campaign/**/*.stdout\n            /tmp/task100-evidence/campaign/**/*.stderr\n            /tmp/task100-evidence/campaign/**/*.exit\n            /tmp/task100-evidence/campaign/**/*.ad?\n            /tmp/task100-evidence/campaign/**/*.gpr\n            /tmp/task100-evidence/campaign/**/*.adc\n            /tmp/task100-evidence/campaign/**/*.c\n            /tmp/task100-evidence/campaign/**/*.h\n            /tmp/task100-evidence/campaign/**/*.lock\n            /tmp/task100-evidence/campaign/**/*.xsd\n            /tmp/task100-evidence/campaign/**/*.toml\n            /tmp/task100-evidence/campaign/**/LICENSE\n            /tmp/task100-evidence/campaign/**/*.sha256\n          if-no-files-found: error\n\n",
       "original_payload_sha256": "deb7a055c9dd6b268fe04fce07791132d3d7a46c77e9a0adacf78bb4c1a07816",
       "selection_condition": "github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'ada-websocket-real-sleet')",
-      "ownership": "Selected by reviewed rules.deep_jobs; prerequisites close transitively. Qualification payload unchanged."
+      "ownership": "Selected by reviewed rules.deep_jobs; prerequisites close transitively. Qualification payload unchanged.",
+      "packed_owner": "ada-deep-pack-a",
+      "scheduled_runner": false
     },
     {
       "workflow": "deep-ci.yml",
@@ -5120,7 +5110,9 @@
       "source_policy": "proposed integration SHA",
       "selection_condition": "github.event_name != 'pull_request' || inputs.selection == '' || fromJSON(inputs.selection).version != 2 || contains(fromJSON(inputs.selection).deep_jobs, 'ada-real-uci-dlz-sleet')",
       "ownership": "Task101 real UCI generated Ada typed transport, independent additive qualification",
-      "original_payload_sha256": "62ce975ac7d3ffdbf7fd6bbcdd360c2fb8ccadd360fbdd29b0fa9c63b57ec31e"
+      "original_payload_sha256": "62ce975ac7d3ffdbf7fd6bbcdd360c2fb8ccadd360fbdd29b0fa9c63b57ec31e",
+      "packed_owner": "ada-deep-pack-a",
+      "scheduled_runner": false
     }
   ],
   "reusable_jobs": {
@@ -5199,5 +5191,51 @@
   "deep_header": "name: Deep CI\non:\n  workflow_call:\n    inputs:\n      selection:\n        description: Verified canonical v2 CI selection manifest; empty only for direct full qualification\n        type: string\n        required: false\n        default: ''\n  schedule:\n    - cron: \"0 6 * * *\"\n  workflow_dispatch:\npermissions:\n  contents: read",
   "deep_selection_version": 2,
   "ci_select_002_main": "7958c4e0d8f78768fd4c7d4c1bd34877c31d893a",
-  "ci_select_002_main_tree": "a94fc3bb844349780772566eafd50db7a7328efe"
+  "ci_select_002_main_tree": "a94fc3bb844349780772566eafd50db7a7328efe",
+  "ada_ci_pack_002": {
+    "main": "65dd473ea2deb8ea0472383e7e245ea7069eb753",
+    "tree": "89c31b3d5c2adbb8def076d9c27c5e3d5d3e7706",
+    "inventory": "scripts/ada_deep_pack/inventory.json",
+    "allocations_before": 14,
+    "allocations_after": 4,
+    "shared_lanes": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "packs": {
+      "a": {
+        "job": "ada-deep-pack-a",
+        "compilers": [
+          "14",
+          "16"
+        ],
+        "suites": [
+          "ada-websocket-real-sleet",
+          "ada-real-uci-dlz-sleet",
+          "ada-real-uci-log-sleet",
+          "ada-real-uci-rdma-sleet"
+        ]
+      },
+      "b": {
+        "job": "ada-deep-pack-b",
+        "compilers": [
+          "14",
+          "16"
+        ],
+        "suites": [
+          "ada-real-uci-survivability-sleet",
+          "ada-real-uci-survivability-26-sleet",
+          "ada-real-uci-multimessage-sleet"
+        ]
+      }
+    }
+  }
 }

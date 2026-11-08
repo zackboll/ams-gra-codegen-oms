@@ -19,6 +19,17 @@ spec.loader.exec_module(pages)
 
 
 class MemberDestinationTests(unittest.TestCase):
+    def test_pages_checkout_preserves_history_and_security(self):
+        import subprocess
+        root = pathlib.Path(__file__).resolve().parents[1]
+        original = subprocess.check_output([
+            'git', 'show', '55b4cf1a35c7fc9dd1008deff28fea76a41ad39d:.github/workflows/uci-pages.yml'],
+            cwd=root, text=True)
+        self.assertEqual(original.count('      - uses: actions/checkout@v7\n'), 1)
+        expected = original.replace('      - uses: actions/checkout@v7\n',
+                                    '      - uses: actions/checkout@v7\n        with:\n          fetch-depth: 0\n')
+        self.assertEqual((root / '.github/workflows/uci-pages.yml').read_text(), expected)
+
     def test_browser_hash_length_boundary(self):
         for name_length, index, hash_length in [(4084, 0, 16383), (4084, 10, 16384), (4085, 0, 16385)]:
             with self.subTest(hash_length=hash_length), tempfile.TemporaryDirectory() as tmp:
