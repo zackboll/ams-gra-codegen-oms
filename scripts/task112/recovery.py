@@ -305,11 +305,15 @@ def execute(args, campaign=None):
                                 require(json.loads(msg.split(" ", 2)[2]) == {name: doc}, "external publication witnessed")
                         elif parts[0] == "ARMED":
                             epoch = int(parts[1])
+                            if campaign is not None and hasattr(campaign, "on_armed"):
+                                campaign.on_armed(epoch, corpus[epoch - 1], send, recv, relay)
                             if parts[2] == "pending":
                                 text = recv()
                                 require(text.startswith("MSG w1 ") and json.loads(text.split(" ", 2)[2]) ==
                                         {"Log": corpus[epoch - 1]["ambiguous"]}, "ambiguous PUB independently observed once")
                             relay.armed[epoch - 1].set()
+                        elif parts[0] == "PROBE_REJECTED" and campaign is not None and hasattr(campaign, "on_probe"):
+                            campaign.on_probe(int(parts[1]), relay)
                     require(child.wait(timeout=5) == 0, "Ada application failure (see consumer.stdout)")
                 relay.thread.join(5)
                 require(not relay.thread.is_alive() and not relay.errors, "relay failure: " + repr(relay.errors))
@@ -327,8 +331,11 @@ def execute(args, campaign=None):
             for connection, sid, topic, name in registrations:
                 owners.setdefault(connection, []).append((sid, topic, name))
             expected = [(str(i), topic, name) for i, (topic, name) in enumerate(zip(topics, NAMES), 1)]
-            require(len(owners) == len(corpus) and all(rows == expected for rows in owners.values()),
-                    "broker must independently register three subscriptions on eight distinct Ada connections")
+            if campaign is not None and hasattr(campaign, "validate_owners"):
+                campaign.validate_owners(owners, expected)
+            else:
+                require(len(owners) == len(corpus) and all(rows == expected for rows in owners.values()),
+                        "broker must independently register three subscriptions on eight distinct Ada connections")
             result.update(completed=True, epochs=len(corpus), callbacks=output.count("CALL "), ambiguous_publications=1 if campaign is None else 0,
                           broker_survived=True, consumer_exit=child.returncode, resources=resources,
                           broker_connections=owners)
