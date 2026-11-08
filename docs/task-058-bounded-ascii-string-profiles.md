@@ -278,7 +278,9 @@ Covered by:
   (publish, typed MSG with SPACE preserved, decode-error event).
 
 The synthetic fixture is `tests/fixtures/service-generate/codec-bounded-ascii.{xsd,yaml}`.
-No Ada or C++ codec was added.
+No Ada or C++ codec was added. (Later:
+[CPP-OMS-005](task-cpp-oms-005-bounded-ascii-amti-settings.md) adds the C++
+codec for exactly this profile family; this fixture is C++ codec READY too.)
 
 ## 6. Compiler-backed conformance corpus
 

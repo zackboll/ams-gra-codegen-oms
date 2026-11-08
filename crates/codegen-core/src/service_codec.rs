@@ -570,7 +570,8 @@ fn check_cpp_codec_artifact(schema: &SchemaIr) -> Result<(), ServiceCodecError> 
 ///
 /// * named Strings of the UUID, UCI schema-version, visible-ASCII,
 ///   whitespace-visible and NATO special-words profiles (each a checked
-///   carrier with `create(std::string_view)`);
+///   carrier with `create(std::string_view)`), and (CPP-OMS-005) the Task 058
+///   bounded-ASCII profiles — see [`cpp_codec_admits_string_profile`];
 /// * named `DateTimeZulu` and `Duration` declarations and the direct
 ///   unconstrained `xs:dateTime` / `xs:duration` members;
 /// * unconstrained `xs:hexBinary`, direct or named, from IR provenance;
@@ -604,18 +605,13 @@ fn cpp_emission_codec_support(
         | TypeKind::Enumeration { .. } => Ok(()),
         TypeKind::Primitive(PrimitiveKind::String) => {
             match string_profile(PrimitiveKind::String, &declaration.constraints) {
-                Ok(Some(
-                    StringProfile::UciSchemaVersion
-                    | StringProfile::UniversallyUniqueIdentifier
-                    | StringProfile::VisibleAscii { .. }
-                    | StringProfile::WhitespaceVisible { .. }
-                    | StringProfile::NatoSpecialWords,
-                )) => Ok(()),
+                Ok(Some(profile)) if cpp_codec_admits_string_profile(&profile) => Ok(()),
                 Ok(Some(other)) => Err(unsupported(
                     owner,
                     format!(
                         "named String profile {} has no C++ codec mapping (supported: UUID, \
-                         schema-version, visible ASCII, whitespace-visible, NATO special words)",
+                         schema-version, visible ASCII, whitespace-visible, NATO special words, \
+                         bounded ASCII)",
                         cpp_string_profile_label(&other)
                     ),
                 )),
@@ -709,6 +705,40 @@ fn cpp_emission_codec_support(
             owner,
             "alias/list declarations have no generated codec".into(),
         )),
+    }
+}
+
+/// The named String profiles the generated C++ codec maps (CPP-OMS-002 and
+/// CPP-OMS-005), decided once, here, for both the readiness analyzer and the
+/// C++ renderer's own defensive check.
+///
+/// Every admitted profile is a checked model carrier whose
+/// `create(std::string_view)` is the sole validation authority and whose
+/// `value()` is the exact stored lexical form, so the codec restates no
+/// character class, length, pattern or whitespace rule:
+///
+/// * UUID, UCI schema-version, visible ASCII, whitespace-visible and NATO
+///   special words (CPP-OMS-002);
+/// * Task 058 bounded ASCII: exactly the pinned `(alphabet, spelling, length)`
+///   rows the shared classifier recognizes, including the zero-length
+///   `EmptyType` shape (CPP-OMS-005).
+///
+/// Structured ASCII, alternating ASCII, IPv6 and Unicode 3.1 profiles have
+/// model carriers too but stay outside the codec subset; they are matched
+/// explicitly so a new profile cannot become codec-ready by default.
+#[must_use]
+pub fn cpp_codec_admits_string_profile(profile: &StringProfile) -> bool {
+    match profile {
+        StringProfile::UciSchemaVersion
+        | StringProfile::UniversallyUniqueIdentifier
+        | StringProfile::VisibleAscii { .. }
+        | StringProfile::WhitespaceVisible { .. }
+        | StringProfile::NatoSpecialWords
+        | StringProfile::BoundedAscii { .. } => true,
+        StringProfile::StructuredAscii(_)
+        | StringProfile::AlternatingAscii(_)
+        | StringProfile::Ipv6Address
+        | StringProfile::Unicode(_) => false,
     }
 }
 
@@ -1838,6 +1868,163 @@ mod tests {
             alternatives: fields,
         };
         assert_eq!(cpp(&choice), Ok(()));
+    }
+
+    /// CPP-OMS-005: the C++ codec admits exactly the String profiles the
+    /// shared classifier recognizes as Task 058 bounded ASCII (every pinned
+    /// row, including the zero-length `EmptyType` shape), in every occurrence
+    /// shape and as a Choice alternative. Unpinned neighbours never reach the
+    /// codec (the shared classifier refuses them), and the other model-backed
+    /// String profiles stay outside the codec subset.
+    #[test]
+    fn cpp_oms_005_bounded_ascii_admission_boundary() {
+        use ams_gra_oms_ir::{PatternExpression, PatternGroup, WhiteSpacePolicy};
+        let cpp = |schema: &SchemaIr| -> Result<(), ServiceCodecError> {
+            let emissions = plan_type_emissions(schema, GenerationWorld::ClosedSchemaSet)
+                .map_err(|error| ServiceCodecError::EmissionPlan(error.message))?;
+            emissions.iter().try_for_each(|emission| {
+                cpp_emission_codec_support(schema, emission, GenerationWorld::ClosedSchemaSet)
+            })
+        };
+        let named = |constraints: ConstraintSet, cardinality: Cardinality, choice: bool| {
+            let mut member = field("F", TypeRef::named(QualifiedName::new(OAM_NAMESPACE, "N")));
+            member.cardinality = cardinality;
+            let mut schema = record(OAM_NAMESPACE, vec![member]);
+            if choice {
+                let TypeKind::Record { fields } = schema.types[0].kind.clone() else {
+                    unreachable!()
+                };
+                schema.types[0].kind = TypeKind::Choice {
+                    alternatives: fields,
+                };
+            }
+            schema.types.push(TypeDecl {
+                name: QualifiedName::new(OAM_NAMESPACE, "N"),
+                is_abstract: false,
+                base_type: None,
+                kind: TypeKind::Primitive(PrimitiveKind::String),
+                constraints,
+                documentation: None,
+                source: source(),
+            });
+            schema
+        };
+        let constrained = |expression: String, length: crate::BoundedAsciiLength| {
+            let mut constraints = ConstraintSet::default();
+            match length {
+                crate::BoundedAsciiLength::Exact(n) => constraints.length = Some(n),
+                crate::BoundedAsciiLength::Range {
+                    min_length,
+                    max_length,
+                } => {
+                    constraints.min_length = Some(min_length);
+                    constraints.max_length = Some(max_length);
+                }
+            }
+            constraints.lexical.pattern_groups = vec![PatternGroup {
+                alternatives: vec![PatternExpression::xml_schema(expression)],
+            }];
+            constraints
+        };
+        let quantified = |spelling: &str, length: crate::BoundedAsciiLength| match length {
+            crate::BoundedAsciiLength::Exact(n) => format!("{spelling}{{{n}}}"),
+            crate::BoundedAsciiLength::Range {
+                min_length,
+                max_length,
+            } => format!("{spelling}{{{min_length},{max_length}}}"),
+        };
+        let shapes = [
+            Cardinality::REQUIRED_ONE,
+            Cardinality {
+                min_occurs: 0,
+                max_occurs: Some(1),
+            },
+            Cardinality {
+                min_occurs: 0,
+                max_occurs: Some(3),
+            },
+            Cardinality {
+                min_occurs: 1,
+                max_occurs: None,
+            },
+        ];
+        let rows = crate::bounded_ascii_profiles();
+        assert_eq!(rows.len(), 60, "the pinned Task 058 domain");
+        for &(alphabet, spelling, length) in rows {
+            let constraints = constrained(quantified(spelling, length), length);
+            assert_eq!(
+                string_profile(PrimitiveKind::String, &constraints),
+                Ok(Some(StringProfile::BoundedAscii { alphabet, length })),
+                "{spelling} {length:?}"
+            );
+            for cardinality in shapes {
+                assert_eq!(
+                    cpp(&named(constraints.clone(), cardinality, false)),
+                    Ok(()),
+                    "{spelling} {length:?} {cardinality:?}"
+                );
+            }
+            assert_eq!(
+                cpp(&named(constraints, Cardinality::REQUIRED_ONE, true)),
+                Ok(()),
+                "{spelling} {length:?} as a Choice alternative"
+            );
+        }
+
+        // Near misses of admitted rows: the shared classifier refuses them, so
+        // no carrier exists and the codec analyzer refuses them too.
+        let exact = crate::BoundedAsciiLength::Exact;
+        let range = |min_length, max_length| crate::BoundedAsciiLength::Range {
+            min_length,
+            max_length,
+        };
+        let mut near_misses = vec![
+            // AircraftIdentifierType with length 9.
+            constrained("[A-Z0-9 ]{9}".into(), exact(9)),
+            // An unobserved spelling of an observed member set.
+            constrained("[0-9A-Z ]{8}".into(), exact(8)),
+            // An observed alphabet with an unobserved bound.
+            constrained("[a-zA-Z0-9]{1,21}".into(), range(1, 21)),
+            // EmptyType written with minLength/maxLength 0 instead of length 0.
+            constrained("[a-zA-Z]{0}".into(), range(0, 0)),
+            // Quantifier and facet disagree.
+            constrained("[a-zA-Z]{0}".into(), exact(1)),
+        ];
+        // maxLength only: minLength is never inferred from the quantifier.
+        let mut max_only = constrained("[A-Za-z0-9]{1,4}".into(), range(1, 4));
+        max_only.min_length = None;
+        near_misses.push(max_only);
+        // An explicit whiteSpace facet, even `preserve`.
+        let mut white_space = constrained("[a-zA-Z]{0}".into(), exact(0));
+        white_space.lexical.white_space = Some(WhiteSpacePolicy::Preserve);
+        near_misses.push(white_space);
+        for constraints in near_misses {
+            assert!(
+                !matches!(
+                    string_profile(PrimitiveKind::String, &constraints),
+                    Ok(Some(StringProfile::BoundedAscii { .. }))
+                ),
+                "{constraints:?}"
+            );
+            assert!(
+                cpp(&named(
+                    constraints.clone(),
+                    Cardinality::REQUIRED_ONE,
+                    false
+                ))
+                .is_err(),
+                "{constraints:?}"
+            );
+        }
+
+        // Another model-backed profile (IPv6) stays NOT READY here.
+        let failure = cpp(&named(
+            crate::ipv6_address_constraints(),
+            Cardinality::REQUIRED_ONE,
+            false,
+        ))
+        .unwrap_err();
+        assert!(failure.to_string().contains("IPv6 address"), "{failure}");
     }
 
     #[test]

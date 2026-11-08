@@ -1,0 +1,41 @@
+# SYNTHETIC CPP-OMS-005 TEST-ONLY contract. Authored for this repository only.
+# It selects the REAL UCI global AMTI_SettingsCommand twice -- one input and
+# one output exchange on the same OWP-legal topic -- so the unmodified pinned
+# Sleet server routes the service's own AMTI_SettingsCommand back to it. Used
+# only by the real-UCI AMTI_SettingsCommand Sleet qualification
+# (scripts/check-cpp-oms-005-amti-settings.sh), for UCI 2.5 and 2.6;
+# generation does not depend on uci_schema_version. The production fixture
+# real-bounded-ascii-amti-settings.yaml (output only) is left unchanged.
+contract_version: "0.1"
+
+service:
+  name: amti-settings-loop
+  version: "0.1.0"
+  kind: service
+
+standards:
+  oms_version: "2.5"
+  uci_schema_version: "2.5"
+
+functions:
+  - id: loop
+    name: Loop
+    category: specific
+    applicability: applicable
+    exchanges:
+      - id: input-settings
+        kind: oms_message
+        direction: input
+        mandate: mandatory
+        message: AMTI_SettingsCommand
+        topic: amti.settings
+        timing:
+          kind: asynchronous
+      - id: output-settings
+        kind: oms_message
+        direction: output
+        mandate: mandatory
+        message: AMTI_SettingsCommand
+        topic: amti.settings
+        timing:
+          kind: asynchronous

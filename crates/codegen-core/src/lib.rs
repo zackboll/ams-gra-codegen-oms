@@ -100,8 +100,8 @@ pub use service_codec::{
     AdaCodecFloatingRequirements, AdaCodecRuntime, CPP_SERVICE_CODEC_FILE,
     CPP_SERVICE_CODEC_NAMESPACE, OAM_NAMESPACE, RUST_SERVICE_CODEC_FILE, RUST_SERVICE_CODEC_MODULE,
     ServiceCodecError, ServiceCodecReadiness, ada_codec_floating_requirements,
-    analyze_service_codec, analyze_service_codec_with_runtime, oms_json_member_name,
-    oms_json_type_name,
+    analyze_service_codec, analyze_service_codec_with_runtime, cpp_codec_admits_string_profile,
+    oms_json_member_name, oms_json_type_name,
 };
 pub use service_generation::{
     ServiceGenerationError, ServiceGenerationProjection, project_service_generation_schema,
