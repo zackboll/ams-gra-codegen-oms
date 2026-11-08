@@ -150,6 +150,11 @@ class Campaign:
         self.run("focused", [sys.executable, ROOT / "scripts/task111/trust.py", "--probe", build / "bin/trust_probe",
                  "--cert", out / "cert.pem", "--key", out / "cert-key.pem", "--unrelated", out / "unrelated.pem",
                  "--evidence", out / "focused"], timeout=300)
+        if args.memcheck:
+            self.run("memcheck", [sys.executable, ROOT / "scripts/task111/trust.py", "--probe", build / "bin/trust_probe",
+                     "--cert", out / "cert.pem", "--key", out / "cert-key.pem", "--unrelated", out / "unrelated.pem",
+                     "--evidence", out / "memcheck", "--memcheck", args.memcheck,
+                     "--memcheck-lib", args.memcheck_lib], timeout=300)
         for release in args.integration:
             self.integration(release)
         for name in PINS:
@@ -202,6 +207,8 @@ def main():
     parser.add_argument("--backend", choices=("openssl", "mbedtls"), required=True)
     parser.add_argument("--integration", choices=("25", "26"), nargs="*", default=[])
     parser.add_argument("--development", action="store_true", help="diagnostics only, not acceptance")
+    parser.add_argument("--memcheck", type=Path)
+    parser.add_argument("--memcheck-lib", type=Path)
     Campaign(parser.parse_args()).execute()
 
 

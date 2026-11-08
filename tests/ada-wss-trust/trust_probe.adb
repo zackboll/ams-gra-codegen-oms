@@ -47,8 +47,23 @@ procedure Trust_Probe is
 
    procedure Resources is
       FDs : constant Natural := Count ("/proc/self/fd");
-      Tasks : constant Natural := Count ("/proc/self/task");
+      Tasks : Natural := Count ("/proc/self/task");
+      Initial_Tasks : constant Natural := Tasks;
+      Start : constant Time := Clock;
    begin
+      --  AHT's detached DNS pthread publishes its result before returning.
+      --  Fast pre-handshake errors can beat that thread's final exit. Require
+      --  bounded quiescence, not a scheduler-dependent instantaneous count.
+      while Measured and then Tasks /= Baseline_Tasks and then
+        Clock - Start < Milliseconds (250)
+      loop
+         delay 0.001;
+         Tasks := Count ("/proc/self/task");
+      end loop;
+      if Initial_Tasks /= Tasks then
+         Put_Line ("QUIESCENCE initial_tasks=" & Initial_Tasks'Image &
+                   " final_tasks=" & Tasks'Image & " seconds=" & To_Duration (Clock - Start)'Image);
+      end if;
       if Measured then
          Check (FDs = Baseline_FDs, "descriptor growth");
          Check (Tasks = Baseline_Tasks, "task growth");
@@ -127,6 +142,7 @@ begin
          elsif Line = "baseline" then
             Baseline_FDs := Count ("/proc/self/fd");
             Baseline_Tasks := Count ("/proc/self/task");
+            Check (Baseline_Tasks = 1, "runtime warm-up did not quiesce");
             Measured := True;
             Resources;
             Put_Line ("DONE baseline"); Flush;
