@@ -154,15 +154,18 @@ and without the optional hash. Uppercase output, lowercase input, 0/31/32/33
 octet carrier agreement, malformed lexical values, JSON kinds, null, and exact
 `FileMetadataMT.MessageData.SHA_2_Hash` error paths are covered.
 
-For **each release**: authentic consumer **2 tests, 42 checks**, strict g++
-passed. Additional configurations are reported below as they finish.
+For **each release**: authentic consumer **2 tests, 42 checks** passed under
+strict g++, strict clang++, g++ ASan+UBSan and clang++ ASan+UBSan. The independent
+clang run is recorded in `clang-authentic.log`. Additional transport
+configurations are reported below as they finish.
 
 Transport is the existing C++ LA-CAL runtime and generated facade/codec, talking
 to the real pinned Sleet with that release's full unmodified schema. No mock is
 used. Hash-absent test: **1 test, 25 checks per release passed**, with two
 distinct payloads, callback-owned retained copies, exact populated fields,
 delivery/decode/handler statistics, acknowledged unsubscribe, no callback
-after unsubscribe, close and worker-thread cleanup.
+after unsubscribe, close and worker-thread cleanup. This passed with strict
+g++ and g++ ASan+UBSan for each release.
 
 Hash-present test: **FAILED independently for 2.5 and 2.6**. Each attempts two
 distinct valid hashes (all zero and all `FF`), receives broker rejection, times
@@ -207,15 +210,25 @@ noninteractive sudo installation was unavailable. No dependency was vendored.
 | previously supported synthetic C++ generated output | **32 pairs, 96 files byte-identical**, 0 mismatches |
 | Python generation with and without codec | **118 comparisons**, 0 mismatches |
 | whole-release pinned readiness | PASS both releases, no losses or decreased counts |
+| registered pinned C++ readiness regression | **1 passed**, both authenticated roots, all six CPP-OMS-006 newly READY messages plus full FileMetadata readiness |
 | PR smoke router/executor unit tests | **38 passed** |
 | production C++ PR smoke | PASS, including offline CPP-OMS-007 consumer |
 | Rust PR smoke | PASS |
 | Python PR smoke | Initial system Python failed version gate; rerun under required Python 3.11 PASS (9 consumer tests) |
 | workspace clippy all targets / fmt / diff whitespace | PASS |
-| complete workspace library tests | In progress; initial pinned-root build interrupted after expensive authentic generation, not counted as pass; offline retry pending |
+| complete workspace library tests | **650 passed**, 0 failed/ignored, 15 suite summaries; offline retry completed. Initial pinned-root build interrupted after expensive authentic generation and is not counted as a pass |
 | CPP-OMS-004 PositionReport / 005 AMTI / 006 structured ASCII deep scripts | In progress, not yet claimed complete |
 | 007 full compiler/sanitizer authentic qualification | In progress; hash-present Sleet failures above already make acceptance FAIL |
-| hosted exact-head CI | Not yet available at documentation time; final PR receipt records actual status |
+| hosted CI at `f0a5a68f2b23ce48aaa191ab393694b5269af77f` | PR smoke **SUCCESS**, run `42535159399`; trusted signal **SUCCESS**. This is not claimed for a later documentation head; final PR receipt records that exact head separately |
+
+An earlier local C++ smoke process had loaded the old 264-check summary before
+the final consumer gained four rejection cases; it failed the exact marker
+gate. A clean final run passed with 272/67. Early acceptance-driver attempts
+exposed a clang linker-only `-no-pie` compile flag and the established GCC
+Boost.Asio `-Wno-tsan` requirement; ordinary follow-up commits corrected the
+driver. Those aborted runs are not full compiler-configuration passes. The
+exact-head full driver is rerun separately and still cannot satisfy the
+hash-present broker acceptance criterion.
 
 No Ada, Rust or Python production source, workflow YAML, C++ runtime, Sleet or
 LA-CAL production behavior is changed. The shared production change is confined
