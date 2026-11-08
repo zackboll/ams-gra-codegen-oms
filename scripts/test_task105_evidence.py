@@ -61,7 +61,7 @@ def bundle(compiler='14'):
     labels = {'source', 'source-status', 'platform', 'gnat-version', 'gprbuild-version', 'printenv', 'admission', 'schema-comparison', 'inherited25-generate', 'alire-version', 'rustc-version', 'cargo-version'}
     labels |= {f'{name}-{step}' for name in ('aht', 'websocket-ada')
                for step in ('clone', 'pin', 'identity', 'clean')}
-    for name, revision in [('aht', '664d5ddeb568626b2f9ff66054c7091894b3b8d4'),
+    for name, revision in [('aht', '827b0c17dd964e935f8e88912ce0611ee92b6f16'),
                            ('websocket-ada', '765d9cd612838eb00645037977c8cc9af7171c3e')]:
         put(f'campaign/{name}-identity.stdout', revision + '\n')
         put(f'campaign/{name}-clean.stdout', '')
@@ -466,26 +466,8 @@ class EvidenceTests(unittest.TestCase):
 
 class DeepQualification(unittest.TestCase):
     def test_main_only_full_compiler_qualification(self):
-        header, jobs = blocks((evidence.ROOT / '.github/workflows/deep-ci.yml').read_text())
-        job = jobs[evidence.JOB]
-        self.assertIn("    if: github.ref == 'refs/heads/main'\n", job)
-        self.assertIn("group: ${{ format('oms-main-slot-{0}', matrix.slot) }}", job)
-        self.assertIn('      queue: max\n', job)
-        self.assertIn("        compiler: ['14', '16']\n", job)
-        self.assertIn("          - compiler: '14'\n            slot: 3\n", job)
-        self.assertIn("          - compiler: '16'\n            slot: 10\n", job)
-        for forbidden in ('pull_request', 'inputs.selection', 'oms-pr-', 'continue-on-error',
-                          'ci_policy', 'pr-ci-required', 'ci-required-gate'):
-            self.assertNotIn(forbidden, header + job)
-        for required in (evidence.REV,
-                         'scripts/fetch-pinned-uci-2.5.sh', 'scripts/fetch-pinned-uci-2.6.sh',
-                         'scripts/task105/qualify.py', 'from task105_evidence import verify_bundle',
-                         "print('TASK105_HOSTED_VERIFIED', verify_bundle(",
-                         'include-hidden-files: true', 'set -euo pipefail'):
-            self.assertIn(required, job)
-        # Only diagnostics are unconditional; qualification and verification fail the job.
-        self.assertEqual(job.count('        if:'), 1)
-        self.assertIn('name: Upload mandatory source compiler and execution evidence\n        if: always()', job)
+        from ada_deep_pack.contracts import check
+        check(self, evidence.JOB)
 
 
 if __name__ == '__main__':

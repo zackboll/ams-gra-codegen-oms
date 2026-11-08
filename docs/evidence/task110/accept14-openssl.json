@@ -1,0 +1,1289 @@
+{
+  "external_directory": "/home/zboll/task110-evidence/accept14-openssl",
+  "source": [
+    "65eaeca07af5acc7252aefa1da6365e04bd2ce1a",
+    "1ded5a7e02472ee96e0eabd4741ce0297607334a"
+  ],
+  "source_status": "",
+  "result": {
+    "completed": true,
+    "development": false,
+    "compiler": "14.2.0",
+    "backend": "openssl",
+    "authentic_uci": "2.6",
+    "steps": [
+      {
+        "label": "source",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "source-status",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "uci-release-identity",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "uci-release-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "aht-identity",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "aht-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "aht-archive",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "aht-extract",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "codec-identity",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "codec-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "codec-archive",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "codec-extract",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "sleet-identity",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "sleet-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "printenv",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "compiler",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "platform",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "check",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "generate",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "model",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "baseline-log",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "baseline-rdma",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "baseline-survivability",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "admission",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "build",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "certificate",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "wss",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "verify",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "aht-final-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "codec-final-clean",
+        "exit": 0,
+        "timed_out": false
+      },
+      {
+        "label": "sleet-final-clean",
+        "exit": 0,
+        "timed_out": false
+      }
+    ],
+    "needs_read_runtime_exercised": false
+  },
+  "artifact_sha256": {
+    "admission.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "source-status.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "compiler.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "sleet-clean.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "generated-sources.json": "1c5de7a804ebfedfd7856e236b3e560a005a3acbd4d6450f91efcbfe385e9da8",
+    "sleet-identity.command.json": "4caf079fbade864d3558b7d89a5ea73efb83b51dc0f0517906834a47d3bd85b1",
+    "representation-parity.json": "08a3e9f9334f8b83ca1379c4be0f7d6d97de6bc545219ab478c2ddd738793401",
+    "aht-final-clean.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "build.stdout": "5278d5b0f0b0b59ff1606ce77cbd943d9911c7950d366ca97b4aba24f3d795d9",
+    "platform.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "generate.stdout": "9e40b4f382c7ea16d529530d8d060617717eb06fa318977ce9c829e734381707",
+    "aht-clean.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "baseline-rdma.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "aht-final-clean.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "aht-identity.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "source-status.command.json": "c65ed7743e72c2bfcd2d547332f04dca433c988137e1113cc0f09eb451495779",
+    "baseline-survivability.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "sleet-final-clean.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "baseline-log.command.json": "6b6db5ca765e4a5ae3528e17c328be7d2f89d6e1598500f9d5a791d453bcb28a",
+    "uci-release-identity.command.json": "d1049811a1d40e66246e1292b360d768ff5dae8df7c8b636df4c6493b6475fae",
+    "platform.command.json": "662bbf58b27b1216cf44aad4775b44d714e9309aeb0588881cb2b1fdad825b66",
+    "baseline-rdma.command.json": "184a5e2f60e422af3b7ee9d88bf4c5a312646c20d8adfc687e1e63c0e1e7bb27",
+    "uci-release-clean.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "aht-clean.command.json": "76a2888cb632aafd9fde6aed9fd768f213f4da81b52982ef47da63a7ea82a310",
+    "codec-archive.command.json": "f0168abeacabe6f73e607f4a51554cab4a838746870ad7f94cf585e17c8bcf05",
+    "sleet-identity.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "result.json": "6b54253f71737e1ffddfb6d80957cdab86843894f5d434efd547e62f34c11fc0",
+    "source-status.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "sleet-final-clean.command.json": "67c8d0617d9f64bce440c7534ce07e879637f3ea5b6ea352e5b801a5dc0c62c6",
+    "check.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "aht-extract.command.json": "ec89e2c4915ae731a92d15b786d4ecb11f5b937afed41619f82c1c6e939d6bab",
+    "uci-release-clean.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "compiler.command.json": "d3c3fcf195a65507f1065c48dc193badfbed549696d3aff85aee14c82a0bd43a",
+    "baseline-rdma.stdout": "c167a9fe7f6da07b72632acff1f6e95e223e8c1eb9c8cc05a653131fe0159efe",
+    "compiler.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "sleet-clean.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "check.stdout": "025d34705574c2722d43b6cd3f589d58564e73b3ce9c449ea852671b0840dbbb",
+    "aht-extract.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "codec-extract.command.json": "01afa72e520f147c39a5f99539d7977f5878150d8880ecdf6515ae9c252f5ca6",
+    "build.command.json": "e09c9bafe62af56e54d74e8780569e9c3e316047d6a57928fef2fb4584d9e11b",
+    "uci-release-identity.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "sources.json": "5069bafdc1a7e5f7c96cccb1a370d241883fb41d179fca743cecc3f9c5dfeb01",
+    "verify.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "codec-identity.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "certificate.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "certificate.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "uci-release-clean.command.json": "2a1c488b3cfd8c77895d0ff0f6fe0540cfe80563f463f8b8e56ace19859c32f5",
+    "codec-identity.stdout": "a9edf35639587b6fc713c0748f2ba729db0dd41c7babd26c6183815eaa97e6bd",
+    "codec-archive.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "codec-extract.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "codec-final-clean.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "baseline-log.stdout": "a6887ba48d607c379b4733d848ddc8f414013947724fdd44a60e9175d4425f5e",
+    "model.stdout": "42e7490820113e075ce21d052bd291aa2ac39a8ba37ac4e1bd5b7e1df1c7c462",
+    "verify.command.json": "868e3eba897f75e770416fa1a56bc31a608454bf2c1b3fb4013aa541e9ea17b6",
+    "aht-extract.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "codec-archive.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "aht-archive.command.json": "4e42d133964791b27393074e83f3065c44b3ac4d1709bb7f4d6c9dabfd1b6b0a",
+    "codec-extract.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "codec-final-clean.command.json": "e5dbb768a00dd7920fffb35cb6609ef302a7fba89bf0b7bc3ef78c2fd80fba36",
+    "aht-extract.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "certificate.command.json": "87c0d56d3e3b9c8303e8e3c740fda7fdad6f7502b9c00fe19398f259c28e9f1d",
+    "source.command.json": "ec9a3093b82ab416235ee8eb6e606550b9efc75ecbc85a919d26b31ffbca4332",
+    "admission.stdout": "35a3db275ab4a13b1157ea489c5a21c0509caaf756e8acd44683ec022f407fc2",
+    "aht-archive.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "codec-final-clean.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "codec-clean.command.json": "e5dbb768a00dd7920fffb35cb6609ef302a7fba89bf0b7bc3ef78c2fd80fba36",
+    "uci-release-identity.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "uci-release-clean.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "admission.command.json": "969ef71ec755b639029dd1d7c11209485b2ef6913aaee33c9c5671e378ef8853",
+    "sleet-identity.stdout": "cfbbf31bd8ad5e35897fd98d227c0d82ea0f40d3f45e7832129fc12aea13d7a5",
+    "compiler.stdout": "09e4eaa1b44df8b125ffee60c69e78e32cd20d3e5557f16aa7d43093f5acacb6",
+    "platform.stdout": "b26ed02c765f7e9f4fc6605ba4d2b53aeaeaa4fdf8310456b18a5234cbfe3dc0",
+    "baseline-log.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "input-sources.json": "d44658ace86b7181a18b1fc11be5bf96b12180d74a2603798c0ba67f12b02b26",
+    "wss.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "wss.command.json": "fe7c70e0e75fe1cef3ea07e665b0d8db29679ae47df53e56a04edbbad4b769bb",
+    "sleet-final-clean.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "sleet-clean.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "model.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "uci-release-identity.stdout": "632fe55dbfd65c9610fd81f71fe117be78df24d49e8215e8cb6814ae3b474ef2",
+    "check.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "verify.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "wss.stdout": "6fa79ae682801cd6cded78147c8afc9fb1b440d95cb22c1dc4d52bb53e6522a7",
+    "schema-sources.json": "76ca274a6c2430614c8741542dcb0f375037fee4e0c29c145febe251228b9cc3",
+    "codec-clean.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "aht-archive.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "model.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "codec-archive.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "codec-extract.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "sleet-clean.command.json": "67c8d0617d9f64bce440c7534ce07e879637f3ea5b6ea352e5b801a5dc0c62c6",
+    "alire.lock": "5485669bbc0b51b00c48b258dddeb95cdac133c4630c11fc0b167cc272f1b1e7",
+    "codec-final-clean.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "wss.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "printenv.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "aht-identity.stdout": "1ec2599294987fb4469de588c0938be74ba160efa9a089418f2bee021abf9516",
+    "printenv.stdout": "6c2a15ed2a4a9686fcbceac3eaba0a1cc631dd0c1dea02d9a6032390707260af",
+    "codec-identity.command.json": "3f6476fb1fa9b6fdd1ad7ec16eaba0518c5775fa1ea096fd57f7fc92f2d1ebc4",
+    "sleet-identity.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "environment.sh": "55bc1f768ef8bb74d0fdce5fad1e4b1327f6772cf0a4f8805da2b9b5bef39d6c",
+    "admission.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "source.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "sleet-final-clean.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "baseline-rdma.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "printenv.command.json": "9fa2f9a736f7ee0789b82a115bc553c1e52f127994c2653efe1c072750f09b2a",
+    "aht-identity.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "aht-archive.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "aht-final-clean.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "printenv.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "baseline-survivability.stdout": "19fda0510c92ffaad5e286737c5f33acd67b7d3b18e7781d4e134afb6f4b3b51",
+    "model.command.json": "a849ec2f54fcabd3078dadaac72ac22fc888a1536dd8ebe4fd4bf73dbde681af",
+    "baseline-survivability.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "generate.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "platform.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "codec-identity.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "source.stdout": "5e5db4b21917726a8dcd42a4259e5321ae1e716efac8588df5eba04491feeb5b",
+    "check.command.json": "be45a8362f632f935b6ed94d2fee52119e89cd362fb05b6bbfef98ab4c84addd",
+    "source.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "codec-clean.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "baseline-survivability.command.json": "4b5af09cfc10160d7388a3b441a3582f06ec8c0c3734c14096d31a59604e1f61",
+    "aht-final-clean.command.json": "76a2888cb632aafd9fde6aed9fd768f213f4da81b52982ef47da63a7ea82a310",
+    "verify.stdout": "326c961436819f2c43d534d234774e7e75fb0aa5fd66a01afbc62025ac92bdcf",
+    "aht-identity.command.json": "cabf9acbef55bae45d5a23a68f8e5e70d2999d75d454388080ed9e9fd55d8c35",
+    "generate.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "certificate.stderr": "ac2de797b7bd22c26aad94c00cb309dc4c5e0ac776289ce8b8f5122bf9b33ccf",
+    "codec-clean.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "source-status.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "generate.command.json": "6de2e2c21f41571bf65ec97002ce343c7802d1e2170498dc85445170381a0b3f",
+    "baseline-log.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "aht-clean.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "build.stderr": "483087e0ad9a7a8e03f3a6fb56142b496daaacbac672d2090ddbf649ac3728c7",
+    "aht-clean.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "build.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "tls/result.json": "cb44263d3714cb09fbb378cb8628da0f39e617cbbc84a40dcda3003afcf7bd1c",
+    "tls/sleet.bin": "ace70d1d545bd45feaa4d959355868f39473ac3159983e0fa0272e37c8a7ea1f",
+    "tls/consumer.command.json": "f221cacfed28e53b76c77e339ce4c538bbb3f85d58c08d3f35c57a0014cdaf6f",
+    "tls/ada.bin": "53de1f2d6eb673368a0c0fcc69961e5c2e21a83eaac9cfb4cb52ac8853da7953",
+    "tls/wire.json": "55fa5ee478a5398c70c053b412f4525cad04a7dca30c4296bf0b4ee0904014c4",
+    "wss/plan.jsonl": "24495490f2deec52f6b0558808870b80de71b60699f8e13f2bd7b6fddceb7b17",
+    "wss/result.json": "73718212d4896d74d9f21ee8caa0cca52406f589821fbb2c0b013b2e58c5c449",
+    "wss/consumer.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "wss/server.command.json": "a692c5fd0e0f7c80aa3fbc62c439dcb9f6000a44bcb9cee232cff8b127743761",
+    "wss/consumer.stdout": "4d44d3bfae579909f1ce8e8505684e0c6703f754825ed950c4ca5d15c0394382",
+    "wss/observations.json": "673919e420e743cc25e73b9b15f66c7c2277b90e41b5d6928debf30ddaced660",
+    "wss/consumer.command.json": "d4a70b36679f52afe77adc942dc8d4dbf4f540a88e1ba35f373e39552b3222f1",
+    "wss/consumer.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss/wire.json": "02b16cc104c82df417e11dda7c61f68f815cb2c0b0f09e7fc358af61465bade5",
+    "wss/server.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss/server.stdout": "708e8b4bee842f6ded8e30ceae6bbd7491d491df5d9fac91ed9774194fe04e98",
+    "wss/server.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "admission/info.json": "068f97f1cf4831ea1163ffad463c3873881a894de59cd174d92d1788a920f4f2",
+    "admission/result.json": "6716fa71d3a2c3a7529a7bce8abead05d1d6d4e16a89b501fe6029d75b41f95e",
+    "admission/server.command.json": "c7690cb1bb1b91e5a9c9ea6b1065290dea0c9d6846d12dcfd9026aef20c05708",
+    "admission/survivability26.json": "350a884fe52c8513260fe064fe5b527707c755b10536b4a2da4d1b9f30713071",
+    "admission/task092-real-rdma26.json": "aeda83da46cdf8b847bb48e1d59a41b21faedfdd7fbb585c9fa4857f913affa3",
+    "admission/schema-sources.json": "76ca274a6c2430614c8741542dcb0f375037fee4e0c29c145febe251228b9cc3",
+    "admission/task093-real-log26.json": "28179164c621716995ccf715652c720dc8c1dbbfe64229ac36eca0e74fe7b401",
+    "admission/goldens.json": "3c6f9726a065a12ebb5bdc7050ceabcef02fdcee2175390f87207fd8b59038fe",
+    "admission/wire.json": "05a9e53d9b65c2ca3775332fedba13e8ce41ed19581b945fd7911b4fb1b8b4c9",
+    "admission/server.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "admission/server.stdout": "66650b8d6f607321416dc9e080e1ca036f66026f37a68387c069c6fbfabc02a7",
+    "admission/server.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "commands": {
+    "sleet-identity.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/task110-evidence/deps/sleet",
+        "rev-parse",
+        "HEAD",
+        "HEAD^{tree}"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "source-status.command.json": {
+      "argv": [
+        "git",
+        "status",
+        "--porcelain"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "baseline-log.command.json": {
+      "argv": [
+        "/home/zboll/task110-evidence/target/release/ams-gra-codegen-oms",
+        "service-generate",
+        "--schema",
+        "/home/zboll/task110-evidence/accept14-openssl/uci26/UCI_MessageDefinitions_v2_6_0.xsd",
+        "--contract",
+        "/home/zboll/git/ams-gra-codegen-oms-task110/tests/fixtures/task102/uci26-service.yaml",
+        "--language",
+        "ada",
+        "--world",
+        "closed-schema",
+        "--with-codec",
+        "--output",
+        "/home/zboll/task110-evidence/accept14-openssl/baseline-log"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "uci-release-identity.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/task110-evidence/deps/uci26",
+        "rev-parse",
+        "HEAD",
+        "HEAD^{tree}"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "platform.command.json": {
+      "argv": [
+        "sh",
+        "-ec",
+        ". /home/zboll/task110-evidence/accept14-openssl/environment.sh; exec sh -ec 'uname -a; getconf GNU_LIBC_VERSION; gprbuild --version; openssl version; sha256sum $(command -v gcc) $(command -v gnat) $(command -v gprbuild)'"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "baseline-rdma.command.json": {
+      "argv": [
+        "/home/zboll/task110-evidence/target/release/ams-gra-codegen-oms",
+        "service-generate",
+        "--schema",
+        "/home/zboll/task110-evidence/accept14-openssl/uci26/UCI_MessageDefinitions_v2_6_0.xsd",
+        "--contract",
+        "/home/zboll/git/ams-gra-codegen-oms-task110/tests/fixtures/task103/uci26-service.yaml",
+        "--language",
+        "ada",
+        "--world",
+        "closed-schema",
+        "--with-codec",
+        "--output",
+        "/home/zboll/task110-evidence/accept14-openssl/baseline-rdma"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "aht-clean.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/task110-evidence/deps/aht",
+        "status",
+        "--porcelain"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "codec-archive.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/task110-evidence/deps/codec",
+        "archive",
+        "--output",
+        "/home/zboll/task110-evidence/accept14-openssl/codec.tar",
+        "765d9cd612838eb00645037977c8cc9af7171c3e"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "sleet-final-clean.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/task110-evidence/deps/sleet",
+        "status",
+        "--porcelain"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "aht-extract.command.json": {
+      "argv": [
+        "tar",
+        "-xf",
+        "/home/zboll/task110-evidence/accept14-openssl/aht.tar",
+        "-C",
+        "/home/zboll/task110-evidence/accept14-openssl/aht"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "compiler.command.json": {
+      "argv": [
+        "sh",
+        "-ec",
+        ". /home/zboll/task110-evidence/accept14-openssl/environment.sh; exec gnat --version"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "codec-extract.command.json": {
+      "argv": [
+        "tar",
+        "-xf",
+        "/home/zboll/task110-evidence/accept14-openssl/codec.tar",
+        "-C",
+        "/home/zboll/task110-evidence/accept14-openssl/codec"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "build.command.json": {
+      "argv": [
+        "sh",
+        "-ec",
+        ". /home/zboll/task110-evidence/accept14-openssl/environment.sh; exec gprbuild -p -j4 -P /home/zboll/task110-evidence/accept14-openssl/build/consumer.gpr"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "uci-release-clean.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/task110-evidence/deps/uci26",
+        "status",
+        "--porcelain"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "verify.command.json": {
+      "argv": [
+        "/home/zboll/task110-evidence/venv/bin/python",
+        "/home/zboll/git/ams-gra-codegen-oms-task110/scripts/task110/verify.py",
+        "/home/zboll/task110-evidence/accept14-openssl"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "aht-archive.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/task110-evidence/deps/aht",
+        "archive",
+        "--output",
+        "/home/zboll/task110-evidence/accept14-openssl/aht.tar",
+        "827b0c17dd964e935f8e88912ce0611ee92b6f16"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "codec-final-clean.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/task110-evidence/deps/codec",
+        "status",
+        "--porcelain"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "certificate.command.json": {
+      "argv": [
+        "openssl",
+        "req",
+        "-x509",
+        "-newkey",
+        "rsa:2048",
+        "-nodes",
+        "-keyout",
+        "/home/zboll/task110-evidence/accept14-openssl/key.pem",
+        "-out",
+        "/home/zboll/task110-evidence/accept14-openssl/cert.pem",
+        "-days",
+        "2",
+        "-subj",
+        "/CN=localhost",
+        "-addext",
+        "subjectAltName=DNS:localhost"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "source.command.json": {
+      "argv": [
+        "git",
+        "rev-parse",
+        "HEAD",
+        "HEAD^{tree}"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "codec-clean.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/task110-evidence/deps/codec",
+        "status",
+        "--porcelain"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "admission.command.json": {
+      "argv": [
+        "/home/zboll/task110-evidence/venv/bin/python",
+        "/home/zboll/git/ams-gra-codegen-oms-task110/scripts/task110/admission.py",
+        "--evidence",
+        "/home/zboll/task110-evidence/accept14-openssl/admission",
+        "--sleet",
+        "/home/zboll/task110-evidence/deps/sleet",
+        "--uci26",
+        "/home/zboll/task110-evidence/accept14-openssl/uci26/UCI_MessageDefinitions_v2_6_0.xsd"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "wss.command.json": {
+      "argv": [
+        "/home/zboll/task110-evidence/venv/bin/python",
+        "/home/zboll/git/ams-gra-codegen-oms-task110/scripts/task110/sleet.py",
+        "--checkout",
+        "/home/zboll/task110-evidence/deps/sleet",
+        "--schema",
+        "/home/zboll/task110-evidence/accept14-openssl/uci26/UCI_MessageDefinitions_v2_6_0.xsd",
+        "--evidence",
+        "/home/zboll/task110-evidence/accept14-openssl/wss",
+        "--consumer",
+        "/home/zboll/task110-evidence/accept14-openssl/wss-consumer"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "sleet-clean.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/task110-evidence/deps/sleet",
+        "status",
+        "--porcelain"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "codec-identity.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/task110-evidence/deps/codec",
+        "rev-parse",
+        "HEAD",
+        "HEAD^{tree}"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "printenv.command.json": {
+      "argv": [
+        "alr",
+        "-s",
+        "/home/zboll/task110-evidence/setup14/settings",
+        "-n",
+        "printenv"
+      ],
+      "cwd": "/home/zboll/task110-evidence/setup14/consumer"
+    },
+    "model.command.json": {
+      "argv": [
+        "/home/zboll/task110-evidence/target/release/ams-gra-codegen-oms",
+        "service-generate",
+        "--schema",
+        "/home/zboll/task110-evidence/accept14-openssl/uci26/UCI_MessageDefinitions_v2_6_0.xsd",
+        "--contract",
+        "/home/zboll/git/ams-gra-codegen-oms-task110/tests/fixtures/task110/uci26-service.yaml",
+        "--language",
+        "ada",
+        "--world",
+        "closed-schema",
+        "--output",
+        "/home/zboll/task110-evidence/accept14-openssl/model"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "check.command.json": {
+      "argv": [
+        "/home/zboll/task110-evidence/target/release/ams-gra-codegen-oms",
+        "service-check",
+        "--schema",
+        "/home/zboll/task110-evidence/accept14-openssl/uci26/UCI_MessageDefinitions_v2_6_0.xsd",
+        "--contract",
+        "/home/zboll/git/ams-gra-codegen-oms-task110/tests/fixtures/task110/uci26-service.yaml",
+        "--language",
+        "ada",
+        "--world",
+        "closed-schema",
+        "--with-codec"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "baseline-survivability.command.json": {
+      "argv": [
+        "/home/zboll/task110-evidence/target/release/ams-gra-codegen-oms",
+        "service-generate",
+        "--schema",
+        "/home/zboll/task110-evidence/accept14-openssl/uci26/UCI_MessageDefinitions_v2_6_0.xsd",
+        "--contract",
+        "/home/zboll/git/ams-gra-codegen-oms-task110/tests/fixtures/task105/uci26-service.yaml",
+        "--language",
+        "ada",
+        "--world",
+        "closed-schema",
+        "--with-codec",
+        "--output",
+        "/home/zboll/task110-evidence/accept14-openssl/baseline-survivability"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "aht-final-clean.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/task110-evidence/deps/aht",
+        "status",
+        "--porcelain"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "aht-identity.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/task110-evidence/deps/aht",
+        "rev-parse",
+        "HEAD",
+        "HEAD^{tree}"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "generate.command.json": {
+      "argv": [
+        "/home/zboll/task110-evidence/target/release/ams-gra-codegen-oms",
+        "service-generate",
+        "--schema",
+        "/home/zboll/task110-evidence/accept14-openssl/uci26/UCI_MessageDefinitions_v2_6_0.xsd",
+        "--contract",
+        "/home/zboll/git/ams-gra-codegen-oms-task110/tests/fixtures/task110/uci26-service.yaml",
+        "--language",
+        "ada",
+        "--world",
+        "closed-schema",
+        "--with-codec",
+        "--output",
+        "/home/zboll/task110-evidence/accept14-openssl/generated"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    }
+  },
+  "generated-sources.json": {
+    "service_api.ads": "abe3f9933fa2521b649b5bd3973eb09891bea757197933eae36a1594907700f6",
+    "service_codec.adb": "ca0ac6ebd5517df1075f023d9728ec29ed669ef4ef30486f1c82e1d8a4e9f632",
+    "programs.ads": "a5d92d26a18c03999588818e68c5a8b3426ff1c780a7582bf21121727b4a0d16",
+    "service_codec.ads": "60bbec5768703bad5bdf276764b9db89837d0d7be918de2d23d793a8259731b1",
+    "programs-oam.ads": "d7fcf77ec9471b64b0ce18fc894a879c5dd44e21a79ddf94fc9b36119fcafb81",
+    "programs-oam.adb": "7c7ff8289932666769da1f2d3c0f51c52c27c594a516c789f69a318963cd4ddf"
+  },
+  "schema-sources.json": {
+    "UCI_MessageDefinitions_v2_6_0.xsd": "af54ce724c4fe869c8208c86985c0b768d74d581691e21d66c88bb6cfe59955b",
+    "UCI_SecurityMarkings_v2_6_0.xsd": "ee6e58d5db9fd80d526bc964b8244ec296d106301640d34c3cb2c5c00b710b88"
+  },
+  "representation-parity.json": {
+    "log": {
+      "payload": "LogMT",
+      "records": {
+        "HexBinaryType": "ba96549f7a482d1236ace75a70414af12f83a395adf4ebe83d575d050ef3431c",
+        "ID_Type": "3726ab84607c9841724cd6f353c638d4163471adad25c4dd48d7fc4553a6b6f2",
+        "CapabilityID_Type": "56e003e7bc367024ee7202b14b680ab95a7f7302ae9b576c82e860c7c6257c94",
+        "ComponentID_Type": "310f1975206880dcfd03a44da3acf58a36a154c710bb45d8523affb12356e44e",
+        "ServiceID_Type": "d64e16e2b5b39e91d3e78fb551138d131b70cf32b7b1ce1fad31191a0a30520d",
+        "SubsystemID_Type": "19ad2aa5ae430db5acd45fa2347483d5b5c16e3e3a31423193b3ca6a87e6afb1",
+        "SystemID_Type": "20a58860c74cffa0e14d1fed63c16a5d9790360ca5c97c45b45054475cf45afa",
+        "VersionedID_Type": "6a285f08ec690f116fafb220ef60bb63beca716686d94b68010a6686e140f92c",
+        "MissionID_Type": "291a4ccc0674febb225fb730c36b644c1c596bae56a826914300cdb941b61847",
+        "HeaderType": "070e23081d8f54bba33e8b3e87a9a0618b8995032ab0f9260a1687c0a6248043",
+        "LogMDT": "693954ef4b9b52717a41d18b2150b54fd465a9654b752d2a6c9571882f987e50",
+        "SecurityInformationType_OwnerProducer_Sequence": "fc2d52aeed9495b5ed3eac254303d9be4781b249cb81057f55f11ae4edf6b648",
+        "SecurityInformationType": "66e562fde80691edb1ec71cf989dd788dc3628fcdaaaa4e7bdf1867971b949b3",
+        "LogMT": "05fa0784740cb49afb2a204f66dbc8c53ec2ee7262c65993376d3a1b6d855002",
+        "DurationType": "ce8f7fa321298899e822d89e804f1da0a17dedde4460040635b82815514a6dc8",
+        "UCI_SchemaVersionStringType": "0ca2966a323a6d6384fed11c21b1771c341701076fa29b0ac54f9792dad4000e",
+        "UniversallyUniqueIdentifierType": "fc4a3c24cd5e8e46c4d6ed7e115e39cc32f38785ae52511a5709ededd78e4a97",
+        "VisibleString1024Type": "421311bfa59dd55e2743884a2e473ca935298a7928ad4682264db1d9fe787a13",
+        "VisibleString256Type": "7ea91a4da628c2ba9da6cc713481f856be4f226bb035e1bfef7ceebdc8105b12",
+        "DateTimeType": "e55d4845474da7f7b1b11e9d6f1308ccff67709217ddd8496dc3c27e9e391080",
+        "LogMDT_ComponentID_Sequence": "77736f34f8ec6b1b32d78682d8972fab759fdb1ed61813b7de221eead9b2d7c0",
+        "LogMDT_CapabilityID_Sequence": "67b456b3ac948e590ba1153076ad91cc596c42d3dc8f59a4587eb52344f4a246",
+        "NATO_SpecialWordsType": "2c5d3a958428cfd57291cd3f0b5c6a54fd670534c742d68df688a6fe566663f4",
+        "WhitespaceVisibleString1024Type": "c3b567d7080a7388db9b28c1180e13ef6980000e590b1907deb3de4ecb680f92",
+        "WhitespaceVisibleString4096Type": "930a276a03541c435e581a529267d6bec3fc6eab5e34f4409f40b496211d2e16",
+        "SecurityInformationType_OwnerProducer_Additional": "d9e6e6ec6bf63e363055e65bff5bf39fecb16b139bc93d09deade706fc22fa8a",
+        "SecurityInformationType_SCI_Controls_Sequence": "f196eb6d3c31e8f3c06e3d8f3e1916e5bf781f2d6c238a97de850f9653771670",
+        "SecurityInformationType_SAR_Identifier_Sequence": "df6891ff0130e320373e595c57b4e16387dc501bb54283adb81c985d77b1dc30",
+        "SecurityInformationType_AtomicEnergyMarkings_Sequence": "ad93a859aa05c587fef6695b0b6c32ed51e90bf59bd6632396d48d38d948faa1",
+        "SecurityInformationType_DisseminationControls_Sequence": "c188b4b9180a6e6ce7b0a67c3d25dc5766f42cef8105b38abff359a51697bf3d",
+        "SecurityInformationType_DisplayOnlyTo_Sequence": "5568e97fc3e2f7e768a42dfa70bcf47b8c4ce99a9e8131a3f73d377d96babf07",
+        "SecurityInformationType_FGI_SourceOpen_Sequence": "b7af8afc9d411bedfca48a2aaf7c7543b36ea34113bd48752f5c8a51a05dbaa5",
+        "SecurityInformationType_FGI_SourceProtected_Sequence": "8ef4710acf3a78796a73a041124bf5375c5fbc5b67f4a10221dd603c9c77204f",
+        "SecurityInformationType_ReleasableTo_Sequence": "45542dc926b5f281b2ae12743db21c1b9def25690e7e36cf6fcbf2959cb36ef8",
+        "SecurityInformationType_NonIC_Markings_Sequence": "40e6281792acc764a31bdeb1a274ad2f191f7464b24457e4b2cf94e1b50d3a47",
+        "SecurityInformationType_NonUS_Controls_Sequence": "ccf6ec4d49ca9abd34c70bbd290eb7dbb7a47e5d4cf37ab97632f5b89772bb62",
+        "SecurityInformationType_DeclassException_Sequence": "f1dae6d2e4df66ea20ffa81062d147da547146f08af2d4add693ec159b29f4b1",
+        "SecurityInformationType_HighWaterNATO_Sequence": "0b533caf15d34dc4d6a3547ada96ff85460962b0ce75659579429bfd6020e1d2",
+        "SecurityInformationType_CUI_Basic_Sequence": "792c2431bd9e9cd2018b20df93d6b7c42003abc0b2556b8026c801755e32a364",
+        "SecurityInformationType_CUI_Specified_Sequence": "00d73fc5fe20f27b2e955af3fc2ee24eb066f2d33b967dcd2e65a2e8d2019e60",
+        "SecurityInformationType_SecondBannerLine_Sequence": "df2410c9523a1a303cc03da9c4338d8410aed4f8aa60ff2e3cecd153b0bee3f9"
+      },
+      "baseline_hashes": {
+        "service_api.ads": "74e7bfa907a2586d4d8bbc872a23ef10d771b47f4b96406a92d69698c57b6d7c",
+        "service_codec.adb": "23e7a07959d689b2506763d005c97ce999e919632434a3c7ef55d9525cef9d79",
+        "programs.ads": "a5d92d26a18c03999588818e68c5a8b3426ff1c780a7582bf21121727b4a0d16",
+        "service_codec.ads": "6cd02c0a1a55e832b597a92384236adf72c96b3e54798d208fb5a2b48b896fc7",
+        "programs-oam.ads": "dd6d639d43180e72e82a22cd4b06a4cda15884f46dd35567aaf65245e086df3d",
+        "programs-oam.adb": "cf9bd59efc27d0ab26b08571614c26a6ca2725a1a7aa397a56f25f50d8797f95"
+      }
+    },
+    "rdma": {
+      "payload": "RDMA_InitializeSetupMT",
+      "records": {
+        "IPv4_AddressRoutingType": "0c6f78b9656392b435141c6ebdcb2a130b74a401079da59ec87a17d5e7760ce7",
+        "IPv6_AddressRoutingType": "7c73099d881dee1f9707017c920f96d4060240f126d2b95d8989e1432d6d3930",
+        "IPv4_EndpointType": "7340db80210cdba3833ab86e1337fd6b78f0625c9c8092dc78316df60853c25b",
+        "IPv6_EndpointType": "9f3c920e5eb745240c4c81fdd8a9e7a1a8f44542f252773302cb0b8abad0a782",
+        "ID_Type": "3726ab84607c9841724cd6f353c638d4163471adad25c4dd48d7fc4553a6b6f2",
+        "RDMA_InitializeID_Type": "5986e5ad89634da8fc8632308bdfdf5d82d79e14808ae69d3b4cb06b30c4b303",
+        "RDMA_InitializeSetupID_Type": "34d0648a7b8ac2be878fe6b882e55fc57c1b3bcbb6b1d81113bb05b244b5cc66",
+        "ServiceID_Type": "d64e16e2b5b39e91d3e78fb551138d131b70cf32b7b1ce1fad31191a0a30520d",
+        "SubsystemID_Type": "19ad2aa5ae430db5acd45fa2347483d5b5c16e3e3a31423193b3ca6a87e6afb1",
+        "SystemID_Type": "20a58860c74cffa0e14d1fed63c16a5d9790360ca5c97c45b45054475cf45afa",
+        "RDMA_InitializeSetupMDT": "a52e21488d9bb93e398dca610127b3c2b3298ef06f110153b1de30e32accbda8",
+        "VersionedID_Type": "6a285f08ec690f116fafb220ef60bb63beca716686d94b68010a6686e140f92c",
+        "MissionID_Type": "291a4ccc0674febb225fb730c36b644c1c596bae56a826914300cdb941b61847",
+        "HeaderType": "070e23081d8f54bba33e8b3e87a9a0618b8995032ab0f9260a1687c0a6248043",
+        "SecurityInformationType_OwnerProducer_Sequence": "fc2d52aeed9495b5ed3eac254303d9be4781b249cb81057f55f11ae4edf6b648",
+        "SecurityInformationType": "66e562fde80691edb1ec71cf989dd788dc3628fcdaaaa4e7bdf1867971b949b3",
+        "RDMA_InitializeSetupMT": "5aab42b6337ff489f1a0b389bc6a1c632ea52047e602025f46e4c31478f4cafa",
+        "IPv4_AddressType": "c056422adc311e832d235bf850522c455e0fc77410d8195a166c595d1ed1890c",
+        "IPv6_AddressType": "06b5f537c783d8554af00201bfa52b94a07cd6dfc3ce37300428e316cd731175",
+        "UCI_SchemaVersionStringType": "0ca2966a323a6d6384fed11c21b1771c341701076fa29b0ac54f9792dad4000e",
+        "UniversallyUniqueIdentifierType": "fc4a3c24cd5e8e46c4d6ed7e115e39cc32f38785ae52511a5709ededd78e4a97",
+        "VisibleString1024Type": "421311bfa59dd55e2743884a2e473ca935298a7928ad4682264db1d9fe787a13",
+        "VisibleString256Type": "7ea91a4da628c2ba9da6cc713481f856be4f226bb035e1bfef7ceebdc8105b12",
+        "RDMA_InitializeSetupMDT_Endpoint_Sequence": "9dfd197ee23abb92717c54e2e7508ba52edb01bda4ab1b82ca0f73512124af36",
+        "DateTimeType": "e55d4845474da7f7b1b11e9d6f1308ccff67709217ddd8496dc3c27e9e391080",
+        "NATO_SpecialWordsType": "2c5d3a958428cfd57291cd3f0b5c6a54fd670534c742d68df688a6fe566663f4",
+        "WhitespaceVisibleString1024Type": "c3b567d7080a7388db9b28c1180e13ef6980000e590b1907deb3de4ecb680f92",
+        "WhitespaceVisibleString4096Type": "930a276a03541c435e581a529267d6bec3fc6eab5e34f4409f40b496211d2e16",
+        "SecurityInformationType_OwnerProducer_Additional": "d9e6e6ec6bf63e363055e65bff5bf39fecb16b139bc93d09deade706fc22fa8a",
+        "SecurityInformationType_SCI_Controls_Sequence": "f196eb6d3c31e8f3c06e3d8f3e1916e5bf781f2d6c238a97de850f9653771670",
+        "SecurityInformationType_SAR_Identifier_Sequence": "df6891ff0130e320373e595c57b4e16387dc501bb54283adb81c985d77b1dc30",
+        "SecurityInformationType_AtomicEnergyMarkings_Sequence": "ad93a859aa05c587fef6695b0b6c32ed51e90bf59bd6632396d48d38d948faa1",
+        "SecurityInformationType_DisseminationControls_Sequence": "c188b4b9180a6e6ce7b0a67c3d25dc5766f42cef8105b38abff359a51697bf3d",
+        "SecurityInformationType_DisplayOnlyTo_Sequence": "5568e97fc3e2f7e768a42dfa70bcf47b8c4ce99a9e8131a3f73d377d96babf07",
+        "SecurityInformationType_FGI_SourceOpen_Sequence": "b7af8afc9d411bedfca48a2aaf7c7543b36ea34113bd48752f5c8a51a05dbaa5",
+        "SecurityInformationType_FGI_SourceProtected_Sequence": "8ef4710acf3a78796a73a041124bf5375c5fbc5b67f4a10221dd603c9c77204f",
+        "SecurityInformationType_ReleasableTo_Sequence": "45542dc926b5f281b2ae12743db21c1b9def25690e7e36cf6fcbf2959cb36ef8",
+        "SecurityInformationType_NonIC_Markings_Sequence": "40e6281792acc764a31bdeb1a274ad2f191f7464b24457e4b2cf94e1b50d3a47",
+        "SecurityInformationType_NonUS_Controls_Sequence": "ccf6ec4d49ca9abd34c70bbd290eb7dbb7a47e5d4cf37ab97632f5b89772bb62",
+        "SecurityInformationType_DeclassException_Sequence": "f1dae6d2e4df66ea20ffa81062d147da547146f08af2d4add693ec159b29f4b1",
+        "SecurityInformationType_HighWaterNATO_Sequence": "0b533caf15d34dc4d6a3547ada96ff85460962b0ce75659579429bfd6020e1d2",
+        "SecurityInformationType_CUI_Basic_Sequence": "792c2431bd9e9cd2018b20df93d6b7c42003abc0b2556b8026c801755e32a364",
+        "SecurityInformationType_CUI_Specified_Sequence": "00d73fc5fe20f27b2e955af3fc2ee24eb066f2d33b967dcd2e65a2e8d2019e60",
+        "SecurityInformationType_SecondBannerLine_Sequence": "df2410c9523a1a303cc03da9c4338d8410aed4f8aa60ff2e3cecd153b0bee3f9"
+      },
+      "baseline_hashes": {
+        "service_api.ads": "d17bc679c4880127cf65d240207e484dc801fffeec7c3b3970e7014eb404464f",
+        "service_codec.adb": "1acb14bf040f374f051af6d2629cd947ccfb986b3de389a29c3ffdf3c93085ca",
+        "programs.ads": "a5d92d26a18c03999588818e68c5a8b3426ff1c780a7582bf21121727b4a0d16",
+        "service_codec.ads": "c0e02e14c43a14cbe7305d4df006ac24a5e6b1eebfb083b29e9e1f7cbf87567c",
+        "programs-oam.ads": "94accc8e98d7fd92e73d5877192c6cb32dedfd866772983f49f94019c8988161",
+        "programs-oam.adb": "25c829c08201c75dac7181f0a5300d5f6da84cd85e5f9d0b8d7e3da60337ec10"
+      }
+    },
+    "survivability": {
+      "payload": "SurvivabilityRiskLevelMT",
+      "records": {
+        "VulnerabilityLevelsType": "b316fa4f8bb2f40bac6b8030f8ba1d45a06316d5919417034f01e324d9bc543b",
+        "ID_Type": "3726ab84607c9841724cd6f353c638d4163471adad25c4dd48d7fc4553a6b6f2",
+        "ServiceID_Type": "d64e16e2b5b39e91d3e78fb551138d131b70cf32b7b1ce1fad31191a0a30520d",
+        "SurvivabilityRiskLevelID_Type": "209fe68b8973dd676d3ef44f2cb972a5027bd45887270f6c7e44483b4f7cbff9",
+        "SystemID_Type": "20a58860c74cffa0e14d1fed63c16a5d9790360ca5c97c45b45054475cf45afa",
+        "VersionedID_Type": "6a285f08ec690f116fafb220ef60bb63beca716686d94b68010a6686e140f92c",
+        "MissionID_Type": "291a4ccc0674febb225fb730c36b644c1c596bae56a826914300cdb941b61847",
+        "RiskSettingType": "5f72c5702a4cd6463be9ec297f2b47b5d174849d57ef15fbc84406134261fe31",
+        "SurvivabilityRiskSettingType": "3954c06fa7ece35fcaa1e6b231075bb9c2a1f2690b2b8078bfdab0db3ffa4015",
+        "SurvivabilityRiskLevelMDT": "bba96b3c8437c260e2e18b25364d6df4e61f241b91d4f797835b4bd4db44e6d1",
+        "HeaderType": "070e23081d8f54bba33e8b3e87a9a0618b8995032ab0f9260a1687c0a6248043",
+        "SecurityInformationType_OwnerProducer_Sequence": "fc2d52aeed9495b5ed3eac254303d9be4781b249cb81057f55f11ae4edf6b648",
+        "SecurityInformationType": "66e562fde80691edb1ec71cf989dd788dc3628fcdaaaa4e7bdf1867971b949b3",
+        "SurvivabilityRiskLevelMT": "2c917e6ea95a4b97135360e3784fec77477013032be5180c5304f2e05939c94f",
+        "DurationType": "ce8f7fa321298899e822d89e804f1da0a17dedde4460040635b82815514a6dc8",
+        "UCI_SchemaVersionStringType": "0ca2966a323a6d6384fed11c21b1771c341701076fa29b0ac54f9792dad4000e",
+        "UniversallyUniqueIdentifierType": "fc4a3c24cd5e8e46c4d6ed7e115e39cc32f38785ae52511a5709ededd78e4a97",
+        "VisibleString256Type": "7ea91a4da628c2ba9da6cc713481f856be4f226bb035e1bfef7ceebdc8105b12",
+        "SurvivabilityRiskSettingType_RiskLevel_Sequence": "74f4fbdf3315aac6728403f9a394e8e91e22bb365fd02f0c17297f42c81d8c62",
+        "SurvivabilityRiskLevelMDT_AppliesToSystemID_Sequence": "43a7424eb912827dd3fed87c5c0f67cc59af1abd05160e3ca7ff9a5fc6335c76",
+        "SurvivabilityRiskLevelMDT_RiskSetting_Sequence": "2cf480bcda1bc708b123dfe7c4ebd6b09d17e54a68496c541cad39abbedc4724",
+        "DateTimeType": "e55d4845474da7f7b1b11e9d6f1308ccff67709217ddd8496dc3c27e9e391080",
+        "NATO_SpecialWordsType": "2c5d3a958428cfd57291cd3f0b5c6a54fd670534c742d68df688a6fe566663f4",
+        "WhitespaceVisibleString1024Type": "c3b567d7080a7388db9b28c1180e13ef6980000e590b1907deb3de4ecb680f92",
+        "WhitespaceVisibleString4096Type": "930a276a03541c435e581a529267d6bec3fc6eab5e34f4409f40b496211d2e16",
+        "SecurityInformationType_OwnerProducer_Additional": "d9e6e6ec6bf63e363055e65bff5bf39fecb16b139bc93d09deade706fc22fa8a",
+        "SecurityInformationType_SCI_Controls_Sequence": "f196eb6d3c31e8f3c06e3d8f3e1916e5bf781f2d6c238a97de850f9653771670",
+        "SecurityInformationType_SAR_Identifier_Sequence": "df6891ff0130e320373e595c57b4e16387dc501bb54283adb81c985d77b1dc30",
+        "SecurityInformationType_AtomicEnergyMarkings_Sequence": "ad93a859aa05c587fef6695b0b6c32ed51e90bf59bd6632396d48d38d948faa1",
+        "SecurityInformationType_DisseminationControls_Sequence": "c188b4b9180a6e6ce7b0a67c3d25dc5766f42cef8105b38abff359a51697bf3d",
+        "SecurityInformationType_DisplayOnlyTo_Sequence": "5568e97fc3e2f7e768a42dfa70bcf47b8c4ce99a9e8131a3f73d377d96babf07",
+        "SecurityInformationType_FGI_SourceOpen_Sequence": "b7af8afc9d411bedfca48a2aaf7c7543b36ea34113bd48752f5c8a51a05dbaa5",
+        "SecurityInformationType_FGI_SourceProtected_Sequence": "8ef4710acf3a78796a73a041124bf5375c5fbc5b67f4a10221dd603c9c77204f",
+        "SecurityInformationType_ReleasableTo_Sequence": "45542dc926b5f281b2ae12743db21c1b9def25690e7e36cf6fcbf2959cb36ef8",
+        "SecurityInformationType_NonIC_Markings_Sequence": "40e6281792acc764a31bdeb1a274ad2f191f7464b24457e4b2cf94e1b50d3a47",
+        "SecurityInformationType_NonUS_Controls_Sequence": "ccf6ec4d49ca9abd34c70bbd290eb7dbb7a47e5d4cf37ab97632f5b89772bb62",
+        "SecurityInformationType_DeclassException_Sequence": "f1dae6d2e4df66ea20ffa81062d147da547146f08af2d4add693ec159b29f4b1",
+        "SecurityInformationType_HighWaterNATO_Sequence": "0b533caf15d34dc4d6a3547ada96ff85460962b0ce75659579429bfd6020e1d2",
+        "SecurityInformationType_CUI_Basic_Sequence": "792c2431bd9e9cd2018b20df93d6b7c42003abc0b2556b8026c801755e32a364",
+        "SecurityInformationType_CUI_Specified_Sequence": "00d73fc5fe20f27b2e955af3fc2ee24eb066f2d33b967dcd2e65a2e8d2019e60",
+        "SecurityInformationType_SecondBannerLine_Sequence": "df2410c9523a1a303cc03da9c4338d8410aed4f8aa60ff2e3cecd153b0bee3f9"
+      },
+      "baseline_hashes": {
+        "service_api.ads": "4ac2bead5314335e420ad89236be5c2ead0691adf7701fc65484743eba78f8bd",
+        "service_codec.adb": "17b0874932ab43b8b8ebe84054fc3fb7f2f750f0f66974d490b41e30f0f03637",
+        "programs.ads": "a5d92d26a18c03999588818e68c5a8b3426ff1c780a7582bf21121727b4a0d16",
+        "service_codec.ads": "ed7475f3d74fe3e91028f7c3d601ce2f4288393284debb6a723dbc32d6e6266d",
+        "programs-oam.ads": "bec55b85b53964b24ad8b8045fbdc65e2df02af0b8cae778db286c7ec96f4832",
+        "programs-oam.adb": "bff53529498906f66edd6fe13735e6837d2240d5f37d5ac093a20e267114e589"
+      }
+    }
+  },
+  "admission/result.json": {
+    "status": "PASS",
+    "generated_ada_decoder_executed": false,
+    "subscriptions": [
+      {
+        "sid": 1,
+        "name": "Log",
+        "topic": "task110-log"
+      },
+      {
+        "sid": 2,
+        "name": "RDMA_InitializeSetup",
+        "topic": "task110-rdma"
+      },
+      {
+        "sid": 3,
+        "name": "SurvivabilityRiskLevel",
+        "topic": "task110-survivability"
+      }
+    ],
+    "deliveries": [
+      {
+        "sid": 1,
+        "name": "Log",
+        "topic": "task110-log"
+      },
+      {
+        "sid": 2,
+        "name": "RDMA_InitializeSetup",
+        "topic": "task110-rdma"
+      },
+      {
+        "sid": 3,
+        "name": "SurvivabilityRiskLevel",
+        "topic": "task110-survivability"
+      },
+      {
+        "sid": 2,
+        "name": "RDMA_InitializeSetup",
+        "topic": "task110-rdma"
+      },
+      {
+        "sid": 1,
+        "name": "Log",
+        "topic": "task110-log"
+      },
+      {
+        "sid": 3,
+        "name": "SurvivabilityRiskLevel",
+        "topic": "task110-survivability"
+      },
+      {
+        "sid": 2,
+        "name": "RDMA_InitializeSetup",
+        "topic": "task110-rdma"
+      },
+      {
+        "sid": 3,
+        "name": "SurvivabilityRiskLevel",
+        "topic": "task110-survivability"
+      }
+    ],
+    "owp_negotiated": true,
+    "init_count": 1,
+    "info_validated": true,
+    "survivor_deliveries": true,
+    "unsubscribed": true,
+    "websocket_closed": true,
+    "cleanup": true
+  },
+  "wss/result.json": {
+    "completed": true,
+    "cleanup": true,
+    "counts": {
+      "log": 17,
+      "rdma": 19,
+      "survivability": 19
+    },
+    "decode_errors": 5,
+    "broker_rejections": 48,
+    "steps": 62,
+    "consumer_exit": 0,
+    "witness_deliveries": 61,
+    "server_exit": 0,
+    "ada_connection_id": "1",
+    "registrations": [
+      [
+        "1",
+        "1",
+        "task110-log",
+        "Log"
+      ],
+      [
+        "1",
+        "2",
+        "task110-rdma",
+        "RDMA_InitializeSetup"
+      ],
+      [
+        "1",
+        "3",
+        "task110-survivability",
+        "SurvivabilityRiskLevel"
+      ]
+    ]
+  },
+  "tls/result.json": {
+    "tls": "TLSv1.3",
+    "cipher": [
+      "TLS_AES_256_GCM_SHA384",
+      "TLSv1.3",
+      256
+    ],
+    "records": 189,
+    "partial_writes": 93,
+    "record_batches": 92,
+    "consumer_exit": 0,
+    "cleanup": true,
+    "errors": [],
+    "ada_sha256": "53de1f2d6eb673368a0c0fcc69961e5c2e21a83eaac9cfb4cb52ac8853da7953",
+    "sleet_sha256": "ace70d1d545bd45feaa4d959355868f39473ac3159983e0fa0272e37c8a7ea1f",
+    "completed": true
+  },
+  "tls/consumer.command.json": [
+    "/home/zboll/task110-evidence/accept14-openssl/build/bin/multimessage_consumer",
+    "wss://localhost:56611/",
+    "/home/zboll/task110-evidence/accept14-openssl/wss/plan.jsonl"
+  ],
+  "independent_reverification": {
+    "completed": true,
+    "task110": {
+      "completed": true,
+      "cleanup": true,
+      "counts": {
+        "log": 17,
+        "rdma": 19,
+        "survivability": 19
+      },
+      "decode_errors": 5,
+      "broker_rejections": 48,
+      "steps": 62,
+      "consumer_exit": 0,
+      "server_exit": 0,
+      "witness_deliveries": 61
+    },
+    "actual_wss_deliveries": 60
+  },
+  "checks": "service contract valid\nservice: task110-multimessage\nlanguage: ada\ngeneration world: closed-schema\n\nselected oms messages: 3\nrenderable selected oms messages: 3\nselected type closure: 65\nrenderable selected types: 65\nstatus: READY\n\ncodec renderable emitted declarations: 64/64\ncodec status: READY\n",
+  "generated_binary_sha256": "9bf13020e1cb970da73c8004c3ff417ad6bb71533336cf122feeda90ff7c039f",
+  "consumer_observation_lines": [
+    "TASK110_UPGRADE_OWP_COMPLETE",
+    "TASK110_EVENT COMMAND_ACCEPTED 0 +OK",
+    "TASK110_EVENT INITIALIZED 0 {\"version\":\"1.0\",\"server_id\":\"task110\",\"uuids\":{\"system\":\"550e8400-e29b-41d4-a716-446655440000\",\"service\":\"550e8400-e29b-41d4-a716-446655440110\",\"subsystem\":\"cace1b3d-ab26-5242-9bec-c602cee77346\"},\"system_label\":\"Task110\"}",
+    "TASK110_EVENT COMMAND_ACCEPTED 1 +OK",
+    "TASK110_EVENT COMMAND_ACCEPTED 2 +OK",
+    "TASK110_EVENT COMMAND_ACCEPTED 3 +OK",
+    "TASK110_SIDS 1 2 3",
+    "TASK110_OWNERSHIP_REJECTED 1",
+    "TASK110_OWNERSHIP_REJECTED 2",
+    "TASK110_OWNERSHIP_REJECTED 3",
+    "TASK110_OWNERSHIP_REJECTED 4",
+    "TASK110_OWNERSHIP_REJECTED 5",
+    "TASK110_OWNERSHIP_REJECTED 6",
+    "TASK110_OWNERSHIP_REJECTED 7",
+    "TASK110_OWNERSHIP_REJECTED 8",
+    "TASK110_OWNERSHIP_REJECTED 9",
+    "TASK110_SUBSCRIBED",
+    "TASK110_READY 1",
+    "TASK110_HANDLER log 1",
+    "TASK110_DONE 1 counts 1 0 0 errors 0",
+    "TASK110_READY 2",
+    "TASK110_EVENT COMMAND_ACCEPTED 0 +OK",
+    "TASK110_HANDLER log 2",
+    "TASK110_DONE 2 counts 2 0 0 errors 0",
+    "TASK110_READY 3",
+    "TASK110_HANDLER rdma 1",
+    "TASK110_DONE 3 counts 2 1 0 errors 0",
+    "TASK110_READY 4",
+    "TASK110_EVENT COMMAND_ACCEPTED 0 +OK",
+    "TASK110_HANDLER rdma 2",
+    "TASK110_DONE 4 counts 2 2 0 errors 0",
+    "TASK110_READY 5",
+    "TASK110_HANDLER survivability 1",
+    "TASK110_DONE 5 counts 2 2 1 errors 0",
+    "TASK110_READY 6",
+    "TASK110_EVENT COMMAND_ACCEPTED 0 +OK",
+    "TASK110_HANDLER survivability 2",
+    "TASK110_DONE 6 counts 2 2 2 errors 0",
+    "TASK110_READY 7",
+    "TASK110_HANDLER log 3",
+    "TASK110_DONE 7 counts 3 2 2 errors 0",
+    "TASK110_READY 8",
+    "TASK110_EVENT COMMAND_ACCEPTED 0 +OK",
+    "TASK110_HANDLER log 4",
+    "TASK110_DONE 8 counts 4 2 2 errors 0",
+    "TASK110_READY 9",
+    "TASK110_HANDLER rdma 3",
+    "TASK110_DONE 9 counts 4 3 2 errors 0",
+    "TASK110_READY 10",
+    "TASK110_EVENT COMMAND_ACCEPTED 0 +OK",
+    "TASK110_HANDLER rdma 4",
+    "TASK110_DONE 10 counts 4 4 2 errors 0",
+    "TASK110_READY 11",
+    "TASK110_HANDLER survivability 3",
+    "TASK110_DONE 11 counts 4 4 3 errors 0",
+    "TASK110_READY 12",
+    "TASK110_EVENT COMMAND_ACCEPTED 0 +OK",
+    "TASK110_HANDLER survivability 4",
+    "TASK110_DONE 12 counts 4 4 4 errors 0",
+    "TASK110_READY 13",
+    "TASK110_HANDLER log 5",
+    "TASK110_DONE 13 counts 5 4 4 errors 0",
+    "TASK110_READY 14",
+    "TASK110_EVENT COMMAND_ACCEPTED 0 +OK",
+    "TASK110_HANDLER log 6",
+    "TASK110_DONE 14 counts 6 4 4 errors 0",
+    "TASK110_READY 15",
+    "TASK110_HANDLER rdma 5",
+    "TASK110_DONE 15 counts 6 5 4 errors 0",
+    "TASK110_READY 16",
+    "TASK110_EVENT COMMAND_ACCEPTED 0 +OK",
+    "TASK110_HANDLER rdma 6",
+    "TASK110_DONE 16 counts 6 6 4 errors 0",
+    "TASK110_READY 17",
+    "TASK110_HANDLER survivability 5",
+    "TASK110_DONE 17 counts 6 6 5 errors 0",
+    "TASK110_READY 18",
+    "TASK110_EVENT COMMAND_ACCEPTED 0 +OK",
+    "TASK110_HANDLER survivability 6",
+    "TASK110_DONE 18 counts 6 6 6 errors 0",
+    "TASK110_READY 19",
+    "TASK110_HANDLER log 7",
+    "TASK110_DONE 19 counts 7 6 6 errors 0",
+    "TASK110_READY 20",
+    "TASK110_EVENT COMMAND_ACCEPTED 0 +OK",
+    "TASK110_HANDLER log 8",
+    "TASK110_DONE 20 counts 8 6 6 errors 0",
+    "TASK110_READY 21",
+    "TASK110_HANDLER rdma 7",
+    "TASK110_DONE 21 counts 8 7 6 errors 0",
+    "TASK110_READY 22",
+    "TASK110_EVENT COMMAND_ACCEPTED 0 +OK",
+    "TASK110_HANDLER rdma 8",
+    "TASK110_DONE 22 counts 8 8 6 errors 0",
+    "TASK110_READY 23",
+    "TASK110_HANDLER survivability 7",
+    "TASK110_DONE 23 counts 8 8 7 errors 0",
+    "TASK110_READY 24",
+    "TASK110_EVENT COMMAND_ACCEPTED 0 +OK",
+    "TASK110_HANDLER survivability 8",
+    "TASK110_DONE 24 counts 8 8 8 errors 0",
+    "TASK110_READY 25",
+    "TASK110_HANDLER log 9",
+    "TASK110_DONE 25 counts 9 8 8 errors 0",
+    "TASK110_READY 26",
+    "TASK110_EVENT COMMAND_ACCEPTED 0 +OK",
+    "TASK110_HANDLER log 10",
+    "TASK110_DONE 26 counts 10 8 8 errors 0",
+    "TASK110_READY 27",
+    "TASK110_HANDLER rdma 9",
+    "TASK110_DONE 27 counts 10 9 8 errors 0",
+    "TASK110_READY 28",
+    "TASK110_EVENT COMMAND_ACCEPTED 0 +OK",
+    "TASK110_HANDLER rdma 10",
+    "TASK110_DONE 28 counts 10 10 8 errors 0",
+    "TASK110_READY 29",
+    "TASK110_HANDLER survivability 9",
+    "TASK110_DONE 29 counts 10 10 9 errors 0",
+    "TASK110_READY 30",
+    "TASK110_EVENT COMMAND_ACCEPTED 0 +OK",
+    "TASK110_HANDLER survivability 10",
+    "TASK110_DONE 30 counts 10 10 10 errors 0",
+    "TASK110_READY 31",
+    "TASK110_HANDLER log 11",
+    "TASK110_DONE 31 counts 11 10 10 errors 0",
+    "TASK110_READY 32",
+    "TASK110_EVENT COMMAND_ACCEPTED 0 +OK",
+    "TASK110_HANDLER log 12",
+    "TASK110_DONE 32 counts 12 10 10 errors 0",
+    "TASK110_READY 33",
+    "TASK110_HANDLER rdma 11",
+    "TASK110_DONE 33 counts 12 11 10 errors 0",
+    "TASK110_READY 34",
+    "TASK110_EVENT COMMAND_ACCEPTED 0 +OK",
+    "TASK110_HANDLER rdma 12",
+    "TASK110_DONE 34 counts 12 12 10 errors 0",
+    "TASK110_READY 35",
+    "TASK110_HANDLER survivability 11",
+    "TASK110_DONE 35 counts 12 12 11 errors 0",
+    "TASK110_READY 36",
+    "TASK110_EVENT COMMAND_ACCEPTED 0 +OK",
+    "TASK110_HANDLER survivability 12",
+    "TASK110_DONE 36 counts 12 12 12 errors 0",
+    "TASK110_READY 37",
+    "TASK110_EVENT DECODE_ERROR 1 odd hexBinary digit count",
+    "TASK110_DECODE_ERROR 1 Log",
+    "TASK110_DONE 37 counts 12 12 12 errors 1",
+    "TASK110_READY 38",
+    "TASK110_HANDLER log 13",
+    "TASK110_DONE 38 counts 13 12 12 errors 1",
+    "TASK110_READY 39",
+    "TASK110_HANDLER rdma 13",
+    "TASK110_DONE 39 counts 13 13 12 errors 1",
+    "TASK110_READY 40",
+    "TASK110_HANDLER survivability 13",
+    "TASK110_DONE 40 counts 13 13 13 errors 1",
+    "TASK110_READY 41",
+    "TASK110_EVENT DECODE_ERROR 1 invalid hexBinary digit",
+    "TASK110_DECODE_ERROR 1 Log",
+    "TASK110_DONE 41 counts 13 13 13 errors 2",
+    "TASK110_READY 42",
+    "TASK110_HANDLER log 14",
+    "TASK110_DONE 42 counts 14 13 13 errors 2",
+    "TASK110_READY 43",
+    "TASK110_HANDLER rdma 14",
+    "TASK110_DONE 43 counts 14 14 13 errors 2",
+    "TASK110_READY 44",
+    "TASK110_HANDLER survivability 14",
+    "TASK110_DONE 44 counts 14 14 14 errors 2",
+    "TASK110_READY 45",
+    "TASK110_EVENT DECODE_ERROR 1 odd hexBinary digit count",
+    "TASK110_DECODE_ERROR 1 Log",
+    "TASK110_DONE 45 counts 14 14 14 errors 3",
+    "TASK110_READY 46",
+    "TASK110_HANDLER log 15",
+    "TASK110_DONE 46 counts 15 14 14 errors 3",
+    "TASK110_READY 47",
+    "TASK110_HANDLER rdma 15",
+    "TASK110_DONE 47 counts 15 15 14 errors 3",
+    "TASK110_READY 48",
+    "TASK110_HANDLER survivability 15",
+    "TASK110_DONE 48 counts 15 15 15 errors 3",
+    "TASK110_READY 49",
+    "TASK110_EVENT DECODE_ERROR 2 invalid named DateTime",
+    "TASK110_DECODE_ERROR 2 RDMA_InitializeSetup",
+    "TASK110_DONE 49 counts 15 15 15 errors 4",
+    "TASK110_READY 50",
+    "TASK110_HANDLER log 16",
+    "TASK110_DONE 50 counts 16 15 15 errors 4",
+    "TASK110_READY 51",
+    "TASK110_HANDLER rdma 16",
+    "TASK110_DONE 51 counts 16 16 15 errors 4",
+    "TASK110_READY 52",
+    "TASK110_HANDLER survivability 16",
+    "TASK110_DONE 52 counts 16 16 16 errors 4",
+    "TASK110_READY 53",
+    "TASK110_EVENT DECODE_ERROR 3 invalid named DateTime",
+    "TASK110_DECODE_ERROR 3 SurvivabilityRiskLevel",
+    "TASK110_DONE 53 counts 16 16 16 errors 5",
+    "TASK110_READY 54",
+    "TASK110_HANDLER log 17",
+    "TASK110_DONE 54 counts 17 16 16 errors 5",
+    "TASK110_READY 55",
+    "TASK110_HANDLER rdma 17",
+    "TASK110_DONE 55 counts 17 17 16 errors 5",
+    "TASK110_READY 56",
+    "TASK110_HANDLER survivability 17",
+    "TASK110_DONE 56 counts 17 17 17 errors 5",
+    "TASK110_READY 57",
+    "TASK110_EVENT COMMAND_ACCEPTED 1 +OK",
+    "TASK110_DONE 57 counts 17 17 17 errors 5",
+    "TASK110_READY 58",
+    "TASK110_EVENT COMMAND_ACCEPTED 0 +OK",
+    "TASK110_DONE 58 counts 17 17 17 errors 5",
+    "TASK110_READY 59",
+    "TASK110_HANDLER rdma 18",
+    "TASK110_DONE 59 counts 17 18 17 errors 5",
+    "TASK110_READY 60",
+    "TASK110_EVENT COMMAND_ACCEPTED 0 +OK",
+    "TASK110_HANDLER rdma 19",
+    "TASK110_DONE 60 counts 17 19 17 errors 5",
+    "TASK110_READY 61",
+    "TASK110_HANDLER survivability 18",
+    "TASK110_DONE 61 counts 17 19 18 errors 5",
+    "TASK110_READY 62",
+    "TASK110_EVENT COMMAND_ACCEPTED 0 +OK",
+    "TASK110_HANDLER survivability 19",
+    "TASK110_DONE 62 counts 17 19 19 errors 5",
+    "TASK110_EVENT COMMAND_ACCEPTED 2 +OK",
+    "TASK110_EVENT COMMAND_ACCEPTED 3 +OK",
+    "TASK110_CLEANUP_COMPLETE lost_events=0",
+    "TASK110_COMPLETE counts 17 19 19 errors 5"
+  ],
+  "dependency_identities": {
+    "aht": [
+      "827b0c17dd964e935f8e88912ce0611ee92b6f16",
+      "d137b924a7b0fa8b71c1ee8c582749e97294335b"
+    ],
+    "codec": [
+      "765d9cd612838eb00645037977c8cc9af7171c3e",
+      "6198cf7b10346003b91b379b568f26b378654565"
+    ],
+    "sleet": [
+      "e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b",
+      "7e705f4eb5f658957bd414b4abc8207311f3c1e4"
+    ],
+    "uci-release": [
+      "78eb61b6112c8bffa40820c33124b57787fc5bd9",
+      "43a8a74b15d2e20d00d4d8ed8543590dd9789046"
+    ]
+  }
+}

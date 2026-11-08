@@ -1,5 +1,6 @@
 with Ada.Command_Line;
 with Ada.Exceptions;
+with Ada.Environment_Variables;
 with GNAT.Directory_Operations;
 with Ada.Real_Time;
 with Ada.Strings.Unbounded;
@@ -40,7 +41,8 @@ procedure Transport_Probe is
    Closed_FDs : Natural := 0;
 begin
    for Cycle in 1 .. (if Mode = "lifecycle" then 30 else 1) loop
-      WS.Open (Client, Ada.Command_Line.Argument (1));
+      WS.Open (Client, Ada.Command_Line.Argument (1),
+        CA_Path => Ada.Environment_Variables.Value ("OMS_WSS_TEST_CA", ""));
       if Entries ("/proc/self/task") /= Tasks then
          raise Program_Error with "transport created task";
       end if;

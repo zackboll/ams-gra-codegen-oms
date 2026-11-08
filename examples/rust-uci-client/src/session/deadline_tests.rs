@@ -226,10 +226,17 @@ fn activation_child() {
                 _ => deadline,
             }
         });
-    assert!(
-        workers().is_disjoint(&replacement_worker),
-        "replacement worker not joined"
-    );
+    // The owner has returned from JoinHandle::join. Linux can briefly retain
+    // the exited task in procfs; bound the OS observation instead of mistaking
+    // that lag for a running worker. No production delay or retry is introduced.
+    let observed_by = Instant::now() + WAIT;
+    while !workers().is_disjoint(&replacement_worker) {
+        assert!(
+            Instant::now() < observed_by,
+            "replacement worker not joined"
+        );
+        std::thread::yield_now();
+    }
     assert!(
         queue_witness
             .unwrap()

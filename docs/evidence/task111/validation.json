@@ -1,0 +1,413 @@
+{
+  "openssl": {
+    "external_directory": "/home/zboll/task111-evidence/safety16-openssl",
+    "source": [
+      "818834d0375d8a98950de9e7356401faf8a2950a",
+      "ee9828632c61d8ffc18cec4aca55c98e0573be39"
+    ],
+    "result": {
+      "completed": true,
+      "compiler": "16",
+      "backend": "openssl",
+      "aht": "827b0c17dd964e935f8e88912ce0611ee92b6f16",
+      "codec": "765d9cd612838eb00645037977c8cc9af7171c3e",
+      "steps": [
+        {
+          "label": "source",
+          "exit": 0
+        },
+        {
+          "label": "source-status",
+          "exit": 0
+        },
+        {
+          "label": "aht-identity",
+          "exit": 0
+        },
+        {
+          "label": "aht-clean",
+          "exit": 0
+        },
+        {
+          "label": "codec-identity",
+          "exit": 0
+        },
+        {
+          "label": "codec-clean",
+          "exit": 0
+        },
+        {
+          "label": "compiler",
+          "exit": 0
+        },
+        {
+          "label": "platform",
+          "exit": 0
+        },
+        {
+          "label": "generate-model",
+          "exit": 0
+        },
+        {
+          "label": "generate-codec",
+          "exit": 0
+        },
+        {
+          "label": "build",
+          "exit": 0
+        },
+        {
+          "label": "shim",
+          "exit": 0
+        },
+        {
+          "label": "control-peer-build",
+          "exit": 0
+        },
+        {
+          "label": "api",
+          "exit": 0
+        },
+        {
+          "label": "control",
+          "exit": 0
+        },
+        {
+          "label": "poll",
+          "exit": 0
+        },
+        {
+          "label": "poll-control",
+          "exit": 0
+        },
+        {
+          "label": "wss-regression",
+          "exit": 0
+        },
+        {
+          "label": "sleet",
+          "exit": 0
+        }
+      ],
+      "needs_read_runtime_exercised": false
+    },
+    "artifacts": {
+      "shim.command.json": "03e74b9b61feb7a271f1821205dc3eec0c0cea070aa8e76bfa21a048a13e1c54",
+      "source-status.command.json": "3339c5af1a30ec4941282afa3710a7d29f401b5ac0c968f58a0f962ec83da863",
+      "platform.command.json": "8b78d4277ba42ea516e1f48308d80e45ea63bb0f10e06058e97770b97b41ce23",
+      "aht-clean.command.json": "9f2104bf74f195f0c7a61e03bbe10cba10b39066c5b0a847187cf1c2362240e5",
+      "result.json": "e8f3e7844256640d0d63b8e2f52b0df8672bc193b76ef8ca840bb61658bd40ff",
+      "compiler.command.json": "b12271289368b98b31fb1dfaf69af09089b4f74aed35dd7a058216ef057683d3",
+      "build.command.json": "0c26fa3f1d87c200b5419a27b77987b081d1b66c0fef2f4ec0b425437a9794d3",
+      "poll-control.command.json": "100208199f8aec7ed369f8d9be3a7e43285fc43f7319df1e791556d69e5b859d",
+      "sources.json": "364cfe04ef55b1d5eef97af6fddca0025848af7307ad37e6ac284587bb2b0ed3",
+      "source.command.json": "341465c972272a9c68231c76fcba835d30fa8389a0e74fe5f949d52fcbd5ccca",
+      "codec-clean.command.json": "efc1809c975f8a62788dedc7106d8f149830d92c0cb7c343a9b8fb92b8d4e7a9",
+      "generate-codec.command.json": "0a5ba049d086bdf23cb3996dba055ed885f31305e64805738130d4215320f437",
+      "input-sources.json": "2f685114fd380be3c160d53de1a9cb2696f36e21e456eac1315b3b728ba6845f",
+      "api.command.json": "a578d6868ca1e07e8b9aaa158f531cb032af38d7f56a9bdf54269f224d9c44f4",
+      "codec-identity.command.json": "3b16f9eded91b1a862e827b40fb95279e89d6b81033d3ab48ed78f429144ca68",
+      "generate-model.command.json": "1dcfdc3b89f0fc970391cfdd4a151fb6aa73956ea1f135be09f4f88ccd979a08",
+      "wss-regression.command.json": "c6784d2dc7d062d5442ff0a0e091ff755dcaf58d7de7b28ec319f23de41f4b1d",
+      "poll.command.json": "79a2053f359e8d97b0dc361f191b54197576d46aa068045fde7be6d5589c2bdb",
+      "aht-identity.command.json": "fdf3c0937d88e4b3f02b3a64d4cafa851087cd566d91481779ace29e9e802e86",
+      "control.command.json": "65aa26d20fc94901baea47b3b58c829805e9bd6886fea4ae25e6a6b3a7943a13",
+      "control-peer-build.command.json": "453a5a4256a47436f4740dcb808093e7ae399b1a51dec746a6ebbb986692cf22",
+      "sleet.command.json": "8ed05172db4b1bc269546ebab0c92a0b206fb2eb5608d946e31c15deec4060de",
+      "poll-control/peer.command.json": "1ea39b650171838e2cc415ab09f37f48eca42b56196f5caeb9c071604bcfe88e",
+      "poll-control/result.json": "58fb4f3b5b1848dc7a5eebd97b47f9fa293a7d03a6770041ad2a482538cec362",
+      "poll-control/client.command.json": "3e221f6fd44b72b902e5d38926fc6f26440f40e4e8aafd13fbf9839856c36f4e",
+      "wss-regression/invalid-upgrade.command.json": "b6897693b9d211d97f22c5825979ade30b603d119e8cdc5aaffff3a3618c2e19",
+      "wss-regression/send-failure.command.json": "d76cc03f7b198d296a43016c57555c480eec0d9f571c16639ebbf58119a8acae",
+      "wss-regression/rsv.command.json": "72ff22d1497f7d6f11c95f69f3d6b29e7798a2efeff47e02a94a8bd974fbdbb5",
+      "wss-regression/lifecycle.command.json": "6c3a752a317d783d23b3fe4bf7eac6503aed28cfc8bc96a86f9f2f89c4e29558",
+      "wss-regression/valid.command.json": "9f0128c33a95653ca45b7f7bc75cea20fb2244fc8f80db484839810e346aa421",
+      "wss-regression/redirect.command.json": "71f013a2388d4d02bbc3499a8facc7bcbe3fb15f8c3944111058b23a5279727d",
+      "wss-regression/masked.command.json": "ef3f99ab0f76abc47d63ebea7028f1b47e8b0a79c9cd1ae79ff264c93709ea7e",
+      "wss-regression/bad-close-code.command.json": "0a917b1b40128f2e3d9adaacfb308e0ae1ab1921aa62acf3098acee628bc1f82",
+      "wss-regression/result.json": "29c025c9c2a783660ef883e8d9eef21cc8a730a572b8366b4227b50cb28ed5e0",
+      "wss-regression/malformed-header.command.json": "f953788ca99b943ae23bb7796a1998ad4ea55d7d29cdd6c44b320cfa0b4258ea",
+      "wss-regression/receive-large.command.json": "f4a5f69dab39a17ee00064fca286d4c0913f5dc984eb4f45dd4eafb7b4b1a778",
+      "wss-regression/orphan-continuation.command.json": "f9e5cf664e94584598a64845695bab26ac754a6c7927a7ba312511d63581444e",
+      "wss-regression/utf8-fragments.command.json": "c32a1ec8c17d87c605e30037a3b974cfe02e8e13fea0ec156f1551273ffeaf63",
+      "wss-regression/fragment-ping.command.json": "3c2cb691dfb00810b340e654d0834224df9426cdf6815d3f5e621df3e862b767",
+      "wss-regression/large.command.json": "8dcfdd1d6a8966ebb28c6249017878d40dcfa5613c10ce832ddbb9ed4fdd6352",
+      "wss-regression/bad-close-utf8.command.json": "c83826754fdcd426362b25e0785c0e9f10413e5ca45716d5d8e9a7446594a316",
+      "wss-regression/tcp-split.command.json": "aae29751b3acc386b5c4d96470ec9e033efa6b8ebab1e4ddcd903a8d364e8449",
+      "wss-regression/oversized.command.json": "0044900366255a6aa74f2a11c138cae4a53ffb17c4e6dfec7aaa7578dac3483e",
+      "wss-regression/nonminimal.command.json": "5a413f2fe6687183a3008cf8e4648662ca01181f0299a3d1041a95a43fda30e8",
+      "wss-regression/validation.command.json": "3b85ded84cac751c6eab220873456868a07f75e342eb7526ddf1c1ec20a4aa51",
+      "wss-regression/wrong-protocol.command.json": "8e98f4926cd4cc5e35c3bbb077eaf060c4de51e1cba9e6a79ae4b2a3e79d9df8",
+      "wss-regression/wrong-accept.command.json": "725ac89a035c5e27680ef140d09cb305a4c6aaa737139ffa37a5d51ed755eb39",
+      "wss-regression/new-text-during-fragment.command.json": "9f74add0dd6b63c0de9387b5a3b1dca976b81ed5d30ee9e5ece87ba3380bbeff",
+      "wss-regression/finalize.command.json": "db301b8aceb8e18834b032f868e8d074695c79fb3ccda9c9d61b4eec19d4efc4",
+      "wss-regression/fragment-oversized.command.json": "641b14e06b861ce0fb105a65d5f155815310195800a3153ee1eb33256bafb8e2",
+      "wss-regression/binary.command.json": "9512fd00f00e40af31608b6a284bac9ebb7070fc1b0d264c65302916519216f7",
+      "wss-regression/reserved.command.json": "1d6b6b2f1cb0eae838aa7d30f4d5007cc1ed0af7a5ac2fba88619427469f68e7",
+      "wss-regression/utf8.command.json": "48e66bdd5cf9b2fd3bd44684d4d18de38e523614129f411f208996e42e0a8482",
+      "wss-regression/duplicate-protocol.command.json": "0bbf0708e875502df2018129ccb34863625da9fd2ac7fb933183e97fa72a18e0",
+      "wss-regression/fragment-control.command.json": "588b77c61e91c832a24f24c68d08c0e3dc3f435602362f9a95e0b7c549f4614a",
+      "wss-regression/length-msb.command.json": "0af00073dfca61ec4eecb0533b96b48c005d785d20431a80d13216cdda653bc7",
+      "wss-regression/peer-close.command.json": "20113162722639b240ca0869aa2f25c1f74321738c215a25bef773470b3e04e7",
+      "wss-regression/stalled-partial.command.json": "3f5256f81c0c323c30b2af10c61e0f7e579796e55cc6a1ac125abc808b3f44f2",
+      "wss-regression/missing-protocol.command.json": "e6d86acdeb733d5a6b57c133790f8902aac81ab0fb8d901def0f05c64a5e585b",
+      "wss-regression/extensions.command.json": "9637b1cd0d64c0722ce8ec49fa3e98360ae2f84ead8f5a20392b9d968736470c",
+      "wss-regression/large-control.command.json": "c0340e896c509806b6ea22a1fb7f9b47fe574cd436fb751a6f718d6ea682688c",
+      "wss-regression/excessive-headers.command.json": "81981ed99d51402eb3d177e00f2add4cc8e0b76569b3af3bdb205ddbe80f5f6d",
+      "wss-regression/generated.command.json": "89625b22abcd88c64748d553613809536aadca934e1e577b435b807acd7b692a",
+      "control/result.json": "f101e8f4f2c35bcc8d2bb07c9259f18a5002f6733a410a9761b809af8b86f919",
+      "control/server.command.json": "1d5563b69912d2123b472cc34c2d8b0e76406b8e61216a330d5a45fcaa01bf6c",
+      "control/client.command.json": "5474a0ae7e5049a54cf5786f268719158ce8070cab4d9a5df7744f2660eef431",
+      "poll/deaf.command.json": "9c366a5a7d8b02b3062ed041f33c68dcaff53556d67cc66f54d9eff5de203ea0",
+      "poll/burst-backpressure.command.json": "957fa77d0a659ef5a6b115e3f7da8991f1f436689f39882632c9c2ce5a0c4e0a",
+      "poll/truncation.command.json": "ead6f3ad8b1f66b3b95642290ec03b5115bb1ae8f61953a22cd670ef1dd6d827",
+      "poll/fragments.command.json": "f4dda0b18b83b0e9281aac3020166724656dd53253cb5545213ad31188e3fdbe",
+      "poll/result.json": "7565e2d915ce5203e760c4791cbc473f77ca1ea89885ab9aab8d715cfd472d41",
+      "poll/failed-handshake.command.json": "d66fa595b5abcf3cbb087651b69a4598e908e8354453a1de16d1cb8445580860",
+      "poll/untrusted.command.json": "ab990bd673b94b456ddd5712fcae25716bbb5edcbc9e4b9cb2d9878ae976a725",
+      "poll/backpressure.command.json": "21c3a38bc6a50cb187f691f84f03b1498f4d0cca4ab74ebb1c2d57bd377a0bb7",
+      "poll/ping.command.json": "9064c287e7a3e1f0951c494de12365290992511b2004dc0d8a053ec47d9373a4",
+      "poll/idle.command.json": "1073a58f3ea8a3b5ec92ed93df670a3aecee06a81319d1c6ed5cb52c87f0d6f6",
+      "poll/hostname.command.json": "ef535588d5c016f9760901bbf28eecfc2ef0dc0a7d5925907a18e3fe2df7a888",
+      "poll/wrong-protocol.command.json": "5a2b9c2b4e4d1bfda3629ae9a98228641c1a51ffb75564890cf1518b5a16a710",
+      "poll/records.command.json": "d2916d894b120ae71e8a4e6b42030830b84590b6a78872ee78e1102d012e0f5f",
+      "poll/close.command.json": "ebe76c00f3c1776fdcd1c571eedb12a3b0d6eafaac352d0f3afb5962fdff8cbd",
+      "sleet/result.json": "f971519b8f432b00c9a2d3165d52710ce29b5878ae7d19db1c940980f2ef8ba9",
+      "sleet/consumer.command.json": "dfd301d7fdda8b2f433ca77c09f91138ae6be7c3fad9fd4db10f848f49e87ddd",
+      "api/deaf.command.json": "a11e8c46f74dd2cd31000447b34ed37b968c238d14a4958016367330faef5b41",
+      "api/truncation.command.json": "d4a26d6dcbcb301441cfada91295274f49d8d11827200ec4873947b74d874187",
+      "api/result.json": "b969a46be1e5d7c9903c19e34c5a2509ed9b4f8acd04bfc6e61db407575480c7",
+      "api/untrusted.command.json": "2a815701d72e7385244b4df8120736fea2f78efb23b289d11ddda36efe50e9dc",
+      "api/certificate.command.json": "147878bd8224717ce59854347a52a24b1bf13f6bb404984d5bd385bb0589c4bf",
+      "api/idle.command.json": "05f7065fa06db30b3e0544e77d3f1f92ae0a3af710559e8458b85c632944acff",
+      "api/hostname.command.json": "cdd1adabbab2bad3a11d2e808f0d821385910605b67814a613296f9a81a64fd7",
+      "api/sink.command.json": "e8a18170e0c271368ca47b414e479841d30a7a7bce2551ac157500454bf240e7"
+    }
+  },
+  "mbedtls": {
+    "external_directory": "/home/zboll/task111-evidence/safety16-mbedtls",
+    "source": [
+      "818834d0375d8a98950de9e7356401faf8a2950a",
+      "ee9828632c61d8ffc18cec4aca55c98e0573be39"
+    ],
+    "result": {
+      "completed": true,
+      "compiler": "16",
+      "backend": "mbedtls",
+      "aht": "827b0c17dd964e935f8e88912ce0611ee92b6f16",
+      "codec": "765d9cd612838eb00645037977c8cc9af7171c3e",
+      "steps": [
+        {
+          "label": "source",
+          "exit": 0
+        },
+        {
+          "label": "source-status",
+          "exit": 0
+        },
+        {
+          "label": "aht-identity",
+          "exit": 0
+        },
+        {
+          "label": "aht-clean",
+          "exit": 0
+        },
+        {
+          "label": "codec-identity",
+          "exit": 0
+        },
+        {
+          "label": "codec-clean",
+          "exit": 0
+        },
+        {
+          "label": "compiler",
+          "exit": 0
+        },
+        {
+          "label": "platform",
+          "exit": 0
+        },
+        {
+          "label": "generate-model",
+          "exit": 0
+        },
+        {
+          "label": "generate-codec",
+          "exit": 0
+        },
+        {
+          "label": "build",
+          "exit": 0
+        },
+        {
+          "label": "shim",
+          "exit": 0
+        },
+        {
+          "label": "control-peer-build",
+          "exit": 0
+        },
+        {
+          "label": "api",
+          "exit": 0
+        },
+        {
+          "label": "control",
+          "exit": 0
+        },
+        {
+          "label": "poll",
+          "exit": 0
+        },
+        {
+          "label": "poll-control",
+          "exit": 0
+        },
+        {
+          "label": "wss-regression",
+          "exit": 0
+        },
+        {
+          "label": "sleet",
+          "exit": 0
+        }
+      ],
+      "needs_read_runtime_exercised": false
+    },
+    "artifacts": {
+      "shim.command.json": "d8825547679cfeed24a0a88a9574cdbfd3451c39d95e2b7d3a41abadcfafd26c",
+      "source-status.command.json": "3339c5af1a30ec4941282afa3710a7d29f401b5ac0c968f58a0f962ec83da863",
+      "platform.command.json": "eb7edc5e48c9dfbaf6db61ad0b55d88bf23e0662604f7eef373884c749410c02",
+      "aht-clean.command.json": "9f2104bf74f195f0c7a61e03bbe10cba10b39066c5b0a847187cf1c2362240e5",
+      "result.json": "df3a399149e2869543ece440b0fbbbdd43c2599ad2ed6c3d6a3683b5cbc79e13",
+      "compiler.command.json": "36aa4927950bc3d8f5be7c5e60a0f5886c91ca43e06361d4cf214eb572e6a2b4",
+      "build.command.json": "7c54f0c861f84e6c4732de850e6c8eee715feacb03f87c098af8b4e2797f6616",
+      "poll-control.command.json": "302f9964a4af53c47ddd678fd19078feb84986b3bb489eec3ec711a0f56323a0",
+      "sources.json": "e50c74e4f9625cf9e736d6500af6d1454fe079d3d9ee409637808d103b3f2591",
+      "source.command.json": "341465c972272a9c68231c76fcba835d30fa8389a0e74fe5f949d52fcbd5ccca",
+      "codec-clean.command.json": "efc1809c975f8a62788dedc7106d8f149830d92c0cb7c343a9b8fb92b8d4e7a9",
+      "generate-codec.command.json": "03e1e1625845d0845025d42cc087e8ddb301fb38e7ab3b682222fd484b1de34d",
+      "input-sources.json": "2f685114fd380be3c160d53de1a9cb2696f36e21e456eac1315b3b728ba6845f",
+      "api.command.json": "cff56de871d151147d53e2764e9c63a294a88fa5a62332aa7da5acbc6a4e98de",
+      "codec-identity.command.json": "3b16f9eded91b1a862e827b40fb95279e89d6b81033d3ab48ed78f429144ca68",
+      "generate-model.command.json": "05a3406273caf2f20c5834439938cc4b7d6f6923754692f535fc1fec6c14d438",
+      "wss-regression.command.json": "3fcbca3a19678b95d7025cac6e16e5b549f274e4e2bc46d8d1521557b85d29e9",
+      "poll.command.json": "ddb5eef9c8f9c54059a78299f466aec2eda054703b96a05db1061653ab6ade40",
+      "aht-identity.command.json": "fdf3c0937d88e4b3f02b3a64d4cafa851087cd566d91481779ace29e9e802e86",
+      "control.command.json": "cdcfb879b35344c12900e7466d0209da07569b8e3e8ab1f307e1e32016104714",
+      "control-peer-build.command.json": "ce7c44bcc895e849a114f139e84e0cc8cee2736468249093bd5acb191e7c79e1",
+      "sleet.command.json": "1a7210c20387147869f5bf8a01b0df8b0763993fa4d9b9b42bfd1aab43349407",
+      "poll-control/peer.command.json": "293f52c45966348647d6989e32f7f2033f481422cd108d8c33d62cffc801b858",
+      "poll-control/result.json": "58fb4f3b5b1848dc7a5eebd97b47f9fa293a7d03a6770041ad2a482538cec362",
+      "poll-control/client.command.json": "f175a6cb9063a4ca36e83e220c8b6082d482135a70b70ac760cffab524be9e64",
+      "wss-regression/invalid-upgrade.command.json": "74edb98632dcd8031d292be1a5eadc698091101f205648c1f34b5aae6b41189c",
+      "wss-regression/send-failure.command.json": "1712d9e3f0878ce7471d5e7977f2fd3b3c1641c325f2eaf1835abbe370cddd73",
+      "wss-regression/rsv.command.json": "51eb186c47e43873c2f8f1fcc2072064a8fefa1b1a83151c570b7166a98f5e90",
+      "wss-regression/lifecycle.command.json": "cf9668983f41006655648c93f927e8ac81b03ced61a868cbfc248561c1f6e138",
+      "wss-regression/valid.command.json": "c8a39fc14383fa53881c435f7ecf5ad46b1eec5e5383ce2e21773e46e7217cd8",
+      "wss-regression/redirect.command.json": "d2d3b60620e740197201d8037a2cff5dec40bea03d9db350605806946e3f9fd1",
+      "wss-regression/masked.command.json": "3dd98ca80c081099659b35a0bb1e43cfa65f3e61a22b9183494226836d0200c3",
+      "wss-regression/bad-close-code.command.json": "e51a1026079f8affe70c02326703ef807ee17d4a2b7ca56f49700a45fb4095b4",
+      "wss-regression/result.json": "29c025c9c2a783660ef883e8d9eef21cc8a730a572b8366b4227b50cb28ed5e0",
+      "wss-regression/malformed-header.command.json": "15e134be24d07889fe94f7cb490bd0cf6f9cfcdc16905b2c7e38a1d44fd949c1",
+      "wss-regression/receive-large.command.json": "3f095548705da4f1e99786f2ebe816bd68a28b11058f53cd26e6bcd152217033",
+      "wss-regression/orphan-continuation.command.json": "37bf0197bb7447da13a982291bf8458942b2825434a8a41b74d14fbf6b6ab71d",
+      "wss-regression/utf8-fragments.command.json": "4e649f58f309ba71808e1151325456a2606525fd306776c71d44e2e9d3692604",
+      "wss-regression/fragment-ping.command.json": "027d1d6638ba52da9bbd833ebec285a5b0b0acf026a2f916d3eb5dcd42b2436b",
+      "wss-regression/large.command.json": "4d094c979941a1ae131043b43779a946c4880e64dbd7a468f5f5d7db1f7d1cfb",
+      "wss-regression/bad-close-utf8.command.json": "e08e6fc2fae66f8837c88872d1f621b879b3dd114824122613eabadfcc6fc630",
+      "wss-regression/tcp-split.command.json": "b5b6fb199165ad6ed23186d15c0e474bbe858eca2b700453ac1a507015a33c7e",
+      "wss-regression/oversized.command.json": "ebd7bf5d9929ead9597694bf3f8daf3a34b094da829060b5f6c2b7390dcb9700",
+      "wss-regression/nonminimal.command.json": "f1fd7b92154f8adce86676eebb074a7c96ff5d254a7eed099ec87f894aa96fd1",
+      "wss-regression/validation.command.json": "ef9ca79b5dc163266e7a132a6c16db33b8ec411c8c3cc5538d7e2aae7f02eca8",
+      "wss-regression/wrong-protocol.command.json": "6ee55b9686bd3bd360e9c7800eddaa136153e22eca2b4b4de73ba8b496d1e2c3",
+      "wss-regression/wrong-accept.command.json": "0498b0dfc4e833af1c1bb05342fa9713d24652887617fa8e358f520a0ad4dade",
+      "wss-regression/new-text-during-fragment.command.json": "045b7ea04841da84ea00a1a744dd378165a19fd60cfc681277a88877c46b337d",
+      "wss-regression/finalize.command.json": "87aa7d99f466652d5ce53f3147985b293298e47ddeec4a1e0727c7e1ab8a766c",
+      "wss-regression/fragment-oversized.command.json": "3c2d5206a5f2e06b80392f6e5b488534866ca8bab4e6b716851cdac6fb9d41ea",
+      "wss-regression/binary.command.json": "f61ed46366e5060743574cf25e87c47d6529b0d34741148c798ff280914f861c",
+      "wss-regression/reserved.command.json": "bcc7e78ff392ac1813b65a0ba1a90519af4106ae025112f3d058f80830f0d776",
+      "wss-regression/utf8.command.json": "0b34c16e008bd0d3ef8f59447b6f587d0c6a9db22be958c7ec458be367872f7f",
+      "wss-regression/duplicate-protocol.command.json": "4e67e99a19ac01f3e2f20d6f945e06445bce361d6ac92b8f68c5fce5b6ca44e6",
+      "wss-regression/fragment-control.command.json": "93318156e5aa85042437dd5b43164275e667971aa8fbc83968a9d4811cdb4c19",
+      "wss-regression/length-msb.command.json": "c48a5b2842d40ccbb76bfcab9182e666c243d20858e6c0488a9229e6345acbb4",
+      "wss-regression/peer-close.command.json": "1ab99fae277435e5580cb2693c529df55b8ebc3a04a091b9a99032fc66f7b1b0",
+      "wss-regression/stalled-partial.command.json": "effdcf80f46236b8e5933f4c022bc5cf7e7b9e491b95f19fd71d3733b4a6dc2f",
+      "wss-regression/missing-protocol.command.json": "414d2b5b9d58329fb398b4b1b3b675a5da2eeabfc7ffb90407601994ae72f7e6",
+      "wss-regression/extensions.command.json": "c7677e60cf305f115c51e0ce62fcac1f307d39a16d44b8759ef3c4db5cf9c0ad",
+      "wss-regression/large-control.command.json": "7ab5ef3077f16c7d0d394e11637bd4ca590b1210460a2e72914b959bd449bd9b",
+      "wss-regression/excessive-headers.command.json": "f009657c8e7b299a4030f9a0dcb34daf8b0982de9c7208a59f8b6e29870a86c9",
+      "wss-regression/generated.command.json": "276112aedf8b017208c5213f2e2b25da943b374a68d3353c04e99e5e1e016cdf",
+      "control/result.json": "f101e8f4f2c35bcc8d2bb07c9259f18a5002f6733a410a9761b809af8b86f919",
+      "control/server.command.json": "861fec37d210e7d3a11bb9b72b898497056a790a3f0932a0b18132734ec170ee",
+      "control/client.command.json": "86d35d3222300820a7a112374fe68e0048f46b9ff7ac786144a9188d76e0f4dd",
+      "poll/deaf.command.json": "fa1be2eda67a3dd147914a566ec08f9214c2c1e42f9eb89adfad4d400c034e78",
+      "poll/burst-backpressure.command.json": "99fd86077fd95199233eece4db4dd20f11a9139d4312ed48c831985f7abecdcc",
+      "poll/truncation.command.json": "b67de5f5c50baf660c3b3b8789ba3ff02f27e2ebaf095f45f4cd9ac495c40bbd",
+      "poll/fragments.command.json": "a092b3a1d4a924227c682ec80d8059bf8db0517c266457f131f8b7731cca5eb4",
+      "poll/result.json": "12232c1c1f8c3c1427e8c451f4e5c23c5716c5dcc74850e52df9f809c559529f",
+      "poll/failed-handshake.command.json": "9170f91b57b736f3b9539fff2f187c396f51cbed8ad5203fa7f021d70ab635c5",
+      "poll/untrusted.command.json": "581cccde18acad3a681367e5e1c283ac5b86e7e71de31f950dfbfada9e6abcbb",
+      "poll/backpressure.command.json": "c719d9268a27f8584938b7ca19ac0bbbf5b6d948402efe74fafe761cb1ca3b2c",
+      "poll/ping.command.json": "40b4bcbfeab394f26a9c0659ec6b650c3e638624f513e8ee31e17ed7cfab6869",
+      "poll/idle.command.json": "a7e98f87c29bf0d37ee4cd8ed2d0954e540ffbdc5601daf242421abf4a98baed",
+      "poll/hostname.command.json": "4c22038a3bf94a4a719c41c480f77446054881769d58444a918e0a229ce8bbf7",
+      "poll/wrong-protocol.command.json": "8826b798c2acc68dc5b7905e06e3eb608640f00e82963fdd2645fa7d24141a5e",
+      "poll/records.command.json": "36eabd6fa38c4baa78432aad6c3c438128048aa341811407aef228144ba5724c",
+      "poll/close.command.json": "db2f098911b02cc040d39aad27e7b30f73adedc42bf9da39ec80a5e1a1a5a00d",
+      "sleet/result.json": "f971519b8f432b00c9a2d3165d52710ce29b5878ae7d19db1c940980f2ef8ba9",
+      "sleet/consumer.command.json": "78c822c7f739c2458ebbca6006c048edcf3b739d4903013fb68ab9950b193a6a",
+      "api/deaf.command.json": "4efdb6557c8f642d321fbff6dcd809eea622a020045f6ae1efdf8fc096172269",
+      "api/truncation.command.json": "718ef3b60260114fb2ad4f2cff82968ce181b64b269e8c0f79285e4742c2b910",
+      "api/result.json": "b969a46be1e5d7c9903c19e34c5a2509ed9b4f8acd04bfc6e61db407575480c7",
+      "api/untrusted.command.json": "c64030fba58c4579d84d6a7213d4edbd15f283f392d6a0e86f78469a93a9fc5f",
+      "api/certificate.command.json": "d2f0ed39cd85f5d93563c1c28b501c3c5b038b5325eb58c8dfd12b3de3827e61",
+      "api/idle.command.json": "d8826d2d0c0a863d08fdb45b55338c8cb3d0967db7a0f9c05586f94d71f5ce64",
+      "api/hostname.command.json": "c0fbd1626e75e99c154325afc472a1a8035d755b76ac646eab89f632311ac5b8",
+      "api/sink.command.json": "92203ab50b5eb199457e03e0c9f609c820603c52eb28cb10545a2b42f18165c3"
+    }
+  },
+  "unit-final.log": {
+    "external_path": "/home/zboll/task111-evidence/unit-final.log",
+    "sha256": "8dd07b7cd44993bbaf964e33c6f963b8423d75b98ef8efd142f0398f2ca775fd"
+  },
+  "selector-final.log": {
+    "external_path": "/home/zboll/task111-evidence/selector-final.log",
+    "sha256": "0625bdabda10f4835d2c9995bf031607f228a1ef29058def0f495fc77f6f7053"
+  },
+  "task109-unit.log": {
+    "external_path": "/home/zboll/task111-evidence/task109-unit.log",
+    "sha256": "5a3629ff974a72091c0b8c925e813d493980941c986a13710824bc94c51a1839"
+  },
+  "task110-unit.log": {
+    "external_path": "/home/zboll/task111-evidence/task110-unit.log",
+    "sha256": "eb59aca874d50900ceb8863458d75db0e7bbe6a925cf2ac1f4a75d0365a1008b"
+  },
+  "inherited-unit-final.log": {
+    "external_path": "/home/zboll/task111-evidence/inherited-unit-final.log",
+    "sha256": "fa6eb0046f98ca4d9e8839fb082739d1bb735d520fb135d6789111aa0a9fee5d"
+  },
+  "generator-build.log": {
+    "external_path": "/home/zboll/task111-evidence/generator-build.log",
+    "sha256": "322e1287d087a6126902d927515d63f31599c2137912ec9b9323167f1922c4f0"
+  },
+  "route.json": {
+    "external_path": "/home/zboll/task111-evidence/route.json",
+    "sha256": "1303888d609fb4cc1e298ea2fa43472d5ce92acac3b2bc758e95afb1b6338856"
+  },
+  "diagnostics": {
+    "dev16_openssl": "Initial peer expected malformed DER to reject before TCP; no ClientHello observed, corrected harness classification.",
+    "accept16_mbedtls": "Instantaneous task count raced detached DNS worker exit; test now records bounded 250ms quiescence, no production change.",
+    "initial_receipt": "Receipt incorrectly imposed post-warm-up FD baseline on first attempt; corrected and mutation-tested; acceptance execution unchanged.",
+    "interrupted_inherited": "Foreground inherited helper invocation hit tool 30s limit; completed rerun in background."
+  },
+  "generator_binary": {
+    "external_path": "/home/zboll/task111-evidence/target/release/ams-gra-codegen-oms",
+    "sha256": "e6558e7948f3d45249affcb69f0fd0deadc6b888cb0edce209a4f9bcee42b40e",
+    "source_base": "ebb25de9c15f7dd26ce2ce319bc800191d7d9cfc",
+    "command": "CARGO_TARGET_DIR=/home/zboll/task111-evidence/target cargo build --locked --release",
+    "exit": 0
+  }
+}

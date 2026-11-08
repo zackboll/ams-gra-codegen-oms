@@ -341,7 +341,9 @@ scripts/check-cpp-oms-001-parity.sh BASELINE_CLI target/release/ams-gra-codegen-
   other messages CPP-OMS-002 measured, `AMTI_Command` now stops at
   `EmptyType` (bounded ASCII String; 211/217 in 2.5, 212/218 in 2.6) and
   `AO_CapabilityStatus` at `AO_PIM_CodeType` (bounded ASCII; 85/130) — neither
-  is claimed.
+  is claimed. (Bounded ASCII is added by
+  [CPP-OMS-005](task-cpp-oms-005-bounded-ascii-amti-settings.md); both
+  messages stay NOT READY on other constructs.)
 * OMS does not carry NaN payloads or signs: every NaN encodes as `"NaN"` and
   decodes to the default quiet NaN.
 * Only libstdc++ ≥ 12 `<charconv>` is qualified; other standard libraries are

@@ -655,8 +655,9 @@ fn run_ok(command: &mut Command, label: &str) -> String {
 /// Section 12: the smallest real message made READY by Task 058, UCI 2.5
 /// `AMTI_SettingsCommand` (61 selected declarations, no generated support;
 /// previously NOT READY on `EmptyType` in every backend). READY in Ada, Rust
-/// and C++ (Rust codec READY), generated, and compiled in each host language
-/// with a zero-length `EmptyType` constructed through the generated API.
+/// and C++ (Rust codec READY; C++ codec READY since CPP-OMS-005), generated,
+/// and compiled in each host language with a zero-length `EmptyType`
+/// constructed through the generated API.
 #[test]
 fn task058_real_uci_newly_ready_service_generates_and_compiles() {
     let Some(_) = pinned_root("AMS_GRA_UCI_2_5_ROOT", UCI_25_SHA256) else {
@@ -678,7 +679,8 @@ fn task058_real_uci_newly_ready_service_generates_and_compiles() {
             "--world",
             "closed-schema",
         ];
-        let codec: &[&str] = if language == "rust" {
+        // CPP-OMS-005: the C++ codec is READY for this message too.
+        let codec: &[&str] = if language == "rust" || language == "cpp" {
             &["--with-codec"]
         } else {
             &[]
@@ -692,8 +694,14 @@ fn task058_real_uci_newly_ready_service_generates_and_compiles() {
         );
         assert!(report.contains("status: READY"), "{language}: {report}");
         assert!(report.contains("selected type closure: 61"), "{report}");
-        if language == "rust" {
+        if language == "rust" || language == "cpp" {
             assert!(report.contains("codec status: READY"), "{report}");
+        }
+        if language == "cpp" {
+            assert!(
+                report.contains("codec renderable emitted declarations: 59/59"),
+                "{report}"
+            );
         }
         run_ok(
             Command::new(env!("CARGO_BIN_EXE_ams-gra-codegen-oms"))
@@ -742,8 +750,12 @@ fn compile_generated(language: &str, out: &std::path::Path) {
         "cpp" => {
             std::fs::write(
                 out.join("client.cpp"),
-                "#include \"oam.hpp\"\nint main() {\n  auto e = programs::oam::EmptyType::create(\"\");\n  \
-                 return e && e->value().empty() && !programs::oam::EmptyType::create(\" \") ? 0 : 1;\n}\n",
+                "#include \"oam.hpp\"\n#include \"service_codec.hpp\"\nint main() {\n  \
+                 auto e = programs::oam::EmptyType::create(\"\");\n  \
+                 if (!e || !e->value().empty() || programs::oam::EmptyType::create(\" \")) return 1;\n  \
+                 // CPP-OMS-005: the generated codec compiles and refuses an incomplete document.\n  \
+                 auto bad = service_codec::decode_AMTISettingsCommandMT(\"{\\\"MessageData\\\":{\\\"UnassignAll\\\":\\\" \\\"}}\");\n  \
+                 return bad.ok() ? 1 : 0;\n}\n",
             )
             .expect("probe");
             run_ok(

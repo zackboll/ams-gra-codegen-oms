@@ -169,7 +169,9 @@ Still NOT READY, each with a `service codec boundary:` line and no output:
   (191/217 in 2.5, 192/218 in 2.6) stop at `AccelerationType` (named Float64);
 * named `Time` (`TimeZulu`) and any DateTime/Duration with unsupported facets;
 * the other String profiles: bounded ASCII (`AO_CapabilityStatus` stops at
-  `AO_PIM_CodeType`), structured ASCII, alternating ASCII, IPv6, Unicode 3.1,
+  `AO_PIM_CodeType`; **superseded by
+  [CPP-OMS-005](task-cpp-oms-005-bounded-ascii-amti-settings.md)**, which
+  adds bounded ASCII), structured ASCII, alternating ASCII, IPv6, Unicode 3.1,
   and unconstrained named Strings;
 * length-constrained named Binary (`length`/`minLength`/`maxLength`) and
   `base64Binary` or unknown binary provenance;

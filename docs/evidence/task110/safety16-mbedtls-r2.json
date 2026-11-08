@@ -1,0 +1,967 @@
+{
+  "external_directory": "/home/zboll/task110-evidence/safety16-mbedtls-r2",
+  "source": [
+    "65eaeca07af5acc7252aefa1da6365e04bd2ce1a",
+    "1ded5a7e02472ee96e0eabd4741ce0297607334a"
+  ],
+  "source_status": "",
+  "result": {
+    "completed": true,
+    "compiler": "16",
+    "backend": "mbedtls",
+    "aht": "827b0c17dd964e935f8e88912ce0611ee92b6f16",
+    "codec": "765d9cd612838eb00645037977c8cc9af7171c3e",
+    "steps": [
+      {
+        "label": "source",
+        "exit": 0
+      },
+      {
+        "label": "source-status",
+        "exit": 0
+      },
+      {
+        "label": "aht-identity",
+        "exit": 0
+      },
+      {
+        "label": "aht-clean",
+        "exit": 0
+      },
+      {
+        "label": "codec-identity",
+        "exit": 0
+      },
+      {
+        "label": "codec-clean",
+        "exit": 0
+      },
+      {
+        "label": "compiler",
+        "exit": 0
+      },
+      {
+        "label": "platform",
+        "exit": 0
+      },
+      {
+        "label": "generate-model",
+        "exit": 0
+      },
+      {
+        "label": "generate-codec",
+        "exit": 0
+      },
+      {
+        "label": "build",
+        "exit": 0
+      },
+      {
+        "label": "shim",
+        "exit": 0
+      },
+      {
+        "label": "control-peer-build",
+        "exit": 0
+      },
+      {
+        "label": "api",
+        "exit": 0
+      },
+      {
+        "label": "control",
+        "exit": 0
+      },
+      {
+        "label": "poll",
+        "exit": 0
+      },
+      {
+        "label": "poll-control",
+        "exit": 0
+      },
+      {
+        "label": "wss-regression",
+        "exit": 0
+      },
+      {
+        "label": "sleet",
+        "exit": 0
+      }
+    ],
+    "needs_read_runtime_exercised": false
+  },
+  "artifact_sha256": {
+    "shim.command.json": "1954fd152e40165320bb5fc5447f72fb614204efd9837d6703001fde291e6ecd",
+    "source-status.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "compiler.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "build.stdout": "2736bc2108001e578ea1b8f10fe44b5477474b8d315db0584694b9f00cea3c31",
+    "platform.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression.stdout": "0e57b20bf763232f68623ee72b32365f84acc07e9aa19a1ac04bdd57e0e61e97",
+    "aht-clean.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "aht-identity.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "source-status.command.json": "e05f5ee121b3548f364422e0bda47bfceb4a7080cb0ee5cb6d692700900308c4",
+    "platform.command.json": "f2224e8529aaae0ca7325cb5fe8e96400f3b85644e094ebade9a3ec9de2251be",
+    "poll.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "aht-clean.command.json": "76a2888cb632aafd9fde6aed9fd768f213f4da81b52982ef47da63a7ea82a310",
+    "poll-control.stdout": "43e16ad1b9716edef6aa0dbfa77dc556069065e6a58fa5a8d86319a93c29dd2c",
+    "result.json": "df3a399149e2869543ece440b0fbbbdd43c2599ad2ed6c3d6a3683b5cbc79e13",
+    "source-status.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "poll.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "generate-codec.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "control-peer-build.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "generate-model.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "control.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "compiler.command.json": "a861d7b8a2eebe7ccef70de9a40a5afd90ea0caa310c4914d1ecaefb21cb7f4f",
+    "generate-codec.stdout": "afdde537eb9c4afad4f4f344b215bed7152c0cd740900f7ddef47c5705eaf305",
+    "compiler.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "api.stdout": "b5576cb85d7e348ee7a72addaa999bbba46c0c9fa1f850d8705f935e079333aa",
+    "build.command.json": "3a946e72e2c6eb0e9bf8c139ef1fbb71f4a54c89de671da151aab1dc77c795b3",
+    "poll-control.command.json": "1ea6573896741c89a64258b8f230238e374fe43e41b6122feb82df55fd9868ea",
+    "sources.json": "b0fea398fd6693c524310622de422003b24ae60600550cd0968aaf842cc3d75a",
+    "codec-identity.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "codec-identity.stdout": "72d0234aceafe7889895a80f7d7c20ce06d592b7b6a1c0242c4a81c121cf1364",
+    "generate-codec.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "source.command.json": "a47cece9eebe0715f14e982819e7421615d03bf64a87a4dc963e7a842f696fcd",
+    "codec-clean.command.json": "e5dbb768a00dd7920fffb35cb6609ef302a7fba89bf0b7bc3ef78c2fd80fba36",
+    "compiler.stdout": "0017b5544d754e87af5e1e3097ecb777c53c6c1fda879f7cd02a77b67b110936",
+    "platform.stdout": "427bc4fbabb01630b32638447b3d3be47aeecb439525dc3e1d7559dbcfcc9af8",
+    "generate-codec.command.json": "d4d0db6a9c4801b12d480b80699182297641d7e80afb58578bb82465e0f683cf",
+    "input-sources.json": "d90f4d9fdcfeb0f6a87c5d1a3268df8c1d4545403247ce87df446ce3fdc6199a",
+    "generate-model.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "generate-model.stdout": "7bf4deaebcf33463ec327ddd42dc852ae2d1a6204aaaeae7532e8d81a85cb6b9",
+    "sleet.stdout": "3aa591addff6c678bd30924357887aa06175375dfeec15e487715c5e887bad13",
+    "poll-control.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "api.command.json": "00bd05e1286231e465d355bc20459118cc670bd88f6f6a688f5ed64a07988267",
+    "codec-clean.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "poll.stdout": "4d6e2687b4297465cfcdeaf668701e9934ceb05f99a087e57a5ed18361522148",
+    "aht-identity.stdout": "a2d589b81701442139f3f85519edad75d1532540450c60fe1acb7b792eb48147",
+    "codec-identity.command.json": "58764fdfcb92f8e174035749f6085ed9602f0c47563046bbf8f169261a321ab1",
+    "wss-regression.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "environment.sh": "1d252738d7cd4afdb1dbfc2ff80b8e5f365f337f9cf62cda293dcdf5673ec074",
+    "generate-model.command.json": "8b31bb3c404cf223d5f945c7393aa81c3b19f2fe4d238dba4245044e3008358e",
+    "source.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "shim.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "sleet.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "api.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "wss-regression.command.json": "c2474ce75aa50e75a6b72ef97315371669c920eb4eca9294d491ed7e87388d8d",
+    "poll.command.json": "a97b42f32efc652b8091c94c7f5a5fb292bb7ec3ad7d183ba6edf882f9eb4d9c",
+    "poll-control.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "sleet.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "shim.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "shim.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "aht-identity.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "control-peer-build.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "api.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "control.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "wss-regression.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "platform.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "codec-identity.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "source.stdout": "5e5db4b21917726a8dcd42a4259e5321ae1e716efac8588df5eba04491feeb5b",
+    "control.stdout": "ea4c63f67ae13eb6aea88414d7511065c22b02067e9356c7e947fcda01d22683",
+    "source.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "control-peer-build.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "codec-clean.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "aht-identity.command.json": "ebe6c8c154597066f209ba096aa4cce52fa01d7a9b17008a70f375324d5fdf81",
+    "control.command.json": "960f3ac1640c7b79298e8770bbadf2f57884b8f3b33eaf5384b1ea86219e894f",
+    "codec-clean.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "source-status.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "aht-clean.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "control-peer-build.command.json": "2550608da0c58a8d7f294d17e6e99068c82cad5a671136b32b7d99c3b7e7ef27",
+    "build.stderr": "532192a610dabfc058c81fb538b46f05f2628b449afbd3ab9fd8e2b22a26f9dd",
+    "sleet.command.json": "60bf695915be59d2c7141f19d4a47f6a85e240b40842044a9cd3505256c64c59",
+    "aht-clean.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "build.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "poll-control/peer.command.json": "5590cb7b5088166d35d85caebaac1c22288a704dfc3711792872b8e2205f1622",
+    "poll-control/client.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "poll-control/result.json": "58fb4f3b5b1848dc7a5eebd97b47f9fa293a7d03a6770041ad2a482538cec362",
+    "poll-control/client.stdout": "65c48642c66dc17dfca7c86cc79031a06e255b5e56ab98f1e95e90ce8a981e50",
+    "poll-control/client.command.json": "cdefab717f82bda50c2db8dc562151ea6006ad4c333925c12b51b66daf2bef2c",
+    "poll-control/peer.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "poll-control/peer.stdout": "a190c817beb298856783a7ab721dd94142e858ebefa901c4cf31b9799073f8ee",
+    "poll-control/client.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "poll-control/peer.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "wss-regression/fragment-control.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "wss-regression/fragment-ping.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "wss-regression/utf8.stdout": "7d238031677acb7d82c366caae0c0073e2c1374b31962492559bfa9c4641aa89",
+    "wss-regression/nonminimal.stdout": "aaa652e07115fbf393ed497514a288c75abb714260ee11b7e04ffc84aadd6f11",
+    "wss-regression/send-failure.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/oversized.stdout": "a88172e8265994b2ae2e0f9ac8e87c1aa9e7096daba395f5c43ee813a1db90dd",
+    "wss-regression/large.stdout": "3dbe546726bf25dcafb145d09843ea37672808442e121784129888c5b0928726",
+    "wss-regression/extensions.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/reserved.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "wss-regression/lifecycle.stdout": "0d4b96905aeb374bc86acae2e698cdd832f424a022e4ec338add0889e243c879",
+    "wss-regression/bad-close-utf8.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/invalid-upgrade.command.json": "cff4c980f535360052aee69bb5c3aa9182ecf400a5fff265077158ed5f374023",
+    "wss-regression/invalid-upgrade.stdout": "43bea3272080a46e5a69a71a7c1b26a970dc3c6f3d58816e53a10dfa8681f91e",
+    "wss-regression/receive-large.stdout": "2714ee69f0ecc34b6dec574d1e2854b2eccf974a26fc1195817571e022379255",
+    "wss-regression/fragment-oversized.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "wss-regression/validation.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/send-failure.command.json": "f0cf1af4b65bf10060d746e730537a85c4ef6bc55c37d1d34293527d883c6c49",
+    "wss-regression/oversized.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/wrong-protocol.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/valid.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "wss-regression/binary.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "wss-regression/binary.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/malformed-header.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/rsv.command.json": "b2348250f2e47cab72e6b4a07bb004ee181245337e87012c8e4c5b84510f2e63",
+    "wss-regression/lifecycle.command.json": "ba606f34f3592f280dda6720820d3d092fd45f027f411f7265bc6ca7fd77768c",
+    "wss-regression/new-text-during-fragment.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "wss-regression/rsv.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "wss-regression/valid.command.json": "c21ccd688e1a0b2fd2b09618bc3cac5a129589513ede0d0ecfe11272604703b8",
+    "wss-regression/new-text-during-fragment.stdout": "d0b64d8add62000f491a964adaba8cdb1816d41d5e61ce785818a888dad1eba5",
+    "wss-regression/large.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "wss-regression/excessive-headers.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "wss-regression/redirect.command.json": "78901ba9e110ab4557fa3dda594210aa7eb7dbfc3260d8220dacc05399cf43f7",
+    "wss-regression/receive-large.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "wss-regression/tcp-split.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "wss-regression/masked.command.json": "ca8a290686457ec4bdc16ca2b7dd03d7178d8561b62ac6c38f449af009895a3f",
+    "wss-regression/masked.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/duplicate-protocol.stdout": "318a4b6a070be43d37476c4ef16594aac452aa3841a1aa6eb3543fa5910c14ba",
+    "wss-regression/bad-close-code.command.json": "edb474de943dfea93b87bdeb792a146eedd5a985e8fcdfcb8737d7170a6fd40e",
+    "wss-regression/orphan-continuation.stdout": "00e80fb6f5b5d9313d2d3676d31ad1455205383c4712bf556fc6c6b99bfa5016",
+    "wss-regression/fragment-oversized.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/bad-close-utf8.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "wss-regression/utf8-fragments.stdout": "9181b6a5886ae39a9d16c37310db210d9bcb8e5a4b62796807c32d682a99b66f",
+    "wss-regression/nonminimal.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "wss-regression/excessive-headers.stdout": "137a8b27a8c030638fd96fca167eb8ca73e2fd9a96527f3583073e0db9e85285",
+    "wss-regression/result.json": "29c025c9c2a783660ef883e8d9eef21cc8a730a572b8366b4227b50cb28ed5e0",
+    "wss-regression/utf8-fragments.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "wss-regression/malformed-header.command.json": "cc6e329e50ce2275d3d863e824dbb3ad7153949d5aaeab12f3e59e2db093be0d",
+    "wss-regression/missing-protocol.stdout": "2f4154de60e1738c71b867c515bc7c2dfcc12a55fc41739afadc7322be2c4ce2",
+    "wss-regression/length-msb.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "wss-regression/receive-large.command.json": "f085489915d843e91d8398dd9f1d4d5a70b14ee66237b83d09590bb691270109",
+    "wss-regression/wrong-accept.stdout": "43bea3272080a46e5a69a71a7c1b26a970dc3c6f3d58816e53a10dfa8681f91e",
+    "wss-regression/malformed-header.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "wss-regression/send-failure.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "wss-regression/redirect.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/orphan-continuation.command.json": "de8a1581ca245a2b3cf46fd4ce9d21bb26e410d55a31a0abc37178678e8ce1cb",
+    "wss-regression/large-control.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "wss-regression/fragment-control.stdout": "b7ed47e541d5b6eeedfcde452f58177b7dcff66c0ab921509bff9a494f93761e",
+    "wss-regression/utf8-fragments.command.json": "76a3e280a3bff5831acb8eb2bc5565e9cfe90fbfb305225b3057ea92f65d8f1b",
+    "wss-regression/excessive-headers.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/invalid-upgrade.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/stalled-partial.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/reserved.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/send-failure.stdout": "1d50c6e17a09afdcc4d6f9c6301a6b177cb33c196e592fbd82c7c6f8ebaf23c7",
+    "wss-regression/wrong-protocol.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "wss-regression/fragment-ping.command.json": "9a83d137cee0633b4d7f1463737e81f1584bb66e383aeb1bcb0c6613fef459ed",
+    "wss-regression/large.command.json": "636f5f1a160cb161af74905f3f10a9c5fa1e899e1de76dedd40dc2667c6176d4",
+    "wss-regression/rsv.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/extensions.stdout": "0d737b7cfa48bb2efbc86e193d37254766b79611efe9b97438f980a0ceaa6255",
+    "wss-regression/utf8.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/bad-close-code.stdout": "ec6d4683ed0605a8d915609171e5ce1539b92d56fa713ab013498df201796168",
+    "wss-regression/validation.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "wss-regression/bad-close-utf8.command.json": "23b83feb54b9d335fd4956c0a9e6e91ae6e38c317778e68c722fb5228421a9eb",
+    "wss-regression/wrong-accept.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/bad-close-code.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "wss-regression/duplicate-protocol.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "wss-regression/finalize.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "wss-regression/bad-close-utf8.stdout": "ec6d4683ed0605a8d915609171e5ce1539b92d56fa713ab013498df201796168",
+    "wss-regression/binary.stdout": "ec7cd74df8c5246ca669a4cd1421e6a4d292045eebf7da34c325a7e7a4a4bad8",
+    "wss-regression/tcp-split.command.json": "078c475911ba0570a456a91474307fe4ed48c3df1b8c75a0090923dc299d943e",
+    "wss-regression/oversized.command.json": "7734f82d76c87bb844901b8ae87f126563f7fc3f6885223a60062503e476cc1d",
+    "wss-regression/fragment-control.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/peer-close.stdout": "b02fcac974c3f662d625e14579bbb68285c37e15090ea2bbd9deacd74b56081d",
+    "wss-regression/lifecycle.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "wss-regression/wrong-protocol.stdout": "318a4b6a070be43d37476c4ef16594aac452aa3841a1aa6eb3543fa5910c14ba",
+    "wss-regression/new-text-during-fragment.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/masked.stdout": "b0db46fd94b3a974fd42f80938c5bd3dcca5211616783512deaa7554cf197f08",
+    "wss-regression/nonminimal.command.json": "11b1e8776bbc2c57dccda95f319b896608641db1632ed4ad700936de03c7eece",
+    "wss-regression/lifecycle.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/generated.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/receive-large.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/stalled-partial.stdout": "3dbe546726bf25dcafb145d09843ea37672808442e121784129888c5b0928726",
+    "wss-regression/valid.stdout": "3dbe546726bf25dcafb145d09843ea37672808442e121784129888c5b0928726",
+    "wss-regression/masked.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "wss-regression/validation.command.json": "b77d188bc8e4e529d2b47150b9c96e9ed281b6d30d7ae97142a126a9c6be4ba9",
+    "wss-regression/length-msb.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/wrong-protocol.command.json": "a7cef53760f770a5fe5e43d8d8cf6124fd3aed0261f3391e60ca158e2fde6a3f",
+    "wss-regression/wrong-accept.command.json": "a5dc53da909d6327d089e176f56bbd0cf81e1114507107fcbb61423ff18469f4",
+    "wss-regression/utf8.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "wss-regression/missing-protocol.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/malformed-header.stdout": "36472102fe22fab99f1610013a6fc06aff961d193e66365f10dd5ec8feb51e1e",
+    "wss-regression/rsv.stdout": "a5e1ee451dab68bbae381eafea1a563c8c794c9a79255f42df590dacdb0dbec8",
+    "wss-regression/new-text-during-fragment.command.json": "623cb1112aaefd3815c6292f1da3ee632253efa1dbe89387d739bd1409818188",
+    "wss-regression/finalize.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/finalize.command.json": "68294160cbd9d981513b0150d860794f7dcfba91fadffd3d835e6298ac36a391",
+    "wss-regression/fragment-oversized.command.json": "50e8410f59233c089a58d84d16c2513eb36d4bb52b14630edf172b5fc82dfd7e",
+    "wss-regression/fragment-oversized.stdout": "226c82307ad3f64f39fe4c3dbd6e4e4311eaa4a69486e81f44640255b6d42057",
+    "wss-regression/peer-close.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "wss-regression/binary.command.json": "76a64c84b186cea28ce7b066deef2728a4002ff54c22569012dca1117477ad81",
+    "wss-regression/validation.stdout": "3dbe546726bf25dcafb145d09843ea37672808442e121784129888c5b0928726",
+    "wss-regression/generated.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "wss-regression/missing-protocol.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "wss-regression/valid.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/reserved.command.json": "ed22b44292572e360d2ef6bc5989ea1097bd79168debf20cd8a8d371f5b36745",
+    "wss-regression/utf8.command.json": "bfec640f5665e81d63c28e927656d33915ead974df100f035f05481d1587e146",
+    "wss-regression/generated.stdout": "1ed86055c2d1de4938d55cbe14980c4c3a4fddb7604107025ccbbe92ea8cb1cc",
+    "wss-regression/large-control.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/orphan-continuation.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/length-msb.stdout": "5277cac8a2cdf7b9f840355af39b25fd6fc89c720d27abff0c7a296c03eed56f",
+    "wss-regression/fragment-ping.stdout": "3dbe546726bf25dcafb145d09843ea37672808442e121784129888c5b0928726",
+    "wss-regression/extensions.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "wss-regression/duplicate-protocol.command.json": "7d6bfd66c198903d08bd107d7c467b586e676e9e690a57cac206a91b1e11d963",
+    "wss-regression/fragment-control.command.json": "624c4eaaa573c3b214c3e6769fda346ba93d612a2cb80a5c961525af95bce69a",
+    "wss-regression/utf8-fragments.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/large-control.stdout": "f8b39d4239e557e2572b1706b7eac143d9751193cb016c08640f548e92eee1d2",
+    "wss-regression/tcp-split.stdout": "3dbe546726bf25dcafb145d09843ea37672808442e121784129888c5b0928726",
+    "wss-regression/length-msb.command.json": "c89db1240f355f4298f8d6c22df3a8fc25680d96740a8f0adef74e3c1ddeaa8e",
+    "wss-regression/peer-close.command.json": "c22632a7dfd78ee6e313c45b860ccc67fed4c2bd417fac38c69b84f7f7a5e023",
+    "wss-regression/finalize.stdout": "3dbe546726bf25dcafb145d09843ea37672808442e121784129888c5b0928726",
+    "wss-regression/orphan-continuation.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "wss-regression/invalid-upgrade.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "wss-regression/stalled-partial.command.json": "c4ed0e4d580144860688b61814b5be46f86177d48ea912c03c618122d4d98e5e",
+    "wss-regression/bad-close-code.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/missing-protocol.command.json": "1bedd1404e5f06d6558b1b29027969dc2d447d67c3b12b8e332d0452682f5d33",
+    "wss-regression/extensions.command.json": "0da84acce3c3bac7e83f7b2ed57469c49901ec24b6c92800321163c205a5a2b6",
+    "wss-regression/tcp-split.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/reserved.stdout": "a752c9c9161017b6de37231cd945e46ce67bffaa515ab6530a047ccb4d5ec786",
+    "wss-regression/large-control.command.json": "73d32ed08797904ec191a7fcea2db61238692411a7f1c70a7c6697e960377560",
+    "wss-regression/nonminimal.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/redirect.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "wss-regression/excessive-headers.command.json": "4372691a4346692da077eec03b70cafb241eb897d6204e06109923b63eb2fe54",
+    "wss-regression/wrong-accept.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "wss-regression/fragment-ping.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/stalled-partial.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "wss-regression/generated.command.json": "35764fab9352779d0c5c4bbb27b0c6444d983413c7d7a935a12a1b5f3acf5c6e",
+    "wss-regression/oversized.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "wss-regression/redirect.stdout": "eb0ecc6051f174b16bceb13e650ddfc7e9eeeb434f011f959b671e51ef338cbd",
+    "wss-regression/duplicate-protocol.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/peer-close.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wss-regression/large.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "control/client.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "control/result.json": "f101e8f4f2c35bcc8d2bb07c9259f18a5002f6733a410a9761b809af8b86f919",
+    "control/server.command.json": "598256213bdd05a08107d65380fbda716f954cdff5b3f5b365471244f674f07a",
+    "control/client.stdout": "ea4c63f67ae13eb6aea88414d7511065c22b02067e9356c7e947fcda01d22683",
+    "control/client.command.json": "fec9274592f496b90cb0a4d992a9de16222984da67dde53fd418b7c3106e09c7",
+    "control/server.stderr": "44382d1291fe38ac741f23540916b336ec34d170a0a474f58cdcf499d8678234",
+    "control/server.stdout": "34c77f3b1a1c8b3e22d87e9ed0c0a39df9701ac2754504e0a6b33423ac0df3ad",
+    "control/client.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "poll/deaf.command.json": "01ddae8d6dc1d158684f32afbcf5066e0817a51d5e00ac29d492b29cc2ce9937",
+    "poll/wrong-protocol.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "poll/ping.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "poll/close.peer.json": "c3ae75d2c954c69fd3028e69772f821e582aee6f51fb5ec103a6d64abe817688",
+    "poll/fragments.stdout": "09a16aa62da24ef6dcb8de2c50a8f8f547035345c6ae16194447c58258ab2a82",
+    "poll/burst-backpressure.stdout": "224ceb32cf76bb2f4bf7cffbb1fea0c7a842c4cb381917450a5e9629e40b5609",
+    "poll/idle.stdout": "447dbb7b3069ef4ce0796fc914dab86f63842cb7c835628cff83dc3ec776e709",
+    "poll/records.stdout": "1e3f085c4d33c7028c388ca41f087ac7668f2d3eb54bcdd0e3769cd5715f3c0e",
+    "poll/burst-backpressure.command.json": "1c4385e3e865bffcd6c0ec77967acfdbf7bfc71ce329a5ef7742fb51fe5b84db",
+    "poll/truncation.command.json": "b07d6b483031a49ce494a0c24e0e3e016269dab8fa715f9c581aa46071795eb7",
+    "poll/truncation.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "poll/fragments.command.json": "ebc352cb337c4920018cd9932d9c708c88cf0866053b5e1761a6b2826787bb5a",
+    "poll/result.json": "014b29e64c7a72736289dd2764996b8eeba43aad0bdd56156f5b0f8bbbbe2187",
+    "poll/truncation.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "poll/truncation.stdout": "b1f1ffb805ec3debb08d385403eafd49a9fa2c4000521a6a54f186208348dc42",
+    "poll/hostname.peer.json": "339acc3b09add3c3d0e689adf17878a1bd264d3a3f00fccce7db538630e20066",
+    "poll/failed-handshake.command.json": "11763e34bbf1ebb7a19a6956acff2da5f493196d4018fde21770576d718eef3a",
+    "poll/fragments.peer.json": "af6ab4462a0993089ebe735a9290cfedef3eda6556faca287ed69d18ac6fd487",
+    "poll/failed-handshake.stdout": "368f9037efa67f8e93b67b7dd9f9b5aa8564fd97225aedd6208ce645af06f640",
+    "poll/idle.peer.json": "c3ae75d2c954c69fd3028e69772f821e582aee6f51fb5ec103a6d64abe817688",
+    "poll/burst-backpressure.stderr": "2d28a253d0314ffd443941cf0d75b48c7dfeeb0f35d45c795a06f6a5ea24f43b",
+    "poll/untrusted.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "poll/untrusted.command.json": "1492d50286dcd9764d50b3344e37478f2f4e782702e1b5910f824934f872c61a",
+    "poll/backpressure.command.json": "36934a76f89c982e1674c419026740bf0dd19ad10605744dde66a9d51b2fd9e1",
+    "poll/wrong-protocol.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "poll/hostname.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "poll/close.stdout": "a0bb38442f7c354f1a3a5c5c4e4740575f6d7af639b3b9ff14981bd441ae6591",
+    "poll/failed-handshake.peer.json": "339acc3b09add3c3d0e689adf17878a1bd264d3a3f00fccce7db538630e20066",
+    "poll/untrusted.peer.json": "339acc3b09add3c3d0e689adf17878a1bd264d3a3f00fccce7db538630e20066",
+    "poll/idle.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "poll/records.peer.json": "01480a36d1d19df0c17be76dadb4486ddac3b8d2b54a0c294e277cb9ae38fa1b",
+    "poll/backpressure.peer.json": "08d80a406721e1302ceb59691c6909640b07fb72dd15c63acd6b2cf4985034e8",
+    "poll/ping.command.json": "e500cd5265d2a37b9fb9f77dbd0b326f7f030cac3314eee6ffa329eecf4b9b51",
+    "poll/hostname.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "poll/truncation.peer.json": "339acc3b09add3c3d0e689adf17878a1bd264d3a3f00fccce7db538630e20066",
+    "poll/untrusted.stdout": "7d745d39e30370fa9d3d8179ad18a7dc7ed8673895b6f8799a5f9fe4988ac745",
+    "poll/failed-handshake.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "poll/wrong-protocol.stdout": "49c998e8774131716aec22bc710484e16e13acd849ecaaba7cae4cb04a40df21",
+    "poll/deaf.stdout": "729a20d8098f37fa4c6709612d7bfb933a93df51767e003cb7d95b25abc6f7bc",
+    "poll/wrong-protocol.peer.json": "339acc3b09add3c3d0e689adf17878a1bd264d3a3f00fccce7db538630e20066",
+    "poll/backpressure.stdout": "d41ed5c8c8a1c3c9f36cee8b547dce2e1428481296c82bd498b177b69fd3b69c",
+    "poll/records.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "poll/idle.command.json": "4fdd8dbdca79cbf45684501956e469b25a44c86e6f28653d0830992cd0911f68",
+    "poll/deaf.peer.json": "339acc3b09add3c3d0e689adf17878a1bd264d3a3f00fccce7db538630e20066",
+    "poll/hostname.command.json": "fe156d7fe7ebb04940996aa6d76d804919d3bf6d7cd3cceef0e6f1702faf0976",
+    "poll/wrong-protocol.command.json": "32b8c4b5461140a863bccbad9423c7430ce8e2603d0fee0ff8ff0ac3cc3f6878",
+    "poll/untrusted.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "poll/fragments.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "poll/burst-backpressure.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "poll/deaf.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "poll/records.command.json": "8f9ec755e9e6b13ac92a0a9743ddce23e6bb752f8d89b142e24535c412cb4069",
+    "poll/deaf.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "poll/close.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "poll/records.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "poll/failed-handshake.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "poll/burst-backpressure.peer.json": "1843b07bc22b250d0cc11753f3ffaad05eb141600913d246a4b9ea8e54857fa7",
+    "poll/ping.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "poll/ping.peer.json": "08d80a406721e1302ceb59691c6909640b07fb72dd15c63acd6b2cf4985034e8",
+    "poll/fragments.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "poll/ping.stdout": "6b3af32a8fac600dab5030cde78318e35cd07afd8e6b30fdb33895ac02b21d27",
+    "poll/backpressure.stderr": "03266926319f04ef43bea3432b215e6df96b5d5cbde5b03dbfeb01d621c8de5c",
+    "poll/idle.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "poll/hostname.stdout": "f323ed68f25d529a84dab4041aa16608922551fe5ab3e220340ee174addb6be4",
+    "poll/backpressure.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "poll/close.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "poll/close.command.json": "ae4e0c4a9d63b16031ad18ea85ea77466108f19622a9d4b91a10e1f46024306b",
+    "sleet/result.json": "f971519b8f432b00c9a2d3165d52710ce29b5878ae7d19db1c940980f2ef8ba9",
+    "sleet/consumer.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "sleet/consumer.stdout": "6a6eea3aabdef0b1c1f376a347538e25208bf145f8cb61d6aed0884ca35ba1ea",
+    "sleet/consumer.command.json": "6cd77e287c5950a35861f31ec1538ce45a2f311a1d45ab616387b5d1f5705f93",
+    "sleet/consumer.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "sleet/server.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "sleet/server.stdout": "50d2e9c83dd76100d64187635e1bcf235e9175923f983120c1ca16ce289a5f05",
+    "sleet/server.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "api/deaf.command.json": "c7e7bbb94b5a128eed78665d6c03b9c3b1e5ef260e664c45bfaf71c482ef3657",
+    "api/idle.stdout": "9f56098ada6e23c27639b803e18feabecd5eb81552bc1ce2f5c7c8054fac4e73",
+    "api/sink.stdout": "b05cfbdb55b23537a4a7c107e8aeb8c30fd40516b78c48fb707c52a0398bf307",
+    "api/truncation.command.json": "ee7ded4c9962be3cde3b4ec69da1fe37e0a3291130062f882b069748723f6656",
+    "api/truncation.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "api/result.json": "b969a46be1e5d7c9903c19e34c5a2509ed9b4f8acd04bfc6e61db407575480c7",
+    "api/truncation.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "api/truncation.stdout": "2e3cd8cccae6165facd93c0514fcc7faccfb43e4feec1473caeea80e0bddf91e",
+    "api/untrusted.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "api/sink.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "api/untrusted.command.json": "0990054e705f61f490c7bcea932ed4d3cc442514a6b6ed07535132f8ed9527dc",
+    "api/hostname.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "api/sink.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "api/idle.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "api/certificate.command.json": "f30178a8ff8f22f919d0f0062a457b4c14597f22f806b4ec7b9cbe81c107639b",
+    "api/hostname.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "api/untrusted.stdout": "e03a768b0f22b8f624bc6016270d433e93affad668aec47867f822ccc15622df",
+    "api/deaf.stdout": "d3c126a14f2682dc00a315ead382ab244cec88a056396f8b3e29f66f8a340371",
+    "api/idle.command.json": "b9595331d55d5602225e0cd0615b1f39f37d12827c2ab5ad94892509fc33b579",
+    "api/hostname.command.json": "c97e78bdacc0be7ec1320a8e02c16682277fe9a197b888ef7193d191f2a86332",
+    "api/untrusted.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "api/sink.command.json": "51436fb85ca32f2b4f90cc6686b77d9b02b406bd55f307cb6fdc40db7f6184a7",
+    "api/deaf.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "api/deaf.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "api/idle.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "api/hostname.stdout": "b00268753552be01249130f69e3f995397cc41f78ebc0a0c3eefc3134bb1bcaa",
+    "api/certificate.stderr": "0200397b328857d0dafac5e9ff7fd4ca2d41e8a290ed67b2230877b502de328e"
+  },
+  "commands": {
+    "shim.command.json": {
+      "argv": [
+        "cc",
+        "-shared",
+        "-fPIC",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O2",
+        "/home/zboll/git/ams-gra-codegen-oms-task110/tests/ada-wss/control_backpressure.c",
+        "-o",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/control_backpressure.so"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "source-status.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/git/ams-gra-codegen-oms-task110",
+        "status",
+        "--porcelain"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "platform.command.json": {
+      "argv": [
+        "sh",
+        "-ec",
+        ". /home/zboll/task110-evidence/safety16-mbedtls-r2/environment.sh; exec sh -ec 'uname -a; gprbuild --version; openssl version; sha256sum $(command -v gcc) $(command -v gprbuild)'"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "aht-clean.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/task110-evidence/deps/aht",
+        "status",
+        "--porcelain"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "compiler.command.json": {
+      "argv": [
+        "sh",
+        "-ec",
+        ". /home/zboll/task110-evidence/safety16-mbedtls-r2/environment.sh; exec gnat --version"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "build.command.json": {
+      "argv": [
+        "sh",
+        "-ec",
+        ". /home/zboll/task110-evidence/safety16-mbedtls-r2/environment.sh; exec gprbuild -p -j4 -P /home/zboll/task110-evidence/safety16-mbedtls-r2/build/consumer.gpr"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "poll-control.command.json": {
+      "argv": [
+        "python3",
+        "/home/zboll/git/ams-gra-codegen-oms-task110/scripts/task108/poll_control.py",
+        "--probe",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/build/bin/wss_probe",
+        "--peer",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/tls_control_peer",
+        "--cert",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/api/cert.pem",
+        "--key",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/api/key.pem",
+        "--evidence",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/poll-control"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "source.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/git/ams-gra-codegen-oms-task110",
+        "rev-parse",
+        "HEAD",
+        "HEAD^{tree}"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "codec-clean.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/task110-evidence/deps/codec",
+        "status",
+        "--porcelain"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "generate-codec.command.json": {
+      "argv": [
+        "/home/zboll/task110-evidence/target/release/ams-gra-codegen-oms",
+        "service-generate",
+        "--schema",
+        "/home/zboll/git/ams-gra-codegen-oms-task110/tests/fixtures/service-generate/lacal-websocket.xsd",
+        "--contract",
+        "/home/zboll/git/ams-gra-codegen-oms-task110/tests/fixtures/service-generate/lacal-runtime.yaml",
+        "--language",
+        "ada",
+        "--world",
+        "closed-schema",
+        "--with-codec",
+        "--output",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/build/generated"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "api.command.json": {
+      "argv": [
+        "python3",
+        "/home/zboll/git/ams-gra-codegen-oms-task110/scripts/task108/aht_consumer.py",
+        "--probe",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/build/bin/aht_probe",
+        "--evidence",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/api"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "codec-identity.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/task110-evidence/deps/codec",
+        "rev-parse",
+        "HEAD"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "generate-model.command.json": {
+      "argv": [
+        "/home/zboll/task110-evidence/target/release/ams-gra-codegen-oms",
+        "service-generate",
+        "--schema",
+        "/home/zboll/git/ams-gra-codegen-oms-task110/tests/fixtures/service-generate/lacal-websocket.xsd",
+        "--contract",
+        "/home/zboll/git/ams-gra-codegen-oms-task110/tests/fixtures/service-generate/lacal-runtime.yaml",
+        "--language",
+        "ada",
+        "--world",
+        "closed-schema",
+        "--output",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/model"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "wss-regression.command.json": {
+      "argv": [
+        "python3",
+        "/home/zboll/git/ams-gra-codegen-oms-task110/scripts/task108/wss_regression.py",
+        "--probe",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/build/bin/transport_probe",
+        "--consumer",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/build/bin/generated_consumer",
+        "--cert",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/api/cert.pem",
+        "--key",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/api/key.pem",
+        "--evidence",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/wss-regression"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "poll.command.json": {
+      "argv": [
+        "python3",
+        "/home/zboll/git/ams-gra-codegen-oms-task110/scripts/task108/wss_peer.py",
+        "--probe",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/build/bin/wss_probe",
+        "--cert",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/api/cert.pem",
+        "--key",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/api/key.pem",
+        "--shim",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/control_backpressure.so",
+        "--evidence",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/poll"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "aht-identity.command.json": {
+      "argv": [
+        "git",
+        "-C",
+        "/home/zboll/task110-evidence/deps/aht",
+        "rev-parse",
+        "HEAD"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "control.command.json": {
+      "argv": [
+        "python3",
+        "/home/zboll/git/ams-gra-codegen-oms-task110/scripts/task108/tls_control.py",
+        "--probe",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/build/bin/aht_probe",
+        "--cert",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/api/cert.pem",
+        "--key",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/api/key.pem",
+        "--evidence",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/control"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "control-peer-build.command.json": {
+      "argv": [
+        "cc",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O2",
+        "/home/zboll/git/ams-gra-codegen-oms-task110/tests/ada-wss/tls_control_peer.c",
+        "-lssl",
+        "-lcrypto",
+        "-o",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/tls_control_peer"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    },
+    "sleet.command.json": {
+      "argv": [
+        "python3",
+        "/home/zboll/git/ams-gra-codegen-oms-task110/scripts/task100/real_sleet.py",
+        "--checkout",
+        "/home/zboll/task110-evidence/deps/sleet",
+        "--consumer",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/build/bin/generated_consumer",
+        "--tls-cert",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/api/cert.pem",
+        "--tls-key",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/api/key.pem",
+        "--evidence",
+        "/home/zboll/task110-evidence/safety16-mbedtls-r2/sleet"
+      ],
+      "cwd": "/home/zboll/git/ams-gra-codegen-oms-task110"
+    }
+  },
+  "api/result.json": {
+    "completed": true,
+    "cases": [
+      {
+        "case": "idle",
+        "exit": 0
+      },
+      {
+        "case": "deaf",
+        "exit": 0
+      },
+      {
+        "case": "sink",
+        "exit": 0,
+        "bytes": 1802240,
+        "sha256": "eeeb364451b2f57090ad96249089abf48367f782566d3859094d49b0334e2d8b"
+      },
+      {
+        "case": "untrusted",
+        "exit": 1
+      },
+      {
+        "case": "hostname",
+        "exit": 1
+      },
+      {
+        "case": "truncation",
+        "exit": 1
+      }
+    ]
+  },
+  "poll/result.json": {
+    "completed": true,
+    "cases": [
+      {
+        "case": "idle",
+        "exit": 0,
+        "exact_close": "03e8646f776e73747265616d",
+        "fragmented_ciphertext_sends": 0
+      },
+      {
+        "case": "fragments",
+        "exit": 0,
+        "exact_pong": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c",
+        "exact_close": "03e8646f776e73747265616d",
+        "fragmented_ciphertext_sends": 23
+      },
+      {
+        "case": "records",
+        "exit": 0,
+        "batched_records": 3,
+        "exact_close": "03e8646f776e73747265616d",
+        "fragmented_ciphertext_sends": 0
+      },
+      {
+        "case": "ping",
+        "exit": 0,
+        "exact_pong": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c",
+        "exact_close": "03e8646f776e73747265616d",
+        "fragmented_ciphertext_sends": 0
+      },
+      {
+        "case": "close",
+        "exit": 0,
+        "exact_close": "03e8646f776e73747265616d",
+        "fragmented_ciphertext_sends": 0
+      },
+      {
+        "case": "backpressure",
+        "exit": 0,
+        "exact_pong": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c",
+        "exact_close": "03e8646f776e73747265616d",
+        "fragmented_ciphertext_sends": 0,
+        "blocked": 143,
+        "partial": 68
+      },
+      {
+        "case": "burst-backpressure",
+        "exit": 0,
+        "ordered_control_responses": 3,
+        "blocked": 176,
+        "partial": 83
+      },
+      {
+        "case": "deaf",
+        "exit": 0
+      },
+      {
+        "case": "wrong-protocol",
+        "exit": 1
+      },
+      {
+        "case": "untrusted",
+        "exit": 1
+      },
+      {
+        "case": "hostname",
+        "exit": 1
+      },
+      {
+        "case": "truncation",
+        "exit": 1
+      },
+      {
+        "case": "failed-handshake",
+        "exit": 0
+      }
+    ]
+  },
+  "poll-control/result.json": {
+    "completed": true,
+    "poll_tls_control": true,
+    "application_plaintext": 0
+  },
+  "control/result.json": {
+    "completed": true,
+    "tls_generated_output": true
+  },
+  "wss-regression/result.json": {
+    "completed": true,
+    "cases": [
+      {
+        "case": "valid",
+        "exit": 0
+      },
+      {
+        "case": "tcp-split",
+        "exit": 0
+      },
+      {
+        "case": "stalled-partial",
+        "exit": 0
+      },
+      {
+        "case": "fragment-ping",
+        "exit": 0
+      },
+      {
+        "case": "utf8-fragments",
+        "exit": 0
+      },
+      {
+        "case": "receive-large",
+        "exit": 0
+      },
+      {
+        "case": "peer-close",
+        "exit": 0
+      },
+      {
+        "case": "large",
+        "exit": 0
+      },
+      {
+        "case": "send-failure",
+        "exit": 0
+      },
+      {
+        "case": "validation",
+        "exit": 0
+      },
+      {
+        "case": "lifecycle",
+        "exit": 0
+      },
+      {
+        "case": "finalize",
+        "exit": 0
+      },
+      {
+        "case": "duplicate-protocol",
+        "exit": 1
+      },
+      {
+        "case": "excessive-headers",
+        "exit": 1
+      },
+      {
+        "case": "extensions",
+        "exit": 1
+      },
+      {
+        "case": "invalid-upgrade",
+        "exit": 1
+      },
+      {
+        "case": "malformed-header",
+        "exit": 1
+      },
+      {
+        "case": "missing-protocol",
+        "exit": 1
+      },
+      {
+        "case": "redirect",
+        "exit": 1
+      },
+      {
+        "case": "wrong-accept",
+        "exit": 1
+      },
+      {
+        "case": "wrong-protocol",
+        "exit": 1
+      },
+      {
+        "case": "masked",
+        "exit": 1
+      },
+      {
+        "case": "reserved",
+        "exit": 1
+      },
+      {
+        "case": "rsv",
+        "exit": 1
+      },
+      {
+        "case": "utf8",
+        "exit": 1
+      },
+      {
+        "case": "binary",
+        "exit": 1
+      },
+      {
+        "case": "oversized",
+        "exit": 1
+      },
+      {
+        "case": "fragment-control",
+        "exit": 1
+      },
+      {
+        "case": "large-control",
+        "exit": 1
+      },
+      {
+        "case": "nonminimal",
+        "exit": 1
+      },
+      {
+        "case": "length-msb",
+        "exit": 1
+      },
+      {
+        "case": "orphan-continuation",
+        "exit": 1
+      },
+      {
+        "case": "new-text-during-fragment",
+        "exit": 1
+      },
+      {
+        "case": "bad-close-code",
+        "exit": 1
+      },
+      {
+        "case": "bad-close-utf8",
+        "exit": 1
+      },
+      {
+        "case": "fragment-oversized",
+        "exit": 1
+      },
+      {
+        "case": "generated",
+        "exit": 0
+      }
+    ]
+  },
+  "sleet/result.json": {
+    "completed": true,
+    "revision": "e38f61d8ce0d75c8508434a52f2ed77c69cf6a3b",
+    "generated_typed_handlers": true,
+    "real_uci": false,
+    "tls_terminator": true
+  }
+}
