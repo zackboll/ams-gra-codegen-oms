@@ -70,6 +70,17 @@ class PackTests(unittest.TestCase):
         with patch.dict(os.environ, PACK_REAL_ALR='/verified/alr', PACK_SETTINGS='/worker/settings'):
             self.assertEqual(alr.arguments(command)[2:], command)
 
+    def test_archive_recovery_uses_only_worker_private_settings(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(pack.subprocess, 'run') as run:
+            directory = Path(tmp) / 'worker'
+            pack.environment(directory, '/verified/alr')
+            hooks = [call.args[0] for call in run.call_args_list
+                     if 'origins.archive.download_cmd' in call.args[0]]
+            self.assertEqual(len(hooks), 1)
+            self.assertEqual(hooks[0], ['/verified/alr', '--settings=' + str(directory / 'settings'),
+                '-n', 'settings', '--global', '--set', 'origins.archive.download_cmd',
+                f'python3 {pack.ROOT / "scripts/pinned_download.py"} ${{URL}} ${{DEST}}'])
+
     @unittest.skipUnless(shutil.which('alr'), 'live Alire unavailable; hosted qualification still mandatory')
     def test_live_alire_private_configuration_and_wrapper(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -162,6 +162,11 @@
       "main_sha256": "2ac0cb4eb40ed854c67ddda3e66f0fe8140321d8a455e94b6a8c1f7b3d147b6e",
       "current_sha256": "c0c1a940033b5231b4c1a5a2631d253839e91f4ed5af31dba8916f361df40080",
       "review": "Retain existing packed-worker-only gprbuild -j1 limit alongside main AHT pin and GPR_PROJECT_PATH."
+    },
+    "scripts/task096/setup.py": {
+      "main_sha256": "aae911e3864797dd5632c107def6486265defda321723da77ff66ae3d6ba4f06",
+      "current_sha256": "241b65fe57b8b41c020f8ced511a6a4fa731f2e7548418e1f487406490563490",
+      "review": "CI-MAIN-002: configure task-owned Alire archive transport only. Keep compiler/package pins, index, isolation, original build/version/smoke commands and Alire origin verification unchanged. Pinned GNAT/GPRbuild/GNATCOLL HTTP 504 evidence is preserved in the corrective PR."
     }
   },
   "qualification_sha256": {
@@ -231,7 +236,7 @@
     "scripts/task096/job.py": "739c9b46cd801d3fb839357f547435fcd7361b2f9017821d0f9a2fb560686531",
     "scripts/task096/model.py": "21fba9fa382d51b15444838576b8bd420c2ed643c8f7851524a0ce5aed3d856e",
     "scripts/task096/qualify.py": "0c351f70fa8fd75100d9fcd9b39f290079054eadcea3ec5696e83d18b1391199",
-    "scripts/task096/setup.py": "aae911e3864797dd5632c107def6486265defda321723da77ff66ae3d6ba4f06",
+    "scripts/task096/setup.py": "241b65fe57b8b41c020f8ced511a6a4fa731f2e7548418e1f487406490563490",
     "scripts/task098/cases.py": "2d6192aa7229e7f52630a4158306ad1d74c35a911b0951676463322e06d8983a",
     "scripts/task098/qualify.py": "deac730062ed3ba4212ee0670efd5cb6888c5e599c5be517646800042abe5aab",
     "scripts/task098/real.py": "2b7e514d73d7155bd746adc52b8a4a27da00e853ac37e5f0305751862b7f9560",

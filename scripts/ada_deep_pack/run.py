@@ -30,7 +30,7 @@ def git(*args, cwd=ROOT):
 def identity(expected):
     if git("rev-parse", "HEAD") != expected or git("status", "--porcelain"):
         raise RuntimeError("wrong/dirty workflow source")
-    for path, digest in INVENTORY["qualification_sha256"].items():
+    for path, digest in (INVENTORY["qualification_sha256"] | INVENTORY["infrastructure_sha256"]).items():
         if sha(ROOT / path) != digest:
             raise RuntimeError("changed qualification input: " + path)
     return dict(sha=expected, tree=git("rev-parse", "HEAD^{tree}"),
