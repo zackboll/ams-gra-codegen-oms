@@ -156,7 +156,7 @@
       0
     ],
     "boundary": "broker",
-    "diagnostic": "TypeMismatch"
+    "diagnostic": "OccurrenceMismatch"
   },
   {
     "name": "sixteen-byte-hash",
